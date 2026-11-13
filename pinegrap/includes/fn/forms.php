@@ -5420,8 +5420,8 @@ function pg_form_fields_refuse_page($page_id)
 {
     if (pg_page_has_designer_form($page_id)) {
         output_error(
-            lang('The fields of this form are edited in the visual editor.')
-            . ' <a href="' . h(pg_page_edit_url_by_id($page_id)) . '">' . lang('Open in Visual Editor') . '</a>');
+            lang('The fields of this form are edited in the Page Design Studio.')
+            . ' <a href="' . h(pg_page_edit_url_by_id($page_id)) . '">' . lang('Open in the Page Design Studio') . '</a>');
     }
 
     output_error(lang('This page has no form.'), 404);

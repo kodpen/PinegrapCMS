@@ -529,7 +529,7 @@ function ws_mail_reply_target($viewer, $conversation_id)
     $conversation = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . (int) $conversation_id . "'");
     $channel = is_array($conversation) ? ws_channel((int) $conversation['channel_id']) : null;
 
-    if (!$channel || !ws_can_post_channel($viewer, $channel)) {
+    if (!$channel || !ws_mail_can_answer($viewer, $channel)) {
         return array_merge($out, array('error' => 'no_access'));
     }
 

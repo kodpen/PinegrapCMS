@@ -581,10 +581,39 @@ function ws_canvas_split_file($href, $channel_id, $public)
         return null;
     }
 
+    return ws_canvas_split_file_row("files.name = '" . escape($name) . "'", $channel_id, $public);
+}
+
+/**
+ * A file the agent may use by its id, as ws_canvas_split_file() reaches
+ * one by its address.
+ *
+ * @param int  $id
+ * @param int  $channel_id
+ * @param bool $public
+ * @return array|null id, url, width, height
+ */
+function ws_canvas_split_file_by_id($id, $channel_id, $public)
+{
+    return ((int) $id > 0) ? ws_canvas_split_file_row("files.id = '" . (int) $id . "'", $channel_id, $public) : null;
+}
+
+/**
+ * The picture file a condition picks, when a message of the channel
+ * carries it or (public) the files API would give it to any visitor.
+ *
+ * @param string $where SQL condition on files, already escaped
+ * @param int    $channel_id
+ * @param bool   $public
+ * @return array|null id, url, width, height
+ */
+function ws_canvas_split_file_row($where, $channel_id, $public)
+{
+    $path = defined('PATH') ? PATH : '/';
     $sizes = (function_exists('pg_schema_has') && pg_schema_has('files', 'image_width')) ? 'files.image_width, files.image_height' : 'NULL AS image_width, NULL AS image_height';
     $row = db_item("SELECT files.id, files.name, files.type, " . $sizes . " FROM files
         LEFT JOIN folder ON folder.folder_id = files.folder
-        WHERE files.name = '" . escape($name) . "' AND ("
+        WHERE " . $where . " AND ("
         . "files.id IN (SELECT file_id FROM ws_messages WHERE channel_id = '" . (int) $channel_id . "' AND file_id > 0 AND deleted_at = 0)"
         . ($public ? " OR ((folder.folder_access_control_type = 'public') AND (files.attachment = '0'))" : '')
         . ") LIMIT 1");

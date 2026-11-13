@@ -28,7 +28,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 $pg_settings_cards[] = '
     <div id="pgset-erp" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('ERP') . '
             </div>
             <div class="card-body">
@@ -288,7 +288,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-invoice" class="pg-set-card' . (pg_edoc_settings_shown() ? '' : ' d-none') . '">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('E-Invoice') . '
             </div>
             <div class="card-body">
@@ -402,7 +402,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-erp-rules" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Accounting rules') . '
             </div>
             <div class="card-body">
@@ -418,7 +418,7 @@ if (erp_late_fee_ready()) {
     $pg_settings_cards[] = '
     <div id="pgset-late-fee" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Late payment fee') . '
             </div>
             <div class="card-body">
@@ -435,7 +435,7 @@ if (erp_efatura_threshold_ready()) {
     $pg_settings_cards[] = '
     <div id="pgset-efatura-threshold" class="pg-set-card' . (erp_settings_efatura_threshold_shown() ? '' : ' d-none') . '">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('e-Fatura threshold') . '
             </div>
             <div class="card-body">
@@ -450,7 +450,7 @@ if (erp_efatura_threshold_ready()) {
 $pg_settings_cards[] = '
     <div id="pgset-erp-templates" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Document Templates') . '
             </div>
             <div class="card-body">

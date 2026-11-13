@@ -84,16 +84,3 @@ function test_explorer_erp_search_count_is_announced()
 	pg_assert_contains('erpCountText()', $bar, 'the status bar and the announcement share one text');
 }
 
-function test_unsplash_status_is_live_and_counts_in_words()
-{
-	$source = panel_live_status_local_source('editor_select_image.php');
-	pg_assert_true(
-		(bool) preg_match('/id="unsplash_status"[^>]*role="status"[^>]*aria-live="polite"/', $source),
-		'#unsplash_status is a polite status region'
-	);
-	pg_assert_contains("lang('{var:1} result(s)')", $source, 'the count is a translated template');
-	pg_assert_contains('pg_number_separators()', $source, 'the count uses the panel number format');
-	pg_assert_false(strpos($source, "' result(s)'") !== false, 'no raw number glued to result(s)');
-	pg_assert_false(strpos($source, "lang('result(s)')") !== false, 'no raw number glued to result(s)');
-}
-

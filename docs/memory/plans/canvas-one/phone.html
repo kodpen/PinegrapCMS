@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>canvas one: the card, the first-write question and the Data list at phone width</title>
+<script>if (location.search.indexOf('light') > -1) document.documentElement.setAttribute('data-theme', 'light');</script>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<link rel="stylesheet" href="canvas.css">
+<style>
+.phone .cv { margin-top: 6px; }
+.phone .cv-h .parts { display: none; }
+.phone .parts.under { display: flex; padding: 0 14px 10px; }
+.phone .pg { padding: 12px; }
+.phone .pg .kp b { font-size: 15px; }
+.phone .pg .bars { height: 70px; gap: 6px; }
+.phone .cv-tables { padding: 10px 14px; }
+.phone .cv-tables .lb { width: 100%; }
+.dcard { display: flex; gap: 11px; padding: 12px 14px; border-radius: 14px; margin-bottom: 8px; background: linear-gradient(180deg, var(--surf1), var(--surf2)); border: 1px solid var(--line); box-shadow: var(--shadow-card); }
+.dcard .bd { flex: 1; min-width: 0; }
+.dcard b { display: block; font-weight: 550; }
+.dcard .m { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 3px; font-size: 12px; color: var(--fg3); }
+.dcard .m i { margin-right: 3px; }
+.dcard .uses { margin-top: 8px; display: flex; gap: 6px; }
+.grpl { margin: 12px 4px 8px; font-size: 12px; font-weight: 550; color: var(--fg3); }
+.phone .sheet .dh { padding: 10px 18px 0; }
+.phone .sheet .db { padding: 12px 18px 16px; }
+.phone .sheet .df { padding: 0 18px; }
+.phone .sheet .df .btn { flex: 1; justify-content: center; height: 42px; font-size: 14px; }
+.phone .seg span { padding: 0 9px; }
+.fab { position: absolute; right: 18px; bottom: 96px; width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; font-size: 22px; color: var(--on-accent); background: linear-gradient(180deg, var(--a1), var(--a2)); box-shadow: inset 0 1px 0 rgba(255,255,255,.38), 0 10px 24px -8px var(--a-glow); }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="cols">
+
+  <div>
+    <div class="cap"><b>Telefonda tuval kartı</b>390 px · açık hali · parçalar adın altında · tablolar satırı alt alta sığar · Tam ekran ve Sürümler kartın ayağında.</div>
+    <div class="phone"><div class="scr">
+      <div class="sb"><span>14:05</span><span><i class="bi bi-reception-4"></i> <i class="bi bi-battery-full"></i></span></div>
+      <div class="ah"><button class="ib"><i class="bi bi-chevron-left"></i></button><h1># satis</h1><button class="ib"><i class="bi bi-info-circle"></i></button></div>
+      <div class="bodyp">
+        <div class="msg"><span class="tile t-violet"><i class="bi bi-robot"></i></span><div class="bd"><div class="who">Stok ajanı <small>14:03</small></div><div class="tx">Panoyu hazırladım.</div></div></div>
+        <section class="cv">
+          <div class="cv-h"><span class="tile lg t-violet"><i class="bi bi-easel2"></i></span><div class="nm"><b>Satış panosu</b><small>Sürüm 7 · 12 dk önce</small></div><button class="ib sm"><i class="bi bi-three-dots"></i></button></div>
+          <div class="parts under"><span class="part"><i class="bi bi-vector-pen"></i>Çizim</span><span class="part"><i class="bi bi-window"></i>Sayfa</span><span class="part"><i class="bi bi-table"></i>Veri 2</span></div>
+          <div class="cv-by"><i class="bi bi-robot"></i><span><b>@stok-ajani</b> yaptı. Ajanın işidir.</span></div>
+          <div class="cv-stage"><div class="pg">
+            <div class="kp"><div><small>Ciro</small><b>48.210 ₺</b></div><div><small>Sipariş</small><b>126</b></div><div><small>Bekleyen</small><b>9</b></div></div>
+            <div class="bars"><i style="height:46%"></i><i style="height:62%"></i><i style="height:55%"></i><i style="height:80%"></i><i class="hi" style="height:94%"></i><i style="height:38%"></i><i style="height:22%"></i></div>
+          </div></div>
+          <div class="cv-tables"><span class="lb">Kullandığı tablolar</span><span class="tb w"><span class="tile t-teal"><i class="bi bi-table"></i></span>Siparişler <em>yazar</em></span><span class="tb"><span class="tile t-teal"><i class="bi bi-table"></i></span>Ürünler <em>okur</em></span></div>
+          <div class="cv-f"><button class="btn quiet sm"><i class="bi bi-arrows-fullscreen"></i>Tam ekran</button><button class="btn ghost sm"><i class="bi bi-clock-history"></i>Sürümler</button><button class="ib sm" style="margin-left: auto"><i class="bi bi-x-lg"></i></button></div>
+        </section>
+      </div>
+      <div class="tabbar"><span><i class="bi bi-house"></i>Ana</span><span class="on"><i class="bi bi-chat-dots"></i>Kanallar</span><span><i class="bi bi-table"></i>Veri</span><span><i class="bi bi-bell"></i>Bildirim</span></div>
+    </div></div>
+  </div>
+
+  <div>
+    <div class="cap"><b>Telefonda ilk yazma sorusu</b>Alttan açılan sayfa · iki düğme tam genişlikte, asıl düğme sağda.</div>
+    <div class="phone"><div class="scr">
+      <div class="sb"><span>14:06</span><span><i class="bi bi-reception-4"></i> <i class="bi bi-battery-full"></i></span></div>
+      <div class="ah"><button class="ib"><i class="bi bi-chevron-left"></i></button><h1>Satış panosu</h1></div>
+      <div class="bodyp"><div class="cv-stage"><div class="pg" style="height: 520px"><h3>Bu hafta</h3><div class="kp"><div><small>Ciro</small><b>48.210 ₺</b></div><div><small>Sipariş</small><b>126</b></div><div><small>Bekleyen</small><b>9</b></div></div></div></div></div>
+      <div class="scrim"></div>
+      <section class="sheet">
+        <div class="grab"></div>
+        <div class="dh"><span class="tile lg t-amber"><i class="bi bi-pencil-square"></i></span><div><h2>Satış panosu sizin adınıza yazsın mı?</h2><p>Hesabınız ve haklarınızla.</p></div></div>
+        <div class="db">
+          <div class="ilist">
+            <div class="row"><span class="tile t-teal"><i class="bi bi-table"></i></span><div class="t"><b>Siparişler</b><small>Ekler ve değiştirir · silemez</small></div><span class="st t-amber">Yazar</span></div>
+            <div class="row"><span class="tile t-teal"><i class="bi bi-table"></i></span><div class="t"><b>Ürünler</b><small>Yalnız okur</small></div><span class="st">Okur</span></div>
+          </div>
+          <div class="hint"><i class="bi bi-info-circle"></i>Yeni bir sayfa sürümü yeniden sorar.</div>
+        </div>
+        <div class="df"><button class="btn quiet">İzin verme</button><button class="btn fill">İzin ver</button></div>
+      </section>
+    </div></div>
+  </div>
+
+  <div>
+    <div class="cap"><b>Telefonda Veri</b>Satırlar kart olur · arama ve filtre üstte · Yeni tablo yüzen düğmede.</div>
+    <div class="phone"><div class="scr">
+      <div class="sb"><span>14:07</span><span><i class="bi bi-reception-4"></i> <i class="bi bi-battery-full"></i></span></div>
+      <div class="ah"><h1>Veri</h1><button class="ib"><i class="bi bi-search"></i></button><button class="ib"><i class="bi bi-three-dots"></i></button></div>
+      <div class="bodyp">
+        <span class="seg"><span class="on">Tümü <em>9</em></span><span>Benim <em>5</em></span><span>Kanallar <em>2</em></span></span>
+        <div class="grpl">Kanal tabloları</div>
+        <div class="dcard"><span class="tile t-teal"><i class="bi bi-table"></i></span><div class="bd"><b>Siparişler</b><div class="m"><span class="num">126 satır</span><span><i class="bi bi-hash"></i>satis</span><span>12 dk önce</span></div><div class="uses"><span class="part"><i class="bi bi-easel2"></i>Satış panosu</span></div></div></div>
+        <div class="dcard"><span class="tile t-teal"><i class="bi bi-table"></i></span><div class="bd"><b>Kampanya takvimi</b><div class="m"><span class="num">34 satır</span><span><i class="bi bi-hash"></i>pazarlama</span><span>Dün</span></div></div></div>
+        <div class="grpl">Benim ve paylaşılanlar</div>
+        <div class="dcard"><span class="tile t-teal"><i class="bi bi-table"></i></span><div class="bd"><b>Ürünler</b><div class="m"><span class="num">1.284 satır</span><span>Benim</span><span>2 sa önce</span></div><div class="uses"><span class="part"><i class="bi bi-easel2"></i>Satış panosu</span><span class="part"><i class="bi bi-easel2"></i>Stok uyarıları</span></div></div></div>
+        <div class="dcard"><span class="tile t-teal"><i class="bi bi-table"></i></span><div class="bd"><b>Tedarikçiler</b><div class="m"><span class="num">47 satır</span><span>Ayşe Demir · düzenleyebilir</span></div></div></div>
+      </div>
+      <button class="fab"><i class="bi bi-plus-lg"></i></button>
+      <div class="tabbar"><span><i class="bi bi-house"></i>Ana</span><span><i class="bi bi-chat-dots"></i>Kanallar</span><span class="on"><i class="bi bi-table"></i>Veri</span><span><i class="bi bi-bell"></i>Bildirim</span></div>
+    </div></div>
+  </div>
+
+</div>
+</div>
+</body>
+</html>

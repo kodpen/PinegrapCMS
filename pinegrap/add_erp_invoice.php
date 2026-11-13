@@ -102,7 +102,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('Invoice an Order'),
-        'extra classes' => 'erp erp_invoices',
+        'extra classes' => 'erp erp_invoices pg-measure-edit',
         'icon' => 'erp',
         'heading' => lang('Invoice an Order'),
         'heading_description' => lang('Raise a sales invoice from a completed order that has not been invoiced yet.'),

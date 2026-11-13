@@ -99,6 +99,6 @@ function pg_dashboard_v2_card_content($user, $period, $compare)
         'pages' => $pages,
         'empty' => empty($pages) ? lang('No pages edited yet.') : '',
         'url'   => $designer ? 'view_system_styles.php' : 'view_pages.php',
-        'link'  => $designer ? lang('Open the Visual Editor') : lang('All pages'),
+        'link'  => $designer ? lang('Open the Page Design Studio') : lang('All pages'),
     ));
 }

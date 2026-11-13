@@ -84,7 +84,8 @@ function test_bell_filters_kept_choice()
 	pg_assert_contains("return pg_bell_filter_name(kept, 'all');", bell_filters_js_part($js, 'function pg_bell_filter_kept('));
 	pg_assert_contains("pgBellFilter = pg_bell_filter_name(filter, '') || pg_bell_filter_kept();", $open);
 
-	pg_assert_contains("((parseInt(row.ask, 10) === 1) ? ' data-pg-bell-ask=\"1\"' : '')", $row);
+	pg_assert_contains("var ask = (parseInt(row.ask, 10) === 1);", $row);
+	pg_assert_contains("(ask ? ' data-pg-bell-ask=\"1\"' : '')", $row);
 	pg_assert_contains("(unread ? ' data-pg-bell-was-new=\"1\"' : '')", $row);
 
 	// Chip, switch and search apply together; the search reads the title,

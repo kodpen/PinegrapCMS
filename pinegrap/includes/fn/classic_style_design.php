@@ -44,10 +44,10 @@ function pg_classic_style_refusal($row)
 {
     if (!is_array($row)) return lang('Record not found.');
     if ((string)($row['style_layout'] ?? '') === 'visual_designer') {
-        return lang('This style is already a visual design.');
+        return lang('This style is already a design.');
     }
     if ((string)($row['style_type'] ?? '') !== 'custom') {
-        return lang('Only a style edited as code can be opened in the visual designer.');
+        return lang('Only a style edited as code can be opened in the Page Design Studio.');
     }
     if (trim((string)($row['style_code'] ?? '')) === '') {
         return lang('The style has no code to open.');
@@ -417,7 +417,7 @@ function pg_classic_style_design_open($style_id, $user)
     $out = array('error' => '', 'pages' => array(), 'css' => '', 'js' => '', 'fonts' => '', 'warnings' => array(), 'folder_pages' => array(), 'frame_tree' => '', 'split' => false);
 
     if ((int)$user['role'] > 1) {
-        $out['error'] = lang('Only a designer can open a classic style in the visual designer.');
+        $out['error'] = lang('Only a designer can open a classic style in the Page Design Studio.');
         return $out;
     }
     $row = db_item("SELECT style_id, style_name, style_type, style_layout, style_code FROM style WHERE style_id = '$style_id' LIMIT 1");
@@ -488,7 +488,7 @@ function pg_classic_style_mark_design($style_id, $framework, $username)
     if (pg_style_framework_ready()) {
         db("UPDATE style SET style_framework = '" . e(pg_design_framework_key((string)$framework)) . "' WHERE style_id = '$style_id' LIMIT 1");
     }
-    log_activity(lang(array('string' => 'style ({var:1}) was made a visual design', 'vars' => array((string)$name))), (string)$username);
+    log_activity(lang(array('string' => 'style ({var:1}) was made a design', 'vars' => array((string)$name))), (string)$username);
     return true;
 }
 

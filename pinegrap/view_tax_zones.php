@@ -85,7 +85,7 @@ $list = pg_list_table_printed(array(
 echo
     pg_page_shell([
         'title'=> lang('All Tax Zones'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Tax Zones'),
         'heading_description' => lang('All geographic areas where your organization collects tax for any product.'),

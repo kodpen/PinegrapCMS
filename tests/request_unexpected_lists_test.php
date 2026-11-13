@@ -91,7 +91,6 @@ function test_request_unexpected_lists_screens()
 	$screens = array(
 		'api_settings.php'         => 'api_action',
 		'marketplace_settings.php' => 'mp_action',
-		'workspace_settings.php'   => 'ws_action',
 	);
 
 	foreach ($screens as $screen => $action) {
@@ -108,19 +107,7 @@ function test_request_unexpected_lists_screens()
 		preg_match_all("/'([a-z][a-z0-9_]*)'\s*=>\s*[1-9]/", $call[1][0], $named);
 		$named = array_flip($named[1]);
 
-		// What the screen draws, and for the Workspace the cards its settings
-		// functions draw from includes/workspace/.
 		$drawn = $source;
-
-		if ($screen === 'workspace_settings.php') {
-			foreach (glob($pinegrap . '/includes/workspace/*.php') as $file) {
-				foreach (preg_split('/^function /m', file_get_contents($file)) as $function) {
-					if (preg_match('/^ws_[a-z_]*settings_[a-z_]*\(/', $function)) {
-						$drawn .= $function;
-					}
-				}
-			}
-		}
 
 		preg_match_all('/name="([a-z][a-z0-9_]*)\[/', $drawn, $fields);
 		// The helpers that add the brackets themselves: the weekday toggles

@@ -63,7 +63,7 @@ function api_console_group_labels() {
 		'webhooks'       => lang('Webhooks'),
 		// The groups the later resources and the modules add (includes/api/
 		// modules.php); without a line here they showed the bare route prefix.
-		'design'         => lang('Visual Page Editor'),
+		'design'         => lang('Page Design Studio'),
 		'auth'           => lang('Sign-in'),
 		'devices'        => lang('Devices'),
 		'notifications'  => lang('Notifications'),

@@ -613,13 +613,14 @@
         return m ? parseInt(m[1], 10) : -1;
     }
 
-    // The layers list's name: the type's own (a text's words), else its
+    // The layers list's name: the layer's own name (an agent gives one),
+    // else the type's own (a text's words), else its
     // label, numbered when there are more of the type. The number follows
     // the order the layers were added in (their ids), not the stacking
     // order, so arranging a layer moves its row and keeps its name; ids
     // without a number come after, in stacking order.
     Editor.prototype.layerName = function (l) {
-        var own = kind(l).name ? kind(l).name.call(this, l) : '', layers = this.doc.layers, same;
+        var own = ((typeof l.name === 'string') && l.name) ? l.name : (kind(l).name ? kind(l).name.call(this, l) : ''), layers = this.doc.layers, same;
 
         if (own) {
             return own;

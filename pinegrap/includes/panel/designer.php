@@ -232,10 +232,15 @@ function pg_panel_designer($request, $action)
 
     // Page changes proposed by an assistant (includes/designer_ai.php):
     // asking, waiting, applying onto the tab. Designers only - the list
-    // above does not open them to a content-level operator.
+    // above does not open them to a content-level operator. The answer is
+    // JSON whatever PHP reports on the way (pg_error_json_action()): the
+    // editor reads it with JSON.parse().
     if (in_array($sub, array('ai_state', 'ai_ask', 'ai_status', 'ai_cancel', 'ai_apply', 'ai_dismiss'), true)) {
-        require_once(PG_FUNCTIONS_DIR . '/includes/designer_ai.php');
-        respond(pg_design_ai_panel($sub, $request, $user));
+        respond(pg_error_json_action(function () use ($sub, $request, $user) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/designer_ai.php');
+
+            return pg_design_ai_panel($sub, $request, $user);
+        }, array('status' => 'error', 'code' => 'server_error', 'message' => pg_error_json_action_sentence())));
     }
 
     switch ($sub) {
@@ -990,7 +995,7 @@ function pg_panel_designer($request, $action)
                 respond(array('status' => 'error', 'message' => lang('The style could not be found.')));
             }
             if ($style['style_layout'] !== 'visual_designer') {
-                respond(array('status' => 'error', 'message' => lang('Only designs made with the visual editor can be deleted here.')));
+                respond(array('status' => 'error', 'message' => lang('Only designs made in the Page Design Studio can be deleted here.')));
             }
             $dd = pg_designer_delete_design($style_id, $user);
             if (!$dd['ok']) {

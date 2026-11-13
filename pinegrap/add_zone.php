@@ -49,7 +49,7 @@ if (!$_POST || $errors) {
     $output =
     pg_page_shell([
         'title'=> lang('Create Shipping Zone'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Create Shipping Zone'),
         'heading_description' => lang('Create a new shipping zone that will be used to calculate shipping during checkout based on the products and shipping addresses.'),

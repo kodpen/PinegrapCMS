@@ -18,7 +18,4 @@ module: offer_list_edit
 - The File Manager's file table (`includes/panel/explorer.php`) arrives in an answer after page load, so DataTables never started on it: the dead `chart`/`datatable-*` classes went, `text-nowrap` keeps one line per file.
 - `includes/dashboard/widgets/widget_5.php` had no DataTables code left (a chart and a top pages list).
 
-## How does the link picker work on the driver?
-- `editor_select_page_or_file.php` prints one list per tab, named `editor_select_page_or_file_<page|file|short_link>` (its `pg_list_state()` keys, in `pg_list_table_printed_lists()`); the toolbar sort menu names the list (6th argument). The address is a link `a[data-pg-pick][data-pg-open]`: a click (the page's script), a double click or Enter on the row sends it to CKEditor and closes the window. Thumbnails through `data-pg-thumb`; the server `query` session filter stays.
-
 Related: docs/memory/ui/list-table-quick-edit-offers.md, docs/memory/ui/list-table-driver-sort.md, docs/memory/ui/list-table-printed.md

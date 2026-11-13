@@ -571,6 +571,12 @@ function _pg_theme_role($role, $c)
 
     $fg_light = _pg_theme_readable($c, $white, 4.5, false);
     $fg_dark  = _pg_theme_readable(_pg_theme_tint($c, 0.3), $dark_bg, 4.5, true);
+    // A colour under 3:1 on white is too pale to be seen there as a line: the
+    // outline of an outline button, the ring of a focused control and the
+    // range thumb are drawn in its readable shade on a white page. On the
+    // dark body such a colour stands out, and is its own line again.
+    $pale = _pg_theme_contrast($c, $white) < 3;
+    $line = $pale ? $fg_light : $c;
 
     $light = array(
         '--bs-' . $role                     => _pg_theme_hex($c),
@@ -593,13 +599,28 @@ function _pg_theme_role($role, $c)
         '--pg-' . $role . '-fg-rgb'         => _pg_theme_rgb_list($fg_dark),
         '--pg-' . $role . '-hover-rgb'      => _pg_theme_rgb_list(_pg_theme_tint($fg_dark, 0.2)),
     );
+    if ($pale) {
+        $light['--pg-' . $role . '-line']     = _pg_theme_hex($line);
+        $light['--pg-' . $role . '-line-rgb'] = _pg_theme_rgb_list($line);
+        $dark['--pg-' . $role . '-line']      = _pg_theme_hex($c);
+        $dark['--pg-' . $role . '-line-rgb']  = _pg_theme_rgb_list($c);
+    }
     if ($role === 'primary') {
         $light['--bs-link-color']            = _pg_theme_hex($fg_light);
         $light['--bs-link-color-rgb']        = _pg_theme_rgb_list($fg_light);
         $light['--bs-link-hover-color']      = _pg_theme_hex(_pg_theme_shade($fg_light, 0.2));
         $light['--bs-link-hover-color-rgb']  = _pg_theme_rgb_list(_pg_theme_shade($fg_light, 0.2));
-        $light['--bs-focus-ring-color']      = 'rgba(' . _pg_theme_rgb_list($c) . ', 0.25)';
-        $light['--pg-primary-focus-border']  = _pg_theme_hex(_pg_theme_tint($c, 0.5));
+        $light['--bs-focus-ring-color']      = 'rgba(' . _pg_theme_rgb_list($line) . ', 0.25)';
+        $light['--pg-primary-focus-border']  = _pg_theme_hex(_pg_theme_tint($line, 0.5));
+        // The tick, the dot, the dash and the switch knob of a checked
+        // control are white images in Bootstrap, lost on a pale colour:
+        // there they are drawn in the text colour of the primary, in both
+        // modes, as the control is filled with the colour in both.
+        if ($pale) {
+            foreach (_pg_theme_control_marks(_pg_theme_hex($on)) as $name => $image) {
+                $light['--pg-' . $name . '-mark'] = $image;
+            }
+        }
         $dark['--bs-link-color']             = _pg_theme_hex($fg_dark);
         $dark['--bs-link-color-rgb']         = _pg_theme_rgb_list($fg_dark);
         $dark['--bs-link-hover-color']       = _pg_theme_hex(_pg_theme_tint($fg_dark, 0.2));
@@ -608,6 +629,23 @@ function _pg_theme_role($role, $c)
         $dark['--pg-primary-focus-border']   = _pg_theme_hex(_pg_theme_tint($c, 0.3));
     }
     return array($light, $dark);
+}
+
+// The images Bootstrap draws on a checked control, in $hex (#rrggbb)
+// instead of white: the tick, the radio's dot, the dash of an indeterminate
+// checkbox and the switch's knob. Bootstrap's own drawings, so a palette
+// changes their colour and nothing else.
+function _pg_theme_control_marks($hex)
+{
+    $ink  = '%23' . ltrim($hex, '#');
+    $svg  = "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox=";
+    $path = "%3e%3cpath fill='none' stroke='" . $ink . "' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d=";
+    return array(
+        'check'  => $svg . "'0 0 20 20'" . $path . "'m6 10 3 3 6-6'/%3e%3c/svg%3e\")",
+        'radio'  => $svg . "'-4 -4 8 8'%3e%3ccircle r='2' fill='" . $ink . "'/%3e%3c/svg%3e\")",
+        'dash'   => $svg . "'0 0 20 20'" . $path . "'M6 10h8'/%3e%3c/svg%3e\")",
+        'switch' => $svg . "'-4 -4 8 8'%3e%3ccircle r='3' fill='" . $ink . "'/%3e%3c/svg%3e\")",
+    );
 }
 
 // The stylesheet of a palette. False for a colour that is not #rgb/#rrggbb.

@@ -457,6 +457,10 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 // checks it again).
                 'canvas_edit'    => function_exists('ws_canvas_edit_mark') ? ws_canvas_edit_mark($canvas, (string) $row['sender_kind'],
                     !empty($payload['can_edit']) && $can_post) : null,
+                // An agent's live page (page_card.php): its card instead of
+                // the file line; null for any other file.
+                'page'     => (($extension === 'html') && function_exists('ws_page_card'))
+                    ? ws_page_card($id, (int) $row['file_id'], $can_post) : null,
                 'image'    => ($kind === 'image'),
                 'kind'     => $kind,
                 'ext'      => $extension,
@@ -2190,7 +2194,9 @@ function ws_message_search($viewer, $query, $channel_id = 0)
             $channels[$id] = ws_channel($id);
         }
 
-        if (ws_can_read_channel($viewer, $channels[$id])) {
+        // The mail of a mailbox kept in no channel is searched on the
+        // E-mails screen, the only place that opens it.
+        if (ws_can_read_channel($viewer, $channels[$id]) && !ws_channel_is_mailbox($channels[$id])) {
             $visible[] = $row;
         }
 

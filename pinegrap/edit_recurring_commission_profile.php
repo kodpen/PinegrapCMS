@@ -68,7 +68,7 @@ if (!$_POST) {
     print
     pg_page_shell([
         'title'=> lang('Edit Recurring Commission Profile'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Edit Recurring Commission Profile'),
         'heading_description' => lang('Enable or disable this recurring commission profile.'),
@@ -85,7 +85,7 @@ if (!$_POST) {
         ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$id)) . '
         ' . pg_commission_edit_layout('
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Status') . '
                                 </h2>
                                 <div class="card-body pt-0">

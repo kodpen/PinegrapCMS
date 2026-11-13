@@ -307,7 +307,7 @@ $project_widgets['project_detail'] = array(
                 )),
                 $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
                     $span($sectors[$project_sample['sector']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Sector'), $bind('sector')),
-                    $span($project_statuses[$project_sample['status']], 'badge rounded-pill text-bg-dark', lang('Status'), $bind('status')),
+                    $span($project_statuses[$project_sample['status']], 'badge rounded-pill text-bg-secondary', lang('Status'), $bind('status')),
                 )),
                 $heading('h1', $project_sample['name'], 'pcn-display display-6 mb-2', $bind('name')),
                 $para($project_sample['summary'], 'lead text-body-secondary mb-3', $bind('summary')),

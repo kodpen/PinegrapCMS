@@ -502,7 +502,8 @@ function pg_page_type_pane_request($user, $page_id)
             $properties[$page_type] = get_page_type_properties($page_id, $page_type);
         }
 
-        $fields = pg_page_form_type_fields($page_type, $row['layout_type'], $properties, $user, $page_id);
+        // The page settings are picker fields, as on Create Page and Edit Page.
+        $fields = pg_page_form_type_fields($page_type, $row['layout_type'], $properties, $user, $page_id, true);
 
         $reply(200, array(
             'ok' => true,

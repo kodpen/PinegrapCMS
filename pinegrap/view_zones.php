@@ -85,7 +85,7 @@ $list = pg_list_table_printed(array(
 print
 pg_page_shell([
         'title'=> lang('All Shipping Zones'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Shipping Zones'),
         'heading_description' => lang('All geographic areas where your organization can ship products.'),

@@ -81,7 +81,7 @@ if (!$_POST) {
     $output =
     pg_page_shell([
         'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Arrival Date'))),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang(array('string'=>'Edit {var:1}','vars'=>lang('Arrival Date'))),
         'heading_description' => lang('Edit a arrival date for any special occasion, or holiday that will be presented during checkout. (Delete all will hide feature.)'),

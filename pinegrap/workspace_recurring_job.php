@@ -118,6 +118,13 @@ if (ws_enabled() && function_exists('ws_memory_sweep')) {
     ws_memory_sweep();
 }
 
+// The HTML of mail that came in before it was kept, read again from its
+// .eml while that is still there: before the sweep below deletes it
+// (includes/workspace/mail.php).
+if (ws_enabled() && function_exists('ws_mail_html_fill')) {
+    ws_mail_html_fill();
+}
+
 // Original .eml files of incoming mail past their 30 days
 // (includes/workspace/mail.php).
 if (ws_enabled() && function_exists('ws_mail_eml_sweep')) {

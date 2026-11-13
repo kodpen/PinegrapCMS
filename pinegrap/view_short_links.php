@@ -131,7 +131,7 @@ print
 pg_page_shell(
     array(
         'title'=> lang('Short Links'),
-        'extra classes'=>'page',
+        'extra classes'=>'page pg-measure-list',
         'icon'=>'page', 
         'heading'=>lang('Short Links'),
         'heading_description' => lang('Short addresses for pages, product groups, products, files and URLs.'),

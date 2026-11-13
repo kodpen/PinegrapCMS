@@ -101,7 +101,7 @@ function test_workspace_mail_box_form_connection()
 function test_workspace_mail_connect_button()
 {
 	pg_assert_contains('name="purpose" value="mail_read"', ws_mail_connect_form(array('role' => 2)), 'a manager connects');
-	pg_assert_contains('value="workspace_settings.php#ws-mail"', ws_mail_connect_form(array('role' => 0)), 'back to the card');
+	pg_assert_contains('value="settings_workspace_channels.php#pgset-ws-mail"', ws_mail_connect_form(array('role' => 0)), 'back to the card');
 	pg_assert_true(strpos(ws_mail_connect_form(array('role' => 3)), 'connect.php') === false, 'a member is told who can');
 }
 

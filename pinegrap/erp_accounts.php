@@ -238,7 +238,7 @@ if ($show_edoc || $show_over_limit) {
 echo
 pg_page_shell([
         'title' => lang('Accounts'),
-        'extra classes' => 'erp erp_accounts',
+        'extra classes' => 'erp erp_accounts pg-measure-list',
         'icon' => 'erp',
         'heading' => lang('Accounts'),
         'heading_description' => lang('Customers and suppliers, their balances and their statements.'),

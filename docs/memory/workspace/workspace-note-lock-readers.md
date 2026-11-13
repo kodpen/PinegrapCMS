@@ -7,6 +7,7 @@ description: Notes lock beyond the notes screen: API and MCP (locked, 423 note_l
 - `ws_api_note_present()` carries `locked` (the note is behind a closed lock; the API never holds the session's open lock), and then `text` and `body` are null and `excerpt` empty; the title stays. Search hits and lists come from the same presenter (`workspace-note-lock-gate.md`).
 - `ws_api_note_locked_stop()` answers 423 `note_locked` (in `api_error_catalogue()`) before a change, a delete, a place in a group (`api_note_groups.php`) and the versions list or one version (`api_threads.php`). MCP tools run the same handlers.
 - `/workspace/sync` carries no notes; nothing to gate there.
+- A lock change reaches `GET /workspace/notes?updated_since=`, and its `search` finds a locked note by its title only: `workspace-note-lock-changes.md`.
 
 ## Which other readers are gated, and how?
 - Assistants: `ws_note_claude_ask()` refuses a note behind its owner's lock, open or not (`ws_note_locked_by_owner()`); Pinegrap AI (`ai.php`) fails a request whose note was locked since, and Claude's request (`api_claude.php`) gets neither the note nor the line.

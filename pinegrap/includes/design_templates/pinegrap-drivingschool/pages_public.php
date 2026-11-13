@@ -345,7 +345,7 @@ $test_sheet = function ($id, $title, $lead, $class = 'py-5')
 $plate_links = array();
 foreach ($licences as $key => $l) {
     $plate_links[] = $el('li', '', $l['title'], array(
-        $el('a', 'd-inline-flex align-items-center gap-2 btn btn-outline-light', lang('Licence Link'), array(
+        $el('a', 'd-inline-flex align-items-center gap-2 btn btn-secondary', lang('Licence Link'), array(
             $span($l['code'], 'pg-drv-plate pdr-display', lang('Licence Class')),
             $span($l['title'], '', lang('Text')),
         ), array('href' => '{{page:licence_' . $key . '}}')),
@@ -372,7 +372,7 @@ $public_pages[] = array(
                             $para($school['tagline'] . '.', 'lead text-body-secondary mb-4'),
                             $el('div', 'd-flex flex-wrap gap-2 mb-4', lang('Buttons'), array(
                                 $link(lang('Enrol Now'), '{{page:enrol}}', 'btn btn-primary btn-lg px-4'),
-                                $link(lang('Courses and Prices'), '{{page:courses}}', 'btn btn-outline-light btn-lg px-4'),
+                                $link(lang('Courses and Prices'), '{{page:courses}}', 'btn btn-secondary btn-lg px-4'),
                             )),
                             $para(lang('Pick your licence class'), 'small fw-semibold text-body-secondary mb-2'),
                             $el('ul', 'list-unstyled d-flex flex-wrap gap-2 mb-0', lang('Licence Classes'), $plate_links),

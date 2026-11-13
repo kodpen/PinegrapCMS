@@ -238,7 +238,7 @@ function test_hotel_assembly_pages_on_hotel_blocks()
 	$tpl = _test_ht_asm_tpl();
 	$styles = json_decode($tpl['assets']['css'], true);
 	$css = $styles[0]['content'];
-	pg_assert_same('2.0.0', $tpl['version'], 'version raised');
+	pg_assert_true(version_compare($tpl['version'], '2.0.0', '>='), 'version raised');
 	$trees = array();
 	foreach ($tpl['pages'] as $p) if (in_array($p['key'], array('home', 'rooms', 'rates'), true)) $trees[$p['key']] = $p['tree'];
 	$wanted = array(

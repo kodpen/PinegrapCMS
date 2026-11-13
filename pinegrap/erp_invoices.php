@@ -488,7 +488,7 @@ $output_toolbar = pg_screen_toolbar(array(
 echo
 pg_page_shell([
         'title' => lang('Invoices'),
-        'extra classes' => 'erp erp_invoices',
+        'extra classes' => 'erp erp_invoices pg-measure-list',
         'icon' => 'erp',
         'heading' => lang('Invoices'),
         'heading_description' => lang('Sales and purchase invoices, their e-document status and their returns.'),

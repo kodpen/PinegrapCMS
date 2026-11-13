@@ -23,7 +23,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 $pg_settings_cards[] = '
     <div id="pgset-channel" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Update Channel') . '
             </div>
             <div class="card-body">
@@ -56,7 +56,7 @@ $pg_settings_cards[] = '
                         <div id="pgset-cron" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)</span>
+                                    <span class="pg-title-section">' . lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)</span>
                                     <button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="drawer" data-bs-target="#cron_jobs" aria-controls="cron_jobs"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>' . lang('Setup Instructions') . '</button>
                                 </div>
                                 <div class="card-body">
@@ -489,7 +489,7 @@ $pg_settings_cards[] = '
     <div id="pgset-backup" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Backups') . '</span>
+                <span class="pg-title-section">' . lang('Backups') . '</span>
                 <a href="backups.php" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Backup Manager') . '</a>
             </div>
             <div class="card-body">
@@ -643,7 +643,7 @@ if (!$object_storage_ready) {
 $pg_settings_cards[] = '
     <div id="pgset-storage" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Storage') . '
             </div>
             <div class="card-body">
@@ -740,7 +740,7 @@ if ($ops_alerts_ready) {
 $pg_settings_cards[] = '
     <div id="pgset-alerts" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Alerts') . '
             </div>
             <div class="card-body">
@@ -899,7 +899,7 @@ if (!$notify_ready) {
 $pg_settings_cards[] = '
     <div id="pgset-chat-notify" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Chat notifications') . '
             </div>
             <div class="card-body">
@@ -964,7 +964,7 @@ if ($maintenance_ready) {
 $pg_settings_cards[] = '
     <div id="pgset-maintenance" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Maintenance Mode') . '
             </div>
             <div class="card-body">

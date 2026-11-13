@@ -353,7 +353,7 @@ echo
 pg_page_shell(
     array(
         'title'=> lang('Pages'),
-        'extra classes'=>'page',
+        'extra classes'=>'page pg-measure-list',
         'icon'=>'page',
         'heading'=>($heading ?? lang('Pages')),
         'heading_description' => ($subheading ?? lang('Create, edit and publish site pages')),

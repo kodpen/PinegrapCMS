@@ -31,7 +31,7 @@ if (!isset($_POST['name'])) {
     print 
     pg_page_shell([
         'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Designer Region'))),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Designer Region'))),
         'heading_description' => lang('Create a designer region of shared content that can be added to any page style and updated during page editing by any Site designer.'),

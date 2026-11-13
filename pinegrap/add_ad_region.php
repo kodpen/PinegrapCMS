@@ -29,7 +29,7 @@ if (!$_POST) {
     print
     pg_page_shell([
         'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Ad Region'))),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Ad Region'))),
         'heading_description' => lang('Create an ad region to display rotating ad content.'),

@@ -195,9 +195,10 @@ function ws_page_is_page($file_id)
  * @param array    $agent     id, kind, handle
  * @param int      $user_id   the application's owner
  * @param string[] $libraries the site's libraries it names
+ * @param string   $source    agent, or restore for an Undo (ws_page_undo())
  * @return array|null the row, or null when it could not be written
  */
-function ws_page_version_add($file_id, $html, $agent, $user_id, $libraries = array())
+function ws_page_version_add($file_id, $html, $agent, $user_id, $libraries = array(), $source = 'agent')
 {
     $dir = pg_file_versions_dir();
 
@@ -215,8 +216,8 @@ function ws_page_version_add($file_id, $html, $agent, $user_id, $libraries = arr
 
     $doc = ws_page_version_doc($agent, $libraries);
     $saved = db_q("INSERT INTO file_versions (file_id, version_no, doc_json, doc_hash, stored_name, format, width, height, size, redacted, user_id, source, created_at)
-        VALUES (?, ?, ?, ?, ?, 'html', 0, 0, ?, 0, ?, 'agent', UNIX_TIMESTAMP())", array(
-        (int) $file_id, $version_no, $doc, sha1($html), $name, strlen($html), (int) $user_id));
+        VALUES (?, ?, ?, ?, ?, 'html', 0, 0, ?, 0, ?, ?, UNIX_TIMESTAMP())", array(
+        (int) $file_id, $version_no, $doc, sha1($html), $name, strlen($html), (int) $user_id, ($source === 'restore') ? 'restore' : 'agent'));
 
     if (!$saved) {
         @unlink($path);
@@ -252,9 +253,10 @@ function ws_page_versions_prune($file_id)
  * @param array    $agent
  * @param int      $user_id
  * @param string[] $libraries the site's libraries it names
+ * @param string   $source    agent, or restore for an Undo
  * @return bool
  */
-function ws_page_write($message, $html, $agent, $user_id, $libraries = array())
+function ws_page_write($message, $html, $agent, $user_id, $libraries = array(), $source = 'agent')
 {
     $file_id = (int) $message['file_id'];
     $stored = (string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'");
@@ -274,7 +276,7 @@ function ws_page_write($message, $html, $agent, $user_id, $libraries = array())
         pg_file_cache_forget($file_id);
     }
 
-    if (!ws_page_version_add($file_id, $html, $agent, $user_id, $libraries)) {
+    if (!ws_page_version_add($file_id, $html, $agent, $user_id, $libraries, $source)) {
         return false;
     }
 

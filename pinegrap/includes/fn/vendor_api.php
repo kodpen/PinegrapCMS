@@ -9,9 +9,11 @@
  * what the licence check (license_check(), includes/fn/output.php) and the
  * software update (includes/fn/update.php) build their calls to it from.
  *
- * While PG_VENDOR_API_V1 is false nothing here makes a call:
- * pg_vendor_api_request() refuses before cURL runs, and the licence check
- * and the update ask the www.kodpen.com/api2 server as before.
+ * PG_VENDOR_API_V1 is on: the licence check and the software update ask
+ * this API and no other server. Set to false it is only the way back to the
+ * www.kodpen.com/api2 server while the api2 branches of those two are still
+ * in the code: pg_vendor_api_request() then refuses before cURL runs and
+ * they ask api2 as before.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -25,8 +27,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 // The switch. Its line keeps exactly this form, alone on the line: the
 // hosting platform reads this file as text to tell which server a site asks,
-// and tests/vendor_api_test.php holds the line to it.
-define('PG_VENDOR_API_V1', false);
+// and tests/vendor_api_test.php holds the line to it. The line stays even
+// once no code reads the constant, because the platform still reads the line.
+define('PG_VENDOR_API_V1', true);
 
 /**
  * The address every call starts from: https://api.kodpen.com/v1, or

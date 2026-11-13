@@ -666,10 +666,18 @@ function ws_note_lock_turn_off($viewer, $pin)
         return $verified;
     }
 
+    // What comes out from behind the lock: the person's locked notes and
+    // the notes they keep in their locked groups.
+    $freed = array_merge(
+        array_map('intval', (array) db_values("SELECT id FROM ws_notes WHERE user_id = '" . $user_id . "' AND locked = 1")),
+        ws_note_lock_group_note_ids($user_id)
+    );
+
     db("UPDATE ws_notes SET locked = 0 WHERE user_id = '" . $user_id . "' AND locked = 1");
     db("UPDATE ws_note_groups SET locked = 0 WHERE user_id = '" . $user_id . "' AND locked = 1");
     db("DELETE FROM ws_note_locks WHERE user_id = '" . $user_id . "'");
     ws_note_lock_has($user_id, false);
+    ws_note_lock_moved($freed);
 
     ws_note_lock_close();
     unset($_SESSION['software']['ws_note_lock_code']);
@@ -755,6 +763,115 @@ function ws_note_lock_behind($note, $user_id, $has_lock, $locked_group_ids)
     }
 
     return in_array((int) ($note['id'] ?? 0), array_map('intval', (array) $locked_group_ids), true);
+}
+
+/**
+ * ws_note_lock_behind() as a condition of a query over notes (alias n): the
+ * person's own locked notes and the notes they keep in their locked groups.
+ * '' when they set no PIN, so nothing is behind a lock. Pure.
+ *
+ * @param int   $user_id
+ * @param bool  $has_lock         the person set a PIN
+ * @param int[] $locked_group_ids notes the person keeps in their locked groups
+ * @return string "(...)" or ''
+ */
+function ws_note_lock_behind_sql($user_id, $has_lock, $locked_group_ids)
+{
+    $user_id = (int) $user_id;
+
+    if (!$has_lock || ($user_id <= 0)) {
+        return '';
+    }
+
+    $sql = "(n.user_id = '" . $user_id . "' AND n.locked = 1)";
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $locked_group_ids))));
+
+    if (!empty($ids)) {
+        $sql .= ' OR n.id IN (' . implode(',', $ids) . ')';
+    }
+
+    return '(' . $sql . ')';
+}
+
+/**
+ * Of the notes a person keeps in one of their groups, the ones that go
+ * behind the lock with the group and come out with it: all but their own
+ * notes locked one by one, which are behind the lock either way. Pure.
+ *
+ * @param array[] $rows    note rows (id, user_id, locked)
+ * @param int     $user_id the owner of the group
+ * @return int[]
+ */
+function ws_note_lock_group_follow_ids($rows, $user_id)
+{
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && !(((int) ($row['user_id'] ?? 0) === (int) $user_id) && !empty($row['locked']))) {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * The notes a group of the person takes behind their lock when it is
+ * locked, and lets out when it is unlocked or deleted
+ * (ws_note_lock_group_follow_ids()).
+ *
+ * @param int $user_id  the owner of the group
+ * @param int $group_id
+ * @return int[]
+ */
+function ws_note_lock_group_follows($user_id, $group_id)
+{
+    if (((int) $user_id <= 0) || ((int) $group_id <= 0) || !ws_note_lock_ready() || !ws_note_groups_ready()) {
+        return array();
+    }
+
+    $rows = db_items("SELECT n.id, n.user_id, n.locked FROM ws_note_places p
+        INNER JOIN ws_notes n ON n.id = p.note_id
+        WHERE p.group_id = '" . (int) $group_id . "' AND p.user_id = '" . (int) $user_id . "'");
+
+    return ws_note_lock_group_follow_ids(is_array($rows) ? $rows : array(), $user_id);
+}
+
+/**
+ * The notes went behind a person's lock or came out from behind it: their
+ * updated_at moves on, and nothing else of them. A client that keeps notes
+ * and reads what changed (GET /workspace/notes?updated_since=) then meets
+ * them again, with `locked` as it now is, and drops the text it kept or
+ * reads it again. The revision and updated_by stay as they are: the words
+ * did not change, so a save made against the revision read is not refused.
+ *
+ * @param int[] $note_ids
+ */
+function ws_note_lock_moved($note_ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $note_ids), function ($id) {
+        return $id > 0;
+    })));
+
+    foreach (array_chunk($ids, 500) as $chunk) {
+        db("UPDATE ws_notes SET updated_at = '" . time() . "' WHERE id IN (" . implode(',', $chunk) . ")");
+    }
+}
+
+/**
+ * After a note's place among a person's groups changed (put into a group,
+ * moved, taken out): when that took it behind their lock, or out from
+ * behind it, the note counts as changed (ws_note_lock_moved()).
+ *
+ * @param int   $user_id    who keeps the note in the group
+ * @param array $note       id, user_id, locked
+ * @param bool  $was_behind ws_note_behind_lock() before the change
+ */
+function ws_note_lock_place_moved($user_id, $note, $was_behind)
+{
+    if (is_array($note) && (ws_note_behind_lock((int) $user_id, $note) !== (bool) $was_behind)) {
+        ws_note_lock_moved(array((int) $note['id']));
+    }
 }
 
 /**
@@ -927,6 +1044,10 @@ function ws_note_lock_note($viewer, $note, $locked, $confirm = false, $pin = '')
         return ws_note_lock_refusal('no_lock', lang('Set a PIN for your notes first.'));
     }
 
+    // The mark as it was: only a change of it counts as a change of the
+    // note (ws_note_lock_moved()).
+    $was = !empty($note['locked']);
+
     if (!$locked) {
         $refusal = ws_note_lock_unlock_proof($viewer, (int) $note['id'], $pin);
 
@@ -936,6 +1057,10 @@ function ws_note_lock_note($viewer, $note, $locked, $confirm = false, $pin = '')
 
         db("UPDATE ws_notes SET locked = 0 WHERE id = '" . (int) $note['id'] . "'");
         ws_note_group_shares_note_changed($note, $user_id);
+
+        if ($was) {
+            ws_note_lock_moved(array((int) $note['id']));
+        }
 
         return array('ok' => true, 'shares' => 0);
     }
@@ -951,6 +1076,10 @@ function ws_note_lock_note($viewer, $note, $locked, $confirm = false, $pin = '')
 
     ws_note_lock_unshare_direct($viewer, $note);
     ws_note_group_shares_note_changed($note, $user_id);
+
+    if (!$was) {
+        ws_note_lock_moved(array((int) $note['id']));
+    }
 
     return array('ok' => true, 'shares' => $shares);
 }
@@ -979,6 +1108,10 @@ function ws_note_lock_group($viewer, $group, $locked, $confirm = false, $pin = '
         return ws_note_lock_refusal('no_lock', lang('Set a PIN for your notes first.'));
     }
 
+    // The mark as it was: only a change of it takes the group's notes
+    // behind the lock or lets them out (ws_note_lock_moved()).
+    $was = !empty($group['locked']);
+
     if (!$locked) {
         $refusal = ws_note_lock_unlock_proof($viewer, 0, $pin);
 
@@ -988,6 +1121,10 @@ function ws_note_lock_group($viewer, $group, $locked, $confirm = false, $pin = '
 
         db("UPDATE ws_note_groups SET locked = 0, updated_at = '" . time() . "' WHERE id = '" . (int) $group['id'] . "'");
         ws_note_group_share_sync((int) $group['id'], $user_id);
+
+        if ($was) {
+            ws_note_lock_moved(ws_note_lock_group_follows($user_id, (int) $group['id']));
+        }
 
         return array('ok' => true, 'shares' => 0);
     }
@@ -1013,6 +1150,10 @@ function ws_note_lock_group($viewer, $group, $locked, $confirm = false, $pin = '
     foreach ($own as $note) {
         ws_note_lock_unshare_direct($viewer, $note);
         ws_note_group_shares_note_changed($note, $user_id);
+    }
+
+    if (!$was) {
+        ws_note_lock_moved(ws_note_lock_group_follows($user_id, (int) $group['id']));
     }
 
     return array('ok' => true, 'shares' => $shares);

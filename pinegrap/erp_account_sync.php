@@ -433,7 +433,7 @@ if ($provider !== '') {
 echo
 pg_page_shell([
         'title' => lang('Account sync'),
-        'extra classes' => 'erp erp_accounts',
+        'extra classes' => 'erp erp_accounts pg-measure-list',
         'icon' => 'erp',
         'heading' => lang('Account sync'),
         'heading_description' => ($provider_label !== '')

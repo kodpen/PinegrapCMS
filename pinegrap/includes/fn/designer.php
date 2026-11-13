@@ -2314,7 +2314,7 @@ function pg_designer_design_set_draft($style_id, $on, $user)
     if ($peers) {
         $names = array();
         foreach ($peers as $peer) $names[$peer['name']] = true;
-        $out['error'] = lang(array('string' => 'The design is open in the Visual Page Editor ({var:1}). Change its pages there, or try again once it is closed.',
+        $out['error'] = lang(array('string' => 'The design is open in the Page Design Studio ({var:1}). Change its pages there, or try again once it is closed.',
                                    'vars'   => implode(', ', array_keys($names))));
         return $out;
     }
@@ -2792,7 +2792,7 @@ function pg_designer_delete_design($style_id, $user, $collab_key = '')
     if ($peers) {
         $names = array();
         foreach ($peers as $peer) $names[$peer['name']] = true;
-        $out['error'] = lang(array('string' => 'The design is open in the Visual Page Editor ({var:1}). Change its pages there, or try again once it is closed.',
+        $out['error'] = lang(array('string' => 'The design is open in the Page Design Studio ({var:1}). Change its pages there, or try again once it is closed.',
                                    'vars'   => implode(', ', array_keys($names))));
         return $out;
     }
@@ -2935,7 +2935,7 @@ function pg_designer_rename_design($style_id, $name, $user)
         return $out;
     }
     if ((string)$style['style_layout'] !== 'visual_designer') {
-        $out['error'] = lang('Only designs made with the visual editor can be renamed here.');
+        $out['error'] = lang('Only designs made in the Page Design Studio can be renamed here.');
         return $out;
     }
     $out['old'] = (string)$style['style_name'];
@@ -2960,7 +2960,7 @@ function pg_designer_rename_design($style_id, $name, $user)
     if ($peers) {
         $names = array();
         foreach ($peers as $peer) $names[$peer['name']] = true;
-        $out['error'] = lang(array('string' => 'The design is open in the Visual Page Editor ({var:1}). Change its pages there, or try again once it is closed.',
+        $out['error'] = lang(array('string' => 'The design is open in the Page Design Studio ({var:1}). Change its pages there, or try again once it is closed.',
                                    'vars'   => implode(', ', array_keys($names))));
         return $out;
     }
@@ -3235,7 +3235,7 @@ function pg_designer_target_modal()
         'new_text'   => lang('Start an empty design with this page.'),
         'folder'     => lang('Used by this folder'),
         'pages'      => lang('Pages'),
-        'empty'      => lang('There is no visual design yet.'),
+        'empty'      => lang('There is no design yet.'),
         'loading'    => lang('Loading...'),
         'failed'     => lang('The list could not be fetched.'),
     );

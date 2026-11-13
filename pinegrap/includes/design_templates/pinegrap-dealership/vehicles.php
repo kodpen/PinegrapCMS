@@ -441,7 +441,7 @@ $vehicle_widgets['vehicle_detail'] = array(
                 )),
                 $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
                     $span($conditions[$vehicle_sample['condition']], 'badge text-bg-primary', lang('Vehicle Condition'), $bind('condition')),
-                    $span($vehicle_statuses[$vehicle_sample['status']], 'badge text-bg-light border', lang('Status'), $bind('status')),
+                    $span($vehicle_statuses[$vehicle_sample['status']], 'badge bg-body text-body-emphasis border', lang('Status'), $bind('status')),
                     $span($bodies[$vehicle_sample['body']]['title'], 'badge bg-primary-subtle text-primary-emphasis', lang('Body Style'), $bind('body')),
                 )),
                 $heading('h1', $vehicle_title($vehicle_sample_key), 'display-6 fw-semibold mb-2', $bind('title')),

@@ -8,6 +8,7 @@ module: audit_list
 - It printed 50 lines a page with Newer/Older links, each line carrying its whole changes table (indented JSON values): 1.17 MB of HTML on the dev site (issue #2054). Since TD6 (#6386) the list is on the list table driver: `pg_audit_list_source()` (gate role <= 2 and `pg_audit_ready()`) prints the first 100 lines, the next come from `list_table_rows`; `audit_log_list_rows` is gone.
 - A row carries only "N fields"; the table is read from `audit_log_changes` (one line's id) the first time its `<details data-pg-audit-line>` opens (inline script in the screen, `toggle` caught on capture; its texts sit on the `[data-pg-audit-failed]` wrapper).
 - Rows, sort, search and the changes table live in `includes/fn/audit_list.php` (`tests/audit_list_test.php`).
+- From TD6 to PR #9040 the screen answered HTTP 500 on every request (#8993): the Source filter loop overwrote the list source. The trap: `ui/list-table-driver.md`.
 
 ## Where do the filters live?
 - In the address, as before (links on a line narrow the list from the filters it was drawn with). The source's `params_out` is `{"filters": {...}}`, nested because a filter is called `action` like the panel action; the action checks them again with `pg_audit_view_filters()`. The old `page` parameter is ignored.

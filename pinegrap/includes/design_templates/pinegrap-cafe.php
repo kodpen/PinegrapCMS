@@ -547,14 +547,14 @@ $table_band = function () use ($el, $heading, $para, $link, $icon, $container, $
                         $icon('bi-cup-hot', 'fs-1 lh-1'),
                         $el('div', '', lang('Words'), array(
                             $heading('h2', lang('A table for two, or breakfast for the whole team?'), 'h3 fw-bold mb-2'),
-                            $para(lang('Book a table in a minute and we confirm by e-mail. For ten people or more, ask for a catering quote.'), 'mb-0 opacity-75'),
+                            $para(lang('Book a table in a minute and we confirm by e-mail. For ten people or more, ask for a catering quote.'), 'mb-0'),
                         )),
                     )),
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Book a Table'), '{{page:reservation}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('Catering'), '{{page:corporate}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Book a Table'), '{{page:reservation}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('Catering'), '{{page:corporate}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -1341,7 +1341,7 @@ $fact = function ($number, $text) use ($el, $para, $col) {
     return $col(array(
         $el('div', 'text-center', lang('Number'), array(
             $para($number, 'display-6 fw-bold mb-1'),
-            $para($text, 'small opacity-75 mb-0'),
+            $para($text, 'small mb-0'),
         )),
     ), '', '3', '', '6');
 };
@@ -1412,7 +1412,7 @@ $pages[] = array(
             $container(array(
                 $row(array(
                     $col(array(
-                        $el('span', 'badge rounded-pill text-bg-light text-primary-emphasis d-inline-flex align-items-center gap-1 mb-3', lang('Badge'), array(
+                        $el('span', 'badge rounded-pill bg-body text-primary-emphasis d-inline-flex align-items-center gap-1 mb-3', lang('Badge'), array(
                             $icon('bi-fire'),
                             $span(lang('Roasted in our own roastery'), '', lang('Text')),
                         )),
@@ -4622,7 +4622,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Café'),
-    'version'     => '1.2.0',
+    'version'     => '1.2.1',
     'framework'   => 'bootstrap5',
     'order'       => 60,
     'icon'        => 'bi-cup-hot',

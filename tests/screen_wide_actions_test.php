@@ -39,15 +39,6 @@ function test_screen_wide_actions_firewall_clears_are_in_the_toolbar_menu()
 	pg_assert_same(2, substr_count(substr($source, $menu, $toolbar - $menu), 'get_token_field()'), 'each clear posts its own token');
 }
 
-function test_screen_wide_actions_new_department_is_the_toolbar_primary()
-{
-	$source = screen_wide_actions_source('workspace_settings.php');
-	pg_assert_contains('pg_screen_toolbar(', $source, 'workspace settings draws its bar through the helper');
-	pg_assert_same(1, substr_count($source, 'data-bs-target="#ws-dept-new"'), 'one New department toggle');
-	pg_assert_true(strpos($source, 'data-bs-target="#ws-dept-new"') < strpos($source, 'id="ws-departments"'), 'New department is in the toolbar, above the Departments card');
-	pg_assert_false(strpos($source, '<nav id="button_bar"') !== false, 'no hand-written bar');
-}
-
 function test_screen_wide_actions_api_settings_primary_comes_first()
 {
 	$source = screen_wide_actions_source('api_settings.php');

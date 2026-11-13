@@ -1067,7 +1067,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     pg_page_shell(
         array(
             'title'=> lang($heading),
-            'extra classes'=>'contact',
+            'extra classes'=>'contact pg-measure-list',
             'icon'=>'contact', 
             'heading'=>lang($heading),
             'heading_description' => ($subheading ?? lang('Everyone in the contact database')),

@@ -166,7 +166,7 @@ function test_workspace_mail_attachments_use_the_channel_rule()
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail.php');
 
-	pg_assert_contains("ws_mail_attachments_sort(\$parsed['attachments'], 'ws_upload_refused', ws_upload_max_bytes())", $source, 'the ingest sorts by the channel\'s own rule and size');
+	pg_assert_contains("ws_mail_attachments_sort(\$parsed['attachments'], 'ws_upload_refused', ws_upload_max_bytes(), ", $source, 'the ingest sorts by the channel\'s own rule and size');
 	pg_assert_contains("\$inspected = ws_upload_inspect(", $source, 'and inspects the bytes as an upload');
 }
 
@@ -183,4 +183,92 @@ function test_workspace_mail_eml_sweep_runs_from_the_daily_job()
 	$job = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_recurring_job.php');
 
 	pg_assert_contains("if (ws_enabled() && function_exists('ws_mail_eml_sweep')) {\n    ws_mail_eml_sweep();\n}", $job, 'called by the repeating-tasks job');
+}
+
+function test_workspace_mail_attachments_sort_takes_the_pictures_the_html_shows()
+{
+	$refused = function ($name) {
+		return (bool) preg_match('/\.(exe|html|svg)$/i', $name);
+	};
+	$part = function ($name, $cid, $type = 'image/png', $inline = true) {
+		return array('filename' => $name, 'content_type' => $type, 'size' => 10, 'inline' => $inline, 'content_id' => $cid, 'content' => 'xxxxxxxxxx');
+	};
+	$parts = array(
+		$part('', 'Logo@Example.com'),
+		$part('', 'photo@example.com', 'image/jpeg', false),
+		$part('', 'unused@example.com'),
+		$part('', 'icon@example.com', 'image/svg+xml'),
+		$part('banner.gif', 'banner@example.com', 'image/gif'),
+		$part('', 'pixel@example.com', 'image/webp'),
+	);
+	$shown = array('logo@example.com', 'photo@example.com', 'icon@example.com', 'banner@example.com', 'pixel@example.com');
+	$sorted = ws_mail_attachments_sort($parts, $refused, 1000, $shown);
+
+	pg_assert_same(array('image-1.png', 'image-2.jpg', 'banner.gif', 'image-3.webp'), array_column($sorted['take'], 'filename'), 'a picture the HTML shows comes in, named by its type');
+	pg_assert_same(array('logo@example.com', 'photo@example.com', 'banner@example.com', 'pixel@example.com'), array_map('pg_mail_html_cid', array_column($sorted['take'], 'content_id')), 'each keeps its Content-ID');
+	pg_assert_same(array(), $sorted['refused'], 'an inline picture the HTML does not show, and a nameless SVG, stay out silently');
+
+	$plain = ws_mail_attachments_sort($parts, $refused, 1000);
+
+	pg_assert_same(array('banner.gif'), array_column($plain['take'], 'filename'), 'without HTML a nameless picture stays out as before');
+	pg_assert_same(array('image/jpeg'), $plain['refused'], 'and a nameless part that is not inline is refused by its type');
+}
+
+function test_workspace_mail_picture_extension()
+{
+	pg_assert_same('png', ws_mail_picture_extension('image/png'));
+	pg_assert_same('jpg', ws_mail_picture_extension(' IMAGE/JPEG '));
+	pg_assert_same('jpg', ws_mail_picture_extension('image/pjpeg'));
+	pg_assert_same('gif', ws_mail_picture_extension('image/gif'));
+	pg_assert_same('webp', ws_mail_picture_extension('image/webp'));
+	pg_assert_same('', ws_mail_picture_extension('image/svg+xml'), 'no SVG');
+	pg_assert_same('', ws_mail_picture_extension('application/pdf'));
+}
+
+function test_workspace_mail_html_fill_files_matches_pictures_by_kept_name()
+{
+	$attachments = array(
+		array('filename' => 'logo.png', 'content_id' => 'logo@x'),
+		array('filename' => 'C:\\Users\\a\\photo.jpg', 'content_id' => '<Photo@x>'),
+		array('filename' => '', 'content_id' => 'nameless@x'),
+		array('filename' => 'report.pdf', 'content_id' => ''),
+		array('filename' => 'other.png', 'content_id' => 'other@x'),
+		array('filename' => 'logo.png', 'content_id' => 'second@x'),
+	);
+	$messages = array(
+		array('file_id' => 11, 'file_name' => 'logo.png'),
+		array('file_id' => 12, 'file_name' => 'photo.jpg'),
+		array('file_id' => 13, 'file_name' => 'report.pdf'),
+		array('file_id' => 14, 'file_name' => 'logo.png'),
+		array('file_id' => 0, 'file_name' => 'other.png'),
+	);
+
+	pg_assert_same(array('logo@x' => 11, 'photo@x' => 12, 'second@x' => 14), ws_mail_html_fill_files($attachments, array('logo@x', 'photo@x', 'nameless@x', 'other@x', 'second@x'), $messages),
+		'by the name the upload kept, two of one name in turn; a nameless picture and a message without a file give nothing');
+	pg_assert_same(array('second@x' => 14), ws_mail_html_fill_files($attachments, array('second@x'), $messages), 'a picture not shown still takes its own file');
+	pg_assert_same(array(), ws_mail_html_fill_files($attachments, array(), $messages), 'no picture shown');
+}
+
+function test_workspace_mail_html_fill_done()
+{
+	pg_assert_true(ws_mail_html_fill_done(3, 3, 200), 'fewer than asked, all read');
+	pg_assert_true(ws_mail_html_fill_done(0, 0, 200), 'nothing left');
+	pg_assert_false(ws_mail_html_fill_done(200, 200, 200), 'a full run: there may be more');
+	pg_assert_false(ws_mail_html_fill_done(50, 120, 200), 'stopped by the time limit');
+}
+
+function test_workspace_mail_html_is_kept_beside_the_text()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail.php');
+	$job = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_recurring_job.php');
+
+	pg_assert_contains("\$html = \$html_kept ? pg_mail_html_clean((string) (\$parsed['html'] ?? '')) : '';", $source, 'the HTML part is cleaned only once the column is there');
+	pg_assert_contains("db(\"UPDATE ws_mail_items SET body_html = '\" . e(\$html) . \"' WHERE id = '\" . \$item_id . \"'\");", $source, 'in a statement of its own');
+	pg_assert_contains("return function_exists('pg_mail_html_clean') && pg_schema_has('ws_mail_items', 'body_html');", $source, 'the column is asked for');
+
+	$fill = strpos($job, "ws_mail_html_fill();");
+	$sweep = strpos($job, "ws_mail_eml_sweep();");
+
+	pg_assert_true(($fill !== false) && ($sweep !== false) && ($fill < $sweep), 'the fill runs before the sweep deletes the .eml it reads');
+	pg_assert_contains("function ws_mail_html_fill(\$limit = 200)", $source, '200 a run');
 }

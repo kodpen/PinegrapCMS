@@ -69,7 +69,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Event'))),
-            'extra classes'=>'calendar',
+            'extra classes'=>'calendar pg-measure-edit',
             'icon'=>'calendar', 
             'heading'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Event'))),
             'heading_description' => lang('Create a new event on one or more calendars, and publish it at any time.'),

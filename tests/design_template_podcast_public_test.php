@@ -168,7 +168,7 @@ function test_podcast_public_no_fixed_dates()
 }
 
 // Every literal has its Turkish; an episode reads "bölüm", a host
-// "sunucu", a guest "konuk".
+// "sunucu", a guest "konuk" (or "konuğ-" before a vowel, "Konuğumuz").
 function test_podcast_public_turkish_words()
 {
 	$map = pg_test_language_map('tr');
@@ -181,6 +181,6 @@ function test_podcast_public_turkish_words()
 		$tr = $map[$key];
 		if (preg_match('/\b[Ee]pisodes?\b/', $key)) pg_assert_true(mb_stripos($tr, 'bölüm', 0, 'UTF-8') !== false, "'$key' says bölüm");
 		if (preg_match('/\b[Hh]osts?\b/', $key)) pg_assert_true(mb_stripos($tr, 'sunucu', 0, 'UTF-8') !== false, "'$key' says sunucu");
-		if (preg_match('/\b[Gg]uests?\b/', $key)) pg_assert_true(mb_stripos($tr, 'konuk', 0, 'UTF-8') !== false, "'$key' says konuk");
+		if (preg_match('/\b[Gg]uests?\b/', $key)) pg_assert_true((bool)preg_match('/konu[kğ]/iu', $tr), "'$key' says konuk");
 	}
 }

@@ -156,7 +156,7 @@ $list = pg_list_table_printed(array(
 print
     pg_page_shell([
         'title'=> lang('All My Ads'),
-        'extra classes'=>'ads',
+        'extra classes'=>'ads pg-measure-list',
         'icon'=>'ads',
         'heading'=>lang('All My Ads'),
         'heading_description' => lang('All shared content that can be rotated on one or more pages that I can edit.'),

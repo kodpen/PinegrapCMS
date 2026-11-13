@@ -348,11 +348,11 @@ $ride_widgets['ride_detail'] = array(
                     ), '', '7'),
                     $col(array(
                         $el('div', 'd-flex flex-wrap gap-2 mb-3', lang('Badges'), array(
-                            $el('span', 'badge rounded-0 text-bg-light border d-inline-flex align-items-center gap-1', lang('Badge'), array(
+                            $el('span', 'badge rounded-0 bg-body text-body-emphasis border d-inline-flex align-items-center gap-1', lang('Badge'), array(
                                 $icon($paces[$ride_sample['pace']]['icon']),
                                 $span($ride_pace($ride_sample_key), '', lang('Pace'), $bind('pace')),
                             )),
-                            $el('span', 'badge rounded-0 text-bg-light border d-inline-flex align-items-center gap-1', lang('Badge'), array(
+                            $el('span', 'badge rounded-0 bg-body text-body-emphasis border d-inline-flex align-items-center gap-1', lang('Badge'), array(
                                 $icon($drop_rules[$ride_sample['drop']]['icon']),
                                 $span($ride_drop($ride_sample_key), '', lang('Drop rule'), $bind('drop_rule')),
                             )),

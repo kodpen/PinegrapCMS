@@ -60,7 +60,7 @@ $pg_settings_cards[] = '
     <div id="pgset-ws-departments" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0 ws-grow">' . h(lang('Departments')) . '</span>
+                <span class="pg-title-section ws-grow">' . h(lang('Departments')) . '</span>
                 <button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill" data-bs-toggle="drawer" data-bs-target="#pgset-ws-dept-0" aria-controls="pgset-ws-dept-0"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New department')) . '</button>
             </div>
             <div class="card-body">
@@ -73,7 +73,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-ws-people" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . h(lang('Team members')) . '
             </div>
             <div class="card-body">
@@ -102,7 +102,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-ws-defaults" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . h(lang('Defaults')) . '
             </div>
             <div class="card-body">
@@ -175,7 +175,7 @@ if (ws_workdays_ready()) {
     $pg_settings_cards[] = '
     <div id="pgset-ws-calendar" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . h(lang('Working calendar')) . '
             </div>
             <div class="card-body">

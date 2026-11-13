@@ -5,6 +5,7 @@ description: Agent risk tiers (agent_tiers.php, A7): the tier of a change, when 
 
 ## What are the tiers?
 - 1 reading and messages, 2 a reversible record change, 3 an irreversible one. `ws_change_tier()` reads the catalogue (`ws_change_types()`): a deletion, an invoice, any `money` field, an order's `status` / `cancellation_reason`, every change of `ws_change_tier3_types()` (erp_account, erp_quote, user), an unknown kind, action or field (also `create`-only and `members` fields: group membership, a parent group) are 3; the rest of a known kind is 2.
+- A kind marked `create_reversible` counts its create-only fields as fields: the file kind's canvas save is tier 2 (`agent-canvas-save.md`).
 - The channel-agent row's `tier` (`ws_channel_agents`, default 1) is set only by a channel manager (`agent-registry.md`). `ws_agent_tier_allows()` counts a value out of range as 1.
 
 ## When is a change applied at once?

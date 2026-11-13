@@ -173,7 +173,7 @@ if (!$_POST) {
 
         $output_order_info_rows =
             '<div class="card mb-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Order Info') . '
                     </h2>
                     <div class="card-body">
@@ -204,7 +204,7 @@ if (!$_POST) {
     } else {
         $output_order_info_rows =
             '<div class="card mb-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Order Info') . '
                     </h2>
                     <div class="card-body">
@@ -282,7 +282,7 @@ if (!$_POST) {
 
         $output_redemption_history =
             '<div class="card mb-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Redemption History') . '
                     </h2>
                     <div class="card-body p-0">
@@ -304,7 +304,7 @@ if (!$_POST) {
 
     } else {
         $output_redemption_history = '<div class="card mb-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Redemption History') . '
                     </h2>
                     <div class="card-body">
@@ -321,7 +321,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'=> lang('Edit Gift Card') . ' ' . $output_code,
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Edit Gift Card'),
         'heading_description' => lang('Update the properties for this gift card and view the details.'),

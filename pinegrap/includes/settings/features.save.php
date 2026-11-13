@@ -305,12 +305,12 @@ if ((post_value('submit_rebuild_pages') || $image_formats_changed) && pg_multi_p
         unset($_SESSION['software']['page_rebuild']);
 
         $liveform->add_notice(lang(array(
-            'string' => 'Page HTML rebuilt: {var:1} visual designer pages drawn again, {var:2} of them changed.',
+            'string' => 'Page HTML rebuilt: {var:1} Page Design Studio pages drawn again, {var:2} of them changed.',
             'vars'   => array($rebuild_state['checked'], $rebuild_state['changed']))));
 
         if ($rebuild_state['changed'] > 0) {
             log_activity(lang(array(
-                'string' => 'the HTML of {var:1} visual designer pages was rebuilt',
+                'string' => 'the HTML of {var:1} Page Design Studio pages was rebuilt',
                 'vars'   => array($rebuild_state['changed']))), $_SESSION['sessionusername']);
         }
 
@@ -319,7 +319,7 @@ if ((post_value('submit_rebuild_pages') || $image_formats_changed) && pg_multi_p
         $_SESSION['software']['page_rebuild'] = $rebuild_state;
 
         $liveform->add_notice(lang(array(
-            'string' => '{var:1} visual designer pages drawn again so far, {var:2} still to go. Press Save and rebuild page HTML again to go on.',
+            'string' => '{var:1} Page Design Studio pages drawn again so far, {var:2} still to go. Press Save and rebuild page HTML again to go on.',
             'vars'   => array($rebuild_state['checked'], $rebuild['left']))));
     }
 }

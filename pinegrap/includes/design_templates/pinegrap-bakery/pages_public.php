@@ -222,7 +222,7 @@ $counter_item = function ($b) use ($el, $heading, $para, $span, $diet_tags, $mon
         $para($b['summary'], 'small text-body-secondary mb-0 mt-1'),
     );
     $badges = array();
-    foreach ($b['tags'] as $t) $badges[] = $span($diet_tags[$t], 'badge rounded-pill text-bg-light border', lang('Badge'));
+    foreach ($b['tags'] as $t) $badges[] = $span($diet_tags[$t], 'badge rounded-pill bg-body text-body-emphasis border', lang('Badge'));
     if ($badges) $kids[] = $el('div', 'd-flex flex-wrap gap-1 mt-2', lang('Tags'), $badges);
     return $el('div', 'py-2', $b['name'], $kids);
 };
@@ -379,7 +379,7 @@ $public_pages[] = array(
 $bake_cols = array();
 foreach (array_keys($categories) as $key) $bake_cols[] = $col(array($bake_section($key)), '6', '', '', '12');
 $tag_items = array();
-foreach ($diet_tags as $t) $tag_items[] = $span($t, 'badge rounded-pill text-bg-light border', lang('Badge'));
+foreach ($diet_tags as $t) $tag_items[] = $span($t, 'badge rounded-pill bg-body text-body-emphasis border', lang('Badge'));
 
 $public_pages[] = array(
     'key'              => 'bakes',

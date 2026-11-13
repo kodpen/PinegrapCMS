@@ -85,8 +85,8 @@ function test_designer_video_item_palette_gives_a_player_that_does_not_play_by_i
 	pg_assert_true(strpos($m[1], 'autoplay') === false, 'the Video item does not play by itself');
 	pg_assert_true(strpos($source, "'s:video':") !== false, 'the palette card describes the Video item');
 	pg_assert_true(
-		strpos($source, "(kind === 'page' || kind === 'file' ? '&type=' + kind : '')") !== false,
-		'the file picker opens on the tab it is asked for'
+		strpos($source, "(kind === 'file') ? picker.file()") !== false,
+		'the file picker opens the kind it is asked for'
 	);
 	pg_assert_true(
 		strpos($source, "node.type === 'semantic' && !_sdIsSentence(node) && !/^(video|audio)$/i.test(String(node.props.tag || ''))") !== false,

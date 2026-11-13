@@ -682,8 +682,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
-            $el('div', 'container', lang('Navbar Container'), array(
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
+            $el('div', 'container flex-xl-wrap', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-rulers', 'fs-4 text-primary'),
                     $span('{{site_name}}', 'pai-brand fs-4', lang('Name')),
@@ -699,9 +699,9 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
-                        $el('a', 'btn btn-dark rounded-0 d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
+                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
+                        $el('a', 'btn btn-primary rounded-0 d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $span(lang('Start a Project'), '', lang('Link Text')),
                             $icon('bi-arrow-right'),
                         ), array('href' => '{{page:enquiry}}')),
@@ -797,7 +797,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $services,
 // to start a project and to book a consultation. Shared, so every page
 // that ends with it carries the same call.
 $enquiry_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -806,8 +806,8 @@ $enquiry_band = function () use ($el, $heading, $para, $link, $container, $row, 
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-light btn-lg rounded-0 px-4'),
-                        $link(lang('Book a Consultation'), '{{page:consultation}}', 'btn btn-outline-light btn-lg rounded-0 px-4'),
+                        $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-secondary btn-lg rounded-0 px-4'),
+                        $link(lang('Book a Consultation'), '{{page:consultation}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -887,7 +887,7 @@ $project_card = function ($sample_key = 'courtyard_house') use ($el, $para, $spa
                     array('_bindings' => array('text' => 'name', 'href' => 'form_item_view'))),
             )),
             $para($p['summary'], 'small text-body-secondary mb-3', $bind('summary')),
-            $span($project_stages[$p['stage']], 'badge rounded-0 text-bg-dark align-self-start mt-auto', lang('Stage'), $bind('stage')),
+            $span($project_stages[$p['stage']], 'badge rounded-0 text-bg-primary align-self-start mt-auto', lang('Stage'), $bind('stage')),
         )),
     ), '6', '4');
 };
@@ -959,7 +959,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
         $el('figure', 'h-100 d-flex flex-column border-start border-2 border-primary ps-4 mb-0', lang('Client Quote'), array(
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'pai-quote fs-5 mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Client'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),
@@ -1040,7 +1040,7 @@ $select = function ($id, $name, $prompt, $options, $required = true, $selected =
     if ($cf) $props['_cf'] = $cf;
     return $el('select', 'form-select', lang('Field'), $children, $props);
 };
-$submit = function ($text, $class = 'btn btn-dark rounded-0 px-4') use ($el, $attr) {
+$submit = function ($text, $class = 'btn btn-primary rounded-0 px-4') use ($el, $attr) {
     return $el('button', $class, lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit'))));
 };
 $captcha = function () use ($el) {

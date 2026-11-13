@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>panel look A: the messages area (campaigns, automatic sends as flows, templates, one sends screen, channels)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<style>
+.wrap { width: 1440px; }
+.tabs { display: flex; align-items: center; gap: 4px; margin: -6px 0 18px; border-bottom: 1px solid var(--line); }
+.tabs span { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; font-size: 14px; font-weight: 500; color: var(--fg2); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs span.on { color: var(--fg); border-bottom-color: var(--accent); font-weight: 600; }
+.tabs em { font-style: normal; font-size: 12px; color: var(--fg3); }
+.figs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 16px; }
+.fig { padding: 13px 16px 12px; }
+.fig .k { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--fg2); }
+.fig .v { margin-top: 6px; font: 650 24px/1.2 "Inter Display", Inter, sans-serif; letter-spacing: -.03em; }
+.fig .v small { margin-left: 8px; font: 400 12px Inter, sans-serif; color: var(--fg3); letter-spacing: 0; }
+.tools { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.tools .in { width: 280px; height: 34px; font-size: 13px; }
+.fp { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px 0 11px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--fg2); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.fp i { font-size: 11px; color: var(--fg3); }
+.frame { overflow: hidden; }
+table.lt { width: 100%; border-collapse: separate; border-spacing: 0; }
+.lt th, .lt td { height: 46px; padding: 0 14px; white-space: nowrap; border-bottom: 1px solid var(--line); text-align: left; font-size: 13.5px; }
+.lt thead th { height: 36px; font-size: 12px; font-weight: 550; color: var(--fg3); background: var(--card); }
+.lt td.w { width: 100%; }
+.lt td.r, .lt th.r { text-align: right; font-variant-numeric: tabular-nums; }
+.lt td small { color: var(--fg3); font-size: 12.5px; margin-left: 8px; }
+.lt .dim { color: var(--fg2); }
+.lt .tile { width: 24px; height: 24px; border-radius: 8px; font-size: 12.5px; }
+.lt tr.grp td { background: var(--card); font-weight: 550; }
+.lt tr.grp td i.ch { font-size: 11px; color: var(--fg3); margin-right: 8px; }
+.lt tr.sub td:nth-child(2) { padding-left: 46px; }
+.lt tr.sub td { color: var(--fg2); height: 40px; font-size: 13px; }
+.lt tr.hov td { background: var(--hover); }
+.pb { display: inline-block; width: 120px; height: 6px; border-radius: 3px; background: var(--quiet); vertical-align: middle; margin-right: 10px; overflow: hidden; }
+.pb b { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--a2), var(--a1)); }
+.src { display: inline-flex; align-items: center; gap: 6px; color: var(--fg2); font-size: 13px; }
+.src i { color: var(--fg3); font-size: 12px; }
+.t-green { --c: #3fd07a; }
+[data-theme="light"] .t-green { --c: #128a45; }
+.more { display: flex; align-items: center; justify-content: center; height: 44px; font-size: 13px; font-weight: 550; color: var(--accent); }
+/* the parts under the screen */
+.parts { display: grid; grid-template-columns: 600px 620px 620px; gap: 30px; margin-top: 32px; align-items: start; }
+.part .cap { margin-top: 0; }
+.card { padding: 16px 18px; }
+.card h3 { margin: 0 0 12px; font: 650 16px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; display: flex; align-items: center; gap: 10px; }
+.card h3 .btn { margin-left: auto; }
+.cr { display: grid; grid-template-columns: 26px 1fr auto auto; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+.cr:first-of-type { border-top: 0; }
+.cr b { font-weight: 550; display: block; }
+.cr small { color: var(--fg3); font-size: 12.5px; }
+.cr .n { text-align: right; font-size: 12.5px; color: var(--fg2); font-variant-numeric: tabular-nums; }
+.steps { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; font-size: 13px; color: var(--fg3); }
+.steps b { display: inline-flex; align-items: center; gap: 7px; font-weight: 550; color: var(--fg2); }
+.steps b i { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 11px; background: var(--quiet); }
+.steps b.on { color: var(--fg); }
+.steps b.on i { background: var(--accent); color: var(--on-accent); }
+.steps hr { flex: 1; border: 0; border-top: 1px solid var(--line); }
+.ed { display: grid; grid-template-columns: 1fr 232px; gap: 16px; }
+.mail { border-radius: 12px; border: 1px solid var(--line); background: #fff; overflow: hidden; color: #1c2230; }
+.mail .hero { height: 86px; background: linear-gradient(135deg, #2f6fed, #8fd0ff); display: grid; place-items: center; color: #fff; font: 650 17px "Inter Display", Inter, sans-serif; }
+.mail .bd { padding: 12px 14px 14px; font-size: 11.5px; line-height: 1.5; }
+.mail .bd b { display: block; font-size: 13px; margin-bottom: 3px; }
+.mail .cta { display: inline-block; margin-top: 8px; padding: 5px 12px; border-radius: 7px; background: #2f6fed; color: #fff; font-weight: 600; font-size: 11px; }
+.mail .pr { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 10px; }
+.mail .pr span { height: 40px; border-radius: 6px; background: #e9edf5; }
+.mail .ft { padding: 8px 14px; background: #f3f5f9; font-size: 9.5px; color: #7b8494; }
+.acts { display: flex; flex-direction: column; gap: 8px; }
+.acts .btn { justify-content: flex-start; }
+.note { display: flex; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 11px; font-size: 12.5px; color: var(--fg2); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.note i { color: var(--amber); }
+.note a { margin-left: auto; color: var(--accent); font-weight: 550; white-space: nowrap; }
+.rec { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.rec div { padding: 10px 12px; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; font-weight: 550; }
+.rec div span { display: flex; gap: 5px; margin-top: 8px; }
+.rec .tile { width: 22px; height: 22px; border-radius: 7px; font-size: 12px; }
+.chn { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.chn div { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: 13.5px; font-weight: 550; }
+.chn small { display: block; font-weight: 400; font-size: 12px; color: var(--fg3); }
+.chn .st { margin-left: auto; }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="cap"><b>İletişim alanı · Gönderimler</b>Kampanyalarım'ın yerine tek alan: Kampanyalar, Otomatik gönderimler (akışlar), Şablonlar, Gönderimler, Kanallar. Bu ekran, kampanya gönderimi ve geçmişiyle e-posta, SMS ve WhatsApp kuyruğunu tek listede toplar.</div>
+<div class="screen">
+  <aside class="menu">
+    <div class="logo"><i></i><span class="sk" style="width:92px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:74px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:118px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:86px"></span></div>
+    <span class="sk mh"></span>
+    <div class="mi"><i></i><span class="sk" style="width:88px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:112px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:80px"></span></div>
+    <span class="sk mh"></span>
+    <div class="mi"><i></i><span class="sk" style="width:96px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:66px"></span></div>
+    <div class="mi on"><i></i><span class="sk" style="width:70px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:84px"></span></div>
+  </aside>
+  <div class="main">
+    <div class="top"><span class="sk s"></span><span class="sp"></span><span class="sk c"></span><span class="sk c"></span></div>
+    <div class="content">
+      <div class="wrap">
+        <div class="phead" style="margin-top:0"><h1 class="disp">İletişim</h1><span class="sp"></span><button class="btn quiet"><i class="bi bi-diagram-3"></i>Otomatik gönderim kur</button><button class="btn fill"><i class="bi bi-plus-lg"></i>Yeni kampanya</button></div>
+        <div class="tabs">
+          <span><i class="bi bi-megaphone"></i>Kampanyalar <em>14</em></span>
+          <span><i class="bi bi-diagram-3"></i>Otomatik gönderimler <em>6</em></span>
+          <span><i class="bi bi-layout-text-window"></i>Şablonlar <em>23</em></span>
+          <span class="on"><i class="bi bi-send"></i>Gönderimler</span>
+          <span><i class="bi bi-plug"></i>Kanallar</span>
+        </div>
+        <div class="figs">
+          <section class="pcard fig"><div class="k"><span class="tile t-blue"><i class="bi bi-hourglass-split"></i></span>Kuyrukta</div><div class="v num">3.288<small>sıradaki tur 1 dk içinde</small></div></section>
+          <section class="pcard fig"><div class="k"><span class="tile t-violet"><i class="bi bi-arrow-repeat"></i></span>Gönderiliyor</div><div class="v num">12</div></section>
+          <section class="pcard fig"><div class="k"><span class="tile t-teal"><i class="bi bi-check2-all"></i></span>Son 24 saatte gönderildi</div><div class="v num">5.746</div></section>
+          <section class="pcard fig"><div class="k"><span class="tile t-rose"><i class="bi bi-x-octagon"></i></span>Başarısız</div><div class="v num">9</div></section>
+          <section class="pcard fig"><div class="k"><span class="tile t-amber"><i class="bi bi-question-circle"></i></span>Sonucu belirsiz</div><div class="v num">2</div></section>
+        </div>
+        <div class="tools">
+          <div class="in"><i class="bi bi-search"></i><span class="ph">Alıcı, konu ya da kampanya ara</span></div>
+          <span class="seg"><span class="on">Tümü</span><span><i class="bi bi-envelope"></i>E-posta <em>8.412</em></span><span><i class="bi bi-chat-dots"></i>SMS <em>318</em></span><span><i class="bi bi-whatsapp"></i>WhatsApp <em>316</em></span></span>
+          <span class="fp">Kaynak: Tümü<i class="bi bi-chevron-down"></i></span>
+          <span class="fp">Durum: Tümü<i class="bi bi-chevron-down"></i></span>
+          <span class="fp"><i class="bi bi-calendar3" style="font-size:13px"></i>Son 7 gün<i class="bi bi-chevron-down"></i></span>
+          <span class="sp"></span>
+          <button class="btn quiet sm"><i class="bi bi-play"></i>Şimdi gönder</button>
+        </div>
+        <section class="pcard frame">
+          <table class="lt">
+            <thead><tr><th>Zaman</th><th>Kanal</th><th>Kime / ne</th><th>Kaynak</th><th class="r">İlerleme</th><th>Durum</th><th></th></tr></thead>
+            <tbody>
+              <tr class="grp"><td class="dim num">Bugün 14:00</td><td><span class="tile t-blue"><i class="bi bi-envelope"></i></span></td><td class="w"><i class="bi bi-chevron-down ch"></i>Kasım indirimi başladı<small>5.300 alıcı · Bülten grubu</small></td><td><span class="src"><i class="bi bi-megaphone"></i>Kampanya</span></td><td class="r"><span class="pb"><b style="width:40%"></b></span>2.140 / 5.300</td><td><span class="st t-violet">Gönderiliyor</span></td><td><button class="btn quiet sm">Duraklat</button></td></tr>
+              <tr class="sub"><td class="num">14:21</td><td></td><td>ayse.demir@ornek.com</td><td></td><td class="r">açıldı 14:26</td><td><span class="st t-teal">Okundu</span></td><td></td></tr>
+              <tr class="sub"><td class="num">14:21</td><td></td><td>mert.aksoy@ornek.com</td><td></td><td class="r"></td><td><span class="st t-teal">Teslim edildi</span></td><td></td></tr>
+              <tr class="sub"><td class="num">14:21</td><td></td><td>zeynep@eski-alan.com</td><td></td><td class="r">posta kutusu yok</td><td><span class="st t-rose">Geri döndü</span></td><td></td></tr>
+              <tr><td class="dim num">Bugün 14:19</td><td><span class="tile t-green"><i class="bi bi-whatsapp"></i></span></td><td class="w">+90 532 ••• 41 07<small>siparis_alindi · #SP-1044</small></td><td><span class="src"><i class="bi bi-bag-check"></i>Sipariş</span></td><td class="r"></td><td><span class="st t-teal">Okundu</span></td><td><button class="ib sm"><i class="bi bi-three-dots"></i></button></td></tr>
+              <tr class="hov"><td class="dim num">Bugün 14:12</td><td><span class="tile t-green"><i class="bi bi-whatsapp"></i></span></td><td class="w">+90 505 ••• 12 90<small>tesekkur_ve_kod · K7M2-9QXA</small></td><td><span class="src"><i class="bi bi-diagram-3"></i>Akış: Büyük siparişte teşekkür</span></td><td class="r"></td><td><span class="st t-teal">Teslim edildi</span></td><td><button class="ib sm"><i class="bi bi-three-dots"></i></button></td></tr>
+              <tr><td class="dim num">Bugün 13:58</td><td><span class="tile t-amber"><i class="bi bi-chat-dots"></i></span></td><td class="w">+90 541 ••• 77 23<small>Giriş kodunuz: ••••••</small></td><td><span class="src"><i class="bi bi-shield-lock"></i>Tek kullanımlık kod</span></td><td class="r"></td><td><span class="st t-teal">Gönderildi</span></td><td><button class="ib sm"><i class="bi bi-three-dots"></i></button></td></tr>
+              <tr><td class="dim num">Bugün 13:40</td><td><span class="tile t-blue"><i class="bi bi-envelope"></i></span></td><td class="w">can.yilmaz@ornek.com<small>Teklif talebiniz alındı</small></td><td><span class="src"><i class="bi bi-ui-checks"></i>Form: Teklif iste</span></td><td class="r"></td><td><span class="st t-teal">Teslim edildi</span></td><td><button class="ib sm"><i class="bi bi-three-dots"></i></button></td></tr>
+              <tr><td class="dim num">Bugün 13:31</td><td><span class="tile t-amber"><i class="bi bi-chat-dots"></i></span></td><td class="w">+90 533 ••• 08 15<small>Siparişiniz kargoya verildi</small></td><td><span class="src"><i class="bi bi-bag-check"></i>Sipariş</span></td><td class="r">yanıt gelmedi</td><td><span class="st t-amber">Belirsiz</span></td><td><button class="btn quiet sm">Yeniden dene</button></td></tr>
+              <tr class="grp"><td class="dim num">Dün 10:00</td><td><span class="tile t-amber"><i class="bi bi-chat-dots"></i></span></td><td class="w"><i class="bi bi-chevron-right ch"></i>Kargo bedava hafta sonu<small>312 alıcı · SMS izni olanlar</small></td><td><span class="src"><i class="bi bi-megaphone"></i>Kampanya</span></td><td class="r"><span class="pb"><b style="width:100%"></b></span>312 / 312</td><td><span class="st t-teal">Tamamlandı</span></td><td><button class="btn quiet sm">Rapor</button></td></tr>
+              <tr class="grp"><td class="dim num">10 Kas 09:00</td><td><span class="tile t-blue"><i class="bi bi-envelope"></i></span></td><td class="w"><i class="bi bi-chevron-right ch"></i>Yeni sezon koleksiyonu<small>5.120 alıcı · açılma %31 · tıklama %6,2</small></td><td><span class="src"><i class="bi bi-megaphone"></i>Kampanya</span></td><td class="r"><span class="pb"><b style="width:100%"></b></span>5.120 / 5.120</td><td><span class="st t-teal">Tamamlandı</span></td><td><button class="btn quiet sm">Rapor</button></td></tr>
+              <tr><td class="dim num">10 Kas 08:47</td><td><span class="tile t-blue"><i class="bi bi-envelope"></i></span></td><td class="w">selin.kara@ornek.com<small>Sepetinizde ürünler kaldı</small></td><td><span class="src"><i class="bi bi-diagram-3"></i>Akış: Sepeti bırakana hatırlat</span></td><td class="r">3 deneme</td><td><span class="st t-rose">Başarısız</span></td><td><button class="btn quiet sm">Yeniden dene</button></td></tr>
+            </tbody>
+          </table>
+          <div class="more">Daha fazla göster</div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="parts">
+  <div class="part">
+    <div class="cap"><b>Kampanyalar</b>Tek seferlik toplu gönderimler; kanal kampanyada seçilir.</div>
+    <section class="pcard card">
+      <h3>Kampanyalar<button class="btn fill sm"><i class="bi bi-plus-lg"></i>Yeni kampanya</button></h3>
+      <div class="cr"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><div><b>Kasım indirimi başladı</b><small>Bülten grubu · 5.300 alıcı</small></div><span class="n">2.140 gönderildi</span><span class="st t-violet">Gönderiliyor</span></div>
+      <div class="cr"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><div><b>Yılbaşı hediye rehberi</b><small>Tüm aboneler · 6.840 alıcı</small></div><span class="n">18 Ara 10:00</span><span class="st t-blue">Zamanlandı</span></div>
+      <div class="cr"><span class="tile t-amber"><i class="bi bi-chat-dots"></i></span><div><b>Kargo bedava hafta sonu</b><small>SMS izni olanlar · 312 alıcı</small></div><span class="n">312 gönderildi</span><span class="st t-teal">Tamamlandı</span></div>
+      <div class="cr"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><div><b>Yeni sezon koleksiyonu</b><small>açılma %31 · tıklama %6,2</small></div><span class="n">5.120 gönderildi</span><span class="st t-teal">Tamamlandı</span></div>
+      <div class="cr"><span class="tile t-green"><i class="bi bi-whatsapp"></i></span><div><b>WhatsApp kampanyası</b><small>Toplu WhatsApp gönderimi sonraki aşamada açılır</small></div><span class="n"></span><span class="st">Yakında</span></div>
+    </section>
+  </div>
+  <div class="part">
+    <div class="cap"><b>Kampanya · İçerik adımı</b>E-posta gövdesi bir sayfa gibi tasarlanır; hazır tasarımdan başlanır ya da HTML yapıştırılır.</div>
+    <section class="pcard card">
+      <div class="steps"><b><i class="bi bi-check2"></i>Kanal ve alıcılar</b><hr><b class="on"><i>2</i>İçerik</b><hr><b><i>3</i>Zaman ve gönderim</b></div>
+      <div class="ed">
+        <div>
+          <span class="lab">Konu</span><div class="in" style="margin-bottom:10px"><span>Kasım indirimi başladı 🎉</span></div>
+          <span class="lab">E-posta tasarımı</span>
+          <div class="mail"><div class="hero">Kasım indirimi</div><div class="bd"><b>Merhaba Ayşe,</b>Seçili ürünlerde %30'a varan indirim bu hafta sonuna kadar.<div class="pr"><span></span><span></span><span></span></div><span class="cta">Alışverişe başla</span></div><div class="ft">Kupa Dükkânı · Abonelikten çık</div></div>
+        </div>
+        <div class="acts">
+          <span class="lab">Gövde</span>
+          <button class="btn fill"><i class="bi bi-brush"></i>Tasarımı düzenle</button>
+          <button class="btn quiet"><i class="bi bi-grid"></i>Hazır tasarım seç</button>
+          <button class="btn quiet"><i class="bi bi-code-slash"></i>HTML yapıştır</button>
+          <button class="btn quiet"><i class="bi bi-phone"></i>Telefonda önizle</button>
+          <button class="btn quiet"><i class="bi bi-send"></i>Kendime deneme gönder</button>
+          <p class="help" style="margin-top:6px">Tasarım, görsel tasarımcıda e-posta genişliğinde (600 px) açılır; ürün, düğme, görsel ve değişken eklenir.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="part">
+    <div class="cap"><b>Otomatik gönderimler ve Kanallar</b>Kampanya profillerinin yerini akışlar alır; kanalların bağlantısı tek yerde.</div>
+    <section class="pcard card" style="margin-bottom:16px">
+      <h3>Otomatik gönderimler<button class="btn quiet sm"><i class="bi bi-diagram-3"></i>Hızlı kurulum</button></h3>
+      <div class="rec">
+        <div>Sepeti bırakana hatırlat<span><span class="tile t-teal"><i class="bi bi-cart"></i></span><span class="tile"><i class="bi bi-hourglass-split"></i></span><span class="tile t-blue"><i class="bi bi-envelope"></i></span></span></div>
+        <div>Siparişten sonra görüş iste<span><span class="tile t-teal"><i class="bi bi-bag-check"></i></span><span class="tile"><i class="bi bi-hourglass-split"></i></span><span class="tile t-green"><i class="bi bi-whatsapp"></i></span></span></div>
+        <div>Doğum gününde teklif kodu<span><span class="tile t-teal"><i class="bi bi-calendar-heart"></i></span><span class="tile t-blue"><i class="bi bi-envelope"></i></span></span></div>
+      </div>
+      <div class="cr"><span class="tile t-violet"><i class="bi bi-diagram-3"></i></span><div><b>Büyük siparişte teşekkür, hazırlık ve görüş</b><small>Sipariş geldiğinde · WhatsApp, e-posta</small></div><span class="n">bugün 41 kez</span><span class="sw on"></span></div>
+      <div class="cr"><span class="tile t-violet"><i class="bi bi-diagram-3"></i></span><div><b>Hoş geldin serisi</b><small>Kişi abone olduğunda · 3 e-posta</small></div><span class="n">bugün 7 kez</span><span class="sw on"></span></div>
+      <div class="note"><i class="bi bi-info-circle"></i><span>4 eski kampanya profili çalışmaya devam ediyor.</span><a>Akışa çevir</a></div>
+    </section>
+    <section class="pcard card">
+      <h3>Kanallar</h3>
+      <div class="chn">
+        <div><span class="tile t-blue lg"><i class="bi bi-envelope"></i></span><span>E-posta<small>gönderen: bilgi@kupadukkani.com</small></span><span class="st t-teal">Bağlı</span></div>
+        <div><span class="tile t-green lg"><i class="bi bi-whatsapp"></i></span><span>WhatsApp<small>+90 850 ••• 20 20 · 9 şablon</small></span><span class="st t-teal">Bağlı</span></div>
+        <div><span class="tile t-amber lg"><i class="bi bi-chat-dots"></i></span><span>SMS<small>sağlayıcı seçilmedi</small></span><span class="st">Kapalı</span></div>
+        <div><span class="tile t-violet lg"><i class="bi bi-shield-check"></i></span><span>İYS izinleri<small>son eşitleme bugün 06:00</small></span><span class="st t-teal">Açık</span></div>
+      </div>
+    </section>
+  </div>
+</div>
+</div>
+</body>
+</html>

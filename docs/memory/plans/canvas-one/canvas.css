@@ -1,0 +1,110 @@
+/* Canvas one drawings: parts shared by the pages of this folder, on top of ../panel-design-language/sheet.css. */
+body { background: radial-gradient(900px 480px at 18% -6%, var(--glow1), transparent 62%), radial-gradient(800px 420px at 100% -4%, var(--glow2), transparent 60%), var(--page); }
+.stage { padding: 30px 36px 36px; }
+.cols { display: flex; align-items: flex-start; gap: 36px; }
+.note { margin: 10px 4px 0; font-size: 12px; color: var(--fg3); max-width: 640px; }
+
+/* a channel column: messages and the canvas card among them */
+.chan { width: 720px; display: flex; flex-direction: column; gap: 14px; }
+.msg { display: flex; gap: 11px; }
+.msg .av { width: 32px; height: 32px; font-size: 11px; margin-top: 2px; }
+.msg .tile { width: 32px; height: 32px; border-radius: 10px; margin-top: 2px; }
+.msg .bd { flex: 1; min-width: 0; }
+.msg .who { display: flex; align-items: baseline; gap: 8px; font-weight: 550; }
+.msg .who small { font-size: 12px; font-weight: 400; color: var(--fg3); }
+.msg .tx { margin-top: 2px; color: var(--fg2); }
+.sysline { display: flex; align-items: center; gap: 9px; margin-left: 43px; font-size: 13px; color: var(--fg2); }
+.sysline i { color: var(--fg3); }
+.sysline b { color: var(--fg); font-weight: 550; }
+.sysline .btn { margin-left: 4px; }
+
+/* the canvas card */
+.cv { margin-top: 8px; border-radius: 16px; overflow: hidden; background: linear-gradient(180deg, var(--surf1), var(--surf2)); border: 1px solid var(--line); box-shadow: var(--shadow-card); }
+.cv-h { display: flex; align-items: center; gap: 11px; padding: 12px 10px 10px 14px; }
+.cv-h .nm { flex: 1; min-width: 0; }
+.cv-h .nm b { display: block; font: 650 15px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cv-h .nm small { display: block; font-size: 12px; color: var(--fg3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.parts { display: flex; gap: 6px; }
+.part { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 7px; font-size: 12px; font-weight: 550; color: var(--fg2); background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.part i { font-size: 12px; }
+.cv-by { display: flex; align-items: center; gap: 7px; padding: 0 14px 10px; font-size: 12px; color: var(--fg3); }
+.cv-by b { color: var(--fg2); font-weight: 550; }
+.cv-tabs { display: flex; align-items: center; gap: 8px; padding: 0 14px 10px; }
+.cv-stage { position: relative; margin: 0 14px; border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); background: var(--card); }
+.cv-rest { height: 210px; display: grid; place-items: center; }
+.cv-rest .play { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 13px; color: var(--fg2); }
+.cv-tables { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+.cv-tables .lb { font-size: 12px; font-weight: 550; color: var(--fg3); margin-right: 2px; }
+.tb { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 9px 0 4px; border-radius: 9px; font-size: 13px; font-weight: 550; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.tb .tile { width: 20px; height: 20px; border-radius: 6px; font-size: 11px; }
+.tb em { font-style: normal; font-weight: 400; font-size: 12px; color: var(--fg3); }
+.tb.w em { color: var(--amber); }
+.cv-f { display: flex; align-items: center; gap: 8px; padding: 0 14px 14px; }
+.cv-f .meta { font-size: 12px; color: var(--fg3); margin-left: auto; }
+.banner { display: flex; align-items: center; gap: 10px; margin: 10px 14px 0; padding: 9px 12px; border-radius: 11px; font-size: 13px; color: var(--fg2); }
+.banner b { color: var(--fg); font-weight: 550; }
+.banner .btn { margin-left: auto; }
+.banner.amber { background: color-mix(in srgb, var(--amber) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 22%, transparent); }
+.banner.rose { background: color-mix(in srgb, var(--rose) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rose) 22%, transparent); }
+.banner.amber > i { color: var(--amber); } .banner.rose > i { color: var(--rose); }
+
+/* the agent's page inside the frame (its own look, not the panel's) */
+.pg { padding: 16px 18px; font-size: 13px; background: color-mix(in srgb, var(--surf1) 70%, var(--page)); }
+.pg h3 { margin: 0 0 10px; font-size: 15px; font-weight: 600; }
+.pg .kp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.pg .kp div { padding: 9px 11px; border-radius: 9px; background: var(--quiet); }
+.pg .kp small { display: block; font-size: 11px; color: var(--fg3); }
+.pg .kp b { font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pg .bars { display: flex; align-items: flex-end; gap: 9px; height: 96px; padding: 0 2px; border-bottom: 1px solid var(--line); }
+.pg .bars i { flex: 1; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--teal), color-mix(in srgb, var(--teal) 45%, transparent)); }
+.pg .bars i.hi { background: linear-gradient(180deg, var(--blue), color-mix(in srgb, var(--blue) 45%, transparent)); }
+.pg .ax { display: flex; gap: 9px; padding: 5px 2px 0; font-size: 11px; color: var(--fg3); }
+.pg .ax span { flex: 1; text-align: center; }
+.pg .rw { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 8px 10px; border-radius: 9px; background: var(--quiet); }
+.pg .rw .sp { flex: 1; }
+.pg .pb { height: 26px; padding: 0 10px; border-radius: 7px; font-size: 12px; font-weight: 600; color: #fff; background: #2f6fed; }
+
+/* a drawer of versions */
+.drw { width: 400px; border-radius: 20px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+.drw .hd { display: flex; align-items: center; gap: 2px; padding: 16px 12px 10px 20px; }
+.drw .hd h2 { margin: 0 auto 0 0; font: 650 17px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; }
+.drw .flt { padding: 0 16px 10px; }
+.vr { display: flex; gap: 11px; margin: 0 8px; padding: 10px 12px; border-radius: 12px; }
+.vr.on { background: var(--hover); }
+.vr .bd { flex: 1; min-width: 0; }
+.vr .l1 { display: flex; align-items: baseline; gap: 8px; }
+.vr .l1 b { font-weight: 550; flex: 1; }
+.vr .l1 span { font-size: 12px; color: var(--fg3); }
+.vr .tx { font-size: 13px; color: var(--fg2); margin-top: 1px; }
+.vr .l3 { display: flex; gap: 6px; margin-top: 8px; }
+
+/* a dialog the panel draws over the card */
+.dlg { position: relative; overflow: hidden; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+.dh { display: flex; align-items: flex-start; gap: 13px; padding: 20px 16px 0 22px; }
+.dh h2 { margin: 0; font: 650 17px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; }
+.dh p { margin: 3px 0 0; font-size: 13px; color: var(--fg2); }
+.db { padding: 14px 22px 18px; }
+.df { display: flex; align-items: center; gap: 8px; padding: 0 22px 20px; }
+.ilist { border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi); }
+.ilist .row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; }
+.ilist .row + .row { border-top: 1px solid var(--line); }
+.ilist .row .t { flex: 1; min-width: 0; }
+.ilist .row b { display: block; font-weight: 550; }
+.ilist .row small { display: block; font-size: 12px; color: var(--fg2); margin-top: 1px; }
+.hint { display: flex; align-items: center; gap: 7px; margin-top: 12px; font-size: 12px; color: var(--fg3); }
+
+/* a phone */
+.phone { width: 390px; height: 844px; border-radius: 44px; padding: 10px; background: #000; box-shadow: 0 30px 70px -24px rgba(0,0,0,.6), inset 0 0 0 2px rgba(255,255,255,.08); flex: none; }
+.phone .scr { position: relative; height: 100%; border-radius: 35px; overflow: hidden; display: flex; flex-direction: column;
+  background: radial-gradient(420px 260px at 20% -6%, var(--glow1), transparent 62%), var(--page); }
+.phone .sb { flex: none; height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 26px 0 30px; font-size: 14px; font-weight: 600; }
+.phone .ah { flex: none; display: flex; align-items: center; gap: 4px; padding: 4px 10px 10px; }
+.phone .ah h1 { margin: 0 auto 0 4px; font: 650 20px/1.25 "Inter Display", Inter, sans-serif; letter-spacing: -.02em; }
+.phone .bodyp { flex: 1; overflow: hidden; padding: 0 12px; }
+.phone .tabbar { flex: none; display: flex; justify-content: space-around; padding: 8px 0 26px; border-top: 1px solid var(--line); background: var(--float); }
+.phone .tabbar span { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; color: var(--fg3); }
+.phone .tabbar span i { font-size: 19px; }
+.phone .tabbar span.on { color: var(--accent); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 20px 20px 0 0; border-top: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(180deg, var(--surf1), var(--surf2)); padding-bottom: 26px; }
+.sheet .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--quiet); margin: 8px auto 4px; }
+.scrim { position: absolute; inset: 0; background: var(--scrim); }

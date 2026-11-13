@@ -117,7 +117,7 @@ echo
 pg_page_shell(
     array(
         'title'=> lang('Calendars'),
-        'extra classes'=>'calendar',
+        'extra classes'=>'calendar pg-measure-list',
         'icon'=>'calendar', 
         'heading'=>lang('Calendars'),
         'heading_description' => lang('All calendars that I can add events too.'),

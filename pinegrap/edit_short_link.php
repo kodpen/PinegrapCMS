@@ -127,7 +127,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Edit Short Link'),
-            'extra classes'=>'page',
+            'extra classes'=>'page pg-measure-edit',
             'icon'=>'page', 
             'heading'=>lang('Edit Short Link'),
             'heading_description' => lang('Update this short address for a page, product group, product, file or URL.'),

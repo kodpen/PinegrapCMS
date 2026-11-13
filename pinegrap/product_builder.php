@@ -5389,7 +5389,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     pg_page_shell(array(
         'title'         => ($pg_mode === 'edit') ? lang('Edit Product') : lang('Create Product'),
         'section_nav'   => $pg_pb_nav,
-        'extra classes' => 'products',
+        'extra classes' => 'products pg-measure-edit',
         'head'          => (($pg_mode === 'edit') && defined('BARCODE_ENABLED') && BARCODE_ENABLED
             ? '<script src="assets/lib/JsBarcode/JsBarcode.all.min.js"></script>'
             : ''),
@@ -5467,7 +5467,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         <input type="hidden" id="variant_price_rules" name="variant_price_rules" value="" />
         ' . ($ai_marks_ready ? pg_ai_fields_input('product', $ai_marks) : '') . '
 
-        <div class="row">
+        <div class="row pg-edit-columns">
             <!--
                 The side column sits on the right, after the form in source order, so
                 keyboard and screen-reader users reach the fields before the
@@ -6360,7 +6360,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_name_check.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_name_check.js') . '"></script>
     ' . pg_ai_write_assets() . '
     ' . ($ai_marks_ready ? pg_ai_fields_assets() : '') . '
-    ' . pg_picker_script() . '
+    ' . pg_editor_bridge_script() . '
 </main>' . output_footer();
 
     $liveform->remove_form();

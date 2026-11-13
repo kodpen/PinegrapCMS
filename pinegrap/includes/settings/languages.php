@@ -160,7 +160,7 @@ $output_translation_rows_have_language = ($output_translation_rows !== '');
 
 if ($output_translation_rows === '') {
     $output_translation_rows = '
-                        <div class="fg-secondary small">' . lang('No target language yet. Add one below: the pages of the visual designs are then served under its address prefix as well.') . '</div>';
+                        <div class="fg-secondary small">' . lang('No target language yet. Add one below: the pages of the designs are then served under its address prefix as well.') . '</div>';
 }
 
 // Languages that can still be added: the known list minus the source and
@@ -210,7 +210,7 @@ $pg_settings_cards[] = '
     <div id="pgset-languages" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Site Languages') . '</span>' . ($translation_settings_ready ? '
+                <span class="pg-title-section">' . lang('Site Languages') . '</span>' . ($translation_settings_ready ? '
                 <a class="btn btn-sm btn-outline theme-primary rounded-pill px-5" href="translations.php"><i class="bi bi-translate me-1" aria-hidden="true"></i>' . lang('Open the Translations screen') . '</a>' : '') . '
             </div>
             <div class="card-body">
@@ -258,7 +258,7 @@ if (!empty($language_redirect_ready)) {
 
     foreach (array(
         'home' => array(lang('The home page only'), lang('A visitor who opens the site\'s address is sent to the home page in their language. Recommended: a link to any other page opens that page as it was shared.')),
-        'all'  => array(lang('Every page of a visual design'), lang('A visitor who arrives on any page of a visual design, from a search result or a shared link, is sent to that page in their language.')),
+        'all'  => array(lang('Every page of a design'), lang('A visitor who arrives on any page of a design, from a search result or a shared link, is sent to that page in their language.')),
     ) as $language_redirect_scope_key => $language_redirect_scope_text) {
         $output_language_redirect_scopes .= '
                                     <div class="form-field">
@@ -343,7 +343,7 @@ if (!empty($language_redirect_ready)) {
 $pg_settings_cards[] = '
     <div id="pgset-language-redirect" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Automatic Language Redirect') . '
             </div>
             <div class="card-body">
@@ -418,7 +418,7 @@ $output_translation_engines_card = '
 $pg_settings_cards[] = '
     <div id="pgset-translation-engines" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Translation Engines') . '
             </div>
             <div class="card-body">

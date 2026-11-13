@@ -287,6 +287,34 @@ function test_workspace_mail_send_wiring()
 	}
 }
 
+// A waiting mail whose queue row is gone reads Not sent: the row it names
+// failed, as a deleted row's outcome is.
+function test_workspace_mail_send_orphan_reads_not_sent()
+{
+	$waiting = array('id' => 40, 'direction' => 'out', 'send_state' => 'queued', 'outbox_id' => 198);
+	$change = ws_mail_send_outcome_change($waiting, 198, 0, 'failed', 'It was deleted from the mail queue before it was sent.', 1000);
+	pg_assert_same(array('send_state' => 'failed', 'send_error' => 'It was deleted from the mail queue before it was sent.', 'outbox_id' => 198), $change['set'], 'Not sent, with the reason');
+	pg_assert_true($change['notify'], 'the writer is told');
+}
+
+// The sweep reads only waiting mail of the last days whose row is missing,
+// inside the week the queue keeps a sent row, and job.php runs it.
+function test_workspace_mail_send_orphans_wiring()
+{
+	require_once(__DIR__ . '/helpers/source_reader.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue.php');
+
+	$code = pg_test_function_source('ws_mail_send_orphans_run');
+
+	foreach (array('LEFT JOIN mail_outbox AS o ON o.id = i.outbox_id', 'o.id IS NULL', "i.send_state = 'queued'", 'i.outbox_id > 0', "i.direction = 'out'", 'WS_MAIL_SEND_ORPHAN_DAYS * 86400', 'ws_mail_send_ref((int) $row[\'id\'], 0)', 'ws_mail_send_outcome(') as $part) {
+		pg_assert_contains($part, $code, $part);
+	}
+
+	pg_assert_contains("(status = 'sent') AND (sent_at < \" . (time() - 604800)", pg_test_function_source('pg_mail_queue_run'), 'the queue keeps a sent row seven days');
+	pg_assert_true(WS_MAIL_SEND_ORPHAN_DAYS < 7, 'so a newer mail whose row is missing never left');
+	pg_assert_contains('ws_mail_send_orphans_run(time());', workspace_mail_send_test_source('job.php'), 'run by the general job');
+}
+
 function test_workspace_mail_send_headers_of_an_answer()
 {
 	pg_assert_same(array('Message-ID' => '<pg.c4.ab@shop.test>'), ws_mail_send_headers(array('rfc_message_id' => 'pg.c4.ab@shop.test', 'in_reply_to' => '', 'reference_ids' => '')),

@@ -1,6 +1,6 @@
 ---
 name: agent-shown
-description: How a registry agent shows (A4b2): the line under its waking message, its tag and @ picker entry, kept off tasks, its own edits, two applications' lines kept apart
+description: How a registry agent shows (A4b2): the line under its waking message ("saw it · no answer needed", #8919), its tag and @ picker entry, kept off tasks, its own edits, two applications' lines kept apart
 ---
 
 ## Where is it?
@@ -8,6 +8,10 @@ description: How a registry agent shows (A4b2): the line under its waking messag
 
 ## What does the message that woke it show?
 - The line under a message names the agent (`ws_claude_request_state()` hands an `app:`/`model:` row to `ws_agent_request_state()`: waiting, the next try of a failed push door or model, working, answered, could not). One line per message: the last request on it.
+
+## What does a request closed without text show?
+- Closed with `no_answer` (#8919, issue #8872, `workflow/decisions-made-workspace-19.md`): the line reads "@handle saw it · no answer needed" (Turkish "gördü · yanıt gerekmedi") with `bi-eye`, and the agent's 👀 stays on the asking message (added when it was never claimed). "answered", `bi-check2-circle` and ✅ only when the request left a reply.
+- No column: `ws_agent_request_no_answer()` is `status = 'answered'` with no `reply_message_id` and no `note_reply` (`ws_agent_request_replied()`). The API's request object carries it as `no_answer` (boolean). Before #8919 the eye became a tick and the line read "answered" though nothing was written.
 
 ## When do two lines read as one author's group?
 - `sameSender()` in `assets/js/workspace.js` (the `follow` rule, pure, `tests/workspace_message_follow_test.php`): same `sender_kind` and `sender.id`, and as every application, guest and outside mail sender has `id` 0, also the same `app_id`, `guest_id`, name (an OAuth client's proposal is drawn under the client's name) and, for a mail, address.

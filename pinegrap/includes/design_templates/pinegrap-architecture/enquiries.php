@@ -122,7 +122,7 @@ $own_list_page = function ($title, $lead, $widget_key, $box_title, $box_text, $b
                                 $span($box_title, '', lang('Text')),
                             )),
                             $para($box_text, 'small text-body-secondary mb-3'),
-                            $link($button, $href, 'btn btn-sm btn-dark rounded-0 px-3'),
+                            $link($button, $href, 'btn btn-sm btn-primary rounded-0 px-3'),
                         )),
                     ), '', '4'),
                 ), '4', '', 'g-lg-5'),
@@ -392,7 +392,7 @@ $request_row = function ($staff, $service, $items, $status, $name, $field = 'ser
     return $el('a', 'list-group-item list-group-item-action px-0 py-3', $name, array(
         $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-1', lang('Top Line'), array(
             $title,
-            $span($status, 'badge rounded-0 text-bg-dark', lang('Status'), $bind('status')),
+            $span($status, 'badge rounded-0 text-bg-primary', lang('Status'), $bind('status')),
         )),
         $el('div', 'd-flex flex-wrap column-gap-3 row-gap-1 small text-body-secondary', lang('Details'), $items),
     ), array('href' => '#', '_bindings' => array('href' => 'form_item_view')));
@@ -515,7 +515,7 @@ $record_tree = function ($c) use ($el, $heading, $para, $link, $span, $icon, $at
                         $icon('bi-file-earmark-x', 'display-5 text-body-tertiary'),
                         $heading('h2', $c['not_found_title'], 'pai-display h3 mt-3'),
                         $para($c['missing'], 'text-body-secondary mb-4', $bind('not_found')),
-                        $link($c['list_title'], '{{page:' . $c['list_key'] . '}}', 'btn btn-dark rounded-0 px-4'),
+                        $link($c['list_title'], '{{page:' . $c['list_key'] . '}}', 'btn btn-primary rounded-0 px-4'),
                     ), $show_when('record_not_found')),
                     $el('div', '', lang('Record'), array(
                         $el('div', 'alert alert-success rounded-0 d-flex gap-2', lang('Sent Notice'), array(
@@ -530,12 +530,12 @@ $record_tree = function ($c) use ($el, $heading, $para, $link, $span, $icon, $at
                             )),
                             // The single-use set password link, for the person who sent the form
                             // while it is live; the sentence below covers a used or expired link.
-                            $link(lang('Set your password'), '#', 'btn btn-sm btn-dark rounded-0', array(),
+                            $link(lang('Set your password'), '#', 'btn btn-sm btn-primary rounded-0', array(),
                                 array('_bindings' => array('href' => '__new_account_set_password_url', 'eo_visible_if' => 'has_set_password_link'))),
                             $para(lang('You can set a password with "Forgot password" on the sign-in page.'), 'small mt-2 mb-0'),
                         ), $show_when('has_new_account')),
                         $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-3', lang('Toolbar'), array(
-                            $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-dark text-decoration-none', lang('Link'), array(
+                            $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-body-emphasis text-decoration-none', lang('Link'), array(
                                 $icon('bi-arrow-left'),
                                 $span($c['list_title'], '', lang('Link Text')),
                             ), array('href' => '{{page:' . $c['list_key'] . '}}')),
@@ -547,7 +547,7 @@ $record_tree = function ($c) use ($el, $heading, $para, $link, $span, $icon, $at
                                     $para($c['eyebrow'], 'pai-eyebrow small text-uppercase fw-semibold text-body-secondary mb-1'),
                                     $heading('h1', $c['service'], 'pai-display h3 mb-0', $bind($c['title_field'] ?? 'service')),
                                 )),
-                                $span($c['status'], 'badge rounded-0 text-bg-dark fs-6', lang('Status'), $bind('status')),
+                                $span($c['status'], 'badge rounded-0 text-bg-primary fs-6', lang('Status'), $bind('status')),
                             )),
                             $el('dl', 'row small mb-0', lang('Details'), $c['details']),
                         )),
@@ -684,7 +684,7 @@ $enquiry_widgets = array(
             $agree('ai-enq-consent', 'consent', lang('I agree that the studio keeps these details to answer my project enquiry and prepare a proposal, as its privacy notice explains.'), true),
             $captcha(),
             $el('div', 'd-flex flex-wrap align-items-center gap-3', lang('Send Area'), array(
-                $submit(lang('Send the Enquiry'), 'btn btn-dark btn-lg rounded-0 px-4'),
+                $submit(lang('Send the Enquiry'), 'btn btn-primary btn-lg rounded-0 px-4'),
                 $para(lang('We answer within three working days.'), 'small text-body-secondary mb-0'),
             )),
             $loop(array()),
@@ -714,7 +714,7 @@ $enquiry_widgets = array(
                 $detail(lang('Client'), '', lang('Client'), $client_name(), true),
                 $detail(lang('Contact by'), '', lang('Contact by'), $bound($contact_choices[0][1], 'contact_method')),
                 $detail(lang('Drawings and Photos'), 'text-break', lang('Drawings and Photos'), array(
-                    $link('site-survey.pdf', '#', 'link-dark', array(), array('target' => '_blank', 'rel' => 'noopener',
+                    $link('site-survey.pdf', '#', 'link-body-emphasis', array(), array('target' => '_blank', 'rel' => 'noopener',
                         '_bindings' => array('href' => 'drawings', 'text' => 'drawings'))),
                 ), true),
                 $detail(lang('Reference Code'), 'mb-0 font-monospace', lang('Reference Code'), $bound('ABC123', 'reference_code'))
@@ -759,7 +759,7 @@ $enquiry_widgets = array(
             $agree('ai-con-consent', 'consent', lang('I agree that the studio keeps these details to arrange my consultation, as its privacy notice explains.'), true),
             $captcha(),
             $el('div', 'd-flex flex-wrap align-items-center gap-3', lang('Send Area'), array(
-                $submit(lang('Ask for a Consultation'), 'btn btn-dark btn-lg rounded-0 px-4'),
+                $submit(lang('Ask for a Consultation'), 'btn btn-primary btn-lg rounded-0 px-4'),
                 $para(lang('We answer with a time within two working days.'), 'small text-body-secondary mb-0'),
             )),
             $loop(array()),

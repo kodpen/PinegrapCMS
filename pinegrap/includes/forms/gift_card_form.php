@@ -70,7 +70,18 @@ function pg_gift_card_form_card($liveform, $mode, $options)
 
     if ($add) {
         $output_label = lang('Amount');
-        $output_help = '<script>$("#amount").focus()</script>';
+        // The box is focused on document ready, once it carries its money
+        // mask. Focused while the page was still being parsed, the mask was
+        // bound to a box that already had focus, with the caret after the
+        // decimals, so digits typed without a click went into the decimals
+        // (50 became 0,50). The binding's ready handler is registered in the
+        // head and runs first; a box it has not masked is masked here.
+        $output_help = '<script>$(function () {'
+            . ' var box = document.getElementById("amount");'
+            . ' if (!box) { return; }'
+            . ' if ((box.inputmask === undefined) && (typeof window.Inputmask === "function")) { window.Inputmask().mask(box); }'
+            . ' box.focus();'
+            . ' });</script>';
     } else {
         $output_label = lang('Balance');
         $output_help = '<div class="form-text">' . lang(array('string'=>'Original Amount: {var:1}','vars'=>array($options['original_amount'] ?? ''))) . '</div>';
@@ -126,7 +137,7 @@ function pg_gift_card_form_card($liveform, $mode, $options)
     // 13 holds 42.949.672,95, the column top (PG_GIFT_CARD_AMOUNT_MAX).
     return '
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Gift Card Options') . '
                                 </h2>
                                 <div class="card-body">' . $output_code . '

@@ -73,7 +73,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'=> lang('Edit Menu Properties'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang('Edit Menu Properties'),
         'heading_description' => lang('Edit shared menu that can be added to any page style and managed by any site manager.'),

@@ -298,7 +298,7 @@ $charter_widgets['boat_detail'] = array(
                 )),
                 $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
                     $span($boat_type($boat_sample_key), 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Type'), $bind('type')),
-                    $span($boat_skipper($boat_sample_key), 'badge rounded-pill text-bg-dark', lang('Skipper'), $bind('skipper')),
+                    $span($boat_skipper($boat_sample_key), 'badge rounded-pill text-bg-secondary', lang('Skipper'), $bind('skipper')),
                 )),
                 $heading('h1', $boat_sample['name'], 'pmn-display display-6 mb-2', $bind('title')),
                 $para($boat_sample['summary'], 'lead text-body-secondary mb-3', $bind('summary')),

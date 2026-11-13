@@ -17,7 +17,7 @@ description: Block rules pg-display-xl / pg-display-xxl (giant type), pg-bleed (
 - The eyebrow is bold at 20 px, large text (3:1), so a long translation that pushes it to the top of the tint alone still passes.
 
 ## Why does it sit in Marketing, not Page Header?
-- The plan puts it in Marketing ([[designer-bold-pages-steps]], B1): it is a full-screen product scene placed anywhere on a page, not only at the top. A `hero-` type would land in Page Header (groups match by prefix, first group wins), and `cta-` is about to become its own family file. So the type takes a new prefix, `spotlight-`, added to Marketing's match list; later full-screen scenes of the plan can use it too.
+- It was planned for Marketing (#8685): it is a full-screen product scene placed anywhere on a page, not only at the top. A `hero-` type would land in Page Header (groups match by prefix, first group wins), and `cta-` is about to become its own family file. So the type takes a new prefix, `spotlight-`, added to Marketing's match list; later full-screen scenes can use it too.
 
 ## How was it checked?
 - `tests/designer_blocks_test.php`: the four rules (clamp in rem between 2.5 and 9, the display weight variable, no fixed weight, 50vw with the clip, svh with a vh fallback), the block's group, needs, classes, dark scrim and no-wrap entry.

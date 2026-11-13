@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Bridge</title></head>
+<body>
+<p>A live page on canvas 11 that asks through the bridge and tries to ask in another canvas's name.</p>
+<script>
+window.__results = { answers: [], errors: [] };
+window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || d.pg !== 'canvas-data') { return; }
+    if (d.ok) { window.__results.answers.push(JSON.stringify({ id: d.id, data: d.data, from: e.source === parent })); }
+    else { window.__results.errors.push(d.id + ':' + (d.error && d.error.code)); }
+});
+// The door, with the other canvas named in every way a page could.
+parent.postMessage({ pg: 'canvas-data', id: 'who', call: 'who', args: { canvas: 22, message_id: 22 }, canvas: 22, message_id: 22 }, '*');
+// Past the shell: straight to the panel, and into the other canvas's shell.
+try { top.postMessage({ pg: 'canvas-data', id: 'top', call: 'who', args: {} }, '*'); } catch (x) { window.__results.top = 'threw'; }
+try { top.frames[1].postMessage({ pg: 'canvas-data', id: 'other', call: 'who', args: {} }, '*'); } catch (x) { window.__results.other = 'threw'; }
+// An answer forged to the other shell, as if from the panel.
+try { top.frames[1].postMessage({ pg: 'canvas-data', id: 'x', ok: true, data: 'forged' }, '*'); } catch (x) {}
+// A bad request comes back refused.
+parent.postMessage({ pg: 'canvas-data', id: 'bad', call: 'DROP TABLE', args: {} }, '*');
+</script>
+</body></html>

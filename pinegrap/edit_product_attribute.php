@@ -64,7 +64,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'=> lang('Edit Product Attribute'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Edit Product Attribute'),
         'heading_description' => lang('Update the name, label, and options for this product attribute.'),

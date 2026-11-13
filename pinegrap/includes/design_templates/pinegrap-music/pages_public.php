@@ -113,7 +113,7 @@ $public_pages[] = array(
         // Release Hero); everything comes in on load.
         $release_hero($lead_key, 'mu-home-release', 'h1', 'pmu-hero py-5 bg-body text-body', array(
             $link(lang('Listen now'), '{{page:discography}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-            $link(lang('Tour Dates'), '{{page:tour}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+            $link(lang('Tour Dates'), '{{page:tour}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
         ), 'dark'),
 
         // The next shows, read from the Shows collection from today on.

@@ -27,6 +27,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_svg.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_edit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_split.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_layer_write.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_save.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_template_fill.php');
 
 /**
  * The canvas routes, merged into ws_api_routes().
@@ -46,10 +49,12 @@ function ws_canvas_api_routes()
             'status'      => 201,
             'returns'     => array('message' => 'WorkspaceMessage', 'canvas' => ws_api_canvas_returns()),
             'summary'     => 'Draw a canvas in a channel from SVG',
-            'description' => 'Posts a canvas into a channel as a message of the application: the SVG becomes a picture people see and open in the image editor, its layers editable. Only an agent of the channel draws one: an application with a row in GET /workspace/channels/{id}/agents (or Claude, where Claude may be asked), in a channel the owner may post in. The SVG is sanitized (scripts, outside addresses and events go), at most 1 MB; the artboard is its root\'s width and height (the view box when they are missing, 300 x 150 when both are), each side 16 to 8000 pixels, the drawing one layer covering it, or with layers split a layer per top-level element as the image editor\'s Break apart makes them (each where it was drawn, named by its element\'s id; a group stays one layer; definitions and style rules kept for the layers that use them): a text becomes a text layer when the editor can hold it (one colour, no outline, a font the editor offers, lines as tspans under one another), a picture whose address is a file of the site - one a message of the channel carries, or with files:read one any visitor may fetch - a picture layer; anything else stays an svg layer. A picture inside it must be an address, not data. The canvas\'s picture is blank in the background colour until a member\'s browser draws it: canvas.picture is pending until then. Refusals: nothing left to draw, over 1 MB, a picture as data or a background that is no colour 422 validation_failed on svg or background; not an agent of the channel 403 forbidden.',
+            'description' => 'Posts a canvas into a channel as a message of the application: the SVG becomes a picture people see and open in the image editor, its layers editable. Only an agent of the channel draws one: an application with a row in GET /workspace/channels/{id}/agents (or Claude, where Claude may be asked), in a channel the owner may post in. The SVG is sanitized (scripts, outside addresses and events go), at most 1 MB; the artboard is its root\'s width and height (the view box when they are missing, 300 x 150 when both are), each side 16 to 8000 pixels, the drawing one layer covering it, or with layers split a layer per top-level element as the image editor\'s Break apart makes them (each where it was drawn, named by its element\'s id; a group stays one layer; definitions and style rules kept for the layers that use them): a text becomes a text layer when the editor can hold it (one colour, no outline, a font the editor offers, lines as tspans under one another), a picture whose address is a file of the site - one a message of the channel carries, or with files:read one any visitor may fetch - a picture layer; anything else stays an svg layer. A picture inside it must be an address, not data. The canvas\'s picture is blank in the background colour until a member\'s browser draws it: canvas.picture is pending until then. Or, instead of svg, template: a copy of a canvas template a person marked in Files (GET /workspace/canvas/templates), with fill giving the words and pictures of its named layers; background and layers are ignored then. Refusals: nothing left to draw, over 1 MB, a picture as data or a background that is no colour 422 validation_failed on svg or background; neither svg nor template, or both, 422 on svg; a template that is not one 422 on template; a fill that does not fit 422 on fill; not an agent of the channel 403 forbidden.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-                array('name' => 'svg', 'in' => 'body', 'type' => 'string', 'max_length' => 1048576, 'required' => true, 'description' => 'The drawing, a whole <svg> element with the SVG namespace.'),
+                array('name' => 'svg', 'in' => 'body', 'type' => 'string', 'max_length' => 1048576, 'description' => 'The drawing, a whole <svg> element with the SVG namespace. Required unless template is given.'),
+                array('name' => 'template', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Instead of svg: the file id of a canvas template (GET /workspace/canvas/templates); the canvas is a copy of it, its size, background and layers.'),
+                array('name' => 'fill', 'in' => 'body', 'type' => 'object', 'description' => 'With template: the words and pictures for its named layers, as name => value: words for a text layer (at most 2000 letters), a file for a picture layer (its id, its address, or {file_id} or {file}: a file of this channel, or with files:read a public file of the site). A name the template does not have, or a layer that is neither text nor a picture, is refused with 422 on fill naming the template\'s layers.'),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'Words beside the canvas. Tags are written as tokens, as in a message.'),
                 array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 120, 'description' => 'The name of the canvas\'s file; Canvas when left out. Always a PNG.'),
                 array('name' => 'background', 'in' => 'body', 'type' => 'string', 'max_length' => 11, 'description' => 'The artboard\'s colour as #rrggbb, or transparent; white when left out.'),
@@ -82,12 +87,60 @@ function ws_canvas_api_routes()
             'dry_run'      => true,
             'returns'      => ws_api_canvas_returns(),
             'summary'      => 'Edit a canvas in place',
-            'description'  => 'Changes a canvas of the channel - an agent\'s or a person\'s - with operations applied in order to its newest version, all or none: add (svg; x, y, w, h, rot optional: a new layer on top, its own size made to fit and centred when no box is given; layers split: a layer per top-level element, placed where that one layer would have been), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional: a text layer\'s words), box (layer; any of x, y, w, h, rot: move, resize or turn a layer) and svg (svg; background and layers optional: the whole canvas anew). Layer ids and the version come from GET /workspace/messages/{id}/canvas. version is the newest version you read: when somebody saved since, the call answers 409 conflict; read again and redo. The edit is a new version made by the agent, kept with the original and the last ten; its picture is pending again until a member\'s browser draws it. A person whose canvas an agent edited is told. Only an agent of the channel edits, as for POST /workspace/channels/{id}/canvases (403 forbidden). A refused operation answers 422 validation_failed on operations, its message naming the operation by its place (from 0); a locked layer is not changed. PATCH is accepted as well.',
+            'description'  => 'Changes a canvas of the channel - an agent\'s or a person\'s - with operations applied in order to its newest version, all or none: add (svg; x, y, w, h, rot optional: a new layer on top, its own size made to fit and centred when no box is given; layers split: a layer per top-level element, placed where that one layer would have been), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional: a text layer\'s words), box (layer; any of x, y, w, h, rot: move, resize or turn a layer), svg (svg; background and layers optional: the whole canvas anew), style (layer and the look to change: a text\'s font, size, weight, italic, align, color, bg, lineHeight, spacing; a shape\'s color, fill none, solid or soft, stroke, dash solid, dashed or dotted, radius; an icon\'s color; any layer\'s opacity 0 to 1), order (layer, to front, back, above or below, target for above and below), name (layer, name: 1 to 80 letters no other layer has) and lock (layer, locked true or false; the only change a locked layer takes besides its name). add also takes type: text (text; font from GET /workspace/canvas/fonts, size, weight, italic, align, color, bg, lineHeight, spacing), picture (file_id or file, the address of a file of this channel, or with files:read of a public file), shape (shape rectangle or ellipse with x, y, w, h, or line with x1, y1, x2, y2; color, fill, stroke, dash, radius) or icon (icon, a Bootstrap Icons name such as bar-chart; color); the look\'s defaults are the image editor\'s, a layer without x and y is centred; and name and lock for any type. A layer is named by its id, or by its name when one layer alone has it. Layer ids and the version come from GET /workspace/messages/{id}/canvas. version is the newest version you read: when somebody saved since, the call answers 409 conflict; read again and redo. The edit is a new version made by the agent, kept with the original and the last ten; its picture is pending again until a member\'s browser draws it. A person whose canvas an agent edited is told. Only an agent of the channel edits, as for POST /workspace/channels/{id}/canvases (403 forbidden). A refused operation answers 422 validation_failed on operations, its message naming the operation by its place (from 0); a locked layer is not changed. PATCH is accepted as well.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'version', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The newest version you read.'),
-                array('name' => 'operations', 'in' => 'body', 'type' => 'list', 'of' => array('op' => 'string', 'layer' => 'string', 'svg' => 'string', 'text' => 'string', 'color' => 'string', 'background' => 'string', 'layers' => 'string', 'x' => 'number', 'y' => 'number', 'w' => 'number', 'h' => 'number', 'rot' => 'number'), 'max_items' => 20, 'required' => true, 'description' => 'Objects of {op, ...}, applied in order; see the description.'),
+                array('name' => 'operations', 'in' => 'body', 'type' => 'list', 'of' => array('op' => 'string', 'layer' => 'string', 'type' => 'string', 'svg' => 'string', 'text' => 'string', 'color' => 'string', 'background' => 'string', 'layers' => 'string', 'x' => 'number', 'y' => 'number', 'w' => 'number', 'h' => 'number', 'rot' => 'number',
+                    'font' => 'string', 'size' => 'number', 'weight' => 'integer', 'italic' => 'boolean', 'align' => 'string', 'bg' => 'string', 'lineHeight' => 'number', 'spacing' => 'number', 'opacity' => 'number',
+                    'shape' => 'string', 'fill' => 'string', 'stroke' => 'number', 'dash' => 'string', 'radius' => 'number', 'x1' => 'number', 'y1' => 'number', 'x2' => 'number', 'y2' => 'number',
+                    'icon' => 'string', 'file' => 'string', 'file_id' => 'integer', 'name' => 'string', 'lock' => 'boolean', 'locked' => 'boolean', 'to' => 'string', 'target' => 'string'), 'max_items' => 20, 'required' => true, 'description' => 'Objects of {op, ...}, applied in order; see the description.'),
             ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.canvas.save',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/canvas/save',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_canvas_save',
+            'dry_run'     => true,
+            'status'      => 201,
+            'returns'     => array('saved' => 'boolean', 'file_id' => 'integer?', 'file_name' => 'string?', 'file_url' => 'string?', 'proposal' => 'WorkspaceProposal'),
+            'summary'     => 'Save a canvas into Files',
+            'description' => 'Saves the drawn picture of a canvas of the channel as a new file of a folder in Files, in the name of the person the application acts for, who must be allowed to add files to that folder. It is a change of the file kind (as POST /workspace/channels/{id}/changes proposes it with type file, action create), so it follows the tier the channel allows the agent: within tier 2 or above it is saved at once and the channel is told by a decision naming the file (saved true, file_id, file_name and file_url given); at tier 1 it is a proposal the person saves on its card (saved false). The picture must be drawn: a canvas whose picture is pending (canvas.picture of GET /workspace/messages/{id}/canvas) answers 409 conflict until a member\'s browser has drawn it. format is one of the formats the server writes (jpeg and png always, webp and avif where the server has a library for them; png when left out); name is the canvas\'s file name when left out, its extension the format\'s, and a name already taken gets a number. Only an application\'s agent of the channel saves (403 forbidden otherwise; Claude proposes in its answer); the hourly proposal limit applies (429). Refusals: no folder with that id, a folder in the recycle bin or one the person may not add files to, or a format this server does not write 422 validation_failed on changes.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'folder_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The folder of Files the picture is saved into.'),
+                array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 120, 'description' => 'The new file\'s name; the canvas\'s when left out. The extension is the format\'s.'),
+                array('name' => 'format', 'in' => 'body', 'type' => 'enum', 'values' => array('png', 'jpeg', 'webp', 'avif'), 'description' => 'png (the default), jpeg, or webp and avif where the server writes them.'),
+                array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The file\'s description in Files.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'Words beside the save in the channel; the person it is saved for is mentioned either way.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.canvas.templates',
+            'method'      => 'GET',
+            'path'        => '/workspace/canvas/templates',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_canvas_templates',
+            'returns'     => array('templates' => array(array('id' => 'integer', 'name' => 'string', 'width' => 'integer', 'height' => 'integer', 'background' => 'string', 'layers' => array(array('name' => 'string', 'kind' => 'string', 'text' => 'string?'))))),
+            'summary'     => 'List the canvas templates',
+            'description' => 'The canvases people marked as templates in Files (Save as template in the image editor): each with its file id (the template to give to POST /workspace/channels/{id}/canvases), its file name, its size and background, and its named layers from the bottom up - name, kind (text, picture, shape, icon, svg or another of the editor\'s kinds) and a text layer\'s words. Only text and picture layers are filled; the rest stay as drawn.',
+            'params'      => array(),
+        ),
+
+        array(
+            'id'          => 'workspace.canvas.fonts',
+            'method'      => 'GET',
+            'path'        => '/workspace/canvas/fonts',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_canvas_fonts',
+            'returns'     => array('fonts' => array(array('font' => 'string', 'family' => 'string', 'source' => 'string'))),
+            'summary'     => 'List the fonts a canvas text may use',
+            'description' => 'The fonts the image editor offers for a text layer, each with the value to give as font in a canvas edit: the editor\'s system stacks (sans, serif, hand, display, mono), then the families the site\'s styles load and the Google Fonts catalogue, as g:<family>. source is system, site or google.',
+            'params'      => array(),
         ),
     );
 }
@@ -351,14 +404,25 @@ function ws_api_canvases_create($params)
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
     }
 
-    $mode = ws_canvas_split_mode($params['layers'] ?? null);
-    $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg($params['svg'] ?? '', (string) ($params['background'] ?? ''), $mode === 'split', ws_canvas_split_resolver((int) $channel['id'], api_has_scope(api_current_scopes(), 'files:read')));
+    $public = api_has_scope(api_current_scopes(), 'files:read');
+    $template = (int) ($params['template'] ?? 0);
 
-    if ($made['error'] !== '') {
-        api_fail_validation(ws_canvas_from_svg_error_text($made['error']), in_array($made['error'], array('background', 'layers'), true) ? $made['error'] : 'svg');
+    if (($template > 0) === (isset($params['svg']) && ((string) $params['svg'] !== ''))) {
+        api_fail_validation(lang('Give svg or template, one of them.'), 'svg');
     }
 
-    $doc = $made['doc'];
+    if ($template > 0) {
+        $doc = ws_api_canvas_from_template($template, $params['fill'] ?? null, (int) $channel['id'], $public);
+    } else {
+        $mode = ws_canvas_split_mode($params['layers'] ?? null);
+        $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg($params['svg'] ?? '', (string) ($params['background'] ?? ''), $mode === 'split', ws_canvas_split_resolver((int) $channel['id'], $public));
+
+        if ($made['error'] !== '') {
+            api_fail_validation(ws_canvas_from_svg_error_text($made['error']), in_array($made['error'], array('background', 'layers'), true) ? $made['error'] : 'svg');
+        }
+
+        $doc = $made['doc'];
+    }
     $doc->by = (object) $agent;
 
     if (ws_canvas_doc_json($doc) === '') {
@@ -413,6 +477,56 @@ function ws_api_canvases_create($params)
         'message' => ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))),
         'canvas'  => ws_api_canvas_present($row, $doc),
     ), 201);
+}
+
+/**
+ * A canvas document from a template with its fill, marked pending for a
+ * browser to draw, or the refusal.
+ *
+ * @param int   $template the template's file id
+ * @param mixed $fill
+ * @param int   $channel_id
+ * @param bool  $public the agent may read Files
+ * @return object decoded as objects
+ */
+function ws_api_canvas_from_template($template, $fill, $channel_id, $public)
+{
+    $doc = ws_canvas_template_doc($template);
+
+    if ($doc === null) {
+        api_fail_validation(lang('That is not a canvas template: see GET /workspace/canvas/templates.'), 'template');
+    }
+
+    $filled = ws_canvas_template_fill($doc, $fill, ws_canvas_write_file_resolver($channel_id, $public));
+
+    if ($filled['error'] !== '') {
+        api_fail_validation(ws_canvas_template_fill_error_text($filled), 'fill');
+    }
+
+    $made = json_decode(json_encode($filled['doc']));
+    $made->picture = 'pending';
+
+    return $made;
+}
+
+function ws_api_canvas_templates($params)
+{
+    ws_api_viewer();
+
+    $list = array();
+
+    foreach (pg_canvas_templates_rows() as $row) {
+        $list[] = array('id' => $row['id'], 'name' => $row['name']) + $row['summary'];
+    }
+
+    api_ok(array('templates' => $list));
+}
+
+function ws_api_canvas_fonts($params)
+{
+    ws_api_viewer();
+
+    api_ok(array('fonts' => ws_canvas_write_fonts()));
 }
 
 function ws_api_canvas_get($params)
@@ -471,7 +585,7 @@ function ws_api_canvas_edit($params)
         api_fail(409, 'conflict', lang(array('string' => 'The canvas changed since: its newest version is {var:1}. Read it again.', 'vars' => $target['version'])));
     }
 
-    $edited = ws_canvas_edit_apply($target['doc'], $params['operations'] ?? null, ws_canvas_split_resolver((int) $target['channel']['id'], api_has_scope(api_current_scopes(), 'files:read')));
+    $edited = ws_canvas_edit_apply($target['doc'], $params['operations'] ?? null, ws_canvas_split_resolver((int) $target['channel']['id'], api_has_scope(api_current_scopes(), 'files:read')), ws_canvas_write_file_resolver((int) $target['channel']['id'], api_has_scope(api_current_scopes(), 'files:read')));
 
     if ($edited['error'] !== '') {
         $where = ($edited['index'] >= 0) ? lang(array('string' => 'Operation {var:1}', 'vars' => $edited['index'])) . ': ' : '';
@@ -506,4 +620,85 @@ function ws_api_canvas_edit($params)
     }
 
     api_ok(ws_api_canvas_present($message));
+}
+
+function ws_api_canvas_save($params)
+{
+    $viewer = ws_api_viewer();
+    $target = ws_api_canvas_edit_target($viewer, $params['id']);
+    $agent = ws_api_proposal_agent(true);
+    $message = $target['message'];
+    $channel = $target['channel'];
+
+    if (!ws_proposals_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    $state = ws_canvas_message_state((int) $message['file_id']);
+
+    if ($state && !empty($state['pending'])) {
+        api_fail(409, 'conflict', lang('The canvas has no picture to save yet: a member of the channel opens it and the picture is drawn.'));
+    }
+
+    $format = (string) ($params['format'] ?? 'png');
+    $name = ws_canvas_save_name($params['name'] ?? null, (string) $message['file_name'], $format);
+    $change = ws_canvas_save_change((int) $message['id'], (int) $params['folder_id'], $name, $format);
+
+    if ((string) ($params['description'] ?? '') !== '') {
+        $change['fields']['description'] = (string) $params['description'];
+    }
+
+    ws_api_proposal_scopes(array($change));
+
+    // The person the file is saved for is told, whatever the text says.
+    $text = trim((string) ($params['text'] ?? ''));
+    $text = ($text !== '') ? $text : lang(array('string' => 'Save the canvas into Files as {var:1}.', 'vars' => $name));
+    $mention = '<@user:' . (int) $viewer['id'] . '>';
+
+    if (strpos($text, $mention) === false) {
+        $text = $mention . ' ' . $text;
+    }
+
+    $app_id = ws_api_writer_app_id();
+    $checked = ws_message_send_check($viewer, $channel, $text, array('app_id' => $app_id));
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], 'text');
+    }
+
+    $rows = ws_api_proposal_rows(array($change), $viewer, $channel['id'], 0);
+    $at_once = ws_agent_tier_allows(ws_channel_agent_tier_of((int) $channel['id'], $agent), ws_changes_tier(array($change)));
+
+    ws_api_proposal_limit($agent, $viewer);
+
+    api_dry_run_stop($at_once ? 'created' : 'proposed', 'workspace_canvas_save', array(
+        'message_id' => (int) $message['id'],
+        'folder_id'  => (int) $params['folder_id'],
+        'name'       => $name,
+        'format'     => $format,
+        'at_once'    => $at_once,
+    ));
+
+    $result = ws_proposal_store($viewer, $agent, array('channel' => $channel), $text, $rows, $app_id);
+
+    if (!$result['ok']) {
+        ws_api_proposal_store_failed($result);
+    }
+
+    ws_api_log(lang(array('string' => 'A canvas save proposed in #{var:1}', 'vars' => $channel['name'])));
+
+    // Within the agent's tier the save is applied at once (agent_tiers.php);
+    // the decision under it names the file in the channel.
+    ws_agent_apply_within_tier($viewer, (int) $result['request_id'], $agent, $channel);
+
+    $file_id = (int) db_value("SELECT record_id FROM ws_ai_changes WHERE request_id = '" . (int) $result['request_id'] . "' AND status = 'applied' LIMIT 1");
+    $stored = ($file_id > 0) ? (string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'") : '';
+
+    api_ok(array(
+        'saved'     => ($stored !== ''),
+        'file_id'   => ($stored !== '') ? $file_id : null,
+        'file_name' => ($stored !== '') ? $stored : null,
+        'file_url'  => ($stored !== '') ? URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($stored) : null,
+        'proposal'  => ws_api_proposal_present($viewer, ws_api_proposal_or_404($result['request_id'])),
+    ), 201);
 }

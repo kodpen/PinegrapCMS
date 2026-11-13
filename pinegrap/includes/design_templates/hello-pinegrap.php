@@ -286,7 +286,7 @@ $staff_bar = function () use ($el, $link) {
     };
     return $el('div', 'bg-body-tertiary border-bottom', lang('Staff Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center gap-4 py-2 small', lang('Staff Bar Container'), array(
-            $el('span', 'badge text-bg-dark', lang('Staff Badge'), array(), array('text' => lang('Staff'))),
+            $el('span', 'badge text-bg-secondary', lang('Staff Badge'), array(), array('text' => lang('Staff'))),
             $el('nav', 'nav nav-underline gap-4', lang('Staff Links'), array(
                 $item('staff', lang('Staff Area')),
                 $item('blog_new', lang('New Blog Post')),
@@ -308,7 +308,7 @@ $cta = function () use ($el, $container, $heading, $para, $link) {
                     $heading('h2', lang('Have a question? We are happy to help.'), 'h3 mb-2'),
                     $para(lang('Write a few lines; the answer comes to your inbox.'), 'mb-0'),
                 )),
-                $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-light btn-lg px-4 flex-shrink-0'),
+                $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-primary btn-lg px-4 flex-shrink-0'),
             )),
         )),
     ));
@@ -691,7 +691,7 @@ $quote = function ($text, $name, $role) use ($el, $para, $span, $icon, $col, $ci
 // A step of the about page's timeline.
 $milestone = function ($year, $title, $text) use ($el, $heading, $para, $span) {
     return $el('li', 'position-relative ps-4 pb-4 border-start border-2', lang('Milestone'), array(
-        $span('', 'position-absolute top-0 start-0 translate-middle rounded-circle bg-primary p-2', lang('Dot')),
+        $span('', 'position-absolute top-0 start-0 translate-middle rounded-circle text-bg-primary p-2', lang('Dot')),
         $span($year, 'badge text-bg-primary mb-2', lang('Year')),
         $heading('h3', $title, 'h5 mb-1'),
         $para($text, 'text-body-secondary mb-0'),
@@ -750,7 +750,7 @@ $pages[] = array(
                     $col(array(
                         $el('span', 'badge rounded-pill text-bg-primary mb-3', lang('Badge'), array(), array('text' => lang('New site, ready to go'))),
                         $heading('h1', lang('Hello, Pinegrap!'), 'display-5 fw-bold mb-3'),
-                        $para(lang('This site is ready. Change the words, add your pictures and publish — every block on these pages can be edited in the visual editor.'), 'lead text-body-secondary mb-4'),
+                        $para(lang('This site is ready. Change the words, add your pictures and publish — every block on these pages can be edited in the Page Design Studio.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2 mb-4', lang('Buttons'), array(
                             $link(lang('Our Services'), '{{page:services}}', 'btn btn-primary btn-lg px-4'),
                             $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-secondary btn-lg px-4'),
@@ -860,7 +860,7 @@ $pages[] = array(
                     ), '', '4'),
                     $col(array(
                         $el('div', 'accordion', lang('FAQ'), array(
-                            $faq(1, lang('How do I change the text and the pictures?'), lang('Open the page in the visual editor, click what you want to change and type. Pictures are swapped from the options panel.')),
+                            $faq(1, lang('How do I change the text and the pictures?'), lang('Open the page in the Page Design Studio, click what you want to change and type. Pictures are swapped from the options panel.')),
                             $faq(2, lang('Can I add pages of my own?'), lang('Yes. Add a page from the editor\'s toolbar, build it from the palette and publish it; it gets its own address.')),
                             $faq(3, lang('What happens to the messages sent from the contact page?'), lang('Each message opens a conversation. You answer it from the control panel, and the visitor reads the answer and writes back on the site.')),
                             $faq(4, lang('Can I change the colours and the look later?'), lang('Any time: Settings, Design, Theme. The look and the colour palette change every page at once and leave the content as it is.')),
@@ -1348,7 +1348,7 @@ $pages[] = array(
                 $container(array(
                     $heading('h2', lang('What Pinegrap does for this site'), 'h4 mb-4'),
                     $row(array(
-                        $feature('bi-brush', lang('Visual editor'), lang('Pages are designed on the canvas: drag blocks, write on the page, publish every tab at once.')),
+                        $feature('bi-brush', lang('Page Design Studio'), lang('Pages are designed on the canvas: drag blocks, write on the page, publish every tab at once.')),
                         $feature('bi-ui-checks', lang('Forms that do the work'), lang('The contact form, this blog and the staff directory are all forms: sent here, listed there.')),
                         $feature('bi-folder-check', lang('Folders decide who sees what'), lang('public is open to all, registration to signed-in visitors, private to staff and the users you give access.')),
                         $feature('bi-kanban', lang('The workspace'), lang('Channels, tasks and the plan board keep the team on the same page, in the panel.')),
@@ -2501,7 +2501,7 @@ $widgets = array(
                         $el('h2', 'h5 mb-1', lang('Result Title'), array(
                             $link(lang('Title'), '#', 'link-body-emphasis text-decoration-none', array(),
                                 array('_bindings' => array('href' => '__result_url', 'text' => '__result_title'))),
-                            $span(lang('Page'), 'badge text-bg-light border fw-normal align-middle ms-2', lang('Result Type'), $bind('__result_type_label')),
+                            $span(lang('Page'), 'badge bg-body text-body-emphasis border fw-normal align-middle ms-2', lang('Result Type'), $bind('__result_type_label')),
                         )),
                         $para(lang('Shipping and returns'), 'small text-primary mb-1', array_merge(array('customName' => lang('Result Section')), $bind('__result_section'))),
                         $para(lang('Excerpt'), 'text-body-secondary mb-1', $bind('__result_excerpt')),
@@ -2871,7 +2871,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.6.3',
+    'version'     => '2.6.4',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',

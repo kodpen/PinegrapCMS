@@ -64,9 +64,9 @@ function ws_wtable_api_routes()
             'handler'     => 'ws_api_wtables_list',
             'returns'     => array('list' => 'WorkspaceTable'),
             'summary'     => 'List workflow tables',
-            'description' => 'The workflow tables of the owner of the application and those shared with them, themselves or in a channel they read, the latest changed first. access says owner, edit (shared with them at edit: they change its columns and rows) or view. A table is its owner\'s alone: nobody else reaches it but through a share, administrators included, and a table whose owner left the team reaches nobody. columns is null in the listing; GET /workspace/tables/{id} carries them.',
+            'description' => 'The workflow tables of the owner of the application, those of the channels they read and those shared with them, themselves or in a channel they read, the latest changed first. access says owner, edit (they change its columns and rows) or view. A person\'s table (channel_id 0) is its owner\'s alone: nobody else reaches it but through a share, administrators included, and a table whose owner left the team reaches nobody. A channel\'s table (channel_id the channel) is nobody\'s alone: whoever reads the channel reads it, whoever may write there has edit, whoever may manage the channel has owner, and owner_id only says who made it. columns is null in the listing; GET /workspace/tables/{id} carries them.',
             'params'      => array(
-                array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'mine', 'shared'), 'default' => 'all', 'description' => 'mine keeps the owner\'s own, shared the ones of others.'),
+                array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'mine', 'channels', 'shared'), 'default' => 'all', 'description' => 'mine keeps the owner\'s own, channels the ones that belong to a channel they read, shared the ones that reach them only through a share.'),
             ),
         ),
 
@@ -92,8 +92,9 @@ function ws_wtable_api_routes()
             'returns'     => 'WorkspaceTable',
             'status'      => 201,
             'summary'     => 'Make a workflow table',
-            'description' => 'Makes a new table of the owner of the application, with no columns yet: nobody else sees it until they share it. A person keeps at most ' . $limits['tables'] . ' tables: one more is refused with 409 too_many_tables.' . $errors,
-            'params'      => array(array_merge($table_fields[0], array('required' => true)), $table_fields[1]),
+            'description' => 'Makes a new table of the owner of the application, with no columns yet: nobody else sees it until they share it. With channel_id it is made as the table of that channel instead, read and changed by the channel\'s people at once: a public or private channel the owner may write in (422 validation_failed channel_unwritable otherwise; the application Claude works through only where Claude may be asked). A person keeps at most ' . $limits['tables'] . ' tables and so does a channel: one more is refused with 409 too_many_tables.' . $errors,
+            'params'      => array(array_merge($table_fields[0], array('required' => true)), $table_fields[1],
+                array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'default' => 0, 'description' => 'The channel the table belongs to; 0 or left out for the owner\'s own table.')),
         ),
 
         array(
@@ -105,7 +106,7 @@ function ws_wtable_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceTableImport',
             'summary'     => 'Import rows into a workflow table',
-            'description' => 'Brings the rows of a CSV, Excel (xlsx, xls) or OpenDocument file, or of a table inside a note, into a workflow table, as the Tables screen does. The source is file_id (a file of the site the application may read: it also needs files:read, and only the files GET /files lists are reached) or note_id with note_table, the table\'s number in the note counted from 0 (a note the owner may read). Its first row names the columns; at most ' . $limits['columns'] . ' columns and ' . $limits['rows'] . ' rows. The target is table_id (a table the owner may change) or name (a new table of the owner\'s). Into a table, source columns are paired with its columns by name, case and spaces aside, a formula column never; map pairs them instead (source column name => column id, 0 leaving it out). A new table gets a column per source column in the type its values suggest; types names another (source column name => text, number, money, date, status, checkbox or list, a list read one item a line, or empty to leave it out). Each row is checked as POST /workspace/tables/{id}/rows checks it: a refused row is reported (line counts the header as 1) and the others are written; no workspace.wtable.row.* event is sent. With dry_run nothing is written and the answer tells the columns it would make or fill, the rows it would add and every row refused. A source without rows or with no column to fill is refused with 422 validation_failed (no_rows, map_empty).' . $errors,
+            'description' => 'Brings the rows of a CSV, Excel (xlsx, xls) or OpenDocument file, or of a table inside a note, into a workflow table, as the Data screen does. The source is file_id (a file of the site the application may read: it also needs files:read, and only the files GET /files lists are reached) or note_id with note_table, the table\'s number in the note counted from 0 (a note the owner may read). Its first row names the columns; at most ' . $limits['columns'] . ' columns and ' . $limits['rows'] . ' rows. The target is table_id (a table the owner may change) or name (a new table of the owner\'s). Into a table, source columns are paired with its columns by name, case and spaces aside, a formula column never; map pairs them instead (source column name => column id, 0 leaving it out). A new table gets a column per source column in the type its values suggest; types names another (source column name => text, number, money, date, status, checkbox or list, a list read one item a line, or empty to leave it out). Each row is checked as POST /workspace/tables/{id}/rows checks it: a refused row is reported (line counts the header as 1) and the others are written; no workspace.wtable.row.* event is sent. With dry_run nothing is written and the answer tells the columns it would make or fill, the rows it would add and every row refused. A source without rows or with no column to fill is refused with 422 validation_failed (no_rows, map_empty).' . $errors,
             'params'      => array(
                 array('name' => 'file_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A file of the site to read: csv, xlsx, xlsm, xls or ods.'),
                 array('name' => 'note_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A note holding the table to read, instead of a file.'),
@@ -131,6 +132,23 @@ function ws_wtable_api_routes()
             'params'       => array_merge(array($id), $table_fields),
         ),
 
+        // Where a table belongs (wtable_channel.php). The move changes at once
+        // who reaches the table, so it is the person's own as sharing is: a
+        // team devices session only, no MCP tool, refused to an assistant.
+        array(
+            'id'          => 'workspace.tables.home',
+            'method'      => 'POST',
+            'path'        => '/workspace/tables/{id}/home',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_wtables_home',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceTable',
+            'summary'     => 'Move a workflow table into a channel or out of it',
+            'description' => 'Gives a table another home: channel_id a public or private channel the owner may write in, or 0 for the owner\'s own tables. Only whoever has access owner moves it: the owner of a person\'s table, whoever may manage the channel of a channel\'s table (403 for anybody else). In a channel the table keeps who made it in owner_id and the channel\'s rights answer who reaches it; taken out, it becomes the table of the person who takes it. Its columns, rows and shares stay. The home it has already answers 200 and changes nothing; a channel the owner may not write in answers 422 validation_failed (channel_unwritable), a home holding ' . $limits['tables'] . ' tables 409 too_many_tables. From a team devices session only (a Bearer token from POST /auth/login): an application key and an OAuth connection are refused with 403 forbidden, and this is no MCP tool.',
+            'params'      => array($id, array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'required' => true, 'description' => 'The channel to move the table into, or 0 for the owner\'s own tables.')),
+        ),
+
         array(
             'id'          => 'workspace.tables.delete',
             'method'      => 'DELETE',
@@ -141,7 +159,7 @@ function ws_wtable_api_routes()
             'mcp'         => false,
             'returns'     => 'WorkspaceTable',
             'summary'     => 'Delete a workflow table',
-            'description' => 'Deletes a table of the owner\'s own with its columns, rows and shares; the answer is the table as it was. It goes to the bin for the days the site\'s Recycle Bin keeps (30 unless changed), where its owner restores it whole with POST /workspace/deleted-tables/{id}/restore; then it is deleted for good. Only its owner may (403 for a person it is shared with). It takes a whole table out of everybody\'s reach, so it is no MCP tool. POST /workspace/tables/{id}/delete does the same for servers that refuse DELETE.',
+            'description' => 'Deletes a table of the owner\'s own with its columns, rows and shares; the answer is the table as it was. It goes to the bin for the days the site\'s Recycle Bin keeps (30 unless changed), where its owner restores it whole with POST /workspace/deleted-tables/{id}/restore; then it is deleted for good. Only its owner may (403 for a person it is shared with); a channel\'s table is deleted and restored by whoever may manage the channel. It takes a whole table out of everybody\'s reach, so it is no MCP tool. POST /workspace/tables/{id}/delete does the same for servers that refuse DELETE.',
             'params'      => array($id),
         ),
 
@@ -170,7 +188,7 @@ function ws_wtable_api_routes()
             'mcp'         => false,
             'returns'     => array('list' => 'WorkspaceDeletedTable'),
             'summary'     => 'Deleted workflow tables',
-            'description' => 'The tables of the owner of the application in the bin, the latest deleted first: deleted_at says when, expires_at when it is deleted for good. Nobody reaches a deleted table, its shares included, until it is restored.',
+            'description' => 'The tables of the owner of the application in the bin, and those of the channels they may manage, the latest deleted first: deleted_at says when, expires_at when it is deleted for good. Nobody reaches a deleted table, its shares included, until it is restored.',
             'params'      => array(),
         ),
 
@@ -212,7 +230,7 @@ function ws_wtable_api_routes()
             'dry_run'      => true,
             'returns'      => 'WorkspaceTableColumn',
             'summary'      => 'Change a column of a workflow table',
-            'description'  => 'Renames a column or changes its options; its type stays (type_fixed). Cells already written that the new options no longer take are kept until their row is next written.' . $errors,
+            'description'  => 'Renames a column or changes its options; its type stays (type_fixed). Cells already written that the new options no longer take are kept until their row is next written. A rename is written into the expression of every formula column of the table that names the column, as a spreadsheet does (the dry run lists them in formulas, by id); a name that would make a formula work out something else (another column has it, or it would take a figure the formula holds) is refused with 409 name_changes_formula, one that would make a formula longer than ' . $limits['formula'] . ' characters with 409 name_formula_too_long, both naming the formula columns.' . $errors,
             'params'       => array_merge(array($id, $column_id), $column_fields),
         ),
 
@@ -479,6 +497,7 @@ function ws_api_wtable_present($table, $columns = null)
         'description' => (string) ($table['description'] ?? ''),
         'access'      => (string) $table['access'],
         'owner_id'    => (int) $table['user_id'],
+        'channel_id'  => (ws_wtable_home($table) !== null) ? (int) $table['channel_id'] : 0,
         'row_count'   => (int) $table['row_count'],
         'revision'    => (int) $table['revision'],
         'columns'     => ($columns === null) ? null : array_values(array_map('ws_api_wtable_column_present', $columns)),
@@ -496,6 +515,7 @@ function ws_api_wtable_schema()
         'description' => 'string',
         'access'      => 'string',
         'owner_id'    => 'integer',
+        'channel_id'  => 'integer',
         'row_count'   => 'integer',
         'revision'    => 'integer',
         'columns'     => 'WorkspaceTableColumn[]?',
@@ -723,7 +743,8 @@ function ws_api_wtables_ready()
 /**
  * Whether the current application reaches a table the owner reads: always,
  * except for the application Claude works through and a table that reaches
- * the owner only through a channel Claude may not be asked in.
+ * the owner only through a channel Claude may not be asked in, be it the
+ * channel the table belongs to or one it is shared in.
  *
  * @param array $viewer
  * @param array $table with access
@@ -731,7 +752,15 @@ function ws_api_wtables_ready()
  */
 function ws_api_wtable_reachable($viewer, $table)
 {
-    if (!ws_api_is_claude() || ((string) $table['access'] !== 'view')) {
+    if (!ws_api_is_claude()) {
+        return true;
+    }
+
+    $home = ws_wtable_home($table);
+
+    // The owner's own table, a person's share at edit, or the table of a
+    // channel where Claude may be asked.
+    if (($home === null) ? ((string) $table['access'] !== 'view') : (ws_can_read_channel($viewer, $home) && ws_claude_channel_allowed($home))) {
         return true;
     }
 
@@ -819,6 +848,12 @@ function ws_api_wtable_message($code)
 
         case 'key_type':
             return lang('Only a text or number column can be the key.');
+
+        case 'name_changes_formula':
+            return lang('With this name a formula of the table would work out something else: choose another name.');
+
+        case 'name_formula_too_long':
+            return lang(array('string' => 'With this name a formula of the table would be longer than {var:1} characters.', 'vars' => ws_wtable_limits()['formula']));
     }
 
     return lang(array('string' => 'Refused: {var:1}.', 'vars' => (string) $code));
@@ -854,6 +889,11 @@ function ws_api_wtable_refused($result, $what)
             // The rows at fault, by the numbers the table shows.
             if (!empty($result['rows'])) {
                 $message .= ' ' . lang(array('string' => 'Rows by number: {var:1} ({var:2} in all).', 'vars' => array(implode(', ', array_map('intval', $result['rows'])), (int) ($result['rows_count'] ?? count($result['rows'])))));
+            }
+
+            // The formula columns a rename would change, by name.
+            if (!empty($result['formula_names'])) {
+                $message .= ' ' . lang(array('string' => 'Formulas: {var:1}.', 'vars' => implode(', ', (array) $result['formula_names'])));
             }
 
             api_fail(409, $code, $message, $field);
@@ -937,14 +977,21 @@ function ws_api_wtables_create($params)
 
     ws_api_wtables_ready();
 
-    $data = ws_api_wtable_input($params, array('name', 'description'));
+    $data = ws_api_wtable_input($params, array('name', 'description', 'channel_id'));
+
+    // A channel's table is read by the channel at once: Claude makes one
+    // only where it may be asked.
+    if (ws_api_is_claude() && ((int) ($data['channel_id'] ?? 0) > 0)) {
+        ws_api_channel_or_404($viewer, (int) $data['channel_id']);
+    }
+
     $checked = ws_wtable_create_check($viewer, $data);
 
     if (!$checked['ok']) {
         ws_api_wtable_refused($checked, lang('Table'));
     }
 
-    api_dry_run_stop('created', 'workspace_table', array('name' => $checked['sets']['name']));
+    api_dry_run_stop('created', 'workspace_table', array('name' => $checked['sets']['name'], 'channel_id' => (int) $checked['channel_id']));
 
     $result = ws_wtable_create($viewer, $data);
 
@@ -1181,6 +1228,41 @@ function ws_api_wtables_update($params)
     api_ok(ws_api_wtable_present($table, ws_wtable_columns((int) $table['id'])));
 }
 
+// Where a table belongs decides who reaches it: the person's own decision,
+// from their team devices session, as sharing is.
+function ws_api_wtables_home($params)
+{
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can move a table into a channel or out of it; an application key or an OAuth connection cannot do it for them.'));
+
+    $viewer = ws_api_viewer();
+
+    if (ws_api_is_assistant()) {
+        api_fail(403, 'forbidden', lang('An assistant does not move a table; the person does.'));
+    }
+
+    $table = ws_api_wtable_or_404($viewer, $params['id']);
+    $channel_id = (int) ($params['channel_id'] ?? 0);
+    $checked = ws_wtable_home_set_check($viewer, $table, $channel_id);
+
+    if (!$checked['ok']) {
+        ws_api_wtable_refused($checked, lang('Table'));
+    }
+
+    api_dry_run_stop('updated', 'workspace_table', array('id' => (int) $table['id'], 'channel_id' => (int) $checked['channel_id'], 'changed' => !$checked['same']));
+
+    $result = ws_api_as_owner(function () use ($viewer, $table, $channel_id) {
+        return ws_wtable_home_set($viewer, $table, $channel_id);
+    });
+
+    if (!$result['ok']) {
+        ws_api_wtable_refused($result, lang('Table'));
+    }
+
+    $table = ws_api_wtable_or_404($viewer, $table['id']);
+
+    api_ok(ws_api_wtable_present($table, ws_wtable_columns((int) $table['id'])));
+}
+
 function ws_api_wtables_delete($params)
 {
     $viewer = ws_api_viewer();
@@ -1297,7 +1379,7 @@ function ws_api_wtable_columns_update($params)
         ws_api_wtable_refused($checked, lang('Table column'));
     }
 
-    api_dry_run_stop('updated', 'workspace_table_column', array('id' => (int) $column['id'], 'fields' => array_keys($checked['sets'])));
+    api_dry_run_stop('updated', 'workspace_table_column', array('id' => (int) $column['id'], 'fields' => array_keys($checked['sets']), 'formulas' => array_map('intval', array_keys($checked['formulas']))));
 
     $result = ws_wtable_column_update($viewer, $table, $column, $data);
 

@@ -164,7 +164,7 @@ $add_to_basket = function ($variant, $class = '', $outline = false) use ($button
 // hidden, the page's script shows it, filled for a product the visitor
 // saved. A product group's card has none.
 $heart = function () use ($button, $icon, $span) {
-    $node = $button('', 'light', 'position-absolute top-0 end-0 m-2 z-2 rounded-circle shadow-sm',
+    $node = $button('', 'secondary', 'position-absolute top-0 end-0 m-2 z-2 rounded-circle shadow-sm',
         array('btnType' => 'button', 'size' => 'sm', 'customName' => lang('Favourite'), '_bindings' => array('action' => 'catalog_wishlist')));
     $node['children'] = array(
         $icon('bi-heart'),
@@ -456,12 +456,12 @@ $gift_band = function () use ($el, $heading, $para, $link, $icon, $container, $r
                         $icon('bi-gift', 'fs-1 lh-1'),
                         $el('div', '', lang('Words'), array(
                             $heading('h2', lang('Not sure what to give? Give a gift card.'), 'h3 fw-bold mb-2'),
-                            $para(lang('Gift cards from $10, sent by e-mail or in an envelope from our counter, spent on anything in the shop.'), 'mb-0 opacity-75'),
+                            $para(lang('Gift cards from $10, sent by e-mail or in an envelope from our counter, spent on anything in the shop.'), 'mb-0'),
                         )),
                     )),
                 ), '', '8'),
                 $col(array(
-                    $link(lang('Choose a gift card'), $category_url('cards'), 'btn btn-light btn-lg px-4'),
+                    $link(lang('Choose a gift card'), $category_url('cards'), 'btn btn-secondary btn-lg px-4'),
                 ), '', '4', '', '12', 'text-lg-end'),
             ), '4', '', 'align-items-center'),
         )),
@@ -1042,27 +1042,27 @@ $pages[] = array(
                 $row(array(
                     $col(array(
                         $el('div', 'h-100 d-flex flex-column rounded-4 p-4 p-lg-5 text-bg-primary', lang('Staff Pick'), array(
-                            $el('span', 'badge rounded-pill text-bg-light align-self-start d-inline-flex align-items-center gap-1 mb-3', lang('Badge'), array(
+                            $el('span', 'badge rounded-pill text-bg-secondary align-self-start d-inline-flex align-items-center gap-1 mb-3', lang('Badge'), array(
                                 $icon('bi-bookmark-heart'),
                                 $span(lang('Staff picks of the week'), '', lang('Text')),
                             )),
                             $heading('h1', lang('Books we cannot stop talking about'), 'display-6 fw-bold mb-3'),
-                            $para(lang('Every week the people behind the counter choose the books, notebooks and pens they would press into your hands.'), 'lead opacity-75 mb-4'),
-                            $el('div', 'd-flex align-items-center gap-3 rounded-3 p-3 mb-4 bg-white bg-opacity-10', lang('Featured'), array(
+                            $para(lang('Every week the people behind the counter choose the books, notebooks and pens they would press into your hands.'), 'lead mb-4'),
+                            $el('div', 'd-flex align-items-center gap-3 rounded-3 p-3 mb-4 bg-body bg-opacity-10', lang('Featured'), array(
                                 $el('div', 'flex-shrink-0 w-25', lang('Cover'), array(
                                     $el('div', 'ratio ratio-1x1 rounded-3 overflow-hidden', lang('Picture Frame'), array(
                                         $image('{{product_group_image:books}}', lang('The Lighthouse Year'), 'object-fit-cover'),
                                     )),
                                 )),
                                 $el('div', '', lang('Text'), array(
-                                    $para(lang('Book of the week'), 'small text-uppercase fw-semibold opacity-75 mb-1'),
+                                    $para(lang('Book of the week'), 'small text-uppercase fw-semibold mb-1'),
                                     $heading('h2', lang('The Lighthouse Year'), 'h4 fw-bold mb-1'),
-                                    $para(lang('by Jane Cooper · “Quiet, funny and impossible to put down.”'), 'small mb-0 opacity-75'),
+                                    $para(lang('by Jane Cooper · “Quiet, funny and impossible to put down.”'), 'small mb-0'),
                                 )),
                             )),
                             $el('div', 'd-flex flex-wrap gap-2 mt-auto', lang('Buttons'), array(
-                                $link(lang('See the bestsellers'), $category_url('books'), 'btn btn-light px-4'),
-                                $link(lang('Join the book club'), '{{page:book_club}}', 'btn btn-outline-light px-4'),
+                                $link(lang('See the bestsellers'), $category_url('books'), 'btn btn-secondary px-4'),
+                                $link(lang('Join the book club'), '{{page:book_club}}', 'btn btn-link text-reset'),
                             )),
                         )),
                     ), '', '7'),
@@ -3409,9 +3409,33 @@ foreach ($pages as $i => $p) {
     $pages[$i]['tree'] = $searchable_tree($p['tree'], $search_sections[$p['key']], $used);
 }
 
+// ── The template's own rules ────────────────────────────────────────────
+// In User Styles, so they hold under any look and palette.
+$bookshop_css = implode("\n", array(
+    // Grey sections (the account bar, page headers, grey bands) and cards
+    // tinted with the primary (the account card): the palette's primary and
+    // second colours are made readable on the page background only, and
+    // across all palettes they fell to 3.9:1 there in the dark theme and to
+    // 4.4:1 in the light one. Links, eyebrows, section menus and outline
+    // buttons there take a tint of the primary: on grey, the primary a
+    // little closer to the text colour (in the dark theme its emphasis tint,
+    // as some palettes' primary is too dark there); on the primary's own
+    // tint, and where the browser does not mix colours, the emphasis tint.
+    // The second colour gives way to the body's second text colour.
+    ':is(.bg-body-tertiary,.bg-primary-subtle){--tpl-tinted-fg:var(--bs-primary-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){'
+        . '.bg-body-tertiary{--tpl-tinted-fg:color-mix(in srgb,var(--pg-primary-fg,var(--bs-primary)) 85%,var(--bs-emphasis-color))}'
+        . '[data-bs-theme=dark] .bg-body-tertiary{--tpl-tinted-fg:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    ':is(.bg-body-tertiary,.bg-primary-subtle) :is(.text-primary,.link-primary){color:var(--tpl-tinted-fg)!important}',
+    ':is(.bg-body-tertiary,.bg-primary-subtle) .btn-outline-primary{--bs-btn-color:var(--tpl-tinted-fg)}',
+    ':is(.bg-body-tertiary,.bg-primary-subtle) .nav{--bs-nav-link-color:var(--tpl-tinted-fg);--bs-nav-link-hover-color:var(--bs-emphasis-color)}',
+    ':is(.bg-body-tertiary,.bg-primary-subtle) :is(.text-secondary,.link-secondary){color:var(--bs-secondary-color)!important}',
+    ':is(.bg-body-tertiary,.bg-primary-subtle) .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
+));
+
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.3.4',
+    'version'     => '1.3.6',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',
@@ -3475,5 +3499,10 @@ return array(
                 $link(lang('Visit the shop'), '{{page:home}}', 'link-secondary',
                     array($attr('style', 'color:#6b6a5e'))),
             ), $mail_style('padding:16px 24px;border-top:1px solid #e7e2d6;font-size:13px;color:#6b6a5e'))),
+    ),
+
+    // The template's own rules in one User Styles entry.
+    'assets'      => array(
+        'css' => pg_design_template_user_styles(array(), $bookshop_css),
     ),
 );

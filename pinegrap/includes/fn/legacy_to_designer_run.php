@@ -218,6 +218,28 @@ function pg_ltd_state_line($state, $kind, $text, $count = '')
 }
 
 /**
+ * A page a set's run moved, kept in the run's `origins`: page id => the
+ * classic style it came from and 1 when it took that style from its folder.
+ * Back to classic reads it (legacy_to_classic.php); a page whose tree places
+ * no frame component cannot be told otherwise.
+ *
+ * Pure: no query.
+ *
+ * @param array $state
+ * @param int   $page_id
+ * @param int   $style_id
+ * @param bool  $from_folder
+ * @return array
+ */
+function pg_ltd_state_origin($state, $page_id, $style_id, $from_folder)
+{
+    if ((int)$page_id > 0 && (int)$style_id > 0) {
+        $state['origins'][(string)(int)$page_id] = array((int)$style_id, $from_folder ? 1 : 0);
+    }
+    return $state;
+}
+
+/**
  * The design-wide body classes folded onto a page tree's root classes, as
  * the editor's Save folds them.
  *
@@ -318,7 +340,7 @@ function pg_ltd_reports($limit = 10)
  */
 function pg_ltd_run_start($style_ids, $user, $set_keys = array())
 {
-    if ((int)$user['role'] > 1) return lang('Only a designer can open a classic style in the visual designer.');
+    if ((int)$user['role'] > 1) return lang('Only a designer can open a classic style in the Page Design Studio.');
     if (pg_ltd_state_read() !== null) return lang('A move is already under way.');
     $want = array();
     foreach ((array)$set_keys as $key) {
@@ -387,7 +409,7 @@ function pg_ltd_run($budget)
         pg_ltd_report_keep($state);
         @unlink(pg_ltd_state_path());
         $c = $state['counts'];
-        log_activity(lang(array('string' => 'the move to the visual designer ended: {var:1} styles, {var:2} pages, {var:3} components, {var:4} widgets, {var:5} skipped, {var:6} failed',
+        log_activity(lang(array('string' => 'the move to the Page Design Studio ended: {var:1} styles, {var:2} pages, {var:3} components, {var:4} widgets, {var:5} skipped, {var:6} failed',
             'vars' => array($c['styles'], $c['pages'], $c['components'], $c['widgets'], $c['skipped'], $c['failed']))), (string)$state['username']);
         $answer['status'] = $c['failed'] > 0 ? 'failed' : 'done';
     } else {
@@ -495,7 +517,7 @@ function pg_ltd_run_design($state, $row, $user)
     foreach ($open['pages'] as $page) {
         if (empty($page['converted'])) continue;
         if (!pg_collab_may_edit_page('', (int)$page['page_id'])) {
-            $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => 'Skipped: "{var:1}" is being edited in the visual designer.', 'vars' => array($page['page_name']))));
+            $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => 'Skipped: "{var:1}" is being edited in the Page Design Studio.', 'vars' => array($page['page_name']))));
             continue;
         }
         $tree = json_decode((string)$page['tree_json'], true);
@@ -519,7 +541,7 @@ function pg_ltd_run_design($state, $row, $user)
     if ($classes !== '') db("UPDATE style SET additional_body_classes = '' WHERE style_id = '$style_id' LIMIT 1");
 
     pg_classic_style_mark_design($style_id, 'legacy', (string)$user['username']);
-    return pg_ltd_state_line($state, 'made', lang('The style is now a visual design.'), 'styles');
+    return pg_ltd_state_line($state, 'made', lang('The style is now a design.'), 'styles');
 }
 
 /**
@@ -542,7 +564,7 @@ function pg_ltd_run_page_regions($state, $style_id, $user, $page_ids = null)
         if (!is_array($tree)) continue;
         if (pg_ltd_page_regions($tree, array())['own'] === 0) continue;
         if (!pg_collab_may_edit_page('', (int)$page['page_id'])) {
-            $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => 'Skipped: "{var:1}" is being edited in the visual designer.', 'vars' => array($page['page_name']))));
+            $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => 'Skipped: "{var:1}" is being edited in the Page Design Studio.', 'vars' => array($page['page_name']))));
             continue;
         }
         $into = pg_ltd_page_regions_into_tree($page, $tree);
@@ -810,7 +832,8 @@ function pg_ltd_run_set_design($state, $at, $user)
  * page regions are taken in, a page somebody holds is skipped. Its folder
  * pages follow (pg_classic_style_convert_folder_pages()), then their page
  * regions (pg_ltd_run_page_regions()). The style's body classes go on its
- * pages; the classic style row stays as it is.
+ * pages; the classic style row stays as it is. Each moved page's style is
+ * kept in the run's `origins` (pg_ltd_state_origin()) for Back to classic.
  */
 function pg_ltd_run_set_pages($state, $row, $user, $set)
 {
@@ -831,12 +854,13 @@ function pg_ltd_run_set_pages($state, $row, $user, $set)
 
     require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
     $classes = trim((string)$row['additional_body_classes']);
-    $moved = function ($state, $name) use ($set) {
+    $moved = function ($state, $page_id, $name, $from_folder) use ($set, $style_id) {
+        $state = pg_ltd_state_origin($state, $page_id, $style_id, $from_folder);
         return pg_ltd_state_line($state, 'made', lang(array('string' => 'The page "{var:1}" moved to the design "{var:2}".', 'vars' => array($name, $set['name']))), 'pages');
     };
     foreach ($open['pages'] as $page) {
         if (!pg_collab_may_edit_page('', (int)$page['page_id'])) {
-            $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => 'Skipped: "{var:1}" is being edited in the visual designer.', 'vars' => array($page['page_name']))));
+            $state = pg_ltd_state_line($state, 'skipped', lang(array('string' => 'Skipped: "{var:1}" is being edited in the Page Design Studio.', 'vars' => array($page['page_name']))));
             continue;
         }
         $tree = json_decode((string)$page['tree_json'], true);
@@ -853,12 +877,12 @@ function pg_ltd_run_set_pages($state, $row, $user, $set)
             $state = pg_ltd_state_line($state, 'failed', $page['page_name'] . ': ' . implode(' ', (array)$saved['errors']));
             continue;
         }
-        $state = $moved($state, (string)$page['page_name']);
+        $state = $moved($state, (int)$page['page_id'], (string)$page['page_name'], false);
         foreach ($warnings as $w) $state = pg_ltd_state_line($state, 'skipped', $page['page_name'] . ': ' . $w);
     }
     $folder = pg_classic_style_convert_folder_pages($style_id, $user, $classes, $design_id);
     foreach ($folder as $page_id) {
-        $state = $moved($state, (string)db_value("SELECT page_name FROM page WHERE page_id = '" . (int)$page_id . "' LIMIT 1"));
+        $state = $moved($state, (int)$page_id, (string)db_value("SELECT page_name FROM page WHERE page_id = '" . (int)$page_id . "' LIMIT 1"), true);
     }
     $state = pg_ltd_run_page_regions($state, $design_id, $user, $folder);
     return pg_ltd_state_line($state, 'made', lang(array('string' => 'The style\'s pages now use the design "{var:1}"; the style itself stays as it was.', 'vars' => array($set['name']))), 'styles');

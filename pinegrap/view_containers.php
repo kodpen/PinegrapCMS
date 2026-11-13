@@ -96,7 +96,7 @@ $list = pg_list_table_printed(array(
 echo
     pg_page_shell([
         'title'=> lang('All Containers'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Containers'),
         'heading_description' => lang('All shipping containers (e.g. boxes) that products are packaged in.'),

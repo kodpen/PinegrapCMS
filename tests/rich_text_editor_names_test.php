@@ -80,7 +80,7 @@ function test_rich_text_names_captions_reach_the_textarea()
 {
 	$field = pg_test_rich_text_names_source('includes/forms/field_form.php');
 
-	pg_assert_contains('fw-bold" id="information_heading">', $field, 'the Information heading has an id');
+	pg_assert_contains('pg-title-section" id="information_heading">', $field, 'the Information heading has an id');
 	pg_assert_contains('<textarea id="information" name="information" aria-labelledby="information_heading">', $field, 'and names the editor');
 
 	$page = pg_test_rich_text_names_source('includes/forms/page_form.php');

@@ -22,7 +22,7 @@ module: legacy_to_designer, legacy_to_designer_plan
 ## What do the screen and the dry run show?
 - `legacy_to_designer.php`: a `tbody.ltd-set` per set (checkbox `sets[]`, name "<first style> set", styles, pages, theme file, the addresses folded), largest first, then "Styles that move alone".
 - `pg_ltd_plan($style_ids, $set_keys)` → `pg_ltd_plan_set()` (pure): the one design, theme file, every-page files and settings, then each style folded with its own writes; a style opens by itself when skipped, with a setting change, a warning or a held page. A common or designer region is made once per set, under the first style placing it. Writes: 1 for the design + each style's less its flip.
-- A style ticked alone inside a chosen set is shown in the set. Move to the visual designer moves the sets and the styles chosen alone (`legacy-set-run.md`); a set moved before is skipped as `no_pages`.
+- A style ticked alone inside a chosen set is shown in the set. Move to the Page Design Studio moves the sets and the styles chosen alone (`legacy-set-run.md`); a set moved before is skipped as `no_pages`.
 
 ## Tests?
 - `tests/legacy_set_test.php`: refs, key, grouping, the setting majority, assets, the set plan, regions made once, the HTML, the screen's wiring.

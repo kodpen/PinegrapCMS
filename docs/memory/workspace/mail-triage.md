@@ -4,7 +4,7 @@ description: Pinegrap AI's one suggestion on a new e-mail conversation (G8, PR #
 ---
 
 ## What is the switch?
-- `ws_mail_boxes.settings.ai_triage` (JSON, no schema), off by default (`ws_mail_triage_on()`). The box form shows it only while `ws_mail_triage_ai_ready()` (`ws_ai_ready()`); without AI the posted form keeps the stored value (`ws_mail_triage_input()`).
+- `ws_mail_boxes.settings.ai_triage` (JSON, no schema), off by default (`ws_mail_triage_on()`). The box form shows it only while `ws_mail_triage_ai_ready()` (`ws_ai_ready()`) and for a box kept in a channel; a box kept in no channel saves it off (`mail-room.md`); without AI the posted form keeps the stored value (`ws_mail_triage_input()`).
 
 ## When does it run?
 - `ws_mail_ingest()` calls `ws_mail_triage_queue()` only when the mail opened a new conversation (`ws_mail_triage_due()`); a reply never does. The first queued id registers `ws_mail_triage_flush()` at shutdown: `fastcgi_finish_request()`, then `ws_mail_triage_run()` for each id (at most 5). Ingest never waits on the model.

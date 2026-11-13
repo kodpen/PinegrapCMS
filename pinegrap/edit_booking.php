@@ -408,7 +408,7 @@ if ($booking_id === 0) {
     echo
     pg_page_shell(array(
         'title'               => lang('New booking'),
-        'extra classes'       => 'calendar',
+        'extra classes'       => 'calendar pg-measure-edit',
         'icon'                => 'calendar',
         'heading'             => lang('New booking'),
         'heading_description' => lang(array('string' => 'Book a free time of a staff member for a customer. Times are in the site\'s time zone ({var:1}).', 'vars' => array($booking_zone))),
@@ -540,7 +540,7 @@ if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
 echo
 pg_page_shell(array(
     'title'               => lang('Booking') . ' #' . (int) $booking['id'],
-    'extra classes'       => 'calendar',
+    'extra classes'       => 'calendar pg-measure-edit',
     'icon'                => 'calendar',
     'heading'             => lang('Booking') . ' #' . (int) $booking['id'],
     'heading_description' => lang(array('string' => 'Times are in the site\'s time zone ({var:1}).', 'vars' => array($booking_zone))),

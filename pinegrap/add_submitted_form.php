@@ -141,7 +141,7 @@ if (!$_POST) {
         pg_page_shell(
             array(
                 'title'=> lang('Add Submitted Form'),
-                'extra classes'=>'form',
+                'extra classes'=>'form pg-measure-edit',
                 'icon'=>'form',
                 'heading'=>lang('Add Submitted Form'),
                 'heading_description' => lang('Manually create a submitted form for any existing custom form.'),
@@ -161,7 +161,7 @@ if (!$_POST) {
                         <div class="row">
                             <div class="col-12">
                                 <div class="card my-7">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <div class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Custom Form') . '
                                     </div>
                                     <div class="card-body">
@@ -201,7 +201,7 @@ if (!$_POST) {
         pg_page_shell(
             array(
                 'title'=> lang('Add Submitted Form'),
-                'extra classes'=>'form',
+                'extra classes'=>'form pg-measure-edit',
                 'icon'=>'form',
                 'heading'=>lang('Add Submitted Form'),
                 'heading_description' => lang('Manually create a submitted form for this custom form. Office use only fields are also visible.'),

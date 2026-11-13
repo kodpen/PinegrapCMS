@@ -314,7 +314,7 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
     };
 
     foreach ((array) db_items("SELECT id, name, kind, contact_id, department_id, created_at, created_by FROM ws_channels
-        WHERE created_at BETWEEN '" . (int) $from_ts . "' AND '" . (int) $to_ts . "' AND kind <> 'thread'
+        WHERE created_at BETWEEN '" . (int) $from_ts . "' AND '" . (int) $to_ts . "' AND kind NOT IN ('thread', 'mailbox')
         ORDER BY created_at") as $channel) {
 
         if (!isset($readable[(int) $channel['id']]) || !$channel_filter($channel)) {

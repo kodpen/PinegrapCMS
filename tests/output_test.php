@@ -233,9 +233,30 @@ function test_output_license_card_shows_type_and_site_rights()
 	pg_assert_contains('3 / 5', $html, 'the site rights');
 	pg_assert_contains(lang('Active'), $html, 'still active');
 
-	$old = output_test_license_card(array('status' => 'success', 'expiration_date_formatted' => $valid, 'countdown' => 200, 'source' => null));
-	pg_assert_contains('<span class="pg-lic-label">Pinegrap Premium™ · ' . lang('Active') . '</span>', $old, 'an answer of the old server: the name as before');
 	pg_assert_same(0, substr_count((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php'), "format('d M Y')"), 'the card writes no English month name');
+}
+
+// A state the old server left in the session (no source 'v1') is not shown:
+// it is asked again at once. The Kodpen API call is refused before cURL for
+// want of a site name, so nothing leaves the machine, and the card shows the
+// technical failure under the paid licence's name. That holds only while no
+// earlier test file has defined HOSTNAME_SETTING; the test then fails instead
+// of letting the call go out with the test key.
+function test_output_license_card_asks_again_after_the_old_server()
+{
+	if (!pg_assert_false(defined('HOSTNAME_SETTING'), 'runs before any test file defines HOSTNAME_SETTING, so the call is refused before cURL')) {
+		return;
+	}
+
+	$valid = new DateTime('today');
+	$valid->modify('+200 days');
+
+	$old = output_test_license_card(array('status' => 'success', 'expiration_date_formatted' => $valid, 'countdown' => 200, 'source' => null));
+
+	pg_assert_contains('<span class="pg-lic-label">Pinegrap Premium™ · ' . lang('Unavailable') . '</span>', $old, 'asked again: no answer without a site name');
+	pg_assert_same(false, strpos($old, 'Pinegrap Premium™ · ' . lang('Active')), 'the old answer is not shown');
+	pg_assert_contains('cURL error: ' . h('The site name cannot be sent to the Kodpen API.'), $old, 'refused before the call left');
+	pg_assert_contains('check_license_again=1', $old, 'Check License');
 }
 
 // With the switch on, a state without source 'v1' is asked again at once;

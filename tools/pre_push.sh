@@ -21,7 +21,8 @@
 #   documentation (docs/,       keys, designer bindings, external API schema,
 #   .github/, .claude/, the     audit rule registry, get_file.php copies,
 #                               Bootstrap 6 panel markup (check_bs6.php
-#                               --strict), minified
+#                               --strict), the panel look (check_look.php),
+#                               minified
 #                               stylesheets (build_css.php --check), unit tests
 #   root *.md files)
 #   a change to a panel script  node --check of the panel scripts CI checks,
@@ -296,6 +297,7 @@ check_commit() {
 		run_tool 'audit rule registry' check_audit_rules.php
 		run_tool 'get_file.php copies' check_copies.php
 		run_tool 'Bootstrap 6 panel markup' check_bs6.php --strict
+		run_tool 'panel look' check_look.php
 		run_tool 'minified stylesheets' build_css.php --check
 		run_tool 'unit tests' test.php
 

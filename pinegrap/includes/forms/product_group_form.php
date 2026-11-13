@@ -109,7 +109,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
     return '
                         <div class="col-12">
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . ($form['is_new'] ? lang('New Product Group Information') : lang('Product Group Information')) . '
                                 </h2>
                                 <div class="card-body">
@@ -132,7 +132,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
                         </div>
                         <div class="col-12">
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Catalog Page Display Options') . '
                                 </h2>
                                 <div class="card-body">
@@ -179,7 +179,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
 
                         <div class="col-12">
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Image Options') . '
                                 </h2>
                                 <div class="card-body">
@@ -214,7 +214,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
 
                         <div class="col-12">
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('SEO') . $form['seo_badge'] . '
                                 </h2>
                                 <div class="card-body">
@@ -261,7 +261,7 @@ function pg_product_group_form_status_card($values, $parent_row)
 
     return '
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Status') . '
                                 </h2>
                                 <div class="card-body">

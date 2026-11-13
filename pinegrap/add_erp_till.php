@@ -38,7 +38,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('Open a Till'),
-        'extra classes' => 'erp erp_cash',
+        'extra classes' => 'erp erp_cash pg-measure-edit',
         'icon' => 'erp',
         'heading' => lang('Open a Till'),
         'heading_description' => lang('Add somewhere money is kept: a cash drawer, a bank account or a card terminal.'),

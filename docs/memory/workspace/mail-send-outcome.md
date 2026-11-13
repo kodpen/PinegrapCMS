@@ -1,6 +1,6 @@
 ---
 name: mail-send-outcome
-description: How the mail queue's outcome reaches a Workspace mail (ws_mail_send_outcome(), #8646): sent is final, only the current attempt fails it, the race of an unwritten row id, idempotence
+description: How the queue's outcome reaches a Workspace mail (ws_mail_send_outcome(), #8646): sent is final, only the current attempt fails it, the unwritten row id race, a deleted queue row
 ---
 
 ## What does ws_mail_send_outcome() do?
@@ -13,3 +13,8 @@ description: How the mail queue's outcome reaches a Workspace mail (ws_mail_send
 ## Why these rules?
 - The queue may send a row and call the handler before `ws_mail_send_dispatch()` writes the row's id on the item (`pg_mail_enqueue()` writes `send_after = 0`), so the reference carries the row the item named before (`<item>:<previous row>`).
 - Retry on the Mail queue screen can bring `sent` after `failed`, and an old row after Send again: `core/mail-queue-outcome.md`. The send path: `mail-send.md`.
+
+## And a mail whose queue row is gone?
+- Delete on the Mail queue screen tells the handler `failed` (`core/mail-queue-outcome.md`), so the card reads Not sent with "It was deleted from the mail queue before it was sent.", Send again and the writer's `mail_unsent`.
+- `ws_mail_send_orphans_run()`, on every tick of job.php: an out item `queued` with `outbox_id` > 0 whose `mail_outbox` row is missing gets the same outcome (a privacy erase, a delete before this fix). Only items of the last `WS_MAIL_SEND_ORPHAN_DAYS` (6) days: the queue keeps a sent row seven days, so a newer missing row never left; read on `idx_created`.
+- Why: an answer whose row was deleted showed "Waiting to be sent" for ever (dev, 2026-11-12); the owner asked that it not stay waiting.

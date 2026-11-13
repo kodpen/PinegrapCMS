@@ -70,7 +70,7 @@ if (isset($_POST['submit_delete']) || isset($_POST['submit_clear'])) {
 
 $shell = array(
     'title'               => lang('404 Log'),
-    'extra classes'       => 'page',
+    'extra classes'       => 'page pg-measure-list',
     'icon'                => 'page',
     'heading'             => lang('404 Log'),
     'heading_description' => lang('Addresses visitors asked for that no page, file or short link answers, kept for 90 days after they were last asked for. Bots are not counted; search engine crawlers the firewall verified are counted on their own.'),

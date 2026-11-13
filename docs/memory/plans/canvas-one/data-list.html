@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>canvas one: the Data list (workflow tables as Data) on a 1920 px window</title>
+<script>if (location.search.indexOf('light') > -1) document.documentElement.setAttribute('data-theme', 'light');</script>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<link rel="stylesheet" href="canvas.css">
+<style>
+body { background: var(--back); }
+.screen { height: 900px; }
+.wrap { width: 1280px; }
+.tools { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.tools .in { width: 300px; height: 34px; }
+.frame { overflow: hidden; }
+table.lt { width: 100%; border-collapse: separate; border-spacing: 0; }
+.lt th { height: 38px; padding: 0 14px; text-align: left; font-size: 12px; font-weight: 550; color: var(--fg3); white-space: nowrap; border-bottom: 1px solid var(--line); background: var(--card); }
+.lt td { height: 52px; padding: 0 14px; white-space: nowrap; border-bottom: 1px solid var(--line); }
+.lt tr:last-child td { border-bottom: 0; }
+.lt .r { text-align: right; }
+.lt .name { width: 100%; }
+.lt tr.hov td { background: var(--hover); }
+.lt .act { width: 52px; padding: 0 10px 0 0; text-align: right; }
+.nm { display: flex; align-items: center; gap: 12px; }
+.nm b { font-weight: 550; }
+.nm small { font-size: 13px; color: var(--fg3); }
+.mut { font-size: 13px; color: var(--fg2); }
+.dt { font-size: 13px; color: var(--fg3); }
+.where { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--fg2); }
+.where .av { width: 22px; height: 22px; font-size: 9px; }
+.where i { color: var(--fg3); }
+.uses { display: inline-flex; gap: 6px; }
+.uses .part { font-weight: 500; }
+.grp td { height: 34px; font-size: 12px; font-weight: 550; color: var(--fg3); background: var(--card); }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="cap"><b>Veri listesi</b>İş akışı tabloları Veri adıyla, Çalışma Alanı menüsünde. Adresler, API adları ve MCP araçları değişmez. Kanal tabloları kendi grubunda (S5).</div>
+<div class="screen">
+  <aside class="menu">
+    <div class="logo"><i></i><span class="sk" style="width:92px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:74px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:104px"></span></div>
+    <div class="mi on"><i></i><span class="sk" style="width:52px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:62px"></span></div>
+    <span class="sk mh"></span>
+    <div class="mi"><i></i><span class="sk" style="width:88px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:70px"></span></div>
+  </aside>
+  <div class="main">
+    <div class="top"><span class="sk s"></span><span class="sp"></span><span class="sk c"></span><span class="sk c"></span></div>
+    <div class="content"><div class="wrap">
+      <div class="crumb">Çalışma Alanı <i class="bi bi-chevron-right"></i><span>Veri</span></div>
+      <div class="phead"><h1 class="disp">Veri</h1><span class="cnt">9 tablo</span><span class="sp"></span><button class="btn quiet"><i class="bi bi-upload"></i>Dosyadan al</button><button class="btn fill"><i class="bi bi-plus-lg"></i>Yeni tablo</button></div>
+      <div class="tools"><div class="in"><i class="bi bi-search"></i><span class="ph">Tablo ara</span></div><span class="seg"><span class="on">Tümü <em>9</em></span><span>Benim <em>5</em></span><span>Kanallar <em>2</em></span><span>Benimle paylaşılan <em>2</em></span></span><span class="sp"></span><span class="seg"><span class="on">Tablolar</span><span>Silinenler <em>3</em></span></span></div>
+      <section class="pcard frame">
+        <table class="lt">
+          <tr><th class="name">Ad</th><th class="r">Satır</th><th class="r">Sütun</th><th>Kullanan tuvaller</th><th>Nerede</th><th>Güncellendi</th><th class="act"></th></tr>
+          <tr class="grp"><td colspan="7">Kanal tabloları</td></tr>
+          <tr class="hov"><td class="name"><div class="nm"><span class="tile t-teal"><i class="bi bi-table"></i></span><div><b>Siparişler</b> <small>· haftalık takip</small></div></div></td><td class="r num">126</td><td class="r num">8</td><td><span class="uses"><span class="part"><i class="bi bi-easel2"></i>Satış panosu</span></span></td><td><span class="where"><i class="bi bi-hash"></i>satis</span></td><td class="dt">12 dk önce</td><td class="act"><button class="ib sm on"><i class="bi bi-three-dots"></i></button></td></tr>
+          <tr><td class="name"><div class="nm"><span class="tile t-teal"><i class="bi bi-table"></i></span><div><b>Kampanya takvimi</b></div></div></td><td class="r num">34</td><td class="r num">6</td><td><span class="dt">—</span></td><td><span class="where"><i class="bi bi-hash"></i>pazarlama</span></td><td class="dt">Dün</td><td class="act"><button class="ib sm"><i class="bi bi-three-dots"></i></button></td></tr>
+          <tr class="grp"><td colspan="7">Benim ve paylaşılanlar</td></tr>
+          <tr><td class="name"><div class="nm"><span class="tile t-teal"><i class="bi bi-table"></i></span><div><b>Ürünler</b> <small>· stok ve fiyat</small></div></div></td><td class="r num">1.284</td><td class="r num">12</td><td><span class="uses"><span class="part"><i class="bi bi-easel2"></i>Satış panosu</span><span class="part"><i class="bi bi-easel2"></i>Stok uyarıları</span></span></td><td><span class="where"><span class="av">ED</span>Benim</span></td><td class="dt">2 sa önce</td><td class="act"><button class="ib sm"><i class="bi bi-three-dots"></i></button></td></tr>
+          <tr><td class="name"><div class="nm"><span class="tile t-teal"><i class="bi bi-table"></i></span><div><b>Müşteri adayları</b> <small>· satış hattı</small></div></div></td><td class="r num">212</td><td class="r num">9</td><td><span class="dt">—</span></td><td><span class="where"><span class="av">ED</span>Benim</span></td><td class="dt">3 gün önce</td><td class="act"><button class="ib sm"><i class="bi bi-three-dots"></i></button></td></tr>
+          <tr><td class="name"><div class="nm"><span class="tile t-teal"><i class="bi bi-table"></i></span><div><b>Tedarikçiler</b></div></div></td><td class="r num">47</td><td class="r num">7</td><td><span class="uses"><span class="part"><i class="bi bi-easel2"></i>Stok uyarıları</span></span></td><td><span class="where"><span class="av c">AD</span>Ayşe Demir · düzenleyebilir</span></td><td class="dt">5 gün önce</td><td class="act"><button class="ib sm"><i class="bi bi-three-dots"></i></button></td></tr>
+          <tr><td class="name"><div class="nm"><span class="tile t-teal"><i class="bi bi-table"></i></span><div><b>Kontrol listesi</b></div></div></td><td class="r num">18</td><td class="r num">4</td><td><span class="dt">—</span></td><td><span class="where"><span class="av b">MK</span>Mehmet Kaya · görebilir</span></td><td class="dt">1 hafta önce</td><td class="act"><button class="ib sm"><i class="bi bi-three-dots"></i></button></td></tr>
+        </table>
+      </section>
+      <div class="note">Bir tablo açılınca kendi ekranı (sorgu çubuğu, sıralama, toplamlar) aynı kalır; başlığın altında onu kullanan tuvaller listelenir. Tuval silinirse tablo kalır, yalnız bağ kalkar.</div>
+    </div></div>
+  </div>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>panel look A: the quick setup of a flow, second pass (every start of the site, every step, recipes, a condition)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<link rel="stylesheet" href="../whatsapp-channel/wa-phone.css">
+<style>
+body { background: radial-gradient(700px 420px at 20% -6%, var(--glow1), transparent 62%), radial-gradient(600px 380px at 100% -4%, var(--glow2), transparent 60%), var(--page); }
+.grid4 { display: grid; grid-template-columns: repeat(2, 820px); gap: 30px 32px; align-items: start; }
+.col .cap { margin-top: 0; }
+.dlg { position: relative; display: flex; flex-direction: column; overflow: hidden; height: 700px; border-radius: 20px; border: 1px solid var(--line); box-shadow: var(--shadow); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+.dh { display: flex; align-items: flex-start; gap: 13px; padding: 18px 16px 0 24px; }
+.dh h2 { margin: 0; font: 650 17px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; }
+.dh p { margin: 3px 0 0; font-size: 13px; color: var(--fg2); }
+.dh .ib { margin: -4px 0 0 auto; }
+.steps { display: flex; align-items: center; gap: 8px; padding: 14px 24px 13px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--fg3); white-space: nowrap; }
+.steps .s { display: inline-flex; align-items: center; gap: 8px; }
+.steps .n { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); color: var(--fg2); }
+.steps .s.done { color: var(--fg2); }
+.steps .s.done .n { background: color-mix(in srgb, var(--teal) 16%, transparent); color: var(--teal); box-shadow: none; }
+.steps .s.on { color: var(--fg); font-weight: 550; }
+.steps .s.on .n { background: linear-gradient(180deg, var(--a1), var(--a2)); color: var(--on-accent); box-shadow: none; }
+.steps .ln { flex: 1; height: 1px; background: var(--line); min-width: 14px; }
+.db { flex: 1; min-height: 0; padding: 16px 24px 0; overflow: hidden; }
+.db h3 { margin: 0 0 3px; font: 650 19px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.02em; }
+.db .sub { margin: 0 0 12px; font-size: 13px; color: var(--fg2); }
+.df { display: flex; align-items: center; gap: 8px; padding: 13px 24px; border-top: 1px solid var(--line); }
+.hint { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg3); }
+/* dialog 1: a rail of the site's areas and the starts of one */
+.split { display: grid; grid-template-columns: 196px 1fr; gap: 18px; height: 100%; }
+.rail { padding-right: 14px; border-right: 1px solid var(--line); }
+.rail .ri { display: flex; align-items: center; gap: 9px; height: 31px; padding: 0 9px; border-radius: 9px; font-size: 13px; color: var(--fg2); white-space: nowrap; }
+.rail .ri i { font-size: 14px; color: var(--fg3); }
+.rail .ri em { margin-left: auto; font-style: normal; font-size: 11.5px; color: var(--fg3); }
+.rail .ri.on { background: var(--quiet); color: var(--fg); font-weight: 550; box-shadow: inset 0 0 0 1px var(--line); }
+.rail .ri.on i { color: var(--accent); }
+.rail hr { border: 0; border-top: 1px solid var(--line); margin: 7px 4px; }
+.pane .in { height: 34px; font-size: 13px; margin-bottom: 12px; }
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.opt { display: flex; align-items: flex-start; gap: 11px; padding: 11px 12px; border-radius: 13px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi); }
+.opt b { display: block; font-size: 13.5px; font-weight: 550; }
+.opt small { display: block; margin-top: 2px; font-size: 12px; color: var(--fg2); line-height: 1.4; }
+.opt.on { background: color-mix(in srgb, var(--accent) 9%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.opt .rd { flex: none; margin: 2px 0 0 auto; width: 16px; height: 16px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--fg3); }
+.opt.on .rd { box-shadow: inset 0 0 0 5px var(--accent); }
+.narrow { margin-top: 14px; padding: 12px 14px; border-radius: 13px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.narrow .lab { margin-bottom: 8px; }
+.cond { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.cond .in { height: 32px; font-size: 13px; margin: 0; padding: 0 10px; }
+/* dialog 2: recipes and every step by its group */
+.recs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.rec { padding: 11px 12px 10px; border-radius: 13px; background: color-mix(in srgb, var(--accent) 6%, var(--card)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, var(--line)); }
+.rec b { display: block; font-size: 13.5px; font-weight: 550; }
+.rec .chain { display: flex; align-items: center; gap: 5px; margin-top: 8px; color: var(--fg3); font-size: 11px; }
+.rec .tile, .act .tile { width: 22px; height: 22px; border-radius: 7px; font-size: 12px; }
+.grp { display: grid; grid-template-columns: 78px 1fr; gap: 10px; align-items: start; padding: 7px 0; border-top: 1px solid var(--line); }
+.grp > span { padding-top: 8px; font-size: 12px; font-weight: 550; color: var(--fg3); }
+.acts { display: flex; flex-wrap: wrap; gap: 7px; }
+.act { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 11px 0 6px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--fg2); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
+.act.on { color: var(--fg); background: color-mix(in srgb, var(--accent) 9%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.t-green { --c: #3fd07a; }
+/* dialog 3: the WhatsApp step */
+.to { display: flex; align-items: center; gap: 10px; margin: 10px 0 12px; font-size: 13px; }
+.to .lab { margin: 0; }
+.wa { display: grid; grid-template-columns: 1fr 268px; gap: 18px; }
+.list { padding: 4px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.tpl { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 12px; border-radius: 11px; }
+.tpl + .tpl { margin-top: 2px; }
+.tpl b { font: 550 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.tpl small { margin-left: auto; font-size: 12px; color: var(--fg3); }
+.tpl.on { background: color-mix(in srgb, var(--accent) 9%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.tpl.off { opacity: .55; }
+.vars { margin-top: 12px; display: grid; grid-template-columns: 54px 1fr; gap: 7px 10px; align-items: center; }
+.vars code { font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg2); }
+.vars .in { height: 33px; font-size: 13px; }
+.phone { border-radius: 18px; padding: 12px 12px 14px; background: color-mix(in srgb, var(--teal) 7%, var(--card)); box-shadow: inset 0 0 0 1px var(--line); }
+.phone .who { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 12.5px; font-weight: 550; }
+.phone .who i { color: #3fd07a; font-size: 15px; }
+.bub { padding: 9px 11px 7px; border-radius: 4px 14px 14px 14px; font-size: 13px; line-height: 1.5; background: var(--thumb); box-shadow: var(--thumb-shadow); }
+.bub mark { padding: 0 3px; border-radius: 4px; background: color-mix(in srgb, var(--accent) 20%, transparent); color: inherit; }
+.bub time { display: block; margin-top: 3px; text-align: right; font-size: 11px; color: var(--fg3); }
+.bbtn { margin-top: 6px; height: 34px; display: flex; align-items: center; justify-content: center; gap: 6px; border-radius: 10px; font-size: 13px; font-weight: 550; color: var(--accent); background: var(--thumb); box-shadow: var(--thumb-shadow); }
+.fall { display: flex; align-items: center; gap: 9px; margin-top: 12px; font-size: 13px; color: var(--fg2); }
+/* dialog 4: the summary */
+.tl { margin: 4px 0 0; padding-left: 2px; }
+.ev { position: relative; display: flex; align-items: flex-start; gap: 13px; padding: 0 0 14px; }
+.ev::before { content: ""; position: absolute; left: 16px; top: 36px; bottom: 2px; width: 2px; border-radius: 1px; background: var(--line); }
+.ev:last-child::before { display: none; }
+.ev .tile { width: 34px; height: 34px; border-radius: 11px; font-size: 16px; }
+.ev .tx { flex: 1; min-width: 0; padding-top: 1px; }
+.ev .tx b { display: block; font-size: 14px; font-weight: 550; }
+.ev .tx small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--fg2); }
+.ev .mv { display: flex; gap: 2px; margin-top: 2px; }
+.ev.sub2 { margin-left: 30px; }
+.addstep { display: inline-flex; align-items: center; gap: 7px; margin: 0 0 12px 47px; font-size: 13px; font-weight: 550; color: var(--accent); }
+.name { margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; grid-template-columns: 1fr 250px; gap: 14px; align-items: end; }
+.ckrow { display: flex; align-items: center; gap: 9px; height: 36px; font-size: 13px; color: var(--fg2); }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="grid4">
+  <div class="col">
+    <div class="cap"><b>1. Başlangıç: sitenin her alanı</b>Solda sitenin alanları, sağda o alanın başlangıçları. Arama hepsinde arar; istenirse başlangıç daraltılır.</div>
+    <section class="dlg">
+      <div class="dh"><div><h2>Hızlı kurulum</h2><p>Birkaç seçimle çalışan bir akış kurun.</p></div><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+      <div class="steps"><span class="s on"><span class="n">1</span>Başlangıç</span><span class="ln"></span><span class="s"><span class="n">2</span>Adımlar</span><span class="ln"></span><span class="s"><span class="n">3</span>Özet</span></div>
+      <div class="db">
+        <div class="split">
+          <div class="rail">
+            <div class="ri"><i class="bi bi-star"></i>Sık kullanılan</div>
+            <hr>
+            <div class="ri on"><i class="bi bi-bag"></i>Siparişler<em>6</em></div>
+            <div class="ri"><i class="bi bi-cart3"></i>Sepet ve teklifler<em>3</em></div>
+            <div class="ri"><i class="bi bi-ui-checks"></i>Formlar<em>3</em></div>
+            <div class="ri"><i class="bi bi-people"></i>Müşteriler<em>5</em></div>
+            <div class="ri"><i class="bi bi-calendar-event"></i>Rezervasyonlar<em>4</em></div>
+            <div class="ri"><i class="bi bi-box-seam"></i>Ürün ve stok<em>4</em></div>
+            <div class="ri"><i class="bi bi-star-half"></i>Değerlendirmeler<em>2</em></div>
+            <div class="ri"><i class="bi bi-arrow-repeat"></i>Abonelikler<em>3</em></div>
+            <div class="ri"><i class="bi bi-receipt"></i>Faturalar<em>5</em></div>
+            <div class="ri"><i class="bi bi-megaphone"></i>İçerik, kampanya<em>4</em></div>
+            <div class="ri"><i class="bi bi-chat-square-text"></i>Çalışma Alanı<em>4</em></div>
+            <hr>
+            <div class="ri"><i class="bi bi-clock"></i>Zamana göre</div>
+            <div class="ri"><i class="bi bi-hand-index"></i>Elle başlat</div>
+          </div>
+          <div class="pane">
+            <div class="in"><i class="bi bi-search"></i><span class="ph">Başlangıç ara: sipariş, form, stok…</span></div>
+            <div class="opts">
+              <div class="opt on"><span class="tile t-teal"><i class="bi bi-bag-check"></i></span><div><b>Sipariş geldiğinde</b><small>Ödemesi alınan her yeni sipariş</small></div><span class="rd"></span></div>
+              <div class="opt"><span class="tile t-blue"><i class="bi bi-truck"></i></span><div><b>Sipariş kargolandığında</b><small>Takip numarası girildiğinde</small></div><span class="rd"></span></div>
+              <div class="opt"><span class="tile t-violet"><i class="bi bi-box-seam"></i></span><div><b>Sipariş teslim edildiğinde</b><small>Kargo teslim bildirdiğinde</small></div><span class="rd"></span></div>
+              <div class="opt"><span class="tile t-rose"><i class="bi bi-x-circle"></i></span><div><b>Sipariş iptal edildiğinde</b><small>Müşteri ya da ekip iptal ettiğinde</small></div><span class="rd"></span></div>
+              <div class="opt"><span class="tile t-amber"><i class="bi bi-arrow-return-left"></i></span><div><b>İade talebi açıldığında</b><small>Müşteri iade istediğinde</small></div><span class="rd"></span></div>
+              <div class="opt"><span class="tile"><i class="bi bi-person-dash"></i></span><div><b>Müşteri sipariş vermeyi bıraktığında</b><small>Son siparişten bir süre sonra</small></div><span class="rd"></span></div>
+            </div>
+            <div class="narrow">
+              <span class="lab">Yalnızca şu durumda <em>· isteğe bağlı</em></span>
+              <div class="cond"><div class="in" style="width:170px"><span>Sipariş toplamı</span><i class="bi bi-chevron-down end"></i></div><div class="in" style="width:110px"><span>büyüktür</span><i class="bi bi-chevron-down end"></i></div><div class="in" style="width:120px"><span class="num">1.000,00 ₺</span></div><button class="btn ghost sm"><i class="bi bi-plus-lg"></i>Koşul</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="df"><span class="hint"><i class="bi bi-diagram-3"></i>Sonra tuvalde düzenlenebilir</span><span class="sp"></span><button class="btn quiet">Vazgeç</button><button class="btn fill">İleri<i class="bi bi-arrow-right"></i></button></div>
+    </section>
+  </div>
+  <div class="col">
+    <div class="cap"><b>2. Adım seçimi: sitenin her eylemi</b>Üstte bu başlangıca uyan hazır tarifler; altında bütün eylemler gruplarıyla. Her "bir adım daha" bu ekranı açar.</div>
+    <section class="dlg">
+      <div class="dh"><div><h2>Hızlı kurulum</h2><p>Sipariş geldiğinde · toplam 1.000 ₺ üstü</p></div><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+      <div class="steps"><span class="s done"><span class="n"><i class="bi bi-check"></i></span>Başlangıç</span><span class="ln"></span><span class="s on"><span class="n">2</span>Adımlar · 1. adım</span><span class="ln"></span><span class="s"><span class="n">3</span>Özet</span></div>
+      <div class="db">
+        <h3>Sonra ne olsun?</h3>
+        <p class="sub">Hazır bir tarifle başlayın ya da adımı kendiniz seçin.</p>
+        <div class="recs">
+          <div class="rec"><b>Teşekkür et, sonra görüş iste</b><div class="chain"><span class="tile t-green"><i class="bi bi-whatsapp"></i></span><i class="bi bi-chevron-right"></i><span class="tile"><i class="bi bi-hourglass-split"></i></span><i class="bi bi-chevron-right"></i><span class="tile t-green"><i class="bi bi-whatsapp"></i></span></div></div>
+          <div class="rec"><b>Depoya görev aç, ekibe bildir</b><div class="chain"><span class="tile t-violet"><i class="bi bi-check2-square"></i></span><i class="bi bi-chevron-right"></i><span class="tile t-amber"><i class="bi bi-bell"></i></span></div></div>
+          <div class="rec"><b>Büyük siparişte onay iste</b><div class="chain"><span class="tile t-violet"><i class="bi bi-person-check"></i></span><i class="bi bi-chevron-right"></i><span class="tile t-blue"><i class="bi bi-pencil-square"></i></span><i class="bi bi-chevron-right"></i><span class="tile t-blue"><i class="bi bi-envelope"></i></span></div></div>
+        </div>
+        <div class="grp"><span>Mesaj</span><div class="acts">
+          <span class="act on"><span class="tile t-green"><i class="bi bi-whatsapp"></i></span>WhatsApp mesajı gönder</span>
+          <span class="act"><span class="tile t-blue"><i class="bi bi-envelope"></i></span>E-posta gönder</span>
+          <span class="act"><span class="tile t-blue"><i class="bi bi-phone"></i></span>SMS gönder</span>
+          <span class="act"><span class="tile t-amber"><i class="bi bi-bell"></i></span>Ekibe bildir</span>
+          <span class="act"><span class="tile t-amber"><i class="bi bi-chat-left-text"></i></span>Kanala yaz</span>
+        </div></div>
+        <div class="grp"><span>Kişiler</span><div class="acts">
+          <span class="act"><span class="tile t-violet"><i class="bi bi-check2-square"></i></span>Görev aç</span>
+          <span class="act"><span class="tile t-violet"><i class="bi bi-person-check"></i></span>Onay iste</span>
+          <span class="act"><span class="tile t-violet"><i class="bi bi-person-plus"></i></span>Müşteriyi kanala al</span>
+        </div></div>
+        <div class="grp"><span>Kayıtlar</span><div class="acts">
+          <span class="act"><span class="tile t-blue"><i class="bi bi-pencil-square"></i></span>Sipariş durumunu değiştir</span>
+          <span class="act"><span class="tile t-blue"><i class="bi bi-tags"></i></span>Kişiyi gruba ekle</span>
+          <span class="act"><span class="tile t-blue"><i class="bi bi-table"></i></span>Tabloya satır ekle</span>
+          <span class="act"><span class="tile t-blue"><i class="bi bi-gift"></i></span>Teklif kodu ver</span>
+        </div></div>
+        <div class="grp"><span>Mantık</span><div class="acts">
+          <span class="act"><span class="tile"><i class="bi bi-hourglass-split"></i></span>Bekle</span>
+          <span class="act"><span class="tile"><i class="bi bi-signpost-split"></i></span>Yalnızca şu durumda</span>
+          <span class="act"><span class="tile"><i class="bi bi-arrow-repeat"></i></span>Her biri için</span>
+        </div></div>
+        <div class="grp"><span>Sistem</span><div class="acts">
+          <span class="act"><span class="tile t-rose"><i class="bi bi-stars"></i></span>Pinegrap AI'ya sor</span>
+          <span class="act"><span class="tile t-rose"><i class="bi bi-broadcast"></i></span>Webhook çağır</span>
+          <span class="act"><span class="tile t-rose"><i class="bi bi-diagram-2"></i></span>Başka bir akış başlat</span>
+        </div></div>
+      </div>
+      <div class="df"><button class="btn quiet"><i class="bi bi-arrow-left"></i>Geri</button><span class="sp"></span><button class="btn fill">İleri<i class="bi bi-arrow-right"></i></button></div>
+    </section>
+  </div>
+  <div class="col">
+    <div class="cap"><b>3. Adımın ayarı: WhatsApp şablonu</b>Seçilen adımın kendi ayarı. WhatsApp'ta onaylı şablon seçilir, değişkenleri eşlenir; numara yoksa ne olacağı söylenir.</div>
+    <section class="dlg">
+      <div class="dh"><div><h2>Hızlı kurulum</h2><p>Sipariş geldiğinde · toplam 1.000 ₺ üstü</p></div><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+      <div class="steps"><span class="s done"><span class="n"><i class="bi bi-check"></i></span>Başlangıç</span><span class="ln"></span><span class="s on"><span class="n">2</span>Adımlar · 1. adım</span><span class="ln"></span><span class="s"><span class="n">3</span>Özet</span></div>
+      <div class="db">
+        <h3>WhatsApp mesajı gönder</h3>
+        <div class="to"><span class="lab">Kime</span><span class="seg"><span class="on">Müşteriye</span><span>Ekibe</span><span>Bir numaraya</span></span><span class="hint" style="margin-left:auto"><i class="bi bi-telephone"></i>siparişteki cep numarası</span></div>
+        <div class="wa">
+          <div>
+            <span class="lab">Şablon <em>· WhatsApp'ta onaylı olanlar</em></span>
+            <div class="list">
+              <div class="tpl on"><b>siparis_alindi</b><span class="st t-teal">Bilgilendirme</span><small>TR</small></div>
+              <div class="tpl"><b>kargo_yolda</b><span class="st t-teal">Bilgilendirme</span><small>TR · EN</small></div>
+              <div class="tpl"><b>degerlendirme_iste</b><span class="st t-amber">Pazarlama</span><small>TR</small></div>
+              <div class="tpl off"><b>odeme_hatirlat</b><span class="st">Onay bekliyor</span><small>TR</small></div>
+            </div>
+            <div class="vars">
+              <code>{{1}}</code><div class="in"><span>Müşterinin adı</span><i class="bi bi-chevron-down end"></i></div>
+              <code>{{2}}</code><div class="in"><span>Sipariş numarası</span><i class="bi bi-chevron-down end"></i></div>
+              <code>{{3}}</code><div class="in focus"><span>Sipariş toplamı</span><i class="bi bi-chevron-down end"></i></div>
+            </div>
+            <div class="fall"><span class="sw on"></span>Numara yoksa ya da mesaj gitmezse e-posta gönder</div>
+          </div>
+          <div>
+            <span class="lab">Önizleme</span>
+            <div class="waph"><div class="scr"><div class="sb">16:20<span><i class="bi bi-reception-4"></i><i class="bi bi-wifi"></i><i class="bi bi-battery-full"></i></span></div><div class="hd"><i class="bi bi-arrow-left"></i><span class="avt"><i class="bi bi-cup-hot"></i></span><div><b>Kupa Dükkânı<i class="bi bi-patch-check-fill"></i></b><small>İşletme hesabı</small></div></div><div class="chat" style="min-height:0"><div class="day">Bugün</div><div class="msg"><div class="im" style="height:74px"><i class="bi bi-bag-check"></i></div><div class="bd">Merhaba <mark>Ayşe</mark>, <b>#<mark>SP-1044</mark></b> numaralı siparişinizi aldık. Toplam: <mark>2.015,50 ₺</mark>.</div><time>16:20</time><div class="bt"><i class="bi bi-box-arrow-up-right"></i>Siparişi görüntüle</div></div></div></div></div>
+            <button class="btn quiet sm" style="margin-top:8px"><i class="bi bi-send"></i>Kendime deneme gönder</button>
+          </div>
+        </div>
+      </div>
+      <div class="df"><button class="btn quiet"><i class="bi bi-arrow-left"></i>Geri</button><span class="sp"></span><button class="btn quiet"><i class="bi bi-plus-lg"></i>Bir adım daha</button><button class="btn fill">İleri<i class="bi bi-arrow-right"></i></button></div>
+    </section>
+  </div>
+  <div class="col">
+    <div class="cap"><b>4. Özet</b>Adımlar sırayla; sırası değişir, araya adım girer, koşullu adım içeri girintili durur. "Akışı başlat" normal bir akış oluşturur.</div>
+    <section class="dlg">
+      <div class="dh"><div><h2>Hızlı kurulum</h2><p>Sipariş geldiğinde · 5 adım</p></div><button class="ib"><i class="bi bi-x-lg"></i></button></div>
+      <div class="steps"><span class="s done"><span class="n"><i class="bi bi-check"></i></span>Başlangıç</span><span class="ln"></span><span class="s done"><span class="n"><i class="bi bi-check"></i></span>Adımlar</span><span class="ln"></span><span class="s on"><span class="n">3</span>Özet</span></div>
+      <div class="db">
+        <h3>Akışınız hazır</h3>
+        <p class="sub">Bir adıma dokunarak değiştirin, oklarla sırasını oynatın.</p>
+        <div class="tl">
+          <div class="ev"><span class="tile t-teal"><i class="bi bi-bag-check"></i></span><div class="tx"><b>Sipariş geldiğinde</b><small>Yalnızca sipariş toplamı 1.000,00 ₺ üstündeyse</small></div><div class="mv"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></div></div>
+          <div class="ev"><span class="tile t-green"><i class="bi bi-whatsapp"></i></span><div class="tx"><b>WhatsApp mesajı gönder</b><small>Müşteriye · şablon siparis_alindi · gitmezse e-posta</small></div><div class="mv"><button class="ib sm dim"><i class="bi bi-arrow-up"></i></button><button class="ib sm dim"><i class="bi bi-arrow-down"></i></button><button class="ib sm dim"><i class="bi bi-pencil"></i></button></div></div>
+          <div class="ev"><span class="tile t-violet"><i class="bi bi-check2-square"></i></span><div class="tx"><b>Görev aç</b><small>Depo ekibine · "Siparişi hazırla" · 1 gün içinde</small></div><div class="mv"><button class="ib sm dim"><i class="bi bi-arrow-up"></i></button><button class="ib sm dim"><i class="bi bi-arrow-down"></i></button><button class="ib sm dim"><i class="bi bi-pencil"></i></button></div></div>
+          <div class="ev"><span class="tile"><i class="bi bi-hourglass-split"></i></span><div class="tx"><b>Bekle</b><small>Sipariş teslim edilene kadar, sonra 3 gün</small></div><div class="mv"><button class="ib sm dim"><i class="bi bi-arrow-up"></i></button><button class="ib sm dim"><i class="bi bi-arrow-down"></i></button><button class="ib sm dim"><i class="bi bi-pencil"></i></button></div></div>
+          <div class="ev"><span class="tile"><i class="bi bi-signpost-split"></i></span><div class="tx"><b>Yalnızca şu durumda</b><small>Müşteri pazarlama iznini vermişse</small></div><div class="mv"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></div></div>
+          <div class="ev sub2"><span class="tile t-green"><i class="bi bi-whatsapp"></i></span><div class="tx"><b>WhatsApp mesajı gönder</b><small>Müşteriye · şablon degerlendirme_iste</small></div><div class="mv"><button class="ib sm dim"><i class="bi bi-pencil"></i></button></div></div>
+        </div>
+        <span class="addstep"><i class="bi bi-plus-lg"></i>Adım ekle</span>
+        <div class="name">
+          <div><span class="lab">Akışın adı</span><div class="in"><span>Büyük siparişte teşekkür, hazırlık ve görüş</span></div></div>
+          <div class="ckrow"><span class="sw on"></span>Kaydedince çalışmaya başlasın</div>
+        </div>
+      </div>
+      <div class="df"><button class="btn quiet"><i class="bi bi-arrow-left"></i>Geri</button><span class="sp"></span><button class="btn quiet"><i class="bi bi-diagram-3"></i>Tuvalde aç</button><button class="btn fill"><i class="bi bi-play-fill"></i>Akışı başlat</button></div>
+    </section>
+  </div>
+</div>
+</div>
+</body>
+</html>

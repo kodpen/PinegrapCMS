@@ -55,14 +55,15 @@ function test_settings_workspace_assistants_sections_and_anchors()
 	pg_assert_contains("'gate'  => 'workspace',", $entry, 'gated by the Workspace settings right');
 	pg_assert_contains("'pgset-ws-claude'            => lang('Claude in the channels'),", $entry, 'Claude is a section');
 	pg_assert_contains("'pgset-ws-bulk'              => lang('Bulk changes by the assistants'),", $entry, 'Bulk changes is a section');
-	pg_assert_true(strpos($entry, "'pgset-ws-bulk'") < strpos($entry, "'pgset-ws-assistants-screen'"), 'the link card comes last');
+	pg_assert_true(strpos($entry, "'pgset-ws-mcp'") < strpos($entry, "'pgset-ws-bulk'"), 'the MCP servers come before Bulk changes');
+	pg_assert_false(strpos($entry, "'pgset-ws-assistants-screen'") !== false, 'no link card left');
 	pg_assert_same(array('workspace_assistants', 'pgset-ws-claude'), pg_settings_legacy_anchors()['ws-claude'] ?? null, 'the old Claude anchor');
 	pg_assert_same(array('workspace_assistants', 'pgset-ws-bulk'), pg_settings_legacy_anchors()['ws-bulk'] ?? null, 'the old Bulk changes anchor');
 
 	$card = settings_workspace_assistants_test_source('includes/settings/workspace_assistants.php');
 	pg_assert_false(strpos($card, "array('ws-claude'") !== false, 'no link to the old Claude card');
 	pg_assert_false(strpos($card, "array('ws-bulk'") !== false, 'no link to the old Bulk changes card');
-	pg_assert_contains("array('ws-mcp'", $card, 'the MCP servers are still linked');
+	pg_assert_false(strpos($card, 'ws_settings_screen_links_card(') !== false, 'no card linking the old screen');
 
 	$category = array('group' => 'workspace', 'gate' => 'workspace');
 	pg_assert_false(pg_settings_category_open($category, array('manager' => true, 'workspace' => false)), 'a manager without the right');

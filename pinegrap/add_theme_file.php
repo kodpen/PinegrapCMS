@@ -38,7 +38,7 @@ if (!$_POST) {
     print
     pg_page_shell([
         'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Theme'))),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Theme'))),
         'heading_description' => lang('Create a new theme (.css file) and place it in a public folder.'),
@@ -61,7 +61,7 @@ if (!$_POST) {
                     ' . pg_design_file_form_layout(
                         '
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Options') . '
                                 </div>
                                 <div class="card-body">
@@ -142,7 +142,7 @@ if (!$_POST) {
                                 </div>
                             </div>
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Description') . '
                                 </div>
                                 <div class="card-body">

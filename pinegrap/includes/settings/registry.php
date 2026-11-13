@@ -221,6 +221,7 @@ function pg_settings_categories()
                 'pgset-mailchimp' => lang('MailChimp'),
                 'pgset-sms'       => lang('SMS'),
                 'pgset-sms-messages' => lang('SMS Messages'),
+                'pgset-whatsapp'  => lang('WhatsApp'),
                 'pgset-iys'       => lang('İYS'),
             ),
             'keywords' => array(
@@ -229,6 +230,7 @@ function pg_settings_categories()
                 'pgset-mailchimp' => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
                 'pgset-sms-messages' => pg_settings_keywords(lang('sms, text message, order received, order shipped, order delivered, tracking number, template')),
+                'pgset-whatsapp'  => pg_settings_keywords(lang('whatsapp, meta, cloud api, business account, phone number id, access token, system user, webhook, verify token, template, test message')),
                 'pgset-iys'       => pg_settings_keywords(lang('iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal')),
             ),
         ),
@@ -447,9 +449,9 @@ function pg_settings_categories()
         ),
 
         // The Workspace's own settings, gated by the Workspace settings right
-        // rather than the manager role (pg_settings_category_open()). The
-        // cards come over from workspace_settings.php one at a time; until
-        // then each category links the ones still kept there.
+        // rather than the manager role (pg_settings_category_open()). The old
+        // Workspace Settings screen is an address sending here
+        // (pg_settings_workspace_link()).
         'workspace_team' => array(
             'label' => lang('Team and working hours'),
             'group' => 'workspace',
@@ -487,18 +489,21 @@ function pg_settings_categories()
                 'pgset-ws-claude'            => lang('Claude in the channels'),
                 'pgset-ws-agents'            => lang('Workspace agents'),
                 'pgset-ws-ai'                => lang('Pinegrap AI in the channels'),
+                'pgset-ws-mcp'               => lang('MCP servers'),
                 'pgset-ws-bulk'              => lang('Bulk changes by the assistants'),
-                'pgset-ws-assistants-screen' => lang('On the Workspace Settings screen'),
+                'pgset-ws-canvas-templates'  => lang('Canvas templates'),
             ),
             'keywords' => array(
                 'pgset-ws-claude'            => pg_settings_keywords(lang('workspace, claude, assistant, routine, key, secret, daily summary, connection')),
                 'pgset-ws-agents'            => pg_settings_keywords(lang('workspace, agent, agents, handle, push door, poll door, model, provider, token limit')),
                 'pgset-ws-ai'                => pg_settings_keywords(lang('workspace, pinegrap ai, assistant, licence, subscription key, key, connection')),
                 'pgset-ws-bulk'              => pg_settings_keywords(lang('workspace, bulk changes, assistant, delete in bulk, claude, pinegrap ai')),
-                'pgset-ws-assistants-screen' => pg_settings_keywords(lang('workspace, mcp, mcp server, tools')),
+                'pgset-ws-mcp'               => pg_settings_keywords(lang('workspace, mcp, mcp server, tools')),
+                'pgset-ws-canvas-templates'  => pg_settings_keywords(lang('workspace, canvas, template, design, agent, named layers')),
             ),
             'lists' => array(
                 'ws_agent' => 2,
+                'ws_mcp'   => 3,
             ),
         ),
 
@@ -509,10 +514,20 @@ function pg_settings_categories()
             'icon'  => 'bi-chat-square-text',
             'description' => lang('Channel templates, mailboxes, voice transcripts and GitHub links.'),
             'sections' => array(
-                'pgset-ws-channels-screen' => lang('On the Workspace Settings screen'),
+                'pgset-ws-templates'       => lang('Channel templates'),
+                'pgset-ws-mail'            => lang('Mailboxes'),
+                'pgset-ws-voice'           => lang('Voice message transcripts'),
+                'pgset-ws-github'          => lang('GitHub repositories'),
             ),
             'keywords' => array(
-                'pgset-ws-channels-screen' => pg_settings_keywords(lang('workspace, channel template, templates, mailbox, mailboxes, e-mail, voice, transcript, github')),
+                'pgset-ws-templates'       => pg_settings_keywords(lang('workspace, channel template, templates, archive')),
+                'pgset-ws-mail'            => pg_settings_keywords(lang('workspace, mailbox, mailboxes, e-mail')),
+                'pgset-ws-voice'           => pg_settings_keywords(lang('workspace, voice, transcript, speech, spoken answers, key')),
+                'pgset-ws-github'          => pg_settings_keywords(lang('workspace, github, repository, webhook, pull request')),
+            ),
+            'lists' => array(
+                'ws_github' => 2,
+                'ws_mail'   => 3,
             ),
         ),
 
@@ -868,6 +883,28 @@ function pg_settings_url($key)
 
 
 /**
+ * An address a save module hands over for the browser to go to once the
+ * save is done: a service's sign-in started by a card button (the MCP
+ * servers' Connect). The dialog's endpoint answers it as its reload address,
+ * the page path redirects to it instead of back to the screen. Called with
+ * an address to set it, without one to read it.
+ *
+ * @param string|null $url
+ * @return string '' when none was handed over
+ */
+function pg_settings_go($url = null)
+{
+    static $go = '';
+
+    if ($url !== null) {
+        $go = (string) $url;
+    }
+
+    return $go;
+}
+
+
+/**
  * Where a link written before the split should land.
  *
  * A #hash never reaches the server, so an old settings.php#pgset-waf cannot be
@@ -933,6 +970,11 @@ function pg_settings_legacy_anchors()
         'ws-bulk'          => array('workspace_assistants', 'pgset-ws-bulk'),
         'ws-agents'        => array('workspace_assistants', 'pgset-ws-agents'),
         'ws-ai'            => array('workspace_assistants', 'pgset-ws-ai'),
+        'ws-mcp'           => array('workspace_assistants', 'pgset-ws-mcp'),
+        'ws-templates'     => array('workspace_channels', 'pgset-ws-templates'),
+        'ws-mail'          => array('workspace_channels', 'pgset-ws-mail'),
+        'ws-voice'         => array('workspace_channels', 'pgset-ws-voice'),
+        'ws-github'        => array('workspace_channels', 'pgset-ws-github'),
     );
 }
 
@@ -976,7 +1018,7 @@ function pg_settings_integration_links($user, $facts = null)
     }
 
     if (!empty($facts['workspace_settings'])) {
-        $links[] = array('label' => lang('Workspace Settings'), 'icon' => 'bi-people', 'url' => 'workspace_settings.php');
+        $links[] = array('label' => lang('Workspace Settings'), 'icon' => 'bi-people', 'url' => pg_settings_workspace_link());
     }
 
     return $links;
@@ -984,7 +1026,7 @@ function pg_settings_integration_links($user, $facts = null)
 
 
 /**
- * Whether workspace_settings.php would open for this user: the module on and
+ * Whether the Workspace settings would open for this user: the module on and
  * installed, a member of the team with the settings right (ws_screen_gate()).
  *
  * @param array $user the row validate_user() returned
@@ -1105,6 +1147,12 @@ function pg_settings_tool_groups($user)
 
     $tools[] = array('label' => lang('Mail queue'), 'icon' => 'bi-envelope-arrow-up', 'url' => 'mail_queue.php');
 
+    // Every part of the panel's look, live: for the Designer role and above,
+    // as the screen's own door (design_examples.php).
+    if ($role <= 1) {
+        $tools[] = array('label' => lang('Design examples'), 'icon' => 'bi-palette', 'url' => 'design_examples.php');
+    }
+
     // Reinstall needs the installer to still be on disk; once it is deleted
     // (which the panel recommends) the link would 404.
     if (is_dir(PG_FUNCTIONS_DIR . '/install')) {
@@ -1159,6 +1207,7 @@ function pg_settings_tool_keys()
         'clean_up.php'              => array('temizle', 'temizlik', 'clean', 'clean up', 'eski dosya', 'tem'),
         'database_engine.php'       => array('veritabani', 'veritabanı', 'database', 'innodb', 'myisam', 'tablo onar', 'motor', 'vt'),
         'purge_cache.php'           => array('onbellek', 'önbellek', 'cache', 'purge', 'purge cache', 'temizle cache', 'onb'),
+        'design_examples.php'       => array('tasarim ornekleri', 'tasarım örnekleri', 'design examples', 'gorunum', 'görünüm', 'look', 'recipe', 'tas'),
         'mail_queue.php'            => array('posta kuyrugu', 'posta kuyruğu', 'mail kuyruk', 'mail queue', 'queue', 'giden posta', 'kuy'),
         'install'                   => array('yeniden kur', 'kurulum', 'reinstall', 'upgrade', 'install', 'kur'),
         'backups.php'               => array('yedek', 'yedekler', 'backup', 'backups', 'bak', 'yed'),

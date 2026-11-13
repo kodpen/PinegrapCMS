@@ -110,7 +110,7 @@ $list = pg_list_table_printed(array(
 echo
     pg_page_shell([
         'title'=> lang('All Countries'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Countries'),
         'heading_description' => lang('All countries that are valid for billing address and shipping address selection.'),

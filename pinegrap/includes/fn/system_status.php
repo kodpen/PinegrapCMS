@@ -3910,7 +3910,7 @@ function get_system_status_checks()
 
             if ($mail_health['state'] !== 'none') {
 
-                $mail_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php#ws-mail';
+                $mail_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_workspace_link('ws-mail');
                 $mail_detail = array();
 
                 foreach ($mail_health['rows'] as $mail_row) {

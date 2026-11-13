@@ -1367,6 +1367,49 @@ function pg_avatar_markup_for($first_name, $last_name, $username = '', $seed = '
 }
 
 /**
+ * The address a panel picture is drawn by when it is a file of Files: the
+ * file's own address with its change time as ?v=. A save over the file (the
+ * Design Canvas, File Manager's replace, rotate or optimize) keeps its name,
+ * and get_file.php lets a browser keep a picture a week, so the bare address
+ * showed the old pixels; the stamp changes with every save. A timestamp of 0
+ * or less leaves the address bare. Pure.
+ *
+ * @param string     $base      the site's path (PATH) or another prefix
+ * @param string     $name      the file's name
+ * @param int|string $timestamp files.timestamp
+ * @return string
+ */
+function pg_file_stamped_address($base, $name, $timestamp)
+{
+    $address = (string) $base . (string) $name;
+    $timestamp = (int) $timestamp;
+
+    return ($timestamp > 0) ? $address . '?v=' . $timestamp : $address;
+}
+
+/**
+ * A contact's picture as pg_file_stamped_address() draws it (PATH, the
+ * name, the change stamp), or '' when the contact has none or its files row
+ * was deleted.
+ *
+ * @param int|string $file_id contacts.file_id
+ * @return string
+ */
+function pg_contact_picture_address($file_id)
+{
+    $file_id = (int) $file_id;
+
+    if ($file_id <= 0) {
+        return '';
+    }
+
+    $result = db_q('SELECT name, timestamp FROM files WHERE id = ?', array($file_id));
+    $row = $result ? mysqli_fetch_assoc($result) : null;
+
+    return ($row && ((string) $row['name'] !== '')) ? pg_file_stamped_address(PATH, $row['name'], $row['timestamp']) : '';
+}
+
+/**
  * The file name of a contact's picture (contacts.file_id), or '' when the
  * contact has none or its files row was deleted in the File Manager, which
  * leaves contacts.file_id in place. A screen draws its no-picture branch on

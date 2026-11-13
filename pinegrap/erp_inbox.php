@@ -204,7 +204,7 @@ if ($provider !== '') {
 echo
 pg_page_shell([
         'title' => lang('Incoming e-invoices'),
-        'extra classes' => 'erp erp_inbox',
+        'extra classes' => 'erp erp_inbox pg-measure-list',
         'icon' => 'erp',
         'heading' => lang('Incoming e-invoices'),
         'heading_description' => lang('What suppliers sent the store through GİB, and the purchase invoices they became.'),

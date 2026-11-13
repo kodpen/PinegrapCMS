@@ -46,26 +46,3 @@ function test_phone_width_marketplace_card_header_buttons_wrap()
 	}
 }
 
-function test_phone_width_image_picker_toolbar_wraps()
-{
-	$source = phone_width_strips_test_source('editor_select_image.php');
-
-	pg_assert_true(preg_match('/@media \(max-width: 767\.98px\) \{(.*?)\n\}/s', $source, $block) === 1, 'phone block exists');
-
-	pg_assert_true(preg_match('/#esi_toolbar\s*\{[^}]*flex-wrap: wrap/', (isset($block[1]) ? $block[1] : "")) === 1, 'toolbar wraps');
-	pg_assert_true(preg_match('/#files_nav_controls\s*\{[^}]*flex-basis: 100%/', (isset($block[1]) ? $block[1] : "")) === 1, 'filters take their own row');
-	pg_assert_true(preg_match('/\.esi-field,\s*\.esi-search\s*\{[^}]*flex: 1 1 0[^}]*min-width: 0/', (isset($block[1]) ? $block[1] : "")) === 1, 'fields share the row');
-}
-
-function test_phone_width_unsplash_tile_is_a_button()
-{
-	$source = phone_width_strips_test_source('editor_select_image.php');
-
-	pg_assert_true(preg_match('/function esiRenderUnsplash\(photos\) \{(.*?)\n\}/s', $source, $render) === 1, 'renderer found');
-
-	pg_assert_true(strpos($render[1], 'innerHTML') === false, 'no innerHTML for remote text');
-	pg_assert_true(strpos($render[1], 'cursor-pointer') === false, 'no clickable div');
-	pg_assert_true(preg_match('/createElement\(\\\\\'button\\\\\'\)/', $render[1]) === 1, 'tile is a button');
-	pg_assert_true(strpos($render[1], '.type = \\\'button\\\'') !== false, 'button does not submit');
-	pg_assert_true(strpos($render[1], 'a.textContent = text;') !== false && strpos($render[1], 'photo.user.name);') !== false, 'photographer name as text');
-}

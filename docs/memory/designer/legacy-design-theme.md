@@ -27,7 +27,7 @@ module: legacy_design_theme
 
 ## What did the sandbox move of home-1 show (turkish_default)?
 - Classic: bootstrap.css, themify-icons, flexslider, lightbox, ytplayer, livesite.src.css, then theme_modern.css. Moved without this: no theme, the page in the browser's default font. Moved with it: theme_modern.css, the theme's fonts and dark bars back.
-- Still missing after the bulk run: every other file of the classic head. The run marks the design but writes no stylesheet or script rows (`style_custom_css` stays empty), and the editor opening the moved design lists only Bootstrap Icons and jQuery, so the menu, slider and icons are unstyled. No step of `plans/legacy-group-design-steps.md` names it yet.
+- Still missing after the bulk run: every other file of the classic head. The run marks the design but writes no stylesheet or script rows (`style_custom_css` stays empty), and the editor opening the moved design lists only Bootstrap Icons and jQuery, so the menu, slider and icons are unstyled. No step has fixed it yet; it is listed under "What is still open?" in `legacy-overview.md`.
 - On the canvas the theme link is added before the asset rows' links; on the site it is last.
 
 ## Tests?

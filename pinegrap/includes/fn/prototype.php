@@ -1169,7 +1169,7 @@ function pg_proto_shell_html($view)
         $main = '<div class="pg-proto-empty"><p class="mb-0">' . h($error) . '</p></div>';
     } elseif (($frame_url === '') || !$pages) {
         $main = '<div class="pg-proto-empty"><p class="fw-semibold mb-1">' . h(lang('This design has no draft pages.')) . '</p>'
-            . '<p class="fg-secondary small mb-0">' . h(lang('Save a page as a draft in the Visual Page Editor to play it here as a prototype.')) . '</p></div>';
+            . '<p class="fg-secondary small mb-0">' . h(lang('Save a page as a draft in the Page Design Studio to play it here as a prototype.')) . '</p></div>';
     } else {
         $main = '<iframe id="pg-proto-frame" class="pg-proto-frame" src="' . h($frame_url) . '"'
             . ' title="' . h(lang('Prototype')) . '"'

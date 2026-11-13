@@ -30,7 +30,7 @@ if (!$_POST) {
     echo
         pg_page_shell([
             'title'=> lang('Create Ship Date Adjustment'),
-            'extra classes'=>'products',
+            'extra classes'=>'products pg-measure-edit',
             'icon'=>'store',
             'heading'=>lang('Create Ship Date Adjustment'),
             'heading_description' => lang('Create a new adjustment for a specific zip code prefix and shipping method.'),

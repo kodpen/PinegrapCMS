@@ -36,7 +36,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Event Location'))),
-            'extra classes'=>'calendar',
+            'extra classes'=>'calendar pg-measure-edit',
             'icon'=>'calendar', 
             'heading'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Event Location'))),
             'heading_description' => lang('Create a new location where events are held (such as a room, building, or campus), which can be shared by all calendars.'),

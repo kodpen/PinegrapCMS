@@ -882,9 +882,38 @@ function ws_thread_answer_agent($value, $rows)
 }
 
 /**
+ * The registry agent whose application wrote a message, as a discussion
+ * started from it takes it: the first row reaching the discussion whose
+ * application wrote it, else ''. A message a person wrote has none. Pure.
+ *
+ * @param array   $message ws_messages row: sender_kind, sender_id
+ * @param array[] $rows    ws_agent_reach_rows() of the discussion, in their id order
+ * @return string agent:<id> | model:<id> | ''
+ */
+function ws_thread_writer_agent($message, $rows)
+{
+    $app_id = (int) ($message['sender_id'] ?? 0);
+
+    if (((string) ($message['sender_kind'] ?? '') !== 'app') || ($app_id <= 0)) {
+        return '';
+    }
+
+    foreach ((array) $rows as $row) {
+        $value = function_exists('ws_agent_request_value') ? ws_agent_request_value($row) : '';
+
+        if (($value !== '') && ((int) ($row['app_id'] ?? 0) === $app_id)) {
+            return $value;
+        }
+    }
+
+    return '';
+}
+
+/**
  * The agent a message belongs to as a discussion started from it sees it:
- * the one that wrote it as an answer, or the last one it asks. Given the
- * discussion, a registry agent counts too, while a row reaches it.
+ * the one that wrote it as an answer, the registry agent whose application
+ * wrote it, or the last one it asks. Given the discussion, a registry agent
+ * counts too, while a row reaches it.
  *
  * @param array      $message
  * @param array|null $channel the discussion; null leaves registry agents out
@@ -899,8 +928,17 @@ function ws_thread_message_agent($message, $channel = null)
             WHERE reply_message_id = '" . (int) $message['id'] . "' AND status = 'answered'
                 AND (agent LIKE 'agent:%' OR agent LIKE 'model:%') ORDER BY id DESC LIMIT 1");
 
+        $rows = ws_agent_reach_rows($channel);
+
         if ($answered !== '') {
-            return ws_thread_answer_agent($answered, ws_agent_reach_rows($channel));
+            return ws_thread_answer_agent($answered, $rows);
+        }
+
+        // A message an agent's application wrote by itself, not as an answer.
+        $writer = ws_thread_writer_agent($message, $rows);
+
+        if ($writer !== '') {
+            return $writer;
         }
     }
 

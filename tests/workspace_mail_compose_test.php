@@ -88,8 +88,8 @@ function test_workspace_mail_compose_boxes_and_channel()
 	$boxes = ws_mail_compose_boxes($entries);
 
 	pg_assert_same(2, count($boxes), 'one entry a box');
-	pg_assert_same(array('id' => 12, 'name' => 'c12'), $boxes[0]['channels'][0], 'the box\'s own channel first');
-	pg_assert_same(array('id' => 20, 'name' => 'c20'), $boxes[0]['channels'][1], 'a route\'s channel after it');
+	pg_assert_same(array('id' => 12, 'name' => 'c12', 'mailbox' => false), $boxes[0]['channels'][0], 'the box\'s own channel first');
+	pg_assert_same(array('id' => 20, 'name' => 'c20', 'mailbox' => false), $boxes[0]['channels'][1], 'a route\'s channel after it');
 	pg_assert_same('Sig 3', $boxes[0]['signature'], 'with its Signature');
 	pg_assert_same('b5@example.com', $boxes[1]['address']);
 	pg_assert_true(!array_key_exists('route', $boxes[0]) && !array_key_exists('settings', $boxes[0]), 'no route or settings go to the browser');

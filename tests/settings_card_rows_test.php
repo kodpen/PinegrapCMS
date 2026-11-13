@@ -114,7 +114,7 @@ function test_settings_card_gap_holds_whatever_stands_between()
 	$block = settings_card_rows_block($css, '.pg-settings-body {');
 	pg_assert_true(strpos($block, 'display: flex') !== false, 'the cards container is a flex box');
 	pg_assert_true(strpos($block, 'flex-direction: column') !== false, 'the cards stand one under the other');
-	pg_assert_true(strpos($block, 'gap: 1.5rem') !== false, 'the container keeps the gap between cards');
+	pg_assert_true(strpos($block, 'gap: 16px') !== false, 'the container keeps the gap between cards');
 
 	$root = dirname(__DIR__) . '/pinegrap/includes/settings/';
 	$page = (string) file_get_contents($root . 'screen.php');

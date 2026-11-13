@@ -225,7 +225,7 @@ if ($bookings_view === 'list') {
 echo
 pg_page_shell(array(
         'title'               => lang('Bookings'),
-        'extra classes'       => 'calendar',
+        'extra classes'       => 'calendar pg-measure-list',
         'icon'                => 'calendar',
         'heading'             => lang('Bookings'),
         'heading_description' => lang(array('string' => 'The appointments booked with your staff, by day, week or as a list. Times are in the site\'s time zone ({var:1}).', 'vars' => array(h(date_default_timezone_get())))),

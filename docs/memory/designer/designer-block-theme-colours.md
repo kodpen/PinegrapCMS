@@ -4,13 +4,13 @@ description: Which classes keep a ready-made designer block in step with the des
 ---
 
 ## Why does a block need theme-driven classes?
-- A design wears a **look** (`--pg-*` tokens: radius, shadow, type) and a **colour palette** (`--bs-primary`, `--pg-on-primary`, `--pg-primary-fg`), bridged into Bootstrap by `assets/css/themes/bridge.css` and `base.css` (see `docs/memory/designer/designer-import-validation-theme.md` and `docs/memory/designer/design-theme-look-and-palette.md`). A block restyles with them only through classes that read those variables.
+- A design wears a **look** (`--pg-*` tokens: radius, shadow, type) and a **colour palette** (`--bs-primary`, `--pg-on-primary`, `--pg-primary-fg`), bridged into Bootstrap by `assets/css/themes/bridge.css` and `base.css` ([[designer-import-validation-theme]], [[design-theme-look-and-palette]]). A block restyles with them only through classes that read those variables.
 
 ## Which classes follow the palette and the look?
 - Colour: `text-bg-primary` / `text-bg-secondary` (text colour is `--pg-on-primary`), `bg-primary-subtle text-primary-emphasis`, `text-primary`, `link-primary`, `btn-primary`, `btn-outline-primary`, `btn-outline-secondary`, `bg-body`, `bg-body-secondary`, `bg-body-tertiary`, `text-body`, `text-body-secondary`, `text-body-emphasis`, `text-reset`, `border`, `border-primary`.
 - Shape and depth: `rounded*`, `shadow-sm|shadow|shadow-lg`, `card`, `badge`, `.blockquote`, `display-*`, `lead` (base.css maps them to the look's tokens). Never set a font family.
 - **Never**: `bg-white`, `bg-light`, `bg-dark`, `text-white`, `text-white-50`, `text-light`, `text-dark`, `text-muted`, `text-bg-light`, `text-bg-dark`, `btn-light`, `btn-dark`, `btn-outline-light`, `link-light`, `navbar-dark`, `bg-primary text-white` (write `text-bg-primary`; an amber palette has dark text on primary), hex colours.
-- Every palette block and Components-tab item follows this, and `tests/designer_blocks_test.php` fails on a fixed colour class in `createFromPalette()` or `makeCarouselSlide()`. Recipes for dark navbars, photo heroes, buttons on tinted surfaces and carousels: `docs/memory/designer/designer-block-theme-surfaces.md`.
+- Every palette block and Components-tab item follows this, and `tests/designer_blocks_test.php` fails on a fixed colour class in `createFromPalette()` or `makeCarouselSlide()`. Recipes for dark navbars, photo heroes, buttons on tinted surfaces and carousels: [[designer-block-theme-surfaces]]. Template files: [[design-template-theme-colours]].
 
 ## How is a dark band or text on a photo written?
 - Dark band: `_attrs` `data-bs-theme="dark"` **and** `bg-body text-body`; palettes redefine their dark colours under `[data-bs-theme=dark]`, and without `text-body` the text colour is inherited from the light page.

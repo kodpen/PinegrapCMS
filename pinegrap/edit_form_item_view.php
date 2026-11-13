@@ -176,7 +176,7 @@ if (!$_POST) {
     // Put the javascript into the head of the document.
     $output_header = preg_replace('/(<\/head>)/i', $output_javascript .'$1', pg_page_shell([
         'title'=> lang('Edit Form Item View'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang('Edit Form Item View'),
         'heading_description' => lang('Update this page\'s display of a single submitted form, linked to by a reference code.'),

@@ -1133,6 +1133,23 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.messages.check',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/{id}/checks',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_check',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Tick a checklist line',
+            'description' => 'Ticks one line of a message\'s checklist (a "- [ ] item" line), or clears it with checked false, the way the box in the channel does, in a channel the owner may post in. item is the line\'s item in the message\'s checks. With an application key or an OAuth connection the tick is the application\'s: the line shows its name, and checks gives its name in by and its id in app_id; from a team devices session (POST /auth/login) it is the person\'s. Nobody is woken or notified by a tick; the message comes under sync changed. A roll call is a checklist with a line per agent, each ticked by its agent when it next wakes. Somebody who may only read the channel is refused with 403, an item the list no longer has with 422. A dry run\'s detail.changes is false when the line already is as asked.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'item', 'in' => 'body', 'type' => 'int', 'min' => 0, 'required' => true, 'description' => 'The line, item in the message\'s checks (0 for the first).'),
+                array('name' => 'checked', 'in' => 'body', 'type' => 'bool', 'description' => 'true (the default) ticks the line, false clears it.'),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.messages.ack',
             'method'      => 'POST',
             'path'        => '/workspace/messages/{id}/ack',
@@ -1231,7 +1248,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_approvals_list',
             'returns'     => array('list' => 'WorkspaceApproval'),
             'summary'     => 'List the approval requests of a channel',
-            'description' => 'The approval requests of a channel the owner of the application may read, newest first: the people asked and each one\'s answer, the rule, the deadline and, once settled, the outcome and the decision it wrote into the channel.',
+            'description' => 'The approval requests of a channel the owner of the application may read, newest first: the people asked and each one\'s answer, the rule, the deadline and, once settled, the outcome and the decision it wrote into the channel. answer says what an approval has to bring with it while the request is open: none, or text or number when a flow\'s approval box asks for an answer, which POST /workspace/approvals/{id}/decide then takes in note; answer_label is the question the box asks, null when it set none, so a client shows a field of its own wording. A closed request asks for nothing: answer is none.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'state', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'closed', 'all'), 'default' => 'all'),
@@ -1273,11 +1290,11 @@ function ws_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceApproval',
             'summary'     => 'Approve or reject a request',
-            'description' => 'The answer of the person signed in, who has to be one of the people asked and may answer once. Only a device session may - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection: an application key is refused with 403 forbidden - an integration does not approve in its owner\'s name. A request that is closed, or whose deadline passed, is refused with 422. A dry run\'s detail.outcome says what the request would be after the answer: open, approved or rejected.',
+            'description' => 'The answer of the person signed in, who has to be one of the people asked and may answer once. Only a device session may - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection: an application key is refused with 403 forbidden - an integration does not approve in its owner\'s name. A request that is closed, or whose deadline passed, is refused with 422. When the request\'s answer is text or number (GET /workspace/channels/{id}/approvals), an approval has to carry that answer in note - for number a figure or a sum such as 27, 27,5 or 25 + 2 - and is refused with 422 at decision without it; a rejection\'s note stays free. A dry run\'s detail.outcome says what the request would be after the answer: open, approved or rejected.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'decision', 'in' => 'body', 'type' => 'enum', 'values' => array('approve', 'reject'), 'required' => true),
-                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Why, shown beside the answer; a refusal\'s note goes into the decision.'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Why, shown beside the answer; a refusal\'s note goes into the decision. With an approval of a request whose answer is text or number: the answer itself.'),
             ),
         ),
 
@@ -1384,10 +1401,10 @@ function ws_api_routes()
             'handler'     => 'ws_api_notes_list',
             'returns'     => array('list' => 'WorkspaceNote', 'deleted' => array(array('id' => 'integer', 'deleted_at' => 'string'))),
             'summary'     => 'The owner\'s notes',
-            'description' => 'The personal notes of the owner of the application - the pinned ones first, then the latest changed - followed by the notes colleagues shared with them, the latest changed first. A note is seen by nobody but the one who wrote it until it is shared, administrators included, so nobody else\'s notes are listed here. scope mine or shared keeps one of the two. search and updated_since are applied before the list is paged, so every note that matches comes in some page; page.total counts them. Page with next_cursor until has_more is false. A note changed while the pages are read moves to the top and may be missed in that pass; read again with updated_since from the moment the first page was asked for. A note shared with them since updated_since comes in the list too. text and body are null in the listing; GET /workspace/notes/{id} carries them. With updated_since, the first page (no cursor) also lists in deleted the notes deleted since then that the owner kept - their own, those shared with them and those shared in a channel they may read - or no longer shared with them, the oldest first, at most 1,000, so a copy kept elsewhere can be dropped; deletions are remembered for 30 days, so an app away longer reads the whole list again. Without updated_since, deleted is empty. A note behind its owner\'s notes lock (locked true) shows its title alone: excerpt is empty, text and body null; changing it, deleting it, placing it in a group or reading its versions answers 423 note_locked, since the lock opens only on the notes screen with the PIN.',
+            'description' => 'The personal notes of the owner of the application - the pinned ones first, then the latest changed - followed by the notes colleagues shared with them, the latest changed first. A note is seen by nobody but the one who wrote it until it is shared, administrators included, so nobody else\'s notes are listed here. scope mine or shared keeps one of the two. search and updated_since are applied before the list is paged, so every note that matches comes in some page; page.total counts them. Page with next_cursor until has_more is false. A note changed while the pages are read moves to the top and may be missed in that pass; read again with updated_since from the moment the first page was asked for. A note shared with them since updated_since comes in the list too. text and body are null in the listing; GET /workspace/notes/{id} carries them. With updated_since, the first page (no cursor) also lists in deleted the notes deleted since then that the owner kept - their own, those shared with them and those shared in a channel they may read - or no longer shared with them, the oldest first, at most 1,000, so a copy kept elsewhere can be dropped; deletions are remembered for 30 days, so an app away longer reads the whole list again. Without updated_since, deleted is empty. A note behind its owner\'s notes lock (locked true) shows its title alone: excerpt is empty, text and body null; changing it, deleting it, placing it in a group or reading its versions answers 423 note_locked, since the lock opens only on the notes screen with the PIN. search finds such a note by its title alone, never by its text. Going behind the lock or coming out from behind it counts as a change of the note - it is locked or unlocked, the group the owner keeps it in is locked, unlocked or deleted, it is moved into such a group or out of one, or the owner turns the lock off: updated_at moves on (revision does not, the words are the same), so the note comes with updated_since, locked as it now is, and an app that keeps the text drops it or reads it again.',
             'params'      => array(
                 array('name' => 'scope', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'mine', 'shared'), 'default' => 'all'),
-                array('name' => 'search', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Words in the title or the text.'),
+                array('name' => 'search', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Words in the title or the text; a locked note is found by its title alone.'),
                 array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only notes changed at or after this moment.'),
                 array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.'),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 200, 'default' => 100, 'description' => 'Notes per page.'),

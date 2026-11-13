@@ -434,7 +434,7 @@ $career_widgets = array(
                     )),
                     $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
                         $span($departments[$job_sample['department']], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Department'), $bind('department')),
-                        $span($job_types[$job_sample['type']], 'badge rounded-pill text-bg-dark', lang('Job Type'), $bind('type')),
+                        $span($job_types[$job_sample['type']], 'badge rounded-pill text-bg-secondary', lang('Job Type'), $bind('type')),
                     )),
                     $heading('h1', $job_sample['title'], 'pcn-display display-6 mb-2', $bind('title')),
                     $el('p', 'd-flex align-items-center gap-1 fw-semibold mb-2', lang('Location'), array(

@@ -635,10 +635,12 @@ function pg_chat_role_label($role)
 // widget: contacts.file_id > contacts.image > the letters of the name
 // (includes/fn/contacts.php). The files name comes from the LEFT JOIN in the
 // query, so there is no extra query per row.
-function pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_name = '', $last_name = '', $username = '', $seed = '')
+function pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_name = '', $last_name = '', $username = '', $seed = '', $image_file_timestamp = 0)
 {
+    // The file's change stamp rides on its address, so a picture saved again
+    // under the same name is drawn anew (pg_file_stamped_address()).
     if (((int) $image_file_id > 0) && ($image_file_name != '')) {
-        return PATH . $image_file_name;
+        return pg_file_stamped_address(PATH, $image_file_name, $image_file_timestamp);
     }
 
     if ($image != '') {
@@ -691,7 +693,8 @@ function pg_chat_user_row($user_id)
             contacts.last_name AS last_name,
             contacts.image AS image,
             contacts.file_id AS image_file_id,
-            files.name AS image_file_name
+            files.name AS image_file_name,
+            files.timestamp AS image_file_timestamp
         FROM user
         LEFT JOIN contacts ON contacts.id = user.user_contact
         LEFT JOIN files ON files.id = contacts.file_id
@@ -716,7 +719,7 @@ function pg_chat_user_brief($row)
         'username' => $row['username'],
         'role' => (int) $row['role'],
         'role_label' => pg_chat_role_label($row['role']),
-        'avatar' => pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_name, $last_name, $row['username'], $row['id']),
+        'avatar' => pg_chat_avatar_src($image, $image_file_id, $image_file_name, $first_name, $last_name, $row['username'], $row['id'], $row['image_file_timestamp'] ?? 0),
         'avatar_kind' => pg_chat_avatar_kind($image, $image_file_id, $image_file_name, $first_name, $last_name),
         'initials' => pg_initials($first_name, $last_name, $row['username']),
         'tone' => pg_avatar_tone(pg_initials($first_name, $last_name, $row['username']), $row['id']),
@@ -768,7 +771,8 @@ function pg_chat_online_users()
             contacts.last_name AS last_name,
             contacts.image AS image,
             contacts.file_id AS image_file_id,
-            files.name AS image_file_name
+            files.name AS image_file_name,
+            files.timestamp AS image_file_timestamp
         FROM user
         LEFT JOIN contacts ON contacts.id = user.user_contact
         LEFT JOIN files ON files.id = contacts.file_id
@@ -1348,6 +1352,7 @@ function pg_chat_conversation_list()
             contacts.image AS image,
             contacts.file_id AS image_file_id,
             files.name AS image_file_name,
+            files.timestamp AS image_file_timestamp,
             op.user_username AS operator_username
         FROM chat_conversations c
         LEFT JOIN user u ON u.user_id = IF(c.initiator_user_id = '" . e($me) . "', c.target_user_id, c.initiator_user_id)
@@ -1388,7 +1393,8 @@ function pg_chat_conversation_list()
                     $first_name,
                     $last_name,
                     $row['peer_username'],
-                    $row['peer_id']
+                    $row['peer_id'],
+                    $row['image_file_timestamp'] ?? 0
                 ),
                 'avatar_kind' => pg_chat_avatar_kind(isset($row['image']) ? $row['image'] : '', isset($row['image_file_id']) ? $row['image_file_id'] : 0, isset($row['image_file_name']) ? $row['image_file_name'] : '', $first_name, $last_name),
                 'initials' => pg_initials($first_name, $last_name, $row['peer_username']),

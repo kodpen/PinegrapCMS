@@ -361,7 +361,7 @@ if ($_POST['fields']) {
     }
 
     if ($designer_field_exists == true) {
-        $liveform->mark_error('designer_field', lang('At least one field could not be deleted, because its form is edited in the visual editor.'));
+        $liveform->mark_error('designer_field', lang('At least one field could not be deleted, because its form is edited in the Page Design Studio.'));
     }
     
 // else no fields were selected

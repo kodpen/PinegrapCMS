@@ -692,7 +692,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $regions, 
 // book a tour and the way to ask for a journey of one's own. Shared, so
 // every page that ends with it carries the same call.
 $trip_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -701,8 +701,8 @@ $trip_band = function () use ($el, $heading, $para, $link, $container, $row, $co
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Book a Tour'), '{{page:book}}', 'btn btn-light btn-lg rounded-pill px-4'),
-                        $link(lang('Plan a Tailor-made Trip'), '{{page:enquiry}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Book a Tour'), '{{page:book}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                        $link(lang('Plan a Tailor-made Trip'), '{{page:enquiry}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

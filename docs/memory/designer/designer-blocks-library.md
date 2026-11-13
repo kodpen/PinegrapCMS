@@ -4,7 +4,7 @@ description: The Library block family (library- prefix): shelf hero with today's
 ---
 
 ## Where does it live?
-- `assets/js/style_designer_blocks_library.js`, one `StyleDesigner.registerBlockFamily()` call ([[designer-block-family-files]]); prefix `library-`, palette group "Library" (`bi-book`). Built in step `library-1` (PR #8794) for the Public Library template ([[design-template-library]]); `library-2` places it on the pages. Each item's `desc` is its hover-card line ([[palette-block-info]]).
+- `assets/js/style_designer_blocks_library.js`, one `StyleDesigner.registerBlockFamily()` call ([[designer-block-family-files]]); prefix `library-`, palette group "Library" (`bi-book`). Built in step `library-1` (PR #8794) for the Public Library template ([[design-template-library]]); `library-2` (#8846) places it ([[design-template-library-pages]]). Each item's `desc` is its hover-card line ([[palette-block-info]]).
 
 ## Which blocks does it hold?
 - `library-hero` (Library: Shelf Hero): the page's `h1`, a line, two buttons. Beside it a bookcase: eleven spines on a shelf (`pg-library-shelf`, `aria-hidden`), titles read top down, three heights, theme colours; under it today's hours (two `<time>`s) and the branch.
@@ -32,4 +32,4 @@ description: The Library block family (library- prefix): shelf hero with today's
 ## How is it tested?
 - `tests/designer_blocks_library_test.php` (Node runner `tests/helpers/designer_family_run.php`): the shared family checks; eleven spines, six formats, today's times; ten classes in order, one example; the table's heads; three drawings hidden; rules with no colour, motion, child selector or per cent height.
 
-Related: docs/memory/designer/design-template-own-look.md, docs/memory/designer/designer-blocks-overview.md
+Related: [[design-template-own-look]], [[designer-blocks-overview]]

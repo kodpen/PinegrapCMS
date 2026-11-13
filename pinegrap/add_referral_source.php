@@ -31,7 +31,7 @@ if (!$_POST) {
         pg_page_shell(
             array(
                 'title'=> lang('Create Referral Source'),
-                'extra classes'=>'setting',
+                'extra classes'=>'setting pg-measure-edit',
                 'icon'=>'setting',
                 'heading'=>lang('Create Referral Source'),
                 'heading_description' => lang('Create a new referral source to gather marketing information during checkout. (Delete all will hide feature.)'),

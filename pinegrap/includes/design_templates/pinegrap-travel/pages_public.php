@@ -112,7 +112,7 @@ $home_hero = function () use ($el, $heading, $para, $link, $span, $icon, $contai
     $stops = array();
     foreach ($regions as $r) {
         $stops[] = $el('li', '', $r['title'], array(
-            $fx($el('a', 'btn btn-outline-light rounded-pill d-inline-flex align-items-center gap-2 px-3', lang('Link'), array(
+            $fx($el('a', 'btn btn-secondary rounded-pill d-inline-flex align-items-center gap-2 px-3', lang('Link'), array(
                 $icon($r['icon']),
                 $span($r['title'], '', lang('Link Text')),
             ), array('href' => '{{page:destinations}}?' . $query(array('region' => $r['title'])))),

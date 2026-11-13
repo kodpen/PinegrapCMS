@@ -88,3 +88,21 @@ function test_workspace_nav_tools_long_names_have_short_ones()
 
 	pg_assert_same(array('calendar' => 'Calendar', 'board' => 'Board', 'timeline' => 'Decisions'), $short, 'Calendar, Board and Decisions');
 }
+
+// Workflow tables are the workspace's Data: the tile says so, while its key,
+// icon and address stay as they were.
+function test_workspace_nav_tools_tables_are_named_data()
+{
+	$groups = ws_nav_groups(array('role' => 3, 'settings' => false), workspace_nav_tools_test_flags());
+	$tile = null;
+
+	foreach ($groups['tools'] as $item) {
+		if ($item['key'] === 'wtables') {
+			$tile = $item;
+		}
+	}
+
+	pg_assert_same('Data', $tile['label'] ?? '', 'the tile is named Data');
+	pg_assert_same('/pg/workspace_wtables.php', $tile['url'] ?? '', 'the address keeps its name');
+	pg_assert_same('wtables', ws_side_screen('/pg/workspace_wtables.php'), 'the screen keeps its key');
+}

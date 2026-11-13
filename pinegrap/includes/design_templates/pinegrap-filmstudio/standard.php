@@ -62,11 +62,11 @@ $standard_pages[] = array(
             $container(array(
                 $row(array(
                     $col(array(
-                        $el('div', 'd-flex flex-wrap align-items-center gap-3 p-4 rounded-3 text-bg-dark mb-4', lang('Enquiry Note'), array(
+                        $el('div', 'd-flex flex-wrap align-items-center gap-3 p-4 rounded-3 bg-body text-body mb-4', lang('Enquiry Note'), array(
                             $icon('bi-camera-reels', 'fs-3 text-primary'),
                             $para(lang('Planning a film? A project enquiry tells us what a treatment and a budget need.'), 'flex-grow-1 mb-0'),
                             $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-primary px-4'),
-                        )),
+                        ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
                         $widget('contact_form'),
                     ), '', '7'),
                     $col(array(
@@ -126,7 +126,7 @@ $standard_pages[] = array(
                         $el('div', 'p-4 p-lg-5 rounded-3 border border-2', lang('Form Card'), array($widget('newsletter_form'))),
                     ), '', '7'),
                     $col(array(
-                        $el('div', 'p-4 rounded-3 text-bg-dark', lang('What You Get'), array(
+                        $el('div', 'p-4 rounded-3 bg-body text-body', lang('What You Get'), array(
                             $heading('h2', lang('In every letter'), 'pfm-display h5 mb-3'),
                             $check_list(array(
                                 lang('The films we released, with a still from each'),
@@ -134,7 +134,7 @@ $standard_pages[] = array(
                                 lang('What to know before you commission a film'),
                                 lang('One e-mail a month, never your address to anyone else'),
                             )),
-                        )),
+                        ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
                     ), '', '5'),
                 ), '4', '', 'g-lg-5'),
             )),

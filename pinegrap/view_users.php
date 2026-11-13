@@ -83,7 +83,7 @@ echo
     pg_page_shell(
         array(
             'title'=> lang($heading),
-            'extra classes'=>'users',
+            'extra classes'=>'users pg-measure-list',
             'icon'=>'account',
             'heading'=>lang($heading),
             'heading_description' => ($subheading ?? lang('Panel users and what they can access')),

@@ -5,6 +5,7 @@ description: The error page system widget: when it is shown, which block shows f
 
 ## When is the designed error page shown?
 - `output_error()` records the message and the code (`pg_sw_error_context()`); `get_error_screen()` renders the first designed page carrying an `error_page` widget (`pg_sw_error_page_id()`) before the legacy `error` page type. Opened directly, the widget reads as "not found" and the page answers 404.
+- Never for a panel screen's error (a role 0-2 user on a script of the software directory, `pg_error_panel_link()`): `output_error()` draws that in the panel's own frame before it records anything (#9024, `core/error-screen-language-and-status.md`). The starter tree's Not Found block prints no `^^__error_message^^`, so the panel's "Record not found." read as "the page you are looking for may have been moved".
 
 ## Which page carrying the widget is chosen?
 - `pg_sw_error_page_id()` → `pg_sw_error_page_pick()`: only a page in a **public** folder (`get_access_control_type()`), since `get_error_screen()` draws it for every visitor without an access check; among those a page of the home page's design (`pg_sw_home_style_id()`, the published design) first, else the lowest page id. No such page: the legacy `error` page.

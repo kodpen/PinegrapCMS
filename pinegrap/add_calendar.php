@@ -36,7 +36,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Calendar'))),
-            'extra classes'=>'calendar',
+            'extra classes'=>'calendar pg-measure-edit',
             'icon'=>'calendar',
             'heading'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Calendar'))),
             'heading_description' => lang('Create a new calendar to be displayed on any calendar pages.'),

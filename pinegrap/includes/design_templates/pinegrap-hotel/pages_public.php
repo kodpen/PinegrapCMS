@@ -308,7 +308,7 @@ foreach ($treatments as $t) {
         $el('article', 'h-100 p-4 rounded-4 bg-body border shadow-sm', $t['title'], array(
             $el('div', 'd-flex align-items-start justify-content-between gap-2 mb-2', lang('Treatment Heading'), array(
                 $heading('h3', $t['title'], 'pht-display h5 mb-0'),
-                $span(sprintf(lang('%d minutes'), $t['minutes']), 'badge rounded-pill text-bg-light border text-nowrap', lang('Duration')),
+                $span(sprintf(lang('%d minutes'), $t['minutes']), 'badge rounded-pill bg-body text-body-emphasis border text-nowrap', lang('Duration')),
             )),
             $para($t['text'], 'small text-body-secondary mb-0'),
         )),

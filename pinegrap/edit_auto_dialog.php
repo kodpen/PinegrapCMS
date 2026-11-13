@@ -95,7 +95,7 @@ if (!$_POST) {
     echo pg_page_shell(
         array(
             'title'=> lang('Edit Auto Dialog'),
-            'extra classes'=>'page',
+            'extra classes'=>'page pg-measure-edit',
             'icon'=>'page',
             'heading'=>lang('Edit Auto Dialog'),
             'cancel'=>array('enable'=>'true','url'=>'view_auto_dialogs.php'),

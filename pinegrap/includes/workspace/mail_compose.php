@@ -85,11 +85,12 @@ function ws_mail_send_body($text, $writer, $box_name, $signature)
 /**
  * What the New e-mail form offers this person: each mailbox they may send
  * from (ws_mail_send_boxes()) with its Signature and the channels its mail
- * may be kept in, the box's own channel first. Pure apart from the boxes
- * given.
+ * may be kept in, the box's own channel first. The room of a box kept in
+ * no channel is marked (mailbox), so the form names it "The mailbox itself"
+ * and not a channel. Pure apart from the boxes given.
  *
  * @param array[] $entries ws_mail_send_boxes()
- * @return array[] id, name, address, signature, channels (id, name)
+ * @return array[] id, name, address, signature, channels (id, name, mailbox)
  */
 function ws_mail_compose_boxes($entries)
 {
@@ -101,7 +102,7 @@ function ws_mail_compose_boxes($entries)
         $channels = array();
 
         foreach ((array) $entry['channels'] as $channel) {
-            $row = array('id' => (int) $channel['id'], 'name' => (string) $channel['name']);
+            $row = array('id' => (int) $channel['id'], 'name' => (string) $channel['name'], 'mailbox' => ws_channel_is_mailbox($channel));
 
             if ($row['id'] === $own) {
                 array_unshift($channels, $row);
@@ -228,6 +229,7 @@ function ws_mail_compose_js_strings()
         'mail_new_from'       => lang('From'),
         'mail_new_channel'    => lang('Kept in'),
         'mail_new_channel_hint' => lang('The e-mail becomes a card in this channel; its answers come under it.'),
+        'mail_new_in_mailbox' => lang('The mailbox itself'),
         'mail_new_to'         => lang('To'),
         'mail_new_cc'         => lang('Cc'),
         'mail_new_bcc'        => lang('Bcc'),

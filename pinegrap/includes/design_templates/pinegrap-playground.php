@@ -148,7 +148,7 @@ $lang_switcher = function ($class = '', $variant = 'secondary') {
 // anybody may open.
 $ai_summary = function () use ($el, $link, $icon, $span, $attr, $bind, $show_when) {
     $assistant = function ($text, $token) use ($link, $attr) {
-        return $link($text, '#', 'btn btn-sm btn-outline-dark rounded-pill border-2 fw-bold', array($attr('rel', 'noopener nofollow')),
+        return $link($text, '#', 'btn btn-sm btn-outline-secondary rounded-pill border-2 fw-bold', array($attr('rel', 'noopener nofollow')),
             array('target' => '_blank', '_bindings' => array('href' => $token)));
     };
     return $el('aside', 'bg-body border border-2 border-dark rounded-4 shadow-sm p-3 mb-4', lang('AI Summary'), array(
@@ -233,7 +233,7 @@ $header = function () use ($el, $link, $image, $span, $icon, $attr, $avatar, $la
                             ), array('href' => '{{page:search}}', '_attrs' => array($attr('aria-label', lang('Search the site'))))),
                         )),
                     )),
-                    $lang_switcher('d-inline-block ms-md-2 mt-3 mt-md-0', 'dark'),
+                    $lang_switcher('d-inline-block ms-md-2 mt-3 mt-md-0'),
                     $el('div', 'ms-md-3 mt-3 mt-md-0', lang('Account Area'), array($widget('login_region'))),
                 ), array('id' => 'pl-nav')),
             )),
@@ -252,7 +252,7 @@ $cta = function () use ($el, $container, $row, $col, $heading, $para, $link, $ic
                     $para(lang('Comics, websites, a logo for your band: tell me about it and I will tell you what I would draw first.'), 'lead mb-0'),
                 ), '', '8'),
                 $col(array(
-                    $el('a', 'btn btn-light btn-lg rounded-pill border border-3 border-dark fw-bold px-4', lang('Button'), array(
+                    $el('a', 'btn btn-secondary btn-lg rounded-pill border border-3 border-dark fw-bold px-4', lang('Button'), array(
                         $icon('bi-balloon-heart', 'ms-2'),
                     ), array('href' => '{{page:say_hi}}', 'text' => lang('Say hi'))),
                 ), '', '4', '', '12', 'text-lg-end'),
@@ -311,7 +311,7 @@ $staff_bar = function () use ($el, $link, $span) {
     };
     return $el('div', 'bg-warning-subtle border-bottom border-3 border-dark', lang('Staff Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center gap-4 py-2', lang('Staff Bar Container'), array(
-            $span(lang('Staff'), 'badge rounded-pill text-bg-dark border border-2 border-dark', lang('Sticker')),
+            $span(lang('Staff'), 'badge rounded-pill text-bg-secondary border border-2 border-dark', lang('Sticker')),
             $el('nav', 'nav nav-underline gap-4', lang('Staff Links'), array(
                 $item('staff', lang('Staff Area')),
                 $item('blog_new', lang('New Blog Post')),
@@ -340,7 +340,7 @@ $page_header = function ($sticker, $title, $lead, $tone, $icon_name) use ($el, $
             $el('div', 'p-4 p-lg-5 rounded-5 border border-4 border-dark shadow bg-' . $tone . '-subtle', lang('Header Card'), array(
                 $row(array(
                     $col(array(
-                        $span($sticker, 'badge rounded-pill text-bg-dark fs-6 mb-3', lang('Sticker')),
+                        $span($sticker, 'badge rounded-pill text-bg-secondary fs-6 mb-3', lang('Sticker')),
                         $heading('h1', $title, 'display-4 fw-bolder mb-2'),
                         $para($lead, 'lead mb-0'),
                     ), '', '9'),
@@ -453,9 +453,10 @@ $projects = array(
           'tools' => array(lang('Lettering'), lang('Font tools'), lang('Felt-tip pens'))),
 );
 
-// A sticker with a word on it.
+// A sticker with a word on it. The light one is the page's own surface, so
+// it stays readable in a dark design.
 $sticker = function ($text, $tone, $icon_name = '') use ($el, $icon, $span) {
-    $class = 'badge rounded-pill fs-6 border border-2 border-dark text-bg-' . $tone;
+    $class = 'badge rounded-pill fs-6 border border-2 border-dark ' . ($tone === 'light' ? 'bg-body text-body-emphasis' : 'text-bg-' . $tone);
     if ($icon_name === '') return $span($text, $class, lang('Sticker'));
     return $el('span', $class, lang('Sticker'), array($icon($icon_name, 'me-1'), $span($text, '', lang('Text'))));
 };
@@ -534,7 +535,7 @@ $project_modal = function ($n, $p) use ($el, $heading, $para, $image, $link, $at
                     $el('p', 'd-flex flex-wrap gap-2 mb-0', lang('Stickers'), $tools),
                 )),
                 $el('div', 'modal-footer border-top-0 p-4 pt-0', lang('Modal Footer'), array(
-                    $el('button', 'btn btn-outline-dark rounded-pill border-2 fw-bold', lang('Button'), array(), array('text' => lang('Close'), '_attrs' => array(
+                    $el('button', 'btn btn-outline-secondary rounded-pill border-2 fw-bold', lang('Button'), array(), array('text' => lang('Close'), '_attrs' => array(
                         $attr('type', 'button'),
                         $attr('data-bs-dismiss', 'modal'),
                     ))),
@@ -593,7 +594,7 @@ $slide = function ($seed, $alt, $caption, $active = false) use ($el, $image, $sp
             $image($photo($seed, 1400, 600), $alt, 'd-block w-100 object-fit-cover'),
         )),
         $el('div', 'carousel-caption pb-4', lang('Caption'), array(
-            $span($caption, 'badge rounded-pill text-bg-light border border-2 border-dark fs-6 text-wrap', lang('Sticker')),
+            $span($caption, 'badge rounded-pill bg-body text-body-emphasis border border-2 border-dark fs-6 text-wrap', lang('Sticker')),
         )),
     ));
 };
@@ -708,7 +709,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
     ));
 
     $small_button = function ($text, $action) use ($el, $attr) {
-        return $el('button', 'btn btn-sm btn-outline-dark rounded-pill border-2 fw-bold', lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => $action)));
+        return $el('button', 'btn btn-sm btn-outline-secondary rounded-pill border-2 fw-bold', lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => $action)));
     };
 
     $children = array(
@@ -794,7 +795,7 @@ $pages[] = array(
                             $el('a', 'btn btn-primary btn-lg rounded-pill border border-3 border-dark fw-bold px-4', lang('Button'), array(
                                 $icon('bi-rocket-takeoff', 'ms-2'),
                             ), array('href' => '{{page:projects}}', 'text' => lang('See what I make'))),
-                            $link(lang('Say hi'), '{{page:say_hi}}', 'btn btn-outline-dark btn-lg rounded-pill border-3 fw-bold px-4'),
+                            $link(lang('Say hi'), '{{page:say_hi}}', 'btn btn-outline-secondary btn-lg rounded-pill border-3 fw-bold px-4'),
                         )),
                     ), '7'),
                     $col(array(
@@ -830,7 +831,7 @@ $pages[] = array(
                 $section_title('bi-palette', lang('Things I make'), lang('Comics, code and other small joys.')),
                 $row($teasers, '4'),
                 $el('div', 'text-center mt-5', lang('Buttons'), array(
-                    $link(lang('See everything I make'), '{{page:projects}}', 'btn btn-outline-dark btn-lg rounded-pill border-3 fw-bold px-4'),
+                    $link(lang('See everything I make'), '{{page:projects}}', 'btn btn-outline-secondary btn-lg rounded-pill border-3 fw-bold px-4'),
                 )),
             )),
         )),
@@ -881,7 +882,7 @@ $pages[] = array(
                         )),
                         $heading('h2', lang('From the blog'), 'h1 fw-bolder mb-0'),
                     )),
-                    $link(lang('All posts'), '{{page:blog}}', 'btn btn-outline-dark rounded-pill border-2 fw-bold'),
+                    $link(lang('All posts'), '{{page:blog}}', 'btn btn-secondary rounded-pill border-2 fw-bold'),
                 )),
                 $widget('home_posts'),
             )),
@@ -925,7 +926,7 @@ $skill = function ($label, $cols, $tone) use ($el, $span, $attr) {
             $span($value, 'text-body-secondary', lang('Value')),
         )),
         $el('div', 'progress rounded-pill border border-2 border-dark', lang('Progress'), array(
-            $el('div', 'progress-bar rounded-pill col-' . $cols . ' bg-' . $tone, lang('Progress Bar')),
+            $el('div', 'progress-bar rounded-pill col-' . $cols . ' text-bg-' . $tone, lang('Progress Bar')),
         ), array('_attrs' => array(
             $attr('role', 'progressbar'),
             $attr('aria-label', $label),
@@ -937,7 +938,7 @@ $skill = function ($label, $cols, $tone) use ($el, $span, $attr) {
 };
 $milestone = function ($year, $title, $text) use ($el, $heading, $para, $span) {
     return $el('li', 'position-relative ps-4 pb-4', lang('Milestone'), array(
-        $span('', 'position-absolute top-0 start-0 translate-middle rounded-circle bg-primary border border-3 border-dark p-2 mt-2', lang('Dot')),
+        $span('', 'position-absolute top-0 start-0 translate-middle rounded-circle text-bg-primary border border-3 border-dark p-2 mt-2', lang('Dot')),
         $span($year, 'badge rounded-pill text-bg-warning border border-2 border-dark fs-6 mb-2', lang('Year')),
         $heading('h3', $title, 'h5 fw-bolder mb-1'),
         $para($text, 'text-body-secondary mb-0'),
@@ -1196,7 +1197,7 @@ $pages[] = array(
                             )),
                             $para(lang('Usually within two coffees. On a busy week, within two days. Never longer than it takes Pixel to knock a pen off the desk.'), 'mb-3'),
                             $para(lang('Your message becomes a conversation: the page that opens after you send it, and your inbox, show my answers, and you can write back there. If you have no account yet, one is opened for you.'), 'small mb-3'),
-                            $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-light rounded-pill border border-2 border-dark fw-bold'),
+                            $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-secondary rounded-pill border border-2 border-dark fw-bold'),
                         )),
                     ), '', '5'),
                 ), '4', '', 'g-lg-5'),
@@ -1212,7 +1213,7 @@ $now_item = function ($date, $icon_name, $title, $text) use ($el, $heading, $par
             $icon($icon_name, 'fs-4 text-primary'),
         )),
         $el('div', 'flex-grow-1', lang('Text'), array(
-            $span($date, 'badge rounded-pill text-bg-dark mb-2', lang('Date')),
+            $span($date, 'badge rounded-pill text-bg-secondary mb-2', lang('Date')),
             $heading('h2', $title, 'h5 fw-bolder mb-1'),
             $para($text, 'text-body-secondary mb-0'),
         )),
@@ -1401,7 +1402,7 @@ $pages[] = array(
                         $icon('bi-info-circle', 'mt-1 text-primary'),
                         $span(lang('Only the site staff and the users given access to the private folder see these pages. To let someone in, open their account under Users and tick the folder in Private Content Access.'), '', lang('Text')),
                     )),
-                    $link(lang('Open the control panel'), $panel_url, 'btn btn-dark rounded-pill border border-2 border-dark fw-bold px-4'),
+                    $link(lang('Open the control panel'), $panel_url, 'btn btn-secondary rounded-pill border border-2 border-dark fw-bold px-4'),
                 )),
             )),
         )),
@@ -1733,7 +1734,7 @@ $mood = function ($n, $emoji, $label, $checked = false) use ($el, $attr) {
     if ($checked) $attrs[] = $attr('checked', '');
     return array(
         $el('input', 'btn-check', lang('Radio Button'), array(), array('id' => $id, '_attrs' => $attrs)),
-        $el('label', 'btn btn-outline-dark rounded-pill border-2 fs-4 lh-1 px-3 py-2', lang('Label'), array(), array('text' => $emoji, '_attrs' => array($attr('for', $id)))),
+        $el('label', 'btn btn-outline-secondary rounded-pill border-2 fs-4 lh-1 px-3 py-2', lang('Label'), array(), array('text' => $emoji, '_attrs' => array($attr('for', $id)))),
     );
 };
 
@@ -1800,7 +1801,7 @@ $widgets = array(
         ),
         'tree'   => $widget_root(array(
             $el('div', 'd-flex align-items-center gap-2', lang('Signed Out'), array(
-                $link(lang('Log In'), '#', 'btn btn-sm btn-outline-dark rounded-pill border-2 fw-bold text-nowrap', array(), array('_bindings' => array('href' => '__login_url'))),
+                $link(lang('Log In'), '#', 'btn btn-sm btn-outline-secondary rounded-pill border-2 fw-bold text-nowrap', array(), array('_bindings' => array('href' => '__login_url'))),
                 $link(lang('Sign Up'), '#', 'btn btn-sm btn-primary rounded-pill border border-2 border-dark fw-bold text-nowrap', array(), array('_bindings' => array('href' => '__register_url'))),
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
@@ -1846,11 +1847,11 @@ $widgets = array(
             $container(array(
                 $el('div', 'd-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 p-4 p-lg-5 mb-4 rounded-5 border border-4 border-dark shadow bg-primary-subtle', lang('Account Header'), array(
                     $el('div', '', lang('Greeting'), array(
-                        $span(lang('Welcome back'), 'badge rounded-pill text-bg-dark fs-6 mb-3', lang('Sticker')),
+                        $span(lang('Welcome back'), 'badge rounded-pill text-bg-secondary fs-6 mb-3', lang('Sticker')),
                         $heading('h1', lang('Jane Cooper'), 'display-6 fw-bolder mb-1', $bind('__display_name')),
                         $para(lang('jane.cooper@example.com'), 'mb-0', $bind('email_address')),
                     )),
-                    $link(lang('Log out'), '#', 'btn btn-light rounded-pill border border-3 border-dark fw-bold px-4', array(), array('_bindings' => array('href' => '__logout_url'))),
+                    $link(lang('Log out'), '#', 'btn btn-secondary rounded-pill border border-3 border-dark fw-bold px-4', array(), array('_bindings' => array('href' => '__logout_url'))),
                 )),
                 $el('div', 'row g-3 mb-5', lang('Link Cards'), $account_cards),
                 $heading('h2', lang('My Orders'), 'h3 fw-bolder mb-3', $show_when('has_orders')),
@@ -2055,7 +2056,7 @@ $widgets = array(
                                 $para(lang('You can set a password with "Forgot password" on the sign-in page.'), 'small mt-2 mb-0'),
                             ), $show_when('has_new_account')),
                             $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-4', lang('Toolbar'), array(
-                                $el('a', 'btn btn-sm btn-outline-dark rounded-pill border-2 fw-bold', lang('Link'), array(
+                                $el('a', 'btn btn-sm btn-outline-secondary rounded-pill border-2 fw-bold', lang('Link'), array(
                                     $icon('bi-arrow-left', 'me-1'),
                                     $span(lang('Inbox'), '', lang('Text')),
                                 ), array('href' => '{{page:inbox}}')),
@@ -2064,7 +2065,7 @@ $widgets = array(
                             )),
                             $el('p', 'd-flex flex-wrap align-items-center gap-2 mb-3', lang('Conversation Details'), array(
                                 $span(lang('Date'), 'badge rounded-pill text-bg-warning border border-2 border-dark fs-6', lang('Date'), $bind('submitted_date_and_time')),
-                                $span('ABC123', 'badge rounded-pill text-bg-light border border-2 border-dark fs-6', lang('Reference Code'), $bind('reference_code')),
+                                $span('ABC123', 'badge rounded-pill bg-body text-body-emphasis border border-2 border-dark fs-6', lang('Reference Code'), $bind('reference_code')),
                             )),
                             $heading('h1', lang('A logo for a bakery'), 'display-6 fw-bolder mb-4', $bind('subject')),
                             $el('div', 'p-4 rounded-5 border border-3 border-dark shadow-sm bg-info-subtle', lang('First Message'), array(
@@ -2245,7 +2246,7 @@ $widgets = array(
                         ), $show_when('record_not_found')),
                         $el('article', '', lang('Post'), array(
                             $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-4', lang('Toolbar'), array(
-                                $el('a', 'btn btn-sm btn-outline-dark rounded-pill border-2 fw-bold', lang('Link'), array(
+                                $el('a', 'btn btn-sm btn-outline-secondary rounded-pill border-2 fw-bold', lang('Link'), array(
                                     $icon('bi-arrow-left', 'me-1'),
                                     $span(lang('All posts'), '', lang('Text')),
                                 ), array('href' => '{{page:blog}}')),
@@ -2255,7 +2256,7 @@ $widgets = array(
                             $el('p', 'd-flex flex-wrap align-items-center gap-2 mb-3', lang('Post Details'), array(
                                 $span(lang('Date'), 'badge rounded-pill text-bg-warning border border-2 border-dark fs-6', lang('Date'), $bind('submitted_date_and_time')),
                                 // The author badge leaves when the record has no contact name.
-                                $span(lang('Jane Cooper'), 'pg-hide-if-empty badge rounded-pill text-bg-light border border-2 border-dark fs-6', lang('Author'), $bind('submitter_name')),
+                                $span(lang('Jane Cooper'), 'pg-hide-if-empty badge rounded-pill bg-body text-body-emphasis border border-2 border-dark fs-6', lang('Author'), $bind('submitter_name')),
                             )),
                             $heading('h1', lang('Why I draw my cat every single day'), 'display-5 fw-bolder mb-4', $bind('title')),
                             $ai_summary(),
@@ -2604,7 +2605,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Playground'),
-    'version'     => '1.1.2',
+    'version'     => '1.1.3',
     'framework'   => 'bootstrap5',
     'order'       => 15,
     'icon'        => 'bi-emoji-smile',

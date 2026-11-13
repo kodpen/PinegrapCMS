@@ -69,7 +69,7 @@
 - get-file-attachment-cache.md: get_file.php sends a submitted-form or comment attachment Cache-Control private in any folder (#7667); a list view whose item view page is gone grants nothing through it (#7668)
 - get-file-byte-ranges.md: Range/206 in get_file.php and the external API from one copy (includes/http_range.php): what is answered 206, 416 or 200, If-Range by Last-Modified, which send paths take no range
 - get-file-user-once.md: get_file.php's initialize_user() returns when the visitor is already read; a private channel's file reached it twice and the PHP warnings broke its picture (#7724)
-- guarded-frame.md: The guarded frame (LP1, #8802): how a stored page or a mail's HTML is shown in the panel: the shell, srcdoc, the two modes and their policies, the two messages, live_page.php, the browser proofs
+- guarded-frame.md: The guarded frame (#8802): how a stored page or a mail's HTML is shown in the panel: the shell, srcdoc, the three modes and their policies, the messages, live_page.php, the browser proofs [decision: decisions-made-workspace-16.md, decisions-made-workspace-17.md]
 - hostname-in-mail-links.md: HOSTNAME (request Host header) for redirects back to the visitor, HOSTNAME_SETTING for links that leave the request (e-mails, documents); the mails that used the request host [decision: decisions-made-product-39.md]
 - image-accent-colour.md: get_dominant_area_color(), the accent colour the Edit file and order screens take from a picture: palette images and transparent pixels.
 - image-color-profile.md: ICC colour profiles in the image engine: Imagick and GD keep a non-sRGB RGB profile, GD writes it into JPEG/PNG/WebP itself and refuses (color_profile) only what it cannot carry; how a profile is read
@@ -108,13 +108,18 @@
 - kiosk-mode.md: kiosk.php: what its query string sets in the session, how logout restarts it (token and kiosk mode required, visitor cookies cleared), and why the text parameters must be strings
 - language-address-prefix.md: A target language's address prefix (/en/, /pt-br/): lower case everywhere, fallback to the lower-cased code, collision check in the languages save, router matching
 - language-redirect-matching.md: How the automatic language redirect reads a browser language tag: regions, Chinese script before region, aliases
-- license-check.md: The panel's licence check (license_check(), includes/fn/output.php): when it asks, the Kodpen API branch behind PG_VENDOR_API_V1 (PR #4381), the card, the key field
+- license-check.md: The panel's licence check (license_check(), includes/fn/output.php): when it asks, the Kodpen API branch (PR #4381, PG_VENDOR_API_V1 on), the card, the key field
 - link-resolve-js-twin.md: The link resolver's browser twin (assets/js/pg_link_resolve.js, window.PGLinkResolve): what it mirrors, how parity is tested, what it cannot mirror
 - link-resolve-letter-case.md: The link resolver (SEO broken links, prototype viewer) matches page, file, short link, product, group and record names without letter case, as the router's database lookup does (#4976)
 - mail-domain-health.md: The "Sending domain" card of SMTP Settings (SPF, DKIM, DMARC judged from DNS, the record to copy, 30-day bounce and complaint rates) and the mail_reputation operations alert
 - main-host-redirect.md: Redirect to the main host (config.main_host_redirect, 11.0.52, #2179): which requests get a 301 to config.hostname, which never do, why it starts off everywhere
 - maintenance-mode-end-time.md: How Settings › General reads the maintenance end time (the zone of the same save) and when a passed end time refuses the save (only switching on or a new end)
 - maintenance-mode-health.md: Maintenance mode (503 + Retry-After on page renders only, who passes, end time) and health.php for uptime monitors (statuses, no session); settings, status tile, API field
+- messages-area-census-addresses.md: MA0 census (2026-11-13): addresses never moved (web version, preferences, cron jobs, API), old panel addresses and the tab each leads to, and every link in the code to them
+- messages-area-census-screens.md: MA0 census (2026-11-13): today's campaign, campaign profile, SMS campaign and mail queue screens, their files, menu place and the right each asks, before the messages area replaces My Campaigns
+- messages-area-census-sends.md: MA0 proposal (2026-11-13, open on #9081): the one Sends list reads the queues and campaigns with no new table (a UNION source on the list table driver): ids, period, states, rights
+- messages-area-census-sources.md: MA0 census (2026-11-13): what the e-mail queue, SMS queue, WhatsApp queue, e-mail campaigns and SMS campaigns store per message, how long, and which sends leave no row in any of them
+- messages-area-census-tabs.md: MA0 proposals (2026-11-13, open on #9081) for the messages area's shell: the menu row's name and slot, what each of the five tabs takes from today's screens and settings cards, and who sees each tab
 - not-found-log-screen.md: The 404 log screen (view_not_found_log.php): rows and their state, the search in the stored form with the Turkish rule, wrapping cells, Create redirect
 - not-found-log.md: The 404 log (2026.11.0, 11.0.30, not_found_log): which 404s are recorded and which not, bots and verified crawlers, the end-of-request write, row cap and 90 days, the screen and its Create redirect
 - notification-channels-delivery.md: Slack, Teams and Telegram delivery: targets in the sealed notify_channels entry, api_webhook_queue rows with webhook_id 0, the retry ladder, secrets masked
@@ -143,6 +148,7 @@
 - page-cache-proxy-rules.md: Cache rules for a CDN or reverse proxy in front of Pinegrap (Cloudflare, nginx, Varnish) that follow the page cache gate: what to pass, what to keep, and what a hit skips
 - page-file-cache.md: Pinegrap's own page cache on disk (PR #1402): router serving, the key, when a page is stored, stale copies, the sweep, what a hit skips
 - page-rename-redirect.md: A renamed page's old address as a 301 short link to the page (2026.11.0): where it is offered, what is skipped, why a redirect of the page's own gives its name back
+- panel-picture-change-stamp.md: A panel picture drawn by a file's own address carries its change stamp (?v=, pg_file_stamped_address()), so a picture saved again under its name shows at once (#8913) [decision: decisions-made-product-46.md]
 - performance-monitor-cost.md: Performance monitor cost rules (perf_monitor_shutdown()): hourly perf_stats buckets, slow requests only in perf_log, no percentile, sanity gate, flush-gated sweep, row cap, sampling.
 - proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which. [decision: decisions-made-product-19.md]
 - record-breadcrumb-list-step.md: The middle step of a post's BreadcrumbList JSON-LD: the list page that links its records to the record page (pg_record_list_page(), #2181), how one is picked, when there is none
@@ -186,7 +192,7 @@
 - system-status-php-security-fixes.md: The "PHP Security Fixes" System Status check (PHP2Shell, CVE-2026-109618/109619): fixed releases, build date, four states, and the Docker image's upload progress setting
 - update-backup-rollback.md: Backup a software update or repair writes before replacing files (pre-update-*.zip) and the rollback on Repair Software: contents, hash record, effect on files and config.version
 - update-beta-builds.md: Beta builds of one version over the Kodpen API (PR #3755): data/update_build.json, when a same-version build is offered (#3204), the re-run after replace, backup/rollback and integrity ref [decision: decisions-made-product-5.md]
-- update-channel-stable-beta.md: Update channel (stable/beta): config key, the three channel functions all callers must use, download_assistant stays stable, switching, version format.
+- update-channel-stable-beta.md: Update channel (stable/beta): config key, pg_update_channel() for every caller and how the Kodpen API path sends it, the api2-only helpers, download_assistant stays stable, switching, version format.
 - update-check-errors.md: How the software update check reports a failed answer (HTTP status, cURL, invalid), the checks-off state, its single Site Log line, and the one "update available" bell row.
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
 - update-status-tile.md: When the Software Update tile of System Status may say "up to date": only from a recent check the update server answered, never from a failed, old or switched-off one.
@@ -195,9 +201,12 @@
 - upload-drop-area-sizes.md: Upload File and Upload Design Files write the drop-area sizes and the too-big refusal in the panel's units and decimal mark, not Dropzone's
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes, the import screens' refusal helpers.
 - upload-refusal-answers.md: Upload Design Files and Upload File answer a Dropzone refusal in JSON with a 4xx status and show it in a role=alert line; per-file upload error codes on design uploads
-- vendor-api-client.md: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 switch line, base and PG_VENDOR_API_URL, headers, timeouts, problem reader, canonical site name, vector sums
-- vendor-api-update-download.md: Download, backup and replace of a signed update behind PG_VENDOR_API_V1 (PR #3632): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape
-- vendor-api-update.md: The Kodpen API's release check (GET /releases/latest, PR #3282) behind PG_VENDOR_API_V1: how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts [decision: decisions-made-product-5.md]
+- vendor-api-client.md: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 switch line (on), base and PG_VENDOR_API_URL, headers, timeouts, problem reader, canonical site name, vector sums [decision: decisions-made-product-45.md]
+- vendor-api-update-download.md: Download, backup and replace of a signed update (PR #3632, PG_VENDOR_API_V1 on): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape [decision: decisions-made-product-45.md]
+- vendor-api-update.md: The Kodpen API's release check (GET /releases/latest, PR #3282, PG_VENDOR_API_V1 on): how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts [decision: decisions-made-product-5.md]
+- whatsapp-cloud-api-facts.md: Meta's WhatsApp Cloud API on 2026-11-12: Graph version, ids and permanent token, sending a template, the 24-hour window, template limits, categories, prices, media
+- whatsapp-cloud-api-webhooks.md: Meta's WhatsApp webhooks and error codes on 2026-11-12: verify call, X-Hub-Signature-256, retries, fields, delivery and template states, BSUIDs, which codes may be retried
+- whatsapp-connection.md: WhatsApp account (WA1, #9067): the Communication › WhatsApp card and its five steps, connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature
 - windows-folder-is-writable.md: Ask pg_dir_writable(), never is_writable(), about a folder: PHP on Windows reads its read-only attribute (OneDrive, Explorer), which stops nothing; where it bit, how each check asks now
 - x-rewrite-url-iis-only.md: The request's address is read by pg_request_uri_from_server(): X-Rewrite-URL counts on IIS only, else a client header could replace the routed address and slip past the firewall
 - zip-entry-declared-size.md: A zip entry is read no further than its archive declares: streams via pg_zip_entry_uri(), whole entries via pg_zip_entry_contents(), ZIP imports via pg_zip_import_open(), .ods checked

@@ -1012,18 +1012,19 @@ function ws_api_message_thread_schema()
 // One item of a message's checklist (ws_api_message_checks()).
 function ws_api_message_check_schema()
 {
-    return array('item' => 'integer', 'text' => 'string', 'checked' => 'boolean', 'by' => 'WorkspaceMessageSender?', 'at' => 'string?');
+    return array('item' => 'integer', 'text' => 'string', 'checked' => 'boolean', 'by' => 'WorkspaceMessageSender?', 'at' => 'string?', 'app_id' => 'integer?');
 }
 
 /**
  * A message's checklist as the API shows it: one entry per "- [ ] item"
  * line, in order, with the tick someone gave it since over the state it was
  * written with, as the channel screen draws it (ws_render_body()). by and at
- * are null for an item nobody ticked or cleared; a guest has no user id.
+ * are null for an item nobody ticked or cleared; a guest has no user id, nor
+ * has an application, whose name is in by and whose id is app_id.
  *
  * @param string $body   the message text
  * @param array  $checks ws_checks_map() entry of the message: item => state
- * @return array[] item, text, checked, by, at
+ * @return array[] item, text, checked, by, at, app_id
  */
 function ws_api_message_checks($body, $checks)
 {
@@ -1037,10 +1038,11 @@ function ws_api_message_checks($body, $checks)
             'text'    => (string) $entry['text'],
             'checked' => is_array($state) ? !empty($state['checked']) : !empty($entry['checked']),
             'by'      => is_array($state) ? array(
-                'user_id' => (empty($state['guest']) && ((int) $state['user_id'] > 0)) ? (int) $state['user_id'] : null,
+                'user_id' => (empty($state['guest']) && empty($state['app_id']) && ((int) $state['user_id'] > 0)) ? (int) $state['user_id'] : null,
                 'name'    => (string) $state['name'],
             ) : null,
             'at'      => is_array($state) ? api_time((int) ($state['updated_at'] ?? 0)) : null,
+            'app_id'  => (is_array($state) && ((int) ($state['app_id'] ?? 0) > 0)) ? (int) $state['app_id'] : null,
         );
     }
 
@@ -1319,7 +1321,9 @@ function ws_api_channel_or_404($viewer, $id)
 {
     $channel = ws_channel((int) $id);
 
-    if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+    // The room of a mailbox kept in no channel is no channel to an
+    // application either: its mail is read through the mail endpoints.
+    if (!$channel || ws_channel_is_mailbox($channel) || !ws_can_read_channel($viewer, $channel)) {
         api_fail_not_found(lang('Channel'));
     }
 
@@ -1979,6 +1983,66 @@ function ws_api_messages_react($params)
 
     if (!$result['ok']) {
         api_fail_validation($result['error'], 'emoji');
+    }
+
+    $row = ws_message($message['id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
+}
+
+/**
+ * Ticks a checklist line of a message, or clears it, as the box in the
+ * channel does: with an application key or an OAuth connection the tick is
+ * the application's and the line shows its name; from a team devices session
+ * it is the person's.
+ *
+ * @param array $params
+ */
+function ws_api_messages_check($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_message((int) $params['id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    $item = (int) $params['item'];
+    $checked = !array_key_exists('checked', $params) || !empty($params['checked']);
+
+    // The checks ws_check_set() makes, made first so that a dry run meets
+    // the same refusals.
+    $check = ws_check_check($viewer, $message, $item);
+
+    if (!$check['ok']) {
+        if ($check['field'] === 'item') {
+            api_fail_validation($check['error'], 'item');
+        }
+
+        api_fail(403, 'forbidden', $check['error']);
+    }
+
+    $state = ws_api_message_checks($message['body'], ws_checks_map(array($message['id']))[(int) $message['id']] ?? array());
+    $now = false;
+
+    foreach ($state as $entry) {
+        if ($entry['item'] === $item) {
+            $now = $entry['checked'];
+        }
+    }
+
+    api_dry_run_stop('updated', 'workspace_check', array(
+        'message_id' => (int) $message['id'],
+        'channel_id' => (int) $message['channel_id'],
+        'item'       => $item,
+        'checked'    => $checked,
+        'changes'    => ($now !== $checked),
+    ));
+
+    $result = ws_check_set($viewer, $message, $item, $checked, ws_api_writer_app_id());
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'item');
     }
 
     $row = ws_message($message['id']);
@@ -3709,13 +3773,56 @@ function ws_api_messages_pin_close($params)
    --------------------------------------------------------------------------- */
 
 /**
+ * What Approve asks for on a request, as the panel's card says it
+ * (ws_approvals_map()): only an open request that a flow's approval box
+ * waits on asks, and a box with no question of its own has no label. Pure.
+ *
+ * @param array $row   ws_approvals row
+ * @param array $asked ws_approval_answers_asked()
+ * @return array answer (none | text | number), label ('' when there is none)
+ */
+function ws_api_approval_answer($row, $asked)
+{
+    $found = ((int) ($row['closed_at'] ?? 0) === 0) ? ($asked[(int) $row['id']] ?? null) : null;
+    $answer = (is_array($found) && in_array($found['answer'] ?? '', array('text', 'number'), true)) ? (string) $found['answer'] : 'none';
+
+    return array(
+        'answer' => $answer,
+        'label'  => ($answer !== 'none') ? trim((string) ($found['label'] ?? '')) : '',
+    );
+}
+
+/**
+ * The open requests among the rows, for ws_approval_answers_asked(): a
+ * closed one asks for nothing, so it is not looked up. Pure.
+ *
+ * @param array[] $rows ws_approvals rows
+ * @return int[]
+ */
+function ws_api_approval_open_ids($rows)
+{
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && ((int) ($row['closed_at'] ?? 0) === 0)) {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
  * One request as the API shows it.
  *
- * @param array $viewer
- * @param array $row ws_approvals row
+ * @param array      $viewer
+ * @param array      $row   ws_approvals row
+ * @param array|null $asked what a list read for all its requests at once
+ *                          (ws_approval_answers_asked()); null reads it for
+ *                          this request
  * @return array
  */
-function ws_api_approval_present($viewer, $row)
+function ws_api_approval_present($viewer, $row, $asked = null)
 {
     $answers = ws_approval_people($row['id']);
     $people = array();
@@ -3740,6 +3847,7 @@ function ws_api_approval_present($viewer, $row)
     }
 
     $message = ws_message($row['message_id']);
+    $asks = ws_api_approval_answer($row, ($asked !== null) ? $asked : ws_approval_answers_asked(ws_api_approval_open_ids(array($row))));
 
     return array(
         'id'                => (int) $row['id'],
@@ -3749,6 +3857,9 @@ function ws_api_approval_present($viewer, $row)
         // The details: the message without the title line it starts with.
         'text'              => $message ? ws_plain_text($viewer, preg_replace('/^\*\*[^\n]*\*\*\n*/u', '', (string) $message['body'])) : '',
         'rule'              => (string) $row['rule'],
+        // What an approval has to carry in its note (decide), while open.
+        'answer'            => $asks['answer'],
+        'answer_label'      => ($asks['label'] !== '') ? $asks['label'] : null,
         'record'            => ((string) $row['record_type'] !== '') ? array('type' => (string) $row['record_type'], 'id' => (int) $row['record_id']) : null,
         'people'            => $people,
         'guests'            => $guests,
@@ -3810,6 +3921,8 @@ function ws_api_approval_schema()
         'title'             => 'string',
         'text'              => 'string',
         'rule'              => 'string',
+        'answer'            => 'string',
+        'answer_label'      => 'string?',
         'record'            => 'WorkspaceApprovalRecord?',
         'people'            => array(array('user_id' => 'integer', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?')),
         'guests'            => array(array('id' => 'integer', 'name' => 'string', 'email' => 'string?', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?', 'link_expires_at' => 'string?')),
@@ -3871,13 +3984,17 @@ function ws_api_approvals_list($params)
         $where[] = "a.closed_at > 0";
     }
 
-    $out = array();
-
-    foreach ((array) db_items("SELECT a.* FROM ws_approvals a
+    $rows = db_items("SELECT a.* FROM ws_approvals a
         INNER JOIN ws_messages m ON m.id = a.message_id
         WHERE " . implode(' AND ', $where) . "
-        ORDER BY a.id DESC LIMIT " . max(1, $limit)) as $row) {
-        $out[] = ws_api_approval_present($viewer, $row);
+        ORDER BY a.id DESC LIMIT " . max(1, $limit));
+    $rows = is_array($rows) ? $rows : array();
+    // What Approve asks for, read once for the page.
+    $asked = ws_approval_answers_asked(ws_api_approval_open_ids($rows));
+    $out = array();
+
+    foreach ($rows as $row) {
+        $out[] = ws_api_approval_present($viewer, $row, $asked);
     }
 
     api_ok_list($out, $limit);

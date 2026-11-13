@@ -29,6 +29,8 @@
     --pg-secondary-hover: #afb3bc;
     --pg-secondary-hover-rgb: 90, 93, 99;
     --pg-secondary-active: #b4b8c0;
+    --pg-secondary-line: #71747b;
+    --pg-secondary-line-rgb: 113, 116, 123;
 }
 
 [data-bs-theme=dark] {
@@ -50,4 +52,6 @@
     --pg-secondary-fg: #bdc1c8;
     --pg-secondary-fg-rgb: 189, 193, 200;
     --pg-secondary-hover-rgb: 202, 205, 211;
+    --pg-secondary-line: #a1a6b0;
+    --pg-secondary-line-rgb: 161, 166, 176;
 }

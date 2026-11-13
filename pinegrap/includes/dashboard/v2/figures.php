@@ -618,7 +618,7 @@ function pg_dashboard_v2_shortcuts()
         'start_flow'      => $s(lang('Start flow'), 'bi-diagram-3', 'workspace_flows.php', 'flows'),
         'get_report'      => $s(lang('Get report'), 'bi-file-earmark-bar-graph', 'view_visitor_reports.php', 'visitors'),
         'back_up'         => $s(lang('Back up'), 'bi-cloud-arrow-up', 'backups.php', 'manager_area'),
-        'visual_editor'   => $s(lang('Visual Editor'), 'bi-palette', 'view_styles.php', 'designer'),
+        'visual_editor'   => $s(lang('Page Design Studio'), 'bi-palette', 'view_styles.php', 'designer'),
         'forms'           => $s(lang('Forms'), 'bi-ui-checks', 'view_submitted_forms.php', 'forms', 'forms'),
         'orders'          => $s(lang('Orders'), 'bi-cart4', 'view_orders.php', 'shop', 'orders'),
         'edit_page'       => $s(lang('Edit page'), 'bi-pencil-square', 'view_pages.php', 'files'),

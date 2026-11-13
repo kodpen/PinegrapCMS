@@ -194,7 +194,7 @@ if (isset($_POST['submit_csp_clear'])) {
 if (!$table_exists) {
     echo pg_page_shell(array(
         'title'         => lang('Firewall Log'),
-        'extra classes' => 'setting',
+        'extra classes' => 'setting pg-measure-list',
         'icon'          => 'setting',
         'heading'       => lang('Firewall Log'),
         'heading_description' => lang('Requests the firewall blocked or flagged'),
@@ -465,7 +465,7 @@ $list_query = array_filter(array('range' => $range, 'category' => $category, 'se
 
 echo pg_page_shell(array(
     'title'         => lang('Firewall Log'),
-    'extra classes' => 'setting',
+    'extra classes' => 'setting pg-measure-list',
     'icon'          => 'setting',
     'heading'       => lang('Firewall Log'),
 ));

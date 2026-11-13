@@ -81,7 +81,7 @@ foreach ($passes as $key => $p) {
     $is_featured = !empty($p['featured']);
     $pass_cards[] = $col(array(
         $el('div', 'card h-100 rounded-4 ' . ($is_featured ? 'border-primary border-2 shadow' : 'border-0 shadow-sm'), $p['title'], array_merge(
-            $is_featured ? array($el('div', 'card-header bg-primary text-white text-center small fw-semibold border-0', lang('Badge'), array(), array('text' => lang('Most chosen')))) : array(),
+            $is_featured ? array($el('div', 'card-header text-bg-primary text-center small fw-semibold border-0', lang('Badge'), array(), array('text' => lang('Most chosen')))) : array(),
             array($el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
                 $heading('h2', $p['title'], 'h5 fw-bold mb-2'),
                 $para($p['text'], 'small text-body-secondary mb-3'),

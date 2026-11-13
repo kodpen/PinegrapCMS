@@ -121,7 +121,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Edit Contact Group'),
-            'extra classes'=>'contact',
+            'extra classes'=>'contact pg-measure-edit',
             'icon'=>'contact', 
             'heading'=>lang('Edit Contact Group'),
             'heading_description' => lang('Update this contact group and its subscription features.'),

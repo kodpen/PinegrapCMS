@@ -1,0 +1,26 @@
+/* a WhatsApp chat as a phone shows it: the preview of a template */
+.waph { --wa-bg: #0b141a; --wa-bar: #1f2c33; --wa-in: #202c33; --wa-fg: #e9edef; --wa-fg2: #8696a0; --wa-link: #53bdeb; --wa-green: #25d366; width: 100%; border-radius: 34px; padding: 9px; background: #05070a; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 18px 40px -18px rgba(0,0,0,.7); }
+[data-theme="light"] .waph { --wa-bg: #efeae2; --wa-bar: #ffffff; --wa-in: #ffffff; --wa-fg: #111b21; --wa-fg2: #667781; --wa-link: #027eb5; background: #1b1e24; }
+.waph .scr { border-radius: 26px; overflow: hidden; background: var(--wa-bg); color: var(--wa-fg); font-size: 12.5px; line-height: 1.45; }
+.waph .sb { display: flex; align-items: center; height: 24px; padding: 0 16px; font-size: 11px; font-weight: 600; background: var(--wa-bar); }
+.waph .sb span { margin-left: auto; display: inline-flex; gap: 5px; font-size: 11px; }
+.waph .hd { display: flex; align-items: center; gap: 8px; height: 46px; padding: 0 10px; background: var(--wa-bar); border-bottom: 1px solid rgba(128,128,128,.14); }
+.waph .hd > i { font-size: 15px; color: var(--wa-fg2); }
+.waph .hd .avt { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; color: #fff; background: linear-gradient(135deg, #2f8f9b, #6fd0c0); }
+.waph .hd b { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; }
+.waph .hd b i { font-size: 12px; color: var(--wa-green); }
+.waph .hd small { display: block; font-size: 10.5px; color: var(--wa-fg2); }
+.waph .hd .ic { margin-left: auto; display: inline-flex; gap: 14px; font-size: 14px; color: var(--wa-fg2); }
+.waph .chat { padding: 10px 9px 12px; min-height: 250px; }
+.waph .day { width: max-content; margin: 0 auto 9px; padding: 2px 9px; border-radius: 7px; font-size: 10.5px; color: var(--wa-fg2); background: var(--wa-in); }
+.waph .msg { width: 88%; border-radius: 3px 12px 12px 12px; overflow: hidden; background: var(--wa-in); box-shadow: 0 1px 1px rgba(0,0,0,.18); }
+.waph .msg .im { height: 104px; margin: 4px 4px 0; border-radius: 9px; display: grid; place-items: center; font-size: 30px; color: rgba(255,255,255,.92); background: linear-gradient(135deg, #3d7bd9, #5fb6e8 60%, #9ad2f5); }
+.waph .msg .bd { padding: 7px 9px 2px; }
+.waph .msg .bd b { font-weight: 600; }
+.waph .msg mark { padding: 0 2px; border-radius: 3px; background: color-mix(in srgb, var(--wa-link) 24%, transparent); color: inherit; }
+.waph .msg .ft { padding: 3px 9px 0; font-size: 11px; color: var(--wa-fg2); }
+.waph .msg time { display: block; padding: 0 9px 5px; text-align: right; font-size: 10px; color: var(--wa-fg2); }
+.waph .msg .bt { display: flex; align-items: center; justify-content: center; gap: 6px; height: 34px; border-top: 1px solid rgba(128,128,128,.18); font-size: 12.5px; font-weight: 500; color: var(--wa-link); }
+.waph .bar { display: flex; align-items: center; gap: 8px; padding: 7px 9px 10px; }
+.waph .bar span { flex: 1; height: 30px; border-radius: 15px; background: var(--wa-in); }
+.waph .bar i { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; color: #fff; background: var(--wa-green); }

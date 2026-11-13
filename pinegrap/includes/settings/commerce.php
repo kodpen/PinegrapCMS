@@ -23,7 +23,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 $pg_settings_cards[] = '
     <div id="pgset-store" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Store') . '
             </div>
             <div class="card-body">
@@ -137,7 +137,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-shipping" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Shipping') . '
             </div>
             <div class="card-body">
@@ -281,7 +281,7 @@ foreach ($stock_card_locations as $stock_card_location) {
 $pg_settings_cards[] = '
     <div id="pgset-stock-locations" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Stock locations') . '
             </div>
             <div class="card-body">
@@ -334,7 +334,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-address-autocomplete" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Address Autocomplete') . '
             </div>
             <div class="card-body">
@@ -350,7 +350,7 @@ $pg_settings_scripts[] = pg_addr_settings_script();
 $pg_settings_cards[] = '
     <div id="pgset-giftcards" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Gift Cards & Rewards') . '
             </div>
             <div class="card-body">
@@ -504,7 +504,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
     <div id="pgset-payments" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Payment Methods') . '
             </div>
             <div class="card-body">
@@ -879,7 +879,7 @@ if ($reference_price_rule_ready) {
     $pg_settings_cards[] = '
     <div id="pgset-reference-price" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . lang('Reference Price') . '
             </div>
             <div class="card-body">
@@ -899,7 +899,7 @@ if ($reference_price_rule_ready) {
 $pg_settings_cards[] = '
                         <div id="pgset-affiliate" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Affiliate Program') . '
                                 </div>
                                 <div class="card-body">
@@ -1014,7 +1014,7 @@ if (!$product_feeds_ready) {
 $pg_settings_cards[] = '
                         <div id="pgset-feeds" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Product Feeds') . '
                                 </div>
                                 <div class="card-body">

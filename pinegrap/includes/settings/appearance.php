@@ -24,7 +24,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 $pg_settings_cards[] = '
                         <div id="pgset-theme" class="pg-set-card" data-pg-advanced-visuals="' . ($advanced_visual_effects_checked ? '1' : '0') . '">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Theme') . '
                                 </div>
                                 <div class="card-body">
@@ -101,7 +101,7 @@ if ($dashboard_card_shown) {
                             . ' data-pg-dashboard-refresh="' . (int) $dashboard_refresh . '"'
                             . ' data-pg-dashboard-reset="' . ($dashboard_reset_done ? '1' : '0') . '">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Dashboard') . '
                                 </div>
                                 <div class="card-body">
@@ -176,7 +176,7 @@ if ($dashboard_card_shown) {
 $pg_settings_cards[] = '
                         <div id="pgset-editor" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Rich-text Editor') . '
                                 </div>
                                 <div class="card-body">
@@ -273,7 +273,7 @@ if ((int) $user['role'] === 0) {
     $pg_settings_cards[] = '
                         <div id="pgset-private-label" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Private Label Branding') . '
                                 </div>
                                 <div class="card-body">

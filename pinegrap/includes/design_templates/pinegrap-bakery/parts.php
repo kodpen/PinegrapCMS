@@ -539,8 +539,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
-            $el('div', 'container', lang('Navbar Container'), array(
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
+            $el('div', 'container flex-xl-wrap', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-cake2-fill', 'fs-4 text-primary'),
                     $span('{{site_name}}', 'pbk-brand fs-4', lang('Name')),
@@ -556,9 +556,9 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
-                        $el('a', 'btn btn-primary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
+                    $el('ul', 'navbar-nav pbk-nav ms-xl-auto me-xl-2 me-xxl-3 column-gap-xxl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
+                        $el('a', 'btn btn-primary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 px-xl-3 px-xxl-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-pencil-square'),
                             $span(lang('Order a Cake'), '', lang('Link Text')),
                         ), array('href' => '{{page:cake_order}}')),
@@ -660,7 +660,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $categorie
 // order and the way ordering works. Shared, so every page that ends with
 // it carries the same offer.
 $order_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -669,8 +669,8 @@ $order_band = function () use ($el, $heading, $para, $link, $container, $row, $c
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Order a Cake'), '{{page:cake_order}}', 'btn btn-light btn-lg rounded-pill px-4'),
-                        $link(lang('How Ordering Works'), '{{page:how_to_order}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Order a Cake'), '{{page:cake_order}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                        $link(lang('How Ordering Works'), '{{page:how_to_order}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -683,7 +683,7 @@ $order_band = function () use ($el, $heading, $para, $link, $container, $row, $c
 $bake_item = function ($key) use ($el, $para, $span, $bakes, $diet_tags, $money) {
     $b = $bakes[$key];
     $badges = array();
-    foreach ($b['tags'] as $t) $badges[] = $span($diet_tags[$t], 'badge rounded-pill text-bg-light border', lang('Badge'));
+    foreach ($b['tags'] as $t) $badges[] = $span($diet_tags[$t], 'badge rounded-pill bg-body text-body-emphasis border', lang('Badge'));
     return $el('li', 'list-group-item d-flex align-items-start gap-3 py-3 px-0 bg-transparent', lang('Bake'), array(
         $el('div', 'flex-grow-1', lang('Bake Details'), array(
             $el('div', 'd-flex flex-wrap align-items-center gap-2 mb-1', lang('Name Line'), array_merge(array(
@@ -784,7 +784,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
             $stars(),
             $el('blockquote', 'pbk-quote mb-4', lang('Quote'), array($para($t['quote'], 'mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Customer'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),

@@ -200,8 +200,8 @@ $viewing_band = function () use ($el, $heading, $para, $link, $container, $row, 
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Book a Private Viewing'), '{{page:viewing}}', 'btn btn-light btn-lg rounded-0 px-4'),
-                        $link(lang('Ask About a Work'), '{{page:enquire}}', 'btn btn-outline-light btn-lg rounded-0 px-4'),
+                        $link(lang('Book a Private Viewing'), '{{page:viewing}}', 'btn btn-secondary btn-lg rounded-0 px-4'),
+                        $link(lang('Ask About a Work'), '{{page:enquire}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -257,7 +257,7 @@ $exhibition_card = function ($sample_key = 'after_hours') use ($el, $para, $span
                 $image($photo('exhibition-' . $sample_key, 900, 675), $x['title'], 'w-100 h-100 object-fit-cover',
                     array('_bindings' => array('src' => 'photo_1', 'alt' => 'title'), '_attrs' => array($attr('loading', 'lazy')))),
             )),
-            $span($exhibition_statuses[$x['status']], 'badge rounded-0 text-bg-dark align-self-start mb-2', lang('Status'), $bind('status')),
+            $span($exhibition_statuses[$x['status']], 'badge rounded-0 text-bg-primary align-self-start mb-2', lang('Status'), $bind('status')),
             $el('h3', 'pgl-display h3 position-static mb-1', lang('Exhibition Title'), array(
                 $link($x['title'], '#', 'stretched-link link-body-emphasis text-decoration-none', array(),
                     array('_bindings' => array('text' => 'title', 'href' => 'form_item_view'))),

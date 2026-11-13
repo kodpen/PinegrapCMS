@@ -118,7 +118,7 @@ $team = array(
 $team_card = function ($m) use ($el, $heading, $para, $image, $col, $attr, $portrait) {
     return $col(array(
         $el('article', 'text-center', lang('Team Member'), array(
-            $image($portrait($m['name'], 320), $m['name'], 'rounded-circle mb-3', array('_attrs' => array($attr('width', '160'), $attr('height', '160'), $attr('loading', 'lazy')))),
+            $image($portrait($m['name'], 320), $m['name'], 'rounded-circle mb-3', array('width' => '160', 'height' => '160', '_attrs' => array($attr('loading', 'lazy')))),
             $heading('h3', $m['name'], 'pbw-display h5 mb-1'),
             $para($m['role'], 'small fw-semibold text-primary mb-2'),
             $para($m['bio'], 'small text-body-secondary mb-0'),
@@ -189,7 +189,7 @@ $bw_hero = $el('section', 'pbw-hero py-5 bg-body text-body overflow-hidden', lan
                     $para($brewery['tagline'] . '.', 'lead text-body-secondary mb-4'),
                     $el('div', 'd-flex flex-wrap gap-3', lang('Hero Buttons'), array(
                         $link(lang('See what is on tap'), '{{page:taproom}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                        $link(lang('Book a tour'), '{{page:tours}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Book a tour'), '{{page:tours}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
                     )),
                 )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 900)),
                 $fx($el('ul', 'list-unstyled d-flex flex-wrap gap-3 gap-lg-4 small mt-5 mb-0', lang('Facts'), array(

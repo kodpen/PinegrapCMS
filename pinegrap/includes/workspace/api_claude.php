@@ -433,6 +433,8 @@ function ws_api_claude_request_present($viewer, $row)
         // the application that asked, 0 and '' for a person.
         'requested_by'     => array('user_id' => (int) $row['requested_by'], 'name' => ws_person_name($row['requested_by'])) + ws_api_claude_request_asker($message),
         'reply_message_id' => ((int) $row['reply_message_id'] > 0) ? (int) $row['reply_message_id'] : null,
+        // Closed without text (no_answer): answered with no reply.
+        'no_answer'        => function_exists('ws_agent_request_no_answer') && ws_agent_request_no_answer($row),
         'error'            => (string) $row['error'],
         'created_at'       => api_time($row['created_at']),
         'claimed_at'       => ((int) $row['claimed_at'] > 0) ? api_time($row['claimed_at']) : null,
@@ -475,6 +477,7 @@ function ws_api_claude_request_schema()
         'wake'             => array('kind' => 'string', 'note' => 'string', 'due_at' => 'string?'),
         'requested_by'     => array('user_id' => 'integer', 'name' => 'string', 'app_id' => 'integer', 'app_handle' => 'string', 'app_name' => 'string'),
         'reply_message_id' => 'integer?',
+        'no_answer'        => 'boolean',
         'error'            => 'string',
         'created_at'       => 'string',
         'claimed_at'       => 'string?',
@@ -1123,14 +1126,14 @@ function ws_api_claude_answer($params)
     // POST /design/pages/{id}/proposals and this request's id.
     if ($origin === 'editor') {
         if (!empty($params['tasks']) || !empty($params['changes'])) {
-            api_fail_validation(lang('A request from the Visual Page Editor is answered with text only; the page change is proposed with POST /design/pages/{id}/proposals.'), empty($params['tasks']) ? 'changes' : 'tasks');
+            api_fail_validation(lang('A request from the Page Design Studio is answered with text only; the page change is proposed with POST /design/pages/{id}/proposals.'), empty($params['tasks']) ? 'changes' : 'tasks');
         }
 
         api_dry_run_stop('answered', 'workspace_claude_request', array('id' => (int) $row['id'], 'origin' => 'editor'));
 
         pg_design_ai_request_answer($row, ws_tokens_normalise(trim((string) $params['text'])));
 
-        ws_api_log(lang('Claude answered a request from the Visual Page Editor'));
+        ws_api_log(lang('Claude answered a request from the Page Design Studio'));
 
         api_ok(ws_api_claude_request_present($viewer, ws_api_claude_request_or_404($row['id'])));
     }

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>panel look A: the WhatsApp template designer (header picture, text, buttons, offer code) with a phone preview</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<link rel="stylesheet" href="wa-phone.css">
+<style>
+body { background: radial-gradient(700px 420px at 20% -6%, var(--glow1), transparent 62%), radial-gradient(600px 380px at 100% -4%, var(--glow2), transparent 60%), var(--page); }
+.page { width: 1240px; }
+.phead { margin-top: 0; }
+.cols { display: grid; grid-template-columns: 1fr 348px; gap: 28px; align-items: start; }
+.sec { padding: 16px 20px 18px; margin-bottom: 14px; }
+.sec h3 { display: flex; align-items: center; gap: 9px; margin: 0 0 12px; font-size: 14px; font-weight: 600; }
+.sec h3 em { font-style: normal; font-weight: 400; font-size: 12.5px; color: var(--fg3); }
+.sec h3 .sp { flex: 1; }
+.g { display: grid; grid-template-columns: 1.1fr 1.4fr 1fr; gap: 14px; }
+.media { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 9px; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; }
+.media .th { width: 76px; height: 44px; border-radius: 8px; display: grid; place-items: center; font-size: 18px; color: rgba(255,255,255,.92); background: linear-gradient(135deg, #3d7bd9, #5fb6e8 60%, #9ad2f5); }
+.media small { display: block; color: var(--fg3); font-size: 12px; }
+.ed { border-radius: 12px; background: var(--field); border: 1px solid var(--field-line); box-shadow: var(--field-shadow); }
+.ed .tb { display: flex; align-items: center; gap: 2px; padding: 5px 8px; border-bottom: 1px solid var(--line); }
+.ed .tb .ib { width: 28px; height: 28px; font-size: 14px; }
+.ed .tb .btn { margin-left: auto; }
+.ed .tx { padding: 10px 12px 12px; font-size: 14px; line-height: 1.6; }
+.var { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 7px; font-size: 12.5px; font-weight: 550; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); vertical-align: 1px; }
+.var.code { color: var(--amber); background: color-mix(in srgb, var(--amber) 14%, transparent); }
+.cnt { display: flex; margin-top: 6px; font-size: 12px; color: var(--fg3); }
+.cnt span:last-child { margin-left: auto; }
+.brow { display: grid; grid-template-columns: 22px 150px 1fr 1.25fr 28px; gap: 8px; align-items: center; margin-bottom: 8px; }
+.brow > i { color: var(--fg3); font-size: 15px; }
+.brow .in { height: 34px; font-size: 13px; padding: 0 10px; }
+.add { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 550; color: var(--accent); }
+.offer { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 12px; }
+.note { display: flex; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 11px; font-size: 12.5px; color: var(--fg2); background: color-mix(in srgb, var(--amber) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--amber) 20%, transparent); }
+.note i { color: var(--amber); font-size: 15px; }
+.side .cap { margin: 0 2px 10px; }
+.vals { margin-top: 14px; padding: 13px 15px 14px; }
+.vals .r { display: grid; grid-template-columns: 50px 1fr; gap: 10px; align-items: center; margin-top: 8px; }
+.vals code { font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg2); }
+.vals .in { height: 32px; font-size: 13px; }
+.flowline { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; padding: 9px 14px; border-radius: 12px; font-size: 13px; color: var(--fg2); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.flowline .stp { display: inline-flex; align-items: center; gap: 7px; }
+.flowline .stp b { font-weight: 550; color: var(--fg); }
+.flowline .ln { flex: 1; height: 1px; background: var(--line); }
+.dotn { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600; background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); }
+.dotn.on { background: linear-gradient(180deg, var(--a1), var(--a2)); color: var(--on-accent); box-shadow: none; }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="cap"><b>WhatsApp şablon tasarımı</b>Şablon panelde tasarlanır, telefondaki görünümüyle önizlenir, sonra WhatsApp'ın onayına gönderilir. Görsel, düğmeler, bağlantı ve teklif kodu eklenebilir.</div>
+<div class="page">
+  <div class="phead"><h1 class="disp">WhatsApp şablonu</h1><span class="st t-amber" style="align-self:flex-end;margin-bottom:5px">Taslak</span><span class="sp"></span><button class="btn quiet"><i class="bi bi-send"></i>Kendime deneme gönder</button><button class="btn quiet">Taslağı kaydet</button><button class="btn fill"><i class="bi bi-patch-check"></i>Onaya gönder</button></div>
+  <div class="flowline"><span class="stp"><span class="dotn on">1</span><b>Tasarla</b></span><span class="ln"></span><span class="stp"><span class="dotn">2</span>WhatsApp onayı</span><span class="ln"></span><span class="stp"><span class="dotn">3</span>Siparişlerde, formlarda ve akışlarda kullan</span></div>
+  <div class="cols">
+    <div>
+      <section class="pcard sec">
+        <h3>Temel</h3>
+        <div class="g">
+          <div><span class="lab">Ad</span><div class="in"><span style="font:13px ui-monospace,Menlo,monospace">tesekkur_ve_kod</span></div></div>
+          <div><span class="lab">Tür</span><span class="seg" style="display:flex"><span style="flex:1">Bilgilendirme</span><span class="on" style="flex:1">Pazarlama</span><span style="flex:1">Doğrulama</span></span></div>
+          <div><span class="lab">Dil</span><div class="in"><span>Türkçe</span><i class="bi bi-chevron-down end"></i></div></div>
+        </div>
+      </section>
+      <section class="pcard sec">
+        <h3>Başlık <em>· isteğe bağlı</em></h3>
+        <span class="seg"><span>Yok</span><span>Metin</span><span class="on"><i class="bi bi-image"></i>Görsel</span><span><i class="bi bi-play-btn"></i>Video</span><span><i class="bi bi-file-earmark"></i>Belge</span></span>
+        <div class="media"><span class="th"><i class="bi bi-cup-hot"></i></span><div><b style="font-weight:550">kasim-kampanya.jpg</b><small>1200 × 628 · Dosyalar'dan seçildi</small></div><span class="sp"></span><button class="btn quiet sm"><i class="bi bi-folder2-open"></i>Değiştir</button><button class="ib sm dim"><i class="bi bi-x-lg"></i></button></div>
+      </section>
+      <section class="pcard sec">
+        <h3>Mesaj</h3>
+        <div class="ed">
+          <div class="tb"><button class="ib"><i class="bi bi-type-bold"></i></button><button class="ib"><i class="bi bi-type-italic"></i></button><button class="ib"><i class="bi bi-type-strikethrough"></i></button><button class="ib"><i class="bi bi-emoji-smile"></i></button><button class="btn quiet sm"><i class="bi bi-braces"></i>Değişken ekle<i class="bi bi-chevron-down" style="font-size:11px"></i></button></div>
+          <div class="tx">Merhaba <span class="var">Müşterinin adı</span>, siparişiniz için teşekkürler! 🎉<br>Bir sonraki alışverişinizde <b>%10 indirim</b> sizin için. Kodunuz: <span class="var code"><i class="bi bi-ticket-perforated"></i>Teklif kodu</span><br>Kod <span class="var">Son kullanma tarihi</span> gününe kadar geçerlidir.</div>
+        </div>
+        <div class="cnt"><span>Değişkenler gönderimde kişiye göre doldurulur.</span><span class="num">212 / 1024</span></div>
+        <div style="margin-top:12px"><span class="lab">Alt bilgi <em>· isteğe bağlı</em></span><div class="in"><span>Kupa Dükkânı · Mesaj almak istemiyorsanız DUR yazın</span></div></div>
+      </section>
+      <section class="pcard sec">
+        <h3>Düğmeler <em>· en çok üç</em></h3>
+        <div class="brow"><i class="bi bi-grip-vertical"></i><div class="in"><i class="bi bi-box-arrow-up-right"></i><span>Bağlantı</span><i class="bi bi-chevron-down end"></i></div><div class="in"><span>Alışverişe başla</span></div><div class="in"><span class="ph">kupadukkani.com/kampanya?kod=</span><span class="var code" style="margin-left:-4px">Teklif kodu</span></div><button class="ib sm dim"><i class="bi bi-x-lg"></i></button></div>
+        <div class="brow"><i class="bi bi-grip-vertical"></i><div class="in"><i class="bi bi-copy"></i><span>Kodu kopyala</span><i class="bi bi-chevron-down end"></i></div><div class="in"><span>Kodu kopyala</span></div><div class="in"><span class="ph">Dokununca teklif kodu panoya kopyalanır</span></div><button class="ib sm dim"><i class="bi bi-x-lg"></i></button></div>
+        <div class="brow"><i class="bi bi-grip-vertical"></i><div class="in"><i class="bi bi-reply"></i><span>Hızlı yanıt</span><i class="bi bi-chevron-down end"></i></div><div class="in"><span>Daha fazla bilgi</span></div><div class="in"><span class="ph">Yanıt bir akışı başlatabilir</span></div><button class="ib sm dim"><i class="bi bi-x-lg"></i></button></div>
+        <span class="add"><i class="bi bi-plus-lg"></i>Düğme ekle</span><span class="help" style="display:inline;margin-left:12px">Bağlantı, telefon araması, hızlı yanıt, kodu kopyala</span>
+      </section>
+      <section class="pcard sec">
+        <h3>Teklif kodu <span class="sp"></span><span class="seg"><span>Yok</span><span>Ortak kod</span><span class="on">Kişiye özel kod</span></span></h3>
+        <div class="offer">
+          <div><span class="lab">Teklif</span><div class="in"><i class="bi bi-ticket-perforated"></i><span>Kasım: %10 indirim</span><i class="bi bi-chevron-down end"></i></div></div>
+          <div><span class="lab">Geçerlilik</span><div class="in"><span>Gönderimden sonra 14 gün</span><i class="bi bi-chevron-down end"></i></div></div>
+        </div>
+        <p class="help" style="margin-top:10px"><b style="color:var(--fg2);font-weight:550">Kişiye özel kod:</b> her alıcıya ayrı, tek kullanımlık bir anahtar üretilir; kimin kullandığı siparişte görünür. <b style="color:var(--fg2);font-weight:550">Ortak kod:</b> herkese aynı kod gider (örn. KASIM10).</p>
+        <div class="note"><i class="bi bi-shield-check"></i><span>Bu şablon pazarlama türündedir: yalnızca pazarlama izni vermiş kişilere gönderilir.</span></div>
+      </section>
+    </div>
+    <div class="side">
+      <div class="cap"><b>Telefondaki görünüm</b>Yazdıkça güncellenir; örnek değerlerle doldurulur.</div>
+      <div class="waph"><div class="scr">
+        <div class="sb">16:20<span><i class="bi bi-reception-4"></i><i class="bi bi-wifi"></i><i class="bi bi-battery-full"></i></span></div>
+        <div class="hd"><i class="bi bi-arrow-left"></i><span class="avt"><i class="bi bi-cup-hot"></i></span><div><b>Kupa Dükkânı<i class="bi bi-patch-check-fill"></i></b><small>İşletme hesabı</small></div><span class="ic"><i class="bi bi-camera-video"></i><i class="bi bi-telephone"></i><i class="bi bi-three-dots-vertical"></i></span></div>
+        <div class="chat">
+          <div class="day">Bugün</div>
+          <div class="msg">
+            <div class="im"><i class="bi bi-cup-hot"></i></div>
+            <div class="bd">Merhaba <mark>Ayşe</mark>, siparişiniz için teşekkürler! 🎉<br>Bir sonraki alışverişinizde <b>%10 indirim</b> sizin için. Kodunuz: <mark>K7M2-9QXA</mark><br>Kod <mark>26 Kasım</mark> gününe kadar geçerlidir.</div>
+            <div class="ft">Kupa Dükkânı · Mesaj almak istemiyorsanız DUR yazın</div>
+            <time>16:20</time>
+            <div class="bt"><i class="bi bi-box-arrow-up-right"></i>Alışverişe başla</div>
+            <div class="bt"><i class="bi bi-copy"></i>Kodu kopyala</div>
+            <div class="bt"><i class="bi bi-reply"></i>Daha fazla bilgi</div>
+          </div>
+        </div>
+        <div class="bar"><span></span><i class="bi bi-mic-fill"></i></div>
+      </div></div>
+      <section class="pcard vals">
+        <span class="lab" style="margin:0">Örnek değerler <em>· önizleme ve onay için</em></span>
+        <div class="r"><code>{{1}}</code><div class="in"><span>Ayşe</span></div></div>
+        <div class="r"><code>{{2}}</code><div class="in"><span>K7M2-9QXA</span></div></div>
+        <div class="r"><code>{{3}}</code><div class="in"><span>26 Kasım</span></div></div>
+      </section>
+    </div>
+  </div>
+</div>
+</div>
+</body>
+</html>

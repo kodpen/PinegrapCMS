@@ -145,7 +145,7 @@ $tour_pages[] = array(
         ), $searchable('bw-tour-steps', lang('what to expect, ID, age, shoes, soft drinks, accessibility'))),
         $el('section', 'py-5', lang('Private Tastings'), array(
             $container(array(
-                $el('div', 'pbw-hero rounded-4 p-4 p-lg-5 text-bg-dark', lang('Private Tastings Box'), array(
+                $el('div', 'pbw-hero rounded-4 p-4 p-lg-5 bg-body text-body', lang('Private Tastings Box'), array(
                     $row(array(
                         $col(array(
                             $para(lang('For a birthday, a team or a club'), 'pbw-eyebrow text-uppercase fw-semibold mb-2'),
@@ -153,10 +153,10 @@ $tour_pages[] = array(
                             $para(lang('Your own table in the taproom and a brewer pouring six beers for your group. Pick a free time online and it is yours as soon as you confirm.'), 'mb-0'),
                         ), '', '8'),
                         $col(array(
-                            $link(lang('Pick a Free Time'), '{{page:book_online}}', 'btn btn-light btn-lg rounded-pill px-4'),
+                            $link(lang('Pick a Free Time'), '{{page:book_online}}', 'btn btn-primary btn-lg rounded-pill px-4'),
                         ), '', '4', '', '12', 'text-lg-end'),
                     ), '4', '', 'align-items-center'),
-                )),
+                ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
             )),
         ), $searchable('bw-private-tastings', lang('private tasting, party, team event, group booking'))),
     )),

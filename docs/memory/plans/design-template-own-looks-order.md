@@ -5,7 +5,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 ## How does a template's polishing go?
 - Step `<id>-1`: its blocks. First the reuse search ([[design-template-own-look]]): a block of the same structure is placed or extended, never copied; general blocks go into the general groups, only sector-specific ones into the family (prefix = the template's short name). The PR body names the blocks reused and added. Step `<id>-2`: home and signature pages rebuilt on it (the sector's pages, not the standard ones), motion where it fits, version raised, its `designer/design-template-<id>.md` updated. A small template may do both in one PR; a big one a third step. Main plan: [[design-template-own-looks]].
-- From when L3 lands, up to four templates at a time, in the order below; a template's `-2` waits for its `-1`.
+- Up to four templates at a time, in the order below; a template's `-2` waits for its `-1`.
 
 ## In which order, and why?
 0. G1, G2 (after L1): general blocks the sector templates share, checked against the existing groups first, so later families stay small. Done in #8082: eight of ten were already palette blocks; spaces to hire and seasonal hours were added. Which block covers each: [[designer-blocks-general]].
@@ -17,7 +17,7 @@ description: Order of the polishing round after Launch: every shipped template's
 - Every shipped template is in this list or in the status lines below; Launch is in the main plan. A template plan opened after 2026-11-07 starts with its family step ([[design-template-own-look]]) and needs no polishing step.
 
 ## Which templates came from their own plans?
-- Their plans built their pages and have finished, so their `-1` and `-2` come ahead of groups 2 to 5 (their status lines are first). Gallery's signature pages are artists and exhibitions.
+- Their plans built their pages and have finished, so their `-1` and `-2` come ahead of groups 2 to 5. Gallery's signature pages are artists and exhibitions.
 
 ## Where does each template stand?
 - Travel: `-1` #8337, `-2` #8657 done.
@@ -40,13 +40,13 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Homeservices: `-1` #8773, `-2` #8826 done.
 
-- Library: `-1` #8794 done; `-2` open.
+- Library: `-1` #8794, `-2` #8846 done.
 
-- Podcast: `-1` #8785 done; `-2` open.
+- Podcast: `-1` #8785, `-2` #8845 done.
 
-- Recruitment: `-1`, `-2` open.
+- Recruitment: `-1` #8876 done; `-2` open.
 
-- Restaurant: `-1`, `-2` open.
+- Restaurant: `-1` #8878 done; `-2` open.
 
 - Theatre: `-1`, `-2` open.
 

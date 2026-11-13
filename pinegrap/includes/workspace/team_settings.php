@@ -289,6 +289,10 @@ function ws_settings_department_save($viewer, $checked, $input, $team_ids)
         ws_channel_add_members($viewer, $channel, $members, false);
     }
 
+    // The mailboxes kept in no channel that name the department as their
+    // readers follow its people (mail_room.php).
+    ws_mail_rooms_follow_department($department_id);
+
     log_activity(lang(array('string' => 'workspace department ({var:1}) was saved', 'vars' => $name)), (string) ($_SESSION['sessionusername'] ?? ''));
 
     return array('department_id' => $department_id, 'warning' => $warning);

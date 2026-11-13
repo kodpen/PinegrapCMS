@@ -793,7 +793,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $theatre, 
 // ways to find a performance and to plan a visit. Shared, so every page
 // that ends with it carries the same call.
 $box_office_band = function () use ($el, $heading, $para, $link, $container, $row, $col, $theatre) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -802,8 +802,8 @@ $box_office_band = function () use ($el, $heading, $para, $link, $container, $ro
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Find a Performance'), '{{page:whats_on}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('Plan Your Visit'), '{{page:visit}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Find a Performance'), '{{page:whats_on}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('Plan Your Visit'), '{{page:visit}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

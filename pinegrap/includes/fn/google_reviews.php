@@ -422,7 +422,7 @@ function pg_grev_settings_fields()
         : lang('The key of a Google Cloud project with billing and the Places API (New) on. Restrict the key to this server.');
 
     $html .= '
-                                        <div class="col-12 form-text">' . h(lang('Shows the rating and up to five reviews of the business from Google in the Google Reviews widget of the Visual Page Editor.')) . '</div>
+                                        <div class="col-12 form-text">' . h(lang('Shows the rating and up to five reviews of the business from Google in the Google Reviews widget of the Page Design Studio.')) . '</div>
                                         <div class="pg-f-md">
                                             <label for="google_reviews_key" class="form-label">' . lang('Places API Key') . '</label>
                                             <input type="password" name="google_reviews_key" id="google_reviews_key" class="form-control" value="" maxlength="200" autocomplete="new-password"/>

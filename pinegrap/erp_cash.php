@@ -97,7 +97,7 @@ $list = pg_list_table_printed(array(
 echo
 pg_page_shell([
         'title' => lang('Cash and Bank'),
-        'extra classes' => 'erp erp_cash',
+        'extra classes' => 'erp erp_cash pg-measure-list',
         'icon' => 'erp',
         'heading' => lang('Cash and Bank'),
         'heading_description' => lang('Tills, bank accounts and card terminals, and what is in each of them.'),

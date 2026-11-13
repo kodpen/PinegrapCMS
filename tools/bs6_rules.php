@@ -1176,6 +1176,11 @@ function bs6_scope_kind($path)
 		return 'site';
 	}
 
+	// The Legacy design converter writes Bootstrap 5.3.8 site markup only.
+	if ($path === 'includes/fn/legacy_bootstrap.php') {
+		return 'site';
+	}
+
 	if (strpos($path, 'includes/templates/') === 0) {
 		$panel_templates = array(
 			'duplicate_folder', 'edit_auto_dialog', 'edit_key_code', 'edit_offer', 'edit_products', 'generate_layout',

@@ -17,8 +17,10 @@
 - coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators [decision: here]
 - coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; no bug hunt and no bug issue as work [decision: here]
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
+- coordinator-worker-brief.md: What a coordinator's worker brief says and never says: no "stop and report", no "one step only", the lifecycle as its last line; workers are real sessions, never Workflow or sub-agent runs
+- coordinator-worker-steps.md: A worker does at most three steps in its life, whoever hands them; a coordinator starts a new session for every step it gives and never feeds a step to an idle or ended worker
 - coordinator-workers.md: How many workers a coordinator keeps (since 2026-11-07): 8 working, a session waiting on someone else does not count, when fewer; no count from the quota
-- coordinator.md: Coordinator session: one per account, keeps its cloud workers on free plan steps, looks at them every 30 minutes, writes no code, merges nothing; questions go to the architect [decision: decisions-made-workspace-14.md]
+- coordinator.md: Coordinator session: one per account, keeps its worker sessions on free plan steps, looks at them every 30 minutes, writes no code, merges nothing; questions go to the architect [decision: decisions-made-workspace-14.md]
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-customers.md: Decisions list, customer data (owner, 2026-10-28): marketing boxes stay ticked, İYS never narrows sending, export unchanged, review order and photos, merge re-points all but consent_log
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes, tracking_company, secret_key*, order_items.tax, tracking_code, fixing a released migration, MySQL 5.7, ERP schema approval.
@@ -29,6 +31,9 @@
 - decisions-made-panel-3.md: Decisions list, panel part 3: Bootstrap 6 choices of 2026-10-25 (multiselect kept, liked screens, Stepper, Avatar, password meter, old browser notice); the Site Settings dialog's drawer (2026-11-11)
 - decisions-made-panel-4.md: Decisions list, panel part 4: the bell (owner 2026-11-11): a right drawer, rows as the dashboard's Next up rows, module chips, unread only, asked of me, search, in-place actions, read when opened
 - decisions-made-panel-5.md: Decisions list, panel part 5 (2026-11-11 on): the dashboard's notes card as a My Notes shortcut, last online times, the world map without city names (#8672); the report screens' renewal (#8673)
+- decisions-made-panel-6.md: Decisions list, panel part 6 (2026-11-12 on): the panel's design language from look A (#8842); the names Design Canvas and Page Design Studio, the design menu with Other (#8849)
+- decisions-made-panel-7.md: Decisions list, panel part 7 (2026-11-12 on): look A's second pass and dialogs page as reference (#8860); add, edit, list widths, no pager; Design Canvas icon (#8903); dashboard keeps its look (#8938)
+- decisions-made-panel-8.md: Decisions list, panel part 8 (2026-11-12 on): look A's report screen page is the reference for the report screens (#8955); a switch keeps its thumb (#9070)
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
@@ -68,6 +73,10 @@
 - decisions-made-product-42.md: Decisions list, product part 42 (2026-11-10 on): one modern picker for a file or a page (no "Choose from File Manager" button), its screens, archived pages; the image editor's clip timeline and length
 - decisions-made-product-43.md: Decisions list, product part 43 (2026-11-11 on): classic styles sharing a CSS/JS set move as one "Legacy" design, its badge "Legacy" / "Eski", what follows the move (#8671)
 - decisions-made-product-44.md: Decisions list, product part 44 (2026-11-11 on): a muted, looping hero video may play by itself, with a pause button; a colour mode (light, dark, follow the system) for a whole design
+- decisions-made-product-45.md: Decisions list, product part 45 (2026-11-11 on): the Kodpen API client goes on before its release keys exist; the api2 client branches leave in the next open version; the api2 server stays open
+- decisions-made-product-46.md: Decisions list, product part 46 (2026-11-12 on): a picture saved again from the Design Canvas shows at once; the Legacy helper after its census (#8942); a plan for the custom layouts
+- decisions-made-product-47.md: Decisions list, product part 47 (2026-11-12 on): WhatsApp as a channel, templates, offer codes (#8950); one messages area, campaign profiles turned into flows (#8961)
+- decisions-made-product-48.md: Decisions list, product part 48 (2026-11-12 on): Legacy to Bootstrap helper (#8967), the picker's list of everything (#9070), designer canvas samples (#9076), WhatsApp marketing consent (#9087)
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
@@ -80,7 +89,8 @@
 - decisions-made-schema-13.md: Decisions list, schema part 13 (2026-11-08 on): agent channel switch (AC); channel memory and agent mark (A5); A7 undo; GitHub channel links (G2); carrier service on a shipping method (R2)
 - decisions-made-schema-14.md: Decisions list, schema part 14 (2026-11-09 on): a bundle's own back order choice (bundle_backorder); the workflow table bin and row numbers; the team replies right; agent token counts and limit
 - decisions-made-schema-15.md: Decisions list, schema part 15 (2026-11-10 on): ws_messages.via_client_id, ws_ai_requests.claimed_device_id, the Workspace mail screen's columns and ws_mail_reads, the image editor's largest upload
-- decisions-made-schema-16.md: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_html, the kind value mailbox on ws_channels, ws_agents.seen_at for an agent's last seen, ws_checks.app_id for an application's tick
+- decisions-made-schema-16.md: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_html, kind mailbox on ws_channels, ws_agents.seen_at, ws_checks.app_id, ws_ai_requests.held_until for the edit hold
+- decisions-made-schema-17.md: Decisions list, schema part 17 (2026-11-12 on): the canvas-one tables ws_canvas_parts, ws_canvas_tables, ws_canvas_consents, via_message_id on table rows, ws_wtables.channel_id, WhatsApp's tables
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
@@ -101,7 +111,11 @@
 - decisions-made-workspace-15.md: Decisions list, workspace part 15 (2026-11-11 on): the Workspace settings cards are simplified as they move under Site Settings, Anthropic as a provider of model assistants
 - decisions-made-workspace-16.md: Decisions list, workspace part 16 (2026-11-11): clearing a conversation keeps memory and decisions, an agent's last seen and ticks, the canvas and no second tool, the server may draw, live pages
 - decisions-made-workspace-17.md: Decisions list, workspace part 17 (2026-11-11): a mail opens as a preview drawn with its HTML and never in a channel, pictures from outside wait for the reader, a mailbox may be kept in no channel
+- decisions-made-workspace-18.md: Decisions list, workspace part 18 (2026-11-12): the channel sound silent in a hidden tab (#8798); one canvas with drawing, live page and data, the guarded bridge to data, the order (#8850)
+- decisions-made-workspace-19.md: Decisions list, workspace part 19 (2026-11-12): a discussion follows its root message's agent, a textless close reads "saw it", a fitting emoji, agents among a channel's members and last seen
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
+- decisions-made-workspace-20.md: Decisions list, workspace part 20 (2026-11-12 on): canvas-one drawings (#8929); Flows quick setup and the flow window (#8950); flows in the main menu, on without the Workspace (#8961)
+- decisions-made-workspace-21.md: Decisions list, workspace part 21 (2026-11-12 on): the incoming e-mail sits in the messages area, a mail still drops as a card (#8961); the canvas card's line of tables approved (#8964)
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
@@ -136,7 +150,8 @@
 - sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout [decision: here]
 - sandbox-on-windows.md: A throwaway Pinegrap install on the owner's Windows machine without touching dev: a private mysqld on its own port, a git archive export, php -S, the installer by curl, CLI scripts, the API over HTTP
 - session-checks.md: Working rule (2026-10-25): how much a session checks before its PR: the tests of its area and what the change touches, a private static-analysis cache, a sandbox only with a reason, no review chains
-- session-lifecycle.md: A session from green CI to its next step: the ready label, one check-in, no base merge after it, the merge as wake-up, the next step (three at most), a PR sent back, an idle draft
+- session-lifecycle.md: From opening a PR to the next step: binding it in the desktop app, the ready label, one check-in, no base merge after it, the merge as wake-up, three steps at most, a PR sent back, an idle draft
+- session-pr-binding.md: A local session in the Claude desktop app binds its PR to itself (get_status, bind_pr) right after opening it and turns archive-on-close off (set_monitor), so its PR's merge does not archive it
 - static-analysis-kept-apis.md: Removed PHP APIs kept on purpose (mcrypt, pfpro, libxml_disable_entity_loader): phpcs:ignore marker or baseline entry; the brace-less foreach false positive [decision: decisions-made-product-3.md]
 - static-analysis.md: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what they catch, baselines and how they shrink, guarded newer APIs, pinned tools, running them in a session
 - test-coordinator.md: Test coordinator (2026-10-31): starts no workers, tests and opens `bug` issues, which wait for the owner (no worker takes them since 2026-11-06); the merging session closes a fixed one

@@ -104,7 +104,7 @@ $orphan_count = count($orphans['rules']) + count($orphans['actions']);
 
 echo pg_page_shell(array(
     'title'               => lang('All Offers'),
-    'extra classes'       => 'products',
+    'extra classes'       => 'products pg-measure-list',
     'icon'                => 'store',
     'heading'             => lang('All Offers'),
     'heading_description' => lang('Campaign offers applied at checkout')));

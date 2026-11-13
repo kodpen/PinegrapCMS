@@ -209,7 +209,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('Edit Account'),
-        'extra classes' => 'erp erp_accounts',
+        'extra classes' => 'erp erp_accounts pg-measure-edit',
         'icon' => 'erp',
         'heading' => h($account['title']),
         'heading_description' => lang('The account details, and every movement behind its balance.'),
@@ -262,7 +262,7 @@ if (!$_POST) {
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <div class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Balance') . '
                     </div>
                     <div class="card-body">
@@ -278,7 +278,7 @@ if (!$_POST) {
 
         <div class="col-12 order-3">
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Statement') . '
                 </div>
                 <div class="card-body p-0 position-relative table-responsive">

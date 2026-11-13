@@ -324,7 +324,7 @@
         var button = document.createElement('button');
 
         button.type = 'button';
-        button.className = 'btn btn-sm btn-outline theme-secondary ' + name;
+        button.className = 'pg-button pg-button-ghost pg-button-sm ' + name;
         button.textContent = label || '';
         button.hidden = true;
         this.bar.insertBefore(button, this.bar.querySelector('.pg-list-table-tools'));

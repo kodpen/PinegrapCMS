@@ -23,7 +23,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 $pg_settings_cards[] = '
                         <div id="pgset-seo" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Search Engine Optimization') . '
                                 </div>
                                 <div class="card-body">
@@ -110,7 +110,7 @@ foreach (array(
     $pg_settings_cards[] = '
                         <div id="' . $seo_card_id . '" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . $seo_card[0] . '
                                 </div>
                                 <div class="card-body">
@@ -186,7 +186,7 @@ $ai_crawlers_catalog = pg_ai_crawler_catalog();
 $pg_settings_cards[] = '
                         <div id="pgset-ai" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('AI Crawlers') . '
                                 </div>
                                 <div class="card-body">

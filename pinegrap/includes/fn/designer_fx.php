@@ -6,8 +6,10 @@
  * node's props as `_fx`, written on the page as data-pg-fx-* attributes and
  * played by assets/js/pg_fx.src.js (CSS transitions and IntersectionObserver,
  * scroll-linked effects once per frame, a number that counts up once seen,
- * a muted hero video that plays by itself with a pause button, nothing
- * under prefers-reduced-motion).
+ * a muted hero video that plays by itself with a pause button, a section
+ * whose colours the whole page takes while it holds the window's middle,
+ * a pinned scene that shows its layers one at a time as the page scrolls
+ * through it, nothing moving under prefers-reduced-motion).
  *
  * pg_fx_normalize() keeps the known fields in their ranges and drops the
  * rest; pg_fx_attrs() writes the effect, its trigger and only the values
@@ -35,7 +37,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_fx_effects()
 {
     return array('fade', 'slide-up', 'slide-down', 'slide-left', 'slide-right', 'scale', 'sticky', 'parallax',
-        'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay');
+        'scroll-zoom', 'scroll-fade', 'scroll-rise', 'count', 'autoplay', 'chapter', 'scene');
 }
 
 /**
@@ -75,7 +77,7 @@ function pg_fx_count_numbers()
 
 /**
  * The triggers of a moving effect; sticky, parallax, the scroll-linked
- * effects and count have none.
+ * effects, count, chapter and scene have none.
  *
  * @return array trigger names, the default first
  */
@@ -125,7 +127,11 @@ function pg_fx_numbers()
  * effects, `distance` for fade, sticky, parallax and the scroll-linked
  * effects. Count keeps its duration and delay alone, in its own ranges
  * (pg_fx_count_numbers()). Autoplay (a <video> that plays by itself,
- * muted and looping) has no field.
+ * muted and looping) has no field. Chapter (the page takes the section's
+ * background and text colour while it holds the window's middle) keeps
+ * its duration alone: the length of the colour change. Scene (a tall
+ * section whose layers, marked data-pg-scene-layer, show one at a time in
+ * a sticky stage as the page scrolls through it) has no field.
  *
  * @param mixed $fx props._fx
  * @return array|null
@@ -147,7 +153,7 @@ function pg_fx_normalize($fx)
         return (int) max($min, min($max, round((float) $fx[$name])));
     };
 
-    if ($effect === 'autoplay') {
+    if ($effect === 'autoplay' || $effect === 'scene') {
         return $out;
     }
     if ($effect === 'sticky') {
@@ -165,6 +171,10 @@ function pg_fx_normalize($fx)
     if ($effect === 'count') {
         $out['duration'] = $num('duration');
         $out['delay'] = $num('delay');
+        return $out;
+    }
+    if ($effect === 'chapter') {
+        $out['duration'] = $num('duration');
         return $out;
     }
 

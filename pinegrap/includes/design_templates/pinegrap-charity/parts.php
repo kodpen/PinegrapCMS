@@ -294,7 +294,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
     }
     return $el('header', 'bg-body border-bottom sticky-top', lang('Site Header'), array(
         $el('nav', 'navbar navbar-expand-xl py-2', lang('Navbar'), array(
-            $el('div', 'container', lang('Navbar Container'), array(
+            $el('div', 'container flex-xl-wrap', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-bold', lang('Brand'), array(
                     $icon('bi-heart-fill', 'fs-4 text-primary'),
                     $span('{{site_name}}', 'fs-5 pch-brand', lang('Name')),

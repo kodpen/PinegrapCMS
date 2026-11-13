@@ -20,7 +20,7 @@ description: Web Designer Portfolio template (pinegrap-portfolio): case studies 
 ## What is the pdp- look?
 - `pdp-brand`, `pdp-display` (heading font, tighter), `pdp-eyebrow`, `pdp-hero` (palette wash with a `color-mix()` fallback), `pdp-lift`; two fonts (Space Grotesk headings, Inter body). `pdp-` because the forum owns `pf-`; field ids use `pd-`.
 - Turkish trap: the shared keys `Process`, `Contact`, `Testimonial`, `Business` read İşlem, Kişi, Hasta Yorumu, İşyeri; the template says `How I Work`, `Get in Touch`, `Client Quote`, `Company Site`.
-- The brief band is `bg-primary text-white`; its line is full white, never `opacity-*` (the faded-text test).
+- The brief band is `text-bg-primary`; its line is full colour, never `opacity-*` (the faded-text test).
 
 ## Which tests cover it?
 - `design_template_portfolio_test.php` (data, shared parts), `…_briefs_test.php`, `…_standard_test.php`, `…_account_test.php` load the parts; `…_assembly_test.php` the main file: offered without a catalog, pages in order, widgets once and all placed, placeholders name pages and folders, contact search sections, `pdp-` classes equal rules, the three comment threads and the reply e-mail card, sample case studies kept, Google Reviews after the sample quotes. It is in the shared lists of the collection-form (`project_new`), account-email, submitter-name, consent-privacy and faded-text tests.

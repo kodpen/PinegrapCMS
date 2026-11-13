@@ -59,7 +59,7 @@ function test_workspace_channel_info_is_a_panel_beside_the_conversation()
 function test_workspace_channel_info_parts_in_their_order()
 {
 	$draw = workspace_channel_info_test_method('drawInfo');
-	$marks = array("section(t('purpose'))", "section(t('info_status'))", "section(t('members')", "section(t('info_notify'))", "t('voice_speak')", "t('info_time')", "t('edit_channel')");
+	$marks = array("section(t('purpose'))", "section(t('info_status'))", "section(t('cm_people')", "section(t('cm_agents')", "section(t('info_notify'))", "t('voice_speak')", "t('info_time')", "t('edit_channel')");
 	$last = -1;
 
 	foreach ($marks as $mark) {

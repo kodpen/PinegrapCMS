@@ -1,7 +1,10 @@
 ---
 name: session-lifecycle
-description: A session from green CI to its next step: the ready label, one check-in, no base merge after it, the merge as wake-up, the next step (three at most), a PR sent back, an idle draft
+description: From opening a PR to the next step: binding it in the desktop app, the ready label, one check-in, no base merge after it, the merge as wake-up, three steps at most, a PR sent back, an idle draft
 ---
+
+## What does a local session do right after opening its PR?
+- In the Claude desktop app it binds the PR to itself and turns archive-on-close off, or the merge archives it and the next step needs a new session (`session-pr-binding.md`).
 
 ## What do I do when my PR is green?
 - Merge `origin/development` once and run your checks (`session-checks.md`) before the label; that is the last refresh from your side.
@@ -25,6 +28,6 @@ description: A session from green CI to its next step: the ready label, one chec
 
 ## What if I need a decision?
 - Never ask the owner in your reply or the PR body. Open an issue labelled `architect` (template in `architect-asking.md`; first search the open and closed `architect` issues so the question is not opened twice) and name it in the PR body (`Decision: #<issue>`). If the session's permission check refuses the issue, put its text in the PR body under `## Decision question` instead; the architect opens it. Then turn the PR back to draft (`gh pr ready <n> --undo`; in a cloud session `mcp__github__update_pull_request` with `draft: true`) and take its `ready` label off (`gh api -X DELETE repos/kodpen/pinegrapcms/issues/<n>/labels/ready`). A PR waiting on a decision cannot go into a train, so it gives its place in the queue to work that can.
-- Then end the session: the draft PR body and the plan line are the hand-over (what is built, what waits on the issue). Never wait for the answer: a waiting session pays its whole context on every check-in (on 2026-10-27 one waited 9.5 hours). The architect decides a technical question itself and asks the owner a schema or product-behaviour question as a selectable list, comments on the PR and closes the issue; the coordinator then starts a session on the branch (`coordinator-limits.md`), which follows the decision, notes "decided in #<issue>" in the PR body, marks the PR ready again and labels it once CI is green. The architect records the decision in memory; the worker does not.
+- Then end the session: the draft PR body and the plan line are the hand-over (what is built, what waits on the issue). Never wait for the answer: a waiting session pays its whole context on every check-in. The architect answers on the PR and closes the issue (`architect.md`); a new session then continues the branch, follows the decision and marks the PR ready again (`coordinator-limits.md`). The architect records the decision in memory; the worker does not.
 
 Related: docs/memory/workflow/working-mode.md, docs/memory/workflow/merge-review.md, docs/memory/workflow/architect.md

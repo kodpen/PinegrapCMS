@@ -31,16 +31,6 @@ function toolbar_local_order_test_block($file, $media)
 	return (string) substr($source, $start, 1200);
 }
 
-function test_toolbar_local_order_image_picker_filters_keep_markup_order()
-{
-	$block = toolbar_local_order_test_block('editor_select_image.php', '767.98px');
-
-	pg_assert_true(preg_match('/#files_nav_controls\s*\{([^}]*)\}/', $block, $rule) === 1, 'filter rule found');
-	pg_assert_true(strpos($rule[1], 'order:') === false, 'filters are not reordered');
-	pg_assert_true(strpos($rule[1], 'flex-basis: 100%') !== false, 'filters keep a full-width line');
-	pg_assert_true(preg_match('/#files_nav_controls \+ \.navbar-nav\s*\{[^}]*margin-left: auto/', $block) === 1, 'Refresh and Close stay at the right end');
-}
-
 function test_toolbar_local_order_prototype_nav_keeps_markup_order()
 {
 	$block = toolbar_local_order_test_block('includes/fn/prototype.php', '575.98px');

@@ -152,7 +152,7 @@ $add_to_cart = function ($text, $variant, $class = '', $outline = false) use ($b
 // hidden, the page's script shows it, filled for a product the visitor
 // saved. A product group's card has none.
 $heart = function () use ($button, $el, $span, $attr) {
-    $node = $button('', 'light', 'position-absolute top-0 end-0 m-2 z-2 rounded-circle shadow-sm',
+    $node = $button('', 'secondary', 'position-absolute top-0 end-0 m-2 z-2 rounded-circle shadow-sm',
         array('btnType' => 'button', 'size' => 'sm', 'customName' => lang('Favourite'), '_bindings' => array('action' => 'catalog_wishlist')));
     $node['children'] = array(
         $el('i', 'bi bi-heart', '', array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
@@ -383,7 +383,7 @@ $staff_bar = function () use ($el, $link) {
     };
     return $el('div', 'bg-body-tertiary border-bottom', lang('Staff Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center gap-4 py-2 small', lang('Staff Bar Container'), array(
-            $el('span', 'badge text-bg-dark', lang('Staff Badge'), array(), array('text' => lang('Staff'))),
+            $el('span', 'badge text-bg-secondary', lang('Staff Badge'), array(), array('text' => lang('Staff'))),
             $el('nav', 'nav nav-underline gap-4', lang('Staff Links'), array(
                 $item('staff', lang('Staff Area')),
                 $item('blog_new', lang('New Blog Post')),
@@ -908,12 +908,12 @@ $pages[] = array(
                 $row(array(
                     $col(array(
                         $el('div', 'h-100 rounded-4 p-4 p-lg-5 text-bg-primary d-flex flex-column justify-content-center', lang('Campaign'), array(
-                            $el('span', 'badge rounded-pill text-bg-light align-self-start mb-3', lang('Badge'), array(), array('text' => lang('New season'))),
+                            $el('span', 'badge rounded-pill text-bg-secondary align-self-start mb-3', lang('Badge'), array(), array('text' => lang('New season'))),
                             $heading('h1', lang('Everything you love, delivered to your door'), 'display-5 fw-bold mb-3'),
-                            $para(lang('Fresh arrivals in every category, free shipping over $50 and returns within 14 days.'), 'lead opacity-75 mb-4'),
+                            $para(lang('Fresh arrivals in every category, free shipping over $50 and returns within 14 days.'), 'lead mb-4'),
                             $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                                $link(lang('Shop Now'), '{{page:shop}}', 'btn btn-light btn-lg px-4'),
-                                $link(lang('See the Offers'), $category_url('electronics'), 'btn btn-outline-light btn-lg px-4'),
+                                $link(lang('Shop Now'), '{{page:shop}}', 'btn btn-secondary btn-lg px-4'),
+                                $link(lang('See the Offers'), $category_url('electronics'), 'btn btn-link btn-lg text-reset'),
                             )),
                         )),
                     ), '', '8'),
@@ -2645,7 +2645,7 @@ $widgets = array(
                                 $el('h2', 'h5 fw-bold mb-1', lang('Result Title'), array(
                                     $link(lang('Title'), '#', 'stretched-link link-body-emphasis text-decoration-none', array(),
                                         array('_bindings' => array('href' => '__result_url', 'text' => '__result_title'))),
-                                    $span(lang('Page'), 'badge text-bg-light border fw-normal align-middle ms-2', lang('Result Type'), $bind('__result_type_label')),
+                                    $span(lang('Page'), 'badge bg-body text-body-emphasis border fw-normal align-middle ms-2', lang('Result Type'), $bind('__result_type_label')),
                                 )),
                                 $para(lang('Shipping and returns'), 'small fw-semibold text-primary mb-1', array_merge(array('customName' => lang('Result Section')), $bind('__result_section'))),
                                 $para(lang('Excerpt'), 'small text-body-secondary mb-1', $bind('__result_excerpt')),
@@ -2946,7 +2946,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Online Store'),
-    'version'     => '1.2.3',
+    'version'     => '1.2.4',
     'framework'   => 'bootstrap5',
     'order'       => 20,
     'icon'        => 'bi-bag-heart',

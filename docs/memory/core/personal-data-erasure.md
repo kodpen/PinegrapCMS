@@ -15,7 +15,7 @@ description: privacy_erase.php (PR #1706): erasing one person after a dry run; w
 - ERP accounts with `is_person = 1`: the contacts', those of orders that are the person's by contact or address, those naming the contact or address; never `ERP_WALKIN_ACCOUNT_ID`. Company accounts stay with their invoices.
 - Form submissions by contact, or sent from the site by their account for nobody else (`contact_id = 0`, a visitor IP; panel and CSV records keep the staff member in `user_id` and no IP). Another record's field that holds the address only loses that value (`form_data_cells`). Signatures and uploads only of the person's own submissions.
 - SMS by the person's own numbers (contacts, billing), not address book or shipments.
-- Workflow table cells naming the person: `pg_privacy_wtable_rows()`; exported as `workspace` `table_row`, emptied on erasure (`ws_wtable_cells`), row kept (`workspace/workflow-tables.md`).
+- Data table cells naming the person: `pg_privacy_wtable_rows()`; exported as `workspace` `table_row`, emptied on erasure (`ws_wtable_cells`), row kept (`workspace/workflow-tables.md`).
 
 ## What stays, what goes?
 - Kept, personal fields replaced: bookings (`commerce/booking-retention.md`), orders, ship_tos, order_documents (IP and user agent; the text stays), order_returns, gift_cards (bought: sender name and message; received: the address), ERP accounts and their invoices (issued too) / quotes / waybills, comments, consent_log (id-only rows: token first), ws_approval_guests, cart_quotes, audit_log. Reasons: `workflow/decisions-made-product.md`.

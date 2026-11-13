@@ -150,6 +150,36 @@ function test_mail_queue_outcome_call_sites()
 	pg_assert_true(($last !== false) && ($last > strpos($code, 'pg_mail_queue_gives_up(')), 'the last attempt given up, and nothing on a retry');
 }
 
+// A deleted row that had not left ends failed; one that already told its
+// handler (sent, given up, blocked) tells nothing again.
+function test_mail_queue_delete_outcome()
+{
+	pg_assert_same('failed', pg_mail_queue_delete_outcome('queued'), 'waiting');
+	pg_assert_same('failed', pg_mail_queue_delete_outcome('sending'), 'being sent');
+
+	foreach (array('sent', 'failed', 'suppressed', '') as $status) {
+		pg_assert_same('', pg_mail_queue_delete_outcome($status), $status . ': nothing');
+	}
+}
+
+// Delete on the Mail queue screen reads the row first, tells its handler
+// only after the row is gone, and is the screen's one delete.
+function test_mail_queue_delete_wiring()
+{
+	$code = pg_test_function_source('pg_mail_queue_delete');
+	$read = strpos($code, 'SELECT status, properties FROM mail_outbox');
+	$delete = strpos($code, 'DELETE FROM mail_outbox');
+	$call = strpos($code, 'pg_mail_outcome_call(');
+
+	pg_assert_true(($read !== false) && ($delete !== false) && ($read < $delete), 'the row read before it is deleted');
+	pg_assert_true(($call !== false) && ($call > $delete), 'the handler told after the delete');
+	pg_assert_contains('pg_mail_queue_delete_outcome(', $code, 'only a row that had not left');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/mail_queue.php');
+	pg_assert_contains('pg_mail_queue_delete($mail_queue_id)', $screen, 'the screen deletes through it');
+	pg_assert_true(strpos($screen, 'DELETE FROM mail_outbox') === false, 'and nowhere else');
+}
+
 // The queue screen names the Workspace's mail.
 function test_mail_queue_outcome_workspace_type()
 {

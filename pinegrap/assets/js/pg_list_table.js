@@ -19,9 +19,11 @@
  * the bar's .pg-list-table-actions box. root.pgListTable is the driver.
  *
  * The bar's columns menu shows, hides and orders the columns, and its
- * details switch opens a panel with every column of the current row (a
- * side sheet below 1024 px); both choices are kept per user and list in
- * localStorage (pg.list.<user id>.<list>). A filter button
+ * details switch opens a panel with every column of the current row; both
+ * choices are kept per user and list in localStorage
+ * (pg.list.<user id>.<list>). Below 1024 px the panel is a sheet over the
+ * list: it follows only the switch pressed on that page and opens once a
+ * row is picked (detailsOpen()). A filter button
  * (data-pg-list-filter, PGListTable's bindFilters()) narrows the list by one
  * column: a list printed whole keeps the rows whose cell carries that
  * data-pg-filter value, a server list sends it with its parameters. Below
@@ -521,6 +523,18 @@
         return { order: [], hidden: {}, details: prefsClean(state).details };
     }
 
+    /**
+     * Whether the details panel shows. A wide window follows the kept
+     * switch. Below 1024 px the panel is a sheet that covers the list, so
+     * it follows only the switch pressed on this page (the kept one, which
+     * a desktop may have left on, would cover the list on every load), and
+     * opens once a row is picked: an empty sheet would hide the rows to
+     * pick from.
+     */
+    function detailsOpen(kept, narrow, sheet, picked) {
+        return narrow ? (!!sheet && !!picked) : !!kept;
+    }
+
     // ------------------------------------------------------------------
     // The driver.
     // ------------------------------------------------------------------
@@ -545,6 +559,9 @@
         this.prefs = prefsClean(this.readPrefs());
         this.columns = columnsView(this.model, this.prefs);
         this.current = null;
+        // The details sheet below 1024 px: pressed on this page, never kept.
+        this.sheet = false;
+        this.narrowQuery = (typeof window.matchMedia === 'function') ? window.matchMedia('(max-width: 1023.98px)') : null;
         this.params = readJson(root, 'data-pg-list-params', {});
         this.texts = readJson(root, 'data-pg-list-texts', {});
         this.levels = sortParse(root.getAttribute('data-pg-list-sort'));
@@ -620,11 +637,11 @@
 
         this.more = document.createElement('button');
         this.more.type = 'button';
-        this.more.className = 'btn btn-sm btn-outline theme-secondary pg-list-table-more';
+        this.more.className = 'pg-button pg-button-quiet pg-button-sm pg-list-table-more';
         this.more.textContent = this.texts.more || '';
 
         this.status = document.createElement('p');
-        this.status.className = 'pg-list-table-status fg-secondary';
+        this.status.className = 'pg-list-table-status';
         this.status.setAttribute('role', 'status');
 
         this.sentinel = document.createElement('div');
@@ -637,7 +654,7 @@
         var clear = document.createElement('button');
 
         clear.type = 'button';
-        clear.className = 'btn btn-sm btn-text pg-list-table-clear';
+        clear.className = 'pg-icon-button pg-icon-button-sm pg-list-table-clear';
         clear.setAttribute('aria-label', this.texts.clear || '');
         clear.title = this.texts.clear || '';
         clear.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
@@ -647,15 +664,15 @@
         // everything is selected.
         this.allButton = document.createElement('button');
         this.allButton.type = 'button';
-        this.allButton.className = 'btn btn-sm btn-text theme-secondary pg-list-table-all';
+        this.allButton.className = 'pg-button pg-button-ghost pg-button-sm pg-list-table-all';
         this.allButton.setAttribute('aria-keyshortcuts', 'Control+A');
 
         // The undo of a replaced selection is a small offer of its own: the
         // count and the bulk actions go at once, it stays for 10 seconds.
         this.undoButton = document.createElement('button');
         this.undoButton.type = 'button';
-        this.undoButton.className = 'btn btn-sm btn-text theme-secondary pg-list-table-undo';
-        this.undoButton.innerHTML = '<i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>';
+        this.undoButton.className = 'pg-button pg-button-ghost pg-button-sm pg-list-table-undo';
+        this.undoButton.innerHTML = '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>';
         this.undoButton.appendChild(document.createTextNode(this.texts.undo || ''));
         this.undoButton.hidden = true;
 
@@ -744,6 +761,17 @@
             self.fit();
         });
 
+        // Crossing 1024 px swaps the panel beside the rows for the sheet.
+        if (this.narrowQuery) {
+            var crossed = function () { self.showDetails(); };
+
+            if (typeof this.narrowQuery.addEventListener === 'function') {
+                this.narrowQuery.addEventListener('change', crossed);
+            } else if (typeof this.narrowQuery.addListener === 'function') {
+                this.narrowQuery.addListener(crossed);
+            }
+        }
+
         if (this.menu) {
             this.menu.addEventListener('click', function (event) {
                 var target = event.target.closest('[data-pg-col-action]');
@@ -756,7 +784,7 @@
 
         if (this.detailsSwitch) {
             this.detailsSwitch.addEventListener('click', function () {
-                self.setDetails(!self.prefs.details);
+                self.setDetails(!self.detailsPressed());
             });
             this.details.querySelector('.pg-list-table-details-close').addEventListener('click', function () {
                 self.setDetails(false);
@@ -896,10 +924,28 @@
         this.menu.innerHTML = html;
     };
 
-    /** The details panel opened or closed, the choice kept. */
+    /** Whether the window is below 1024 px, where the panel is a sheet. */
+    Driver.prototype.narrow = function () {
+        return !!(this.narrowQuery && this.narrowQuery.matches);
+    };
+
+    /** The details switch's state for the window's width. */
+    Driver.prototype.detailsPressed = function () {
+        return this.narrow() ? this.sheet : this.prefs.details;
+    };
+
+    /**
+     * The details panel opened or closed: the choice kept on a wide window,
+     * for this page only below 1024 px.
+     */
     Driver.prototype.setDetails = function (open) {
-        this.prefs.details = !!open;
-        this.savePrefs();
+        if (this.narrow()) {
+            this.sheet = !!open;
+        } else {
+            this.prefs.details = !!open;
+            this.savePrefs();
+        }
+
         this.showDetails();
     };
 
@@ -912,17 +958,17 @@
             return;
         }
 
-        var open = this.prefs.details;
+        var row = (this.current === null) ? null : this.tbody.querySelector('tr[data-pg-id="' + String(this.current).replace(/["\\]/g, '') + '"]');
+        var open = detailsOpen(this.prefs.details, this.narrow(), this.sheet, !!row);
 
         this.details.hidden = !open;
         this.root.classList.toggle('pg-list-table-with-details', open);
-        this.detailsSwitch.setAttribute('aria-pressed', open ? 'true' : 'false');
+        this.detailsSwitch.setAttribute('aria-pressed', this.detailsPressed() ? 'true' : 'false');
 
         if (!open) {
             return;
         }
 
-        var row = (this.current === null) ? null : this.tbody.querySelector('tr[data-pg-id="' + String(this.current).replace(/["\\]/g, '') + '"]');
         var body = this.detailsBody;
 
         body.textContent = '';
@@ -1249,7 +1295,7 @@
         this.bar.classList.toggle('is-empty', count === 0);
         this.count.textContent = (count === 0) ? '' : text(this.selection.all ? this.texts.all : this.texts.selected, count);
         this.clearButton.hidden = (count === 0);
-        this.allButton.innerHTML = '<i class="bi ' + (all ? 'bi-x-square' : 'bi-check2-all') + ' me-1" aria-hidden="true"></i>';
+        this.allButton.innerHTML = '<i class="bi ' + (all ? 'bi-x-square' : 'bi-check2-all') + '" aria-hidden="true"></i>';
         this.allButton.appendChild(document.createTextNode((all ? this.texts.deselectAll : this.texts.selectAll) || ''));
         this.allButton.hidden = this.browser ? (this.order().length === 0) : (this.total === 0);
         this.empty.hidden = this.browser ? (this.order().length > 0) : (this.tbody.rows.length > 0);
@@ -1304,7 +1350,7 @@
             var button = document.createElement('button');
 
             button.type = 'button';
-            button.className = 'btn btn-sm btn-text';
+            button.className = 'pg-button pg-button-ghost pg-button-sm';
             button.textContent = this.texts.retry || '';
             button.addEventListener('click', function () {
                 self.failed = false;
@@ -1331,7 +1377,8 @@
             var cell = (data.cells && data.cells[column.key]) || { html: '', class: '' };
             var label = column.heading;
             var td = document.createElement('td');
-            var cls = ((cell.class || '') + ((column.align !== 'start') ? ' text-' + column.align : '')).trim();
+            var cls = ((cell.class || '') + ((column.align !== 'start') ? ' text-' + column.align : '')
+                + ((column.kind === 'image') ? ' pg-list-col-image' : '')).trim();
 
             td.setAttribute('role', 'cell');
             td.setAttribute('data-pg-col', column.key);
@@ -1896,6 +1943,7 @@
         columnsMove: columnsMove,
         columnsReset: columnsReset,
         detailsSections: detailsSections,
+        detailsOpen: detailsOpen,
         init: init
     };
 

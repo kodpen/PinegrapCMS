@@ -226,7 +226,7 @@ for ($row = 1; $row <= ADD_CART_QUOTE_ROWS; $row++) {
 echo
     pg_page_shell(array(
         'title'               => lang('New cart quote'),
-        'extra classes'       => 'store',
+        'extra classes'       => 'store pg-measure-edit',
         'icon'                => 'store',
         'heading'             => lang('New cart quote'),
         'heading_description' => lang('The link puts these products into the customer\'s cart at the store\'s prices on the day it is used.'),
@@ -244,7 +244,7 @@ echo
         <div class="row mt-7">
             <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card mb-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Customer')) . '</h2>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Customer')) . '</h2>
                     <div class="card-body pt-0">
                         <label class="form-label visually-hidden" for="contact_id">' . h(lang('Customer')) . '</label>
                         <select class="form-control' . ($liveform->check_field_error('contact_id') ? ' is-invalid' : '') . '" id="contact_id" name="contact_id" aria-describedby="contact_id_help" data-pg-combobox data-pg-source="add_cart_quote.php?request=contacts" data-pg-min-length="2" data-placeholder="' . h(lang('Search for a contact')) . '">
@@ -255,7 +255,7 @@ echo
                     </div>
                 </div>
                 <div class="card mb-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Products and quantities')) . '</h2>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Products and quantities')) . '</h2>
                     <div class="card-body pt-0">
                         ' . $output_rows . '
                         <div class="form-text">' . h(lang('A product that is disabled, out of stock or outside its minimum and maximum when the link is used is left out or adjusted in the cart.')) . '</div>
@@ -266,7 +266,7 @@ echo
                 <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
                 <div class="position-sticky" style="top:3.3rem;">
                     <div class="card mb-7">
-                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Validity')) . '</h2>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Validity')) . '</h2>
                         <div class="card-body pt-0">
                             <label class="form-label" for="valid_until">' . h(lang('Valid until')) . '</label>
                             ' . $liveform->output_field(array('type' => 'text', 'id' => 'valid_until', 'name' => 'valid_until', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'aria-describedby' => 'valid_until_help', 'data-pg-date' => '')) . '
@@ -274,7 +274,7 @@ echo
                         </div>
                     </div>
                     <div class="card mb-7">
-                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</h2>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Summary')) . '</h2>
                         <div class="card-body pt-0">
                             <dl class="mb-0">'
                                 . add_cart_quote_summary_row(lang('Customer'), 'cart_quote_summary_customer', is_array($contact_row) ? add_cart_quote_contact_text($contact_row) : lang('Not chosen'), false)

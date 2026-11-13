@@ -505,8 +505,17 @@ function ws_note_group_take_out($viewer, $group, $note)
         return array('ok' => false, 'error' => ws_note_group_place_error($code));
     }
 
+    // Behind the notes lock of whoever kept it there: out of their locked
+    // group, the note is changed for them (note_lock.php).
+    $lock = function_exists('ws_note_lock_place_moved');
+    $behind = $lock && ws_note_behind_lock($placed_by, $note);
+
     db("DELETE FROM ws_note_places WHERE group_id = '" . (int) $group['id'] . "' AND note_id = '" . (int) $note['id'] . "'");
     ws_note_group_shares_after_place($viewer, $note, (int) $group['id'], 0);
+
+    if ($lock) {
+        ws_note_lock_place_moved($placed_by, $note, $behind);
+    }
 
     return array('ok' => true, 'error' => '');
 }

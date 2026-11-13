@@ -49,7 +49,7 @@ function test_contact_screens_take_the_no_picture_branch_for_a_deleted_file()
 	pg_assert_contains('<input type="hidden" name="file_id" id="file_id" value="\' . (int) $row[\'file_id\'] . \'"/>', $edit_contact, 'Edit Contact keeps the stored id so a Save changes nothing');
 
 	$edit_user = contact_picture_fallback_source('edit_user.php');
-	pg_assert_contains('pg_contact_picture_name($contact_file_id)', $edit_user, 'Edit User asks the helper');
+	pg_assert_contains('pg_contact_picture_address($contact_file_id)', $edit_user, 'Edit User asks the helper, which gives \'\' for a missing files row');
 	pg_assert_true(strpos($edit_user, 'PATH . db_value("SELECT name FROM files') === false, 'Edit User never prints PATH alone');
 
 	$list = contact_picture_fallback_source('includes/fn/contact_list.php');

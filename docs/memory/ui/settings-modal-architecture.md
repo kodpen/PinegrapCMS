@@ -23,7 +23,7 @@ assets/js/backend.src.js         pgSettingsModal, window.pgOpenSettings(), pgIni
 
 ## Which categories exist, and in what order?
 - Site: `general`, `appearance`, `features`, `seo` (SEO), `privacy` (Visitors and privacy), `languages`, `contact` (Communication). Security: `security` (Accounts and sign-in), `firewall` (Firewall and HTTPS). Selling: `commerce` (Ecommerce), `accounting`, `bookings` (`booking-settings.md`). Running the site: `api` (Integrations), `fediverse` (`fediverse-settings.md`), `maintenance` (Updates and maintenance), then the System tools row. Headings: `settings-list-headings.md`.
-- Workspace: `workspace_team`, `workspace_assistants`, `workspace_channels`, under their own gate (`settings-workspace-gate.md`).
+- Workspace: `workspace_team`, `workspace_assistants`, `workspace_channels`, own gate (`workspace/workspace-settings-overview.md`).
 - Keys stay when a label changes, so `#settings/<key>/…` and `settings_<key>.php` links keep working; `tests/settings_deep_links_test.php` fails on a link to a card its category does not list.
 
 ## Where did the moved cards go?

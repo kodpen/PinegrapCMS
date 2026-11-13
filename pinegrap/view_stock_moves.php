@@ -157,7 +157,7 @@ $stock_toolbar = pg_screen_toolbar(array(
 echo
     pg_page_shell(array(
         'title' => lang('Stock history'),
-        'extra classes' => 'stock_moves',
+        'extra classes' => 'stock_moves pg-measure-list',
         'icon' => 'inventory',
         'heading' => lang('Stock history'),
         'heading_description' => lang('Every change of stock at each location: who, where and why.'),

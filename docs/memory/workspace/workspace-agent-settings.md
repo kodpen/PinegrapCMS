@@ -4,7 +4,7 @@ description: The Workspace agents card in Site Settings (Assistants and agents) 
 ---
 
 ## Where is the Agents card?
-- PR #8814 (SW4a of `plans/settings-workspace-move.md`): in Assistants and agents, section `pgset-ws-agents`, after Claude. Each agent is a line with Edit; its door error, its activity and its form open in a drawer `pgset-ws-agent-<id>`, Add an agent in `pgset-ws-agent-0` (`ws_settings_agent_drawer()`). The old card (`#ws-agents`) keeps working on `workspace_settings.php` until SW7.
+- PR #8814 (SW4a of the Workspace settings move, [[workspace-settings-overview]]): in Assistants and agents, section `pgset-ws-agents`, after Claude. Each agent is a line with Edit; its door error, its activity and its form open in a drawer `pgset-ws-agent-<id>`, Add an agent in `pgset-ws-agent-0` (`ws_settings_agent_drawer()`). The old screen's address redirects here (PR #8931).
 - `pg_settings_legacy_anchors()` maps `ws-agents` to the card.
 
 ## What does the form show?

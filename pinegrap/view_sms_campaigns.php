@@ -167,7 +167,7 @@ echo
 pg_page_shell(
     array(
         'title'               => lang('My SMS Campaigns'),
-        'extra classes'       => 'campaign',
+        'extra classes'       => 'campaign pg-measure-list',
         'icon'                => 'campaign',
         'heading'             => lang('My SMS Campaigns'),
         'heading_description' => lang('Text messages to the contacts of selected contact groups. Only numbers with SMS consent that İYS has not refused receive them; the sender identity and the type label are added to every message.'),

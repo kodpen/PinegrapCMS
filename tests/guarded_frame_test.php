@@ -202,3 +202,74 @@ function test_guarded_frame_limits()
 	pg_assert_same(512000, PG_GUARDED_FRAME_MAX_BYTES, '500 KB a page');
 	pg_assert_true(strpos(pg_guarded_frame_shell_script('script'), 'max=' . PG_GUARDED_FRAME_MAX_HEIGHT) !== false, 'the height is bounded');
 }
+
+function test_guarded_frame_kind_trusts_the_caller_but_the_address_never_gives_mail()
+{
+	pg_assert_same('mail', pg_guarded_frame_kind('mail'));
+	pg_assert_same('static', pg_guarded_frame_kind('static'));
+
+	foreach (array(null, '', 'script', 'MAIL', 'mail ', array('mail')) as $raw) {
+		pg_assert_same('script', pg_guarded_frame_kind($raw), var_export($raw, true));
+	}
+
+	pg_assert_same('script', pg_guarded_frame_mode('mail'), 'live_page.php?mode=mail is a live page with its script, not a mail');
+}
+
+function test_guarded_frame_mail_policy()
+{
+	$policy = guarded_frame_test_directives(pg_guarded_frame_policy('mail', 'n0nce'));
+
+	pg_assert_same('allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox', $policy['sandbox'], 'a link opens a tab of its own');
+	pg_assert_same("'nonce-n0nce'", $policy['script-src'], 'no script of the mail runs');
+	pg_assert_same("'self' data:", $policy['img-src'], 'the mail\'s own kept files only');
+	pg_assert_same("'none'", $policy['media-src']);
+
+	foreach (array('connect-src', 'frame-src', 'child-src', 'worker-src', 'object-src', 'form-action', 'base-uri') as $closed) {
+		pg_assert_same("'none'", $policy[$closed], $closed . ' is closed');
+	}
+
+	$shown = guarded_frame_test_directives(pg_guarded_frame_policy('mail', 'n0nce', true));
+
+	pg_assert_same("'self' data: https: http:", $shown['img-src'], 'Show pictures widens pictures only');
+	unset($policy['img-src'], $shown['img-src']);
+	pg_assert_same($policy, $shown, 'nothing else changes');
+
+	pg_assert_same(pg_guarded_frame_policy('static', 'n0nce'), pg_guarded_frame_policy('static', 'n0nce', true), 'pictures mean nothing outside the mail mode');
+	pg_assert_true(in_array('Content-Security-Policy: ' . pg_guarded_frame_policy('mail', 'abc', true), pg_guarded_frame_headers('mail', 'abc', true), true));
+}
+
+function test_guarded_frame_mail_sandbox_attributes()
+{
+	pg_assert_same('allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox', pg_guarded_frame_panel_sandbox('mail'));
+	pg_assert_same('allow-same-origin allow-popups allow-popups-to-escape-sandbox', pg_guarded_frame_inner_sandbox('mail'), 'no script runs in a mail');
+
+	foreach (array(pg_guarded_frame_panel_sandbox('mail'), pg_guarded_frame_inner_sandbox('mail')) as $sandbox) {
+		foreach (array('allow-top-navigation', 'allow-forms', 'allow-downloads', 'allow-modals') as $never) {
+			pg_assert_false(strpos($sandbox, $never) !== false, 'mail never ' . $never);
+		}
+	}
+}
+
+function test_guarded_frame_shell_mail_mode()
+{
+	$mail = array('files' => array(7 => '/image-1.png', '9' => '/a</script><script>alert(1)</script>.png', 'x' => '/no.png', 0 => '/zero.png', 8 => ''), 'pictures' => false);
+	$shell = pg_guarded_frame_shell('<p>Hi<script>x()</script></p>', 'mail', 'n0nce', 'E-mail', $mail);
+
+	pg_assert_true(strpos($shell, 'sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"') !== false);
+	pg_assert_true(strpos($shell, '<script nonce="n0nce">') !== false, 'the shell\'s script carries the nonce');
+	pg_assert_same(1, substr_count($shell, '<script'), 'one live script tag: the mail\'s own is inside srcdoc, escaped');
+	pg_assert_same(1, substr_count($shell, '</script>'), 'a file address cannot close the shell\'s script');
+	pg_assert_true(strpos($shell, 'mode="mail"') !== false);
+	pg_assert_true(strpos($shell, '"7":"/image-1.png"') !== false, 'a kept picture is named by its file id');
+	pg_assert_false(strpos($shell, 'no.png') !== false, 'a key that is no id is left out');
+	pg_assert_false(strpos($shell, 'zero.png') !== false, 'nor id 0');
+	pg_assert_true(strpos($shell, '"pictures":false') !== false);
+	pg_assert_true(strpos(pg_guarded_frame_shell('<p>x</p>', 'mail', 'n', 'E', array('pictures' => true)), '"files":{},"pictures":true') !== false, 'no files is an empty object');
+
+	$script = pg_guarded_frame_shell_script('mail', $mail);
+
+	pg_assert_true(strpos($script, 'u.hostname===location.hostname') !== false, 'an outside address on the site\'s own host is never put back');
+	pg_assert_true(strpos($script, 'a.setAttribute("target","_blank")') !== false, 'links open a new tab');
+	pg_assert_true(strpos($script, 'rel","noopener noreferrer"') !== false);
+	pg_assert_false(strpos(pg_guarded_frame_shell_script('static'), 'dress(') !== false, 'the static mode is not dressed');
+}

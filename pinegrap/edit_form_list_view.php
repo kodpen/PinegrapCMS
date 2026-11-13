@@ -437,7 +437,7 @@ if (!$_POST) {
     // Put the javascript into the head of the document.
     $output_header = preg_replace('/(<\/head>)/i', $output_javascript .'$1', pg_page_shell([
         'title'=> lang('Edit Form List View'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang('Edit Form List View'),
         'heading_description' => lang('Update this page\'s display of data from multiple submitted forms.'),
@@ -748,7 +748,7 @@ if (!$_POST) {
                     <div class="row">
                         <div class="col-12 lg:col-8 2xl:col-9 order-1">
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                 ' . lang('Field Options') . '
                                 </h2>
                                 <div class="card-body pt-0">
@@ -772,7 +772,7 @@ if (!$_POST) {
                                 </div>
                             </div>
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                 ' . lang('Sort & Filter Options') . '
                                 </h2>
                                 <div class="card-body pt-0">
@@ -831,7 +831,7 @@ if (!$_POST) {
                                 </div>
                             </div>
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                 ' . lang('Search & Browser Options') . '
                                 </h2>
                                 <div class="card-body pt-0">
@@ -944,7 +944,7 @@ if (!$_POST) {
                             <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
                             <div class="position-sticky" style="top:3.3rem;">
                                 <div class="card mb-7">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Summary') . '
                                     </h2>
                                     <div class="card-body pt-0">

@@ -971,7 +971,7 @@ function ws_ai_setup_hint()
         : lang('An administrator connects it on this card:');
 
     return lang('Pinegrap AI cannot answer yet.') . ' ' . $where . ' ['
-        . str_replace(array('[', ']'), '', lang('Workspace Settings › Pinegrap AI')) . '](' . $base . 'workspace_settings.php#ws-ai)';
+        . str_replace(array('[', ']'), '', lang('Workspace Settings › Pinegrap AI')) . '](' . $base . pg_settings_workspace_link('ws-ai') . ')';
 }
 
 /**
@@ -1511,7 +1511,7 @@ function ws_ai_step($row)
         // model server's speed allows (ignored by models that do not).
         'reasoning_effort' => 'low',
         // A page written out as HTML takes more room than an answer.
-        'max_tokens'  => (!empty($state['design']) || !empty($state['design_tools'])) ? 8000 : 3000,
+        'max_tokens'  => (!empty($state['design']) || !empty($state['design_tools']) || !empty($state['live_page_tools'])) ? 8000 : 3000,
         'stream'      => false,
     ), ws_ai_call_timeout());
 
@@ -1621,6 +1621,15 @@ function ws_ai_step($row)
         if ($name === 'answer') {
             $said = ws_ai_clean((string) ($call['args']['text'] ?? ''));
 
+            // A model assistant's emoji for the asking message; with no words
+            // and nothing proposed it closes the request alone.
+            $emoji = function_exists('ws_model_answer_emoji') ? ws_model_answer_emoji($row, (string) ($call['args']['emoji'] ?? '')) : '';
+
+            if (($emoji !== '') && ($said === '') && empty(array_filter((array) ($state['proposals'] ?? array())))) {
+                ws_model_close_with_emoji($row, $emoji);
+                return 'done';
+            }
+
             // Tool calls written into the answer's words: made now, and the
             // answer asked for again, without them.
             $inside = array_values(array_filter(ws_ai_text_calls($said), function ($written) {
@@ -1650,7 +1659,13 @@ function ws_ai_step($row)
                 continue;
             }
 
-            return ws_ai_finish_answer($row, $state, $said, $steps, '', $call['id']);
+            $done = ws_ai_finish_answer($row, $state, $said, $steps, '', $call['id']);
+
+            if (($done === 'done') && ($emoji !== '')) {
+                ws_ai_react((int) $row['message_id'], $emoji, true);
+            }
+
+            return $done;
         }
 
         if ($name === 'fail') {
@@ -1848,10 +1863,11 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
         && ws_ai_asks_for_task($state) && ($steps < WS_AI_MAX_STEPS - 2)) {
         $result = array('ok' => false, 'error' => 'The request asks for a task: call propose_task for it first, then call answer again.');
         $state['task_nudged'] = 1;
-    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['proposals']['scheduled']) && empty($state['proposals']['flows']) && empty($state['canvas_done']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
+    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['proposals']['scheduled']) && empty($state['proposals']['flows']) && empty($state['canvas_done']) && empty($state['live_page_done']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
         && ws_ai_claims_done($text) && ($steps < WS_AI_MAX_STEPS - 2)) {
         // An answer that says a record was changed, with no change
-        // proposed (a canvas drawn or edited is done, not proposed):
+        // proposed (a canvas or live page made or edited is done, not
+        // proposed):
         // nothing was changed, and the words must not say so.
         $result = array('ok' => false, 'error' => 'You cannot change anything yourself, and nothing was changed. If the request asks for a change, find the record and propose it with propose_change, then answer that you propose it. Otherwise answer without saying that anything was changed.');
         $state['done_nudged'] = 1;
@@ -1967,7 +1983,7 @@ function ws_ai_claims_done($text)
  */
 function ws_ai_tool_names()
 {
-    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'propose_flow', 'read_flow', 'add_task_note', 'send_voice_message', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite', 'draw_canvas', 'read_canvas', 'edit_canvas');
+    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'propose_flow', 'read_flow', 'add_task_note', 'send_voice_message', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite', 'draw_canvas', 'read_canvas', 'edit_canvas', 'make_live_page', 'read_live_page', 'edit_live_page');
 }
 
 /**
@@ -2507,7 +2523,7 @@ function ws_ai_deliver($row, $text, $proposals)
         $done = pg_design_ai_deliver($row, $text, $proposals);
 
         if ($done['ok']) {
-            ws_ai_log(lang('Pinegrap AI answered a request from the Visual Page Editor'));
+            ws_ai_log(lang('Pinegrap AI answered a request from the Page Design Studio'));
         }
 
         return $done;
@@ -3975,6 +3991,11 @@ function ws_ai_start($row)
         }
     }
 
+    // A live page is written out whole as HTML (page_ai.php).
+    if (ws_page_ai_offered($row, $asker)) {
+        $state['live_page_tools'] = 1;
+    }
+
     return array('ok' => true, 'error' => '', 'state' => $state);
 }
 
@@ -4010,6 +4031,15 @@ function ws_ai_tools($row)
             'reason' => array('type' => 'string'),
         ), array('reason')),
     );
+
+    // A model assistant asked by a channel message: one fitting emoji for
+    // that message, beside the words or in place of them.
+    if (function_exists('ws_ai_answer_takes_emoji') && ws_ai_answer_takes_emoji($row)) {
+        $tools[0] = $tool('answer', 'Write your answer under the request, or leave only an emoji on the message that asked when it needs no words. Call it once, at the end, after proposing with propose_task and propose_change what the request asks for: tasks and changes written only in the answer cannot be applied.', array(
+            'text'  => array('type' => 'string', 'description' => 'The answer in the language of the request. Markdown; tags such as <@user:12> or <#order:1045>. Empty with an emoji when the message needs no words (a thank-you, an acknowledgement).'),
+            'emoji' => array('type' => 'string', 'description' => 'Optional: one fitting emoji left on the message that asked, beside the text or in place of it: a celebration for good news, a heart for thanks, a thumbs up for "done".'),
+        ), array());
+    }
 
     // A request from the Visual Page Editor: its page, and nothing else.
     if (((int) ($row['page_id'] ?? 0) > 0) && ws_design_ai() && pg_design_ai_is_design_request($row)) {
@@ -4135,6 +4165,11 @@ function ws_ai_tools($row)
         if (ws_canvas_ai_offered($row, $asker)) {
             $tools = array_merge($tools, ws_canvas_ai_tools($tool));
         }
+
+        // Live pages made and edited as whole documents (page_ai.php).
+        if (ws_page_ai_offered($row, $asker)) {
+            $tools = array_merge($tools, ws_page_ai_tools($tool));
+        }
     }
 
     return $tools;
@@ -4159,6 +4194,10 @@ function ws_ai_tool_run($row, &$state, $name, $args)
 
     if ((int) ($row['mcp_server_id'] ?? 0) > 0) {
         return function_exists('ws_mcp_ask_tool_run') ? ws_mcp_ask_tool_run($row, $state, $name, $args) : array('error' => 'The service cannot be reached.');
+    }
+
+    if (in_array($name, ws_page_ai_tool_names(), true)) {
+        return ws_page_ai_tool_run($row, $state, $name, $args, $asker);
     }
 
     if (($name === 'read_page') || (strpos($name, 'page_') === 0)) {
@@ -4643,7 +4682,7 @@ function ws_ai_voice($text, $change = null)
 }
 
 /* ---------------------------------------------------------------------------
-   The settings card (workspace_settings.php)
+   The settings card (Site Settings, Workspace)
    --------------------------------------------------------------------------- */
 
 /**
@@ -5147,7 +5186,7 @@ function ws_ai_settings_card($self_url, $viewer, $form = null)
     <div id="pgset-ws-ai" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0 ws-grow">' . h(lang('Pinegrap AI in the channels')) . '</span>
+                <span class="pg-title-section ws-grow">' . h(lang('Pinegrap AI in the channels')) . '</span>
                 ' . $state . '
             </div>'
         : '
@@ -5224,3 +5263,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_activity.php');
 
 // Canvases the assistants draw and edit (tools of ws_ai_step()).
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_ai.php');
+
+// Live pages the assistants make and edit (tools of ws_ai_step()).
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/page_ai.php');

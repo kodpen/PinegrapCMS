@@ -4,7 +4,7 @@ description: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc
 ---
 
 ## How does the panel's answer leave?
-- WM7 (#8779): action `ws_mail_reply` (form parts, as New e-mail) → `ws_mail_send()` with `conversation_id`, cc, bcc, text, files. `ws_mail_send_check()` takes box, channel and route from `ws_mail_reply_target()` (may post in the channel, box on, customer address, a route), To the customer, the subject from `ws_mail_reply_subject()`, then the new mail's limits (`mail-send.md`).
+- WM7 (#8779): action `ws_mail_reply` (form parts, as New e-mail) → `ws_mail_send()` with `conversation_id`, cc, bcc, text, files. `ws_mail_send_check()` takes box, channel and route from `ws_mail_reply_target()` (may answer in the channel, `ws_mail_can_answer()`, box on, customer address, a route), To the customer, the subject from `ws_mail_reply_subject()`, then the new mail's limits (`mail-send.md`).
 - `ws_mail_send_answer()`: the out item `queued` with `in_reply_to` and `reference_ids` of the newest incoming mail (`ws_mail_reply_answered()`), its text and files under the card, the conversation `waiting` (`closed_at` 0, `first_reply_at` once) when written, not when it leaves; then `ws_mail_send_dispatch()`. Waiting to be sent, Not sent, Send again and the sent-folder copy as for a new mail.
 - The mail: `ws_mail_send_headers()` from the item; text `ws_mail_answer_body()`: the writer, the box's Signature (its name without one), the answered mail quoted (60 lines, read when it leaves).
 

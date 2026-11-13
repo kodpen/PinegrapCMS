@@ -131,7 +131,7 @@ function test_back_arrow_replaces_back_to_list_copies()
 		'marketplace_products.php' => array("'marketplace_settings.php'", 'bi-arrow-left'),
 		'workspace_template.php' => array('$settings_url', 'bi-arrow-left'),
 		'workspace_wtables.php' => array('$cancel', 'bi-arrow-left'),
-		'workspace_mcp.php' => array("'workspace_settings.php#ws-mcp'", 'href="workspace_settings.php#ws-mcp"'),
+		'workspace_mcp.php' => array("pg_settings_workspace_link('ws-mcp')", 'href="settings_workspace_assistants.php'),
 		'find_and_replace.php' => array("'find_and_replace.php'", 'Back to Find & Replace'),
 		'erp_stock.php' => array("'erp_stock.php'", "lang('All products')"),
 		'erp_cashflow.php' => array("'erp_cash.php'", 'href="erp_cash.php"'),

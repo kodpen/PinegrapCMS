@@ -44,6 +44,67 @@ function ws_mail_statuses()
 }
 
 /**
+ * Whether a box is a support box: its conversations get a status and a
+ * holder, the first-answer time and the automatic answer. Settings JSON key
+ * support; a box saved before the key existed is one. A plain box only
+ * reads and answers: its conversations count as open and held by nobody.
+ *
+ * @param array|null $box ws_mail_boxes row (settings)
+ * @return bool
+ */
+function ws_mail_box_is_support($box)
+{
+    $settings = is_array($box) ? json_decode((string) ($box['settings'] ?? ''), true) : null;
+
+    return !is_array($settings) || !array_key_exists('support', $settings) || !empty($settings['support']);
+}
+
+/**
+ * The ids of the plain boxes (ws_mail_box_is_support()), read once a
+ * request, for the lists' status and holder filters.
+ *
+ * @return int[]
+ */
+function ws_mail_plain_box_ids()
+{
+    static $ids = null;
+
+    if ($ids === null) {
+        $ids = array();
+
+        foreach ((array) db_items("SELECT id, settings FROM ws_mail_boxes") as $box) {
+            if (!ws_mail_box_is_support($box)) {
+                $ids[] = (int) $box['id'];
+            }
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * The box form's "Support box" switch. A new box starts as one; the form's
+ * script turns it off while the new box is kept in the mailbox itself,
+ * until the person sets it.
+ *
+ * @param string     $prefix
+ * @param array|null $box
+ * @return string HTML
+ */
+function ws_mail_support_field($prefix, $box)
+{
+    return '
+                <div class="md:col-12">
+                    <div class="form-field">
+                        <div class="switch"><input type="checkbox" name="support" value="1" id="' . $prefix . 'support"' . (ws_mail_box_is_support($box) ? ' checked' : '')
+                            . ($box ? '' : ' data-ws-mail-new') . '></div>
+                        <label for="' . $prefix . 'support">' . h(lang('Support box')) . '</label>
+                    </div>
+                    <div class="form-text">' . h(lang('Each conversation gets a status and a holder, the first-answer time and the automatic answer. Off, its e-mails are only read and answered.')) . '</div>
+                </div>';
+}
+
+/**
  * What a conversation's card shows of its state: the status, who holds it,
  * and when the first answer is due or that it is overdue.
  *
@@ -86,7 +147,8 @@ function ws_mail_state_offer($item, $offer, $viewer_id)
 {
     $conversation = is_array($item) ? $item['conversation'] : null;
 
-    if (((int) $offer <= 0) || !is_array($conversation)) {
+    // A plain box's conversation has no status or holder to change.
+    if (((int) $offer <= 0) || !is_array($conversation) || !($item['support'] ?? true)) {
         return null;
     }
 
@@ -162,7 +224,7 @@ function ws_mail_conversation_check($viewer, $conversation_id, $changes)
     $conversation = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . (int) $conversation_id . "'");
     $channel = is_array($conversation) && $conversation ? ws_channel((int) $conversation['channel_id']) : null;
 
-    if (!$channel || !ws_can_post_channel($viewer, $channel)) {
+    if (!$channel || !ws_mail_can_answer($viewer, $channel)) {
         return $out;
     }
 
@@ -172,7 +234,7 @@ function ws_mail_conversation_check($viewer, $conversation_id, $changes)
     if (ctype_digit($assign) && ((int) $assign > 0) && ((int) $assign !== (int) $viewer['id'])) {
         $person = ws_change_viewer_for_id((int) $assign);
 
-        if (!is_array($person) || empty($person['member']) || !ws_can_post_channel($person, $channel)) {
+        if (!is_array($person) || empty($person['member']) || !ws_mail_can_answer($person, $channel)) {
             return array_merge($out, array('error' => 'assignee'));
         }
     }
@@ -281,15 +343,18 @@ function ws_mail_status_js_strings()
 /**
  * An inbox line about a conversation: given to the person (mail_assigned),
  * or its customer wrote again on one they hold (mail_customer). The line's
- * message is the card or the new mail; its subject is the body.
+ * message is the card or the new mail; its subject is the body. It opens
+ * the card in its channel, or the conversation on the E-mails screen when
+ * its mailbox is kept in no channel (ws_mail_notice_url()).
  *
- * @param array  $row     ws_inbox row
- * @param string $actor   the name of who gave it
- * @param string $channel_name
- * @param string $base    the panel's address
+ * @param array      $row     ws_inbox row
+ * @param string     $actor   the name of who gave it
+ * @param string     $channel_name ws_inbox_place()'s: '#name', or a mailbox's name
+ * @param string     $base    the panel's address
+ * @param array|null $channel the row's channel
  * @return array title, body, url, icon
  */
-function ws_mail_inbox_describe($row, $actor, $channel_name, $base)
+function ws_mail_inbox_describe($row, $actor, $channel_name, $base, $channel = null)
 {
     $conversation = ((int) $row['message_id'] > 0) ? db_item("SELECT c.subject, c.customer_name, c.customer_email
         FROM ws_mail_items i
@@ -304,7 +369,7 @@ function ws_mail_inbox_describe($row, $actor, $channel_name, $base)
     return array(
         'title' => $title,
         'body'  => is_array($conversation) ? (string) $conversation['subject'] : '',
-        'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
+        'url'   => ws_mail_notice_url($base, (int) $row['channel_id'], (int) $row['message_id'], $channel),
         'icon'  => 'bi-envelope',
     );
 }
@@ -315,15 +380,17 @@ function ws_mail_inbox_describe($row, $actor, $channel_name, $base)
 
 /**
  * The box's first-response target in hours, 0 for none: settings JSON key
- * first_reply_hours.
+ * first_reply_hours. A plain box has none; its form still shows the one it
+ * keeps for the day it is a support box again.
  *
- * @param array|null $box ws_mail_boxes row
+ * @param array|null $box  ws_mail_boxes row
+ * @param bool       $kept the kept target, whether or not the box is a support box
  * @return int
  */
-function ws_mail_first_reply_hours($box)
+function ws_mail_first_reply_hours($box, $kept = false)
 {
     $settings = is_array($box) ? json_decode((string) ($box['settings'] ?? ''), true) : null;
-    $hours = is_array($settings) ? (int) ($settings['first_reply_hours'] ?? 0) : 0;
+    $hours = (is_array($settings) && ($kept || ws_mail_box_is_support($box))) ? (int) ($settings['first_reply_hours'] ?? 0) : 0;
 
     return max(0, min(WS_MAIL_FIRST_REPLY_MAX, $hours));
 }
@@ -395,7 +462,7 @@ function ws_mail_first_reply_html($conversation, $hours, $now)
  */
 function ws_mail_first_reply_field($prefix, $box)
 {
-    $hours = ws_mail_first_reply_hours($box);
+    $hours = ws_mail_first_reply_hours($box, true);
 
     return '
                 <div class="md:col-6">
@@ -432,7 +499,7 @@ function ws_mail_first_reply_input($input)
 
 /**
  * Whether a new conversation gets the box's automatic answer. Pure: the
- * box has it on with a text, the sender was not shown to be forged (an
+ * box is a support box and has it on with a text, the sender was not shown to be forged (an
  * answer to a forged address goes to a stranger), and the sender had none
  * from this box in the last WS_MAIL_AUTO_REPLY_EVERY seconds.
  *
@@ -443,7 +510,8 @@ function ws_mail_first_reply_input($input)
  */
 function ws_mail_auto_reply_due($box, $auth, $recent)
 {
-    return ((int) ($box['auto_reply'] ?? 0) === 1)
+    return ws_mail_box_is_support($box)
+        && ((int) ($box['auto_reply'] ?? 0) === 1)
         && (trim((string) ($box['auto_reply_text'] ?? '')) !== '')
         && ((string) $auth !== 'fail')
         && ((int) $recent === 0);

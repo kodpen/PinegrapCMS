@@ -276,7 +276,7 @@ $cause_links = array();
 $cause_sections = array();
 $band_n = 0;
 foreach ($causes as $key => $c) {
-    $cause_links[] = $el('li', 'nav-item', lang('Nav Item'), array($link($c['title'], '#cause-' . $key, 'nav-link px-0')));
+    $cause_links[] = $el('li', 'nav-item', lang('Nav Item'), array($link($c['title'], '#cause-' . $key, 'nav-link link-primary px-0')));
     $cause_cards = array();
     foreach ($campaigns as $campaign_key => $campaign) {
         if ($campaign['cause'] === $key) $cause_cards[] = $campaign_card($campaign_key);

@@ -106,7 +106,7 @@ if (!$_POST) {
     print
         pg_page_shell([
             'title'=> lang('Edit Ad'),
-            'extra classes'=>'ads',
+            'extra classes'=>'ads pg-measure-edit',
             'icon'=>'ads',
             'heading'=>lang('Edit Ad'),
             'heading_description' => lang('Update this ad and assign it to any existing ad region.'),

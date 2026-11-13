@@ -450,7 +450,7 @@ foreach ($pages as $row) {
 }
 
 if (!$pages) {
-    $output_pages .= '<div class="list-group-item fg-secondary small">' . lang('No page of a visual design yet. Pages built in the Visual Page Editor can be translated.') . '</div>';
+    $output_pages .= '<div class="list-group-item fg-secondary small">' . lang('No design page yet. Pages built in the Page Design Studio can be translated.') . '</div>';
 }
 
 // The texts that are not on a page: the catalog, the forms and the interface
@@ -791,7 +791,7 @@ echo pg_page_shell(array(
     'extra classes'       => 'translations',
     'icon'                => 'settings',
     'heading'             => lang('Translations'),
-    'heading_description' => lang('The pages of the visual designs in the other languages of the site: scanned, translated, reviewed.'),
+    'heading_description' => lang('The pages of the designs in the other languages of the site: scanned, translated, reviewed.'),
 )) . '
 <main id="content" class="container-fluid">
     <style>@layer custom {
@@ -845,7 +845,7 @@ echo pg_page_shell(array(
                 </ul>
             </div>' : '
             <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="' . h(pg_settings_link('languages', 'pgset-languages')) . '"><i class="bi bi-plus-lg me-3" aria-hidden="true"></i>' . lang('Add a language') . '</a>
-            <span class="fg-secondary small">' . lang('No target language yet. Add one in Settings > Languages and Translation; the pages of the visual designs are then served under its address prefix as well.') . '</span>') . '
+            <span class="fg-secondary small">' . lang('No target language yet. Add one in Settings > Languages and Translation; the pages of the designs are then served under its address prefix as well.') . '</span>') . '
         </div>
         ' . ($targets ? '
         ' . $engine_note . '

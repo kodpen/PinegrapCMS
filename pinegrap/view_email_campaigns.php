@@ -53,7 +53,7 @@ echo
 pg_page_shell(
     array(
         'title'=> lang('My Campaigns'),
-        'extra classes'=>'campaign',
+        'extra classes'=>'campaign pg-measure-list',
         'icon'=>'campaign', 
         'heading'=>lang('My Campaigns'),
         'heading_description' => lang(array('string'=>'All {var:1} and paused e-mail campaigns that I can manage.  See My Campaign History for completed and cancelled campaigns.','vars'=>$output_subheading_ready_status)),

@@ -143,7 +143,7 @@ print
 pg_page_shell(
     array(
         'title'=> lang('All Design Files'),
-        'extra classes'=>'designer',
+        'extra classes'=>'designer pg-measure-list',
         'icon'=>'design', 
         'heading'=> lang('All Design Files'),
         'heading_description' => lang('All design files that can be referenced by any theme, page style, or region, and managed only by site designers.'),

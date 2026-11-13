@@ -30,7 +30,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Currency'))),
-            'extra classes'=>'setting',
+            'extra classes'=>'setting pg-measure-edit',
             'icon'=>'setting', 
             'heading'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Currency'))),
             'heading_description' => lang('Add a currency conversion that is selectable by customers.'),

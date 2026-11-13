@@ -76,7 +76,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'=> lang('Create Product Group'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Create Product Group'),
         'heading_description' => lang('Create a new product group and include products and other product groups.'),

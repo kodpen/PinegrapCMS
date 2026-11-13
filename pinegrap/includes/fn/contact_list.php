@@ -1081,12 +1081,14 @@ function pg_contact_list_rows($user, $filter, $groups, $shows_groups, $contacts)
 {
     $file_ids = array_values(array_unique(array_filter(array_map('intval', array_column($contacts, 'file_id')))));
     $files = array();
+    $stamps = array();
 
     if ($file_ids) {
-        $result = db_q('SELECT id, name FROM files WHERE id IN (' . implode(', ', array_fill(0, count($file_ids), '?')) . ')', $file_ids);
+        $result = db_q('SELECT id, name, timestamp FROM files WHERE id IN (' . implode(', ', array_fill(0, count($file_ids), '?')) . ')', $file_ids);
 
         while ($result && ($row = mysqli_fetch_assoc($result))) {
             $files[(int) $row['id']] = $row['name'];
+            $stamps[(int) $row['id']] = (int) $row['timestamp'];
         }
     }
 
@@ -1106,6 +1108,7 @@ function pg_contact_list_rows($user, $filter, $groups, $shows_groups, $contacts)
 
     foreach ($contacts as $contact) {
         $group_names = array();
+        $contact['file_timestamp'] = $stamps[(int) $contact['file_id']] ?? 0;
 
         if ($shows_groups) {
             foreach ($groups as $group) {
@@ -1189,7 +1192,7 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name,
     // A picture file deleted in the File Manager leaves file_id behind with
     // no name; that row gets the letters, not PATH alone.
     if (((int) $contact['file_id'] != 0) && ((string) $file_name !== '')) {
-        $picture = $lazy . PATH . h($file_name) . '" />';
+        $picture = $lazy . h(pg_file_stamped_address(PATH, $file_name, $contact['file_timestamp'] ?? 0)) . '" />';
     } elseif (((int) $contact['file_id'] == 0) && $contact['image']) {
         $picture = $lazy . h($contact['image']) . '" />';
     } else {

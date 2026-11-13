@@ -488,7 +488,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'=> lang('Edit Product Group'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Edit Product Group'),
         'heading_description' => lang('Edit a product group and assign products to them.'),

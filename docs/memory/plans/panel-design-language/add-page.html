@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>panel look A: an add screen (form column, status column, save bar) on a 1920 px window</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="sheet.css">
+<style>
+.wrap { width: 1120px; }
+.cols { display: grid; grid-template-columns: 760px 336px; gap: 24px; align-items: start; }
+.pcard { padding: 20px 22px 22px; margin-bottom: 16px; }
+.pcard h2 { margin: 0; font: 650 17px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; }
+.pcard p.d { margin: 2px 0 16px; font-size: 13px; color: var(--fg2); }
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+.c2 { grid-column: span 2; } .c3 { grid-column: span 3; } .c4 { grid-column: span 4; } .c5 { grid-column: span 5; } .c6 { grid-column: span 6; } .c12 { grid-column: span 12; }
+.swrow { display: flex; align-items: center; gap: 10px; height: 36px; margin-top: 25px; font-size: 13px; color: var(--fg2); white-space: nowrap; }
+.pics { display: flex; gap: 12px; }
+.pic { position: relative; width: 92px; height: 92px; border-radius: 12px; display: grid; place-items: center; font-size: 30px; color: rgba(255,255,255,.92); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.pic em { position: absolute; left: 6px; top: 6px; font: 600 10px/1 Inter, sans-serif; padding: 4px 6px; border-radius: 6px; background: rgba(0,0,0,.5); color: #fff; }
+.pic.add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: var(--fg3); font-size: 20px; border: 1.5px dashed var(--field-line); box-shadow: none; background: var(--card); }
+.pic.add small { font-size: 11px; }
+.g1 { background: linear-gradient(135deg, #3d7bd9, #5fb6e8); } .g2 { background: linear-gradient(135deg, #2a5fb8, #7a8ff0); } .g3 { background: linear-gradient(135deg, #5d6f8f, #9db3cf); } .g4 { background: linear-gradient(135deg, #2f8f9b, #6fd0c0); }
+
+/* status column: what is read */
+.side h2 { font-size: 15px; letter-spacing: -.01em; }
+.side .pcard { padding: 16px 18px 18px; }
+.kv { display: grid; grid-template-columns: 96px 1fr; row-gap: 10px; margin-top: 12px; font-size: 13px; align-items: center; }
+.kv dt { color: var(--fg3); }
+.kv dd { margin: 0; text-align: right; font-weight: 500; }
+.todo { margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid var(--line); list-style: none; font-size: 13px; }
+.todo li { display: flex; align-items: center; gap: 9px; padding: 3px 0; color: var(--fg2); }
+.todo li i { font-size: 15px; color: var(--teal); }
+.todo li.no { color: var(--fg); font-weight: 500; }
+.todo li.no i { color: var(--amber); }
+.meter { height: 5px; border-radius: 3px; background: var(--quiet); margin-top: 12px; overflow: hidden; }
+.meter b { display: block; width: 75%; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--a2), var(--a1)); }
+.prev { margin-top: 12px; border-radius: 12px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); background: var(--card); }
+.prev .im { height: 150px; display: grid; place-items: center; font-size: 46px; color: rgba(255,255,255,.92); }
+.prev .tx { padding: 11px 13px 13px; }
+.prev .tx b { display: block; font-weight: 550; }
+.prev .tx span { display: block; font-size: 13px; color: var(--fg2); }
+.prev .tx strong { display: block; margin-top: 6px; font-weight: 650; }
+.serp { margin-top: 12px; font-size: 13px; }
+.serp small { display: block; color: var(--fg3); font-size: 12px; }
+.serp b { display: block; color: var(--accent); font-weight: 550; margin: 2px 0; }
+.serp span { color: var(--fg2); }
+
+/* save bar: sticks to the bottom of the window, as wide as the page */
+.main::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 120px; background: linear-gradient(transparent, var(--page) 78%); pointer-events: none; }
+.savebar { position: absolute; z-index: 2; left: 50%; bottom: 16px; transform: translateX(-50%); width: 1120px; height: 56px; padding: 0 12px 0 18px; display: flex; align-items: center; gap: 8px;
+  border-radius: 16px; background: var(--float); backdrop-filter: blur(16px); border: 1px solid var(--line); box-shadow: var(--shadow-float); }
+.savebar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 4px color-mix(in srgb, var(--amber) 18%, transparent); margin-right: 4px; }
+.savebar b { font-weight: 550; }
+.savebar small { color: var(--fg3); font-size: 13px; margin-left: 4px; }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="cap"><b>Ekleme sayfası</b>İçerik ortada, en çok 1120 px: form sütunu 760, durum sütunu 336. Alan genişliği içeriğine göre. Kaydet çubuğu altta sabit.</div>
+<div class="screen">
+  <aside class="menu">
+    <div class="logo"><i></i><span class="sk" style="width:92px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:74px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:104px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:62px"></span></div>
+    <span class="sk mh"></span>
+    <div class="mi"><i></i><span class="sk" style="width:88px"></span></div>
+    <div class="mi on"><i></i><span class="sk" style="width:70px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:112px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:80px"></span></div>
+    <span class="sk mh"></span>
+    <div class="mi"><i></i><span class="sk" style="width:96px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:66px"></span></div>
+    <div class="mi"><i></i><span class="sk" style="width:84px"></span></div>
+  </aside>
+  <div class="main">
+    <div class="top"><span class="sk s"></span><span class="sp"></span><span class="sk c"></span><span class="sk c"></span></div>
+    <div class="content">
+      <div class="wrap">
+        <div class="crumb">Ürünler <i class="bi bi-chevron-right"></i> <span>Yeni ürün</span></div>
+        <div class="phead"><h1 class="disp">Yeni ürün</h1><span class="st">Taslak</span><span class="sp"></span><button class="btn quiet"><i class="bi bi-eye"></i>Önizle</button><button class="ib on"><i class="bi bi-three-dots"></i></button></div>
+        <div class="cols">
+          <div>
+            <section class="pcard">
+              <h2>Temel bilgiler</h2><p class="d">Ürünün mağazada görünen adı ve kısa tanıtımı.</p>
+              <div class="grid">
+                <div class="c12"><label class="lab">Ürün adı</label><div class="in">Mavi seramik kupa<span class="end num">17 / 80</span></div></div>
+                <div class="c12"><label class="lab">Kısa açıklama <em>· isteğe bağlı</em></label><div class="in area">El yapımı seramik kupa, 330 ml. Bulaşık makinesinde yıkanabilir; her biri elde sırlandığı için renk tonu ufak farklar gösterir.</div><div class="help">Ürün kartında ve arama sonuçlarında görünür.</div></div>
+              </div>
+            </section>
+            <section class="pcard">
+              <h2>Fiyat ve stok</h2><p class="d">Fiyatlar KDV dahil girilir.</p>
+              <div class="grid">
+                <div class="c3"><label class="lab">Fiyat</label><div class="in focus num">249,90<span class="end">₺</span></div></div>
+                <div class="c3"><label class="lab">İndirimli fiyat</label><div class="in num"><span class="ph">—</span><span class="end">₺</span></div></div>
+                <div class="c3"><label class="lab">KDV</label><div class="in num">%20<i class="bi bi-chevron-down end"></i></div></div>
+                <div class="c3"></div>
+                <div class="c4"><label class="lab">Stok kodu</label><div class="in num">KP-MAVI-330</div></div>
+                <div class="c3"><label class="lab">Stok adedi</label><div class="in num">128<span class="end">adet</span></div></div>
+                <div class="c5"><div class="swrow"><span class="sw on"></span>Stok bitince satışı kapat</div></div>
+              </div>
+            </section>
+            <section class="pcard">
+              <h2>Görseller</h2><p class="d">Sürükleyerek sıralayın; ilk görsel kapak olur. PNG, JPG ya da WebP, en çok 8 MB.</p>
+              <div class="pics">
+                <div class="pic g1"><i class="bi bi-cup-hot"></i><em>Kapak</em></div>
+                <div class="pic g2"><i class="bi bi-cup-hot"></i></div>
+                <div class="pic g3"><i class="bi bi-cup"></i></div>
+                <div class="pic g4"><i class="bi bi-box-seam"></i></div>
+                <div class="pic add"><i class="bi bi-plus-lg"></i><small>Ekle</small></div>
+              </div>
+            </section>
+            <section class="pcard">
+              <h2>Düzen</h2><p class="d">Ürünün mağazada nerede duracağı.</p>
+              <div class="grid">
+                <div class="c6"><label class="lab">Kategori</label><div class="in"><span class="ph">Kategori seçin</span><i class="bi bi-chevron-down end"></i></div></div>
+                <div class="c6"><label class="lab">Marka</label><div class="in">Kupa Dükkânı<i class="bi bi-chevron-down end"></i></div></div>
+                <div class="c12"><label class="lab">Etiketler</label><div class="in tags"><span class="tag">seramik<i class="bi bi-x"></i></span><span class="tag">hediye<i class="bi bi-x"></i></span><span class="tag">el yapımı<i class="bi bi-x"></i></span></div></div>
+              </div>
+            </section>
+          </div>
+          <div class="side">
+            <section class="pcard">
+              <h2>Özet</h2>
+              <dl class="kv">
+                <dt>Durum</dt><dd><span class="st">Taslak</span></dd>
+                <dt>Fiyat</dt><dd class="num">249,90 ₺</dd>
+                <dt>Stok</dt><dd class="num">128 adet</dd>
+                <dt>Görsel</dt><dd class="num">4</dd>
+              </dl>
+              <ul class="todo">
+                <li><i class="bi bi-check-circle-fill"></i>Ad ve açıklama</li>
+                <li><i class="bi bi-check-circle-fill"></i>Fiyat ve stok</li>
+                <li><i class="bi bi-check-circle-fill"></i>Görseller</li>
+                <li class="no"><i class="bi bi-exclamation-circle-fill"></i>Kategori seçilmedi</li>
+              </ul>
+              <div class="meter"><b></b></div>
+              <div class="help">Yayına almak için 1 adım kaldı.</div>
+            </section>
+            <section class="pcard">
+              <h2>Mağazada görünüşü</h2>
+              <div class="prev"><div class="im g1"><i class="bi bi-cup-hot"></i></div><div class="tx"><b>Mavi seramik kupa</b><span>El yapımı, 330 ml</span><strong class="num">249,90 ₺</strong></div></div>
+            </section>
+            <section class="pcard">
+              <h2>Aramada görünüşü</h2>
+              <div class="serp"><small>kupadukkani.com › urun › mavi-seramik-kupa</small><b>Mavi seramik kupa | Kupa Dükkânı</b><span>El yapımı seramik kupa, 330 ml. Bulaşık makinesinde yıkanabilir.</span></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="savebar"><span class="dot"></span><b>Kaydedilmemiş değişiklikler</b><small>Taslak henüz kaydedilmedi.</small><span class="sp"></span><button class="btn ghost">Vazgeç</button><button class="btn quiet">Kaydet ve yeni ekle</button><button class="btn fill">Kaydet</button></div>
+  </div>
+</div>
+<div class="ruler"><span style="width:250px">menü 250</span><span style="flex:1">boş</span><span class="on" style="width:756px">form sütunu 760</span><span class="on" style="width:356px">durum sütunu 336</span><span style="flex:1">boş</span></div>
+</div>
+</body>
+</html>

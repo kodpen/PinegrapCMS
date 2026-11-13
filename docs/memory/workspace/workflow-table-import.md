@@ -5,7 +5,7 @@ description: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new t
 
 ## Where is it, and how does a person use it?
 - `includes/workspace/wtable_import.php`, screen `workspace_wtables.php`, tests `tests/workspace_wtable_import_test.php`.
-- "Table from a file" card: a new table; "Rows from a file": a writable table with columns. Upload (`wt_action=import_read`) → confirmation (`?import=1`, `#ws-wt-import`) → `import_write`; Cancel posts `import_cancel` through the hidden action form.
+- "Table from a file" (Data list, Import from file): a new table; "Rows from a file": a writable table with columns. Upload (`wt_action=import_read`) → confirmation (`?import=1`, `#ws-wt-import`) → `import_write`; Cancel posts `import_cancel` through the hidden action form.
 - Between the two posts the read table waits as JSON in `sys_get_temp_dir()` (`tempnam()` prefix `pg_wtimport_`), its path in `$_SESSION['software']['ws_wtable_import']` with the target table id (0 = new). A new upload or the write drops it.
 
 ## How is the kept file found again, on Windows too?
@@ -28,4 +28,4 @@ description: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new t
 - `ws_wtable_row_announce_quiet(true)` for the run: no `workspace.wtable.row.*` event per row (api/ key rule); the catalogue says so.
 
 ## What else comes in this way?
-- A note's table block (T6b, #3044): `workflow-table-import-notes.md`. Starters on the New table card (T6c): `workflow-table-starters.md`. Over the API and MCP: `workflow-tables-import.md`.
+- A note's table block (T6b, #3044): `workflow-table-import-notes.md`. Starters (T6c): `workflow-table-starters.md`. Over the API and MCP: `workflow-tables-import.md`.

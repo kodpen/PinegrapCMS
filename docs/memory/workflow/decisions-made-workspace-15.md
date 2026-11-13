@@ -9,7 +9,7 @@ description: Decisions list, workspace part 15 (2026-11-11 on): the Workspace se
 ## Are the Workspace settings cards simplified as they move under Site Settings? (owner, 2026-11-11, #8750)
 - Yes. Each card is simplified in the step that moves it; options that are rarely needed go under an "Advanced" part.
 - Owner (2026-11-11), in the architect's window, after he registered the merging session as an agent: "pr mergeyi kanala bağladım. biraz zor oldu özellikle ekleme ekranı karışık geldi ve Sağlayıcı kısımında claude yoktu. bu ayarlar site ayarları altına taşınırken bu ekranları sadeleştirme de yapalım. gereksiz seçenekleri altında gelişmiş olarak gizleriz."
-- The architect's, not the owner's words: what is rarely needed is each step's call, named in its PR; no field or value is dropped (the plan's no-schema rule); the "Add an agent" form shows only the chosen kind's fields (step SW4). Plan: `plans/settings-workspace-move.md`.
+- The architect's, not the owner's words: what is rarely needed is each step's call, named in its PR; no field or value is dropped (the plan's no-schema rule); the "Add an agent" form shows only the chosen kind's fields (step SW4). Plan: `workspace/workspace-settings-overview.md`.
 
 ## Is Claude (the Anthropic API) a provider of model assistants? (owner, 2026-11-11, #8750)
 - Yes: Anthropic joins the Provider list beside OpenAI, Gemini, Mistral, DeepSeek, OpenRouter, Azure and a custom address.

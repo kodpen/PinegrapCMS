@@ -37,7 +37,7 @@ if (!$_POST) {
     print
     pg_page_shell([
         'title'=> lang('Create Menu'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang('Create Menu'),
         'heading_description' => lang('Create a shared menu that can be added to any page style and managed by any site manager.'),

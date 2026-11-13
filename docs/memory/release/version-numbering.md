@@ -9,7 +9,7 @@ description: Version numbers from 2026.11.0 on are year.month.patch (calendar ve
 - Owner decision (Erdal, 2026-10-16): calendar versioning starts with the version after 2026.4.10; the layout was left to us.
 
 ## Why three parts and no leading zero?
-- The runner follows the order of `versions.php`; the schema gate (`pg_schema_upgrade_pending()`), Repair Software (`pg_update_repair_decision()`) and the dashboard's update notice use `version_compare()`, which reads the parts as numbers: 2026.11.0 > 2026.4.10. A string comparison puts 2026.11.0 first, so versions are never compared with `<`, `strcmp()` or `sort()` (`tests/update_test.php` checks the CalVer cases).
+- The runner follows the order of `versions.php`; the schema gate (`pg_schema_upgrade_pending()`), Repair Software (`pg_vendor_release_offer()`) and the dashboard's update notice use `version_compare()`, which reads the parts as numbers: 2026.11.0 > 2026.4.10. A string comparison puts 2026.11.0 first, so versions are never compared with `<`, `strcmp()` or `sort()` (`tests/update_test.php` checks the CalVer cases).
 - Dots become underscores in the entry function: `upgrade_to_2026_11_0()` in `includes/migrations/2026.11.0.php`. `2026.1.0` and `2026.01.0` would compare equal but name two different functions, files and tags, so the month is written without a zero.
 - PATCH is always written, `.0` included: `2026.11` and `2026.11.0` are different versions for `version_compare()` (`2026.11` is lower), and the number has to match the tag, the file and the function.
 - `pg_code_version()` and `install_migration_file()` accept digits and dots only; a beta is a tag (`v2026.11.0-beta`), never a version number.

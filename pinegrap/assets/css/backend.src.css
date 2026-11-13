@@ -933,19 +933,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-tint-soft: rgba(128, 128, 128, 0.06);
   --pg-rule: rgba(128, 128, 128, 0.16);
 
-  /* A bell row's module tag (pg_bell_row()): the hues of the dashboard's
-     Next up tags (.pg-dash-queue-tag[data-module] in pg_dash.src.css), held
-     equal by tests/bell_row_test.php. System is the dashboard's neutral. */
-  --pg-bell-tag-shop-bg: rgba(251, 191, 36, .16);
-  --pg-bell-tag-shop-fg: #b45309;
-  --pg-bell-tag-erp-bg: rgba(248, 113, 113, .14);
-  --pg-bell-tag-erp-fg: #b91c1c;
-  --pg-bell-tag-content-bg: rgba(217, 70, 239, .14);
-  --pg-bell-tag-content-fg: #a21caf;
-  --pg-bell-tag-team-bg: rgba(167, 139, 250, .18);
-  --pg-bell-tag-team-fg: #6d28d9;
-  --pg-bell-tag-system-bg: rgba(148, 163, 184, .16);
-  --pg-bell-tag-system-fg: var(--pg-fg-2);
   --pg-rule-strong: rgba(128, 128, 128, 0.18);
   --pg-rule-dashed: rgba(128, 128, 128, 0.35);
   --pg-scrollbar-thumb: #939393;
@@ -1014,12 +1001,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-tint-hover: rgba(255, 255, 255, 0.1);
   --pg-tint-soft: rgba(255, 255, 255, 0.04);
   --pg-scrollbar-thumb: #5e5e5e;
-
-  /* The bell's module tags: the dashboard's dark ink on the same fills. */
-  --pg-bell-tag-shop-fg: #fde68a;
-  --pg-bell-tag-erp-fg: #fecaca;
-  --pg-bell-tag-content-fg: #f0abfc;
-  --pg-bell-tag-team-fg: #c4b5fd;
 
   --pg-body-bg-rgb: 16, 17, 20;
   --pg-navbar-bg-rgb: 14, 14, 14;
@@ -4585,32 +4566,18 @@ a.link-top-row {
   margin: 0;
   cursor: pointer;
 }
-/* A row the chips, the switch or the search leave out, and a flow's older
-   runs while its newest is closed. */
-#notifications .software_notification:is(.pg-bell-off, .pg-bell-shut) {
-  display: none;
-}
-/* An older run hangs under its newest. */
-#notifications .software_notification[data-pg-bell-fold] .notification-card {
-  margin-left: 0.875rem;
-  padding-left: 0.75rem;
-  border-left: 2px solid var(--pg-border-color-translucent);
-}
-
-/* A bell row laid out for the drawer (pg_bell_row()): line one the module's
-   tag as a small mark, the unread dot and the title; line two the place and
-   the time, with the one button and the row's menu at the right; then the
-   excerpt, two lines at most. Day headings stand over the rows. */
+/* A bell row in look A (pg_bell_row()): the recipes' .pg-list-row draws it
+   (tile, one-line title with the time, two lines of text, the button only
+   when the row asks, the unread dot, the quick actions on hover); the rules
+   here only place it in the drawer. Day headings stand over the rows. */
 #notifications .pg-bell-list {
   padding-bottom: 0.25rem;
 }
 #notifications .pg-bell-day {
-  padding: 0.75rem 1rem 0.25rem;
+  padding: 12px 20px 6px;
   color: var(--pg-fg-3);
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
   list-style: none;
 }
 #notifications .pg-bell-day.pg-bell-off {
@@ -4622,206 +4589,109 @@ a.link-top-row {
   background: transparent;
   color: var(--pg-fg-body);
 }
-#notifications .pg-bell-row + .pg-bell-row .pg-bell-card {
-  border-top: 1px solid var(--pg-border-color-translucent);
+#notifications .pg-bell-card.pg-list-row {
+  margin: 0 8px;
 }
-#notifications .pg-bell-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.625rem 0.75rem 0.625rem 1rem;
-}
-#notifications .pg-bell-line {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.375rem;
-  min-width: 0;
-}
-#notifications .pg-bell-tag {
-  display: inline-block;
-  flex: 0 0 auto;
-  max-width: 6.5rem;
-  height: 1.125rem;
-  margin-top: 0.0625rem;
-  padding: 0 0.375rem;
-  overflow: hidden;
-  border-radius: 0.3125rem;
-  background: var(--pg-bell-tag-system-bg);
-  color: var(--pg-bell-tag-system-fg);
-  font-size: 0.625rem;
-  font-weight: 700;
-  line-height: 1.125rem;
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-#notifications .pg-bell-tag[data-module="shop"] {
-  background: var(--pg-bell-tag-shop-bg);
-  color: var(--pg-bell-tag-shop-fg);
-}
-#notifications .pg-bell-tag[data-module="erp"] {
-  background: var(--pg-bell-tag-erp-bg);
-  color: var(--pg-bell-tag-erp-fg);
-}
-#notifications .pg-bell-tag[data-module="content"] {
-  background: var(--pg-bell-tag-content-bg);
-  color: var(--pg-bell-tag-content-fg);
-}
-#notifications .pg-bell-tag[data-module="team"] {
-  background: var(--pg-bell-tag-team-bg);
-  color: var(--pg-bell-tag-team-fg);
-}
+/* The title is a button that opens the row; it keeps the recipe's type
+   (the weight comes from .pg-list-row-title). */
 #notifications .pg-bell-title {
   display: block;
-  flex: 1 1 auto;
-  min-width: 0;
   padding: 0;
   border: 0;
   background: none;
-  color: var(--pg-fg-body);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.35;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
   text-align: start;
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
-#notifications .pg-bell-row.new .pg-bell-title {
-  font-weight: 700;
+#notifications .pg-list-row.is-read .pg-bell-title {
+  color: var(--pg-fg-2);
 }
 #notifications button.pg-bell-title:hover {
   text-decoration: underline;
 }
-/* The second line wraps like the title: an order's number and total stay
-   readable in the drawer instead of ending in an ellipsis. */
-#notifications .pg-bell-sub {
+/* A fold's head: the count stands right after the title. */
+#notifications .pg-bell-title-wrap {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  max-width: 100%;
-  color: var(--pg-fg-3);
-  font-size: 0.75rem;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-/* Place and time run as one line of text: a long place wraps at its own
-   spaces and the time stays whole after it, its dot included. */
-#notifications .pg-bell-meta {
-  flex: 1 1 auto;
+  flex: 1;
+  align-items: baseline;
   min-width: 0;
 }
-#notifications .pg-bell-place + .pg-bell-time::before {
-  content: "\00b7";
-  content: "\00b7" / "";
-  margin: 0 0.375rem;
+#notifications .pg-bell-title-wrap > .pg-bell-title {
+  flex: 0 1 auto;
 }
-#notifications .pg-bell-time {
-  white-space: nowrap;
+#notifications .pg-bell-title-wrap > .pg-count {
+  flex: none;
 }
-/* The excerpt: two lines at most; the whole text is at the row's place. */
 #notifications .pg-bell-excerpt {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  color: var(--pg-fg-2);
-  font-size: 0.8125rem;
-  line-height: 1.4;
+  margin-bottom: 0;
   overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
   line-clamp: 2;
 }
-#notifications .pg-bell-more {
-  display: inline-flex;
-  align-self: flex-start;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--pg-primary-fg-emphasis);
-  font-size: 0.75rem;
+#notifications .pg-bell-place {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-#notifications .pg-bell-side {
+#notifications .pg-bell-row.viewed .pg-bell-dot {
+  visibility: hidden;
+}
+/* Without hover (a phone) the menu button stays in sight beside the time,
+   or the row's menu could not be reached; "Mark as read" is in that menu,
+   so the title keeps its room. */
+@media (hover: none) {
+  #notifications .pg-bell-quick {
+    display: flex;
+  }
+  #notifications .pg-bell-quick > .pg-bell-read {
+    display: none;
+  }
+  #notifications .pg-list-row .pg-bell-quick ~ .pg-bell-time {
+    display: inline;
+  }
+}
+
+/* A row the chips, the switch or the search leave out, and a flow's older
+   runs while its newest is closed. */
+#notifications .software_notification:is(.pg-bell-off, .pg-bell-shut) {
+  display: none;
+}
+/* An older run of a flow: a gathered line under its newest (pg_bell_run()),
+   lined up with the head's text (8 px margin, 12 px padding, the 28 px tile
+   and its 11 px gap). */
+#notifications .pg-bell-run .pg-gather-line {
+  align-items: center;
+  margin: 0 20px 0 59px;
+  padding: 3px 0 3px 10px;
+  border-left: 2px solid var(--pg-border-color-translucent);
+}
+#notifications .pg-bell-run .pg-bell-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#notifications .pg-bell-run .pg-gather-line-end {
   display: flex;
-  flex: 0 0 auto;
   align-items: center;
-  gap: 0.125rem;
-  margin-left: auto;
+  gap: 6px;
 }
-#notifications .pg-bell-act {
-  display: inline-flex;
-  align-items: center;
-  height: 1.75rem;
-  margin-right: 0.25rem;
-  padding: 0 0.625rem;
-  border: 1px solid var(--pg-border-color);
-  border-radius: 0.5rem;
-  background: var(--pg-tint);
-  color: var(--pg-fg-body);
-  font-size: 0.75rem;
-  white-space: nowrap;
+#notifications .pg-bell-run .pg-bell-quick {
+  margin: -4px 0;
 }
-#notifications .pg-bell-act:hover {
-  border-color: var(--pg-primary);
-  background: var(--pg-tint-hover);
-}
-/* The unread dot is a button ("Mark as read"); a read row keeps its place.
-   Its target reaches past the line's height without moving the title. */
-#notifications .pg-bell-dot {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  margin: -0.125rem -0.25rem;
-  padding: 0;
-  border: 0;
-  border-radius: 0.5rem;
-  background: none;
-}
-#notifications button.pg-bell-dot::before {
-  content: "";
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--pg-primary);
-}
-#notifications button.pg-bell-dot:hover {
-  background: var(--pg-tint-hover);
-}
-#notifications .pg-bell-row.warning button.pg-bell-dot::before {
-  background: var(--pg-warning);
-}
-#notifications .pg-bell-row.error button.pg-bell-dot::before {
-  background: var(--pg-danger);
+#notifications .pg-bell-run:is(:hover, :focus-within) .pg-bell-quick {
+  display: flex;
 }
 #notifications .pg-bell-menu-wrap {
   position: relative;
-}
-#notifications .pg-bell-menu-toggle {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-  border: 0;
-  border-radius: 0.5rem;
-  background: none;
-  color: var(--pg-fg-3);
-}
-#notifications .pg-bell-menu-toggle:hover,
-#notifications .pg-bell-menu-toggle[aria-expanded="true"] {
-  background: var(--pg-tint-hover);
-  color: var(--pg-fg-body);
 }
 #notifications .pg-bell-menu {
   position: absolute;
   top: calc(100% + 0.25rem);
   right: 0;
   z-index: 5;
+  display: block;
   min-width: 11rem;
   padding: 0.25rem;
   border: 1px solid var(--pg-border-color);
@@ -4857,17 +4727,111 @@ a.link-top-row {
 #notifications .pg-bell-menu-item.pg-bell-delete {
   color: var(--pg-danger-fg-emphasis);
 }
-#notifications :is(.pg-bell-title, .pg-bell-act, .pg-bell-dot, .pg-bell-menu-toggle, .pg-bell-menu-item, .pg-bell-more, .pg-bell-head-btn):focus-visible {
+#notifications :is(.pg-bell-title, .pg-bell-menu-item, .pg-bell-more, .pg-bell-head-btn):focus-visible {
   outline: 2px solid var(--pg-primary);
   outline-offset: 1px;
 }
-/* A workspace row's icon, in the workspace's colour. */
-#notifications .pg-bell-glyph {
-  margin-right: 0.375rem;
-  color: var(--workspace-color);
+
+/* Design examples (design_examples.php): the recipes drawn live in a light
+   and a dark pane. These rules only place the examples; every look comes
+   from the recipes ("Look A" below). */
+.pg-look-intro {
+  margin-bottom: 24px;
 }
-html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
-  color: var(--workspace-color-highlight);
+.pg-look-intro > p {
+  max-width: 70ch;
+  margin: 0 0 12px;
+}
+.pg-look-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 32px;
+}
+.pg-look-list {
+  margin: 6px 0 0;
+  padding-left: 1.1rem;
+}
+.pg-look-panes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+  gap: 24px;
+}
+.pg-look-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+  padding: 24px;
+  border-radius: var(--pg-radius-sheet);
+  background: var(--pg-bg-body);
+  color: var(--pg-fg-body);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.pg-look-pane-title {
+  margin: 0;
+}
+.pg-look-example {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.pg-look-example > h3 {
+  margin: 0;
+}
+.pg-look-classes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 0;
+}
+.pg-look-classes code {
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+.pg-look-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pg-look-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.pg-look-example > p {
+  margin: 0;
+}
+.pg-look-tile {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 64px;
+}
+.pg-look-narrow {
+  max-width: 12rem;
+}
+.pg-look-pad {
+  padding: 20px;
+}
+.pg-look-grow {
+  flex: 1;
+  min-width: 0;
+}
+.pg-look-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px 10px 16px;
+}
+.pg-look-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0 -12px;
 }
 
 .alert p.notice,
@@ -9263,19 +9227,9 @@ html:has(.mpp-bulk:not(.d-none)) {
   color: var(--pg-fg-body);
 }
 
-/* A notch smaller through the whole screen. Twelve sections of settings is a
-   dense page whatever the layout, and the card titles were h5 -- a heading
-   size, for what is really a label on a group of fields. */
-.pg-settings-body .card-header {
-  padding-bottom: 0.25rem;
-  font-size: 0.75rem !important;
-  letter-spacing: 0.05em;
-}
-.pg-settings-body .card-header .h5,
-.pg-settings-body .card-header span.h5 {
-  font-size: 0.75rem !important;
-  letter-spacing: 0.05em;
-}
+/* A notch smaller through the whole screen: twelve sections of settings is
+   a dense page whatever the layout. The card titles and the descriptions
+   are look A's ("Look A: settings"). */
 .pg-settings-body .form-label {
   margin-bottom: 0.25rem;
   font-size: 0.8125rem;
@@ -9284,9 +9238,6 @@ html:has(.mpp-bulk:not(.d-none)) {
 .pg-settings-body :is(select.form-control),
 .pg-settings-body .form-control {
   font-size: 0.8125rem;
-}
-.pg-settings-body .form-text {
-  font-size: 0.75rem;
 }
 .pg-settings-body h6 {
   font-size: 0.6875rem;
@@ -10249,7 +10200,7 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-settings-body {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 16px;
 }
 
 /* Bootstrap's columns answer to the window, not to the box they are in. That
@@ -10340,7 +10291,7 @@ body.pg-side-panel-open .pg-chat-launcher {
     margin-top: 0;
     margin-inline: calc(var(--bs-gutter-x) * .5);
     padding-inline: 0;
-    padding-block: 1rem .85rem;
+    padding-block: 0 var(--pg-set-row-y);
   }
 
   /* One rhythm, not two. Bootstrap spaces the lines of a .row with a gutter:
@@ -10367,10 +10318,10 @@ body.pg-side-panel-open .pg-chat-launcher {
     --bs-gutter-y: 0;
   }
   .pg-set-card .row > * {
-    padding-bottom: .85rem;
+    padding-bottom: var(--pg-set-row-y);
   }
   .pg-set-card .card-body > .row {
-    margin-bottom: -.85rem;
+    margin-bottom: calc(var(--pg-set-row-y) * -1);
   }
 
   /* The rule belongs BETWEEN two decisions, so it is drawn on the second one
@@ -10382,8 +10333,8 @@ body.pg-side-panel-open .pg-chat-launcher {
      only thing in it and a gap under that. */
   .pg-set-card .row > * + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
   .pg-set-card .row > * + [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) {
-    padding-top: .85rem;
-    border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
+    padding-top: var(--pg-set-row-y);
+    border-top: 1px solid var(--pg-border-color-translucent);
   }
 
   /* A group heading inside a card (a cell that starts with an <h6>) starts a new
@@ -10465,13 +10416,14 @@ body.pg-side-panel-open .pg-chat-launcher {
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > :is(.form-field > label) {
     grid-area: pgname;
     margin-bottom: 0;
-    font-weight: 500;
+    font-size: var(--pg-text-base);
+    font-weight: var(--pg-weight-strong);
   }
 
   .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-text,
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .form-text {
     grid-area: pgnote;
-    margin-top: .1rem;
+    margin-top: 1px;
   }
 
   /* The grid has one note area, so a second description (a warning drawn
@@ -10561,7 +10513,7 @@ body.pg-side-panel-open .pg-chat-launcher {
    so what draws a card is its border, not its colour, and leaving the fill in
    would have laid an opaque sheet over the glass for no gain. */
 .advanced-visuals:not(.toolbar) .pg-settings-modal.pg-sm {
-  background-color: transparent;
+  background: transparent;
 }
 .advanced-visuals:not(.toolbar) .pg-settings-modal .pg-sm-main {
   background-color: var(--pg-bg-body);
@@ -10611,7 +10563,7 @@ body.pg-side-panel-open .pg-chat-launcher {
    only the fields it shut are handed their colour back. */
 .pg-set-card .form-control[data-pgro],
 .pg-set-card textarea[data-pgro] {
-  background-color: var(--pg-bg-body);
+  background-color: var(--pg-field-bg);
   opacity: 1;
 }
 
@@ -10722,14 +10674,18 @@ body.pg-side-panel-open .pg-chat-launcher {
    it .pg-sm-main grows to the height of all its cards, the pane never becomes
    a scroller, and the save bar ends up a thousand pixels below the screen. */
 .pg-settings-modal.dialog {
-  --bs-dialog-width: min(1180px, calc(100vw - 3rem));
+  --bs-dialog-width: min(1040px, calc(100vw - 3rem));
+  --bs-dialog-backdrop-bg: var(--pg-scrim);
+  --bs-dialog-backdrop-blur: 2px;
 }
 .pg-settings-modal.pg-sm {
   flex-direction: row;
   overflow: hidden;
-  height: min(860px, calc(100vh - 3.5rem));
-  border: var(--pg-border-width) solid var(--pg-border-color-translucent);
-  border-radius: var(--pg-radius-xl);
+  height: min(680px, calc(100vh - 3.5rem));
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--pg-radius-sheet);
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+  box-shadow: var(--pg-shadow-sheet);
 }
 
 /* Viewport height on a phone is not a constant: the browser toolbar hides on
@@ -10738,47 +10694,38 @@ body.pg-side-panel-open .pg-chat-launcher {
    Declared after the vh rule, so a browser that does not know dvh keeps it. */
 @supports (height: 100dvh) {
   .pg-settings-modal.pg-sm {
-    height: min(860px, calc(100dvh - 3.5rem));
+    height: min(680px, calc(100dvh - 3.5rem));
   }
 }
 
 /* ── the sidebar ───────────────────────────────────────────────────────── */
+/* The rail: 232 px on the menu's surface, its title, a 32 px search field,
+   group names and 34 px items; the chosen item on the quiet fill with its
+   icon in the accent. */
 .pg-sm-side {
   display: flex;
-  flex: 0 0 15rem;
+  flex: 0 0 232px;
   flex-direction: column;
-  width: 15rem;
+  width: 232px;
   min-height: 0;
-  border-right: var(--pg-border-width) solid var(--pg-border-color-translucent);
-  background: var(--pg-bg-2);
+  padding: 18px 12px 0;
+  border-right: 1px solid var(--pg-border-color-translucent);
+  background: var(--pg-surface-menu);
 }
-.pg-sm-brand {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  padding: 1rem 1rem .5rem;
-  color: var(--pg-fg-2);
-  font-size: .75rem;
-  font-weight: 600;
-  letter-spacing: .05em;
-  text-transform: uppercase;
+.pg-sm-side > .pg-sm-brand {
+  margin: 2px 10px 14px;
 }
 .pg-sm-nav {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: .25rem .5rem 1rem;
+  padding: 0 0 1rem;
   scroll-padding-block: .5rem;
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
 .pg-sm-group {
-  padding: .85rem .5rem .25rem;
-  color: var(--pg-fg-2);
-  font-size: .6875rem;
-  font-weight: 600;
-  letter-spacing: .05em;
-  text-transform: uppercase;
+  margin: 16px 10px 6px;
 }
 /* Every row looks the same whether it opens a pane or leaves for a page: the
    arrow on the right is what tells them apart. Colour is not used for that --
@@ -10789,24 +10736,24 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-sm-link {
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: 10px;
   width: 100%;
-  min-height: 2.25rem;
-  padding: .4rem .5rem;
+  min-height: 34px;
+  padding: 6px 10px;
   border: 0;
-  border-radius: var(--pg-radius);
+  border-radius: 9px;
   background: none;
-  color: var(--pg-fg-body);
-  font-size: .8125rem;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-medium);
   line-height: 1.3;
   text-align: left;
   text-decoration: none;
 }
 .pg-sm-link i:first-child {
   flex: 0 0 1rem;
-  font-size: .875rem;
+  font-size: 15px;
   text-align: center;
-  opacity: .7;
 }
 .pg-sm-link span {
   /* Wraps rather than ending in an ellipsis: at tablet width the list is
@@ -10817,40 +10764,45 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 .pg-sm-link:hover,
 .pg-sm-link:focus-visible {
-  background: var(--pg-tint-strong);
+  background: var(--pg-hover);
   color: var(--pg-fg-body);
 }
 .pg-sm-link.is-active {
-  background: var(--pg-bg-body);
-  box-shadow: inset 2px 0 0 var(--pg-primary);
-  font-weight: 600;
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+  color: var(--pg-fg-body);
 }
 .pg-sm-link.is-active i:first-child {
-  color: var(--pg-primary);
-  opacity: 1;
+  color: var(--pg-accent);
 }
 .pg-sm-out {
   margin-left: auto;
-  color: var(--pg-fg-2);
-  font-size: .65rem;
-  opacity: .7;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
 }
 /* The search box over the list, and the hits that take the list's place. */
 .pg-sm-search {
   position: relative;
-  padding: 0 .5rem .25rem;
+  margin-bottom: 6px;
 }
 .pg-sm-search > .bi {
   position: absolute;
   top: 50%;
-  left: 1.1rem;
-  transform: translateY(calc(-50% - .125rem));
-  color: var(--pg-fg-2);
-  font-size: .75rem;
+  left: 10px;
+  transform: translateY(-50%);
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-base);
   pointer-events: none;
 }
 .pg-sm-search .form-control {
-  padding-left: 1.75rem;
+  --bs-control-min-height: 32px;
+  --bs-control-padding-y: 0;
+  --bs-control-font-size: var(--pg-text-2);
+  --bs-control-border-radius: 9px;
+  --bs-control-bg: var(--pg-field-bg);
+  --bs-control-border-color: var(--pg-field-line);
+  --bs-control-box-shadow: var(--pg-field-shadow);
+  padding-left: 32px;
 }
 .pg-sm-nav[hidden] {
   display: none;
@@ -10868,16 +10820,16 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 .pg-sm-hit-text small {
   overflow: hidden;
-  color: var(--pg-fg-2);
-  font-size: .6875rem;
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-meta);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .pg-sm-hits-empty {
   margin: 0;
-  padding: .75rem .5rem;
+  padding: 12px 10px;
   color: var(--pg-fg-2);
-  font-size: .8125rem;
+  font-size: var(--pg-text-2);
 }
 
 /* ── the pane ──────────────────────────────────────────────────────────── */
@@ -10888,71 +10840,38 @@ body.pg-side-panel-open .pg-chat-launcher {
   min-width: 0;
   min-height: 0;
 }
+/* The pane's head as a dialog's: padding 20 16 0 24, the title and one
+   line under it, the help and close icon buttons at the right. */
 .pg-sm-head {
   display: flex;
   flex: 0 0 auto;
   align-items: flex-start;
-  gap: .75rem;
-  padding: 1rem 1.25rem .75rem;
+  gap: 4px;
+  padding: 20px 16px 0 24px;
 }
 .pg-sm-heading {
   flex: 1 1 auto;
   min-width: 0;
 }
-.pg-sm-title {
-  margin: 0;
-  font-size: 1.15rem;
-  font-weight: 600;
-  line-height: 1.2;
-}
 .pg-sm-desc {
-  margin: .15rem 0 0;
-  color: var(--pg-fg-2);
-  font-size: .8125rem;
+  margin: 3px 0 0;
+}
+.pg-sm-head .pg-icon-button {
+  margin-top: -4px;
 }
 
 /* The button that opens the drawer. Only a phone has it; on anything wider
    the list is already on screen and a button that opens what is open says
    something untrue. */
-.pg-sm-burger {
+.pg-settings-modal .pg-sm-burger {
   display: none;
-  flex: 0 0 auto;
-  padding: .25rem .45rem;
-  border: var(--pg-border-width) solid var(--pg-border-color);
-  border-radius: var(--pg-radius);
-  background: none;
-  color: var(--pg-fg-body);
-  line-height: 1;
 }
-.pg-sm-burger .bi { font-size: 1.1rem; }
-
-/* Help for the category on view. An icon beside the close button, the same
-   height as the title line it sits on, and quiet until the pointer reaches it,
-   like the icon-only controls of the header. */
-.pg-sm-help {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  margin-top: -.3rem;
-  border-radius: 50%;
-  color: var(--pg-fg-2);
-  text-decoration: none;
-}
-.pg-sm-help:hover,
-.pg-sm-help:focus-visible {
-  background: var(--pg-tint-hover);
-  color: var(--pg-fg-body);
-}
-.pg-sm-help .bi { font-size: 1.1rem; line-height: 1; }
 
 .pg-sm-body {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-  padding: 1rem 1.25rem;
+  padding: 6px 24px 20px;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
@@ -10964,15 +10883,16 @@ body.pg-side-panel-open .pg-chat-launcher {
    programmatic focus and wants no ring. */
 #pg_settings_modal_pane:focus { outline: 0; }
 
+/* The foot under a body that scrolls: a line, padding 14 24, the buttons
+   at the right ("Close" ghost, "Save" filled). */
 .pg-sm-foot {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: .75rem;
-  padding: .65rem 1.25rem;
-  padding-bottom: max(.65rem, env(safe-area-inset-bottom));
-  border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
-  background: var(--pg-bg-1);
+  gap: 8px;
+  padding: 14px 24px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--pg-border-color-translucent);
 }
 .pg-sm-meta {
   min-width: 0;
@@ -11028,8 +10948,8 @@ body.pg-side-panel-open .pg-chat-launcher {
     flex-basis: 12rem;
     width: 12rem;
   }
-  .pg-sm-brand { padding-top: .75rem; }
-  .pg-sm-head { padding-top: .75rem; }
+  .pg-sm-side { padding-top: 14px; }
+  .pg-sm-head { padding-top: 14px; }
 }
 
 /* ── the drawer, on a phone ────────────────────────────────────────────── */
@@ -11042,6 +10962,8 @@ body.pg-side-panel-open .pg-chat-launcher {
     flex-basis: auto;
     width: min(17rem, 85%);
     border-right: var(--pg-border-width) solid var(--pg-border-color);
+    /* Over the pane, the rail's translucent surface lies on the dialog's. */
+    background: linear-gradient(var(--pg-surface-menu), var(--pg-surface-menu)), var(--pg-surface-1);
     box-shadow: var(--pg-shadow-lg);
     transform: translateX(-100%);
     transition: transform .18s ease-out, visibility 0s linear .18s;
@@ -11067,20 +10989,15 @@ body.pg-side-panel-open .pg-chat-launcher {
     opacity: 1;
     pointer-events: auto;
   }
-  .pg-sm-burger { display: block; }
+  .pg-settings-modal .pg-sm-burger { display: inline-grid; }
   .pg-sm-link { min-height: 2.75rem; }
-  .pg-sm-head,
-  .pg-sm-body { padding-inline: .875rem; }
-  .pg-sm-foot { padding-inline: .875rem; }
-  .pg-sm-title { font-size: 1.05rem; }
+  .pg-sm-head { padding-inline: 14px 8px; }
+  .pg-sm-body,
+  .pg-sm-foot { padding-inline: 14px; }
   /* Two lines of description on a phone is a third of the pane. */
   .pg-sm-desc { display: none; }
   /* The footer keeps only what has to be pressed. */
   .pg-sm-meta { display: none; }
-  .pg-sm-head .btn-close {
-    padding: .5rem;
-    margin: -.25rem -.25rem 0 0;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -12309,6 +12226,51 @@ body.workspace .ws-shell-main > #button_bar {
 }
 .ws-info-add {
   margin-top: .5rem;
+}
+/* Channel info's agents and last seen: an agent's face is a rounded square
+   with its mark, a person's stays round; the last seen sits at the right. */
+.avatar.ws-agent-face {
+  border-radius: 30%;
+}
+.avatar.ws-agent-face .bi {
+  font-size: 13px;
+  line-height: 1;
+}
+.ws-agent-stack {
+  margin-left: .45rem;
+}
+.ws-info-badge {
+  margin-left: .4rem;
+  font-size: 11px;
+  font-weight: 550;
+  vertical-align: 1px;
+}
+.ws-info-seen {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: .35rem;
+  font-size: 12px;
+  color: var(--pg-fg-2);
+  white-space: nowrap;
+}
+.ws-info-seen.is-on::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--pg-success);
+  content: "";
+}
+.ws-info-seen.is-late {
+  padding: 0 .45rem;
+  border-radius: 999px;
+  background: var(--pg-warning-bg-subtle);
+  color: var(--pg-warning-fg-emphasis);
+  font-weight: 550;
+  line-height: 1.5rem;
+}
+.ws-info-manage {
+  margin-top: .25rem;
 }
 /* The reader's notifications: three choices side by side. */
 .ws-seg {
@@ -15862,7 +15824,12 @@ a.ws-chip:hover {
   align-items: start;
 }
 .ws-mail-reading .ws-mail-columns {
-  grid-template-columns: minmax(18rem, 2fr) minmax(0, 3fr);
+  grid-template-columns: minmax(16rem, 1fr) minmax(0, 2fr);
+}
+/* With the pane open a row keeps who, subject, first words and time; of
+   its last line only a mail that did not leave stays said. */
+.ws-mail-reading .ws-mail-row-meta > :not(.badge) {
+  display: none;
 }
 .ws-mail-rows {
   display: flex;
@@ -15981,6 +15948,34 @@ a.ws-chip:hover {
 .ws-mail-text {
   margin-top: .5rem;
   overflow-wrap: anywhere;
+}
+/* A mail's HTML in its guarded frame (mail_pane.php
+   ws_mail_pane_body_html()): white in both themes, as mail is written for
+   white; its height follows the mail once the frame reports it
+   (workspace_mail.js). */
+.ws-mail-body {
+  margin-top: .5rem;
+}
+.ws-mail-body-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .5rem;
+  margin-bottom: .35rem;
+}
+.ws-mail-frame {
+  display: block;
+  width: 100%;
+  height: 12rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  background: #fff;
+  color-scheme: light;
+}
+.ws-mail-frame[hidden],
+.ws-mail-body .ws-mail-text[hidden],
+.ws-mail-pictures[hidden] {
+  display: none;
 }
 /* New e-mail (workspace_mail.js newForm()): the Signature as the mail
    carries it, its lines kept; the chosen files under the picker. */
@@ -18133,7 +18128,8 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
   padding: .5rem 0;
   border-bottom: 1px solid var(--pg-border-color);
 }
-/* The MCP servers card carries two buttons beside its heading and up to
+/* The MCP servers card (Workspace Settings, and Site Settings' Assistants
+   and agents) carries two buttons beside its heading and up to
    four beside each server's name; on a phone they wrap under it instead of
    squeezing the name to nothing and pushing the last button off screen. */
 #ws-mcp > .card-header {
@@ -18143,6 +18139,9 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
   flex-wrap: wrap;
 }
 #ws-mcp > .card-body > .ws-dept-row > .ws-grow {
+  flex-basis: 12rem;
+}
+#pgset-ws-mcp .ws-dept-row > .ws-grow {
   flex-basis: 12rem;
 }
 .ws-dept-swatch {
@@ -22908,12 +22907,11 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     forced-color-adjust: none;
     background-color: ButtonText;
   }
-  /* A bell row's module tag and its unread dot (pg_bell_row()). */
-  #notifications .pg-bell-tag,
+  /* A bell row's menu (pg_bell_row()). */
   #notifications .pg-bell-menu {
     border: 1px solid CanvasText;
   }
-  #notifications button.pg-bell-dot::before {
+  #notifications .pg-bell-dot {
     forced-color-adjust: none;
     background-color: Highlight;
   }
@@ -23018,18 +23016,20 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 /* List table driver (assets/js/pg_list_table.js, includes/fn/list_table.php):
    the list fills the window from where it starts; its rows scroll in their
    own box under a sticky heading row, the selection bar stays above them.
-   The list is one framed surface: the bar is its header strip, the rows and
-   the details panel its body. */
+   The list is one framed surface, look A's card (.pg-card on the root): the
+   bar is its header strip, the rows and the details panel its body. The
+   rows sit on the card's top surface; a sticky cell paints it under its own
+   hover or selection tint, so the columns that scroll never show through. */
 .pg-list-table {
   --pg-list-table-label: 8rem;
   --pg-list-table-cell-max: 22rem;
+  --pg-list-table-bg: var(--pg-surface-1);
+  --pg-list-table-line: var(--pg-border-color-translucent);
+  --pg-list-table-row-tint: transparent;
   display: flex;
   flex-direction: column;
   min-height: 16rem;
   max-height: calc(100dvh - var(--pg-list-table-top, 12rem) - 1rem);
-  border: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
-  border-radius: var(--pg-radius-lg);
-  background: var(--pg-card-bg);
   overflow: hidden;
 }
 .pg-list-table-scroll {
@@ -23041,6 +23041,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
+  background: var(--pg-list-table-bg);
 }
 .pg-list-table-grid {
   width: max-content;
@@ -23048,28 +23049,53 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   margin-top: 0;
   margin-bottom: 0;
 }
+/* The heading row: 38 px, small strong text in the third text colour; the
+   sorted column's heading in the text colour. */
 .pg-list-table-grid > thead > tr > th {
   position: sticky;
   top: 0;
   z-index: 2;
-  padding-block: 0.625rem;
-  background: var(--pg-card-bg);
-  box-shadow: inset 0 -1px 0 var(--pg-border-color);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--pg-fg-2);
+  height: 38px;
+  padding: 0 14px;
+  border-bottom: 0;
+  background: var(--pg-list-table-bg);
+  box-shadow: inset 0 -1px 0 var(--pg-list-table-line);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  color: var(--pg-fg-3);
   white-space: nowrap;
-  vertical-align: bottom;
+  vertical-align: middle;
+}
+.pg-list-table-grid > thead > tr > th[aria-sort] {
+  color: var(--pg-fg-body);
 }
 /* One line per row, so every row has the same height: a long text stops at
    the cell's widest size with an ellipsis (the details panel and the phone
    card show it whole); numbers and money keep their figures aligned. */
 .pg-list-table-grid > tbody > tr > td {
+  height: 52px;
   max-width: var(--pg-list-table-cell-max);
+  padding: 0 14px;
+  border-bottom: 1px solid var(--pg-list-table-line);
+  background: linear-gradient(var(--pg-list-table-row-tint), var(--pg-list-table-row-tint));
+  box-shadow: none;
+  color: var(--pg-fg-body);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: middle;
+}
+/* A thumbnail is a 32 px square with the icon tile's corners; the details
+   panel and the phone card show the picture whole. The cells print their
+   pictures with an inline 50 px size, hence !important. */
+@media (min-width: 768px) {
+  .pg-list-table-grid > tbody > tr > td.pg-list-col-image :is(img, svg) {
+    width: 32px !important;
+    height: 32px !important;
+    padding: 0;
+    object-fit: cover;
+    border-radius: 9px;
+  }
 }
 .pg-list-table-grid > thead > tr > th.text-end,
 .pg-list-table-grid > tbody > tr > td.text-end {
@@ -23092,25 +23118,42 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   .pg-list-table-grid > * > tr > [data-pg-col="actions"] {
     position: sticky;
     z-index: 1;
-    background: var(--pg-card-bg);
+  }
+  .pg-list-table-grid > tbody > tr > :first-child,
+  .pg-list-table-grid > tbody > tr > [data-pg-col="actions"] {
+    background: linear-gradient(var(--pg-list-table-row-tint), var(--pg-list-table-row-tint)), var(--pg-list-table-bg);
   }
   .pg-list-table-grid > * > tr > :first-child {
     inset-inline-start: 0;
-    box-shadow: inset -1px 0 0 var(--pg-border-color);
+    box-shadow: inset -1px 0 0 var(--pg-list-table-line);
   }
   .pg-list-table-grid > * > tr > [data-pg-col="actions"] {
     inset-inline-end: 0;
-    box-shadow: inset 1px 0 0 var(--pg-border-color);
+    box-shadow: inset 1px 0 0 var(--pg-list-table-line);
+  }
+  .pg-list-table-grid > thead > tr > :first-child {
+    box-shadow: inset -1px 0 0 var(--pg-list-table-line), inset 0 -1px 0 var(--pg-list-table-line);
+  }
+  .pg-list-table-grid > thead > tr > [data-pg-col="actions"] {
+    box-shadow: inset 1px 0 0 var(--pg-list-table-line), inset 0 -1px 0 var(--pg-list-table-line);
   }
   .pg-list-table-grid > thead > tr > :first-child,
   .pg-list-table-grid > thead > tr > [data-pg-col="actions"] {
     z-index: 3;
   }
 }
+/* The row's own buttons: small, at the row's right end. */
 .pg-list-table-grid > tbody > tr > td[data-pg-col="actions"] {
-  padding-block: 0.25rem;
+  padding-inline: 10px;
+  text-align: end;
 }
 .pg-list-table-grid > tbody > tr > td[data-pg-col="actions"] .btn {
+  --bs-btn-min-height: 28px;
+  --bs-btn-padding-y: 0;
+  --bs-btn-padding-x: 11px;
+  --bs-btn-font-size: var(--pg-text-2);
+  --bs-btn-font-weight: var(--pg-weight-strong);
+  --bs-btn-border-radius: 8px;
   margin-block: 0 !important;
 }
 /* The SEO column: the score bar with its number, never under the name. */
@@ -23139,8 +23182,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 .pg-list-table-grid th[aria-sort] .pg-list-table-sort::after {
   content: "\2191";
-  margin-inline-start: 0.25rem;
-  color: var(--pg-fg-2);
+  margin-inline-start: 4px;
+  font-size: var(--pg-text-count);
 }
 .pg-list-table-grid th[aria-sort="descending"] .pg-list-table-sort::after {
   content: "\2193";
@@ -23153,8 +23196,11 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
   outline-offset: calc(var(--pg-focus-ring-width) * -1);
 }
-.pg-list-table-grid > tbody > tr.pg-list-table-selected > td {
-  background: color-mix(in srgb, var(--pg-primary) 14%, var(--pg-card-bg));
+.pg-list-table-grid > tbody > tr:hover {
+  --pg-list-table-row-tint: var(--pg-hover);
+}
+.pg-list-table-grid > tbody > tr.pg-list-table-selected {
+  --pg-list-table-row-tint: color-mix(in srgb, var(--pg-accent) var(--pg-tint-select), transparent);
 }
 /* The selection bar, the list's header strip: the clear button, the count
    and the screen's bulk actions at the left while rows are selected, the
@@ -23165,29 +23211,34 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   flex: 0 0 auto;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  min-height: 3rem;
-  padding: 0.375rem 0.75rem;
-  border-bottom: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
-  background: color-mix(in srgb, var(--pg-primary) 10%, var(--pg-card-bg));
+  gap: 6px;
+  min-height: 48px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--pg-list-table-line);
+  background: color-mix(in srgb, var(--pg-accent) 7%, transparent);
 }
 .pg-list-table-bar.is-empty {
-  background: var(--pg-card-bg);
+  background: none;
 }
 .pg-list-table-count {
-  font-weight: 600;
-  color: var(--pg-primary-ink);
+  font-weight: var(--pg-weight-title);
+  color: var(--pg-accent);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .pg-list-table-count:not(:empty) {
-  padding-inline-end: 0.75rem;
-  border-inline-end: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
+  padding-inline: 4px 14px;
+  margin-inline-end: 6px;
+  border-inline-end: 1px solid var(--pg-list-table-line);
 }
+/* A screen's bulk buttons, sized as the bar's small buttons. */
 .pg-list-table-actions .btn {
-  --bs-btn-min-height: 2rem;
-  --bs-btn-padding-y: 0.25rem;
-  --bs-btn-padding-x: 0.75rem;
-  --bs-btn-font-size: 0.875rem;
+  --bs-btn-min-height: 28px;
+  --bs-btn-padding-y: 0;
+  --bs-btn-padding-x: 11px;
+  --bs-btn-font-size: var(--pg-text-2);
+  --bs-btn-font-weight: var(--pg-weight-strong);
+  --bs-btn-border-radius: 8px;
   margin: 0 !important;
 }
 .pg-list-table-bar.is-empty > .pg-list-table-count,
@@ -23197,7 +23248,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 .pg-list-table-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 6px;
 }
 /* The columns menu and the details switch keep the bar's right end. On a
    phone four labelled tools are wider than the bar: they wrap inside it
@@ -23208,7 +23259,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
-  gap: 0.25rem;
+  gap: 6px;
   min-width: 0;
   margin-inline-start: auto;
 }
@@ -23255,8 +23306,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   flex-direction: column;
   flex: 0 0 20rem;
   min-height: 0;
-  border-inline-start: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
-  background: var(--pg-card-bg);
+  border-inline-start: 1px solid var(--pg-list-table-line);
+  background: var(--pg-list-table-bg);
 }
 .pg-list-table-details[hidden] {
   display: none;
@@ -23265,10 +23316,11 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 2.75rem;
-  padding: 0.25rem 0.5rem 0.25rem 1rem;
-  border-bottom: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
-  font-size: 0.8125rem;
+  min-height: 48px;
+  padding: 6px 10px 6px 16px;
+  border-bottom: 1px solid var(--pg-list-table-line);
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
   color: var(--pg-fg-2);
 }
 .pg-list-table-details-body {
@@ -23281,8 +23333,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 .pg-list-table-details-title {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: var(--pg-text-status-title);
+  font-weight: var(--pg-weight-title);
   line-height: 1.5rem;
   overflow-wrap: anywhere;
 }
@@ -23300,24 +23352,24 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   display: grid;
   grid-template-columns: var(--pg-list-table-label) minmax(0, 1fr);
   margin: 0;
-  border-bottom: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
+  border-bottom: 1px solid var(--pg-list-table-line);
 }
 .pg-list-table-details dt,
 .pg-list-table-details dd {
   margin: 0;
   padding-block: 0.5rem;
-  border-top: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
+  border-top: 1px solid var(--pg-list-table-line);
 }
 .pg-list-table-details dt {
   padding-inline-end: 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
   line-height: 1.5rem;
-  color: var(--pg-fg-2);
+  color: var(--pg-fg-3);
 }
 .pg-list-table-details dd {
   min-width: 0;
-  font-size: 0.875rem;
+  font-size: var(--pg-text-base);
   line-height: 1.5rem;
   overflow-wrap: anywhere;
 }
@@ -23337,7 +23389,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     inset-inline-end: 0;
     z-index: 1045;
     width: min(22rem, 100vw);
-    box-shadow: var(--pg-shadow-lg);
+    box-shadow: var(--pg-shadow-float);
   }
 }
 /* Below 768 px a row is a card: every shown cell under its column's name. */
@@ -23358,13 +23410,16 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   }
   .pg-list-table-grid > tbody > tr {
     margin: 0.5rem 0;
-    border: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
-    border-radius: var(--pg-radius);
+    border: 1px solid var(--pg-list-table-line);
+    border-radius: var(--pg-radius-card);
+    overflow: hidden;
   }
   .pg-list-table-grid > tbody > tr > td {
     display: flex;
     gap: 0.75rem;
+    height: auto;
     max-width: none;
+    padding: 6px 14px;
     text-align: start;
     white-space: normal;
     overflow-wrap: anywhere;
@@ -23376,18 +23431,24 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   .pg-list-table-grid > tbody > tr > td::before {
     content: attr(data-pg-label);
     flex: 0 0 var(--pg-list-table-label);
-    font-size: 0.8125rem;
+    font-size: var(--pg-text-meta);
     text-align: start;
-    font-weight: 600;
-    color: var(--pg-fg-2);
+    font-weight: var(--pg-weight-strong);
+    color: var(--pg-fg-3);
   }
 }
+/* The foot: what is loading at the left, "Show more" at the right. */
 .pg-list-table-foot {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem;
+  gap: 10px;
+  padding: 8px 14px;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-3);
+}
+.pg-list-table-more {
+  margin-inline-start: auto;
 }
 .pg-list-table-status:empty,
 .pg-list-table-more[hidden] {
@@ -23395,23 +23456,23 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 .pg-list-table-status {
   margin: 0;
+  color: var(--pg-fg-3);
 }
 .pg-list-table-sentinel {
   height: 1px;
 }
 .pg-list-table-empty {
-  padding: 1rem;
+  padding: 24px 14px;
   margin: 0;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-3);
   text-align: center;
 }
 /* Quick edit mode (pg_list_table_edit.js): each editable cell holds a
-   field; a refused value is marked and its reason stands under it. */
-.pg-list-table-quick[aria-pressed="true"] {
-  color: var(--pg-primary-ink);
-  background: color-mix(in srgb, var(--pg-primary) 14%, transparent);
-}
+   field; a refused value is marked and its reason stands under it. Its
+   switch in the bar is an icon button, pressed while the mode is on. */
 .pg-list-table.is-quick-edit .pg-list-table-bar.is-empty.has-quick {
-  background: color-mix(in srgb, var(--pg-primary) 8%, transparent);
+  background: color-mix(in srgb, var(--pg-accent) 7%, transparent);
 }
 .pg-list-table-field {
   min-width: 6rem;
@@ -23465,8 +23526,8 @@ select.pg-list-table-field option.private {
 }
 .pg-list-table-field-note {
   margin-top: 0.125rem;
-  font-size: 0.8125rem;
-  color: var(--pg-danger-ink);
+  font-size: var(--pg-text-meta);
+  color: var(--pg-tone-rose);
   white-space: normal;
   text-align: start;
 }
@@ -24842,4 +24903,1030 @@ select.pg-list-table-field option.private {
   --bs-drawer-border-radius: var(--pg-drawer-border-radius, 0);
   --bs-drawer-width: var(--pg-drawer-width, 400px);
   --bs-drawer-height: var(--pg-drawer-height, 30vh);
+}
+
+/* ==========================================================================
+   Look A: the panel's type and recipes.
+   The typeface, the type scale and the recipe classes every panel screen is
+   built from. A recipe lives here once; a screen's own class only places
+   things. The page widths have their own block.
+   ========================================================================== */
+
+/* Inter 4.1 (SIL Open Font License 1.1, assets/fonts/inter/LICENSE.txt),
+   self-hosted: one variable file per style. Its optical size axis (opsz
+   14 to 32) gives the Display cut that headings ask for. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/inter/InterVariable.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../fonts/inter/InterVariable-Italic.woff2") format("woff2");
+}
+
+@layer custom {
+
+/* Tokens of the look. Neutral text and lines stay the panel's own
+   (--pg-fg-body, --pg-fg-2, --pg-fg-3, --pg-border-color-translucent); the
+   names below are what the look adds, each value for light and dark. */
+:root,
+[data-bs-theme] {
+  /* Type. */
+  --pg-font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --pg-font-features: "cv11", "ss01";
+  --pg-opsz-display: "opsz" 32;
+  --pg-text-count: 0.6875rem;
+  --pg-text-meta: var(--bs-font-size-xs);
+  --pg-text-2: 0.8125rem;
+  --pg-text-base: var(--bs-font-size-sm);
+  --pg-text-status-title: 0.9375rem;
+  --pg-text-section-title: 1.0625rem;
+  --pg-text-screen-title: 1.5rem;
+  --pg-weight-regular: var(--bs-font-weight-normal);
+  --pg-weight-medium: var(--bs-font-weight-medium);
+  --pg-weight-strong: 550;
+  --pg-weight-title: 650;
+  --pg-leading: 1.45;
+  --pg-leading-title: 1.25;
+  --pg-tracking-screen-title: -0.03em;
+  --pg-tracking-section-title: -0.015em;
+
+  /* Surfaces and depth. */
+  --pg-surface-1: light-dark(#ffffff, #16181e);
+  --pg-surface-2: light-dark(#fdfdfe, #101217);
+  --pg-surface-hi: light-dark(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.06));
+  --pg-surface-inset: light-dark(rgba(15, 23, 42, 0.018), rgba(255, 255, 255, 0.028));
+  --pg-surface-float: light-dark(rgba(255, 255, 255, 0.86), rgba(26, 28, 35, 0.84));
+  --pg-hover: light-dark(rgba(15, 23, 42, 0.04), rgba(255, 255, 255, 0.045));
+  --pg-quiet: light-dark(rgba(15, 23, 42, 0.055), rgba(255, 255, 255, 0.065));
+  /* The surface of a rail beside a pane (the settings dialog's list), and
+     the scrim a dialog lays over the page. */
+  --pg-surface-menu: light-dark(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.016));
+  --pg-scrim: light-dark(rgba(22, 27, 38, 0.3), rgba(3, 4, 7, 0.6));
+  --pg-radius-card: 16px;
+  --pg-radius-sheet: 20px;
+
+  /* The accent of the look: filled buttons, the switch, focus. */
+  --pg-accent: light-dark(#2f6fed, #6aa5ff);
+  --pg-accent-1: light-dark(#4a88f7, #8ab8ff);
+  --pg-accent-2: light-dark(#2a63e0, #5a90f6);
+  --pg-accent-glow: light-dark(rgba(47, 111, 237, 0.45), rgba(90, 144, 246, 0.55));
+  --pg-on-accent-fill: light-dark(#ffffff, #06101f);
+
+  /* Fields and the segmented control's thumb. */
+  --pg-field-bg: light-dark(#ffffff, rgba(0, 0, 0, 0.28));
+  --pg-field-line: light-dark(rgba(15, 23, 42, 0.13), rgba(255, 255, 255, 0.09));
+  --pg-field-shadow: inset 0 1px 2px light-dark(rgba(15, 23, 42, 0.06), rgba(0, 0, 0, 0.45));
+  --pg-thumb: light-dark(#ffffff, #262930);
+
+  /* Tones. A tone names a module; a new module gets its line here, never a
+     colour of its own in a screen. The tint strengths differ by theme. */
+  --pg-tone-blue: light-dark(#2f6fed, #6aa5ff);
+  --pg-tone-violet: light-dark(#7150e6, #b19cff);
+  --pg-tone-amber: light-dark(#b7791f, #f2b84b);
+  --pg-tone-teal: light-dark(#0e9a74, #3fd0a8);
+  --pg-tone-rose: light-dark(#d43d6b, #f58aa0);
+  --pg-tone-gray: light-dark(#6b7280, #9aa0a8);
+  --pg-tone-team: var(--pg-tone-blue);
+  --pg-tone-shop: var(--pg-tone-teal);
+  --pg-tone-content: var(--pg-tone-rose);
+  --pg-tone-accounting: var(--pg-tone-amber);
+  --pg-tone-warning: var(--pg-tone-amber);
+  --pg-tone-reports: var(--pg-tone-violet);
+  --pg-tone-system: var(--pg-tone-gray);
+}
+/* light-dark() takes only colours, so the tint strengths and the shadows
+   flip with the theme blocks. */
+:root,
+[data-bs-theme="light"] {
+  --pg-tint-from: 17%;
+  --pg-tint-to: 8%;
+  --pg-tint-line: 20%;
+  --pg-tint-select: 7%;
+  --pg-shadow-card: 0 1px 0 var(--pg-surface-hi) inset, 0 10px 28px -18px rgba(15, 23, 42, 0.2), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --pg-shadow-float: 0 1px 0 var(--pg-surface-hi) inset, 0 18px 44px -14px rgba(15, 23, 42, 0.3), 0 2px 6px rgba(15, 23, 42, 0.06);
+  --pg-shadow-sheet: 0 1px 0 var(--pg-surface-hi) inset, 0 24px 60px -24px rgba(15, 23, 42, 0.22), 0 2px 6px rgba(15, 23, 42, 0.04);
+  --pg-thumb-shadow: 0 1px 2px rgba(15, 23, 42, 0.14), 0 0 0 1px rgba(15, 23, 42, 0.05);
+}
+[data-bs-theme="dark"] {
+  --pg-tint-from: 26%;
+  --pg-tint-to: 11%;
+  --pg-tint-line: 22%;
+  --pg-tint-select: 10%;
+  --pg-shadow-card: 0 1px 0 var(--pg-surface-hi) inset, 0 14px 34px -18px rgba(0, 0, 0, 0.65);
+  --pg-shadow-float: 0 1px 0 var(--pg-surface-hi) inset, 0 18px 44px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 0, 0, 0.3);
+  --pg-shadow-sheet: 0 1px 0 var(--pg-surface-hi) inset, 0 30px 80px -20px rgba(0, 0, 0, 0.7);
+  --pg-thumb-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* The typeface's features. Only the family (set unlayered below) and its
+   features change here; sizes stay until a screen family moves to the scale. */
+body {
+  font-feature-settings: var(--pg-font-features);
+}
+
+/* Type. */
+.pg-title-screen {
+  margin: 0;
+  font-size: var(--pg-text-screen-title);
+  font-weight: var(--pg-weight-title);
+  line-height: var(--pg-leading-title);
+  letter-spacing: var(--pg-tracking-screen-title);
+  font-variation-settings: var(--pg-opsz-display);
+}
+.pg-title-section,
+.pg-title-status {
+  margin: 0;
+  font-size: var(--pg-text-section-title);
+  font-weight: var(--pg-weight-title);
+  line-height: 1.3;
+  letter-spacing: var(--pg-tracking-section-title);
+  font-variation-settings: var(--pg-opsz-display);
+}
+.pg-title-status {
+  font-size: var(--pg-text-status-title);
+}
+.pg-text-2 {
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+.pg-text-meta {
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Card: two near surfaces top to bottom, a line, a light inner top edge.
+   An add or edit screen's cards in its form and status columns are the
+   same card ("Look A: add and edit screens"). */
+.pg-card,
+body.pg-measure-edit .row > .order-1 > .card,
+body.pg-measure-edit .row > .order-2 > .position-sticky > .card,
+#pg_settings_sections > .pg-set-card > .card {
+  background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2));
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--pg-radius-card);
+  box-shadow: var(--pg-shadow-card);
+}
+.pg-card.pg-card-sheet {
+  border-radius: var(--pg-radius-sheet);
+}
+.pg-card-sub {
+  margin: 2px 0 0;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+/* Group name over rows or cards (a rail's groups, the settings dialog's
+   cards): 12 / 550 in the third text colour. */
+.pg-group-label,
+.pg-sm-group,
+.pg-sm .pg-set-card > .card > .card-header.pg-title-section,
+.pg-sm .pg-set-card > .card > .card-header > .pg-title-section {
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  line-height: var(--pg-leading);
+  letter-spacing: normal;
+  font-variation-settings: normal;
+  color: var(--pg-fg-3);
+}
+/* Inner card (settings rows): a faint tint, an inset line, rows split by a
+   line. A settings card's body is one. */
+.pg-card-inner,
+.pg-set-card > .card > .card-body {
+  border-radius: var(--pg-radius-card);
+  background: var(--pg-surface-inset);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent), inset 0 1px 0 var(--pg-surface-hi);
+}
+.pg-card-inner-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 13px 16px;
+}
+.pg-card-inner-row + .pg-card-inner-row {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+/* Floating bar (the save bar's surface), also an add or edit screen's
+   save bar. */
+.pg-floatbar,
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation,
+#pg_settings_page_form > nav.buttons.navigation {
+  border-radius: var(--pg-radius-card);
+  background: var(--pg-surface-float);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--pg-shadow-float);
+}
+
+/* Field: label above, help under, a unit or counter at the right end. */
+.pg-field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+}
+.pg-field-label-note {
+  font-style: normal;
+  font-weight: var(--pg-weight-regular);
+  color: var(--pg-fg-3);
+}
+.pg-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--pg-field-line);
+  border-radius: 10px;
+  background: var(--pg-field-bg);
+  box-shadow: var(--pg-field-shadow);
+  color: var(--pg-fg-body);
+  font: inherit;
+  font-size: var(--pg-text-base);
+}
+.pg-input::placeholder {
+  color: var(--pg-fg-3);
+}
+textarea.pg-input {
+  display: block;
+  height: auto;
+  min-height: 92px;
+  padding: 9px 12px;
+  line-height: 1.5;
+}
+/* A wrapper holding an input and its unit: the inner input is bare. */
+.pg-input > input,
+.pg-input > select {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  outline: 0;
+}
+.pg-input-end {
+  margin-left: auto;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-3);
+  white-space: nowrap;
+}
+.pg-input-sm {
+  height: 32px;
+  border-radius: 9px;
+  font-size: var(--pg-text-2);
+}
+/* A settings row's Bootstrap field is the field in a row. */
+.pg-set-card .form-control {
+  --bs-control-min-height: 32px;
+  --bs-control-padding-y: 5px;
+  --bs-control-font-size: var(--pg-text-2);
+  --bs-control-border-radius: 9px;
+  --bs-control-bg: var(--pg-field-bg);
+  --bs-control-border-color: var(--pg-field-line);
+  --bs-control-box-shadow: var(--pg-field-shadow);
+  border-radius: 9px;
+}
+.pg-input:focus,
+.pg-input:focus-within {
+  border-color: var(--pg-accent);
+  outline: 0;
+  box-shadow: var(--pg-field-shadow), 0 0 0 4px color-mix(in srgb, var(--pg-accent) 24%, transparent);
+}
+.pg-input.is-invalid,
+.pg-input[aria-invalid="true"],
+.pg-input:has(> [aria-invalid="true"]) {
+  border-color: var(--pg-tone-rose);
+  box-shadow: var(--pg-field-shadow), 0 0 0 4px color-mix(in srgb, var(--pg-tone-rose) 16%, transparent);
+}
+.pg-field-help {
+  margin-top: 6px;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-field-help.pg-field-error {
+  color: var(--pg-tone-rose);
+}
+/* Switch and checkbox, drawn on the native input. */
+.pg-switch,
+.pg-checkbox {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  margin: 0;
+  vertical-align: middle;
+  cursor: pointer;
+}
+.pg-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--pg-fg-3) 40%, transparent);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.pg-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.pg-switch:checked {
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+}
+.pg-switch:checked::after {
+  left: 18px;
+}
+/* A settings row's Bootstrap switch is the look's switch. */
+.pg-set-card .switch {
+  --bs-switch-height: 22px;
+  --bs-switch-width: 38px;
+  --bs-switch-padding: 2px;
+  --bs-switch-border-width: 0;
+  --bs-switch-bg: color-mix(in srgb, var(--pg-fg-3) 40%, transparent);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+.pg-set-card .switch::before {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.pg-set-card .switch:has(input:checked) {
+  background-image: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pg-switch::after {
+    transition: left 0.15s ease;
+  }
+}
+.pg-checkbox {
+  display: inline-grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1.5px var(--pg-fg-3);
+}
+.pg-checkbox:checked {
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  box-shadow: none;
+}
+.pg-checkbox:checked::after {
+  content: "";
+  width: 9px;
+  height: 5px;
+  margin-top: -2px;
+  border: solid var(--pg-on-accent-fill);
+  border-width: 0 0 2px 2px;
+  transform: rotate(-45deg);
+}
+.pg-switch:focus-visible,
+.pg-checkbox:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pg-accent) 24%, transparent);
+}
+
+/* Buttons: filled (at most one in a view), quiet, ghost, danger. */
+.pg-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--pg-fg-body);
+  font: inherit;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+.pg-button-fill {
+  color: var(--pg-on-accent-fill);
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 18px -8px var(--pg-accent-glow);
+}
+.pg-button-quiet {
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent), inset 0 1px 0 var(--pg-surface-hi);
+}
+.pg-button-ghost {
+  color: var(--pg-fg-2);
+}
+.pg-button-ghost:hover {
+  background: var(--pg-hover);
+  color: var(--pg-fg-body);
+}
+.pg-button-danger {
+  color: var(--pg-tone-rose);
+  background: color-mix(in srgb, var(--pg-tone-rose) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone-rose) 22%, transparent);
+}
+.pg-button-sm {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 8px;
+}
+.pg-button:disabled,
+.pg-button.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.pg-icon-button {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--pg-fg-2);
+  font-size: 15px;
+  cursor: pointer;
+}
+.pg-icon-button-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.pg-icon-button:hover,
+.pg-icon-button.is-active,
+.pg-icon-button[aria-pressed="true"],
+.pg-icon-button[aria-expanded="true"] {
+  background: var(--pg-quiet);
+  color: var(--pg-fg-body);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.pg-button:focus-visible,
+.pg-icon-button:focus-visible,
+.pg-seg-item:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+
+/* Segmented control (in place of filter chips): the chosen segment is a
+   raised thumb, a count beside its label. */
+.pg-seg {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.pg-seg-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--pg-fg-2);
+  font: inherit;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-medium);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+}
+.pg-seg-item.is-active,
+.pg-seg-item[aria-pressed="true"],
+.pg-seg-item[aria-selected="true"],
+.pg-seg-item[aria-current="true"] {
+  background: var(--pg-thumb);
+  color: var(--pg-fg-body);
+  box-shadow: var(--pg-thumb-shadow);
+}
+.pg-seg-count {
+  font-style: normal;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+
+/* Tones: a class sets --pg-tone, the pill and the tile read it. */
+.pg-tone-blue { --pg-tone: var(--pg-tone-blue); }
+.pg-tone-violet { --pg-tone: var(--pg-tone-violet); }
+.pg-tone-amber { --pg-tone: var(--pg-tone-amber); }
+.pg-tone-teal { --pg-tone: var(--pg-tone-teal); }
+.pg-tone-rose { --pg-tone: var(--pg-tone-rose); }
+.pg-tone-gray { --pg-tone: var(--pg-tone-gray); }
+.pg-tone-team { --pg-tone: var(--pg-tone-team); }
+.pg-tone-shop { --pg-tone: var(--pg-tone-shop); }
+.pg-tone-content { --pg-tone: var(--pg-tone-content); }
+.pg-tone-accounting { --pg-tone: var(--pg-tone-accounting); }
+.pg-tone-warning { --pg-tone: var(--pg-tone-warning); }
+.pg-tone-reports { --pg-tone: var(--pg-tone-reports); }
+.pg-tone-system { --pg-tone: var(--pg-tone-system); }
+
+/* Status pill: paid and live teal, waiting amber, on the way blue,
+   cancelled and out of stock rose, draft gray. */
+.pg-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 9px 0 8px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-to), transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-line), transparent);
+  color: var(--pg-tone, var(--pg-tone-gray));
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  line-height: 1;
+  white-space: nowrap;
+}
+.pg-pill::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) 18%, transparent);
+}
+
+/* Icon tile: a glyph in the tone on a diagonal gradient of it. */
+.pg-icon-tile {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-from), transparent), color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-to), transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-line), transparent);
+  color: var(--pg-tone, var(--pg-tone-gray));
+  font-size: 14px;
+  line-height: 1;
+}
+.pg-icon-tile-lg {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  font-size: 16px;
+}
+/* A person is a round avatar with initials. */
+.pg-initials {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b6cf6, #5b8def);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+.pg-initials-2 {
+  background: linear-gradient(135deg, #2bb3a3, #3f8fd8);
+}
+.pg-initials-3 {
+  background: linear-gradient(135deg, #e08a4f, #d4577b);
+}
+.pg-initials > img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Count beside a title, and the unread dot. */
+.pg-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--pg-fg-body) 9%, transparent);
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-count);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 17px;
+  vertical-align: 1px;
+}
+.pg-unread-dot {
+  display: block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pg-accent);
+}
+
+/* Row (the bell's row): tile, a one-line title with the time at its right,
+   at most two lines of text, a button only when the row asks for something,
+   the unread dot at the right. A read row is dimmed; hover shows the quick
+   actions in place of the time. */
+.pg-list-row {
+  position: relative;
+  display: flex;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+.pg-list-row:hover,
+.pg-list-row:focus-within {
+  background: var(--pg-hover);
+}
+.pg-list-row > .pg-icon-tile,
+.pg-list-row > .pg-initials {
+  margin-top: 2px;
+}
+.pg-list-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.pg-list-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.pg-list-row-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: var(--pg-weight-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pg-list-row-title-verb {
+  font-weight: var(--pg-weight-regular);
+  color: var(--pg-fg-2);
+}
+.pg-list-row-time {
+  flex: none;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-list-row-text {
+  display: -webkit-box;
+  margin-top: 1px;
+  overflow: hidden;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.pg-list-row-text b,
+.pg-list-row-text strong {
+  color: var(--pg-fg-body);
+  font-weight: var(--pg-weight-strong);
+}
+.pg-list-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.pg-list-row-place {
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-list-row-side {
+  flex: none;
+  width: 8px;
+  padding-top: 6px;
+}
+.pg-list-row-quick {
+  display: none;
+  flex: none;
+  gap: 2px;
+  margin: -5px -6px -5px 0;
+}
+.pg-list-row-quick .pg-icon-button {
+  width: 26px;
+  height: 26px;
+  font-size: 14px;
+}
+.pg-list-row:hover .pg-list-row-quick,
+.pg-list-row:focus-within .pg-list-row-quick {
+  display: flex;
+}
+.pg-list-row:hover .pg-list-row-quick ~ .pg-list-row-time,
+.pg-list-row:focus-within .pg-list-row-quick ~ .pg-list-row-time {
+  display: none;
+}
+.pg-list-row.is-read .pg-list-row-title {
+  font-weight: var(--pg-weight-medium);
+  color: var(--pg-fg-2);
+}
+.pg-list-row.is-read > .pg-icon-tile {
+  opacity: 0.8;
+  filter: saturate(0.55);
+}
+
+/* Gathered rows: one row with the kind as its title and the count beside
+   it; "Show N ..." opens the single lines, "Hide" closes them. */
+.pg-gather {
+  margin: 8px 0 2px;
+  padding-left: 10px;
+  border-left: 2px solid var(--pg-border-color-translucent);
+}
+.pg-gather-line {
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  white-space: nowrap;
+}
+.pg-gather-line > b,
+.pg-gather-line > strong {
+  color: var(--pg-fg-body);
+  font-weight: var(--pg-weight-strong);
+}
+.pg-gather-line-end {
+  margin-left: auto;
+  color: var(--pg-fg-body);
+  font-variant-numeric: tabular-nums;
+}
+.pg-gather-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pg-fg-2);
+  font: inherit;
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-medium);
+  cursor: pointer;
+}
+.pg-gather-toggle:hover {
+  color: var(--pg-fg-body);
+}
+
+}
+
+/* Unlayered: Bootstrap 6 declares --bs-body-font-family on :root outside
+   any layer, which beats @layer custom. */
+:root,
+[data-bs-theme] {
+  --bs-body-font-family: var(--pg-font-sans);
+}
+
+/* ==========================================================================
+   Look A: page widths.
+   An add or edit screen's content is centred and at most 1120 px (form
+   column 760, status column 336, 24 between); a list is as wide as its
+   columns need, at least 1280 px or the window, at most the window. A screen
+   takes them with a class on <body> ('extra classes'): pg-measure-edit, with
+   pg-edit-columns on the row holding the form, status and save bar columns;
+   pg-measure-list.
+   ========================================================================== */
+@layer custom {
+
+:root {
+  --pg-measure-edit: 1120px;
+  --pg-measure-form: 760px;
+  --pg-measure-status: 336px;
+  --pg-measure-gap: 24px;
+  --pg-measure-list-min: 1280px;
+  /* The section rail beside a page from 1280 px: its width and the gap. */
+  --pg-measure-rail: calc(13rem + 1.5rem);
+}
+
+/* #content keeps its 1rem padding, so the box is the measure plus it. */
+body.pg-measure-edit #content {
+  max-width: calc(var(--pg-measure-edit) + 2rem);
+  margin-inline: auto;
+}
+/* A screen with a section rail centres the rail and its content as one
+   group, so the rail stays beside the form; the awaiting state books the
+   same width as the rail itself. */
+@media (min-width: 1280px) {
+  body.pg-measure-edit #content.pg-has-rail,
+  body.pg-measure-edit .pg-awaiting-rail > #content {
+    max-width: calc(var(--pg-measure-edit) + var(--pg-measure-rail) + 2rem);
+  }
+}
+/* From lg the two columns are a grid: the status column keeps its 336 px
+   while the form column gives way first; the save bar spans both. Below lg
+   they stack in source order as before. */
+@media (min-width: 1024px) {
+  .pg-edit-columns {
+    display: grid;
+    grid-template-columns: minmax(0, var(--pg-measure-form)) minmax(0, var(--pg-measure-status));
+    column-gap: var(--pg-measure-gap);
+    justify-content: center;
+    margin-inline: 0;
+  }
+  .pg-edit-columns > * {
+    width: auto;
+    max-width: none;
+    padding-inline: 0;
+  }
+  .pg-edit-columns > .order-3 {
+    grid-column: 1 / -1;
+  }
+}
+
+/* A list: the content box is as wide as the list's columns need, at least
+   the list measure (or the window when it is narrower), at most the window,
+   centred; the toolbar above takes the same width. */
+body.pg-measure-list #content {
+  width: fit-content;
+  min-width: min(100%, var(--pg-measure-list-min) + 2rem);
+  max-width: 100%;
+  margin-inline: auto;
+}
+/* Only the name column takes the slack: the table gives a wider box to its
+   columns without a width first, so the name's own width (the driver's
+   inline style, hence !important) is dropped and every other column keeps
+   its width. */
+body.pg-measure-list .pg-list-table-grid > thead > tr > th:first-child {
+  width: auto !important;
+}
+/* The search above a list is 300 px; on a phone it takes the toolbar's
+   whole line as every toolbar search does. */
+body.pg-measure-list .pg-toolbar-search {
+  width: 300px;
+}
+
+}
+
+/* ==========================================================================
+   Look A: add and edit screens.
+   The family of add and edit screens (the body class pg-measure-edit): the
+   form column 760 and the status column 336 out of the shared column
+   classes, cards with the look's card and titles, and the save bar floating
+   at the window's bottom, as wide as the content, its buttons at the right.
+   ========================================================================== */
+@layer custom {
+
+/* Every add or edit screen prints its columns with the same classes
+   (lg:col-8 2xl:col-9 order-1, lg:col-4 2xl:col-3 order-2). From lg they
+   share the row in the measures' ratio, 760 to 336, so at the full measure
+   the form column is 760 px and the status column 336 px; the save bar's
+   col-12 wraps under both. */
+@media (min-width: 1024px) {
+  body.pg-measure-edit .row > .order-1.lg\:col-8 {
+    flex: 760 1 0%;
+    width: auto;
+    max-width: none;
+  }
+  body.pg-measure-edit .row > .order-2.lg\:col-4 {
+    flex: 336 1 0%;
+    width: auto;
+    max-width: none;
+  }
+}
+
+/* Cards: 16 px apart, the title as the look's section title (17 / 650),
+   the status column's as its status title (15 / 650). */
+body.pg-measure-edit .row > .order-1 > .card,
+body.pg-measure-edit .row > .order-2 > .position-sticky > .card {
+  --bs-card-spacer-y: 20px;
+  --bs-card-spacer-x: 22px;
+  --bs-card-cap-padding-y: 20px;
+  --bs-card-cap-padding-x: 22px;
+  --bs-card-cap-bg: transparent;
+  margin-bottom: 16px;
+}
+body.pg-measure-edit .row > .order-2 > .position-sticky > .card {
+  --bs-card-spacer-y: 16px;
+  --bs-card-spacer-x: 18px;
+  --bs-card-cap-padding-y: 16px;
+  --bs-card-cap-padding-x: 18px;
+}
+body.pg-measure-edit .row > .order-1 > .card > .card-header.pg-title-section {
+  padding-bottom: 12px;
+}
+body.pg-measure-edit .row > .order-2 .card-header.pg-title-section {
+  padding-bottom: 10px;
+  font-size: var(--pg-text-status-title);
+}
+
+/* The save bar: from 576 px a floating bar 56 px high, as wide as the
+   content, its buttons at the right in the look's size; a phone keeps the
+   shared two-per-row bar. The shared bar rounds its buttons into pills with
+   !important, hence the same here. */
+@media (min-width: 576px) {
+  body.pg-measure-edit .row > .order-3 > nav.buttons.navigation {
+    justify-content: flex-end;
+    min-height: 56px;
+    margin-bottom: 16px !important;
+    padding: 0 12px 0 18px;
+    border: 1px solid var(--pg-border-color-translucent);
+  }
+  body.pg-measure-edit .row > .order-3 > nav.buttons.navigation > .container {
+    justify-content: flex-end;
+    max-width: none;
+    margin: 0;
+    padding-block: 11px;
+  }
+  body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn {
+    --bs-btn-min-height: 34px;
+    --bs-btn-padding-y: 0;
+    --bs-btn-padding-x: 14px;
+    --bs-btn-font-size: var(--pg-text-2);
+    --bs-btn-font-weight: var(--pg-weight-strong);
+    border-radius: 10px !important;
+  }
+  body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn .bi,
+  body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn .material-icons {
+    font-size: var(--pg-text-base);
+  }
+}
+
+}
+
+/* ==========================================================================
+   Look A: settings.
+   The settings family, on the page (settings_<key>.php) and in the Site
+   Settings dialog: a card's title stands above its rows, the rows sit in
+   an inner card. On the page each card is a look card with the section
+   title (17 / 650); in the dialog the title is a group name over the inner
+   card, rows 12 px high in padding instead of 13. The dialog's rail, head
+   and foot are in "The settings modal".
+   ========================================================================== */
+@layer custom {
+.pg-set-card {
+  --pg-set-row-y: 13px;
+}
+.pg-sm .pg-set-card {
+  --pg-set-row-y: 12px;
+}
+/* The card is a frame: no fill, line or shadow of its own; the title has
+   no strip, the body is the inner card with the rows' padding. */
+.pg-set-card > .card {
+  --bs-card-cap-padding-x: 0;
+  --bs-card-cap-padding-y: 0;
+  --bs-card-spacer-x: 16px;
+  --bs-card-spacer-y: var(--pg-set-row-y);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.pg-set-card > .card > .card-header {
+  padding-bottom: 14px;
+}
+.pg-set-card .form-text {
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+}
+/* The page: each card on the look card, 22 px inside it. */
+#pg_settings_sections > .pg-set-card > .card {
+  padding: 22px;
+}
+/* The dialog: the group name 8 px over its inner card, the cards 16 apart,
+   the inner card's corners 14. */
+.pg-sm .pg-set-card > .card > .card-header {
+  padding: 0 2px 8px;
+}
+.pg-sm .pg-set-card > .card > .card-body {
+  border-radius: 14px;
+}
+.pg-sm #pg_settings_modal_pane {
+  padding-top: 16px;
+}
+/* The page's save bar floats as an edit screen's (from 576 px). */
+@media (min-width: 576px) {
+  #pg_settings_page_form > nav.buttons.navigation {
+    justify-content: flex-end;
+    min-height: 56px;
+    margin-top: 16px;
+    padding: 0 12px 0 18px;
+    border: 1px solid var(--pg-border-color-translucent);
+  }
+  #pg_settings_page_form > nav.buttons.navigation > .container {
+    display: flex;
+    justify-content: flex-end;
+    max-width: none;
+    margin: 0;
+    padding-block: 11px;
+  }
+}
 }

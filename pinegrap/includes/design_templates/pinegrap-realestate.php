@@ -163,7 +163,7 @@ $realestate_css = implode("\n", array(
 
 return array(
     'name'        => lang('Real Estate Agency'),
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 69,
     'icon'        => 'bi-house-door',

@@ -749,7 +749,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $occasions
 // same-day cut-off, the way to order and the delivery page. Shared, so
 // every page that ends with it carries the same call.
 $delivery_band = function () use ($el, $heading, $para, $link, $container, $row, $col, $cutoff_text) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -758,8 +758,8 @@ $delivery_band = function () use ($el, $heading, $para, $link, $container, $row,
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Order Flowers'), '{{page:order_request}}', 'btn btn-light btn-lg rounded-pill px-4'),
-                        $link(lang('Delivery details'), '{{page:delivery}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Order Flowers'), '{{page:order_request}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                        $link(lang('Delivery details'), '{{page:delivery}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

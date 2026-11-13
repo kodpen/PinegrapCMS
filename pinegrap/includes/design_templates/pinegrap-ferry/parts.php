@@ -703,7 +703,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $routes, $
 // ways to ask for a booking and to see the timetables. Shared, so every
 // page that ends with it carries the same call.
 $booking_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -712,8 +712,8 @@ $booking_band = function () use ($el, $heading, $para, $link, $container, $row, 
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Request a Booking'), '{{page:booking_request}}', 'btn btn-light btn-lg rounded-pill px-4'),
-                        $link(lang('See the Timetables'), '{{page:timetables}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Request a Booking'), '{{page:booking_request}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                        $link(lang('See the Timetables'), '{{page:timetables}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

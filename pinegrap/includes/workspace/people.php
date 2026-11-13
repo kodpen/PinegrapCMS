@@ -44,13 +44,13 @@ function ws_display_name($row)
  * The picture a person is shown with, in the order the dashboard uses:
  * the contact's uploaded file, the contact's image address, the default.
  *
- * @param array $row image, image_file_id, image_file_name
+ * @param array $row image, image_file_id, image_file_name, image_file_timestamp
  * @return string
  */
 function ws_avatar_url($row)
 {
     if (((int) ($row['image_file_id'] ?? 0) > 0) && ((string) ($row['image_file_name'] ?? '') !== '')) {
-        return PATH . $row['image_file_name'];
+        return pg_file_stamped_address(PATH, $row['image_file_name'], $row['image_file_timestamp'] ?? 0);
     }
 
     if ((string) ($row['image'] ?? '') !== '') {
@@ -137,6 +137,7 @@ function ws_people_select()
             c.image,
             c.file_id AS image_file_id,
             f.name AS image_file_name,
+            f.timestamp AS image_file_timestamp,
             p.title AS title,
             p.day_minutes AS day_minutes,
             p.workdays AS workdays

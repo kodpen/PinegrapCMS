@@ -1967,6 +1967,7 @@ if (!$_POST) {
                 </div>
             </div>
             <iframe id="theme_preview_iframe" scrolling="auto" src="' . OUTPUT_PATH . h($page_to_preview_name) . '?edit_theme=true&theme_id=' . h(urlencode($_GET['id'])) . '&edit=no' . $query_string_from . '" frameborder="0"><p class="error">Your Browser does not support frames.</iframe>
+            ' . pg_picker_script() . '
         </body>
     </html>';
     

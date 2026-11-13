@@ -68,7 +68,7 @@ $career_pages[] = array(
                         $widget('jobs_list'),
                         $el('div', 'd-flex flex-wrap align-items-center gap-3 mt-4', lang('Open Application'), array(
                             $para(lang('No job for you here? We read every open application and keep the good portfolios.'), 'text-body-secondary mb-0'),
-                            $link(lang('Send an open application'), '{{page:application}}?' . $query(array('job' => lang('Open application'))), 'btn btn-dark rounded-0 px-4'),
+                            $link(lang('Send an open application'), '{{page:application}}?' . $query(array('job' => lang('Open application'))), 'btn btn-primary rounded-0 px-4'),
                         )),
                     ), '', '8'),
                     $col(array(
@@ -263,7 +263,7 @@ $mail_application = function ($staff) use ($mail_box, $mail_line, $span, $bind, 
 // A file of the application on its page: a link to it for whoever may
 // read the record.
 $file_link = function ($sample, $field) use ($link) {
-    return array($link($sample, '#', 'link-dark', array(), array('target' => '_blank', 'rel' => 'noopener',
+    return array($link($sample, '#', 'link-body-emphasis', array(), array('target' => '_blank', 'rel' => 'noopener',
         '_bindings' => array('href' => $field, 'text' => $field))));
 };
 
@@ -328,11 +328,11 @@ $career_widgets = array(
                     $icon('bi-briefcase', 'display-5 text-body-tertiary'),
                     $heading('h2', lang('Job not found'), 'pai-display h3 mt-3'),
                     $para($job_missing, 'text-body-secondary mb-4', $bind('not_found')),
-                    $link(lang('See the open jobs'), '{{page:careers}}', 'btn btn-dark rounded-0 px-4'),
+                    $link(lang('See the open jobs'), '{{page:careers}}', 'btn btn-primary rounded-0 px-4'),
                 ), $show_when('record_not_found')),
                 $el('article', '', lang('Job Opening'), array(
                     $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-3', lang('Toolbar'), array(
-                        $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-dark text-decoration-none', lang('Link'), array(
+                        $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-body-emphasis text-decoration-none', lang('Link'), array(
                             $icon('bi-arrow-left'),
                             $span(lang('All Jobs'), '', lang('Link Text')),
                         ), array('href' => '{{page:careers}}')),
@@ -364,7 +364,7 @@ $career_widgets = array(
                                 $para(lang('Send your portfolio, your CV and a few words about your work; we answer every application within two weeks.'), 'small text-body-secondary mb-3'),
                                 // Opens the application with this job
                                 // chosen (?job=).
-                                $link(lang('Apply for this job'), '#', 'btn btn-dark rounded-0 w-100', array(),
+                                $link(lang('Apply for this job'), '#', 'btn btn-primary rounded-0 w-100', array(),
                                     $ai_page_link('application', array('job' => 'title'))),
                             )),
                         ), '', '4'),
@@ -404,7 +404,7 @@ $career_widgets = array(
             $field('ai-app-status', lang('Status'), $select('ai-app-status', 'status', '', $application_statuses, false, $application_statuses[0], array('office_use_only' => true))),
             $agree('ai-app-consent', 'consent', lang('I agree that the studio keeps my application, portfolio and CV to consider it, as its privacy notice explains.'), true),
             $captcha(),
-            $submit(lang('Send Application'), 'btn btn-dark btn-lg rounded-0 px-4'),
+            $submit(lang('Send Application'), 'btn btn-primary btn-lg rounded-0 px-4'),
             $loop(array()),
         )),
     ),

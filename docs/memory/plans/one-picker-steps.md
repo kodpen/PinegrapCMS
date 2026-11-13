@@ -18,17 +18,21 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PK5 (M) The field. `pg_picker_field()`: the combobox with Browse and the chosen value with its picture; the Settings pictures and the short link File fields move to it. This delivers what F3 of the search plan asked for. Done in #8751 (`ui/picker-field.md`).
 
-- PK6 (M) Page fields, first part. Typed page kinds and the field's page wording; Create Page and Edit Page move to `pg_picker_field()` and drop their `<template>` fill (the designer's page type pane keeps its selects until PK8); Settings (Commerce, Privacy, Security) and the User Start Page; a stored archived or binned page stays, marked, and Browse opens on its folder. Done in #8782 (`ui/page-form-page-fields.md`).
+- PK6 (M) Page fields, first part. Typed page kinds and the field's page wording; Create Page and Edit Page move to `pg_picker_field()` and drop their `<template>` fill Settings (Commerce, Privacy, Security) and the User Start Page; a stored archived or binned page stays, marked, and Browse opens on its folder. Done in #8782 (`ui/page-form-page-fields.md`).
 
 - PK6b (M) Page fields, second part. The rest of `select_page()` and `get_page_options()`: the product builder, Edit Offer, the short link form and the File Manager short link window, the menu item, the calendar event; whether quick edit keeps its own lists. Done in #8803 (`ui/picker-page-fields-screens.md`).
 
 - PK6c (S) The e-mail campaign profile's Body Page (by view access) and the form page selects (`any form`, the product builder's custom form). Done in #8824 (`ui/picker-page-fields-screens.md`).
 
-- PK7 (M) The editor bridge. CKEditor's Link and Image dialogs open the picker (pages, files, short links, pictures; Unsplash kept as a source); `editor_select_image.php` and `editor_select_page_or_file.php` are retired.
+- PK7 (M) The editor bridge: CKEditor's Link and Image dialogs open the picker; TinyMCE 3 keeps its lists (#8835). Done in #8858 (`ui/picker-editor-bridge.md`).
 
-- PK8 (M) The designer bridge. `sdOpenFilePicker()` and `sdOpenImagePicker()` call `pgPicker` and the fake `CKEDITOR` goes; the widget page pickers (`_swPageOptions()`) get Browse; the page type pane's page selects become picker fields (`pg_page_form_type_fields()` with `true`); texts through `_sdT()`.
+- PK8 (M) The designer bridge: link and picture fields through `pgEditorPicker`, the fake `CKEDITOR` gone, Browse under the widget page selects, the page type pane on picker fields. Done in #8884 (`ui/picker-designer-bridge.md`).
 
-- PK9 (M) The remaining screens. The product builder's pictures, the contact photo, the image editor's From the site lists, the theme designer's file list, and the Workspace's "from the files" picker with its chat attachment refusal kept (`platform/file-copy-chat-attachments.md`).
+- PK8b (S) The link window `editor_select_page_or_file.php` and `filebrowserBrowseUrl` deleted, no redirect, listed in Cleanup (#8836). Done in #8896.
+
+- PK9 (M) Product builder pictures, contact photo (`software_image_picker()`), theme designer file list; `editor_select_image.php` deleted. Done in #8904 (`ui/picker-remaining-screens.md`).
+
+- PK9b (M) The image editor's From the site lists (after V10, #8854) and the Workspace's "from the files" picker with its chat attachment refusal kept (`platform/file-copy-chat-attachments.md`).
 
 - PK10 (S) Close-out. Helpers nothing calls are removed, `ui/picker-overview.md` is current, the PR body names the `[NEW]` changelog line, the four plan files and `plans/one-picker/` are deleted.
 
@@ -38,5 +42,4 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 ## Which questions are open?
 - Each is asked as an `architect` issue before the step that needs it.
-- PK7: is the previous editor (TinyMCE 3) bridged to the picker, or does it keep its own lists until it is removed? Asked in #8835.
-- PK7: do the two retired browser addresses answer with a redirect for one release, or go at once? Asked in #8836 (the designer still opens both until PK8).
+- None now: the two PK7 questions are decided on #8835 and #8836 (the PK7 and PK8 lines).

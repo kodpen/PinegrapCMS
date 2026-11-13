@@ -99,7 +99,7 @@ function pg_import_write_page($item, $import)
     $style_id = pg_import_page_style($folder);
 
     if ($style_id <= 0) {
-        return $fail(lang('The site has no visual design to place the page in.'));
+        return $fail(lang('The site has no design to place the page in.'));
     }
 
     $data = (array) ($item['data'] ?? array());

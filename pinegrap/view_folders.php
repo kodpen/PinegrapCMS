@@ -288,13 +288,13 @@ $explorer_lang = array(
     'deselect_all' => lang('Deselect All'),
     'access_permissions' => lang('Access Permissions'),
     'optimize_image' => lang('Optimize this image'),
-    'image_editor' => lang('Image Editor'),
+    'image_editor' => lang('Design Canvas'),
     'image_export' => lang('Export settings…'),
     'new_image' => lang('New image'),
     'new_image_name' => lang('New image'),
     'new_image_saved' => lang('{var:1} was created.'),
     'rotate_right' => lang('Rotate Right'),
-    'image_editor_missing' => lang('The image editor is not loaded on this screen.'),
+    'image_editor_missing' => lang('The Design Canvas is not loaded on this screen.'),
     'saved_named' => lang('The {var:1} has been saved.'),
     'file_not_on_disk' => lang('The file is recorded here but is not on the disk.'),
     'file_too_large_to_edit' => lang('This file is larger than {var:1}, so its text is not shown here.'),
@@ -575,7 +575,7 @@ $explorer_lang = array(
     'bulk_comments_note' => lang('Allow visitors to comment on these pages.'),
     'bulk_noindex_note' => lang('Ask search engines not to index these pages.'),
     'bulk_nofollow_note' => lang('Ask search engines not to follow the links on these pages.'),
-    'bulk_style_note' => lang('Only classic pages are restyled. A page the visual editor opens keeps its own style, because it carries its own layout.'),
+    'bulk_style_note' => lang('Only classic pages are restyled. A page the Page Design Studio opens keeps its own style, because it carries its own layout.'),
     'bulk_edit_files' => lang('Bulk Edit Files'),
     'bulk_edit_files_menu' => lang('Bulk edit files ({var:1})'),
     'bulk_edit_files_count' => lang('{var:1} files will be updated. Fields left on "Do not change" are not touched.'),
@@ -1584,7 +1584,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             <button type="button" id="transfer_menu_button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" title="<?php echo lang('Import / Export'); ?>"><span class="bi bi-arrow-down-up"></span></button>
             <ul class="menu shadow" style="border-radius:.75rem;">
                 <li id="import_zip_item"><button type="button" class="menu-item" id="import_zip_button"><span class="bi bi-file-earmark-zip me-3"></span><?php echo lang('Import ZIP File'); ?></button></li>
-                <li id="import_design_zip_item"><button type="button" class="menu-item" id="import_design_zip_button"><span class="bi bi-magic me-3"></span><?php echo lang('Import ZIP for the Visual Page Editor'); ?></button></li>
+                <li id="import_design_zip_item"><button type="button" class="menu-item" id="import_design_zip_button"><span class="bi bi-magic me-3"></span><?php echo lang('Import ZIP for the Page Design Studio'); ?></button></li>
                 <li id="import_products_item"><a class="menu-item" id="import_products_button" href="import_products.php"><span class="bi bi-box-arrow-in-down me-3"></span><?php echo lang('Import Products'); ?></a></li>
                 <li id="export_products_divider"><hr class="menu-divider" /></li>
                 <li id="export_products_csv_item"><button type="button" class="menu-item" data-export-scope="all" data-export-format="csv"><span class="bi bi-filetype-csv me-3"></span><?php echo lang('Export Products'); ?> (CSV)</button></li>
@@ -1851,7 +1851,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <dialog class="dialog pg-dialog-centered" id="import_design_zip_modal" aria-labelledby="import_design_zip_modal_label">
         <form id="import_design_zip_form" class="d-contents" style="border-radius:.9rem;" action="import_design_zip.php" method="post" enctype="multipart/form-data">
             <div class="dialog-header">
-                <h5 class="dialog-title" id="import_design_zip_modal_label"><span class="bi bi-magic me-3"></span><?php echo lang('Import ZIP for the Visual Page Editor'); ?></h5>
+                <h5 class="dialog-title" id="import_design_zip_modal_label"><span class="bi bi-magic me-3"></span><?php echo lang('Import ZIP for the Page Design Studio'); ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
             </div>
             <div class="dialog-body">

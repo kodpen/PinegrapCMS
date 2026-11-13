@@ -1475,7 +1475,7 @@ function ws_bulk_settings_card($self_url, $viewer, $form = null)
         return '
     <div id="pgset-ws-bulk" class="pg-set-card">
         <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            <div class="card-header bg-reset border-0 pg-title-section">
                 ' . h(lang('Bulk changes by the assistants')) . '
             </div>
             <div class="card-body">

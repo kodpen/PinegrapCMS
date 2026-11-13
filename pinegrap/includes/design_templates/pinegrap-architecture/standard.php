@@ -89,7 +89,7 @@ $standard_pages[] = array(
                                 $span(lang('Follow the answer in your inbox'), '', lang('Text')),
                             )),
                             $para(lang('Your message becomes a conversation: the page that opens after you send it, and your inbox, show our answers, and you can write back there. If you have no account yet, one is opened for you.'), 'small text-body-secondary mb-3'),
-                            $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-outline-dark rounded-0'),
+                            $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-outline-primary rounded-0'),
                         )),
                     ), '', '5'),
                 ), '4', '', 'g-lg-5'),
@@ -194,14 +194,14 @@ $standard_pages[] = array(
                                 $span(lang('A question for our team?'), '', lang('Text')),
                             )),
                             $para(lang('Write to us from the contact page; your message and our answers stay here, in one conversation.'), 'small text-body-secondary mb-3'),
-                            $link(lang('New message'), '{{page:contact}}', 'btn btn-sm btn-dark rounded-0'),
+                            $link(lang('New message'), '{{page:contact}}', 'btn btn-sm btn-primary rounded-0'),
                         )),
                         $el('div', 'p-4 border', lang('Requests Note'), array(
                             $para(lang('Messages about a project enquiry, a consultation or a job application are written under it.'), 'small text-body-secondary mb-3'),
                             $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                                $link(lang('My Project Enquiries'), '{{page:my_enquiries}}', 'btn btn-sm btn-outline-dark rounded-0'),
-                                $link(lang('My Consultation Requests'), '{{page:my_consultations}}', 'btn btn-sm btn-outline-dark rounded-0'),
-                                $link(lang('My Applications'), '{{page:my_applications}}', 'btn btn-sm btn-outline-dark rounded-0'),
+                                $link(lang('My Project Enquiries'), '{{page:my_enquiries}}', 'btn btn-sm btn-outline-primary rounded-0'),
+                                $link(lang('My Consultation Requests'), '{{page:my_consultations}}', 'btn btn-sm btn-outline-primary rounded-0'),
+                                $link(lang('My Applications'), '{{page:my_applications}}', 'btn btn-sm btn-outline-primary rounded-0'),
                             )),
                         )),
                     ), '', '4'),
@@ -266,7 +266,7 @@ $standard_pages[] = array(
                         $el('div', 'p-4 border', lang('Still Need Help'), array(
                             $heading('h2', lang('Still need help?'), 'pai-display h5 mb-2'),
                             $para(lang('Write to us from the contact page; the answer comes to your inbox on this site.'), 'small text-body-secondary mb-3'),
-                            $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-sm btn-dark rounded-0'),
+                            $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-sm btn-primary rounded-0'),
                         )),
                     ), '', '4'),
                 ), '4', '', 'g-lg-5'),
@@ -489,11 +489,11 @@ $standard_widgets = array(
                             $icon('bi-journal-x', 'display-5 text-body-tertiary'),
                             $heading('h2', lang('Article not found'), 'pai-display h3 mt-3'),
                             $para(lang('This article could not be found. It may have been removed.'), 'text-body-secondary mb-4', $bind('not_found')),
-                            $link(lang('Back to the Journal'), '{{page:blog}}', 'btn btn-dark rounded-0 px-4'),
+                            $link(lang('Back to the Journal'), '{{page:blog}}', 'btn btn-primary rounded-0 px-4'),
                         ), $show_when('record_not_found')),
                         $el('article', '', lang('Post'), array(
                             $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-3', lang('Toolbar'), array(
-                                $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-dark text-decoration-none', lang('Link'), array(
+                                $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-body-emphasis text-decoration-none', lang('Link'), array(
                                     $icon('bi-arrow-left'),
                                     $span(lang('All articles'), '', lang('Link Text')),
                                 ), array('href' => '{{page:blog}}')),
@@ -616,7 +616,7 @@ $standard_widgets = array(
                             $icon('bi-chat-left-dots', 'display-5 text-body-tertiary'),
                             $heading('h2', lang('Conversation not found'), 'pai-display h3 mt-3'),
                             $para(lang('This conversation could not be found, or it is not yours to read.'), 'text-body-secondary mb-4', $bind('not_found')),
-                            $link(lang('Back to the inbox'), '{{page:inbox}}', 'btn btn-dark rounded-0 px-4'),
+                            $link(lang('Back to the inbox'), '{{page:inbox}}', 'btn btn-primary rounded-0 px-4'),
                         ), $show_when('record_not_found')),
                         $el('div', '', lang('Conversation'), array(
                             $el('div', 'alert alert-success rounded-0 d-flex gap-2', lang('Sent Notice'), array(
@@ -631,12 +631,12 @@ $standard_widgets = array(
                                 )),
                                 // The single-use set password link, for the person who sent the form
                                 // while it is live; the sentence below covers a used or expired link.
-                                $link(lang('Set your password'), '#', 'btn btn-sm btn-dark rounded-0', array(),
+                                $link(lang('Set your password'), '#', 'btn btn-sm btn-primary rounded-0', array(),
                                     array('_bindings' => array('href' => '__new_account_set_password_url', 'eo_visible_if' => 'has_set_password_link'))),
                                 $para(lang('You can set a password with "Forgot password" on the sign-in page.'), 'small mt-2 mb-0'),
                             ), $show_when('has_new_account')),
                             $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-3', lang('Toolbar'), array(
-                                $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-dark text-decoration-none', lang('Link'), array(
+                                $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-body-emphasis text-decoration-none', lang('Link'), array(
                                     $icon('bi-arrow-left'),
                                     $span(lang('Inbox'), '', lang('Link Text')),
                                 ), array('href' => '{{page:inbox}}')),
@@ -717,7 +717,7 @@ $standard_widgets = array(
                         '_attrs'    => array($attr('type', 'search'), $attr('placeholder', lang('Search the site…')), $attr('aria-label', lang('Search the site'))),
                         '_bindings' => array('value' => 'search_query'),
                     )),
-                    $el('button', 'btn btn-dark rounded-0 px-4', lang('Search Button'), array($icon('bi-search')), array(
+                    $el('button', 'btn btn-primary rounded-0 px-4', lang('Search Button'), array($icon('bi-search')), array(
                         '_attrs'    => array($attr('type', 'submit'), $attr('aria-label', lang('Search'))),
                         '_bindings' => array('action' => 'submit_search'),
                     )),
@@ -727,7 +727,7 @@ $standard_widgets = array(
             $el('div', '', lang('Results'), array(
                 $loop(array(
                     $el('article', 'py-3 border-bottom position-relative', lang('Result Row'), array(
-                        $span(lang('Page'), 'badge rounded-0 text-bg-light border mb-2', lang('Result Type'), $bind('__result_type_label')),
+                        $span(lang('Page'), 'badge rounded-0 bg-body text-body-emphasis border mb-2', lang('Result Type'), $bind('__result_type_label')),
                         $el('h2', 'h5 fw-semibold mb-1 position-static', lang('Result Title'), array(
                             $link(lang('Title'), '#', 'stretched-link link-body-emphasis text-decoration-none', array(),
                                 array('_bindings' => array('href' => '__result_url', 'text' => '__result_title'))),

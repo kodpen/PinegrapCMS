@@ -256,7 +256,7 @@ $exhibition_widgets['exhibition_detail'] = array(
                     $photo('exhibition-' . $exhibition_sample_key, 1600, 1200), lang('Main Picture')),
                 $el('header', 'd-flex flex-wrap align-items-end justify-content-between gap-3 pb-4 mb-5 border-bottom', lang('Exhibition Header'), array(
                     $el('div', '', lang('Title'), array(
-                        $span($exhibition_statuses[$exhibition_sample['status']], 'badge rounded-0 text-bg-dark mb-3', lang('Status'), $bind('status')),
+                        $span($exhibition_statuses[$exhibition_sample['status']], 'badge rounded-0 text-bg-primary mb-3', lang('Status'), $bind('status')),
                         $heading('h1', $exhibition_sample['title'], 'pgl-display display-3 mb-1', $bind('title')),
                         $para($exhibition_artists($exhibition_sample_key), 'pgl-eyebrow text-uppercase fw-semibold text-primary mb-0', $bind('artists')),
                     )),

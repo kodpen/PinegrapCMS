@@ -1147,6 +1147,69 @@ function ws_model_agent_run($agent, $budget)
 }
 
 /**
+ * Does a request's answer tool take an emoji for the asking message? Only a
+ * model assistant's, asked by a channel message: not in a note, on a task,
+ * from the Page Design Studio or through an MCP server's alias. Pure.
+ *
+ * @param array $row ws_ai_requests
+ * @return bool
+ */
+function ws_ai_answer_takes_emoji($row)
+{
+    return (strpos((string) ($row['agent'] ?? ''), 'model:') === 0) && ((int) ($row['message_id'] ?? 0) > 0)
+        && ((int) ($row['note_id'] ?? 0) === 0) && ((int) ($row['task_id'] ?? 0) === 0)
+        && ((int) ($row['page_id'] ?? 0) === 0) && ((int) ($row['mcp_server_id'] ?? 0) === 0);
+}
+
+/**
+ * The emoji a model assistant's answer leaves on the asking message, '' when
+ * it gave none or one it may not leave (ws_agent_emoji_problem()): a wrong
+ * one is dropped, never a reason to fail the answer.
+ *
+ * @param array  $row   ws_ai_requests
+ * @param string $emoji the answer tool's emoji
+ * @return string
+ */
+function ws_model_answer_emoji($row, $emoji)
+{
+    $emoji = trim((string) $emoji);
+
+    if (($emoji === '') || !ws_ai_answer_takes_emoji($row) || !function_exists('ws_agent_emoji_problem')) {
+        return '';
+    }
+
+    return (ws_agent_emoji_problem($emoji, ws_message((int) $row['message_id']), (int) ws_ai_config()['app_id']) === '') ? $emoji : '';
+}
+
+/**
+ * Closes a model assistant's request with an emoji alone, as no_answer with
+ * an emoji closes an application agent's: answered with no reply, the eye
+ * kept on the asking message and the emoji beside it.
+ *
+ * @param array  $row   ws_ai_requests
+ * @param string $emoji checked by ws_model_answer_emoji()
+ */
+function ws_model_close_with_emoji($row, $emoji)
+{
+    $now = time();
+
+    db("UPDATE ws_ai_requests SET status = 'answered', reply_message_id = 0, answered_at = '" . $now . "', error = '', ai_state = NULL
+        WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return;
+    }
+
+    ws_ai_react((int) $row['message_id'], '👀', true);
+    ws_ai_react((int) $row['message_id'], (string) $emoji, true);
+
+    // A flow's agent box waiting on this request goes on (flow_agent_box.php).
+    if (function_exists('ws_step_agent_request_closed')) {
+        ws_step_agent_request_closed((int) $row['id']);
+    }
+}
+
+/**
  * Tries a model assistant: one short answer from its model. For the agent
  * card's Try button.
  *

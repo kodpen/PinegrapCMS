@@ -111,7 +111,7 @@ $list = pg_list_table_printed(array(
 print
 pg_page_shell([
         'title'=> lang('All States'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All States'),
         'heading_description' => lang('All states/provinces that are valid for billing address and shipping address selection.'),

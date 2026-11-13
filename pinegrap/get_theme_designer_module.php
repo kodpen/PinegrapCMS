@@ -535,7 +535,7 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_background_image_row"' . $background_image_row_style . '>
                         <td style="padding-left: 2em">' . lang('File') . ':</td>
-                        <td>' . $liveform->output_field(array('class' => 'form-control', 'type'=>'select', 'name'=>$area . '[' . $object . '][' . $module . '][background_image]', 'options'=>select_files_for_theme_designer())) . '</td>
+                        <td>' . pg_theme_designer_background_field($liveform, $area . '[' . $object . '][' . $module . '][background_image]') . '</td>
                     </tr>
                     <tr id="' . $area . '_' . $object . '_' . $module . '_background_horizontal_position_row"' . $background_horizontal_position_row_style . '>
                         <td style="padding-left: 2em">' . lang('Horizontal Position') . ':</td>
@@ -1190,61 +1190,22 @@ function output_theme_designer_module($file_id, $area, $object, $module, $css_ru
     return '<table class="field">' . $output . '</table>';
 }
 
-// outputs the form's <select> file list for selecting a file (value is file id)
-function select_files_for_theme_designer()
+/**
+ * The background picture of a theme designer module: a picker field (kind
+ * public_image, a picture every visitor may open, as a theme's background is
+ * served to every visitor), its value the file name the theme stores.
+ * theme_designer.php prints the picker's script.
+ *
+ * @param liveform $liveform
+ * @param string   $name the field's name, area[object][module][background_image]
+ * @return string
+ */
+function pg_theme_designer_background_field($liveform, $name)
 {
-    global $user;
-
-    $files = array();
-
-    // A basic user (role 3) only sees images in folders they have edit
-    // access to; check_folder_access_in_array() needs an array here, since
-    // in_array() on null is a TypeError on PHP 8.
-    $folders_that_user_has_access_to = array();
-
-    if (isset($user['role']) && ($user['role'] == 3)) {
-        $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
-    }
-
-    // get image list
-    $query =
-        "SELECT
-            files.name,
-            files.folder
-        FROM files
-        LEFT JOIN folder ON files.folder = folder.folder_id
-        WHERE
-            (
-                (files.type = 'gif')
-                || (files.type = 'jpg')
-                || (files.type = 'jpeg')
-                || (files.type = 'png')
-                || (files.type = 'tif')
-                || (files.type = 'tiff')
-            )
-            AND (files.design = '1')
-            AND (folder.folder_archived = '0')
-        ORDER BY files.name";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
-    // loop through all files and check their access control so they can be added to array
-    while ($row = mysqli_fetch_assoc($result)) {
-        if (check_folder_access_in_array($row['folder'], $folders_that_user_has_access_to) == true) {
-            $files[] = $row;
-        }
-    }
-    
-    $output = array();
-    
-    $output[''] = '';
-    
-    // loop through all files so their options can be outputted
-    foreach ($files as $file) {
-        // output option
-        $output[h($file['name'])] = h($file['name']);
-    }
-    
-    return $output;
+    return pg_picker_field('public_image', $name, (string) $liveform->get_field_value($name), array(
+        'id' => preg_replace('/[^A-Za-z0-9_-]+/', '_', $name),
+        'title' => lang('Choose a picture'),
+    ));
 }
 
 ?>

@@ -118,7 +118,7 @@ function test_page_form_page_fields_every_setting_has_a_kind()
 		pg_assert_contains("        true);\n", page_form_page_fields_test_source($file), $file . ' draws picker fields');
 	}
 
-	pg_assert_contains('$fields = pg_page_form_type_fields($page_type, $row[\'layout_type\'], $properties, $user, $page_id);', page_form_page_fields_test_source('includes/fn/page_type_pane.php'), 'the designer\'s pane keeps its selects');
+	pg_assert_contains('$fields = pg_page_form_type_fields($page_type, $row[\'layout_type\'], $properties, $user, $page_id, true);', page_form_page_fields_test_source('includes/fn/page_type_pane.php'), 'the designer\'s pane draws picker fields too');
 }
 
 function test_page_form_page_fields_draws_a_picker_field()

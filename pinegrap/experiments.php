@@ -118,7 +118,7 @@ if (!pg_experiment_sheet_ready()) {
     }
 
     $output = ($rows === '')
-        ? '<div class="alert theme-info my-7"><i class="bi bi-info-circle me-3" aria-hidden="true"></i>' . h(lang('No experiments yet. Open a page of a visual design in the pages list and choose Experiments to set one up.')) . '</div>'
+        ? '<div class="alert theme-info my-7"><i class="bi bi-info-circle me-3" aria-hidden="true"></i>' . h(lang('No experiments yet. Open a design page in the pages list and choose Experiments to set one up.')) . '</div>'
         : '<div class="card my-7"><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0">
             <thead><tr><th>' . h(lang('Name')) . '</th><th>' . h(lang('Page')) . '</th><th>' . h(lang('Status')) . '</th><th>' . h(lang('Dates')) . '</th><th class="text-end">' . h(lang('Views')) . '</th><th class="text-end">' . h(lang('Conversions')) . '</th></tr></thead>
             <tbody>' . $rows . '</tbody></table></div></div></div>';

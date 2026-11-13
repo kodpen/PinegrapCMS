@@ -49,7 +49,7 @@ function test_contact_audit_site_source_is_offered_everywhere()
 	pg_assert_same('site', $filters['source'], 'the screen filter keeps site');
 	pg_assert_true(pg_audit_view_label('source', 'site') !== 'site', 'site has a label');
 
-	pg_assert_true(strpos(contact_audit_site_test_source('view_audit_log.php'), 'foreach (pg_audit_sources() as $audit_view_source)') !== false, 'the screen lists pg_audit_sources()');
+	pg_assert_true(strpos(contact_audit_site_test_source('view_audit_log.php'), 'foreach (pg_audit_sources() as $audit_view_source_name)') !== false, 'the screen lists pg_audit_sources()');
 	pg_assert_true(strpos(contact_audit_site_test_source('includes/api/schema.php'), "'values' => array('panel', 'api', 'job', 'site')") !== false, 'the API names site');
 }
 

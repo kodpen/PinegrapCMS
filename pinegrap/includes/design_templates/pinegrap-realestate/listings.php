@@ -377,7 +377,7 @@ $listing_widgets['listing_detail'] = array(
                 )),
                 $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
                     $span($deals[$sample['deal']], 'badge text-bg-primary', lang('Deal'), $bind('deal')),
-                    $span($listing_statuses[$sample['status']], 'badge text-bg-light border', lang('Status'), $bind('status')),
+                    $span($listing_statuses[$sample['status']], 'badge bg-body text-body-emphasis border', lang('Status'), $bind('status')),
                     $span($property_types[$sample['type']]['title'], 'badge bg-primary-subtle text-primary-emphasis', lang('Type'), $bind('type')),
                 )),
                 $heading('h1', $sample['title'], 'display-6 fw-semibold mb-2', $bind('title')),

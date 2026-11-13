@@ -62,7 +62,7 @@ function pg_image_editor_strings()
 function pg_image_editor_strings_core()
 {
     return array(
-        'dialog'         => lang('Image editor'),
+        'dialog'         => lang('Design Canvas'),
         'newImage'       => lang('New image'),
         'close'          => lang('Close'),
         'undo'           => lang('Undo'),
@@ -651,7 +651,7 @@ function pg_image_editor_file($file_id, $user)
     $types = array_diff(pg_image_supported_types(), array(IMAGETYPE_TIFF_II, IMAGETYPE_TIFF_MM));
 
     if (!$size || !in_array((int) $size[2], $types, true)) {
-        return array('refusal' => pg_image_editor_refusal(lang('This file cannot be opened in the image editor.')));
+        return array('refusal' => pg_image_editor_refusal(lang('This file cannot be opened in the Design Canvas.')));
     }
 
     $animated = pg_image_is_animated($path);
@@ -729,7 +729,51 @@ function pg_image_editor_open($request, $user)
         'doc'      => $state['doc'],
         'base'     => $state['base'],
         // A canvas file: doc is its document, opened as a blank board.
-        'canvas'   => (bool) $canvas), 200);
+        'canvas'   => (bool) $canvas,
+        // Whether it is one of the site's canvas templates (Save as template).
+        'template' => $canvas ? pg_image_editor_template_is((int) $file['row']['id']) : false), 200);
+}
+
+// Whether a file is one of the site's canvas templates.
+function pg_image_editor_template_is($file_id)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/canvas_templates.php');
+
+    return in_array((int) $file_id, pg_canvas_templates_ids(), true);
+}
+
+/**
+ * Action template: a canvas file marked as a template of the site, or the
+ * mark taken off ("Save as template" in the save menu). Only a person who
+ * may edit the file marks it.
+ *
+ *   { file_id, on } -> { status, template }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_template($request, $user)
+{
+    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/canvas_templates.php');
+
+    $done = pg_canvas_template_mark((int) $file['row']['id'], !empty($request['on']));
+
+    if (!$done['ok']) {
+        return pg_image_editor_refusal($done['error']);
+    }
+
+    $line = $done['template']
+        ? lang(array('string' => 'file ({var:1}) was made a canvas template', 'vars' => (string) $file['row']['name']))
+        : lang(array('string' => 'file ({var:1}) is no longer a canvas template', 'vars' => (string) $file['row']['name']));
+
+    log_activity($line, isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+
+    return array(array('status' => 'success', 'template' => $done['template']), 200);
 }
 
 /**
@@ -882,7 +926,7 @@ function pg_image_editor_record($mode, $name, $folder, $type, $replaced, $user)
         }
 
         pg_audit_record('update', 'files', $id, $before);
-        log_activity(lang(array('string' => 'file ({var:1}) was updated via Image Editor', 'vars' => $name)), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+        log_activity(lang(array('string' => 'file ({var:1}) was updated in the Design Canvas', 'vars' => $name)), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
 
     } else {
         $saved = $dimensions
@@ -897,7 +941,7 @@ function pg_image_editor_record($mode, $name, $folder, $type, $replaced, $user)
         $id = (int) mysqli_insert_id(db::$con);
 
         pg_audit_record('create', 'files', $id);
-        log_activity(lang(array('string' => 'file ({var:1}) was created via Image Editor', 'vars' => $name)), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+        log_activity(lang(array('string' => 'file ({var:1}) was created in the Design Canvas', 'vars' => $name)), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
     }
 
     return array(array(
@@ -1940,7 +1984,7 @@ function pg_image_editor_strings_versions()
         'versionN'          => lang('Version {n}'),
         'versionLatest'     => lang('Latest'),
         'versionOriginal'   => lang('Original upload'),
-        'versionSaved'      => lang('Saved in the image editor'),
+        'versionSaved'      => lang('Saved in the Design Canvas'),
         'versionRestored'   => lang('Restored from an earlier version'),
         'versionRedacted'   => lang('Saved with redaction'),
         'versionYou'        => lang('You'),
@@ -2606,6 +2650,10 @@ function pg_image_editor_action_delete_version($request, $user)
 function pg_image_editor_strings_artboard()
 {
     return array(
+        'templateSave'      => lang('Save as template'),
+        'templateRemove'    => lang('Remove from templates'),
+        'templateSaved'     => lang('Saved as a template: agents can make canvases from it.'),
+        'templateRemoved'   => lang('No longer a template.'),
         'preset_square'     => lang('Square post'),
         'preset_portrait'   => lang('Portrait post'),
         'preset_story'      => lang('Story'),
@@ -3008,6 +3056,89 @@ function pg_image_editor_canvas_open_doc($file_id)
     return (is_object($doc) && pg_image_editor_canvas_is_doc($doc)) ? $doc : null;
 }
 
+/**
+ * A canvas's drawn picture saved as a new file of a folder, in one of the
+ * formats a save writes here (pg_image_editor_export_formats()): a PNG as it
+ * was drawn, any other format encoded by the engine at the save's own
+ * quality. The name takes the format's extension and is made unique. The
+ * caller has checked the folder and writes the audit line.
+ *
+ * @param string $source  the picture's local path (a PNG)
+ * @param string $name    the wanted name
+ * @param int    $folder_id
+ * @param string $format  jpeg, png, webp or avif
+ * @param int    $user_id
+ * @return array ok, error, id, name
+ */
+function pg_image_editor_canvas_export($source, $name, $folder_id, $format, $user_id)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'id' => 0, 'name' => '');
+    };
+
+    $formats = pg_image_editor_export_formats();
+    $size = ($source !== '') ? @getimagesize($source) : false;
+
+    if (!in_array($format, $formats, true)) {
+        return $fail(lang(array('string' => 'format is one of {var:1}.', 'vars' => implode(', ', $formats))));
+    }
+
+    if (!$size || ((int) $size[2] !== IMAGETYPE_PNG)) {
+        return $fail(lang('The canvas has no picture to save yet.'));
+    }
+
+    if ($format === 'png') {
+        $data = @file_get_contents($source);
+    } else {
+        $check = pg_image_edit_validate(array('v' => 1, 'source' => array('width' => (int) $size[0], 'height' => (int) $size[1]), 'geometry' => array()));
+        $export = pg_image_editor_export_options(array('format' => $format), 'png', $formats);
+
+        if (($check['error'] !== '') || ($export === false)) {
+            return $fail(lang('Invalid request.'));
+        }
+
+        @set_time_limit(60);
+
+        list($edit, $engine) = pg_image_editor_export_edit($check['edit'], $export);
+        $report = pg_image_edit_apply($source, $edit, $engine);
+        $data = (($report['status'] === 'success') && is_string($report['data'])) ? $report['data'] : false;
+
+        if ($data === false) {
+            return $fail(pg_image_editor_report_message($report, $name));
+        }
+    }
+
+    if (!is_string($data) || ($data === '')) {
+        return $fail(lang('Sorry, the file could not be saved.'));
+    }
+
+    $name = get_unique_name(array('name' => prepare_file_name(pg_image_editor_export_name($name, $format)), 'type' => 'file'));
+
+    if (pg_upload_name_blocked($name)) {
+        return $fail(pg_upload_blocked_message($name));
+    }
+
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if (!pg_image_editor_put($path, $data)) {
+        return $fail(lang('Sorry, the file could not be saved.'));
+    }
+
+    $written = @getimagesize($path);
+    $type = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+    $saved = pg_schema_has('files', 'image_width')
+        ? db_q("INSERT INTO files (name, folder, type, size, image_width, image_height, user, design, optimized, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, UNIX_TIMESTAMP())", array($name, (int) $folder_id, $type, strlen($data), $written ? (int) $written[0] : 0, $written ? (int) $written[1] : 0, (int) $user_id))
+        : db_q("INSERT INTO files (name, folder, type, size, user, design, optimized, timestamp) VALUES (?, ?, ?, ?, ?, 0, 0, UNIX_TIMESTAMP())", array($name, (int) $folder_id, $type, strlen($data), (int) $user_id));
+
+    if (!$saved) {
+        @unlink($path);
+
+        return $fail(lang('Sorry, the file could not be saved.'));
+    }
+
+    return array('ok' => true, 'error' => '', 'id' => (int) mysqli_insert_id(db::$con), 'name' => $name);
+}
+
 // -- Export (pg_image_editor_export.js) --
 
 /**
@@ -3350,7 +3481,7 @@ function pg_image_editor_strings_svg()
 {
     return array(
         'layer_svg'         => lang('SVG element'),
-        'svgOpenError'      => lang('This SVG file cannot be opened in the image editor.'),
+        'svgOpenError'      => lang('This SVG file cannot be opened in the Design Canvas.'),
         'svgKeptNote'       => lang('This part of the SVG is kept as it was written. It can be moved, but not edited here.'),
         'svgFill'           => lang('Fill'),
         'svgStroke'         => lang('Outline'),
@@ -3428,7 +3559,7 @@ function pg_image_editor_svg_open($file_id, $user)
     $svg = (($bytes > 0) && ($bytes <= pg_svg_sanitize_max_bytes())) ? pg_svg_sanitize((string) @file_get_contents($file['path'])) : '';
 
     if ($svg === '') {
-        return pg_image_editor_refusal(lang('This SVG file cannot be opened in the image editor.'));
+        return pg_image_editor_refusal(lang('This SVG file cannot be opened in the Design Canvas.'));
     }
 
     return array(array(
@@ -3502,7 +3633,7 @@ function pg_image_editor_action_svg_save($request, $user)
     $file = pg_image_editor_svg_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
 
     if ($file === null) {
-        return pg_image_editor_refusal(lang('This file cannot be opened in the image editor.'));
+        return pg_image_editor_refusal(lang('This file cannot be opened in the Design Canvas.'));
     }
 
     if ($file['refusal']) {
@@ -5272,7 +5403,7 @@ function pg_image_editor_action_content($request, $user)
     }
 
     if (!pg_image_editor_content_allowed($type, $id, $user)) {
-        log_activity(lang('access denied to update content with image from ImageEditor because user does not have access to edit it'), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+        log_activity(lang('access denied to update content with image from the Design Canvas because user does not have access to edit it'), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
         return pg_image_editor_refusal(lang('Access denied'), 403);
     }
 
@@ -5691,7 +5822,7 @@ function pg_image_editor_upload_kinds()
 
 /**
  * The highest value of the image editor's largest upload, in MB (the field
- * "Largest Video Or Sound In The Image Editor (MB)"): 10 GB, far above what
+ * "Largest Video Or Sound In The Design Canvas (MB)"): 10 GB, far above what
  * a browser tab decodes or encodes, so the field never holds the editor back
  * while a typo of an extra digit is still refused.
  *

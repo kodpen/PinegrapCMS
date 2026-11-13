@@ -397,7 +397,7 @@ function ws_handle_action($action, $request)
     if (function_exists('ws_message_in_past') && ws_eras_ready()) {
         $touched = null;
 
-        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
+        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
@@ -854,6 +854,27 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit')),
+                'published' => $result['published'], 'publish_error' => $result['publish_error']));
+
+        // The quick setup (flow_quick.php): a new flow from the dialog's
+        // choices, a draft or, with publish, published through Publish's
+        // own checks; a refused publish keeps the draft.
+        case 'ws_flow_quick_setup':
+            $result = ws_flow_quick_setup($viewer, array(
+                'start'      => (string) ($request['start'] ?? ''),
+                'config'     => is_array($request['config'] ?? null) ? $request['config'] : array(),
+                'only_when'  => is_array($request['only_when'] ?? null) ? $request['only_when'] : array(),
+                'steps'      => is_array($request['steps'] ?? null) ? $request['steps'] : array(),
+                'name'       => (string) ($request['name'] ?? ''),
+                'channel_id' => (int) ($request['channel_id'] ?? 0),
+                'publish'    => !empty($request['publish']),
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $result['flow_id'], 'edit')),
                 'published' => $result['published'], 'publish_error' => $result['publish_error']));
 
         // "Describe it to AI" in New flow: a draft flow from one sentence.
@@ -1812,6 +1833,12 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
+            // The room of a mailbox kept in no channel never opens as a
+            // channel (mail_room.php): its mail is on the E-mails screen.
+            if (ws_channel_is_mailbox($channel)) {
+                return ws_action_error(lang('This mailbox is read and answered on the E-mails screen.'));
+            }
+
             // A discussion opens beside its channel (threads.php): asked for
             // as a channel - a link, a search, a mention - it says where.
             if (ws_channel_is_thread($channel) && empty($request['as_thread'])) {
@@ -2135,6 +2162,44 @@ function ws_handle_action($action, $request)
             }
 
             $result = ws_canvas_undo($viewer, $message, (int) ($request['version'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
+        // A live page's source, one version of it (page_card.php).
+        case 'ws_page_source':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_page_source($message, (int) ($request['version'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('html' => $result['html'], 'version' => $result['version'], 'versions' => $result['versions']))
+                : ws_action_error($result['error']);
+
+        // One call of a live page through its bridge (page_bridge.php): the
+        // card names the canvas, the page never does. A refused call is an
+        // answer for the page, not an error of the panel.
+        case 'ws_page_call':
+            return ws_action_ok(array('answer' => ws_page_bridge_answer($viewer, ws_message((int) ($request['message_id'] ?? 0)),
+                $request['call'] ?? null, $request['args'] ?? null)));
+
+        // Undo of an agent's edit on a live page (page_card.php).
+        case 'ws_page_undo':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_page_undo($viewer, $message, (int) ($request['version'] ?? 0));
 
             if (!$result['ok']) {
                 return ws_action_error($result['error']);
@@ -3493,7 +3558,11 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('Sorry, we could not accept your request.'));
             }
 
-            $result = pg_design_ai_ws_action($viewer, substr($action, strlen('ws_ai_design_')), (int) ($request['proposal_id'] ?? 0));
+            // Whatever PHP reports while the page is written stays out of
+            // the answer (pg_error_json_action()).
+            $result = pg_error_json_action(function () use ($viewer, $action, $request) {
+                return pg_design_ai_ws_action($viewer, substr($action, strlen('ws_ai_design_')), (int) ($request['proposal_id'] ?? 0));
+            }, array('ok' => false, 'error' => pg_error_json_action_sentence()));
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 

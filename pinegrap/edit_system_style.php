@@ -126,8 +126,8 @@ if (!$_POST && !$component && !empty($_GET['classic'])) {
     $style['style_custom_fonts'] = $classic['fonts'];
     $pages = $classic['pages'];
     $liveform->add_notice(h($classic['split']
-        ? lang('The style opened in the visual designer. The code before and after the page content is now shared components that frame its pages, and each page holds its own content in its tree. Nothing changes on the site until you save; saving makes the style a visual design.')
-        : lang('The style opened in the visual designer. Its code is now the shared component that frames its pages. Nothing changes on the site until you save; saving makes the style a visual design.')));
+        ? lang('The style opened in the Page Design Studio. The code before and after the page content is now shared components that frame its pages, and each page holds its own content in its tree. Nothing changes on the site until you save; saving makes the style a design.')
+        : lang('The style opened in the Page Design Studio. Its code is now the shared component that frames its pages. Nothing changes on the site until you save; saving makes the style a design.')));
     foreach ($classic['warnings'] as $classic_warning) {
         $liveform->add_warning(h($classic_warning));
     }

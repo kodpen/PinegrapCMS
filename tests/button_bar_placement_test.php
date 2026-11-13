@@ -23,7 +23,7 @@ if (!defined('PG_TEST_RUNNER')) {
 function button_bar_placement_test_screens()
 {
 	return array(
-		'view_pages.php', 'view_ads.php', 'editor_select_page_or_file.php', 'view_log.php',
+		'view_pages.php', 'view_ads.php', 'view_log.php',
 		'view_regions.php', 'view_menus.php', 'view_styles.php', 'view_themes.php',
 		'view_comments.php', 'view_fields.php', 'view_calendars.php', 'view_calendar_event_locations.php',
 		'view_short_links.php', 'edit_short_link.php', 'view_containers.php', 'edit_design_file.php',

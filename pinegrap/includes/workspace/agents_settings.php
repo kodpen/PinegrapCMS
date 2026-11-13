@@ -548,7 +548,7 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
     <div id="pgset-ws-agents" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0 ws-grow">' . h(lang('Workspace agents')) . '</span>
+                <span class="pg-title-section ws-grow">' . h(lang('Workspace agents')) . '</span>
                 ' . ($admin ? '<button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill" data-bs-toggle="drawer" data-bs-target="#pgset-ws-agent-0" aria-controls="pgset-ws-agent-0"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('Add an agent')) . '</button>' : '') . '
             </div>
             <div class="card-body">

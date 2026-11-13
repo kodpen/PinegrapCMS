@@ -138,6 +138,187 @@ function pg_submitted_form_list_labels($forms)
 }
 
 /**
+ * How many submitted forms each page holds, all of them, read in one query
+ * (the Forms screen used to count once per custom form).
+ *
+ * @return array page id (string) => number of submitted forms
+ */
+function pg_submitted_form_list_counts()
+{
+    $counts = array();
+
+    foreach (db_items("SELECT page_id, COUNT(*) AS number FROM forms GROUP BY page_id") as $row) {
+        $counts[(string) $row['page_id']] = (int) $row['number'];
+    }
+
+    return $counts;
+}
+
+/**
+ * The submitted forms whose page is not one of the custom forms the pickers
+ * offer. A designed form sits on a page of the standard type, so emptying
+ * the Recycle Bin deletes its page and keeps its submissions (only a custom
+ * form page with submissions refuses to go), and a page whose design no
+ * longer draws a form is not a form page any more. The list still shows
+ * their rows, so the Forms screen's Custom Form filter offers each such
+ * page on its own, to narrow, export or delete them. A manager or above
+ * gets them all; anybody else those on a page in a folder they may edit,
+ * as the list's folder rule has it.
+ *
+ * @param array $user         the viewer (validate_user())
+ * @param array $custom_forms pg_submitted_form_list_custom_forms()'s answer
+ * @param array $counts       pg_submitted_form_list_counts()'s answer
+ * @return array pg_submitted_form_list_gone_labels()'s answer
+ */
+function pg_submitted_form_list_gone_forms($user, $custom_forms, $counts)
+{
+    $known = array();
+    foreach ($custom_forms as $custom_form) {
+        $known[(string) $custom_form['id']] = true;
+    }
+
+    $ids = array();
+    foreach (array_keys($counts) as $id) {
+        if (!isset($known[(string) $id])) {
+            $ids[] = (string) $id;
+        }
+    }
+
+    if (!$ids) {
+        return array();
+    }
+
+    $marks = implode(', ', array_fill(0, count($ids), '?'));
+    $pages = array();
+    $names = array();
+
+    $result = db_q("SELECT page_id, page_name, page_folder FROM page WHERE page_id IN ($marks)", $ids);
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $pages[(string) $row['page_id']] = $row;
+    }
+
+    $result = db_q("SELECT page_id, form_name FROM custom_form_pages WHERE page_id IN ($marks)", $ids);
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $names[(string) $row['page_id']] = (string) $row['form_name'];
+    }
+
+    $manager = isset($user['role']) && ((int) $user['role'] < 3);
+    $forms = array();
+
+    foreach ($ids as $id) {
+        $page = $pages[$id] ?? null;
+
+        if (!$manager && (($page === null) || (check_edit_access($page['page_folder']) == false))) {
+            continue;
+        }
+
+        $page_name = ($page === null) ? '' : (string) $page['page_name'];
+
+        // A page in the Recycle Bin carries a parked name; show the one it had.
+        if ($page_name !== '') {
+            require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+            $original = pg_recycle_parked_original($page_name, $id);
+            if ($original !== '') {
+                $page_name = $original;
+            }
+        }
+
+        $forms[] = array(
+            'id' => $id,
+            'form_name' => $names[$id] ?? '',
+            'page_name' => $page_name,
+            'page_exists' => ($page !== null));
+    }
+
+    return pg_submitted_form_list_gone_labels($forms, $custom_forms);
+}
+
+/**
+ * The picker names of submitted forms whose page is not a form page: the
+ * form's name (else the page's, else "Custom Form"), then ' [PAGE DELETED]'
+ * when the page is gone or ' [NOT A FORM PAGE]' when it no longer holds a
+ * form. A name equal to another one, of these or of $labels, gets
+ * ' (#<id>)' as pg_submitted_form_list_labels() does. Pure.
+ *
+ * @param array $forms  list of array('id', 'form_name', 'page_name', 'page_exists')
+ * @param array $labels the picker's other entries (array('id', 'name', ...))
+ * @return array list of array('id', 'name', 'binned' => false, 'gone' => true),
+ *               names not escaped, in the order of $forms
+ */
+function pg_submitted_form_list_gone_labels($forms, $labels = array())
+{
+    $gone = array();
+
+    foreach ($forms as $form) {
+        $base = (string) $form['form_name'];
+
+        if ($base === '') {
+            $base = ((string) $form['page_name'] !== '') ? (string) $form['page_name'] : lang('Custom Form');
+        }
+
+        $gone[] = array(
+            'id' => (string) $form['id'],
+            'name' => $base . ' [' . (!empty($form['page_exists']) ? lang('NOT A FORM PAGE') : lang('PAGE DELETED')) . ']',
+            'binned' => false,
+            'gone' => true);
+    }
+
+    $count = array();
+    foreach (array_merge($labels, $gone) as $label) {
+        $key = mb_strtolower($label['name'], 'UTF-8');
+        $count[$key] = ($count[$key] ?? 0) + 1;
+    }
+
+    foreach ($gone as $index => $label) {
+        if ($count[mb_strtolower($label['name'], 'UTF-8')] > 1) {
+            $gone[$index]['name'] .= ' (#' . (int) $label['id'] . ')';
+        }
+    }
+
+    return $gone;
+}
+
+/**
+ * Every form the Forms screen's Custom Form filter offers, with the number
+ * of submitted forms each holds: the custom forms the user may edit, then
+ * the forms whose page is gone or no longer a form page. The screen and the
+ * list's rows action settle the remembered form against this one list, so
+ * a picked form of the second kind is kept on both.
+ *
+ * @param array $user the viewer (validate_user())
+ * @return array array('forms' => list of array('id', 'name', 'binned'
+ *               [, 'gone']), 'counts' => pg_submitted_form_list_counts())
+ */
+function pg_submitted_form_list_filter_forms($user)
+{
+    $custom_forms = pg_submitted_form_list_custom_forms();
+    $counts = pg_submitted_form_list_counts();
+
+    return array(
+        'forms' => array_merge($custom_forms, pg_submitted_form_list_gone_forms($user, $custom_forms, $counts)),
+        'counts' => $counts);
+}
+
+/**
+ * The [All] entry's number: the submitted forms of every form offered,
+ * which are the rows the list shows for [All] with no date limit. Pure.
+ *
+ * @param array $forms  pg_submitted_form_list_filter_forms()'s 'forms'
+ * @param array $counts pg_submitted_form_list_counts()'s answer
+ * @return int
+ */
+function pg_submitted_form_list_total($forms, $counts)
+{
+    $total = 0;
+
+    foreach ($forms as $form) {
+        $total += $counts[(string) $form['id']] ?? 0;
+    }
+
+    return $total;
+}
+
+/**
  * The options of a custom form picker built with output_field(): escaped
  * label => page id, every form its own option. The labels are the keys, so
  * a label that is still equal (two forms whose form and page names are the
@@ -596,7 +777,10 @@ function pg_submitted_form_list_source($user, $params)
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list_edit.php');
 
-    pg_submitted_form_list_defaults(pg_submitted_form_list_custom_forms());
+    // The same forms the screen's filter offers, so a picked form whose page
+    // is gone is kept here too.
+    $filter_forms = pg_submitted_form_list_filter_forms($user);
+    pg_submitted_form_list_defaults($filter_forms['forms']);
     $filter = pg_submitted_form_list_filter($user);
     $payment = pg_form_payment_ready();
 

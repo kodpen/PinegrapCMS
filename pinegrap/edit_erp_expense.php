@@ -603,7 +603,7 @@ $heading = ((string) $expense['supplier'] !== '') ? (string) $expense['supplier'
 echo
 pg_page_shell([
     'title' => lang(array('string' => 'Expense #{var:1}', 'vars' => $id)),
-    'extra classes' => 'erp erp_expenses',
+    'extra classes' => 'erp erp_expenses pg-measure-edit',
     'icon' => 'erp',
     'heading' => h($heading),
     'heading_description' => h((string) $expense['category_name']) . ' · ' . h(prepare_form_data_for_output((string) $expense['expense_date'], 'date', false)),
@@ -633,19 +633,19 @@ pg_page_shell([
             <div class="row g-7 my-1">
                 <div class="col-12 lg:col-8 2xl:col-9 order-1">
                     <div class="card mb-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('The expense') . '</div>
+                        <div class="card-header bg-reset border-0 pg-title-section">' . lang('The expense') . '</div>
                         <div class="card-body">' . $output_details . '</div>
                     </div>
                     <div class="card mb-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Payment') . '</div>
+                        <div class="card-header bg-reset border-0 pg-title-section">' . lang('Payment') . '</div>
                         <div class="card-body">' . $output_payment . '</div>
                     </div>
                     <div class="card mb-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('The receipt') . '</div>
+                        <div class="card-header bg-reset border-0 pg-title-section">' . lang('The receipt') . '</div>
                         <div class="card-body">' . $output_receipt . '</div>
                     </div>
                     ' . (($output_repeat !== '') ? '<div class="card mb-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Repeat') . '</div>
+                        <div class="card-header bg-reset border-0 pg-title-section"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Repeat') . '</div>
                         <div class="card-body">' . $output_repeat . '</div>
                     </div>' : '') . '
                     ' . $output_cancel . '
@@ -653,7 +653,7 @@ pg_page_shell([
                 <div class="col-12 lg:col-4 2xl:col-3 order-2">
                     <div class="position-sticky" style="top:3.3rem;">
                         <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Amount and tax') . '</div>
+                            <div class="card-header bg-reset border-0 pg-title-section">' . lang('Amount and tax') . '</div>
                             <div class="card-body">
                                 <div class="mb-3">' . $output_badge . '</div>
                                 ' . $output_figures . '

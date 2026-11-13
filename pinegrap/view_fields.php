@@ -202,7 +202,9 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     $pg_breadcrumb_parent_items = array(
         array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
     );
-    $output_form_designer_content_heading = ucwords($form_type_name);
+    // pg_upper_words() is UTF-8 and Turkish aware: ucwords() left the "ö" of
+    // "özel form" small.
+    $output_form_designer_content_heading = pg_upper_words($form_type_name);
     if ($form_type == 'shipping') {
         $output_form_designer_content_subheading = lang('Add fields to this custom shipping form.');
     } elseif ($form_type == 'billing') {
@@ -224,13 +226,13 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     // (it is where the ^^name^^ variables are read), the screen points to the
     // editor, and Create / Delete Selected are not offered.
     if ($designer_form) {
-        $output_form_designer_content_subheading = lang('The fields of this form are edited in the visual editor.');
+        $output_form_designer_content_subheading = lang('The fields of this form are edited in the Page Design Studio.');
         $output_form_designer_footer = '';
         $output_designer_form_notice =
             '<div class="alert theme-info d-flex flex-wrap align-items-center gap-3 mt-5 mb-0" role="note">
                 <i class="bi bi-info-circle" aria-hidden="true"></i>
-                <span class="flex-grow-1">' . lang('This form was drawn in the visual editor. Its fields are added, changed and removed there; a change made on this screen would be overwritten by the next design save. A field\'s variable (^^name^^) puts its value into the form\'s e-mails.') . '</span>
-                <a class="btn btn-sm btn-outline theme-secondary" href="' . h(pg_page_edit_url_by_id($_GET['page_id'])) . '"><i class="bi bi-brush me-1" aria-hidden="true"></i>' . lang('Open in Visual Editor') . '</a>
+                <span class="flex-grow-1">' . lang('This form was drawn in the Page Design Studio. Its fields are added, changed and removed there; a change made on this screen would be overwritten by the next design save. A field\'s variable (^^name^^) puts its value into the form\'s e-mails.') . '</span>
+                <a class="btn btn-sm btn-outline theme-secondary" href="' . h(pg_page_edit_url_by_id($_GET['page_id'])) . '"><i class="bi bi-brush me-1" aria-hidden="true"></i>' . lang('Open in the Page Design Studio') . '</a>
             </div>';
     }
 
@@ -478,3 +480,7 @@ pg_page_shell(array(
 </main>
 ' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' . output_footer();
+
+// The notices Create, Save and Delete left for this screen were printed
+// above; without this they come back on every visit.
+$liveform->remove_form();

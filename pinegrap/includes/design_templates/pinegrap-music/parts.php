@@ -678,7 +678,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $formats, 
 // the way onto the mailing list and the way to the tour dates. Shared, so
 // every page that ends with it carries the same call.
 $list_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -687,8 +687,8 @@ $list_band = function () use ($el, $heading, $para, $link, $container, $row, $co
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Join the Mailing List'), '{{page:newsletter}}', 'btn btn-light btn-lg rounded-pill px-4'),
-                        $link(lang('Tour Dates'), '{{page:tour}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Join the Mailing List'), '{{page:newsletter}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                        $link(lang('Tour Dates'), '{{page:tour}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -805,8 +805,8 @@ $video_card = function ($n) use ($el, $span, $image, $icon, $col, $attr, $photo,
             $el('span', 'd-block position-relative ratio ratio-16x9 rounded-4 overflow-hidden bg-body-tertiary mb-2', lang('Picture Frame'), array(
                 $image($photo('video-' . $n, 800, 450), $v['title'], 'w-100 h-100 object-fit-cover', array('_attrs' => array($attr('loading', 'lazy')))),
                 $el('span', 'd-flex align-items-center justify-content-center', lang('Play'), array(
-                    $icon('bi-play-circle-fill', 'display-4 text-white'),
-                )),
+                    $icon('bi-play-circle-fill', 'display-4 text-body-emphasis'),
+                ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
             )),
             $span($v['title'], 'd-block fw-semibold', lang('Video Title')),
         ), array('href' => $v['href'], 'target' => '_blank', 'rel' => 'noopener')),

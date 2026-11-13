@@ -726,7 +726,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $restauran
 // way to book a table and to plan a private dinner. Shared, so every page
 // that ends with it carries the same offer.
 $reserve_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -735,8 +735,8 @@ $reserve_band = function () use ($el, $heading, $para, $link, $container, $row, 
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Reserve a Table'), '{{page:reserve}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('Private Dining'), '{{page:private_dining}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Reserve a Table'), '{{page:reserve}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('Private Dining'), '{{page:private_dining}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -757,7 +757,7 @@ $dish_card = function ($sample_key = 'lamb') use ($el, $span, $para, $link, $col
                     $image($photo('dish-' . $sample_key, 800, 600), $d['name'], 'w-100 h-100 object-fit-cover',
                         array('_bindings' => array('src' => 'photo', 'alt' => 'name'), '_attrs' => array($attr('loading', 'lazy')))),
                 )),
-                $span($d['badge'] !== '' ? $d['badge'] : lang('New'), 'pg-hide-if-empty badge text-bg-light position-absolute top-0 start-0 m-3', lang('Badge'), $bind('badge')),
+                $span($d['badge'] !== '' ? $d['badge'] : lang('New'), 'pg-hide-if-empty badge bg-body text-body-emphasis position-absolute top-0 start-0 m-3', lang('Badge'), $bind('badge')),
             )),
             $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
                 $span($courses[$d['course']]['title'], 'prt-eyebrow small text-uppercase fw-semibold text-primary mb-1', lang('Menu Course'), $bind('course')),

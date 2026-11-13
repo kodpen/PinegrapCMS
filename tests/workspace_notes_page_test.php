@@ -65,8 +65,40 @@ function test_workspace_notes_page_filters_are_in_the_query()
 	$start = strpos($source, 'function ws_notes_page_rows(');
 	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
 
-	pg_assert_contains("(int) (\$options['updated_since'] ?? 0), 's.created_at')", $body, 'the shared notes take the share time');
+	pg_assert_contains("(int) (\$options['updated_since'] ?? 0), 's.created_at', \$behind)", $body, 'the shared notes take the share time');
 	pg_assert_contains('ORDER BY n.updated_at DESC, n.id DESC', $body, 'the order stays on the change time');
+}
+
+// A search of the API's pages finds a note behind the reader's closed lock
+// by its title alone, in the query, so the pages and their total agree.
+function test_workspace_notes_page_search_leaves_locked_text_out()
+{
+	pg_assert_same(
+		"(n.title LIKE 'x' OR (NOT ((n.user_id = '7' AND n.locked = 1) OR n.id IN (3,9)) AND n.body LIKE 'x'))",
+		ws_notes_search_closed_sql("n.title LIKE 'x'", "n.body LIKE 'x'", "((n.user_id = '7' AND n.locked = 1) OR n.id IN (3,9))"),
+		'the words in the title, or in the text of a note that is not behind the lock'
+	);
+	pg_assert_same('', ws_notes_filter_sql('', 0, '', "(n.user_id = '7' AND n.locked = 1)"), 'no words, no lock condition');
+	pg_assert_same(" AND n.updated_at >= '1800000000'", ws_notes_filter_sql('  ', 1800000000, '', "(n.user_id = '7' AND n.locked = 1)"), 'a locked note still comes with the changes');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/notes.php');
+
+	$start = strpos($source, 'function ws_notes_filter_sql(');
+	$filter = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_contains("ws_notes_search_closed_sql(ws_search_like_sql(\$search, array('n.title'), \$charset), ws_search_like_sql(\$search, array('n.body'), \$charset), (string) \$behind_lock)", $filter, 'the title and the text are asked apart');
+	pg_assert_contains("ws_search_like_sql(\$search, array('n.title', 'n.body'), \$charset)", $filter, 'with no lock closed, the words are looked for in both');
+
+	$start = strpos($source, 'function ws_notes_page_rows(');
+	$rows = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_contains("(int) (\$options['updated_since'] ?? 0), '', \$behind)", $rows, 'the own notes, and their count');
+
+	$start = strpos($source, 'function ws_notes_page(');
+	$page = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_contains("\$options['behind_lock'] = ws_note_lock_behind_sql(\$me, ws_note_lock_has(\$me), ws_note_lock_group_note_ids(\$me));", $page, 'the API reads with the lock closed');
+	pg_assert_true(strpos($page, 'ws_note_lock_is_open') === false, 'an open lock of a session is not asked: an API client holds none');
 }
 
 function test_workspace_notes_page_after_keeps_the_rest_of_the_order()

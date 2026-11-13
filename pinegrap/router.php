@@ -226,6 +226,14 @@ define('PATH', $url_path);
 
 define('REQUEST_URL', router_get_request_url());
 
+// The widgets that take a back address or a send_to straight from
+// REQUEST_URI read it in UTF-8 too: on IIS it holds the path in the server's
+// ANSI code page (pg_request_uri_utf8()), and a link built from those bytes
+// leads to another address.
+if (isset($_SERVER['REQUEST_URI'])) {
+    $_SERVER['REQUEST_URI'] = pg_request_uri_utf8((string) $_SERVER['REQUEST_URI']);
+}
+
 // ── Web Application Firewall (first pass) ────────────────────────────────
 // The router dispatches get_file.php without ever reaching init.php, and
 // answers a page-cache hit and a short link's redirect itself, so those
@@ -243,10 +251,10 @@ waf_send_security_headers();
 waf_run('router');
 
 // IIS hands PHP a path it decoded and re-encoded in the server's ANSI code
-// page (docs/memory/ui/ascii-names-in-urls-iis.md): a Turkish letter arrives
-// as a byte that is not UTF-8, and an mb_ function turns it into "?", which
-// would then be taken for the start of the query string. So the request is
-// cut with byte functions until the name is read back as UTF-8 below.
+// page (docs/memory/ui/ascii-names-in-urls-iis.md); REQUEST_URL holds it
+// read back as UTF-8 (pg_request_uri_from_server()), so the cuts below and
+// every link built from it see the name the page has. The cuts use byte
+// functions, as PATH and the language prefix are byte lengths.
 $request_url_without_path = (string) substr(REQUEST_URL, strlen(PATH));
 
 // ── Language directory ───────────────────────────────────────────────────
@@ -318,8 +326,8 @@ if ($query_string_position !== false) {
     $item_name = $request_url_without_path;
 }
 
-// A name with a Turkish letter that IIS re-encoded (see above), or one sent
-// percent-encoded in that code page, is looked up in UTF-8 like every name.
+// REQUEST_URL is UTF-8 (see above); a name sent percent-encoded in the ANSI
+// code page (%F0 for ğ) is looked up in UTF-8 like every name.
 $item_name = router_utf8_name(rawurldecode($item_name));
 
 // The page cache (includes/fn/page_cache.php): an anonymous visit to a page

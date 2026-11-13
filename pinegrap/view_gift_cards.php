@@ -258,7 +258,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
     echo
     pg_page_shell([
         'title'=> lang('All Gift Cards'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Gift Cards'),
         'heading_description' => lang('Gift cards are automatically created when a Gift Card Product is ordered. You can also manually create Gift Cards.'),

@@ -65,7 +65,7 @@ function test_workspace_agent_word_for_an_agent_that_is_gone()
 
 	pg_assert_same(
 		lang(array('string' => '{var:1} answered', 'vars' => lang('The agent'))),
-		ws_agent_request_state(array('status' => 'answered') + $row)['label'],
+		ws_agent_request_state(array('status' => 'answered', 'reply_message_id' => 9) + $row)['label'],
 		'answered');
 	pg_assert_same(
 		lang(array('string' => 'Waiting for {var:1}', 'vars' => lang('The agent'))),

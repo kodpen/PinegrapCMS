@@ -7,7 +7,7 @@ description: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant
 - `includes/dashboard/v2/cards/ai.php`; renderer `pgDash.renderers.ai` in `assets/js/pg_dash_cards_assistant.js` (bundle `pg_dash.min.js`); styles in the "Assistant card" section of `pg_dash.src.css`. Tests: `tests/dashboard_v2_ai_test.php`. Gate `workspace` (`pg_dashboard_workspace_rights()`).
 
 ## When is it "connected"?
-- `ws_claude_schema_ready()` and `ws_claude_ready()` (switched on, application, routine URL and token, API on): header chip "Claude · connected". Otherwise "Not connected" (screen 15): Connect Claude (`workspace_settings.php#ws-claude`) for a person with the Workspace settings right, Connections (`api_settings.php`, the OAuth/MCP connections) for role < 3, a line naming who connects it for everyone else, and the MCP note.
+- `ws_claude_schema_ready()` and `ws_claude_ready()` (switched on, application, routine URL and token, API on): header chip "Claude · connected". Otherwise "Not connected" (screen 15): Connect Claude (`pg_settings_workspace_link('ws-claude')`) for a person with the Workspace settings right, Connections (`api_settings.php`, the OAuth/MCP connections) for role < 3, a line naming who connects it for everyone else, and the MCP note.
 - The header chip fills the frame's `.pg-dash-card-chip` slot from the renderer.
 
 ## Which proposals are counted?

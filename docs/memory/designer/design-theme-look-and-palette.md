@@ -16,6 +16,7 @@ description: A visual design's look and colour palette (style.style_look / style
 
 ## How does a new component style use the theme?
 - No fixed colours: `var(--bs-primary)`, `--pg-on-primary` (text on the colour), `--pg-primary-fg` (the colour as text on the page); shape through `--pg-radius-*`, `--pg-shadow*`, `--pg-border-width`.
+- The colour as a line (a border, a ring, a thumb): `var(--pg-primary-line, var(--bs-primary))`, set only when the colour is too pale for a white page ([[design-theme-pale-colours]]).
 - A token is declared on `:root, [data-bs-theme]`, so a colour-based token is worked out again inside a section that switches to dark.
 - Starter trees use Bootstrap classes and utilities only: the theme dresses them. A widget container that prints pagination carries `py-4`.
 

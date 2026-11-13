@@ -383,7 +383,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Comment'))),
-            'extra classes'=>'page',
+            'extra classes'=>'page pg-measure-edit',
             'icon'=>'page', 
             'heading'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Comment'))),
             'heading_description' => lang('Edit and publish this comment.'),
@@ -407,7 +407,7 @@ if (!$_POST) {
                     <div class="row">
                         <div class="col-12 lg:col-8 2xl:col-9 order-1">
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Details') . '
                                 </h2>
                                 <div class="card-body pt-0">
@@ -431,7 +431,7 @@ if (!$_POST) {
                             <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
                             <div class="position-sticky" style="top:3.3rem;">
                                 <div class="card mb-7">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Publish') . '
                                     </h2>
                                     <div class="card-body pt-0">
@@ -476,7 +476,7 @@ if (!$_POST) {
                                     </div>
                                 </div>
                                 <div class="card mb-7">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Summary') . '
                                     </h2>
                                     <div class="card-body pt-0">

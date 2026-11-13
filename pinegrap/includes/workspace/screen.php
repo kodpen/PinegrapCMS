@@ -18,41 +18,6 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * A card of the Site Settings dialog linking the Workspace cards still kept
- * on the Workspace Settings screen. Each card that moves into the dialog
- * takes its link out; the last one takes the card.
- *
- * @param string $section_id the card's id, a section of its category
- * @param array  $links      array(anchor on workspace_settings.php, icon, label)
- * @return string one grid column
- */
-function ws_settings_screen_links_card($section_id, $links)
-{
-    $screen = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php';
-    $items = '';
-
-    foreach ($links as $link) {
-        $items .= '
-                    <a class="list-group-item list-group-item-action d-flex align-items-center gap-3" href="' . h($screen . '#' . $link[0]) . '">'
-            . '<i class="bi ' . h($link[1]) . '" aria-hidden="true"></i><span>' . h($link[2]) . '</span></a>';
-    }
-
-    return '
-    <div id="' . h($section_id) . '" class="pg-set-card">
-        <div class="card">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                ' . h(lang('On the Workspace Settings screen')) . '
-            </div>
-            <div class="card-body">
-                <p class="fg-secondary small">' . h(lang('These cards have not moved here yet. Each opens on the Workspace Settings screen.')) . '</p>
-                <div class="list-group">' . $items . '
-                </div>
-            </div>
-        </div>
-    </div>';
-}
-
-/**
  * A text with numbered holes the script fills: {1}, {2}.
  *
  * @param string $string the English text with {var:N}
@@ -432,7 +397,7 @@ function ws_js_strings()
         'who'                    => lang('Who'),
         'workspace'              => lang('Workspace'),
         'workspace_settings'     => lang('Workspace Settings'),
-        'wtables'                => lang('Tables'),
+        'wtables'                => lang('Data'),
         'all_types'              => lang('All'),
         'ref_kind'               => lang('Kind of record'),
         'type_to_search'         => lang('Type to search every kind of record, or pick one.'),
@@ -841,7 +806,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // New canvas in a channel and in a note (includes/workspace/canvas.php).
     if (function_exists('ws_canvas_js_strings')) {
-        $strings = array_merge($strings, ws_canvas_js_strings());
+        $strings = array_merge($strings, ws_canvas_js_strings(), ws_page_card_js_strings(), ws_page_bridge_js_strings());
     }
 
     // A file of the file manager picked under the paperclip (library.php).
@@ -938,7 +903,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
             // Where the site serves its files: a note line linking only to
             // one is drawn as the file (note_media.php, workspace_editor.js).
             'files'     => URL_SCHEME . HOSTNAME_SETTING . PATH,
-            'settings'  => $base . 'workspace_settings.php',
+            'settings'  => $base . pg_settings_workspace_link(),
             // Where a From OneNote Connect button posts (connect.php).
             'connect'   => $base . 'connect.php',
             'edit_user' => $base . 'edit_user.php',
@@ -1274,55 +1239,6 @@ function ws_record_drawer_assets($user, $type)
     }
 
     return ws_screen_assets($viewer, 'record');
-}
-
-/**
- * A refused Workspace Settings card form as the field names and values it
- * posted, so the page can fill that form again: a list as name[] with its
- * values in order, a keyed row as name[key]. The CSRF token, passwords,
- * secrets and keys are left out (never kept in the session); ws_action and
- * the record ids stay, they find the form.
- *
- * @param array  $post
- * @param string $prefix the enclosing name, for nested rows
- * @return array name => string, or name[] => string[]
- */
-function ws_settings_refused_fields($post, $prefix = '')
-{
-    $out = array();
-
-    foreach ((array) $post as $key => $value) {
-        $key = (string) $key;
-
-        if (preg_match('/token|password|secret|(^|_)key$/i', $key)) {
-            continue;
-        }
-
-        $name = ($prefix === '') ? $key : $prefix . '[' . $key . ']';
-
-        if (!is_array($value)) {
-            $out[$name] = (string) $value;
-            continue;
-        }
-
-        if ($value === array()) {
-            continue;
-        }
-
-        $list = (array_keys($value) === range(0, count($value) - 1));
-
-        foreach ($value as $item) {
-            $list = $list && !is_array($item);
-        }
-
-        if ($list) {
-            $out[$name . '[]'] = array_map('strval', array_values($value));
-        } else {
-            $out += ws_settings_refused_fields($value, $name);
-        }
-    }
-
-    return $out;
 }
 
 /**

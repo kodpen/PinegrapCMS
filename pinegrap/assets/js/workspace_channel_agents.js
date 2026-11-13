@@ -39,8 +39,10 @@
      *
      * @param {HTMLElement} holder
      * @param {object}      channel the channel as the screen holds it (id)
+     * @param {object}      [options] reveal: scroll to the section once drawn
+     *                      (Manage in Channel info)
      */
-    function mount(holder, channel) {
+    function mount(holder, channel, options) {
         var h = window.PGWsKit;
 
         if (!h || !holder || !channel) {
@@ -272,7 +274,7 @@
             }
 
             root.classList.remove('d-none');
-            root.appendChild(el('div', 'form-label', t('cha_title')));
+            var title = root.appendChild(el('div', 'form-label', t('cha_title')));
             root.appendChild(el('div', 'form-text mt-0 mb-3', t('cha_help')));
 
             if (!state.agents.length) {
@@ -290,6 +292,15 @@
                 root.appendChild(el('div', 'form-text', t('cha_readonly')));
             } else if (state.addable.length) {
                 root.appendChild(addNode(state));
+            }
+
+            // Opened from Channel info's Manage: the section is brought into
+            // view and takes the focus, once.
+            if (options && options.reveal) {
+                options.reveal = false;
+                title.tabIndex = -1;
+                root.scrollIntoView({ block: 'start' });
+                title.focus({ preventScroll: true });
             }
         }
 

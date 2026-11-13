@@ -446,10 +446,10 @@ function pg_designer_screen_render($ctx)
     // check. The shell's strip would sit above ours doing nothing.
     print
         pg_page_shell(array(
-            'title'        => lang('Visual Page Editor'),
+            'title'        => lang('Page Design Studio'),
             'extra classes'=> 'design',
             'icon'         => 'design',
-            'heading'      => lang('Visual Page Editor'),
+            'heading'      => lang('Page Design Studio'),
             'heading_description' => lang('The pages of the design are the tabs; drop blocks from the palette on the left, edit their options on the right.'),
             'hide_menu'    => true,
             // The shared curtain hides itself when the document is ready.
@@ -517,6 +517,11 @@ function pg_designer_screen_render($ctx)
                          the header link and the browser back button all go through
                          the unsaved-changes guard. -->
                     <div class="sd-toolbar sd-toolbar-tabs">
+                        <!-- Hides the whole left panel (and its docking rail)
+                             and brings it back; outside the page group so the
+                             component editor keeps it. Wired by
+                             _sdLeftHideInit(). -->
+                        <button type="button" id="sd-left-toggle" class="sd-icon-btn sd-left-toggle" aria-controls="sd-components" aria-expanded="true" title="' . h(lang('Hide the left panel')) . '" aria-label="' . h(lang('Hide the left panel')) . '"><span class="bi bi-layout-sidebar" aria-hidden="true"></span></button>
                         <div class="sd-toolbar-group sd-toolbar-pages"' . ($sd_component ? ' hidden' : '') . '>
                             <div class="pg-menu-wrap sd-tabs-add">
                                 <button type="button" class="sd-tabs-add-btn" data-bs-toggle="menu" aria-expanded="false" title="' . lang('Add Page') . '">
@@ -595,6 +600,7 @@ function pg_designer_screen_render($ctx)
         </main>
         ' . ($access === PG_DESIGNER_ACCESS_FULL ? pg_designer_target_modal() : '') . '
         ' . pg_image_editor_includes() . '
+        ' . pg_editor_bridge_script() . '
         ' . $sd_ws_tasks . '
         <!-- The designer\'s data, and its translation map, are declared BEFORE
              the editor script. style_designer.min.js resolves _sdT() at module
@@ -1548,10 +1554,10 @@ function pg_designer_start_screen($ctx)
 
     print
         pg_page_shell(array(
-            'title'               => lang('Visual Page Editor'),
+            'title'               => lang('Page Design Studio'),
             'extra classes'       => 'design',
             'icon'                => 'design',
-            'heading'             => lang('Visual Page Editor'),
+            'heading'             => lang('Page Design Studio'),
             'heading_description' => lang('A design is a set of pages that share stylesheets, scripts, fonts and a theme.'),
             'head'                => '<link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/css/designer_home.css?v=' . pg_designer_asset_stamp('assets/css/designer_home.css') . '">',
         )) . '
@@ -2330,7 +2336,7 @@ function pg_designer_settings_modal($ctx)
             <h3 class="sd-settings-group-title">' . lang('Advanced') . '</h3>
             ' . $social . '
             ' . pg_designer_setting(lang('Collection'),
-                lang('Only for classic Form List View and Form Item View pages that use this design: they keep two layouts, A and B, and show the one chosen here. The widgets of the visual designer draw their own layout and do not follow it.'),
+                lang('Only for classic Form List View and Form Item View pages that use this design: they keep two layouts, A and B, and show the one chosen here. The widgets of the Page Design Studio draw their own layout and do not follow it.'),
                 $liveform->output_field(array('type'=>'select', 'name'=>'collection', 'id'=>'sd-style-collection', 'options'=>array('A'=>'a', 'B'=>'b'), 'class'=>'form-control form-control-sm')),
                 array('for' => 'sd-style-collection')) . '
         </section>';
@@ -3196,7 +3202,7 @@ function pg_designer_screen_post($ctx)
     $converting = ($mode === 'edit' && $style_id > 0)
         && ((string)db_value("SELECT style_layout FROM style WHERE style_id = '$style_id' LIMIT 1") !== 'visual_designer');
     if ($converting && !$can_write_design) {
-        $fail(array(lang('Only a designer can open a classic style in the visual designer.')));
+        $fail(array(lang('Only a designer can open a classic style in the Page Design Studio.')));
     }
 
     $style_data = array(

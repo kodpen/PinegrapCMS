@@ -126,7 +126,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Edit Campaign Profile'),
-            'extra classes'=>'campaign',
+            'extra classes'=>'campaign pg-measure-edit',
             'icon'=>'campaign', 
             'heading'=> lang('Edit Campaign Profile'),
             'heading_description' => lang('Modify the Campaign that is created automatically when a certain action is completed (e.g. Visitor reserves Calendar Event).'),

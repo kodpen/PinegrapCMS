@@ -1714,8 +1714,10 @@ function output_error($error_message, $response_code = 0)
 
     $content = '<div style="color: red">' . lang('Error') . ': ' . $error_message . '<br />' . $debug_message . '</div>';
 
-    // A panel screen's error is drawn in the site's design, which has no
-    // way back to the panel: give a panel user one.
+    // A panel user's error on a panel screen is the panel's, not the site's:
+    // it is drawn in the panel's own frame below, with a way back to the
+    // panel. The bare message printed when the database fails carries that
+    // way back too.
     $panel_link = pg_error_panel_link(
         (string) ($_SERVER['SCRIPT_NAME'] ?? ''),
         defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : '',
@@ -1753,6 +1755,16 @@ function output_error($error_message, $response_code = 0)
         if (!isset($_SESSION)) {
             $_SESSION = array();
         }
+        // A panel screen's error ("Record not found." on Edit Page, Edit
+        // Short Link ...) is drawn in the panel's own frame, never in the
+        // site's design. A designed error page prints only its own blocks:
+        // its 404 block said "the page you are looking for may have been
+        // moved" with the shop's header and footer, and the panel's message
+        // and its way back were lost (#9024).
+        if ($panel_link !== '') {
+            echo pg_error_panel_screen($error_message, $panel_link);
+            exit();
+        }
         // A designed error page (error_page widget) prints the message and
         // the code in its own layout rather than the block above.
         if (function_exists('pg_sw_error_context')) {
@@ -1787,6 +1799,26 @@ function pg_error_panel_link($script_name, $software_directory, $role)
     }
 
     return (defined('PATH') ? PATH : '/') . $software_directory . '/welcome.php';
+}
+// The whole page output_error() prints for a panel screen's error: the
+// panel's own frame (output_header_secure(), Bootstrap 6 and the panel's
+// stylesheet, the panel's language) around pg_error_panel_card().
+function pg_error_panel_screen($error_message, $panel_link)
+{
+    return output_header_secure(array('title' => lang('Error'), 'icon' => 'welcome'))
+        . pg_error_panel_card($error_message, $panel_link)
+        . output_footer_secure();
+}
+// The card of a panel screen's error: the message as the screen wrote it
+// (HTML, often with its own "Go back" link) and a button back to the
+// control panel at $panel_link (pg_error_panel_link()). Drawn on the card
+// the sign-in screens without a site page use (pg_secure_card()).
+function pg_error_panel_card($error_message, $panel_link)
+{
+    $body = '<div class="mb-7">' . $error_message . '</div>'
+        . '<a class="btn btn-solid theme-primary w-100" href="' . h($panel_link) . '"><i class="bi bi-house me-3" aria-hidden="true"></i>' . h(lang('Back to the control panel')) . '</a>';
+
+    return pg_secure_card('bi-exclamation-triangle', lang('Error'), $body);
 }
 // The following function is used to return our standard error styling around
 // an error message.  This is used when we want to show an error on the page

@@ -36,6 +36,12 @@ define('WS_MAIL_SEND_FILES_BYTES', 20971520);
 define('WS_MAIL_SEND_HANDLER', 'workspace_mail');
 
 /**
+ * Days back ws_mail_send_orphans_run() looks for a waiting mail whose queue
+ * row is gone; under the seven days the queue keeps a sent row.
+ */
+define('WS_MAIL_SEND_ORPHAN_DAYS', 6);
+
+/**
  * Whether the send state is kept: the columns of 11.0.185. Before that
  * step has run nothing is sent or changed from here.
  *
@@ -196,7 +202,8 @@ function ws_mail_send_last_hour($user_id, $now)
  * The mailboxes this person may send from, each with the channels its mail
  * may be kept in: an open box with a working route (ws_mail_reply_route()),
  * whose own channel or a channel one of its routes writes to the person may
- * post in. Team accounts only.
+ * post in; a box kept in no channel for the people of its room
+ * (ws_mail_can_answer()). Team accounts only.
  *
  * @param array $viewer
  * @return array[] box, route, channels (ws_channels rows)
@@ -228,7 +235,7 @@ function ws_mail_send_boxes($viewer)
         foreach (array_unique(array_filter($channel_ids)) as $channel_id) {
             $channel = ws_channel($channel_id);
 
-            if ($channel && ws_can_post_channel($viewer, $channel)) {
+            if ($channel && ws_mail_can_answer($viewer, $channel)) {
                 $channels[] = $channel;
             }
         }
@@ -553,6 +560,41 @@ function ws_mail_send_outcome($outbox_id, $outcome, $ref, $error, $mime)
 
         ws_notify((int) $item['user_id'], 'mail_unsent', array('channel_id' => $channel_id, 'message_id' => (int) $item['message_id'], 'actor_id' => 0));
     }
+}
+
+/**
+ * Outgoing mail still waiting on a queue row that is gone - deleted before
+ * the Mail queue screen told its handler, by a privacy erase, by hand - is
+ * marked Not sent, as a deleted row's outcome would. Only mail of the last
+ * WS_MAIL_SEND_ORPHAN_DAYS days is read: the queue keeps a sent row seven
+ * days after it left, so a newer mail whose row is missing never left. Run
+ * by job.php on every tick; one small read on the created index.
+ *
+ * @param int $now
+ * @return int the mails marked
+ */
+function ws_mail_send_orphans_run($now)
+{
+    if (!ws_mail_send_ready() || !function_exists('pg_mail_queue_ready') || !pg_mail_queue_ready()) {
+        return 0;
+    }
+
+    $rows = db_items("SELECT i.id, i.outbox_id
+        FROM ws_mail_items AS i
+        LEFT JOIN mail_outbox AS o ON o.id = i.outbox_id
+        WHERE
+            i.created_at > '" . ((int) $now - WS_MAIL_SEND_ORPHAN_DAYS * 86400) . "'
+            AND i.direction = 'out'
+            AND i.send_state = 'queued'
+            AND i.outbox_id > 0
+            AND o.id IS NULL
+        LIMIT 20");
+
+    foreach ((array) $rows as $row) {
+        ws_mail_send_outcome((int) $row['outbox_id'], 'failed', ws_mail_send_ref((int) $row['id'], 0), lang('It was deleted from the mail queue before it was sent.'), '');
+    }
+
+    return count((array) $rows);
 }
 
 /**
@@ -885,7 +927,7 @@ function ws_mail_resend_offer($item, $can_post, $viewer, $row = null)
 
 /**
  * Send again: an item whose mail could not leave goes to the mail once more,
- * for whoever may send from its channel (ws_can_post_channel(), team
+ * for whoever may send from its channel (ws_mail_can_answer(), team
  * accounts only), within the person's hourly limit and with no address on
  * the bounce list. Only one press counts: the item leaves "failed" once.
  *
@@ -912,7 +954,7 @@ function ws_mail_resend($viewer, $item_id)
     $channel_id = (int) db_value("SELECT channel_id FROM ws_messages WHERE id = '" . (int) $item['message_id'] . "'");
     $channel = ($channel_id > 0) ? ws_channel($channel_id) : null;
 
-    if (!$channel || empty($viewer['member']) || !ws_can_post_channel($viewer, $channel)) {
+    if (!$channel || empty($viewer['member']) || !ws_mail_can_answer($viewer, $channel)) {
         return $refuse('no_access');
     }
 
@@ -971,14 +1013,16 @@ function ws_mail_send_badge_html($item)
 
 /**
  * An inbox line about a mail that could not leave (mail_unsent): its
- * subject is the body, the line opens the mail.
+ * subject is the body, the line opens the mail, in its channel or on the
+ * E-mails screen when its mailbox is kept in no channel.
  *
- * @param array  $row ws_inbox row
- * @param string $channel_name
- * @param string $base the panel's address
+ * @param array      $row ws_inbox row
+ * @param string     $channel_name ws_inbox_place()'s: '#name', or a mailbox's name
+ * @param string     $base the panel's address
+ * @param array|null $channel the row's channel
  * @return array title, body, url, icon
  */
-function ws_mail_unsent_describe($row, $channel_name, $base)
+function ws_mail_unsent_describe($row, $channel_name, $base, $channel = null)
 {
     $subject = ((int) $row['message_id'] > 0)
         ? (string) db_value("SELECT subject FROM ws_mail_items WHERE message_id = '" . (int) $row['message_id'] . "' AND direction = 'out' ORDER BY id DESC LIMIT 1")
@@ -987,7 +1031,7 @@ function ws_mail_unsent_describe($row, $channel_name, $base)
     return array(
         'title' => lang(array('string' => 'Your e-mail in {var:1} could not be sent', 'vars' => $channel_name)),
         'body'  => $subject,
-        'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
+        'url'   => ws_mail_notice_url($base, (int) $row['channel_id'], (int) $row['message_id'], $channel),
         'icon'  => 'bi-envelope-x',
     );
 }

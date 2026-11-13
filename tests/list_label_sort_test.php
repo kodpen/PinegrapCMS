@@ -5,7 +5,7 @@
  * Tests for list columns that show a label for a stored code and sort by
  * that label (pg_list_label_order() and pg_list_sort_items() in
  * includes/fn/list_paging.php): the FIELD() order, codes kept out of the
- * query, the panel language's collation, the link picker's sort in PHP and
+ * query, the panel language's collation, the sort in PHP and
  * the screens that use them.
  *
  * @author      Erdal Güral (Kodpen)
@@ -92,7 +92,7 @@ function test_page_type_names_map()
 	pg_assert_same(null, get_page_type_name('no such type'));
 }
 
-// The link picker sorts in PHP the way the database lists sort: text
+// pg_list_sort_items() sorts in PHP the way the database lists sort: text
 // without case and in language order, page types by name, numbers as
 // numbers, ties by the first key.
 function test_list_sort_items()
@@ -133,7 +133,6 @@ function test_list_label_sort_screens()
 		'includes/fn/product_list.php' => "pg_list_label_order('products.selection_type', pg_product_list_selection_types())",
 		'view_email_campaign_profiles.php' => "pg_list_label_order('email_campaign_profiles.action', \$action_names)",
 		'view_short_links.php' => "pg_list_label_order('short_links.destination_type', \$destination_type_names)",
-		'editor_select_page_or_file.php' => "pg_list_sort_items(",
 	);
 
 	foreach ($checks as $file => $needle) {
@@ -141,5 +140,4 @@ function test_list_label_sort_screens()
 		pg_assert_contains($needle, $source, $file);
 	}
 
-	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/editor_select_page_or_file.php'), 'array_multisort') === false, 'no byte-order sort left in the link picker');
 }

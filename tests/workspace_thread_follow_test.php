@@ -304,3 +304,38 @@ function test_workspace_thread_follow_start_registry()
 	pg_assert_contains('ws_thread_message_agent($message, ws_channel($thread_id))', workspace_thread_follow_test_source('ws_thread_start'));
 	pg_assert_contains('ws_thread_message_agent($message, $channel)', workspace_thread_follow_test_source('ws_thread_follow_last'));
 }
+
+// A message an agent's application wrote by itself gives that agent, while
+// one of its rows reaches the discussion.
+function test_workspace_thread_writer_agent()
+{
+	$rows = array(
+		array('id' => 4, 'kind' => 'app', 'app_id' => 7),
+		array('id' => 5, 'kind' => 'app', 'app_id' => 7),
+		array('id' => 6, 'kind' => 'model', 'app_id' => 9),
+		array('id' => 8, 'kind' => 'claude', 'app_id' => 11),
+	);
+	$app = function ($id) {
+		return array('id' => 100, 'sender_kind' => 'app', 'sender_id' => $id);
+	};
+
+	pg_assert_same('agent:4', ws_thread_writer_agent($app(7), $rows), 'the first reaching agent of the application');
+	pg_assert_same('agent:5', ws_thread_writer_agent($app('7'), array_slice($rows, 1)));
+	pg_assert_same('model:6', ws_thread_writer_agent($app(9), $rows), 'a model assistant');
+	pg_assert_same('', ws_thread_writer_agent($app(11), $rows), 'not a registry kind');
+	pg_assert_same('', ws_thread_writer_agent($app(3), $rows), 'no agent of the application reaches it');
+	pg_assert_same('', ws_thread_writer_agent($app(7), array()), 'taken out of the channel');
+	pg_assert_same('', ws_thread_writer_agent($app(0), array(array('id' => 2, 'kind' => 'app', 'app_id' => 0))), 'no application');
+	pg_assert_same('', ws_thread_writer_agent(array('id' => 1, 'sender_kind' => 'user', 'sender_id' => 7), $rows), 'a person wrote it');
+}
+
+// The order at the start: the answer's agent, then the writing agent, then
+// the agent the root names.
+function test_workspace_thread_follow_start_writer()
+{
+	$agent = workspace_thread_follow_test_source('ws_thread_message_agent');
+
+	pg_assert_contains('ws_thread_writer_agent($message, ', $agent);
+	pg_assert_true(strpos($agent, 'ws_thread_answer_agent(') < strpos($agent, 'ws_thread_writer_agent('), 'the answer comes first');
+	pg_assert_true(strpos($agent, 'ws_thread_writer_agent(') < strpos($agent, 'ws_thread_agents_asked('), 'the writer before the named one');
+}

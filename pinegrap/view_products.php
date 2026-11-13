@@ -229,7 +229,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
     pg_page_shell(
         array(
             'title'=> lang('Products'),
-            'extra classes'=>'products',
+            'extra classes'=>'products pg-measure-list',
             'icon'=>'store',
             'heading'=>$view['heading'],
             'heading_description' => $view['subheading'],

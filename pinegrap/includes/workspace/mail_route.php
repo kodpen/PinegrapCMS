@@ -248,14 +248,16 @@ function ws_mail_route_channel($box, $parsed)
 /**
  * The text of the line a known customer's channel gets: who wrote, where
  * the conversation is (a channel tag, drawn for each reader by what they
- * may see), and the subject with any tag a sender could type taken apart.
+ * may see; the mailbox's name for one kept in no channel, whose room no tag
+ * leads to), and the subject with any tag a sender could type taken apart.
  *
  * @param string $name       the sender's name or address
  * @param int    $channel_id the conversation's channel
  * @param string $subject
+ * @param string $mailbox    the name of a mailbox kept in no channel, '' otherwise
  * @return string
  */
-function ws_mail_customer_line_text($name, $channel_id, $subject)
+function ws_mail_customer_line_text($name, $channel_id, $subject, $mailbox = '')
 {
     $plain = function ($text) {
         return trim(preg_replace('/<([@#][a-z_]+:[0-9]+)>/i', '$1', preg_replace('/\s+/u', ' ', (string) $text)));
@@ -264,7 +266,7 @@ function ws_mail_customer_line_text($name, $channel_id, $subject)
 
     return lang(array('string' => 'An e-mail from {var:1} came into {var:2}: {var:3}', 'vars' => array(
         mb_substr($plain($name), 0, 200),
-        '<#channel:' . (int) $channel_id . '>',
+        ($plain($mailbox) !== '') ? mb_substr($plain($mailbox), 0, 100) : '<#channel:' . (int) $channel_id . '>',
         ($subject !== '') ? $subject : lang('(no subject)'),
     )));
 }
@@ -293,7 +295,9 @@ function ws_mail_customer_lines($conversation, $name)
         return 0;
     }
 
-    $text = ws_mail_customer_line_text($name, (int) $conversation['channel_id'], (string) $conversation['subject']);
+    $own = ws_channel((int) $conversation['channel_id']);
+    $text = ws_mail_customer_line_text($name, (int) $conversation['channel_id'], (string) $conversation['subject'],
+        ws_channel_is_mailbox($own) ? (string) $own['name'] : '');
     $written = 0;
 
     foreach ($channels as $channel) {

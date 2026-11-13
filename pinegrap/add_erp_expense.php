@@ -232,7 +232,7 @@ if (!$_POST) {
         $paid_currency = strtoupper((string) $existing['currency']);
         $output_money_card = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Amount and tax') . '</div>
+                    <div class="card-header bg-reset border-0 pg-title-section">' . lang('Amount and tax') . '</div>
                     <div class="card-body">
                         <div class="form-field">
                             <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'tax_deductible', 'name' => 'tax_deductible', 'value' => '1', 'class' => 'no-bs')) . '</div>
@@ -249,7 +249,7 @@ if (!$_POST) {
     } else {
         $output_money_card = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Amount and tax') . '</div>
+                    <div class="card-header bg-reset border-0 pg-title-section">' . lang('Amount and tax') . '</div>
                     <div class="card-body">
                         <div class="row align-items-end">
                             <div class="col-12 sm:col-6 lg:col-3 my-3">
@@ -321,7 +321,7 @@ if (!$_POST) {
 
         $output_repeat = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Repeat') . '</div>
+                    <div class="card-header bg-reset border-0 pg-title-section">' . lang('Repeat') . '</div>
                     <div class="card-body">
                         <div class="form-field mb-3">
                             <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'repeat', 'name' => 'repeat', 'value' => '1', 'class' => 'no-bs')) . '</div>
@@ -366,7 +366,7 @@ if (!$_POST) {
     if ($kept === null) {
         $output_file = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('The receipt') . '</div>
+                    <div class="card-header bg-reset border-0 pg-title-section">' . lang('The receipt') . '</div>
                     <div class="card-body">
                         <label for="receipt_file" class="form-label">' . lang('A picture or a PDF of the receipt') . '</label>
                         <input class="form-control" type="file" id="receipt_file" name="receipt_file" accept="image/jpeg,image/png,image/webp,application/pdf" />
@@ -378,7 +378,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => $page_title,
-        'extra classes' => 'erp erp_expenses',
+        'extra classes' => 'erp erp_expenses pg-measure-edit',
         'icon' => 'erp',
         'heading' => $page_title,
         'heading_description' => lang('The receipt as it is: what it cost, the tax on it, and how it was paid.'),
@@ -401,7 +401,7 @@ if (!$_POST) {
                 <div class="row">
                 <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('What was spent') . '</div>
+                    <div class="card-header bg-reset border-0 pg-title-section">' . lang('What was spent') . '</div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-12 sm:col-6 lg:col-3 my-3">
@@ -439,7 +439,7 @@ if (!$_POST) {
                 ' . $output_money_card . '
 
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Payment') . '</div>
+                    <div class="card-header bg-reset border-0 pg-title-section">' . lang('Payment') . '</div>
                     <div class="card-body">' . $output_payment . '
                     </div>
                 </div>
@@ -451,7 +451,7 @@ if (!$_POST) {
                 <div class="col-12 lg:col-4 2xl:col-3 order-2">
                     <div class="position-sticky" style="top:3.3rem;">
                         <div class="card my-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Total') . '</div>
+                            <div class="card-header bg-reset border-0 pg-title-section">' . lang('Total') . '</div>
                             <div class="card-body">' . $output_figures . '
                             </div>
                         </div>

@@ -684,7 +684,7 @@ function api_page_move_target($page, $folder_id) {
 
 	if (((int)$page['page_folder'] === api_folder_drafts_id()) && ((int)$page['page_folder'] > 0)) {
 
-		api_fail(409, 'page_is_draft', lang('This page is a draft. It is published, and its folder chosen, in the Visual Page Editor.'), 'folder_id');
+		api_fail(409, 'page_is_draft', lang('This page is a draft. It is published, and its folder chosen, in the Page Design Studio.'), 'folder_id');
 
 	}
 

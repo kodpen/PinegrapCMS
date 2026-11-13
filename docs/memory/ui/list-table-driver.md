@@ -27,4 +27,7 @@ module: list_table
 - `pg_list_table_html()`'s fourth argument is the screen's bulk buttons, printed in the bar's `.pg-list-table-actions` (shown only while rows are selected).
 - The screen keeps a hidden `selection` field filled from `pg-list-table:selection` (`JSON.stringify(detail.payload)`) and posts it with the list's parameters (`list_params`), since an `{ids}` payload carries none; the bulk endpoint builds the source again from those parameters (the user's rights included) and calls `pg_list_table_selected_ids()`. More than 10,000 rows (`more`) is refused, not cut.
 
+## What turns a list screen into HTTP 500?
+- `pg_list_table_html()` and `pg_list_table_page()` take the source and page as `array`: a string or null in their place is a fatal TypeError, and the whole screen answers 500. Keep the variables that hold them out of any `foreach` between their assignment and the call. The audit trail's Source filter loop reused `$audit_view_source` from TD6 (#6386) on (issue #8993, PR #9040). `test_list_table_screens_keep_their_source_out_of_loops` (`tests/list_table_test.php`) checks every list screen.
+
 Related: docs/memory/ui/list-table-driver-browser.md, docs/memory/ui/list-table-driver-lists.md, docs/memory/ui/server-paged-lists.md

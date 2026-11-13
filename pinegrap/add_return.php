@@ -139,7 +139,7 @@ if ($order_id <= 0) {
     echo
         pg_page_shell(array(
             'title'               => lang('Record a Return Request'),
-            'extra classes'       => 'store',
+            'extra classes'       => 'store pg-measure-edit',
             'icon'                => 'store',
             'heading'             => lang('Record a Return Request'),
             'heading_description' => lang('For a return the customer asked for by phone, by e-mail or in the shop. Which order are the goods from?'),
@@ -328,7 +328,7 @@ if ($order_id <= 0) {
     echo
         pg_page_shell(array(
             'title'               => lang('Record a Return Request'),
-            'extra classes'       => 'store',
+            'extra classes'       => 'store pg-measure-edit',
             'icon'                => 'store',
             'heading'             => lang('Record a Return Request'),
             'heading_description' => lang('For a return the customer asked for by phone, by e-mail or in the shop. It then follows the same steps as one asked for from their account.'),

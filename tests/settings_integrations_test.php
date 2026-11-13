@@ -121,7 +121,7 @@ function test_settings_integrations_links_follow_each_screen_gate()
 	pg_assert_same(array('api_settings.php', 'connections.php', 'marketplace_settings.php'), $manager, 'a manager, store on, no workspace right');
 
 	$no_store = settings_integrations_test_urls(pg_settings_integration_links(array('id' => 1, 'role' => 2), array('ecommerce' => false, 'workspace_settings' => true)));
-	pg_assert_same(array('api_settings.php', 'connections.php', 'workspace_settings.php'), $no_store, 'store off, workspace settings right');
+	pg_assert_same(array('api_settings.php', 'connections.php', 'settings_workspace_team.php'), $no_store, 'store off, workspace settings right');
 
 	pg_assert_same(array(), pg_settings_integration_links(array('id' => 1, 'role' => 3), array('ecommerce' => true, 'workspace_settings' => true)), 'nothing for a role the settings do not admit');
 }

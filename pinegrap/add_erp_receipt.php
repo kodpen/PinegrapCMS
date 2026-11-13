@@ -83,7 +83,7 @@ if ($preset_refusal !== '') {
     echo
     pg_page_shell([
         'title' => $page_title,
-        'extra classes' => 'erp erp_cash',
+        'extra classes' => 'erp erp_cash pg-measure-edit',
         'icon' => 'erp',
         'heading' => $page_title,
         'cancel' => array('enable' => 'true', 'url' => $invoice_url, 'title' => lang('Back to the invoice')),
@@ -255,7 +255,7 @@ if ($preset_refusal !== '') {
     echo
     pg_page_shell([
         'title' => $page_title,
-        'extra classes' => 'erp erp_cash',
+        'extra classes' => 'erp erp_cash pg-measure-edit',
         'icon' => 'erp',
         'heading' => $page_title,
         'heading_description' => $is_collection
@@ -284,7 +284,7 @@ if ($preset_refusal !== '') {
                 <div class="row">
                 <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card my-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . $page_title . '
                     </h2>
                     <div class="card-body">
@@ -363,7 +363,7 @@ if ($preset_refusal !== '') {
                 <div class="col-12 lg:col-4 2xl:col-3 order-2">
                     <div class="position-sticky" style="top:3.3rem;">
                         <div class="card my-7">
-                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Details') . '</h2>
+                            <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Details') . '</h2>
                             <div class="card-body pt-0">
                                 <div class="row">
                                     <div class="col-12 sm:col-6 lg:col-12 my-3">
@@ -385,7 +385,7 @@ if ($preset_refusal !== '') {
                         </div>
                         ' . (($preset_invoice !== null)
                             ? '<div class="card my-7">
-                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Summary') . '</h2>
+                            <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Summary') . '</h2>
                             <div class="card-body pt-0">
                                 <dl class="row mb-0">
                                     <dt class="sm:col-5 fg-secondary fw-normal">' . lang('Invoice') . '</dt><dd class="sm:col-7"><a href="edit_erp_invoice.php?id=' . (int) $preset_invoice['id'] . '">' . h($preset_invoice['full_number']) . '</a></dd>

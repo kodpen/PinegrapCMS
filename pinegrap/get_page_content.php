@@ -1216,13 +1216,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 "System Region Footer":"' . lang('System Region Footer') . '",
                 "Your updates have been <strong>canceled</strong>":"' . lang('Your updates have been <strong>canceled</strong>') . '",
                 "Your updates have been <strong>saved</strong>.":"' . lang('Your updates have been <strong>saved</strong>.') . '",
-                "Software Image Editor":"' . lang('Software Image Editor') . '",
+                "Design Canvas":"' . lang('Design Canvas') . '",
                 "WARNING: If you leave this page, then your unsaved changes will be lost.":"' . lang('WARNING: If you leave this page, then your unsaved changes will be lost.') . '",
                 "Saving... (please wait)":"' . lang('Saving... (please wait)') . '",
                 "Sorry, your updates could not be saved. Please try again later.":"' . lang('Sorry, your updates could not be saved. Please try again later.') . '",
                 "Save current page edits":"' . lang('Save current page edits') . '",
                 "Cancel current page edits.":"' . lang('Cancel current page edits.') . '",
-                "Edit Image with Software Image Editor":"' . lang('Edit Image with Software Image Editor') . '",';
+                "Edit the image in the Design Canvas":"' . lang('Edit the image in the Design Canvas') . '",';
         }
 
 

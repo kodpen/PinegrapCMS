@@ -8,7 +8,7 @@ description: Remaining outside-account connections (Meta, Business Profile, soci
 
 | Item | What | Effort |
 |---|---|---|
-| Meta | Product feed (step 0, shared with Merchant), Meta Business Extension for Pixel + catalog, Instagram Login feed, WhatsApp Cloud API. Model B only | L |
+| Meta | Product feed (step 0, shared with Merchant), Meta Business Extension for Pixel + catalog, Instagram Login feed. Model B only. WhatsApp left this row: `whatsapp-channel.md`, the site's own app (owner 2026-11-12, #8950) | L |
 | Business Profile | Needs Google's access form; on demand | M |
 | Social posting | Facebook Page, Instagram, LinkedIn; needs app review; X is paid, not recommended | M + process |
 | AI accounts | Not recommended (subscription OAuth is limited to Anthropic's own products); only OpenRouter PKCE as "bring your own model" (`includes/workspace/ai.php`) | S |

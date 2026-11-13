@@ -24,7 +24,7 @@ description: Liveform field names and pagers: aria-label, file id, required impo
 - The return quantity (`Returning`), the receipt allocation (`Allocate to {var:1}` with the invoice number), the bank statement mapping and date-order selects (label `for` + id), its expense category, the cheque step bank account and reason (aria-label: those fields repeat across step forms, so ids would clash), the account Notes. A fixed account or currency box has its own `*_locked` id the label points at. Pinned by `tests/erp_field_names_test.php`.
 
 ## How is a hand-built pager named?
-- The `<nav>` carries `lang('Pagination')` (Translations too: `Pages` is its page-list card's name); the arrows carry Previous page / Next page with the glyph `aria-hidden`; a disabled arrow and the current page are `<span class="page-link">`, the current one under `aria-current="page"`, so Tab skips them (`view_parasut_inbox.php`, `editor_select_image.php`).
+- The `<nav>` carries `lang('Pagination')` (Translations too: `Pages` is its page-list card's name); the arrows carry Previous page / Next page with the glyph `aria-hidden`; a disabled arrow and the current page are `<span class="page-link">`, the current one under `aria-current="page"`, so Tab skips them (`view_parasut_inbox.php`).
 - A disabled arrow's name is `visually-hidden` text, not `aria-label` (prohibited on a role-less span): inbox, visitor report, marketplace products, picture picker (`tests/panel_name_carriers_test.php`).
 
 Related: ui/panel-accessible-names.md, erp/erp-input-keyboards.md (autocapitalize)

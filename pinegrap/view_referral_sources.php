@@ -87,7 +87,7 @@ $list = pg_list_table_printed(array(
 print
     pg_page_shell([
         'title'=> lang('All Referral Sources'),
-        'extra classes'=>'setting',
+        'extra classes'=>'setting pg-measure-list',
         'icon'=>'setting',
         'heading'=>lang('All Referral Sources'),
         'heading_description' => lang('All possible answers to the checkout question: "How did you hear about us?"'),

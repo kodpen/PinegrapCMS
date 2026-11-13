@@ -434,7 +434,7 @@ function api_design_common_region_prepare($params, $row) {
 
 		if (($row !== null) && (api_design_common_region_component($id) > 0)) {
 
-			api_fail(409, 'region_is_shared_component', lang('This common region is a shared component: its content is edited in the visual designer.'), 'content');
+			api_fail(409, 'region_is_shared_component', lang('This common region is a shared component: its content is edited in the Page Design Studio.'), 'content');
 
 		}
 

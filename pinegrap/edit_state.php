@@ -88,7 +88,7 @@ if (!$_POST || $errors) {
     $output =
     pg_page_shell([
         'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('State'))),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang(array('string'=>'Edit {var:1}','vars'=>lang('State'))),
         'heading_description' => lang('Edit a state/province that can be included in any shipping zone or tax zone.'),

@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>panel look A: the flow window (left: add a box; right: the selected box in tabs)</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<style>
+body { background: radial-gradient(700px 420px at 20% -6%, var(--glow1), transparent 62%), radial-gradient(600px 380px at 100% -4%, var(--glow2), transparent 60%), var(--page); }
+.win { width: 1600px; height: 900px; display: grid; grid-template-rows: 56px 1fr; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--page); }
+.bar { display: flex; align-items: center; gap: 10px; padding: 0 14px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+.bar .nm { display: flex; align-items: center; gap: 10px; }
+.bar .nm b { font: 650 16px/1.2 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; padding: 5px 8px; border-radius: 8px; box-shadow: inset 0 0 0 1px transparent; }
+.bar .saved { font-size: 12.5px; color: var(--fg3); }
+.bar .mid { position: absolute; left: 50%; transform: translateX(-50%); }
+.bar .vd { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+.prob { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; font-size: 13px; font-weight: 550; color: var(--rose); background: color-mix(in srgb, var(--rose) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rose) 22%, transparent); }
+.body { display: grid; grid-template-columns: 264px 1fr 356px; min-height: 0; }
+/* left: only adding boxes */
+.left { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--menu); }
+.ph0 { display: flex; align-items: center; height: 46px; padding: 0 10px 0 16px; font-size: 14px; font-weight: 600; }
+.ph0 .ib { margin-left: auto; }
+.left .in { margin: 0 12px 10px; height: 34px; font-size: 13px; }
+.sect { display: flex; align-items: center; gap: 8px; margin: 8px 16px 6px; font-size: 12px; font-weight: 600; color: var(--fg2); }
+.sect .n { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.cur { display: flex; align-items: center; gap: 10px; margin: 0 12px 4px; padding: 8px 10px; border-radius: 11px; font-size: 13px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.cur a { margin-left: auto; font-size: 12.5px; font-weight: 550; color: var(--accent); }
+.gh { display: flex; align-items: center; gap: 6px; height: 28px; margin: 2px 12px 0; padding: 0 6px; font-size: 12px; font-weight: 550; color: var(--fg3); }
+.gh i { font-size: 10px; }
+.gh em { margin-left: auto; font-style: normal; font-weight: 400; }
+.it { display: flex; align-items: center; gap: 10px; height: 32px; margin: 0 12px; padding: 0 8px; border-radius: 9px; font-size: 13px; white-space: nowrap; }
+.it .tile { width: 22px; height: 22px; border-radius: 7px; font-size: 12px; }
+.it.hov { background: var(--hover); }
+.it.hov::after { content: "\F4FE"; font-family: "bootstrap-icons"; margin-left: auto; color: var(--fg3); font-size: 14px; }
+.left .tip { margin-top: auto; padding: 10px 16px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--fg3); }
+/* the canvas */
+.cv { position: relative; overflow: hidden; background-image: radial-gradient(color-mix(in srgb, var(--fg) 11%, transparent) 1px, transparent 1px); background-size: 16px 16px; }
+.cv svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cv path { fill: none; stroke: var(--fg3); stroke-width: 1.5; }
+.cv path.sel { stroke: var(--accent); }
+.box { position: absolute; width: 190px; height: 72px; padding: 10px 12px; border-radius: 14px; background: linear-gradient(180deg, var(--surf1), var(--surf2)); border: 1px solid var(--line); box-shadow: var(--shadow-card); }
+.box .k { display: flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--c, var(--gray)); }
+.box .k i { font-size: 13px; }
+.box b { display: block; margin-top: 5px; font-size: 13.5px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.box small { display: block; font-size: 12px; color: var(--fg2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.box.sel { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent), var(--shadow-card); }
+.box .warn { position: absolute; right: 9px; top: 9px; color: var(--rose); font-size: 13px; }
+.olab { position: absolute; height: 20px; padding: 0 8px; border-radius: 10px; font-size: 11.5px; font-weight: 550; line-height: 20px; color: var(--fg2); background: var(--surf1); box-shadow: inset 0 0 0 1px var(--line); }
+.zoom { position: absolute; left: 14px; bottom: 14px; display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 11px; background: var(--float); border: 1px solid var(--line); box-shadow: var(--shadow-float); font-size: 12.5px; color: var(--fg2); }
+.zoom span { padding: 0 8px; }
+.t-green { --c: #3fd07a; } .t-gray { --c: var(--gray); }
+/* right: only the selected box */
+.right { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+.ih { display: flex; align-items: flex-start; gap: 11px; padding: 14px 10px 12px 16px; }
+.ih .tile { width: 34px; height: 34px; border-radius: 11px; font-size: 16px; }
+.ih small { display: block; font-size: 10.5px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--violet); }
+.ih b { display: block; margin-top: 1px; font: 650 16px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; }
+.ih .ib { margin-top: 1px; }
+.tabs { display: flex; padding: 0 16px 12px; border-bottom: 1px solid var(--line); }
+.tabs .seg { display: flex; width: 100%; }
+.tabs .seg span { flex: 1; }
+.pn { flex: 1; min-height: 0; padding: 14px 16px 0; overflow: hidden; }
+.f { margin-bottom: 14px; }
+.f .in { font-size: 13.5px; }
+.chipv { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 7px; font-size: 12.5px; font-weight: 550; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); vertical-align: 1px; }
+.lnk { display: inline-flex; align-items: center; gap: 6px; margin-top: 7px; font-size: 12.5px; font-weight: 550; color: var(--accent); }
+.rf { display: flex; align-items: center; gap: 8px; padding: 11px 16px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--fg2); }
+.rf b { font-weight: 550; color: var(--fg); }
+.rf i { color: var(--fg3); }
+/* parts under the window */
+.parts { display: flex; align-items: flex-start; gap: 28px; margin-top: 30px; }
+.part .cap { margin-top: 0; max-width: 356px; }
+.panel { width: 356px; border-radius: 18px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-card); background: linear-gradient(180deg, var(--surf1), var(--surf2)); }
+.panel .pn { padding-bottom: 14px; }
+.cn { display: flex; align-items: center; gap: 10px; padding: 8px 10px; margin-bottom: 6px; border-radius: 11px; font-size: 13px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.cn .tile { width: 22px; height: 22px; border-radius: 7px; font-size: 12px; }
+.cn .in { margin-left: auto; height: 28px; width: 118px; font-size: 12.5px; padding: 0 9px; }
+.cn .ib { margin: 0 -4px 0 0; }
+.cn > span:nth-child(2) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res { margin-top: 12px; padding: 10px 12px; border-radius: 11px; font-size: 12.5px; line-height: 1.5; color: var(--fg2); background: var(--card); box-shadow: inset 0 0 0 1px var(--line); }
+.res b { color: var(--fg); font-weight: 550; }
+.sum { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; font-size: 13px; }
+.sum span:nth-child(odd) { color: var(--fg3); }
+.pr { display: flex; gap: 9px; margin-top: 8px; padding: 9px 11px; border-radius: 11px; font-size: 12.5px; color: var(--fg2); background: color-mix(in srgb, var(--rose) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rose) 20%, transparent); }
+.pr i { color: var(--rose); }
+.pr a { margin-left: auto; color: var(--accent); font-weight: 550; white-space: nowrap; }
+.before { width: 420px; border-radius: 14px; border: 1px solid var(--line); padding: 12px 14px; font-size: 12.5px; line-height: 1.55; color: var(--fg2); background: var(--card); }
+.before b { color: var(--fg); font-weight: 600; }
+.before li { margin: 3px 0; }
+.before ul { margin: 6px 0 0; padding-left: 18px; }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="cap"><b>Akış penceresi</b>Sol panel yalnızca kutu eklemek için, sağ panel yalnızca seçili kutu için. Üst çubukta akışın kendisi: ad, durum, görünüm, sorunlar, çalıştır, yayınla.</div>
+<div class="win">
+  <div class="bar" style="position:relative">
+    <button class="ib"><i class="bi bi-arrow-left"></i></button>
+    <div class="nm"><b>Müşteri karşılama</b><span class="st t-amber">Taslak</span><span class="saved"><i class="bi bi-check2"></i> Kaydedildi</span></div>
+    <span class="seg mid"><span class="on"><i class="bi bi-diagram-3"></i>Tuval</span><span><i class="bi bi-list-ol"></i>Liste</span></span>
+    <span class="sp"></span>
+    <button class="ib" title="Geri al"><i class="bi bi-arrow-counterclockwise"></i></button><button class="ib dim" title="Yinele"><i class="bi bi-arrow-clockwise"></i></button>
+    <button class="ib on" title="Veri bağları"><i class="bi bi-bezier2"></i></button>
+    <span class="vd"></span>
+    <span class="prob"><i class="bi bi-exclamation-triangle"></i>1 sorun</span>
+    <button class="btn quiet"><i class="bi bi-clock-history"></i>Çalışmalar</button>
+    <button class="btn quiet"><i class="bi bi-play"></i>Çalıştır</button>
+    <button class="btn fill"><i class="bi bi-send"></i>Yayınla</button>
+    <button class="ib"><i class="bi bi-three-dots"></i></button>
+  </div>
+  <div class="body">
+    <aside class="left">
+      <div class="ph0">Kutu ekle<button class="ib sm dim" title="Paneli daralt"><i class="bi bi-layout-sidebar"></i></button></div>
+      <div class="in"><i class="bi bi-search"></i><span class="ph">Kutu ara</span></div>
+      <div class="sect"><span class="n">1</span>Başlangıç</div>
+      <div class="cur"><span class="tile t-teal"><i class="bi bi-play-circle"></i></span>Elle başlatılır<a>Değiştir</a></div>
+      <div class="sect" style="margin-top:14px"><span class="n">2</span>Adımlar</div>
+      <div class="gh"><i class="bi bi-chevron-down"></i>Mesaj</div>
+      <div class="it"><span class="tile t-blue"><i class="bi bi-chat-left-text"></i></span>Kanala mesaj yaz</div>
+      <div class="it hov"><span class="tile t-blue"><i class="bi bi-envelope"></i></span>E-posta gönder</div>
+      <div class="it"><span class="tile t-green"><i class="bi bi-whatsapp"></i></span>WhatsApp mesajı gönder</div>
+      <div class="it"><span class="tile t-blue"><i class="bi bi-bell"></i></span>Ekibe bildir</div>
+      <div class="it"><span class="tile t-blue"><i class="bi bi-bar-chart"></i></span>Sayıların özetini gönder</div>
+      <div class="gh"><i class="bi bi-chevron-down"></i>Kişiler</div>
+      <div class="it"><span class="tile t-violet"><i class="bi bi-check2-square"></i></span>Görev</div>
+      <div class="it"><span class="tile t-violet"><i class="bi bi-person-check"></i></span>Onay iste</div>
+      <div class="it"><span class="tile t-violet"><i class="bi bi-person-plus"></i></span>Müşteriyi kanala al</div>
+      <div class="gh"><i class="bi bi-chevron-right"></i>Mantık<em>4</em></div>
+      <div class="gh"><i class="bi bi-chevron-right"></i>Kayıtlar ve tablolar<em>6</em></div>
+      <div class="gh"><i class="bi bi-chevron-right"></i>Sistem<em>5</em></div>
+      <div class="sect" style="margin-top:14px"><span class="n">3</span>Bitiş</div>
+      <div class="it"><span class="tile t-amber"><i class="bi bi-flag"></i></span>Akışı bitir</div>
+      <div class="gh" style="margin-top:8px"><i class="bi bi-chevron-right"></i>Değerler<em>2</em></div>
+      <div class="tip"><i class="bi bi-hand-index"></i> Tıklayın ya da tuvale sürükleyin</div>
+    </aside>
+    <div class="cv">
+      <svg viewBox="0 0 980 844" preserveAspectRatio="none">
+        <defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" style="fill:var(--fg3);stroke:none"/></marker><marker id="ars" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" style="fill:var(--accent);stroke:none"/></marker></defs>
+        <path d="M226 236 L278 236" marker-end="url(#ar)"/>
+        <path class="sel" d="M470 236 L522 236" marker-end="url(#ars)"/>
+        <path d="M714 236 L766 236" marker-end="url(#ar)"/>
+        <path class="sel" d="M375 272 C375 380 430 416 522 416" marker-end="url(#ars)"/>
+        <path d="M714 416 L766 416" marker-end="url(#ar)"/>
+      </svg>
+      <div class="box t-teal" style="left:36px;top:200px"><span class="k"><i class="bi bi-play-circle"></i>Başlangıç</span><b>Elle başlatılır</b><small>Kim başlatırsa</small></div>
+      <div class="box sel t-violet" style="left:280px;top:200px"><span class="k"><i class="bi bi-check2-square"></i>Görev</span><b>Müşteriyi ara</b><small>Mehmet Kaya · 2 gün içinde</small></div>
+      <div class="box t-blue" style="left:524px;top:200px"><span class="k"><i class="bi bi-envelope"></i>E-posta</span><b>Karşılama paketini gönder</b><small>Müşteriye</small></div>
+      <div class="box t-amber" style="left:768px;top:200px"><span class="k"><i class="bi bi-flag"></i>Bitiş</span><b>Akış burada biter</b><small>&nbsp;</small></div>
+      <div class="box t-gray" style="left:524px;top:380px"><span class="k"><i class="bi bi-hourglass-split"></i>Bekle</span><b>2 gün bekle</b><small>sonra devam et</small></div>
+      <div class="box t-blue" style="left:768px;top:380px"><span class="k"><i class="bi bi-bell"></i>Bildirim</span><b>Ekibe bildir</b><small>Alıcı seçilmedi</small><i class="bi bi-exclamation-triangle-fill warn"></i></div>
+      <span class="olab" style="left:478px;top:206px">Bitti</span>
+      <span class="olab" style="left:392px;top:330px">Ulaşılamadı</span>
+      <div class="zoom"><button class="ib sm"><i class="bi bi-dash"></i></button><span class="num">100%</span><button class="ib sm"><i class="bi bi-plus"></i></button><button class="ib sm"><i class="bi bi-arrows-fullscreen"></i></button></div>
+    </div>
+    <aside class="right">
+      <div class="ih"><span class="tile t-violet"><i class="bi bi-check2-square"></i></span><div><small>Görev</small><b>Müşteriyi ara</b></div><span class="sp"></span><button class="ib sm" title="Çoğalt, kaldır"><i class="bi bi-three-dots"></i></button><button class="ib sm" title="Kapat"><i class="bi bi-x-lg"></i></button></div>
+      <div class="tabs"><span class="seg"><span class="on">Ayarlar</span><span>Bağlantılar <em>3</em></span><span>Dene</span></span></div>
+      <div class="pn">
+        <div class="f"><span class="lab">Görev kime verilsin?</span><div class="in"><span class="av" style="width:22px;height:22px;font-size:9.5px">MK</span><span>Mehmet Kaya</span><i class="bi bi-chevron-down end"></i></div></div>
+        <div class="f"><span class="lab">Başlık</span><div class="in"><span>Müşteriyi ara</span></div></div>
+        <div class="f"><span class="lab">Son tarih</span><div class="in"><span>Görev açıldıktan 2 gün sonra</span><i class="bi bi-chevron-down end"></i></div></div>
+        <div class="f"><span class="lab">Açıklama <em>· isteğe bağlı</em></span><div class="in area"><span><span class="chipv">Müşterinin adı</span> ile ilk görüşme: hoş geldiniz deyin, ihtiyacını sorun.</span></div><span class="lnk"><i class="bi bi-braces"></i>Değer ekle</span></div>
+        <div class="f"><span class="lab">Sonuç seçenekleri</span><div class="in tags"><span class="tag">Bitti<i class="bi bi-x"></i></span><span class="tag">Ulaşılamadı<i class="bi bi-x"></i></span><span class="ph" style="font-size:13px">Seçenek ekle</span></div><p class="help">Her seçenek, bu kutudan çıkan ayrı bir ok olur.</p></div>
+      </div>
+      <div class="rf"><i class="bi bi-arrow-right-short"></i>Önce <b>Elle başlatılır</b><span class="sp"></span>Sonra <b>2 kutu</b><i class="bi bi-chevron-right"></i></div>
+    </aside>
+  </div>
+</div>
+<div class="parts">
+  <div class="part">
+    <div class="cap"><b>Sağ panel · Bağlantılar</b>Oklar ayrı sekmede: önce ne gelir, sonra ne gelir, hangi sonuçla.</div>
+    <section class="panel">
+      <div class="tabs" style="padding-top:14px"><span class="seg"><span>Ayarlar</span><span class="on">Bağlantılar <em>3</em></span><span>Dene</span></span></div>
+      <div class="pn">
+        <span class="lab">Önce gelen</span>
+        <div class="cn"><span class="tile t-teal"><i class="bi bi-play-circle"></i></span><span>Elle başlatılır</span></div>
+        <span class="lab" style="margin-top:12px">Sonra gelen</span>
+        <div class="cn"><span class="tile t-blue"><i class="bi bi-envelope"></i></span><span>Karşılama paketini gönder</span><div class="in"><span>Bitti</span><i class="bi bi-chevron-down end"></i></div><button class="ib sm dim"><i class="bi bi-x-lg"></i></button></div>
+        <div class="cn"><span class="tile"><i class="bi bi-hourglass-split"></i></span><span>2 gün bekle</span><div class="in"><span>Ulaşılamadı</span><i class="bi bi-chevron-down end"></i></div><button class="ib sm dim"><i class="bi bi-x-lg"></i></button></div>
+        <span class="lnk"><i class="bi bi-plus-lg"></i>Ok ekle</span>
+      </div>
+    </section>
+  </div>
+  <div class="part">
+    <div class="cap"><b>Sağ panel · Dene</b>Kutuyu hiçbir şey göndermeden deneme ayrı sekmede.</div>
+    <section class="panel">
+      <div class="tabs" style="padding-top:14px"><span class="seg"><span>Ayarlar</span><span>Bağlantılar <em>3</em></span><span class="on">Dene</span></span></div>
+      <div class="pn">
+        <span class="lab">Önceki kutuların değerleri</span>
+        <div class="in"><span>Son çalışmadan al · 12 Kas 16:20</span><i class="bi bi-chevron-down end"></i></div>
+        <button class="btn quiet" style="margin-top:12px"><i class="bi bi-eye"></i>Bu kutuyu dene</button>
+        <div class="res"><b>Şunu yapardı:</b> Mehmet Kaya'ya "Müşteriyi ara" görevi açılır, son tarih 14 Kas. Hiçbir şey gönderilmedi.</div>
+      </div>
+    </section>
+  </div>
+  <div class="part">
+    <div class="cap"><b>Sağ panel · kutu seçili değilken</b>Akışın özeti ve sorunları; her sorun kutusuna götürür.</div>
+    <section class="panel">
+      <div class="ih"><span class="tile t-blue"><i class="bi bi-diagram-3"></i></span><div><small style="color:var(--fg3)">Akış</small><b>Müşteri karşılama</b></div></div>
+      <div class="pn" style="border-top:1px solid var(--line)">
+        <div class="sum"><span>Başlangıç</span><span>Elle başlatılır</span><span>Kutular</span><span>6 kutu, 5 ok</span><span>Son çalışma</span><span>12 Kas 16:20 · tamamlandı</span><span>Yayın</span><span>Taslak, henüz yayınlanmadı</span></div>
+        <span class="lab" style="margin-top:14px">Sorunlar <em>· 1</em></span>
+        <div class="pr"><i class="bi bi-exclamation-triangle-fill"></i><span>"Ekibe bildir" kutusunda alıcı seçilmedi.</span><a>Kutuya git</a></div>
+      </div>
+    </section>
+  </div>
+  <div class="part">
+    <div class="cap"><b>Bugünküne göre ne değişiyor?</b></div>
+    <div class="before">
+      <ul style="margin-top:0">
+        <li><b>Sol:</b> uzun açıklamalı liste yerine tek satırlık kutular, gruplar açılıp kapanır; başlangıç seçiliyse tek satırda görünür.</li>
+        <li><b>Sağ:</b> ayarlar, oklar, deneme ve "kutuyu kaldır" tek uzun sayfada karışıktı; şimdi başlıkta kutunun adı, altında üç sekme. Kaldır ve çoğalt başlıktaki ⋯ menüsünde.</li>
+        <li><b>Üst:</b> "Yeni akış" düğmesi listeye taşınır; pencerede birincil düğme "Yayınla".</li>
+        <li><b>Tuval:</b> okların üstünde sonuç adı ("Bitti", "Ulaşılamadı"); sorunlu kutuda uyarı işareti.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+</body>
+</html>

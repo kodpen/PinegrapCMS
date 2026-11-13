@@ -48,7 +48,7 @@ if (!$_POST) {
 
     echo pg_page_shell([
         'title'=> lang('Create Key Code'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Create Key Code'),
         'cancel'=>array('enable'=>'true','url'=>'view_key_codes.php'),

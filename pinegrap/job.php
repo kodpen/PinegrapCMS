@@ -1082,6 +1082,12 @@ if (
 
 }
 
+// A Workspace mail still waiting on a queue row that is gone reads Not sent
+// (includes/workspace/mail_send.php): one small read on the created index.
+if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && function_exists('ws_mail_send_orphans_run') && ws_enabled()) {
+    ws_mail_send_orphans_run(time());
+}
+
 // The visitor location database (includes/fn/geo.php): this month's list,
 // fetched while a setting reads the visitor's location. The look is a file
 // read; the fetch happens about once a month, and a failed one is tried again

@@ -680,7 +680,7 @@ function pg_ltd_plan_items($p, $in_set = false)
         return implode(', ', $out);
     };
     if ($p['skip'] === 'refusal') {
-        return $line(lang('Skipped: the visual designer does not open this style.'), 'fg-danger');
+        return $line(lang('Skipped: the Page Design Studio does not open this style.'), 'fg-danger');
     }
     $items = '';
     foreach ($p['components'] as $c) {
@@ -699,7 +699,7 @@ function pg_ltd_plan_items($p, $in_set = false)
         $items .= $line(lang('The style\'s frame components made before are used.'));
     }
     if (!empty($p['frame_split'])) {
-        $items .= $line(lang('The page regions go into each page\'s own tree: their content is edited in the page in the visual designer, no longer on the site itself.'), 'fg-secondary');
+        $items .= $line(lang('The page regions go into each page\'s own tree: their content is edited in the page in the Page Design Studio, no longer on the site itself.'), 'fg-secondary');
     }
     $by = array('tree' => array(), 'keep' => array(), 'regions' => array(), 'held' => array());
     foreach ($p['pages'] as $page) $by[$page['action']][] = $page;
@@ -719,7 +719,7 @@ function pg_ltd_plan_items($p, $in_set = false)
         $items .= $line(lang(array('string' => 'The region "{var:1}" becomes a widget you design: {var:2}', 'vars' => array($w['name'], pg_ltd_widget_name($p['name'], $w['kind'])))));
     }
     if (!$in_set) {
-        $items .= $line(lang('The style becomes a visual design.'));
+        $items .= $line(lang('The style becomes a design.'));
     } else {
         if ($p['folder_pages'] > 0) {
             $items .= $line(lang(array('string' => '{var:1} of these pages take the style from their folder: they get the design as their own style, and the folder keeps the classic style.', 'vars' => array($p['folder_pages']))), 'fg-secondary');

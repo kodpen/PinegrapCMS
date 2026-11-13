@@ -380,21 +380,99 @@ function ws_checks_map($message_ids)
     $out = array();
 
     foreach ($rows as $row) {
-        // Ticked by the guest of the room (guests.php).
-        $guest = ((int) ($row['guest_id'] ?? 0) > 0) && function_exists('ws_guest_sender');
+        $who = ws_check_who($row);
+
+        if (($who === 'guest') && !function_exists('ws_guest_sender')) {
+            $who = 'user';
+        }
+
+        if ($who === 'app') {
+            $name = ws_app_sender((int) $row['app_id'])['name'];
+        } elseif ($who === 'guest') {
+            // Ticked by the guest of the room (guests.php).
+            $name = ws_guest_sender((int) $row['guest_id'])['name'];
+        } else {
+            $name = $people[(int) $row['user_id']]['name'] ?? ws_person_name($row['user_id']);
+        }
 
         $out[(int) $row['message_id']][(int) $row['item']] = array(
             'checked' => ((int) $row['checked'] === 1),
             'user_id' => (int) $row['user_id'],
-            'name'    => $guest ? ws_guest_sender((int) $row['guest_id'])['name'] : ($people[(int) $row['user_id']]['name'] ?? ws_person_name($row['user_id'])),
+            'name'    => $name,
             'at'      => ws_time_label($row['updated_at']),
             // The time itself, for the API (ws_api_message_checks()).
             'updated_at' => (int) $row['updated_at'],
-            'guest'   => $guest,
+            'guest'   => ($who === 'guest'),
+            // The application that ticked it with its key, 0 for a person.
+            'app_id'  => ($who === 'app') ? (int) $row['app_id'] : 0,
         );
     }
 
     return $out;
+}
+
+/**
+ * Who gave a ws_checks row: an application with its key ('app'), the guest
+ * of the room ('guest') or a person ('user'). Before the schema step the row
+ * has no app_id and reads as a person's. Pure.
+ *
+ * @param array $row ws_checks row
+ * @return string app | guest | user
+ */
+function ws_check_who($row)
+{
+    if ((int) ($row['app_id'] ?? 0) > 0) {
+        return 'app';
+    }
+
+    return ((int) ($row['guest_id'] ?? 0) > 0) ? 'guest' : 'user';
+}
+
+/**
+ * Is ws_checks.app_id there? The 2026.11.0 step that adds ws_agents.seen_at
+ * adds it; until it has run an application's tick is kept as its owner's.
+ *
+ * @return bool
+ */
+function ws_checks_app_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_interact_ready() && ((int) db_value("SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ws_checks' AND COLUMN_NAME = 'app_id'") > 0);
+    }
+
+    return $ready;
+}
+
+/**
+ * The checks ws_check_set() makes before it writes, so that the API's dry
+ * run meets the same refusals: anyone who may write in the channel may tick,
+ * an application where its owner may.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @param int   $item
+ * @return array ok, error, field (the input the refusal is about)
+ */
+function ws_check_check($viewer, $message, $item)
+{
+    if (!ws_interact_ready() || ((int) $message['deleted_at'] > 0)) {
+        return array('ok' => false, 'error' => lang('Invalid request.'), 'field' => 'id');
+    }
+
+    if (!ws_can_post_channel($viewer, ws_channel($message['channel_id']))) {
+        return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'field' => 'id');
+    }
+
+    $items = ws_checklist_items($message['body']);
+
+    if (!isset($items[(int) $item])) {
+        return array('ok' => false, 'error' => lang('That item is no longer in the list.'), 'field' => 'item');
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '');
 }
 
 /**
@@ -405,31 +483,29 @@ function ws_checks_map($message_ids)
  * @param array $message
  * @param int   $item
  * @param bool  $checked
+ * @param int   $app_id  the application ticking with its key (0 = the person)
  * @return array ok, error
  */
-function ws_check_set($viewer, $message, $item, $checked)
+function ws_check_set($viewer, $message, $item, $checked, $app_id = 0)
 {
-    if (!ws_interact_ready() || ((int) $message['deleted_at'] > 0)) {
-        return array('ok' => false, 'error' => lang('Invalid request.'));
+    $check = ws_check_check($viewer, $message, $item);
+
+    if (!$check['ok']) {
+        return array('ok' => false, 'error' => $check['error']);
     }
 
-    if (!ws_can_post_channel($viewer, ws_channel($message['channel_id']))) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
-    }
-
-    $items = ws_checklist_items($message['body']);
     $item = (int) $item;
-
-    if (!isset($items[$item])) {
-        return array('ok' => false, 'error' => lang('That item is no longer in the list.'));
-    }
 
     // A tick a guest gave before is the person's now.
     $guest_column = function_exists('ws_guest_votes_ready') && ws_guest_votes_ready();
+    // A tick an application gave before is whoever gives it now.
+    $app_column = ws_checks_app_ready();
+    $app_id = $app_column ? max(0, (int) $app_id) : 0;
 
-    db("INSERT INTO ws_checks (message_id, item, checked, user_id, updated_at)
-        VALUES ('" . (int) $message['id'] . "', '" . $item . "', '" . ($checked ? 1 : 0) . "', '" . (int) $viewer['id'] . "', '" . time() . "')
-        ON DUPLICATE KEY UPDATE checked = VALUES(checked), user_id = VALUES(user_id), updated_at = VALUES(updated_at)" . ($guest_column ? ", guest_id = 0" : ''));
+    db("INSERT INTO ws_checks (message_id, item, checked, user_id, updated_at" . ($app_column ? ', app_id' : '') . ")
+        VALUES ('" . (int) $message['id'] . "', '" . $item . "', '" . ($checked ? 1 : 0) . "', '" . (int) $viewer['id'] . "', '" . time() . "'" . ($app_column ? ", '" . $app_id . "'" : '') . ")
+        ON DUPLICATE KEY UPDATE checked = VALUES(checked), user_id = VALUES(user_id), updated_at = VALUES(updated_at)"
+        . ($guest_column ? ", guest_id = 0" : '') . ($app_column ? ", app_id = VALUES(app_id)" : ''));
 
     ws_message_touch($message['id']);
     ws_checklist_tasks_refresh($message['id']);

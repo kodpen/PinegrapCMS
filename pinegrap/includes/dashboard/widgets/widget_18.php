@@ -263,7 +263,7 @@ function pg_dashboard_widget_18($request, $user)
             // just has nothing to offer.
             $fm_action .= '
             <button type="button" class="btn btn-sm btn-outline theme-secondary border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
-               title="' . lang(array('string' => 'Edit this image with {var:1}', 'vars' => array(lang('Image Editor')))) . '"
+               title="' . lang('Edit this image in the Design Canvas') . '"
                data-pg-image-edit="' . h($fm_item['name']) . '"><i class="bi bi-brush"></i></button>' . pg_image_editor_includes();
         }
 

@@ -116,3 +116,59 @@ function test_error_panel_link_only_for_panel_users_on_panel_scripts()
 	pg_assert_same('', pg_error_panel_link('/index.php', 'pinegrap', 0), 'outside the software directory');
 	pg_assert_same('', pg_error_panel_link('/pinegrap/edit_page.php', '', 0), 'no software directory known');
 }
+
+// The body of function $name in $source, up to its closing brace at the
+// start of a line.
+function pg_test_error_page_function_body($source, $name)
+{
+	$start = strpos($source, 'function ' . $name . '(');
+
+	if ($start === false) {
+		return '';
+	}
+
+	$end = strpos($source, "\n}", $start);
+
+	return substr($source, $start, ($end === false ? strlen($source) : $end) - $start);
+}
+
+// A panel screen's error ("Record not found." on Edit Page, Edit Short Link,
+// Edit Calendar Event ...) keeps the screen's own message and a way back to
+// the panel. On a site with a designed error page it was drawn as that
+// page's 404 block in the shop's design, with neither (#9024).
+function test_error_panel_card_keeps_the_message_and_the_way_back()
+{
+	$message = lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.';
+	$card = pg_error_panel_card($message, '/pinegrap/welcome.php');
+
+	pg_assert_contains($message, $card, 'the screen\'s message, with its own link');
+	pg_assert_contains('href="/pinegrap/welcome.php"', $card, 'the way back to the panel');
+	pg_assert_contains(h(lang('Back to the control panel')), $card, 'named as before');
+	pg_assert_contains('<h1 class="h4 mb-5"><i class="bi bi-exclamation-triangle me-3" aria-hidden="true"></i>' . h(lang('Error')) . '</h1>', $card, 'headed as an error');
+	pg_assert_contains('<div class="card mx-auto', $card, 'on the card of the sign-in screens without a site page');
+	pg_assert_same(1, substr_count($card, '<a class="btn'), 'one button');
+	pg_assert_contains('href="/a&quot;b/welcome.php"', pg_error_panel_card('x', '/a"b/welcome.php'), 'the address is escaped');
+}
+
+// output_error() draws a panel screen's error in the panel's own frame
+// before the designed error page hears of it, and only past the database
+// check: a failed query still prints the bare message, which carries the
+// way back too.
+function test_output_error_draws_a_panel_error_in_the_panel()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/core.php');
+	$body = pg_test_error_page_function_body($source, 'output_error');
+	$panel = strpos($body, "if (\$panel_link !== '') {\n            echo pg_error_panel_screen(\$error_message, \$panel_link);\n            exit();");
+
+	pg_assert_true($panel !== false, 'a panel link draws the panel screen and stops');
+	pg_assert_true($panel > strpos($body, "if (!db::\$con or \$mysql_error != '') {"), 'after the database check');
+	pg_assert_true($panel < strpos($body, 'pg_sw_error_context('), 'before the designed error page is told of the error');
+	pg_assert_true($panel < strpos($body, 'get_error_screen('), 'so the site\'s error page is never drawn for it');
+	pg_assert_contains("\$content .= '<p><a href=\"' . h(\$panel_link) . '\">'", $body, 'the bare message keeps the way back');
+
+	$screen = pg_test_error_page_function_body($source, 'pg_error_panel_screen');
+
+	pg_assert_contains("output_header_secure(array('title' => lang('Error'), 'icon' => 'welcome'))", $screen, 'the panel\'s own frame');
+	pg_assert_contains('pg_error_panel_card($error_message, $panel_link)', $screen, 'around the card');
+	pg_assert_contains('output_footer_secure()', $screen, 'closed');
+}

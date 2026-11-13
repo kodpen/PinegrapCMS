@@ -47,7 +47,7 @@ if ($list_page === false) {
 print
 pg_page_shell([
         'title'=> lang('All Commission Profiles'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>lang('All Commission Profiles'),
         'heading_description' => lang('View all profiles for recurring commissions.'),

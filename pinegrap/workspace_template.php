@@ -37,7 +37,7 @@ include_once('liveform.class.php');
 $liveform = new liveform('workspace_template');
 
 $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_template.php';
-$settings_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php#ws-templates';
+$settings_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_workspace_link('ws-templates');
 
 $template = null;
 $body_json = '';

@@ -61,7 +61,7 @@ if (!isset($_POST['name'])) {
     print 
     pg_page_shell([
         'title'=> lang('Edit Dynamic Region'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang('Edit Dynamic Region'),
         'heading_description' => lang('Update this dynamic region of shared content. (A rename will require its tag to be updated in any page styles.)'),

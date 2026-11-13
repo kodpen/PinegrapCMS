@@ -108,7 +108,7 @@ print
 pg_page_shell(
     array(
         'title'=> lang('All Currencies'),
-        'extra classes'=>'setting',
+        'extra classes'=>'setting pg-measure-list',
         'icon'=>'setting', 
         'heading'=>lang('All Currencies'),
         'heading_description' => lang('All currencies available for customers to select.'),

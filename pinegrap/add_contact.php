@@ -30,7 +30,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Create Contact'),
-            'extra classes'=>'contact',
+            'extra classes'=>'contact pg-measure-edit',
             'icon'=>'contact',
             'heading'=>lang('Create Contact'),
             'heading_description' => lang('Create a new contact, subscriber, unregistered member, or unapproved affiliate, and add them to any of my contact groups.'),
@@ -48,7 +48,7 @@ if (!$_POST) {
                     ' . pg_contact_form_layout(
                         pg_contact_form_name_card(array(), true) . '
                             <div class="card mb-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('New Contact\'s Subscriber Information') . '
                                 </h2>
                                 <div class="card-body">

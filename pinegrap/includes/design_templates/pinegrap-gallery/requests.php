@@ -539,7 +539,7 @@ $request_detail = function ($back_text, $back_key, $missing, $not_found_title, $
                                     $para($eyebrow, 'pgl-eyebrow small text-uppercase fw-semibold text-primary mb-1'),
                                     $heading('h1', $title_sample, 'pgl-display h3 mb-0', $bind($title_field)),
                                 )),
-                                $span($status, 'badge rounded-0 text-bg-dark fs-6', lang('Status'), $bind('status')),
+                                $span($status, 'badge rounded-0 text-bg-primary fs-6', lang('Status'), $bind('status')),
                             )),
                             $el('dl', 'row small mb-0', lang('Details'), $details),
                         )),

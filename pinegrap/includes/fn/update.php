@@ -1756,10 +1756,16 @@ function pg_extract_archive($archive_path, $destination)
 // ----------------------------------------------------------------------------
 
 /**
- * The version the update server offers this installation's channel
- * (pg_update_request_key()), asked the way the update's check step has always
- * asked: the installation's details posted as JSON, the API key, a verified
- * certificate (pg_curl_tls()), the proxy when there is one, and this
+ * The version the update server offers this installation's channel.
+ *
+ * With PG_VENDOR_API_V1 on, the Kodpen API is asked
+ * (pg_vendor_release_check()) and the answer also has 'decision', what the
+ * release offers in $mode (pg_vendor_release_offer()); an unusable answer is
+ * curl_error when no answer came, else invalid_response.
+ *
+ * Only with the switch off is the old api2 server asked
+ * (pg_update_request_key()): the installation's details posted as JSON, a
+ * verified certificate (pg_curl_tls()), the proxy when there is one, and this
  * installation's User-Agent - sent with none, a request looks like an
  * anonymous client to the update server's firewall and is rejected.
  *
@@ -1770,11 +1776,6 @@ function pg_extract_archive($archive_path, $destination)
  *   http_error        the server answered with a status outside 2xx
  *                     ('http_status')
  *   invalid_response  the answer named no version
- *
- * Once PG_VENDOR_API_V1 is on, the Kodpen API is asked instead
- * (pg_vendor_release_check()) and the answer also has 'decision', what the
- * release offers in $mode; an unusable answer is curl_error when no answer
- * came, else invalid_response.
  *
  * @param string $mode 'update', or 'repair' for Repair Software
  * @return array('ok' => bool, 'version' => string, 'error' => string,

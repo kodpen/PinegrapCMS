@@ -905,8 +905,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
-            $el('div', 'container', lang('Navbar Container'), array(
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
+            $el('div', 'container flex-xl-wrap', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-car-front', 'fs-4 text-primary'),
                     $span('{{site_name}}', 'pdr-brand fs-4', lang('Name')),
@@ -922,8 +922,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
+                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
                         $el('a', 'btn btn-primary d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $icon('bi-pencil-square'),
                             $span(lang('Enrol Now'), '', lang('Link Text')),
@@ -1034,7 +1034,7 @@ $enrol_band = function () use ($el, $heading, $para, $link, $container, $row, $c
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
                         $link(lang('Enrol Now'), '{{page:enrol}}', 'btn btn-primary btn-lg px-4'),
-                        $link($school['phone'], 'tel:' . preg_replace('/[^0-9+]/', '', $school['phone']), 'btn btn-outline-light btn-lg px-4'),
+                        $link($school['phone'], 'tel:' . preg_replace('/[^0-9+]/', '', $school['phone']), 'btn btn-secondary btn-lg px-4'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -1104,7 +1104,7 @@ $course_card = function ($sample_key = 'car_standard') use ($el, $para, $span, $
                     )),
                 )),
                 $para($c['summary'], 'small text-body-secondary mb-3', $bind('summary')),
-                $span($licences[$c['licence']]['title'], 'pdr-badge badge text-bg-dark align-self-start mt-auto', lang('Licence Class'), $bind('licence')),
+                $span($licences[$c['licence']]['title'], 'pdr-badge badge text-bg-secondary align-self-start mt-auto', lang('Licence Class'), $bind('licence')),
             )),
         )),
     ), '6', '4');
@@ -1119,7 +1119,7 @@ $instructor_card = function ($n) use ($el, $heading, $para, $image, $col, $attr,
     foreach ($t['licences'] as $key) $plates[] = $plate($licences[$key]['code'], 'small', array('_attrs' => array($attr('title', $licences[$key]['title']))));
     return $col(array(
         $el('article', 'card h-100 border-0 shadow-sm rounded-3 text-center p-4', lang('Instructor'), array(
-            $image($portrait($t['name'], 240), $t['name'], 'rounded-circle mx-auto mb-3', array('_attrs' => array($attr('width', '120'), $attr('height', '120'), $attr('loading', 'lazy')))),
+            $image($portrait($t['name'], 240), $t['name'], 'rounded-circle mx-auto mb-3', array('width' => '120', 'height' => '120', '_attrs' => array($attr('loading', 'lazy')))),
             $heading('h3', $t['name'], 'pdr-display h5 mb-1'),
             $para($t['role'], 'small fw-semibold text-primary mb-2'),
             $el('div', 'd-flex justify-content-center gap-2 mb-2', lang('Licence Classes'), $plates),
@@ -1142,7 +1142,7 @@ $story_card = function ($sample_key = 'zeynep') use ($el, $para, $span, $link, $
             $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
                 $el('div', 'd-flex flex-wrap gap-2 mb-3', lang('Badges'), array(
                     $span($licences[$s['licence']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Licence Class'), $bind('licence')),
-                    $span($try_choices[$s['try']], 'pdr-badge badge rounded-pill text-bg-dark', lang('Passed At'), $bind('try')),
+                    $span($try_choices[$s['try']], 'pdr-badge badge rounded-pill text-bg-secondary', lang('Passed At'), $bind('try')),
                 )),
                 $el('blockquote', 'mb-3', lang('Quote'), array($para($s['quote'], 'pdr-quote mb-0', $bind('words')))),
                 $el('figcaption', 'mt-auto', lang('Learner'), array(

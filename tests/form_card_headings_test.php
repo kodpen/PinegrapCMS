@@ -64,11 +64,11 @@ function test_form_card_titles_are_h2_with_the_same_look()
 	);
 	foreach ($files as $file => $count) {
 		$src = form_card_headings_source($file);
-		pg_assert_true(preg_match_all('/<h2 class="card-header[^"]*\bh5\b[^"]*">/', $src) === $count, $file . ': ' . $count . ' card titles are h2.h5');
+		pg_assert_true(preg_match_all('/<h2 class="card-header[^"]*\b(h5|pg-title-section)\b[^"]*">/', $src) === $count, $file . ': ' . $count . ' card titles are h2.h5');
 	}
 
 	$user = form_card_headings_source('user_form.php');
-	pg_assert_true(substr_count($user, '<h2 class="text-uppercase h5 fg-primary fw-bold mb-0">\' . lang(\'User Rights\') . \'</h2>') === 2, 'user rights card titles are h2.h5');
+	pg_assert_true(substr_count($user, '<h2 class="pg-title-section mb-0">\' . lang(\'User Rights\') . \'</h2>') === 2, 'user rights card titles are h2 section titles');
 }
 
 function test_form_group_titles_are_h3_inside_cards()

@@ -159,7 +159,7 @@ if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
 echo
 pg_page_shell([
         'title' => lang('Delivery Note'),
-        'extra classes' => 'erp erp_waybills',
+        'extra classes' => 'erp erp_waybills pg-measure-edit',
         'icon' => 'erp',
         'heading' => h($waybill['full_number']),
         'heading_description' => lang('The note as it was written: what left, to whom and how.'),
@@ -192,7 +192,7 @@ pg_page_shell([
             <div class="row">
                 <div class="col-12 xl:col-6">
                     <div class="card my-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        <div class="card-header bg-reset border-0 pg-title-section">
                             ' . lang('Delivered to') . '
                         </div>
                         <div class="card-body">
@@ -204,7 +204,7 @@ pg_page_shell([
                 </div>
                 <div class="col-12 xl:col-6">
                     <div class="card my-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        <div class="card-header bg-reset border-0 pg-title-section">
                             ' . lang('Transport') . '
                         </div>
                         <div class="card-body">
@@ -216,7 +216,7 @@ pg_page_shell([
             </div>
 
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Lines') . '
                 </div>
                 <div class="card-body p-0 position-relative table-responsive">
@@ -236,7 +236,7 @@ pg_page_shell([
 
             ' . ((trim((string) $waybill['notes']) !== '')
                 ? '<div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Notes') . '
                 </div>
                 <div class="card-body">' . nl2br(h($waybill['notes'])) . '</div>
@@ -271,7 +271,7 @@ pg_page_shell([
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <div class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Delivery Note') . '
                     </div>
                     <div class="card-body">

@@ -29,6 +29,22 @@ function test_page_form_clean_name()
 	pg_assert_same('', pg_page_form_clean_name('shop', 'catalog')['error']);
 }
 
+// The name is the page's address. IIS decodes the path before PHP reads it:
+// a "?" (%3F) cut the name at the router as the query string, and "+" or "%"
+// with two hex digits is a double escape IIS answers with 404.11. They become
+// underscores as spaces do; "#" (%23) reaches the router whole and is kept.
+function test_page_form_clean_name_address_characters()
+{
+	pg_assert_same('pg-test-soru_isareti', pg_page_form_clean_name('pg-test-soru?isareti', 'standard')['name']);
+	pg_assert_same('100__pamuk', pg_page_form_clean_name('100% pamuk', 'standard')['name']);
+	pg_assert_same('pg-test/alt_yol_x=1#y_20_z.php', pg_page_form_clean_name('pg-test/alt yol?x=1#y%20&z.php', 'standard')['name']);
+	pg_assert_same('', pg_page_form_clean_name('pg-test-soru?isareti', 'standard')['error'], 'cleaned, not refused');
+	pg_assert_same('pg-test-diyez#isareti', pg_page_form_clean_name('pg-test-diyez#isareti', 'standard')['name']);
+	pg_assert_same('çay_ğ', pg_page_form_clean_name('çay?ğ', 'standard')['name'], 'letters are kept');
+	pg_assert_same('pg-test-arti_isaret', pg_page_form_clean_name('pg-test-arti+isaret', 'standard')['name'], 'a plus sign');
+	pg_assert_same('C__', pg_page_form_clean_name('C++', 'standard')['name']);
+}
+
 function test_page_form_clean_name_length()
 {
 	$fits = str_repeat('ş', 100);

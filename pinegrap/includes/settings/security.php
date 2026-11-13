@@ -63,7 +63,7 @@ $pg_settings_cards[] = '
     <div id="pgset-session" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Session & Password') . '</span>
+                <span class="pg-title-section">' . lang('Session & Password') . '</span>
                 <a href="view_sessions.php" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-shield-lock me-1"></i>' . lang('Sessions') . '</a>
             </div>
             <div class="card-body">
@@ -112,7 +112,7 @@ $pg_settings_cards[] = '
     <div id="pgset-captcha" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Spam Protection') . '</span>
+                <span class="pg-title-section">' . lang('Spam Protection') . '</span>
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -140,7 +140,7 @@ $pg_settings_cards[] = '
     <div id="pgset-device" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Device') . '</span>
+                <span class="pg-title-section">' . lang('Device') . '</span>
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -195,7 +195,7 @@ $pg_settings_cards[] = '
     <div id="pgset-mfa" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Two-Step Verification') . '</span>
+                <span class="pg-title-section">' . lang('Two-Step Verification') . '</span>
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -229,7 +229,7 @@ if ($audit_retention_ready) {
     <div id="pgset-audit" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Audit Trail') . '</span>
+                <span class="pg-title-section">' . lang('Audit Trail') . '</span>
                 <a class="btn btn-sm btn-outline theme-secondary" href="view_audit_log.php">' . lang('Open it') . '</a>
             </div>
             <div class="card-body">
@@ -400,7 +400,7 @@ $pg_settings_cards[] = '
     <div id="pgset-signin" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang(array('string' => 'Sign in with {var:1}, {var:2} and {var:3}', 'vars' => array('<span lang="en">Google</span>', '<span lang="en">Microsoft</span>', '<span lang="en">Apple</span>'))) . '</span>
+                <span class="pg-title-section">' . lang(array('string' => 'Sign in with {var:1}, {var:2} and {var:3}', 'vars' => array('<span lang="en">Google</span>', '<span lang="en">Microsoft</span>', '<span lang="en">Apple</span>'))) . '</span>
             </div>
             <div class="card-body">
                 <div class="row gy-5">
@@ -418,7 +418,7 @@ $pg_settings_cards[] = '
 $pg_settings_cards[] = '
                         <div id="pgset-membership" class="pg-set-card">
                             <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Registration & Membership') . '
                                 </div>
                                 <div class="card-body">
@@ -490,7 +490,7 @@ $pg_settings_cards[] = '
     <div id="pgset-encryption" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Encryption Key') . '</span>
+                <span class="pg-title-section">' . lang('Encryption Key') . '</span>
             </div>
             <div class="card-body">
                 <div class="row gy-5">

@@ -421,8 +421,10 @@ function pg_panel_software_update($request, $action)
             // message of an error answer in its log box and offers a retry.
             if ($repair) {
                 // Refused while update checks are off (the repair asks the
-                // same server), when the server names no version, and when
-                // it offers an older one: pg_update_repair_decision().
+                // same server), with pg_update_repair_decision()'s text. A
+                // server that offers no release or an older version refuses
+                // further down: pg_vendor_release_offer() on the Kodpen API
+                // path, pg_update_repair_decision() on the api2 one.
                 $checks_enabled = !(defined('SOFTWARE_UPDATE_CHECK') && (SOFTWARE_UPDATE_CHECK === false));
 
                 if (!$checks_enabled) {
@@ -434,7 +436,7 @@ function pg_panel_software_update($request, $action)
                 }
             }
 
-            // The Kodpen API once PG_VENDOR_API_V1 is on
+            // The Kodpen API while PG_VENDOR_API_V1 is on
             // (includes/fn/vendor_api.php): the release is pinned in the
             // session for the steps after this one, which read nothing else,
             // or the answer's own reason ends the update here. With update

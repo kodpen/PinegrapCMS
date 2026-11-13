@@ -312,7 +312,7 @@ $wedding_widgets['wedding_detail'] = array(
                 )),
                 $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
                     $span($spaces[$wedding_sample['space']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Venue Space'), $bind('space')),
-                    $span($seasons[$wedding_sample['season']]['title'], 'badge rounded-pill text-bg-light border', lang('Season'), $bind('season')),
+                    $span($seasons[$wedding_sample['season']]['title'], 'badge rounded-pill bg-body text-body-emphasis border', lang('Season'), $bind('season')),
                 )),
                 $heading('h1', $wedding_sample['couple'], 'pwd-display display-5 mb-2', $bind('couple')),
                 $para($wedding_sample['summary'], 'lead text-body-secondary mb-4', $bind('summary')),

@@ -7,7 +7,7 @@ description: An agent's last seen: ws_agents.seen_at set by every call with an a
 - Owner (2026-11-11, #8762): "mesela tüm ajanlar ayakta mı sorulabilir". Asking wakes every agent and costs each a turn, so the site shows what it sees instead. Schema approved 2026-11-12 (`workflow/decisions-made-schema-16.md`).
 
 ## When is it written?
-- `ws_agents.seen_at` (step 11.0.189, `upgrade_2026_11_0_ws_agent_seen()`, which also adds `ws_checks.app_id` for A18): every call that resolves `ws_api_agent_caller()` (the agent-requests and agent-wake routes, so every poll of `GET /workspace/agent-requests`) calls `ws_agent_seen_mark()`.
+- `ws_agents.seen_at` (step 11.0.189, `upgrade_2026_11_0_ws_agent_seen()`, which also adds `ws_checks.app_id`, the tick of `agent-checklist-questions.md`): every call that resolves `ws_api_agent_caller()` (the agent-requests and agent-wake routes, so every poll of `GET /workspace/agent-requests`) calls `ws_agent_seen_mark()`.
 - Written at most once a minute (`ws_agent_seen_due()`, `WS_AGENT_SEEN_EVERY` 60 s). A site that has not run the step reads no `seen_at` in the row and writes nothing. 0 means never seen.
 
 ## What is shown?

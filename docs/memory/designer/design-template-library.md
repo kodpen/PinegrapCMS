@@ -6,7 +6,7 @@ description: Public Library template (pinegrap-library): branches as data, catal
 ## What does it ship?
 - Home (`home_arrivals`, `home_events`, `home_posts`, `google_reviews`), `visit` and one `branch_<key>` per branch, `children`, `digital`, `spaces`, `about`, `faq`; `catalogue` (`?format=`, `?audience=`), `item`, `item_new`; `events` (`?kind=`), `event`, `event_new`; four requests, each with its form page, `_view`, `my_…`, `staff_…` and two e-mail pages: place requests (`event_booking`), library cards (`join`), title reservations (`reserve`, `?title=`), room bookings (`room_booking`, `?room=`); `privacy`, the standard pages with News, account and staff pages. The full list is `_test_lb_page_keys()`.
 - No catalog: a public library takes no payment online; only `address_book` carries `requires => ecommerce`.
-- Shared: account_bar, notice, header, footer, staff_bar, join_band, email_header/footer. Order 103, icon `bi-book`, look `elegant`, palette `forest` (e-mail `#3f6212`). Contact group `newsletter`. Built in #7770 to #7945 and the assembly PR.
+- Shared: account_bar, notice, header, footer, staff_bar, join_band, email_header/footer. Order 103, icon `bi-book`, look `elegant`, palette `forest` (e-mail `#3f6212`). Contact group `newsletter`. Built in #7770 to #7945 and the assembly PR; 2.0.0 (#8846): pages on blocks, [[design-template-library-pages]].
 
 ## Why a main file plus a folder?
 - As School and Museum ([[design-template-museum]]): `pinegrap-library.php` includes `parts.php`, `mail.php`, then `pages_public`, `catalogue`, `events`, `membership`, `rooms`, `standard`, `account` in one scope, returns kept as `$…_part` (`$branches`, `$catalogue_items`, `$events`, `$rooms`, `$staff` are parts.php's data).

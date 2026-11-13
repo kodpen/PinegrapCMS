@@ -5788,6 +5788,14 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-body.sd-dock-forced.sd-open-right #sd-dock-backdrop { display: block; }
 .sd-body.sd-dock-forced .sd-panel-resize-handle { display: none; }
 
+/* ── Left panel hidden by the toolbar's menu button ──
+   The panel and its rail go together, whether the panel sits in the flow or
+   is docked, so the canvas takes the whole width. Equal specificity to the
+   docking rules above and later in the file, so it wins without !important. */
+.sd-body.sd-hide-left > .sd-panel-left,
+.sd-body.sd-hide-left > .sd-rail-left { display: none; }
+.sd-left-toggle[aria-expanded="false"] { color: var(--sd-text-muted); }
+
 /* ── Dock toggle in the panel headers ── */
 .sd-dock-spacer { flex: 1; }
 .sd-dock-toggle {

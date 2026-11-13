@@ -295,7 +295,7 @@ $unit_widgets['unit_detail'] = array(
                 )),
                 $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
                     $span($unit_kind($unit_sample_key), 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Kind'), $bind('kind')),
-                    $span($unit_setting($unit_sample_key), 'badge rounded-pill text-bg-dark', lang('Place in the Park'), $bind('setting')),
+                    $span($unit_setting($unit_sample_key), 'badge rounded-pill text-bg-secondary', lang('Place in the Park'), $bind('setting')),
                 )),
                 $heading('h1', $unit_sample['name'], 'pcp-display display-6 mb-2', $bind('title')),
                 $para($unit_sample['summary'], 'lead text-body-secondary mb-3', $bind('summary')),

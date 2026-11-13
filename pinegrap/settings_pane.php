@@ -352,9 +352,11 @@ pg_settings_pane_respond(array(
     // Secure Mode can be switched on by the save that just ran. The dialog
     // cannot go on talking to the old scheme: say where the panel lives now
     // and let it move the whole screen there.
+    // A card button that started a service's sign-in (pg_settings_go())
+    // sends the screen there the same way.
     'reload'   => (($scheme !== URL_SCHEME)
         ? ($scheme . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/welcome.php')
-        : ''),
+        : pg_settings_go()),
     'meta'     => pg_settings_last_modified($saved_row),
     'token'    => (isset($_SESSION['software']['token']) ? $_SESSION['software']['token'] : ''),
 ));

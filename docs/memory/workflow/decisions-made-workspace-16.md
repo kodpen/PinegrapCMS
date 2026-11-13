@@ -11,7 +11,7 @@ description: Decisions list, workspace part 16 (2026-11-11): clearing a conversa
 - Owner (2026-11-11), in the agents channel: "ajan kanalında konuşmayı temizle dersem bellek ve kararlar dahil silinir mi mi? silinmeli mi?"; to the architect agent's suggestions: "önerilerini onaylıyorum".
 
 ## How is it seen that an agent is up, and may an agent tick a checklist? (owner, 2026-11-11, #8762)
-- An agent's card shows when it was last seen; an application ticks a checklist line over the API. Steps A17 and A18 (`plans/agent-channel-steps-5.md`).
+- An agent's card shows when it was last seen; an application ticks a checklist line over the API. Built: `workspace/agent-last-seen.md`, `workspace/agent-checklist-questions.md`.
 - Owner (2026-11-11): "burada checkin sorabiliyormusunuz? ve diğer ajanlar işaretleyebilyor mu? mesela tüm ajanlar ayakta mı sorulabilir."; then "önerilerini onaylıyorum".
 - The architect's, not the owner's words: no roll call that wakes every agent; it costs each a turn.
 
@@ -30,4 +30,4 @@ description: Decisions list, workspace part 16 (2026-11-11): clearing a conversa
 ## Does an agent make a live page too? (owner, 2026-11-11, #8762)
 - Yes. Beside the SVG canvas an agent writes HTML, CSS and script, opened live in the channel in a guarded frame; the canvas stays.
 - Owner (2026-11-11), in the architect's window after the trial canvas: "attığın görseli gördüm oldukça başarılı ama ben ise aynı claude daki oluşturma mantığın ile sitede de üretebil istiyorum."; asked with a drawing of each option: "Canlı sayfa da olsun (Önerilen)". Not chosen: "SVG tuval yeterli, güçlensin".
-- The architect's, not the owner's words: the frame has no way to the panel, its cookies or its session; the guard is proven before a page is shown (`plans/agent-live-page.md`).
+- The architect's, not the owner's words: the frame has no way to the panel, its cookies or its session; the guard is proven before a page is shown (`platform/guarded-frame.md`, `workspace/agent-page.md`).

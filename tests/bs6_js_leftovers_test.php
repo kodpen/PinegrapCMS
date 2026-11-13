@@ -44,7 +44,7 @@ function test_bs6_js_leftovers_parasut_status()
 
 function test_bs6_js_leftovers_image_tiles()
 {
-	foreach (array('assets/js/backend.src.js', 'product_builder.php', 'edit_contact.php', 'editor_select_image.php') as $path) {
+	foreach (array('assets/js/backend.src.js', 'product_builder.php', 'edit_contact.php') as $path) {
 		$source = bs6_js_leftovers_source($path);
 		pg_assert_true(strpos($source, 'ratio-2x1') === false, $path . ': ratio-2x1');
 		pg_assert_true(strpos($source, '--bs-aspect-ratio') === false, $path . ': --bs-aspect-ratio');

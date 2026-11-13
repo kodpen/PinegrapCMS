@@ -4,8 +4,9 @@
  *
  * Workspace: the reading pane of the E-mails screen. A conversation's mails
  * in the order they came and went, each with who wrote it, to and Cc, its
- * text, its files and, under an answer, whether it was not sent, waits to
- * be sent or came back undelivered. Whoever may read the conversation's
+ * text (or its kept HTML in the guarded frame, workspace_mail_frame.php),
+ * its files and, under an answer, whether it was not sent, waits to be sent
+ * or came back undelivered. Whoever may read the conversation's
  * channel may read the pane (ws_can_read_channel()). The server draws it for
  * the screen's address (?conversation=), the screen's script in place, and
  * the script adds the answer and the status controls for whoever may write.
@@ -22,6 +23,24 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /** The newest mails of a conversation the pane shows. */
 define('WS_MAIL_PANE_MAX', 200);
+
+/**
+ * The columns of a mail the pane reads. Its kept HTML (up to 1 MB each) is
+ * never read here: only whether there is one and whether it names pictures
+ * from outside; the frame's own request reads it (ws_mail_frame()).
+ *
+ * @param bool $html ws_mail_html_ready()
+ * @return string SQL
+ */
+function ws_mail_pane_columns($html)
+{
+    return 'id, box_id, conversation_id, message_id, direction, rfc_message_id, in_reply_to, from_email, from_name, to_list, cc_list,'
+        . ' subject, body_text, auth, refused_files, user_id, sent_at, created_at, send_state, send_error, '
+        . ($html
+            ? "(body_html IS NOT NULL AND body_html <> '') AS has_html,"
+                . " (LOCATE(' data-pg-src=\"http', body_html) > 0 OR LOCATE(' data-pg-background=\"http', body_html) > 0) AS outside_pictures"
+            : '0 AS has_html, 0 AS outside_pictures');
+}
 
 /**
  * A conversation for the pane, when the person may read its channel.
@@ -41,7 +60,7 @@ function ws_mail_pane($viewer, $conversation_id)
         return null;
     }
 
-    $items = array_reverse((array) db_items("SELECT * FROM ws_mail_items WHERE conversation_id = '" . (int) $conversation['id'] . "'
+    $items = array_reverse((array) db_items("SELECT " . ws_mail_pane_columns(ws_mail_html_ready()) . " FROM ws_mail_items WHERE conversation_id = '" . (int) $conversation['id'] . "'
         ORDER BY id DESC LIMIT " . WS_MAIL_PANE_MAX));
     $ids = array();
     $sent = array();
@@ -73,7 +92,7 @@ function ws_mail_pane($viewer, $conversation_id)
             return "'" . e((string) $id) . "'";
         }, array_keys($sent)));
 
-        foreach ((array) db_items("SELECT * FROM ws_mail_items WHERE box_id = '" . (int) $conversation['box_id'] . "' AND conversation_id = 0
+        foreach ((array) db_items("SELECT id, to_list, body_text, in_reply_to FROM ws_mail_items WHERE box_id = '" . (int) $conversation['box_id'] . "' AND conversation_id = 0
             AND direction = 'in' AND user_id > 0 AND in_reply_to IN (" . $quoted . ") ORDER BY id LIMIT 50") as $bounce) {
             $items[$sent[(string) $bounce['in_reply_to']]]['bounces'][] = $bounce;
         }
@@ -83,7 +102,7 @@ function ws_mail_pane($viewer, $conversation_id)
         'conversation' => $conversation,
         'channel'      => $channel,
         'box_name'     => (string) db_value("SELECT name FROM ws_mail_boxes WHERE id = '" . (int) $conversation['box_id'] . "'"),
-        'can_post'     => ws_can_post_channel($viewer, $channel),
+        'can_post'     => ws_mail_can_answer($viewer, $channel),
         'items'        => $items,
         'last_id'      => $ids ? max($ids) : 0,
     );
@@ -136,7 +155,9 @@ function ws_mail_pane_page_html($pane, $base, $close)
 
 /**
  * The pane: the conversation's heading and its mails. Pure but for the
- * words and the time labels.
+ * words and the time labels. A conversation of a mailbox kept in no channel
+ * names its mailbox only and has no "Open in channel": this screen is the
+ * one place it opens.
  *
  * @param array  $pane  ws_mail_pane()
  * @param string $base  the panel's address, ending in /
@@ -149,19 +170,22 @@ function ws_mail_pane_html($pane, $base, $tools = '')
     $subject = (trim((string) $conversation['subject']) !== '') ? (string) $conversation['subject'] : lang('(no subject)');
     $customer = trim((string) $conversation['customer_name'] . ' <' . (string) $conversation['customer_email'] . '>');
     $url = $base . 'workspace.php?channel=' . (int) $conversation['channel_id'] . '&message=' . (int) $conversation['message_id'];
+    $room = ws_channel_is_mailbox($pane['channel']);
 
     $html = '<header class="ws-mail-pane-head"><h2 class="h5 mb-1" tabindex="-1">' . h($subject) . '</h2>'
         . '<div class="small fg-secondary">' . h($customer)
-        . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . ' · ' . h('#' . (string) $pane['channel']['name']) . '</div>'
-        . '<div class="ws-mail-pane-tools"><a class="btn btn-sm btn-text theme-secondary" href="' . h($url) . '"><i class="bi bi-hash me-1" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>' . $tools . '</div>'
+        . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . ($room ? '' : ' · ' . h('#' . (string) $pane['channel']['name'])) . '</div>'
+        . '<div class="ws-mail-pane-tools">' . ($room ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="' . h($url) . '"><i class="bi bi-hash me-1" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>') . $tools . '</div>'
         . '</header>';
 
     if (count($pane['items']) >= WS_MAIL_PANE_MAX) {
-        $html .= '<p class="small fg-secondary">' . h(lang(array('string' => 'The newest {var:1} e-mails are shown; the channel has them all.', 'vars' => WS_MAIL_PANE_MAX))) . '</p>';
+        $html .= '<p class="small fg-secondary">' . h($room
+            ? lang(array('string' => 'The newest {var:1} e-mails are shown.', 'vars' => WS_MAIL_PANE_MAX))
+            : lang(array('string' => 'The newest {var:1} e-mails are shown; the channel has them all.', 'vars' => WS_MAIL_PANE_MAX))) . '</p>';
     }
 
     foreach ($pane['items'] as $item) {
-        $html .= ws_mail_pane_item_html($item);
+        $html .= ws_mail_pane_item_html($item, $base);
     }
 
     return $html;
@@ -170,10 +194,12 @@ function ws_mail_pane_html($pane, $base, $tools = '')
 /**
  * One mail of the pane.
  *
- * @param array $item ws_mail_items row with files and bounces
+ * @param array  $item ws_mail_items row with files and bounces
+ * @param string $base the panel's address, ending in /; the kept HTML is
+ *                     drawn only with it
  * @return string HTML
  */
-function ws_mail_pane_item_html($item)
+function ws_mail_pane_item_html($item, $base = '')
 {
     $out = ((string) $item['direction'] === 'out');
     $name = (trim((string) $item['from_name']) !== '') ? (string) $item['from_name'] : (string) $item['from_email'];
@@ -202,7 +228,7 @@ function ws_mail_pane_item_html($item)
         $html .= '<div class="mt-1"><span class="badge theme-secondary">' . h(lang('Automatic answer')) . '</span></div>';
     }
 
-    $html .= '<div class="ws-mail-text">' . nl2br(h(mb_substr((string) $item['body_text'], 0, 100000)), false) . '</div>';
+    $html .= ws_mail_pane_body_html($item, $name, $base);
 
     foreach ($item['files'] as $file) {
         $html .= '<div class="small"><i class="bi bi-paperclip me-1" aria-hidden="true"></i><a href="' . h($file['url']) . '" target="_blank" rel="noopener">' . h($file['name']) . '</a></div>';
@@ -230,8 +256,92 @@ function ws_mail_pane_item_html($item)
 }
 
 /**
+ * A mail's words: its kept HTML in the guarded frame, with Plain text to
+ * switch to its text and, while its pictures from outside wait, Show
+ * pictures; else its text. The frame's height follows the mail once the
+ * screen's script hears it (workspace_mail.js); Show pictures loads the
+ * frame's second address and is remembered for the sender in the browser.
+ *
+ * @param array  $item ws_mail_pane() item (has_html, outside_pictures)
+ * @param string $name who wrote it, for the frame's name
+ * @param string $base the panel's address, ending in /
+ * @return string HTML
+ */
+function ws_mail_pane_body_html($item, $name, $base)
+{
+    $text = nl2br(h(mb_substr((string) $item['body_text'], 0, 100000)), false);
+
+    if (($base === '') || empty($item['has_html'])) {
+        return '<div class="ws-mail-text">' . $text . '</div>';
+    }
+
+    $src = $base . 'workspace_mail_frame.php?item=' . (int) $item['id'];
+    $pictures = !empty($item['outside_pictures']);
+    $tools = '';
+
+    if ($pictures) {
+        $tools .= '<span class="ws-mail-pictures" data-ws-mail-pictures><i class="bi bi-image me-1" aria-hidden="true"></i>'
+            . h(lang('Pictures from outside are not shown.'))
+            . ' <button type="button" class="btn btn-sm btn-text theme-primary px-1" data-ws-mail-show-pictures>' . h(lang('Show pictures')) . '</button></span>';
+    }
+
+    $tools .= '<button type="button" class="btn btn-sm btn-text theme-secondary px-1 ms-auto" data-ws-mail-plain aria-pressed="false">'
+        . '<i class="bi bi-text-left me-1" aria-hidden="true"></i>' . h(lang('Plain text')) . '</button>';
+
+    return '<div class="ws-mail-body" data-ws-mail-body>'
+        . '<div class="ws-mail-body-tools small fg-secondary">' . $tools . '</div>'
+        . '<iframe class="ws-mail-frame" src="' . h($src) . '" title="' . h(lang(array('string' => 'E-mail from {var:1}', 'vars' => $name))) . '"'
+        . ' sandbox="' . pg_guarded_frame_panel_sandbox('mail') . '" loading="lazy"'
+        . ($pictures ? ' data-ws-mail-pictures-src="' . h($src . '&pictures=1') . '" data-ws-mail-sender="' . h(mb_strtolower(trim((string) $item['from_email']))) . '"' : '')
+        . '></iframe>'
+        . '<div class="ws-mail-text" hidden>' . $text . '</div>'
+        . '</div>';
+}
+
+/**
+ * A mail's kept HTML for its frame (workspace_mail_frame.php), when the
+ * person may read its conversation's channel as the pane asks: a mail of a
+ * conversation with its card. The files are the mail's own kept pictures
+ * (data-pg-file), by id; no other file of the site is named.
+ *
+ * @param array $viewer
+ * @param int   $item_id
+ * @return array|null html (pg_mail_html_clean()), files (id => address)
+ */
+function ws_mail_frame($viewer, $item_id)
+{
+    if (((int) $item_id <= 0) || !ws_mail_html_ready()) {
+        return null;
+    }
+
+    $item = db_item("SELECT id, conversation_id, body_html FROM ws_mail_items WHERE id = '" . (int) $item_id . "'");
+
+    if (!$item || ((int) $item['conversation_id'] <= 0) || ((string) $item['body_html'] === '')) {
+        return null;
+    }
+
+    $conversation = db_item("SELECT channel_id FROM ws_mail_conversations WHERE id = '" . (int) $item['conversation_id'] . "' AND message_id > 0");
+    $channel = $conversation ? ws_channel((int) $conversation['channel_id']) : null;
+
+    if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+        return null;
+    }
+
+    $files = array();
+
+    // MySQL 8 reserves STORED: the stored name is aliased stored_name.
+    foreach ((array) db_items("SELECT f.id, f.name AS stored_name FROM ws_messages m INNER JOIN files f ON f.id = m.file_id
+        WHERE m.sender_kind = 'mail' AND m.sender_id = '" . (int) $item['id'] . "' AND m.file_id > 0 AND m.deleted_at = 0 ORDER BY m.id LIMIT 100") as $file) {
+        $files[(int) $file['id']] = PATH . encode_url_path((string) $file['stored_name']);
+    }
+
+    return array('html' => (string) $item['body_html'], 'files' => $files);
+}
+
+/**
  * What the screen's script needs to answer and change a conversation from
- * the pane: the people of its channel for Held by, and its status.
+ * the pane: the people of its channel for Held by, and its status (none for
+ * a plain box, ws_mail_box_is_support()).
  *
  * @param array $pane   ws_mail_pane()
  * @param array $viewer
@@ -244,6 +354,7 @@ function ws_mail_pane_tools($pane, $viewer)
     $conversation = $pane['conversation'];
     $members = array();
     $others = 0;
+    $box = null;
 
     if ($pane['can_post']) {
         $ids = (array) db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . (int) $pane['channel']['id'] . "' ORDER BY user_id LIMIT 100");
@@ -264,7 +375,7 @@ function ws_mail_pane_tools($pane, $viewer)
         'reply'      => $pane['can_post'] ? (int) $conversation['id'] : 0,
         'to'         => (string) $conversation['customer_email'],
         'channel_id' => (int) $pane['channel']['id'],
-        'state'      => $pane['can_post'] ? ws_mail_state_offer(array('conversation' => $conversation), (int) $conversation['id'], (int) $viewer['id']) : null,
+        'state'      => $pane['can_post'] ? ws_mail_state_offer(array('conversation' => $conversation, 'support' => ws_mail_box_is_support($box)), (int) $conversation['id'], (int) $viewer['id']) : null,
         'members'    => $members,
         'others'     => $others,
     );

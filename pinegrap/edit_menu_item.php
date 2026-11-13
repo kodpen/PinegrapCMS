@@ -143,7 +143,7 @@ if (!$_POST) {
 
     print pg_page_shell([
         'title'=> lang('Edit Menu Item'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang('Edit Menu Item'),
         'heading_description' => lang('Define the label to display for this menu item and where it links to.'),

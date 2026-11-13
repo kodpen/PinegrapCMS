@@ -4,7 +4,7 @@ description: A note's table block into a workflow table (T6b, #3044): notes and 
 ---
 
 ## Where does a person do it?
-- `workspace_wtables.php`: the list's "Table from a note" card makes a new table; a writable table with columns has "Rows from a note". One select, one option per table (`note_id:index`), posted as `wt_action=import_note`; then the same confirmation, write and report as a file (`workflow-table-import.md`).
+- `workspace_wtables.php`: "Table from a note" in the Data list's Import from file window makes a new table; a writable table with columns has "Rows from a note". One select, one option per table (`note_id:index`), posted as `wt_action=import_note`; then the same confirmation, write and report as a file (`workflow-table-import.md`).
 - The read is kept like a file (`ws_wtable_import_keep(…, $note = true)`); `kept['note']` makes the confirmation say "note" and offer the name as written (no extension cut).
 
 ## Which notes and tables are offered?

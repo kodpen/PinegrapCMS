@@ -989,7 +989,7 @@ if (!$_POST) {
         }
 
         if ($held) {
-            $liveform->add_notice(h(lang('Some items were not changed because they are open in the visual designer') . ': ' . implode(', ', $held)));
+            $liveform->add_notice(h(lang('Some items were not changed because they are open in the Page Design Studio') . ': ' . implode(', ', $held)));
         }
 
         if ($number_of_replacements == 0) {

@@ -13,7 +13,8 @@ description: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on th
 
 ## Why explicit trees?
 - The e-mail card must be one: a `'tree' => 'starter'` widget drops its page from `pg_design_template_preview_pages()`, and email_reply is in the installer's e-mail row ([[design-template-forum-replies]]).
-- The threads use each template's `$comment_thread($w)`, with the template's look (store and bookshop: `bg-body-tertiary rounded-4` cards, `btn-primary`; boutique: square `p-4 bg-body-tertiary` panels, a bordered form, `btn-dark`; hello: white `shadow-sm` cards, [[design-template-hello]]) and its own words (blog: "Leave a comment", "Post comment"; conversation: "Write a reply", "Send reply"); the starter says "Add comment" on both. Labels stay `Comment` and `reply` ([[design-template-comment-labels]]).
+- The threads use each template's `$comment_thread($w)`, with the template's look (store and bookshop: `bg-body-tertiary rounded-4` cards, `btn-primary`; boutique: square `p-4 bg-body-tertiary` panels, a bordered form, `btn-secondary`; hello: white `shadow-sm` cards, [[design-template-hello]]).
+- They also use the template's own words (blog: "Leave a comment", "Post comment"; conversation: "Write a reply", "Send reply"); the starter says "Add comment" on both. Labels stay `Comment` and `reply` ([[design-template-comment-labels]]).
 - They do not follow later changes of `pg_comments_default_tree()`: the test pins actions, values, flags and draws.
 
 ## What does the e-mail card keep?

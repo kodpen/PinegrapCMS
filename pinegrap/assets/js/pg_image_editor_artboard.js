@@ -389,6 +389,7 @@
 
         this.versionCount = Number(r.versions) || 0;
         this.versionBase = 0;
+        this.canvasTemplate = !!r.template;
         this.doc = doc;
         this.layersDirty = true;
 
@@ -1272,4 +1273,27 @@
 
     Editor.hints.artboard = 'hintArtboard';
     Editor.hints.image = 'hintImage';
+
+    // "Save as template" in the save menu, for a canvas opened from Files:
+    // agents make canvases from the site's templates by their named layers.
+    Editor.menuItems.push(function () {
+        var self = this, on = !this.canvasTemplate;
+
+        if ((typeof this.canvasTemplate !== 'boolean') || !this.opts.fileId || (this.saveMode !== 'replace')) {
+            return null;
+        }
+
+        return el('button', { type: 'button', role: 'menuitem', text: t(on ? 'templateSave' : 'templateRemove'), onclick: function () {
+            self.toggleSaveMenu(false);
+            self.request({ action: 'template', file_id: self.opts.fileId, on: on }).then(function (r) {
+                if (!r || (r.status !== 'success')) {
+                    self.showMessage((r && r.message) ? r.message : t('saveError'), true);
+                    return;
+                }
+
+                self.canvasTemplate = !!r.template;
+                self.showMessage(t(self.canvasTemplate ? 'templateSaved' : 'templateRemoved'));
+            });
+        } });
+    });
 }(window.PgImageEditor.parts));

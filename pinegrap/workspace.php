@@ -20,6 +20,14 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 
 $viewer = ws_screen_gate($user);
 
+// A mailbox kept in no channel has no place among the channels: an address
+// that names its room leads to the E-mails screen (mail_room.php).
+$ws_mail_room_url = ws_mail_room_redirect($viewer, $_GET, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/');
+
+if ($ws_mail_room_url !== '') {
+    go($ws_mail_room_url);
+}
+
 // A team that has never used the workspace starts with one channel everybody
 // is in, rather than an empty screen.
 ws_ensure_first_channel($viewer);
