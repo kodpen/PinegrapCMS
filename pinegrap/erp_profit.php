@@ -233,7 +233,7 @@ $many_months = (count($report['months']) > 1);
 echo
 pg_page_shell([
     'title' => lang('Profit and loss'),
-    'extra classes' => 'erp erp_profit',
+    'extra classes' => 'erp erp_profit pg-measure-report',
     'icon' => 'erp',
     'heading' => lang('Profit and loss'),
     'heading_description' => h(lang(array('string' => 'What was sold, what it cost and what is left, in {var:1} and without tax.', 'vars' => $base))),

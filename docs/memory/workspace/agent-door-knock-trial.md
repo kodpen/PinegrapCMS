@@ -1,6 +1,6 @@
 ---
 name: agent-door-knock-trial
-description: A push door knocked against a real receiver (dev, 2026-11-13): the site's knock reached a signed receiver in the same second; what a session on a personal computer still needs; what was not tried
+description: Push door trial (dev, 2026-11-13): the site's knock reached a signed receiver in the same second; what a session on a personal computer still needs; a routine's fire address answered HTTP 400
 ---
 
 ## What was tried?
@@ -13,8 +13,10 @@ description: A push door knocked against a real receiver (dev, 2026-11-13): the 
 - An https address the site can reach (`ws_agent_door_problem()` refuses anything else). The trial had one only because dev is served from the same machine. An agent on a computer without a public address stays on the poll door (`tools/ws_wait.php --requests`, `workflow/agent-channel-request-wait.md`).
 - A message to all (`@hepsi`) makes no request and so no knock: a text waiter still covers it.
 
-## What was not tried?
-- A routine's fire address as a cloud session's door, knocked by the site. `ws_agent_knock_headers()` sends the secret as a bearer token, but the knock's body and headers are not those `ws_claude_fire()` sends (`workflow/agent-channel-experiment.md`): whether the fire address takes the knock is open.
+## What did a routine's fire address answer?
+- Tried the same day with `@prmerge`, a cloud session: it made a routine bound to itself with no schedule; the owner generated the routine's API token and entered the fire address and the token as the agent's push door.
+- The site knocked in the same second as the request. The address answered HTTP 400 (`door_failures` 1, "The push door answered HTTP 400."). Not 401, so the token is not what was refused; the site keeps no answer body. The request stayed queued for the poll route: nothing was lost.
+- Why, read from the code: the knock is the webhook form; a routine takes the form `ws_claude_fire()` sends (`anthropic-beta`, `anthropic-version`, body `{"text": …}`). Until `plans/agent-knock-routine-form.md` (#9241) lands, a routine's fire address is no push door for an application agent.
 
 ## What would spare the receiver?
 - A waiting read of the queue, the request held open until one is queued, would wake an agent on any computer at once with no address and no secret. An idea of the trial: not built, not planned.

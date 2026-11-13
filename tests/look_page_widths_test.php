@@ -71,3 +71,13 @@ function test_lists_off_the_table_driver_take_the_list_measure()
 		pg_assert_true((bool) preg_match("/'extra classes'\\s*=>\\s*'[^']*\\bpg-measure-list\\b/", look_page_widths_test_source($screen . '.php')), $screen . ' is a list');
 	}
 }
+
+function test_reports_take_the_report_measure()
+{
+	$screens = array('erp_dashboard', 'erp_aging', 'erp_cashflow', 'erp_profit', 'search_console', 'search_audits');
+
+	foreach ($screens as $screen) {
+		pg_assert_true((bool) preg_match("/'extra classes'\\s*=>\\s*'[^']*\\bpg-measure-report\\b/", look_page_widths_test_source($screen . '.php')), $screen . ' is a report');
+	}
+	pg_assert_true(substr_count(look_page_widths_test_source('erp_cashflow.php'), 'pg-measure-report') === 2, 'the cash flow and the cash forecast are reports');
+}

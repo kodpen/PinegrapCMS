@@ -7,7 +7,8 @@ description: Translated site search plan, steps TS1-TS5: the words and ı/i for 
 - A new `includes/translate/search.php`, loaded with the other translate files (`pg_tr_load()`): `pg_tr_search_pages_find()` moves there from `seo.php`; TS2 to TS4 add theirs. The callers keep asking through `includes/fn/translate.php` (`pg_tr_search_pages()`, then `pg_tr_search_catalog()` and `pg_tr_search_records()`), which answer empty in the source language.
 - Every step: pure functions for the words and the ranking, tested in `tests/translate_search_test.php`; no schema; no new user-facing text is expected.
 
-## TS1 (M) Pages: the words and ı/i
+## TS1 (M) Pages: the words and ı/i — done (#9245)
+- Done: `includes/translate/search.php` holds `pg_tr_search_words()`, `pg_tr_search_like_sql()`, `pg_tr_search_rank_pages()` and `pg_tr_search_fold()` (`_pg_search_fold()` plus `pg_transliterate_to_ascii()`, as the collation also reads ş as s and ğ as g, else a row the LIKE read is dropped in PHP). TS2-TS4 reuse the words, the condition and the fold.
 - `pg_tr_search_words($query)` (pure): the typed text cut into words, a quoted phrase kept whole, at most eight; each word in its readings of `pg_search_i_variants()` (`includes/fn/site_search.php`).
 - The query takes the rows where any reading of any word matches; PHP groups them by page and compares folded (`_pg_search_fold()`). A page is a result when every word is found in its title, description and body taken together. Rank: the whole phrase first, then by hits; title and description count three times, as today.
 - Today's limits stay (2,000 rows, 100 pages). The fences are untouched.
