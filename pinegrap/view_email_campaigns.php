@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_list.php');
 
 $user = validate_user();
@@ -52,10 +53,10 @@ if (pg_sms_ready() && pg_schema_has('sms_campaigns')) {
 echo
 pg_page_shell(
     array(
-        'title'=> lang('My Campaigns'),
+        'title'=> lang('Campaigns'),
         'extra classes'=>'campaign pg-measure-list',
         'icon'=>'campaign', 
-        'heading'=>lang('My Campaigns'),
+        'heading'=>lang('Communication'),
         'heading_description' => lang(array('string'=>'All {var:1} and paused e-mail campaigns that I can manage.  See My Campaign History for completed and cancelled campaigns.','vars'=>$output_subheading_ready_status)),
                 
     )
@@ -67,6 +68,7 @@ pg_page_shell(
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
            
+            ' . pg_messages_tab_strip_for('campaigns', $user) . '
             ' . pg_screen_toolbar(array(
                 'primary'   => array('label' => lang('Create'), 'url' => 'add_email_campaign.php', 'icon' => 'bi-plus-circle'),
                 'secondary' => array(

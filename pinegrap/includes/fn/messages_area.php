@@ -219,3 +219,32 @@ function pg_messages_place_rows($heading, $rows)
 
     return '<section class="pg-card mb-5"><h2 class="pg-title-section">' . h($heading) . '</h2>' . $html . '</section>';
 }
+
+/**
+ * A whole tab screen: the page shell headed "Communication", the tab strip
+ * with $key open, the body, the footer. The caller has passed the tab's gate.
+ *
+ * @param string $key         a key of pg_messages_area_tabs()
+ * @param array  $user        the signed-in user
+ * @param string $description the line under the heading
+ * @param string $body        markup under the strip
+ * @return string
+ */
+function pg_messages_tab_page($key, $user, $description, $body)
+{
+    $tabs = pg_messages_area_tabs();
+    $label = isset($tabs[$key]) ? lang($tabs[$key]['label']) : lang('Communication');
+
+    return pg_page_shell(array(
+            'title' => $label,
+            'extra classes' => 'campaign messages-area',
+            'icon' => 'campaign',
+            'heading' => lang('Communication'),
+            'heading_description' => $description,
+        ))
+        . '<main id="content" class="container-fluid"><div class="row"><div class="col-12">'
+        . pg_messages_tab_strip_for($key, $user)
+        . $body
+        . '</div></div></main>'
+        . output_footer();
+}

@@ -987,6 +987,7 @@
     "Messages sent from the contact page are collected in the panel, ready to answer.": "İletişim sayfasından gönderilen mesajlar panelde toplanır, yanıtlamaya hazır bekler.",
     "Messages set to be sent later, on their own.": "Daha sonra kendiliğinden gönderilecek mesajlar.",
     "Messages starting with a prefix": "Bir önekle başlayan mesajlar",
+    "Messages the site sends by itself when something happens.": "Bir şey olduğunda sitenin kendiliğinden gönderdiği iletiler.",
     "Messages through the site's own WhatsApp Business account on Meta's Cloud API: templates WhatsApp approved, to one person at a time. E-mails go out as before. To remove the account from this site, switch WhatsApp off and empty the App ID.": "Sitenin kendi WhatsApp Business hesabıyla, Meta'nın Cloud API'si üzerinden giden mesajlar: WhatsApp'ın onayladığı şablonlar, her seferinde bir kişiye. E-postalar eskisi gibi gider. Hesabı bu siteden kaldırmak için WhatsApp'ı kapatıp Uygulama Kimliği'ni boşaltın.",
     "Messages up to {var:1}": "{var:1} tarihine kadar mesajlar",
     "Messages wait in a queue that the scheduled general job sends; they are listed on the SMS tab of the {var:1}.": "Mesajlar kuyrukta bekler ve zamanlanmış genel iş onları gönderir; {var:1} ekranının SMS sekmesinde listelenirler.",

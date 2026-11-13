@@ -5,7 +5,7 @@ description: Steps MA0-MA11 of the messages area plan (#8961): census, shell and
 
 ## Which steps? (rules: `messages-area.md`)
 - MA0 (S, done #9074) The census: today's screens and their rights, the addresses that keep leading somewhere, one Sends list without a new table (`platform/messages-area-census-*.md`). Its proposals (`-tabs`, `-addresses`, `-sends`) wait for the architect on #9081; MA1 and MA2 start from the answer.
-- MA1 (M) The shell: the menu row, the five tabs with their gates, old addresses leading in.
+- MA1 (M, done #9182) The shell: the menu row, the five tabs with their gates, old addresses leading in.
 - MA2 (M) Sends: the tiles, the channel, source, state and date filters, single messages and campaign rows that open, retry and delete under the queues' own rules.
 - MA3 (M) Campaigns: one list for e-mail and SMS campaigns; "New campaign" asks the channel first, then recipients, content, time.
 - MA4 (S, done #9074) E-mail body as a page: how e-mail pages are made today, what mail programs need, a proposed way for MA5 (`designer/campaign-email-body-*.md`), waiting for the architect on #9083.

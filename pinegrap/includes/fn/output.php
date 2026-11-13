@@ -4174,20 +4174,17 @@ function output_menu($properties = false)
     }
 
     if ((($user['role'] < 3) || ($user['manage_emails'] == true))) {
-        // CAMPAIGNS
+        // COMMUNICATION: the messages area. Its panel lists the tabs this
+        // person may open (each under its screen's own gate) and New campaign
+        // (includes/fn/messages_area.php).
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
         $menu_items[9]['id'] = 9;
         $menu_items[9]['href'] = 'view_email_campaigns.php';
         $menu_items[9]['menu_icon'] = 'campaigns';
         $menu_items[9]['color_class'] = 'campaigns-color';
-        $menu_items[9]['title'] = 'My Campaigns';
+        $menu_items[9]['title'] = 'Communication';
         $menu_items[9]['context'] = true;
-        $menu_items[9]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaigns.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-megaphone bi-me-2\'>' . lang('My Campaigns') . '</a>';
-        $menu_items[9]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_email_campaign.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Campaign'))) . '</a>';
-        $menu_items[9]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[9]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign_history.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-send-check bi-me-2\'>' . lang('My Campaign History') . '</a>';
-        $menu_items[9]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[9]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign_profiles.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-envelope-paper bi-me-2\'>' . lang('My Campaign Profiles') . '</a>';
-        $menu_items[9]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_email_campaign_profile.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Campaign Profile'))) . '</a>';
+        $menu_items[9]['data-bs-content'] = pg_messages_menu_entries(pg_messages_tabs_for_user($user), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target);
     }
 
     // ECOMMERCE
@@ -4827,6 +4824,12 @@ function output_menu($properties = false)
         case 'add_email_campaign_profile.php':
         case 'edit_email_campaign_profile.php':
         case 'import_email_campaign_profiles.php':
+        case 'view_sms_campaigns.php':
+        case 'edit_sms_campaign.php':
+        case 'messages_automatic.php':
+        case 'messages_templates.php':
+        case 'messages_sends.php':
+        case 'messages_channels.php':
             $active_menu = 9;
             break;
         case 'erp_dashboard.php':

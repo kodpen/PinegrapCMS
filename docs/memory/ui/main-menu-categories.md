@@ -4,7 +4,7 @@ description: Main menu rows in categories (pg_menu_categories(), pg_menu_layout(
 ---
 
 ## Which categories are there?
-- `pg_menu_categories()` (`includes/fn/output.php`, #2811), drawn in this order: untitled (Dashboard 0, Automation flows 26, Workspace 23, pinned My Notes 24); Content (Pages 2, File Manager 1, Calendars 4, Forms 5); Design (Page Design Studio 21); Ecommerce (Orders 10, Products 11, Catalog Manager 12, Offers 14, Shipping 15); Accounting (ERP 22: its own switch and rights, it runs without the store); Marketing (Visitors 6, Contacts 7, My Campaigns 9); System (Users 8, System tools 25, last).
+- `pg_menu_categories()` (`includes/fn/output.php`, #2811), drawn in this order: untitled (Dashboard 0, Automation flows 26, Workspace 23, pinned My Notes 24); Content (Pages 2, File Manager 1, Calendars 4, Forms 5); Design (Page Design Studio 21); Ecommerce (Orders 10, Products 11, Catalog Manager 12, Offers 14, Shipping 15); Accounting (ERP 22: its own switch and rights, it runs without the store); Marketing (Visitors 6, Contacts 7, Communication 9); System (Users 8, System tools 25, last).
 - Automation flows (26) sit at the top under no heading: they reach every part of the site (`main-menu-automation-flows-row.md`).
 - Retired rows: Site Settings 20 (`main-menu-settings-row.md`); Page Styles 17 and Ads 16, whose entries are under row 21's Other (`main-menu-design-studio-row.md`, #8987). Owner's choice of the headings layout over one row per category: no store screen costs an extra click.
 - The table sets the order; the rows are still built in id order, each under its gate. The old reorder loop ("moved rows") is gone. A new row needs a place in the table, or it is drawn last without a heading. `tests/menu_category_test.php` reads the built slots from `output_menu()` and wants each listed once.
@@ -25,4 +25,4 @@ description: Main menu rows in categories (pg_menu_categories(), pg_menu_layout(
 ## How does a heading look?
 - `pg_menu_heading()`: a `div.pg-menu-heading` (not a link, not a `.list-group-item`) inside `.pg-menu-main`, so the menu scripts, the curtain and `drawMenuRow()` pass it by. Labels showing (expanded, phone drawer): a small upper-case title in the Workspace list's section-title type. Rail (lg and up, not expanded): a 28px line between the icons, the name kept for screen readers. A drilled menu hides headings with the rows.
 
-Related: docs/memory/ui/main-menu-panels.md, docs/memory/ui/main-menu-entry-gates.md, docs/memory/ui/main-menu-design-studio-row.md
+Related: docs/memory/ui/main-menu-panels.md, docs/memory/ui/main-menu-entry-gates.md, docs/memory/ui/main-menu-design-studio-row.md, docs/memory/ui/messages-area-shell.md

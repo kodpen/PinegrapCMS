@@ -211,7 +211,7 @@ function test_menu_design_category_holds_the_page_design_studio_row_alone()
 	$categories = pg_menu_categories();
 
 	pg_assert_same(array(21), $categories['design']['slots'], 'Design: the Page Design Studio');
-	pg_assert_same(array(6, 7, 9), $categories['marketing']['slots'], 'Marketing: Visitors, Contacts, My Campaigns');
+	pg_assert_same(array(6, 7, 9), $categories['marketing']['slots'], 'Marketing: Visitors, Contacts, Communication');
 }
 
 function test_menu_page_styles_and_ads_rows_are_retired()

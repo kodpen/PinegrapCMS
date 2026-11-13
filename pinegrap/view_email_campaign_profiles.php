@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
 // functions.php does not load the list table driver; the list below is drawn
 // with it (pg_list_table_printed() and its cell helpers).
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
@@ -349,6 +350,7 @@ if (isset($_GET['export'])) {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
+                ' . pg_messages_tab_strip_for('automatic', $user) . '
                 ' . pg_screen_toolbar(array(
                     'primary'   => array('label' => lang('Create'), 'url' => 'add_email_campaign_profile.php', 'icon' => 'bi-plus-circle'),
                     'secondary' => array(
