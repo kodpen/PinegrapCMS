@@ -172,11 +172,11 @@ function test_menu_site_settings_row_is_retired()
 
 function test_menu_translations_has_a_way_for_managers()
 {
-	// translations.php admits managers; row 21 is built for role < 2 only.
+	// translations.php admits managers; row 21 holds it for role < 2 only.
 	$menu = pg_test_function_source('output_menu');
 
 	pg_assert_contains("if ((int) \$user['role'] === 2) {\n            \$menu_items[2]['data-bs-content'] .= '<a href=\\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\\''", $menu, 'in the Pages panel for a manager');
-	pg_assert_contains("case 'translations.php':\n            // A manager reaches it from the Pages panel; row 21 is built for\n            // role < 2 only.\n            \$active_menu = (\$user['role'] < 2) ? 21 : 2;", $menu, 'the row that lists it is marked');
+	pg_assert_contains("case 'translations.php':\n            // A manager reaches it from the Pages panel; row 21 holds it for\n            // role < 2 only.\n            \$active_menu = (\$user['role'] < 2) ? 21 : 2;", $menu, 'the row that lists it is marked');
 }
 
 function test_menu_tools_icon_is_two_coloured_and_moves()
@@ -237,3 +237,75 @@ function test_menu_tools_markup_in_the_toolbar()
 	pg_assert_same(1, substr_count($all, 'target=\'_blank\''), 'its own target wins');
 }
 
+
+// Other: an entry of a row's panel that opens a second-level panel with the
+// entries kept one step further in (the Page Design Studio row).
+function pg_test_menu_other_entries()
+{
+	return '<a href=\'/pinegrap/view_styles.php\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-columns-gap bi-me-2\'>Page Styles</a>'
+		. '<hr class=\'divider my-3\' />'
+		. '<a href=\'/pinegrap/view_ads.php\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-badge-ad bi-me-2\'>Ads</a>';
+}
+
+function test_menu_other_markup_is_an_entry_and_its_panel()
+{
+	$other = pg_menu_other_markup(21, pg_test_menu_other_entries(), '', 'design');
+
+	pg_assert_same('menu_panel_21_other', $other['panel_id'], 'the panel is named for its row');
+	pg_assert_contains('id=\'menu_entry_21_other\'', $other['entry'], 'the entry');
+	pg_assert_contains('href=\'/pinegrap/view_styles.php\'', $other['entry'], 'its address is the first screen, for a middle click');
+	pg_assert_contains('data-pg-menu-panel=\'menu_panel_21_other\' aria-controls=\'menu_panel_21_other\' aria-expanded=\'false\'', $other['entry'], 'a plain click opens the panel, shut until then');
+	pg_assert_contains(' pg-menu-parent\'', $other['entry'], 'room for its arrow');
+	pg_assert_contains('>' . h(lang('Other')) . '<i class=\'bi bi-chevron-right pg-menu-chevron\' aria-hidden=\'true\'></i></a>', $other['entry'], 'its name and the arrow');
+	pg_assert_contains(' data-pg-menu-skip ', $other['entry'], 'a group is never the page\'s entry');
+	pg_assert_false(strpos($other['entry'], ' active') !== false, 'not marked away from its screens');
+	pg_assert_false(strpos($other['entry'], 'aria-current') !== false, 'nor named current');
+
+	pg_assert_contains('id="menu_panel_21_other"', $other['panel'], 'the second-level panel');
+	pg_assert_contains('data-pg-menu-row="menu_entry_21_other"', $other['panel'], 'its way back leads to the panel holding the entry');
+	pg_assert_contains('data-pg-menu-tone="design"', $other['panel'], 'icons in the row\'s colours');
+	pg_assert_contains('>' . h(lang('Other')) . '</span>', $other['panel'], 'headed by its name');
+	pg_assert_true(strpos($other['panel'], 'view_styles.php') < strpos($other['panel'], 'view_ads.php'), 'the entries in their order');
+	pg_assert_same(1, substr_count($other['panel'], '<hr '), 'and their dividers');
+}
+
+function test_menu_other_markup_is_marked_on_its_screens()
+{
+	$other = pg_menu_other_markup(21, pg_test_menu_other_entries(), '', 'design', true);
+
+	pg_assert_contains(' pg-menu-parent active\' aria-current=\'true\' data-pg-menu-panel=', $other['entry'], 'marked the way a row is on its own screens');
+
+	// What keeps a panel open from one page to the next: an entry of it is
+	// the page, or the row it belongs to is marked.
+	$backend = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	pg_assert_contains("(panel.querySelector('.pg-menu-current') || row.classList.contains('active'))", $backend, 'the mark the script reads');
+	pg_assert_contains("var row = panel ? document.getElementById(panel.getAttribute('data-pg-menu-row')) : null;", $backend, 'on the element the panel names');
+}
+
+function test_menu_other_markup_without_a_link_draws_nothing()
+{
+	$nothing = array('entry' => '', 'panel' => '', 'panel_id' => '');
+
+	pg_assert_same($nothing, pg_menu_other_markup(21, '', '', 'design'), 'no entries');
+	pg_assert_same($nothing, pg_menu_other_markup(21, '<hr class=\'divider my-3\' />', '', 'design', true), 'a divider alone');
+}
+
+function test_menu_other_markup_in_the_toolbar_and_with_a_query()
+{
+	$entries = '<a href=\'/pinegrap/view_regions.php?filter=all_ad_regions&amp;x=1\' target=\'_parent\' class=\'btn\'>All Ad Regions</a>';
+	$other = pg_menu_other_markup(21, $entries, ' target=\'_parent\'');
+
+	pg_assert_contains('href=\'/pinegrap/view_regions.php?filter=all_ad_regions&amp;x=1\' target=\'_parent\'', $other['entry'], 'the address stays escaped once, and leaves the toolbar frame');
+	pg_assert_false(strpos($other['panel'], 'data-pg-menu-tone') !== false, 'no module, plain icons');
+}
+
+// On the screens of a second-level panel's entries the row opens that panel
+// itself; anywhere else its own.
+function test_menu_row_click_panel_is_its_own_or_the_one_it_names()
+{
+	pg_assert_same('menu_panel_21', pg_menu_row_click_panel(array('id' => 21), 'menu_panel_21'), 'its own panel');
+	pg_assert_same('menu_panel_21_other', pg_menu_row_click_panel(array('id' => 21, 'opens' => 'menu_panel_21_other'), 'menu_panel_21'), 'the panel that stands open');
+	pg_assert_same('', pg_menu_row_click_panel(array('id' => 21, 'opens' => 'menu_panel_21_other'), ''), 'a plain link opens nothing');
+	pg_assert_same('menu_panel_21', pg_menu_row_click_panel(array('id' => 21, 'opens' => ''), 'menu_panel_21'), 'an empty name is none');
+	pg_assert_same('menu_panel_21', pg_menu_row_click_panel(array('id' => 21, 'opens' => 'x" onclick="y'), 'menu_panel_21'), 'only a panel id is taken');
+}

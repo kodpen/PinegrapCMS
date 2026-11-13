@@ -3845,31 +3845,6 @@ function pg_menu_icon($name, $color_class = '')
                 '</g>';
             break;
 
-        case 'ads':
-            $body =
-                '<g class="pg-mi-board">' .
-                '<rect' . $d . ' x="3" y="4" width="18" height="11.5" rx="2"/>' .
-                '<rect x="3" y="4" width="18" height="11.5" rx="2"/>' .
-                '</g>' .
-                '<path d="M8 15.5v5M16 15.5v5"/>' .
-                '<path' . $f . ' class="pg-mi-a pg-mi-spark" d="M12 5.9l1.1 2.75 2.75 1.1-2.75 1.1L12 13.6l-1.1-2.75-2.75-1.1 2.75-1.1z"/>';
-            break;
-
-        case 'styles':
-            $palette = 'M12 3a9 9 0 1 0 0 18c1 0 1.7-.8 1.7-1.7 0-.45-.17-.86-.45-1.16a1.6 1.6 0 0 1-.43-1.1c0-.94.76-1.7 1.7-1.7h2A4.5 4.5 0 0 0 21 10.8C21 6.5 17 3 12 3z';
-            $body =
-                '<g class="pg-mi-palette">' .
-                '<path' . $d . ' d="' . $palette . '"/>' .
-                '<path d="' . $palette . '"/>' .
-                '<g class="pg-mi-dots">' .
-                '<circle' . $f . ' class="pg-mi-c1" cx="7.5" cy="11.6" r="1.45"/>' .
-                '<circle' . $f . ' class="pg-mi-c2" cx="9.2" cy="7.4" r="1.45"/>' .
-                '<circle' . $f . ' class="pg-mi-c3" cx="14" cy="6.7" r="1.45"/>' .
-                '<circle' . $f . ' class="pg-mi-c4" cx="17.4" cy="9.7" r="1.45"/>' .
-                '</g>' .
-                '</g>';
-            break;
-
         case 'tools':
             // A toolbox: the box with its latch (accent) on the front, and the
             // lid with its handle over it. A screwdriver and a spanner
@@ -3966,15 +3941,15 @@ function output_menu($properties = false)
         if (($user['role'] < 3) || !empty($user['create_pages'])) {
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_page.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Page'))) . '</a>';
         }
-        // PAGES > Visual Page Editor. Its home admits managers and users at
+        // PAGES > Page Design Studio. Its home admits managers and users at
         // content level (pg_designer_access()): the designs and the pages
-        // they may edit. Roles 0-1 have the editor's own row (21).
+        // they may edit. Roles 0-1 have the entry in the studio's own row (21).
         if ($user['role'] >= 2) {
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-magic bi-me-2\'>' . lang('Page Design Studio') . '</a>';
         }
         // PAGES > Translations. translations.php admits managers
         // (validate_area_access($user, 'manager')); roles 0-1 have it in the
-        // Visual Page Editor row (21), so this entry is the manager's way to it.
+        // Page Design Studio row (21), so this entry is the manager's way to it.
         if ((int) $user['role'] === 2) {
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
         }
@@ -4380,59 +4355,97 @@ function output_menu($properties = false)
         }
     }
 
-    if ((ADS === true) && (($user['role'] < 3) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0))) {
-        // ADS
-        $menu_items[16]['id'] = 16;
-        $menu_items[16]['href'] = 'view_ads.php';
-        $menu_items[16]['menu_icon'] = 'ads';
-        $menu_items[16]['color_class'] = 'ads-color';
-        $menu_items[16]['title'] = 'Ads';
-        $menu_items[16]['context'] = true;
-        $menu_items[16]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ads.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-badge-ad bi-me-2\'>' . lang('Ads') . '</a>';
-        $menu_items[16]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_ad.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Ad'))) . '</a>';
-    }
+    // PAGE DESIGN STUDIO > Other. The classic designer's screens and Ads sit
+    // behind the Other entry of the Page Design Studio row (21). They were
+    // the Page Styles row (slot 17) and the Ads row (slot 16): both slots are
+    // retired and, like 3, 13, 18, 19 and 20, never reused. Each group below
+    // keeps the gate of its own screens.
+    $design_other_content = '';
 
     if (($user['role'] < 2)) {
-        // DESIGN
-        $menu_items[17]['id'] = 17;
-        $menu_items[17]['href'] = 'view_styles.php';
-        $menu_items[17]['menu_icon'] = 'styles';
-        $menu_items[17]['color_class'] = 'design-color';
-        $menu_items[17]['title'] = 'Page Styles';
-        $menu_items[17]['context'] = true;
-        $menu_items[17]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-columns-gap bi-me-2\'>' . lang('Page Styles') . '</a>';
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_custom_style.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Page Style'))) . '</a>';
-        // DESIGN > Import Design (closed on a hosted site, import_design.php)
+        // OTHER > Page Styles
+        $design_other_content = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-columns-gap bi-me-2\'>' . lang('Page Styles') . '</a>';
+        $design_other_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_custom_style.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Page Style'))) . '</a>';
+        // OTHER > Import Design (closed on a hosted site, import_design.php)
         if (!pg_hosted()) {
-            $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_design.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cloud-arrow-down bi-me-2\'>' . lang('Import My Site') . '</a>';
+            $design_other_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_design.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cloud-arrow-down bi-me-2\'>' . lang('Import My Site') . '</a>';
         }
 
-        // DESIGN > Themes
-        $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-palette bi-me-2\'>' . lang('All Themes') . '</a>';
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_theme_file.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Theme'))) . '</a>';
+        // OTHER > Themes
+        $design_other_content .= '<hr class=\'divider my-3\' />';
+        $design_other_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-palette bi-me-2\'>' . lang('All Themes') . '</a>';
+        $design_other_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_theme_file.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Theme'))) . '</a>';
 
-        // DESIGN > Design File
-        $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-code bi-me-2\'>' . lang('All Design Files') . '</a>';
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_design_file.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-upload bi-me-2\'>' . lang('Upload Design Files') . '</a>';
-        // DESIGN > Import Zip
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_zip.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-zip bi-me-2\'>' . lang('Import ZIP File') . '</a>';
+        // OTHER > Design File
+        $design_other_content .= '<hr class=\'divider my-3\' />';
+        $design_other_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-code bi-me-2\'>' . lang('All Design Files') . '</a>';
+        $design_other_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_design_file.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-upload bi-me-2\'>' . lang('Upload Design Files') . '</a>';
+        // OTHER > Import Zip
+        $design_other_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/import_zip.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-zip bi-me-2\'>' . lang('Import ZIP File') . '</a>';
         // if the user is an administrator and migration enabled
         if (($user['role'] < 1) && (defined('MIG') == true) && (MIG == true)) {
-            // DESIGN > Migration
-            $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/migration.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-database-down bi-me-2\'>' . lang('Migration') . '</a>';
+            // OTHER > Migration
+            $design_other_content .= '<hr class=\'divider my-3\' />';
+            $design_other_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/migration.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-database-down bi-me-2\'>' . lang('Migration') . '</a>';
         }
-        // DESIGN > Find And Replace
-        $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/find_and_replace.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-binoculars bi-me-2\'>' . lang('Find And Replace') . '</a>';
-        // DESIGN > Mass Edit
-        $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[17]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/mass_edit.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-pencil-square bi-me-2\'>' . lang('Mass Edit') . '</a>';
+        // OTHER > Find And Replace
+        $design_other_content .= '<hr class=\'divider my-3\' />';
+        $design_other_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/find_and_replace.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-binoculars bi-me-2\'>' . lang('Find And Replace') . '</a>';
+        // OTHER > Mass Edit
+        $design_other_content .= '<hr class=\'divider my-3\' />';
+        $design_other_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/mass_edit.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-pencil-square bi-me-2\'>' . lang('Mass Edit') . '</a>';
 
-        // VISUAL PAGE EDITOR — designs made with the visual editor. Its own
-        // entry: the Page Styles list is the legacy HTML-template screen.
+        // OTHER > Menus
+        $design_menus_content = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-menu-button bi-me-2\'>' . lang('All Menus') . '</a>';
+        $design_menus_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_menu.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Menu'))) . '</a>';
+
+        // OTHER > Common Regions
+        $design_regions_content = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_common_regions\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-layout-text-window-reverse bi-me-2\'>' . lang('All Common Regions') . '</a>';
+        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_common_region.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Common Region'))) . '</a>';
+        // OTHER > Designer Regions
+        $design_regions_content .= '<hr class=\'divider my-3\' />';
+        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_designer_regions\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-code-square bi-me-2\'>' . lang('All Designer Regions') . '</a>';
+        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_designer_region.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Designer Region'))) . '</a>';
+        // OTHER > Login Regions
+        $design_regions_content .= '<hr class=\'divider my-3\' />';
+        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_login_regions\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-in-right bi-me-2\'>' . lang('All Login Regions') . '</a>';
+        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_login_region.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Login Region'))) . '</a>';
+        if (ADS === true) {
+            // OTHER > Ad Regions
+            $design_regions_content .= '<hr class=\'divider my-3\' />';
+            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_ad_regions\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-aspect-ratio bi-me-2\'>' . lang('All Ad Regions') . '</a>';
+            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_ad_region.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Ad Region'))) . '</a>';
+        }
+        // if the user is an administrator and dynamic regions are enabled, then prepare to output dynamic regions link
+        if (($user['role'] < 1) && ((defined('DYNAMIC_REGIONS') == true) && (DYNAMIC_REGIONS == true))) {
+            // OTHER > Dynamic Regions
+            $design_regions_content .= '<hr class=\'divider my-3\' />';
+            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_dynamic_regions\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-filetype-php bi-me-2\'>' . lang('All Dynamic Regions') . '</a>';
+            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_dynamic_region.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Dynamic Region'))) . '</a>';
+        }
+
+        // Page styles, menus and regions make up the classic template
+        // screens, and a designer working in one needs the others at hand.
+        $design_other_content .= '<hr class=\'divider my-3\' />' . $design_menus_content
+            . '<hr class=\'divider my-3\' />' . $design_regions_content;
+    }
+
+    if ((ADS === true) && (($user['role'] < 3) || (count(get_items_user_can_edit('ad_regions', $user['id'])) > 0))) {
+        // OTHER > Ads
+        if ($design_other_content !== '') {
+            $design_other_content .= '<hr class=\'divider my-3\' />';
+        }
+
+        $design_other_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ads.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-badge-ad bi-me-2\'>' . lang('Ads') . '</a>';
+        $design_other_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_ad.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Ad'))) . '</a>';
+    }
+
+    // PAGE DESIGN STUDIO: the designs made in it. The row is built for
+    // whoever may open one of its entries: the studio's own (role < 2), or one
+    // behind Other, which joins the panel below once the page's row is known.
+    // Its home admits every panel role (pg_designer_access()), so the row's
+    // own address refuses nobody it is drawn for.
+    if (($user['role'] < 2) || ($design_other_content !== '')) {
         $menu_items[21]['id'] = 21;
         $menu_items[21]['href'] = 'view_system_styles.php';
         // A neon sign of its own: a page frame in the module colour, a cyan
@@ -4440,58 +4453,23 @@ function output_menu($properties = false)
         $menu_items[21]['icon'] = '';
         $menu_items[21]['svg'] = '<svg class="me-3 design-color pg-neon-icon" width="1.3rem" height="1.3rem" viewBox="1.6 -0.5 22 22" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg"><defs><filter id="pg-neon-glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="wide"/><feGaussianBlur in="SourceGraphic" stdDeviation=".5" result="near"/><feMerge><feMergeNode in="wide"/><feMergeNode in="near"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#pg-neon-glow)"><g stroke="currentColor"><rect x="2.6" y="4.4" width="15.6" height="12.8" rx="2.6" stroke-width="1.7"/><path d="M2.6 8.3h15.6" stroke-width="1.3"/><rect class="pg-neon-block" x="5.5" y="11" width="5.4" height="3.4" rx="1" stroke-width="1.3" fill="currentColor" fill-opacity="0"/></g><g class="pg-neon-accent"><path class="pg-neon-cursor" d="M14 11.6l7.2 3-3.1 1.2-1.2 3.2z" stroke="currentColor" stroke-width="1.5" fill="currentColor" fill-opacity=".25"/><path class="pg-neon-spark" d="M20.6 1.6l.6 1.5 1.5.6-1.5.6-.6 1.5-.6-1.5-1.5-.6 1.5-.6z" fill="currentColor"/></g></g><g stroke="#fff" stroke-opacity=".5" stroke-width=".45"><rect x="2.6" y="4.4" width="15.6" height="12.8" rx="2.6"/><path class="pg-neon-cursor" d="M14 11.6l7.2 3-3.1 1.2-1.2 3.2z"/></g></svg>';
         $menu_items[21]['color_class'] = 'design-color';
-        $menu_items[21]['title'] = 'Visual Page Editor';
+        $menu_items[21]['title'] = 'Page Design Studio';
         $menu_items[21]['context'] = true;
-        $menu_items[21]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-magic bi-me-2\'>' . lang('Page Design Studio') . '</a>';
-        $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Start Blank') . '</a>';
-        $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php?start=import\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-zip bi-me-2\'>' . lang('Import HTML / ZIP') . '</a>';
-        $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php?start=template\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-grid-1x2 bi-me-2\'>' . lang('Choose a Template') . '</a>';
-        // VISUAL PAGE EDITOR > Translations: the pages of a visual design in
-        // the site's other languages (includes/translate/).
-        $menu_items[21]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
-        // VISUAL PAGE EDITOR > Experiments: the A/B experiments of designed
-        // pages and their results (experiments.php, designers).
-        $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/experiments.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart-line bi-me-2\'>' . lang('Experiments') . '</a>';
+        $menu_items[21]['data-bs-content'] = '';
 
-        // DESIGN > Menus and DESIGN > Regions. Neither is a row of the menu:
-        // both are reached from the panel of Page Styles, below.
-        // Slots 18 and 19 stay unused, under the never-reused rule of the ERP's
-        // 22.
-        $design_menus_content = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-menu-button bi-me-2\'>' . lang('All Menus') . '</a>';
-        $design_menus_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_menu.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Menu'))) . '</a>';
-
-        // DESIGN > Common Regions
-        $design_regions_content = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_common_regions\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-layout-text-window-reverse bi-me-2\'>' . lang('All Common Regions') . '</a>';
-        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_common_region.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Common Region'))) . '</a>';
-        // DESIGN > Designer Regions
-        $design_regions_content .= '<hr class=\'divider my-3\' />';
-        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_designer_regions\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-code-square bi-me-2\'>' . lang('All Designer Regions') . '</a>';
-        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_designer_region.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Designer Region'))) . '</a>';
-        // DESIGN > Login Regions
-        $design_regions_content .= '<hr class=\'divider my-3\' />';
-        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_login_regions\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-in-right bi-me-2\'>' . lang('All Login Regions') . '</a>';
-        $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_login_region.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Login Region'))) . '</a>';
-        if (ADS === true) {
-            // DESIGN > Ad Regions
-            $design_regions_content .= '<hr class=\'divider my-3\' />';
-            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_ad_regions\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-aspect-ratio bi-me-2\'>' . lang('All Ad Regions') . '</a>';
-            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_ad_region.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Ad Region'))) . '</a>';
+        if ($user['role'] < 2) {
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-magic bi-me-2\'>' . lang('Page Design Studio') . '</a>';
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Start Blank') . '</a>';
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_system_style.php?start=import\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark-zip bi-me-2\'>' . lang('Import HTML / ZIP') . '</a>';
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php?start=template\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-grid-1x2 bi-me-2\'>' . lang('Choose a Template') . '</a>';
+            // PAGE DESIGN STUDIO > Translations: the pages of a design in
+            // the site's other languages (includes/translate/).
+            $menu_items[21]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
+            // PAGE DESIGN STUDIO > Experiments: the A/B experiments of designed
+            // pages and their results (experiments.php, designers).
+            $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/experiments.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart-line bi-me-2\'>' . lang('Experiments') . '</a>';
         }
-        // if the user is an administrator and dynamic regions are enabled, then prepare to output dynamic regions link
-        if (($user['role'] < 1) && ((defined('DYNAMIC_REGIONS') == true) && (DYNAMIC_REGIONS == true))) {
-            // DESIGN > Dynamic Regions
-            $design_regions_content .= '<hr class=\'divider my-3\' />';
-            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_dynamic_regions\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-filetype-php bi-me-2\'>' . lang('All Dynamic Regions') . '</a>';
-            $design_regions_content .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_dynamic_region.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Dynamic Region'))) . '</a>';
-        }
-
-        // Page Styles' panel is where menus and regions are reached: the
-        // three make up the classic template screens, and a designer working
-        // in one needs the others at hand.
-        $menu_items[17]['data-bs-content'] .= '<hr class=\'divider my-3\' />' . $design_menus_content
-            . '<hr class=\'divider my-3\' />' . $design_regions_content;
-
     }
 
     // ERP. Slot 22: the numbers are what an operator pins in
@@ -4682,6 +4660,9 @@ function output_menu($properties = false)
     $url_path_parts = explode('/', $_SERVER['SCRIPT_NAME']);
     $file_name = $url_path_parts[count($url_path_parts) - 1];
     $active_menu = '';
+    // Whether the page is a screen of one of Other's entries (the Page
+    // Design Studio row).
+    $menu_other_here = false;
     switch ($file_name) {
         case 'welcome.php':
             $active_menu = 0;
@@ -4939,13 +4920,17 @@ function output_menu($properties = false)
         case 'edit_state.php':
             $active_menu = 15;
             break;
+        // Ads and the classic designer's screens are behind Other in the
+        // Page Design Studio row: they mark that row, and Other stands open
+        // on them (below). Slots 16 and 17 are retired.
         case 'view_ads.php':
         case 'add_ad.php':
         case 'edit_ad.php':
-            $active_menu = 16;
+            $active_menu = 21;
+            $menu_other_here = true;
             break;
         case 'view_system_styles.php':
-            // Below the designer the editor's home is in the Pages panel.
+            // Below the designer the studio's home is in the Pages panel.
             $active_menu = ($user['role'] < 2) ? 21 : 2;
             break;
         case 'add_system_style.php':
@@ -4972,7 +4957,8 @@ function output_menu($properties = false)
         case 'migration.php':
         case 'find_and_replace.php':
         case 'mass_edit.php':
-            $active_menu = 17;
+            $active_menu = 21;
+            $menu_other_here = true;
             break;
         case 'view_menus.php':
         case 'add_menu.php':
@@ -4980,9 +4966,10 @@ function output_menu($properties = false)
         case 'view_menu_items.php':
         case 'add_menu_item.php':
         case 'edit_menu_item.php':
-            // Menus and regions have no row of their own; they are reached
-            // through Page Styles.
-            $active_menu = 17;
+            // Menus and regions are reached through Other too, after the
+            // page styles.
+            $active_menu = 21;
+            $menu_other_here = true;
             break;
         case 'view_regions.php':
         case 'add_common_region.php':
@@ -4995,7 +4982,8 @@ function output_menu($properties = false)
         case 'edit_dynamic_region.php':
         case 'add_login_region.php':
         case 'edit_login_region.php':
-            $active_menu = 17;
+            $active_menu = 21;
+            $menu_other_here = true;
             break;
 
         case 'view_fields.php':
@@ -5016,7 +5004,7 @@ function output_menu($properties = false)
             $active_menu = 21;
             break;
         case 'translations.php':
-            // A manager reaches it from the Pages panel; row 21 is built for
+            // A manager reaches it from the Pages panel; row 21 holds it for
             // role < 2 only.
             $active_menu = ($user['role'] < 2) ? 21 : 2;
             break;
@@ -5051,6 +5039,28 @@ function output_menu($properties = false)
             // tools row, finds them in the shipping row.
             $active_menu = ($user['role'] <= 2) ? 25 : 15;
             break;
+    }
+
+    // PAGE DESIGN STUDIO > Other: the last entry of the row's panel, shut
+    // until opened, drawn only when one of its own entries is there
+    // (pg_menu_other_markup()). On the screens of its entries it is marked,
+    // so its panel is kept open from one of them to the next, and the row
+    // opens it at once (pg_menu_row_click_panel()).
+    if (isset($menu_items[21]['id']) && ($design_other_content !== '')) {
+        $design_other = pg_menu_other_markup(21, $design_other_content, $output_parent_target, pg_menu_tone($menu_items[21]['color_class']), $menu_other_here);
+
+        if ($design_other['entry'] !== '') {
+            if ($menu_items[21]['data-bs-content'] !== '') {
+                $menu_items[21]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+            }
+
+            $menu_items[21]['data-bs-content'] .= $design_other['entry'];
+            $menu_panels_nested .= $design_other['panel'];
+
+            if ($menu_other_here) {
+                $menu_items[21]['opens'] = $design_other['panel_id'];
+            }
+        }
     }
 
     // The rows come in categories (pg_menu_categories()), drawn in the order
@@ -5121,7 +5131,10 @@ function output_menu($properties = false)
         $output_menu_row_panel = isset($options['row_attributes']) ? $options['row_attributes'] : '';
         $output_menu_row_end = '';
         if ($menu_panel_id !== '') {
-            $output_menu_row_panel .= ' data-pg-menu-panel="' . $menu_panel_id . '" aria-controls="' . $menu_panel_id . '" aria-expanded="false"';
+            // The panel the click shows is the row's own, or a second-level
+            // panel that stands open on this screen (pg_menu_row_click_panel()).
+            $menu_click_panel_id = pg_menu_row_click_panel($options, $menu_panel_id);
+            $output_menu_row_panel .= ' data-pg-menu-panel="' . $menu_click_panel_id . '" aria-controls="' . $menu_click_panel_id . '" aria-expanded="false"';
             $output_menu_row_end = '<span class="pg-menu-hint"></span><i class="bi bi-chevron-right pg-menu-chevron" aria-hidden="true"></i>';
 
             // A row that opens another row's panel draws none of its own.
@@ -5218,10 +5231,10 @@ function pg_menu_explorer_side($area, $user, $toolbar, &$menu_tail)
  *
  * Each category is a heading (an English lang() source) over its rows, named
  * by the slot ids output_menu() builds them under; the rows come in the order
- * listed. The untitled first one is drawn without a heading. Slots 3, 13, 18
- * and 19 are retired and never come back, and no slot is ever renumbered
- * (operators pin rows by their slot); a new row gets a place here, or is
- * drawn at the end without a heading (pg_menu_layout()).
+ * listed. The untitled first one is drawn without a heading. Slots 3, 13, 16,
+ * 17, 18 and 19 are retired and never come back, and no slot is ever
+ * renumbered (operators pin rows by their slot); a new row gets a place here,
+ * or is drawn at the end without a heading (pg_menu_layout()).
  *
  * @return array key => label (lang() source, '' for none), slots (ids)
  */
@@ -5230,11 +5243,11 @@ function pg_menu_categories()
     return array(
         ''           => array('label' => '', 'slots' => array(0, 23, 24)),
         'content'    => array('label' => 'Content', 'slots' => array(2, 1, 4, 5)),
-        'design'     => array('label' => 'Design', 'slots' => array(21, 17)),
+        'design'     => array('label' => 'Design', 'slots' => array(21)),
         'ecommerce'  => array('label' => 'Ecommerce', 'slots' => array(10, 11, 12, 14, 15)),
         // The ERP has its own switch and rights, and runs without the store.
         'accounting' => array('label' => 'Accounting', 'slots' => array(22)),
-        'marketing'  => array('label' => 'Marketing', 'slots' => array(6, 7, 9, 16)),
+        'marketing'  => array('label' => 'Marketing', 'slots' => array(6, 7, 9)),
         // Slot 20, the retired Site Settings row, is listed no more.
         'system'     => array('label' => 'System', 'slots' => array(8, 25)),
     );
@@ -5366,6 +5379,77 @@ function pg_menu_tools_markup($groups, $base, $parent_target, $tone = '')
     $entries = '<a href=\'' . h($base . 'system_tools.php') . '\'' . $parent_target . ' class=\'' . $class . 'bi-tools bi-me-2\'>' . h(lang('System tools')) . '</a><hr class=\'divider my-3\' />' . $entries;
 
     return array('entries' => $entries, 'panels' => $panels);
+}
+
+/**
+ * The Other entry of a row's panel and the second-level panel it opens: the
+ * entries kept one step further in. Under the Page Design Studio row these
+ * are the classic designer's screens and Ads.
+ *
+ * The entry's address is Other's first screen, for a middle click; a plain
+ * click opens the panel. It stands for a group and never for a page, so it is
+ * left out of the search for the page's entry (data-pg-menu-skip). Nothing is
+ * drawn when Other holds no link: the entry is there only for a person who
+ * may open one of its screens.
+ *
+ * On a screen of one of Other's entries ($here) the entry is marked the way a
+ * row is on its own screens (.active, with aria-current), which is what the
+ * menu's script reads to keep a panel open from one page to the next: Other
+ * stays open across its screens, those without an entry of their own
+ * included.
+ *
+ * @param int    $row           the slot of the row whose panel holds the entry
+ * @param string $entries       Other's entries, as output_menu() built them
+ * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
+ * @param string $tone          the row's module (pg_menu_tone()), for the
+ *                              panel's icons
+ * @param bool   $here          the page is a screen of one of Other's entries
+ * @return array entry and panel (markup) and panel_id; all '' when Other
+ *               holds no link
+ */
+function pg_menu_other_markup($row, $entries, $parent_target, $tone = '', $here = false)
+{
+    $entries = (string) $entries;
+
+    if (!preg_match('/<a\b[^>]*\shref\s*=\s*([\'"])(.*?)\1/i', $entries, $first)) {
+        return array('entry' => '', 'panel' => '', 'panel_id' => '');
+    }
+
+    $entry_id = 'menu_entry_' . (int) $row . '_other';
+    $panel_id = 'menu_panel_' . (int) $row . '_other';
+    $label = lang('Other');
+
+    $entry = '<a id=\'' . $entry_id . '\' href=\'' . h(html_entity_decode($first[2], ENT_QUOTES, 'UTF-8')) . '\'' . $parent_target
+        . ' data-pg-menu-skip class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-three-dots bi-me-2 pg-menu-parent' . ($here ? ' active\' aria-current=\'true' : '') . '\''
+        . ' data-pg-menu-panel=\'' . $panel_id . '\' aria-controls=\'' . $panel_id . '\' aria-expanded=\'false\'>' . h($label)
+        . '<i class=\'bi bi-chevron-right pg-menu-chevron\' aria-hidden=\'true\'></i></a>';
+
+    return array(
+        'entry'    => $entry,
+        'panel'    => pg_menu_panel($panel_id, $entry_id, $label, $entries, $tone),
+        'panel_id' => $panel_id,
+    );
+}
+
+/**
+ * The panel a click on a row of the main menu shows: the row's own, or the
+ * second-level panel the row names in 'opens'. A row names one on the screens
+ * of that panel's entries, where it stands open: the click lands in it, and
+ * its way back leads to the row's own panel.
+ *
+ * @param array  $options  the row, as output_menu() built it
+ * @param string $panel_id the row's panel (pg_menu_row_panel_id()), '' for none
+ * @return string the id of the panel the click shows, '' for a plain link
+ */
+function pg_menu_row_click_panel($options, $panel_id)
+{
+    $panel_id = (string) $panel_id;
+
+    if (($panel_id !== '') && isset($options['opens']) && preg_match('/^menu_panel_[a-z0-9_]+$/', (string) $options['opens'])) {
+        return (string) $options['opens'];
+    }
+
+    return $panel_id;
 }
 
 /**
