@@ -1496,6 +1496,12 @@ function pg_order_quick_update($order_id, $field, $value)
             return array('ok' => false, 'code' => 'changed', 'message' => lang('The order changed in the meantime. Reload the list and try again.'));
         }
 
+        // The same line the exports write for complete -> exported: only the
+        // status changed, and the guarded UPDATE says from what.
+        if (function_exists('pg_audit')) {
+            pg_audit('update', 'order', $order_id, array('status' => $previous), array('status' => (string) $value), pg_audit_label_of('orders', $order));
+        }
+
         log_activity(
             lang(array(
                 'string' => 'order ({var:1}) was changed on the order list: {var:2} from "{var:3}" to "{var:4}"',

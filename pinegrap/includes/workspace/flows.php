@@ -241,6 +241,56 @@ function ws_flow_workspace_box_refusal($workspace_on, $node)
 }
 
 /**
+ * Does any box of the graph need the Workspace
+ * (ws_flow_node_needs_workspace())? Pure.
+ *
+ * @param array $graph
+ * @return bool
+ */
+function ws_flow_graph_needs_workspace($graph)
+{
+    foreach ((array) (ws_flow_graph_normalize($graph)['nodes'] ?? array()) as $node) {
+        if (ws_flow_node_needs_workspace($node)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The boxes of a graph that need the Workspace, as problems on those boxes,
+ * on a site whose Workspace is off: such a box is offered only while it is
+ * on and does not run without it (ws_flow_workspace_box_refusal()), so a
+ * flow kept from those days shows it marked, and is published again only
+ * without it. None while the Workspace is on. Pure.
+ *
+ * @param bool  $workspace_on ws_enabled()
+ * @param array $graph
+ * @return array[] ws_flow_problem()
+ */
+function ws_flow_workspace_problems($workspace_on, $graph)
+{
+    if ($workspace_on) {
+        return array();
+    }
+
+    $problems = array();
+    $nodes = (array) (ws_flow_graph_normalize($graph)['nodes'] ?? array());
+    $names = ws_flow_box_names($nodes);
+
+    foreach ($nodes as $node) {
+        if (ws_flow_node_needs_workspace($node)) {
+            $problems[] = ws_flow_problem('workspace_off', ($node['id'] !== '') ? $node['id'] : null, null,
+                lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array($names[(string) $node['id']] ?? ws_flow_box_name($node),
+                    lang('It needs the Workspace, which is switched off on this site.')))));
+        }
+    }
+
+    return $problems;
+}
+
+/**
  * The outcomes an arrow may leave this box on: its kind's
  * (ws_flow_arrow_outcomes()), but for a Pinegrap AI box, whose settings say
  * which (a classifying box's named outcomes, flow_ai_box.php). Pure.
@@ -2320,7 +2370,7 @@ function ws_flow_save_check($viewer, $data, $flow = null)
         'field'     => '',
         'sets'      => $sets,
         'graph'     => $graph,
-        'problems'  => ws_flow_problems($graph),
+        'problems'  => array_merge(ws_flow_problems($graph), ws_flow_workspace_problems(ws_enabled(), $graph)),
         'warnings'  => ws_flow_warnings($graph),
         'draft_rev' => $draft_rev,
     );
@@ -2421,7 +2471,8 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
     }
 
     $graph = ws_flow_graph_of($flow);
-    $problems = ws_flow_problems($graph);
+    // With the Workspace off a box that needs it is a problem too.
+    $problems = array_merge(ws_flow_problems($graph), ws_flow_workspace_problems(ws_enabled(), $graph));
     $names = ws_flow_box_names($graph['nodes']);
 
     if (!empty($problems)) {
@@ -2984,7 +3035,7 @@ function ws_flow_detail($viewer, $flow)
         // A box its role-3 owner's own flows may not hold (kept from their
         // staff days) is marked with the save check's refusal.
         'problems' => ($edit && ($draft !== null))
-            ? array_merge(ws_flow_problems($draft), ws_flow_member_problems(((int) $flow['owner_id'] === (int) $viewer['id']) ? ws_flow_builder_kind($viewer) : '', $draft))
+            ? array_merge(ws_flow_problems($draft), ws_flow_workspace_problems(ws_enabled(), $draft), ws_flow_member_problems(((int) $flow['owner_id'] === (int) $viewer['id']) ? ws_flow_builder_kind($viewer) : '', $draft))
             : array(),
         'warnings' => ($edit && ($draft !== null)) ? ws_flow_warnings($draft) : array(),
         // The draft holds something its live version does not.
@@ -4014,6 +4065,11 @@ function ws_flow_js_config($viewer, $mode)
 
     return $config + $member + array(
         'ready'    => ws_flows_ready(),
+        // The Workspace is on: with it off the screen offers nothing that
+        // lives in a channel (a home, a share in one, a task's card), nor a
+        // box of the kinds that need it (the palette leaves them out).
+        'workspace' => ws_enabled(),
+        'workspace_kinds' => ws_flow_kinds_workspace(),
         'build'    => $build,
         'templates' => $templates,
         'quick'    => $quick,

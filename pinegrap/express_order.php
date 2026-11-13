@@ -75,11 +75,13 @@ if (!$is_gateway_return) {
     // recipient's address, arrival date and shipping method; the custom forms' fields are
     // checked by submit_custom_form(), the totals by submit_order().
     pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'billing_same_as_shipping', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'opt_in_sms', 'opt_in_sms_shown', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact', 'offline_payment_allowed', 'special_offer_code', 'gift_card_code', 'payment_method', 'card_number', 'cardholder', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'installment', 'notes', 'terms', 'legal_preinfo', 'legal_contract', 'legal_kvkk', 'quick_add_product_id', 'quick_add_quantity', 'quick_add_amount', 'quick_add_ship_to', 'quick_add_add_name'));
+    pg_liveform_salutation_values($liveform, array('billing_salutation'));
 
     foreach (db_values("SELECT id FROM ship_tos WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'") as $pg_ship_to_id) {
         $pg_prefix = 'shipping_' . $pg_ship_to_id . '_';
         pg_liveform_single_values($liveform, array($pg_prefix . 'salutation', $pg_prefix . 'first_name', $pg_prefix . 'last_name', $pg_prefix . 'company', $pg_prefix . 'address_1', $pg_prefix . 'address_2', $pg_prefix . 'city', $pg_prefix . 'district', $pg_prefix . 'state', $pg_prefix . 'zip_code', $pg_prefix . 'country', $pg_prefix . 'address_type', $pg_prefix . 'phone_number', $pg_prefix . 'arrival_date', $pg_prefix . 'method'));
         pg_liveform_single_values($liveform, array($pg_prefix . 'custom_arrival_date_' . $liveform->get_field_value($pg_prefix . 'arrival_date')));
+        pg_liveform_salutation_values($liveform, array($pg_prefix . 'salutation'));
     }
 
     // Errors of the previous submit go before this one is checked; every

@@ -688,7 +688,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // Loop through the custom billing field names in order to
     // output them in the first row of the orders.csv data.
     foreach ($custom_billing_field_names as $custom_billing_field_name) {
-        $order_data .= ',"' . str_replace('"', '""', $custom_billing_field_name) . '"';
+        $order_data .= ',"' . csv_cell($custom_billing_field_name) . '"';
     }
     
     $order_data .= "\n";
@@ -762,7 +762,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
         // if multi currency is enabled
         if (ECOMMERCE_MULTICURRENCY === true) {
-            $currency_code = '"' . $order['currency_code'] . '",';
+            $currency_code = '"' . pg_csv_formula_guard($order['currency_code']) . '",';
         } else {
             $currency_code = '';
         }
@@ -780,7 +780,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $order['order_number'] . '",' .
             '"' . pg_csv_formula_guard($order['custom_field_1']) . '",' .
             '"' . pg_csv_formula_guard($order['custom_field_2']) . '",' .
-            '"' . $order['billing_salutation'] . '",' .
+            '"' . pg_csv_formula_guard($order['billing_salutation']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_first_name']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_last_name']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_email_address']) . '",' .
@@ -790,16 +790,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . pg_csv_formula_guard($order['billing_city']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_state']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_zip_code']) . '",' .
-            '"' . $order['billing_country'] . '",' .
+            '"' . pg_csv_formula_guard($order['billing_country']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_phone_number']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_fax_number']) . '",' .
-            '"' . $order['payment_method'] . '",' .
-            '"' . $order['card_type'] . '",' .
+            '"' . pg_csv_formula_guard($order['payment_method']) . '",' .
+            '"' . pg_csv_formula_guard($order['card_type']) . '",' .
             '"' . pg_csv_formula_guard($order['cardholder']) . '",' .
             '"' . pg_order_export_card_cell($card_number) . '",' .
-            '"' . $order['expiration_month'] . '",' .
-            '"' . $order['expiration_year'] . '",' .
-            '"' . $card_verification_number . '",' .
+            '"' . pg_csv_formula_guard($order['expiration_month']) . '",' .
+            '"' . pg_csv_formula_guard($order['expiration_year']) . '",' .
+            '"' . pg_csv_formula_guard($card_verification_number) . '",' .
             '"' . pg_csv_formula_guard($order['referral_source_code']) . '",' .
             '"' . pg_csv_formula_guard($order['po_number']) . '",' .
             '"' . $tax_exempt . '",' .
@@ -813,10 +813,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . sprintf("%01.2lf", $order['total'] / 100) . '",' .
             '"' . sprintf("%01.2lf", $order['commission'] / 100) . '",' .
             '"' . pg_csv_export_time($order['order_date']) . '",' .
-            '"' . $order['transaction_id'] . '",' .
-            '"' . $order['authorization_code'] . '",' .
+            '"' . pg_csv_formula_guard($order['transaction_id']) . '",' .
+            '"' . pg_csv_formula_guard($order['authorization_code']) . '",' .
             '"' . pg_csv_formula_guard($order['special_offer_code']) . '",' .
-            '"' . $order['reference_code'] . '",' .
+            '"' . pg_csv_formula_guard($order['reference_code']) . '",' .
             '"' . pg_csv_formula_guard($order['tracking_code']) . '",' .
             '"' . pg_csv_formula_guard($order['utm_source']) . '",' .
             '"' . pg_csv_formula_guard($order['utm_medium']) . '",' .
@@ -827,7 +827,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . pg_csv_formula_guard($order['affiliate_code']) . '",' .
             $currency_code .
             '"' . pg_csv_formula_guard($order['http_referer']) . '",' .
-            '"' . $ip_address . '",' .
+            '"' . pg_csv_formula_guard($ip_address) . '",' .
             '"' . sprintf("%01.2lf", $order['installment_charges'] / 100) . '"';
 
         // Loop through the custom billing field names in order to
@@ -938,7 +938,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     
     // loop through the custom field names in order to output them in the first row of ship_tos.csv data
     foreach ($custom_field_names as $custom_field_name) {
-        $ship_to_data .= ',"' . str_replace('"', '""', $custom_field_name) . '"';
+        $ship_to_data .= ',"' . csv_cell($custom_field_name) . '"';
     }
     
     $ship_to_data .= "\n";
@@ -987,7 +987,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $row['order_id'] . '",' .
             '"' . $row['order_number'] . '",' .
             '"' . pg_csv_formula_guard($row['ship_to_name']) . '",' .
-            '"' . $row['salutation'] . '",' .
+            '"' . pg_csv_formula_guard($row['salutation']) . '",' .
             '"' . pg_csv_formula_guard($row['first_name']) . '",' .
             '"' . pg_csv_formula_guard($row['last_name']) . '",' .
             '"' . pg_csv_formula_guard($row['company']) . '",' .
@@ -996,13 +996,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . pg_csv_formula_guard($row['city']) . '",' .
             '"' . pg_csv_formula_guard($row['state']) . '",' .
             '"' . pg_csv_formula_guard($row['zip_code']) . '",' .
-            '"' . $row['country'] . '",' .
-            '"' . $row['address_type'] . '",' .
-            '"' . $row['arrival_date_code'] . '",' .
+            '"' . pg_csv_formula_guard($row['country']) . '",' .
+            '"' . pg_csv_formula_guard($row['address_type']) . '",' .
+            '"' . pg_csv_formula_guard($row['arrival_date_code']) . '",' .
             '"' . pg_order_export_date_cell($row['arrival_date']) . '",' .
             '"' . pg_order_export_date_cell($row['ship_date']) . '",' .
             '"' . pg_order_export_date_cell($row['delivery_date']) . '",' .
-            '"' . $row['shipping_method_code'] . '",' .
+            '"' . pg_csv_formula_guard($row['shipping_method_code']) . '",' .
             '"' . sprintf("%01.2lf", $row['shipping_cost'] / 100) . '"';
         
         // loop through the custom field names in order to output custom shipping form data for this ship to row
@@ -1019,28 +1019,28 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     // If the first custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-        $output_custom_field_1_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL) . '",';
+        $output_custom_field_1_heading = '"' . csv_cell(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL) . '",';
     }
 
     $output_custom_field_2_heading = '';
 
     // If the second custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-        $output_custom_field_2_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL) . '",';
+        $output_custom_field_2_heading = '"' . csv_cell(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL) . '",';
     }
 
     $output_custom_field_3_heading = '';
 
     // If the third custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-        $output_custom_field_3_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL) . '",';
+        $output_custom_field_3_heading = '"' . csv_cell(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL) . '",';
     }
 
     $output_custom_field_4_heading = '';
 
     // If the fourth custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-        $output_custom_field_4_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL) . '",';
+        $output_custom_field_4_heading = '"' . csv_cell(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL) . '",';
     }
 
     // prepare first row of order_items.csv data
@@ -1120,28 +1120,28 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
         // If the first custom product field is active, then output value for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-            $output_custom_field_1 = '"' . escape_csv($row['custom_field_1']) . '",';
+            $output_custom_field_1 = '"' . pg_csv_formula_guard($row['custom_field_1']) . '",';
         }
 
         $output_custom_field_2 = '';
 
         // If the second custom product field is active, then output value for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-            $output_custom_field_2 = '"' . escape_csv($row['custom_field_2']) . '",';
+            $output_custom_field_2 = '"' . pg_csv_formula_guard($row['custom_field_2']) . '",';
         }
 
         $output_custom_field_3 = '';
 
         // If the third custom product field is active, then output value for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-            $output_custom_field_3 = '"' . escape_csv($row['custom_field_3']) . '",';
+            $output_custom_field_3 = '"' . pg_csv_formula_guard($row['custom_field_3']) . '",';
         }
 
         $output_custom_field_4 = '';
 
         // If the fourth custom product field is active, then output value for it.
         if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-            $output_custom_field_4 = '"' . escape_csv($row['custom_field_4']) . '",';
+            $output_custom_field_4 = '"' . pg_csv_formula_guard($row['custom_field_4']) . '",';
         }
 
         // prepare row for order_items.csv data
@@ -1150,19 +1150,19 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $row['order_id'] . '",' .
             '"' . $row['order_number'] . '",' .
             '"' . $row['ship_to_id'] . '",' .
-            '"' . $row['product_name'] . '",' .
+            '"' . pg_csv_formula_guard($row['product_name']) . '",' .
             '"' . $row['quantity'] . '",' .
             '"' . $shipped_quantity . '",' .
             '"' . sprintf("%01.2lf", $row['price'] / 100) . '",' .
             '"' . sprintf("%01.2lf", pg_order_export_line_tax($row['order_id'], $row['id']) / 100) . '",' .
-            '"' . $recurring_payment_period . '",' .
+            '"' . pg_csv_formula_guard($recurring_payment_period) . '",' .
             '"' . $recurring_number_of_payments . '",' .
             '"' . $recurring_start_date . '",' .
             $output_custom_field_1 .
             $output_custom_field_2 .
             $output_custom_field_3 .
             $output_custom_field_4 .
-            '"' . $row['notes'] . '"' . "\n";
+            '"' . pg_csv_formula_guard($row['notes']) . '"' . "\n";
     }
     
     $shipping_tracking_number_data = '';
@@ -1210,7 +1210,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 '"' . $shipping_tracking_number['order_id'] . '",' .
                 '"' . $shipping_tracking_number['order_number'] . '",' .
                 '"' . $shipping_tracking_number['ship_to_id'] . '",' .
-                '"' . str_replace('"', '""', $shipping_tracking_number['number']) . '"' . "\n";
+                '"' . csv_cell($shipping_tracking_number['number']) . '"' . "\n";
         }
     }
     
@@ -1556,7 +1556,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         
     // Loop through the custom billing field names in order to output them in the order heading row.
     foreach ($custom_billing_field_names as $custom_billing_field_name) {
-        echo ',"' . str_replace('"', '""', $custom_billing_field_name) . '"';
+        echo ',"' . csv_cell($custom_billing_field_name) . '"';
     }
     
     echo "\n";
@@ -1629,7 +1629,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         
         // loop through the custom field names in order to output them in the ship to heading row
         foreach ($custom_field_names as $custom_field_name) {
-            print ',"' . str_replace('"', '""', $custom_field_name) . '"';
+            print ',"' . csv_cell($custom_field_name) . '"';
         }
         
         print "\n";
@@ -1643,28 +1643,28 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     // If the first custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-        $output_custom_field_1_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL) . '",';
+        $output_custom_field_1_heading = '"' . csv_cell(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL) . '",';
     }
 
     $output_custom_field_2_heading = '';
 
     // If the second custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-        $output_custom_field_2_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL) . '",';
+        $output_custom_field_2_heading = '"' . csv_cell(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL) . '",';
     }
 
     $output_custom_field_3_heading = '';
 
     // If the third custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-        $output_custom_field_3_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL) . '",';
+        $output_custom_field_3_heading = '"' . csv_cell(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL) . '",';
     }
 
     $output_custom_field_4_heading = '';
 
     // If the fourth custom product field is active, then output heading for it.
     if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-        $output_custom_field_4_heading = '"' . escape_csv(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL) . '",';
+        $output_custom_field_4_heading = '"' . csv_cell(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL) . '",';
     }
 
     // prepare column headings for order item records
@@ -1755,7 +1755,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
         // if multi currency is enabled
         if (ECOMMERCE_MULTICURRENCY === true) {
-            $currency_code = '"' . $order['currency_code'] . '",';
+            $currency_code = '"' . pg_csv_formula_guard($order['currency_code']) . '",';
         } else {
             $currency_code = '';
         }
@@ -1772,7 +1772,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $order['order_number'] . '",' .
             '"' . pg_csv_formula_guard($order['custom_field_1']) . '",' .
             '"' . pg_csv_formula_guard($order['custom_field_2']) . '",' .
-            '"' . $order['billing_salutation'] . '",' .
+            '"' . pg_csv_formula_guard($order['billing_salutation']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_first_name']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_last_name']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_email_address']) . '",' .
@@ -1782,16 +1782,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . pg_csv_formula_guard($order['billing_city']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_state']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_zip_code']) . '",' .
-            '"' . $order['billing_country'] . '",' .
+            '"' . pg_csv_formula_guard($order['billing_country']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_phone_number']) . '",' .
             '"' . pg_csv_formula_guard($order['billing_fax_number']) . '",' .
-            '"' . $order['payment_method'] . '",' .
-            '"' . $order['card_type'] . '",' .
+            '"' . pg_csv_formula_guard($order['payment_method']) . '",' .
+            '"' . pg_csv_formula_guard($order['card_type']) . '",' .
             '"' . pg_csv_formula_guard($order['cardholder']) . '",' .
             '"' . pg_order_export_card_cell($card_number) . '",' .
-            '"' . $order['expiration_month'] . '",' .
-            '"' . $order['expiration_year'] . '",' .
-            '"' . $card_verification_number . '",' .
+            '"' . pg_csv_formula_guard($order['expiration_month']) . '",' .
+            '"' . pg_csv_formula_guard($order['expiration_year']) . '",' .
+            '"' . pg_csv_formula_guard($card_verification_number) . '",' .
             '"' . pg_csv_formula_guard($order['referral_source_code']) . '",' .
             '"' . pg_csv_formula_guard($order['po_number']) . '",' .
             '"' . $tax_exempt . '",' .
@@ -1805,10 +1805,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . sprintf("%01.2lf", $order['total'] / 100) . '",' .
             '"' . sprintf("%01.2lf", $order['commission'] / 100) . '",' .
             '"' . pg_csv_export_time($order['order_date']) . '",' .
-            '"' . $order['transaction_id'] . '",' .
-            '"' . $order['authorization_code'] . '",' .
+            '"' . pg_csv_formula_guard($order['transaction_id']) . '",' .
+            '"' . pg_csv_formula_guard($order['authorization_code']) . '",' .
             '"' . pg_csv_formula_guard($order['special_offer_code']) . '",' .
-            '"' . $order['reference_code'] . '",' .
+            '"' . pg_csv_formula_guard($order['reference_code']) . '",' .
             '"' . pg_csv_formula_guard($order['tracking_code']) . '",' .
             '"' . pg_csv_formula_guard($order['utm_source']) . '",' .
             '"' . pg_csv_formula_guard($order['utm_medium']) . '",' .
@@ -1819,7 +1819,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . pg_csv_formula_guard($order['affiliate_code']) . '",' .
             $currency_code .
             '"' . pg_csv_formula_guard($order['http_referer']) . '",' .
-            '"' . $ip_address . '",' .
+            '"' . pg_csv_formula_guard($ip_address) . '",' .
             '"' . sprintf("%01.2lf", $order['installment_charges'] / 100) . '"';
         
         // Loop through the custom billing field names in order to output custom billing form data for this order row.
@@ -1861,47 +1861,47 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
             // If the first custom product field is active, then output value for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                $output_custom_field_1 = '"' . escape_csv($order_item['custom_field_1']) . '",';
+                $output_custom_field_1 = '"' . pg_csv_formula_guard($order_item['custom_field_1']) . '",';
             }
 
             $output_custom_field_2 = '';
 
             // If the second custom product field is active, then output value for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                $output_custom_field_2 = '"' . escape_csv($order_item['custom_field_2']) . '",';
+                $output_custom_field_2 = '"' . pg_csv_formula_guard($order_item['custom_field_2']) . '",';
             }
 
             $output_custom_field_3 = '';
 
             // If the third custom product field is active, then output value for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                $output_custom_field_3 = '"' . escape_csv($order_item['custom_field_3']) . '",';
+                $output_custom_field_3 = '"' . pg_csv_formula_guard($order_item['custom_field_3']) . '",';
             }
 
             $output_custom_field_4 = '';
 
             // If the fourth custom product field is active, then output value for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                $output_custom_field_4 = '"' . escape_csv($order_item['custom_field_4']) . '",';
+                $output_custom_field_4 = '"' . pg_csv_formula_guard($order_item['custom_field_4']) . '",';
             }
 
             // prepare order item row
             print
                 $order_item_indentation .
-                '"' . $order_item['product_name'] . '",' .
-                '"' . $order_item['short_description'] . '",' .
+                '"' . pg_csv_formula_guard($order_item['product_name']) . '",' .
+                '"' . pg_csv_formula_guard($order_item['short_description']) . '",' .
                 '"' . $order_item['quantity'] . '",' .
                 '"' . $shipped_quantity . '",' .
                 '"' . sprintf("%01.2lf", $order_item['price'] / 100) . '",' .
                 '"' . sprintf("%01.2lf", pg_order_export_line_tax($order_item['order_id'], $order_item['id']) / 100) . '",' .
-                '"' . $recurring_payment_period . '",' .
+                '"' . pg_csv_formula_guard($recurring_payment_period) . '",' .
                 '"' . $recurring_number_of_payments . '",' .
                 '"' . $recurring_start_date . '",' .
                 $output_custom_field_1 .
                 $output_custom_field_2 .
                 $output_custom_field_3 .
                 $output_custom_field_4 .
-                '"' . $order_item['notes'] . '"' . "\n";
+                '"' . pg_csv_formula_guard($order_item['notes']) . '"' . "\n";
 
             // get maximum quantity number, so we can determine how many product forms there are for this order item
             $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = ?";
@@ -1947,7 +1947,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 $heading_row .= ',';
                             }
 
-                            $heading_row .= '"' . str_replace('"', '""', $form_data_item['name']) . '"';
+                            $heading_row .= '"' . csv_cell($form_data_item['name']) . '"';
 
                             // if this is the last data item, then add a new line
                             if ($key == (count($form_data_items) - 1)) {
@@ -2032,7 +2032,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         $shipping_tracking_number_list .= ', ';
                     }
                     
-                    $shipping_tracking_number_list .= str_replace('"', '""', $shipping_tracking_number['number']);
+                    $shipping_tracking_number_list .= $shipping_tracking_number['number'];
                 }
             }
 
@@ -2040,7 +2040,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             print
                 $ship_to_indentation .
                 '"' . pg_csv_formula_guard($ship_to['ship_to_name']) . '",' .
-                '"' . $ship_to['salutation'] . '",' .
+                '"' . pg_csv_formula_guard($ship_to['salutation']) . '",' .
                 '"' . pg_csv_formula_guard($ship_to['first_name']) . '",' .
                 '"' . pg_csv_formula_guard($ship_to['last_name']) . '",' .
                 '"' . pg_csv_formula_guard($ship_to['company']) . '",' .
@@ -2049,14 +2049,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 '"' . pg_csv_formula_guard($ship_to['city']) . '",' .
                 '"' . pg_csv_formula_guard($ship_to['state']) . '",' .
                 '"' . pg_csv_formula_guard($ship_to['zip_code']) . '",' .
-                '"' . $ship_to['country'] . '",' .
-                '"' . $ship_to['address_type'] . '",' .
-                '"' . $ship_to['arrival_date_code'] . '",' .
+                '"' . pg_csv_formula_guard($ship_to['country']) . '",' .
+                '"' . pg_csv_formula_guard($ship_to['address_type']) . '",' .
+                '"' . pg_csv_formula_guard($ship_to['arrival_date_code']) . '",' .
                 '"' . pg_order_export_date_cell($ship_to['arrival_date']) . '",' .
                 '"' . pg_order_export_date_cell($ship_to['ship_date']) . '",' .
                 '"' . pg_order_export_date_cell($ship_to['delivery_date']) . '",' .
-                '"' . $ship_to['shipping_method_code'] . '",' .
-                '"' . $shipping_tracking_number_list . '",' .
+                '"' . pg_csv_formula_guard($ship_to['shipping_method_code']) . '",' .
+                '"' . csv_cell($shipping_tracking_number_list) . '",' .
                 '"' . sprintf("%01.2lf", $ship_to['shipping_cost'] / 100) . '"';
             
             // loop through the custom field names in order to output custom shipping form data for this ship to row
@@ -2098,47 +2098,47 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
                 // If the first custom product field is active, then output value for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                    $output_custom_field_1 = '"' . escape_csv($order_item['custom_field_1']) . '",';
+                    $output_custom_field_1 = '"' . pg_csv_formula_guard($order_item['custom_field_1']) . '",';
                 }
 
                 $output_custom_field_2 = '';
 
                 // If the second custom product field is active, then output value for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                    $output_custom_field_2 = '"' . escape_csv($order_item['custom_field_2']) . '",';
+                    $output_custom_field_2 = '"' . pg_csv_formula_guard($order_item['custom_field_2']) . '",';
                 }
 
                 $output_custom_field_3 = '';
 
                 // If the third custom product field is active, then output value for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                    $output_custom_field_3 = '"' . escape_csv($order_item['custom_field_3']) . '",';
+                    $output_custom_field_3 = '"' . pg_csv_formula_guard($order_item['custom_field_3']) . '",';
                 }
 
                 $output_custom_field_4 = '';
 
                 // If the fourth custom product field is active, then output value for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                    $output_custom_field_4 = '"' . escape_csv($order_item['custom_field_4']) . '",';
+                    $output_custom_field_4 = '"' . pg_csv_formula_guard($order_item['custom_field_4']) . '",';
                 }
 
                 // prepare order item row
                 print
                     $order_item_indentation .
-                    '"' . $order_item['product_name'] . '",' .
-                    '"' . $order_item['short_description'] . '",' .
+                    '"' . pg_csv_formula_guard($order_item['product_name']) . '",' .
+                    '"' . pg_csv_formula_guard($order_item['short_description']) . '",' .
                     '"' . $order_item['quantity'] . '",' .
                     '"' . $shipped_quantity . '",' .
                     '"' . sprintf("%01.2lf", $order_item['price'] / 100) . '",' .
                     '"' . sprintf("%01.2lf", pg_order_export_line_tax($order_item['order_id'], $order_item['id']) / 100) . '",' .
-                    '"' . $recurring_payment_period . '",' .
+                    '"' . pg_csv_formula_guard($recurring_payment_period) . '",' .
                     '"' . $recurring_number_of_payments . '",' .
                     '"' . $recurring_start_date . '",' .
                     $output_custom_field_1 .
                     $output_custom_field_2 .
                     $output_custom_field_3 .
                     $output_custom_field_4 .
-                    '"' . $order_item['notes'] . '"' . "\n";
+                    '"' . pg_csv_formula_guard($order_item['notes']) . '"' . "\n";
 
                 // get maximum quantity number, so we can determine how many product forms there are for this order item
                 $query = "SELECT MAX(quantity_number) as number_of_forms FROM form_data WHERE order_item_id = ?";
@@ -2184,7 +2184,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                     $heading_row .= ',';
                                 }
 
-                                $heading_row .= '"' . str_replace('"', '""', $form_data_item['name']) . '"';
+                                $heading_row .= '"' . csv_cell($form_data_item['name']) . '"';
 
                                 // if this is the last data item, then add a new line
                                 if ($key == (count($form_data_items) - 1)) {

@@ -1285,17 +1285,20 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
 
 /**
  * The catalogue Pinegrap AI drafts from: ws_flow_kind_catalogue() without
- * the kinds no new box is made of (ws_flow_kinds_not_offered()), with the
- * hints of ws_flow_ai_catalogue_hints(), the kinds of record read from the
- * site.
+ * the kinds no new box is made of (ws_flow_kinds_not_offered()), nor, with
+ * the Workspace off, the kinds that need it (ws_flow_kinds_workspace()),
+ * with the hints of ws_flow_ai_catalogue_hints(), the kinds of record read
+ * from the site.
  *
  * @return array[]
  */
 function ws_flow_ai_catalogue()
 {
     $subjects = function_exists('ws_scheduled_record_types') ? array_keys(ws_scheduled_record_types()) : array();
-    $offered = array_values(array_filter(ws_flow_kind_catalogue(), function ($kind) {
-        return !in_array($kind['kind'], ws_flow_kinds_not_offered(), true);
+    $workspace = ws_enabled();
+    $offered = array_values(array_filter(ws_flow_kind_catalogue(), function ($kind) use ($workspace) {
+        return !in_array($kind['kind'], ws_flow_kinds_not_offered(), true)
+            && ($workspace || !in_array($kind['kind'], ws_flow_kinds_workspace(), true));
     }));
 
     return ws_flow_ai_catalogue_hints($offered, $subjects);

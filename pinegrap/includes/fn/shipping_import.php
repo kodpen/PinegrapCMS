@@ -22,28 +22,17 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The column separator of a CSV line: a semicolon when the line has more of
- * them than commas (Excel saves with semicolons in a Turkish locale), a tab
- * likewise, else a comma.
+ * The column separator of a CSV line: of the comma, the semicolon (Excel
+ * saves with semicolons in a Turkish locale) and the tab, the one the line
+ * holds most outside quoted cells, else a comma (pg_csv_separator(), the
+ * other importers' rule).
  *
  * @param  string $line the file's first line
  * @return string
  */
 function pg_shipping_import_delimiter($line)
 {
-    $line = (string) $line;
-
-    $counts = array(
-        ','  => substr_count($line, ','),
-        ';'  => substr_count($line, ';'),
-        "\t" => substr_count($line, "\t"),
-    );
-
-    arsort($counts);
-
-    $delimiter = key($counts);
-
-    return (current($counts) > 0) ? $delimiter : ',';
+    return pg_csv_separator((string) $line);
 }
 
 /**
@@ -68,13 +57,17 @@ function pg_shipping_import_fallback_encoding()
 /**
  * The rows of a tracking-number CSV: order_number, number, carrier (the
  * carrier may be left out). A first row whose first cell is "order_number" is
- * the header and is skipped; blank lines are skipped; cells are trimmed and a
- * byte order mark is removed. A cell that is not UTF-8 is read as Excel's
- * Turkish encoding (Windows-1254), so 'Yurtiçi Kargo' saved by Excel in a
- * Turkish locale names the carrier. A row's line is the file's line, so the result
- * list can point at it.
+ * the header and is skipped; blank lines are skipped; cells are trimmed and
+ * lose the formula guard an export put on them (pg_csv_formula_unguard()). A
+ * UTF-8 byte order mark at the start is stepped over before the first cell is
+ * read, so a quoted first heading loses its quotes like any other. A cell
+ * that is not UTF-8 is read as Excel's Turkish encoding (Windows-1254), so
+ * 'Yurtiçi Kargo' saved by Excel in a Turkish locale names the carrier. A
+ * row's line is the file line it starts on (a quoted cell may hold a line
+ * break), so the result list can point at it.
  *
- * @param  resource $handle an open stream at its start
+ * @param  resource $handle an open stream at the start of its first line
+ *                          (pg_csv_open() gives one with LF line breaks)
  * @param  int      $limit  the most rows read; reading stops after it
  * @return array 'rows' => list of line, order_number, number, carrier;
  *               'more' => true when the file had rows past the limit
@@ -83,21 +76,20 @@ function pg_shipping_import_read($handle, $limit)
 {
     $out = array('rows' => array(), 'more' => false);
 
-    $first = fgets($handle);
+    $start = (int) ftell($handle);
 
-    if ($first === false) {
-        return $out;
+    if (fread($handle, 3) !== "\xEF\xBB\xBF") {
+        fseek($handle, $start);
     }
 
-    $delimiter = pg_shipping_import_delimiter($first);
+    $delimiter = pg_csv_read_separator($handle);
 
-    rewind($handle);
-
-    $line = 0;
+    $next_line = 1;
 
     while (($cells = fgetcsv($handle, 10000, $delimiter, '"', '\\')) !== false) {
 
-        $line++;
+        $line = $next_line;
+        $next_line += pg_csv_row_lines($cells);
 
         $cells = array_map(function ($cell) {
             $cell = (string) $cell;
@@ -106,15 +98,12 @@ function pg_shipping_import_read($handle, $limit)
                 $cell = mb_convert_encoding($cell, 'UTF-8', pg_shipping_import_fallback_encoding());
             }
 
-            return trim($cell);
+            // A cell an order export guarded ('-…) reads back as it was.
+            return pg_csv_formula_unguard(trim($cell));
         }, (array) $cells);
 
-        if ($line === 1) {
-            $cells[0] = trim(preg_replace('/^\xEF\xBB\xBF/', '', $cells[0]));
-
-            if (strtolower($cells[0]) === 'order_number') {
-                continue;
-            }
+        if (($line === 1) && (strtolower($cells[0]) === 'order_number')) {
+            continue;
         }
 
         if (implode('', $cells) === '') {
@@ -135,6 +124,32 @@ function pg_shipping_import_read($handle, $limit)
     }
 
     return $out;
+}
+
+/**
+ * The rows of an uploaded tracking-number file (pg_shipping_import_read()),
+ * opened with pg_csv_open() as the other importers open theirs: a file whose
+ * line breaks are a lone CR reads line by line, and the byte order mark is
+ * stepped over.
+ *
+ * @param  string $path  the uploaded file
+ * @param  int    $limit the most rows read
+ * @return array|null as pg_shipping_import_read(); null when the file cannot
+ *                    be opened
+ */
+function pg_shipping_import_read_file($path, $limit)
+{
+    $handle = pg_csv_open($path);
+
+    if (!$handle) {
+        return null;
+    }
+
+    $read = pg_shipping_import_read($handle, $limit);
+
+    fclose($handle);
+
+    return $read;
 }
 
 /**
@@ -326,15 +341,11 @@ function pg_shipping_bulk_mark_skip($status, $address_count, $has_parcel, $left)
  */
 function pg_shipping_import_run($path, $notify, $max_rows)
 {
-    $handle = fopen($path, 'r');
+    $read = pg_shipping_import_read_file($path, $max_rows);
 
-    if (!$handle) {
+    if ($read === null) {
         return '<div class="alert theme-danger">' . h(lang('The file could not be read.')) . '</div>';
     }
-
-    $read = pg_shipping_import_read($handle, $max_rows);
-
-    fclose($handle);
 
     // line => array(class, message); rows are listed in the file's order.
     $results = array();

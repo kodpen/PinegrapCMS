@@ -363,6 +363,66 @@ function ws_action_flow_run_answer($viewer, $run_id)
 }
 
 /**
+ * The panel actions the Flows screen (workspace_flows.php) sends, which
+ * answer on a site whose Workspace is off while flows run there
+ * (pg_flows_enabled()): the list, the canvas, publishing, templates, runs,
+ * shares and the web address, the team the screen picks people from
+ * (ws_bootstrap), the screen's run of what is due (ws_tick) and the
+ * customer search of Run (ws_ref_search). The flow views that live in a
+ * channel stay the Workspace's: a draft's card, the editor over a channel
+ * and a scheduled action's card. Pure.
+ *
+ * @return string[]
+ */
+function ws_flow_actions_without_workspace()
+{
+    return array(
+        'ws_bootstrap', 'ws_tick', 'ws_ref_search',
+        'ws_flow_list', 'ws_flow_get', 'ws_flow_create', 'ws_flow_save',
+        'ws_flow_publish', 'ws_flow_pause', 'ws_flow_resume', 'ws_flow_bin',
+        'ws_flow_template_setup', 'ws_flow_quick_setup', 'ws_flow_ai_sketch',
+        'ws_flow_template_save', 'ws_flow_template_update', 'ws_flow_template_bin',
+        'ws_flow_run_start', 'ws_flow_run_now', 'ws_flow_runs_list', 'ws_flow_run_get',
+        'ws_flow_run_cancel', 'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_web_address',
+        'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
+    );
+}
+
+/**
+ * Whether the Workspace's switch lets an action through: every action while
+ * it is on; with it off only the Flows screen's own
+ * (ws_flow_actions_without_workspace()), once flows run there. Of those,
+ * the search reads contacts only and a share goes to a person only: a
+ * channel is the Workspace's. Pure.
+ *
+ * @param string $action
+ * @param array  $request
+ * @param bool   $workspace_on ws_enabled()
+ * @param bool   $flows_on     pg_flows_enabled()
+ * @return bool
+ */
+function ws_action_switch_allows($action, $request, $workspace_on, $flows_on)
+{
+    if ($workspace_on) {
+        return true;
+    }
+
+    if (!$flows_on || !in_array((string) $action, ws_flow_actions_without_workspace(), true)) {
+        return false;
+    }
+
+    if ($action === 'ws_ref_search') {
+        return ((string) ($request['type'] ?? '') === 'contact');
+    }
+
+    if ($action === 'ws_flow_share_set') {
+        return ((string) ($request['target_type'] ?? '') !== 'channel');
+    }
+
+    return true;
+}
+
+/**
  * The entry point api.php calls.
  *
  * @param string $action
@@ -371,7 +431,11 @@ function ws_action_flow_run_answer($viewer, $run_id)
  */
 function ws_handle_action($action, $request)
 {
-    if (!ws_enabled()) {
+    $request = is_array($request) ? $request : array();
+
+    // With the Workspace off ws_ready() is still asked: the Flows screen's
+    // actions read the team and the flows from the Workspace's tables.
+    if (!ws_action_switch_allows($action, $request, ws_enabled(), ws_ready() && pg_flows_enabled())) {
         return ws_action_error(lang('The workspace is not switched on.'));
     }
 
@@ -388,8 +452,6 @@ function ws_handle_action($action, $request)
     if (!in_array($action, array('ws_channel_audit', 'ws_mcp_connect'), true) && (strpos((string) $action, 'ws_note_lock_') !== 0)) {
         session_write_close();
     }
-
-    $request = is_array($request) ? $request : array();
 
     // An earlier version of a conversation is kept as it was: nothing in it
     // is edited, marked, reacted to, ticked or voted on any more. Deleting a
@@ -420,6 +482,16 @@ function ws_handle_action($action, $request)
         // it is drawn, so neither holds up its first answer (a call to
         // claude.ai may take seconds).
         case 'ws_tick':
+            // With the Workspace off the Flows screen's look moves only the
+            // flows on (ws_scheduled_run() keeps to their anchors there).
+            if (!ws_enabled()) {
+                if (function_exists('ws_scheduled_run')) {
+                    ws_scheduled_run();
+                }
+
+                return ws_action_ok();
+            }
+
             if (function_exists('ws_recurrence_tick')) {
                 ws_recurrence_tick();
             }
@@ -701,7 +773,9 @@ function ws_handle_action($action, $request)
             $last = ws_flow_last_runs($viewer, $rows);
             $run_numbers = ws_flow_version_numbers($last);
 
-            return ws_action_ok(array('scheduled' => $runnable ? null : ws_flows_scheduled_rows($viewer), 'flows' => array_map(function ($row) use ($viewer, $numbers, $starts, $channels, $next, $last, $run_numbers) {
+            // The scheduled actions the conversion refused are the
+            // Workspace's: with it off the list does not end with them.
+            return ws_action_ok(array('scheduled' => ($runnable || !ws_enabled()) ? null : ws_flows_scheduled_rows($viewer), 'flows' => array_map(function ($row) use ($viewer, $numbers, $starts, $channels, $next, $last, $run_numbers) {
                 $run = $last[(int) $row['id']] ?? null;
                 $start = $starts[(int) $row['id']] ?? array('kind' => '', 'text' => '');
                 $moment = isset($next[(int) $row['id']]) ? ws_scheduled_moment($next[(int) $row['id']]) : '';
@@ -936,8 +1010,9 @@ function ws_handle_action($action, $request)
             }
 
             // Started from a channel's composer: the run's card goes there,
-            // once (a retried token answers the run it started, no card).
-            if ($result['started'] && ((int) ($request['channel_id'] ?? 0) > 0)) {
+            // once (a retried token answers the run it started, no card);
+            // never with the Workspace off.
+            if ($result['started'] && ((int) ($request['channel_id'] ?? 0) > 0) && ws_enabled()) {
                 ws_flow_run_card_post($viewer, $flow, $result['run_id'], (int) $request['channel_id']);
             }
 
@@ -1758,7 +1833,9 @@ function ws_handle_action($action, $request)
 
             // A screen that printed the Workspace list's data with the page
             // (ws_side_inline()) already holds the channels, groups,
-            // discussions and inbox count: they are not read twice.
+            // discussions and inbox count: they are not read twice. With the
+            // Workspace off only the Flows screen asks: none of them.
+            $workspace = ws_enabled();
             $lean = !empty($request['lean']);
 
             return ws_action_ok(array(
@@ -1771,10 +1848,10 @@ function ws_handle_action($action, $request)
                 )),
                 'people'      => ws_team_members(),
                 'departments' => array_values(ws_departments(true)),
-                'channels'    => $lean ? null : ws_channels_for($viewer),
-                'groups'      => $lean ? null : ws_groups_for($viewer),
-                'threads'     => $lean ? null : ws_threads_for($viewer),
-                'inbox'       => $lean ? null : ws_inbox_unread_count($viewer['id']),
+                'channels'    => !$workspace ? array() : ($lean ? null : ws_channels_for($viewer)),
+                'groups'      => !$workspace ? array() : ($lean ? null : ws_groups_for($viewer)),
+                'threads'     => !$workspace ? array() : ($lean ? null : ws_threads_for($viewer)),
+                'inbox'       => !$workspace ? 0 : ($lean ? null : ws_inbox_unread_count($viewer['id'])),
                 'statuses'    => ws_task_statuses(),
                 'priorities'  => ws_task_priorities(),
                 'ref_types'   => ws_ref_types($viewer),

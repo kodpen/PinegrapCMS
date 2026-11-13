@@ -156,6 +156,26 @@ function test_import_users_leaves_repeated_headings_out()
 	pg_assert_same(array(1), $unique['repeated']);
 }
 
+// The check loop reads the e-mail address and user name trimmed, as the
+// writing loop does: " name@example.com" pasted from a spreadsheet refused
+// the whole file as an invalid address.
+function test_import_users_checks_the_cells_it_writes()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_users.php');
+	$check = substr($source, (int) strpos($source, 'while ($row = fgetcsv('), 6000);
+
+	pg_assert_contains('$row_email_address = trim($import_cell($row, $email_address_key));', $check);
+	pg_assert_contains('$row_username = trim($import_cell($row, $username_key));', $check);
+	pg_assert_contains('validate_email_address($row_email_address)', $check, 'the trimmed address is validated');
+	pg_assert_contains('array($row_username, $row_username)', $check, 'the user name lookup is trimmed');
+	pg_assert_contains('array($row_email_address, $row_email_address)', $check, 'the e-mail lookup is trimmed');
+	pg_assert_false(strpos($check, 'validate_email_address($import_cell(') !== false, 'no untrimmed cell is validated');
+	pg_assert_contains('$email_address = trim($import_cell($user_to_be_imported, $email_address_key));', $source, 'the writing loop reads it the same way');
+
+	pg_assert_true(validate_email_address('pg-test@example.com'), 'a trimmed address is valid');
+	pg_assert_false(validate_email_address(' pg-test@example.com'), 'the untrimmed one is not');
+}
+
 // A user already deleted in another tab is skipped, never counted.
 function test_delete_users_skips_a_missing_user()
 {

@@ -200,8 +200,9 @@ function test_ops_alerts_general_job_limit_in_catalogue()
 	pg_assert_true(preg_match("/'job' => array\\(\\s*'label'\\s*=> lang\\('General job'\\),\\s*'script'\\s*=> 'job\\.php',\\s*'interval'\\s*=> 60,\\s*'stale_after' => 7200,/", $source) === 1);
 }
 
-// The folder reading: sub-folders and automatic archives count, the install
-// fixtures and stray files do not, and the newest stamp wins.
+// The folder reading: folders holding their dump and automatic archives
+// count, at the dump's time and the archive's; the install fixtures, stray
+// files and folders without a dump do not, and the newest stamp wins.
 function test_ops_alerts_backup_newest_reads_the_folder()
 {
 	$directory = sys_get_temp_dir() . '/pg_backup_newest_' . getmypid() . '_' . mt_rand(1000, 9999);
@@ -211,23 +212,38 @@ function test_ops_alerts_backup_newest_reads_the_folder()
 	mkdir($directory);
 	mkdir($directory . '/english_default');
 	mkdir($directory . '/manual_backup');
+	file_put_contents($directory . '/manual_backup/sql.sql', 'x');
 	file_put_contents($directory . '/auto_backup_2026-10-42.zip', 'x');
 	file_put_contents($directory . '/notes.txt', 'x');
 
 	touch($directory . '/english_default', 1900000000);
+	touch($directory . '/manual_backup/sql.sql', 1700000000);
 	touch($directory . '/manual_backup', 1700000000);
 	touch($directory . '/auto_backup_2026-10-42.zip', 1800000000);
 	touch($directory . '/notes.txt', 1950000000);
 
 	$found = pg_backup_newest($directory);
+	pg_assert_same(array('count' => 2, 'newest' => 1800000000), $found);
+
+	// A folder without its dump (the Backup Manager's "incomplete" row) is
+	// no backup, however new its own time; and a backup folder written into
+	// later (its download archive, a write probe) keeps its dump's time.
+	mkdir($directory . '/incomplete');
+	touch($directory . '/incomplete', 1990000000);
+	touch($directory . '/manual_backup/sql.sql', 1850000000);
+	touch($directory . '/manual_backup', 1995000000);
+
+	$moved = pg_backup_newest($directory);
 
 	unlink($directory . '/auto_backup_2026-10-42.zip');
 	unlink($directory . '/notes.txt');
+	unlink($directory . '/manual_backup/sql.sql');
 	rmdir($directory . '/manual_backup');
+	rmdir($directory . '/incomplete');
 	rmdir($directory . '/english_default');
 	rmdir($directory);
 
-	pg_assert_same(array('count' => 2, 'newest' => 1800000000), $found);
+	pg_assert_same(array('count' => 2, 'newest' => 1850000000), $moved, 'the dump\'s time, and no empty folder');
 }
 
 // An alert row reaches the bell of a manager and above, nobody below.

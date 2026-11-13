@@ -19,7 +19,7 @@
 - aws-sigv4-signing.md: includes/fn/aws_sign.php: AWS Signature Version 4 without an SDK (header signing, presigned links), tested against the AWS test suite; used by Amazon SES, written for object storage too
 - background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages; what it catches, restores and lends; which pages each pass covers and as whom (audit_run.php)
 - backup-age-rule.md: When a backup's age is a problem - pg_backup_age_state() (none fail, over a month warn, else pass) and its readers: System Status tile, ops alert, greeting, API, agents [decision: decisions-made-product-39.md]
-- backup-folder-download-zip.md: Backup Manager Download of a folder backup: the archive kept inside the folder is rebuilt when the backup was updated after it.
+- backup-folder-download-zip.md: Backup Manager Download and File Manager Zip of a folder backup: one writer with "/" names; the archive inside the folder is rebuilt when the backup was updated after it.
 - backup-manager-names-and-list.md: Backup Manager: the folder name (no basename, 100 characters), reserved names, starter-dump delete, the overwrite question, step errors, list time and order, incomplete folders [decision: decisions-made-product-26.md]
 - backup-object-storage.md: The backup destination "S3-compatible storage" (remote type s3): its own card fields mapped onto the shared object storage client, multipart upload, the bucket's retention prune
 - backup-remote-stored-secret.md: Settings › Backups: an empty FTP password box keeps the stored password only for the same host, port and TLS; the S3 secret key is kept as is, since SigV4 never sends it
@@ -85,6 +85,8 @@
 - image-same-address-switches.md: WebP at a picture's own address: bits 4 and 8 of config.image_derivative_formats, the two Image Optimization switches, clamp, new-install default, System Status line (#5350, #6144, #6667) [decision: decisions-made-product-21.md]
 - image-same-address-why.md: Why a JPEG/PNG keeps its address and file and WebP is negotiated there: options weighed, outside facts, owner decisions, the bytes-match-extension rule [decision: decisions-made-product-17.md]
 - image-same-address.md: JPEG/PNG answered with its WebP derivative at its own address: switch bits, Vary, private caching behind an unconfirmed CDN, f=original in downloads and mails, no renames [decision: decisions-made-product-21.md]
+- image-server-draw-fidelity.md: How the server's canvas drawing matches the editor's Chromium renderer: ImageMagick rounding and antialiasing traps, text placed letter by letter, the measured difference per document kind
+- image-server-draw.md: The server draws an image editor document itself (Canvas Drawing on System Status): what it draws through Imagick, what it leaves to browsers, the probe, the guards and limits, no shell
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost. [decision: decisions-made-files.md, decisions-made-workspace-6.md]
 - image-upload-cap.md: Upload size cap (config.image_upload_max_dimension, 11.0.142, #4700): library uploads above N px shrunk in their own format; 0 off, 2560 on a new site; the doors
 - import-decisions.md: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out [decision: decisions-made-product-19.md]

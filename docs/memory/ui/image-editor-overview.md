@@ -18,7 +18,7 @@ module: image_editor
 ## Who does what, the browser or the server?
 - The server does what it does well; what would be slow there is written in JS. The browser does all interaction and preview and draws the overlay (shapes, text, stickers, frames, inserted pictures) at output size into a transparent PNG, and the colour step on a host without Imagick.
 - The server works on the original's pixels: the browser sends the recipe and the overlay, never the result, so a 48 MP photo is edited on a preview and rendered at full size (`platform/image-editor-save.md`). Preview and engine read the same colour matrix and gamma, held by a test (`image-editor-adjust.md`).
-- The server never rasterises SVG: GD cannot, and Imagick's SVG readers are missing on many hosts and have a bad record. An SVG is kept as sanitized markup (`image-editor-svg-sanitize.md`, `image-editor-svg.md`).
+- The editor never has the server rasterise SVG (GD cannot; Imagick's SVG readers are often missing): an SVG is kept as sanitized markup (`image-editor-svg-sanitize.md`, `image-editor-svg.md`). An agent's canvas is the exception (`platform/image-server-draw.md`).
 
 ## What is the document?
 - JSON: source (file id, natural size), geometry (quarter turns, flips, straighten, crop box and shape, output size), adjustments, filter, frame, artboard, layers, motion and scenes.

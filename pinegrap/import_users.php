@@ -432,53 +432,60 @@ if (!$_POST) {
             continue;
         }
 
+        // The e-mail address and user name as the writing loop below reads
+        // them, trimmed: a cell pasted from a spreadsheet often carries a
+        // space, and an untrimmed check refused the whole file over it (or
+        // passed " admin" here only to skip it there for the wrong reason).
+        $row_email_address = trim($import_cell($row, $email_address_key));
+        $row_username = trim($import_cell($row, $username_key));
+
         // If there is an email address in this row, then continue.
-        if (trim($import_cell($row, $email_address_key)) != '') {
+        if ($row_email_address != '') {
             // Validate email
-            if (validate_email_address($import_cell($row, $email_address_key)) == FALSE) {
+            if (validate_email_address($row_email_address) == FALSE) {
                 $invalid_emails_count ++;
                 if ($invalid_email_list) {
                     $invalid_email_list .= ', ';
                 }
-                $invalid_email_list .= $import_cell($row, $email_address_key);
+                $invalid_email_list .= $row_email_address;
                 $current_import_user_error = true;
                 $import_user_error = true;
             }
 
             // If there is a username in this row, then check if the username
             // is already in use.
-            if (trim($import_cell($row, $username_key)) != '') {
+            if ($row_username != '') {
                 // A username longer than its column would be cut on a
                 // lenient server, past the uniqueness check below.
-                if (!pg_user_form_text_fits(trim($import_cell($row, $username_key)))) {
+                if (!pg_user_form_text_fits($row_username)) {
                     $missing_email_lines[] = array($line, lang(array('string' => '{var:1} is too long.', 'vars' => lang('Username'))));
                     $current_import_user_error = true;
                     $import_user_error = true;
                 }
 
                 // Check if the username is already in use
-                $result = db_q("SELECT user_id FROM user WHERE (user_username = ?) OR (user_email = ?)", array((string) ($import_cell($row, $username_key)), (string) ($import_cell($row, $username_key)))) or output_error('Query failed');
+                $result = db_q("SELECT user_id FROM user WHERE (user_username = ?) OR (user_email = ?)", array($row_username, $row_username)) or output_error('Query failed');
                 if (mysqli_num_rows($result) > 0)
                 {
                     $pre_existing_users_count ++;
                     if ($pre_existing_user_list) {
                         $pre_existing_user_list .= ', ';
                     }
-                    $pre_existing_user_list .= $import_cell($row, $username_key);
+                    $pre_existing_user_list .= $row_username;
                     $current_import_user_error = true;
                     $import_user_error = true;
                 }
             }
 
             // Check if the email_address is already in use
-            $result = db_q("SELECT user_id FROM user WHERE (user_email = ?) OR (user_username = ?)", array((string) ($import_cell($row, $email_address_key)), (string) ($import_cell($row, $email_address_key)))) or output_error('Query failed');
+            $result = db_q("SELECT user_id FROM user WHERE (user_email = ?) OR (user_username = ?)", array($row_email_address, $row_email_address)) or output_error('Query failed');
             if (mysqli_num_rows($result) > 0)
             {
                 $pre_existing_emails_count ++;
                 if ($pre_existing_email_list) {
                     $pre_existing_email_list .= ', ';
                 }
-                $pre_existing_email_list .= $import_cell($row, $email_address_key);
+                $pre_existing_email_list .= $row_email_address;
                 $current_import_user_error = true;
                 $import_user_error = true;
             }
