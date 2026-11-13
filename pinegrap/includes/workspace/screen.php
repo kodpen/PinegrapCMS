@@ -483,6 +483,8 @@ function ws_js_strings()
         'seen_by_everyone'       => lang('Everyone in the channel has seen it.'),
         'seen_by_alone'          => lang('Nobody but the writer is in this channel.'),
         'seen_by_help'           => lang('Counted among the members of the channel: seen means the conversation was open on their screen as far as this message.'),
+        'seen_by_quiet'          => ws_js_template('Not woken by this message: {var:1}', 1),
+        'seen_by_agents_help'    => lang('An agent counts as seen once it took or answered the request this message woke it with, or answered or reacted under it.'),
         'edited_at'              => ws_js_template('Edited {var:1}', 1),
         'channel_settings'       => lang('Channel settings'),
         'channel_manage_denied'  => lang('Only the owner of the channel can change it.'),

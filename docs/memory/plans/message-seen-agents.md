@@ -14,7 +14,7 @@ description: Plan (owner 2026-11-13, #9314): agents listed among who has seen a 
 - No table or column. A mark for every message the API hands an agent needs a table: asked through the architect first, not built here.
 
 ## Which steps?
-- SA1 (M) Agents in `ws_message_seen_by()` and where it is drawn: the count and faces under a message, the drawer's two groups and the muted line. An agent's row as in Channel info (square face, the "AI agent" badge, `workspace/channel-members-agents.md`), with "took it" or "answered" and the time.
+- SA1 (M) — done (#9366). Agents in `ws_message_seen_by()` and where it is drawn: the count and faces under a message, the drawer's two groups and the muted line. An agent's row as in Channel info (square face, the "AI agent" badge, `workspace/channel-members-agents.md`), with "took it" or "answered" and the time.
   - "Everyone in the channel has seen it" only when no woken agent waits. The API's message gives the same list where it gives people's. Unit tests for the three states; real screenshots (dark and light, wide and phone) posted in the agent channel before the PR goes ready (`workflow/owner-contact-channel.md`).
 - SA2 (S) Close-out: the rules into `workspace/workspace-message-seen-by.md`, this plan deleted.
 

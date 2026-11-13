@@ -2310,6 +2310,7 @@
     "rate of the receipt date": "tahsilat tarihinin kuru",
     "rates": "fiyatlar",
     "ratings": "puanlama",
+    "reacted {var:1}": "tepki verdi {var:1}",
     "read from the file": "dosyadan okundu",
     "read {var:1}": "son okuma {var:1}",
     "read-only": "düzenlenemez",
