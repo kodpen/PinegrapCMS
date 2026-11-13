@@ -5078,6 +5078,12 @@ function pg_design_ai_editor_config($user)
             'other_page'     => lang('This proposal is for another page. Open that page\'s tab first.'),
             'from_workspace' => lang('The proposal from the workspace is on the canvas. Publish to put it on the site; Ctrl+Z takes it back.'),
             'agent_hint'     => lang('Start with @claude or @ai to choose who answers.'),
+            // An answer the panel could not read, or none at all: the
+            // browser's own words never reach the person.
+            'unreadable'       => lang('The server answered with an error, so this was not done. Try again.'),
+            'unreached'        => lang('The site did not answer, so this was not done. Check the connection and try again.'),
+            'apply_unreadable' => lang('The change could not be applied because the server answered with an error. The proposal stays here, so you can try again.'),
+            'apply_failed'     => lang('The change could not be applied. The proposal stays here, so you can try again.'),
         ),
     );
 }
