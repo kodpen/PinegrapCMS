@@ -17,7 +17,7 @@ description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass 
 
 ## How wide is a list, and how does it page? (owner, 2026-11-13, #9070)
 - As wide as its columns need: at least 1700 px (the window when it is narrower), at most the window, centred; only the name column takes the slack. With the details panel open its width is added, up to the whole window; the table gives way only when the window has no room left.
-- Owner (2026-11-13), with two pictures of the Pages list: "aslında sayfalar ekranı doğru olmuştu. detay paneli kapalıyken 1700 civarı açınca tam ekran oluyordu"; "diğer sayfalarda container standart genişliği olmuş nedense". It replaces the 1280 px minimum (#8860). Plan `plans/look-widths-and-switch.md`.
+- Owner (2026-11-13), with two pictures of the Pages list: "aslında sayfalar ekranı doğru olmuştu. detay paneli kapalıyken 1700 civarı açınca tam ekran oluyordu"; "diğer sayfalarda container standart genişliği olmuş nedense". It replaces the 1280 px minimum (#8860). Done #9185, #9269, #9230, #9330, #9249 (`ui/look-page-widths.md`, `ui/look-screen-widths.md`).
 - No pager: rows are added on scroll, with "Daha fazla göster" in the foot (owner, 2026-11-12, #8860).
 
 ## Is the dialogs and drawers page the reference? (owner, 2026-11-12, #8860)
