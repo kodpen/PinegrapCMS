@@ -211,6 +211,7 @@ $liveform->remove_form();
 
 echo pg_page_shell(array(
 	'title'               => lang('Connected applications'),
+	'extra classes'       => 'pg-measure-edit pg-measure-single',
 	'icon'                => 'account',
 	'heading'             => lang('Connected applications'),
 	'heading_description' => lang('Outside applications you let act for you, such as an AI assistant. Each can do only what you allowed, and never more than your own account.'),

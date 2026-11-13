@@ -536,7 +536,7 @@ $output_lock_card = '
 echo
 pg_page_shell(array(
         'title' => lang('Accountant pack'),
-        'extra classes' => 'erp erp_accountant',
+        'extra classes' => 'erp erp_accountant pg-measure-edit pg-measure-single',
         'icon' => 'erp',
         'heading' => lang('Accountant pack'),
         'heading_description' => lang('A period\'s records for the accountant in one ZIP: a workbook of sales, purchases, returns, VAT by rate, receipts, balances and stock value, and the documents as they were issued.'),

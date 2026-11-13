@@ -31,7 +31,7 @@ $crumbs = array(array('label' => lang('Experiments')));
 $shell = function () use (&$heading, &$crumbs) {
     return pg_page_shell(array(
         'title' => lang('Experiments'),
-        'extra classes' => 'page',
+        'extra classes' => 'page pg-measure-edit pg-measure-single',
         'icon' => 'page',
         'heading' => $heading,
         'heading_description' => lang('Every A/B experiment of the site\'s pages: how often each version reached the goal, and whether the difference is more than chance.'),

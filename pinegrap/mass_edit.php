@@ -360,7 +360,7 @@ if (!$_POST) {
         print
         pg_page_shell([
         'title'=> lang('Mass Edit'),
-        'extra classes'=>'setting',
+        'extra classes'=>'setting pg-measure-edit',
         'icon'=>'setting',
         'heading'=>lang('Mass Edit'),
         'heading_description' => lang('It is a special page for mass editing of Web Site Contents. Not recommended if you dont know what you are doing.'),

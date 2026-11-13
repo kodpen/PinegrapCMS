@@ -38,7 +38,7 @@ if (pg_settings_tool_count($system_tools_groups) === 0) {
 echo
 pg_page_shell(array(
         'title'               => lang('System tools'),
-        'extra classes'       => 'setting',
+        'extra classes'       => 'setting pg-measure-edit pg-measure-single',
         'icon'                => 'setting',
         'heading'             => lang('System tools'),
         'heading_description' => lang('Logs, connections, maintenance jobs and backups, beside Site Settings.'),

@@ -241,7 +241,7 @@ $privacy_erase_search = '
 echo
 pg_page_shell(array(
         'title'               => lang('Personal data erasure'),
-        'extra classes'       => 'contact',
+        'extra classes'       => 'contact pg-measure-edit',
         'icon'                => 'contact',
         'heading'             => lang('Personal data erasure'),
         'heading_description' => lang('Erase one person for a request under KVKK or GDPR: their account and contact go, orders and invoices stay without their personal fields.'),

@@ -38,7 +38,7 @@ if (!$_POST) {
     $output =
     pg_page_shell([
         'title'=> lang('Import Key Codes'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Import Key Codes'),
         'heading_description' => lang('Import new or overwrite existing key codes.'),
