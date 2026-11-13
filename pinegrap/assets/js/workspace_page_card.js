@@ -662,7 +662,15 @@
             start();
         });
 
+        fullButton.dataset.pageFull = '1';
         fullButton.hidden = !(box.requestFullscreen && document.fullscreenEnabled);
+
+        // Inside the joined card a phone finds Full screen at the card's
+        // foot (joined()); the classes only where the button shows, as a
+        // display class beats the hidden attribute.
+        if (opts.bare && !fullButton.hidden) {
+            fullButton.classList.add('d-none', 'sm:d-inline-flex');
+        }
         fullButton.addEventListener('click', function () {
             if (!open[message.id] || (open[message.id].box !== box)) {
                 start();
@@ -822,7 +830,10 @@
         var root = h.el('div', 'ws-page-card ws-canvas-card border rounded p-3');
         var head = h.el('div', 'd-flex flex-wrap align-items-center gap-2');
         var name = h.el('strong', 'text-truncate', joinedCard.name);
-        var chips = h.el('div', 'd-flex flex-wrap gap-1 ms-auto');
+        // The part chips: beside the name, and on a phone (below 576 px)
+        // under it, where the name keeps the row.
+        var chips = h.el('div', 'd-none sm:d-flex flex-wrap gap-1 ms-auto');
+        var chipsUnder = h.el('div', 'd-flex sm:d-none flex-wrap gap-1 mt-2');
         var pageMessage = { id: message.id, file: { name: joinedCard.name + '.html', url: '', page: page } };
 
         root.dataset.pageMessage = message.id;
@@ -838,9 +849,11 @@
             chip.appendChild(h.icon(pair[0]));
             chip.appendChild(h.el('span', '', pair[1]));
             chips.appendChild(chip);
+            chipsUnder.appendChild(chip.cloneNode(true));
         });
         head.appendChild(chips);
         root.appendChild(head);
+        root.appendChild(chipsUnder);
 
         // The agent's line, outside any frame.
         var maker = h.el('div', 'small fg-secondary d-flex align-items-center gap-1 mt-1');
@@ -925,6 +938,27 @@
         versionsButton.addEventListener('click', function () {
             showVersions(message, pageMessage, h, opts, 'all');
         });
+
+        // On a phone Full screen sits at the card's foot beside Versions
+        // (the page's own row keeps it from 576 px): it shows the page and
+        // presses the page card's own button, so the frame is one.
+        if (document.fullscreenEnabled) {
+            var fullFoot = h.button('btn btn-sm btn-outline theme-secondary sm:d-none', h.t('page_full_screen'), 'bi-arrows-fullscreen');
+
+            fullFoot.addEventListener('click', function () {
+                if (tab !== 'page') {
+                    show('page');
+                }
+
+                var full = stage.querySelector('[data-page-full]');
+
+                if (full) {
+                    full.click();
+                }
+            });
+            foot.appendChild(fullFoot);
+        }
+
         foot.appendChild(versionsButton);
         root.appendChild(foot);
         show(tab);

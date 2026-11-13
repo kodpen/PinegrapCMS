@@ -912,10 +912,14 @@ if (!$table) {
         </div>
     </dialog>';
 
-    $body = $import_card . $list_html . $windows;
+    // On a phone New table floats at the bottom right of the screen, in
+    // place of the toolbar's button.
+    $fab = '<button type="button" class="pg-button pg-button-fill ws-wt-fab sm:d-none" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>';
+
+    $body = $import_card . $list_html . $windows . $fab;
 
     $toolbar = pg_screen_toolbar(array(
-        'primary'   => '<button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>',
+        'primary'   => '<button type="button" class="pg-button pg-button-fill d-none sm:d-inline-flex" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>',
         'secondary' => '<button type="button" class="pg-button pg-button-quiet" data-bs-toggle="dialog" data-bs-target="#ws_wt_import_new"><i class="bi bi-upload" aria-hidden="true"></i>' . h(lang('Import from file')) . '</button>',
         // Under the buttons, on a line of their own: the search, the
         // scopes and, at the right, the tables beside the deleted ones.

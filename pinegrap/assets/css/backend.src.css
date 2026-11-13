@@ -20715,6 +20715,14 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
     font-size: .8125rem;
 }
 .ws-pane .ws-cb-picker,
+/* The Data list's New table on a phone (workspace_wtables.php): the filled
+   button floating at the bottom right, above the page. */
+.ws-wt-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 1010;
+}
 .ws-wt-board .ws-cb-picker {
     display: none;
 }
