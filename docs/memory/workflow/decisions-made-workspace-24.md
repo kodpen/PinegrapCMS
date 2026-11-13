@@ -27,3 +27,6 @@ description: Decisions list, workspace part 24 (2026-11-14 on): a guest sees the
 ## How is the notice of a shared channel shown? (owner, 2026-11-14, in the architect's window)
 - Once no link is open ("This channel was shared outside the team; no link is open now.") it is a small button with an exclamation mark, not a row. Owner: "uyarısı daha portatif olarak farklı bir alanda ünnem işaretli bir düğme olarak dursun. bu şekilde gereksiz alan kaplattırıp head alanını büyütüyor."
 - While a share is open the row stays and may stand out more. Owner: "paylaşım devam ederken daha geniş ve dikkat edici olabilir". Step GV6.
+
+## Does the software guide an agent's drawings? (owner, 2026-11-14, agent channel message 2296)
+- Yes. Owner, on an agent-made board: "panoda chartlar aşırı basit olmamış mı? ajanın çizimlerinde yardımcı olacak guide leri yazılım tarafı sağlayabilirse sağlayalım. arayüz tasarımı olarak biraz daha iyileşme şart". Plan: `plans/agent-drawing-guides.md`.
