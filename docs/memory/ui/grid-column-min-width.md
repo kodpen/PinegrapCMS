@@ -5,7 +5,7 @@ description: CSS pitfall - a .row column taken off Bootstrap's width (width auto
 
 ## Why did edit screens grow wider than the window?
 - Bootstrap gives a `.row` child `width` and `max-width: 100%`, which cap a flex item's automatic minimum size. A rule that sets `width: auto` or `max-width: none` (to size columns with `flex: 760 1 0%` instead) drops the cap, and the floor becomes the content's min-content width.
-- A combobox value is `white-space: nowrap`, so on Edit Tax Zone and Edit Shipping Zone with many chosen states the form column, the row and the page grew to 3,000–17,000 px (look A's edit columns, #8934; fixed in the PR after it).
+- A combobox value is `white-space: nowrap`, so on Edit Tax Zone and Edit Shipping Zone with many chosen states the form column, the row and the page grew to 3,000–17,000 px (look A's edit columns, #8934; fixed in #9107).
 
 ## What is the rule?
 - A panel stylesheet rule whose selector ends on a direct `.row >` child and sets `width: auto` or `max-width: none` also sets a `min-width` (normally `0`).
