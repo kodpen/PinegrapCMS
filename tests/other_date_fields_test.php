@@ -58,7 +58,7 @@ function test_other_date_fields_last_browser_pickers_are_hooked()
 	$fields = array(
 		'includes/settings/privacy.php'      => array('<input type="date" data-pg-date class="form-control" id="a11y_statement_date" name="a11y_statement_date"'),
 		'product_builder.php'                => array('<input type="date" data-pg-date name="preorder_date" id="preorder_date" class="form-control" min="'),
-		'includes/fn/store_credit_staff.php' => array('<input type="date" data-pg-date name="credit_last_day" id="credit_last_day" class="form-control"/>'),
+		'includes/fn/store_credit_staff.php' => array('<input type="date" data-pg-date name="credit_last_day" id="credit_last_day" class="form-control\''),
 		'includes/fn/shipment_labels.php'    => array(
 			'<input type="time" data-pg-time class="form-control" id="\' . h($id) . \'_from" name="pickup_from" value="09:00"',
 			'<input type="time" data-pg-time class="form-control" id="\' . h($id) . \'_to" name="pickup_to" value="17:00"',
