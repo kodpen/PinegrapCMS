@@ -20,5 +20,6 @@ description: Express order widget totals (designer pages) as submit_order() char
 
 ## What is not shared?
 - The classic express order page (`get_express_order.php`) and `submit_order()` keep their own copies of the same arithmetic; the widget's is the one with a test (`tests/express_order_totals_test.php`).
+- The cart widget's tax shares the first step, `pg_order_charged_today_totals()` (`cart-tax-estimate.md`, #9045).
 
 Related: docs/memory/commerce/order-discount-charged-today.md, docs/memory/commerce/express-order-tax-address.md

@@ -78,7 +78,11 @@ if (isset($_REQUEST['advanced_filters']) == true) {
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_writes.php');
 
-$custom_forms = pg_submitted_form_list_custom_forms();
+// The custom forms, then the forms whose page is gone or no longer a form
+// page (their rows are on the list too), each with its number of forms.
+$filter_forms = pg_submitted_form_list_filter_forms($user);
+$custom_forms = $filter_forms['forms'];
+$form_counts = $filter_forms['counts'];
 pg_submitted_form_list_defaults($custom_forms, $_REQUEST);
 $list_filter = pg_submitted_form_list_filter($user);
 $sort_columns = $list_filter['sort_columns'];
@@ -404,7 +408,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         $years[] = $i;
     }
 
-    $total_number_of_forms = 0;
+    // [All] counts the forms of every entry below, the rows the list shows
+    // for it with no date limit.
+    $total_number_of_forms = pg_submitted_form_list_total($custom_forms, $form_counts);
 
     $output_custom_form_options = '';
 
@@ -417,20 +423,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
             $selected = '';
         }
 
-        // get number of forms for custom form
-        $query = "SELECT COUNT(id)
-                 FROM forms
-                 WHERE page_id = ?";
-        $result = db_q($query, array((string) $custom_form['id'])) or output_error('Query failed.');
-        $row = mysqli_fetch_row($result);
-        $number_of_forms = $row[0];
+        $number_of_forms = $form_counts[(string) $custom_form['id']] ?? 0;
 
         // if the advanced filters are not on, then prepare custom form picklist
         if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == false) {
-            $output_custom_form_options .= '<option value="' . $custom_form['id'] . '"' . $selected . '>' . h($custom_form['name']) . ' (' . $number_of_forms . ')</option>';
+            $output_custom_form_options .= '<option value="' . h($custom_form['id']) . '"' . $selected . '>' . h($custom_form['name']) . ' (' . $number_of_forms . ')</option>';
         }
-
-        $total_number_of_forms += $number_of_forms;
     }
 
     // if the advanced filters are not on, then prepare custom form picklist
@@ -523,13 +521,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         $output_custom_forms = '';
 
         foreach ($custom_forms as $custom_form) {
-            // get number of forms for custom form
-            $query = "SELECT COUNT(id)
-                     FROM forms
-                     WHERE page_id = ?";
-            $result = db_q($query, array((string) $custom_form['id'])) or output_error('Query failed.');
-            $row = mysqli_fetch_row($result);
-            $number_of_forms = $row[0];
+            $number_of_forms = $form_counts[(string) $custom_form['id']] ?? 0;
 
             // if this custom form should be checked
             if ((is_array(($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'] ?? array())) == true) && (in_array($custom_form['id'], ($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'] ?? array())) == true)) {
@@ -683,6 +675,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     } else {
         if (($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '') != '[All]') {
             $selected_custom_form_page_id = ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '');
+        }
+    }
+
+    // A form whose page is gone or holds no form any more takes no new
+    // submissions: Create opens the custom form picker instead.
+    foreach ($custom_forms as $custom_form) {
+        if (!empty($custom_form['gone']) && ((string) $custom_form['id'] === (string) $selected_custom_form_page_id)) {
+            $selected_custom_form_page_id = '';
         }
     }
 

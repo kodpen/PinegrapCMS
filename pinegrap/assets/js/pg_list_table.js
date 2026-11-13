@@ -19,9 +19,11 @@
  * the bar's .pg-list-table-actions box. root.pgListTable is the driver.
  *
  * The bar's columns menu shows, hides and orders the columns, and its
- * details switch opens a panel with every column of the current row (a
- * side sheet below 1024 px); both choices are kept per user and list in
- * localStorage (pg.list.<user id>.<list>). A filter button
+ * details switch opens a panel with every column of the current row; both
+ * choices are kept per user and list in localStorage
+ * (pg.list.<user id>.<list>). Below 1024 px the panel is a sheet over the
+ * list: it follows only the switch pressed on that page and opens once a
+ * row is picked (detailsOpen()). A filter button
  * (data-pg-list-filter, PGListTable's bindFilters()) narrows the list by one
  * column: a list printed whole keeps the rows whose cell carries that
  * data-pg-filter value, a server list sends it with its parameters. Below
@@ -521,6 +523,18 @@
         return { order: [], hidden: {}, details: prefsClean(state).details };
     }
 
+    /**
+     * Whether the details panel shows. A wide window follows the kept
+     * switch. Below 1024 px the panel is a sheet that covers the list, so
+     * it follows only the switch pressed on this page (the kept one, which
+     * a desktop may have left on, would cover the list on every load), and
+     * opens once a row is picked: an empty sheet would hide the rows to
+     * pick from.
+     */
+    function detailsOpen(kept, narrow, sheet, picked) {
+        return narrow ? (!!sheet && !!picked) : !!kept;
+    }
+
     // ------------------------------------------------------------------
     // The driver.
     // ------------------------------------------------------------------
@@ -545,6 +559,9 @@
         this.prefs = prefsClean(this.readPrefs());
         this.columns = columnsView(this.model, this.prefs);
         this.current = null;
+        // The details sheet below 1024 px: pressed on this page, never kept.
+        this.sheet = false;
+        this.narrowQuery = (typeof window.matchMedia === 'function') ? window.matchMedia('(max-width: 1023.98px)') : null;
         this.params = readJson(root, 'data-pg-list-params', {});
         this.texts = readJson(root, 'data-pg-list-texts', {});
         this.levels = sortParse(root.getAttribute('data-pg-list-sort'));
@@ -744,6 +761,17 @@
             self.fit();
         });
 
+        // Crossing 1024 px swaps the panel beside the rows for the sheet.
+        if (this.narrowQuery) {
+            var crossed = function () { self.showDetails(); };
+
+            if (typeof this.narrowQuery.addEventListener === 'function') {
+                this.narrowQuery.addEventListener('change', crossed);
+            } else if (typeof this.narrowQuery.addListener === 'function') {
+                this.narrowQuery.addListener(crossed);
+            }
+        }
+
         if (this.menu) {
             this.menu.addEventListener('click', function (event) {
                 var target = event.target.closest('[data-pg-col-action]');
@@ -756,7 +784,7 @@
 
         if (this.detailsSwitch) {
             this.detailsSwitch.addEventListener('click', function () {
-                self.setDetails(!self.prefs.details);
+                self.setDetails(!self.detailsPressed());
             });
             this.details.querySelector('.pg-list-table-details-close').addEventListener('click', function () {
                 self.setDetails(false);
@@ -896,10 +924,28 @@
         this.menu.innerHTML = html;
     };
 
-    /** The details panel opened or closed, the choice kept. */
+    /** Whether the window is below 1024 px, where the panel is a sheet. */
+    Driver.prototype.narrow = function () {
+        return !!(this.narrowQuery && this.narrowQuery.matches);
+    };
+
+    /** The details switch's state for the window's width. */
+    Driver.prototype.detailsPressed = function () {
+        return this.narrow() ? this.sheet : this.prefs.details;
+    };
+
+    /**
+     * The details panel opened or closed: the choice kept on a wide window,
+     * for this page only below 1024 px.
+     */
     Driver.prototype.setDetails = function (open) {
-        this.prefs.details = !!open;
-        this.savePrefs();
+        if (this.narrow()) {
+            this.sheet = !!open;
+        } else {
+            this.prefs.details = !!open;
+            this.savePrefs();
+        }
+
         this.showDetails();
     };
 
@@ -912,17 +958,17 @@
             return;
         }
 
-        var open = this.prefs.details;
+        var row = (this.current === null) ? null : this.tbody.querySelector('tr[data-pg-id="' + String(this.current).replace(/["\\]/g, '') + '"]');
+        var open = detailsOpen(this.prefs.details, this.narrow(), this.sheet, !!row);
 
         this.details.hidden = !open;
         this.root.classList.toggle('pg-list-table-with-details', open);
-        this.detailsSwitch.setAttribute('aria-pressed', open ? 'true' : 'false');
+        this.detailsSwitch.setAttribute('aria-pressed', this.detailsPressed() ? 'true' : 'false');
 
         if (!open) {
             return;
         }
 
-        var row = (this.current === null) ? null : this.tbody.querySelector('tr[data-pg-id="' + String(this.current).replace(/["\\]/g, '') + '"]');
         var body = this.detailsBody;
 
         body.textContent = '';
@@ -1897,6 +1943,7 @@
         columnsMove: columnsMove,
         columnsReset: columnsReset,
         detailsSections: detailsSections,
+        detailsOpen: detailsOpen,
         init: init
     };
 

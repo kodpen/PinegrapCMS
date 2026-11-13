@@ -76,6 +76,11 @@ function ws_wtable_screen_error_text($code)
             return lang('Write the formula, such as Price * Quantity.');
         case 'formula_too_long':
             return lang(array('string' => 'The formula is longer than {var:1} characters.', 'vars' => $limits['formula']));
+        // A rename written into the table's formulas (ws_wtable_formulas_renamed()).
+        case 'name_changes_formula':
+            return lang('With this name a formula of the table would work out something else: choose another name.');
+        case 'name_formula_too_long':
+            return lang(array('string' => 'With this name a formula of the table would be longer than {var:1} characters.', 'vars' => $limits['formula']));
         case 'nothing_to_change':
             return lang('Nothing was changed.');
         case 'changed_meanwhile':
@@ -449,6 +454,11 @@ function ws_wtable_screen_refusal_text($result)
 {
     $text = ws_wtable_screen_error_text((string) ($result['error'] ?? ''));
 
+    // A rename refused for the formulas it would change names them.
+    if (!empty($result['formula_names'])) {
+        return $text . ' ' . lang(array('string' => 'Formulas: {var:1}.', 'vars' => implode(', ', (array) $result['formula_names'])));
+    }
+
     if (((string) ($result['error'] ?? '') !== 'key_not_unique') || empty($result['rows'])) {
         return $text;
     }
@@ -461,6 +471,24 @@ function ws_wtable_screen_refusal_text($result)
     return $text . ' ' . (($more > 0)
         ? lang(array('string' => 'Rows: {var:1} and {var:2} more.', 'vars' => array($rows, $more)))
         : lang(array('string' => 'Rows: {var:1}.', 'vars' => $rows)));
+}
+
+/**
+ * The notice of a saved column. A rename written into formulas names them,
+ * so that the person sees why their text changed.
+ *
+ * @param array $result ws_wtable_column_create() or ws_wtable_column_update()
+ * @return string
+ */
+function ws_wtable_screen_column_saved_text($result)
+{
+    $text = lang('The column was saved.');
+
+    if (empty($result['formula_names'])) {
+        return $text;
+    }
+
+    return $text . ' ' . lang(array('string' => 'These formulas now use its new name: {var:1}.', 'vars' => implode(', ', (array) $result['formula_names'])));
 }
 
 /**

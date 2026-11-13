@@ -116,18 +116,13 @@ if (($liveform->check_field_error('new_password') == false) && ($liveform->check
     }
 }
 
-// if there is not already an error for the new password field,
-// and there is not already an error for the new password verify field,
-// and strong password is enabled,
-// and the new password is not strong,
-// then mark error for new password fields
-if (
-    ($liveform->check_field_error('new_password') == false)
-    && ($liveform->check_field_error('new_password_verify') == false)
-    && (STRONG_PASSWORD == true)
-    && (validate_password_strength($liveform->get_field_value('new_password')) == false)
-) {
-    $liveform->mark_error('new_password', lang('The new password you entered does not meet the requirements. Please enter a different new password.'));
+// A new password is strong while Require Strong Password is on, and at
+// least pg_password_min_length() characters long while it is off.
+$password_refusal = (($liveform->check_field_error('new_password') == false) && ($liveform->check_field_error('new_password_verify') == false))
+    ? pg_password_refusal($liveform->get_field_value('new_password'), (STRONG_PASSWORD == true), lang('The new password you entered does not meet the requirements. Please enter a different new password.'))
+    : '';
+if ($password_refusal !== '') {
+    $liveform->mark_error('new_password', $password_refusal);
     $liveform->mark_error('new_password_verify');
     $liveform->assign_field_value('new_password', '');
     $liveform->assign_field_value('new_password_verify', '');

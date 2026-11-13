@@ -9,7 +9,7 @@ description: CO0 of plans/canvas-one.md: the five schema changes the later CO st
 - Question S2 (#8924, answered): the tables bound to a canvas. Proposed `ws_canvas_tables` (`message_id`, `table_id`, `access` read|write, `bound_by_kind`/`_id`; unique per canvas and table; 20 a canvas). Blocks CO2 and all after it.
 - Question S3 (#8925, answered): a reader's first-write answer. Proposed `ws_canvas_consents` (`message_id`, `user_id`, `page_version`, `answer` yes|no, `tables` JSON; unique per canvas, person and version). Blocks CO3.
 - Question S4 (#8926, answered): "through <canvas>" on a row. Rows have no history (only `updated_by/at`); proposed `ws_wtable_rows.via_message_id` and the same in `ws_wtable_row_bin`, 0 for any other write. Blocks only that part of CO3.
-- Question S5 (#8927, answered): a table of a channel. Proposed `ws_wtables.channel_id` (read by channel readers, write by who may post, manage by its admins); a canvas's delete removes its bindings, the table stays. Blocks CO4.
+- Question S5 (#8927, answered): a table of a channel. Proposed `ws_wtables.channel_id` (read by channel readers, write by who may post, manage by its admins); a canvas's delete removes its bindings, the table stays. Blocks CO4; built in #9038 (`workspace/workflow-table-channel.md`).
 
 ## What needs no schema?
 - One list of versions: the part files' `file_versions` rows merged by time (`canvas-one-model.md`).

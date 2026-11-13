@@ -65,7 +65,7 @@ if (!defined('PG_INIT_LOADED')) {
 						class="
 						browse_toggle
 						software_button_tiny_secondary"
-						title="Remove Browse"
+						title="<?=h(lang('Remove Browse'))?>"
 						<?php if (!$browse_expanded): ?>
 						style="display: none"
 						<?php endif ?>
@@ -83,7 +83,7 @@ if (!defined('PG_INIT_LOADED')) {
 						href="javascript:void(0)"
 						class="
 						advanced_toggle software_button_tiny_secondary"
-						title="<?php if ($search_advanced_expanded): ?>Remove<?php else: ?>Add<?php endif ?> Advanced Search"
+						title="<?=h($search_advanced_expanded ? lang('Remove Advanced Search') : lang('Add Advanced Search'))?>"
 						>
 					<span
 						class="expand_label"
@@ -131,7 +131,7 @@ if (!defined('PG_INIT_LOADED')) {
 						name="<?=$page_id?>_simple_clear"
 						value=""
 						class="clear"
-						title="Clear"
+						title="<?=h(lang('Clear'))?>"
 						>
 					<?php endif ?>
 					</span>
@@ -192,15 +192,13 @@ if (!defined('PG_INIT_LOADED')) {
 	
 	?>
 <div class="browse_or_search_above_message" style="font-weight:bold">
-	You may
 	<?php if ($browse and $search): ?>
-	browse or search
+	<?=h(lang('You may browse or search above to find results.'))?>
 	<?php elseif ($browse): ?>
-	browse
+	<?=h(lang('You may browse above to find results.'))?>
 	<?php else: ?>
-	search
+	<?=h(lang('You may search above to find results.'))?>
 	<?php endif ?>
-	above to find results.
 </div>
 <?php
 	// Otherwise if there are no forms to show, then tell the visitor that.
@@ -208,7 +206,7 @@ if (!defined('PG_INIT_LOADED')) {
 	elseif ($number_of_forms == 0):
 	
 	?>
-<div class="no_results_message" style="font-weight:bold">There are no results.</div>
+<div class="no_results_message" style="font-weight:bold"><?=h(lang('There are no results.'))?></div>
 <?php
 	// Otherwise, there are forms to show, so output them.
 	
@@ -222,8 +220,7 @@ if (!defined('PG_INIT_LOADED')) {
 	
 	?>
 <div class="number_of_results_message" style="font-weight:bold; margin-bottom: .75em">
-	Found <?=pg_format_number($total_number_of_forms, 0)?>
-	result<?php if ($total_number_of_forms > 1): ?>s<?php endif ?>.
+	<?=h(lang(array('string' => 'Found {var:1} result{suffix:1}.', 'vars' => array(pg_format_number($total_number_of_forms, 0)), 'suffix' => ($total_number_of_forms > 1) ? 's' : '')))?>
 </div>
 <?php endif ?>
 <?=$header?>

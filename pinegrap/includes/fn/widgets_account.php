@@ -160,7 +160,8 @@ function _pg_sw_order_receipt_email_page_ids()
 // legacy screen's own address. $page_id is the page asked for: a site with
 // two designs has a sign-in page in each, and the one of that page's design
 // is the one that looks like it and links to its own sign-up and account
-// pages.
+// pages. On a page drawn in another language the sign-in page is that
+// language's (_pg_sw_page_base()).
 function pg_sw_sign_in_url($send_to, $fallback, $legacy_type = 'login', $designed_first = false, $page_id = 0)
 {
     if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) return $fallback;
@@ -168,8 +169,19 @@ function pg_sw_sign_in_url($send_to, $fallback, $legacy_type = 'login', $designe
     $style_id = ((int)$page_id > 0) ? (int)db_value("SELECT page_style FROM page WHERE page_id = '" . (int)$page_id . "' LIMIT 1") : 0;
     $name = _pg_sw_open_widget_page_name('login_form', $style_id);
     if ($name === '') return $fallback;
-    $url = (defined('PATH') ? PATH : '/') . encode_url_path($name);
+    $url = _pg_sw_page_base() . encode_url_path($name);
     return ((string)$send_to === '') ? $url : $url . '?send_to=' . urlencode((string)$send_to);
+}
+
+// Where the address of a page starts when it is a redirect or a script's
+// answer: the language's directory (LANGUAGE_PATH, /en/) on a request in
+// another language, else PATH. The translation adds the directory to the
+// links inside a page it draws, never to a Location header, so a redirect
+// built from PATH left /en/ for the source language's page (#9052).
+function _pg_sw_page_base()
+{
+    if (defined('LANGUAGE_PATH')) return (string)LANGUAGE_PATH;
+    return defined('PATH') ? (string)PATH : '/';
 }
 
 // Name of the first designed page carrying a widget of $type that the
@@ -208,7 +220,9 @@ function pg_sw_screen_page_url($page_type)
     if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) return '';
     $name = _pg_sw_open_widget_page_name($map[$page_type]);
     if ($name === '') return '';
-    $url = (defined('PATH') ? PATH : '/') . encode_url_path($name);
+    // Opened from a page in another language (pg_lang), the page is that
+    // language's.
+    $url = _pg_sw_page_base() . encode_url_path($name);
     // Only a same-site path is passed on, as the widget itself would read it.
     $send_to = (isset($_GET['send_to']) && is_scalar($_GET['send_to'])) ? (string)$_GET['send_to'] : '';
     if ($send_to !== '' && pg_safe_redirect_path($send_to, '/__none__') !== '/__none__') {
@@ -1910,10 +1924,12 @@ function _pg_my_account_extras($logged_in, $cfg = array())
         $links['__my_account_wishlist_url'] = pg_wishlist_widget_page_url();
     }
     // A designed logout page asks first; without one the token signs out at once.
+    // On a page in another language logout.php is told it (pg_lang), so it
+    // sends the visitor home in that language.
     $logout = pg_sw_page_type_widget_url('logout');
     $links['__logout_url'] = ($logout !== '') ? $logout
-        : _pg_acct_software_path() . '/logout.php?send_to=' . urlencode(defined('PATH') ? PATH : '/')
-          . '&token=' . urlencode(isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '');
+        : pg_tr_script_url(_pg_acct_software_path() . '/logout.php?send_to=' . urlencode(defined('PATH') ? PATH : '/')
+          . '&token=' . urlencode(isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : ''));
     $links['__staff_url'] = _pg_acct_staff_url(is_array($cfg) && isset($cfg['staff_page_id']) ? $cfg['staff_page_id'] : 0);
     $out['flags']['is_staff'] = ($links['__staff_url'] !== '');
     $out['links'] = $links;
@@ -2141,12 +2157,14 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
 
         // Signed out at once: the token is what lets logout.php skip its
         // question. Without a send_to it goes on to the site's logout page
-        // ("you have logged out"); a site with none goes back home.
+        // ("you have logged out"); a site with none goes back home. On a page
+        // in another language it carries pg_lang, so that page or home is
+        // the one in this language (#9052).
         $token = isset($_SESSION['software']['token']) ? (string)$_SESSION['software']['token'] : '';
         $has_logout_page = (pg_sw_page_type_widget_url('logout') !== '')
                         || ((int)db_value("SELECT COUNT(*) FROM page WHERE page_type = 'logout'") > 0);
-        $links['__logout_url'] = $software . '/logout.php?token=' . urlencode($token)
-                               . ($has_logout_page ? '' : '&send_to=' . urlencode(defined('PATH') ? PATH : '/'));
+        $links['__logout_url'] = pg_tr_script_url($software . '/logout.php?token=' . urlencode($token)
+                               . ($has_logout_page ? '' : '&send_to=' . urlencode(defined('PATH') ? PATH : '/')));
 
         $links['__staff_url'] = _pg_acct_staff_url(isset($cfg['staff_page_id']) ? $cfg['staff_page_id'] : 0);
         $flags['is_staff']    = ($links['__staff_url'] !== '');

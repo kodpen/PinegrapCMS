@@ -308,6 +308,152 @@ function pg_error_shutdown()
 }
 
 /**
+ * What a person is told when pg_error_json_action() gives the failed answer.
+ *
+ * @return string
+ */
+function pg_error_json_action_sentence()
+{
+    return lang('The server ran into an error, so this was not done. The details are in the Site Log.');
+}
+
+/**
+ * Runs an action that answers in JSON so that nothing PHP says on the way can
+ * reach its answer.
+ *
+ * A screen reads such an answer with JSON.parse(). With display_errors on PHP
+ * prints a warning as HTML ("<br />\n<b>Warning</b>: ...") in front of the
+ * JSON, and output_error() prints a whole error screen: the screen is then
+ * left with the browser's "Unexpected token '<'" and the person with nothing
+ * to act on.
+ *
+ * While the action runs, whatever is printed is held in a buffer and thrown
+ * away, output_error() throws (pg_error_throws()), and every warning or error
+ * PHP reports is noted. Each one is still recorded by pg_error_record() and
+ * PHP's own log, as anywhere. The action's answer stands unless
+ *   - a warning or an error was reported: the code went on with a value it did
+ *     not expect, so its answer cannot be trusted (a deprecation is recorded
+ *     only; it does not change what the code did),
+ *   - the action threw: recorded here, since nothing above it sees it,
+ *   - the answer cannot be written as JSON,
+ *   - a fatal error ended the request: the shutdown handler answers;
+ * in each of these the answer is $failed. Text printed without a message
+ * (an echo left on the way) is recorded and dropped; the answer stands.
+ *
+ * @param callable $action returns the answer
+ * @param array $failed the answer when the action failed
+ * @return array
+ */
+function pg_error_json_action(callable $action, array $failed)
+{
+    $level = ob_get_level();
+    $state = (object) array('running' => true, 'reported' => 0);
+    $throws = pg_error_throws();
+
+    // A fatal error cannot be caught: it ends the request with PHP's text in
+    // the buffer, which PHP would send once the shutdown functions have run.
+    // An exit() inside the action is no failure: its output is left alone.
+    register_shutdown_function(function () use ($state, $level, $failed) {
+        $last = error_get_last();
+        $fatal = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR;
+
+        if (!$state->running || !is_array($last) || !((int) $last['type'] & $fatal)) {
+            return;
+        }
+
+        while ((ob_get_level() > $level) && @ob_end_clean()) {
+        }
+
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+        }
+
+        echo json_encode($failed, JSON_UNESCAPED_UNICODE);
+    });
+
+    $previous = null;
+    $previous = set_error_handler(function ($errno, $errstr, $errfile = '', $errline = 0) use ($state, &$previous) {
+        // error_reporting() leaves out what init.php does not report and what
+        // @ silences (0 up to PHP 7, the fatal mask from PHP 8).
+        if ((error_reporting() & $errno) && !($errno & (E_DEPRECATED | E_USER_DEPRECATED))) {
+            $state->reported++;
+        }
+
+        return is_callable($previous) ? call_user_func($previous, $errno, $errstr, $errfile, $errline) : false;
+    });
+
+    ob_start();
+    pg_error_throws(true);
+
+    $answer = null;
+    $thrown = null;
+
+    try {
+        $answer = call_user_func($action);
+    } catch (Throwable $error) {
+        $thrown = $error;
+    }
+
+    pg_error_throws($throws);
+    restore_error_handler();
+
+    // The action may have left buffers of its own open.
+    $printed = '';
+
+    while (ob_get_level() > $level) {
+        $chunk = ob_get_clean();
+
+        if ($chunk === false) {
+            break;
+        }
+
+        $printed = $chunk . $printed;
+    }
+
+    $state->running = false;
+
+    if ($thrown !== null) {
+        pg_error_write(pg_error_entry(
+            'error',
+            get_class($thrown),
+            $thrown->getMessage(),
+            $thrown->getFile(),
+            $thrown->getLine(),
+            pg_error_trace_short($thrown->getTrace())));
+
+        return $failed;
+    }
+
+    if ($state->reported > 0) {
+        return $failed;
+    }
+
+    if (!is_array($answer) || (json_encode($answer, JSON_UNESCAPED_UNICODE) === false)) {
+        pg_error_write(pg_error_entry(
+            'error',
+            'JSON',
+            is_array($answer) ? 'The answer could not be written as JSON: ' . json_last_error_msg() : 'The action gave no answer.',
+            '',
+            0,
+            array()));
+
+        return $failed;
+    }
+
+    if (trim($printed) !== '') {
+        pg_error_write(pg_error_entry(
+            'warning',
+            'Output',
+            'Text printed in front of a JSON answer was dropped: ' . mb_substr(trim(preg_replace('/\s+/', ' ', strip_tags($printed))), 0, 300),
+            '',
+            0,
+            array()));
+    }
+
+    return $answer;
+}
+
+/**
  * The record of one error, with what is known about the request.
  *
  * @param string $level

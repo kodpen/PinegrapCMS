@@ -411,6 +411,10 @@ if ($search_index_state['stage'] !== 'pages') {
 
 $count_pages = 1;
 
+// The widgets that make a visual-editor page no item of its own: a record or
+// product page, a page doing the work of a type the index leaves out.
+$search_index_skipped_widgets = pg_search_index_skipped_widget_types($index_scope['types']);
+
 // Loop through pages in order to store content in database for searching.
 foreach ($pages as $page) {
 
@@ -436,7 +440,9 @@ foreach ($pages as $page) {
     // A page built in the visual editor carries its record lists and record
     // views as system widgets. Its lists are kept for the record items
     // written after this loop. A record page drawn without ?r= shows its
-    // not-found state, so it is not an item itself; its records are.
+    // not-found state, so it is not an item itself; its records are. So is a
+    // product page drawn without a product, and a page doing the work of a
+    // page type the index leaves out (pg_search_index_skipped_widget_types()).
     if ($page['type'] == 'standard') {
         $designer_lists = array();
         $designer_record_page = false;
@@ -446,7 +452,7 @@ foreach ($pages as $page) {
 
             if (in_array($widget_type, pg_sw_form_list_types(), true)) {
                 $designer_lists[] = $widget['cfg'];
-            } elseif ($widget_type === 'form_item_view') {
+            } elseif (in_array($widget_type, $search_index_skipped_widgets, true)) {
                 $designer_record_page = true;
             }
         }

@@ -19,6 +19,26 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The system widgets that keep a page built in the visual editor from being
+ * a search item itself: the widget standing in for each legacy page type the
+ * index leaves out ($index_types, pg_render_pass_scope('index')['types']: a
+ * checkout step, an order or event view, the e-mail preferences and set
+ * password pages), the error page, and the detail widgets that show a record
+ * or a product only through the address (form_item_view, catalog_item_view).
+ * Drawn without a record or a product such a page shows its not-found state:
+ * the bare product page was found as "Product not found" (#9053). The records
+ * and the products are items under their own addresses. sitemap.xml leaves
+ * the same pages out (pg_sitemap_unlisted_widget_types()).
+ *
+ * @param string[] $index_types the legacy page types the index draws
+ * @return string[]
+ */
+function pg_search_index_skipped_widget_types($index_types)
+{
+    return pg_sitemap_unlisted_widget_types(pg_sw_page_type_widgets(), $index_types);
+}
+
+/**
  * A visitor's search text as a valid fulltext string, so no input reaches
  * MySQL's boolean parser as a syntax error (a lone "*" or "+*" did and ended
  * the page with "Query failed."). Pure.

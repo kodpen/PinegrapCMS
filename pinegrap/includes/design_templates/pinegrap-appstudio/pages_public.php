@@ -79,7 +79,7 @@ $process_list = function ($class = 'list-unstyled mb-0') use ($el, $heading, $pa
 // picture's own width and height).
 $phone_shot = function ($seed, $alt, $class = '') use ($el, $image, $attr, $photo) {
     return $el('div', trim('border border-4 border-dark rounded-5 overflow-hidden shadow bg-body-tertiary ' . $class), lang('Phone Frame'), array(
-        $image($photo($seed, 540, 960), $alt, 'd-block w-100 h-auto', array('_attrs' => array($attr('width', '540'), $attr('height', '960'), $attr('loading', 'lazy')))),
+        $image($photo($seed, 540, 960), $alt, 'd-block w-100 h-auto', array('width' => '540', 'height' => '960', '_attrs' => array($attr('loading', 'lazy')))),
     ));
 };
 
@@ -107,10 +107,10 @@ $dark = array('_attrs' => array($attr('data-bs-theme', 'dark')));
 // A phone frame around a sample screen (9:19.5, the frame's own ratio).
 // The hero's phones load at once, the others when they come near.
 $as_phone = function ($seed, $alt, $class = '', $lazy = true) use ($el, $image, $attr, $photo) {
-    $attrs = array($attr('width', '540'), $attr('height', '1170'));
-    if ($lazy) $attrs[] = $attr('loading', 'lazy');
+    $extra = array('width' => '540', 'height' => '1170');
+    if ($lazy) $extra['_attrs'] = array($attr('loading', 'lazy'));
     return $el('div', trim('pg-appstudio-phone ' . $class), lang('Phone Frame'), array(
-        $image($photo($seed, 540, 1170), $alt, '', array('_attrs' => $attrs)),
+        $image($photo($seed, 540, 1170), $alt, '', $extra),
     ));
 };
 $as_eyebrow = function ($text, $class = 'mb-3') use ($para) {
@@ -609,7 +609,7 @@ foreach ($apps as $key => $a) {
             $el('div', 'card-body d-flex gap-3 p-4', lang('Card Body'), array(
                 $el('span', 'd-block flex-shrink-0 rounded-4 overflow-hidden pma-icon', lang('Icon Frame'), array(
                     $image($portrait($a['name'], 160), $a['name'], 'w-100 h-100 object-fit-cover',
-                        array('_attrs' => array($attr('width', '64'), $attr('height', '64'), $attr('loading', 'lazy')))),
+                        array('width' => '64', 'height' => '64', '_attrs' => array($attr('loading', 'lazy')))),
                 )),
                 $el('div', '', lang('Text'), array(
                     $heading('h3', $a['name'], 'h6 fw-bold mb-1'),

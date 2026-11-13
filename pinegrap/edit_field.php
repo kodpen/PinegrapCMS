@@ -105,9 +105,9 @@ if ($page_id != 0) {
 
     list($form_name, $quiz) = pg_field_form_page_form_name($page_type, $form_type, $page_id, $page_name);
     
-    $output_form_designer_subnav_subheading = ucwords($form_type_name) . ': ' . h($form_name);
+    $output_form_designer_subnav_subheading = pg_upper_words($form_type_name) . ': ' . h($form_name);
     $pg_breadcrumb_parent = array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php');
-    $output_form_designer_content_heading = lang(array('string'=>'Edit {var:1} Field','vars'=>array(ucwords($form_type_name)) ));
+    $output_form_designer_content_heading = lang(array('string'=>'Edit {var:1} Field','vars'=>array(pg_upper_words($form_type_name)) ));
     $output_form_designer_content_subheading = lang(array('string'=>'View or update this {var:1} field.','vars'=>$form_type_name ) );
 
     // A designer form's field is only viewed here (see below).

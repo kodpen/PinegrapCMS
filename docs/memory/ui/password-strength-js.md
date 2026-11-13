@@ -10,7 +10,7 @@ description: pg_password_strength.js, the panel copy of validate_password_streng
 ## How does the meter score?
 - `pg_password_strength_meter($input_id, $strict)` prints Bootstrap 6 Strength markup (`.strength`, four `.strength-segment`, `.strength-text`) with `data-pg-strength-*` hooks; messages Weak / Fair / Good / Strong from `lang()`. `$strict` is `STRONG_PASSWORD` (`config.strong_password`).
 - Strict (setting on): one point for typing plus one per rule met, thresholds 2/3/4: weak up to one rule, then fair, good, and strong exactly when `isStrong()` is true, which is what the server accepts.
-- Off (the column default, so always at install): Bootstrap's own default scoring (8+ characters, 12+, lower, upper, digit, special, two specials, 16+; thresholds 2/4/6). It only advises; nothing is refused.
+- Off (the column default, so always at install): Bootstrap's own default scoring (8+ characters, 12+, lower, upper, digit, special, two specials, 16+; thresholds 2/4/6). It only advises; the server refuses only a password under the minimum length (`core/password-min-length.md`).
 
 ## Why not Bootstrap's Strength script?
 - Its `scorer` option is a function, which markup cannot carry, and panel code reaches Bootstrap's JS only through `pgUI`, which has no `strength` kind (other B9 PRs held `pg_ui.js`). The script sets `data-bs-strength`, `.active` and the text itself, the "static" use the v6 docs allow.
@@ -18,7 +18,7 @@ description: pg_password_strength.js, the panel copy of validate_password_streng
 
 ## Where does it show?
 - Panel chrome only (Bootstrap 6): `set_password.php`'s built-in form (`get_set_password()` with `page_id` 0: the meter under the password on its `pg_secure_card()` card; the system template's `$strength_meter` stays empty for a page). A site page (5.3.8, no Strength) gets nothing; change password is drawn only on site pages, so it has no meter.
-- The installer's administrator password (`install/index.php`, `admin_password`): `pg_password_strength_meter('admin_password', false)`, always advisory because `strong_password` is off in a new database. Its own `.pg-strength` CSS and scoring script were removed (#2274).
+- The installer's administrator password (`install/index.php`, `admin_password`): `pg_password_strength_meter('admin_password', false)`, advisory because `strong_password` is off in a new database (the minimum length still applies). Its own `.pg-strength` CSS and scoring script were removed (#2274).
 
 ## What must stay the same as the PHP function?
 - `validate_password_strength()` in `includes/fn/auth.php`; change both together.

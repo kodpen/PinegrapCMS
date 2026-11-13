@@ -560,13 +560,11 @@ function pg_member_register($form, $opts = array())
             $form->assign_field_value('password_verify', '');
         }
     }
-    if (
-        ($form->check_field_error('password') == false)
-        && ($form->check_field_error('password_verify') == false)
-        && (STRONG_PASSWORD == true)
-        && (validate_password_strength($password) == false)
-    ) {
-        $form->mark_error('password', lang('The password you entered does not meet the requirements. Please enter a different password.'));
+    $password_refusal = (($form->check_field_error('password') == false) && ($form->check_field_error('password_verify') == false))
+        ? pg_password_refusal($password, (STRONG_PASSWORD == true), lang('The password you entered does not meet the requirements. Please enter a different password.'))
+        : '';
+    if ($password_refusal !== '') {
+        $form->mark_error('password', $password_refusal);
         $form->mark_error('password_verify');
         $form->assign_field_value('password', '');
         $form->assign_field_value('password_verify', '');
@@ -843,15 +841,13 @@ function pg_member_activate($form, $opts = array())
         }
     }
     // An empty password is a valid answer in a Google sign-up; only a
-    // password the visitor typed has to be strong.
-    if (
-        ($form->check_field_error('password') == false)
-        && ($form->check_field_error('password_verify') == false)
-        && (STRONG_PASSWORD == true)
-        && (($google_signup == false) || ($password !== ''))
-        && (validate_password_strength($password) == false)
-    ) {
-        $form->mark_error('password', lang('The password you entered does not meet the requirements. Please enter a different password.'));
+    // password the visitor typed has to be strong, or long enough.
+    $password_refusal = (($form->check_field_error('password') == false) && ($form->check_field_error('password_verify') == false)
+        && (($google_signup == false) || ($password !== '')))
+        ? pg_password_refusal($password, (STRONG_PASSWORD == true), lang('The password you entered does not meet the requirements. Please enter a different password.'))
+        : '';
+    if ($password_refusal !== '') {
+        $form->mark_error('password', $password_refusal);
         $form->mark_error('password_verify');
         $form->assign_field_value('password', '');
         $form->assign_field_value('password_verify', '');
@@ -3721,6 +3717,36 @@ function validate_password_strength($password)
     // if we have gotten here, then the password is strong so return true
     return true;
 }
+// The fewest characters a password a person chooses may have while
+// "Require Strong Password" (STRONG_PASSWORD) is off; on, it is the 10 of
+// validate_password_strength(). Before, a site with the setting off took a
+// password of any length, one character included.
+function pg_password_min_length()
+{
+    return 8;
+}
+
+// The refusal of a password a person chooses (sign-up, membership
+// activation, set password, change password, the installer's administrator),
+// '' when it is accepted. Strong passwords on: the strength rules and the
+// sentence the screens always gave ($strong_message). Off: the minimum
+// length, counted in characters like mb_strlen(). A password that is too
+// long or that matches the hint is the caller's own check.
+function pg_password_refusal($password, $strong, $strong_message)
+{
+    $password = (string) $password;
+
+    if ($strong) {
+        return validate_password_strength($password) ? '' : (string) $strong_message;
+    }
+
+    if (mb_strlen($password) < pg_password_min_length()) {
+        return lang(array('string' => 'The password must be at least {var:1} characters long.', 'vars' => (string) pg_password_min_length()));
+    }
+
+    return '';
+}
+
 // The Bootstrap 6 Strength meter for the password field with the id
 // $input_id, scored by assets/js/pg_password_strength.js (load it with
 // pg_password_strength_script()). $strict is "Require Strong Password"

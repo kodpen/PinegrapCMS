@@ -109,9 +109,11 @@ function ws_mail_list_query($filters, $change = array())
  * @param int[]  $channel_ids the channels the reader may read
  * @param string $charset     the connection charset the search folds with
  *                            (ws_search_like_sql()), '' for the plain match
+ * @param int[]  $plain_box_ids ws_mail_plain_box_ids(): their conversations
+ *                            count as open and held by nobody
  * @return string SQL after WHERE, '' when nothing can match
  */
-function ws_mail_list_where($filters, $viewer_id, $channel_ids, $charset = '')
+function ws_mail_list_where($filters, $viewer_id, $channel_ids, $charset = '', $plain_box_ids = array())
 {
     $channel_ids = array_values(array_filter(array_map('intval', (array) $channel_ids)));
 
@@ -120,21 +122,39 @@ function ws_mail_list_where($filters, $viewer_id, $channel_ids, $charset = '')
     }
 
     $where = array('channel_id IN (' . implode(',', $channel_ids) . ')', 'message_id > 0');
+    $plain_box_ids = array_values(array_filter(array_map('intval', (array) $plain_box_ids)));
+    $plain = $plain_box_ids ? 'box_id IN (' . implode(',', $plain_box_ids) . ')' : '';
+    $support = $plain_box_ids ? 'box_id NOT IN (' . implode(',', $plain_box_ids) . ')' : '';
 
+    // A plain box keeps no status or holder: whatever its columns say, its
+    // conversations are open and held by nobody.
     if ($filters['status'] !== 'all') {
-        $where[] = "status = '" . $filters['status'] . "'";
+        $status = "status = '" . $filters['status'] . "'";
+
+        if ($plain === '') {
+            $where[] = $status;
+        } elseif ($filters['status'] === 'open') {
+            $where[] = '(' . $status . ' OR ' . $plain . ')';
+        } else {
+            $where[] = $status . ' AND ' . $support;
+        }
     }
 
     if ($filters['holder'] === 'me') {
-        $where[] = "assignee_id = '" . (int) $viewer_id . "'";
+        $where[] = "assignee_id = '" . (int) $viewer_id . "'" . (($support !== '') ? ' AND ' . $support : '');
     } elseif ($filters['holder'] === 'none') {
-        $where[] = 'assignee_id = 0';
+        $where[] = ($plain !== '') ? '(assignee_id = 0 OR ' . $plain . ')' : 'assignee_id = 0';
     }
 
-    // Overdue is worked out per box afterwards; only the unanswered can be.
+    // Overdue is worked out per box afterwards; only the unanswered of a
+    // support box can be.
     if (!empty($filters['overdue'])) {
         $where[] = 'first_reply_at = 0';
         $where[] = "status <> 'closed'";
+
+        if ($support !== '') {
+            $where[] = $support;
+        }
     }
 
     if ((int) ($filters['box'] ?? 0) > 0) {
@@ -224,6 +244,19 @@ function ws_mail_list_boxes($viewer)
 }
 
 /**
+ * Whether a support box is among the boxes whose conversations the reader
+ * sees (ws_mail_list_boxes()). Pure.
+ *
+ * @param array $boxes          id => name
+ * @param int[] $plain_box_ids  ws_mail_plain_box_ids()
+ * @return bool
+ */
+function ws_mail_list_support($boxes, $plain_box_ids)
+{
+    return (bool) array_diff(array_map('intval', array_keys((array) $boxes)), array_map('intval', (array) $plain_box_ids));
+}
+
+/**
  * Whether the E-mails place is in the reader's list: a box writes into a
  * channel, one of its routes' included, that they may read.
  *
@@ -264,13 +297,13 @@ function ws_mail_list_visible($viewer)
  * @param array $filters ws_mail_list_filters()
  * @param int   $now
  * @return array rows (conversation rows with box_name, channel_name,
- *               assignee_name, first_reply_hours, overdue, mails, snippet,
+ *               assignee_name, first_reply_hours, overdue, support, mails, snippet,
  *               unread, unsent), next (the next page's cursor, '' for none)
  */
 function ws_mail_list($viewer, $filters, $now)
 {
     $charset = function_exists('pg_list_search_connection_charset') ? pg_list_search_connection_charset() : '';
-    $where = ws_mail_list_where($filters, (int) $viewer['id'], ws_mail_list_channels($viewer), $charset);
+    $where = ws_mail_list_where($filters, (int) $viewer['id'], ws_mail_list_channels($viewer), $charset, ws_mail_plain_box_ids());
 
     if ($where === '') {
         return array('rows' => array(), 'next' => '');
@@ -284,7 +317,7 @@ function ws_mail_list($viewer, $filters, $now)
     $boxes = array();
 
     foreach ((array) db_items("SELECT id, name, settings FROM ws_mail_boxes") as $box) {
-        $boxes[(int) $box['id']] = array('name' => (string) $box['name'], 'hours' => ws_mail_first_reply_hours($box));
+        $boxes[(int) $box['id']] = array('name' => (string) $box['name'], 'hours' => ws_mail_first_reply_hours($box), 'support' => ws_mail_box_is_support($box));
     }
 
     $out = array();
@@ -298,7 +331,7 @@ function ws_mail_list($viewer, $filters, $now)
         }
 
         $seen = $row;
-        $box = $boxes[(int) $row['box_id']] ?? array('name' => '', 'hours' => 0);
+        $box = $boxes[(int) $row['box_id']] ?? array('name' => '', 'hours' => 0, 'support' => true);
         $overdue = ws_mail_first_reply_overdue($row, $box['hours'], $now);
 
         if ($filters['overdue'] && !$overdue) {
@@ -314,6 +347,7 @@ function ws_mail_list($viewer, $filters, $now)
             'assignee_name'     => ((int) $row['assignee_id'] > 0) ? ws_person_name((int) $row['assignee_id']) : '',
             'first_reply_hours' => $box['hours'],
             'overdue'           => $overdue,
+            'support'           => $box['support'],
         );
     }
 
@@ -440,7 +474,7 @@ function ws_mail_list_rows_html($rows, $filters, $now, $open = 0)
             . (($unsent === 'waiting') ? '<span class="badge theme-secondary">' . h(lang('Waiting to be sent')) . '</span>' : '')
             . (((string) $row['box_name'] !== '') ? '<span>' . h((string) $row['box_name']) . '</span>' : '')
             . (((string) $row['channel_name'] !== '') ? '<span>' . h('#' . (string) $row['channel_name']) . '</span>' : '')
-            . '<span>' . ws_mail_status_html($row, (string) $row['assignee_name'], (int) $row['first_reply_hours'], $now) . '</span>'
+            . (($row['support'] ?? true) ? '<span>' . ws_mail_status_html($row, (string) $row['assignee_name'], (int) $row['first_reply_hours'], $now) . '</span>' : '')
             . '</span></a>';
     }
 
@@ -488,14 +522,16 @@ function ws_mail_list_more_html($filters, $next)
 /**
  * The screen toolbar: the views, Status, Held by and Mailbox as selects
  * (each keeping the other words), "First answer overdue" as a toggle, the
- * search and Mark all as read.
+ * search and Mark all as read. Status, Held by and the toggle only while a
+ * support box is among the reader's (ws_mail_list_support()).
  *
  * @param array $filters ws_mail_list_filters()
  * @param array $boxes   ws_mail_list_boxes()
  * @param bool  $can_send the person may send from a mailbox (New e-mail)
+ * @param bool  $support  a support box is among the boxes
  * @return string HTML
  */
-function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false)
+function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false, $support = true)
 {
     $statuses = ws_mail_statuses() + array('all' => lang('All'));
     $holders = array('all' => lang('Anybody'), 'me' => lang('Held by me'), 'none' => lang('Held by nobody'));
@@ -504,17 +540,19 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
     $overdue = '<a class="btn btn-sm btn-text theme-secondary' . ($filters['overdue'] ? ' active' : '') . '" aria-pressed="' . ($filters['overdue'] ? 'true' : 'false') . '"'
         . ' href="workspace_mail.php?' . h(ws_mail_list_query($filters, array('overdue' => $filters['overdue'] ? '' : '1'))) . '"><i class="bi bi-alarm me-1" aria-hidden="true"></i>' . h(lang('First answer overdue')) . '</a>';
 
-    $search = array(
+    $search = $support ? array(
         pg_filter_select('status', $statuses, $filters['status'], array('label' => lang('Status'), 'icon' => 'inbox', 'keep' => $keep)),
         pg_filter_select('holder', $holders, $filters['holder'], array('label' => lang('Held by'), 'icon' => 'person', 'keep' => $keep)),
-    );
+    ) : array();
 
     if (count($boxes) > 1) {
         $search[] = pg_filter_select('box', array('' => lang('All mailboxes')) + $boxes, ($filters['box'] > 0) ? (string) $filters['box'] : '',
             array('label' => lang('Mailbox'), 'icon' => 'mailbox', 'keep' => $keep));
     }
 
-    $search[] = $overdue;
+    if ($support) {
+        $search[] = $overdue;
+    }
 
     // The search keeps every other word; a new search starts at page one.
     $hidden = '';

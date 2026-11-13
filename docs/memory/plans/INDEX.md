@@ -22,8 +22,14 @@
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-assistant-apply-error.md: Plan (owner 2026-11-12, #8970): the designer Assistant's Apply answered with a PHP message instead of JSON; reproduce, fix the cause, JSON answers under errors, a readable message; steps DA1-DA3
+- designer-canvas-faults.md: Plan (owner 2026-11-13, #9104): round pictures drawn oval on the designer canvas, a picture that does not show, the card inside a loop (toolbar block, sample cards, editing); steps CF1-CF5
+- designer-canvas-real-samples.md: Plan (owner 2026-11-13, #9076): the designer canvas draws every bound value with a realistic sample instead of its label or an empty box; bands and chips stay on, tidy; steps CS0-CS5
+- designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): the components the designer canvas still draws as one closed block are listed, then opened into editable element trees; steps CB0-CB2
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
+- flow-window-map-2.md: Flow window plan, FW0 part 2: each control of today's side panel and canvas with its place in the drawing (right panel head, Settings, Connections, Try, foot; no box chosen; arrows and threads)
+- flow-window-map.md: Flow window plan, FW0 part 1: each control of today's bar and palette with its place in the drawing (the bar done in FW1); the decisions taken for the left panel
+- flow-window-paths.md: Flow window plan, FW0 part 3: the keyboard path through the bar, the left panel, the canvas and the right panel; how the panels behave on a narrow window and a phone (drawn in flow-window-narrow.html)
 - flow-window.md: Plan (owner 2026-11-12, #8950): the flow window rearranged: the left panel only adds boxes, the right panel is only the chosen box in three tabs, the top bar is the flow itself; steps FW0-FW5
 - flows-quick-setup.md: Plan (owner 2026-11-12, #8950): a quick setup that builds a flow by choices (start, steps one after the other, summary) over every area and action of the site; rules and steps QS0-QS5
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
@@ -41,7 +47,10 @@
 - legacy-bootstrap-helper.md: Plan: the helper that turns a Legacy design towards Bootstrap 5.3.8 and a design theme (#8856): a trial design beside it, what it changes, how it is seen and kept, what stays reversible
 - legacy-layouts-bootstrap.md: Plan (owner 2026-11-12, #8942): the page types' custom layouts and built-in templates print Bootstrap 5.3.8 names on a design of that framework; census first, steps LL1-LL6
 - legacy-layouts-output-map.md: After LL1 (#8969, architect): a bootstrap5 design's page types get 5.3.8 names by mapping the system region's output per request, no converted copies; the rules LL2 and LL3 keep
+- look-widths-and-switch.md: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the details panel added beside, add and edit screens up to 1700 px, the switch with its thumb again; steps LW1-LW4
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- messages-area-decided.md: The architect's decisions on the proposals of MA0 and MA4 (#9081, #9083): the shell, the Sends list as a union with its measure, e-mail source, rights, the e-mail design page
+- messages-area-steps-2.md: Steps MA9a-MA9d and MA10a-MA10b of the messages area plan (#8961): campaign profiles turned into flows, incoming e-mail in the area; their order in messages-area-steps.md
 - messages-area-steps.md: Steps MA0-MA11 of the messages area plan (#8961): census, shell and tabs, one sends list, campaigns, e-mail bodies as pages, templates, channels, automatic sends, profiles into flows, incoming e-mail
 - messages-area.md: Plan (owner 2026-11-12, #8961): one messages area in place of My Campaigns: campaigns, automatic sends as flows, templates, one sends list, channels; e-mail bodies as pages; profiles become flows
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
@@ -54,6 +63,7 @@
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
 - panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860), the list rules, what is only a placeholder
 - panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
+- picker-all-list.md: Plan (owner 2026-11-12, #9070): the picker opens on a list of everything of its kind, newest first, the folder tree as a filter at the side; steps PA1-PA3
 - report-screens-steps.md: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out
 - report-screens.md: Plan (owner 2026-11-11, #8673): the order, visitor, shipping and ERP VAT report screens drawn as the dashboard: figures, a chart, the table, settings in a drawer, ready reports; steps RS1-RS8
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
@@ -68,10 +78,7 @@
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - whatsapp-channel-steps.md: Steps WA0-WA11 of the WhatsApp channel plan (#8950): facts and storage first, connection, queue, templates, webhook, orders, forms, the Flows box, the template designer, offer codes
+- whatsapp-channel-storage.md: WA0's proposals (2026-11-12), open for the architect before WA2: queue, templates and customer messages in tables of their own, SMS marketing consent as the gate, single-use key codes
 - whatsapp-channel.md: Plan (owner 2026-11-12, #8950): WhatsApp as a message channel beside e-mail for orders, forms and flows; the site's own Meta app, templates designed in the panel, offer codes; what binds every step
 - workspace-channel-look-prototype.md: The style sheet tried on dev for step CL1 of plans/workspace-channel-look.md (one header card, colour wash, pill tabs, day chip, writing box card); a browser trial, not in the code
 - workspace-channel-look.md: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspace channel screen in the dashboard's manner (one header card, colour wash, pill tabs, panes as cards); steps CL1-CL4 in order
-- workspace-mail-screen-sending.md: How the Workspace mail plan sends: one send path through the mail queue with an outcome hook, the item's send state, the schema step, limits, files, what a forward carries
-- workspace-mail-screen-steps-2.md: Steps WM10-WM14 of plans/workspace-mail-screen.md (owner 2026-11-11, #8765): a row opens the mail, the HTML kept and drawn in a guarded frame, a mailbox kept in no channel, a plain box
-- workspace-mail-screen-steps.md: Steps WM1-WM9 of plans/workspace-mail-screen.md: queue outcome hook, schema, send path, the screen with views and pane, New e-mail, Forward as e-mail, the answer on the same path, API, close-out
-- workspace-mail-screen.md: Plan (owner 2026-11-10): the Workspace's E-mails screen becomes a mail screen for the Workspace mailboxes: Incoming, Sent, Not sent, a reading pane, New e-mail, Forward as e-mail, the mail queue

@@ -21,6 +21,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_rows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_shares.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_bin.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_channel.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_import.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_starters.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_screen.php');
@@ -101,8 +102,13 @@ function test_ws_wtable_bin_step()
 // readers are the only ones that see it.
 function test_ws_wtable_bin_readers_leave_binned_tables_out()
 {
-	foreach (array('ws_wtable', 'ws_wtables_own', 'ws_wtable_create_check', 'ws_wtables_reached', 'ws_wtable_restore_check') as $function) {
+	foreach (array('ws_wtable', 'ws_wtables_own', 'ws_wtable_home_count', 'ws_wtables_reached', 'ws_wtables_of_channels') as $function) {
 		pg_assert_contains('ws_wtable_live_sql()', ws_wtable_bin_test_code($function), $function);
+	}
+
+	// The limit of a home counts live tables only, at create and restore.
+	foreach (array('ws_wtable_create_check', 'ws_wtable_restore_check') as $function) {
+		pg_assert_contains('ws_wtable_home_count(', ws_wtable_bin_test_code($function), $function);
 	}
 
 	pg_assert_contains("deleted_at > 0", ws_wtable_bin_test_code('ws_wtable_binned'));

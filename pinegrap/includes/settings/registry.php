@@ -221,6 +221,7 @@ function pg_settings_categories()
                 'pgset-mailchimp' => lang('MailChimp'),
                 'pgset-sms'       => lang('SMS'),
                 'pgset-sms-messages' => lang('SMS Messages'),
+                'pgset-whatsapp'  => lang('WhatsApp'),
                 'pgset-iys'       => lang('İYS'),
             ),
             'keywords' => array(
@@ -229,6 +230,7 @@ function pg_settings_categories()
                 'pgset-mailchimp' => pg_settings_keywords(lang('mailchimp, mail chimp, list, list id, api key, key, sync, automation, store')),
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
                 'pgset-sms-messages' => pg_settings_keywords(lang('sms, text message, order received, order shipped, order delivered, tracking number, template')),
+                'pgset-whatsapp'  => pg_settings_keywords(lang('whatsapp, meta, cloud api, business account, phone number id, access token, system user, webhook, verify token, template, test message')),
                 'pgset-iys'       => pg_settings_keywords(lang('iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal')),
             ),
         ),

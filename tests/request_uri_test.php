@@ -38,6 +38,32 @@ function test_request_uri_without_header()
 	pg_assert_same('', pg_request_uri_from_server(array()), 'nothing at all');
 }
 
+// IIS hands the path over in its ANSI code page (Windows-1254 on a Turkish
+// server): /pg-ÇĞİÖŞÜ arrives as the bytes C7 D0 DD D6 DE DC. Read back as
+// UTF-8, a link built from the address (urlencode() of a send_to) names the
+// page again instead of Latin-1 "ÇÐÝÖÞÜ", a 404.
+function test_request_uri_ansi_path_read_as_utf8()
+{
+	$iis = array('SERVER_SOFTWARE' => 'Microsoft-IIS/10.0');
+
+	pg_assert_same('/pg-test_ÇĞİÖŞÜ_çğıöşü', pg_request_uri_from_server($iis + array('REQUEST_URI' => "/pg-test_\xC7\xD0\xDD\xD6\xDE\xDC_\xE7\xF0\xFD\xF6\xFE\xFC")));
+	pg_assert_same('/çay?x=%C4%9F&y=1', pg_request_uri_from_server($iis + array('REQUEST_URI' => "/\xE7ay?x=%C4%9F&y=1")), 'the query string is left as it came');
+	pg_assert_same('/ğ?q=ş', pg_request_uri_from_server($iis + array('REQUEST_URI' => "/\xF0?q=ş")), 'each part read on its own: UTF-8 in the query stays');
+	pg_assert_same('/çay', pg_request_uri_from_server($iis + array('HTTP_X_REWRITE_URL' => "/\xE7ay", 'REQUEST_URI' => '/')), 'the rewrite header too');
+	pg_assert_same('/ğ.php?a=1', pg_request_uri_from_server(array('PHP_SELF' => "/\xF0.php", 'QUERY_STRING' => 'a=1')), 'PHP_SELF too');
+	pg_assert_same('%2Fpg-%C4%9F', urlencode(pg_request_uri_from_server($iis + array('REQUEST_URI' => "/pg-\xF0"))), 'a send_to names the page in UTF-8');
+}
+
+function test_request_uri_utf8_keeps_what_is_utf8()
+{
+	pg_assert_same('/pg-ğış?a=b', pg_request_uri_utf8('/pg-ğış?a=b'), 'UTF-8 stays as it is');
+	pg_assert_same('/pg-%C4%9F', pg_request_uri_utf8('/pg-%C4%9F'), 'a percent-encoded path stays as it is');
+	pg_assert_same('', pg_request_uri_utf8(''));
+	pg_assert_same('/a??b', pg_request_uri_utf8('/a??b'), 'only the first question mark splits');
+	pg_assert_same('ğ', pg_request_text_utf8("\xF0"), 'a piece read from the Turkish code page');
+	pg_assert_same('ğ', pg_request_text_utf8('ğ'));
+}
+
 // Every reader of the address goes through the one choice.
 function test_request_uri_callers_share_the_choice()
 {

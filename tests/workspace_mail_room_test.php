@@ -197,7 +197,7 @@ function test_workspace_mail_room_in_the_box_form()
 
 	$script = ws_mail_settings_script();
 
-	pg_assert_contains('(after_fetch|reply_via|kept_in)', $script, 'the choice shows and hides its fields');
+	pg_assert_contains('(after_fetch|reply_via|kept_in|support)', $script, 'the choice shows and hides its fields');
 	pg_assert_contains("channel.required = (kept.value !== \\'mailbox\\');", pg_test_function_source('ws_mail_settings_script'), 'a hidden channel is not asked for');
 }
 

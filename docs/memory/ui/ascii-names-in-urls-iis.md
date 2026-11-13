@@ -1,6 +1,6 @@
 ---
 name: ascii-names-in-urls-iis
-description: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one
+description: IIS hands non-ASCII paths over in the ANSI code page: file names made ASCII, the request address read back as UTF-8 (pg_request_uri_utf8); no stored file name ends in a dot
 ---
 
 ## Why can a record with a Turkish character in its name not be found by URL?
@@ -15,6 +15,10 @@ description: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish
 ## Why does no stored file name end in a dot?
 - Windows drops the dots at the end of a file name: `photo.jpg.` is written over `photo.jpg`, while the record keeps `photo.jpg.`, so the name check (`check_name_availability()`, records only) sees no clash. Two records then share one file, and a basic user could store the signing key as `dkim.key.` (`platform/dkim-key-in-file-manager.md`).
 - `prepare_file_name()` drops them last, after the length limit (which can leave one) and after the upload rule (`shell.php.` is still `shell_php`). #620.
+
+## Is the request address UTF-8?
+- Yes. `pg_request_uri_from_server()` (`includes/fn/request_scheme.php`) gives it back through `pg_request_uri_utf8()`: path and query string read apart, a part that is not UTF-8 read from Windows-1254 (ISO-8859-9 without it). So `REQUEST_URL` and `get_request_uri()` are UTF-8, and `router.php` writes the same back into `$_SERVER['REQUEST_URI']` for the widgets that read it for a back address. `router_utf8_name()` is the same reading for one name.
+- Symptom before (#8983): on `/pg-ÇĞİÖŞÜ` the edit mode switch, the toolbar frame and every `send_to` built with `urlencode(REQUEST_URL)` wrote `%C7%D0%DD…`; the browser read the bytes back as Latin-1 (`ÇÐÝ…`), a 404 and a 404 log line per press. `h()` of those bytes is empty, so Edit Page lost its `send_to`. `Ç Ö Ü` survived: the same byte in both code pages.
 
 ## What is the rule?
 - When you generate a new name that enters a URL, reduce it to ASCII. Do not trust the server to behave correctly.

@@ -29,5 +29,5 @@ module: mail_queue
 - The same outcome may come twice (a stale row sent before its process died is sent again): a handler is idempotent.
 
 ## Why?
-- The queue told nobody how a message ended; the outcome stayed in `mail_outbox`. The Workspace mail screen's send path needs it to mark an item sent or failed and to show Not sent and Send again (`plans/workspace-mail-screen-sending.md`).
+- The queue told nobody how a message ended; the outcome stayed in `mail_outbox`. The Workspace mail screen's send path needs it to mark an item sent or failed and to show Not sent and Send again (`workspace/mail-send.md`).
 - The Mail queue screen lists type `workspace` as "Workspace" (`pg_mail_queue_list_types()`).

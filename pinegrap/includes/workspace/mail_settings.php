@@ -677,13 +677,17 @@ function ws_mail_box_save_check($viewer, $box, $post)
         return $fail($routes['error'], 'route_match');
     }
 
-    $auto = ws_mail_auto_reply_input($post);
+    // A plain box keeps the target and the automatic answer it had, hidden
+    // and unchecked, for the day it is a support box again.
+    $support = !empty($post['support']);
+    $auto = $support ? ws_mail_auto_reply_input($post)
+        : array('ok' => true, 'error' => '', 'auto_reply' => (int) ($box['auto_reply'] ?? 0), 'auto_reply_text' => (string) ($box['auto_reply_text'] ?? ''));
 
     if (!$auto['ok']) {
         return $fail($auto['error'], 'auto_reply_text');
     }
 
-    $first = ws_mail_first_reply_input($post);
+    $first = $support ? ws_mail_first_reply_input($post) : array('ok' => true, 'error' => '', 'hours' => ws_mail_first_reply_hours($box, true));
 
     if (!$first['ok']) {
         return $fail($first['error'], 'first_reply_hours');
@@ -691,6 +695,7 @@ function ws_mail_box_save_check($viewer, $box, $post)
 
     $settings = ws_mail_box_settings($box);
     $settings['routes'] = $routes['routes'];
+    $settings['support'] = $support;
     $settings['first_reply_hours'] = $first['hours'];
     $settings = ws_mail_triage_input($post, $settings, ws_mail_triage_ai_ready());
 
@@ -841,8 +846,13 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form =
                     <textarea class="form-control form-control-sm" name="signature" id="' . $prefix . 'signature" rows="3" maxlength="' . WS_MAIL_SIGNATURE_MAX . '">' . h(ws_mail_box_signature($box)) . '</textarea>
                     <div class="form-text">' . h(lang('Plain text put under a new e-mail sent from this mailbox, after the writer\'s name. Left empty, the mailbox\'s name is put there.')) . '</div>
                 </div>
-                ' . ws_mail_first_reply_field($prefix, $box) . '
-                ' . ws_mail_auto_reply_fields($prefix, $box) . '
+                ' . ws_mail_support_field($prefix, $box) . '
+                <div class="md:col-12' . (ws_mail_box_is_support($box) ? '' : ' d-none') . '" data-ws-mail-when="support=1">
+                    <div class="row g-5">
+                    ' . ws_mail_first_reply_field($prefix, $box) . '
+                    ' . ws_mail_auto_reply_fields($prefix, $box) . '
+                    </div>
+                </div>
                 ' . ws_mail_triage_field($prefix, $box, $ai_ready) . '
                 <div class="md:col-12">
                     <div class="form-field">
@@ -1323,15 +1333,17 @@ function ws_mail_settings_script()
                 return form.querySelector(\'[name="\' + name + \'"], [name$="[\' + name + \']"]\');
             }
 
-            // A field that applies to one choice of a select shows only with
-            // it (data-ws-mail-when="name=value"); the connected account is
+            // A field that applies to one choice of a select, or to a
+            // switch that is on, shows only with it
+            // (data-ws-mail-when="name=value"); the connected account is
             // required when answers are sent through it.
             function sync(form) {
                 form.querySelectorAll(\'[data-ws-mail-when]\').forEach(function (part) {
                     var rule = part.getAttribute(\'data-ws-mail-when\').split(\'=\');
                     var select = field(form, rule[0]);
+                    var value = !select ? null : ((select.type === \'checkbox\') ? (select.checked ? select.value : \'\') : select.value);
 
-                    part.classList.toggle(\'d-none\', !select || (select.value !== rule[1]));
+                    part.classList.toggle(\'d-none\', value !== rule[1]);
                 });
 
                 var kept = field(form, \'kept_in\');
@@ -1357,10 +1369,27 @@ function ws_mail_settings_script()
                 }
             }
 
+            // A new box kept in the mailbox itself starts plain, one kept in
+            // a channel as a support box, until the person sets the switch.
+            function startPlain(form, target) {
+                var support = field(form, \'support\');
+
+                if (!support || !support.hasAttribute(\'data-ws-mail-new\')) {
+                    return;
+                }
+
+                if (target === support) {
+                    support.removeAttribute(\'data-ws-mail-new\');
+                } else if (/(^|\\[)kept_in\\]?$/.test(target.name || \'\')) {
+                    support.checked = (target.value !== \'mailbox\');
+                }
+            }
+
             document.addEventListener(\'change\', function (event) {
-                var form = (event.target.closest && /(^|\\[)(after_fetch|reply_via|kept_in)\\]?$/.test(event.target.name || \'\')) ? event.target.closest(\'.ws-mail-box-form\') : null;
+                var form = (event.target.closest && /(^|\\[)(after_fetch|reply_via|kept_in|support)\\]?$/.test(event.target.name || \'\')) ? event.target.closest(\'.ws-mail-box-form\') : null;
 
                 if (form) {
+                    startPlain(form, event.target);
                     sync(form);
                 }
             });

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>panel look A: the Communication › WhatsApp settings card, connected and with a refused token</title>
+<link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<style>
+body { background: radial-gradient(700px 420px at 20% -6%, var(--glow1), transparent 62%), radial-gradient(600px 380px at 100% -4%, var(--glow2), transparent 60%), var(--page); }
+.board { display: grid; grid-template-columns: 760px 520px; gap: 32px; align-items: start; }
+.wa { padding: 18px 22px 20px; }
+.wa h3 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 15px; font-weight: 600; }
+.wa h3 .sp { flex: 1; }
+.wa > p { margin: 6px 0 0; font-size: 13px; color: var(--fg2); }
+.inner { margin-top: 14px; border-radius: 14px; background: var(--card); box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi); padding: 4px 16px 14px; }
+.ok { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--fg2); }
+.ok b { color: var(--fg); font-weight: 550; }
+.step { padding: 12px 0 4px; }
+.step + .row, .row + .row { border-top: 1px solid var(--line); }
+.step { border-top: 1px solid var(--line); }
+.ok + .step, .inner > .step:first-child { border-top: 0; }
+.step h6 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; font-weight: 600; color: var(--fg2); }
+.step h6 span { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px; background: var(--quiet); box-shadow: inset 0 0 0 1px var(--line); }
+.step p { margin: 5px 0 0; font-size: 12.5px; color: var(--fg3); line-height: 1.5; }
+.step a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.row { display: grid; grid-template-columns: 1fr 300px; gap: 16px; align-items: center; padding: 10px 0; }
+.row .lab { margin: 0; }
+.row .in { height: 32px; font-size: 13px; border-radius: 9px; }
+.row .in { overflow: hidden; }
+.row .in span { overflow: hidden; text-overflow: ellipsis; }
+.row .in.wide { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--fg2); }
+.row .help { grid-column: 1 / -1; margin-top: -2px; }
+code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--fg2); }
+.foot { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.alert { display: flex; gap: 10px; margin: 0 0 14px; padding: 11px 14px; border-radius: 12px; font-size: 13px; color: var(--fg2); background: color-mix(in srgb, var(--rose) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rose) 24%, transparent); }
+.alert i { color: var(--rose); font-size: 15px; }
+.alert b { display: block; color: var(--fg); font-weight: 550; }
+</style>
+</head>
+<body>
+<div class="stage">
+<div class="cap"><b>İletişim › WhatsApp kartı</b>Site kendi Meta uygulamasını bağlar: beş numaralı adım, kaydederken Meta ile denetim, deneme mesajı. Anahtarlar bir daha gösterilmez; boş bırakılan alan kayıtlı değeri korur.</div>
+<div class="board">
+
+  <div>
+    <div class="cap"><b>Bağlı</b>Kaydedilip Meta'ya sorulmuş hesap · 5. adımda geri çağırma adresi ve doğrulama anahtarı</div>
+    <section class="pcard wa">
+      <h3><i class="bi bi-whatsapp" style="color:var(--teal)"></i>WhatsApp mesajları gönder<span class="sp"></span><span class="sw on"></span></h3>
+      <p>Sitenin kendi WhatsApp Business hesabıyla, Meta'nın Cloud API'si üzerinden: WhatsApp'ın onayladığı şablonlar, her seferinde bir kişiye. E-postalar eskisi gibi gider.</p>
+      <div class="inner">
+        <div class="ok"><span class="st t-teal">Bağlı</span><span><b>Kupa Dükkânı</b>, +90 212 555 01 23, kalite yüksek. Meta ile 13.11.2026 10:42'de denetlendi.</span></div>
+        <div class="step"><h6><span>1</span>Meta uygulaması</h6><p><a>Meta for Developers</a>'ta Business türünde bir uygulama açın ve WhatsApp'ı ekleyin. Uygulama Kimliği ve Uygulama Gizli Anahtarı, Uygulama ayarları › Temel'de.</p></div>
+        <div class="row"><span class="lab">Uygulama Kimliği</span><div class="in"><span>1234567890123</span></div></div>
+        <div class="row"><span class="lab">Uygulama Gizli Anahtarı</span><div class="in"><span class="ph">Kayıtlı. Korumak için boş bırakın.</span></div></div>
+        <div class="step"><h6><span>2</span>Kalıcı erişim anahtarı</h6><p><a>İşletme ayarları</a> › Sistem kullanıcıları: uygulamayı ve WhatsApp hesabını atayın, Token oluştur'a basın; süre Hiçbir zaman, izinler <code>whatsapp_business_messaging</code>, <code>whatsapp_business_management</code>, <code>business_management</code>.</p></div>
+        <div class="row"><span class="lab">Erişim Anahtarı</span><div class="in"><span class="ph">Kayıtlı. Korumak için boş bırakın.</span></div></div>
+        <div class="step"><h6><span>3</span>Telefon numarası</h6><p>Uygulamanın WhatsApp › API Kurulumu sayfasında numarayı ekleyip doğrulayın, Telefon numarası kimliğini kopyalayın (numaranın kendisini değil).</p></div>
+        <div class="row"><span class="lab">Telefon Numarası Kimliği</span><div class="in"><span>106540352242922</span></div></div>
+        <div class="step"><h6><span>4</span>WhatsApp Business hesabı</h6><p>Aynı sayfadaki WhatsApp Business Hesabı Kimliği. WhatsApp açıkken kaydetmek dört adımı Meta ile denetler.</p></div>
+        <div class="row"><span class="lab">WhatsApp Business Hesabı Kimliği</span><div class="in"><span>102290129340398</span></div></div>
+        <div class="step"><h6><span>5</span>Webhook</h6><p>Uygulamanın WhatsApp › Yapılandırma sayfasına bu adresi ve anahtarı girin, Doğrula ve kaydet'e basın, <code>messages</code> ve <code>message_template_status_update</code> alanlarına abone olun.</p></div>
+        <div class="row"><span class="lab">Geri Çağırma Adresi</span><div class="in wide"><span>https://kupadukkani.com/pinegrap/whatsapp_webhook.php</span></div></div>
+        <div class="row"><span class="lab">Doğrulama Anahtarı</span><div class="in wide"><span>3f9c1e…a07b</span><i class="bi bi-copy end"></i></div></div>
+        <div class="row"><span class="lab">Deneme Numarası</span><div class="in"><span>+90 532 000 00 00</span></div><p class="help">WhatsApp'ı olan bir cep numarası. Deneme, Meta'nın örnek şablonu <code>hello_world</code>; hemen gider ve Meta ücretlendirir.</p></div>
+        <div class="foot"><button class="btn quiet sm"><i class="bi bi-whatsapp"></i>Kaydet ve deneme mesajı gönder</button></div>
+      </div>
+    </section>
+  </div>
+
+  <div>
+    <div class="cap"><b>Reddedilen anahtar</b>Kaydet, Meta'ya üç çağrı yapar · ret, ilgili alanın altında; hiçbir şey kaydedilmez</div>
+    <div class="alert"><i class="bi bi-exclamation-octagon"></i><span><b>Bir hata oluştu</b>Bu erişim anahtarının süresi 14.11.2026 10:42 UTC'de doluyor. Süresi dolmayan bir sistem kullanıcısı anahtarı oluşturun.</span></div>
+    <section class="pcard wa">
+      <h3><i class="bi bi-whatsapp" style="color:var(--teal)"></i>WhatsApp mesajları gönder<span class="sp"></span><span class="sw on"></span></h3>
+      <div class="inner">
+        <div class="step"><h6><span>2</span>Kalıcı erişim anahtarı</h6><p>API Kurulumu'ndaki geçici anahtar bir gün yaşar; buraya sistem kullanıcısının anahtarı girilir.</p></div>
+        <div class="row"><span class="lab">Erişim Anahtarı</span><div class="in err"><span class="ph">Yeniden girin</span></div><p class="help err">Bu erişim anahtarının süresi 14.11.2026 10:42 UTC'de doluyor. Süresi dolmayan bir sistem kullanıcısı anahtarı oluşturun.</p></div>
+        <div class="step"><h6><span>3</span>Telefon numarası</h6></div>
+        <div class="row"><span class="lab">Telefon Numarası Kimliği</span><div class="in"><span>106540352242922</span></div></div>
+      </div>
+    </section>
+
+    <div class="cap" style="margin-top:28px"><b>Diğer retler, alanlarıyla</b>Meta'nın cevabı "Meta diyor ki: …" diye eklenir</div>
+    <section class="pcard wa" style="padding-top:12px">
+      <div class="row" style="padding-top:0"><span class="lab">Uygulama Gizli Anahtarı</span><div class="in err"><span class="ph">Yeniden girin</span></div><p class="help err">Meta bu Uygulama Kimliği ile Uygulama Gizli Anahtarı'nı kabul etmedi.</p></div>
+      <div class="row"><span class="lab">Erişim Anahtarı</span><div class="in err"><span class="ph">Yeniden girin</span></div><p class="help err">Bu erişim anahtarı başka bir Meta uygulamasına ait. · İzin eksik: whatsapp_business_messaging.</p></div>
+      <div class="row"><span class="lab">Telefon Numarası Kimliği</span><div class="in err"><span>106540352242999</span></div><p class="help err">Bu telefon numarası kimliği, bu WhatsApp Business hesabının numaralarından biri değil.</p></div>
+      <div class="row"><span class="lab">Meta'ya ulaşılamadı</span><span class="st t-amber" style="justify-self:end">Denetlenmeden kaydedildi</span><p class="help">Aşağıdaki deneme mesajı çalışıp çalışmadığını gösterir.</p></div>
+    </section>
+  </div>
+
+</div>
+</div>
+</body>
+</html>

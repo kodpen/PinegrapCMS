@@ -17,14 +17,14 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Runs and shares answer with the API's presenters (`api_flows.php`), times via `ws_flow_time()` (`api_time()` is API-only). `ws_flow_run_get` adds `due` (`ws_scheduled_due()`).
 
 ## How is the editor built?
-- Toolbar: "New flow" (slot 1, primary), "Flows ›", name, status, save state, Outline, Flow runs, Run, Problems, Publish, Pause, ⋯; below: palette | stage | side.
+- Bar: name, status, save state; Canvas / List; the tools, Run, Publish, ⋯ (`workspace-flows-window-bar.md`). Below: palette | stage | side.
 - Palette (`drawPalette()`, left column, edit access only; else `wsf-no-palette`): Start from a template while empty, a search, the boxes in numbered sections (start, steps, end, then values): `workspace-flows-palette.md`. Click or drag; phones: the outline's buttons.
 - Stage: a layer moved by translate+scale; SVG arrows under 208×80 HTML boxes, grid 16. Pan: empty canvas, Space+drag, middle button, wheel. Zoom: Ctrl+wheel, pinch, − % + fit (0.25-2).
 - Run/view access: the live graph read-only, no palette, drag, Publish. Share dialog (⋯): `workspace-flows-shares.md`.
 - Box look, kind icons: `workspace-flows-box-look.md`; titles with values, live-flow hint: `workspace-flows-run-notice.md`.
 
 ## How is it saved?
-- 1.5 s after the last change, on blur, Ctrl+S; Publish, Pause, another flow, "New flow" save first.
+- 1.5 s after the last change, on blur, Ctrl+S; Publish, Pause, another flow, the way back to the list save first.
 - Hidden tab or page left: a keepalive `ws_flow_save`; none over 60 000 bytes (a hidden tab saves as usual, leaving asks). `beforeunload` asks while changes are unsent. Sent once: `workspace-flows-canvas-leave-focus.md`.
 - Unsaveable changes are dropped on a switch after `ask()` only. A 409 shows "Load it again".
 
@@ -33,7 +33,7 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Tab in arrow order; arrows move 16 (Shift 64); C "Connect to…"; Delete; Enter: first field; + − 0; Esc. Undo: `workspace-flows-undo.md`.
 
 ## What is the outline view?
-- A toggle, default under 768 px: boxes in arrow order; a box's heading opens its settings and "Connect to…" (the selected box, `outlineOpen()`), one at a time; the hidden canvas redraws when shown. All forms at once was 686 controls at 97 boxes (#3497).
+- The bar's List choice, default under 768 px: boxes in arrow order; a box's heading opens its settings and "Connect to…" (the selected box, `outlineOpen()`), one at a time; the hidden canvas redraws when shown. All forms at once was 686 controls at 97 boxes (#3497).
 
 ## Where is the run view?
 - `workspace-flows-run-view.md`: Run, the runs list, a run shown box by box, how it is read again and what a failed read shows.

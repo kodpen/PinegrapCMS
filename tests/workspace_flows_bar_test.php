@@ -3,8 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Source pins for the Flows canvas toolbar and the channel template screen:
- * the status pill is filled with a Bootstrap 6 theme class, a paused flow
- * offers Resume (the panel action resumes the version it was paused at), an
+ * the status pill is filled with a Bootstrap 6 theme class, the open flow's
+ * bar in its three parts (New flow on the list only, Canvas or List in the
+ * middle, Publish the one filled button, Pause and Resume in the ⋯ menu), a
+ * paused flow offers Resume (the panel action resumes the version it was
+ * paused at), an
  * untouched blank canvas is not kept when it is left, the checklist and
  * table windows of a template text say where they add, a task title is
  * required, and an untitled task box's problem quotes its name.
@@ -41,6 +44,43 @@ function test_workspace_flows_bar_resume()
 	pg_assert_true(strpos($actions, "case 'ws_flow_resume':") !== false, 'no ws_flow_resume panel action');
 	pg_assert_true(strpos($actions, '$result = ws_flow_resume($viewer, $flow);') !== false, 'the panel action does not resume');
 	pg_assert_true(strpos(workspace_flows_bar_source('includes/panel/actions.php'), "'ws_flow_pause', 'ws_flow_resume',") !== false, 'ws_flow_resume not registered');
+}
+
+// The body of one function of the flow script, from its line to the first
+// line that closes it at its own indent.
+function workspace_flows_bar_function($source, $name)
+{
+	return preg_match('/\n    function ' . preg_quote($name, '/') . '\(.*?\n    \}\n/s', $source, $found) ? $found[0] : '';
+}
+
+function test_workspace_flows_bar_window_layout()
+{
+	$source = workspace_flows_bar_source('assets/js/workspace_flow.js');
+	$bar = workspace_flows_bar_function($source, 'drawBar');
+	$more = workspace_flows_bar_function($source, 'moreMenu');
+	$view = workspace_flows_bar_function($source, 'viewSwitch');
+
+	pg_assert_true($bar !== '' && $more !== '' && $view !== '', 'drawBar(), moreMenu() and viewSwitch() are found');
+
+	// New flow is the list's: the open flow's bar never draws it.
+	pg_assert_true(strpos($bar, 'newFlowButton()') === false, 'New flow is drawn in an open flow\'s bar');
+	pg_assert_contains('newFlowButton();', workspace_flows_bar_function($source, 'clearScreen'), 'the flow list keeps New flow');
+
+	// The flow at the left, the view in the middle, Publish the one filled
+	// button, Run filled only without it.
+	pg_assert_true(strpos($bar, 'statusPill(flow)') < strpos($bar, 'viewSwitch()') && strpos($bar, 'viewSwitch()') < strpos($bar, 'runsButton()'), 'the bar\'s three parts are out of order');
+	pg_assert_contains('runButton(!publishing);', $bar, 'Run is filled beside Publish');
+	pg_assert_contains("ui.publish = barButton(BAR_FILL, t('fl_publish'), 'bi-send');", $bar);
+	pg_assert_contains("var BAR_FILL = 'pg-button pg-button-fill pg-button-sm';", $source, 'the look A recipe of the filled button');
+
+	// Canvas or List says which is chosen.
+	pg_assert_contains("var group = el('div', 'pg-seg md:mx-auto wsf-view');", $view);
+	pg_assert_contains("choice.setAttribute('aria-pressed', (state.outline === item[0]) ? 'true' : 'false');", $view, 'the view switch says which is chosen');
+
+	// Pause and Resume live in the ⋯ menu.
+	pg_assert_true(strpos($bar, 'ws_flow_pause') === false && strpos($bar, 'ws_flow_resume') === false, 'Pause or Resume on the bar itself');
+	pg_assert_contains("act('ws_flow_pause', pause, t('fl_paused'))", $more, 'Pause in the ⋯ menu');
+	pg_assert_contains("act('ws_flow_resume', resume, t('fl_resumed'))", $more, 'Resume in the ⋯ menu');
 }
 
 function test_workspace_flows_bar_untouched_blank_dropped()

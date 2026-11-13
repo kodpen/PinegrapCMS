@@ -340,7 +340,8 @@ function ws_mail_frame($viewer, $item_id)
 
 /**
  * What the screen's script needs to answer and change a conversation from
- * the pane: the people of its channel for Held by, and its status.
+ * the pane: the people of its channel for Held by, and its status (none for
+ * a plain box, ws_mail_box_is_support()).
  *
  * @param array $pane   ws_mail_pane()
  * @param array $viewer
@@ -353,6 +354,7 @@ function ws_mail_pane_tools($pane, $viewer)
     $conversation = $pane['conversation'];
     $members = array();
     $others = 0;
+    $box = null;
 
     if ($pane['can_post']) {
         $ids = (array) db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . (int) $pane['channel']['id'] . "' ORDER BY user_id LIMIT 100");
@@ -373,7 +375,7 @@ function ws_mail_pane_tools($pane, $viewer)
         'reply'      => $pane['can_post'] ? (int) $conversation['id'] : 0,
         'to'         => (string) $conversation['customer_email'],
         'channel_id' => (int) $pane['channel']['id'],
-        'state'      => $pane['can_post'] ? ws_mail_state_offer(array('conversation' => $conversation), (int) $conversation['id'], (int) $viewer['id']) : null,
+        'state'      => $pane['can_post'] ? ws_mail_state_offer(array('conversation' => $conversation, 'support' => ws_mail_box_is_support($box)), (int) $conversation['id'], (int) $viewer['id']) : null,
         'members'    => $members,
         'others'     => $others,
     );

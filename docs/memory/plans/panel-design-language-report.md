@@ -8,7 +8,7 @@ description: Look A's report screen (#8955): ready reports and the period on top
 - The screen's parts today: `ui/report-view.md`, `ui/report-settings-drawer.md`, `ui/report-table-rows.md`. The drawing re-dresses them and adds no part; the levels, fields and options stay what the screens have.
 
 ## How is the page laid out?
-- Content 1280 px, centred, as a list (`panel-design-language-sheet.md`); 16 px between the blocks.
+- Content as wide as a list (`panel-design-language-sheet.md`; the page is drawn at the earlier 1280 px); 16 px between the blocks.
 - Head: the report's name in the Display cut, an amber pill while it is unsaved; at the right "Export" and "Report settings" (quiet), then "Save" (filled).
 - A strip under it: the label "Ready reports" and a segmented control of them.
 - The tools row: the period as a segmented control, the date range as a 34 px field, a divider, each filter as a 32 px pill (the field's name in second text, the value in 550, a small close icon), "Add filter", and at the right end the switch that compares with the previous period.
