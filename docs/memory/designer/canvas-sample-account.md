@@ -1,6 +1,6 @@
 ---
 name: canvas-sample-account
-description: The sample account (Alex Morgan) the designer canvas draws in every account and member widget, and the site words it reads (CS4b)
+description: The sample account (Alex Morgan) the designer canvas draws in every account and member widget, and the site words it reads (CS4b, #9280)
 ---
 
 ## What does the account family draw on the canvas?

@@ -15,7 +15,7 @@ description: Start file for the canvas-sample-* files: how the designer canvas d
 - Orders, cart, checkout and its steps: `canvas-sample-order.md` (#9214).
 - Forms, form list and item views, form e-mails: `canvas-sample-form-record.md` (#9239).
 - Catalog, product, wishlist, order form, search, tag cloud: `canvas-sample-product.md` (#9253).
-- Account and members: `canvas-sample-account.md` (CS4b).
+- Account and members: `canvas-sample-account.md` (CS4b, #9280).
 - Comments, calendar, reviews, booking, ads, menus, language, loop values: not done yet (CS4c).
 
 ## What is still open?

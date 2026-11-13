@@ -26,7 +26,7 @@
 - canvas-closed-blocks.md: CB0 list (2026-11-13): what the designer canvas draws as one closed block, in four families, the counts, and the proposed order of opening them (for CB1, the owner's answer)
 - canvas-loop-as-published.md: A loop on the designer canvas draws one line of its grid (the card and hatched copies), a listing with no record too; a bound picture is a sample photo with its field in the title (#9104, CF4)
 - canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (a sample photo SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
-- canvas-sample-account.md: The sample account (Alex Morgan) the designer canvas draws in every account and member widget, and the site words it reads (CS4b)
+- canvas-sample-account.md: The sample account (Alex Morgan) the designer canvas draws in every account and member widget, and the site words it reads (CS4b, #9280)
 - canvas-sample-form-record.md: What a form record draws on the designer canvas (CS3, #9239): an answer of each field kind, fields fetched by the first value, fixed record samples
 - canvas-sample-gaps-account.md: CS0 census, account: what my account, the member forms, address book, security, invoices and the account e-mail card still draw without a sample after CS4b
 - canvas-sample-gaps-catalog.md: CS0 census, catalog: what the catalog listing, product page, wishlist, order form, search, gallery, tag cloud and folder view still draw without a sample after CS4a (#9253)
