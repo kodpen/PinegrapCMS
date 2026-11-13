@@ -87,7 +87,7 @@ $output_filters = pg_filter_select('state', $filter_options, $state, array('labe
 echo
 pg_page_shell([
     'title' => lang('Quotes'),
-    'extra classes' => 'erp erp_invoices',
+    'extra classes' => 'erp erp_invoices pg-measure-list',
     'icon' => 'erp',
     'heading' => lang('Quotes'),
     'heading_description' => lang('Priced offers to customers, and what became of them. A quote moves no money and no stock until it becomes an invoice.'),

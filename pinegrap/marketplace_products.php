@@ -1591,7 +1591,7 @@ $provider_name = $account ? mp_provider_name($account['provider']) : '';
 
 echo pg_page_shell(array(
 	'title'               => lang('Marketplace Products'),
-	'extra classes'       => 'mp-screen',
+	'extra classes'       => 'mp-screen pg-measure-list',
 	'icon'                => 'shop',
 	// The heading is printed as markup; the account name is the operator's text.
 	'heading'             => $account ? h($account['name']) . ' · ' . h($provider_name) : lang('Marketplace Products'),

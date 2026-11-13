@@ -166,7 +166,7 @@ foreach ($ready ? erp_expense_categories() : array() as $category) {
 echo
 pg_page_shell([
     'title' => lang('Expense categories'),
-    'extra classes' => 'erp erp_expenses',
+    'extra classes' => 'erp erp_expenses pg-measure-list',
     'icon' => 'erp',
     'heading' => lang('Expense categories'),
     'heading_description' => lang('How expenses are grouped, and the account code the accountant books each group under.'),

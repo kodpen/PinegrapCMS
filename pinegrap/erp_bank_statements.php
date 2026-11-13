@@ -115,7 +115,7 @@ if ($output_rows === '') {
 echo
 pg_page_shell([
     'title' => lang('Bank statements'),
-    'extra classes' => 'erp erp_cash',
+    'extra classes' => 'erp erp_cash pg-measure-list',
     'icon' => 'erp',
     'heading' => lang('Bank statements'),
     'heading_description' => lang('Take in the statement your bank lets you download: lines the books already have are matched, the rest are recorded here as collections, payments or expenses, or set aside.'),

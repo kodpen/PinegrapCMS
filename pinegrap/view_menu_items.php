@@ -234,6 +234,7 @@ if ($sortable_html && (($user['role'] < 3) || in_array($_GET['id'], $user_editab
 echo
 pg_page_shell( array(
     'title' => h($menu_name) . ' | ' . lang('Edit Menu'),
+    'extra classes' => 'pg-measure-list',
     'icon' => 'design',
     'heading' => lang('Edit Menu'),
     'cancel'=>array('enable'=>true,'title'=>$output_back_button_label, 'onclick'=>'window.location.href=\'' . h(escape_javascript($back_button_url)) . '\'') ) ) . '
