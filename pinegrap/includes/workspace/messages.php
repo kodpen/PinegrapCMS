@@ -1157,20 +1157,23 @@ function ws_message_ask_written($viewer, $channel, $message_id, $body, $by_app =
 }
 
 /**
- * A person's note or decision written with no writing box to carry the
- * requests on (/note, /decision, a meeting's decisions): its tags ask as a
- * message's do; Claude's run starts here, the screens showing the message
- * carry Pinegrap AI and an MCP agent on.
+ * An item written with no writing box to carry the requests on (/note,
+ * /decision, a meeting's decisions, a forward's comment, an approval
+ * request, a status update, a check-in question, a template's texts, a
+ * flow's "Post a message"): its tags ask as a message's do; Claude's run
+ * starts here, the screens showing the message carry Pinegrap AI and an
+ * MCP agent on.
  *
  * @param array  $viewer
  * @param array  $channel
  * @param int    $message_id
- * @param string $body as written
+ * @param string $body   as written
+ * @param bool   $by_app ws_message_by_app()
  * @return array ws_message_ask_assistants()'s shape
  */
-function ws_message_ask_noted($viewer, $channel, $message_id, $body)
+function ws_message_ask_noted($viewer, $channel, $message_id, $body, $by_app = false)
 {
-    $asked = ws_message_ask_written($viewer, $channel, $message_id, $body);
+    $asked = ws_message_ask_written($viewer, $channel, $message_id, $body, $by_app);
 
     if (!empty($asked['claude']) && function_exists('ws_claude_dispatch')) {
         ws_claude_dispatch();

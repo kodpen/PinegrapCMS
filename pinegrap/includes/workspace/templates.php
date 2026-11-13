@@ -1073,6 +1073,9 @@ function ws_template_apply($viewer, $channel, $template, $options = array())
 
         if (!$sent['ok']) {
             $broke = $sent['error'];
+        } else {
+            // A tag in the welcome asks as in a message.
+            ws_message_ask_noted($viewer, $channel, $sent['message_id'], (string) $template['welcome'], ws_message_by_app($app_id));
         }
     }
 
@@ -1143,6 +1146,7 @@ function ws_template_apply($viewer, $channel, $template, $options = array())
 
         if ($sent['ok']) {
             ws_channel_pin_message($viewer, ws_channel($channel['id']), $sent['message_id']);
+            ws_message_ask_noted($viewer, $channel, $sent['message_id'], (string) $template['pinned'], ws_message_by_app($app_id));
         } else {
             $broke = $sent['error'];
         }

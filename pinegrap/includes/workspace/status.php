@@ -341,6 +341,9 @@ function ws_status_post($viewer, $channel, $health, $text)
 
     ws_message_touch($sent['message_id']);
 
+    // A tag in the update asks as in a message.
+    ws_message_ask_noted($viewer, $channel, $sent['message_id'], $body);
+
     return array('ok' => true, 'error' => '', 'field' => '', 'message_id' => (int) $sent['message_id']);
 }
 
@@ -405,6 +408,9 @@ function ws_checkin_start($viewer, $channel, $question, $app_id = 0)
     $checkin_id = (int) mysqli_insert_id(db::$con);
 
     ws_message_touch($sent['message_id']);
+
+    // A tag in the question asks as in a message, once its card is written.
+    ws_message_ask_noted($viewer, $channel, $sent['message_id'], $question, ws_message_by_app($app_id));
 
     return array('ok' => true, 'error' => '', 'message_id' => (int) $sent['message_id'], 'checkin_id' => $checkin_id);
 }
