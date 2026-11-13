@@ -207,7 +207,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $resort, $
 // to today's conditions and to a lesson. Shared, so every page that ends
 // with it carries the same call.
 $snow_band = function () use ($el, $heading, $para, $link, $container, $row, $col, $resort) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -216,8 +216,8 @@ $snow_band = function () use ($el, $heading, $para, $link, $container, $row, $co
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Today\'s Conditions'), '{{page:conditions}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('Book a Lesson'), '{{page:lesson_request}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Today\'s Conditions'), '{{page:conditions}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('Book a Lesson'), '{{page:lesson_request}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

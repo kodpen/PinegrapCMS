@@ -468,7 +468,7 @@ $launch_band = function () use ($el, $heading, $para, $link, $container, $row, $
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
                         $link(lang('Buy'), '{{page:buy}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                        $link(lang('Compare Models'), '{{page:compare}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Compare Models'), '{{page:compare}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

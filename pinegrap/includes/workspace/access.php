@@ -372,6 +372,12 @@ function ws_can_read_channel($rights, $channel)
         return $parent && ws_channel_membership($channel['id'], $rights['id']) && ws_can_read_channel($rights, $parent);
     }
 
+    // The room of a mailbox kept in no channel (mail_room.php) is read by
+    // the people chosen on the mailbox; it is never opened for inspection.
+    if ($channel['kind'] === 'mailbox') {
+        return (bool) ws_channel_membership($channel['id'], $rights['id']);
+    }
+
     if (ws_channel_membership($channel['id'], $rights['id'])) {
         return true;
     }
@@ -397,6 +403,12 @@ function ws_can_post_channel($rights, $channel)
         return true;
     }
 
+    // Nothing is posted into a mailbox's own room: its mail is answered on
+    // the E-mails screen, by whoever ws_mail_can_answer() lets.
+    if ($channel['kind'] === 'mailbox') {
+        return false;
+    }
+
     // Nothing is written in a discussion of an archived channel.
     if (($channel['kind'] === 'thread') && ((int) (ws_thread_parent_channel($channel)['archived_at'] ?? 1) > 0)) {
         return false;
@@ -417,6 +429,12 @@ function ws_can_post_channel($rights, $channel)
 function ws_can_manage_channel($rights, $channel)
 {
     if (!$rights['member'] || !is_array($channel)) {
+        return false;
+    }
+
+    // A mailbox's own room is renamed with the mailbox and takes its members
+    // from the mailbox's settings: nobody manages it as a channel.
+    if ($channel['kind'] === 'mailbox') {
         return false;
     }
 

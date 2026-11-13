@@ -1748,7 +1748,7 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
             break;
 
         case 'channel':
-            $found = db_values("SELECT id FROM ws_channels WHERE archived_at = 0 AND kind <> 'thread' AND name LIKE '%" . $like . "%' ORDER BY name LIMIT " . ($limit * 3));
+            $found = db_values("SELECT id FROM ws_channels WHERE archived_at = 0 AND kind NOT IN ('thread', 'mailbox') AND name LIKE '%" . $like . "%' ORDER BY name LIMIT " . ($limit * 3));
             break;
 
         case 'product_group':

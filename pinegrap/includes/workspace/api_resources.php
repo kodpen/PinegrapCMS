@@ -1321,7 +1321,9 @@ function ws_api_channel_or_404($viewer, $id)
 {
     $channel = ws_channel((int) $id);
 
-    if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+    // The room of a mailbox kept in no channel is no channel to an
+    // application either: its mail is read through the mail endpoints.
+    if (!$channel || ws_channel_is_mailbox($channel) || !ws_can_read_channel($viewer, $channel)) {
         api_fail_not_found(lang('Channel'));
     }
 
@@ -3771,13 +3773,56 @@ function ws_api_messages_pin_close($params)
    --------------------------------------------------------------------------- */
 
 /**
+ * What Approve asks for on a request, as the panel's card says it
+ * (ws_approvals_map()): only an open request that a flow's approval box
+ * waits on asks, and a box with no question of its own has no label. Pure.
+ *
+ * @param array $row   ws_approvals row
+ * @param array $asked ws_approval_answers_asked()
+ * @return array answer (none | text | number), label ('' when there is none)
+ */
+function ws_api_approval_answer($row, $asked)
+{
+    $found = ((int) ($row['closed_at'] ?? 0) === 0) ? ($asked[(int) $row['id']] ?? null) : null;
+    $answer = (is_array($found) && in_array($found['answer'] ?? '', array('text', 'number'), true)) ? (string) $found['answer'] : 'none';
+
+    return array(
+        'answer' => $answer,
+        'label'  => ($answer !== 'none') ? trim((string) ($found['label'] ?? '')) : '',
+    );
+}
+
+/**
+ * The open requests among the rows, for ws_approval_answers_asked(): a
+ * closed one asks for nothing, so it is not looked up. Pure.
+ *
+ * @param array[] $rows ws_approvals rows
+ * @return int[]
+ */
+function ws_api_approval_open_ids($rows)
+{
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        if (is_array($row) && ((int) ($row['closed_at'] ?? 0) === 0)) {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
  * One request as the API shows it.
  *
- * @param array $viewer
- * @param array $row ws_approvals row
+ * @param array      $viewer
+ * @param array      $row   ws_approvals row
+ * @param array|null $asked what a list read for all its requests at once
+ *                          (ws_approval_answers_asked()); null reads it for
+ *                          this request
  * @return array
  */
-function ws_api_approval_present($viewer, $row)
+function ws_api_approval_present($viewer, $row, $asked = null)
 {
     $answers = ws_approval_people($row['id']);
     $people = array();
@@ -3802,6 +3847,7 @@ function ws_api_approval_present($viewer, $row)
     }
 
     $message = ws_message($row['message_id']);
+    $asks = ws_api_approval_answer($row, ($asked !== null) ? $asked : ws_approval_answers_asked(ws_api_approval_open_ids(array($row))));
 
     return array(
         'id'                => (int) $row['id'],
@@ -3811,6 +3857,9 @@ function ws_api_approval_present($viewer, $row)
         // The details: the message without the title line it starts with.
         'text'              => $message ? ws_plain_text($viewer, preg_replace('/^\*\*[^\n]*\*\*\n*/u', '', (string) $message['body'])) : '',
         'rule'              => (string) $row['rule'],
+        // What an approval has to carry in its note (decide), while open.
+        'answer'            => $asks['answer'],
+        'answer_label'      => ($asks['label'] !== '') ? $asks['label'] : null,
         'record'            => ((string) $row['record_type'] !== '') ? array('type' => (string) $row['record_type'], 'id' => (int) $row['record_id']) : null,
         'people'            => $people,
         'guests'            => $guests,
@@ -3872,6 +3921,8 @@ function ws_api_approval_schema()
         'title'             => 'string',
         'text'              => 'string',
         'rule'              => 'string',
+        'answer'            => 'string',
+        'answer_label'      => 'string?',
         'record'            => 'WorkspaceApprovalRecord?',
         'people'            => array(array('user_id' => 'integer', 'name' => 'string', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?')),
         'guests'            => array(array('id' => 'integer', 'name' => 'string', 'email' => 'string?', 'decision' => 'string', 'note' => 'string?', 'decided_at' => 'string?', 'link_expires_at' => 'string?')),
@@ -3933,13 +3984,17 @@ function ws_api_approvals_list($params)
         $where[] = "a.closed_at > 0";
     }
 
-    $out = array();
-
-    foreach ((array) db_items("SELECT a.* FROM ws_approvals a
+    $rows = db_items("SELECT a.* FROM ws_approvals a
         INNER JOIN ws_messages m ON m.id = a.message_id
         WHERE " . implode(' AND ', $where) . "
-        ORDER BY a.id DESC LIMIT " . max(1, $limit)) as $row) {
-        $out[] = ws_api_approval_present($viewer, $row);
+        ORDER BY a.id DESC LIMIT " . max(1, $limit));
+    $rows = is_array($rows) ? $rows : array();
+    // What Approve asks for, read once for the page.
+    $asked = ws_approval_answers_asked(ws_api_approval_open_ids($rows));
+    $out = array();
+
+    foreach ($rows as $row) {
+        $out[] = ws_api_approval_present($viewer, $row, $asked);
     }
 
     api_ok_list($out, $limit);

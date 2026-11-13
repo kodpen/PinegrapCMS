@@ -183,7 +183,7 @@ $bakery_css = implode("\n", array(
 
 return array(
     'name'        => lang('Bakery'),
-    'version'     => '1.1.0',
+    'version'     => '1.1.1',
     'framework'   => 'bootstrap5',
     'order'       => 139,
     'icon'        => 'bi-cake2',

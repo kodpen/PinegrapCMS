@@ -164,7 +164,7 @@ $add_to_basket = function ($variant, $class = '', $outline = false) use ($button
 // hidden, the page's script shows it, filled for a product the visitor
 // saved. A product group's card has none.
 $heart = function () use ($button, $icon, $span) {
-    $node = $button('', 'light', 'position-absolute top-0 end-0 m-2 z-2 rounded-circle shadow-sm',
+    $node = $button('', 'secondary', 'position-absolute top-0 end-0 m-2 z-2 rounded-circle shadow-sm',
         array('btnType' => 'button', 'size' => 'sm', 'customName' => lang('Favourite'), '_bindings' => array('action' => 'catalog_wishlist')));
     $node['children'] = array(
         $icon('bi-heart'),
@@ -456,12 +456,12 @@ $gift_band = function () use ($el, $heading, $para, $link, $icon, $container, $r
                         $icon('bi-gift', 'fs-1 lh-1'),
                         $el('div', '', lang('Words'), array(
                             $heading('h2', lang('Not sure what to give? Give a gift card.'), 'h3 fw-bold mb-2'),
-                            $para(lang('Gift cards from $10, sent by e-mail or in an envelope from our counter, spent on anything in the shop.'), 'mb-0 opacity-75'),
+                            $para(lang('Gift cards from $10, sent by e-mail or in an envelope from our counter, spent on anything in the shop.'), 'mb-0'),
                         )),
                     )),
                 ), '', '8'),
                 $col(array(
-                    $link(lang('Choose a gift card'), $category_url('cards'), 'btn btn-light btn-lg px-4'),
+                    $link(lang('Choose a gift card'), $category_url('cards'), 'btn btn-secondary btn-lg px-4'),
                 ), '', '4', '', '12', 'text-lg-end'),
             ), '4', '', 'align-items-center'),
         )),
@@ -1042,27 +1042,27 @@ $pages[] = array(
                 $row(array(
                     $col(array(
                         $el('div', 'h-100 d-flex flex-column rounded-4 p-4 p-lg-5 text-bg-primary', lang('Staff Pick'), array(
-                            $el('span', 'badge rounded-pill text-bg-light align-self-start d-inline-flex align-items-center gap-1 mb-3', lang('Badge'), array(
+                            $el('span', 'badge rounded-pill text-bg-secondary align-self-start d-inline-flex align-items-center gap-1 mb-3', lang('Badge'), array(
                                 $icon('bi-bookmark-heart'),
                                 $span(lang('Staff picks of the week'), '', lang('Text')),
                             )),
                             $heading('h1', lang('Books we cannot stop talking about'), 'display-6 fw-bold mb-3'),
-                            $para(lang('Every week the people behind the counter choose the books, notebooks and pens they would press into your hands.'), 'lead opacity-75 mb-4'),
-                            $el('div', 'd-flex align-items-center gap-3 rounded-3 p-3 mb-4 bg-white bg-opacity-10', lang('Featured'), array(
+                            $para(lang('Every week the people behind the counter choose the books, notebooks and pens they would press into your hands.'), 'lead mb-4'),
+                            $el('div', 'd-flex align-items-center gap-3 rounded-3 p-3 mb-4 bg-body bg-opacity-10', lang('Featured'), array(
                                 $el('div', 'flex-shrink-0 w-25', lang('Cover'), array(
                                     $el('div', 'ratio ratio-1x1 rounded-3 overflow-hidden', lang('Picture Frame'), array(
                                         $image('{{product_group_image:books}}', lang('The Lighthouse Year'), 'object-fit-cover'),
                                     )),
                                 )),
                                 $el('div', '', lang('Text'), array(
-                                    $para(lang('Book of the week'), 'small text-uppercase fw-semibold opacity-75 mb-1'),
+                                    $para(lang('Book of the week'), 'small text-uppercase fw-semibold mb-1'),
                                     $heading('h2', lang('The Lighthouse Year'), 'h4 fw-bold mb-1'),
-                                    $para(lang('by Jane Cooper · “Quiet, funny and impossible to put down.”'), 'small mb-0 opacity-75'),
+                                    $para(lang('by Jane Cooper · “Quiet, funny and impossible to put down.”'), 'small mb-0'),
                                 )),
                             )),
                             $el('div', 'd-flex flex-wrap gap-2 mt-auto', lang('Buttons'), array(
-                                $link(lang('See the bestsellers'), $category_url('books'), 'btn btn-light px-4'),
-                                $link(lang('Join the book club'), '{{page:book_club}}', 'btn btn-outline-light px-4'),
+                                $link(lang('See the bestsellers'), $category_url('books'), 'btn btn-secondary px-4'),
+                                $link(lang('Join the book club'), '{{page:book_club}}', 'btn btn-link text-reset'),
                             )),
                         )),
                     ), '', '7'),
@@ -3411,7 +3411,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.3.4',
+    'version'     => '1.3.5',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',

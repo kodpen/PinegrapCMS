@@ -95,7 +95,7 @@
 - data-binding-to-content.md: Bind data to content elements (span, h1-h6, p, a, img), never structural table tags; tooling, the text slot a binding fills inside markup, and the characters a bound field name keeps.
 - design-asset-path-placeholders.md: {path} and {software_directory} in a design: filled in a linked CSS/JS row before the page's address check and on the canvas; what is saved keeps them
 - design-asset-records.md: The design's CSS/JS asset rows (style_custom_css / style_custom_js JSON): module scripts, the per-page `pages` list and its tab:/key: references, where they are resolved, the Bootstrap Icons sheet.
-- design-colour-mode.md: A design's colour mode (style.style_color_mode, 11.0.186): light, dark or the system on <html>, the early script's order (a visitor's stored choice wins), canvas and Preview [decision: here]
+- design-colour-mode.md: A design's colour mode (style.style_color_mode, 11.0.186): light, dark or the system on <html>, the early script's order (a visitor's stored choice wins), canvas and Preview [decision: decisions-made-product-44.md, decisions-made-schema-15.md]
 - design-framework.md: A design's framework (style.style_framework: bootstrap5, custom, legacy): the pg_design_frameworks() registry and flags, written once at creation, what custom does without, the new-design question.
 - design-live-pictures.md: Live pictures of templates and designs (the real page in a scaled, script-free frame), the preview address of a template page or tour, the tour page; what the browser side does [decision: decisions-made-product-35.md]
 - design-preview-address.md: design_preview.php, the panel's preview address: a template page, its tour, or a visual design page as a first-time visitor sees it; who may open it, what is left out, caching [decision: decisions-made-product-35.md]
@@ -196,6 +196,7 @@
 - design-template-sportsclub.md: Sports Club template (pinegrap-sportsclub): teams as data, players, matches and events as collections, academy and trial requests, kit, tickets and memberships, psp- look, tests.
 - design-template-text-contrast.md: Text colours and names in the hello-pinegrap and pinegrap-playground templates: no faded text, no primary text on grey sections, one owner name, Parola wording.
 - design-template-theatre.md: Theatre template (pinegrap-theatre): productions and performances as collections, hire, school group and youth place requests, tickets, friends and vouchers in the shop, pth- look, tests.
+- design-template-theme-colours.md: Design template files carry no fixed colour class (PR #8976): the test that fails on one, what each class became (primary band, dark band, ink buttons, light chips), the Bike Shop's list
 - design-template-threads.md: Café, Clinic, Playground and Salon 1.1.0 comment threads on the Comments widget, the comment e-mail cards before the System region, Google Reviews beside the sample testimonials [decision: here]
 - design-template-travel-pages.md: Travel Agency template 2.0.0: home, tour page and destination page on the Travel blocks, motion on about, travel information, deals and FAQ: the builders, each page's composition, what left, the test
 - design-template-travel.md: Travel Agency template (pinegrap-travel): tours and destinations as collections, reviews, booking requests and tailor-made enquiries, deposits and gift cards in the shop, ptv- look, tests.
@@ -211,6 +212,7 @@
 - design-templates-standard-pages.md: What every design template carries: account, inbox, staff and blog pages under fixed keys, sample records, the support-center search sections, e-mail pages, settings keys checked against the renderer.
 - design-theme-look-and-palette.md: A visual design's look and colour palette (style.style_look / style_palette, 2026.4.5): values, the stylesheets and their load order on site, canvas and preview, tokens for new component styles. [decision: decisions-made-product-44.md]
 - design-theme-look-drawing.md: The small drawing of a look (pg_design_look_drawing() and its twin _sdLookDrawing()): what it draws from the preview row, where it shows, the twin test
+- design-theme-pale-colours.md: A palette colour too pale for a white page (Silver, Electric Blue's second colour): outline button border, focus ring, tick, radio dot and switch knob drawn in its readable shade
 - design-theme-product-looks.md: The looks and palettes for bold product pages (display, precision; onyx, silver, electric): values, why the names, the catalog test
 - designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values [decision: here]
 - designer-ai-known-class.md: How the designer AI decides a class is one the framework ships (pg_design_ai_known_class()): the Bootstrap 5 vocabulary, state/pg-*/Bootstrap Icons classes, custom designs, the class-family fallback
@@ -324,6 +326,7 @@
 - designer-interactions.md: Interactions of designer nodes: props._fx, data-pg-fx-* attributes, pg_fx.src.js (every effect), head style, fail-safe, twins, tests.
 - designer-layer-names.md: Rules for node customName (layer names) in designer blocks: one name per role, contextual generic names, no embedded numbers, no empty names.
 - designer-lazy-dirty-checks.md: When the designer compares a page with its baseline (the 1.5 s poll, the tab strip, save) and how the answer for a page not open is kept (_pgDirtyMemo) (D4, PR #8091)
+- designer-left-panel-hide.md: The Page Design Studio toolbar's menu button (#sd-left-toggle) that hides the whole left panel and its rail (sd-hide-left, pinegrap_designer_hide_left) and how it sits with docking.
 - designer-live-preview.md: The designer's Preview and live preview: blob page, system widgets drawn by the server from the editor's unsaved trees (preview_widgets), background-render rules, hooks that refresh the preview.
 - designer-meta-tags.md: Design-wide and per-page custom meta tags of the visual designer (style.style_meta_tags, page.page_meta_tags, 11.0.3): storage, precedence over generated tags, who edits them.
 - designer-narrow-screen-bars.md: Designer toolbars below 992px hide labels, never controls: .sd-tabs-add-txt, .sd-vb-txt, flex-wrap on .sd-bp-bar, and how to measure off-screen controls.
@@ -412,7 +415,7 @@
 - legacy-layouts-converter.md: The layout pass of the Bootstrap 3 to 5.3.8 converter (LL2, #8986): pg_lbs_layout_html() over a page type's output, its rules beyond the map, what stays, the starting layouts' counts
 - legacy-layouts-map-cost.md: Mapping a page type's output per request against converted layout copies (LL1 census, #8968): measured cost, what each reaches, the proposal sent to the architect
 - legacy-layouts-output-join.md: Where a page type's layout output joins the page, the names built outside a written class attribute, and the gate a map at output needs (LL1 census, #8968)
-- legacy-materialize-trial.md: The LB1b hand trial: a Legacy design whose theme loads Materialize, Bootstrap 5.3.8 beside it as a trial design loads it; names both own, what each sheet does to the other
+- legacy-materialize-trial.md: The LB1b hand trial: a Legacy design whose theme loads Materialize, Bootstrap 5.3.8 beside it as a trial design loads it; names both own, what each sheet does to the other [decision: decisions-made-product-48.md]
 - legacy-overview.md: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7), the rules kept, what is open [decision: decisions-made-product-21.md, decisions-made-product-23.md, decisions-made-product-43.md]
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
 - legacy-set-run.md: The run of a set of classic styles into one Legacy design (LG5, #8795): its steps, the design row, the pages moved, a resume, the report, a set moved before

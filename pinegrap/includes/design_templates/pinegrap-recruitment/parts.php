@@ -689,7 +689,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $sectors, 
 // for each side, the candidate's and the employer's. Shared, so every page
 // that ends with it carries the same call.
 $call_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -698,8 +698,8 @@ $call_band = function () use ($el, $heading, $para, $link, $container, $row, $co
                 ), '', '7'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Find a Job'), '{{page:jobs}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('Hire Staff'), '{{page:hire}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Find a Job'), '{{page:jobs}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('Hire Staff'), '{{page:hire}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '5'),
             ), '4', '', 'align-items-center'),
@@ -836,7 +836,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
         $el('figure', 'card h-100 border-0 shadow-sm rounded-4 p-4 mb-0', lang('Testimonial'), array(
             $el('div', 'd-flex justify-content-between align-items-start gap-2', lang('Card Top'), array(
                 $stars(),
-                $span($testimonial_kinds[$t['kind']], 'badge rounded-pill text-bg-light border', lang('Badge')),
+                $span($testimonial_kinds[$t['kind']], 'badge rounded-pill bg-body text-body-emphasis border', lang('Badge')),
             )),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'prc-quote mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Person'), array(

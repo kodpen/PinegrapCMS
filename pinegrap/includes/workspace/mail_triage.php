@@ -77,7 +77,9 @@ function ws_mail_triage_due($box, $opened, $ai_ready)
 }
 
 /**
- * The switch in a box's form; nothing while Pinegrap AI cannot be asked.
+ * The switch in a box's form; nothing while Pinegrap AI cannot be asked. It
+ * shows only for a box kept in a channel: a suggestion is a message under
+ * the card, which a box kept in no channel has no place to show.
  *
  * @param string     $prefix
  * @param array|null $box
@@ -91,7 +93,7 @@ function ws_mail_triage_field($prefix, $box, $ai_ready)
     }
 
     return '
-                <div class="md:col-12">
+                <div class="md:col-12' . ((ws_mail_box_kept_in($box) === 'mailbox') ? ' d-none' : '') . '" data-ws-mail-when="kept_in=channel">
                     <div class="form-field">
                         <div class="switch"><input type="checkbox" name="ai_triage" value="1" id="' . $prefix . 'ai_triage"' . (ws_mail_triage_on($box) ? ' checked' : '') . '></div>
                         <label for="' . $prefix . 'ai_triage">' . h(lang('Pinegrap AI suggests on new conversations')) . '</label>

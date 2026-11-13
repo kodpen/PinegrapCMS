@@ -397,7 +397,7 @@ function ws_js_strings()
         'who'                    => lang('Who'),
         'workspace'              => lang('Workspace'),
         'workspace_settings'     => lang('Workspace Settings'),
-        'wtables'                => lang('Tables'),
+        'wtables'                => lang('Data'),
         'all_types'              => lang('All'),
         'ref_kind'               => lang('Kind of record'),
         'type_to_search'         => lang('Type to search every kind of record, or pick one.'),

@@ -857,12 +857,21 @@ function ws_api_my_day_get($params)
         return !$claude || ws_claude_channel_allowed(ws_channel($channel_id));
     };
 
+    $approvals = array();
+
     foreach (ws_approvals_waiting($viewer, 20) as $waiting) {
         $row = $allowed($waiting['channel']['id']) ? ws_approval($waiting['id']) : null;
 
         if ($row) {
-            $day['approvals'][] = ws_api_approval_present($viewer, $row);
+            $approvals[] = $row;
         }
+    }
+
+    // What Approve asks for, read once for all of them.
+    $asked = ws_approval_answers_asked(ws_api_approval_open_ids($approvals));
+
+    foreach ($approvals as $row) {
+        $day['approvals'][] = ws_api_approval_present($viewer, $row, $asked);
     }
 
     // What the assistants proposed at the owner's request and only the

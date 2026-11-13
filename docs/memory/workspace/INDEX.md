@@ -60,6 +60,7 @@
 - mail-notices-and-event.md: Who hears of a Workspace e-mail conversation (inbox kinds mail_assigned, mail_customer) and the workspace.mail.received event for scheduled actions and flows (G5b)
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
 - mail-reply.md: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc, Bcc, files, Reply to all, the drawer, route, headers and subject, the API's answer sent at once
+- mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test [decision: decisions-made-workspace-17.md]
 - mail-routing.md: Routing incoming Workspace e-mail (G6, mail_route.php): box routes by address or +tag to a channel, recipients read, the known customer's line in their channels
 - mail-screen-pane.md: The Workspace E-mails reading pane (mail_pane.php) and the per-person unread marks (mail_reads.php): the unread rule, the floor, where marks are written, the menu count
 - mail-send-outcome.md: How the queue's outcome reaches a Workspace mail (ws_mail_send_outcome(), #8646): sent is final, only the current attempt fails it, the unwritten row id race, a deleted queue row
@@ -83,12 +84,13 @@
 - workflow-table-row-numbers.md: The stable # number of workflow table rows (11.0.183, PR #8461): counter in ws_wtables.next_number, the row's number, kept through the bin, shown in #, found by by: number [decision: here]
 - workflow-table-rows.md: Workflow table rows (wtable_rows.php, T1b): add, change, delete, move; row_count and the 5000 limit in one UPDATE; 409 changed_meanwhile; person/link cells open; formulas on read
 - workflow-table-shares.md: Workflow table shares (wtable_shares.php, T1c, #2820): owner-only, person view/edit, channel view; wtable_shared bell line; ws_wtable_flow_gate() pauses a gone owner's table
-- workflow-table-starters.md: Starters on the New table card (T6c, #3044): contact pipeline and checklist live in code (ws_wtable_starters()), made through the store's functions with optional sample rows; no store, no schema
+- workflow-table-starters.md: Starters in the New table window (T6c, #3044): contact pipeline and checklist live in code (ws_wtable_starters()), made through the store's functions with optional sample rows; no store, no schema
 - workflow-tables-api.md: Workflow tables in the external API and MCP (api_wtables.php, T1d1 #2890, T1d2 #2931): routes, which are tools, dry run, errors, rows paging, Claude's reach, shares, workspace.wtable.row.* webhooks
-- workflow-tables-bin-screens.md: Where the workflow table bin shows (TB2): Deleted tables and Deleted rows cards on workspace_wtables.php, the delete confirmations, and the deleted-tables / deleted-rows API routes
+- workflow-tables-bin-screens.md: Where the workflow table bin shows (TB2): Deleted tables view and Deleted rows card on workspace_wtables.php, the delete confirmations, and the deleted-tables / deleted-rows API routes
 - workflow-tables-bin.md: The bin of workflow tables (11.0.178, #8412): a deleted row goes to ws_wtable_row_bin, a deleted table gets ws_wtables.deleted_at; restore, purge, privacy and contact readers [decision: decisions-made-schema-14.md, decisions-made-workspace-10.md]
 - workflow-tables-column-type.md: Changing a workflow table column's type (wtable_retype.php, PR #8512): which types, how each cell converts, decimals and times never lost, the refusal listing cells, binned rows, screen, API
 - workflow-tables-conditions.md: Conditions over workflow table rows (wtable_where.php, PR #8400): comparisons per column type, how each type compares, all or any, sorting with empty cells last, sum/average/smallest/largest
+- workflow-tables-data-list.md: The Data list (CO6, #8978): workflow tables named Data in the panel, workspace_wtables.php without ?id= on the list table driver, its scopes, windows, Deleted tables view, the channel seam
 - workflow-tables-export.md: A workflow table downloads as an Excel file (TX1): who may, what each cell becomes, the shared xlsx writer the ERP export also uses
 - workflow-tables-import.md: The import route workspace.tables.import (TX2, #8427): a site file or a note's table into a workflow table over the API and MCP, the pairing, the dry run through ws_wtable_import_check(), refusals [decision: decisions-made-workspace-10.md]
 - workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): a "my tables" strip, table versions, the CRM pipeline; exports still to come and the planned bin [decision: decisions-made-product-11.md]
@@ -99,7 +101,7 @@
 - workflow-tables-relational.md: Workflow tables that behave like SQL tables: the owner's aim, the note of each part (keys, links, lookups, rollups, lists, type changes and more), the rules every new part keeps [decision: decisions-made-product-40.md]
 - workflow-tables-rollup.md: Rollup columns of workflow tables (type rollup, wtable_rollup.php, PR #8584): count, sum, average, smallest or largest over the rows of another table that link to the row, worked out on read [decision: here]
 - workflow-tables-row-links.md: Row links of workflow tables (type row, "Row link", wtable_links.php, PR #8557): a row id of another table, shown by key or first text, checked on write, cleared on delete [decision: here]
-- workflow-tables-screen.md: The workflow tables screen workspace_wtables.php (T1e, #2966): server-drawn forms over the store, list scopes, rows paged, the row form, column options from the form, shares, nav entry
+- workflow-tables-screen.md: The workflow tables screen workspace_wtables.php (T1e, #2966): server-drawn forms over the store, one table opened, rows paged, the row form, column options from the form, shares
 - workflow-tables.md: Workflow tables (11.0.110, #2746): the four ws_wtable* tables column by column, ws_wtable_access(), column changes; JSON person/link cells and the privacy reader
 - workspace-agent-preamble.md: The site preamble an MCP agent (switch ws_mcp_servers.agent_preamble, 11.0.111, off by default) and an outside app (GET /workspace/messages/{id}/preamble) get, and what stays out
 - workspace-agent-replies.md: Replies over the API (parent_id on workspace.messages.create, parent_id on the message object) and "no answer needed" on Claude's answer route (no_answer): what each takes and refuses
@@ -336,6 +338,7 @@
 - workspace-note-groups-screen.md: Note groups on the My Notes screen — workspace_note_groups.js (folders, New group, group menu, Move to group, drag and drop, search, closed folders in the browser) and its hooks in startNotes()
 - workspace-note-groups-shared-screen.md: Shared note groups on the screen (G6) — workspace_note_group_shares.js (Share dialog, Shared with me folders, channel group card, ?group=N) and the list fields shared_groups / shared_group
 - workspace-note-groups.md: Workspace note groups and the notes lock — tables of step 11.0.119, readiness probes ws_note_groups_ready() / ws_note_lock_ready()
+- workspace-note-lock-changes.md: A notes lock change moves the note's updated_at (ws_note_lock_moved(), #8647) so updated_since carries it; the API notes search finds a locked note by its title only
 - workspace-note-lock-gate.md: Notes lock gate: ws_note_behind_lock(), code note_locked on the screen's note actions, list and presenter while closed, locking notes and groups, shares refused
 - workspace-note-lock-readers.md: Notes lock beyond the notes screen: API and MCP (locked, 423 note_locked), assistants, get_file.php, export, blocks, record history, table import; the readers guard test
 - workspace-note-lock-screen.md: Notes lock on My Notes (workspace_note_lock.js): toolbar Lock and dialogs, Lock/Unlock in menus, list marks, the lock pane and e-mailed code, the time-out, note_locked answers

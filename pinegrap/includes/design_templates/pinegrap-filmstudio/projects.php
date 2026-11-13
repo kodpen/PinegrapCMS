@@ -303,7 +303,7 @@ $project_widgets['project_detail'] = array(
                         $fx($el('header', 'text-center mb-4', lang('Title Card'), array(
                             $el('div', 'd-flex flex-wrap justify-content-center gap-2 mb-3', lang('Badges'), array(
                                 $span($industries[$project_sample['industry']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Industry'), $bind('industry')),
-                                $span($project_statuses[$project_sample['status']], 'badge rounded-pill text-bg-dark', lang('Status'), $bind('status')),
+                                $span($project_statuses[$project_sample['status']], 'badge rounded-pill text-bg-secondary', lang('Status'), $bind('status')),
                             )),
                             $heading('h1', $project_sample['name'], 'display-5 fw-bold text-break mb-3', $bind('name')),
                             $para($project_sample['summary'], 'lead text-body-secondary mb-3', $bind('summary')),

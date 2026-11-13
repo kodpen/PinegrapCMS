@@ -5,7 +5,9 @@
  * Tests for the built-in looks and colour palettes of the visual editor
  * (includes/fn/design_themes.php): every look has its stylesheet and a card
  * preview the editor can draw, every palette has a current stylesheet, and
- * the generator keeps text readable on both colours in light and dark mode.
+ * the generator keeps text readable on both colours in light and dark mode,
+ * and a colour too pale to be seen on a white page still gives its controls
+ * an outline, a focus ring and a mark that can be seen there.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -88,6 +90,11 @@ function test_design_themes_catalog_new_looks_keep_their_character()
 		pg_assert_same('none', $precision[$token], 'precision: flat ' . $token);
 	}
 	pg_assert_true((int)$precision['--pg-heading-weight'] <= 400, 'precision: thin heading weight');
+	// base.css paints the alert's leading edge in --pg-alert-accent-color
+	// whatever the accent's width: with no accent the token stays unset, or
+	// that one edge is drawn in the text colour and the other three are not.
+	pg_assert_same('0px', $precision['--pg-alert-accent'], 'precision: no accent bar on alerts');
+	pg_assert_false(isset($precision['--pg-alert-accent-color']), 'precision: an alert without an accent has four like edges');
 }
 
 function test_design_themes_catalog_new_palettes_are_listed()
@@ -131,4 +138,104 @@ function test_design_themes_catalog_palette_text_reads_in_light_and_dark()
 			pg_assert_true(_pg_theme_contrast($fg, $dark_bg) >= 4.5, $key . ': ' . $role . ' as text reads at 4.5:1 on the dark body');
 		}
 	}
+}
+
+// The text a palette stylesheet gives $var in the block that starts with
+// $selector; null when it is missing.
+function design_themes_catalog_test_raw($css, $selector, $var)
+{
+	$start = strpos($css, $selector . ' {');
+	if ($start === false) return null;
+	$end = strpos($css, "\n}", $start);
+	$block = substr($css, $start, $end - $start);
+	if (!preg_match('/\s' . preg_quote($var, '/') . ':\s*([^\n]+);/', $block, $m)) return null;
+	return $m[1];
+}
+
+function test_design_themes_catalog_pale_colour_draws_its_lines_in_the_readable_shade()
+{
+	$white   = array(255, 255, 255);
+	$dark_bg = array(33, 37, 41);
+	$light   = ":root,\n[data-bs-theme=light]";
+	$pale    = array();
+	foreach (pg_design_palettes() as $key => $p) {
+		$css = pg_design_palette_css($p['primary'], $p['secondary'], $p['name']);
+		foreach (array('primary', 'secondary') as $role) {
+			$c    = _pg_theme_rgb($p[$role]);
+			$line = design_themes_catalog_test_var($css, $light, '--pg-' . $role . '-line');
+			if (_pg_theme_contrast($c, $white) >= 3) {
+				// The colour is its own line: the palette says nothing more.
+				pg_assert_false(strpos($css, '--pg-' . $role . '-line') !== false, $key . ': ' . $role . ' is seen on white and sets no line colour');
+				continue;
+			}
+			$pale[] = $key . '/' . $role;
+			pg_assert_true($line !== null, $key . ': pale ' . $role . ' sets a line colour for the white page');
+			pg_assert_same(design_themes_catalog_test_var($css, $light, '--pg-' . $role . '-fg'), $line, $key . ': the line of pale ' . $role . ' is its readable shade');
+			pg_assert_true(_pg_theme_contrast($line, $white) >= 3, $key . ': the line of pale ' . $role . ' is seen at 3:1 on white');
+			pg_assert_same(_pg_theme_rgb_list($line), design_themes_catalog_test_raw($css, $light, '--pg-' . $role . '-line-rgb'), $key . ': the line of pale ' . $role . ' comes as an RGB list too');
+			// On the dark body the colour itself is seen again.
+			$dark = design_themes_catalog_test_var($css, '[data-bs-theme=dark]', '--pg-' . $role . '-line');
+			pg_assert_same($c, $dark, $key . ': on the dark body the line of ' . $role . ' is the colour itself');
+			pg_assert_same(_pg_theme_rgb_list($c), design_themes_catalog_test_raw($css, '[data-bs-theme=dark]', '--pg-' . $role . '-line-rgb'), $key . ': and its RGB list');
+			pg_assert_true(_pg_theme_contrast($dark, $dark_bg) >= 3, $key . ': ' . $role . ' is seen at 3:1 on the dark body');
+		}
+	}
+	pg_assert_same(array('silver/primary', 'electric/secondary'), $pale, 'the pale colours of the built-in palettes');
+}
+
+function test_design_themes_catalog_focus_is_seen_on_white()
+{
+	$white = array(255, 255, 255);
+	$light = ":root,\n[data-bs-theme=light]";
+	foreach (pg_design_palettes() as $key => $p) {
+		$css    = pg_design_palette_css($p['primary'], $p['secondary'], $p['name']);
+		$border = design_themes_catalog_test_var($css, $light, '--pg-primary-focus-border');
+		// Bootstrap's own focused border (#86b7fe) stands at 2:1 on white.
+		pg_assert_true(_pg_theme_contrast($border, $white) >= 1.6, $key . ': the border of a focused field is seen on white');
+		// The ring is the colour at a quarter strength: seen only when the
+		// colour it is mixed from is.
+		$ring = design_themes_catalog_test_raw($css, $light, '--bs-focus-ring-color');
+		pg_assert_true((bool)preg_match('/^rgba\((\d+), (\d+), (\d+), 0\.25\)$/', (string)$ring, $m), $key . ': the focus ring is the colour at a quarter strength');
+		pg_assert_true(_pg_theme_contrast(array((int)$m[1], (int)$m[2], (int)$m[3]), $white) >= 3, $key . ': the focus ring is mixed from a colour seen on white');
+	}
+}
+
+function test_design_themes_catalog_pale_primary_carries_dark_marks()
+{
+	$white = array(255, 255, 255);
+	$light = ":root,\n[data-bs-theme=light]";
+	$marks = array('--pg-check-mark', '--pg-radio-mark', '--pg-dash-mark', '--pg-switch-mark');
+	foreach (pg_design_palettes() as $key => $p) {
+		$css = pg_design_palette_css($p['primary'], $p['secondary'], $p['name']);
+		$c   = _pg_theme_rgb($p['primary']);
+		foreach ($marks as $mark) {
+			$image = design_themes_catalog_test_raw($css, $light, $mark);
+			if (_pg_theme_contrast($c, $white) >= 3) {
+				// Bootstrap's white tick is seen on the colour.
+				pg_assert_true($image === null, $key . ': ' . $mark . ' stays Bootstrap\'s white');
+				continue;
+			}
+			$on = design_themes_catalog_test_var($css, $light, '--pg-on-primary');
+			pg_assert_true(_pg_theme_contrast($c, $on) >= 3, $key . ': the text colour on the primary is seen on it');
+			pg_assert_true($image !== null && strpos($image, 'url("data:image/svg+xml,') === 0, $key . ': ' . $mark . ' is an image');
+			pg_assert_contains('%23' . ltrim(_pg_theme_hex($on), '#'), (string)$image, $key . ': ' . $mark . ' is drawn in the text colour on the primary');
+			pg_assert_false(strpos((string)$image, '%23fff') !== false, $key . ': ' . $mark . ' is not white');
+			// Nothing in it can end the declaration or the rule.
+			pg_assert_false((bool)preg_match('/[;{}<>]/', (string)$image), $key . ': ' . $mark . ' is one declaration');
+		}
+	}
+}
+
+function test_design_themes_catalog_bridge_reads_what_a_pale_colour_sets()
+{
+	$bridge = (string)@file_get_contents(pg_design_theme_dir() . '/bridge.css');
+	foreach (array('primary', 'secondary') as $role) {
+		pg_assert_contains('--bs-btn-border-color: var(--pg-' . $role . '-line, var(--bs-' . $role . '));', $bridge, 'the outline button of ' . $role . ' takes the line colour');
+		pg_assert_contains('--bs-btn-focus-shadow-rgb: var(--pg-' . $role . '-line-rgb, var(--bs-' . $role . '-rgb));', $bridge, 'the focus ring of a ' . $role . ' button takes the line colour');
+	}
+	foreach (array('--pg-check-mark', '--pg-radio-mark', '--pg-dash-mark', '--pg-switch-mark') as $mark) {
+		pg_assert_contains('var(' . $mark . ', url("data:image/svg+xml,', $bridge, 'the bridge draws ' . $mark . ', Bootstrap\'s white image without it');
+	}
+	// Without a palette every fallback is Bootstrap's own white mark.
+	pg_assert_same(4, substr_count($bridge, "%23fff'"), 'four white fallbacks');
 }

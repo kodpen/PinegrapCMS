@@ -1226,7 +1226,8 @@
 
             h.clear(where);
             box.channels.forEach(function (channel) {
-                var option = el('option', '', '#' + channel.name);
+                // A mailbox kept in no channel keeps the mail itself.
+                var option = el('option', '', channel.mailbox ? t('mail_new_in_mailbox') : '#' + channel.name);
 
                 option.value = String(channel.id);
                 option.selected = (channel.id === chosen);

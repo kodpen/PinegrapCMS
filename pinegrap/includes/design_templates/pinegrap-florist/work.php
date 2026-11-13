@@ -303,7 +303,7 @@ $work_widgets['work_detail'] = array(
                 )),
                 $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
                     $span($event_services[$work_sample['type']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Kind'), $bind('type')),
-                    $span($seasons[$work_sample['season']]['title'], 'badge rounded-pill text-bg-light border', lang('Season'), $bind('season')),
+                    $span($seasons[$work_sample['season']]['title'], 'badge rounded-pill bg-body text-body-emphasis border', lang('Season'), $bind('season')),
                 )),
                 $heading('h1', $work_sample['title'], 'pfl-display display-5 mb-2', $bind('title')),
                 $para($work_sample['summary'], 'lead text-body-secondary mb-4', $bind('summary')),

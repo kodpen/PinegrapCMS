@@ -4,7 +4,7 @@ description: Pinned Story block (Scroll Scenes): a tall section whose sticky sta
 ---
 
 ## What does Pinned Story draw?
-- Palette > Blocks > Scroll Scenes > Pinned Story (`scene-pinned-story`, B7 of plan designer-bold-pages), in its own family file `assets/js/style_designer_blocks_scene.js` (prefix `scene-`, group "Scroll Scenes").
+- Palette > Blocks > Scroll Scenes > Pinned Story (`scene-pinned-story`, PR #8877), in its own family file `assets/js/style_designer_blocks_scene.js` (prefix `scene-`, group "Scroll Scenes").
 - `section.pg-scene.bg-body` with `_fx {effect: 'scene'}` > `div.pg-scene-stage` > three layers. Each layer is a `div` with the attribute `data-pg-scene-layer`, a container and a row: the number (`01`), an `h2` (`display-5`), a lead line and a picture (`pg-scene-shot`), picture first on a phone.
 
 ## How does the scene play?

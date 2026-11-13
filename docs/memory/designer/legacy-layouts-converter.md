@@ -5,7 +5,7 @@ module: legacy_bootstrap
 ---
 
 ## What is it for?
-- The answer on #8969 (2026-11-12) is recorded by the architect; in short: a page type's markup (template, `data/layouts/<id>.php`, the database layouts) is mapped at output, on a page of a `bootstrap5` visual design only; no converted copies, since only the output shows the names PHP writes. LL3 calls it in `get_page_content.php` ([[legacy-layouts-output-join]]).
+- The rules come from the answer on #8969, recorded in [[legacy-layouts-output-map]]: the system region's output is mapped on a page of a `bootstrap5` visual design only, no converted copies. LL3 calls the pass in `get_page_content.php` ([[legacy-layouts-output-join]]).
 - `pg_lbs_layout_html($html)`: `html`, `converted`, `kept`, `by_hand`, `done`. `pg_lbs_layout_source($code)` runs it over a file's text for counts: PHP kept, `php` counts class lists PHP writes in part. Pure; tests in `tests/legacy_bootstrap_layout_test.php`.
 
 ## What does it change?

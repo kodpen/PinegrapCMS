@@ -766,7 +766,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $branches,
 // to join and to find a branch. Shared, so every page that ends with it
 // carries the same call.
 $join_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -775,8 +775,8 @@ $join_band = function () use ($el, $heading, $para, $link, $container, $row, $co
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Join the Library'), '{{page:join}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('Find a Branch'), '{{page:visit}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Join the Library'), '{{page:join}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('Find a Branch'), '{{page:visit}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -846,7 +846,7 @@ $room_card = function ($key) use ($el, $heading, $para, $span, $link, $image, $c
 };
 
 // The availability of a title as a badge, bound to its Availability field.
-$availability_badge = function ($text, $class = 'badge rounded-pill text-bg-light border') use ($span, $bind) {
+$availability_badge = function ($text, $class = 'badge rounded-pill bg-body text-body-emphasis border') use ($span, $bind) {
     return $span($text, $class, lang('Availability'), $bind('availability'));
 };
 

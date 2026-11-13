@@ -181,7 +181,7 @@ $ferry_css = implode("\n", array(
 
 return array(
     'name'        => lang('Ferry'),
-    'version'     => '2.0.0',
+    'version'     => '2.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 117,
     'icon'        => 'bi-water',

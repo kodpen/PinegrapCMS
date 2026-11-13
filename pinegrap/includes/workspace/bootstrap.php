@@ -174,5 +174,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_triage.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_list.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_reads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_pane.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_room.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/nav.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');

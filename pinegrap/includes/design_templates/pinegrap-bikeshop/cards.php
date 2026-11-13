@@ -294,7 +294,7 @@ $ride_card = function ($sample_key = 'saturday_social') use ($el, $para, $span, 
     $r = $rides[$sample_key];
     $date = strtotime($ride_on($r['weekday'], $r['weeks']));
     $tag = function ($icon_name, $text, $token) use ($el, $icon, $span, $bind) {
-        return $el('span', 'badge rounded-0 text-bg-light border d-inline-flex align-items-center gap-1', lang('Badge'), array(
+        return $el('span', 'badge rounded-0 bg-body text-body-emphasis border d-inline-flex align-items-center gap-1', lang('Badge'), array(
             $icon($icon_name),
             $span($text, '', lang('Text'), $bind($token)),
         ));

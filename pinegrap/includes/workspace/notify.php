@@ -333,11 +333,12 @@ function ws_sound_lines($user_id, $after)
 /**
  * The place an inbox line names: a channel as itself; a discussion (a
  * channel row of kind thread) by the channel it is in, flagged, so its title
- * is never written as a channel's name.
+ * is never written as a channel's name; the room of a mailbox kept in no
+ * channel (kind mailbox) by the mailbox's name, which the room carries.
  *
  * @param array|null $channel the row's channel
  * @param array|null $parent  the channel a discussion is in, null otherwise
- * @return array thread (bool), name ('#name' or '')
+ * @return array thread (bool), name ('#name', a mailbox's name or '')
  */
 function ws_inbox_place($channel, $parent)
 {
@@ -347,6 +348,10 @@ function ws_inbox_place($channel, $parent)
 
     if ((string) ($channel['kind'] ?? '') === 'thread') {
         return array('thread' => true, 'name' => is_array($parent) ? '#' . $parent['name'] : '');
+    }
+
+    if ((string) ($channel['kind'] ?? '') === 'mailbox') {
+        return array('thread' => false, 'name' => (string) $channel['name']);
     }
 
     return array('thread' => false, 'name' => '#' . $channel['name']);
@@ -640,14 +645,14 @@ function ws_inbox_describe($viewer, $row)
         case 'mail_assigned':
         case 'mail_customer':
             if (function_exists('ws_mail_inbox_describe')) {
-                return ws_mail_inbox_describe($row, $actor, $channel_name, $base);
+                return ws_mail_inbox_describe($row, $actor, $channel_name, $base, $channel);
             }
             break;
 
         // An e-mail the person wrote could not be sent (mail_send.php).
         case 'mail_unsent':
             if (function_exists('ws_mail_unsent_describe')) {
-                return ws_mail_unsent_describe($row, $channel_name, $base);
+                return ws_mail_unsent_describe($row, $channel_name, $base, $channel);
             }
             break;
 

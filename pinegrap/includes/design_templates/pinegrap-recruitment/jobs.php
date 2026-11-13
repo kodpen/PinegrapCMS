@@ -293,7 +293,7 @@ $job_widgets['job_detail'] = array(
                 )),
                 $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
                     $span($sectors[$sample_job['sector']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Sector'), $bind('sector')),
-                    $span($contract_types[$sample_job['type']], 'badge rounded-pill text-bg-dark', lang('Contract Type'), $bind('contract_type')),
+                    $span($contract_types[$sample_job['type']], 'badge rounded-pill text-bg-secondary', lang('Contract Type'), $bind('contract_type')),
                 )),
                 $heading('h1', $sample_job['title'], 'prc-display display-6 mb-1', $bind('title')),
                 $para($sample_job['employer'], 'fw-semibold mb-2 pg-hide-if-empty', $bind('employer')),

@@ -346,7 +346,7 @@ $career_widgets = array(
                             $check_list($job_benefits, 'list-unstyled mb-4'),
                         ), '', '8'),
                         $col(array(
-                            $el('aside', 'card border-0 text-bg-dark rounded-3', lang('Apply Card'), array(
+                            $el('aside', 'card border-0 bg-body text-body rounded-3', lang('Apply Card'), array(
                                 $el('div', 'card-body p-4', lang('Card Body'), array(
                                     $heading('h2', lang('Want this role?'), 'pfm-display h5 mb-2'),
                                     $para(lang('Send your CV with your showreel or portfolio; we answer every application within two weeks.'), 'small mb-3'),
@@ -355,7 +355,7 @@ $career_widgets = array(
                                     $link(lang('Apply for this role'), '#', 'btn btn-primary w-100', array(),
                                         $fm_page_link('application', array('job' => 'title'))),
                                 )),
-                            )),
+                            ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
                         ), '', '4'),
                     ), '4', '', 'g-lg-5'),
                 ), $show_when('record_found')),
