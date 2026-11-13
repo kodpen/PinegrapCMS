@@ -192,10 +192,16 @@ function pg_lbs_by_hand_names()
  * One element's class list converted.
  *
  * @param string $class  the class attribute's value
+ * @param array  $rules  for markup no Legacy theme styles (a page type's
+ *                       layout): 'theme_names' => false leaves the names of
+ *                       pg_lbs_theme_names() alone, 'keep' (names) leaves
+ *                       each as written and counts it as kept, 'beside'
+ *                       (names) writes each after its 5.3.8 names, 'display'
+ *                       is the element's own display (pg_lbs_visibility())
  * @return array  'class' (string), 'converted', 'kept', 'by_hand'
  *                (name => count each)
  */
-function pg_lbs_classes($class)
+function pg_lbs_classes($class, $rules = array())
 {
     $out = array('class' => '', 'converted' => array(), 'kept' => array(), 'by_hand' => array());
     $tokens = preg_split('/\s+/', trim((string)$class), -1, PREG_SPLIT_NO_EMPTY);
@@ -210,19 +216,32 @@ function pg_lbs_classes($class)
     $count = function (&$list, $name) {
         $list[$name] = (isset($list[$name]) ? $list[$name] : 0) + 1;
     };
+    $keep = array_flip((array)($rules['keep'] ?? array()));
+    $beside = array_flip((array)($rules['beside'] ?? array()));
+    // Without a Legacy theme its names are 5.3.8's own utilities.
+    $own = (($rules['theme_names'] ?? true) === false) ? array_flip(pg_lbs_theme_names()) : array();
 
     // The visibility classes of the element become one display set, placed
     // where the first of them stood.
     $visibility = array();
     foreach ($tokens as $t) {
-        if (pg_lbs_is_visibility($t)) $visibility[] = $t;
+        if (!isset($keep[$t]) && pg_lbs_is_visibility($t)) $visibility[] = $t;
     }
-    $display = $visibility ? pg_lbs_visibility($visibility) : array();
+    $display = $visibility ? pg_lbs_visibility($visibility, isset($rules['display']) ? $rules['display'] : 'block') : array();
 
     $icon_twin = false;
     $result = array();
     $placed = false;
     foreach ($tokens as $t) {
+        if (isset($keep[$t])) {
+            $count($out['kept'], $t);
+            $result[] = $t;
+            continue;
+        }
+        if (isset($own[$t])) {
+            $result[] = $t;
+            continue;
+        }
         if (pg_lbs_is_visibility($t)) {
             if (!$placed) {
                 foreach ($display as $d) $result[] = $d;
@@ -240,12 +259,26 @@ function pg_lbs_classes($class)
             $result[] = 'bi';
             $result[] = 'bi-' . $icons[$t];
             $icon_twin = true;
-            $count($out['converted'], $t);
+            // An icon kept beside its twin is not converted twice.
+            if (!isset($beside[$t]) || !isset($have['bi-' . $icons[$t]])) $count($out['converted'], $t);
+            if (isset($beside[$t])) $result[] = $t;
             continue;
         }
         if (isset($map[$t])) {
-            foreach (preg_split('/\s+/', $map[$t], -1, PREG_SPLIT_NO_EMPTY) as $r) $result[] = $r;
-            $count($out['converted'], $t);
+            $to = preg_split('/\s+/', $map[$t], -1, PREG_SPLIT_NO_EMPTY);
+            // What the element already says in its own name is not written
+            // over it: 5.3.8 would let btn-light beat the btn-primary beside
+            // btn-default, and mb-3 the margin named beside form-group.
+            if (($t === 'btn-default' && preg_grep('/^btn-(?:primary|secondary|success|info|warning|danger|light|dark|link|outline-[a-z]+)$/', $tokens))
+                || ($t === 'form-group' && preg_grep('/^(?:m|mb|my)-?(?:\d+|auto)$/', $tokens))) {
+                $to = array();
+            }
+            // A name kept beside its 5.3.8 names is not converted twice.
+            if (!isset($beside[$t]) || array_diff($to, $tokens)) {
+                foreach ($to as $r) $result[] = $r;
+                $count($out['converted'], $t);
+            }
+            if (isset($beside[$t])) $result[] = $t;
             continue;
         }
         if (preg_match('/^col-(xs|sm|md|lg)-(push|pull)-\d+$/', $t) || isset($by_hand[$t])) {
@@ -263,7 +296,7 @@ function pg_lbs_classes($class)
         foreach ($tokens as $t) {
             if ((strpos($t, 'glyphicon-') === 0 || strpos($t, 'ti-') === 0) && !isset($icons[$t])) $twinless = true;
         }
-        if (!$twinless && isset($have['glyphicon'])) {
+        if (!$twinless && isset($have['glyphicon']) && !isset($keep['glyphicon']) && !isset($beside['glyphicon'])) {
             $result = array_values(array_diff($result, array('glyphicon')));
             $count($out['converted'], 'glyphicon');
         }
@@ -284,26 +317,31 @@ function pg_lbs_is_visibility($t)
  * One element's Bootstrap 3 visibility classes as one 5.3.8 display set.
  * visible-* shows the element only at its breakpoints, hidden-* hides it at
  * its own; a breakpoint no class names keeps the element's own display,
- * written d-*-block where a hidden one comes before it.
+ * written d-*-<display> where a hidden one comes before it.
  *
- * @param array $classes
+ * @param array  $classes
+ * @param string $display  the element's own display, where the caller knows
+ *                         its tag: a table cell shown again as a block
+ *                         leaves its row. A bare visible-* is a block but on
+ *                         a table, a row or a cell, as in Bootstrap 3.
  * @return array  5.3.8 classes in breakpoint order
  */
-function pg_lbs_visibility($classes)
+function pg_lbs_visibility($classes, $display = 'block')
 {
     $bps = array('xs', 'sm', 'md', 'lg');
     $state = array_fill_keys($bps, null);
     $print = null;
     $visible = false;
+    $shown = (strpos($display, 'table') === 0) ? $display : 'block';
     foreach ($classes as $c) {
         if (preg_match('/^visible-(xs|sm|md|lg)(?:-(block|inline|inline-block))?$/', $c)) $visible = true;
     }
     if ($visible) $state = array_fill_keys($bps, 'none');
     foreach ($classes as $c) {
         if (preg_match('/^visible-(xs|sm|md|lg)(?:-(block|inline|inline-block))?$/', $c, $m)) {
-            $state[$m[1]] = isset($m[2]) ? $m[2] : 'block';
+            $state[$m[1]] = isset($m[2]) ? $m[2] : $shown;
         } elseif (preg_match('/^visible-print(?:-(block|inline|inline-block))?$/', $c, $m)) {
-            $print = isset($m[1]) ? $m[1] : 'block';
+            $print = isset($m[1]) ? $m[1] : $shown;
             if (!$visible) $state = array_fill_keys($bps, 'none');
         }
     }
@@ -322,7 +360,7 @@ function pg_lbs_visibility($classes)
             if ($now !== null) {
                 $out[] = 'd-' . $infix . $now;
             } elseif ($bp !== 'xs') {
-                $out[] = 'd-' . $infix . 'block';
+                $out[] = 'd-' . $infix . $display;
             }
         }
         $prev = $now;
@@ -332,13 +370,23 @@ function pg_lbs_visibility($classes)
 }
 
 /**
+ * The data attributes Bootstrap's scripts read (without data-): the ones
+ * that start a plugin first, then the options beside them.
+ */
+function pg_lbs_data_names()
+{
+    return array('toggle', 'dismiss', 'ride', 'slide', 'slide-to', 'spy', 'target', 'parent', 'offset', 'placement',
+                 'container', 'trigger', 'backdrop', 'keyboard', 'interval', 'pause', 'wrap');
+}
+
+/**
  * The data attributes Bootstrap's scripts read, 3 to 5.3.8.
  */
 function pg_lbs_data_attribute($name)
 {
     $name = (string)$name;
-    if (preg_match('/^data-(toggle|target|dismiss|ride|slide|slide-to|parent|spy|offset|placement|container|trigger|backdrop|keyboard|interval|pause|wrap)$/i', $name, $m)) {
-        return 'data-bs-' . strtolower($m[1]);
+    if (strncasecmp($name, 'data-', 5) === 0 && in_array(strtolower(substr($name, 5)), pg_lbs_data_names(), true)) {
+        return 'data-bs-' . strtolower(substr($name, 5));
     }
     return $name;
 }
@@ -456,8 +504,9 @@ function pg_lbs_css($css)
     $acc = array('converted' => array(), 'kept' => array());
 
     $rename = function ($prelude) use ($map, &$acc) {
-        // Quoted strings in attribute selectors are left as they are.
-        $parts = preg_split('/("(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\')/s', $prelude, -1, PREG_SPLIT_DELIM_CAPTURE);
+        // Comments and the quoted strings of attribute selectors are left as
+        // they are.
+        $parts = preg_split('/(\/\*.*?\*\/|"(?:[^"\\\\]|\\\\.)*"|\'(?:[^\'\\\\]|\\\\.)*\')/s', $prelude, -1, PREG_SPLIT_DELIM_CAPTURE);
         foreach ($parts as $i => $p) {
             if ($i % 2 === 1) continue;
             $parts[$i] = preg_replace_callback('/\.(-?[_a-zA-Z][_a-zA-Z0-9-]*)/', function ($m) use ($map, &$acc) {
@@ -555,4 +604,396 @@ function pg_lbs_report($results)
     }
     $acc['totals'] = $totals;
     return $acc;
+}
+
+/**
+ * Bootstrap 3 names a site also gives its own meaning. In a page type's
+ * markup they are converted only where Bootstrap 3's shape shows
+ * (pg_lbs_layout_classes()); a bare one stays and is counted as kept.
+ */
+function pg_lbs_layout_ambiguous_names()
+{
+    return array('label', 'checkbox', 'radio', 'panel', 'well', 'media', 'thumbnail', 'caret');
+}
+
+/**
+ * The values with which a data attribute starts one of Bootstrap 3's
+ * plugins that 5.3.8 still has; an empty list takes any value. Other
+ * libraries use the same attribute names (data-toggle="lightbox").
+ */
+function pg_lbs_layout_triggers()
+{
+    return array(
+        'data-toggle' => array('modal', 'dropdown', 'tab', 'pill', 'collapse', 'tooltip', 'popover', 'button', 'buttons'),
+        'data-dismiss' => array('modal', 'alert'),
+        'data-ride' => array('carousel'),
+        'data-slide' => array('prev', 'next'),
+        'data-slide-to' => array(),
+        'data-spy' => array('scroll'),
+    );
+}
+
+/**
+ * One tag's class list by the rules of a page type's markup: the map
+ * without the theme names, an ambiguous name only in Bootstrap 3's shape,
+ * and no name taken from a script that uses it.
+ *
+ * @param string $class
+ * @param bool   $block     the element is Bootstrap 3's checkbox or radio
+ *                          block (pg_lbs_layout_choice_block())
+ * @param array  $scripted  class names the markup's own scripts select or
+ *                          change (name => true)
+ * @param string $display   the element's own display (pg_lbs_layout_display())
+ * @return array  as pg_lbs_classes()
+ */
+function pg_lbs_layout_classes($class, $block = false, $scripted = array(), $display = 'block')
+{
+    $tokens = preg_split('/\s+/', trim((string)$class), -1, PREG_SPLIT_NO_EMPTY);
+    $map = pg_lbs_class_map();
+    $ambiguous = array_flip(pg_lbs_layout_ambiguous_names());
+    $keep = array();
+    $beside = array();
+    foreach ($tokens as $t) {
+        if (isset($ambiguous[$t]) && !($block && ($t === 'checkbox' || $t === 'radio'))) {
+            // Bootstrap 3's shape on the element itself: a partner name of
+            // the map (label label-success, panel panel-default, well well-sm).
+            $partner = false;
+            foreach ($tokens as $p) {
+                if (isset($map[$p]) && strpos($p, $t . '-') === 0) $partner = true;
+            }
+            if (!$partner) {
+                $keep[] = $t;
+                continue;
+            }
+        }
+        if (isset($scripted[$t])) {
+            // A script that takes "hidden" or "in" off would leave the 5.3.8
+            // name behind, so a state name stays alone; any other name is
+            // found beside its 5.3.8 names.
+            if ($t === 'in' || pg_lbs_is_visibility($t)) $keep[] = $t; else $beside[] = $t;
+        }
+    }
+    return pg_lbs_classes($class, array('theme_names' => false, 'keep' => $keep, 'beside' => $beside, 'display' => $display));
+}
+
+/**
+ * The display a tag has by itself, as far as 5.3.8 has a d-* name for it:
+ * what an element hidden at one width is shown as at the next.
+ */
+function pg_lbs_layout_display($tag)
+{
+    static $displays = null;
+    if ($displays === null) {
+        $displays = array('table' => 'table', 'tr' => 'table-row', 'td' => 'table-cell', 'th' => 'table-cell')
+            + array_fill_keys(array('img', 'button', 'input', 'select', 'textarea'), 'inline-block')
+            + array_fill_keys(array('a', 'abbr', 'b', 'cite', 'code', 'em', 'i', 'label', 'mark', 'q', 's', 'small', 'span',
+                                    'strong', 'sub', 'sup', 'time', 'u'), 'inline');
+    }
+    return isset($displays[$tag]) ? $displays[$tag] : 'block';
+}
+
+/**
+ * The names the inline scripts of a piece of markup use: the classes they
+ * select or change and the Bootstrap data attributes they read. The pass
+ * leaves each findable.
+ *
+ * @return array|null  'classes' and 'attributes' (name => true each); null
+ *                     when the scripts cannot be read
+ */
+function pg_lbs_layout_script_names($html)
+{
+    $names = array('classes' => array(), 'attributes' => array());
+    if (stripos($html, '<script') === false) return $names;
+    if (preg_match_all('~<script\b[^>]*+>(.*?)</script\b~is', $html, $scripts) === false) return null;
+    $literal = '~"(?:[^"\\\\\n]|\\\\.)*+"|\'(?:[^\'\\\\\n]|\\\\.)*+\'~';
+    $family = implode('|', array_map('preg_quote', pg_lbs_data_names()));
+    foreach ($scripts[1] as $js) {
+        if (trim($js) === '') continue;
+        // Class selectors and data attributes inside the string literals.
+        if (preg_match_all($literal, $js, $literals) === false) return null;
+        foreach ($literals[0] as $text) {
+            if (preg_match_all('~\.(-?[a-zA-Z_][\w-]*)~', $text, $m)) $names['classes'] += array_fill_keys($m[1], true);
+            if (preg_match_all('~data-(?:' . $family . ')(?![\w-])~i', $text, $m)) $names['attributes'] += array_fill_keys(array_map('strtolower', $m[0]), true);
+        }
+        // The names a class method is given.
+        if (preg_match_all('~(?:addClass|removeClass|toggleClass|hasClass|classList\s*\.\s*(?:add|remove|toggle|contains|replace))\s*\(([^()]*)~', $js, $calls) === false) return null;
+        foreach ($calls[1] as $arguments) {
+            if (!preg_match_all($literal, $arguments, $m)) continue;
+            foreach ($m[0] as $text) {
+                $names['classes'] += array_fill_keys(preg_split('/\s+/', substr($text, 1, -1), -1, PREG_SPLIT_NO_EMPTY), true);
+            }
+        }
+        // jQuery's .data('target') reads data-target.
+        if (preg_match_all('~\.data\(\s*["\'](' . $family . '|slideTo)["\']~', $js, $m)) {
+            foreach ($m[1] as $name) $names['attributes']['data-' . ($name === 'slideTo' ? 'slide-to' : $name)] = true;
+        }
+    }
+    return $names;
+}
+
+/**
+ * The patterns of the layout pass: a start tag and one attribute, read as a
+ * browser reads them. A value may hold ">", and a class= inside another
+ * attribute's value is no attribute. An attribute whose quote never closes
+ * matches nothing, so its tag fails and the pass with it.
+ */
+function pg_lbs_layout_patterns()
+{
+    static $patterns = null;
+    if ($patterns === null) {
+        $s = ' \t\n\f\r';
+        $value = '"[^"]*+"|\'[^\']*+\'|[^' . $s . '>"\'][^' . $s . '>]*+';
+        $name = '[^' . $s . '/>][^' . $s . '/>=]*+';
+        $patterns = array(
+            'tag' => '~\G<([a-zA-Z][^' . $s . '/>]*+)((?:[' . $s . '/]++|' . $name
+                . '(?:[' . $s . ']*+=[' . $s . ']*+(?:' . $value . '|(?=>))|(?![' . $s . ']*+=)))*+)>~',
+            'attribute' => '~(' . $name . ')(?:([' . $s . ']*+=[' . $s . ']*+)(' . $value . ')?+)?+~',
+        );
+    }
+    return $patterns;
+}
+
+/**
+ * Whether the element opened right before $after is one of Bootstrap 3's
+ * checkbox or radio blocks: its first tag is an input of the type, or a
+ * label that opens with one. A site's own .radio around other markup is not.
+ * In a layout file's text the marks of PHP blocks count as white space.
+ */
+function pg_lbs_layout_choice_block($html, $after, $type)
+{
+    $gap = '(?:[ \t\n\f\r]|\x01\d+\x01)*+';
+    return preg_match('~\G' . $gap . '(?:<label\b[^>]*+>' . $gap . ')?+<input\b[^>]*\stype\s*=\s*["\']?' . $type . '(?![\w-])~i', $html, $m, 0, $after) === 1;
+}
+
+/**
+ * One start tag's attributes by the layout rules: its class attribute and,
+ * where Bootstrap 3's scripts read the tag, the data-toggle family. Every
+ * other attribute is returned byte for byte.
+ *
+ * @param string $tag       the tag's name, lower case
+ * @param string $attrs     the text between the name and ">"
+ * @param string $html      the markup, for a look past the tag
+ * @param int    $after     where the tag ends in it
+ * @param array  $scripted  pg_lbs_layout_script_names()
+ * @param array  $acc       counts, added to
+ * @param array  $memo      class lists converted so far
+ * @return string|null  the attribute text; null when it cannot be read
+ */
+function pg_lbs_layout_attributes($tag, $attrs, $html, $after, $scripted, &$acc, &$memo)
+{
+    $patterns = pg_lbs_layout_patterns();
+    if (preg_match_all($patterns['attribute'], $attrs, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) return null;
+
+    // A browser reads the first of a repeated attribute.
+    $values = array();
+    $class = null;
+    $family = array();
+    foreach ($found as $k => $a) {
+        $name = strtolower($a[1][0]);
+        if (isset($values[$name])) continue;
+        $value = isset($a[3]) ? $a[3][0] : '';
+        if ($value !== '' && ($value[0] === '"' || $value[0] === "'")) $value = substr($value, 1, -1);
+        $values[$name] = $value;
+        if ($name === 'class') {
+            if (isset($a[3])) $class = $k;
+        } elseif (strncmp($name, 'data-', 5) === 0 && pg_lbs_data_attribute($name) !== $name) {
+            $family[$k] = pg_lbs_data_attribute($name);
+        }
+    }
+
+    // Applied from the end: key offset * 2, plus 1 for a replacement, so an
+    // attribute written twice at the end of one attribute never lands inside
+    // the next one's name when no white space parts them.
+    $edits = array();   // key => array(offset, length, text)
+    if ($class !== null) {
+        $value = $values['class'];
+        // A class list PHP writes in part, in a layout file's text.
+        if (isset($acc['php']) && strpos($value, "\x01") !== false) $acc['php']++;
+        $block = $tag !== 'input' && preg_match('/(?:^|\s)(checkbox|radio)(?:\s|$)/', $value, $m)
+            && pg_lbs_layout_choice_block($html, $after, $m[1]);
+        $display = pg_lbs_layout_display($tag);
+        $key = ($block ? '1' : '0') . $display . ' ' . $value;
+        if (!isset($memo[$key])) $memo[$key] = pg_lbs_layout_classes($value, $block, $scripted['classes'], $display);
+        pg_lbs_add_counts($acc, $memo[$key]);
+        // A list with nothing to convert keeps its bytes, white space too.
+        if ($memo[$key]['converted']) {
+            $written = $found[$class][3][0];
+            $new = $memo[$key]['class'];
+            $quote = ($written[0] === '"' || $written[0] === "'") ? $written[0] : (($new === '' || strpos($new, ' ') !== false) ? '"' : '');
+            $at = $found[$class][3][1];
+            $edits[$at * 2 + 1] = array($at, strlen($written), $quote . $new . $quote);
+        }
+    }
+
+    if ($family) {
+        // Bootstrap's scripts read the tag: it starts a plugin, or it is the
+        // modal or the carousel that carries its own options.
+        $reads = (bool)array_intersect(array('modal', 'carousel'), preg_split('/\s+/', isset($values['class']) ? $values['class'] : '', -1, PREG_SPLIT_NO_EMPTY));
+        foreach (pg_lbs_layout_triggers() as $trigger => $starts) {
+            if (isset($values[$trigger]) && (!$starts || in_array($values[$trigger], $starts, true))) $reads = true;
+        }
+        foreach ($reads ? $family : array() as $k => $new) {
+            $old = strtolower($found[$k][1][0]);
+            // Already written under its 5.3.8 name too.
+            if (isset($values[$new])) continue;
+            $acc['converted'][$old] = (isset($acc['converted'][$old]) ? $acc['converted'][$old] : 0) + 1;
+            if (isset($scripted['attributes'][$old])) {
+                // A script reads the old name: the attribute is written twice.
+                $at = $found[$k][0][1] + strlen($found[$k][0][0]);
+                $edits[$at * 2] = array($at, 0, ' ' . $new . substr($found[$k][0][0], strlen($found[$k][1][0])));
+            } else {
+                $at = $found[$k][1][1];
+                $edits[$at * 2 + 1] = array($at, strlen($found[$k][1][0]), $new);
+            }
+        }
+    }
+
+    krsort($edits);
+    foreach ($edits as $edit) {
+        $attrs = substr_replace($attrs, $edit[2], $edit[0], $edit[1]);
+    }
+    return $attrs;
+}
+
+/**
+ * The layout pass over a piece of markup: every start tag's attributes by
+ * pg_lbs_layout_attributes(), the rest byte for byte.
+ *
+ * @param string $html
+ * @param array  $acc   counts, added to
+ * @return string|null  null when the pass cannot finish
+ */
+function pg_lbs_layout_pass($html, &$acc)
+{
+    static $raw = array('script' => 1, 'style' => 1, 'textarea' => 1, 'pre' => 1, 'title' => 1, 'xmp' => 1,
+                        'iframe' => 1, 'noembed' => 1, 'noframes' => 1);
+    $scripted = pg_lbs_layout_script_names($html);
+    if ($scripted === null) return null;
+    $patterns = pg_lbs_layout_patterns();
+    $memo = array();
+    $n = strlen($html);
+    $out = '';
+    $from = 0;   // the start of what is not yet in $out
+    $i = 0;
+    while ($i < $n && ($lt = strpos($html, '<', $i)) !== false) {
+        $c = ($lt + 1 < $n) ? $html[$lt + 1] : '';
+        if ($c === '!' || $c === '?' || $c === '/') {
+            // A comment, a declaration or an end tag: nothing to convert. A
+            // comment that never closes runs to the end, as a browser reads
+            // it; an end tag that never closes is a broken tag.
+            $comment = substr_compare($html, '<!--', $lt, 4) === 0;
+            $end = strpos($html, $comment ? '-->' : '>', $lt + 2);
+            if ($end === false) {
+                if ($c === '/' && $lt + 2 < $n && ctype_alpha($html[$lt + 2])) return null;
+                break;
+            }
+            $i = $end + ($comment ? 3 : 1);
+            continue;
+        }
+        if (!ctype_alpha($c)) {
+            $i = $lt + 1;
+            continue;
+        }
+        if (preg_match($patterns['tag'], $html, $m, 0, $lt) !== 1) return null;
+        $i = $lt + strlen($m[0]);
+        $tag = strtolower($m[1]);
+        if (stripos($m[2], 'class') !== false || stripos($m[2], 'data-') !== false) {
+            $attrs = pg_lbs_layout_attributes($tag, $m[2], $html, $i, $scripted, $acc, $memo);
+            if ($attrs === null) return null;
+            if ($attrs !== $m[2]) {
+                $out .= substr($html, $from, $lt - $from) . '<' . $m[1] . $attrs . '>';
+                $from = $i;
+            }
+        }
+        if (isset($raw[$tag])) {
+            // What such an element holds is not markup: on to its end tag.
+            $ends = preg_match('~</' . $tag . '(?=[ \t\n\f\r/>])~i', $html, $e, PREG_OFFSET_CAPTURE, $i);
+            if ($ends === false) return null;
+            if ($ends === 0) break;
+            $i = $e[0][1];
+        }
+    }
+    return $out . substr($html, $from);
+}
+
+/**
+ * A page type's rendered markup with its Bootstrap 3 names printed as their
+ * 5.3.8 names: the class attributes and the data-toggle family of its tags,
+ * by the one map without the theme names. Text between tags, comments, the
+ * inside of script, style, textarea and pre and every other attribute stay
+ * byte for byte, so a visitor's escaped text never changes; 5.3.8 markup
+ * passes untouched and a second pass changes nothing.
+ *
+ * When the pass cannot finish (a tag that never ends, a failed match) the
+ * markup comes back as it was given and 'done' is false.
+ *
+ * @param string $html
+ * @return array  'html', 'converted', 'kept', 'by_hand' (name => count
+ *                each), 'done'
+ */
+function pg_lbs_layout_html($html)
+{
+    $html = (string)$html;
+    $acc = array('converted' => array(), 'kept' => array(), 'by_hand' => array());
+    $out = pg_lbs_layout_pass($html, $acc);
+    if ($out === null) {
+        return array('html' => $html, 'converted' => array(), 'kept' => array(), 'by_hand' => array(), 'done' => false);
+    }
+    return array('html' => $out) + $acc + array('done' => true);
+}
+
+/**
+ * The same pass over the text of a layout file or a template, for a count
+ * before any page is drawn: PHP blocks stay byte for byte and a class list
+ * PHP writes in part is counted in 'php', since only the output shows its
+ * names.
+ *
+ * @param string $code
+ * @return array  'code', 'converted', 'kept', 'by_hand', 'php', 'done'
+ */
+function pg_lbs_layout_source($code)
+{
+    $code = (string)$code;
+    $failed = array('code' => $code, 'converted' => array(), 'kept' => array(), 'by_hand' => array(), 'php' => 0, 'done' => false);
+    // Each PHP block becomes a mark no rule of the pass reads: not white
+    // space, not a quote, and nothing a class name or a tag is made of.
+    if (strpos($code, "\x01") !== false) return $failed;
+    $blocks = array();
+    if (function_exists('token_get_all')) {
+        // As PHP reads the file: a closing tag written inside a PHP string
+        // ends no block.
+        $marked = '';
+        $php = null;
+        foreach (token_get_all($code) as $t) {
+            if (is_array($t) && $t[0] === T_INLINE_HTML) {
+                if ($php !== null) {
+                    $blocks[] = $php;
+                    $marked .= "\x01" . (count($blocks) - 1) . "\x01";
+                    $php = null;
+                }
+                $marked .= $t[1];
+            } else {
+                $php .= is_array($t) ? $t[1] : $t;
+            }
+        }
+        if ($php !== null) {
+            $blocks[] = $php;
+            $marked .= "\x01" . (count($blocks) - 1) . "\x01";
+        }
+    } else {
+        $marked = preg_replace_callback('/<\?.*?(?:\?>|\z)/s', function ($m) use (&$blocks) {
+            $blocks[] = $m[0];
+            return "\x01" . (count($blocks) - 1) . "\x01";
+        }, $code);
+        if ($marked === null) return $failed;
+    }
+    $acc = array('converted' => array(), 'kept' => array(), 'by_hand' => array(), 'php' => 0);
+    $out = pg_lbs_layout_pass($marked, $acc);
+    if ($out !== null) {
+        $out = preg_replace_callback('/\x01(\d+)\x01/', function ($m) use ($blocks) {
+            return $blocks[(int)$m[1]];
+        }, $out);
+    }
+    if ($out === null) return $failed;
+    return array('code' => $out) + $acc + array('done' => true);
 }
