@@ -143,10 +143,10 @@ function pg_lbs_design_assets($css_rows, $js_rows, $version_of)
 }
 
 /**
- * The calls of Bootstrap 3's jQuery plugins in a script ("tooltip()" for
- * $('…').tooltip(…)) and the data attributes it names that 5.3.8 renames
- * (data-toggle in a selector), each with its count, most first. Lines that
- * are a // comment are not read. Under 5.3.8 neither works: the plugins
+ * The calls of Bootstrap 3's jQuery plugins in a script ("tooltip()" for a
+ * tooltip call on a jQuery selection) and the data attributes it names
+ * that 5.3.8 renames (data-toggle in a selector), each with its count, most
+ * first. Lines that are a // comment are not read. Under 5.3.8 neither works: the plugins
  * are not jQuery's, and the markup's data-* names have become data-bs-*.
  *
  * Pure: no query, no file.
