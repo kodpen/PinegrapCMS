@@ -2062,14 +2062,24 @@ function waf_rules()
 
     $rules = array(
         // ── SQL injection ────────────────────────────────────────────────
+        // UNION and SELECT with nothing but spacing, comments, brackets or
+        // ALL / DISTINCT between them: "the union will select" is prose.
         array('id' => 'sqli-union',   'cat' => 'sqli', 'score' => 10,
-              're'  => '/\bunion\b[\s\S]{0,60}?\bselect\b/i'),
+              're'  => '/\bunion\b(?:\s|\+|\(|\/\*[\s\S]{0,40}?\*\/|\ball\b|\bdistinct\b)*select\b/i'),
+        // A quote closed, then OR/AND comparing two literals: quoted values,
+        // numbers, or one name with itself (x=x). "great" and I like it, or
+        // "n" and Roll = hayat, compares nothing.
         array('id' => 'sqli-tauto',   'cat' => 'sqli', 'score' => 10,
-              're'  => '/[\'"]\s*(?:or|and)\s+[\'"]?[\w\s]{0,12}?[\'"]?\s*(?:=|like)\s*[\'"]?[\w\s]{0,12}?[\'"]?(?:\s*(?:--|#|\/\*))?/i'),
+              're'  => '/[\'"]\s*(?:or|and)\s+(?:([\'"])[^\'"]{0,12}\1\s*(?:=|like)\s*[\'"]|\d+\s*(?:=|like)\s*[\'"]?\d|(\w{1,12})\s*(?:=|like)\s*\2\b)/i'),
+        // The comparison ends the injection: the value, a comment, a quote,
+        // a bracket or the next SQL word follows. "and 2 = 2 adet" goes on
+        // as a sentence.
         array('id' => 'sqli-numeq',   'cat' => 'sqli', 'score' => 10,
-              're'  => '/\b(?:or|and)\b\s+\d+\s*=\s*\d+/i'),
+              're'  => '/\b(?:or|and)\b\s+\d+\s*=\s*\d+\s*(?:$|--|#|\/\*|[\'"\);]|\b(?:and|or|limit|order|union|having)\b)/i'),
+        // The call takes a number, a nested call, a variable or a subquery:
+        // "sleep (badly)" takes a word.
         array('id' => 'sqli-timing',  'cat' => 'sqli', 'score' => 10,
-              're'  => '/\b(?:sleep|benchmark|pg_sleep|dbms_pipe\.receive_message)\s*\(|\bwaitfor\s+delay\b/i'),
+              're'  => '/\b(?:sleep|benchmark|pg_sleep)\s*\(\s*(?:\d|\(|@|select\b)|\bdbms_pipe\.receive_message\s*\(|\bwaitfor\s+delay\b/i'),
         array('id' => 'sqli-schema',  'cat' => 'sqli', 'score' => 10,
               're'  => '/\b(?:information_schema|sysobjects|syscolumns|pg_catalog|mysql\s*\.\s*user)\b/i'),
         array('id' => 'sqli-stacked', 'cat' => 'sqli', 'score' => 10,
@@ -2086,10 +2096,16 @@ function waf_rules()
         // ── Cross-site scripting ─────────────────────────────────────────
         array('id' => 'xss-script',   'cat' => 'xss', 'score' => 10,
               're'  => '/<\s*\/?\s*script\b/i'),
+        // The handler is given code: a call, an assignment, an index, a
+        // template literal, a javascript: address or an entity. "Onload =
+        // sayfa acilinca" is a question about the word.
         array('id' => 'xss-handler',  'cat' => 'xss', 'score' => 10,
-              're'  => '/\bon(?:error|load|click|mouseover|mouseenter|focus|blur|submit|abort|toggle|animationstart|animationend|transitionend|beforeunload|pointerover|contextmenu)\s*=/i'),
+              're'  => '/\bon(?:error|load|click|mouseover|mouseenter|focus|blur|submit|abort|toggle|animationstart|animationend|transitionend|beforeunload|pointerover|contextmenu)\s*=\s*[\'"]?\s*(?:[a-z_$][\w$.]*\s*[\(`=\[]|javascript\s*:|&#|\\\\u)/i'),
+        // A browser reads a tag only with the name straight after "<", and
+        // these tags act only through an attribute: "< base rate" and a bare
+        // "<form>" in a support message are text.
         array('id' => 'xss-tag',      'cat' => 'xss', 'score' => 10,
-              're'  => '/<\s*(?:iframe|object|embed|applet|meta|base|svg|math|link|form|isindex|marquee|frameset)\b/i'),
+              're'  => '/<(?:iframe|object|embed|applet|meta|base|svg|math|link|form|isindex|marquee|frameset)\b[^>]{0,200}?[\s\/][a-z:\-]+\s*=/i'),
         // Scoped away from BODY: prose legitimately contains the word
         // "javascript:" (a product review, a support message about code),
         // whereas a redirect parameter carrying it is always an attack.
@@ -2105,24 +2121,38 @@ function waf_rules()
               're'  => '/(?:expression|behaviou?r|@import|-moz-binding)\s*[:\(]/i'),
 
         // ── Path traversal / local file inclusion ────────────────────────
+        // A value that is one web address (scheme://, no spaces) is passed
+        // by: "../" inside it is resolved by the browser against that
+        // address, not by this server's file system.
         array('id' => 'lfi-traverse', 'cat' => 'lfi', 'score' => 10,
+              'unless' => '/^(?:https?|ftp):\/\/[^\s]*$/i',
               're'  => '/(?:\.\.[\/\\\\]){2,}|(?:%2e%2e(?:%2f|%5c|\/|\\\\)){1,}|\.\.%c0%af/i'),
         array('id' => 'lfi-unix',     'cat' => 'lfi', 'score' => 10,
               're'  => '/(?:\/etc\/(?:passwd|shadow|group|hosts|my\.cnf)|\/proc\/self\/(?:environ|cmdline)|\/var\/log\/)/i'),
+        // The file names as whole words (edwin.iniesta@ is an address), and
+        // cmd.exe only in a path or with a switch ("cmd.exe acilmiyor").
         array('id' => 'lfi-windows',  'cat' => 'lfi', 'score' => 10,
-              're'  => '/(?:boot\.ini|win\.ini|windows[\/\\\\]system32|cmd\.exe)/i'),
+              're'  => '/(?:\bboot\.ini\b|\bwin\.ini\b|windows[\/\\\\]system32|[\/\\\\]cmd\.exe\b|\bcmd\.exe\s+\/[ck]\b)/i'),
+        // file:// only to this machine (file:///, localhost, 127.0.0.1): a
+        // share on another host (file://sunucu/...) is a link someone pasted.
         array('id' => 'lfi-wrapper',  'cat' => 'lfi', 'score' => 10,
-              're'  => '/\b(?:php|phar|zip|expect|glob|data|file)\s*:\s*\/\//i'),
+              're'  => '/\b(?:(?:php|phar|zip|expect|glob|data)\s*:\s*\/\/|file\s*:\s*\/\/(?:\/|localhost\b|127\.0\.0\.1\b))/i'),
         array('id' => 'lfi-secrets',  'cat' => 'lfi', 'score' => 10,
               'targets' => array('ARGS', 'REQUEST_URI'),
               're'  => '/(?:^|[\/\\\\])(?:\.env|\.git[\/\\\\]config|wp-config\.php|config\.php\.bak|id_rsa|\.htpasswd)(?:$|[?&])/i'),
 
         // ── Remote code execution ────────────────────────────────────────
+        // A command in lower case (a shell has no CAT or ID) given a shell
+        // argument: an option, a path, a variable, a quote, a redirection,
+        // an address or an IP. "; ping atarsaniz" and "| cat ve kopek" go
+        // on in words; "; CP 28013" is a postcode.
         array('id' => 'rce-shell',    'cat' => 'rce', 'score' => 10,
-              're'  => '/(?:;|\||&&|\$\(|`|%0a)\s*(?:cat|ls|id|pwd|whoami|uname|wget|curl|nc|netcat|bash|sh|python|perl|ruby|chmod|chown|rm|mv|cp|ping|nslookup|dig)\s/i'),
-        // Split by certainty: these names are never ordinary prose.
+              're'  => '/(?:;|\||&&|\$\(|`|%0[aA])\s*(?:cat|ls|id|pwd|whoami|uname|wget|curl|nc|netcat|bash|sh|python|perl|ruby|chmod|chown|rm|mv|cp|ping|nslookup|dig)\s+(?:[\-\/~.$\'"<>|&]|\d+\.\d+|[a-z]+:\/\/)/'),
+        // Split by certainty: these names are never ordinary prose when
+        // called with code: a quote, a variable, a backtick or another call.
+        // "System (5.1)" and "system (installed 2019)" are product names.
         array('id' => 'rce-php',      'cat' => 'rce', 'score' => 10,
-              're'  => '/\b(?:system|shell_exec|passthru|popen|proc_open|pcntl_exec|create_function|preg_replace\s*\(\s*[\'"][^\'"]*\/e)\s*\(/i'),
+              're'  => '/\b(?:(?:system|shell_exec|passthru|popen|proc_open|pcntl_exec|create_function)\s*\(\s*(?:[\'"`$]|[a-z_]\w*\s*\()|preg_replace\s*\(\s*[\'"][^\'"]*\/[a-z]*e[a-z]*[\'"])/i'),
         // Softer: "exec(" and "base64_decode(" do turn up in support
         // messages and code snippets, so they corroborate rather than convict.
         array('id' => 'rce-php-soft', 'cat' => 'rce', 'score' => 5,
@@ -2243,61 +2273,81 @@ function waf_flatten($value, $prefix, &$targets, &$count, $depth = 0)
 function waf_scan_request()
 {
     $result = array('score' => 0, 'hits' => array());
-    $rules = waf_rules();
-    $targets = waf_collect_targets();
 
-    foreach ($targets as $name => $value) {
-        $variants = array($value);
-        $decoded = rawurldecode($value);
-
-        if ($decoded !== $value) {
-            $variants[] = $decoded;
-        }
-
-        // Target prefix (ARGS / BODY / COOKIE / REQUEST_URI / ...) so rules
-        // can be scoped to where their pattern is unambiguous.
-        $prefix = $name;
-        $colon = strpos($name, ':');
-
-        if ($colon !== false) {
-            $prefix = substr($name, 0, $colon);
-        }
-
-        foreach ($rules as $rule) {
-            if (isset($rule['targets'])
-                && !in_array($prefix, $rule['targets'], true)
-            ) {
-                continue;
-            }
-
-            foreach ($variants as $variant) {
-                $matched = @preg_match($rule['re'], $variant, $m);
-
-                // A PCRE failure (backtrack limit, bad UTF-8) returns false.
-                // Treat it as "no match": a firewall that 403s because its
-                // own regex engine gave up is a firewall that takes the site
-                // down under load.
-                if ($matched !== 1) {
-                    continue;
-                }
-
-                $result['score'] += $rule['score'];
-                $result['hits'][] = array(
-                    'id'      => $rule['id'],
-                    'cat'     => $rule['cat'],
-                    'score'   => $rule['score'],
-                    'target'  => $name,
-                    'matched' => isset($m[0]) ? substr($m[0], 0, 200) : '',
-                );
-
-                // One hit per rule per value: a repeated pattern in a long
-                // string should not inflate the score.
-                break;
-            }
-        }
+    foreach (waf_collect_targets() as $name => $value) {
+        waf_scan_value($name, $value, $result);
     }
 
     return $result;
+}
+
+/**
+ * Run the rule set over one value and add its hits to $result.
+ *
+ * $name is the target as waf_collect_targets() names it (BODY:message,
+ * ARGS:q, REQUEST_URI); its prefix decides which scoped rules apply. A rule's
+ * 'unless' pattern, when it matches the whole value, lets that rule pass the
+ * value by.
+ *
+ * @param string $name   target name
+ * @param string $value  the value
+ * @param array  $result array('score' => int, 'hits' => array), added to
+ */
+function waf_scan_value($name, $value, array &$result)
+{
+    $value = (string) $value;
+    $variants = array($value);
+    $decoded = rawurldecode($value);
+
+    if ($decoded !== $value) {
+        $variants[] = $decoded;
+    }
+
+    // Target prefix (ARGS / BODY / COOKIE / REQUEST_URI / ...) so rules
+    // can be scoped to where their pattern is unambiguous.
+    $prefix = (string) $name;
+    $colon = strpos($prefix, ':');
+
+    if ($colon !== false) {
+        $prefix = substr($prefix, 0, $colon);
+    }
+
+    foreach (waf_rules() as $rule) {
+        if (isset($rule['targets'])
+            && !in_array($prefix, $rule['targets'], true)
+        ) {
+            continue;
+        }
+
+        foreach ($variants as $variant) {
+            if (isset($rule['unless']) && (@preg_match($rule['unless'], $variant) === 1)) {
+                continue;
+            }
+
+            $matched = @preg_match($rule['re'], $variant, $m);
+
+            // A PCRE failure (backtrack limit, bad UTF-8) returns false.
+            // Treat it as "no match": a firewall that 403s because its
+            // own regex engine gave up is a firewall that takes the site
+            // down under load.
+            if ($matched !== 1) {
+                continue;
+            }
+
+            $result['score'] += $rule['score'];
+            $result['hits'][] = array(
+                'id'      => $rule['id'],
+                'cat'     => $rule['cat'],
+                'score'   => $rule['score'],
+                'target'  => $name,
+                'matched' => isset($m[0]) ? substr($m[0], 0, 200) : '',
+            );
+
+            // One hit per rule per value: a repeated pattern in a long
+            // string should not inflate the score.
+            break;
+        }
+    }
 }
 
 
