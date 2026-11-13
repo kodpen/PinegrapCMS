@@ -24,7 +24,7 @@ description: Plan (owner 2026-11-12, #8950): the flow window rearranged: the lef
 - FW1 (M) The top bar. Done #9102 (`workspace/workspace-flows-window-bar.md`).
 - FW2 (M) The left panel. Done #9178 (`workspace/workspace-flows-palette.md`).
 - FW3 (M) The right panel's head and tabs; the foot line; the phone's sheet. Done #9196 (`workspace/workspace-flows-side-panel.md`).
-- FW4 (S) The right panel with no box chosen; the phone's "Add a box" sheet.
+- FW4 (S) The right panel with no box chosen; the phone's "Add a box" sheet. Claimed.
 - FW5 (S) Outcome names on arrows and the warning mark, where the canvas does not draw them yet; close-out: the lasting rules into `workspace/`, this plan deleted.
 
 ## When does it start?
