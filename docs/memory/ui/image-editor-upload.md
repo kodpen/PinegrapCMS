@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Where is it?
-- Part `upload`: `assets/js/pg_image_editor_upload.js` (bundled after `mix`), the model's `UPLOAD` section, labels `pg_image_editor_strings_upload()`, actions `upload_start`, `upload_part`, `upload_status`, `sound_upload`, its stylesheet section, `tests/image_editor_upload_test.php`. Added in V8 of `plans/image-editor-video-steps.md` (#8585).
+- Part `upload`: `assets/js/pg_image_editor_upload.js` (bundled after `mix`), the model's `UPLOAD` section, labels `pg_image_editor_strings_upload()`, actions `upload_start`, `upload_part`, `upload_status`, `sound_upload`, its stylesheet section, `tests/image_editor_upload_test.php`. Added in #8585.
 - Hooks calling `editor.uploadSend(file, kind, head, opts)`: `clipUpload()`, `saveAnimationFile()` (Save to Files), the Add sound box's first button.
 
 ## How does a file go?

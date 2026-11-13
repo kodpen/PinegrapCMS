@@ -10142,6 +10142,8 @@
     "Tries the provider picked above with what is typed here (or, for a box left empty, what is stored). Save the settings to keep the credentials.": "Yukarıda seçilen sağlayıcıyı buraya yazılanla (boş bırakılan kutu için kayıtlı değerle) dener. Kimlik bilgilerini saklamak için ayarları kaydedin.",
     "Trigger": "Tetikleyici",
     "Triggers": "Tetikleyiciler",
+    "Trim the selected clip's end to the playhead": "Seçili klibin sonunu oynatma kafasına kırp",
+    "Trim the selected clip's start to the playhead": "Seçili klibin başını oynatma kafasına kırp",
     "Trim the stems": "Sapları kesin",
     "Trim: dragging an end · Shift turns off snapping · Esc cancels": "Kırpma: uç sürükleniyor · Shift yapışmayı kapatır · Esc vazgeçer",
     "Trip Slip": "Yolculuk Fişi",

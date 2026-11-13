@@ -4646,10 +4646,13 @@
         if (list.indexOf('motion') >= 0) {
             groups.push({ title: 'keysTimeline', rows: [
                 { keys: ['K'], label: 'keyPlay' },
+                { keys: ['J / L'], label: 'keyShuttle' },
                 { keys: ['LeftRight'], label: 'keyFrame' },
                 { keys: ['Shift', 'LeftRight'], label: 'keySecond' },
                 { keys: ['Home'], label: 'keyStart' },
-                { keys: ['End'], label: 'keyEnd' }
+                { keys: ['End'], label: 'keyEnd' },
+                { keys: ['I'], label: 'keyMarkIn' },
+                { keys: ['O'], label: 'keyMarkOut' }
             ] });
         }
 
