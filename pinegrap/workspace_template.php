@@ -42,6 +42,9 @@ $settings_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_work
 $template = null;
 $body_json = '';
 $draft_from = '';
+// The channel a draft was taken from: Back and Cancel return there, also
+// after a refused Save (the form carries it as from_channel).
+$from_channel = 0;
 
 if ($_POST) {
     validate_token_field();
@@ -49,7 +52,9 @@ if ($_POST) {
     // Every field of the form is one value. One posted as an array counts as
     // not given: (int) read an array id as 1 and saved over that template,
     // (string) wrote "Array" into the text fields.
-    pg_request_single_values(array('id', 'name', 'description', 'icon', 'color', 'kind', 'department_id', 'summary', 'pinned', 'welcome', 'body'));
+    pg_request_single_values(array('id', 'name', 'description', 'icon', 'color', 'kind', 'department_id', 'summary', 'pinned', 'welcome', 'body', 'from_channel'));
+
+    $from_channel = ((int) ($_POST['id'] ?? 0) === 0) ? (int) ($_POST['from_channel'] ?? 0) : 0;
 
     $data = array(
         'id'            => (int) ($_POST['id'] ?? 0),
@@ -112,6 +117,7 @@ if ($_POST) {
 
     $template = ws_template_from_channel($viewer, $channel);
     $draft_from = (string) $channel['name'];
+    $from_channel = (int) $channel['id'];
 }
 
 if ($template === null) {
@@ -123,6 +129,13 @@ if ($body_json === '') {
 }
 
 $is_new = ((int) $template['id'] === 0);
+$back_url = ws_template_back_url($is_new ? $from_channel : 0, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/');
+$back_title = lang('Channel templates');
+
+if ($is_new && ($from_channel > 0)) {
+    $back_channel = ws_channel($from_channel);
+    $back_title = ($back_channel && ws_can_read_channel($viewer, $back_channel)) ? '#' . (string) $back_channel['name'] : lang('Back');
+}
 
 // The choices of the form.
 $color_options = '<option value="0">' . h(lang('No colour')) . '</option>';
@@ -218,9 +231,9 @@ pg_page_shell([
         'icon' => 'workspace',
         'heading' => $is_new ? lang('New channel template') : lang('Channel template'),
         'heading_description' => lang('The tasks, notes and texts a channel is set up with.'),
-        'cancel' => array('enable' => 'true', 'url' => $settings_url, 'title' => lang('Channel templates')),
+        'cancel' => array('enable' => 'true', 'url' => $back_url, 'title' => $back_title),
         'breadcrumb' => array(
-            array('label' => lang('Channel templates'), 'url' => $settings_url),
+            array('label' => lang('Channel templates'), 'url' => ws_template_back_url(0, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/')),
             array('label' => $is_new ? lang('New channel template') : lang('Channel template')),
         ),
     ]) . '
@@ -232,6 +245,7 @@ pg_page_shell([
     <form method="post" action="' . h($self_url) . '" id="ws-template-form" class="row g-7">
         ' . get_token_field() . '
         <input type="hidden" name="id" value="' . (int) $template['id'] . '">
+        ' . ((($from_channel > 0) && $is_new) ? '<input type="hidden" name="from_channel" value="' . (int) $from_channel . '">' : '') . '
         <input type="hidden" name="body" id="ws-template-body" value="' . h($body_json) . '">
 
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
@@ -337,7 +351,7 @@ pg_page_shell([
              inside its parent, and the row (the form) is as tall as the page. -->
         <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
             <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
-                <a class="btn btn-sm btn-text theme-secondary" href="' . h($settings_url) . '">' . h(lang('Cancel')) . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="' . h($back_url) . '">' . h(lang('Cancel')) . '</a>
                 <button type="submit" name="submit_save" value="Save" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save the template')) . '</button>
             </nav>
         </div>

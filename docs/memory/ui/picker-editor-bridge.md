@@ -1,6 +1,6 @@
 ---
 name: picker-editor-bridge
-description: The rich text editor's bridge to the picker (PK7): CKEditor's Link dialog Page… and File…, short links in the page dialog, the Image dialog's Picture… and Unsplash…, the fallback without pgUI
+description: The rich text editor's bridge to the picker (PK7): CKEditor's Link dialog Page… and File…, short links in the page dialog, the Image dialog's Picture… and Unsplash…, the framed picker on site pages
 module: editor, picker
 ---
 
@@ -20,8 +20,8 @@ module: editor, picker
 - The destination text is `pg_picker_short_link_destination()` (page, group, product with `?t=` tracking code; an address as given).
 
 ## What happens without the panel's scripts?
-- Where `pgPicker` or `pgUI` is missing (a site page with a rich text field), the bridge does nothing and neither dialog has Browse Server: the link window went in #8896, the image window `editor_select_image.php` and `filebrowserImageBrowseUrl` in PK9 (`picker-remaining-screens.md`). The Upload tabs stay.
-- That includes staff editing a classic page in the site's Edit mode (#9117): `pgPicker` and the config are printed there, but `pgUI` and the picker's styles (`backend.src.css`, Bootstrap 6) are panel-only. How the picker will reach site pages is decided, not built: `site-editor-picker-frame.md`. The squeezed dialog fields there are fixed: `site-editor-dialog-fields.md`.
+- On a site page in Edit mode (`pgPicker` and the config printed, `pgUI` and the picker's styles panel-only) Page…, File… and Picture… open the picker in a same-origin frame (#9117, `site-editor-picker-frame.md`); Unsplash… is left out there. The squeezed dialog fields there are fixed: `site-editor-dialog-fields.md`.
+- Without `pgPicker` or the config (a visitor's form with a rich text field) neither dialog has Browse Server: the link window went in #8896, the image window `editor_select_image.php` and `filebrowserImageBrowseUrl` in PK9 (`picker-remaining-screens.md`). The Upload tabs stay.
 
 ## What could not be checked?
 - Nothing was opened in a browser: the dialogs' layout and the focus between CKEditor's dialog and the picker's `<dialog>` were not seen. The picker's Escape is taken on `window` in the capture phase, so it never reaches CKEditor's dialog.

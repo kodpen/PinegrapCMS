@@ -5,7 +5,7 @@ description: Quick setup dialog (workspace_flow_quick.js, QS2 #9244, QS3 #9278):
 
 ## Where is it?
 - `assets/js/workspace_flow_quick.js`, served in `workspace_flow.min.js` after `workspace_flow.js` (`pg_js_bundles()`). CSS: the `.wsf-quick*` block before the Share dialog's in `backend.src.css`. Texts: `fl_quick_*` in `ws_flow_js_strings()`; `tests/workspace_flows_canvas_test.php` reads this script too.
-- Server and choices: `workspace-flows-quick-setup.md`; the drawing: `plans/flows-quick-setup/quick-setup.html`.
+- Server and choices: `workspace-flows-quick-setup.md`; the drawing: `flows-quick-setup-look/quick-setup.html`.
 
 ## How is it opened?
 - `window.PGWsFlowQuick.open(kit, quick, options)`: kit is `window.PGWsKit`, quick is `flows.quick` of `ws_flow_js_config()`, `options.operators` the comparisons' labels (`steps.operators`), `options.start` a start to begin on, `options.home` (channel), `options.onDone`, `options.onClose`. It answers false with no catalogue. No screen opens it yet: the ways in are QS5.
