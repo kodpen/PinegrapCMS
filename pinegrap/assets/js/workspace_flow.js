@@ -3454,6 +3454,7 @@
         row_set: [['row', 'fl_rows_row', 200]],
         row_get: [['row', 'fl_rows_row', 200]],
         record_get: [['id', 'fl_record_id', 200]],
+        change: [['id', 'fl_change_id', 200]],
         ai: [['prompt', 'fl_ai_prompt', 4000], ['text', 'fl_ai_text', 20000]],
         task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
         report: [['title', 'fl_report_title', 160]],
@@ -10157,7 +10158,6 @@
             return [action, t((action === 'delete') ? 'fl_change_delete' : 'fl_change_update')];
         });
         var action = K.select(actions, config.action || 'update');
-        var id = el('input', 'form-control form-control-sm wsf-number');
 
         config.fields = (config.fields && !Array.isArray(config.fields)) ? config.fields : {};
         kind.addEventListener('change', function () {
@@ -10177,16 +10177,19 @@
             refreshNode(node);
             drawSettings();
         });
-        id.type = 'number';
-        id.min = '1';
-        id.value = config.id ? String(config.id) : '';
-        id.addEventListener('input', function () {
-            config.id = Math.max(0, parseInt(id.value, 10) || 0);
-            refreshNode(node);
-        });
         box.appendChild(field(t('fl_change_kind'), kind));
         box.appendChild(field(t('fl_change_action'), action));
-        box.appendChild(field(t('fl_change_id'), id, state.edit ? t('fl_change_id_help') : t('fl_change_hidden')));
+
+        // The record by its number or by one value of the run, such as the
+        // order that started it (ws_step_change_id_setting()).
+        if (state.edit) {
+            box.appendChild(valueField(node, t('fl_change_id'), (typeof config.id === 'string') ? config.id : (config.id ? String(config.id) : ''), 200, function (value) {
+                config.id = /^\s*[0-9]{1,10}\s*$/.test(value) ? parseInt(value, 10) : value;
+                refreshNode(node);
+            }, false, t('fl_change_id_help')));
+        } else {
+            box.appendChild(el('p', 'form-text mt-0', t('fl_change_hidden')));
+        }
 
         if (config.action !== 'delete') {
             changeValues(box, node, info);

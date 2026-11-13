@@ -1562,9 +1562,11 @@ function ws_scheduled_url_input($url)
  * @param int   $self_id    the action being changed, 0 for a new one
  * @param bool  $joined     started by somebody joining a channel: "the channel
  *                          they joined" (channel_id -1) may be written in
+ * @param bool  $id_later   a flow's change box: a record named by one value
+ *                          of its run is checked as the box runs
  * @return array ok, error, action
  */
-function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id = 0, $joined = false)
+function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id = 0, $joined = false, $id_later = false)
 {
     $limits = ws_scheduled_text_limits();
     $fail = function ($error) {
@@ -1899,7 +1901,10 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
             $types = ws_change_types();
             $record_type = (string) ($action['record'] ?? '');
             $verb = (string) ($action['action'] ?? 'update');
-            $id = (int) ($action['id'] ?? 0);
+            // A flow's change box may name its record by a value of its run,
+            // read as the box runs; the record is checked then.
+            $later = $id_later && function_exists('ws_step_row_names_row') && is_string($action['id'] ?? null) && ws_step_row_names_row($action['id']);
+            $id = $later ? 0 : (int) ($action['id'] ?? 0);
 
             if (!isset($types[$record_type]) || in_array($record_type, ws_scheduled_change_skipped(), true)) {
                 return $fail(lang('Choose what kind of record to change.'));
@@ -1913,7 +1918,7 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 return $fail(lang('You may not change a record of this kind.'));
             }
 
-            if (($id <= 0) || (ws_change_record($record_type, $id) === null)) {
+            if (!$later && (($id <= 0) || (ws_change_record($record_type, $id) === null))) {
                 return $fail(lang('Choose the record to change.'));
             }
 
@@ -1945,7 +1950,7 @@ function ws_scheduled_action_input($viewer, $action, $channel_id = 0, $self_id =
                 'type'   => 'change',
                 'record' => $record_type,
                 'action' => $verb,
-                'id'     => $id,
+                'id'     => $later ? (string) $action['id'] : $id,
                 'fields' => $fields,
             ));
 

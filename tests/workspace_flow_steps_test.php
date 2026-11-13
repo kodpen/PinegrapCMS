@@ -182,7 +182,7 @@ function test_workspace_flow_steps_never_twice()
 // action's step is, and a box runs only while its owner is on the staff.
 function test_workspace_flow_steps_owner_rights()
 {
-	pg_assert_contains('ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined)', ws_flow_steps_test_source('ws_step_check'));
+	pg_assert_contains('ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined, $later)', ws_flow_steps_test_source('ws_step_check'));
 	pg_assert_contains('ws_step_check($viewer, $node[\'kind\'], $node[\'config\'], ws_flow_starts_on_join($graph))', ws_flow_steps_test_source('ws_flow_publish_check'));
 
 	$step = ws_flow_steps_test_source('ws_flow_step_run');
@@ -414,6 +414,44 @@ function test_workspace_flow_steps_change_config()
 	pg_assert_contains('ws_step_action_row($run, $context, $anchor)', ws_flow_steps_test_source('ws_step_run'));
 }
 
+// A change box names its record by its number or by one value of the run,
+// such as the order that started it; the value is read as the box runs.
+function test_workspace_flow_steps_change_record_by_value()
+{
+	pg_assert_same(12, ws_step_change_id_setting(' 12 '));
+	pg_assert_same(0, ws_step_change_id_setting('-3'));
+	pg_assert_same(0, ws_step_change_id_setting(true));
+	pg_assert_same(0, ws_step_change_id_setting(null));
+	pg_assert_same('{{trigger.record_id}}', ws_step_change_id_setting(' {{trigger.record_id}} '));
+	pg_assert_same('{{trigger.record_id}}', ws_step_config_normalize('change', array('id' => '{{trigger.record_id}}'))['id']);
+
+	$problems = function ($id) {
+		return count(ws_step_config_problems('change', ws_step_config_normalize('change', array('record' => 'order', 'id' => $id, 'fields' => array('status' => 'exported'))), 'X'));
+	};
+
+	pg_assert_same(0, $problems('{{trigger.record_id}}'));
+	pg_assert_same(0, $problems('{{node.read.record_id}}'));
+	pg_assert_same(1, $problems('order {{trigger.record_id}}'), 'one value alone');
+	pg_assert_same(1, $problems(0));
+
+	$values = array(WS_STEP_TRIGGER => array('record_id' => '41'), 'read' => array('record_id' => 7, 'name' => 'Jane'));
+
+	pg_assert_same(41, ws_step_change_id('{{trigger.record_id}}', $values));
+	pg_assert_same(7, ws_step_change_id('{{node.read.record_id}}', $values));
+	pg_assert_same(0, ws_step_change_id('{{node.read.name}}', $values), 'a text is no record');
+	pg_assert_same(0, ws_step_change_id('{{node.gone.record_id}}', $values), 'a value the run lacks');
+	pg_assert_same(5, ws_step_change_id(5, array()));
+
+	// The value is one of the box's texts, so a value of a later box is a
+	// problem of the graph, and it is read before the change is checked.
+	pg_assert_true(in_array('id', ws_step_kinds()['change']['texts'], true));
+	$run = ws_flow_steps_test_source('ws_step_run');
+	pg_assert_true(strpos($run, 'ws_step_change_id(') < strpos($run, 'ws_step_check('), 'read before the check');
+	pg_assert_contains('ws_step_change_id(', ws_flow_steps_test_source('ws_step_change_approved_write'));
+	pg_assert_contains('ws_step_change_id(', ws_flow_steps_test_source('ws_flow_box_try'));
+	pg_assert_contains('$id_later', ws_flow_steps_test_source('ws_scheduled_action_input'));
+}
+
 // Which record a change box changes, and to what, is read only by whoever
 // may change the flow: everybody else reads the kind of record, the action
 // and the names of the fields, on the screen, in the API and in a run; a
@@ -601,7 +639,7 @@ function test_workspace_flow_steps_post_in_the_channel_joined()
 
 	// Checked with the scheduled action's own rule for the channel joined, at
 	// publish, as the box runs and as it is tried.
-	pg_assert_contains('ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined)', ws_flow_steps_test_source('ws_step_check'));
+	pg_assert_contains('ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined, $later)', ws_flow_steps_test_source('ws_step_check'));
 	pg_assert_contains('ws_flow_starts_on_join($graph)', ws_flow_steps_test_source('ws_flow_publish_check'));
 	pg_assert_contains('ws_flow_starts_on_join($graph)', ws_flow_steps_test_source('ws_step_run'));
 	pg_assert_contains('ws_flow_starts_on_join(', ws_flow_steps_test_source('ws_flow_box_try'));
@@ -656,8 +694,9 @@ function test_workspace_flow_steps_scheduled_texts()
 		// An MCP box's arguments go to the tool as filled, and a table box's
 		// cells, row and conditions to the table's store, and a read box's
 		// record to its reader, a Pinegrap AI box's texts to the model and an
-		// agent box's prompt to the agent, in no scheduled action's step.
-		if (($info['texts'] !== array()) && !in_array($kind, array('checkin', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'ai', 'agent'), true)) {
+		// agent box's prompt to the agent, in no scheduled action's step; a
+		// change box's record is read before its step (ws_step_change_id()).
+		if (($info['texts'] !== array()) && !in_array($kind, array('checkin', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'ai', 'agent', 'change'), true)) {
 			pg_assert_true(isset($map[$kind]), $kind . ' has its line');
 		}
 	}

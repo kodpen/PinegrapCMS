@@ -5,8 +5,10 @@ description: The change box of a flow (F4b3, PR #1957): the scheduled change ste
 
 ## What is it?
 - Kind `change` in `ws_step_kinds()` (type change): a scheduled action's change step, checked by `ws_scheduled_action_input()` (kinds of `ws_change_types()` but `ws_scheduled_change_skipped()`, update or delete, `ws_change_allowed()`, the record must exist, each field through `ws_change_value()`) and written by `ws_scheduled_change()` → `ws_change_write()`, never a writer by name.
-- Settings (`ws_step_config_normalize()`): record, action (update unless delete), id, fields (up to 30 name => value; a value is a number, yes/no, a text, or a set of texts for a submission's answers; a delete keeps none). `ws_step_config_problems()`: kind, record, and a field for an update.
-- Canvas form `changeFields()` in `workspace_flow.js`: the kinds the builder may change come from `ws_scheduled_js_config()['changes']` as `steps.changes` of `ws_flow_js_config()`; the record is typed as its number (no picker yet); money is shown as a decimal and kept in minor units.
+- Settings (`ws_step_config_normalize()`): record, action (update unless delete), id (`ws_step_change_id_setting()`: a number, or the text of one value alone such as `{{trigger.record_id}}`, as Read a record's id; QS1b), fields (up to 30 name => value; a value is a number, yes/no, a text, or a set of texts for a submission's answers; a delete keeps none). `ws_step_config_problems()`: kind, record, and a field for an update.
+- Canvas form `changeFields()` in `workspace_flow.js`: the kinds the builder may change come from `ws_scheduled_js_config()['changes']` as `steps.changes` of `ws_flow_js_config()`; the record is a value field (its number or a value thread, `VALUE_FIELDS.change`); money is shown as a decimal and kept in minor units.
+
+- A record named by a value of the run: `workspace-flows-change-box-value.md`.
 
 ## Whose rights, which channel?
 - The owner's, at publish and again as the box runs (`ws_step_run()`), like every step box.
