@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - the Communication cards: e-mail campaigns, live chat,
- * MailChimp, SMS and İYS.
+ * MailChimp, SMS, WhatsApp and İYS.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -21,6 +21,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
 
 // ── Campaigns ──
 $pg_settings_cards[] = '
@@ -243,6 +244,22 @@ $pg_settings_cards[] = '
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-5">' . pg_sms_message_settings_fields() . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+
+// ── WhatsApp ──
+// The site's own WhatsApp Business account on Meta's Cloud API, its secrets
+// sealed with the connected accounts' applications (includes/fn/whatsapp.php).
+$pg_settings_cards[] = '
+                        <div id="pgset-whatsapp" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    <span lang="en">' . lang('WhatsApp') . '</span>
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-5">' . pg_whatsapp_settings_fields() . '
                                     </div>
                                 </div>
                             </div>
