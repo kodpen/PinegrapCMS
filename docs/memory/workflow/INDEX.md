@@ -94,6 +94,7 @@
 - decisions-made-schema-15.md: Decisions list, schema part 15 (2026-11-10 on): ws_messages.via_client_id, ws_ai_requests.claimed_device_id, the Workspace mail screen's columns and ws_mail_reads, the image editor's largest upload
 - decisions-made-schema-16.md: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_html, kind mailbox on ws_channels, ws_agents.seen_at, ws_checks.app_id, ws_ai_requests.held_until for the edit hold
 - decisions-made-schema-17.md: Decisions list, schema part 17 (2026-11-12 on): canvas-one's ws_canvas_parts, ws_canvas_tables, ws_canvas_consents, via_message_id, ws_wtables.channel_id; WhatsApp's tables; ws_agents' role and report
+- decisions-made-schema-18.md: Decisions list, schema part 18 (2026-11-13 on): phone conversations in the mail conversation tables: ws_mail_boxes.transport gains whatsapp and sms, ws_mail_conversations.customer_phone (#9286)
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
@@ -121,7 +122,7 @@
 - decisions-made-workspace-20.md: Decisions list, workspace part 20 (2026-11-12 on): canvas-one drawings (#8929); Flows quick setup and the flow window (#8950); flows in the main menu, on without the Workspace (#8961)
 - decisions-made-workspace-21.md: Decisions list, workspace part 21 (2026-11-12 on): incoming e-mail in the messages area (#8961); the canvas card's line of tables approved (#8964); a message's line shows every agent it woke (#9188)
 - decisions-made-workspace-22.md: Decisions list, workspace part 22 (2026-11-13 on): incoming e-mail with the Workspace off (#9203); architect approves the flow window's narrow drawing (#9209); an agent's role, model, usage (#9260)
-- decisions-made-workspace-23.md: Decisions list, workspace part 23 (2026-11-13 on): a warning before a Workspace e-mail is sent to an address whose domain does not exist (#9267)
+- decisions-made-workspace-23.md: Decisions list, workspace part 23 (2026-11-13 on): a warning before mail to a domain that does not exist (#9267); the SMS answer from a channel and stop words by SMS or WhatsApp (#9286)
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page

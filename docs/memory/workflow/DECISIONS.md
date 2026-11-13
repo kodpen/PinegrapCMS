@@ -314,6 +314,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-16.md: Which tables and columns were approved?
 - decisions-made-schema-17.md: Where are the rules and the earlier parts?
 - decisions-made-schema-17.md: Which tables and columns were approved?
+- decisions-made-schema-18.md: Where are the rules and the earlier parts?
+- decisions-made-schema-18.md: Which tables and columns were approved?
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
@@ -421,6 +423,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-22.md: Is an agent's role a field, and who says its model and usage? (owner, 2026-11-13, #9260)
 - decisions-made-workspace-23.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-23.md: Is an e-mail to a domain that does not exist sent without a word? (owner, 2026-11-13, #9267)
+- decisions-made-workspace-23.md: Who can be answered by SMS from a channel? (owner, 2026-11-13, #9286)
+- decisions-made-workspace-23.md: What does a stop word received by SMS or WhatsApp do? (owner, 2026-11-13, #9286)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
