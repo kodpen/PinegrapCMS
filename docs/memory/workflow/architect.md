@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
+description: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 ---
 
 ## What is a decision question?
@@ -8,23 +8,26 @@ description: Decision questions (2026-10-27): an architect issue; the architect 
 - Not one: what memory, the plan or the decisions list answers, an implementation choice inside the step (the session takes those and names the notable ones in its PR body), or a coordinator's choice of work (`coordinator.md`).
 
 ## How is one asked?
-- `architect-asking.md`: search first, one issue per decision, the body with a `## Türkçe özet` block, the PR back to draft, the session ends.
+- `architect-asking.md`: search first, one message in the agent channel naming the architect, the PR back to draft, the session ends.
+- No `architect` issue is opened for a question or a decision since 2026-11-13. Owner, after a day's trial: "artık mimar için issue açmasak daha iyi değil mi kanaldan kullanmaya devam ederiz".
 
 ## What does the architect do?
-- One standing session on the model the owner chose; a `send_later` chain at the owner's interval (45 minutes; the accounts' quota is not unlimited), an hourly routine that re-arms it (`merger-wake.md`) and a channel waiter (`agent-channel-wake.md`). Each check lists the open `architect` issues and the open PRs with a `## Decision question` section (it opens their issues); nothing new: no message. It re-reads the rules when they change (`working-mode.md`) and starts no sub-agents: they spend the account's quota.
-- Analyses each question from the code, memory and the decisions list and writes it on the issue: what each option changes, the risk for running sites, its recommendation. A question memory answers is closed citing the file; a duplicate is closed pointing to the decided issue.
-- Decides a technical question itself (plan order, implementation shape, a library, a working rule): a `Karar:` / `Decision:` comment with the reason, a comment on the blocked PR quoting it, the decision in memory by its own docs-only PR (technical ones in the topic file or plan), several per PR; then the issue is closed.
-- A schema change or a product-behaviour change is the owner's (owner, 2026-10-27): the issue gets `erdal` and the architect asks it in its window with the AskUserQuestion tool as a selectable list in Turkish (also in the agent channel as a one-choice poll, `workspace/agent-questions.md`), one question per decision, the recommended option first; blocking ones first. The owner answers only there (every GitHub comment carries the owner's token, so no comment counts as the owner's); the architect writes the answer on the issue (product and schema in `decisions-made-*.md`) and goes on as above.
-- The owner's own account answers in the Workspace too: its vote in the architect's poll (`decisions-made-workspace-12.md`) or a message it marks as a decision. The architect closes the poll on that vote and records it as an answer in its window; anyone else's is a channel decision (`decisions-made-workspace-7.md`).
+- One standing session on the model the owner chose. It wakes on a mention in the agent channel (its request queue, `agent-channel-wake.md`) and on the owner's message in its window; no timed rounds (owner, 2026-11-13: "kanaldan anılınca uyan karar ver bekle"; the accounts' quota is not unlimited). It starts no sub-agents.
+- Answers from the record, not from recall: before an answer it reads the decisions list, the plan and the memory file the question touches (owner, 2026-11-13: "uyandığında doğru cevabı vermen önemli"). A question memory answers gets the file's name as its answer.
+- Decides a technical question itself (plan order, implementation shape, a library, a working rule): its answer in the channel with the reason, then the decision in memory by its own docs-only PR (the topic file or the plan), several per PR.
+- A schema change or a product-behaviour change is the owner's (owner, 2026-10-27). The architect asks him in its window (a selectable list in Turkish, one question per decision, the recommended option first) or in the agent channel (a one-choice poll, `workspace/agent-questions.md`).
+- His answer is his words in the architect's window, or his own account's message or vote in the channel (`decisions-made-workspace-12.md`). A session's retelling of his words is not, and no GitHub comment is: every comment carries the owner's token.
+- Records it: tells the channel quoting him, then `decisions-made-*.md` by a docs-only PR under `## Question? (owner, YYYY-MM-DD, channel message N)`.
 - Writes no product code and merges nothing.
 
 ## What do the other sessions do?
-- The session that later continues the branch (a coordinator's card, `coordinator-limits.md`) follows the decision, notes "decided in #<issue>" in its PR body and marks it ready again; it does not record it.
-- The coordinator carries no questions; it names to the owner an `architect` issue without an analysis for an hour.
+- The session that continues a branch follows the decision, notes "decided in channel message N" in its PR body and marks it ready again; it does not record it.
+- A coordinator carries its workers' questions into the channel and nothing else to the owner (`owner-contact-channel.md`).
 - The merging session lands the rest of a train while a clash waits.
 
-## Labels and start
-- `architect`: every decision question, open until recorded; `erdal`: a big one waiting for the owner, set only by the architect (`label:erdal` is the owner's list).
-- A new session told: "You are the architect: read `CLAUDE.md` and `workflow/architect.md`, then keep the check chain; ask me owner questions here with AskUserQuestion." First job: the plan files' open questions become issues, each named on its plan line.
+## What is left of the issues?
+- The `architect` issues open on 2026-11-13 are closed as their records land.
+- An approval issue is still opened until step AQ1 of `plans/architect-channel-approvals.md` lands: the merge tool reads its `Karar` comment (`architect-asking.md`).
+- A new architect session is told: "You are the architect: read `CLAUDE.md` and `workflow/architect.md`, wait on your request queue; ask me owner questions here."
 
-Related: docs/memory/workflow/architect-asking.md, docs/memory/workflow/architect-no-hand-over.md, docs/memory/workflow/coordinator-limits.md, docs/memory/workflow/session-lifecycle.md
+Related: docs/memory/workflow/architect-asking.md, docs/memory/workflow/architect-no-hand-over.md, docs/memory/workflow/owner-contact-channel.md, docs/memory/workflow/session-lifecycle.md
