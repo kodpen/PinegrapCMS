@@ -145,9 +145,6 @@ $events_css = implode("\n", array(
     '.pev-eyebrow{letter-spacing:.12em;font-size:.75rem}',
     // The organiser's name in the header, in the heading grotesk.
     '.pev-brand{font-family:var(--pg-font-heading);letter-spacing:-.01em}',
-    // The home page's first section: a wash of the palette's two colours.
-    '.pev-hero{background-color:var(--bs-tertiary-bg)}',
-    '@supports (background-color:color-mix(in srgb,red 8%,blue)){.pev-hero{background-image:linear-gradient(135deg,color-mix(in srgb,var(--bs-primary) 12%,var(--bs-body-bg)) 0%,var(--bs-body-bg) 55%,color-mix(in srgb,var(--bs-secondary) 8%,var(--bs-body-bg)) 100%);background-color:var(--bs-body-bg)}}',
     // Cards that lead somewhere rise a little under the pointer.
     '.pev-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.pev-lift:hover,.pev-lift:focus-visible,.pev-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
@@ -175,7 +172,7 @@ $events_css = implode("\n", array(
 
 return array(
     'name'        => lang('Events and Conferences'),
-    'version'     => '1.1.3',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 65,
     'icon'        => 'bi-calendar2-event',
@@ -230,10 +227,10 @@ return array(
         'email_footer'  => array('name' => lang('Events E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pev- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the Conference blocks' rules and its pev-
+    // rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $events_css),
+        'css'   => pg_design_template_user_styles(array('conference-hero', 'conference-agenda', 'conference-lineup'), $events_css),
         'fonts' => json_encode($events_fonts),
     ),
 );
