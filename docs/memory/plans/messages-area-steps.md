@@ -11,7 +11,7 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - MA3 (M, done #9215) Campaigns: one list for e-mail and SMS campaigns; "New campaign" asks the channel first, then recipients, content, time.
 - MA4 (S, done #9074) E-mail body as a page: how e-mail pages are made today, what mail programs need, a proposed way for MA5 (`designer/campaign-email-body-*.md`), waiting for the architect on #9083.
 - MA5 (M to L, shaped after MA4) The campaign's content step: edit the design, ready designs, paste HTML, phone preview, a test to oneself.
-- MA6 (M) Templates: e-mail designs, SMS texts and, once `whatsapp-channel-steps.md` reaches WA3, WhatsApp templates in one tab.
+- MA6 (M, in progress) Templates: e-mail designs, SMS texts and, once `whatsapp-channel-steps.md` reaches WA3, WhatsApp templates in one tab.
 - MA7 (S, done #9200) Channels: e-mail sender, SMS, WhatsApp and İYS as cards with their state, each leading to its settings.
 - MA8 (M) Automatic sends: the flows that send a message, their recipes, the way into the quick setup; shown once AF2 of `automation-flows-menu.md` has landed.
 - MA9 Profiles into flows (M2b), MA9a to MA9f, and MA10 Incoming e-mail, MA10a to MA10c: `messages-area-steps-2.md`.
