@@ -1,6 +1,6 @@
 ---
 name: waf-block-page-wording
-description: The firewall's block page names the kind of refusal (ban with its end, too many requests, country, request content, automated client), never the rule or the matched text; the texts the owner approved, the shield page in English
+description: The block page names the kind of refusal (ban with its end, rate, country, content, automated client), no rule or matched text; owner-approved texts; English shield page
 ---
 
 ## What does the block page say?
