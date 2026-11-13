@@ -10,6 +10,7 @@ description: Add and edit screens in look A (DL5c, #8934): the edit width on eve
 
 ## How are the columns sized?
 - Block "Look A: add and edit screens" at the end of `backend.src.css`. From 1024 px the two column classes take the row as `flex: 760 1 0%` and `flex: 336 1 0%`: at the full 1120 px measure exactly 760 and 336 with the 24 px gutter; narrower, both shrink in that ratio; below lg they stack as before. No row needs `pg-edit-columns` (only `product_builder.php` keeps that grid).
+- Both columns also carry `min-width: 0`. Without it a column whose content does not wrap (the Tax Zone and Shipping Zone state comboboxes listing every chosen state, a long address) widened the page to 3,000–17,000 px from 1024 px up; fixed in #9107 (`grid-column-min-width.md`).
 
 ## What do the cards and titles look like?
 - The cards straight in the form column (`.order-1 > .card`) and in the status column's sticky box (`.order-2 > .position-sticky > .card`) are the look card: their selectors sit beside `.pg-card` in the recipe block. 16 px apart; padding 20 / 22 (16 / 18 in the status column).
