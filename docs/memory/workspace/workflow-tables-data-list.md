@@ -1,6 +1,6 @@
 ---
 name: workflow-tables-data-list
-description: The Data list (CO6, #8978; CO6b, #9192): workflow tables named Data in the panel, workspace_wtables.php without ?id= on the list table driver, its scopes, windows, Deleted tables view, the channel seam
+description: The Data list (CO6 #8978, CO6b #9192): workflow tables named Data, the list table driver, its scopes, windows, Deleted tables view, the canvases that use a table, the channel seam
 ---
 
 ## What is named Data, and what keeps its name?
