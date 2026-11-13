@@ -971,14 +971,14 @@ function pg_notification_fold($items)
 
 // The module a bell row belongs to, from its action: the tag at the row's left
 // and, with the dashboard's Next up rows, its colour. Shop: what the shop's
-// customers did; Accounting: the ERP's notices; Content: forms and comments;
+// customers did, a customer's WhatsApp message included; Accounting: the ERP's notices; Content: forms and comments;
 // Team: what the Workspace told the person; System: updates, mail, operations,
 // a custom row and anything else.
 function pg_notification_module($action)
 {
 	$action = (string) $action;
 
-	if (in_array($action, array('new_order', 'order_return', 'out_stock', 'booking_refused'), true)) {
+	if (in_array($action, array('new_order', 'order_return', 'out_stock', 'booking_refused', 'whatsapp_message'), true)) {
 		return 'shop';
 	}
 
