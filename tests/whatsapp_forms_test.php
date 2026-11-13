@@ -21,7 +21,7 @@ if (!defined('PG_TEST_RUNNER')) {
 function whatsapp_forms_test_fields()
 {
 	return array(
-		array('id' => 11, 'label' => 'Your name', 'name' => 'name', 'type' => 'text box', 'contact_field' => 'first_name'),
+		array('id' => 11, 'label' => 'Your name:', 'name' => 'name', 'type' => 'text box', 'contact_field' => 'first_name'),
 		array('id' => 12, 'label' => '', 'name' => 'phone', 'type' => 'text box', 'contact_field' => ''),
 		array('id' => 13, 'label' => 'Mobile <b>phone</b>', 'name' => 'mobile', 'type' => 'text box', 'contact_field' => 'mobile_phone'),
 		array('id' => 14, 'label' => 'Topic', 'name' => 'topic', 'type' => 'pick list', 'contact_field' => ''),

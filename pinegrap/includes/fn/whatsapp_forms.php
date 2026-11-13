@@ -95,14 +95,15 @@ function pg_whatsapp_form_fields($page_id)
 }
 
 /**
- * A field as the lists name it: its label, else its name.
+ * A field as the lists name it: its label without its colon, else its name.
  *
  * @param array $field
  * @return string
  */
 function pg_whatsapp_form_field_label($field)
 {
-    $label = trim(strip_tags((string) ($field['label'] ?? '')));
+    // A form's label usually ends with a colon; a list item does not.
+    $label = rtrim(trim(strip_tags((string) ($field['label'] ?? ''))), " :\t");
 
     return ($label !== '') ? $label : (string) ($field['name'] ?? '');
 }
@@ -305,7 +306,7 @@ function pg_whatsapp_form_section_html($page_id)
                     <div class="switch"><input value="1"' . ($stored['on'] ? ' checked="checked"' : '') . ' id="wa_form_on" name="wa_form_on" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_wa_form" /></div>
                     <label class="" for="wa_form_on" id="wa_form_label">' . lang('WhatsApp Message to Submitter') . '</label>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100' . ($stored['on'] ? ' show' : '') . '" id="show_or_hide_wa_form" role="group" aria-labelledby="wa_form_label">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_wa_form" role="group" aria-labelledby="wa_form_label">
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 form-text my-1">' . lang('One approved WhatsApp template goes to the number typed in the field below once the form is submitted, beside the e-mail copy, or once its fee is paid. Choose a utility template: a marketing one goes only to a number with marketing consent.') . '</div>' . $notes . '
