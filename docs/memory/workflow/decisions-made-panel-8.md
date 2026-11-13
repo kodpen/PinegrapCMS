@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel-8
-description: Decisions list, panel part 8 (2026-11-12 on): look A's report page is the report screens' reference (#8955); a switch keeps its thumb (#9070); the Design Canvas icon in one colour in lists (#9250)
+description: Decisions list, panel part 8 (2026-11-12 on): look A's report page as reference (#8955); a switch keeps its thumb (#9070); Design Canvas icon in one colour (#9250); cards in the form column (#9271)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -20,3 +20,8 @@ description: Decisions list, panel part 8 (2026-11-12 on): look A's report page 
 - Where the icon stands among one-colour icons it is drawn in one colour, its neighbours': Workspace's two New canvas entries, the File Manager's context menu and file tools.
 - The main menu and the editor's top bar keep drawing B's two colours (#8903, `decisions-made-panel-7.md`): that decision is narrowed, not withdrawn.
 - Plan: `plans/design-canvas-icon-one-colour.md`.
+
+## How do cards use the form column of an add or edit screen? (owner, 2026-11-13, #9271)
+- The measure alone: a card stays one per row and its fields keep the 12-column grid, so they widen with the form column up to 1300 px (way A of step LW2, `plans/look-widths-and-switch.md`). Not chosen: fields two abreast with each input capped at about 480 px (C).
+- Owner (2026-11-13): "A olsun"; told that a full-row input becomes about 1270 px against the field sentence of #9070: "C çok salkım saçak olacak ya A ya B olsun".
+- The architect's, not the owner's words: he left A or B open and the architect takes A, his first answer; two cards abreast (B) is what to come back to if stretched fields look wrong on the real screens. It narrows #9070 (`decisions-made-panel-7.md`): an input may run the width of the form column, never of the window. The architect did not see the pictures.

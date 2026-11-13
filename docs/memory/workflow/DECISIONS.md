@@ -64,6 +64,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-8.md: Is the report screen page the reference for the report screens? (owner, 2026-11-12, #8955)
 - decisions-made-panel-8.md: Is a settings switch without a thumb approved? (owner, 2026-11-12, #9070)
 - decisions-made-panel-8.md: Where is the Design Canvas icon drawn in one colour? (owner, 2026-11-13, #9250)
+- decisions-made-panel-8.md: How do cards use the form column of an add or edit screen? (owner, 2026-11-13, #9271)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
