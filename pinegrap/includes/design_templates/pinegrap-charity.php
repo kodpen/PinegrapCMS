@@ -155,7 +155,7 @@ $charity_css = implode("\n", array(
 
 return array(
     'name'        => lang('Charity'),
-    'version'     => '1.0.1',
+    'version'     => '1.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 81,
     'icon'        => 'bi-heart',

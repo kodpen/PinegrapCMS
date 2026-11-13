@@ -183,6 +183,7 @@
 - design-template-page-fit.md: Ferry to photo templates in a browser: header at 1200 px, brand ellipsis, notice line, image size props, tinted-band text colours for every palette, positioned scroll boxes
 - design-template-pharmacy-pages.md: Pharmacy template 2.0.0: home, on duty, health checks and three service pages on the Pharmacy blocks: the builders, each page's composition, what left, no motion, the test
 - design-template-pharmacy.md: Pharmacy template (pinegrap-pharmacy): services, health checks, on duty, pharmacists, prescription requests and questions, health products shop, Health Advice by topic, prx- look, tests.
+- design-template-phone-fit-appstudio-events.md: Templates App Studio to Events, Bookshop and Boutique on a phone: the account bar's links wrap as a whole and keep each label on one line; the test that holds it
 - design-template-phone-fit-planetarium-zoo.md: Templates Planetarium to Zoo on phones: the account bar row wraps (#9056), table wrappers hold hidden labels, lines that ran past 320 px; measuring overflow under mobile emulation
 - design-template-photo-pages.md: Photography Studio template 2.0.0: home, how it works, packages and about on the Photo blocks: the builders, each page's composition, motion, what left, the test
 - design-template-photo.md: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
