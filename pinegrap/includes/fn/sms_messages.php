@@ -622,25 +622,7 @@ function pg_sms_order_shipped($order_id, $ship_to_id, $numbers)
         return false;
     }
 
-    $method = (string) db_value("SELECT shipping_method_code FROM ship_tos WHERE id = '" . (int) $ship_to_id . "'");
-    $default = pg_shipping_default_carrier();
-    $numbers = array_map('strtolower', array_map('strval', (array) $numbers));
-    $first = null;
-    $listed = array();
-
-    foreach (pg_shipment_rows($ship_to_id) as $row) {
-        if (in_array(strtolower((string) $row['number']), $numbers, true)) {
-            $view = pg_shipment_view($row, $method, $default);
-            $listed[] = $view['number'];
-            $first = ($first === null) ? $view : $first;
-        }
-    }
-
-    $order['fields'] += array(
-        'carrier'         => $first ? $first['carrier_name'] : '',
-        'tracking_number' => implode(', ', $listed),
-        'tracking_url'    => $first ? $first['url'] : '',
-    );
+    $order['fields'] += pg_sms_order_shipped_fields($ship_to_id, $numbers);
 
     return pg_sms_message_queue('order_shipped', $order['phone'], $order['fields'], 'order:' . (int) $order_id . ':shipped:' . (int) $ship_to_id);
 }
@@ -662,4 +644,35 @@ function pg_sms_order_delivered($order_id, $ship_to_id)
     $order = pg_sms_message_order($order_id);
 
     return $order && pg_sms_message_queue('order_delivered', $order['phone'], $order['fields'], 'order:' . (int) $order_id . ':delivered:' . (int) $ship_to_id);
+}
+
+/**
+ * The shipped message's carrier, tracking numbers and first tracking link
+ * for an address's numbers, shared by the text and the WhatsApp message.
+ *
+ * @param int      $ship_to_id
+ * @param string[] $numbers the address's numbers as stored
+ * @return array carrier, tracking_number, tracking_url
+ */
+function pg_sms_order_shipped_fields($ship_to_id, $numbers)
+{
+    $method = (string) db_value("SELECT shipping_method_code FROM ship_tos WHERE id = '" . (int) $ship_to_id . "'");
+    $default = pg_shipping_default_carrier();
+    $numbers = array_map('strtolower', array_map('strval', (array) $numbers));
+    $first = null;
+    $listed = array();
+
+    foreach (pg_shipment_rows($ship_to_id) as $row) {
+        if (in_array(strtolower((string) $row['number']), $numbers, true)) {
+            $view = pg_shipment_view($row, $method, $default);
+            $listed[] = $view['number'];
+            $first = ($first === null) ? $view : $first;
+        }
+    }
+
+    return array(
+        'carrier'         => $first ? $first['carrier_name'] : '',
+        'tracking_number' => implode(', ', $listed),
+        'tracking_url'    => $first ? $first['url'] : '',
+    );
 }

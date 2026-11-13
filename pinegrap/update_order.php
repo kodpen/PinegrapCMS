@@ -330,10 +330,11 @@ function update_order($request) {
             'parcels'          => pg_shipment_api_parcels((int) $shipped_recipient['id']),
         ));
 
-        // The customer's text message, held back like the e-mail when the
-        // caller says the customer is not to be told.
+        // The customer's text and WhatsApp messages, held back like the
+        // e-mail when the caller says the customer is not to be told.
         if ($mails_customer && !empty($shipped_recipient['shipped']) && !empty($shipped_recipient['tracking_numbers'])) {
             pg_sms_order_shipped((int) $order['id'], (int) $shipped_recipient['id'], $shipped_recipient['tracking_numbers']);
+            pg_whatsapp_order_shipped((int) $order['id'], (int) $shipped_recipient['id'], $shipped_recipient['tracking_numbers']);
         }
     }
 

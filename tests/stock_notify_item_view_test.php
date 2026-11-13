@@ -261,7 +261,7 @@ function test_stock_notify_item_view_phone_field()
 
 	$off = array('type' => 'root', 'props' => array(), 'children' => array($phone));
 	_apply_catalog_item_view_bindings($off, array('stock_notify_form' => 'pg-stock-notify-5', 'stock_notify_sms' => false));
-	pg_assert_same(0, count($off['children']), 'no text messages, no number field');
+	pg_assert_same(0, count($off['children']), 'no text or WhatsApp messages, no number field');
 
-	pg_assert_contains("'stock_notify_sms'       => (\$_civ_notify_form !== '') && pg_stock_notify_sms_on()", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php'), 'the renderer asks');
+	pg_assert_contains("'stock_notify_sms'       => (\$_civ_notify_form !== '') && pg_stock_notify_phone_asked()", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php'), 'the renderer asks');
 }

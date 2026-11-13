@@ -933,9 +933,10 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
         'order_number' => $order_number
     ));
 
-    // The customer's text message, when the store sends one: only queued, so
-    // the provider is never waited on here.
+    // The customer's text and WhatsApp messages, when the store sends them:
+    // only queued, so neither provider is waited on here.
     pg_sms_order_received($order_id);
+    pg_whatsapp_order_received($order_id);
 
     $context += array(
         'lines' => array(),
