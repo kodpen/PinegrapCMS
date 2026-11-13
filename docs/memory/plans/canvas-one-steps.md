@@ -25,7 +25,7 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 
 - CO7 (M) One flow over the API and MCP. Make a canvas with a page, bind a table, read and write, list versions: the routes and the tools. After CO3. Done in #9231 (`api/workspace-canvas-api.md`), with the five tools of `canvas-one-model.md`.
 
-- CO7b (S) The second part in the store and the API. S1's `ws_canvas_parts` by a 2026.11.0 migration step; `PUT …/drawing` and `…/page` add a part beside the first (409 `part_missing` ends); the versions list tells each version's part. No screen: until CO7c the card of a canvas with two parts shows the first.
+- CO7b (S) The second part in the store and the API. S1's `ws_canvas_parts` by a 2026.11.0 migration step; `PUT …/drawing` and `…/page` add a part beside the first (409 `part_missing` ends); the versions list tells each version's part. No screen: until CO7c the card of a canvas with two parts shows the first. Done in #9258 (`workspace/canvas-parts.md`).
 
 - CO7c (M) The joined card (`canvas-card` in `canvas-one-screens.md`): the part chips, the segmented control between Drawing and Page, the one Versions drawer. After CO7b.
 
