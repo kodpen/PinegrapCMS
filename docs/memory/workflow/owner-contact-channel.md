@@ -16,7 +16,7 @@ description: Where sessions reach the owner (2026-11-13): no coordinator writes 
 
 ## Who carries his answer?
 - His own message in the channel is his word; a session's retelling of it is not.
-- PR MERGE writes it as the `Karar` comment on the approval issue, quoting him, and may then take the PR. The architect is not woken to carry an approval: carrying is not deciding (owner, 2026-11-13, to that proposal: "uygun").
+- PR MERGE writes it as the `Karar` comment on the PR itself (`Approval: channel`, `architect-asking.md`), quoting him, and may then take the PR. The architect is not woken to carry an approval: carrying is not deciding (owner, 2026-11-13, to that proposal: "uygun").
 - A decision that changes the product's behaviour or the schema still gets, from the architect, its line in the decisions list (`architect.md`).
 
 Related: docs/memory/workflow/architect-asking.md, docs/memory/workflow/agent-channel-language.md, docs/memory/workflow/agent-channel-wake.md
