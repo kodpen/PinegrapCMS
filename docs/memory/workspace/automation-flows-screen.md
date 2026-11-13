@@ -20,4 +20,4 @@ description: The Flows screen with the Workspace off (AF2): its gate, the panel 
 
 ## How was it checked?
 - `tests/automation_flows_screen_test.php`: the switch (pure), every action `workspace_flow.js` names is on the list and is a panel action, the gate and answers (source), the script's parts in Node, the problems, the offers.
-- The AF2 and AF3 PR ran the sandbox with the Workspace off: list, a flow published and run (run view), a draft holding Post a message (palette without it, two problems, Publish refused, Try refused, share in a channel refused); with it on, the screen as before.
+- #9154 ran the sandbox with the Workspace off: list, a flow published and run (run view), a draft holding Post a message (palette without it, two problems, Publish refused, Try refused, share in a channel refused); with it on, the screen as before.

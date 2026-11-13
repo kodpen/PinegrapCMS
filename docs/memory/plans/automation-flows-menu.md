@@ -26,8 +26,8 @@ description: Plan (owner 2026-11-12, #8961): Flows become "Automation flows", a 
 ## Which steps?
 - AF0 (S, no product code) The census, ending with the gate and the split proposed to the architect. Done #9109: `automation-flows-menu-census.md` (its proposals wait for the architect).
 - AF1 (M) The gate and the job: flows advance and their events arrive with the Workspace off; tests. Done #9109 (`workspace/automation-flows-gate.md`, `workspace/automation-flows-workspace-boxes.md`).
-- AF2 (M) The screens outside the Workspace shell: the list, the window and the run view open from the main menu with the Workspace off.
-- AF3 (S) The boxes that need the Workspace: offered only with it; the problem line.
+- AF2 (M) The screens outside the Workspace shell: the list, the window and the run view open from the main menu with the Workspace off. Done #9154 (`workspace/automation-flows-screen.md`).
+- AF3 (S) The boxes that need the Workspace: offered only with it; the problem line. Done #9154 (`workspace/automation-flows-workspace-boxes.md`).
 - AF4 (S) The menu row: slot, gate, name on the row and the titles, the running count.
 - AF5 (S) Icon A in `pg_menu_icon()` with its motion.
 - AF6 (S) Close-out: the lasting rules into `workspace/` and `ui/`, this plan deleted.
