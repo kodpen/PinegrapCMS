@@ -122,7 +122,7 @@
 - decisions-made-workspace-20.md: Decisions list, workspace part 20 (2026-11-12 on): canvas-one drawings (#8929); Flows quick setup and the flow window (#8950); flows in the main menu, on without the Workspace (#8961)
 - decisions-made-workspace-21.md: Decisions list, workspace part 21 (2026-11-12 on): incoming e-mail in the messages area (#8961); the canvas card's line of tables approved (#8964); a message's line shows every agent it woke (#9188)
 - decisions-made-workspace-22.md: Decisions list, workspace part 22 (2026-11-13 on): incoming e-mail with the Workspace off (#9203); architect approves the flow window's narrow drawing (#9209); an agent's role, model, usage (#9260)
-- decisions-made-workspace-23.md: Decisions list, workspace part 23 (2026-11-13 on): a warning before mail to a domain that does not exist (#9267); the SMS answer from a channel and stop words by SMS or WhatsApp (#9286)
+- decisions-made-workspace-23.md: Decisions list, workspace part 23 (2026-11-13 on): a warning before mail to a missing domain (#9267); SMS answer and stop words (#9286); agents among who has seen a message (#9314)
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page

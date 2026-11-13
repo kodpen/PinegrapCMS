@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-23
-description: Decisions list, workspace part 23 (2026-11-13 on): a warning before mail to a domain that does not exist (#9267); the SMS answer from a channel and stop words by SMS or WhatsApp (#9286)
+description: Decisions list, workspace part 23 (2026-11-13 on): a warning before mail to a missing domain (#9267); SMS answer and stop words (#9286); agents among who has seen a message (#9314)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -19,3 +19,8 @@ description: Decisions list, workspace part 23 (2026-11-13 on): a warning before
 ## What does a stop word received by SMS or WhatsApp do? (owner, 2026-11-13, #9286)
 - STOP, IPTAL, RET, DUR and the others write an SMS, and so WhatsApp, marketing refusal to the consent log and İYS.
 - Owner (2026-11-13), asked "SMS veya WhatsApp'tan gelen dur sözcükleri (STOP, IPTAL, RET, DUR…) ne yapsın?": "Ret kaydı yazsın (Önerilen)". Not chosen: the word only shown in the conversation.
+
+## Are agents listed among who has seen a message? (owner, 2026-11-13, #9314)
+- Yes, under the message and in the "Who has seen it" drawer, in every channel. Owner (2026-11-13): "hem mesajların altında hemde kimler gördü alanında gören ajanların bilgileri yer almıyor. bu hem burası hemde normal kanallarda önemli".
+- Why: a message naming three agents read "Everyone in the channel has seen it" and said nothing of them, so he could not tell whether an order had reached them.
+- How it is counted is the architect's (technical, no table or column): `plans/message-seen-agents.md`.
