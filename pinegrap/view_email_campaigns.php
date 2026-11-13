@@ -19,46 +19,85 @@
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_campaigns.php');
 
 $user = validate_user();
 validate_email_access($user);
 
 $liveform = new liveform('view_email_campaigns');
 
-if (email_campaign_job_enabled()) {
-    $output_subheading_ready_status = lang('scheduled');
-} else {
-    $output_subheading_ready_status = lang('ready-to-send');
+// SMS campaigns are listed once their tables are there; the channel filter
+// and the SMS choice of New campaign follow.
+$sms = pg_sms_campaigns_ready();
+$filters = pg_messages_campaign_filters($_GET, $sms);
+$self = 'view_email_campaigns.php';
+$self_params = array_filter(array(
+    'channel' => ($filters['channel'] !== 'all') ? $filters['channel'] : '',
+    'state' => ($filters['state'] !== 'active') ? $filters['state'] : '',
+), 'strlen');
+$self_query = http_build_query($self_params);
+
+// Delete Selected: the list's ids name both tables (even e-mail, odd SMS);
+// a role 3 user deletes only campaigns of their own. A queued SMS campaign's
+// messages stay in the SMS queue.
+if ($_POST) {
+    validate_token_field();
+
+    $ids = pg_messages_campaign_split_ids($_POST['campaigns'] ?? array());
+    $deleted = pg_email_campaigns_delete($ids['email'], $user);
+
+    if ($sms) {
+        $deleted += pg_sms_campaigns_delete($ids['sms'], $user);
+    }
+
+    if ($deleted > 0) {
+        $message = lang(array('string' => '{var:1} campaign(s) were deleted', 'vars' => $deleted));
+        log_activity($message, $_SESSION['sessionusername']);
+        $liveform->add_notice($message);
+    }
+
+    go(PATH . SOFTWARE_DIRECTORY . '/' . $self . (($self_query !== '') ? '?' . $self_query : ''));
 }
 
-
-// The columns this list sorts by; pg_list_state() falls back to the default
-// for anything else and keeps the choice in the session as a code, so it
-// survives a language change. Every campaign is printed: the list table
-// driver sorts and searches them in the browser (browser mode).
-$sort_columns = pg_email_campaign_list_sort_columns(email_campaign_job_enabled());
-$sort_default = pg_email_campaign_list_sort_default(email_campaign_job_enabled());
+// Every campaign the user may manage in the filters is printed: the list
+// table driver sorts and searches them in the browser (browser mode).
+$columns = pg_messages_campaign_columns();
+$sort_columns = pg_list_table_printed_sort_columns($columns);
+$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 $list_state = pg_list_state('view_email_campaigns', $sort_columns, $sort_default);
-$sort_levels = $list_state['sorts'];
-$list = pg_email_campaign_list('view_email_campaigns', array('ready', 'paused'), $user, $sort_levels);
+$list = pg_messages_campaign_list($filters, $user, $list_state['sorts'], $sms);
 
-// SMS campaigns sit beside the e-mail campaigns once SMS is set up
-// (view_sms_campaigns.php).
-$output_sms_campaigns_link = '';
+$filter_forms = array();
 
-if (pg_sms_ready() && pg_schema_has('sms_campaigns')) {
-    $output_sms_campaigns_link = array('label' => lang('My SMS Campaigns'), 'url' => 'view_sms_campaigns.php', 'icon' => 'bi-chat-text');
+if ($sms) {
+    $filter_forms[] = pg_filter_select('channel', array('all' => lang('All channels'), 'email' => lang('E-mail'), 'sms' => lang('SMS')), $filters['channel'], array('keep' => array('state'), 'label' => lang('Channel'), 'icon' => 'broadcast'));
+}
+
+$filter_forms[] = pg_filter_select('state', array('active' => lang('Active'), 'finished' => lang('Finished')), $filters['state'], array('keep' => array('channel'), 'label' => lang('State'), 'icon' => 'funnel'));
+
+// The Campaigns card of Site Settings (Opt-In Label, Plain Text Footer) is
+// reached from here by who may open the settings.
+$secondary = array();
+
+if ($user['role'] < 3) {
+    $secondary[] = array('label' => lang('Campaign settings'), 'url' => pg_settings_link('contact', 'pgset-campaigns'), 'icon' => 'bi-sliders');
+}
+
+$warning = '';
+
+if ($sms && ($filters['channel'] !== 'email') && !pg_sms_ready()) {
+    $warning = '<div class="alert theme-warning" role="status"><p class="mb-0">' . lang('SMS is not set up: a campaign is kept, but every number is refused until a provider is set up under Settings, Communication.') . '</p></div>';
 }
 
 echo
 pg_page_shell(
     array(
-        'title'=> lang('Campaigns'),
-        'extra classes'=>'campaign pg-measure-list',
-        'icon'=>'campaign', 
-        'heading'=>lang('Communication'),
-        'heading_description' => lang(array('string'=>'All {var:1} and paused e-mail campaigns that I can manage.  See My Campaign History for completed and cancelled campaigns.','vars'=>$output_subheading_ready_status)),
-                
+        'title' => lang('Campaigns'),
+        'extra classes' => 'campaign pg-measure-list',
+        'icon' => 'campaign',
+        'heading' => lang('Communication'),
+        'heading_description' => lang('E-mail and SMS campaigns sent once to many.'),
     )
 ) . '
 <main id="content" class="container-fluid">
@@ -67,20 +106,17 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-           
+            ' . $warning . '
             ' . pg_messages_tab_strip_for('campaigns', $user) . '
             ' . pg_screen_toolbar(array(
-                'primary'   => array('label' => lang('Create'), 'url' => 'add_email_campaign.php', 'icon' => 'bi-plus-circle'),
-                'secondary' => array(
-                    array('label' => lang('My Campaign History'), 'url' => 'view_email_campaign_history.php', 'icon' => 'bi-clock-history'),
-                    $output_sms_campaigns_link,
-                ),
-                'search'    => array(pg_list_table_search_box('view_email_campaigns'), pg_list_sort_menu('view_email_campaigns.php', $sort_columns, $sort_levels, $sort_default)),
+                'primary'   => pg_messages_new_campaign_button($sms),
+                'secondary' => $secondary,
+                'grow'      => $filter_forms,
+                'search'    => array(pg_list_table_search_box('view_email_campaigns'), pg_list_sort_menu($self, $sort_columns, $list_state['sorts'], $sort_default, $self_params)),
             )) . '
-            <form name="form" action="delete_email_campaigns.php" method="post" class="disable_shortcut">
+            <form name="form" action="' . h($self . (($self_query !== '') ? '?' . $self_query : '')) . '" method="post" class="disable_shortcut">
                 ' . get_token_field() . '
-                <input type="hidden" name="send_to" value="' . h(REQUEST_URL) . '" />
-                ' . pg_list_table_html($list['source'], $list['page'], lang('My Campaigns'), pg_email_campaign_list_delete_button()) . '
+                ' . pg_list_table_html($list['source'], $list['page'], lang('Campaigns'), pg_email_campaign_list_delete_button()) . '
             </form>
         </div>
     </div>

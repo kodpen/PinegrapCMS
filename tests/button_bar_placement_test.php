@@ -29,7 +29,7 @@ function button_bar_placement_test_screens()
 		'view_short_links.php', 'edit_short_link.php', 'view_containers.php', 'edit_design_file.php',
 		'edit_file.php', 'includes/templates/edit_auto_dialog.php', 'includes/templates/view_auto_dialogs.php',
 		'includes/templates/view_key_codes.php', 'view_contact_groups.php', 'view_email_campaigns.php',
-		'view_email_campaign_profiles.php', 'view_email_campaign_history.php', 'view_sms_campaigns.php',
+		'view_email_campaign_profiles.php',
 		// Commerce, contacts and the edit screens.
 		'duplicate_products.php', 'edit_comment.php', 'edit_contact.php', 'edit_email_campaign.php', 'edit_page.php',
 		'edit_theme_file.php', 'product_builder.php', 'view_arrival_dates.php', 'view_commissions.php',
