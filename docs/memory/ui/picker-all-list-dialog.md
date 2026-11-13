@@ -18,7 +18,7 @@ module: picker
 
 ## Which sort and view are kept?
 - All has its own sort, `pg.picker.all.sort` / `all.dir` (`allSort()`, default modified, newest first); a folder keeps `pg.picker.sort` / `dir`, so a folder's "by name" does not undo All's order.
-- On All a page kind's Type sort is the server's `page_type` order, not the label order a folder's client sort uses.
+- On All a page kind sorts by Modified or Name only (`allSortKeys()`): the server orders `page_type` by its ENUM position, not the label shown, so Type would read as random. A folder still sorts pages by the type label (found in the PA3 check, #9226).
 - The view opens as tiles for a picture kind (`picture_kinds` of the config: `pictures` in the registry) and as a list for the others (`viewFor()`); the person's choice is kept per group, `pg.picker.view.pictures` / `view.files`. Pages are always rows.
 
 ## Where does an upload on All go?
@@ -32,4 +32,4 @@ module: picker
 ## What does the phone draw?
 - The sheet opens on All; the folder chip reads "All folders"; its folder list starts with an "All folders" row with the total.
 
-Tests: `tests/picker_js_test.php` (`test_picker_js_all_*`). Checked in headless Chromium against a mocked endpoint: opening, paging on scroll, sort, folder and back, Show in its folder, search, the phone sheet. Related: picker-dialog.md, picker-upload.md
+Tests: `tests/picker_js_test.php` (`test_picker_js_all_*`). Checked on a sandbox panel (#9226): the page field of Add Short Link, a stored page, pages with a caller's entries (the designer bridge), file (the editor's Link dialog), image and a stored picture; wide and phone, both themes; All, paging on scroll, Show in its folder, no script error. Related: picker-dialog.md, picker-upload.md
