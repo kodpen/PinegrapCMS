@@ -3753,6 +3753,7 @@
     "Software and updates": "Yazılım ve güncellemeler",
     "Software developers": "Yazılım geliştiriciler",
     "Software error log": "Yazılım hata günlüğü",
+    "Software error pages": "Yazılımın kendi hata sayfaları",
     "Software files repaired.": "Yazılım dosyaları onarıldı.",
     "Software files were changed": "Yazılım dosyaları değiştirildi",
     "Software repaired with the {var:1} package from the update server.": "Yazılım, güncelleme sunucusundaki {var:1} paketiyle onarıldı.",
