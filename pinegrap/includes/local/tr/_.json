@@ -727,6 +727,8 @@
     "{var:1} bounced": "{var:1} karşılıksız",
     "{var:1} bounced back": "{var:1} geri döndü",
     "{var:1} bounced: the movement that took it in and the one that sent it back cancel each other out, so neither is allocated to an invoice.": "{var:1} karşılıksız çıktı: onu alan hareketle geri gönderen hareket birbirini sıfırlıyor, bu yüzden ikisi de faturaya tahsis edilmez.",
+    "{var:1} bound a table to {var:2} · {var:3}": "{var:1}, {var:2} tuvaline bir tablo bağladı · {var:3}",
+    "{var:1} bound {var:2} to {var:3} · {var:4}": "{var:1}, {var:2} tablosunu {var:3} tuvaline bağladı · {var:4}",
     "{var:1} boxes": "{var:1} kutu",
     "{var:1} boxes, {var:2} arrows": "{var:1} kutu, {var:2} ok",
     "{var:1} broken": "{var:1} kırık",
