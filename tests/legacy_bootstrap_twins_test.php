@@ -55,6 +55,10 @@ function test_lbs_twin_photo()
 	$video = lbs_twins_tree('<section class="cover image-bg vid-bg"><div class="background-image-holder"><div class="player" data-video-id="x"></div></div></section>');
 	pg_assert_same(array('photo' => 0, 'slider' => 0, 'lightbox' => 0), pg_lbs_twins($video)['twins']);
 	pg_assert_same(1, pg_lbs_twins($video)['kept']['photo']);
+	// local-video-container: Play hides the cover through scripts.js.
+	$local = lbs_twins_tree('<div class="local-video-container"><div class="background-image-holder"><img alt="x" class="background-image" src="{path}cover20.jpg"></div>'
+		. '<video controls=""><source src="{path}video.mp4" type="video/mp4"></video><div class="play-button"></div></div>');
+	pg_assert_same(array(0, 1), array(pg_lbs_twins($local)['twins']['photo'], pg_lbs_twins($local)['kept']['photo']));
 }
 
 function test_lbs_twin_slider()

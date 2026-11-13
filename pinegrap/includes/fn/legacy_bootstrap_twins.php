@@ -19,8 +19,8 @@
  *   Fancybox link (data-fancybox), the lightbox the designer loads.
  *
  * A part with no twin (the logo carousel, the tweets and thumbnail sliders,
- * a holder that holds a video) stays as it is and is counted, so its script
- * row stays (pg_lbs_trial_assets()).
+ * a holder that holds a video or covers a local video) stays as it is and
+ * is counted, so its script row stays (pg_lbs_trial_assets()).
  *
  * Pure: no query, no file. A second pass changes nothing.
  *
@@ -289,12 +289,14 @@ function pg_lbs_twins($tree, $labels = array())
 {
     $labels += array('prev' => 'Previous', 'next' => 'Next', 'slide' => 'Slide {var:1}');
     $acc = array('twins' => array('photo' => 0, 'slider' => 0, 'lightbox' => 0), 'kept' => array('photo' => 0, 'slider' => 0, 'lightbox' => 0));
-    $walk = function ($node, $gallery) use (&$walk, &$acc, $labels) {
+    $walk = function ($node, $gallery, $video) use (&$walk, &$acc, $labels) {
         if (!is_array($node) || ($node['type'] ?? '') === 'shared_ref') return $node;
         $class = (string)($node['props']['cssClass'] ?? '');
 
         if (pg_lbs_twin_has($class, 'background-image-holder')) {
-            $twin = pg_lbs_twin_photo($node);
+            // A local video's cover: scripts.js hides it when Play is
+            // clicked, so it stays a holder.
+            $twin = $video ? null : pg_lbs_twin_photo($node);
             if ($twin !== null) {
                 $acc['twins']['photo']++;
                 return $twin;
@@ -339,12 +341,12 @@ function pg_lbs_twins($tree, $labels = array())
         }
         if (!empty($node['children']) && is_array($node['children'])) {
             foreach ($node['children'] as $i => $child) {
-                $node['children'][$i] = $walk($child, $gallery);
+                $node['children'][$i] = $walk($child, $gallery, pg_lbs_twin_has($class, 'local-video-container'));
             }
         }
         return $node;
     };
-    $acc['tree'] = $walk($tree, null);
+    $acc['tree'] = $walk($tree, null, false);
     return $acc;
 }
 
