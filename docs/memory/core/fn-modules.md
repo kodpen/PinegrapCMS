@@ -286,6 +286,7 @@ description: Generated from the module field of the memory files: each includes/
 - `whatsapp`: [[whatsapp-connection]], [[whatsapp-outbox-queue]], [[whatsapp-templates]]
 - `whatsapp_design`: [[whatsapp-template-designer]]
 - `whatsapp_messages`: [[whatsapp-order-messages]]
+- `whatsapp_webhook`: [[whatsapp-webhook-events]]
 - `widgets`: [[bound-href-scheme]], [[bound-media-src]], [[form-feed-item-guid-enclosure]], [[form-list-sort-multi-value]], [[list-search-sort-price-forms]], [[order-view-not-found]], [[page-link-record-address]], [[search-results-catalog-detail-page]], [[unread-segment-404]], [[widget-address-params]], [[widget-pages-index]], [[widget-repeat-placement-ids]], [[widget-search-like-pattern]]
 - `widgets_accessibility`: [[accessibility-statement]]
 - `widgets_account`: [[header-menu-stacking]], [[translation-sign-in-redirects]]

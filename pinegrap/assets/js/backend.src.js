@@ -3932,7 +3932,8 @@ function pg_bell_tile(row, module) {
         booking_refused: 'bi-calendar-x', form_submited: 'bi-ui-checks', new_comment: 'bi-chat-left-text',
         software_update: 'bi-arrow-repeat', erp_overdue: 'bi-exclamation-triangle', erp_money: 'bi-cash-coin',
         erp_low_stock: 'bi-box-seam', erp_quote_expiry: 'bi-hourglass-split', erp_auto_invoice: 'bi-receipt',
-        mail_failed: 'bi-envelope-exclamation', ops: 'bi-activity', workspace: 'bi-chat-dots'
+        mail_failed: 'bi-envelope-exclamation', ops: 'bi-activity', workspace: 'bi-chat-dots',
+        whatsapp_message: 'bi-whatsapp'
     };
     var action = String(row.action || '');
     var glyph = /^bi-[a-z0-9-]+$/.test(String(row.glyph || '')) ? String(row.glyph) : (glyphs[action] || 'bi-bell');

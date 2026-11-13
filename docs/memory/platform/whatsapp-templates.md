@@ -18,7 +18,7 @@ module: whatsapp
 
 ## When does it run?
 - `pg_whatsapp_templates_job()` in `job.php` after the queue pass: while WhatsApp is ready, when never read, six hours after the last read (`PG_WHATSAPP_TEMPLATES_EVERY`), or when the account's row was saved since. A failure writes an activity-log line.
-- WA4's webhook (`message_template_status_update`, `template_category_update`) updates single rows between refreshes.
+- The webhook (`message_template_status_update`, `template_category_update`) updates single rows between refreshes (`whatsapp-webhook-events.md`).
 
 ## Who reads them?
 - `pg_whatsapp_template_find($name, $language)` for senders (WA5-WA7: the category read at enqueue); `pg_whatsapp_templates_list()`, `pg_whatsapp_template_status_label()` and `_category_label()` for the list.

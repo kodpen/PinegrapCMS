@@ -18,7 +18,7 @@ description: WA0's proposals (2026-11-12), open for the architect before WA2: qu
 
 ## Where would a customer's message be kept?
 - `whatsapp_inbox`: wamid (UNIQUE: Meta's retries arrive twice), received_at, from_number (E.164, empty for a user known only by username), from_user_id (BSUID), profile_name, contact_id (matched by number on arrival), type, body (text, caption or button title), media_id, media_mime, context_wamid (which of ours it answers), read_user_id, read_at.
-- The contact's screen lists them (WA4); the bell gets one notice per message. Removed with the contact's erasure, and after two years.
+- The customer history lists them (WA4); the bell gets one notice per message. Removed with the contact's erasure, and after two years.
 
 ## Which consent would let a marketing template go?
 - The number's SMS marketing consent, as `pg_sms_marketing_permission()` reads it (`platform/sms-marketing-kind.md`): a `granted` sms:marketing row and no refusal there or in İYS (`MESAJ` is İYS's type for messages to a mobile number). Asked again at the send.

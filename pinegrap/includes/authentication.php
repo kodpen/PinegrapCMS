@@ -334,6 +334,8 @@ function pg_load_user_row($user_id)
 
             user.user_manage_forms AS manage_forms,
 
+            user.user_manage_contacts AS manage_contacts,
+
             user.timezone,
 
             contacts.id AS contact_id,
