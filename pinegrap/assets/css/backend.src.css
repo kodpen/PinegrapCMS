@@ -21610,8 +21610,14 @@ html.ws-flow-layer-on body {
   border-radius: var(--ws-radius);
   background: var(--pg-bg-body);
 }
+/* No flow open (the template gallery, the flow list): the main column
+   takes the whole width. Three classes outweigh the two-class column rules
+   of the narrower media queries further down. */
+.wsf-app.wsf-no-palette.wsf-nothing {
+  grid-template-columns: minmax(0, 1fr);
+}
 .wsf-app.wsf-nothing .wsf-side {
-  visibility: hidden;
+  display: none;
 }
 .wsf-side-title {
   margin-bottom: var(--ws-space-2);
@@ -26735,6 +26741,19 @@ body.pg-measure-edit #content {
     max-width: calc(var(--pg-measure-edit) + var(--pg-measure-rail) + 2rem);
   }
 }
+/* A settings, tool or import page with no status column (the body class
+   pg-measure-single beside pg-measure-edit) holds its form in one column:
+   the content box is the form column's width, centred, so its fields do not
+   run across the whole edit measure. */
+body.pg-measure-edit.pg-measure-single #content {
+  max-width: calc(var(--pg-measure-form) + 2rem);
+}
+@media (min-width: 1280px) {
+  body.pg-measure-edit.pg-measure-single #content.pg-has-rail,
+  body.pg-measure-edit.pg-measure-single .pg-awaiting-rail > #content {
+    max-width: calc(var(--pg-measure-form) + var(--pg-measure-rail) + 2rem);
+  }
+}
 /* From lg the two columns are a grid: the status column keeps its 376 px
    while the form column gives way first; the save bar spans both. Below lg
    they stack in source order as before. */
@@ -26868,6 +26887,11 @@ body.pg-measure-edit .row > .order-2 .card-header.pg-title-section {
     margin: 0;
     padding-block: 11px;
   }
+  /* The chat launcher floats over the window's bottom right corner, where
+     the bar puts its buttons: they end before it. */
+  body.pg-measure-edit:has(#pg-chat-root) .row > .order-3 > nav.buttons.navigation > .container {
+    margin-inline-end: var(--pg-chat-clearance);
+  }
   body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn {
     --bs-btn-min-height: 34px;
     --bs-btn-padding-y: 0;
@@ -26949,6 +26973,10 @@ body.pg-measure-edit .row > .order-2 .card-header.pg-title-section {
     max-width: none;
     margin: 0;
     padding-block: 11px;
+  }
+  /* Its buttons end before the chat launcher, as on an edit screen. */
+  body:has(#pg-chat-root) #pg_settings_page_form > nav.buttons.navigation > .container {
+    margin-inline-end: var(--pg-chat-clearance);
   }
 }
 }

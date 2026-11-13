@@ -10,6 +10,10 @@ description: Channel templates, voice transcripts and GitHub links in Site Setti
 ## How do the templates move?
 - `ws_templates_settings_card($self_url, $viewer, $form)`: Edit, Copy and New template still open `workspace_template.php`; Archive and Bring it back are named submit buttons `ws_template_archive` / `ws_template_restore` (value the template's id), run after the pane's save by `ws_templates_settings_post($viewer, $liveform, $id, $archive, $refuse)`, a refusal a warning.
 
+## Where do Back and Cancel of the template screen go?
+- `ws_template_back_url($channel_id, $base)` (pure): a draft from "Make channel template" (`?channel=`, kept through a refused Save as hidden `from_channel`) goes back to `workspace.php?channel=<id>`; Edit, Copy and New go to `welcome.php#settings/workspace_channels/pgset-ws-templates`. The Channel templates crumb uses the latter.
+- Symptom fixed: the arrow and Cancel held the `settings_workspace_channels.php` address, which `pgSettingsGo()` and the link handler turn into the dialog over the template screen, so they never left it.
+
 ## How does the voice card save?
 - Fields `ws_voice_*` (old `voice_*`), saved with the pane's Save: `ws_voice_settings_input($post, $prefix)`, `ws_voice_settings_check()` (each refused field, marked `ws_voice_<field>`, nothing stored), `ws_voice_settings_write($input, $liveform, $refuse)`. The old screen's `ws_voice_settings_post()` gives the first refusal as its error.
 - A write clears both services' last errors and the transcripts' wait, so `ws_voice_settings_changed()` (pure) skips an unchanged card; a typed key or a ticked remove box is a change. Role 0 only: others see the fields disabled, not posted.

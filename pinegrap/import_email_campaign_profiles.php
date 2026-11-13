@@ -34,7 +34,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'=> lang('Import Campaign Profiles'),
-        'extra classes'=>'campaign',
+        'extra classes'=>'campaign pg-measure-edit',
         'icon'=>'campaign',
         'heading'=>lang('Import Campaign Profiles'),
         'heading_description' => lang('Import new and update existing campaign profiles.'),

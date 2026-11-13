@@ -37,7 +37,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'=> lang('Import ZIP File'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit',
         'icon'=>'design',
         'heading'=>lang('Import ZIP File'),
         'heading_description' => lang('Import web pages and files from a ZIP file.'),

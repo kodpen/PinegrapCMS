@@ -66,7 +66,7 @@ function erp_import_page($liveform, $body, $list_url)
 {
     return pg_page_shell([
         'title' => lang('Import Accounts from CSV'),
-        'extra classes' => 'erp erp_accounts',
+        'extra classes' => 'erp erp_accounts pg-measure-edit',
         'icon' => 'erp',
         'heading' => lang('Import Accounts from CSV'),
         'heading_description' => lang('Upload a list of customers and suppliers. Matching accounts can be updated or left alone; nothing is written until the last step.'),
