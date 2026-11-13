@@ -1420,6 +1420,11 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
             db("DELETE FROM ws_canvas_tables WHERE message_id IN (" . $messages . ")");
         }
 
+        // The readers' answers to a canvas's first write (canvas_consents.php).
+        if (function_exists('ws_canvas_consents_ready') && ws_canvas_consents_ready()) {
+            db("DELETE FROM ws_canvas_consents WHERE message_id IN (" . $messages . ")");
+        }
+
         if (function_exists('ws_acks_ready') && ws_acks_ready()) {
             db("DELETE FROM ws_acks WHERE message_id IN (" . $messages . ")");
             db("DELETE FROM ws_ack_requests WHERE message_id IN (" . $messages . ")");

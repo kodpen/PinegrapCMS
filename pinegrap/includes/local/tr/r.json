@@ -322,6 +322,7 @@
     "Readings Row": "Değerler Satırı",
     "Readings Table": "Değerler Tablosu",
     "Readonly": "Salt Okunur",
+    "Reads": "Okur",
     "Reads a Workspace mailbox of this account and sends its answers from it.": "Bu hesabın bir Çalışma Alanı posta kutusunu okur ve yanıtlarını bu hesaptan gönderir.",
     "Reads a record ({var:1}).": "Bir kaydı okur ({var:1}).",
     "Reads a row of the table “{var:1}”.": "“{var:1}” tablosundan bir satır okur.",

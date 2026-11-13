@@ -9294,6 +9294,7 @@ function get_tables() {
 		'ws_wtable_shares',
 		'ws_wtable_row_bin',
 		'ws_canvas_tables',
+		'ws_canvas_consents',
 		'ws_mail_boxes',
 		'ws_mail_conversations',
 		'ws_mail_items',

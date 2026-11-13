@@ -21,6 +21,7 @@ module: guarded_frame
 ## Which calls are there?
 - `who`: the reader's display name (`ws_person_name()`), nothing else of them.
 - `tables` and `rows`: the bound tables and their rows, in the reader's rights (`canvas-tables.md`).
+- `add` and `change`: a row of a table bound for writing, after the reader's first-write answer (`canvas-consents.md`).
 - Each answer is for the person looking (`ws_page_bridge_answer()`): a team member who reads the channel, a message not deleted whose file is a live page, else `not_found`. A guest's room page has no Open, so no bridge.
 
 ## How is it proven?
