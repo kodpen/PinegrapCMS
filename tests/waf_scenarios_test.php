@@ -249,7 +249,7 @@ function test_waf_scenarios_refresh_after_the_ban()
 	$reference = 'A1B2C3D4E5F6';
 	$page = pg_ban_shield_page($reference, $end);
 	pg_assert_contains('blocked by the site firewall', $page);
-	pg_assert_contains('The block ends at ' . date('Y-m-d H:i T', $end), $page);
+	pg_assert_contains('blocked by the site firewall until ' . date('Y-m-d H:i T', $end) . '.', $page);
 	pg_assert_contains('<code>' . $reference . '</code>', $page);
 
 	// The refusal reaches the log with the same reference once a request with

@@ -834,18 +834,17 @@ if (!defined('PG_DB_GUARD_LOADED')) {
      */
     function pg_ban_shield_page($reference, $expires)
     {
-        $body = 'Requests from your address are blocked by the site firewall.';
-
-        if ((int) $expires > 0) {
-            $body .= ' The block ends at ' . date('Y-m-d H:i T', (int) $expires) . '.';
-        }
+        // The same wording as waf_deny_texts() gives a ban, in English.
+        $body = ((int) $expires > 0)
+            ? 'Your address has been blocked by the site firewall until ' . date('Y-m-d H:i T', (int) $expires) . '.'
+            : 'Your address has been blocked by the site firewall.';
 
         $body .= ' If you believe this is a mistake, please contact the site owner and quote the reference below.';
 
         return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
             . '<meta name="viewport" content="width=device-width, initial-scale=1">'
             . '<meta name="robots" content="noindex, nofollow">'
-            . '<title>Request Blocked</title>'
+            . '<title>Access Paused</title>'
             . '<style>body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;'
             . 'background:#f6f7f9;color:#212529;margin:0;display:flex;min-height:100vh;'
             . 'align-items:center;justify-content:center;padding:1.5rem}'
@@ -854,7 +853,7 @@ if (!defined('PG_DB_GUARD_LOADED')) {
             . 'h1{font-size:1.25rem;margin:0 0 .75rem}p{margin:0 0 1rem;line-height:1.6;color:#495057}'
             . 'code{background:#f1f3f5;padding:.2rem .45rem;border-radius:.25rem;font-size:.875rem}'
             . '.l{color:#868e96;font-size:.8125rem;text-transform:uppercase;letter-spacing:.03em}'
-            . '</style></head><body><div class="b"><h1>Request Blocked</h1><p>'
+            . '</style></head><body><div class="b"><h1>Access Paused</h1><p>'
             . htmlspecialchars($body, ENT_QUOTES, 'UTF-8') . '</p><p>'
             . '<span class="l">Reference</span> <code>'
             . htmlspecialchars((string) $reference, ENT_QUOTES, 'UTF-8')

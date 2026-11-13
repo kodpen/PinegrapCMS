@@ -4185,6 +4185,12 @@ function waf_log_event($action, $rule_id, $category, $score, $target, $matched)
     waf_last_rule($rule_id);
     waf_last_category($category);
 
+    // What refused the request, kept apart from a ban event logged after it
+    // (waf_register_offence()), for the block page's wording.
+    if ($category !== 'ban') {
+        waf_refusal_category($category);
+    }
+
     // Pre-upgrade installs still run the legacy bot filter, but have no
     // waf_log table to write to. Skip rather than fire a failing query on
     // every blocked request.
@@ -4297,16 +4303,22 @@ function waf_deny($status, $reference, $always = false)
         }
     }
 
-    // lang() lives in functions.php, which the router bootstrap does not load.
-    // Fall back to English rather than fatally erroring on a request the
-    // firewall is already in the middle of rejecting.
-    $title = ($status === 429)
-        ? waf_text('Too Many Requests')
-        : waf_text('Request Blocked');
+    // The page says which kind of refusal this was, never the rule or the
+    // text it matched: the visitor learns what to do, an attacker nothing
+    // about the rule set. A ban names its end.
+    $kind = waf_deny_kind($status, waf_last_rule(), waf_last_category());
 
-    $body = ($status === 429)
-        ? waf_text('Too many requests from your address. Please wait a moment and try again.')
-        : waf_text('This request was blocked by the site firewall. If you believe this is a mistake, please contact the site owner and quote the reference below.');
+    // The offence that refused this request placed a ban, or was spared one
+    // (a staff address): a placed ban is named, otherwise what refused it.
+    if (($kind === 'other') && (waf_last_category() === 'ban')) {
+        $kind = waf_ip_in_any(waf_client_ip(), waf_ip_block_entries(waf_ip_lists(true), waf_mode()))
+            ? 'ban'
+            : waf_deny_kind($status, '', waf_refusal_category());
+    }
+
+    $end = ($kind === 'ban') ? waf_ban_end_for(waf_client_ip(), waf_ip_block_expiries(waf_mode() === 'monitor')) : 0;
+
+    list($title, $body) = waf_deny_texts($kind, $end);
 
     $reference_label = waf_text('Reference');
     $page_language = function_exists('lang') ? lang(array('info' => true)) : 'en';
@@ -4331,6 +4343,156 @@ function waf_deny($status, $reference, $always = false)
        . '</code></p></div></body></html>';
 
     exit();
+}
+
+/**
+ * The category of the last logged event other than a ban event: what refused
+ * the request when the offence it earned placed a ban (or was spared one)
+ * and logged that after it.
+ *
+ * @param string|null $category the category to remember, or null to read
+ * @return string
+ */
+function waf_refusal_category($category = null)
+{
+    static $last = '';
+
+    if ($category !== null) {
+        $last = (string) $category;
+    }
+
+    return $last;
+}
+
+/**
+ * Which kind of refusal the block page names: 'ban' (the IP list), 'rate'
+ * (too many requests), 'country', 'content' (the signature scan), 'bot' (an
+ * automated client or attack tool) or 'other' (a wrong key: today's general text)
+ * or 'other-429' (the open-at-once cap: today's 429 text).
+ *
+ * @param int    $status   the HTTP status waf_deny() sends
+ * @param string $rule     waf_last_rule()
+ * @param string $category waf_last_category()
+ * @return string
+ */
+function waf_deny_kind($status, $rule, $category)
+{
+    $rule = (string) $rule;
+    $category = (string) $category;
+
+    if ($rule === 'concurrent') {
+        return 'other-429';
+    }
+
+    if ((int) $status === 429) {
+        return 'rate';
+    }
+
+    if (($rule === 'ip-list') || ($category === 'iplist')) {
+        return 'ban';
+    }
+
+    if ($category === 'country') {
+        return 'country';
+    }
+
+    if (in_array($category, array('sqli', 'xss', 'lfi', 'rce', 'protocol'), true)) {
+        return 'content';
+    }
+
+    if (in_array($category, array('bot', 'tool'), true)) {
+        return 'bot';
+    }
+
+    return 'other';
+}
+
+/**
+ * The end of the ban covering this address, as a Unix time; 0 when an entry
+ * covering it has no end, or none is found.
+ *
+ * @param string $ip       the visitor's address
+ * @param array  $expiries waf_ip_block_expiries(): entry => end, 0 for none
+ * @return int
+ */
+function waf_ban_end_for($ip, array $expiries)
+{
+    $end = null;
+
+    foreach ($expiries as $entry => $expires) {
+        if (!waf_ip_in_any((string) $ip, array((string) $entry))) {
+            continue;
+        }
+
+        if ((int) $expires === 0) {
+            return 0;
+        }
+
+        $end = max((int) $end, (int) $expires);
+    }
+
+    return (int) $end;
+}
+
+/**
+ * The block page's title and sentence for a kind of refusal
+ * (waf_deny_kind()). A ban with an end names it in the site's clock time,
+ * as the ban shield's page does.
+ *
+ * @param string $kind waf_deny_kind()
+ * @param int    $end  a ban's end as a Unix time, 0 for none
+ * @return array array(title, sentence)
+ */
+function waf_deny_texts($kind, $end = 0)
+{
+    switch ($kind) {
+        case 'ban':
+            return array(
+                waf_text('Access Paused'),
+                ((int) $end > 0)
+                    ? waf_text_vars('Your address has been blocked by the site firewall until {var:1}. If you believe this is a mistake, please contact the site owner and quote the reference below.', array(date('Y-m-d H:i T', (int) $end)))
+                    : waf_text('Your address has been blocked by the site firewall. If you believe this is a mistake, please contact the site owner and quote the reference below.'),
+            );
+
+        case 'rate':
+            return array(
+                waf_text('Too Many Requests'),
+                waf_text('Too many requests came from your address in a short time. Please wait a minute and try again.'),
+            );
+
+        case 'country':
+            return array(
+                waf_text('Not Available in Your Region'),
+                waf_text('This site does not accept requests from your country or region. If you believe this is a mistake, please contact the site owner and quote the reference below.'),
+            );
+
+        case 'content':
+            return array(
+                waf_text('Request Blocked'),
+                waf_text('Part of what you sent looked like an attack to the site firewall, so it was not accepted. Please reword it and try again, or contact the site owner and quote the reference below.'),
+            );
+
+        case 'bot':
+            return array(
+                waf_text('Automated Access Blocked'),
+                waf_text('This request looks like it came from an automated program, which this site does not accept. If you are using an ordinary browser, please contact the site owner and quote the reference below.'),
+            );
+    }
+
+    // The open-at-once cap keeps its own wording; a wrong key and the rest
+    // keep the general one. lang() lives in functions.php, which the router
+    // bootstrap does not load; waf_text() falls back to English then.
+    if ($kind === 'other-429') {
+        return array(
+            waf_text('Too Many Requests'),
+            waf_text('Too many requests from your address. Please wait a moment and try again.'),
+        );
+    }
+
+    return array(
+        waf_text('Request Blocked'),
+        waf_text('This request was blocked by the site firewall. If you believe this is a mistake, please contact the site owner and quote the reference below.'),
+    );
 }
 
 /**
@@ -4506,6 +4668,26 @@ function waf_text($string)
 {
     if (function_exists('lang')) {
         return lang($string);
+    }
+
+    return $string;
+}
+
+/**
+ * waf_text() with {var:N} placeholders, filled after translation.
+ *
+ * @param string $string the English text
+ * @param array  $vars   the values, {var:1} first
+ * @return string
+ */
+function waf_text_vars($string, array $vars)
+{
+    if (function_exists('lang')) {
+        return lang(array('string' => $string, 'vars' => $vars));
+    }
+
+    foreach (array_values($vars) as $n => $value) {
+        $string = str_replace('{var:' . ($n + 1) . '}', (string) $value, $string);
     }
 
     return $string;
