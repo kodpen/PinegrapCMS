@@ -77,7 +77,7 @@
 - decisions-made-product-46.md: Decisions list, product part 46 (2026-11-12 on): a picture saved again from the Design Canvas shows at once; the Legacy helper after its census (#8942); a plan for the custom layouts
 - decisions-made-product-47.md: Decisions list, product part 47 (2026-11-12 on): WhatsApp as a channel, templates, offer codes (#8950); one messages area, campaign profiles turned into flows (#8961)
 - decisions-made-product-48.md: Decisions list, product part 48 (2026-11-12 on): Legacy to Bootstrap helper (#8967), the picker's list of everything (#9070), designer canvas samples (#9076), WhatsApp marketing consent (#9087)
-- decisions-made-product-49.md: Decisions list, product part 49 (2026-11-13 on): a customer's WhatsApp message and SMS land in a channel as an e-mail does and are answered the same way (#9151)
+- decisions-made-product-49.md: Decisions list, product part 49 (2026-11-13 on): a customer's WhatsApp message and SMS land in a channel and are answered as an e-mail is (#9151); the image editor's phone rows approved (#8863)
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
@@ -117,7 +117,7 @@
 - decisions-made-workspace-19.md: Decisions list, workspace part 19 (2026-11-12): a discussion follows its root message's agent, a textless close reads "saw it", a fitting emoji, agents among a channel's members and last seen
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-20.md: Decisions list, workspace part 20 (2026-11-12 on): canvas-one drawings (#8929); Flows quick setup and the flow window (#8950); flows in the main menu, on without the Workspace (#8961)
-- decisions-made-workspace-21.md: Decisions list, workspace part 21 (2026-11-12 on): the incoming e-mail sits in the messages area, a mail still drops as a card (#8961); the canvas card's line of tables approved (#8964)
+- decisions-made-workspace-21.md: Decisions list, workspace part 21 (2026-11-12 on): incoming e-mail in the messages area (#8961); the canvas card's line of tables approved (#8964); a message's line shows every agent it woke (#9188)
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
