@@ -187,6 +187,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_canvas_parts();         // 11.0.194
 	upgrade_2026_11_0_ws_agent_profile();        // 11.0.195
 	upgrade_2026_11_0_whatsapp_outbox();         // 11.0.196
+	upgrade_2026_11_0_whatsapp_templates();      // 11.0.197
 
 }
 
@@ -6304,5 +6305,41 @@ function upgrade_2026_11_0_whatsapp_outbox() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('WhatsApp: outgoing template messages wait in a queue that the scheduled general job sends, as text messages do.');
+
+}
+
+// whatsapp_templates holds the WhatsApp account's templates and, later, the
+// drafts made in the panel: a draft is a row without meta_id; the refresh
+// from Meta updates rows by meta_id and removes those Meta no longer lists,
+// unless they are drafts. One row per name and language, as Meta keeps them.
+// The name is ASCII (Meta allows lower-case letters, digits and _ only), so
+// the unique key with the language stays within InnoDB's 767-byte limit.
+function upgrade_2026_11_0_whatsapp_templates() {
+
+	install_create_table('whatsapp_templates', "CREATE TABLE whatsapp_templates (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		meta_id           VARCHAR(32) CHARACTER SET ascii NULL DEFAULT NULL,
+		name              VARCHAR(512) CHARACTER SET ascii NOT NULL DEFAULT '',
+		language          VARCHAR(16) CHARACTER SET ascii NOT NULL DEFAULT '',
+		category          VARCHAR(16) NOT NULL DEFAULT '',
+		status            VARCHAR(24) NOT NULL DEFAULT 'DRAFT',
+		reason            VARCHAR(500) NOT NULL DEFAULT '',
+		parameter_format  VARCHAR(16) NOT NULL DEFAULT '',
+		components        MEDIUMTEXT NOT NULL,
+		samples           MEDIUMTEXT NOT NULL,
+		offer             TEXT NOT NULL,
+		quality           VARCHAR(16) NOT NULL DEFAULT '',
+		synced_timestamp  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_user_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_user_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_meta (meta_id),
+		UNIQUE KEY uq_name_language (name, language),
+		KEY idx_status (status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('WhatsApp: the account\'s message templates are kept on the site and refreshed from Meta by the scheduled general job.');
 
 }

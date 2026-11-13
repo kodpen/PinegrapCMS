@@ -1018,6 +1018,7 @@
     "Meta refused the request (code {var:1}).": "Meta isteği reddetti (kod {var:1}).",
     "Meta says: {var:1}": "Meta diyor ki: {var:1}",
     "Meta sent an answer that could not be read (HTTP {var:1}).": "Meta okunamayan bir cevap gönderdi (HTTP {var:1}).",
+    "Meta's list of templates could not be read.": "Meta'nın şablon listesi okunamadı.",
     "Meta's sending rate for this number was reached. Try again shortly.": "Bu numara için Meta'nın gönderim hızı sınırına ulaşıldı. Biraz sonra yeniden deneyin.",
     "Metadata": "Meta veriler",
     "Metadata only": "Yalnızca üst veri",

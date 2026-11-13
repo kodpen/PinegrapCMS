@@ -1356,3 +1356,341 @@ function pg_whatsapp_queue_run($limit = 10, $seconds = 15)
 
     return $result;
 }
+
+
+/* ---------------------------------------------------------------------------
+   The account's templates (whatsapp_templates)
+   --------------------------------------------------------------------------- */
+
+// How often the general job reads the templates from Meta again.
+define('PG_WHATSAPP_TEMPLATES_EVERY', 21600);
+
+/**
+ * Whether the 2026.11.0 upgrade has created whatsapp_templates.
+ *
+ * @return bool
+ */
+function pg_whatsapp_templates_ready()
+{
+    return pg_schema_has('whatsapp_templates');
+}
+
+/**
+ * The connect_apps key the last refresh is noted under. A row of its own,
+ * not the account's options: the account is written whole when its card is
+ * saved, and a refresh running then would write the old account back.
+ *
+ * @return string
+ */
+function pg_whatsapp_templates_sync_key()
+{
+    return 'whatsapp_templates';
+}
+
+/**
+ * When the templates were last read and what went wrong then.
+ *
+ * @return array checked (0 for never), ok, error
+ */
+function pg_whatsapp_templates_sync()
+{
+    $sync = array('checked' => 0, 'ok' => false, 'error' => '');
+
+    $app = (function_exists('pg_connect_schema_ready') && pg_connect_schema_ready()) ? pg_connect_app(pg_whatsapp_templates_sync_key()) : null;
+    $options = (is_array($app) && isset($app['options']) && is_array($app['options'])) ? $app['options'] : array();
+
+    $sync['checked'] = isset($options['checked']) ? (int) $options['checked'] : 0;
+    $sync['ok'] = !empty($options['ok']);
+    $sync['error'] = (isset($options['error']) && is_scalar($options['error'])) ? (string) $options['error'] : '';
+
+    return $sync;
+}
+
+/**
+ * Notes a refresh.
+ *
+ * @param bool   $ok
+ * @param string $error
+ */
+function pg_whatsapp_templates_sync_note($ok, $error)
+{
+    if (!function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready()) {
+        return;
+    }
+
+    $options = e(json_encode(array('checked' => time(), 'ok' => (bool) $ok, 'error' => pg_mail_clip((string) $error, 500))));
+
+    db("INSERT INTO connect_apps
+        SET
+            provider = '" . e(pg_whatsapp_templates_sync_key()) . "',
+            options = '" . $options . "',
+            enabled = 1,
+            updated_timestamp = UNIX_TIMESTAMP()
+        ON DUPLICATE KEY UPDATE
+            options = VALUES(options),
+            updated_timestamp = VALUES(updated_timestamp)");
+}
+
+/**
+ * Whether the general job should read the templates again; no database.
+ *
+ * @param int $checked the last refresh, 0 for never
+ * @param int $now
+ * @return bool
+ */
+function pg_whatsapp_templates_due($checked, $now)
+{
+    return ((int) $checked <= 0) || (((int) $now - (int) $checked) >= PG_WHATSAPP_TEMPLATES_EVERY);
+}
+
+/**
+ * What a refresh writes; no database.
+ *
+ * A template Meta lists is matched by Meta's id, else by its name and
+ * language (a draft sent for approval, or a row whose id was lost), and is
+ * added when neither finds it. A stored template Meta no longer lists is
+ * removed; a draft, which has no id of Meta's, never is.
+ *
+ * @param array $stored  rows: id, meta_id (null for a draft), name, language
+ * @param array $fetched pg_whatsapp_cloud_templates_parse() templates
+ * @return array insert (templates), update (row id => template), delete
+ *               (row ids)
+ */
+function pg_whatsapp_templates_plan($stored, $fetched)
+{
+    $by_meta = array();
+    $by_name = array();
+
+    foreach ((array) $stored as $row) {
+        if (($row['meta_id'] !== null) && ((string) $row['meta_id'] !== '')) {
+            $by_meta[(string) $row['meta_id']] = (int) $row['id'];
+        }
+
+        $by_name[$row['name'] . '|' . $row['language']] = (int) $row['id'];
+    }
+
+    $plan = array('insert' => array(), 'update' => array(), 'delete' => array());
+    $seen = array();
+
+    foreach ((array) $fetched as $template) {
+        $key = $template['name'] . '|' . $template['language'];
+
+        if (isset($by_meta[$template['meta_id']])) {
+            $id = $by_meta[$template['meta_id']];
+        } elseif (isset($by_name[$key])) {
+            $id = $by_name[$key];
+        } else {
+            $plan['insert'][] = $template;
+            continue;
+        }
+
+        if (isset($plan['update'][$id])) {
+            continue;
+        }
+
+        $plan['update'][$id] = $template;
+        $seen[$id] = true;
+    }
+
+    foreach ((array) $stored as $row) {
+        if (($row['meta_id'] !== null) && ((string) $row['meta_id'] !== '') && !isset($seen[(int) $row['id']])) {
+            $plan['delete'][] = (int) $row['id'];
+        }
+    }
+
+    return $plan;
+}
+
+/**
+ * Reads the account's templates from Meta and keeps them. Nothing is removed
+ * unless every page was read, so a list cut short never deletes templates.
+ *
+ * @return array ok, added, changed, removed, error
+ */
+function pg_whatsapp_templates_refresh()
+{
+    $result = array('ok' => false, 'added' => 0, 'changed' => 0, 'removed' => 0, 'error' => '');
+
+    if (!pg_whatsapp_templates_ready()) {
+        $result['error'] = lang('The WhatsApp templates are not available yet; run the upgrade.');
+        return $result;
+    }
+
+    if (function_exists('pg_demo') && pg_demo()) {
+        $result['error'] = lang('A demonstration site does not read WhatsApp templates.');
+        return $result;
+    }
+
+    $app = pg_whatsapp_app();
+
+    if (!$app['enabled'] || !pg_whatsapp_app_complete($app)) {
+        $result['error'] = lang('WhatsApp is not set up.');
+        return $result;
+    }
+
+    pg_whatsapp_driver();
+
+    $read = pg_whatsapp_cloud_templates($app);
+
+    if (!$read['ok']) {
+        $result['error'] = $read['error'];
+        pg_whatsapp_templates_sync_note(false, $read['error']);
+        return $result;
+    }
+
+    $stored = (array) db_items("SELECT id, meta_id, name, language FROM whatsapp_templates");
+    $plan = pg_whatsapp_templates_plan($stored, $read['templates']);
+
+    $columns = function ($template) {
+        return "meta_id = '" . e($template['meta_id']) . "',
+            name = '" . e($template['name']) . "',
+            language = '" . e($template['language']) . "',
+            category = '" . e($template['category']) . "',
+            status = '" . e($template['status']) . "',
+            reason = '" . e($template['reason']) . "',
+            parameter_format = '" . e($template['parameter_format']) . "',
+            components = '" . e(json_encode($template['components'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "',
+            quality = '" . e($template['quality']) . "',
+            synced_timestamp = UNIX_TIMESTAMP()";
+    };
+
+    // Removed first, so an added template never collides with a name and
+    // language a removed row still holds.
+    if ($plan['delete']) {
+        db_q("DELETE FROM whatsapp_templates WHERE id IN (" . implode(', ', array_map('intval', $plan['delete'])) . ")");
+        $result['removed'] = count($plan['delete']);
+    }
+
+    foreach ($plan['update'] as $id => $template) {
+        if (db_q("UPDATE whatsapp_templates SET " . $columns($template) . " WHERE id = '" . (int) $id . "'") !== false) {
+            $result['changed']++;
+        }
+    }
+
+    foreach ($plan['insert'] as $template) {
+        if (db_q("INSERT INTO whatsapp_templates SET " . $columns($template) . ", samples = '', offer = '', created_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP()") !== false) {
+            $result['added']++;
+        }
+    }
+
+    $result['ok'] = true;
+    pg_whatsapp_templates_sync_note(true, '');
+
+    return $result;
+}
+
+/**
+ * The general job's refresh: every six hours while WhatsApp is set up, and
+ * at once after the account changed (its card saved since the last read).
+ */
+function pg_whatsapp_templates_job()
+{
+    if (!pg_whatsapp_templates_ready() || !pg_whatsapp_ready()) {
+        return;
+    }
+
+    $sync = pg_whatsapp_templates_sync();
+    $saved = (int) db_value("SELECT updated_timestamp FROM connect_apps WHERE provider = '" . e(pg_whatsapp_app_key()) . "'");
+
+    if (!pg_whatsapp_templates_due($sync['checked'], time()) && ($saved <= $sync['checked'])) {
+        return;
+    }
+
+    $result = pg_whatsapp_templates_refresh();
+
+    if (!$result['ok'] && ($result['error'] !== '')) {
+        log_activity(lang(array(
+            'string' => 'The WhatsApp templates could not be read from Meta: {var:1}',
+            'vars'   => array($result['error']),
+        )), 'UNKNOWN');
+    }
+}
+
+/**
+ * One template by name and language, as a sender needs it.
+ *
+ * @param string $name
+ * @param string $language
+ * @return array|null id, meta_id, name, language, category, status,
+ *                    parameter_format, components (decoded)
+ */
+function pg_whatsapp_template_find($name, $language)
+{
+    if (!pg_whatsapp_templates_ready()) {
+        return null;
+    }
+
+    $row = db_item(
+        "SELECT id, meta_id, name, language, category, status, parameter_format, components
+        FROM whatsapp_templates
+        WHERE (name = '" . e((string) $name) . "') AND (language = '" . e((string) $language) . "')");
+
+    if (!is_array($row)) {
+        return null;
+    }
+
+    $components = json_decode((string) $row['components'], true);
+    $row['components'] = is_array($components) ? $components : array();
+
+    return $row;
+}
+
+/**
+ * The account's templates for a list, by name and language.
+ *
+ * @return array rows: id, meta_id, name, language, category, status, reason,
+ *               quality, synced_timestamp
+ */
+function pg_whatsapp_templates_list()
+{
+    if (!pg_whatsapp_templates_ready()) {
+        return array();
+    }
+
+    return (array) db_items(
+        "SELECT id, meta_id, name, language, category, status, reason, quality, synced_timestamp
+        FROM whatsapp_templates
+        ORDER BY name, language");
+}
+
+/**
+ * A template's state as a list says it.
+ *
+ * @param string $status Meta's status, or DRAFT
+ * @return string
+ */
+function pg_whatsapp_template_status_label($status)
+{
+    $labels = array(
+        'DRAFT'            => lang('Draft'),
+        'PENDING'          => lang('In review'),
+        'APPROVED'         => lang('Approved'),
+        'REJECTED'         => lang('Rejected'),
+        'PAUSED'           => lang('Paused'),
+        'DISABLED'         => lang('Disabled'),
+        'FLAGGED'          => lang('Flagged'),
+        'IN_APPEAL'        => lang('In appeal'),
+        'PENDING_DELETION' => lang('Being deleted'),
+        'ARCHIVED'         => lang('Archived'),
+        'LIMIT_EXCEEDED'   => lang('Over the limit'),
+    );
+
+    return isset($labels[$status]) ? $labels[$status] : (string) $status;
+}
+
+/**
+ * A template's category as a list says it.
+ *
+ * @param string $category MARKETING, UTILITY or AUTHENTICATION
+ * @return string
+ */
+function pg_whatsapp_template_category_label($category)
+{
+    $labels = array(
+        'MARKETING'      => lang('Marketing'),
+        'UTILITY'        => lang('Utility'),
+        'AUTHENTICATION' => lang('Authentication'),
+    );
+
+    return isset($labels[$category]) ? $labels[$category] : (string) $category;
+}
