@@ -125,6 +125,7 @@
 - messages-area-census-sends.md: MA0 proposal (2026-11-13, open on #9081): the one Sends list reads the queues and campaigns with no new table (a UNION source on the list table driver): ids, period, states, rights
 - messages-area-census-sources.md: MA0 census (2026-11-13): what the e-mail queue, SMS queue, WhatsApp queue, e-mail campaigns and SMS campaigns store per message, how long, and which sends leave no row in any of them
 - messages-area-census-tabs.md: MA0 proposals (2026-11-13, open on #9081) for the messages area's shell: the menu row's name and slot, what each of the five tabs takes from today's screens and settings cards, and who sees each tab
+- messages-area-sends.md: Communication › Sends (MA2, #9252): the UNION ALL list of five branches, row ids, filters, buttons, e-mail sources, the measured batch times, why it waits
 - not-found-log-screen.md: The 404 log screen (view_not_found_log.php): rows and their state, the search in the stored form with the Turkish rule, wrapping cells, Create redirect
 - not-found-log.md: The 404 log (2026.11.0, 11.0.30, not_found_log): which 404s are recorded and which not, bots and verified crawlers, the end-of-request write, row cap and 90 days, the screen and its Create redirect
 - notification-channels-delivery.md: Slack, Teams and Telegram delivery: targets in the sealed notify_channels entry, api_webhook_queue rows with webhook_id 0, the retry ladder, secrets masked

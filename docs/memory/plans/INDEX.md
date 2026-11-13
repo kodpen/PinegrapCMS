@@ -50,7 +50,7 @@
 - messages-area-decided-2.md: The architect's decisions on the proposals of MA9a and MA10a (#9077): campaign profiles into flows (boxes first, what stays, one flow per chain, the switch, the owner), incoming e-mail in the area
 - messages-area-decided.md: The architect's decisions on the proposals of MA0 and MA4 (#9081, #9083): the shell, the Sends list as a union with its measure, e-mail source, rights, the e-mail design page
 - messages-area-steps-2.md: Steps MA9a-MA9f and MA10a-MA10c of the messages area plan (#8961): campaign profiles turned into flows, incoming e-mail in the area; decisions in messages-area-decided-2.md
-- messages-area-steps.md: Steps MA0-MA11 of the messages area plan (#8961): census, shell and tabs, one sends list, campaigns, e-mail bodies as pages, templates, channels, automatic sends, profiles into flows, incoming e-mail
+- messages-area-steps.md: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, shell, sends list, campaigns, e-mail bodies, templates, channels, automatic sends, profiles, incoming e-mail
 - messages-area.md: Plan (owner 2026-11-12, #8961): one messages area in place of My Campaigns: campaigns, automatic sends as flows, templates, one sends list, channels; e-mail bodies as pages; profiles become flows
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - one-picker-inventory.md: What chooses a file, a picture, a page or a folder in the software today (2026-11-10, with call counts): what the one picker takes over, and the record searches that model its later kinds
