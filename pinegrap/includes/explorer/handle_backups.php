@@ -679,48 +679,15 @@ function pg_explorer_handle_backup_zip($type, $request, $user)
     @set_time_limit(600);
     @ini_set('memory_limit', '-1');
 
-    // The archive is written beside the folder it describes, which is
-    // where backups.php has always put it - so a zip made there and a
-    // zip made here are the same file, not two copies.
+    // The archive is written beside the folder it describes, as a backup
+    // archive of its own. The Backup Manager's Download keeps a different
+    // file, inside the folder (<folder>/<folder>.zip); the shared writer
+    // leaves that one out, or this archive held the backup twice.
     $zip_path = $path . '.zip';
 
-    $zip = new ZipArchive();
+    $added = pg_backup_folder_zip_write($path, $zip_path);
 
-    if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-        respond(array('status' => 'error', 'message' => lang('The zip archive could not be created.')));
-    }
-
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS),
-        RecursiveIteratorIterator::SELF_FIRST);
-
-    $added = 0;
-
-    foreach ($iterator as $item) {
-
-        $item_path = $item->getRealPath();
-
-        if (($item_path === false) || (strpos($item_path, $path) !== 0)) {
-            continue;
-        }
-
-        $relative_name = ltrim(str_replace('\\', '/', substr($item_path, strlen($path))), '/');
-
-        if ($relative_name == '') {
-            continue;
-        }
-
-        if ($item->isDir()) {
-            $zip->addEmptyDir($relative_name);
-        } elseif ($item->isFile() && is_readable($item_path)) {
-            $zip->addFile($item_path, $relative_name);
-            $added++;
-        }
-    }
-
-    $zip->close();
-
-    if ((file_exists($zip_path) == false) || (filesize($zip_path) == 0)) {
+    if (($added === false) || (file_exists($zip_path) == false) || (filesize($zip_path) == 0)) {
         respond(array('status' => 'error', 'message' => lang('The zip archive could not be created.')));
     }
 

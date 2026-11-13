@@ -796,7 +796,9 @@ function get_site_backups() {
 
 			'folder' => $entry,
 
-			'modified' => @filemtime($directory_path . $entry),
+			// When the backup was taken (its dump's time), not the folder's own
+			// time, which moves whenever anything is written into the folder.
+			'modified' => pg_backup_taken_time($directory_path . $entry),
 
 			// A folder can only be installed when it holds a database dump.
 			'installable' => file_exists($directory_path . $entry . '/sql.sql'),

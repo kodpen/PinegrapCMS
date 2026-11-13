@@ -15,6 +15,7 @@ description: The checks of the user create, edit, import and bulk delete screens
 ## What does the notice say after "Notify User"?
 - `add_user.php` reads `email()`'s answer; `pg_new_user_notice($notified, $sent, $url, $password)` (`includes/fn/auth.php`) says when it failed and points to "Forgot password". A failed mail is queued with `add_warning()`, not `add_notice()` (#6555): the account has a password nobody knows. A notified user's password is never shown; a user not notified gets it, as before.
 - `import_users.php` lists the users whose e-mail failed in a warning.
+- Import reads the e-mail address and user name of a row trimmed in the check loop too (`$row_email_address`, `$row_username`), as the writing loop does: before #9121 " name@example.com" from a spreadsheet refused the whole file as an invalid address, and " admin" passed the in-use check only to be skipped later as taken by an earlier row.
 
 ## What is "My Registered Users"?
 - `(user.user_contact > 0)`. Create writes NULL without a contact (`pg_user_contact_sql()`); it wrote '' which a lenient server stores as 0, so every panel-made user was listed.

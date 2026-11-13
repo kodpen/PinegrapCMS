@@ -5,7 +5,8 @@ module: backup
 ---
 
 ## What is the rule?
-- `pg_backup_age_state($newest, $now)` in `includes/fn/backup.php`: `$newest` from `pg_backup_newest()` (the folder, never `config.last_software_auto_backup`). 0 → `'fail'`; older than `PG_BACKUP_WARN_AGE` (2592000 s, 30 days; exactly 30 days still passes) → `'warn'`; anything newer → `'pass'`.
+- `pg_backup_age_state($newest, $now)` in `includes/fn/backup.php`: `$newest` from `pg_backup_newest()` (the folder, never `config.last_software_auto_backup`).
+- A folder counts only with its `sql.sql`, at that file's time (`pg_backup_taken_time()`); an automatic archive at its own time. Before #9128 every sub-folder counted at the folder's own time, which a write probe or the download archive moves: "Last Backup: just now" for a two-day-old backup, and `backup_stale` never fired. 0 → `'fail'`; older than `PG_BACKUP_WARN_AGE` (2592000 s, 30 days; exactly 30 days still passes) → `'warn'`; anything newer → `'pass'`.
 - The threshold lives only there. A new place that judges backup age calls this function; it never compares a timestamp itself.
 
 ## How does the System Status tile score it?
@@ -24,3 +25,6 @@ module: backup
 ## Why?
 - Owner decision 2026-11-09 (`workflow/decisions-made-product-39.md`): warn only after a month; the warning was noise. The automatic backup is weekly, so the old two-day threshold was yellow most of every week.
 - Tests: `tests/backup_age_test.php`, `tests/ops_alerts_test.php`.
+
+## How does the installer sort the backups on the server?
+- `get_site_backups()` (`install/index.php`) dates a folder with `pg_backup_taken_time()` (its dump), an archive with its own time; newest first (`compare_site_backups()`). Before #9128 folders took their own time and empty or once-downloaded folders rose to the top.
