@@ -7,7 +7,7 @@ description: An agent sizes a canvas and makes scenes (canvas_board.php): size b
 - `size`: `preset` square 1080 x 1080, portrait 1080 x 1350, story 1080 x 1920, share 1200 x 630, banner 1920 x 600 (`ws_canvas_board_presets()`, the New image dialog's `M.BOARD_PRESETS`), or `width` and `height`, whole numbers 16 to 8000. Both, neither or another value: 422 (`size`).
 - The board keeps its middle (the Canvas tool's centre anchor, `M.boardAnchored()` with 0.5, 0.5): the shift is rounded as JavaScript rounds (`ws_canvas_board_round()`, a half goes up, also below zero) and every layer of every scene moves the other way (`ws_canvas_board_shift()`, the twin of `M.mapLayer()` for a move: a line's ends, `pts`, `nodes`, a box around its centre, a turned box's `rot` written in -180 to 180).
 - The editor's own Canvas tool (`Editor.prototype.setBoard()`) moves only the open scene's layers; the server moves all of them, so a presentation stays centred in every scene.
-- `background`: the open scene's, `#rrggbb` (written lower case) or `transparent`. Built in #NNNN.
+- `background`: the open scene's, `#rrggbb` (written lower case) or `transparent`. Built in #9167.
 
 ## How does an agent make scenes?
 - `scene` with `action` (`ws_canvas_board_scene()`): `add` (`copy` true for a copy of the open scene, `name` up to 80 letters no scene has, `duration`): a new scene after the open one, opened; `choose` (`scene`); `remove` (`scene`), never the only one; `transition` (`scene` optional, the open one; `kind` none, fade, slide, zoom or wipe; `ms` 100 to 2000, kept in steps of 100); `duration` (`scene` optional; `duration` 1000 to 60000 ms).
