@@ -53,7 +53,7 @@
 - claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable [decision: here]
 - contact-group-joined-event.md: Flow event contact_group.joined: one ws_events_in row per contact added to a group, from pg_announce_contact_group_members(); payload, group filter kept as status, outputs [decision: decisions-made-product-27.md]
 - mail-api.md: Workspace e-mail in the external API and MCP (api_mail.php, G7, WM8 #8737): routes, list filters, unread, send_state, which are tools, who may answer or send, errors, the webhook
-- mail-area-proposals.md: Proposals for incoming e-mail in the messages area (MA10a, #9077): mail with the Workspace off, the tab's gate, who reads, what the mail card keeps beside its link, the steps
+- mail-area-proposals.md: Incoming e-mail in the messages area as decided after MA10a (#9077, #9203): mail with the Workspace off, the tab's gate, who reads, what the mail card keeps beside its link, the steps [decision: decisions-made-workspace-22.md]
 - mail-area-shell.md: What incoming e-mail takes from the Workspace today (MA10a, #9077): the E-mails list, the conversation, New e-mail and the card against the Workspace's gate, shell, script bundle, menu and job passes
 - mail-card-quote.md: What a reply's quote line says of a mail card in a channel (plain() and quoteText() in workspace.js): the head, Show all and refused files left out, blocks read apart (#9011)
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)

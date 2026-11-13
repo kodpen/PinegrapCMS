@@ -19,7 +19,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 ## Clusters
 
-- `decisions-made-*`: 106 files; start at `decisions-made.md`.
+- `decisions-made-*`: 107 files; start at `decisions-made.md`.
 
 ## Files
 

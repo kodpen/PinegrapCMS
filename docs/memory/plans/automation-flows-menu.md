@@ -24,7 +24,7 @@ description: Plan (owner 2026-11-12, #8961): Flows become "Automation flows", a 
 - The row takes a slot of its own in `pg_menu_categories()`, never a retired number (`ui/main-menu-categories.md`). The Workspace list keeps its Flows link, to the same screen.
 
 ## Which steps?
-- AF0 (S, no product code) The census, ending with the gate and the split proposed to the architect. Done #9109: `automation-flows-menu-census.md` (its proposals wait for the architect).
+- AF0 (S, no product code) The census and its proposals. Done #9109: `automation-flows-menu-census.md`; decided in `automation-flows-menu-steps-2.md` (AF3b, AF3c, AF4b, AF4c).
 - AF1 (M) The gate and the job: flows advance and their events arrive with the Workspace off; tests. Done #9109 (`workspace/automation-flows-gate.md`, `workspace/automation-flows-workspace-boxes.md`).
 - AF2 (M) The screens outside the Workspace shell: the list, the window and the run view open from the main menu with the Workspace off. Done #9154 (`workspace/automation-flows-screen.md`).
 - AF3 (S) The boxes that need the Workspace: offered only with it; the problem line. Done #9154 (`workspace/automation-flows-workspace-boxes.md`).
@@ -33,5 +33,5 @@ description: Plan (owner 2026-11-12, #8961): Flows become "Automation flows", a 
 - AF6 (S) Close-out: the lasting rules into `workspace/` and `ui/`, this plan deleted.
 
 ## In which order?
-- AF0 first; AF1, AF2, AF3 one after the other; AF4 and AF5 after AF2. `messages-area-steps.md` turns campaign profiles into flows only after AF3 has landed.
+- AF0 to AF5 are done; then AF3b, AF3c, AF4b and AF4c in any order, then AF6. `messages-area-steps.md` turns campaign profiles into flows only after AF3 has landed.
 - Claim as `[plan:automation-flows-menu] <step> — <topic>`.
