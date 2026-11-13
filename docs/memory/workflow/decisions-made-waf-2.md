@@ -16,5 +16,5 @@ description: Decisions list, firewall part 2 (2026-11-13 on): the false-positive
 - No: "Otomatik engel dursun (Önerilen)". Not chosen: "Bugünkü gibi kalsın" (automatic bans enforced in Monitor mode until they end).
 - The option he read: "İzleme modunda güvenlik duvarının kendi koyduğu otomatik engeller uygulanmaz; elle yazdığınız engel listesi uygulanmaya devam eder. Yanlış engeli ararken güvenlik duvarını tamamen kapatmak gerekmez."
 - Reason: an operator who switched to Monitor to find out what refused them stayed shut out until the ban ended, and had to switch the firewall off.
-- A hand-written block entry is enforced in every mode, as before. Until step FP7 of the plan lands the code still enforces both (`waf/waf-kill-switch-and-monitor-mode.md`).
+- A hand-written block entry is enforced in every mode, as before (`waf/waf-kill-switch-and-monitor-mode.md`).
 - The architect's, not the owner's words: the ban's row stays and applies again in Block mode; the ban mirror carries no automatic line while the mode is Monitor.

@@ -633,6 +633,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-bot-rate-exemption.md: Only a crawler waf_bot_verified() proved skips the global, sensitive, api.php and in-flight limits (waf_bot_rate_exempt()); IS_BOT buys no rate relief (#2731).
 - waf/waf-country-panel-exemption.md: Country restriction's panel exemption: the panel sign-in screens for anyone, every other software-directory script only with staff signed in; site sign-in pages not exempt, staff kept to the panel.
 - waf/waf-inflight-request-cap.md: waf_inflight_* concurrent request cap on sensitive scripts: limit, 429 rule concurrent (no offence), file slots under data/temp, 120 s dead slot, fail-open, monitor mode.
+- waf/waf-kill-switch-and-monitor-mode.md: waf_enabled=0 stops everything (absolute kill switch), monitor mode guarantee in waf_deny(), hand-written bans apply in every mode, automatic bans not in Monitor mode.
 - waf/waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
