@@ -22,6 +22,6 @@ description: CS0 census (#9179): what the designer canvas draws for each bound v
 - Dates outside the short label map draw ‹label›.
 
 ## Which warning frames sit on an element with no fault?
-- `_sdListBandIn()` (amber list band, `sd-list-off`) decides by the widget kind of `_sdValueSidOf(node)` and by `_sdInMainLoopAt()`: an e-mail card built by a template tree, a list in a shared part, or an items loop that is a sourced list rather than the main loop can read as "this widget draws no such list" or "outside an item of the order" though the page draws it. CS1 confirms it on the canvas.
-- The red dashed section hint ("The child elements here are replaced with BACKEND HTML at render time", `sd-section-binding-hint`) shows on every section binding with children, a correct starter too: it states a fact, not a fault.
-- The owner's picture (#9076): three ‹Information (HTML)› rows are the product form's fields in the order e-mail; `__field_is_info` draws its ‹label›, so every field takes the information branch (`canvas-sample-gaps-orders.md`). The two empty framed boxes after "Order Number:" were not found by reading; CS1 checks them on the picture's card.
+- The amber list band (`_sdListBandIn()`, `sd-list-off`) showed on no list of the Market template's shop and order pages in CS1's run (#9188).
+- The red dashed section hint (`sd-section-binding-hint`) showed on a section whose children the page keeps (Recipient Picker, watcher list); since CS1 (#9188) those draw none (`_SD_SECTION_KEEPS_CHILDREN`), and the warning says its fault in its title.
+- The owner's picture (#9076): three ‹Information (HTML)› rows are the product form's fields in the order e-mail; `__field_is_info` draws its ‹label›, so every field takes the information branch (`canvas-sample-gaps-orders.md`). The two empty framed boxes after "Order Number:" did not show on the Market template's card in CS1's run.

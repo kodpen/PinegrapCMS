@@ -6021,7 +6021,7 @@ const StyleDesigner = (function () {
     // out. The marker is a leading \u0001 that _sdIframeCss() strips.
     var _SD_BX = '\u0001';
     // The element inside a wrapper: any child that is not editor chrome.
-    var _SD_FX_EL = ':not(.sd-tb):not(.sd-persistent-note):not(.sd-issue-badge)';
+    var _SD_FX_EL = ':not(.sd-tb):not(.sd-persistent-note):not(.sd-issue-badge):not(.sd-chip-row)';
     // A selected element inside a see-through container is lifted above its
     // neighbours (position:relative + z-index) so its outline shows. An
     // element its own classes place is left where it is: lifting the close
@@ -6840,7 +6840,7 @@ const StyleDesigner = (function () {
         // Band label — real DOM element (.sd-loop-band) appended in buildInnerElement,
         // so it can carry a Bootstrap Icon (bi-arrow-repeat) and a clear label.
         // The element is canvas-only (data-sd-band="1"), excluded from tree ops.
-        '.sd-loop-band { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:6px; padding:4px 8px; font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:#fff; background:#6366f1; border-radius:4px 4px 0 0; pointer-events:none; user-select:none; white-space:nowrap; overflow:hidden; }',
+        '.sd-loop-band { position:absolute; top:0; left:0; right:0; box-sizing:border-box; height:22px; display:flex; align-items:center; gap:6px; padding:0 8px; font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:#fff; background:#6366f1; border-radius:4px 4px 0 0; pointer-events:none; user-select:none; white-space:nowrap; overflow:hidden; }',
         '.sd-wrap.sd-loop-single > .sd-loop-area { min-height:0; padding:0; border:0; outline:0; background:none; }',
         // Ghost records (_sdAppendGhosts): real records drawn after the card
         // being designed — untouchable, faintly hatched so they read as a
@@ -6900,18 +6900,30 @@ const StyleDesigner = (function () {
         // them. Kept above the interaction layer: no pointer-events:none here,
         // otherwise the node could not be selected to fix it.
         '.sd-wrap.sd-binding-off { opacity:.42; filter:grayscale(1); position:relative; }',
-        '.sd-wrap.sd-binding-off::after { content:attr(data-sd-off-reason); position:absolute; top:2px; right:2px; z-index:5; padding:1px 6px; border-radius:3px; background:#64748b; color:#fff; font-size:.6rem; font-weight:700; letter-spacing:.02em; text-transform:uppercase; pointer-events:none; white-space:nowrap; }',
+        // Its reason is a chip of the element's chip row (_sdChipRow()); a
+        // summary, its own wrapper, keeps it over its corner.
+        '.sd-wrap[data-sd-self].sd-binding-off::after { content:attr(data-sd-off-reason); position:absolute; top:2px; right:2px; z-index:5; padding:1px 6px; border-radius:3px; background:#64748b; color:#fff; font-size:.6rem; font-weight:700; letter-spacing:.02em; text-transform:uppercase; pointer-events:none; white-space:nowrap; }',
         '.sd-wrap.sd-binding-off.sd-selected { opacity:.75; filter:none; }',
         // A faded wrapper already says it; its children are not faded twice.
         '.sd-wrap.sd-binding-off .sd-wrap.sd-binding-off { opacity:1; filter:none; }',
-        '.sd-wrap.sd-binding-off .sd-wrap.sd-binding-off::after { display:none; }',
-        // A value condition's chip (_sdCondSentence()): top left, opposite
-        // the switched-off chip; hidden while the element's text is edited.
-        '.sd-wrap.sd-cond { position:relative; }',
-        '.sd-wrap.sd-cond::before { content:attr(data-sd-cond); position:absolute; top:2px; left:2px; z-index:5; max-width:calc(100% - 4px); overflow:hidden; text-overflow:ellipsis; padding:1px 6px; border-radius:3px; background:#6f42c1; color:#fff; font-size:.6rem; font-weight:700; line-height:1.5; pointer-events:none; white-space:nowrap; }',
-        '.sd-wrap.sd-cond:has([contenteditable="true"])::before { display:none; }',
-        '.sd-wrap.sd-cf-shown-chip { position:relative; }',
-        '.sd-wrap.sd-cf-shown-chip:not(.sd-cond)::before { content:attr(data-sd-cf-shown); position:absolute; top:-8px; right:2px; z-index:5; max-width:calc(100% - 4px); overflow:hidden; text-overflow:ellipsis; padding:0 6px; border-radius:3px; background:#0d6efd; color:#fff; font-size:.6rem; font-weight:700; line-height:1.5; pointer-events:none; white-space:nowrap; }',
+        '.sd-wrap.sd-binding-off .sd-wrap.sd-binding-off > .sd-chip-row > .sd-chip-off { display:none; }',
+        // The chip row (_sdChipRow()): a value condition, a form field's
+        // "Shown when" and a switched-off feature, in the flow at the top of
+        // the wrapper. It wraps, and a chip that does not fit ends in "…"
+        // with its full text in its title; in an inline wrapper it sits
+        // before the element on its line. A summary, its own wrapper, keeps
+        // the chips over its corner.
+        // width:0 with min-width:100%: the row fills its wrapper but adds
+        // nothing to its minimum width, so a long chip never widens a table
+        // column or a flex item the page draws narrower.
+        '.sd-chip-row { display:flex; flex-wrap:wrap; gap:2px; width:0; min-width:100%; margin:0 0 2px; padding:0; text-align:left; pointer-events:none; user-select:none; }',
+        '.sd-chip { min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0 6px; border-radius:3px; color:#fff; font:700 .6rem/1.5 system-ui,-apple-system,sans-serif; letter-spacing:0; text-transform:none; pointer-events:auto; cursor:default; }',
+        '.sd-chip-cond { background:#6f42c1; }',
+        '.sd-chip-shown { background:#0d6efd; }',
+        '.sd-chip-off { background:#64748b; letter-spacing:.02em; text-transform:uppercase; }',
+        '.sd-wrap-inline > .sd-chip-row { display:inline-flex; vertical-align:middle; width:auto; min-width:0; max-width:16rem; margin:0 4px 0 0; }',
+        '.sd-wrap[data-sd-self].sd-cond { position:relative; }',
+        '.sd-wrap[data-sd-self].sd-cond::before { content:attr(data-sd-cond); position:absolute; top:2px; left:2px; z-index:5; max-width:calc(100% - 4px); overflow:hidden; text-overflow:ellipsis; padding:1px 6px; border-radius:3px; background:#6f42c1; color:#fff; font-size:.6rem; font-weight:700; line-height:1.5; pointer-events:none; white-space:nowrap; }',
         // Repeated template row(s) — dashed-outline treatment via inset box-shadow
         // on the cells (a <tr> itself can\'t take a visible border reliably
         // across browsers when cells have their own backgrounds).
@@ -6973,7 +6985,7 @@ const StyleDesigner = (function () {
         // shared/custom-html/custom-php. Child-fallback mirrors the pattern above to survive
         // display:contents contexts.
         '.sd-wrap.sd-locked-root { outline:3px dashed #f59e0b !important; outline-offset:-3px !important; box-shadow:0 0 0 6px rgba(245,158,11,.15) !important; }',
-        '.sd-wrap.sd-locked-root > *:not(.sd-tb) { outline:3px dashed #f59e0b !important; outline-offset:-3px !important; box-shadow:0 0 0 6px rgba(245,158,11,.15) !important; }',
+        '.sd-wrap.sd-locked-root > *:not(.sd-tb):not(.sd-chip-row) { outline:3px dashed #f59e0b !important; outline-offset:-3px !important; box-shadow:0 0 0 6px rgba(245,158,11,.15) !important; }',
         // Form inputs: sd-wrap must be layout-transparent when wrapping input/textarea/select so
         // Bootstrap's form-control / form-check / form-select sizing works without the wrapper box.
         // The toolbar is suppressed (it loses its positioned parent); selection outline is
@@ -9937,7 +9949,7 @@ const StyleDesigner = (function () {
     // the elements directly (see _sdIframeCss() and _sdBridgeSheets()).
     function _sdFxFlatOn() { return !_sdUsesBootstrap(); }
 
-    var _SD_FX_CHROME = '.sd-tb, .sd-persistent-note, .sd-issue-badge';
+    var _SD_FX_CHROME = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-chip-row';
 
     // The element a wrapper holds: its first child that is not editor chrome.
     function _sdWrapEl(w) {
@@ -9977,6 +9989,18 @@ const StyleDesigner = (function () {
         if (w) _sdPlaceChromeOf([w]);
     }
 
+    // Whether a see-through wrapper's layout parent sets its children side
+    // by side (a grid, a table, a flex row), where a chip row in the flow
+    // would be one more item of that row.
+    function _sdChipRowBeside(w) {
+        var lp = _sdLayoutParent(w);
+        if (!lp) return false;
+        var cs = canvasDoc.defaultView.getComputedStyle(lp);
+        var d = cs.display;
+        if (/grid|table/.test(d)) return true;
+        return /flex/.test(d) && !/column/.test(cs.flexDirection);
+    }
+
     // The same for several wrappers: every position is measured first and
     // written after, so the canvas is laid out once, not once per wrapper.
     function _sdPlaceChromeOf(ws) {
@@ -9986,10 +10010,21 @@ const StyleDesigner = (function () {
         var writes = [];
         ws.forEach(function (w) {
             if (!w || !w.isConnected) return;
-            var parts = w.querySelectorAll(':scope > .sd-tb, :scope > .sd-persistent-note, :scope > .sd-issue-badge');
+            var parts = w.querySelectorAll(':scope > .sd-tb, :scope > .sd-persistent-note, :scope > .sd-issue-badge, :scope > .sd-chip-row');
             if (!parts.length) return;
             var wcs = win.getComputedStyle(w);
             var flat = wcs.display === 'contents';
+            // The chip row stays in the flow of a wrapper with a box, and of a
+            // see-through one whose layout parent stacks its children; only
+            // where the parent lays them side by side (_sdChipRowBeside())
+            // is it put over its element's corner, as it would take a column.
+            if (!flat || !_sdChipRowBeside(w)) {
+                Array.prototype.forEach.call(parts, function (p) {
+                    if (p._sdPlaced && p.classList.contains('sd-chip-row')) writes.push({ p: p });
+                });
+                parts = Array.prototype.filter.call(parts, function (p) { return !p.classList.contains('sd-chip-row'); });
+                if (!parts.length) return;
+            }
             if (!flat && wcs.position !== 'static') {
                 parts.forEach(function (p) { if (p._sdPlaced) writes.push({ p: p }); });
                 return;
@@ -10010,7 +10045,7 @@ const StyleDesigner = (function () {
                     bx = -win.scrollX;
                     by = -win.scrollY;
                 }
-                var top, left;
+                var top, left, width;
                 if (p.classList.contains('sd-tb')) {
                     // Above the element; below it when there is no room
                     // above, inside it with no room below either.
@@ -10020,21 +10055,35 @@ const StyleDesigner = (function () {
                 } else if (p.classList.contains('sd-persistent-note')) {
                     top = er.top - by + 2;
                     left = er.right - bx - 18;
+                } else if (p.classList.contains('sd-chip-row')) {
+                    top = er.top - by;
+                    left = er.left - bx;
+                    width = er.width;
                 } else {
                     top = er.top - by - 7;
                     left = er.left - bx - 7;
                 }
-                writes.push({ p: p, top: Math.round(top), left: Math.round(left) });
+                writes.push({ p: p, top: Math.round(top), left: Math.round(left), width: width });
             });
         });
         writes.forEach(function (x) {
             var p = x.p;
+            var row = p.classList.contains('sd-chip-row');
             if (x.top === undefined) {
                 p.style.removeProperty('top');
                 p.style.removeProperty('left');
                 p.style.removeProperty('right');
+                if (row) ['position', 'z-index', 'width', 'min-width'].forEach(function (k) { p.style.removeProperty(k); });
                 p._sdPlaced = false;
                 return;
+            }
+            // Over its element's corner, no wider than the element, so it
+            // does not reach the chips of the element beside it.
+            if (row) {
+                p.style.setProperty('position', 'absolute', 'important');
+                p.style.setProperty('z-index', '5', 'important');
+                p.style.setProperty('width', Math.max(0, Math.floor(x.width || 0)) + 'px', 'important');
+                p.style.setProperty('min-width', '0', 'important');
             }
             p.style.setProperty('top', x.top + 'px', 'important');
             p.style.setProperty('left', x.left + 'px', 'important');
@@ -10049,7 +10098,7 @@ const StyleDesigner = (function () {
     function _sdPlaceSelectedChrome() {
         if (!canvasDoc || !canvasDoc.body) return;
         _sdPlaceChromeOf(Array.prototype.slice.call(
-            canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge)')));
+            canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge), .sd-wrap:has(> .sd-chip-row)')));
         // The size badge sits at the selection's corner: placed again once
         // the fidelity pass has moved things.
         if (selectedNode) _positionSizeBadge();
@@ -10399,7 +10448,7 @@ const StyleDesigner = (function () {
     // nothing to the rule's specificity.
     var _SD_BR_X = ':not(:where([class^="sd-"]:not(.sd-ghost, [data-sd-type="col"], [data-sd-self]), [class*=" sd-"]:not(.sd-ghost, [data-sd-type="col"], [data-sd-self])))';
     // Siblings that count for :first-child and the like (chrome does not).
-    var _SD_BR_SIB = ':where(:not(.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-loop-band, .sd-dz, .sd-virtual-text, .sd-section-binding-hint, .sd-align-guide))';
+    var _SD_BR_SIB = ':where(:not(.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-chip-row, .sd-loop-band, .sd-dz, .sd-virtual-text, .sd-section-binding-hint, .sd-align-guide))';
     var _SD_BR_NEED = /[>+~]|:(first|last|only|nth)-|:has\(/i;
     var _SD_BR_STRUCT = /^:(first-child|last-child|only-child|nth-child\(|nth-last-child\(|first-of-type|last-of-type|only-of-type|nth-of-type\(|nth-last-of-type\()/i;
     var _sdBridged = (typeof WeakSet === 'function') ? new WeakSet() : null;
@@ -11475,6 +11524,8 @@ const StyleDesigner = (function () {
             : isRecipient
             ? '<i class="bi bi-people"></i><span class="sd-loop-band-text">' + esc(_sdT('Recipient list — shown again for every recipient')) + '</span>'
             : '<i class="bi bi-arrow-repeat"></i><span class="sd-loop-band-text">' + esc(_sdT('Loop area — one record shown (repeated for every record at runtime)')) + '</span>';
+        // One line, cut short with "…": the full text stays in the tooltip.
+        bandInner.title = bandInner.textContent;
         bandTd.appendChild(bandInner);
         bandTr.appendChild(bandTd);
         bandTr.addEventListener('click', function (e) {
@@ -11566,6 +11617,40 @@ const StyleDesigner = (function () {
             if (st && st !== state) { selectedNode = refNode; selectedNodes = []; }
         }
         render();
+    }
+
+    // The chips that say what decides whether an element shows, read from
+    // its wrapper: a value condition (data-sd-cond), a feature switched off
+    // (data-sd-off-reason), a form field's "Shown when" (data-sd-cf-shown).
+    // One row in the flow at the top of the wrapper, so a chip never lies on
+    // another chip, a band or the content: drawn over the element's corner,
+    // the chips of a parent and its first child sat on each other and on the
+    // loop bands. Each keeps its full text in its title. null without chips.
+    // Sections whose element keeps the children the designer put in it: the
+    // recipient picker is only a marker (_apply_catalog_item_view_bindings()),
+    // the watcher list adds its rows before them (widgets_comments.php).
+    // Every other section's children give way to what the server draws.
+    var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1 };
+
+    var _SD_CHIP_KINDS = [['data-sd-cond', 'sd-chip-cond'], ['data-sd-off-reason', 'sd-chip-off'], ['data-sd-cf-shown', 'sd-chip-shown']];
+    function _sdChipRow(doc, wrapper) {
+        var row = null;
+        _SD_CHIP_KINDS.forEach(function (k) {
+            var text = wrapper.getAttribute(k[0]);
+            if (!text) return;
+            if (!row) {
+                row = doc.createElement('div');
+                row.className = 'sd-chip-row';
+                row.setAttribute('data-sd-band', '1');
+                row.setAttribute('contenteditable', 'false');
+            }
+            var chip = doc.createElement('span');
+            chip.className = 'sd-chip ' + k[1];
+            chip.textContent = text;
+            chip.title = text;
+            row.appendChild(chip);
+        });
+        return row;
     }
 
     // The switch on a widget's band between the states the canvas draws:
@@ -13808,6 +13893,8 @@ const StyleDesigner = (function () {
         };
         wrapper.appendChild(tb);
         if (wrapper.classList.contains('sd-selected')) _sdTbFill(wrapper);
+        var _chipRow = _selfWrap ? null : _sdChipRow(doc, wrapper);
+        if (_chipRow) wrapper.appendChild(_chipRow);
 
         // Content element inside wrapper
         var innerEl = _selfWrap ? wrapper : buildInnerElement(doc, node);
@@ -14010,7 +14097,11 @@ const StyleDesigner = (function () {
                 var _hasChildren = node.children && node.children.length > 0;
                 var _hint = doc.createElement('div');
                 _hint.className = 'sd-section-binding-hint';
-                if (_hasChildren) {
+                if (_hasChildren && _SD_SECTION_KEEPS_CHILDREN[_sec]) {
+                    // The page draws these children: no fault to warn of.
+                    _hint = null;
+                } else if (_hasChildren) {
+                    _hint.title = _sdT('The child elements here are replaced with BACKEND HTML at render time');
                     _hint.style.cssText = 'padding:8px 12px;background:rgba(220,53,69,.08);border:1px dashed #dc3545;'
                                         + 'border-radius:4px;color:#dc3545;font-size:.7rem;line-height:1.4;'
                                         + 'pointer-events:none;text-align:center;margin-top:4px';
@@ -14032,7 +14123,7 @@ const StyleDesigner = (function () {
                             + esc(_on.length ? _sdT('Turned on now: {var}', _on.join(', ')) : _sdT('No provider is turned on now.')) + '</span>';
                     }
                 }
-                innerEl.appendChild(_hint);
+                if (_hint) innerEl.appendChild(_hint);
             }
         }
 
@@ -14593,6 +14684,7 @@ const StyleDesigner = (function () {
                     '<span class="sd-loop-band-text">' +
                     esc(_sdT('Recipient list — shown again for every recipient')) +
                     '</span>';
+                rlaBand.title = rlaBand.textContent;
                 rla.appendChild(rlaBand);
                 return rla;
             default:
@@ -77453,7 +77545,7 @@ const StyleDesigner = (function () {
     // Editor chrome that has text or controls of its own (toolbars, badges,
     // placeholders, bands), the sample records drawn after a loop's first,
     // and elements a switched-off feature drops from the page.
-    var _SD_CANVAS_AUDIT_SKIP = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-region-ph, .sd-system-template-band, ' +
+    var _SD_CANVAS_AUDIT_SKIP = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-chip-row, .sd-region-ph, .sd-system-template-band, ' +
         '.sd-system-empty-hint, .sd-system-placeholder, .sd-section-binding-hint, .sd-loop-band, .sd-loop-band-row, ' +
         '.sd-loop-empty-cell, .sd-dz, .sd-img-placeholder, .sd-drag-ghost, .sd-ghost, .sd-align-guide, .sd-binding-off, .sd-editor-ph';
 
