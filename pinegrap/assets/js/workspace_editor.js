@@ -4087,10 +4087,25 @@
         return true;
     }
 
+    // The files of a paste a box takes: none when the clipboard holds words
+    // (Word puts a picture of the text itself beside them, and the words are
+    // pasted), else its pictures, or every file for a box that takes any
+    // (the conversation's writing box posts them as "Add file" does).
+    function pastedFiles(files, text, anyFile) {
+        if (String(text || '').trim() !== '') {
+            return [];
+        }
+
+        return (files || []).filter(function (file) {
+            return anyFile || /^image\//.test((file && file.type) || '');
+        });
+    }
+
     // A paste into a surface. A one-line field, a table cell and Ctrl+Shift+V
     // take plain text; a writing box reads the clipboard first (pasteSmart()).
-    // Files are left to the conversation's own paste handler, except in a box
-    // that takes pictures (a note): one pasted without words goes to it.
+    // Files go to a box made with pasteFiles (a note, the conversation's box);
+    // the browser's own paste never runs on them, so no picture is left in a
+    // box that cannot send it.
     function paste(surface, event, singleLine) {
         var data = event.clipboardData;
         var editor = singleLine ? null : (surface.wsEditor || null);
@@ -4105,27 +4120,18 @@
         var text = String(data.getData('text/plain') || '').replace(/\r\n?/g, '\n');
         var files = Array.prototype.slice.call(data.files || []);
 
-        if (files.length) {
-            var take = editor ? editor.options.pasteFiles : null;
-            var pictures = files.filter(function (file) { return /^image\//.test(file.type || ''); });
-
-            if (!take) {
-                return;
-            }
-
-            // Words beside a picture (Word puts one of the text itself) are
-            // pasted as words.
-            if (text.trim() === '') {
-                if (pictures.length) {
-                    event.preventDefault();
-                    take(pictures);
-                }
-
-                return;
-            }
-        }
-
         event.preventDefault();
+
+        if (files.length && (text.trim() === '')) {
+            var take = editor ? editor.options.pasteFiles : null;
+            var taken = take ? pastedFiles(files, text, !!editor.options.pasteAnyFile) : [];
+
+            if (taken.length) {
+                take(taken);
+            }
+
+            return;
+        }
 
         if (editor && !plain && editor.pasteSmart(text, String(data.getData('text/html') || ''))) {
             return;
