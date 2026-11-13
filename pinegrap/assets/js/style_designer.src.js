@@ -14920,6 +14920,17 @@ const StyleDesigner = (function () {
     // (10–30 chars typical for product names, SKUs, labels).
     var _SD_SHORT_LABEL_TOKENS = {
         // Search results
+        // A form record's entity values, the address filter's value and
+        // the custom form's own words.
+        '__quiz_score': '80%',
+        '__post_title': _sdT('How we restored a 1920s bookshelf'),
+        '__post_date': _sdDateSample(false),
+        '__post_summary': _sdT('A weekend, a tin of oil and some patience: the steps, the tools and what we would do again.'),
+        '__post_author': _sdT('Alex Morgan'),
+        '__filter_value': _sdT('design'),
+        '__form_title': _sdT('Contact Form'),
+        '__submit_label': _sdT('Submit'),
+        '__success_message': _sdT('Thank you. Your message has been sent.'),
         '__search_query': _sdT('design'),
         '__results_heading': _sdT('Found 12 result(s) for: design'),
         '__result_title': _sdT('Sample Page'),
@@ -15845,13 +15856,7 @@ const StyleDesigner = (function () {
                     }
                 }
             }
-            if (_ffPrev) {
-                if (_ffPrev.type === 'date' || _ffPrev.type === 'date and time') return _sdDatePlaceholder();
-                if (_ffPrev.type === 'time')          return '14:30';
-                if (_ffPrev.type === 'email address') return _sdT('sample@example.com');
-                if (_ffPrev.type === 'text area')     return _sdTokenPlaceholder(fieldName, node);
-                return _sdT('Example');
-            }
+            if (_ffPrev) return _sdFormFieldSample(_ffPrev);
             if (fieldName && _SD_CURRENCY_TOKENS[fieldName]) {
                 return _sdGetCurrencyPlaceholder();
             }
@@ -38269,6 +38274,54 @@ const StyleDesigner = (function () {
             if (_swFormFieldToken(fields[i]) === fieldName) return fields[i];
         }
         return null;
+    }
+
+    // A record's answer to form field `ff` on the canvas, of the field's
+    // kind: a date, a time, an e-mail address, one of its own choices, a
+    // file name, a few sentences for long text, its information text; a
+    // text box by its default, its role or the words of its label (a name,
+    // a phone, a company …), else its label as a sample. Canvas only.
+    var _SD_FIELD_WORD_SAMPLES = [
+        [/(e-?mail|e-posta)/i, function () { return _sdT('sample@example.com'); }],
+        [/(phone|mobile|telefon|gsm)/i, function () { return '+90 555 000 00 00'; }],
+        [/(company|organi[sz]ation|şirket|firma|kurum)/i, function () { return _sdT('Example Ltd.'); }],
+        [/(city|town|şehir|ilçe)/i, function () { return _sdT('Springfield'); }],
+        [/(web|site|url|link)/i, function () { return 'https://example.com'; }],
+        [/(address|adres)/i, function () { return _sdT('Sample Street 1') + ', ' + _sdT('Springfield'); }],
+        [/(subject|title|topic|konu|başlık)/i, function () { return _sdT('Question about my order'); }],
+        [/(name|isim|^ad\b|ad soyad|adınız)/i, function () { return _sdT('Alex Morgan'); }],
+        [/(message|comment|note|question|mesaj|yorum|not\b|soru|açıklama)/i, function () { return _sdT('Hello, I would like to know when the order can be delivered.'); }],
+        [/(number|no\b|code|kod|numara)/i, function () { return 'A-1042'; }]
+    ];
+    function _sdFormFieldSample(ff) {
+        var type = String(ff.type || '');
+        var label = String(ff.label || ff.name || '').replace(/<[^>]*>/g, '').replace(/\s*[:：*]\s*$/, '').trim();
+        var opts = Array.isArray(ff.options) ? ff.options : [];
+        var first = opts.length ? String(opts[0].label || opts[0].value || '') : '';
+        if (type === 'date' || type === 'date and time') return _sdDatePlaceholder();
+        if (type === 'time') return '14:30';
+        if (type === 'email address') return _sdT('sample@example.com');
+        if (type === 'pick list' || type === 'radio button') return first || _sdT('First choice');
+        if (type === 'check box') return first || _sdT('Yes');
+        if (type === 'file upload') return 'document.pdf';
+        if (type === 'signature') return _sdT('Signed');
+        if (type === 'information') {
+            var info = String(ff.information || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,;:!?])/g, '$1').trim();
+            return info || label || _sdT('Information');
+        }
+        if (ff.rss_field === 'title') return _sdT('How we restored a 1920s bookshelf');
+        if (ff.rss_field === 'description' || type === 'text area') {
+            return _sdT('Hello, I would like to know when the order can be delivered.') + ' ' +
+                   _sdT('I am at home on weekdays after five, and the parcel can be left with the neighbour.');
+        }
+        var dflt = String(ff.value || '').trim();
+        if (dflt !== '' && dflt.indexOf('^^') === -1) return dflt;
+        for (var i = 0; i < _SD_FIELD_WORD_SAMPLES.length; i++) {
+            if (_SD_FIELD_WORD_SAMPLES[i][0].test(label) || _SD_FIELD_WORD_SAMPLES[i][0].test(String(ff.name || ''))) {
+                return _SD_FIELD_WORD_SAMPLES[i][1]();
+            }
+        }
+        return label ? _sdT('{var:1} sample', label) : _sdT('Example');
     }
 
     // Identifiers whose value is a date, so the panel knows when to offer a

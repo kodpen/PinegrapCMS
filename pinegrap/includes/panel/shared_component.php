@@ -818,9 +818,11 @@ function pg_panel_shared_component($request, $action)
             // these, in the form's own order. translate_values says whether
             // the answers are translated (the field panel's switch);
             // collection_kind and reference_page_id the kind of a collection
-            // field and the form a reference points into.
+            // field and the form a reference points into. information and
+            // value (an information block's text, a field's default) give
+            // the canvas a sample answer of the field's own.
             $sc_ff_rows = db_items(
-                "SELECT id, name, label, type, rss_field, wysiwyg, office_use_only"
+                "SELECT id, name, label, type, rss_field, wysiwyg, office_use_only, information, value"
                      . (pg_schema_has('form_fields', 'translate_values') ? ", translate_values" : "")
                      . (pg_coll_ready() ? ", collection_kind, reference_page_id" : "") . "
                      FROM form_fields
