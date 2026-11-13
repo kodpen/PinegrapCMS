@@ -1191,18 +1191,15 @@ tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !import
 .explorer-item .item-flags { font-size: .72rem; opacity: .8; min-height: 1em; margin-top: .15rem; }
 .explorer-item.drop-target .item-card, tr.explorer-item.drop-target > td { outline: 2px dashed var(--pg-primary); outline-offset: -2px; }
 #explorer_drag_badge { position: fixed; top: -300px; left: -300px; z-index: 10000; padding: .3rem .7rem; background: var(--pg-primary); color: #fff; font-size: .85rem; border-radius: .5rem; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-/* SEO score ring (toolbar drawing): bottom-left corner of a page tile,
-   inline in list rows and in the preview header. */
+/* SEO score ring (toolbar drawing): the top right corner of a page, group
+   or product tile, inline in list rows and in the preview header. A tile is
+   a glyph or picture over its name, and the glyph leaves that corner free
+   (the selection circle takes the top left one). At the lower left the ring
+   sat on the name: a name that filled the tile or wrapped to a second line
+   lost its first letters under it. */
 .seo-ring { display: inline-flex; line-height: 0; vertical-align: middle; }
 .seo-ring .seo-ring-track { stroke: var(--pg-border-color-translucent); }
-#explorer_grid .item-card .seo-ring { position: absolute; left: .3rem; bottom: .3rem; z-index: 2; }
-
-/* Catalog tiles are an icon over a label rather than a picture, so the ring
-   would sit on the words. It moves to the corner the icon leaves free. */
-#explorer_grid .explorer-item[data-kind="group"] .item-card .seo-ring,
-#explorer_grid .explorer-item[data-kind="product"] .item-card .seo-ring {
-  left: auto; bottom: auto; right: .3rem; top: .3rem;
-}
+#explorer_grid .item-card .seo-ring { position: absolute; right: .3rem; top: .3rem; z-index: 2; }
 #preview_seo_detail .border-light { border-color: var(--pg-border-color-translucent) !important; }
 /* Shared folders report: one card per folder, people listed inside it. */
 #shared_list .shared-group { border: 1px solid var(--pg-border-color-translucent); border-radius: .7rem; padding: .6rem .8rem; margin-bottom: .7rem; background: var(--pg-bg-body); }

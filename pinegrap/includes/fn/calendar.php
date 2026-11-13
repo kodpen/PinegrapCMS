@@ -1076,7 +1076,14 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
                         : '<th>' . h($day_name[0]) . '</th>';
                 }
 
-                $output_calendar = '<div class="monthly">
+                // In the panel the month scrolls sideways inside this box
+                // (.monthly, overflow auto) on a narrow screen. Positioned, it
+                // is the containing block of the absolutely positioned
+                // visually-hidden labels in its cells ("Removed: " before a
+                // removed occurrence): the outer card was, so such a label
+                // stood at its place in the wide grid outside the box and the
+                // whole page scrolled sideways.
+                $output_calendar = '<div class="monthly' . ($user ? ' position-relative' : '') . '">
 
                         <table' . $output_monthly_calendar_class . '>
 

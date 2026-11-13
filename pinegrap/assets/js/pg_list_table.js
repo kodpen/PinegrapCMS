@@ -552,6 +552,7 @@
         this.total = parseInt(root.getAttribute('data-pg-list-total'), 10) || 0;
         this.search = '';
         this.filters = {};
+        this.widthHeld = false;
         this.loading = false;
         this.request = 0;
         this.selection = new Selection();
@@ -1724,6 +1725,7 @@
             return;
         }
 
+        this.holdWidth();
         this.search = value;
 
         if (this.selection.all) {
@@ -1750,6 +1752,8 @@
         if ((this.filters[key] || '') === value) {
             return;
         }
+
+        this.holdWidth();
 
         if (value === '') {
             delete this.filters[key];
@@ -1785,6 +1789,92 @@
         return (' ' + String(values || '') + ' ').indexOf(' ' + value + ' ') !== -1;
     }
 
+    var ICON_FONT = /(^|\s)material-(icons|symbols)/;
+    var TYPED_INPUT = /^(text|search|number|email|url|tel|)$/;
+
+    /**
+     * The text of a row the search words are matched against: what a person
+     * reads in it. An icon font's mark (<span class="material-icons"
+     * role="img" aria-label="Evet">task_alt</span>, pg_list_table_check_cell())
+     * reads as its label, never as its ligature word, which no one sees: "alt"
+     * kept every row with a check mark and "Evet" none. A drawn mark
+     * (role="img") reads as its label too. A field reads as what it holds and
+     * a choice list as its choice, not as every option it offers (quick edit
+     * mode). Pure on anything shaped like a DOM node.
+     */
+    function searchText(node) {
+        var text = '';
+
+        Array.prototype.forEach.call(node.childNodes || [], function (child) {
+            if (child.nodeType === 3) {
+                text += child.nodeValue;
+                return;
+            }
+
+            if (child.nodeType !== 1) {
+                return;
+            }
+
+            var tag = String(child.tagName).toUpperCase();
+            var className = String(child.getAttribute('class') || '');
+
+            if ((tag === 'SCRIPT') || (tag === 'STYLE') || (tag === 'TEMPLATE')) {
+                return;
+            }
+
+            if (ICON_FONT.test(className) || (child.getAttribute('role') === 'img')) {
+                text += ' ' + (child.getAttribute('aria-label') || '') + ' ';
+            } else if (tag === 'SELECT') {
+                Array.prototype.forEach.call(child.options || [], function (option) {
+                    text += option.selected ? ' ' + option.textContent + ' ' : '';
+                });
+            } else if ((tag === 'TEXTAREA') || ((tag === 'INPUT') && TYPED_INPUT.test(String(child.getAttribute('type') || '').toLowerCase()))) {
+                text += ' ' + String(child.value || '') + ' ';
+            } else if ((tag === 'TD') || (tag === 'TH')) {
+                // Cells apart: the end of one and the start of the next are
+                // not one word.
+                text += ' ' + searchText(child) + ' ';
+            } else {
+                text += searchText(child);
+            }
+        });
+
+        return text;
+    }
+
+    /**
+     * The least width a list screen's box keeps while search words or a
+     * filter narrow its rows: the width it had before them, or the list
+     * measure when that is wider, never more than the window
+     * (body.pg-measure-list #content, backend.css).
+     */
+    function heldWidth(width) {
+        return 'min(100%, max(' + Math.ceil(width) + 'px, var(--pg-measure-list-min, 1280px) + 2rem))';
+    }
+
+    /**
+     * A list screen's box is as wide as its rows need and centred: rows
+     * hidden or loaded for search words or a filter narrowed it and centred
+     * it again, so the toolbar in it moved and the search box slid away under
+     * the pointer with each letter. Before the first words or filter change
+     * the rows, the box keeps the width it has as its least width.
+     */
+    Driver.prototype.holdWidth = function () {
+        var box = document.body.classList.contains('pg-measure-list') ? document.getElementById('content') : null;
+
+        if (this.widthHeld || !box || !box.contains(this.root) || (box.style.minWidth !== '')) {
+            return;
+        }
+
+        var width = box.getBoundingClientRect().width;
+
+        this.widthHeld = true;
+
+        if (width > 0) {
+            box.style.minWidth = heldWidth(width);
+        }
+    };
+
     /** A list printed whole: the rows the search words and the filters keep. */
     Driver.prototype.showHere = function () {
         var value = this.search;
@@ -1795,7 +1885,7 @@
         var shown = 0;
 
         Array.prototype.forEach.call(this.tbody.rows, function (row) {
-            var hidden = (value !== '') && !match(value, row.textContent);
+            var hidden = (value !== '') && !match(value, searchText(row));
 
             keys(filters).forEach(function (key) {
                 var cell = row.querySelector('td[data-pg-col="' + key + '"]');
@@ -1888,6 +1978,8 @@
         sortMarks: sortMarks,
         allSelected: allSelected,
         filterHas: filterHas,
+        searchText: searchText,
+        heldWidth: heldWidth,
         compareSortValues: compareSortValues,
         sortRows: sortRows,
         prefsKey: prefsKey,

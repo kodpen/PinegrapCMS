@@ -299,12 +299,12 @@ function test_list_table_js_filter()
 {
 	$result = list_table_js_test_node(<<<'JS'
 function row(text, type) {
-    return { textContent: text, hidden: false, querySelector: function (selector) {
+    return { childNodes: [{ nodeType: 3, nodeValue: text }], hidden: false, querySelector: function (selector) {
         return (selector === 'td[data-pg-col="type"]') ? { getAttribute: function () { return type; } } : null;
     } };
 }
 var rows = [row('saved page', 'site'), row('PHP Warning', 'warn'), row('PHP Fatal', 'error')];
-var list = { browser: true, search: '', filters: {}, params: {}, selection: new T.Selection(), tbody: { rows: rows }, paint: function () {}, showHere: T.Driver.prototype.showHere };
+var list = { browser: true, search: '', filters: {}, params: {}, selection: new T.Selection(), tbody: { rows: rows }, paint: function () {}, holdWidth: function () {}, showHere: T.Driver.prototype.showHere };
 var out = {};
 function shown() { return rows.filter(function (r) { return !r.hidden; }).length; }
 T.Driver.prototype.setFilter.call(list, 'type', 'error');
@@ -315,7 +315,7 @@ out.all = shown();
 list.search = 'saved';
 T.Driver.prototype.showHere.call(list);
 out.searched = shown();
-var server = { browser: false, filters: {}, params: { start_time: '1' }, selection: new T.Selection(), loads: 0, load: function () { this.loads++; } };
+var server = { browser: false, filters: {}, params: { start_time: '1' }, selection: new T.Selection(), loads: 0, load: function () { this.loads++; }, holdWidth: function () {} };
 T.Driver.prototype.setFilter.call(server, 'type', 'warn');
 T.Driver.prototype.setFilter.call(server, 'type', 'warn');
 out.server = [server.params.type, server.loads];
@@ -379,4 +379,52 @@ JS
 
 	pg_assert_same(array('title' => 'name', 'pictures' => array('pic'), 'fields' => array('price', 'seo'), 'actions' => array('actions')), $result['full'], 'in the user\'s order, the empty note left out');
 	pg_assert_same(array('title' => 'name', 'pictures' => array(), 'fields' => array(), 'actions' => array()), $result['bare'], 'the name always leads');
+}
+
+// The search words are matched against what a person reads in a row: an
+// icon font's mark reads as its label ("Evet"), never its ligature word
+// ("task_alt", which kept every checked row for "alt"); a quick edit field
+// reads as its value, a choice list as its choice, not every option.
+function test_list_table_js_search_text()
+{
+	$result = list_table_js_test_node(<<<'JS'
+function el(tag, attrs, kids, extra) {
+    var node = { nodeType: 1, tagName: tag, childNodes: kids || [], getAttribute: function (name) { return (attrs && (name in attrs)) ? attrs[name] : null; } };
+    for (var key in (extra || {})) { node[key] = extra[key]; }
+    return node;
+}
+function txt(value) { return { nodeType: 3, nodeValue: value }; }
+function clean(text) { return text.replace(/\s+/g, ' ').trim(); }
+var out = {};
+var check = el('TD', {}, [el('SPAN', { 'class': 'material-icons', role: 'img', 'aria-label': 'Evet' }, [txt('task_alt')])]);
+var row = el('TR', {}, [el('TD', {}, [txt('Merhaba dünya')]), check, el('TD', {}, [el('SPAN', { 'class': 'material-symbols-outlined' }, [txt('close')])])]);
+out.check = clean(T.searchText(row));
+out.drawn = clean(T.searchText(el('TD', {}, [el('svg', { role: 'img', 'aria-label': 'Hayır' }, [el('text', {}, [txt('x')])])])));
+out.hiddenWord = clean(T.searchText(el('TD', {}, [el('SPAN', { 'class': 'visually-hidden' }, [txt('Kaldırıldı: ')]), txt('Toplantı')])));
+var select = el('SELECT', {}, [], { options: [{ selected: false, textContent: 'Ana' }, { selected: true, textContent: 'Taslaklar' }, { selected: false, textContent: 'Arşiv' }] });
+var fields = el('TR', {}, [
+    el('TD', {}, [el('INPUT', { type: 'text' }, [], { value: 'pg-test-alt' })]),
+    el('TD', {}, [el('INPUT', {}, [], { value: 'typeless' })]),
+    el('TD', {}, [el('INPUT', { type: 'checkbox' }, [], { value: 'on' })]),
+    el('TD', {}, [select]),
+    el('TD', {}, [el('TEXTAREA', {}, [], { value: 'satır' })]),
+    el('TD', {}, [el('SCRIPT', {}, [txt('var hidden;')]), el('TEMPLATE', {}, [txt('şablon')])])
+]);
+out.fields = clean(T.searchText(fields));
+out.cells = clean(T.searchText(el('TR', {}, [el('TD', {}, [txt('(kaydedildi)')]), el('TD', {}, [txt('11 gün önce')])])));
+out.held = T.heldWidth(2050.4);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('Merhaba dünya Evet', $result['check'], 'the check mark reads Evet, the bare icon nothing');
+	pg_assert_same('Hayır', $result['drawn'], 'a drawn mark reads its label');
+	pg_assert_same('Kaldırıldı: Toplantı', $result['hiddenWord'], 'visually hidden words are text');
+	pg_assert_same('pg-test-alt typeless Taslaklar satır', $result['fields'], 'field values and the chosen option only');
+	pg_assert_same('(kaydedildi) 11 gün önce', $result['cells'], 'two cells are two words');
+	pg_assert_same('min(100%, max(2051px, var(--pg-measure-list-min, 1280px) + 2rem))', $result['held'], 'the box keeps its width, never more than the window');
 }

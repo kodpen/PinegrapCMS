@@ -14260,23 +14260,30 @@ $(document).on('submit', 'form', function (event) {
             return;
         }
 
+        // Only the cells this editor opens: those of a table carrying
+        // data-pg-edit-url (open() below). The list table driver's cells carry
+        // data-pg-edit too, for its own quick edit mode (pg_list_table_edit.js),
+        // and a click there selects the row: the pencil promised an editor
+        // that never opened, and in the mode it stood after the block-level
+        // field on a line of its own, so the field sat at the top of a taller
+        // row while the text cells stayed centred.
         var style = document.createElement('style');
         style.id = 'pg_list_edit_style';
-        style.textContent = 'td[data-pg-edit]{cursor:pointer}'
-            + 'td[data-pg-edit]:focus-visible{outline:2px solid var(--pg-primary-ink);outline-offset:-2px}'
-            + 'td[data-pg-edit]:not([data-pg-editing]):not([data-pg-edit-busy])::after{content:"\\f4cb";font-family:bootstrap-icons;'
+        style.textContent = 'table[data-pg-edit-url] td[data-pg-edit]{cursor:pointer}'
+            + 'table[data-pg-edit-url] td[data-pg-edit]:focus-visible{outline:2px solid var(--pg-primary-ink);outline-offset:-2px}'
+            + 'table[data-pg-edit-url] td[data-pg-edit]:not([data-pg-editing]):not([data-pg-edit-busy])::after{content:"\\f4cb";font-family:bootstrap-icons;'
             + 'font-style:normal;font-weight:400;font-size:.75rem;line-height:1;margin-inline-start:.35em;vertical-align:.05em;'
             + 'color:var(--pg-fg-2);opacity:0}'
-            + 'td[data-pg-edit]:hover::after,td[data-pg-edit]:focus::after{opacity:.9}'
-            + '@media (hover:none){td[data-pg-edit]:not([data-pg-editing])::after{opacity:.55}}'
-            + 'td[data-pg-editing]{cursor:auto}'
-            + 'td[data-pg-editing] .form-control,td[data-pg-editing] select.form-control{min-width:7rem}'
-            + 'td.pg-edit-saved{animation:pgEditSaved 1.2s ease-out}'
-            + 'td.pg-edit-failed{animation:pgEditFailed 1.6s ease-out}'
+            + 'table[data-pg-edit-url] td[data-pg-edit]:hover::after,table[data-pg-edit-url] td[data-pg-edit]:focus::after{opacity:.9}'
+            + '@media (hover:none){table[data-pg-edit-url] td[data-pg-edit]:not([data-pg-editing])::after{opacity:.55}}'
+            + 'table[data-pg-edit-url] td[data-pg-editing]{cursor:auto}'
+            + 'table[data-pg-edit-url] td[data-pg-editing] .form-control,table[data-pg-edit-url] td[data-pg-editing] select.form-control{min-width:7rem}'
+            + 'table[data-pg-edit-url] td.pg-edit-saved{animation:pgEditSaved 1.2s ease-out}'
+            + 'table[data-pg-edit-url] td.pg-edit-failed{animation:pgEditFailed 1.6s ease-out}'
             + '@keyframes pgEditSaved{from{background-color:color-mix(in srgb, var(--pg-success) 30%, transparent)}to{background-color:transparent}}'
             + '@keyframes pgEditFailed{from{background-color:color-mix(in srgb, var(--pg-danger) 30%, transparent)}to{background-color:transparent}}'
-            + '@media (prefers-reduced-motion:reduce){td.pg-edit-saved,td.pg-edit-failed{animation:none}}'
-            + '@media print{td[data-pg-edit]::after{display:none}}';
+            + '@media (prefers-reduced-motion:reduce){table[data-pg-edit-url] td.pg-edit-saved,table[data-pg-edit-url] td.pg-edit-failed{animation:none}}'
+            + '@media print{table[data-pg-edit-url] td[data-pg-edit]::after{display:none}}';
         document.head.appendChild(style);
     }
 

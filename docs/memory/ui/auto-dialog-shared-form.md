@@ -16,7 +16,8 @@ description: add_auto_dialog.php and edit_auto_dialog.php share the template and
 - Edit: the id gate and not-found guard (`panel_id_gate_test.php` reads it), the record load (joined to `user` for the last change, columns prefixed `auto_dialogs.`) and prefill, the preview URL, delete, the UPDATE, the log, the redirects. The id comes from `$_REQUEST` (the template has no hidden id field); the POST branch uses the gated `$id`.
 
 ## Why are the numbers checked on the server?
-- The columns are INT UNSIGNED and the session `sql_mode` is not strict: before #5701 '-24' hours became 0 (one-time), '1.5' became 2, 99999999999 seconds 4294967295. The fields had a decimal mask (minus and decimals allowed); they now use the integer mask with `allowminus` false.
+- The columns are INT UNSIGNED and the session `sql_mode` is not strict: before #5701 '-24' hours became 0 (one-time), '1.5' became 2, 99999999999 seconds 4294967295.
+- The fields had a decimal mask (minus and decimals allowed), then the integer mask, which dropped a typed `.` and `-` before the save saw them: 1.5 hours was stored as 15 and -5 seconds as 5 (#9014). They now take no mask (maxlength 5, 5, 9, 7: the largest value with its separators), so the save refuses the typed text with its message (`tests/auto_dialog_number_boxes_test.php`).
 - Limits: width/height 9999 px; delay 2147483 s, because `frontend.src.js` hands `delay * 1000` to `setTimeout`, which opens at once past 2^31 - 1 ms; frequency 999999 h. The name box takes 100 characters, as its column.
 
 ## What does the list's Enabled column say?

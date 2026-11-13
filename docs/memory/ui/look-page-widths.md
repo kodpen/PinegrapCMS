@@ -1,6 +1,6 @@
 ---
 name: look-page-widths
-description: Look A's page widths (#8892): edit screens centred at 1120 px (760 + 24 + 336), lists as wide as their columns (1280 px to the window); tokens, body classes, rail, name column
+description: Look A's page widths (#8892): edit screens centred at 1120 px (760 + 24 + 336), lists as wide as their columns (1280 px to the window), held while searching; tokens, body classes, rail, name column
 ---
 
 ## Which measures are there, and where?
@@ -23,5 +23,6 @@ description: Look A's page widths (#8892): edit screens centred at 1120 px (760 
 - The products list with its default columns needs about 2,350 px, so at 1920 and 1366 it still fills the window and scrolls sideways.
 - The toolbar search above a list is 300 px (a phone keeps the toolbar's full-line rule).
 - The vertical scrollbar of the rows' box counts in the width, so a short list's box can be about 15 px over 1312.
+- While search words or a filter are set, the box keeps the width it had before them: the driver's `holdWidth()` (`pg_list_table.js`) sets an inline `min-width` (`heldWidth()`: that width or the list measure, at most the window) before the rows first change. Before (#9017) each letter narrowed the box and centred it again, and the search box slid up to 257 px away from the pointer. Half the page's scrollbar (about 8 px) still moves it when the rows no longer fill the window.
 
 Related: docs/memory/ui/look-type-and-recipes.md

@@ -462,9 +462,9 @@ not read.
 
 @@ assets/js/backend.src.js
 <<<
-            + 'td[data-pg-editing] .form-control,td[data-pg-editing] .form-select{min-width:7rem}'
+            + 'table[data-pg-edit-url] td[data-pg-editing] .form-control,table[data-pg-edit-url] td[data-pg-editing] .form-select{min-width:7rem}'
 ===
-            + 'td[data-pg-editing] .form-control,td[data-pg-editing] select.form-control{min-width:7rem}'
+            + 'table[data-pg-edit-url] td[data-pg-editing] .form-control,table[data-pg-edit-url] td[data-pg-editing] select.form-control{min-width:7rem}'
 >>>
 
 @@ assets/js/offer_editor.js

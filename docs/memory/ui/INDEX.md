@@ -52,7 +52,7 @@
 - button-busy-state.md: Buttons never change their label or lock for a fixed time while a request runs; the window-level guard against double submits and double clicks (3 s); how an Ajax button disables itself.
 - calendar-event-duplicate.md: A duplicated calendar event starts unpublished, named "… (copy)", with its calendars, cancelled repeats and locations copied; the location check asks on its first save [decision: decisions-made-product-20.md]
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
-- calendar-event-exception-endpoint.md: update_calendar_event_exception.php (Remove / Unremove a repeating event's instance): parameter check, instance range, no second row
+- calendar-event-exception-endpoint.md: update_calendar_event_exception.php (Remove / Unremove a repeating event's instance): parameter check, instance range, no second row; the panel month box that holds the hidden "Removed:" label
 - calendar-event-form-checks.md: Calendar event form checks: whole numbers, repeat types, text lengths, the all day switch keeping times, the location check time window, the time suffix ids, the reservations row
 - calendar-event-location-shared-form.md: The calendar event location create and edit screens share includes/forms/calendar_event_location_form.php: what it holds, what stays in the screens
 - calendar-event-shared-form.md: add_calendar_event.php and edit_calendar_event.php draw and check the event form through includes/forms/calendar_event_form.php; what differs between the two calls
@@ -184,7 +184,7 @@
 - explorer-copy-page-right.md: File Manager folder copy and page paste skip pages a role-3 user without 'Create pages' may not copy, and stay JSON
 - explorer-details-rows.md: File Manager details panel rows for pages, files, archived pages, bin items and backups (folder link, address, exact time and editor, impact, bin rows, backup location) and the Pages view columns
 - explorer-drawer-names.md: File and Catalog Manager drawer rows drawn by script name themselves: access selects per user, commerce switch groups, shipping-zone lists, bulk description, backup upload path, file window code field
-- explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate sized from --pg-tile-icon, the narrow pill it fixed (PR #2200)
+- explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate (PR #2200), the SEO ring's top right corner
 - explorer-keyboard.md: File manager (view_folders.php) from the keyboard: shortcuts leave focused controls alone, crumbs with href, Quick Look focus and Tab trap, the context menu from ContextMenu/Shift+F10 (#2783)
 - explorer-list-headings.md: File manager list view (view_folders.php): headings sort from a button and carry aria-sort; column edges resize by keyboard, any pointer, double-click fit and a menu reset
 - explorer-locale-order.md: File and Catalog Manager (view_folders.php) sort text keys with the panel language's Intl.Collator and match with foldText() (İ/I/ı/i alike); the Shared view's groups sort by pg_geo_label_compare()
@@ -316,7 +316,7 @@
 - list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
 - list-period-order.md: List date ranges: default a month ago to today on every request (pg_list_period_state(), PR #4463), reversed range swapped; Site Log presets in calendar days
 - list-period-week.md: Week's first day (Monday in Turkish, Sunday otherwise) for the list screens' period navigator (#2039) and the get_calendar() grids (#3328)
-- list-quick-edit-keyboard.md: List quick edit keys (backend.src.js cells, the list table driver): Enter, Escape, Tab to the next row, the textarea and multiselect types, focus past the last row
+- list-quick-edit-keyboard.md: List quick edit keys (backend.src.js cells, the list table driver): Enter, Escape, Tab to the next row, textarea and multiselect, focus past the last row, the old editor's style scope
 - list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
@@ -363,6 +363,7 @@
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - list-table-region-lists.md: Regions, ads and form fields on the list table driver (TD9c): printed whole, list names, quick edit fields and checks, what stays on the edit screen; menu items stay a plain table
 - list-table-rollout.md: How the panel lists moved from DataTables to the list table driver (TD1-TD14, done with #8253): the driver, the rules that still hold, where each batch is noted, what the removal took out [decision: decisions-made-product-22.md]
+- list-table-search-text.md: What the list table driver's browser search reads in a row (searchText()): icon marks as their label, never their ligature word; fields as their value, choice lists as their choice
 - list-table-settings-lists.md: Countries, states, zones, tax zones, currencies, referral sources, contact groups, calendars, event locations and auto dialogs on the list table driver (TD11): printed whole in browser mode
 - list-table-shipping-lists.md: Arrival dates, ship date adjustments, verified shipping addresses, order reports and duplicate products on the list table driver (TD10b); the shipping report as a plain report table
 - list-table-variant-sets.md: The Variant Sets list (product_builder.php's pg_pb_variant_sets_screen()) on the list table driver, printed whole: columns, cells, bulk buttons, sort key, filters
@@ -375,7 +376,7 @@
 - look-check.md: tools/check_look.php (#8905): panel CSS outside look A's recipes (sizes or weights off the scale, colour literals) may only fall against its baseline; what it skips, --update
 - look-design-examples.md: The Design examples screen (design_examples.php, DL2 #8907): every look A recipe live in a light and a dark pane, the classes under each, what is not a recipe yet; where a step copies markup from
 - look-edit-screens.md: Add and edit screens in look A (DL5c, #8934): the edit width on every add/edit screen, columns 760 and 336 from the shared classes, look cards and titles, the floating save bar; what is not done yet
-- look-page-widths.md: Look A's page widths (#8892): edit screens centred at 1120 px (760 + 24 + 336), lists as wide as their columns (1280 px to the window); tokens, body classes, rail, name column [decision: decisions-made-panel-7.md]
+- look-page-widths.md: Look A's page widths (#8892): edit screens centred at 1120 px (760 + 24 + 336), lists as wide as their columns (1280 px to the window), held while searching; tokens, body classes, rail, name column [decision: decisions-made-panel-7.md]
 - look-settings-screens.md: Settings screens in look A (DL5d, #8952): dialog size, rail, head and foot; cards as a title over an inner card of rows, page and dialog; 32 px fields, switch; what is not done
 - look-type-and-recipes.md: Look A's typeface (self-hosted Inter 4.1), the type scale and tone tokens, and the recipe classes in backend.src.css (#8879): which class draws which part, the block's place, the unlayered body family
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
@@ -615,6 +616,6 @@
 - visitors-speed-section.md: Page Speed section of the Visitors overview (speed.php, #6475): period, device and order filters, p75 tiles, slowest pages, trend, old-screen redirect, perf card tile
 - voice-text-keyboard.md: Convert to text under a voice message from the keyboard (pg_voice_text.js): where focus goes while it works, after success and after a failure; the progress meter's name
 - waf-log-paging.md: The firewall log's events (view_waf_log.php) on the list table driver, sorted and searched on the server; period, category and search filters stay in the address and drive the summary
-- whole-number-input-mask.md: Panel boxes of whole-number columns take Inputmask's integer alias, never decimal, so a Turkish 1.000 is a thousand
+- whole-number-input-mask.md: Panel boxes of whole-number columns take Inputmask's integer alias, never decimal, so a Turkish 1.000 is a thousand; the auto dialog boxes take none
 - workspace-avatar-faces.md: A face from avatar() in the Workspace scripts keeps Bootstrap's .avatar (classList.add, never className =) and is sized by --bs-avatar-size; why a check-in answer's photo once covered the channel
 - zone-shared-form.md: add_zone.php and edit_zone.php draw the shipping zone form and read its rates through includes/forms/zone_form.php; what each screen keeps

@@ -21,6 +21,6 @@ description: Quick edit mode of the list table driver (assets/js/pg_list_table_e
 - Pure parts in Node: `tests/list_table_quick_edit_js_test.php`.
 
 ## Why does the old cell editor skip these lists?
-- `backend.src.js`'s click/F2 editor (`list-quick-edit-keyboard.md`) opens on any `td[data-pg-edit]`; inside `.pg-list-table` it now does nothing, so a click selects the row and the mode owns editing. DataTables screens keep the old editor until they move.
+- `backend.src.js`'s click/F2 editor (`list-quick-edit-keyboard.md`) opens on any `td[data-pg-edit]`; inside `.pg-list-table` it now does nothing, so a click selects the row and the mode owns editing. Its injected style reaches only those cells too (`list-quick-edit-keyboard.md`).
 
 Related: docs/memory/ui/list-table-quick-edit-search.md, docs/memory/ui/list-table-quick-edit-values.md, docs/memory/ui/list-table-driver-browser.md, docs/memory/ui/list-quick-edit-keyboard.md

@@ -1,6 +1,6 @@
 ---
 name: explorer-grid-tiles
-description: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate sized from --pg-tile-icon, the narrow pill it fixed (PR #2200)
+description: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate (PR #2200), the SEO ring's top right corner
 ---
 
 ## Where is a grid tile drawn?
@@ -13,5 +13,9 @@ description: Explorer grid tiles (view_folders.php, catalog and files): the tile
 
 ## Why not `width: 100%`?
 - `.thumb-wrap` is a shrink-to-fit inline block; once the picture is removed it collapses to its content, so a percentage width resolved to the glyph and the plate drew a narrow, tall pill (about 36 × 84 px) beside 64 px group glyphs. Seen on product groups whose `image_name` points at a missing file (PR #2200). The list view keeps its own 36 px rule.
+
+## Where does the SEO score ring sit?
+- In the top right corner of a page, group or product tile (`#explorer_grid .item-card .seo-ring`, `seoChipHtml()`): the glyph leaves it free at every size step, and the selection circle takes the top left one. Pictures of groups and products lose that corner to it.
+- Before (#9020) a page's ring sat at the lower left, on the name: a name that filled the tile or wrapped to a second line (`pg-test_ÇĞİÖŞÜ_çğıöşü_deneme`) lost its first letters. Test: `tests/explorer_seo_ring_place_test.php`.
 
 Related: docs/memory/ui/panel-css-tokens.md, docs/memory/ui/panel-screenshots.md
