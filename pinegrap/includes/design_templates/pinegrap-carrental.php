@@ -152,7 +152,7 @@ $carrental_css = implode("\n", array(
 
 return array(
     'name'        => lang('Car Rental'),
-    'version'     => '2.0.1',
+    'version'     => '2.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 131,
     'icon'        => 'bi-key',

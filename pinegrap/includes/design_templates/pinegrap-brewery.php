@@ -201,7 +201,7 @@ $brewery_css = implode("\n", array(
 
 return array(
     'name'        => lang('Craft Brewery'),
-    'version'     => '2.0.1',
+    'version'     => '2.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 129,
     'icon'        => 'bi-cup-straw',

@@ -192,7 +192,7 @@ $cityhall_css = implode("\n", array(
 
 return array(
     'name'        => lang('City Hall'),
-    'version'     => '2.0.1',
+    'version'     => '2.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 101,
     'icon'        => 'bi-building',

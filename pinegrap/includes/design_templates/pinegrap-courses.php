@@ -191,7 +191,7 @@ $courses_folders['members'] = array('name' => 'members', 'parent' => 'root', 'ac
 
 return array(
     'name'        => lang('Online Courses'),
-    'version'     => '1.1.1',
+    'version'     => '1.1.2',
     'framework'   => 'bootstrap5',
     'order'       => 67,
     'icon'        => 'bi-mortarboard',
