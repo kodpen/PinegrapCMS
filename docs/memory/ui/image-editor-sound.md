@@ -10,7 +10,7 @@ module: image_editor
 - The model's `SOUND` section reads it through `M.soundList(doc, origin)`: an entry with no id, or an address that is not the site's own (`M.soundSrcOk()`: a root path, or http(s) of the same origin; `//host` refused), is left out, the numbers are put in range, at most 20 (`SOUND_MAX`). So an opened document never makes the editor fetch another host. Every change goes through `soundChange()`, which writes that clean list back: one undo step each, a slider's moves one step by its key.
 
 ## Where do sounds come from?
-- Files only (`sound_files`: MP3, M4A, AAC, WAV, Ogg, Oga, Opus by `files.type`, no Recycle Bin, no ERP document, a role-3 user's folders, newest 60, a search). From this computer (V8, `image-editor-upload.md`) is the first button of Sound from Files. Add sound sits at the end of the rows and in the panel's Sounds list (the only way on a phone).
+- Files only (`sound_files`: MP3, M4A, AAC, WAV, Ogg, Oga, Opus by `files.type`, no Recycle Bin, no ERP document, a role-3 user's folders, newest 60, a search). From this computer (V8, `image-editor-upload.md`) is the first button of Sound from Files. Add sound sits at the end of the rows and in the panel's Sounds list (the only way on a phone without a video).
 - The file is decoded first; `M.soundNew()` puts it at the playhead, cut to what is left of the timeline (whole when nothing is left), picked.
 
 ## How does it play?
@@ -19,7 +19,7 @@ module: image_editor
 - An MP4 or WebM export carries it, mixed and encoded in the browser (`ui/image-editor-mix.md`); GIF, APNG, WebP and PDF do not.
 
 ## What do the rows and the panel do?
-- A `.pgie-tracks` of its own under the tracks (`Editor.motionDocks`, bundled after the tracks), not on a phone (the same media query). Its own ruler when the tracks count one scene or there are none. A bar holds the cut part's waveform (`M.soundPeaks()` of channel 0), the volume's line with the fades, the name. Drag the middle: start; the ends: trim (`M.soundEdit()`, 0.1 s steps, Shift 0.01 s, 0.1 s stays); one change on release.
+- A `.pgie-tracks` of its own under the tracks (`Editor.motionDocks`, bundled after the tracks); on a phone only with a video, folded into one line in the sheet (`image-editor-phone-rows.md`). Its own ruler when the tracks count one scene or there are none. A bar holds the cut part's waveform (`M.soundPeaks()` of channel 0), the volume's line with the fades, the name. Drag the middle: start; the ends: trim (`M.soundEdit()`, 0.1 s steps, Shift 0.01 s, 0.1 s stays); one change on release.
 - A picked sound (`soundSel`) gives the Animate panel the title Sound and: start, from and to in the file, volume and mute, fade in and fade out, Split at the playhead (`M.soundSplit()`), Duplicate (after it), Delete; Remove in the header and Delete or Backspace delete it; picking a layer, a press on the stage or Escape leave it. Sliders instead of the time fields of screen 37.
 
 ## Where is it tested?
