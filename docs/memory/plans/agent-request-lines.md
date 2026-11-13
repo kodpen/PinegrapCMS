@@ -12,7 +12,7 @@ description: Plan (owner 2026-11-13, #9188): the line under a Workspace message 
 - Three more places in `workspace.js` read that one state to ask "is a request open": the faster poll with its Pinegrap AI and MCP agent kicks, and `editHoldStart()`. With two agents they see the last one only.
 
 ## Which step?
-- RL1 (S) Every agent's state. The message carries a list of states, one per agent it woke, in the order they were asked; where one agent has more than one request on the message, its newest. Each state is what `ws_claude_request_state()` gives today (label, icon, Stop link, the edit hold's wording).
+- RL1 (S) Every agent's state — done, #9237. The message carries a list of states, one per agent it woke, in the order they were asked; where one agent has more than one request on the message, its newest. Each state is what `ws_claude_request_state()` gives today (label, icon, Stop link, the edit hold's wording).
 - Under the message one state per agent, each on its own line with its own Stop link; they stack on a phone, nothing scrolls sideways. A message that woke one agent looks as it does today.
 - The poll, the two kicks and the edit hold look at every state: a request that still waits keeps the screen looking and its assistant carried on, also when a later request on the same message is closed.
 - The grouping (rows to message, newest per agent, asked order) is a pure function with a test in `tests/workspace_agent_shown_test.php`, red first on a message with two agents. `php tools/build_js.php` after `workspace.js`.

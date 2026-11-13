@@ -122,7 +122,7 @@ function test_ws_voice_agent_asked_after_the_transcript()
 
 	$js = ws_voice_agents_test_source('assets/js/workspace.js');
 	pg_assert_contains("if (result.agent) {\n                    self.kickAgent(true);", $js, 'asked at once: the screen starts it');
-	pg_assert_contains("return message.claude && message.claude.agent === 'mcp' && /^(queued|sent|running)$/.test(message.claude.status);", $js, 'asked after the transcript: the screen carries it on');
+	pg_assert_contains("return self.claudeWaiting(message, 'mcp');", $js, 'asked after the transcript: the screen carries it on');
 	pg_assert_contains("'agent' => !empty(\$asked['agent'])", ws_voice_agents_test_source('includes/workspace/actions.php'), 'ws_attach answers agent');
 }
 

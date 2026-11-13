@@ -148,6 +148,6 @@ function test_workspace_edit_hold_action_and_step()
 	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 	pg_assert_true(strpos($js, "api('ws_edit_hold', { message_id: hold.id })") !== false, 'the box beats');
 	pg_assert_true(strpos($js, "api('ws_edit_hold', { message_id: hold.id, release: 1 })") !== false, 'closing unsaved ends the hold');
-	pg_assert_true(strpos($js, "['queued', 'sent', 'running'].indexOf(claude.status) < 0") !== false, 'a message with no open request makes no call');
+	pg_assert_true(strpos($js, "if (!message || !this.claudeWaiting(message)) {") !== false, 'the hold starts only while an agent the message woke is still open');
 	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.min.js'), 'ws_edit_hold') !== false, 'the bundle carries it');
 }

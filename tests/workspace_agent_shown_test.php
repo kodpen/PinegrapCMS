@@ -154,3 +154,27 @@ function test_workspace_agent_shown_wiring()
 	pg_assert_contains('ws_agent_picker_entries(', (string) file_get_contents($dir . 'app_handles.php'));
 	pg_assert_contains('ws_agent_tags()', (string) file_get_contents($dir . 'refs.php'));
 }
+
+// A message that woke two agents carries both, in the order they were
+// asked; an agent asked twice on it shows its newest request only.
+function test_workspace_agent_requests_by_message()
+{
+	$rows = array(
+		array('id' => 10, 'message_id' => 5, 'agent' => 'agent:4', 'mcp_server_id' => 0, 'status' => 'answered'),
+		array('id' => 11, 'message_id' => 5, 'agent' => 'agent:9', 'mcp_server_id' => 0, 'status' => 'queued'),
+		array('id' => 12, 'message_id' => 6, 'agent' => 'claude', 'mcp_server_id' => 0, 'status' => 'running'),
+		array('id' => 14, 'message_id' => 5, 'agent' => 'agent:4', 'mcp_server_id' => 0, 'status' => 'queued'),
+		array('id' => 13, 'message_id' => 7, 'agent' => 'mcp', 'mcp_server_id' => 2, 'status' => 'answered'),
+		array('id' => 15, 'message_id' => 7, 'agent' => 'mcp', 'mcp_server_id' => 3, 'status' => 'queued'),
+	);
+
+	$map = ws_agent_requests_by_message($rows);
+
+	pg_assert_same(array(14, 11), array_map(function ($row) { return (int) $row['id']; }, $map[5]), 'both agents, the first asked first, each its newest');
+	pg_assert_same(array(12), array_map(function ($row) { return (int) $row['id']; }, $map[6]), 'one agent, one line as before');
+	pg_assert_same(array(13, 15), array_map(function ($row) { return (int) $row['id']; }, $map[7]), 'two MCP servers are two agents');
+	pg_assert_same(array(), ws_agent_requests_by_message(array()));
+
+	$shuffled = array_reverse($rows);
+	pg_assert_same($map, ws_agent_requests_by_message($shuffled), 'the rows\' order does not matter');
+}

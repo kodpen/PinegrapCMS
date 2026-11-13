@@ -227,6 +227,37 @@ function ws_agent_request_state($row)
 }
 
 /**
+ * The requests shown under each message: one per agent the message woke, in
+ * the order the agents were first asked on it, each agent's newest request.
+ * An MCP server's own agent is told apart by its server; every other kind
+ * by its agent string (Claude, Pinegrap AI, a registry agent).
+ *
+ * @param array $rows ws_ai_requests rows, in any order
+ * @return array message_id => row[]
+ */
+function ws_agent_requests_by_message($rows)
+{
+    $rows = array_values((array) $rows);
+
+    usort($rows, function ($a, $b) {
+        return (int) $a['id'] - (int) $b['id'];
+    });
+
+    $out = array();
+
+    foreach ($rows as $row) {
+        $agent = (string) ($row['agent'] ?? 'claude');
+        $key = ($agent === 'mcp') ? 'mcp:' . (int) ($row['mcp_server_id'] ?? 0) : $agent;
+
+        // A newer request replaces the agent's earlier one in place, so the
+        // agent keeps the spot of its first asking on this message.
+        $out[(int) $row['message_id']][$key] = $row;
+    }
+
+    return array_map('array_values', $out);
+}
+
+/**
  * The application whose own messages the API caller may change or delete:
  * an active app agent's key used as itself (no device). 0 for any other
  * caller, which goes by the person's own words (ws_api_own_words_only()).

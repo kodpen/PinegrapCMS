@@ -7,7 +7,9 @@ description: How a registry agent shows (A4b2): the line under its waking messag
 - `includes/workspace/agent_shown.php` (loaded from ai.php), tests in `tests/workspace_agent_shown_test.php`.
 
 ## What does the message that woke it show?
-- The line under a message names the agent (`ws_claude_request_state()` hands an `app:`/`model:` row to `ws_agent_request_state()`: waiting, the next try of a failed push door or model, working, answered, could not). One line per message: the last request on it.
+- The line under a message names the agent (`ws_claude_request_state()` hands an `app:`/`model:` row to `ws_agent_request_state()`: waiting, the next try of a failed push door or model, working, answered, could not).
+- One line per agent the message woke, in the order they were asked, each the agent's newest request (#9188). `ws_agent_requests_by_message()` groups the rows (pure, tested here); `ws_claude_requests_map()` feeds it; the payload's `claude` is a list of states.
+- `claudeStateNode()` (`workspace.js`) stacks one `claudeStateLine()` per state, each with its own Stop link. The poll, the AI and MCP kicks and the edit hold read `claudeWaiting()` over every state: an open request keeps the screen going though a later one on the message closed.
 
 ## What does a request closed without text show?
 - Closed with `no_answer` (#8919, issue #8872, `workflow/decisions-made-workspace-19.md`): the line reads "@handle saw it · no answer needed" (Turkish "gördü · yanıt gerekmedi") with `bi-eye`, and the agent's 👀 stays on the asking message (added when it was never claimed). "answered", `bi-check2-circle` and ✅ only when the request left a reply.
