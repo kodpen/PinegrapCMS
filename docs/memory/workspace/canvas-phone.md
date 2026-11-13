@@ -21,6 +21,7 @@ description: The canvas screens at phone width (CO8, #9361): chips under the nam
 
 ## What did CO8 leave to DL5f?
 - Built from the nearest recipe, no new one: the floating button is `pg-button-fill` with its label, not the drawing's 52 px icon tile. Not built: the drawing's compact row card (name, rows, place, time, canvases on two lines) and the groups "Channel tables" / "Mine and shared"; the list driver has neither.
+- Against the sheet's `table-page` (owner, 2026-11-13): Data already has the card frame, icon tiles, quiet icon actions, the selection bar with Select all, columns and Details, every row printed (no page numbers) and `pg-measure-list`. Left for DL5f: a bulk Delete in the selection bar (a server action of its own); a second text line under the name (driver rows are one line, so the description follows the name after "·"); no status pill, as a table has no status.
 
 ## How was it checked?
 - `tests/workspace_canvas_phone_test.php`. On a sandbox panel (#9361) a two-part canvas made through the API, shot dark and light at 390 and 1440 px: the wide card unchanged, the phone card and Data list as above, and CO7d's lines undone from the panel (a new binding taken off, a changed access put back).
