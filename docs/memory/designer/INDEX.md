@@ -258,6 +258,7 @@
 - designer-blocks-clinic.md: The Clinic block family (clinic- prefix, own palette group): doctors' week, care guide; general blocks placed instead; rules, test
 - designer-blocks-conference.md: The Conference block family (conference- prefix): opening hero with a badge on its lanyard, day agenda with parallel sessions, speaker line-up as a poster; blocks placed instead; tests
 - designer-blocks-construction.md: The Construction block family (construction- prefix, own palette group): site board hero, project progress, neighbour notice; general blocks placed instead; rules, test
+- designer-blocks-courses.md: The Online Courses block family (courses- prefix): classroom hero with a lesson player, course shelf with level meters, curriculum on a dashed path; blocks placed instead; tests
 - designer-blocks-coworking.md: The coworking- block family (Coworking group): the workspace hero, what it reuses instead (spaces, plans, amenities, floors), its pg-cw-* rules, its test
 - designer-blocks-cta.md: General CTA blocks in a family file (cta- prefix, core Marketing group): the sticky bar; where it sticks, its rule, who uses it
 - designer-blocks-dealership.md: The Car Dealership block family (dealership- prefix, own palette group): showroom panel, stock finder, three ways in; general blocks placed instead; rules, test

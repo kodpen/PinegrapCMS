@@ -1189,6 +1189,8 @@
     "Modify Selected Products": "Seçili Ürünleri Düzenle",
     "Modify the Campaign that is created automatically when a certain action is completed (e.g. Visitor reserves Calendar Event).": "Belirli bir eylem tamamlandığında otomatik olarak oluşturulan kampanyayı düzenleyin (ör. bir ziyaretçi bir takvim etkinliği rezerve ettiğinde).",
     "Module %d: %s": "Modül %d: %s",
+    "Module Details": "Modül Ayrıntıları",
+    "Module {var}": "Modül {var}",
     "Modules": "Modüller",
     "Mole and skin checks": "Ben ve cilt kontrolleri",
     "Moment": "An",
