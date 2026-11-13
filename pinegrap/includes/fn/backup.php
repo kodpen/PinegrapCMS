@@ -406,6 +406,113 @@ function pg_backup_folder_zip_current($zip_path, $folder)
 
 
 /**
+ * The name a file under a backup folder takes inside its zip archive: the
+ * path below the folder, with "/" between folders as the zip format wants
+ * (APPNOTE 4.4.17). getRealPath() answers with "\" on Windows, and an
+ * archive of "files\3940.jpg" names unpacks elsewhere as single files with a
+ * backslash in their names.
+ *
+ * @param string $root the backup folder (its real path)
+ * @param string $path a file or folder under it (its real path)
+ * @return string '' for the folder itself or a path outside it
+ */
+function pg_backup_zip_entry_name($root, $path)
+{
+    $root = rtrim(str_replace('\\', '/', (string) $root), '/');
+    $path = str_replace('\\', '/', (string) $path);
+
+    if (($root === '') || (strpos($path, $root . '/') !== 0)) {
+        return '';
+    }
+
+    return ltrim(substr($path, strlen($root)), '/');
+}
+
+
+/**
+ * Zip a backup folder: the one writer behind the Backup Manager's Download
+ * and the File Manager's Zip, so the two archives never drift apart again.
+ *
+ * Entry names come from pg_backup_zip_entry_name(); empty folders are kept.
+ * An archive written from the folder is never packed into it: $zip_path
+ * itself, and the download archive the Backup Manager keeps inside the folder
+ * (<folder>/<folder name>.zip). The File Manager's Zip packed that one too
+ * and wrote a second archive about twice the size, a zip inside the zip.
+ *
+ * @param string $folder   the backup folder
+ * @param string $zip_path where to write the archive; replaced if it exists
+ * @return int|false how many files went in; false when the folder cannot be
+ *                   read or the archive cannot be written
+ */
+function pg_backup_folder_zip_write($folder, $zip_path)
+{
+    $root = realpath($folder);
+
+    if (($root === false) || !is_dir($root) || !class_exists('ZipArchive')) {
+        return false;
+    }
+
+    // Both are on disk before the archive is opened: the old archive stays
+    // there until close() replaces it.
+    $skip = array();
+
+    foreach (array($zip_path, $root . DIRECTORY_SEPARATOR . basename($root) . '.zip') as $archive) {
+        $real = realpath($archive);
+
+        if ($real !== false) {
+            $skip[$real] = true;
+        }
+    }
+
+    $zip = new ZipArchive();
+
+    if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        return false;
+    }
+
+    $added = 0;
+
+    try {
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($root, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $item_path = $item->getRealPath();
+
+            if (($item_path === false) || isset($skip[$item_path])) {
+                continue;
+            }
+
+            $name = pg_backup_zip_entry_name($root, $item_path);
+
+            if ($name === '') {
+                continue;
+            }
+
+            if ($item->isDir()) {
+                $zip->addEmptyDir($name);
+            } elseif ($item->isFile() && is_readable($item_path)) {
+                $zip->addFile($item_path, $name);
+                $added++;
+            }
+        }
+    } catch (UnexpectedValueException $e) {
+        @$zip->close();
+        return false;
+    }
+
+    // A failed close() also raises a warning; the return value is what counts.
+    if (!@$zip->close() || !is_file($zip_path)) {
+        return false;
+    }
+
+    return $added;
+}
+
+
+/**
  * Remove a directory and everything under it.
  *
  * @param string $path
@@ -995,11 +1102,16 @@ function pg_backup_remote_decode($stored)
  *
  * Read from the folder, NOT from config.last_software_auto_backup: that column
  * is the scheduler's cursor, and backups.php sets it to 0 to force the next
- * run. Every sub-folder counts (a backup taken by hand is a folder), and of
- * the files only an automatic backup archive does; the two install fixtures
- * are left out, or a site that was never backed up would show two backups
- * dated the day it was installed. One stat per entry, never a recursive walk:
- * the folder can hold gigabytes.
+ * run. A sub-folder counts when it holds its database dump (a backup taken
+ * by hand is a folder), at the dump's time (pg_backup_taken_time()): a folder
+ * without one is the Backup Manager's "incomplete" row, and a folder's own
+ * time moves whenever anything is written into it (the download archive, a
+ * Windows write probe of the System Status scan), which made "Last Backup"
+ * read "just now" for a two-day-old backup. Of the files only an automatic
+ * backup archive counts; the two install fixtures are left out, or a site
+ * that was never backed up would show two backups dated the day it was
+ * installed. A stat or two per entry, never a recursive walk: the folder can
+ * hold gigabytes.
  *
  * The System Status check and the operations alerts both read this, so the
  * tile and the alert never disagree about what "the newest backup" is.
@@ -1029,13 +1141,17 @@ function pg_backup_newest($directory = null)
 
         $path = $directory . '/' . $entry;
 
-        if (!is_dir($path) && !(pg_backup_is_auto_name($entry) && is_file($path))) {
+        if (is_dir($path)) {
+            if (!is_file($path . '/sql.sql')) {
+                continue;
+            }
+        } elseif (!(pg_backup_is_auto_name($entry) && is_file($path))) {
             continue;
         }
 
         $found['count']++;
 
-        $stamp = (int) @filemtime($path);
+        $stamp = pg_backup_taken_time($path);
 
         if ($stamp > $found['newest']) {
             $found['newest'] = $stamp;
