@@ -13,7 +13,7 @@ description: Coordinator session: one per account, keeps its worker sessions on 
 - The brief ends with the lifecycle and never tells the worker to stop after its step, to "stop and report" or to leave the next step: a worker follows its brief over Working mode 6 (`coordinator-worker-brief.md`).
 - Gives each step a new session, never one more step to a waiting or ended worker; three steps per worker in all (`coordinator-worker-steps.md`).
 - Keeps 8 workers working (`coordinator-workers.md`).
-- Design templates are paused (2026-11-09): no template step and no new template; no bug hunt or `bug` issue (`coordinator-no-plans.md`).
+- Design templates are paused (2026-11-09); no bug hunt; open `bug` issues are given out like plan steps (`coordinator-no-plans.md`).
 - Keeps a to-do list of its workers' PRs (`coordinator-todo-list.md`).
 - Chooses the work itself, never asking the owner or the architect: which free step, the order, how many workers, which steps run in parallel. Only a decision question goes to an `architect` issue; the architect brings the answer to the PR (`architect.md`).
 - Writes no product code, opens, reopens or marks ready no PR, merges and reviews nothing.

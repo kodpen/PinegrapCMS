@@ -12,7 +12,7 @@ description: Working rules (2026-10-25) for every session: why, one open PR, no 
 - From green CI to the next step: `session-lifecycle.md`.
 
 ## Are issues used?
-- For decision questions: an issue labelled `architect`, which the architect decides with the owner (`architect.md`). For faults found in testing: a `bug` issue, which waits for the owner; no worker takes it (`test-coordinator.md`, `coordinator-no-plans.md`). No claim, hand-off or follow-up issue: a claim is a draft PR and a hand-off is the PR itself.
+- For decision questions: an issue labelled `architect`, which the architect decides with the owner (`architect.md`). For faults found in testing: a `bug` issue, which a coordinator gives to a worker like a plan step (`test-coordinator.md`, `coordinator-no-plans.md`). No claim, hand-off or follow-up issue: a claim is a draft PR and a hand-off is the PR itself.
 
 ## How much checking, how many agents?
 - The tests of your area and what the change touches, no sandbox without a reason, no sub-agents or review chains: `session-checks.md`.
