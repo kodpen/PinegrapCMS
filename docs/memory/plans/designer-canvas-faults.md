@@ -22,7 +22,7 @@ description: Plan (owner 2026-11-13, #9104): round pictures drawn oval on the de
 - CF2 (S) The picture that does not show. Done (#9199): a failed load on the canvas takes the page's no-image picture (`designer/no-image-placeholder.md`); the strip was picsum.photos not answering.
 - CF3 (S) The toolbar block. Done (#9217): the ratio rule reached the toolbar; room for it counts inside a clipping card (`designer/designer-canvas-toolbar-in-cards.md`). Next free: CF5.
 - CF4 (M) The loop as published. Done (#9233): `designer/canvas-loop-as-published.md`. A loop draws one line of its grid (card and hatched copies) in every loop kind, a listing with no record too; a bound picture is a sample photo at the node's ratio, its field's label in the title.
-- CF5 (M) Editing a card in a loop. In progress. First a walk on the blog, team and reviews cards: pick each element, move one, change the card's layout, with a picture of every place where frames, the band, the size badge or selection boxes lie over each other or the selection is unclear; then those are fixed. The pictures after go to the owner through the architect before the step lands (an `architect` approval issue).
+- CF5 (M) Editing a card in a loop. Waiting for the owner's look at the pictures (#9246): picking every element of the blog, Google reviews and team cards showed no toolbar on see-through wrappers (card body, title, rows) and a cover's toolbar inside the picture; both fixed (`designer/designer-canvas-toolbar-in-cards.md`). Moving and the layout change were not walked by script.
 
 ## In which order?
 - CF1, CF2 and CF3 at once; CF4 after CS1 of `designer-canvas-real-samples.md` (the same band code); CF5 last. Claim as `[plan:designer-canvas-faults] <step> — <topic>`.

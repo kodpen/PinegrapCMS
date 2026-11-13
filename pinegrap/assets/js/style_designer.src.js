@@ -6430,8 +6430,10 @@ const StyleDesigner = (function () {
             '.d-sm-flex > .sd-wrap:not(.sd-shared-wrap), .d-md-flex > .sd-wrap:not(.sd-shared-wrap), ' +
             '.d-lg-flex > .sd-wrap:not(.sd-shared-wrap), .d-xl-flex > .sd-wrap:not(.sd-shared-wrap), .d-xxl-flex > .sd-wrap:not(.sd-shared-wrap) ' +
             '{ display:contents !important; }',
-        _SD_BX + '.d-flex > .sd-wrap > .sd-tb, .d-inline-flex > .sd-wrap > .sd-tb, .d-sm-flex > .sd-wrap > .sd-tb, .d-md-flex > .sd-wrap > .sd-tb, ' +
-            '.d-lg-flex > .sd-wrap > .sd-tb, .d-xl-flex > .sd-wrap > .sd-tb, .d-xxl-flex > .sd-wrap > .sd-tb { display:none !important; }',
+        // A see-through wrapper's toolbar shows only for the selection,
+        // placed at the element by _sdPlaceChromeOf().
+        _SD_BX + '.d-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-inline-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-sm-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-md-flex > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.d-lg-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-xl-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-xxl-flex > .sd-wrap:not(.sd-selected) > .sd-tb { display:none !important; }',
         _SD_BX + '.d-flex > .sd-wrap.sd-selected > *, .d-inline-flex > .sd-wrap.sd-selected > *, .d-sm-flex > .sd-wrap.sd-selected > *, .d-md-flex > .sd-wrap.sd-selected > *, ' +
             '.d-lg-flex > .sd-wrap.sd-selected > *, .d-xl-flex > .sd-wrap.sd-selected > *, .d-xxl-flex > .sd-wrap.sd-selected > * ' +
             '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
@@ -6541,22 +6543,24 @@ const StyleDesigner = (function () {
             '.form-floating > .sd-wrap, .form-check > .sd-wrap, ' +
             '.input-group > .sd-wrap, ' +
             '.figure > .sd-wrap { display:contents !important; }',
-        // Hide toolbars and transfer outline for the sweep above
-        _SD_BX + '.accordion-item > .sd-wrap > .sd-tb, .accordion-header > .sd-wrap > .sd-tb, ' +
-            'h1.accordion-header > .sd-wrap > .sd-tb, h2.accordion-header > .sd-wrap > .sd-tb, h3.accordion-header > .sd-wrap > .sd-tb, ' +
-            'h4.accordion-header > .sd-wrap > .sd-tb, h5.accordion-header > .sd-wrap > .sd-tb, h6.accordion-header > .sd-wrap > .sd-tb, ' +
-            '.accordion-collapse > .sd-wrap > .sd-tb, .accordion-body > .sd-wrap > .sd-tb, ' +
-            '.card > .sd-wrap > .sd-tb, .card-body > .sd-wrap > .sd-tb, .card-header > .sd-wrap > .sd-tb, .card-footer > .sd-wrap > .sd-tb, ' +
-            '.modal-content > .sd-wrap > .sd-tb, .modal-header > .sd-wrap > .sd-tb, .modal-body > .sd-wrap > .sd-tb, .modal-footer > .sd-wrap > .sd-tb, ' +
-            '.modal-dialog > .sd-wrap > .sd-tb, ' +
-            '.offcanvas-header > .sd-wrap > .sd-tb, .offcanvas-body > .sd-wrap > .sd-tb, ' +
-            '.toast-header > .sd-wrap > .sd-tb, .toast-body > .sd-wrap > .sd-tb, ' +
-            '.alert > .sd-wrap > .sd-tb, ' +
-            '.breadcrumb > .sd-wrap > .sd-tb, .pagination > .sd-wrap > .sd-tb, ' +
-            '.dropdown-menu > .sd-wrap > .sd-tb, ' +
-            '.navbar > .sd-wrap > .sd-tb, .navbar-nav > .sd-wrap > .sd-tb, .nav-item > .sd-wrap > .sd-tb, ' +
-            '.form-floating > .sd-wrap > .sd-tb, .form-check > .sd-wrap > .sd-tb, ' +
-            '.figure > .sd-wrap > .sd-tb { display:none !important; }',
+        // Hide toolbars and transfer outline for the sweep above. The
+        // selection's toolbar stays: _sdPlaceChromeOf() puts it at the
+        // element, so a picked card body or title is never left without one.
+        _SD_BX + '.accordion-item > .sd-wrap:not(.sd-selected) > .sd-tb, .accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            'h1.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, h2.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, h3.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            'h4.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, h5.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, h6.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.accordion-collapse > .sd-wrap:not(.sd-selected) > .sd-tb, .accordion-body > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.card > .sd-wrap:not(.sd-selected) > .sd-tb, .card-body > .sd-wrap:not(.sd-selected) > .sd-tb, .card-header > .sd-wrap:not(.sd-selected) > .sd-tb, .card-footer > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.modal-content > .sd-wrap:not(.sd-selected) > .sd-tb, .modal-header > .sd-wrap:not(.sd-selected) > .sd-tb, .modal-body > .sd-wrap:not(.sd-selected) > .sd-tb, .modal-footer > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.modal-dialog > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.offcanvas-header > .sd-wrap:not(.sd-selected) > .sd-tb, .offcanvas-body > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.toast-header > .sd-wrap:not(.sd-selected) > .sd-tb, .toast-body > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.alert > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.breadcrumb > .sd-wrap:not(.sd-selected) > .sd-tb, .pagination > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.dropdown-menu > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.navbar > .sd-wrap:not(.sd-selected) > .sd-tb, .navbar-nav > .sd-wrap:not(.sd-selected) > .sd-tb, .nav-item > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.form-floating > .sd-wrap:not(.sd-selected) > .sd-tb, .form-check > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.figure > .sd-wrap:not(.sd-selected) > .sd-tb { display:none !important; }',
         _SD_BX + '.accordion-item > .sd-wrap.sd-selected > *, .accordion-header > .sd-wrap.sd-selected > *, ' +
             '.card-body > .sd-wrap.sd-selected > *, .card-header > .sd-wrap.sd-selected > *, .card-footer > .sd-wrap.sd-selected > *, ' +
             '.modal-content > .sd-wrap.sd-selected > *, .modal-header > .sd-wrap.sd-selected > *, .modal-body > .sd-wrap.sd-selected > *, .modal-footer > .sd-wrap.sd-selected > *, ' +
@@ -10101,6 +10105,10 @@ const StyleDesigner = (function () {
     // _sdFxSoon()), the pass that adds and drops sd-fx-unpos and sd-fx-abs.
     function _sdPlaceSelectedChrome() {
         if (!canvasDoc || !canvasDoc.body) return;
+        // The selection's toolbar spot is measured again once the pass has
+        // laid the page out: taken before it (a card's cover with no height
+        // yet), it stayed 'inside', over the picture, with room below it.
+        _sdTbFlipAll(Array.prototype.slice.call(canvasDoc.querySelectorAll('div.sd-wrap.sd-selected')));
         _sdPlaceChromeOf(Array.prototype.slice.call(
             canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge), .sd-wrap:has(> .sd-chip-row)')));
         // The size badge sits at the selection's corner: placed again once
