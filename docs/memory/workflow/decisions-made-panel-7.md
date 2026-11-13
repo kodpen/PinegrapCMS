@@ -12,7 +12,7 @@ description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass 
 - The bell's drawer redrawn in the second pass (`plans/panel-design-language/bell-drawer.html`), owner (2026-11-12): "uygun, çekmeceyi de plana ekle".
 
 ## How wide is an add or edit screen? (owner, 2026-11-13, #9070)
-- Centred and at most 1700 px: status column 376, 24 between, the form column the rest. A field is as wide as its content asks; an input never runs the width of the window or of its column. The save bar sits at the bottom, as wide as the content. The layout's three parts stay (`ui/edit-screen-wide-layout.md`).
+- Centred and at most 1700 px: status column 376, 24 between, the form column the rest. An input never runs the width of the window; in the form column fields keep the grid (#9271, part 8). The save bar sits at the bottom, as wide as the content. The layout's three parts stay (`ui/edit-screen-wide-layout.md`).
 - Owner (2026-11-12, #8860) had taken 1120 px (760 + 336) as drawn, against inputs that ran the width of the window. On the real screens (#9070): "yeniden tasarlanan sayfalardaki daralma sayfaları anlamsız derecede darlatmış"; then (2026-11-13): "hatta ekleme ekranları 1700 e kadar çıkabilir yeni pano genişliği".
 
 ## How wide is a list, and how does it page? (owner, 2026-11-13, #9070)
