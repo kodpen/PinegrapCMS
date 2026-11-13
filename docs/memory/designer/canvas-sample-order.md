@@ -23,3 +23,8 @@ description: The sample order the designer canvas draws in the order view, its r
 
 ## What is still not a sample?
 - `canvas-sample-gaps-orders.md` and `canvas-sample-gaps-checkout.md` list what CS2 left.
+
+## How do I see it in a sandbox?
+- After `bash tools/setup_sandbox.sh`: sign in with Playwright, open `add_system_style.php` and read `StyleDesigner.starterTree(kind)` for each kind `pg_design_template_starter_kinds(pg_design_template('pinegrap-market'))` names (`StyleDesigner` is a `const`, not on `window`).
+- From PHP CLI (`require 'init.php'`): `pg_design_template_install('pinegrap-market', array('id' => <user_id>, 'role' => 0), array('starters' => $trees, 'seo' => false))`; the user table's columns are `user_id`, `user_role`.
+- Then `edit_system_style.php?id=<style_id>&page=<page_id>` (pages: `order`, `email_order`, `cart`, `checkout` keys of the result); the canvas is `#sd-canvas-iframe`. A tall viewport (3600 px) gets the whole canvas in one picture.
