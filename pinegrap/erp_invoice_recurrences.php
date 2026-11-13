@@ -70,7 +70,7 @@ if ($output_rows === '') {
 echo
 pg_page_shell([
     'title' => lang('Repeating invoices'),
-    'extra classes' => 'erp erp_invoices',
+    'extra classes' => 'erp erp_invoices pg-measure-list',
     'icon' => 'erp',
     'heading' => lang('Repeating invoices'),
     'heading_description' => lang('Invoices written again every month, every three months or every year: maintenance contracts, rents, subscriptions.'),

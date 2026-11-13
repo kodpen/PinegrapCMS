@@ -1276,10 +1276,12 @@ function ws_claude_react($message_id, $emoji, $on)
 }
 
 /**
- * The request rows of a set of messages.
+ * The request rows of a set of messages, grouped by message: one per agent
+ * the message woke, in the order the agents were first asked, each agent's
+ * newest request (ws_agent_requests_by_message()).
  *
  * @param int[] $message_ids
- * @return array message_id => row (the newest request of each message)
+ * @return array message_id => row[]
  */
 function ws_claude_requests_map($message_ids)
 {
@@ -1289,13 +1291,9 @@ function ws_claude_requests_map($message_ids)
         return array();
     }
 
-    $out = array();
+    $rows = (array) db_items("SELECT * FROM ws_ai_requests WHERE message_id IN (" . implode(',', $message_ids) . ") ORDER BY id");
 
-    foreach ((array) db_items("SELECT * FROM ws_ai_requests WHERE message_id IN (" . implode(',', $message_ids) . ") ORDER BY id") as $row) {
-        $out[(int) $row['message_id']] = $row;
-    }
-
-    return $out;
+    return function_exists('ws_agent_requests_by_message') ? ws_agent_requests_by_message($rows) : array();
 }
 
 /**

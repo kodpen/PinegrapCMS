@@ -500,7 +500,7 @@ $memory_thead =
 
 echo pg_page_shell(array(
     'title' => lang('Performance Log'),
-    'extra classes' => 'setting',
+    'extra classes' => 'setting pg-measure-list',
     'icon' => 'setting',
     'heading' => lang('Performance Log'),
     'heading_description' => h(lang('Per-request runtime metrics recorded after each response is flushed to the client.')),

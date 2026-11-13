@@ -297,7 +297,7 @@ $export_url = 'erp_expenses.php?' . h(http_build_query(array(
 echo
 pg_page_shell([
         'title' => lang('Expenses'),
-        'extra classes' => 'erp erp_expenses',
+        'extra classes' => 'erp erp_expenses pg-measure-list',
         'icon' => 'erp',
         'heading' => lang('Expenses'),
         'heading_description' => lang('Receipts for rent, fuel, subscriptions and everything else the business spends that is not a purchase invoice.'),

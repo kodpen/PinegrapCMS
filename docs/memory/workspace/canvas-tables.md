@@ -11,7 +11,8 @@ description: The tables bound to a canvas (ws_canvas_tables, 11.0.190, #8960): w
 - A person who reads the canvas, may write in its channel (`ws_can_post_channel()`) and may write the table (`ws_wtable_may(…, 'write')`), for a read binding too: nobody binds a table they could only look at to a page others run. Pure rule `ws_canvas_table_bind_refusal()`: `access_invalid`, `not_found`, `forbidden`, `too_many` (20 a canvas, `WS_CANVAS_MAX_TABLES`; changing a binding's access at the limit passes).
 - Binding again changes the access (and the binder); two presses at once write one row (`INSERT IGNORE` on the unique key).
 - Taking off: whoever may write in the channel and may write the table, or anyone who may write in the channel when they no longer reach the table, so a binding never outlives everybody's reach.
-- An agent's binding (`bound_by_kind` `app`, a channel line with Undo) comes with the API (CO7).
+- Over the API an application binds as itself (`bound_by_kind` `app`, its id; `api/workspace-canvas-api.md`, #9231); from a team devices session the person binds in their own name. The checks are `ws_canvas_table_bind_check()` and `ws_canvas_table_unbind_check()`, shared by the panel's actions and the routes, so the API rehearses a binding before it writes it.
+- Not built yet: the line in the channel with Undo that an agent's binding is meant to show (`plans/canvas-one.md`); until it is there, the binding shows on the card's line of tables and is taken off from the card's drawer or the unbind route.
 
 ## What does the card show?
 - `file.page.tables` [{id, name, access, reached}] and `can_bind` (`ws_canvas_tables_card()`, from `ws_page_card()` with the viewer). The line "Tables it uses" with a chip per table and what the page does ("reads only", "reads, writes"; Turkish "okur", "okur, yazar"); a table the reader does not reach shows as "A table you do not reach", so the line still counts it.

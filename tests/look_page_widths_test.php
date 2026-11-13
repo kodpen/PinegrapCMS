@@ -62,3 +62,12 @@ function test_first_screens_take_the_measures()
 	pg_assert_contains('<div class="row pg-edit-columns">', $builder, 'its column row');
 	pg_assert_contains("'extra classes'=>'products pg-measure-list',", look_page_widths_test_source('view_products.php'), 'the products list is a list');
 }
+
+function test_lists_off_the_table_driver_take_the_list_measure()
+{
+	$screens = array('calendars', 'view_menu_items', 'view_sessions', 'view_performance_log', 'view_accessibility', 'backups', 'translations', 'marketplace_products', 'erp_purchase_orders', 'erp_quotes', 'erp_expenses', 'erp_expense_categories', 'erp_cheques', 'erp_bank_statements', 'erp_stock_counts', 'erp_invoice_recurrences', 'erp_audit');
+
+	foreach ($screens as $screen) {
+		pg_assert_true((bool) preg_match("/'extra classes'\\s*=>\\s*'[^']*\\bpg-measure-list\\b/", look_page_widths_test_source($screen . '.php')), $screen . ' is a list');
+	}
+}

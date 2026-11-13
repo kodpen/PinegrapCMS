@@ -287,6 +287,25 @@ function ws_api_page_edit($params)
         api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
     }
 
+    ws_api_page_new_version($viewer, $message, $channel, $params);
+
+    api_ok(ws_api_page_present($message));
+}
+
+/**
+ * Writes the page of a message anew, as the agent of its channel: the
+ * version the call was made against is checked, then the document is kept
+ * as the next version. The canvas's own address writes through here too
+ * (api_canvases.php); the caller has checked that the person may post in
+ * the channel. Never returns on a refusal.
+ *
+ * @param array $viewer
+ * @param array $message ws_messages row carrying the page
+ * @param array $channel
+ * @param array $params  version, html, libraries
+ */
+function ws_api_page_new_version($viewer, $message, $channel, $params)
+{
     $agent = ws_api_canvas_agent($channel, lang('A live page is made here only by an agent of the channel.'));
     $rows = ws_page_versions((int) $message['file_id']);
 
@@ -317,6 +336,4 @@ function ws_api_page_edit($params)
     if (!ws_page_write($message, $html, $agent, (int) $viewer['id'], $libraries)) {
         api_fail(503, 'service_unavailable', lang('The file could not be saved.'));
     }
-
-    api_ok(ws_api_page_present($message));
 }

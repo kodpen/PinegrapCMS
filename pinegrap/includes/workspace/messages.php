@@ -408,7 +408,11 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // The tasks this message's checklist became, with their progress.
         'list_tasks'  => $deleted ? array() : ($extra['list_tasks'][$id] ?? array()),
         'has_list'    => !$deleted && ws_task_work_ready() && (strpos((string) $row['body'], '[') !== false) && !empty(ws_checklist_items($row['body'])),
-        'claude'      => (!$deleted && isset($extra['claude'][$id])) ? ws_claude_request_state($viewer, $extra['claude'][$id]) : null,
+        // Every agent the message woke, in the order they were asked; each
+        // its newest request's state. null when none.
+        'claude'      => (!$deleted && !empty($extra['claude'][$id])) ? array_map(function ($row) use ($viewer) {
+            return ws_claude_request_state($viewer, $row);
+        }, $extra['claude'][$id]) : null,
         'drafts'      => $deleted ? array() : ($extra['drafts'][$id] ?? array()),
         'changes'     => $deleted ? array() : ($extra['changes'][$id] ?? array()),
         'design'      => $deleted ? array() : ($extra['design'][$id] ?? array()),

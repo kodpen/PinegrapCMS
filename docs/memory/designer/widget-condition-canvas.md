@@ -26,5 +26,5 @@ description: The canvas state preview of value conditions (W19, #1904): band chi
 - `SD_LIST_SAMPLE_ROWS` gives each source's rows the values that differ from the card (`order.steps`: paid, shipped, delivered as an estimate, so each timeline icon shows in its row); another source gets two rows of the card's values. `_sdListSample` is read first in `_displayValueForBinding()` after a comment sample; a test that cuts it declares it.
 
 ## Which main loops get sample rows? (#1928)
-- The widget's first loop without a source (`_sdFirstLoopArea()`), two rows of the card's values, in a kind that repeats it and has neither server ghosts (`_SD_GHOST_TYPES`, [[designer-widget-ghosts-and-edit-chips]]) nor sample comments: the cart, the order view's items, an account's order list. None in a single-record kind (`_sdLoopIsSingle()`, the rule that also hides the loop's band), inside a sample row or sample comment.
+- The widget's first loop without a source (`_sdFirstLoopArea()`), as one line of its grid (`canvas-loop-as-published.md`); a server-ghost kind ([[designer-widget-ghosts-and-edit-chips]]) only while the server has no record. None with sample comments, in a single-record kind (`_sdLoopIsSingle()`, which also hides the band), inside a sample row or sample comment.
 

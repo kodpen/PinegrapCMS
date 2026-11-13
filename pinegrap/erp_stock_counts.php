@@ -88,7 +88,7 @@ $can_start = $ready && !$readonly;
 echo
 pg_page_shell([
     'title' => lang('Stock counts'),
-    'extra classes' => 'erp erp_stock',
+    'extra classes' => 'erp erp_stock pg-measure-list',
     'icon' => 'erp',
     'heading' => lang('Stock counts'),
     'heading_description' => lang('Count the shelf by scanning barcodes, correct the counts, then apply them: the store\'s stock becomes what was counted, and what it was before stays on the count.'),
