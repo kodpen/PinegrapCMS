@@ -26,8 +26,8 @@ description: Plan (owner 2026-11-12, #8950): a quick setup that builds a flow by
 - QS1 (M) done #9082. Server: the catalogue (areas, starts, action groups, recipes filtered by start) and the function that turns the choices into a draft through the store; tests on the graph it makes.
 - QS2 (M) done #9244. The dialog's first stage: rail, search, start cards, "Only when" (`workspace/workspace-flows-quick-setup-dialog.md`).
 - QS3 (M) done #9278. The second stage: recipes, actions, a step's setting, "One more step".
-- QS4 (M) done #9315. The summary: order, edit, insert, a condition's indented steps, the name, start or open on the canvas. QS5 needs first: `flows-quick-setup-steps-2.md`.
-- QS5 (S) Ways in: "Quick setup" beside "New flow" on the Flows list, in its empty state and in the messages area (`messages-area-steps.md`); close-out: the lasting rules into `workspace/`, this plan deleted.
+- QS4 (M) done #9315. The summary: order, edit, insert, a condition's indented steps, the name, start or open on the canvas. QS5: `flows-quick-setup-steps-2.md`.
+- QS5 (S) claimed. Ways in: "Quick setup" beside "New flow" on the Flows list, in its empty state and in the messages area (`messages-area-steps.md`); close-out: the lasting rules into `workspace/`, this plan deleted.
 
 ## When does it start?
 - QS2 to QS4 follow QS1 one after the other (one dialog script); QS1b, QS6 and QS7: `flows-quick-setup-steps-2.md`. Claim as `[plan:flows-quick-setup] <step> — <topic>`.
