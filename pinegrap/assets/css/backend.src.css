@@ -15078,6 +15078,8 @@ a.ws-chip:hover {
 .ws-task-card {
   margin-top: .35rem;
   max-width: 36rem;
+  /* A long word or link in the title wraps inside the card. */
+  overflow-wrap: anywhere;
   border: 1px solid var(--pg-border-color-translucent);
   border-left: 4px solid var(--ws-accent);
   border-radius: var(--ws-radius-sm);
@@ -21090,6 +21092,7 @@ a.ws-tag-card-head:hover span {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    overflow-wrap: anywhere;
 }
 .ws-tpl-card-name {
     font-weight: 600;
