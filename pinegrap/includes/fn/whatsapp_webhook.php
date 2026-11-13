@@ -574,13 +574,21 @@ function pg_whatsapp_inbox_sweep($now)
  */
 function pg_whatsapp_inbox_row($inbox_id)
 {
-    if (((int) $inbox_id <= 0) || !pg_whatsapp_inbox_ready()) {
+    // The bell asks once to decide who sees a row and again to draw it.
+    static $rows = array();
+
+    $inbox_id = (int) $inbox_id;
+
+    if (($inbox_id <= 0) || !pg_whatsapp_inbox_ready()) {
         return null;
     }
 
-    $row = db_item("SELECT contact_id, from_number, profile_name FROM whatsapp_inbox WHERE id = '" . (int) $inbox_id . "' LIMIT 1");
+    if (!array_key_exists($inbox_id, $rows)) {
+        $row = db_item("SELECT contact_id, from_number, profile_name FROM whatsapp_inbox WHERE id = '" . $inbox_id . "' LIMIT 1");
+        $rows[$inbox_id] = is_array($row) ? $row : null;
+    }
 
-    return is_array($row) ? $row : null;
+    return $rows[$inbox_id];
 }
 
 /**

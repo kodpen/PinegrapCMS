@@ -121,13 +121,38 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
         $data['visits'] = ws_customer_history_visit_rows($identity, $before, $read);
     }
 
-    if ($rights['whatsapp'] && ((int) ($identity['contact_id'] ?? 0) > 0)) {
+    $whatsapp_contact = $rights['whatsapp'] ? ws_customer_history_whatsapp_contact($viewer, $identity, 'ws_viewer_contacts_open') : 0;
+
+    if ($whatsapp_contact > 0) {
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
 
-        $data['whatsapp'] = pg_whatsapp_inbox_contact_rows((int) $identity['contact_id'], $before, $read);
+        $data['whatsapp'] = pg_whatsapp_inbox_contact_rows($whatsapp_contact, $before, $read);
     }
 
     return ws_customer_history_build($rights, $data, 'ws_customer_money_text', OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $limit);
+}
+
+/**
+ * The contact whose received WhatsApp messages the reader may see in the
+ * history: the channel's contact, only when the reader may open it. The
+ * user role opens only the contacts filed in a contact group given to them
+ * (ws_viewer_contacts_open()); ws_customer_identity() hands over the contact
+ * id whether or not the reader may open it.
+ *
+ * @param array    $viewer
+ * @param array    $identity ws_customer_identity()
+ * @param callable $open     function ($viewer, $contact_ids): the ids kept
+ * @return int 0 for none
+ */
+function ws_customer_history_whatsapp_contact($viewer, $identity, $open)
+{
+    $contact_id = (int) ($identity['contact_id'] ?? 0);
+
+    if (($contact_id <= 0) || empty($viewer['contacts'])) {
+        return 0;
+    }
+
+    return in_array($contact_id, array_map('intval', (array) call_user_func($open, $viewer, array($contact_id))), true) ? $contact_id : 0;
 }
 
 /**

@@ -183,9 +183,19 @@ function pg_notification_visible($notification, $rights)
 	}
 
 	// A customer's WhatsApp message (includes/fn/whatsapp_webhook.php): for
-	// whoever may open contacts, where it is kept in the contact's history.
+	// whoever may open the contact it came from, as the contact screens ask.
 	if ($action == 'whatsapp_message') {
-		return (($rights['role'] < 3) || !empty($rights['manage_contacts']));
+		if ((int) $rights['role'] < 3) {
+			return true;
+		}
+
+		if (!function_exists('pg_whatsapp_inbox_row')) {
+			require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
+		}
+
+		$received = pg_whatsapp_inbox_row((int) ($notification['form_id'] ?? 0));
+
+		return pg_notification_whatsapp_visible($rights, is_array($received) ? (int) $received['contact_id'] : 0, 'pg_notification_whatsapp_contact_open');
 	}
 
 	// An overdue-receivable digest is for whoever may use the ERP; with the
@@ -219,6 +229,42 @@ function pg_notification_visible($notification, $rights)
 	// Anything else - a message written by the software itself - is for
 	// everybody who can sign in.
 	return true;
+}
+
+// A customer's WhatsApp message: the manager role and up see every one; the
+// user role needs the contacts right and sees only a message whose contact
+// is filed in one of the contact groups given to them (the rule of
+// validate_contact_access() and pg_contact_owner_sql()). A message from a
+// number tied to no contact belongs to no group, so it is the staff's alone.
+// $contact_id is the message's contact (0 for none); $open answers whether a
+// person's contact groups hold a contact. Pure apart from $open.
+function pg_notification_whatsapp_visible($rights, $contact_id, $open)
+{
+	if ((int) $rights['role'] < 3) {
+		return true;
+	}
+
+	if (empty($rights['manage_contacts']) || ((int) $contact_id <= 0)) {
+		return false;
+	}
+
+	return (bool) call_user_func($open, (int) $rights['id'], (int) $contact_id);
+}
+
+// Whether a user-role person's contact groups hold a contact; cached per
+// request, as the bell asks it once per row and per person.
+function pg_notification_whatsapp_contact_open($user_id, $contact_id)
+{
+	static $cache = array();
+
+	$key = (int) $user_id . ':' . (int) $contact_id;
+
+	if (!isset($cache[$key])) {
+		$cache[$key] = ((int) db_value("SELECT COUNT(*) FROM contacts
+			WHERE id = '" . (int) $contact_id . "' AND " . pg_contact_owner_sql((int) $user_id, 'contacts.id')) > 0);
+	}
+
+	return $cache[$key];
 }
 
 // The signed-in person, as the panel endpoints ask it.

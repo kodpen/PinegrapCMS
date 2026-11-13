@@ -142,9 +142,23 @@ function test_whatsapp_inbox_bell_and_history()
 
 	$row = array('action' => 'whatsapp_message', 'target_user_id' => 0);
 	pg_assert_true(pg_notification_visible($row, array('id' => 1, 'role' => 2, 'manage_contacts' => false)), 'a manager');
-	pg_assert_true(pg_notification_visible($row, array('id' => 1, 'role' => 3, 'manage_contacts' => true)), 'a user with the contacts right');
-	pg_assert_false(pg_notification_visible($row, array('id' => 1, 'role' => 3, 'manage_contacts' => false)), 'a user without it');
-	pg_assert_false(pg_notification_visible($row, array('id' => 1, 'role' => 3)), 'a right not given');
+
+	// The user role: only a contact filed in one of their contact groups
+	// (user 4 holds contact 9 through a group, not contact 10).
+	$asked = array();
+	$groups = function ($user_id, $contact_id) use (&$asked) {
+		$asked[] = array($user_id, $contact_id);
+
+		return ($user_id === 4) && ($contact_id === 9);
+	};
+	$user = array('id' => 4, 'role' => 3, 'manage_contacts' => true);
+
+	pg_assert_true(pg_notification_whatsapp_visible($user, 9, $groups), 'a user, the contact in their group');
+	pg_assert_false(pg_notification_whatsapp_visible($user, 10, $groups), 'a user, the contact outside their groups');
+	pg_assert_false(pg_notification_whatsapp_visible($user, 0, $groups), 'a user, a number tied to no contact');
+	pg_assert_false(pg_notification_whatsapp_visible(array('manage_contacts' => false) + $user, 9, $groups), 'a user without the contacts right');
+	pg_assert_true(pg_notification_whatsapp_visible(array('id' => 5, 'role' => 2), 0, $groups), 'a manager, a number tied to no contact');
+	pg_assert_same(array(array(4, 9), array(4, 10)), $asked, 'groups asked only for a user with the right and a contact');
 
 	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/customer_history.php');
 
@@ -158,6 +172,19 @@ function test_whatsapp_inbox_bell_and_history()
 
 	$page = ws_customer_history_build(array('whatsapp' => false), $data, function () { return ''; }, '/pg/', 20);
 	pg_assert_same(array(), $page['entries'], 'not without the contacts right');
+
+	// Which contact's messages the history reads: a user-role member opens
+	// only contacts of their groups (user 4 holds contact 9, not 10).
+	$open = function ($viewer, $ids) {
+		return ((int) $viewer['role'] < 3) ? $ids : array_values(array_intersect($ids, ((int) $viewer['id'] === 4) ? array(9) : array()));
+	};
+	$user = array('id' => 4, 'role' => 3, 'contacts' => true);
+
+	pg_assert_same(9, ws_customer_history_whatsapp_contact($user, array('contact_id' => 9), $open), 'a user, the contact in their group');
+	pg_assert_same(0, ws_customer_history_whatsapp_contact($user, array('contact_id' => 10), $open), 'a user, the contact outside their groups');
+	pg_assert_same(0, ws_customer_history_whatsapp_contact(array('contacts' => false) + $user, array('contact_id' => 9), $open), 'no contacts right');
+	pg_assert_same(10, ws_customer_history_whatsapp_contact(array('id' => 5, 'role' => 2, 'contacts' => true), array('contact_id' => 10), $open), 'a manager');
+	pg_assert_same(0, ws_customer_history_whatsapp_contact($user, array('contact_id' => 0), $open), 'a channel about no contact');
 }
 
 function test_whatsapp_webhook_wiring()

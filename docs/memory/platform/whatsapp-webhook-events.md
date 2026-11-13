@@ -18,8 +18,8 @@ module: whatsapp_webhook
 - `whatsapp_inbox` (step 11.0.198, approved in #9085): one row per wamid (`INSERT IGNORE` on the UNIQUE key, so Meta's second delivery is neither kept nor announced again). Kept only while the card's switch is on.
 - Text: the text, a caption, a document's file name, a button's or list item's title, a reaction's emoji, a place's name; cut at 4096 characters. Media keeps Meta's media id and type only (not downloaded).
 - Contact: the newest contact whose mobile phone is the number however typed (`pg_sms_number_variants()`, `pg_sms_number_sql()`), else the contact of the same WhatsApp user id's last message (a username without a number).
-- Bell: action `whatsapp_message` (title the text, order_total the sender, form_id the row), for role below 3 or the contacts right (`manage_contacts` in the bell's, push's and API's rights); module Shop (`pg_notification_module()`); it opens the contact, else Contacts. No device banner.
-- History: source `whatsapp` of the Workspace customer history (`workspace-customer-history.md`) under the contacts right (`customers:read` over the API), kind `whatsapp`, at the arrival time, detail sender and text, opening the contact.
+- Bell: action `whatsapp_message` (title the text, order_total the sender, form_id the row), for role below 3; the user role needs the contacts right and the row's contact in one of its contact groups (`pg_notification_whatsapp_visible()`, `pg_contact_owner_sql()`), so an unmatched number is staff only; module Shop (`pg_notification_module()`); it opens the contact, else Contacts. No device banner.
+- History: source `whatsapp` of the Workspace customer history (`workspace-customer-history.md`) under the contacts right and only for a contact the reader may open (`ws_customer_history_whatsapp_contact()`, `ws_viewer_contacts_open()`; `customers:read` over the API), kind `whatsapp`, at the arrival time, detail sender and text, opening the contact.
 - Kept two years (`pg_whatsapp_inbox_sweep()` in `job.php`, 1000 rows a run); a contact holder (merge move, erase find) and erased by number or contact as "WhatsApp messages received".
 
 ## How was it verified?
