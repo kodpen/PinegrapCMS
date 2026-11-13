@@ -3071,7 +3071,7 @@
     "The conversation has ended.": "Görüşme bitirildi.",
     "The conversation has never been cleared.": "Bu konuşma hiç temizlenmedi.",
     "The conversation is cleared. The earlier one is kept.": "Konuşma temizlendi. Önceki konuşma saklandı.",
-    "The conversation is kept in the #{var:1} channel of the Workspace, where everybody who reads it sees it.": "Konuşma Workspace'in #{var:1} kanalında tutulur; kanalı okuyan herkes görür.",
+    "The conversation is kept in the #{var:1} channel of the Workspace, where everybody who reads it sees it.": "Konuşma, Çalışma Alanı'nın #{var:1} kanalında tutulur; kanalı okuyan herkes görür.",
     "The conversation starts again. Nothing is deleted: what was written so far is kept as an earlier version, listed here, that everybody in the channel can read as it was.": "Konuşma baştan başlar. Hiçbir şey silinmez: şimdiye kadar yazılanlar burada listelenen önceki bir sürüm olarak saklanır ve kanaldaki herkes onu olduğu gibi okuyabilir.",
     "The conversation with {var:1} has ended. A new link opens the room again.": "{var:1} ile görüşme sona erdi. Yeni bağlantı odayı yeniden açar.",
     "The conversion rate fell by more than half: {var:1} % against {var:2} % in the period before.": "Dönüşüm oranı yarıdan fazla düştü: önceki dönemde %{var:2}, şimdi %{var:1}.",
