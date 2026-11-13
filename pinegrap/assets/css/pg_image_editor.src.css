@@ -164,6 +164,49 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The Design Canvas's icon (pg_design_canvas_icon()): the design colour and
+   its tint, the pen curve in the second colour; the dark editor swaps the two
+   shades. On a panel page backend.css sets the outline colour itself. */
+.pgie-brand {
+  display: flex;
+  flex: none;
+  margin-inline-start: 6px;
+}
+
+.pgie .pg-dc-icon {
+  --pg-dc-line: #a01551;
+  --pg-dc-tint: #ff4c87;
+  --pg-dc-accent: #0284c7;
+  --pg-dc-tint-opacity: 0.55;
+  --pg-dc-accent-opacity: 0.35;
+  width: 20px;
+  height: 20px;
+  overflow: visible;
+  color: var(--pg-dc-line);
+}
+
+.pgie.pgie-dark .pg-dc-icon {
+  --pg-dc-line: #ff4c87;
+  --pg-dc-tint: #a01551;
+  --pg-dc-accent: #38bdf8;
+  --pg-dc-tint-opacity: 0.7;
+  --pg-dc-accent-opacity: 0.4;
+}
+
+.pgie .pg-dc-icon .pg-mi-2 {
+  fill: var(--pg-dc-tint);
+  fill-opacity: var(--pg-dc-tint-opacity);
+}
+
+.pgie .pg-dc-icon .pg-mi-a {
+  color: var(--pg-dc-accent);
+}
+
+.pgie .pg-dc-icon .pg-mi-at {
+  fill: currentColor;
+  fill-opacity: var(--pg-dc-accent-opacity);
+}
+
 .pgie-ibtn {
   width: 36px;
   height: 36px;

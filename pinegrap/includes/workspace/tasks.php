@@ -1164,7 +1164,7 @@ function ws_task_card_html($viewer, $task, $assignees)
                 <span class="ws-task-status badge">' . h($brief['status_label']) . '</span>
                 ' . (($task['priority'] === 'urgent' || $task['priority'] === 'high') ? '<span class="ws-task-priority badge">' . h(ws_task_priorities()[$task['priority']]) . '</span>' : '') . '
             </div>
-            <div class="ws-task-card-title">' . h($brief['title']) . '</div>
+            <div class="ws-task-card-title text-break">' . h($brief['title']) . '</div>
             <div class="ws-task-card-meta">
                 <span class="' . ($brief['overdue'] ? 'fg-danger' : '') . '"><i class="bi bi-calendar-event me-1"></i>' . h($brief['due_label']) . '</span>
                 ' . (($brief['estimate_label'] !== '') ? '<span><i class="bi bi-hourglass-split me-1"></i>' . h($brief['estimate_label']) . '</span>' : '') . '

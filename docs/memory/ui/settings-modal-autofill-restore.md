@@ -12,6 +12,9 @@ description: Settings dialog defence against password-manager fills: hold()/revi
 ## Who owns a change?
 - Ownership is decided by the clock: a hand gesture within the last 1200 ms. Which control was pressed is ignored, because often it is another control (operator presses "Üret", value appears in an untouched field).
 - `pointerdown` and `keydown` are listened on the document in the CAPTURE phase: a card's own dialog lives in the box beside the settings dialog and a file picker elsewhere, yet pressing in both is working on this pane.
+- Only trusted events count (`event.isTrusted`; for `paste`/`drop` the jQuery `originalEvent`). A password manager focused the box with `focus()`, then dispatched its own `keydown`, `input` and `change`: the keydown restarted the clock and "admin" stayed in five Accounts and sign-in boxes, the pane asking to be saved (#9086).
+- The focused control is the operator's only when a person moved the focus there (`focusControl`, set by a focusin led by a trusted gesture), not merely `document.activeElement`: the manager focuses the box it fills.
+- When a pane is painted the clock and the claimed controls are cleared: the press that asked for the pane was made on another one and must not cover a fill landing a moment later.
 
 ## What if the filler fires no event?
 - Kaspersky writes the value straight onto the control: no `input`, no `change`, so every event-bound listener sleeps. While the dialog is open `patrol()` polls every 600 ms.

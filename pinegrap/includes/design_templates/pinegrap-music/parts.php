@@ -513,10 +513,10 @@ $faq = function ($n, $question, $answer, $topics = '', $parent = 'mu-faq') use (
 // The line in the account bar: the tour is on and where its dates are.
 // A shared component.
 $notice = function () use ($el, $icon, $span, $link) {
-    return $el('p', 'd-flex flex-wrap align-items-center gap-2 mb-0', lang('Notice'), array(
-        $icon('bi-megaphone', 'text-primary'),
+    return $el('p', 'mb-0', lang('Notice'), array(
+        $icon('bi-megaphone', 'text-primary me-1'),
         $span(lang('On tour now: new shows added'), '', lang('Text')),
-        $link(lang('See the dates'), '{{page:tour}}', 'link-primary fw-semibold'),
+        $link(lang('See the dates'), '{{page:tour}}', 'link-primary fw-semibold ms-1'),
     ));
 };
 
@@ -528,8 +528,8 @@ $account_bar_tree = function () use ($el, $widget, $shared, $lang_switcher) {
     return $el('div', 'border-bottom small bg-body-tertiary', lang('Account Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center justify-content-between gap-2 py-1', lang('Account Area'), array(
             $el('div', '', lang('Announcement Area'), array($shared('notice'))),
-            $el('div', 'd-flex align-items-center gap-2 ms-auto', lang('Account Links'), array(
-                $lang_switcher(), $widget('login_region'), $widget('cart_link'),
+            $el('div', 'd-flex flex-wrap align-items-center justify-content-end column-gap-1 column-gap-sm-2 row-gap-1 ms-auto', lang('Account Links'), array(
+                $lang_switcher('text-nowrap'), $widget('login_region'), $widget('cart_link'),
             )),
         )),
     ));
@@ -557,7 +557,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2', lang('Brand'), array(
                     $icon('bi-music-note-beamed', 'fs-4 text-primary'),
-                    $span('{{site_name}}', 'pmu-brand fs-3', lang('Name')),
+                    $span('{{site_name}}', 'pmu-brand fs-3 text-truncate', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),
@@ -774,7 +774,7 @@ $member_card = function ($key) use ($el, $heading, $para, $image, $col, $attr, $
     $m = $members[$key];
     return $col(array(
         $el('article', 'text-center', lang('Member Card'), array(
-            $image($portrait($m['name'], 320), $m['name'], 'rounded-circle mb-3', array('_attrs' => array($attr('width', '160'), $attr('height', '160'), $attr('loading', 'lazy')))),
+            $image($portrait($m['name'], 320), $m['name'], 'rounded-circle mb-3', array('width' => '160', 'height' => '160', '_attrs' => array($attr('loading', 'lazy')))),
             $heading('h3', $m['name'], 'pmu-display h5 mb-1'),
             $para($m['role'], 'small fw-semibold text-primary mb-2'),
             $para($m['bio'], 'small text-body-secondary mb-0'),

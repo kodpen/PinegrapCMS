@@ -499,7 +499,7 @@ $public_pages[] = array(
         $el('section', 'py-5 bg-body-tertiary', lang('Tour Prices'), array(
             $container(array(
                 $fx($section_header(lang('Every tour'), lang('Prices per traveller'), lang('All Tours'), '{{page:tours}}'), $fade_in),
-                $fx($el('div', 'table-responsive', lang('Table'), array(
+                $fx($el('div', 'table-responsive position-relative', lang('Table'), array(
                     $el('table', 'table align-middle mb-0', lang('Price Table'), array(
                         $el('thead', '', lang('Table Head'), array(
                             $el('tr', '', lang('Row'), array(

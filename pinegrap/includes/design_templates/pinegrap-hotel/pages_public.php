@@ -504,7 +504,7 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Room Rates'), array(
             $container(array(
                 $section_header(lang('Rooms and suites'), lang('Rates for a night'), lang('All rooms and suites'), '{{page:rooms}}'),
-                $el('div', 'table-responsive', lang('Table'), array(
+                $el('div', 'table-responsive position-relative', lang('Table'), array(
                     $el('table', 'table align-middle mb-0', lang('Rates Table'), array(
                         $el('thead', '', lang('Table Head'), array(
                             $el('tr', '', lang('Row'), array(
