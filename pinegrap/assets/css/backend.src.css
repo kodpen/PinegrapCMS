@@ -21610,8 +21610,14 @@ html.ws-flow-layer-on body {
   border-radius: var(--ws-radius);
   background: var(--pg-bg-body);
 }
+/* No flow open (the template gallery, the flow list): the main column
+   takes the whole width. Three classes outweigh the two-class column rules
+   of the narrower media queries further down. */
+.wsf-app.wsf-no-palette.wsf-nothing {
+  grid-template-columns: minmax(0, 1fr);
+}
 .wsf-app.wsf-nothing .wsf-side {
-  visibility: hidden;
+  display: none;
 }
 .wsf-side-title {
   margin-bottom: var(--ws-space-2);

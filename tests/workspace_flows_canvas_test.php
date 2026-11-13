@@ -3728,3 +3728,17 @@ function test_workspace_flows_canvas_layer_new_flow()
 	pg_assert_contains("K.api('ws_flow_ai_sketch', Object.assign({ sentence: sentence }, newHome()))", ws_flows_canvas_test_script_function($flow, 'sketchCard'), 'Pinegrap AI');
 	pg_assert_contains('dropUntouched();', ws_flows_canvas_test_script_function($flow, 'unmount'), 'a blank one left as made is not kept');
 }
+
+// With no flow open (the template gallery, the flow list) the main column
+// takes the whole width (#9219): the side panel is taken out of the grid,
+// not only hidden, at every width the grid has a side column.
+function test_workspace_flows_canvas_nothing_open_takes_the_whole_width()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	pg_assert_true((bool) preg_match('/\n\.wsf-app\.wsf-no-palette\.wsf-nothing \{\n  grid-template-columns: minmax\(0, 1fr\);\n\}/', $css), 'one column with no flow open');
+	pg_assert_true((bool) preg_match('/\n\.wsf-app\.wsf-nothing \.wsf-side \{\n  display: none;\n\}/', $css), 'the side panel leaves the grid');
+	pg_assert_false(strpos($css, ".wsf-app.wsf-nothing .wsf-side {\n  visibility: hidden;") !== false, 'the side column is no longer kept empty');
+	// Three classes outweigh the two of the narrower media rules, wherever they sit.
+	pg_assert_false((bool) preg_match('/\.wsf-app\.wsf-nothing[^{]*\{[^}]*19rem/', $css), 'no side column kept');
+}
