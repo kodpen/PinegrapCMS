@@ -3764,6 +3764,7 @@
     "Above a single payment, PayTR offers the card's installments up to this number. The order records what PayTR took: an installment difference the customer pays becomes the order's installment charge and raises its total.": "Tek çekimin üstünde PayTR, kartın taksitlerini bu sayıya kadar sunar. Sipariş PayTR'ın çektiği tutarı kaydeder: müşterinin ödediği taksit farkı siparişin taksit masrafı olur ve toplamını büyütür.",
     "Above the clouds by seven, back at my desk by ten.": "Yedide bulutların üstünde, onda masamın başında.",
     "Absolute": "Mutlak",
+    "Abusive content": "Kötüye kullanım içeren içerik",
     "Academy Partner": "Altyapı Sponsoru",
     "Academy Registration": "Altyapı Kaydı",
     "Academy Registration Received E-mail": "Altyapı Kaydı Alındı E-postası",

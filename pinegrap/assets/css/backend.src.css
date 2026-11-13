@@ -27678,5 +27678,11 @@ body.pg-measure-report #content {
 .pg-messages-row-pill {
   align-self: center;
 }
+.pg-messages-card-head > form {
+  margin: 0;
+}
+.pg-messages-card-empty {
+  margin: 4px 12px 10px;
+}
 
 }
