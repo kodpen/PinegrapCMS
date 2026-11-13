@@ -24,3 +24,6 @@ description: Plan: a tag anywhere in a Workspace channel item (file caption, edi
 
 ## Where are the steps?
 - `channel-item-tags-wake-steps.md`: TW1-TW5, each with its census and its After line.
+
+## Where does the work stand?
+- TW1 (#9359) and TW2 (#9378) done; `workspace/channel-item-tags.md` holds the helpers. TW3 is free to claim, then TW4 and the close-out.
