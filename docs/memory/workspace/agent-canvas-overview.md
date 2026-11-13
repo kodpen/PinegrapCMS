@@ -12,6 +12,8 @@ description: Start file of the agent-canvas-* cluster: an agent designs on a Wor
 - A layer the server writes is one the editor's model (`assets/js/pg_image_editor_model.js`) accepts: each kind has a test that runs the same step through the model in Node.
 - The limits: artboard 16 to 8000 pixels, a document of 1 MB, 20 operations a call, 30 scenes for an agent.
 - Each write is a new version made by the agent (kept with the original and the last ten), its picture pending until the server or a member's browser draws it.
+- Owner (2026-11-11, #8762): the server's drawing is optional, never required; a host without a usable Imagick loses nothing, a member's browser draws there (`agent-canvas-picture.md`).
+- A new limit or a schema change is named in its own PR with the reason; a column is asked first (`CLAUDE.md`, Fixed rules 5).
 
 ## Which file holds what?
 - Drawing a canvas from SVG and reading one, who may: `agent-canvas-svg.md`.
@@ -23,6 +25,10 @@ description: Start file of the agent-canvas-* cluster: an agent designs on a Wor
 - The picture, drawn by the server where it can, else by a browser: `agent-canvas-picture.md` (the server's drawing: `platform/image-server-draw.md`).
 - Saving the picture into Files under the risk tiers: `agent-canvas-save.md`.
 - The assistants' tools (`draw_canvas`, `read_canvas`, `edit_canvas`): `agent-canvas-assistants.md`.
+
+## What is not part of it?
+- Live pages an agent writes in HTML: `agent-page.md`.
+- Translating the words in pictures in the background on the server's drawing (owner 2026-11-11, #8762): wanted, not planned yet; it would be a plan of its own.
 
 ## How is a new part added?
 - The pure step goes into its own file under `includes/workspace/canvas_*.php`, called from `ws_canvas_edit_apply()` (`canvas_edit.php`) with its refusal code and sentence in `ws_canvas_edit_error_text()`.
