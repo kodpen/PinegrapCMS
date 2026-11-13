@@ -270,6 +270,14 @@ function test_ws_wtable_channel_screen()
 		pg_assert_contains($needle, $screen);
 	}
 
+	// The Data list's Channels scope is on once the step has run, and a
+	// table is a channel's there only as the store resolved its home.
+	pg_assert_contains('$with_channels = ws_wtable_home_ready();', $screen, 'the Channels scope follows the step');
+	pg_assert_contains('$reached_home = ws_wtable_home($reached_table);', $screen, 'each table\'s channel as the store resolves it');
+	pg_assert_contains('if ($reached_home !== null) {', $screen, 'an unresolved home is no channel');
+	pg_assert_true(strpos($screen, '$with_channels = ws_wtable_home_ready();') < strpos($screen, 'ws_wtable_list_counts($reached, $channels)'), 'the channels are known before the counts');
+	pg_assert_true(strpos($screen, '$channels[(int) $reached_table[\'id\']]') < strpos($screen, 'ws_wtable_list_counts($reached, $channels)'), 'and filled before them');
+
 	pg_assert_same(lang('Choose a channel you may write in.'), ws_wtable_home_refusal_text(ws_wtable_refusal('channel_unwritable', 'channel_id'), true));
 	pg_assert_contains((string) ws_wtable_limits()['tables'], ws_wtable_home_refusal_text(ws_wtable_refusal('too_many_tables', 'channel_id', 409), true));
 	pg_assert_same(ws_wtable_screen_error_text('too_many_tables'), ws_wtable_home_refusal_text(ws_wtable_refusal('too_many_tables', 'channel_id', 409), false), 'their own tables are full');

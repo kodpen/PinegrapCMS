@@ -758,11 +758,21 @@ if (!$table) {
 
     // Tables that belong to a channel become a scope of their own when the
     // store keeps them; $channels holds each such table's channel as the
-    // store resolved it (table id => id, name, kind).
-    $with_channels = false;
+    // store resolved it (table id => id, name, kind). A channel_id naming no
+    // public or private channel resolves to none: the table stays its maker's.
+    $with_channels = ws_wtable_home_ready();
     $channels = array();
     $scope = ws_wtable_list_scope($_GET['scope'] ?? '', $with_channels);
     $reached = ws_wtables_reached($viewer, 'all');
+
+    foreach ($with_channels ? $reached : array() as $reached_table) {
+        $reached_home = ws_wtable_home($reached_table);
+
+        if ($reached_home !== null) {
+            $channels[(int) $reached_table['id']] = array('id' => (int) $reached_home['id'], 'name' => (string) $reached_home['name'], 'kind' => (string) $reached_home['kind']);
+        }
+    }
+
     $counts = ws_wtable_list_counts($reached, $channels);
 
     // The person's own deleted tables, each restored whole until the bin

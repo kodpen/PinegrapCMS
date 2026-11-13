@@ -23,7 +23,7 @@ description: A workflow table of a channel (ws_wtables.channel_id, 11.0.191): ri
 ## Where is it listed?
 - `ws_wtables_reached($viewer, all|mine|channels|shared)`: `ws_wtables_own()` (a person's only), `ws_wtables_of_channels()` (channels they read), shared = only through a share.
 - Bin: `ws_wtables_binned()` adds the channels' they manage (`ws_wtables_binned_of_channels()`); managers restore.
-- The list screen shows them among all tables; a Channels group is the list rework's `$with_channels` switch (#8978).
+- The Data list's Channels segment and Where column (`workflow-tables-data-list.md`): `$channels` from `ws_wtable_home()` per reached table, so an orphan home is the maker's there too.
 
 ## What does the table's screen show?
 - "Belongs to" card (`#ws-wt-home`, `ws_wtable_home_card()`): the channel or "Your own table"; for a manager a "Move to" select (My own tables, channels from `ws_wtable_home_choices()`), `wt_action=table_home`. Under the name "Table of the channel x · Can edit" (`ws_wtable_home_note()`).
