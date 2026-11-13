@@ -5,7 +5,7 @@
  * Tests for the searchable file and image pickers
  * (includes/fn/file_picker_search.php, file_picker_search.php): who may
  * search which kind, the files condition each kind builds, the folded name
- * match, the markup hooks and the stored choice, and the screens wired to it.
+ * match, the search address, and the screens wired to it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -43,33 +43,34 @@ function test_file_picker_access_verdict()
 	pg_assert_same('unknown', pg_file_picker_access_verdict('image', 0, false));
 }
 
+// The files condition each kind builds (pg_picker_files_where()).
 function test_file_picker_where()
 {
 	$kinds = pg_file_picker_kinds();
 
 	pg_assert_same(
 		"(name != '') AND (attachment = 0) AND (type IN ('png', 'svg')) AND ((attachment = 0) AND (folder IN (1, 4))) AND (folder NOT IN (9, 10))",
-		pg_file_picker_where($kinds['site_icon'], '(attachment = 0) AND (folder IN (1, 4))', array(9, '10', 9), null),
+		pg_picker_files_where($kinds['site_icon'], '(attachment = 0) AND (folder IN (1, 4))', array(9, '10', 9), null),
 		'site icon: its types, the public condition, never the bin');
 
 	pg_assert_same(
 		"(name != '') AND (attachment = 0) AND (folder NOT IN (9)) AND (folder IN (3, 5))",
-		pg_file_picker_where($kinds['file'], '', array(9), array('3', 5, 3)),
+		pg_picker_files_where($kinds['file'], '', array(9), array('3', 5, 3)),
 		'file: every type and design file, a User kept to their folders');
 
 	pg_assert_same(
 		"(name != '') AND (attachment = 0) AND (folder IN (-1))",
-		pg_file_picker_where($kinds['file'], '', array(), array()),
+		pg_picker_files_where($kinds['file'], '', array(), array()),
 		'a User who may edit no folder finds nothing');
 
 	pg_assert_same(
 		"(name != '') AND (attachment = 0) AND (type IN ('jpg')) AND (folder IN (-1))",
-		pg_file_picker_where(array('types' => array('JPG', "png') OR (1=1"), 'public' => true, 'design' => true), '', array(), null),
+		pg_picker_files_where(array('types' => array('JPG', "png') OR (1=1"), 'public' => true, 'design' => true), '', array(), null),
 		'a public kind without its condition lists nothing; only plain types are kept');
 
 	pg_assert_same(
 		"(name != '') AND (attachment = 0) AND (design = 0)",
-		pg_file_picker_where(array('types' => array(), 'public' => false, 'design' => false), '', array(), null),
+		pg_picker_files_where(array('types' => array(), 'public' => false, 'design' => false), '', array(), null),
 		'design files left out when the kind says so');
 
 	pg_assert_same(pg_public_image_file_types(), $kinds['public_image']['types']);
@@ -81,12 +82,12 @@ function test_file_picker_where()
 // a one-letter wildcard and LIKE's own characters are escaped.
 function test_file_picker_like_term()
 {
-	pg_assert_same('logo', pg_file_picker_like_term('Logo'));
-	pg_assert_same('_s_k', pg_file_picker_like_term('Işık'));
-	pg_assert_same('_stanbul', pg_file_picker_like_term(' İstanbul '));
-	pg_assert_same('cicek', str_replace('_', 'i', pg_file_picker_like_term('ÇİÇEK')), 'accents dropped');
-	pg_assert_same('50\\%\\_off', pg_file_picker_like_term('50%_off'));
-	pg_assert_same('', pg_file_picker_like_term('   '));
+	pg_assert_same('logo', pg_picker_like_term('Logo'));
+	pg_assert_same('_s_k', pg_picker_like_term('Işık'));
+	pg_assert_same('_stanbul', pg_picker_like_term(' İstanbul '));
+	pg_assert_same('cicek', str_replace('_', 'i', pg_picker_like_term('ÇİÇEK')), 'accents dropped');
+	pg_assert_same('50\\%\\_off', pg_picker_like_term('50%_off'));
+	pg_assert_same('', pg_picker_like_term('   '));
 }
 
 function test_file_picker_results()
@@ -118,32 +119,9 @@ function test_file_picker_results()
 	pg_assert_same(30, pg_file_picker_limit());
 }
 
-function test_file_picker_markup_hooks()
+function test_file_picker_source()
 {
 	pg_assert_same('/pinegrap/file_picker_search.php?kind=public_image', pg_file_picker_source('public_image', '/pinegrap/'));
-	pg_assert_same(
-		array('data-pg-combobox' => '', 'data-pg-source' => '/p/file_picker_search.php?kind=file', 'data-pg-min-length' => '1'),
-		pg_file_picker_field_attributes('file', '/p/'));
-	pg_assert_same(
-		' data-pg-combobox data-pg-source="/p/file_picker_search.php?kind=site_icon" data-pg-min-length="1"',
-		pg_file_picker_attributes('site_icon', '/p/'));
-}
-
-// Only the stored choice is printed; the search brings the rest.
-function test_file_picker_stored_choice()
-{
-	pg_assert_same('<option value="">(none &amp; all)</option>', pg_file_picker_public_options('', '(none & all)'), 'nothing stored');
-	pg_assert_same(
-		'<option value="">-</option><option value="https://cdn.example.com/a.png" selected="selected">https://cdn.example.com/a.png</option>',
-		pg_file_picker_public_options('https://cdn.example.com/a.png', '-'),
-		'an old typed address stays chosen');
-
-	pg_assert_same(array('-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('File')))) . '-' => ''), pg_file_picker_id_options(''), 'no file chosen');
-	pg_assert_same(1, count(pg_file_picker_id_options(array(4))), 'an id posted as a list is none');
-
-	pg_assert_same('a.pdf', pg_file_picker_id_label('a.pdf', false));
-	pg_assert_same('a.pdf [' . lang('IN RECYCLE BIN') . ']', pg_file_picker_id_label('pgbin_4_a.pdf', true, 'a.pdf'), 'the name it had, marked');
-	pg_assert_same('b.pdf [' . lang('IN RECYCLE BIN') . ']', pg_file_picker_id_label('b.pdf', true), 'no parked name');
 }
 
 // The endpoint refuses in JSON before validate_user(), reads one value per

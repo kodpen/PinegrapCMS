@@ -177,7 +177,7 @@ description: Generated from the module field of the memory files: each includes/
 - `parasut`: [[erp-parasut-legacy-buyer-number]], [[erp-parasut-legacy-press-claim]], [[erp-parasut-legacy-token-401]], [[erp-parasut-overview]]
 - `payments`: [[card-brand-switches]], [[gateway-masked-keys]], [[order-refunded-amount-writes]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
 - `pdf_merge`: [[shipment-label-bulk]]
-- `picker`: [[picker-all-list-dialog]], [[picker-designer-bridge]], [[picker-dialog]], [[picker-editor-bridge]], [[picker-field]], [[picker-page-fields-screens]], [[picker-pages]], [[picker-registry]], [[picker-remaining-screens]], [[picker-site-lists]], [[picker-upload]]
+- `picker`: [[picker-all-list-dialog]], [[picker-designer-bridge]], [[picker-dialog]], [[picker-editor-bridge]], [[picker-field]], [[picker-overview]], [[picker-page-fields-screens]], [[picker-pages]], [[picker-registry]], [[picker-remaining-screens]], [[picker-site-lists]], [[picker-upload]]
 - `picker_all`: [[picker-all-list-server]]
 - `places`: [[place-packs]], [[tr-place-list]]
 - `preorder`: [[product-preorder]]

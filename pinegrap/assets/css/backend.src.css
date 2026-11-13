@@ -24982,9 +24982,6 @@ select.pg-list-table-field option.private {
   flex: 1 1 auto;
   min-width: 0;
 }
-.pg-picker-browse {
-  flex: 0 0 auto;
-}
 .pg-picker-folder-row {
   flex-direction: row;
   gap: 0.75rem;

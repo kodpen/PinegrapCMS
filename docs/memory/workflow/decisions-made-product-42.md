@@ -14,17 +14,17 @@ description: Decisions list, product part 42 (2026-11-10 on): one modern picker 
   - Its structure follows today's File Manager.
   - It is ready to choose other kinds of records later; the owner named a product, a quote, a shipping method and a contact.
   - When the software's own editor replaces CKEditor, the editor's file choosing reaches the picker through a bridge of its own.
-  - It is built with great care, as a plan of its own: `plans/one-picker.md`.
+  - It is built with great care, as a plan of its own; built 2026-11, now `ui/picker-overview.md`.
 - F3 is not built: no button is added beside the searchable pickers (`ui/file-picker-search.md`); they are among the places the picker takes over.
 - Refused with it: the name search alone, the editor's image browser on the picture pickers, a folder dialog with names only, a pick mode of the File Manager as a step of the search plan. Each keeps or adds a separate way of choosing.
 - Architect (2026-11-10): until the picker's step for a screen lands, that screen keeps the picker it has; nothing is converted ahead of the plan.
 
 ## Are the picker's drawn screens approved? (owner, 2026-11-10)
-- Owner (2026-11-10, #8514): yes, with one correction: "Onay; arşiv seçilemez." The pictures of `plans/one-picker/` (#8511) are the layout and behaviour PK2-PK6 build.
+- Owner (2026-11-10, #8514): yes, with one correction: "Onay; arşiv seçilemez." The pictures drawn in #8511 were the layout and behaviour the dialog and the field were built to; they were deleted with the plan, and the built screens now stand for them.
 - An archived page (a page in an archived folder) is shown with its mark and cannot be chosen, like a binned one; pictures 03 and 11 draw it as choosable. Today's rule stays on every page picker: such a page is not offered as a new choice, a stored one stays in the field, marked (`ui/stored-choice-kept.md`).
 - Why: visitors get 410 for an archived page (`get_page.php`), so a menu item, a next page or the home page would point at a page nobody can open.
 - What the dialog opens on was replaced on 2026-11-12: a list of everything (`decisions-made-product-48.md`, #9070).
-- Architect (2026-11-10): a kind with the public condition lists only public files, as `pg_file_picker_where()` does; where PK4 lists a binned page is the step's call.
+- Architect (2026-11-10): a kind with the public condition lists only public files, as `pg_picker_files_where()` does; where PK4 lists a binned page is the step's call.
 
 ## When does a clip edit change the image editor document's length? (owner, 2026-11-10)
 - Owner (2026-11-10, #8521): the clip timeline (V3, #8510) is approved as built: "Onay; ek adımda düzeltilsin."
