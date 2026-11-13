@@ -33,6 +33,7 @@
 		{"name": "signin", "path": "index.php", "signed_out": true},
 		{"name": "forgot_password", "path": "forgot_password.php", "signed_out": true},
 		{"name": "designer_home", "path": "view_system_styles.php"},
-		{"name": "visual_editor", "path": "add_system_style.php"}
+		{"name": "visual_editor", "path": "add_system_style.php"},
+		{"name": "messages_templates", "path": "messages_templates.php"}
 	]
 }
