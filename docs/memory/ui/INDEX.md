@@ -331,6 +331,7 @@
 - list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
+- list-table-branches.md: A list table driver source read as branches (MA2b, #9275): the branches and branch_id keys, the wrapper each batch puts round a branch, the count per branch, the measured times
 - list-table-campaign-system-lists.md: E-mail campaigns and campaign profiles, SMS campaigns, visitor reports, the 404 log, backups, DNS records and database tables on the list table driver; gift card redemptions a plain ledger
 - list-table-commerce-lists.md: Orders, gift cards, key codes, shipping methods (TD8a) and the ERP account prices, minimum stock and stock lists (TD8b) on the list table driver: printed whole, quick edit, bulk actions as ids
 - list-table-details-narrow.md: List table driver below 1024 px: the details sheet follows only the switch pressed on the page and opens once a row is picked; the kept switch is the wide window's
