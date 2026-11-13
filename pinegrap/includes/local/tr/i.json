@@ -1485,6 +1485,7 @@
     "It may also read: {var:1}": "Ayrıca okuyabildikleri: {var:1}",
     "It may:": "Yapabilecekleri:",
     "It moved my plan when I was ill and got me to the start line without an injury. The watch app is all I carry.": "Hastayken planımı kaydırdı ve beni sakatlanmadan başlangıç çizgisine getirdi. Yanımda taşıdığım tek şey saat uygulaması.",
+    "It moves only this threshold of the signature scan: the rate limits and automatic bans keep their own settings.": "Yalnızca imza taramasının bu eşiğini değiştirir: hız sınırları ve otomatik yasaklar kendi ayarlarını korur.",
     "It names a column the table no longer has.": "Tabloda artık olmayan bir sütunu gösteriyor.",
     "It needs the Workspace, which is switched off on this site.": "Çalışma Alanı'nı gerektiriyor; bu sitede Çalışma Alanı kapalı.",
     "It never expires — no validity period is set in settings.": "Süresiz geçerlidir — ayarlarda geçerlilik süresi tanımlı değil.",
