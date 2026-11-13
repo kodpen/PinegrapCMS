@@ -998,6 +998,15 @@ if (pg_sms_queue_ready()) {
 
 }
 
+// Queued WhatsApp messages (pg_whatsapp_queue_run() in includes/fn/whatsapp.php),
+// on the SMS pass's terms: a request only queues, this pass sends. The module
+// is loaded only when the table exists; an empty queue costs one read.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+
+if (pg_whatsapp_queue_ready()) {
+    pg_whatsapp_queue_run(10, 15);
+}
+
 // Workspace task reminders, and the notice that a task went overdue
 // (includes/workspace/reminders.php). Each look is one read; the workspace is
 // loaded only when one of them is due, so the general job stays as light as
