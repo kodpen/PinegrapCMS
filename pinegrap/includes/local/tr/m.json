@@ -1625,6 +1625,8 @@
     "Move up": "Yukarı taşı",
     "Move your date once at no cost. If you cancel more than four weeks before, the deposit is returned; closer to the date it is kept.": "Tarihinizi bir kez ücretsiz değiştirebilirsiniz. Dört haftadan daha önce iptal ederseniz kapora iade edilir; tarihe daha yakın iptallerde kapora iade edilmez.",
     "Move {var:1}": "{var:1} öğesini taşı",
+    "Move {var:1} down": "{var:1} adımını aşağı taşı",
+    "Move {var:1} up": "{var:1} adımını yukarı taşı",
     "Move “{var:1}” to a group": "“{var:1}” notunu bir gruba taşı",
     "Move-in": "Taşınma",
     "Move-out Cleaning": "Taşınma Temizliği",
