@@ -11385,7 +11385,7 @@ const StyleDesigner = (function () {
         // Apply inline styles and custom _attrs
         if (node.props._attrs && node.props._attrs.length) {
             node.props._attrs.forEach(function(a) {
-                if (a.name && a.name.trim()) el.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || ''));
+                if (a.name && a.name.trim()) el.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || '', false, node));
             });
         }
         var inlineStyle = node.props.inlineStyle || '';
@@ -13159,7 +13159,7 @@ const StyleDesigner = (function () {
         'order.item_form_fields': [
             { __field_label: _sdT('Thread colour'), __field_value_html: _sdT('Navy') },
             { __field_label: _sdT('Gift message'), __field_value_html: _sdT('Happy birthday!') },
-            { __field_label: _sdT('Care'), __field_value_html: '', __field_is_info: '1',
+            { __field_label: _sdT('Care instructions'), __field_value_html: '', __field_is_info: '1',
               __field_info_html: _sdT('Embroidered items cannot be returned.') }
         ],
         'cart.item_form_fields': [
@@ -13168,7 +13168,7 @@ const StyleDesigner = (function () {
             { __field_key: 'message', __field_name: 'message', __field_id: 'message', __field_label: _sdT('Gift message'),
               __field_control: 'textarea', __field_type: 'text area', __field_value: _sdT('Happy birthday!'),
               __field_required: '', __field_maxlength: '', __field_rows: '3', __field_cols: '40' },
-            { __field_key: 'care', __field_name: 'care', __field_id: 'care', __field_label: _sdT('Care'),
+            { __field_key: 'care', __field_name: 'care', __field_id: 'care', __field_label: _sdT('Care instructions'),
               __field_control: 'info', __field_type: 'information', __field_value: '', __field_required: '',
               __field_is_info: '1', __field_has_info: '1', __field_info_html: _sdT('Embroidered items cannot be returned.') }
         ],
@@ -13413,7 +13413,7 @@ const StyleDesigner = (function () {
         if (node.props._attrs && node.props._attrs.length) {
             node.props._attrs.forEach(function(a) {
                 if (a.name === 'style') { _attrStyle = a.value || ''; }
-                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdSitePath(_sdResolveAttrTokens(a.value || ''))); }
+                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdSitePath(_sdResolveAttrTokens(a.value || '', false, node))); }
             });
         }
         // Sizing props extra style (before _attrStyle so Attrs panel can override)
@@ -14037,7 +14037,7 @@ const StyleDesigner = (function () {
                     // pre-built HTML slots: ^^__cancel_form^^, ^^__order_status_badge^^).
                     // Server substitutes these at request time; canvas needs
                     // an in-place placeholder so designer doesn't see raw tokens.
-                    _semText = _sdResolveAttrTokens(_semText, true);
+                    _semText = _sdResolveAttrTokens(_semText, true, node);
                     _semIsHtml = /<[a-z]/i.test(_semText);
                 } else {
                     // An address form's city or state label in the words of
@@ -15004,8 +15004,6 @@ const StyleDesigner = (function () {
         '__installment_per_month': _sdMoney(207.77),
         // Order view widget — HTML-emit placeholders (server-side substitutes
         // full HTML; canvas shows a friendly hint so designer sees the slot).
-        '__billing_address_html': _sdT('Address line 1') + '\n' + _sdT('Address line 2') + '\n' + _sdT('10001 New York'),
-        '__shipping_address_html': _sdT('Address line 1') + '\n' + _sdT('Address line 2') + '\n' + _sdT('10001 New York'),
         '__order_notes': _sdT('Please deliver the order to the door.'),
         '__notes': _sdT('Please deliver the order to the door.'),
         '__cancel_status': '',
@@ -15253,10 +15251,24 @@ const StyleDesigner = (function () {
         '__field_options_html': function () {
             return '<option>' + esc(_sdT('Navy')) + '</option><option>' + esc(_sdT('Cream')) + '</option>';
         },
-        // The address of a shipping step, as <br> lines.
+        // _eo_render_saved_cart_link(): the link back to the saved cart.
+        '__saved_cart_link': function () {
+            var url = 'https://example.com/cart?r=ABC123XYZ';
+            return '<div class="alert alert-secondary fade show small mb-0 pg-eo-saved-cart">' +
+                   '<div class="text-muted mb-1"><i class="bi bi-bookmark-check me-1"></i>' +
+                   esc(_sdT('Your {var:1} is saved. To return to this {var:1} later, please use this link:', _sdT('cart'))) + '</div>' +
+                   '<a href="#" class="small text-break">' + esc(url) + '</a></div>';
+        },
+        // The sample order's addresses as <br> lines, as the page writes them.
         '__recipient_address_html': function () {
             var a = _sdOrderAddress('shipping');
             return esc(a[0] + ' ' + a[1]) + '<br>' + _sdOrderAddressBlock(a).split('\n').map(esc).join('<br>');
+        },
+        '__shipping_address_html': function () {
+            return _sdOrderAddressBlock(_sdOrderAddress('shipping')).split('\n').map(esc).join('<br>');
+        },
+        '__billing_address_html': function () {
+            return _sdOrderAddressBlock(_sdOrderAddress('billing')).split('\n').map(esc).join('<br>');
         }
     };
 
@@ -15619,6 +15631,7 @@ const StyleDesigner = (function () {
             __cart_subtotal: _sdMoney(m.subtotal), __cart_discount: _sdMoney(m.discount), __cart_tax: _sdMoney(m.tax),
             __cart_shipping: _sdMoney(m.shipping), __cart_gift_card_discount: _sdMoney(0), __cart_surcharge: _sdMoney(0),
             __cart_total: _sdMoney(m.total), __cart_total_with_surcharge: _sdMoney(m.total), __cart_total_charged: _sdMoney(m.total),
+            __cart_today_total: _sdMoney(m.total), __cart_recurring_total: _sdMoney(0),
             __cart_subtotal_cents: String(Math.round(m.subtotal * 100)), __cart_total_cents: String(Math.round(m.total * 100)),
             __cart_total_with_surcharge_cents: String(Math.round(m.total * 100)),
             __cart_count: '3', __cart_count_label: _sdT('3 items'), __surcharge_percentage: '0%',
@@ -15632,7 +15645,7 @@ const StyleDesigner = (function () {
             __billing_salutation: _sdT('Ms.'), __billing_company: bill[2], __billing_email: _sdT('sample@example.com'),
             __billing_phone: bill[9], __billing_fax: '+90 555 000 00 01', __billing_address_1: bill[3], __billing_address_2: bill[4],
             __billing_city: bill[5], __billing_state: bill[6], __billing_zip: bill[7], __billing_country: bill[8],
-            __billing_full_address: _sdOrderAddressLine(bill), __billing_address_html: _sdOrderAddressBlock(bill),
+            __billing_full_address: _sdOrderAddressLine(bill),
             __custom_field_1_label: _sdT('Tax office'), __custom_field_1: _sdT('Springfield'),
             __custom_field_2_label: _sdT('Tax number'), __custom_field_2: '1234567890',
             __billing_form_title: _sdT('Billing Information'), __purchase_now_label: _sdT('Purchase Now'),
@@ -15644,7 +15657,7 @@ const StyleDesigner = (function () {
             __shipping_address_1: ship[3], __shipping_address_2: ship[4], __shipping_city: ship[5], __shipping_state: ship[6],
             __shipping_zip: ship[7], __shipping_country: ship[8], __shipping_address_type: _sdT('Residential'),
             __shipping_full_address: _sdOrderAddressLine(ship), __shipping_address: _sdOrderAddressLine(ship),
-            __shipping_address_html: _sdOrderAddressBlock(ship), __shipping_ship_date: day, __shipping_delivered_date: day,
+            __shipping_ship_date: day, __shipping_delivered_date: day,
             __ship_to_key: '1', __ship_to_name: _sdT('Myself'), __ship_to_item_count: '2',
             __recipient_id: '1', __recipient_count: '1', __recipient_name: _sdT('Myself'),
             __recipient_full_name: ship[0] + ' ' + ship[1], __recipient_salutation: _sdT('Ms.'),
@@ -16009,7 +16022,7 @@ const StyleDesigner = (function () {
         // Apply token resolution to props.text AFTER bindings (bindings win
         // for the same prop; only kicks in for literal ^^…^^ in unbound text).
         if (textHasLiteralToken && !(hasBindings && node.props._bindings.text)) {
-            out.text = _sdResolveAttrTokens(out.text, true);
+            out.text = _sdResolveAttrTokens(out.text, true, node);
         }
         return _sdPathProps(out);
     }
@@ -16079,12 +16092,18 @@ const StyleDesigner = (function () {
     // `allowHtml` is opt-in and only passed from the TEXT paths. Attribute
     // values go through the same function, and dumping a <fieldset> preview
     // into e.g. a title="" would be noise at best.
-    function _sdResolveAttrTokens(val, allowHtml) {
+    function _sdResolveAttrTokens(val, allowHtml, node) {
         if (!val || typeof val !== 'string' || val.indexOf('^^') === -1) return val;
+        var order = (node && _sdOrderSampleOn(node)) ? _sdOrderSample() : null;
         return val.replace(/\^\^([a-zA-Z_][a-zA-Z0-9_]*)\^\^/g, function(_, tok) {
             // Reuse the same maps that drive bound text/src previews so the
             // canvas stays internally consistent.
             if (_sdIsHtmlPreviewToken(tok))   return allowHtml ? _SD_HTML_PREVIEW_TOKENS[tok]() : '';
+            // A list sample row's value, then the sample order's: plain
+            // text, escaped where the result is markup.
+            var own = (_sdListSample && Object.prototype.hasOwnProperty.call(_sdListSample, tok)) ? _sdListSample[tok]
+                : ((order && Object.prototype.hasOwnProperty.call(order, tok)) ? order[tok] : null);
+            if (own !== null) return allowHtml ? esc(String(own)) : String(own);
             if (_SD_NUMERIC_TOKENS[tok])      return _SD_NUMERIC_TOKENS[tok];
             if (_SD_SHORT_LABEL_TOKENS[tok])  return _SD_SHORT_LABEL_TOKENS[tok];
             if (_SD_CURRENCY_TOKENS[tok])     return _sdGetCurrencyPlaceholder();

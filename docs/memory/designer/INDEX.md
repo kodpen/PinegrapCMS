@@ -22,11 +22,12 @@
 - canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (the grey "Image [token]" SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
 - canvas-sample-gaps-account.md: CS0 census, account (CS4): my account, login, registration, password forms, preferences, address book, security, invoices, account e-mail card: canvas faults
 - canvas-sample-gaps-catalog.md: CS0 census, catalog (CS4): catalog listing, product page and values, wishlist, order form, search, photo gallery, tag cloud, folder view: canvas faults
-- canvas-sample-gaps-checkout.md: CS0 census, orders (CS2) part two: shopping cart, express order checkout, order preview, shipping and billing steps and their lists: canvas drawing and faults
+- canvas-sample-gaps-checkout.md: CS0 census, orders part two: what the cart, express order checkout, order preview and the shipping and billing steps still draw without a sample after CS2 (#9214)
 - canvas-sample-gaps-forms.md: CS0 census, forms (CS3): custom form, form list and item views, form e-mail cards; what a field of each kind and the record values draw on the canvas
-- canvas-sample-gaps-orders.md: CS0 census, orders (CS2): order view and order receipt e-mail card, its lists (items, product forms, gift cards, shipments, returns): canvas drawing and faults
+- canvas-sample-gaps-orders.md: CS0 census, orders: what the order view and order receipt e-mail card still draw without a sample after CS2 (#9214)
 - canvas-sample-gaps-other.md: CS0 census, the rest (CS4): comments and comment e-mail card, calendar, Google reviews, booking, accessibility statement, ads, menus, language, loop values
 - canvas-sample-gaps.md: CS0 census (#9179): what the designer canvas draws for each bound value (sample, ‹label›, empty, grey box, wrong sample); shared causes; false warning frames [decision: decisions-made-product-48.md]
+- canvas-sample-order.md: The sample order the designer canvas draws in the order view, its receipt e-mail, cart, checkout and its steps: one record whose lines add up to its totals (CS2, #9214) [decision: decisions-made-product-48.md]
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
 - catalog-listing-subtree-sort.md: Catalog listing widget's catalog-order sort while a search or filter spans the group subtree: the product's lowest sort order, not an arbitrary group row.
