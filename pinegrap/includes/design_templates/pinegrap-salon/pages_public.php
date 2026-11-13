@@ -43,13 +43,14 @@ foreach ($categories as $key => $c) {
     ), '6', '3');
 }
 
-// A team member as a small card: the portrait, the name and the role.
+// A team member as a small card: the portrait, the name and the role. The
+// portrait shrinks with its column on a 320 px phone (two to a row).
 $member_cards = array();
 foreach ($team as $key => $t) {
     $member_cards[] = $col(array(
         $el('a', 'psl-lift card h-100 border-0 text-center bg-transparent text-decoration-none link-body-emphasis rounded-4', $t['name'], array(
             $el('div', 'card-body p-3', lang('Card Body'), array(
-                $image($portrait($t['name'], 320), $t['name'], 'rounded-circle object-fit-cover mb-3', array('width' => '144', 'height' => '144', '_attrs' => array($attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 320), $t['name'], 'img-fluid rounded-circle object-fit-cover mb-3', array('width' => '144', 'height' => '144', '_attrs' => array($attr('loading', 'lazy')))),
                 $heading('h3', $t['name'], 'h6 fw-semibold mb-1'),
                 $para($t['role'], 'small text-primary mb-0'),
             )),

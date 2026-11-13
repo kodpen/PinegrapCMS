@@ -189,13 +189,15 @@ $announcement = function () use ($el, $icon, $span) {
 // The bar above the header: the announcement on the left, the language
 // switcher, the cart link and the login region on the right. A shared
 // component like the header under it: the two system widgets and the
-// announcement are placed inside it.
+// announcement are placed inside it. On a phone the links sit closer
+// together; where they still do not fit, the login region moves under them
+// as a whole instead of breaking its two-word labels.
 $account_bar = function () use ($el, $widget, $shared, $lang_switcher) {
     return $el('div', 'bg-body-tertiary border-bottom small', lang('Account Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center justify-content-between gap-2 py-1', lang('Account Area'), array(
             $el('div', 'd-none d-md-block', lang('Announcement Area'), array($shared('announcement'))),
-            $el('div', 'd-flex align-items-center gap-2 ms-auto', lang('Account Links'), array(
-                $lang_switcher(), $widget('cart_link'), $widget('login_region'),
+            $el('div', 'd-flex flex-wrap align-items-center justify-content-end column-gap-1 column-gap-sm-2 row-gap-1 ms-auto', lang('Account Links'), array(
+                $lang_switcher('text-nowrap'), $widget('cart_link'), $widget('login_region'),
             )),
         )),
     ));
@@ -343,7 +345,8 @@ $footer = function () use ($el, $para, $link, $icon, $heading, $categories, $cat
                         $icon('bi-envelope', 'text-primary'),
                         $link('hello@example.com', 'mailto:hello@example.com', 'link-body-emphasis text-decoration-none text-break'),
                     )),
-                    $el('p', 'small d-flex align-items-center gap-2 mb-0', lang('Phone'), array(
+                    // The number never breaks; in a 320 px column it moves under its icon.
+                    $el('p', 'small d-flex flex-wrap align-items-center column-gap-2 mb-0', lang('Phone'), array(
                         $icon('bi-telephone', 'text-primary'),
                         $link('+90 555 000 00 00', 'tel:+905550000000', 'link-body-emphasis text-decoration-none text-nowrap'),
                     )),
@@ -1844,12 +1847,12 @@ $widgets = array(
             'staff_page_id'      => '{{tab:staff}}',
         ),
         'tree'   => $widget_root(array(
-            $el('div', 'd-flex align-items-center gap-2', lang('Signed Out'), array(
-                $link(lang('Log In'), '#', 'btn btn-sm btn-link text-decoration-none', array(), array('_bindings' => array('href' => '__login_url'))),
-                $link(lang('Sign Up'), '#', 'btn btn-sm btn-primary', array(), array('_bindings' => array('href' => '__register_url'))),
+            $el('div', 'd-flex align-items-center gap-1 gap-sm-2', lang('Signed Out'), array(
+                $link(lang('Log In'), '#', 'btn btn-sm btn-link text-decoration-none text-nowrap', array(), array('_bindings' => array('href' => '__login_url'))),
+                $link(lang('Sign Up'), '#', 'btn btn-sm btn-primary text-nowrap', array(), array('_bindings' => array('href' => '__register_url'))),
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
-                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle', lang('Account Button'), array(
+                $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none text-nowrap dropdown-toggle', lang('Account Button'), array(
                     $image('https://placehold.co/64x64/e11d48/ffffff?text=JC', lang('Jane Cooper'), 'rounded-circle object-fit-cover',
                         array('width' => '28', 'height' => '28', '_bindings' => array('src' => '__user_avatar_url', 'alt' => '__user_name'))),
                     $span(lang('Jane'), 'fw-semibold', lang('First Name'), $bind('__user_first_name')),
@@ -2944,9 +2947,42 @@ foreach ($pages as $i => $p) {
     $pages[$i]['tree'] = $searchable_tree($p['tree'], $search_sections[$p['key']], $used);
 }
 
+// The template's User Styles: the look and palette chosen for the design
+// draw everything else. They keep a palette's primary and second coloured
+// text readable where the page's own colours do not reach it.
+$store_css = implode("\n", array(
+    // Dark theme, grey sections (the account bar, the category bands, page
+    // headers): the palette's primary and second colours are made readable
+    // on the page background and fall to about 4:1 on this lighter grey
+    // (Coral 4.13:1). Links, eyebrows, the Log In link and outline buttons
+    // there take the primary's emphasis tint, lightened a fifth towards the
+    // text colour where the browser mixes colours, and the second colour
+    // gives way to the body's second text colour.
+    '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary :is(.btn-outline-primary,.btn-link){--bs-btn-color:var(--bs-primary-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){'
+        . '[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))!important}'
+        . '[data-bs-theme=dark] .bg-body-tertiary :is(.btn-outline-primary,.btn-link){--bs-btn-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    '[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-color)!important}',
+    '[data-bs-theme=dark] .bg-body-tertiary .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
+    // Pills, tabs and underlined links there (the staff bar) read the link
+    // colour: they take the same tint.
+    '[data-bs-theme=dark] .bg-body-tertiary .nav{--bs-nav-link-color:var(--bs-primary-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){[data-bs-theme=dark] .bg-body-tertiary .nav{--bs-nav-link-color:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    // The primary's soft tint (the account card, soft bands): a palette's
+    // primary and second colours are made readable on the page background
+    // and fall under 4.5:1 here with several palettes (Coral 3.41:1, the
+    // second colour of Graphite 3.16:1). Text, links and outline buttons
+    // take the colour's emphasis tint, Bootstrap's pair for a soft tint.
+    '.bg-primary-subtle :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}',
+    '.bg-primary-subtle :is(.btn-outline-primary,.btn-link){--bs-btn-color:var(--bs-primary-text-emphasis)}',
+    '.bg-primary-subtle .link-secondary{color:var(--bs-secondary-text-emphasis)!important}',
+    '.bg-primary-subtle .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-text-emphasis)}',
+));
+
 return array(
     'name'        => lang('Online Store'),
-    'version'     => '1.2.4',
+    'version'     => '1.2.5',
     'framework'   => 'bootstrap5',
     'order'       => 20,
     'icon'        => 'bi-bag-heart',
@@ -3008,5 +3044,9 @@ return array(
                 $link(lang('Visit the Store'), '{{page:home}}', 'link-secondary',
                     array($attr('style', 'color:#6b7280'))),
             ), $mail_style('padding:16px 24px;border-top:1px solid #e5e7eb;font-size:13px;color:#6b7280'))),
+    ),
+
+    'assets'      => array(
+        'css' => pg_design_template_user_styles(array(), $store_css),
     ),
 );

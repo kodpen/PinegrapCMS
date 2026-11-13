@@ -122,6 +122,7 @@
 - design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page, tested) and why not the verb key `Reply` (#3453, #4584).
 - design-template-construction-pages.md: Construction template 2.0.0: home, projects and safety on the Construction blocks: the builders, each page's composition, motion, what left, the test
 - design-template-construction.md: Construction Firm template 2.0.0 (pinegrap-construction): services, a projects portfolio collection, quote requests and careers followed from the account, News, no shop, pcn- look, tests.
+- design-template-contrast-planetarium-zoo.md: Planetarium to Zoo: User Styles keep palette text readable on dark grey and soft-tint sections in every palette; vet red and zoo green readable; store's User Styles
 - design-template-courses.md: Online Courses template (pinegrap-courses): courses as products granting a private folder, lessons as pages, membership library, enrolment and assignments, what is not built, pco- look, tests.
 - design-template-coworking-pages.md: Coworking template 2.0.0: home, plans and amenities on the palette blocks (workspace hero, spaces to hire, floor directory, alternating features), builders, motion, tests
 - design-template-coworking.md: Coworking template (pinegrap-coworking): spaces and events as collections, tour, office and event requests, meeting rooms booked online, memberships in the shop, pcw- look, tests.
@@ -134,6 +135,7 @@
 - design-template-ferry.md: Ferry template (pinegrap-ferry, 2.0.0): routes with a page each, ports, timetables and fares as words, Travel Notices collection, booking requests, group enquiries, no shop, pfy- look, tests.
 - design-template-filmstudio-pages.md: Film Studio template 2.0.0: home, services and project page on the Film Studio blocks, motion elsewhere, names in their own case; builders, pages, limits, test
 - design-template-filmstudio.md: Film Studio template (pinegrap-filmstudio): showreel, services, projects as a collection by industry and service, studio hire, crew, project enquiries, crew calls, no shop, pfm- look, tests.
+- design-template-fit-planetarium-zoo.md: Templates Planetarium to Zoo: header menu opens at 1200 px, smaller links to 1399 px, row wraps, image sizes in props, restaurant hours, social counts; the numbers
 - design-template-fit.md: Templates App Studio to Events (#8997): header menu opens at 1200 px and wraps, image sizes in props not _attrs, grey and primary-tinted surfaces tint primary and second text
 - design-template-florist-pages.md: Florist template 2.0.0: home, occasions, subscriptions and delivery on the Florist blocks and Locations: Zones, motion elsewhere: builders, each page, limits, the test
 - design-template-florist.md: Florist template (pinegrap-florist): bouquets, occasions, subscriptions, event flowers, delivery, Our Work collection, order requests from the account, consultations, shop catalog, pfl- look, tests.
@@ -181,6 +183,7 @@
 - design-template-page-fit.md: Ferry to photo templates in a browser: header at 1200 px, brand ellipsis, notice line, image size props, tinted-band text colours for every palette, positioned scroll boxes
 - design-template-pharmacy-pages.md: Pharmacy template 2.0.0: home, on duty, health checks and three service pages on the Pharmacy blocks: the builders, each page's composition, what left, no motion, the test
 - design-template-pharmacy.md: Pharmacy template (pinegrap-pharmacy): services, health checks, on duty, pharmacists, prescription requests and questions, health products shop, Health Advice by topic, prx- look, tests.
+- design-template-phone-fit-planetarium-zoo.md: Templates Planetarium to Zoo on phones: the account bar row wraps (#9056), table wrappers hold hidden labels, lines that ran past 320 px; measuring overflow under mobile emulation
 - design-template-photo-pages.md: Photography Studio template 2.0.0: home, how it works, packages and about on the Photo blocks: the builders, each page's composition, motion, what left, the test
 - design-template-photo.md: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
 - design-template-planetarium.md: Planetarium template (pinegrap-planetarium): dome shows and telescope nights as dated collections, school visit requests, tickets and memberships, planetarium- blocks, ppm- look, tests.
