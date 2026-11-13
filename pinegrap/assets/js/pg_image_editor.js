@@ -405,8 +405,17 @@
             ? button('pgie-btn', t('cancel'), null, function () { self.requestClose(); }, true)
             : button('pgie-ibtn', t('close'), 'close', function () { self.requestClose(); });
 
+        // The Design Canvas's icon (pg_design_canvas_icon()), server markup.
+        var brand = null;
+
+        if (config().brandIcon) {
+            brand = el('span', { class: 'pgie-brand', 'aria-hidden': 'true' });
+            brand.innerHTML = config().brandIcon;
+        }
+
         var top = el('header', { class: 'pgie-top' }, [
             mini ? null : this.closeBtn,
+            brand,
             el('div', { class: 'pgie-file' }, [this.nameEl, this.meta]),
             mini ? null : el('div', { class: 'pgie-sepv' }),
             mini ? null : this.undoBtn,

@@ -170,7 +170,22 @@
     }
 
     function icon(name, extra) {
-        var node = el('i', 'bi ' + name + (extra ? ' ' + extra : ''));
+        // The Design Canvas's drawn icon (CFG.canvas_icon, server markup).
+        if ((name === 'pg-design-canvas') && CFG && CFG.canvas_icon) {
+            var holder = document.createElement('span');
+
+            holder.innerHTML = CFG.canvas_icon;
+
+            if (holder.firstElementChild) {
+                if (extra) {
+                    holder.firstElementChild.setAttribute('class', holder.firstElementChild.getAttribute('class') + ' ' + extra);
+                }
+
+                return holder.firstElementChild;
+            }
+        }
+
+        var node = el('i', 'bi ' + (name === 'pg-design-canvas' ? 'bi-easel' : name) + (extra ? ' ' + extra : ''));
         node.setAttribute('aria-hidden', 'true');
         return node;
     }
@@ -14367,7 +14382,7 @@
                     { icon: 'bi-table', label: t('insert_table'), action: function () { self.tablePicker(box.left, box.top - 6); } },
                     { icon: 'bi-calculator', label: t('insert_calc'), action: function () { self.insertCalc(); } },
                     { icon: 'bi-ui-checks', label: t('insert_checklist'), action: function () { self.insertChecklist(); } },
-                    window.pgImageEditor ? { icon: 'bi-easel', label: t('canvas_new'), action: function () { self.newCanvas(); } } : null,
+                    window.pgImageEditor ? { icon: 'pg-design-canvas', label: t('canvas_new'), action: function () { self.newCanvas(); } } : null,
                     self.rich ? { icon: 'bi-code-slash', label: t('insert_code'), action: function () { self.insertCode(); } } : null,
                     BOOT.interact ? { icon: 'bi-bar-chart-line', label: t('start_poll'), action: function () { self.pollForm({}); } } : null,
                     (CFG.approvals && window.PGWsApprovals) ? { icon: 'bi-patch-question', label: t('apv_new'), action: function () {
@@ -25438,7 +25453,7 @@
             var files = [picker, tool('bi-paperclip', t('notes_attach'), function () { picker.click(); })];
 
             if (window.pgImageEditor && CFG.urls.file_save) {
-                files.push(tool('bi-easel', t('canvas_new'), drawCanvas));
+                files.push(tool('pg-design-canvas', t('canvas_new'), drawCanvas));
             }
 
             if (window.PGWsVoice && window.PGWsVoice.supported()) {

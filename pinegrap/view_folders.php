@@ -289,6 +289,8 @@ $explorer_lang = array(
     'access_permissions' => lang('Access Permissions'),
     'optimize_image' => lang('Optimize this image'),
     'image_editor' => lang('Design Canvas'),
+    // The Design Canvas's icon (SVG) before its name in the menu and the tools.
+    'image_editor_icon' => pg_design_canvas_icon(),
     'image_export' => lang('Export settings…'),
     'new_image' => lang('New image'),
     'new_image_name' => lang('New image'),
@@ -7942,7 +7944,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     function menuItem(icon, label, action, disabled) {
         return '<li><button type="button" class="menu-item' + (disabled ? ' disabled' : '') + '" data-menu-action="' + action + '">' +
-            '<span class="bi ' + icon + ' me-3"></span>' + esc(label) + '</button></li>';
+            menuIcon(icon, 'me-3') + esc(label) + '</button></li>';
+    }
+
+    // A Bootstrap icon by name, or the markup of a drawn one (L.image_editor_icon).
+    function menuIcon(icon, space) {
+        if (icon.charAt(0) === '<') {
+            return icon.replace('<svg class="', '<svg class="' + space + ' ');
+        }
+
+        return '<span class="bi ' + icon + ' ' + space + '"></span>';
     }
 
     function menuDivider() { return '<li><hr class="menu-divider" /></li>'; }
@@ -8422,7 +8433,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     html += menuItem('bi-send', L.ws_send, 'ws_send', multi || insideWorkspaceFolder());
                 }
                 if (item.is_image && item.can_edit) {
-                    html += menuItem('bi-brush', L.image_editor, 'image_editor', multi);
+                    html += menuItem(L.image_editor_icon, L.image_editor, 'image_editor', multi);
                     // The editor opened on its export panel alone: format,
                     // quality and longest edge, with the size before and after.
                     html += menuItem('bi-sliders', L.image_export, 'image_export', multi);
@@ -15030,12 +15041,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         function tool(action, icon, label, extra) {
             return '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-file-tool="' + action + '"' + (extra || '') + '>' +
-                '<span class="bi ' + icon + ' me-1"></span>' + esc(label) + '</button>';
+                menuIcon(icon, 'me-1') + esc(label) + '</button>';
         }
 
         // A video the image editor saved opens again as its project.
         if (((kind === 'image') && file.on_disk && (file.type !== 'svg')) || ((kind === 'video') && file.editor_project)) {
-            html += tool('image_editor', 'bi-brush', L.image_editor);
+            html += tool('image_editor', L.image_editor_icon, L.image_editor);
         }
 
         // A quarter turn to the right, with no editor to open: a photo that

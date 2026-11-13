@@ -15,7 +15,7 @@ description: Steps NM1-NM4 (owner 2026-11-12, #8849): Image Editor named Design 
   - A sentence is rewritten, not patched ("Open in the Page Design Studio"). Third-party names stay ("Pintura Image Editor").
   - `designer/designer-turkish-terms.md` and `editor-turkish-terms.md` name the terms; the test over every `_sdT()` key passes. Cut in two by area (panel, designer) if it passes 1,000 lines.
 
-- NM2 (S) The Design Canvas's icon. Candidates drawn (#8902), the pick asked in #8903. A two-colour drawing in the main menu's manner (`ui/main-menu-icons.md`, `pg_menu_icon()`), shown wherever the Design Canvas is opened: the File Manager's action, a canvas card in Workspace, the editor's own heading. Drawn first, three candidates on one sheet in `plans/design-names-menu/`; the owner picks, then the code.
+- NM2 (S) The Design Canvas's icon. Done (#8902): drawing B (#8903). A two-colour drawing in the main menu's manner (`ui/main-menu-icons.md`, `pg_menu_icon()`), shown wherever the Design Canvas is opened: the File Manager's action, a canvas card in Workspace, the editor's own heading. Drawn first, three candidates on one sheet in `plans/design-names-menu/`; the owner picks, then the code.
 
 - NM3 (M) The menu. Row 21 is titled Page Design Studio; its panel keeps its entries and gets Other, shut until opened, holding the Page Styles row's present entries (Page Styles, Themes and the rest, in their order) and Ads. After NM1.
   - Rows 17 and 16 are no longer drawn as rows and their slots are retired, never reused; what a pinned 17 or 16 does is settled in the step (`ui/main-menu-categories.md`: operators pin rows by slot).

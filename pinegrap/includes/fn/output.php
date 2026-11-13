@@ -3611,7 +3611,10 @@ function output_footer_secure($properties = false)
 // the page has been open, so a browser in another zone does not move them.
 // Calendars: today's day of the month, which the same script rolls over at
 // midnight.
-function pg_menu_icon($name, $color_class = '')
+//
+// $space is the margin class after the icon (the menu's me-3); the Design
+// Canvas's drawing is also shown outside the menu (pg_design_canvas_icon()).
+function pg_menu_icon($name, $color_class = '', $space = 'me-3')
 {
     // Module tint, accent tint and solid fill attribute sets. A tint drawn
     // at full strength (.pg-mi-solid) is opaque enough to hide what is
@@ -3673,6 +3676,22 @@ function pg_menu_icon($name, $color_class = '')
                 '<g class="pg-mi-flap">' .
                 '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $flap . '"/>' .
                 '<path d="' . $flap . '"/>' .
+                '</g>';
+            break;
+
+        case 'design_canvas':
+            // An artboard with crop marks; the pen curve and its two anchors
+            // are the second colour.
+            $body =
+                '<rect' . $d . ' x="5" y="5" width="14" height="14" rx="1.2"/>' .
+                '<rect x="5" y="5" width="14" height="14" rx="1.2"/>' .
+                '<path d="M2.5 5H3.6M5 2.5v1.1M20.4 5h1.1M19 2.5v1.1M2.5 19h1.1M5 20.4v1.1M20.4 19h1.1M19 20.4v1.1" stroke-width="1.5"/>' .
+                '<g class="pg-mi-a pg-mi-pen">' .
+                '<path d="M8.3 15.7C9 11 15 13 15.7 8.3" stroke-width="1.6"/>' .
+                '<rect' . $a . ' x="7.3" y="14.7" width="2" height="2" rx=".4"/>' .
+                '<rect x="7.3" y="14.7" width="2" height="2" rx=".4" stroke-width="1.1"/>' .
+                '<rect' . $a . ' x="14.7" y="7.3" width="2" height="2" rx=".4"/>' .
+                '<rect x="14.7" y="7.3" width="2" height="2" rx=".4" stroke-width="1.1"/>' .
                 '</g>';
             break;
 
@@ -3903,7 +3922,7 @@ function pg_menu_icon($name, $color_class = '')
             return '';
     }
 
-    return '<svg class="pg-mi pg-mi-' . $name . ' me-3' . ($color_class !== '' ? ' ' . $color_class : '') . '"' . $extra . ' width="1.3rem" height="1.3rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">' . $body . '</svg>';
+    return '<svg class="pg-mi pg-mi-' . $name . ($space !== '' ? ' ' . $space : '') . ($color_class !== '' ? ' ' . $color_class : '') . '"' . $extra . ' width="1.3rem" height="1.3rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">' . $body . '</svg>';
 }
 
 function output_menu($properties = false)

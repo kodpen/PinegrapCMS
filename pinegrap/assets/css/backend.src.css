@@ -1920,6 +1920,39 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 #menu .pg-mi-styles .pg-mi-c3 { color: var(--pg-mi-lime); }
 #menu .pg-mi-styles .pg-mi-c4 { color: var(--pg-mi-violet); }
 
+/* The Design Canvas's icon outside the main menu (pg_design_canvas_icon()):
+   the File Manager's action, Workspace's New canvas. body .design-color sets
+   the outline; the tint and the pen curve take the menu's shades. */
+.pg-dc-icon {
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  overflow: visible;
+  vertical-align: -0.2em;
+}
+.pg-dc-icon .pg-mi-2 {
+  fill: var(--design-color-highlight);
+  fill-opacity: 0.55;
+}
+.pg-dc-icon .pg-mi-a {
+  color: #0284c7;
+}
+.pg-dc-icon .pg-mi-at {
+  fill: currentColor;
+  fill-opacity: 0.35;
+}
+html[data-bs-theme="dark"] .pg-dc-icon .pg-mi-2 {
+  fill: var(--design-color);
+  fill-opacity: 0.7;
+}
+html[data-bs-theme="dark"] .pg-dc-icon .pg-mi-a {
+  color: #38bdf8;
+}
+html[data-bs-theme="dark"] .pg-dc-icon .pg-mi-at {
+  fill-opacity: 0.4;
+}
+#menu .pg-mi-design_canvas { --pg-mi-a: var(--pg-mi-sky); }
+
 #menu .pg-mi .pg-mi-2 {
   fill: var(--pg-mi-2, currentColor);
   fill-opacity: var(--pg-mi-2-opacity);

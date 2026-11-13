@@ -884,6 +884,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'open_channel' => 0,
         // The longest message body the server takes (the composer's meter).
         'message_max'  => WS_MESSAGE_MAX,
+        // The Design Canvas's icon on New canvas (pg_design_canvas_icon()).
+        'canvas_icon'  => pg_design_canvas_icon(),
         // Which model rewrites a message in the composer (pg_ai_write_engine():
         // pinegrap | browser), '' for no button. The screen's gate has
         // already let only the team in (pg_ai_write_user_may()'s rule).

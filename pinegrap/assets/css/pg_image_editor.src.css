@@ -164,6 +164,53 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The Design Canvas's icon (pg_design_canvas_icon()): the design colour and
+   its tint, the pen curve in the second colour; the dark editor swaps the two
+   shades. On a panel page backend.css sets the outline colour itself. */
+.pgie-brand {
+  display: flex;
+  flex: none;
+  margin-inline-start: 6px;
+}
+
+.pgie .pg-dc-icon {
+  width: 20px;
+  height: 20px;
+  overflow: visible;
+  color: #a01551;
+}
+
+.pgie .pg-dc-icon .pg-mi-2 {
+  fill: #ff4c87;
+  fill-opacity: 0.55;
+}
+
+.pgie .pg-dc-icon .pg-mi-a {
+  color: #0284c7;
+}
+
+.pgie .pg-dc-icon .pg-mi-at {
+  fill: currentColor;
+  fill-opacity: 0.35;
+}
+
+.pgie.pgie-dark .pg-dc-icon {
+  color: #ff4c87;
+}
+
+.pgie.pgie-dark .pg-dc-icon .pg-mi-2 {
+  fill: #a01551;
+  fill-opacity: 0.7;
+}
+
+.pgie.pgie-dark .pg-dc-icon .pg-mi-a {
+  color: #38bdf8;
+}
+
+.pgie.pgie-dark .pg-dc-icon .pg-mi-at {
+  fill-opacity: 0.4;
+}
+
 .pgie-ibtn {
   width: 36px;
   height: 36px;

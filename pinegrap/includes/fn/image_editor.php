@@ -191,7 +191,23 @@ function pg_image_editor_config()
         // known); a file larger than one part is sent in parts.
         'animationLimit' => pg_image_editor_upload_limits()['max'],
         'uploadPart'     => pg_image_editor_upload_limits()['part'],
+        // The Design Canvas's icon before the file name in the top bar.
+        'brandIcon'      => pg_design_canvas_icon(),
     );
+}
+
+/**
+ * The Design Canvas's own icon, the main menu's drawing (pg_menu_icon()) in
+ * the design colour, for the places that open the editor: the File Manager,
+ * Workspace's New canvas, the editor's top bar. .pg-dc-icon colours it
+ * outside the main menu (backend.src.css, pg_image_editor.src.css).
+ *
+ * @param string $space margin class after the icon ('' for none)
+ * @return string SVG markup
+ */
+function pg_design_canvas_icon($space = '')
+{
+    return pg_menu_icon('design_canvas', 'design-color pg-dc-icon', $space);
 }
 
 /**
