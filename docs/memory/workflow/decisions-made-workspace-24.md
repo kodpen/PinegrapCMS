@@ -10,7 +10,7 @@ description: Decisions list, workspace part 24 (2026-11-14 on): a guest sees the
 - Yes, and a guest still wakes no agent. Owner: "misafir ajan mesajlarını görebilsin ancak onları tetikleyemesin. kanalda sahip ile konuşabilsin. (ajan kanalı dışında da bu dikkat edilmeli)".
 - It holds in every channel shared with a guest and in a guest's room, not only in an agent channel.
 - Why: he shared the agent channel with a guest by a link; her tag was answered by an agent that reads the channel on a timer, and she could not see the answer. Owner: "ya etiketi dikkate alınmamalıydı ya da mesaja yanıtı görmeliydi (önceki mesajlar dahil)".
-- The architect's reading: "agents' messages" are those of the channel's agents and of the assistants (Claude, Pinegrap AI, MCP); lines of applications that are not agents (CI, integrations) stay hidden from a guest.
+- "Agents' messages" are those of the channel's agents and of the assistants (Claude, Pinegrap AI, MCP); lines of applications that are not agents (CI, integrations) stay hidden from a guest. The architect's reading, which he confirmed: "okuman doğru."
 - Not changed: a guest's message, tag, answer, emoji, vote or tick makes no request for an agent (`decisions-made-workspace-23.md`), and no agent answers a guest's line (`agent-channel-guests.md`).
 - It is a standing rule of the product, not an order to the agents of one channel. Owner: "bunu ajan kanalı için kalıcı kurala döndürebiliriz sadece komut değil ajan kanallarında ve sohbet kanallarında aynı durum gerçekleşmeli."
 - Owner: "misafir ajanların konuşmalarını görüp takip edebilir ancak kanala yazma yetkisi varsa bile bir ajanı tetikleyemez."
