@@ -371,6 +371,21 @@ function test_workspace_flow_quick_graph_ids()
 	pg_assert_same(array('start', 'step2', 'step1', 'step3', 'step4', 'step5'), array_column($built['graph']['nodes'], 'id'));
 }
 
+// A step's title, set in the dialog with the box's own setting, is the
+// box's label: one line, at most 160 characters; none is ''.
+function test_workspace_flow_quick_graph_labels()
+{
+	$built = ws_flow_quick_graph(ws_flow_quick_test_catalogue(), array('start' => 'manual', 'steps' => array(
+		array('kind' => 'post', 'label' => "Tell  the\nteam ", 'config' => array()),
+		array('kind' => 'post', 'label' => str_repeat('a', 200), 'config' => array()),
+		array('kind' => 'post', 'label' => array('not text'), 'config' => array()),
+		array('kind' => 'post', 'config' => array()),
+	)));
+
+	pg_assert_true($built['ok']);
+	pg_assert_same(array('', 'Tell the team', str_repeat('a', 160), '', ''), array_column($built['graph']['nodes'], 'label'));
+}
+
 // What is wrong with a choice is refused, with the part of the dialog.
 function test_workspace_flow_quick_graph_refusals()
 {

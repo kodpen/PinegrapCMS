@@ -12,10 +12,10 @@ description: Flows quick setup server (flow_quick.php): catalogue of areas, star
 - A start key is `event:<event>` or a start box kind. A start: kind, event, label (the "when" sentence or box label), name, record, read (Read a record's record and id, or null), fields `trigger.<key>` / `record.<key>` for "Only when" (none for row and web).
 - Areas (`ws_flow_quick_areas()`): every catalogue event and start box in one site/other area, Often used repeats six (the test fails for a new event or start without one). Groups (`ws_flow_quick_groups()`): every step kind in one group or in `ws_flow_quick_kinds_left_out()` (End, End for each, value boxes); a new box kind such as WA7's WhatsApp box gets its line there.
 - Recipes (`ws_flow_quick_recipes()`): key, title, icon, fits (start keys, or `record` for any start about a record), steps in the dialog's shape; one whose kinds the person cannot add is left out. `ws_flow_quick_recipes_for($catalogue, $key)` filters by start.
-- The dialog still drops what the palette drops (`paletteItems()`: MCP without a server, row boxes without a table, AI not set up).
+- The dialog drops what the palette drops (`PGWsFlow.boxOffered()`).
 
 ## What do the choices look like?
-- `start`, `config` (the start box's settings; an event start keeps its event), `only_when` [{field, op, value}] (op of `ws_flow_condition_value_operators()`), `steps` [{kind, config, id?, steps?}], `name` ('' takes the start's label), `channel_id` (home), `publish`.
+- `start`, `config` (the start box's settings; an event start keeps its event), `only_when` [{field, op, value}] (op of `ws_flow_condition_value_operators()`), `steps` [{kind, config, id?, label?, steps?}] (label: the box's title, one line, 160), `name` ('' takes the start's label), `channel_id` (home), `publish`.
 - Only a condition or a For each box holds steps; no loop in a loop, none empty.
 - A sent id is kept when it is a box id not yet taken and not `start` or `read`, so a step reads an earlier one as `{{node.<id>.…}}`; else `step1`, `step2`… in order.
 
