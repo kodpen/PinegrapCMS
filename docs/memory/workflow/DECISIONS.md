@@ -274,6 +274,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-5.md: Widget 14, the Subscription ID field and download_assistant.php (#3205)
 - decisions-made-product-50.md: Where are the rules and the earlier parts?
 - decisions-made-product-50.md: Is the site search on a page in another language developed further? (owner, 2026-11-13, #9216)
+- decisions-made-product-51.md: Where are the rules and the earlier parts?
+- decisions-made-product-51.md: Is a Pinegrap plugin published in Claude's directory? (owner, 2026-11-14, in the architect's window)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
