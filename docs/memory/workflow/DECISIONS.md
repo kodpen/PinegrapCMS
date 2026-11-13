@@ -648,6 +648,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-inflight-request-cap.md: waf_inflight_* concurrent request cap on sensitive scripts: limit, 429 rule concurrent (no offence), file slots under data/temp, 120 s dead slot, fail-open, monitor mode.
 - waf/waf-kill-switch-and-monitor-mode.md: waf_enabled=0 stops everything (absolute kill switch), monitor mode guarantee in waf_deny(), hand-written bans apply in every mode, automatic bans not in Monitor mode.
 - waf/waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)
+- waf/waf-signature-honest-corpus.md: tests/waf_rules_corpus_test.php: honest sentences stay under the Medium threshold, attack payloads reach it; how eleven 10-point rules were narrowed (#9125 A1) and the rule key 'unless'
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
 - workflow/agent-channel-language.md: The language of the agent channel (owner, 2026-11-13): agents write English to each other; only the architect writes Turkish there, and only when it speaks with the owner
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
