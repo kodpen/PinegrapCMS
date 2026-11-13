@@ -86,3 +86,17 @@ function test_express_order_fallback_header_row_and_labels()
 	pg_assert_same(3, substr_count($html, '<span class="d-lg-none text-muted small'), 'three stacked labels');
 	pg_assert_contains('input-group input-group-sm flex-nowrap pg-qty-stepper', $html, 'stepper stays on one line');
 }
+
+// The designer twin (_buildExpressOrderStarterTree(), "Load Default Layout")
+// draws the same header row, labels and stepper.
+function test_express_order_designer_twin_header_row_and_labels()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_same(0, preg_match('/d-(?:sm-|md-|lg-|xl-|xxl-)?table-header-group/', $source), 'no table-header-group class');
+	pg_assert_contains("sem('thead', '', [\n                                        sem('tr', 'd-none d-lg-table-row', [", $source, 'header row hidden below lg');
+	pg_assert_contains("sem('span', 'd-lg-none text-muted small me-2', _sdT('Quantity')),", $source, 'quantity label');
+	pg_assert_contains("sem('span', 'd-lg-none text-muted small me-2', _sdT('Unit Price')),", $source, 'unit price label');
+	pg_assert_contains("sem('span', 'd-lg-none text-muted small fw-normal me-2', _sdT('Amount')),", $source, 'amount label');
+	pg_assert_contains("'input-group input-group-sm flex-nowrap pg-qty-stepper ms-0 ms-lg-auto'", $source, 'stepper stays on one line');
+}

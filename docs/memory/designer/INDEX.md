@@ -506,6 +506,7 @@
 - shipping-address-verified-box.md: Verified shipping addresses help box of the Shipping Address widget (#3177): has_verified_addresses, the verified_addresses section, the fill script by name
 - shipping-address-widget.md: The Shipping Address and Arrival widget (first step of the classic multi-step checkout): handler, page row, recipient gate, controls by name, state switch, arrival date rows, what is left out.
 - shipping-method-widget.md: The Shipping Method widget (second step of the classic multi-step checkout): handler, next page, methods from get_shipping_methods(), the chosen method, items section, what is left out.
+- shop-starters-narrow-widths.md: Shop starters at tablet width: catalog card buttons wrap, Add to Cart no longer sticks out (#9089); the cart link count badge sits inside the bag button (#9101)
 - signature-field-evidence.md: Signature form field (form_fields.type 'signature'): legal status, seal vs document hash, and the immutable capture and storage rules.
 - signature-receipt-and-output.md: Signature evidence receipt, the ^^field^^ token output, the h() ampersand pitfall, and why 'signature' was added to the form_fields.type enum.
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.

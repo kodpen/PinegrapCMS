@@ -59311,32 +59311,37 @@ const StyleDesigner = (function () {
                         ]),
                         sem('div', 'card-body p-0', [
                             bind('saved_cart_link', 'p-3 pb-0 pg-eo-saved-cart-anchor'),
-                            // Responsive stacking below md — the Bootstrap-only
+                            // Responsive stacking below lg — the Bootstrap-only
                             // equivalent of legacy's `table.mobile_stacked`
                             // media query (livesite.src.css:490).
                             //
                             // Why it's needed: the four right-hand columns are
-                            // pinned at 6+8+8+3 = 25rem (~400px) plus padding.
-                            // Under ~900px that leaves the "Item" column around
-                            // 188px, so the product name wraps to five lines
-                            // next to a 64px thumbnail. `table-responsive`
-                            // doesn't help because the table never exceeds the
+                            // pinned at 7+8+8+3 = 26rem (~416px) plus padding.
+                            // In the 8/4 grid the cart card is about 460px wide
+                            // at md, which leaves the picture and description a
+                            // sliver and wraps the quantity stepper, so the
+                            // table starts at lg. `table-responsive` doesn't
+                            // help because the table never exceeds the
                             // viewport — it just squeezes.
                             //
-                            // Below md every cell becomes `d-block` (full
-                            // width, left-aligned) and the header row is
-                            // hidden, exactly like the legacy rule. From md up
-                            // the `d-md-table-*` utilities restore real table
-                            // layout and the fixed widths apply again.
+                            // Below lg every cell becomes `d-block` (full
+                            // width, left-aligned), the header row is hidden
+                            // and each value carries its own `d-lg-none`
+                            // label. The header row, not the <thead>, holds
+                            // the breakpoint classes: Bootstrap has no
+                            // table-header-group utility, so a hidden thead
+                            // stayed hidden at every width.
+                            // MUST stay in lockstep with _eo_default_designer_tree()
+                            // and _eo_render_cart_summary() (widgets_express_order.php).
                             sem('div', 'table-responsive', [
                                 sem('table', 'table align-middle mb-0', [
-                                    sem('thead', 'd-none d-md-table-header-group', [
-                                        sem('tr', 'd-block d-md-table-row', [
-                                            sem('th', 'text-muted small ps-3 d-block d-md-table-cell', _sdT('Item')),
-                                            sem('th', 'text-muted small text-end d-block d-md-table-cell', _sdT('Quantity'),      { style: 'width:6rem' }),
-                                            sem('th', 'text-muted small text-end d-block d-md-table-cell', _sdT('Unit Price'), { style: 'width:8rem' }),
-                                            sem('th', 'text-muted small text-end d-block d-md-table-cell', _sdT('Amount'),       { style: 'width:8rem' }),
-                                            sem('th', 'd-block d-md-table-cell', '',                                      { style: 'width:3rem' })
+                                    sem('thead', '', [
+                                        sem('tr', 'd-none d-lg-table-row', [
+                                            sem('th', 'text-muted small ps-3', _sdT('Item')),
+                                            sem('th', 'text-muted small text-end', _sdT('Quantity'),   { style: 'width:7rem' }),
+                                            sem('th', 'text-muted small text-end', _sdT('Unit Price'), { style: 'width:8rem' }),
+                                            sem('th', 'text-muted small text-end', _sdT('Amount'),     { style: 'width:8rem' }),
+                                            sem('th', '', '',                                          { style: 'width:3rem' })
                                         ])
                                     ]),
                                     sem('tbody', '', [
@@ -59344,12 +59349,12 @@ const StyleDesigner = (function () {
                                             // `border-bottom` separates stacked
                                             // rows on mobile, where the cell
                                             // borders no longer read as a row.
-                                            sem('tr', 'd-block d-md-table-row border-bottom', [
+                                            sem('tr', 'd-block d-lg-table-row border-bottom', [
                                                 // Item cell — pure data-binding driven. No magic CSS
                                                 // hooks (pg-eo-item-*). Designer can delete any element,
                                                 // replace it with another, re-bind from the data binding
                                                 // menu. Bootstrap utilities only for layout.
-                                                sem('td', 'ps-3 d-block d-md-table-cell', [
+                                                sem('td', 'ps-3 d-block d-lg-table-cell', [
                                                     sem('div', 'd-flex gap-3 align-items-start', [
                                                         createNode('semantic', {
                                                             tag: 'img',
@@ -59368,8 +59373,9 @@ const StyleDesigner = (function () {
                                                     ])
                                                 ]),
                                                 // Qty cell — input-group + - / + steppers (designer-customizable).
-                                                sem('td', 'text-start text-md-end align-middle d-block d-md-table-cell', [
-                                                    sem('div', 'input-group input-group-sm pg-qty-stepper ms-0 ms-md-auto', [
+                                                sem('td', 'text-start text-lg-end align-middle ps-3 ps-lg-2 d-block d-lg-table-cell', [
+                                                    sem('span', 'd-lg-none text-muted small me-2', _sdT('Quantity')),
+                                                    sem('div', 'input-group input-group-sm flex-nowrap pg-qty-stepper ms-0 ms-lg-auto', [
                                                         createNode('semantic', {
                                                             tag: 'button',
                                                             cssClass: 'btn btn-outline-secondary',
@@ -59417,13 +59423,15 @@ const StyleDesigner = (function () {
                                                 // dropping any element into the cell silently overwrites the
                                                 // binding. This is the starter tree every new express order
                                                 // design is built from, so the shape here propagates forever.
-                                                sem('td', 'text-start text-md-end align-middle d-block d-md-table-cell', [
+                                                sem('td', 'text-start text-lg-end align-middle ps-3 ps-lg-2 d-block d-lg-table-cell', [
+                                                    sem('span', 'd-lg-none text-muted small me-2', _sdT('Unit Price')),
                                                     sem('span', '', _sdMoney(39.95), { bindings: { text: '__item_price' } })
                                                 ]),
-                                                sem('td', 'text-start text-md-end fw-semibold align-middle d-block d-md-table-cell', [
+                                                sem('td', 'text-start text-lg-end fw-semibold align-middle ps-3 ps-lg-2 d-block d-lg-table-cell', [
+                                                    sem('span', 'd-lg-none text-muted small fw-normal me-2', _sdT('Amount')),
                                                     sem('span', '', _sdMoney(79.9), { bindings: { text: '__item_total' } })
                                                 ]),
-                                                sem('td', 'text-start text-md-end align-middle pe-3 d-block d-md-table-cell', [
+                                                sem('td', 'text-start text-lg-end align-middle ps-3 ps-lg-2 pe-3 d-block d-lg-table-cell', [
                                                     // Remove link — ACTION-bound (remove_from_cart).
                                                     // Designer can swap <a> for <button> or any clickable;
                                                     // the action binding adapts (href for <a>,
@@ -60112,7 +60120,13 @@ const StyleDesigner = (function () {
                                 createNode('content', { contentType: 'paragraph',
                                     text: _sdMoney(0), cssClass: 'fw-bold text-primary mb-auto',
                                     _bindings: { text: '__price_formatted' } }),
-                                createNode('semantic', { tag: 'div', cssClass: 'd-flex gap-2 mt-2', customName: _sdT('Action buttons') }, [
+                                // `flex-wrap`: a flex item cannot shrink below its
+                                // longest word, so in a two- or three-column card
+                                // (576–991px) the three buttons needed more room
+                                // than the card had and Add to Cart stuck out of it,
+                                // scrolling the page sideways at 768px. Wrapped,
+                                // Add to Cart moves under the other two.
+                                createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2 mt-2', customName: _sdT('Action buttons') }, [
                                     // Caption is BOUND, not literal: a browse-type
                                     // group expands in place, everything else opens
                                     // the detail page, so the wording has to follow
@@ -60135,9 +60149,13 @@ const StyleDesigner = (function () {
                                     // Backend wraps this card in a mini-form pointing
                                     // at catalog_detail.php when this binding is present.
                                     // Designer styles via the standard Button options.
+                                    // `text-nowrap`: the label moves to the next line
+                                    // whole instead of breaking into two and making
+                                    // every button of the row twice as tall.
                                     createNode('component', { componentType: 'btn',
                                         btnElement: 'button', btnType: 'submit',
                                         variant: 'primary', size: 'sm',
+                                        cssClass: 'text-nowrap',
                                         text: _sdT('Add to Cart'),
                                         _bindings: { action: 'catalog_add_to_cart' } })
                                 ])
@@ -60650,8 +60668,13 @@ const StyleDesigner = (function () {
                         createNode('semantic', { tag: 'i', cssClass: 'bi bi-bag', customName: _sdT('Icon'),
                             _attrs: [{ name: 'aria-hidden', value: 'true' }] }),
                         createNode('semantic', { tag: 'span', cssClass: 'visually-hidden', text: _sdT('Shopping Cart'), customName: _sdT('Label') }),
+                        // The count sits inside the button, beside the bag: a
+                        // corner badge (position-absolute top-0 start-100
+                        // translate-middle) stood half its height above the
+                        // button, and in a header's top bar that half was cut
+                        // off by the top edge of the page.
                         createNode('semantic', { tag: 'span', text: '3', customName: _sdT('Count'),
-                            cssClass: 'position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger',
+                            cssClass: 'badge rounded-pill text-bg-danger',
                             _bindings: { text: '__cart_count', eo_visible_if: 'cart_has_items' } })
                     ]),
                     createNode('loop_area', {}, [])
