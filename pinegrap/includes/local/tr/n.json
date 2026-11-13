@@ -1902,6 +1902,7 @@
     "No page is chosen, or it has no keyword": "Sayfa seçilmemiş ya da anahtar kelimesi yok",
     "No page matches.": "Eşleşen sayfa yok.",
     "No page of this design has a Form Item View or comments on.": "Bu tasarımın hiçbir sayfasında Form Öğesi Görünümü ya da açık yorumlar yok.",
+    "No page of this design prints a page type that has a system widget.": "Bu tasarımın hiçbir sayfası, sistem bileşeni olan bir sayfa türü basmıyor.",
     "No page or address to point it at": "Yönlendirilecek bir sayfa ya da adres yok",
     "No page shows these records yet. Pick a page of this design and add a {var} widget to it; the links then open it.": "Bu kayıtları gösteren bir sayfa henüz yok. Bu tasarımdan bir sayfa seçip ona {var} widget'ı ekleyin; linkler o zaman o sayfayı açar.",
     "No page shows this yet.": "Henüz hiçbir sayfa bunu göstermiyor.",
