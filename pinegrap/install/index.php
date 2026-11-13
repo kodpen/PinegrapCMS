@@ -9190,6 +9190,7 @@ function get_tables() {
 		'watchers',
 		'whatsapp_outbox',
 		'whatsapp_templates',
+		'whatsapp_inbox',
 		'wishlist_items',
 		'zones',
 		'zones_countries_xref',

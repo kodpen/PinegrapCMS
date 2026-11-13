@@ -188,6 +188,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_profile();        // 11.0.195
 	upgrade_2026_11_0_whatsapp_outbox();         // 11.0.196
 	upgrade_2026_11_0_whatsapp_templates();      // 11.0.197
+	upgrade_2026_11_0_whatsapp_inbox();          // 11.0.198
 
 }
 
@@ -6341,5 +6342,40 @@ function upgrade_2026_11_0_whatsapp_templates() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('WhatsApp: the account\'s message templates are kept on the site and refreshed from Meta by the scheduled general job.');
+
+}
+
+// whatsapp_inbox keeps the messages customers send to the site's WhatsApp
+// number, as the webhook delivers them: one row per Meta message id (wamid
+// is UNIQUE because Meta may deliver the same event twice). from_number is
+// empty for a user known only by a WhatsApp username; from_user_id is the
+// business-scoped user id Meta always sends. contact_id is the contact the
+// number matched on arrival. Rows are removed with the contact's erasure and
+// after two years.
+function upgrade_2026_11_0_whatsapp_inbox() {
+
+	install_create_table('whatsapp_inbox', "CREATE TABLE whatsapp_inbox (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		wamid             VARCHAR(128) CHARACTER SET ascii NOT NULL DEFAULT '',
+		received_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		from_number       VARCHAR(16) NOT NULL DEFAULT '',
+		from_user_id      VARCHAR(64) NOT NULL DEFAULT '',
+		profile_name      VARCHAR(255) NOT NULL DEFAULT '',
+		contact_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		type              VARCHAR(16) NOT NULL DEFAULT '',
+		body              TEXT NOT NULL,
+		media_id          VARCHAR(64) NOT NULL DEFAULT '',
+		media_mime        VARCHAR(100) NOT NULL DEFAULT '',
+		context_wamid     VARCHAR(128) NOT NULL DEFAULT '',
+		read_user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		read_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_wamid (wamid),
+		KEY idx_contact (contact_id, received_at),
+		KEY idx_from (from_number),
+		KEY idx_received (received_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('WhatsApp: messages customers send to the site\'s WhatsApp number show as a notice and in the contact\'s history.');
 
 }
