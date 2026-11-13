@@ -69,8 +69,8 @@ function test_picker_all_columns()
 	pg_assert_same(array('page_type', 'page_name', 'page_id'), $keys(pg_picker_all_columns('pages', 'type')));
 	pg_assert_same(array('page_timestamp', 'page_id'), $keys(pg_picker_all_columns('pages', 'size')), 'no size key for pages');
 
-	pg_assert_same('COALESCE(timestamp, 0) DESC, id DESC', pg_picker_all_order_by(pg_picker_all_columns('files', 'modified'), 'desc'));
-	pg_assert_same("COALESCE(type, '') ASC, name ASC, id ASC", pg_picker_all_order_by(pg_picker_all_columns('files', 'type'), 'asc'));
+	pg_assert_same('timestamp DESC, id DESC', pg_picker_all_order_by(pg_picker_all_columns('files', 'modified'), 'desc'), 'the bare column, so its index serves the order');
+	pg_assert_same('type ASC, name ASC, id ASC', pg_picker_all_order_by(pg_picker_all_columns('files', 'type'), 'asc'));
 	pg_assert_same('page.page_name ASC, page.page_id ASC', pg_picker_all_order_by(pg_picker_all_columns('pages', 'name'), 'asc'));
 }
 
@@ -78,8 +78,8 @@ function test_picker_all_row_keys()
 {
 	$row = array('id' => '42', 'name' => 'şube.jpg', 'type' => null, 'timestamp' => null, 'size' => '1200');
 
-	pg_assert_same(array(0, 42), pg_picker_all_row_keys($row, pg_picker_all_columns('files', 'modified')), 'a NULL time reads 0, as COALESCE');
-	pg_assert_same(array('', 'şube.jpg', 42), pg_picker_all_row_keys($row, pg_picker_all_columns('files', 'type')));
+	pg_assert_same(array(null, 42), pg_picker_all_row_keys($row, pg_picker_all_columns('files', 'modified')), 'a NULL time stays NULL');
+	pg_assert_same(array(null, 'şube.jpg', 42), pg_picker_all_row_keys($row, pg_picker_all_columns('files', 'type')));
 	pg_assert_same(array(1200, 42), pg_picker_all_row_keys($row, pg_picker_all_columns('files', 'size')));
 }
 
@@ -102,6 +102,8 @@ function test_picker_cursor_round_trip()
 	$modified = pg_picker_all_columns('files', 'modified');
 	pg_assert_same(null, pg_picker_cursor_decode(pg_picker_cursor_encode('modified', 'desc', array('1700000000', 3)), 'modified', 'desc', $modified), 'a number as text');
 	pg_assert_same(null, pg_picker_cursor_decode(pg_picker_cursor_encode('modified', 'desc', array(-1, 3)), 'modified', 'desc', $modified));
+	pg_assert_same(array(null, 3), pg_picker_cursor_decode(pg_picker_cursor_encode('modified', 'desc', array(null, 3)), 'modified', 'desc', $modified), 'a NULL time');
+	pg_assert_same(null, pg_picker_cursor_decode(pg_picker_cursor_encode('modified', 'desc', array(5, null)), 'modified', 'desc', $modified), 'the id is never NULL');
 	pg_assert_same(null, pg_picker_cursor_decode(pg_picker_cursor_encode('modified', 'desc', array(5)), 'modified', 'desc', $modified), 'a key missing');
 	pg_assert_same(null, pg_picker_cursor_decode(pg_picker_cursor_encode('name', 'asc', array(str_repeat('a', 256), 3)), 'name', 'asc', pg_picker_all_columns('files', 'name')), 'a name over 255');
 
@@ -117,11 +119,22 @@ function test_picker_cursor_round_trip()
 function test_picker_keyset_where()
 {
 	pg_assert_same(
-		'(((COALESCE(timestamp, 0) < 1700000000)) OR ((COALESCE(timestamp, 0) = 1700000000) AND (id < 9)))',
-		pg_picker_keyset_where(pg_picker_all_columns('files', 'modified'), array(1700000000, 9), 'desc'));
+		'((((timestamp < 1700000000) OR (timestamp IS NULL))) OR ((timestamp = 1700000000) AND (id < 9)))',
+		pg_picker_keyset_where(pg_picker_all_columns('files', 'modified'), array(1700000000, 9), 'desc'),
+		'newest first: the NULL times come last');
 
 	pg_assert_same(
-		"(((COALESCE(type, '') > 'jpg')) OR ((COALESCE(type, '') = 'jpg') AND (name > 'a.jpg')) OR ((COALESCE(type, '') = 'jpg') AND (name = 'a.jpg') AND (id > 4)))",
+		'(((timestamp IS NULL) AND (id < 9)))',
+		pg_picker_keyset_where(pg_picker_all_columns('files', 'modified'), array(null, 9), 'desc'),
+		'after a NULL time going down only NULLs remain');
+
+	pg_assert_same(
+		'(((timestamp IS NOT NULL)) OR ((timestamp IS NULL) AND (id > 9)))',
+		pg_picker_keyset_where(pg_picker_all_columns('files', 'modified'), array(null, 9), 'asc'),
+		'oldest first: the NULL times come first');
+
+	pg_assert_same(
+		"(((type > 'jpg')) OR ((type = 'jpg') AND (name > 'a.jpg')) OR ((type = 'jpg') AND (name = 'a.jpg') AND (id > 4)))",
 		pg_picker_keyset_where(pg_picker_all_columns('files', 'type'), array('jpg', 'a.jpg', 4), 'asc'));
 
 	$where = pg_picker_keyset_where(pg_picker_all_columns('pages', 'name'), array("o'neil", 2), 'asc');

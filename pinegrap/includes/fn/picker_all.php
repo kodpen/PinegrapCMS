@@ -59,33 +59,35 @@ function pg_picker_all_sort($source, $sort, $order)
 
 /**
  * The keys a sort orders by, the last one the row id so that no two rows
- * tie. A column that may hold NULL is read through COALESCE(): a NULL
- * would fall out of every comparison and its row would never be reached.
- * A type ties by name. Pure.
+ * tie; a type ties by name. A column that may hold NULL is marked null:
+ * pg_picker_keyset_where() reaches its NULL rows without COALESCE(), which
+ * would keep the column's index from serving the ORDER BY. Pure.
  *
  * @param string $source 'files' or 'pages'
  * @param string $sort   one of pg_picker_all_sorts()
- * @return array [{sql, key, int}]: the SQL expression, the row's column
- *               (pg_picker_select()) and whether it is a number
+ * @return array [{sql, key, int, null}]: the SQL column, the row's key
+ *               (pg_picker_select()), whether it is a number, whether it
+ *               may be NULL
  */
 function pg_picker_all_columns($source, $sort)
 {
     if ($source === 'pages') {
-        $id = array('sql' => 'page.page_id', 'key' => 'page_id', 'int' => true);
-        $name = array('sql' => 'page.page_name', 'key' => 'page_name', 'int' => false);
+        // The name is never NULL here: the kind's condition asks for one.
+        $id = array('sql' => 'page.page_id', 'key' => 'page_id', 'int' => true, 'null' => false);
+        $name = array('sql' => 'page.page_name', 'key' => 'page_name', 'int' => false, 'null' => false);
         $keys = array(
-            'modified' => array(array('sql' => 'COALESCE(page.page_timestamp, 0)', 'key' => 'page_timestamp', 'int' => true)),
+            'modified' => array(array('sql' => 'page.page_timestamp', 'key' => 'page_timestamp', 'int' => true, 'null' => true)),
             'name' => array($name),
-            'type' => array(array('sql' => 'page.page_type', 'key' => 'page_type', 'int' => false), $name),
+            'type' => array(array('sql' => 'page.page_type', 'key' => 'page_type', 'int' => false, 'null' => false), $name),
         );
     } else {
-        $id = array('sql' => 'id', 'key' => 'id', 'int' => true);
-        $name = array('sql' => 'name', 'key' => 'name', 'int' => false);
+        $id = array('sql' => 'id', 'key' => 'id', 'int' => true, 'null' => false);
+        $name = array('sql' => 'name', 'key' => 'name', 'int' => false, 'null' => false);
         $keys = array(
-            'modified' => array(array('sql' => 'COALESCE(timestamp, 0)', 'key' => 'timestamp', 'int' => true)),
+            'modified' => array(array('sql' => 'timestamp', 'key' => 'timestamp', 'int' => true, 'null' => true)),
             'name' => array($name),
-            'size' => array(array('sql' => 'COALESCE(size, 0)', 'key' => 'size', 'int' => true)),
-            'type' => array(array('sql' => "COALESCE(type, '')", 'key' => 'type', 'int' => false), $name),
+            'size' => array(array('sql' => 'size', 'key' => 'size', 'int' => true, 'null' => true)),
+            'type' => array(array('sql' => 'type', 'key' => 'type', 'int' => false, 'null' => true), $name),
         );
     }
 
@@ -97,7 +99,7 @@ function pg_picker_all_columns($source, $sort)
 
 /**
  * A row's values of the sort keys, as a cursor carries them: a number as an
- * integer, a NULL as COALESCE() reads it. Pure.
+ * integer, a NULL of a column that may hold one as null. Pure.
  *
  * @param array $row     a row of pg_picker_select()
  * @param array $columns pg_picker_all_columns()
@@ -109,7 +111,12 @@ function pg_picker_all_row_keys($row, $columns)
 
     foreach ($columns as $column) {
         $value = $row[$column['key']] ?? null;
-        $values[] = $column['int'] ? (int) $value : (string) $value;
+
+        if (($value === null) && $column['null']) {
+            $values[] = null;
+        } else {
+            $values[] = $column['int'] ? (int) $value : (string) $value;
+        }
     }
 
     return $values;
@@ -166,6 +173,10 @@ function pg_picker_cursor_decode($cursor, $sort, $order, $columns)
     foreach ($columns as $index => $column) {
         $value = $values[$index];
 
+        if (($value === null) && $column['null']) {
+            continue;
+        }
+
         if ($column['int'] ? (!is_int($value) || ($value < 0)) : (!is_string($value) || (mb_strlen($value, 'UTF-8') > 255))) {
             return null;
         }
@@ -178,7 +189,11 @@ function pg_picker_cursor_decode($cursor, $sort, $order, $columns)
  * The condition that keeps the rows after a cursor's keys in the sort's
  * order, written out as (a > x) OR (a = x AND b > y) …, which every MySQL and
  * MariaDB version reads; a row comparison (a, b) > (x, y) was not optimized
- * before MySQL 5.7. Every key runs in the same direction. Pure.
+ * before MySQL 5.7. Every key runs in the same direction.
+ *
+ * MySQL and MariaDB sort NULL below every value (first ascending, last
+ * descending), so "below x" also takes the NULLs, "above NULL" is IS NOT
+ * NULL, "equal to NULL" is IS NULL and nothing is below NULL. Pure.
  *
  * @param array  $columns pg_picker_all_columns()
  * @param array  $values  pg_picker_cursor_decode()
@@ -187,24 +202,39 @@ function pg_picker_cursor_decode($cursor, $sort, $order, $columns)
  */
 function pg_picker_keyset_where($columns, $values, $order)
 {
-    $operator = ($order === 'desc') ? '<' : '>';
-    $literals = array();
+    $below = ($order === 'desc');
+    $equal = array();
+    $after = array();
 
     foreach ($columns as $index => $column) {
-        $literals[] = $column['int'] ? (string) (int) $values[$index] : "'" . e((string) $values[$index]) . "'";
+        $value = $values[$index];
+        $sql = $column['sql'];
+
+        if (($value === null) && $column['null']) {
+            $equal[] = '(' . $sql . ' IS NULL)';
+            $after[] = $below ? '' : '(' . $sql . ' IS NOT NULL)';
+            continue;
+        }
+
+        $literal = $column['int'] ? (string) (int) $value : "'" . e((string) $value) . "'";
+        $equal[] = '(' . $sql . ' = ' . $literal . ')';
+
+        if ($below) {
+            $after[] = $column['null'] ? '((' . $sql . ' < ' . $literal . ') OR (' . $sql . ' IS NULL))' : '(' . $sql . ' < ' . $literal . ')';
+        } else {
+            $after[] = '(' . $sql . ' > ' . $literal . ')';
+        }
     }
 
     $branches = array();
 
     foreach ($columns as $index => $column) {
-        $parts = array();
-
-        for ($i = 0; $i < $index; $i++) {
-            $parts[] = '(' . $columns[$i]['sql'] . ' = ' . $literals[$i] . ')';
+        // Nothing sorts below a NULL: this branch keeps no row.
+        if ($after[$index] === '') {
+            continue;
         }
 
-        $parts[] = '(' . $column['sql'] . ' ' . $operator . ' ' . $literals[$index] . ')';
-        $branches[] = '(' . implode(' AND ', $parts) . ')';
+        $branches[] = '(' . implode(' AND ', array_merge(array_slice($equal, 0, $index), array($after[$index]))) . ')';
     }
 
     return '(' . implode(' OR ', $branches) . ')';

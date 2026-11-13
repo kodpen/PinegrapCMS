@@ -173,6 +173,7 @@ description: Generated from the module field of the memory files: each includes/
 - `payments`: [[card-brand-switches]], [[gateway-masked-keys]], [[order-refunded-amount-writes]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
 - `pdf_merge`: [[shipment-label-bulk]]
 - `picker`: [[picker-designer-bridge]], [[picker-dialog]], [[picker-editor-bridge]], [[picker-field]], [[picker-page-fields-screens]], [[picker-pages]], [[picker-registry]], [[picker-remaining-screens]], [[picker-upload]]
+- `picker_all`: [[picker-all-list-server]]
 - `places`: [[place-packs]], [[tr-place-list]]
 - `preorder`: [[product-preorder]]
 - `price_history`: [[widget-currency-symbol-once]]
