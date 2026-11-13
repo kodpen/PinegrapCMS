@@ -8,7 +8,8 @@ description: Owner (2026-11-11): during the template pause his own line polishes
 - They take `appstudio` (Mobile App Developer) and `dealership` (Car Dealership) first, ahead of [[design-template-own-looks-order]].
 - Owner (2026-11-11): one more coordinator takes the rest of the round in the order of that file, with at most two workers on it at a time (his answer later that day). It is the coordinator that the coordinator of his own line told by message; no other coordinator reads this as leave.
 - Why two lines: most of the round is still open, and the account of his own line had little of its weekly allowance left.
-- Owner (2026-11-12): the polish of the shipped templates he asked for in one more account's project is both: visual fixes first, then this round for the templates that never had it (Events, Courses, Charity, Boutique, Bookshop). That project's coordinator gives the round's steps to one polish worker at a time; its other polish workers only fix.
+- Owner (2026-11-12): polishing the shipped templates means both: visual fixes first, then this round for the templates that never had it (Events, Courses, Charity, Boutique, Bookshop).
+- A working arrangement, not an owner decision: in that project one polish worker at a time takes the round's steps; the other polish workers only fix.
 - Everybody else stays under the pause ([[coordinator-no-plans]]): no other session takes a template step, and no new template is started.
 
 ## What did the owner ask for?
