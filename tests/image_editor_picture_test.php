@@ -186,6 +186,100 @@ function test_image_editor_picture_areas()
 	pg_assert_same(array('l1', 'l5'), $r['dropped'], 'the picture\'s areas go with it');
 }
 
+// Convert to a layer: the canvas becomes an artboard of its size and fill,
+// the picture the server drew a picture layer at the bottom where the
+// picture lay; the other layers keep their order and place, the picture's
+// own areas and the selection go (their pixels are in the drawn picture).
+function test_image_editor_picture_to_layer()
+{
+	$r = image_editor_picture_node(
+		'var sq = [[[0, 0], [1, 0], [1, 1], [0, 1]]];'
+		. 'photo.layers.push({ id: "l3", type: "erase", shape: "area", x: 200, y: 100, w: 100, h: 50, area: sq }, { id: "l5", type: "image", src: "a.png", x: 300, y: 200, w: 100, h: 50, rot: 0, opacity: 1 });'
+		. 'photo.selection = { ops: [], invert: true, feather: 0 };'
+		. 'var u = M.applyCanvas(M.lockPicture(photo, false), { x: -100, y: -50, w: 1200, h: 600 }); u.canvas.background = "#000000";'
+		. 'u = M.placePicture(u, { x: 200, y: 100, w: 500, h: 250 });'
+		. 'var d = M.pictureLayer(u, "data:image/png;base64,AA", "photo.png"), plain = M.pictureLayer(photo, "data:image/jpeg;base64,AA", "photo.jpg"), b = d.layers[0];'
+		. 'console.log(JSON.stringify({ board: d.artboard, source: d.source, selection: d.selection === undefined,'
+		. ' ids: d.layers.map(function (l) { return l.id; }), first: [b.type, b.src, b.fileName, b.rot, b.opacity], box: box(b),'
+		. ' shape: box(d.layers[1]), cut: box(d.layers[2]), fresh: ["l1", "l2", "l3", "l5"].indexOf(b.id) < 0,'
+		. ' plainBoard: plain.artboard, plainBox: box(plain.layers[0]), photoLayers: photo.layers.length }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('width' => 1200, 'height' => 600, 'background' => '#000000'), $r['board'], 'an artboard of the canvas, its fill kept');
+	pg_assert_same(null, $r['source'], 'no picture left');
+	pg_assert_true($r['selection'], 'the selection goes with the picture');
+	pg_assert_same(3, count($r['ids']), 'the picture layer, the shape and the picture layer above');
+	pg_assert_same(array('image', 'data:image/png;base64,AA', 'photo.png', 0, 1), $r['first'], 'the drawn picture as a picture layer at the bottom');
+	pg_assert_true($r['fresh'], 'with an id of its own');
+	pg_assert_same(array(300, 150, 500, 250), $r['box'], 'where the picture lay, at its size on the canvas');
+	pg_assert_same(array(200, 150, 50, 40), $r['shape'], 'a shape stays where it was');
+	pg_assert_same(array(400, 250, 100, 50), $r['cut'], 'a picture layer too');
+	pg_assert_same(array('width' => 1000, 'height' => 500, 'background' => '#ffffff'), $r['plainBoard'], 'a photo without a canvas: an artboard of the picture');
+	pg_assert_same(array(0, 0, 1000, 500), $r['plainBox'], 'the layer covers it');
+	pg_assert_same(4, $r['photoLayers'], 'the document given is left as it was');
+}
+
+// The picture Convert to a layer asks for (action base with png) keeps what
+// is see-through, a JPEG's too: a round crop's corners stay clear in a PNG;
+// without the flag the base keeps the file's own format.
+function test_image_editor_picture_base_png()
+{
+	if (!function_exists('imagecreatetruecolor') || !function_exists('imagejpeg')) {
+		pg_assert_true(true, 'GD is not available; skipped');
+		return;
+	}
+
+	$folder = sys_get_temp_dir() . '/pgiepicbase' . getmypid() . mt_rand(1000, 9999);
+	@mkdir($folder, 0777, true);
+	$path = $folder . '/photo.jpg';
+	$image = imagecreatetruecolor(80, 60);
+	imagefilledrectangle($image, 0, 0, 79, 59, imagecolorallocate($image, 200, 30, 30));
+	imagejpeg($image, $path, 90);
+	pg_image_destroy($image);
+
+	$doc = array(
+		'v' => 1,
+		'source' => array('fileId' => 0, 'width' => 80, 'height' => 60),
+		'artboard' => null,
+		'geometry' => array('rot' => 0, 'flipX' => false, 'flipY' => false, 'straighten' => 0, 'crop' => array('x' => 10, 'y' => 0, 'w' => 60, 'h' => 60), 'cropShape' => 'circle', 'output' => null),
+		'adjust' => array(),
+		'filter' => 'none',
+		'frame' => null,
+		'layers' => array());
+
+	try {
+		$png = pg_image_editor_render($path, array('doc' => $doc), true);
+		$own = pg_image_editor_render($path, array('doc' => $doc));
+
+		pg_assert_same('', $png['error'], 'drawn');
+		pg_assert_same('png', $png['extension'], 'as a PNG');
+		pg_assert_same(array(60, 60), array_slice(getimagesizefromstring($png['data']), 0, 2), 'cropped');
+
+		// The PNG may be written with a palette: imagecolorsforindex() reads
+		// a pixel's alpha from a palette index and a truecolor value alike.
+		$drawn = imagecreatefromstring($png['data']);
+		$corner = imagecolorsforindex($drawn, imagecolorat($drawn, 0, 0));
+		$middle = imagecolorsforindex($drawn, imagecolorat($drawn, 30, 30));
+		pg_assert_true($corner['alpha'] > 100, 'a corner the circle cut stays see-through');
+		pg_assert_same(0, $middle['alpha'], 'the middle is opaque');
+		pg_image_destroy($drawn);
+
+		pg_assert_same('jpg', $own['extension'], 'without the flag the file\'s own format');
+		pg_assert_same(array($path), glob($folder . '/*'), 'no temporary file left, the file untouched');
+	} finally {
+		foreach ((array) glob($folder . '/*') as $file) {
+			@unlink($file);
+		}
+
+		@rmdir($folder);
+	}
+}
+
 // The extend step takes the picture's size on the canvas.
 function test_image_editor_picture_extend_size()
 {
