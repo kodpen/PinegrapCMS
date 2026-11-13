@@ -345,3 +345,26 @@ function test_picker_js_all_rows_line_and_upload_target()
 	pg_assert_same(array('Ürünler / 2026', '10 × 5 · 1 KB', 'Kurumsal', '/hakkimizda · Standard', null, 'Not saved yet'), $out['lines'], 'All draws the folder line, as a search result');
 	pg_assert_same(array(array(7, 9, 3, 4), array(3), array(12), array()), $out['targets']);
 }
+
+// The dialog opens on All: its row heads the tree, before Recently used;
+// All keeps its own sort keys; the page tells which kinds are pictures.
+function test_picker_js_all_wiring()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_picker.js');
+
+	$all = strpos($js, 'this.treeBox.appendChild(this.allRow);');
+	$recent = strpos($js, 'this.treeBox.appendChild(this.recentRow);');
+	pg_assert_true($all !== false && $recent !== false && $all < $recent, 'the All row is the tree\'s first');
+	pg_assert_true(strpos($js, "remember('all.sort', this.allSortKey);") !== false, 'All keeps its sort apart from a folder\'s');
+	pg_assert_true(strpos($js, "allSort(remember('all.sort'), remember('all.dir'), this.pages)") !== false);
+	pg_assert_true(strpos($js, "self.showExtras() : self.showAll();") !== false, 'the dialog opens on All, a stored value too');
+	pg_assert_true(strpos($js, 'request(allParams(') !== false, 'All is read from picker.php without a folder');
+	pg_assert_true(strpos($js, "t('All folders')") !== false, 'the phone chip names All');
+
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/picker.php');
+	pg_assert_true(strpos($php, "'picture_kinds' => \$picture_kinds") !== false);
+
+	foreach (array('All folders', 'Show in its folder', 'Upload into', 'There is nothing to choose yet') as $text) {
+		pg_assert_true(array_key_exists($text, pg_picker_texts()), $text . ' is handed to the dialog');
+	}
+}

@@ -12,6 +12,7 @@ module: picker
 ## Which folder takes an upload?
 - `pg_picker_upload_verdict()` (pure): the kind has `upload` and source files; the folder is above 0, allowed (`pg_picker_folder_allowed()`, never the Recycle Bin) and the user has the edit right (`pg_folder_edit_access()`).
 - A public kind (`public_image`, `site_icon`) only into a public folder (`pg_public_folder_ids()`). Why: its list leaves private files out, so the file would vanish the moment it was stored.
+- On All the target is named beside Upload ("Upload into") and can be changed first: `picker-all-list-dialog.md`.
 - The list answer carries `upload: {ok, reason}`; a refused folder shows Upload disabled with the reason as its title, and the drop overlay says the reason. Recently used is no folder: Upload is disabled there.
 
 ## What is checked before a file is stored?

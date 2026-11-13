@@ -11,6 +11,7 @@ module: picker
 - The field's Browse… opens it on the value or the typed text (`query`), `picker-field.md`. `pg_picker_browse_button()` (Browse beside a select) has no caller since PK5; PK10 removes it.
 
 ## What does it show?
+- It opens on All, every item of the kind in one list (PA2, #9201): `picker-all-list-dialog.md`.
 - Title and the kind's types (`types` of the tree answer), toolbar: Up, breadcrumb, search, sort, grid and list; folder tree with counts; the open folder's sub-folders as folder tiles, then its files; footer with the pick (picture, folder path, size), a hint, Cancel and Choose.
 - Tree counts are the kind's files in a folder and every folder under it (`pg_picker_subtree_counts()`).
 - Search: results from every folder with their folder line, the match highlighted, Best match first (the server's order); a chip keeps them to the open folder and the folders under it.
