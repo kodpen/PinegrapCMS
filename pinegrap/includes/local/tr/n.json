@@ -2698,6 +2698,8 @@
     "Not verified": "Doğrulanmamış",
     "Not written": "Yazılmaz",
     "Not written yet.": "Henüz yazılmadı.",
+    "Not written: \"{var}\" is not a colour.": "Yazılmadı: \"{var}\" bir renk değil.",
+    "Not written: \"{var}\" is not a single CSS value.": "Yazılmadı: \"{var}\" tek bir CSS değeri değil.",
     "Not yet": "Henüz okumadı",
     "Not yet assessed: the first full accessibility check has not finished.": "Henüz değerlendirilmedi: ilk tam erişilebilirlik denetimi bitmedi.",
     "Not yet due": "Vadesi gelmemiş",

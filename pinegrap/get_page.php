@@ -3093,7 +3093,10 @@ else
 			}
 		}
 
-		// If user has edit access to this page, then output grid button.
+		// If user has edit access to this page, then output grid button. A
+		// user who gets the toolbar without edit access to this page gets no
+		// button, and the toolbar markup below still reads the variable.
+		$output_grid_button = '';
 		if (($edit_access == true) && $pg_is_visual_page)
 		{
 			// One button, one destination: the page opens in the editor on its

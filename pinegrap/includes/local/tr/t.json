@@ -6340,6 +6340,7 @@
     "The server could not write a temporary file.": "Sunucu geçici bir dosya yazamadı.",
     "The server did not accept the whole form, so no change was saved. Change fewer pages at a time, or ask the server administrator to raise the max_input_vars PHP setting in the php.ini file.": "Sunucu formun tamamını kabul etmedi, bu yüzden hiçbir değişiklik kaydedilmedi. Bir seferde daha az sayfa değiştirin ya da sunucu yöneticisinden php.ini dosyasındaki max_input_vars PHP ayarını yükseltmesini isteyin.",
     "The server did not answer": "Sunucu yanıt vermedi",
+    "The server did not answer as the editor expects: your session may have ended, or another user signed in on this browser. Sign in again in another browser tab and save again. If it is still refused, reload the editor and load the Autosave from History.": "Sunucu düzenleyicinin beklediği yanıtı vermedi: oturumunuz sona ermiş ya da bu tarayıcıda başka bir kullanıcı oturum açmış olabilir. Başka bir tarayıcı sekmesinde yeniden oturum açıp tekrar kaydedin. Yine reddedilirse düzenleyiciyi yeniden yükleyin ve Geçmiş'ten Otomatik Kayıt'ı yükleyin.",
     "The server did not answer in time.": "Sunucu zamanında yanıt vermedi.",
     "The server did not answer in time; trying again…": "Sunucu zamanında cevap vermedi; yeniden deneniyor…",
     "The server did not answer while the design template was being installed.": "Tasarım şablonu kurulurken sunucu yanıt vermedi.",

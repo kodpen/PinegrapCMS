@@ -279,10 +279,14 @@ const StyleDesigner = (function () {
     // Autosave is keyed per design + page since the tab bar arrived: one
     // global slot would only ever hold whichever tab was active last, and a
     // restore prompt on a different page would offer the wrong layout.
+    var AUTOSAVE_PREFIX = 'pinegrap_designer_autosave_v2:';
     function _autosaveKey() {
-        var sid = (_design && _design.styleId) ? _design.styleId : 'new';
-        var pk  = _activeKey || 'p0';
-        return 'pinegrap_designer_autosave_v2:' + sid + ':' + pk;
+        return AUTOSAVE_PREFIX + _sdAutosaveSid() + ':' + (_activeKey || 'p0');
+    }
+    // The design part of an autosave key: the design's id, 'new' before its
+    // first save.
+    function _sdAutosaveSid() {
+        return (_design && _design.styleId) ? _design.styleId : 'new';
     }
     var SNAPSHOTS_KEY = 'pinegrap_designer_snapshots_v1';
     var MAX_SNAPSHOTS = 20;
@@ -4616,9 +4620,12 @@ const StyleDesigner = (function () {
      * for all three is merge, never drop. An attribute the panel stores and
      * the page then does not have is worse than one the panel refuses.
      *
+     * No class is made from the design's name: the server writes none, so
+     * the HTML panel and Preview showed a class the site never had.
+     *
      * Returns strings ready to interpolate: { cls, style, attrs }.
      */
-    function _sdBodyAttrParts(t, styleName, additionalBodyClasses) {
+    function _sdBodyAttrParts(t, additionalBodyClasses) {
         var props = (t && t.props) ? t.props : {};
 
         var attrClass = [], attrStyle = [], attrId = '', extra = '';
@@ -4634,8 +4641,7 @@ const StyleDesigner = (function () {
             });
         }
 
-        var cls = styleName ? styleName.replace(/ /g, '_').replace(/[^A-Za-z0-9\-_]/g, '') : '';
-        if (additionalBodyClasses) cls += (cls ? ' ' : '') + additionalBodyClasses;
+        var cls = additionalBodyClasses || '';
         if (props.cssClass) cls += (cls ? ' ' : '') + props.cssClass;
         attrClass.forEach(function (c) { cls += (cls ? ' ' : '') + c; });
 
@@ -11092,7 +11098,7 @@ const StyleDesigner = (function () {
         // style, class, id and any data-*/aria-*/role the Attributes panel
         // holds. Before this the canvas only ever applied cssClass and the
         // font, so an attribute set on the body looked like it did nothing.
-        var _bodyParts = _sdBodyAttrParts(tree, '', '');
+        var _bodyParts = _sdBodyAttrParts(tree, '');
         canvasDoc.body.setAttribute('style', _bodyParts.style || '');
         // Same idea for cssClass on root — additional body classes the user
         // wants applied site-wide. Editor-state classes (grid overlay,
@@ -28380,9 +28386,8 @@ const StyleDesigner = (function () {
     // The <body> tag's attributes as the page gets them (_sdBodyAttrParts()),
     // as [[name, value], ...] for the frame rows.
     function _sdPageBodyAttrs() {
-        var nameEl = document.querySelector('[name="name"]');
         var bcEl   = document.querySelector('[name="additional_body_classes"]');
-        var parts  = _sdBodyAttrParts(tree, nameEl ? nameEl.value.trim() : '', bcEl ? bcEl.value.trim() : '');
+        var parts  = _sdBodyAttrParts(tree, bcEl ? bcEl.value.trim() : '');
         var attrs  = [];
         if (parts.cls)   attrs.push(['class', parts.cls]);
         if (parts.style) attrs.push(['style', parts.style]);
@@ -65558,7 +65563,8 @@ const StyleDesigner = (function () {
 
     // `treeOverride`: another tree drawn with this page's frame (a published
     // revision, for the History panel's compare); the page's own tree
-    // otherwise.
+    // otherwise. `styleName` goes nowhere: the page's <body> takes no class
+    // from the design's name (_sdBodyAttrParts()).
     /* @pg-site-output */
     function generateHTML(styleName, additionalBodyClasses, treeOverride) {
         var root = treeOverride || tree;
@@ -65567,7 +65573,7 @@ const StyleDesigner = (function () {
         // The <body> tag. Twin of generate_style_code_from_tree() in
         // functions.php — class, style and id each have two sources (the
         // dedicated control and the Attributes panel) and all of them MERGE.
-        var _body = _sdBodyAttrParts(root, styleName, additionalBodyClasses);
+        var _body = _sdBodyAttrParts(root, additionalBodyClasses);
         var bc = _body.cls;
         var bodyStyle = _body.style;
         var bodyExtraAttrs = _body.attrs;
@@ -67466,17 +67472,124 @@ const StyleDesigner = (function () {
     document.addEventListener('pg-design-theme-change', function () { _sdLivePreviewSchedule(); });
 
     // ========================= AUTOSAVE =========================
+    // One entry per design and page in the browser's storage (_autosaveKey()),
+    // written 2.5 s after an edit and removed once the server has the page.
+    // The browser gives a site about 5 MB, and an entry holds the whole tree
+    // with the design's CSS, so entries nobody can open again are removed
+    // when the editor starts (_sdAutosaveSweep()), and a write that does not
+    // fit makes room by removing the oldest other entries first
+    // (_sdAutosaveWrite()). docs/memory/designer/designer-autosave.md
+    var AUTOSAVE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+    // An entry of a page no editor can open again (a tab never saved, which
+    // a reload does not bring back) is left this long: an editor still open
+    // on that tab shows it in its Snapshots panel.
+    var AUTOSAVE_ORPHAN_AGE = 24 * 60 * 60 * 1000;
+
+    // The autosave entries in `store` (localStorage), as { key, ts }; ts is 0
+    // for an entry that cannot be read.
+    function _sdAutosaveEntries(store) {
+        var out = [];
+        for (var i = 0; i < store.length; i++) {
+            var key = store.key(i);
+            if (typeof key !== 'string' || key.indexOf(AUTOSAVE_PREFIX) !== 0) continue;
+            var ts = 0;
+            try {
+                var rec = JSON.parse(store.getItem(key));
+                if (rec && rec.tree && typeof rec.timestamp === 'number') ts = rec.timestamp;
+            } catch (e) {}
+            out.push({ key: key, ts: ts });
+        }
+        return out;
+    }
+
+    // Whether an editor can open an entry again: a saved page (p<page id>),
+    // the blank first tab of a design (new1) and the single-tree editor (p0).
+    // Any other page key belongs to a tab a reload does not bring back.
+    function _sdAutosaveReachable(key) {
+        var page = key.slice(key.lastIndexOf(':') + 1);
+        return /^p\d+$/.test(page) || page === 'new1';
+    }
+
+    // Removes the entries no editor will offer again: unreadable ones, any
+    // older than AUTOSAVE_MAX_AGE (the restore prompt refuses them too) and
+    // those of tabs that cannot be opened again once AUTOSAVE_ORPHAN_AGE old.
+    // Returns the number removed.
+    function _sdAutosaveSweep(store, now) {
+        var gone = 0;
+        _sdAutosaveEntries(store).forEach(function (e) {
+            var age = now - e.ts;
+            if (!e.ts || age > AUTOSAVE_MAX_AGE || (!_sdAutosaveReachable(e.key) && age > AUTOSAVE_ORPHAN_AGE)) {
+                try { store.removeItem(e.key); gone++; } catch (err) {}
+            }
+        });
+        return gone;
+    }
+
+    // Writes one entry. A write the browser refuses for want of room removes
+    // the oldest other entries one by one and tries again after each.
+    // Returns 'ok', or 'full' when it still did not fit (the entry kept
+    // under `key`, if any, is the last one that did).
+    function _sdAutosaveWrite(store, key, value) {
+        try { store.setItem(key, value); return 'ok'; } catch (e) {}
+        var older = _sdAutosaveEntries(store)
+            .filter(function (e) { return e.key !== key; })
+            .sort(function (a, b) { return a.ts - b.ts; });
+        for (var i = 0; i < older.length; i++) {
+            try { store.removeItem(older[i].key); } catch (e) { continue; }
+            try { store.setItem(key, value); return 'ok'; } catch (e) {}
+        }
+        return 'full';
+    }
+
+    // After a save the server answered: removes the entries of the pages it
+    // wrote (keys of the design as it was called when the save started, `sid`)
+    // that are no newer than the save. An edit made while the request was
+    // on its way keeps its entry.
+    function _sdAutosaveForget(store, sid, pageKeys, before) {
+        (pageKeys || []).forEach(function (pk) {
+            var key = AUTOSAVE_PREFIX + sid + ':' + pk;
+            var ts = -1;
+            try {
+                var raw = store.getItem(key);
+                if (raw === null) return;
+                var rec = JSON.parse(raw);
+                ts = (rec && typeof rec.timestamp === 'number') ? rec.timestamp : 0;
+            } catch (e) { ts = 0; }
+            if (ts <= before) { try { store.removeItem(key); } catch (e) {} }
+        });
+    }
+
+    // The browser's storage, or null where the site may not use it.
+    function _sdAutosaveStore() {
+        try { return window.localStorage || null; } catch (e) { return null; }
+    }
+
     function scheduleAutosave() {
         clearTimeout(_autosaveTimer);
         _autosaveTimer = setTimeout(_doAutosave, 2500);
         _sdLivePreviewSchedule();
     }
 
+    // Writes an autosave still waiting for its timer now: before a save, so
+    // a refused save leaves the work it tried to send in the entry, and
+    // before a tab switch, which would write it under the next tab's key.
+    function _sdAutosaveFlush() {
+        if (!_autosaveTimer) return;
+        clearTimeout(_autosaveTimer);
+        _doAutosave();
+    }
+
+    // Said once per editor session: autosave goes on trying.
+    var _sdAutosaveFullShown = false;
+
     function _doAutosave() {
+        _autosaveTimer = null;
         if (!tree) return;
+        var store = _sdAutosaveStore();
+        var value;
         try {
             var nameEl = document.querySelector('[name="name"]');
-            localStorage.setItem(_autosaveKey(), JSON.stringify({
+            value = JSON.stringify({
                 tree: tree,
                 selectedNodeId: selectedNode ? selectedNode._id : null,
                 timestamp: Date.now(),
@@ -67489,11 +67602,17 @@ const StyleDesigner = (function () {
                 assets: _snapshotAssetFields(),
                 shared: _snapshotShared(),
                 v: 2
-            }));
-        } catch(e) {}
+            });
+        } catch(e) { return; }
+        if ((!store || _sdAutosaveWrite(store, _autosaveKey(), value) !== 'ok') && !_sdAutosaveFullShown) {
+            _sdAutosaveFullShown = true;
+            sdToast(esc(_sdT('Autosave is not working: this browser did not keep the changes (its storage for this site may be full). Save to keep them.')), 'warning', 0);
+        }
     }
 
     function checkAutosaveRestore(hasExistingTree) {
+        var store = _sdAutosaveStore();
+        if (store) _sdAutosaveSweep(store, Date.now());
         if (hasExistingTree) return;
         try {
             var raw = localStorage.getItem(_autosaveKey());
@@ -68487,8 +68606,9 @@ const StyleDesigner = (function () {
         if (pagesPayload === null) return false;
         var pj = document.getElementById('sd-pages-json');
         if (pj) pj.value = JSON.stringify(pagesPayload);
-        // Clear autosave — data is about to be persisted to DB
-        try { localStorage.removeItem(_autosaveKey()); } catch(e) {}
+        // The autosave stays until the server has the pages: a refused save
+        // or a lost connection must not take the work with it
+        // (_sdAutosaveForget() in _saveAjaxImpl()).
         // Flush the dirty shared components. The save request waits for
         // this (see _saveAjaxImpl): the server reads the widget trees.
         _sharedFlushPromise = _flushDirtyShared();
@@ -68664,6 +68784,13 @@ const StyleDesigner = (function () {
         // so the server keeps their stored rows, and still unsaved after it.
         _pgSaveHold = {};
         (Array.isArray(opts.hold) ? opts.hold : []).forEach(function (k) { _pgSaveHold[k] = true; });
+        // The autosave entries this save makes needless, removed once the
+        // server has the pages: the design's key part and the keys of the
+        // pages sent, as they are called before the reply renames them.
+        _sdAutosaveFlush();
+        var _asSaveStart = Date.now();
+        var _asSid = _sdAutosaveSid();
+        var _asPageKeys = _pages.filter(function (p) { return !_pgSaveHold[p.key]; }).map(function (p) { return p.key; });
         if (prepareFormData() === false) { _abandon(); return; }
 
         // Disable the button for the duration of the request to prevent
@@ -68701,6 +68828,8 @@ const StyleDesigner = (function () {
         .then(function (res) {
             if (btn) { btn.disabled = false; btn.classList.remove('sd-saving'); }
             if (res.data && res.data.status === 'success') {
+                var _asStore = _sdAutosaveStore();
+                if (_asStore) _sdAutosaveForget(_asStore, _asSid, _asPageKeys, _asSaveStart);
                 // successMessage may be worked out from what the server did.
                 var _okMsg = (typeof opts.successMessage === 'function') ? opts.successMessage(res.data) : opts.successMessage;
                 var _okDur = _okMsg ? 4500 : 2500;
@@ -68744,9 +68873,14 @@ const StyleDesigner = (function () {
                 }
                 return;
             }
+            // A 200 that is not the editor's JSON is a screen the panel drew
+            // instead: the session ended (the token check's page) or the
+            // sign-in page, typically after another user signed in here.
             var msg = (res.data && res.data.message)
                         ? res.data.message
-                        : (res.ok ? _sdT('Publishing failed.') : _sdT('Server error ({var}).', res.status));
+                        : (!res.ok ? _sdT('Server error ({var}).', res.status)
+                                   : (res.data ? _sdT('Publishing failed.')
+                                               : _sdT('The server did not answer as the editor expects: your session may have ended, or another user signed in on this browser. Sign in again in another browser tab and save again. If it is still refused, reload the editor and load the Autosave from History.')));
             // Stays until closed: the message can list many pages and is
             // what the user needs to fix before saving again.
             sdToast('<strong>' + esc(_asDraft ? _sdT('It could not be saved:') : _sdT('It could not be published:')) + '</strong><br>' + esc(msg), 'error');
@@ -69575,7 +69709,7 @@ const StyleDesigner = (function () {
         // way, this only makes the handover immediate.
         var leaving = _collabPageId();
         _pgTabsPersistActive();
-        clearTimeout(_autosaveTimer);
+        _sdAutosaveFlush();
 
         _activeKey    = key;
         _pgTabGroupRevealActive();
@@ -70020,6 +70154,8 @@ const StyleDesigner = (function () {
         var inp = document.createElement('input');
         inp.type = 'text';
         inp.className = 'sd-tab-rename';
+        // The page_name column's length; the save refuses a longer name.
+        inp.maxLength = 100;
         inp.value = old;
         inp.setAttribute('aria-label', _sdT('Rename'));
         label.textContent = '';
@@ -72100,9 +72236,12 @@ const StyleDesigner = (function () {
 
     // Public address of a saved page, or '' for one that is not on the
     // site yet (never saved, or renamed and not saved under the new name).
+    // Each part of the name is encoded: a "#" in it would start the
+    // fragment, a "?" the query string, and the browser would ask for
+    // another address.
     function _pgPageViewUrl(p) {
         if (!p || !(p.page_id > 0) || !p.savedName) return '';
-        return (window.OUTPUT_PATH || '/') + p.savedName;
+        return (window.OUTPUT_PATH || '/') + String(p.savedName).split('/').map(encodeURIComponent).join('/');
     }
 
     // The prototype viewer (prototype.php) opened on a draft tab, or '': a
