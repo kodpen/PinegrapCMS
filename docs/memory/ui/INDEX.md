@@ -420,7 +420,7 @@
 - menu-shared-form.md: The menu create and edit screens share includes/forms/menu_form.php: what it holds, the underscore name rule, what stays in the screens
 - messages-area-campaigns-tab.md: Communication › Campaigns (MA3, #9215): e-mail and SMS campaigns in one list, the channel and state filters, the merged row ids and Delete Selected, New campaign's channel menu
 - messages-area-shell.md: The Communication area (MA1 #9182, MA7 #9200): menu row 9, five tabs and gates, the tab strip, doors, the interim tabs, the Channels cards
-- messages-area-templates-tab.md: Communication › Templates (MA6, #9294): the SMS texts as look A card rows with kind, state, own or built-in text, edited on the SMS Messages card; e-mail designs and WhatsApp as Soon rows
+- messages-area-templates-tab.md: Communication › Templates (MA6, #9294): the SMS texts as look A card rows with kind, state, own or built-in text, edited on the SMS Messages card; e-mail designs and WhatsApp as Soon rows [decision: here]
 - migration-screen.md: The Migration screen (migration.php): source password handling, API URL check, error details, wording
 - money-box-focus.md: A money box that opens focused is focused on document ready after the Inputmask binding, never by an inline script while the page parses (gift card Amount, #9047)
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)
