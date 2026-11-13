@@ -1,7 +1,15 @@
 ---
 name: editor-turkish-terms
-description: Which English terms the visual editor's Turkish labels may not keep (legacy, checkbox, alert, Attribute, Breadcrumb, file names) and the test that checks every _sdT() key
+description: The editors' names (Design Canvas, Page Design Studio, Designs) in both languages; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Attribute, Breadcrumb); tests
 ---
+
+## What are the editors called?
+- Owner (2026-11-12, #8849, `workflow/decisions-made-panel-6.md`), in every `lang()` and `_sdT()` text since #8894:
+  - the image editor is the Design Canvas, "Tasarım Tuvali" (never "Görsel Düzenleyici"); its mark: `ui/design-canvas-icon.md`;
+  - the visual page editor, in texts also the visual designer, is the Page Design Studio, "Sayfa Tasarım Stüdyosu" (never "Görsel Sayfa Editörü", "görsel tasarımcı"); its menu row: `ui/main-menu-design-studio-row.md`;
+  - designs are Designs, "Tasarımlar", not Visual Designs.
+- Only texts: file names, addresses, API and setting names and code identifiers keep `image_editor`, `style_designer`, `designer`. A sentence is rewritten, not patched ("Tasarım Tuvali'nde düzenle"). A third-party product keeps its name ("Pintura Image Editor").
+- `tests/design_names_test.php`: no English key and no Turkish value of the shards uses an old name.
 
 ## Which words may a Turkish editor label not keep?
 - `legacy` → "eski", `checkbox` → "onay kutusu", `alert` → "uyarı", `Attribute` → "Özellik", `Breadcrumb(s)` → "Sayfa Yolu". A file name (`forgot_password.php`) is never shown: say what the page is ("yerleşik parola sıfırlama sayfası").

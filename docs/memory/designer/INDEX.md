@@ -380,7 +380,7 @@
 - dynamic-region-in-designer.md: A dynamic region placed in the visual designer: the region node's attribute ($dregion_attribute), its PHP code as a code-view tab for administrators, the dynamic_region_code endpoint
 - editor-a11y-measurements.md: Contrast and target size measured on the editor's canvas are kept with the accessibility report: seo_issue rows with source editor:<time>, replaced on each save, left alone by the nightly pass
 - editor-audit-panel.md: Editor audit panel Accessibility section: rows per registry concept, the rendered draft's a11y findings, canvas checks under them, badges via data-pg-node
-- editor-turkish-terms.md: Which English terms the visual editor's Turkish labels may not keep (legacy, checkbox, alert, Attribute, Breadcrumb, file names) and the test that checks every _sdT() key
+- editor-turkish-terms.md: The editors' names (Design Canvas, Page Design Studio, Designs) in both languages; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Attribute, Breadcrumb); tests [decision: decisions-made-panel-6.md]
 - error-page-widget.md: The error page system widget: when it is shown, which block shows for 404, maintenance and other errors, its tokens, and the maintenance screen's title.
 - express-order-legal-documents.md: Checkout document boxes and KVKK lines in the designer's express order tree: legal_* field bindings, has_legal_documents / has_legal_kvkk* flags, __legal_* tokens, sentence split of the label
 - folder-view-widget.md: The Folder View widget (classic "folder view" page type): settings and their fallback, the folder tree as a main loop plus nested folder_view.children lists, row tokens, flags, what is left out.

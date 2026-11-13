@@ -6,7 +6,7 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 ## What does a click on a menu row do?
 - A row with more than one entry, a control, or one entry that goes elsewhere opens a panel in place of the rows: back arrow, row name, entries (`pg_menu_row_opens_panel()`, `pg_menu_panel()`, `includes/fn/output.php`; `tests/menu_panel_test.php`). The arrow or Escape brings the rows back.
 - A row with no entries, or one that is its own screen, stays a plain link (Dashboard).
-- An entry can open a panel of its own (Site Settings, `main-menu-settings-row.md`); the back arrow and Escape go up one level (`backMenuPanel()`).
+- An entry can open a panel of its own (System tools' groups; row 21's Other, `main-menu-design-studio-row.md`); the back arrow and Escape go up one level (`backMenuPanel()`).
 - The pinned My Notes row opens the Workspace list (`'panel_of' => 23`, `pg_menu_row_panel_id()`; #4889), not a panel of its own; `workspace.js` `drawMenuRow()` hooks a row pinned at runtime to it. Back returns the focus to the opening row (`data-pg-menu-opener`).
 - The row keeps its `href`: a middle or Ctrl/Cmd click or a new tab opens its screen.
 
@@ -20,10 +20,10 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 - In the phone drawer the panel opens in the drawer; the first Escape goes back wherever the focus is, the next closes the drawer.
 
 ## Does the panel stay open across pages?
-- While the labels show (expanded, drawer) the open panel is kept for the tab (`sessionStorage` `pgMenuPanel`). The next page reopens it, without the slide, only when one of its entries is the page or its row is the page's row; otherwise it is forgotten, and a panel marked to open by itself there opens (`data-pg-menu-auto`). The rail never reopens one.
+- While the labels show (expanded, drawer) the open panel is kept for the tab (`sessionStorage` `pgMenuPanel`). The next page reopens it, without the slide, only when one of its entries is the page or its row (or opener) is `active`: Other on all its screens. Otherwise it is forgotten, and a panel marked to open by itself there opens (`data-pg-menu-auto`). The rail never reopens one.
 
 ## How are the current entry and the row's hint found?
-- `markMenuCurrent()` (`backend.src.js`) marks in each panel the entry whose path is the page's, whose query parameters are all on the page (more wins, the same set best) and whose `#section`, if any, is the page's: `.pg-menu-current`, `aria-current="page"`, coloured through `--bs-emphasis-color-rgb` (`.link-body-emphasis` is `!important`). Its name goes into the row's `.pg-menu-hint` (unless it is the row's own name); CSS shows the hint on the `.active` row only, so it follows `.active` when `workspace.js` pins or unpins My Notes.
+- `markMenuCurrent()` (`backend.src.js`) marks in each panel the entry whose path is the page's, whose query parameters are all on the page (more wins, the same set best) and whose `#section`, if any, is the page's: `.pg-menu-current`, `aria-current="page"`, coloured through `--bs-emphasis-color-rgb`. Its name goes into the row's `.pg-menu-hint` (unless it is the row's own name); CSS shows the hint on the `.active` row only, so it follows `.active` when `workspace.js` pins or unpins My Notes.
 - `MENU_PANEL_KEY` is assigned above the init calls; below them it was undefined at load.
 
 ## What else had to change with it?

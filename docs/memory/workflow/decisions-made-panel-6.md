@@ -19,7 +19,7 @@ description: Decisions list, panel part 6 (2026-11-12 on): the panel's design la
 - The Image Editor ("Görsel Düzenleyici") is Design Canvas ("Tasarım Tuvali") and gets an icon of its own. The Visual Page Editor, in texts the visual designer, is Page Design Studio ("Sayfa Tasarım Stüdyosu"). Designs are Designs ("Tasarımlar"), not Visual Designs.
 - Owner (2026-11-12): "Görsel tasarımcının adını "Tasarım Tuvali" olarak güncelleyelim ve kendine özgün bir ikonu olsun. Görsel Sayfa Tasarımcısının adını "Sayfa Tasarım Stüdyosu" olarak güncelleyebiliriz. yine tasarımlar "Tasarım" olarak anılır, ama menüdeki adı ve kavramı netleşmiş olur."
 - The architect showed which screen gets which name; owner (2026-11-12): "eşleşme doğru, kaydet ve plana çevir".
-- The architect's reading: the English names; only texts change, no address, file or API name. Plan: `plans/design-names-menu-steps.md`.
+- The architect's reading: the English names; only texts change, no address, file or API name. Done: the names in #8894 (`designer/editor-turkish-terms.md`), the menu in #8987 (`ui/main-menu-design-studio-row.md`), the Design Canvas's mark in `ui/design-canvas-icon.md`.
 
 ## Where do the legacy designer's entries and Ads sit in the main menu? (owner, 2026-11-12, #8849)
 - Under the Page Design Studio row, behind an Other entry that opens to the present legacy designer menu (Page Styles, Themes and the rest); Ads is there too.

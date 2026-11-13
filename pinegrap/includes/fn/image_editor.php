@@ -173,6 +173,9 @@ function pg_image_editor_config()
         'scripts' => pg_js_bundle_urls('assets/js/pg_image_editor.min.js'),
         'style'   => pg_image_editor_style_url(),
         'strings' => pg_image_editor_strings(),
+        // The Design Canvas's own mark, beside the file's name in the
+        // heading (pg_design_canvas_icon()).
+        'mark'    => pg_design_canvas_icon('pgie-mark', '1.25rem'),
         // The decimal separator of the panel's language, for the figures the
         // editor writes (docs/memory/ui/panel-script-number-format.md).
         'decimal' => pg_image_editor_decimal(),

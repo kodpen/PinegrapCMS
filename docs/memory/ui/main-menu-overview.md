@@ -17,7 +17,7 @@ description: The panel's main menu as a whole: rows in categories, panels and se
 - Categories, slots, headings, retired rows: `main-menu-categories.md`.
 - What a row's click does, the kept panel, the current entry and the row's hint, the widened rail: `main-menu-panels.md`; a panel a script fills, `window.pgMenu`, opening by itself: `main-menu-panel-scripts.md`; screens whose own navigation is a panel: `main-menu-navigator-screens.md`.
 - Expanded, mini and hidden, the bar button, the cookie, Ctrl+D: `main-menu-states.md`; the phone drawer's focus: `main-menu-drawer-focus.md`.
-- Who gets an entry: `main-menu-entry-gates.md`. Row drawings and entry icons: `main-menu-icons.md`.
+- Who gets an entry: `main-menu-entry-gates.md`. Row drawings and entry icons: `main-menu-icons.md`; the Design Canvas's mark, drawn as the rows' icons: `design-canvas-icon.md`.
 - Row 21 Page Design Studio and its Other: `main-menu-design-studio-row.md`; the retired Site Settings row and where Translations went: `main-menu-settings-row.md`; System tools: `settings-system-tools.md`.
 
 ## How is a new part added?

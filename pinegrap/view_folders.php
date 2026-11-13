@@ -1379,6 +1379,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #explorer_menu:focus { outline: none; }
 #explorer_menu .menu-item { cursor: pointer; border-radius: .45rem; padding: .32rem .7rem; }
 #explorer_menu .menu-item .bi { width: 1.35rem; display: inline-block; }
+/* A drawn mark in place of a glyph (the Design Canvas's) takes the glyph's
+   slot, so the labels stay in line. */
+#explorer_menu .menu-item .pg-fm-mark { width: 1.35rem; display: inline-flex; flex: none; }
+.pg-fm-mark > svg { flex: none; }
 #explorer_menu { padding: .35rem; }
 /* The upload window's drop area. Dashed rather than solid so it reads as a
    place to put something rather than a box that already holds something. */
@@ -2245,6 +2249,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     'use strict';
 
     var L = <?php echo encode_json($explorer_lang); ?>;
+
+    // The Design Canvas's own mark (pg_design_canvas_icon()), on its action
+    // in the context menu and in the file pane.
+    var CANVAS_MARK = <?php echo encode_json(pg_design_canvas_icon()); ?>;
 
     // What another screen left for this one (a file saved, a folder
     // duplicated, an upload's warnings), shown as toasts once the script runs.
@@ -7940,9 +7948,19 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     window.addEventListener('keydown', menuKeydown, true);
 
+    // The icon of an entry or a button: a Bootstrap Icons class, or a drawn
+    // mark given as its markup (CANVAS_MARK).
+    function iconMarkup(icon, margin) {
+        if (icon.charAt(0) === '<') {
+            return '<span class="pg-fm-mark ' + margin + '" aria-hidden="true">' + icon + '</span>';
+        }
+
+        return '<span class="bi ' + icon + ' ' + margin + '"></span>';
+    }
+
     function menuItem(icon, label, action, disabled) {
         return '<li><button type="button" class="menu-item' + (disabled ? ' disabled' : '') + '" data-menu-action="' + action + '">' +
-            '<span class="bi ' + icon + ' me-3"></span>' + esc(label) + '</button></li>';
+            iconMarkup(icon, 'me-3') + esc(label) + '</button></li>';
     }
 
     function menuDivider() { return '<li><hr class="menu-divider" /></li>'; }
@@ -8422,7 +8440,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     html += menuItem('bi-send', L.ws_send, 'ws_send', multi || insideWorkspaceFolder());
                 }
                 if (item.is_image && item.can_edit) {
-                    html += menuItem('bi-brush', L.image_editor, 'image_editor', multi);
+                    html += menuItem(CANVAS_MARK, L.image_editor, 'image_editor', multi);
                     // The editor opened on its export panel alone: format,
                     // quality and longest edge, with the size before and after.
                     html += menuItem('bi-sliders', L.image_export, 'image_export', multi);
@@ -15030,12 +15048,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         function tool(action, icon, label, extra) {
             return '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-file-tool="' + action + '"' + (extra || '') + '>' +
-                '<span class="bi ' + icon + ' me-1"></span>' + esc(label) + '</button>';
+                iconMarkup(icon, 'me-1') + esc(label) + '</button>';
         }
 
         // A video the image editor saved opens again as its project.
         if (((kind === 'image') && file.on_disk && (file.type !== 'svg')) || ((kind === 'video') && file.editor_project)) {
-            html += tool('image_editor', 'bi-brush', L.image_editor);
+            html += tool('image_editor', CANVAS_MARK, L.image_editor);
         }
 
         // A quarter turn to the right, with no editor to open: a photo that

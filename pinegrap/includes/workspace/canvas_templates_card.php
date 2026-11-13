@@ -78,9 +78,9 @@ function ws_canvas_templates_settings_card($viewer)
     }
 
     $body = '
-                    <p class="small fg-secondary">' . h(lang('Canvases marked with Save as template in the image editor. An agent lists them and makes a canvas from one, giving the words and pictures of its named layers. Untick one and save to take it off the list.')) . '</p>'
+                    <p class="small fg-secondary">' . h(lang('Canvases marked with Save as template in the Design Canvas. An agent lists them and makes a canvas from one, giving the words and pictures of its named layers. Untick one and save to take it off the list.')) . '</p>'
         . (($items !== '') ? $items : '
-                    <p class="small fg-secondary mb-0">' . h(lang('No templates yet: open a canvas from Files in the image editor and choose Save as template in the save menu.')) . '</p>');
+                    <p class="small fg-secondary mb-0">' . h(lang('No templates yet: open a canvas from Files in the Design Canvas and choose Save as template in the save menu.')) . '</p>');
 
     return '
     <div id="pgset-ws-canvas-templates" class="pg-set-card">

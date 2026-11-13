@@ -405,8 +405,19 @@
             ? button('pgie-btn', t('cancel'), null, function () { self.requestClose(); }, true)
             : button('pgie-ibtn', t('close'), 'close', function () { self.requestClose(); });
 
+        // The Design Canvas's mark (pgImageEditorConfig.mark, an <svg> the
+        // server draws as the panel menu's icons are) before the file's name.
+        var mark = null;
+
+        if (config().mark) {
+            mark = el('span');
+            mark.innerHTML = config().mark;
+            mark = mark.firstElementChild;
+        }
+
         var top = el('header', { class: 'pgie-top' }, [
             mini ? null : this.closeBtn,
+            mark,
             el('div', { class: 'pgie-file' }, [this.nameEl, this.meta]),
             mini ? null : el('div', { class: 'pgie-sepv' }),
             mini ? null : this.undoBtn,

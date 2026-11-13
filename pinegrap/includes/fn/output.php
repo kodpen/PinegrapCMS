@@ -3611,7 +3611,11 @@ function output_footer_secure($properties = false)
 // the page has been open, so a browser in another zone does not move them.
 // Calendars: today's day of the month, which the same script rolls over at
 // midnight.
-function pg_menu_icon($name, $color_class = '')
+//
+// Design Canvas: the image editor's own mark, shown wherever it is opened
+// rather than on a row (pg_design_canvas_icon()). $place sets the classes
+// and the size for such a place; the menu's are the default.
+function pg_menu_icon($name, $color_class = '', $place = array())
 {
     // Module tint, accent tint and solid fill attribute sets. A tint drawn
     // at full strength (.pg-mi-solid) is opaque enough to hide what is
@@ -3673,6 +3677,26 @@ function pg_menu_icon($name, $color_class = '')
                 '<g class="pg-mi-flap">' .
                 '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $flap . '"/>' .
                 '<path d="' . $flap . '"/>' .
+                '</g>';
+            break;
+
+        case 'canvas':
+            // An artboard with its four crop marks, and on it a pen curve
+            // between its two anchors (accent). Drawn outside the menu, where
+            // no rule of the menu's stylesheet reaches it, so the body's tint
+            // and the accent carry the menu's values themselves: the design
+            // colour's two shades as #menu .pg-mi.design-color sets them,
+            // the menu's sky (--pg-mi-sky) in either theme. light-dark()
+            // follows the panel's theme, as Bootstrap 6's own colours do.
+            $board = 'M5.75 3.75h12.5a2 2 0 0 1 2 2v12.5a2 2 0 0 1-2 2H5.75a2 2 0 0 1-2-2V5.75a2 2 0 0 1 2-2z';
+            $body =
+                '<path' . $d . ' style="fill: light-dark(color-mix(in srgb, var(--design-color-highlight) 55%, transparent), color-mix(in srgb, var(--design-color) 70%, transparent)); fill-opacity: 1" d="' . $board . '"/>' .
+                '<path d="' . $board . '"/>' .
+                '<path class="pg-mi-marks" d="M3.75 1.1v.9M20.25 1.1v.9M3.75 22v.9M20.25 22v.9M1.1 3.75h.9M1.1 20.25h.9M22 3.75h.9M22 20.25h.9" stroke-width="1.4"/>' .
+                '<g class="pg-mi-a pg-mi-pen" style="color: light-dark(#0284c7, #38bdf8)">' .
+                '<path d="M8.4 15.6C8.4 12.2 15.6 13 15.6 8.4" stroke-width="1.6"/>' .
+                '<rect' . $f . ' x="6.8" y="14.4" width="3.2" height="3.2" rx=".8"/>' .
+                '<rect' . $f . ' x="14" y="6.8" width="3.2" height="3.2" rx=".8"/>' .
                 '</g>';
             break;
 
@@ -3878,7 +3902,25 @@ function pg_menu_icon($name, $color_class = '')
             return '';
     }
 
-    return '<svg class="pg-mi pg-mi-' . $name . ' me-3' . ($color_class !== '' ? ' ' . $color_class : '') . '"' . $extra . ' width="1.3rem" height="1.3rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">' . $body . '</svg>';
+    $class = isset($place['class']) ? (string) $place['class'] : 'me-3';
+    $size = isset($place['size']) ? (string) $place['size'] : '1.3rem';
+
+    return '<svg class="pg-mi pg-mi-' . $name . ($class !== '' ? ' ' . h($class) : '') . ($color_class !== '' ? ' ' . $color_class : '') . '"' . $extra . ' width="' . h($size) . '" height="' . h($size) . '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">' . $body . '</svg>';
+}
+
+/**
+ * The Design Canvas's mark (the image editor's), drawn as the menu's icons
+ * are: an artboard in the design colour with a pen curve on it. Shown where
+ * the Design Canvas is opened: the File Manager's action and its file pane,
+ * the editor's own heading.
+ *
+ * @param string $class classes the place adds, in place of the menu's me-3
+ * @param string $size width and height, a CSS length
+ * @return string SVG markup
+ */
+function pg_design_canvas_icon($class = '', $size = '1.15em')
+{
+    return pg_menu_icon('canvas', 'design-color', array('class' => $class, 'size' => $size));
 }
 
 function output_menu($properties = false)

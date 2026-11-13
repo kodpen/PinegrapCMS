@@ -25,7 +25,7 @@ description: Decisions list, panel part 7 (2026-11-12 on): look A's second pass 
 - Owner (2026-11-12), shown the page in both themes: "tasarımlarını onaylıyorum bu arada plana koyabilirsin".
 
 ## Which drawing is the Design Canvas icon? (owner, 2026-11-12, #8903)
-- Drawing B: an artboard with crop marks and a pen curve with its two anchors, the curve in the accent hue. Plan step NM2 (`plans/design-names-menu-steps.md`) draws it into `pg_menu_icon()`.
+- Drawing B: an artboard with crop marks and a pen curve with its two anchors, the curve in the accent hue. Drawn into `pg_menu_icon()` (`ui/design-canvas-icon.md`).
 - Owner (2026-11-12), shown the sheet of the three candidates: "B". Not chosen: A (an easel), C (a canvas and a brush); the architect had recommended A.
 - The architect's note, not the owner's words: at menu size the crop marks and the anchors stay readable and the icon does not read as the crop tool's; thin the marks before touching the curve.
 
