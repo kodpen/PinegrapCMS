@@ -1,6 +1,6 @@
 ---
 name: legacy-bootstrap-card
-description: The "Towards Bootstrap 5" card (LB3): Legacy designs, Bootstrap 3 found by the framework sheet row, a design's report (names, sheets, scripts, files left out), nothing written
+description: The "Towards Bootstrap 5" card (LB3): Legacy designs, Bootstrap 3 found by the framework sheet row, a design's report (names, system widgets, sheets, scripts, files left out), nothing written
 module: legacy_bootstrap_report
 ---
 
