@@ -523,3 +523,40 @@ function pg_sms_campaign_save($id, $values, $user_id)
 
     return (int) $id;
 }
+
+/**
+ * Deletes SMS campaigns and their contact group links; a role 3 user deletes
+ * only campaigns they created. A queued campaign's messages stay in the SMS
+ * queue.
+ *
+ * @param array $ids  sms_campaigns ids
+ * @param array $user validate_user()
+ * @return int how many were deleted
+ */
+function pg_sms_campaigns_delete(array $ids, array $user)
+{
+    $deleted = 0;
+
+    foreach ($ids as $id) {
+        // A nested list (ids[][]=x) cast to int is 1: skipped, it would
+        // delete campaign 1.
+        if (!is_scalar($id) || ((int) $id < 1)) {
+            continue;
+        }
+
+        $id = (int) $id;
+        $owner = db_value("SELECT created_by FROM sms_campaigns WHERE id = '" . $id . "'");
+
+        if (($owner === null) || (((int) $user['role'] === 3) && ((int) $owner !== (int) $user['id']))) {
+            continue;
+        }
+
+        // A failed DELETE ends the request before the xref rows go or the
+        // campaign is counted as deleted.
+        db_q("DELETE FROM sms_campaigns WHERE id = ?", array((string) $id)) or output_error('Query failed.');
+        db_q("DELETE FROM contact_groups_sms_campaigns_xref WHERE sms_campaign_id = ?", array((string) $id)) or output_error('Query failed.');
+        $deleted++;
+    }
+
+    return $deleted;
+}
