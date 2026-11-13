@@ -685,6 +685,14 @@ if (is_file(PG_FUNCTIONS_DIR . '/data/temp/legacy_to_designer.json')) {
     pg_ltd_job_tick(pg_cron_time_left(20));
 }
 
+// Pages moving to a Legacy design's trial design or back
+// (includes/fn/legacy_bootstrap_move.php), worked the same way; with none it
+// is one missing file.
+if (is_file(PG_FUNCTIONS_DIR . '/data/temp/legacy_to_bootstrap.json')) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_move.php');
+    pg_lbs_move_job_tick(pg_cron_time_left(20));
+}
+
 // Page revisions (includes/fn/page_revisions.php): once a day the rows of
 // deleted pages go, and every page holding more revisions than the count rule
 // keeps is trimmed by the age rule. A tick with nothing due reads one small

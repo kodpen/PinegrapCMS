@@ -106,7 +106,7 @@ function test_ltc_wiring()
 	$post = strpos($screen, "if (!empty(\$_POST['back']))");
 	pg_assert_same(true, $post !== false, 'the screen has the back branch');
 	pg_assert_same(true, strpos($screen, 'validate_token_field()') < $post, 'the token is checked first');
-	pg_assert_same(true, strpos($screen, 'pg_ltd_state_read() !== null', $post) < strpos($screen, 'pg_ltc_back(', $post), 'not while a move runs');
+	pg_assert_same(true, strpos($screen, 'pg_lbs_moves_running()', $post) < strpos($screen, 'pg_ltc_back(', $post), 'not while a move runs');
 	pg_assert_same(true, strpos($screen, 'pg_ltc_back(', $post) < strpos($screen, 'pg_ltd_plan(', $post), 'the back branch redirects before the dry run');
 	pg_assert_same(true, strpos($screen, 'id="ltd-back"') !== false);
 	pg_assert_same(true, strpos($screen, '#ltd-back-result') !== false);

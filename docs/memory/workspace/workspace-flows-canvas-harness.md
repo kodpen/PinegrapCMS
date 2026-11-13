@@ -20,7 +20,7 @@ description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #316
 
 ## What does it give?
 - 2026-11-13: 38 of 38 (#9196, Chromium 153); zoom checks allow 1e-5, the computed matrix keeps six digits. 2026-11-01: 30 of 30 also on Chrome 156, Windows 11.
-- Seen: after Fit the first boxes sit under the palette (`fit()` ignores it); the no-flow screen shows an empty palette frame.
+- 2026-11-13: 38 of 38 again with the outcome pills (#9251). The left panel is a grid column beside the canvas, so Fit no longer puts boxes under it. Seen: the no-flow screen shows an empty palette frame.
 
 ## Why does a scenario switch touch emulation itself?
 - Touch emulation turns `(pointer: coarse)` on: the panel's tap targets grow to `--pg-tap` (44px) and the canvas moves a few px. `page.touches()` on a page that is not a touch screen turns it on only for the gesture, so a measure taken before and after it is in another layout. A scenario that compares positions around a gesture calls `h.touchScreen(true)` before its first measure and `h.touchScreen(false)` after its last (pinch, #4418: on Windows the pinch point moved 3 px).

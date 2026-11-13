@@ -202,5 +202,5 @@ function test_ltdr_dry_run_in_toolbar()
 	pg_assert_same(true, $button !== false, 'Dry run submits the form from outside it');
 	pg_assert_same(true, strpos($screen, "'primary' => \$toolbar_primary") > $bar, 'Dry run is the primary slot of the toolbar');
 	pg_assert_same(1, preg_match('/<form id="ltd_dry_run"[^>]* hidden>/', $screen), 'the token form is hidden, not a second bar');
-	pg_assert_same(1, preg_match('/if \(\$report && \$running === null\) \{\s*\$toolbar_primary/', $screen), 'no Dry run while a move runs');
+	pg_assert_same(1, preg_match('/if \(\$report && !\$busy\) \{\s*\$toolbar_primary/', $screen), 'no Dry run while a move runs');
 }
