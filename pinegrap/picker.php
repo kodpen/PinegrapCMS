@@ -80,6 +80,11 @@ if ($verdict !== 'ok') {
     pg_picker_respond(array('error' => lang('Access denied')), 403);
 }
 
+// A channel kind is the Workspace's: its members only, while it is on.
+if (!pg_picker_kind_open($request['kind'], $user)) {
+    pg_picker_respond(array('error' => lang('Access denied')), 403);
+}
+
 // Upload is the one request that writes: a POST of one file with the
 // session's token, into the folder the query names.
 if ($request['request'] === 'upload') {

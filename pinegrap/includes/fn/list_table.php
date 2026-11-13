@@ -58,6 +58,7 @@ function pg_list_table_definitions()
         'view_recurring_commission_profiles' => array('file' => 'includes/fn/commission_list.php', 'source' => 'pg_commission_profile_list_source'),
         'mail_queue' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_mail_queue_list_source'),
         'mail_queue_sms' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_sms_queue_list_source'),
+        'messages_sends' => array('file' => 'includes/fn/messages_sends.php', 'source' => 'pg_messages_sends_list_source'),
     );
 }
 
@@ -258,6 +259,16 @@ function pg_list_table_sort_columns(array $columns)
  *                    each array('id', 'class', 'cells' => key =>
  *                    pg_list_cell())), 'all' (true for a small list printed
  *                    whole: the browser sorts and searches it itself),
+ *                    'branches' (instead of 'from': a list of
+ *                    array('sql' => one SELECT, 'params') with the same
+ *                    columns, read as their UNION ALL; each batch puts the
+ *                    condition, the keyset bound, the order and the limit
+ *                    into every branch and counts per branch, so a branch
+ *                    reads only its own index range; a branch holds each
+ *                    of its rows once; 'params' then binds
+ *                    'where' only), 'branch_id' (with 'branches': the
+ *                    column holding a row's id within its branch, ordered
+ *                    as 'id' there but a plain column an index can serve),
  *                    'params_out' (the list parameters the browser sends
  *                    back with every rows request), 'edit' (quick edit:
  *                    array('url' => the screen pg_list_edit_request()
@@ -268,11 +279,29 @@ function pg_list_table_sort_columns(array $columns)
 function pg_list_table_source(array $spec)
 {
     $columns = pg_list_table_columns(isset($spec['columns']) && is_array($spec['columns']) ? $spec['columns'] : array());
+    $branches = pg_list_table_branches($spec['branches'] ?? null);
+    $from = (string) ($spec['from'] ?? '');
+    $from_params = array();
+
+    // The branches read whole are the source's FROM for every query that
+    // is not a batch (the selection resolver).
+    if ($branches) {
+        $from = '(' . implode(' UNION ALL ', array_map(function ($branch) {
+            return '(' . $branch['sql'] . ')';
+        }, $branches)) . ') AS pg_lt_u';
+
+        foreach ($branches as $branch) {
+            $from_params = array_merge($from_params, $branch['params']);
+        }
+    }
 
     return array(
         'list' => (string) ($spec['list'] ?? ''),
         'columns' => $columns,
-        'from' => (string) ($spec['from'] ?? ''),
+        'from' => $from,
+        'from_params' => $from_params,
+        'branches' => $branches,
+        'branch_id' => (string) ($spec['branch_id'] ?? ''),
         'where' => (isset($spec['where']) && (trim((string) $spec['where']) !== '')) ? (string) $spec['where'] : '1 = 1',
         'params' => array_values(isset($spec['params']) && is_array($spec['params']) ? $spec['params'] : array()),
         'id' => (string) ($spec['id'] ?? ''),
@@ -290,6 +319,25 @@ function pg_list_table_source(array $spec)
         'params_out' => isset($spec['params_out']) && is_array($spec['params_out']) ? $spec['params_out'] : array(),
         'edit' => pg_list_table_edit_spec($spec['edit'] ?? null, $columns),
     );
+}
+
+/**
+ * A source's branches, checked: each a SELECT with its bound values.
+ *
+ * @param mixed $branches list of array('sql', 'params')
+ * @return array
+ */
+function pg_list_table_branches($branches)
+{
+    $checked = array();
+
+    foreach ((is_array($branches) ? $branches : array()) as $branch) {
+        if (is_array($branch) && isset($branch['sql']) && is_string($branch['sql']) && (trim($branch['sql']) !== '')) {
+            $checked[] = array('sql' => $branch['sql'], 'params' => array_values(isset($branch['params']) && is_array($branch['params']) ? $branch['params'] : array()));
+        }
+    }
+
+    return $checked;
 }
 
 /**
@@ -397,7 +445,7 @@ function pg_list_table_keep_sort(array $source)
  * @param array $source pg_list_table_source()
  * @return string
  */
-function pg_list_table_order_sql(array $source)
+function pg_list_table_order_sql(array $source, $id = null)
 {
     $parts = array();
 
@@ -405,7 +453,7 @@ function pg_list_table_order_sql(array $source)
         $parts[] = $source['columns'][$level['sort']]['sort'] . ' ' . $level['order'];
     }
 
-    $parts[] = $source['id'] . ' ' . $source['id_order'];
+    $parts[] = (($id === null) ? $source['id'] : (string) $id) . ' ' . $source['id_order'];
 
     return implode(', ', $parts);
 }
@@ -591,6 +639,11 @@ function pg_list_table_page(array $source, array $terms, $cursor = null)
         $params = array_merge($params, $search['params']);
     }
 
+    if ($source['branches'] && !$source['all']) {
+        return pg_list_table_branch_page($source, $after, $where, $params, $cursor);
+    }
+
+    $params = array_merge($source['from_params'], $params);
     $total = null;
 
     if ($after === null) {
@@ -607,20 +660,10 @@ function pg_list_table_page(array $source, array $terms, $cursor = null)
         $params = array_merge($params, $keyset['params']);
     }
 
-    $select = array($source['id'] . ' AS pg_lt_id');
-
-    foreach ($source['levels'] as $number => $level) {
-        $select[] = $source['columns'][$level['sort']]['sort'] . ' AS pg_lt_k' . $number;
-    }
-
-    if ($source['select'] !== '') {
-        $select[] = $source['select'];
-    }
-
     $limit = $source['all'] ? null : pg_list_table_batch();
 
     $result = db_q(
-        'SELECT ' . implode(', ', $select)
+        'SELECT ' . pg_list_table_select_sql($source)
         . ' FROM ' . $source['from']
         . ' WHERE ' . $where
         . ($source['group'] ? ' GROUP BY ' . $source['id'] : '')
@@ -632,6 +675,21 @@ function pg_list_table_page(array $source, array $terms, $cursor = null)
         return false;
     }
 
+    return pg_list_table_page_answer($source, $result, $limit, $total, ($cursor !== null) && ($after === null));
+}
+
+/**
+ * A batch read back: its rows, the cursor after the last one, the count.
+ *
+ * @param array         $source    pg_list_table_source()
+ * @param mysqli_result $result    the batch query's result
+ * @param int|null      $limit     the batch size, null when printed whole
+ * @param int|null      $total     the count, null when not counted
+ * @param bool          $restarted a cursor was sent but could not be read
+ * @return array as pg_list_table_page() answers
+ */
+function pg_list_table_page_answer(array $source, $result, $limit, $total, $restarted)
+{
     $records = array();
 
     while ($record = mysqli_fetch_assoc($result)) {
@@ -658,8 +716,97 @@ function pg_list_table_page(array $source, array $terms, $cursor = null)
         'rows' => array_values((array) $rows),
         'next' => $next,
         'total' => $total,
-        'restarted' => ($cursor !== null) && ($after === null),
+        'restarted' => (bool) $restarted,
     );
+}
+
+/**
+ * The SELECT list of a batch: the id, each sort level's value, the rows
+ * function's columns.
+ *
+ * @param array $source pg_list_table_source()
+ * @return string
+ */
+function pg_list_table_select_sql(array $source)
+{
+    $select = array($source['id'] . ' AS pg_lt_id');
+
+    foreach ($source['levels'] as $number => $level) {
+        $select[] = $source['columns'][$level['sort']]['sort'] . ' AS pg_lt_k' . $number;
+    }
+
+    if ($source['select'] !== '') {
+        $select[] = $source['select'];
+    }
+
+    return implode(', ', $select);
+}
+
+/**
+ * One batch of a source read as branches: every branch gets the
+ * condition, the keyset bound, the order and the batch's limit inside
+ * itself (a derived table the server merges, so the bound and the order
+ * reach the branch's index), and the count is the sum of each branch's.
+ * The rows of the branches are then sorted once more and cut to a batch.
+ *
+ * @param array       $source pg_list_table_source() with branches
+ * @param array|null  $after  the decoded cursor, null for the first batch
+ * @param string      $where  the condition with the search
+ * @param array       $params its values
+ * @param string|null $cursor the cursor as sent
+ * @return array|false as pg_list_table_page() answers
+ */
+function pg_list_table_branch_page(array $source, $after, $where, array $params, $cursor)
+{
+    $total = null;
+
+    if ($after === null) {
+        $counts = array();
+        $count_params = array();
+
+        foreach ($source['branches'] as $branch) {
+            // A branch holds each of its rows once, so COUNT(*) is exact and
+            // spares the temporary table DISTINCT builds on a computed id.
+            $counts[] = '(SELECT COUNT(*) AS pg_lt_n FROM (' . $branch['sql'] . ') AS pg_lt_b WHERE ' . $where . ')';
+            $count_params = array_merge($count_params, $branch['params'], $params);
+        }
+
+        $result = db_q('SELECT SUM(pg_lt_n) FROM (' . implode(' UNION ALL ', $counts) . ') AS pg_lt_c', $count_params);
+
+        if (!$result) {
+            return false;
+        }
+
+        $total = (int) mysqli_fetch_row($result)[0];
+    } else {
+        $keyset = pg_list_table_keyset_where($source, $after);
+        $where .= ' AND ' . $keyset['sql'];
+        $params = array_merge($params, $keyset['params']);
+    }
+
+    $limit = pg_list_table_batch();
+    $order = pg_list_table_order_sql($source);
+    $branch_order = pg_list_table_order_sql($source, ($source['branch_id'] !== '') ? $source['branch_id'] : null);
+    $parts = array();
+    $all_params = array();
+
+    foreach ($source['branches'] as $branch) {
+        $parts[] = '(SELECT * FROM (' . $branch['sql'] . ') AS pg_lt_b WHERE ' . $where . ' ORDER BY ' . $branch_order . ' LIMIT ' . ($limit + 1) . ')';
+        $all_params = array_merge($all_params, $branch['params'], $params);
+    }
+
+    $result = db_q(
+        'SELECT ' . pg_list_table_select_sql($source)
+        . ' FROM (' . implode(' UNION ALL ', $parts) . ') AS pg_lt_u'
+        . ' ORDER BY ' . $order
+        . ' LIMIT ' . ($limit + 1),
+        $all_params);
+
+    if (!$result) {
+        return false;
+    }
+
+    return pg_list_table_page_answer($source, $result, $limit, $total, ($cursor !== null) && ($after === null));
 }
 
 /**
@@ -1038,7 +1185,7 @@ function pg_list_table_selected_ids(array $source, array $selection, $limit = 10
         'SELECT DISTINCT ' . $source['id'] . ' AS pg_lt_id FROM ' . $source['from']
         . ' WHERE (' . $source['where'] . ') AND ' . $where['sql']
         . ' ORDER BY pg_lt_id LIMIT ' . ($limit + 1),
-        array_merge($source['params'], $where['params']));
+        array_merge($source['from_params'], $source['params'], $where['params']));
 
     if (!$result) {
         return false;

@@ -4139,7 +4139,10 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
                 }
             }
 
-            $sent = ws_scheduled_mail((array) $action['to'], $subject, $body, $format, !empty($action['marketing']));
+            // A flow's box hands its mail to the queue under the flow's id,
+            // so Communication › Sends lists it with the flow as source.
+            $flow_source = !empty($context['flow']['id']) ? 'flow:' . (int) $context['flow']['id'] : '';
+            $sent = ws_scheduled_mail((array) $action['to'], $subject, $body, $format, !empty($action['marketing']), $flow_source);
 
             if ($sent === 0) {
                 return $fail(lang(array('string' => 'The e-mail to {var:1} could not be sent.', 'vars' => implode(', ', (array) $action['to'])))) + array('data' => array('sent' => 0));
@@ -4229,9 +4232,10 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
  * @param string   $format plain_text | html
  * @param bool     $marketing commercial mail: each with its preferences and
  *                            unsubscribe link and List-Unsubscribe headers
- * @return int how many went out
+ * @param string   $source    'flow:<id>' for a flow's box: queued under it
+ * @return int how many went out (or were queued)
  */
-function ws_scheduled_mail($to, $subject, $body, $format = 'plain_text', $marketing = false)
+function ws_scheduled_mail($to, $subject, $body, $format = 'plain_text', $marketing = false, $source = '')
 {
     $sent = 0;
 
@@ -4249,6 +4253,13 @@ function ws_scheduled_mail($to, $subject, $body, $format = 'plain_text', $market
             $properties['type'] = 'campaign';
             $properties['purpose'] = 'commercial';
             $properties['body'] = ws_flow_mail_unsubscribe_footer($body, $format, pg_email_preferences_url($address));
+        }
+
+        // A message with a source goes through the queue while a job works
+        // it (email() sends at once otherwise), carrying the source along.
+        if ((string) $source !== '') {
+            $properties['queue'] = true;
+            $properties['source'] = (string) $source;
         }
 
         $ok = email($properties);

@@ -12,7 +12,6 @@ description: Which flow boxes and starts need the Workspace (ws_flow_kinds_works
 - A message in a channel: `post`, `checkin`, `approval` (its request is a channel message, and approval deadlines are not run with the Workspace off). Counting approval as a channel message is the implementing session's reading.
 - `lead`; the task boxes `task`, `task_open`, `task_digest`; `agent`.
 - The table boxes `row_add`, `row_set`, `row_get`, `rows_get` (tables open only on a Workspace screen); Ask Pinegrap AI `ai` (its settings are the Workspace's); `mcp`; `start_action` (AF3b).
-- Let people know `notify` (its lines go to the Workspace inbox) until the bell (AF4c of `plans/automation-flows-menu-steps-2.md`) takes it off.
 
 ## Which boxes do their settings decide?
 - `report` when it posts into a channel (`channel_id` > 0); one sent only by e-mail runs.
@@ -20,8 +19,8 @@ description: Which flow boxes and starts need the Workspace (ws_flow_kinds_works
 - An event start `event` on one of the Workspace's own events (`ws_flow_events_workspace()`: `ws_events_own()` but `workspace.flow.run.failed`, which flows cause with it off too).
 
 ## What runs without the Workspace?
-- `manual`, `schedule`, a site event or a failed run, `no_order`, `web`; Send an e-mail, Call a webhook, Check a web address, Start a flow, Change or Read a site record, Condition, Wait, For each, End, Constants, Derived value.
-- A run still opens in its flow's home channel and writes its owner's flow_finished line in the Workspace inbox; with the Workspace off nobody reads them (open in the census).
+- `manual`, `schedule`, a site event or a failed run, `no_order`, `web`; Send an e-mail, Call a webhook, Check a web address, Start a flow, Change or Read a site record, Condition, Wait, For each, End, Constants, Derived value; Let people know `notify` (off the list since AF4c: its lines reach the bell, `automation-flows-bell.md`).
+- A run still writes its owner's flow_finished line in the Workspace inbox; with the Workspace off the bell shows it (`automation-flows-bell.md`).
 
 ## Where is such a box not offered with the Workspace off?
 - The canvas palette and adding a box (`memberKind()` reads `FL.workspace_kinds`), the templates (`ws_flow_templates_for()`, `ws_flow_graph_needs_workspace()`), the quick setup (`ws_flow_quick_fill()`), Pinegrap AI's catalogue (`ws_flow_ai_catalogue()`). With it on, all as before.

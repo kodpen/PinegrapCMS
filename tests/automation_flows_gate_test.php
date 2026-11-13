@@ -80,12 +80,12 @@ function test_automation_flows_gate_workspace_kinds()
 	}
 
 	foreach (array('join', 'mention', 'post', 'checkin', 'approval', 'lead', 'task', 'task_open', 'task_digest', 'agent',
-		'row', 'row_add', 'row_set', 'row_get', 'rows_get', 'ai', 'mcp', 'start_action', 'notify') as $kind) {
+		'row', 'row_add', 'row_set', 'row_get', 'rows_get', 'ai', 'mcp', 'start_action') as $kind) {
 		pg_assert_true(in_array($kind, ws_flow_kinds_workspace(), true), $kind . ' needs the Workspace');
 	}
 
 	foreach (array('manual', 'schedule', 'event', 'no_order', 'web', 'end', 'condition', 'delay', 'start_flow', 'for_each', 'for_each_end', 'constants', 'value',
-		'email', 'webhook', 'web_check', 'report', 'change', 'record_get') as $kind) {
+		'email', 'webhook', 'web_check', 'report', 'change', 'record_get', 'notify') as $kind) {
 		pg_assert_true(isset($kinds[$kind]), $kind . ' is a kind of box');
 		pg_assert_false(in_array($kind, ws_flow_kinds_workspace(), true), $kind . ' runs without the Workspace');
 	}

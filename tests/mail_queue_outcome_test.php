@@ -175,9 +175,11 @@ function test_mail_queue_delete_wiring()
 	pg_assert_true(($call !== false) && ($call > $delete), 'the handler told after the delete');
 	pg_assert_contains('pg_mail_queue_delete_outcome(', $code, 'only a row that had not left');
 
-	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/mail_queue.php');
-	pg_assert_contains('pg_mail_queue_delete($mail_queue_id)', $screen, 'the screen deletes through it');
-	pg_assert_true(strpos($screen, 'DELETE FROM mail_outbox') === false, 'and nowhere else');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_sends.php');
+	$action = pg_test_function_source('pg_messages_sends_action');
+	pg_assert_contains("pg_mail_queue_delete(\$parts['id'])", $action, 'the Sends list deletes through it');
+	pg_assert_true(strpos($action, 'DELETE FROM mail_outbox') === false, 'and nowhere else');
+	pg_assert_true(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/messages_sends.php'), 'DELETE FROM mail_outbox') === false, 'nor on the screen');
 }
 
 // The queue screen names the Workspace's mail.

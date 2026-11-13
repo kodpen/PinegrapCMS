@@ -884,8 +884,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'open_channel' => 0,
         // The longest message body the server takes (the composer's meter).
         'message_max'  => WS_MESSAGE_MAX,
-        // The Design Canvas's icon on New canvas (pg_design_canvas_icon()).
-        'canvas_icon'  => pg_design_canvas_icon(),
+        // The Design Canvas's icon on New canvas, in one colour like its neighbours.
+        'canvas_icon'  => pg_design_canvas_icon_one_colour(),
         // Which model rewrites a message in the composer (pg_ai_write_engine():
         // pinegrap | browser), '' for no button. The screen's gate has
         // already let only the team in (pg_ai_write_user_may()'s rule).
@@ -938,8 +938,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
         // A From OneNote part: the site's Microsoft application is set up
         // (notes_onenote.php); the person connects their own account there.
         'notes_onenote' => function_exists('ws_note_onenote_offered') && ws_note_onenote_offered(),
-        // The paperclip also picks from the file manager (library.php).
-        'library'      => function_exists('ws_library_browse'),
+        // The paperclip also picks from the file manager: the picker's kind
+        // channel_file (library.php), for a member while the module is on.
+        'library'      => function_exists('ws_library_refusal') && function_exists('pg_picker_script'),
         // Word and Excel files of a conversation, drawn by a script fetched
         // on first use (includes/fn/office.php).
         'office'       => function_exists('pg_office_view_includes') ? array(
@@ -1012,6 +1013,12 @@ function ws_screen_assets($viewer, $mode, $extra = array())
     // picture is edited or a canvas drawn (assets/js/workspace.js).
     if (($mode === 'channels') || ($mode === 'notes')) {
         $lightbox .= pg_image_editor_includes();
+    }
+
+    // The picker (assets/js/pg_picker.js): the paperclip's "From the file
+    // manager" in a channel.
+    if (($mode === 'channels') && function_exists('pg_picker_script')) {
+        $lightbox .= pg_picker_script();
     }
 
     $output = $lightbox . '

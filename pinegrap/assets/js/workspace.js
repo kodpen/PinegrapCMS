@@ -3912,175 +3912,6 @@
         setTimeout(function () { search.focus(); }, 250);
     }
 
-    // A file of the file manager, picked to go into a channel as a copy
-    // (includes/workspace/library.php): its folders to walk, a search over
-    // every folder the person may open, and the files changed last where it
-    // starts. A file a channel would refuse is listed with the reason and
-    // cannot be picked.
-    function libraryPicker(onPick) {
-        var node = offcanvas('ws-library', t('lib_from_manager'));
-        var body = clear(node.querySelector('.drawer-body'));
-        // The drawer body is a scrolling flex column: without flex-shrink-0 a
-        // long list squeezes the input to a thin line.
-        var search = el('input', 'form-control form-control-sm flex-shrink-0 mb-3');
-        var trail = el('nav', 'ws-lib-trail');
-        var list = el('div', 'ws-pull-list');
-        var serial = 0;
-        var folder = 0;
-
-        node.querySelector('.drawer-footer').classList.add('d-none');
-        search.type = 'search';
-        search.placeholder = t('lib_search');
-        search.setAttribute('aria-label', search.placeholder);
-        trail.setAttribute('aria-label', t('lib_top'));
-        body.appendChild(el('p', 'small fg-secondary', t('lib_help')));
-        body.appendChild(search);
-        body.appendChild(trail);
-        body.appendChild(list);
-
-        function fileIcon(file) {
-            var byExt = {
-                pdf: 'bi-file-earmark-pdf', doc: 'bi-file-earmark-word', docx: 'bi-file-earmark-word',
-                xls: 'bi-file-earmark-spreadsheet', xlsx: 'bi-file-earmark-spreadsheet', csv: 'bi-file-earmark-spreadsheet', ods: 'bi-file-earmark-spreadsheet',
-                ppt: 'bi-file-earmark-slides', pptx: 'bi-file-earmark-slides', zip: 'bi-file-earmark-zip', txt: 'bi-file-earmark-text', md: 'bi-file-earmark-text'
-            };
-            var byKind = { image: 'bi-file-earmark-image', video: 'bi-file-earmark-play', audio: 'bi-file-earmark-music' };
-
-            return byExt[file.ext] || byKind[file.kind] || 'bi-file-earmark';
-        }
-
-        function crumb(label, id, current) {
-            var step = el(current ? 'span' : 'button', current ? 'ws-lib-crumb fw-semibold' : 'ws-lib-crumb btn btn-link btn-sm p-0', label);
-
-            if (!current) {
-                step.type = 'button';
-                step.addEventListener('click', function () { open(id); });
-            } else {
-                step.setAttribute('aria-current', 'page');
-            }
-
-            return step;
-        }
-
-        function folderRow(item) {
-            var row = el('button', 'ws-pull-item ws-lib-row');
-
-            row.type = 'button';
-            row.appendChild(icon('bi-folder2', 'ws-pull-icon'));
-            row.appendChild(el('span', 'ws-lib-name', item.name));
-            row.appendChild(icon('bi-chevron-right', 'ms-auto fg-3'));
-            row.addEventListener('click', function () { open(item.id); });
-
-            return row;
-        }
-
-        function fileRow(file, withPlace) {
-            var row = el('button', 'ws-pull-item ws-lib-row');
-            var words = el('span', 'ws-pull-words');
-            var facts = [withPlace ? file.where : '', file.size, file.time].filter(Boolean);
-
-            row.type = 'button';
-
-            if (file.thumb) {
-                var picture = el('img', 'ws-lib-thumb');
-
-                // A picture that will not load shows the file's icon instead.
-                picture.addEventListener('error', function () {
-                    picture.replaceWith(icon(fileIcon(file), 'ws-pull-icon'));
-                });
-                picture.alt = '';
-                picture.loading = 'lazy';
-                picture.src = file.thumb;
-                row.appendChild(picture);
-            } else {
-                row.appendChild(icon(fileIcon(file), 'ws-pull-icon'));
-            }
-
-            words.appendChild(el('span', 'ws-lib-name', file.name));
-            words.appendChild(el('span', 'small fg-secondary', file.refused || facts.join(' · ')));
-            row.appendChild(words);
-
-            if (file.refused) {
-                row.disabled = true;
-                row.classList.add('ws-lib-refused');
-            } else {
-                row.addEventListener('click', function () {
-                    hideOffcanvas(node);
-                    onPick(file);
-                });
-            }
-
-            return row;
-        }
-
-        function draw(data) {
-            clear(trail);
-            clear(list);
-
-            // Another folder opens at its top, not where the last one was left.
-            body.scrollTop = 0;
-
-            if (data.nothing) {
-                search.disabled = true;
-                list.appendChild(el('div', 'ws-empty', t('lib_nothing')));
-                return;
-            }
-
-            if (!data.search) {
-                if (data.several) {
-                    trail.appendChild(crumb(t('lib_top'), 0, !data.folder));
-                }
-
-                data.trail.forEach(function (step, index) {
-                    if (trail.firstChild) {
-                        trail.appendChild(icon('bi-chevron-right', 'ws-lib-sep'));
-                    }
-
-                    trail.appendChild(crumb(step.name, step.id, index === data.trail.length - 1));
-                });
-            }
-
-            if (data.recent.length) {
-                list.appendChild(el('div', 'ws-lib-section', t('lib_recent')));
-                data.recent.forEach(function (file) { list.appendChild(fileRow(file, true)); });
-                list.appendChild(el('div', 'ws-lib-section', data.folder ? data.folder.name : t('lib_top')));
-            }
-
-            data.folders.forEach(function (item) { list.appendChild(folderRow(item)); });
-            data.files.forEach(function (file) { list.appendChild(fileRow(file, data.search)); });
-
-            if (!data.folders.length && !data.files.length) {
-                list.appendChild(el('div', 'ws-empty', t(data.search ? 'lib_no_match' : 'lib_empty')));
-            }
-
-            if (data.more) {
-                list.appendChild(el('div', 'small fg-secondary', t('lib_more')));
-            }
-        }
-
-        function load() {
-            var asked = ++serial;
-
-            api('ws_library_browse', { folder_id: folder, q: search.value.trim() }).then(function (data) {
-                if (asked === serial) {
-                    draw(data);
-                }
-            }).catch(fail);
-        }
-
-        function open(id) {
-            folder = id;
-            search.value = '';
-            load();
-        }
-
-        clear(list).appendChild(skeleton(3));
-        search.addEventListener('input', debounce(load, 250));
-        showOffcanvas(node);
-        load();
-        setTimeout(function () { search.focus(); }, 250);
-    }
-
     function richField(wrap, options) {
         if (!window.PGWsEditor) {
             return null;
@@ -14334,10 +14165,15 @@
             // A discussion's box does not name its title as a channel.
             var placeholder = self.isThread ? t('thread_composer_placeholder') : t('composer_placeholder', self.channel.name);
 
+            // A pasted picture or file is posted as "Add file" posts it, the
+            // box's words with it. The box takes it itself: a discussion's
+            // panel is not inside the channel screen's centre.
             self.rich = window.PGWsEditor ? window.PGWsEditor.create({
                 placeholder: placeholder,
                 onKeydown: keys,
-                onEnter: function () { self.send(); }
+                onEnter: function () { self.send(); },
+                pasteFiles: function (files) { self.uploadFiles(files); },
+                pasteAnyFile: true
             }) : null;
 
             var input = self.rich ? self.rich.node : el('textarea');
@@ -14346,6 +14182,14 @@
                 input.rows = 1;
                 input.placeholder = placeholder;
                 input.setAttribute('aria-label', input.placeholder);
+                input.addEventListener('paste', function (event) {
+                    var files = Array.prototype.slice.call((event.clipboardData && event.clipboardData.files) || []);
+
+                    if (files.length) {
+                        event.preventDefault();
+                        self.uploadFiles(files);
+                    }
+                });
             }
 
             self.input = input;
@@ -16027,7 +15871,21 @@
                 return;
             }
 
-            libraryPicker(function (file) {
+            // The one picker (pg_picker.js, kind channel_file): every folder
+            // the person may open, less the Workspace folder and archived
+            // ones; a file a channel would refuse is listed with the reason
+            // and cannot be chosen. The server checks the file again
+            // (ws_library_file()).
+            if (!window.pgPicker || !window.pgPicker.open) {
+                self.attach();
+                return;
+            }
+
+            window.pgPicker.open({ kind: 'channel_file', title: t('lib_from_manager') }).then(function (file) {
+                if (!file) {
+                    return;
+                }
+
                 var body = self.input ? self.tokens(self.inputText()) : '';
 
                 api('ws_library_attach', { channel_id: self.channel.id, file_id: file.id, body: body }).then(function () {
@@ -16142,8 +16000,8 @@
             next();
         },
 
-        // Files dragged onto the conversation are posted into it; a picture
-        // pasted into the composer too.
+        // Files dragged onto the conversation are posted into it (a pasted
+        // one is the writing box's own, composer()).
         bindDrop: function () {
             var self = this;
             var center = self.center;
@@ -16217,18 +16075,6 @@
                 self.uploadFiles(Array.prototype.slice.call(event.dataTransfer.files || []));
             });
 
-            center.addEventListener('paste', function (event) {
-                if (!event.target.closest('.ws-composer')) {
-                    return;
-                }
-
-                var files = Array.prototype.slice.call((event.clipboardData && event.clipboardData.files) || []);
-
-                if (files.length) {
-                    event.preventDefault();
-                    self.uploadFiles(files);
-                }
-            });
         },
 
         // ── The tag picker in the composer ──

@@ -125,6 +125,7 @@
 - messages-area-census-sends.md: MA0 proposal (2026-11-13, open on #9081): the one Sends list reads the queues and campaigns with no new table (a UNION source on the list table driver): ids, period, states, rights
 - messages-area-census-sources.md: MA0 census (2026-11-13): what the e-mail queue, SMS queue, WhatsApp queue, e-mail campaigns and SMS campaigns store per message, how long, and which sends leave no row in any of them
 - messages-area-census-tabs.md: MA0 proposals (2026-11-13, open on #9081) for the messages area's shell: the menu row's name and slot, what each of the five tabs takes from today's screens and settings cards, and who sees each tab
+- messages-area-sends.md: Communication › Sends (MA2 #9252, MA2b #9275): the list of five branches, row ids, filters, buttons, e-mail sources, measured batch times, what the old queue screen left to it
 - not-found-log-screen.md: The 404 log screen (view_not_found_log.php): rows and their state, the search in the stored form with the Turkish rule, wrapping cells, Create redirect
 - not-found-log.md: The 404 log (2026.11.0, 11.0.30, not_found_log): which 404s are recorded and which not, bots and verified crawlers, the end-of-request write, row cap and 90 days, the screen and its Create redirect
 - notification-channels-delivery.md: Slack, Teams and Telegram delivery: targets in the sealed notify_channels entry, api_webhook_queue rows with webhook_id 0, the retry ladder, secrets masked
@@ -169,6 +170,7 @@
 - secure-mode-proxy-offer.md: Turning Secure Mode on through a proxy not yet trusted: the Add this proxy to Trusted Proxies box, what the save lists and checks, the log line, what test_secure_mode.php reports. [decision: decisions-made-product-19.md]
 - server-config-compression-cache.md: Web-root server rules for compression and browser caching (PR #2848): static files only, a week, IIS clientCache inside the one staticContent, nginx static location after the deny rules
 - server-config-iis-error-pages.md: IIS httpErrors rule (Custom + PassThrough): why IIS replaced the site's 404 page and API JSON errors with its own page and showed the detailed page with the folder path
+- server-config-iis-webp.md: IIS web-root rule `webp` (mimeMap image/webp): why the panel logo's poster answered 404.3 on IIS, where the block goes, how existing sites get it
 - server-config-paths-and-detection.md: server_config.php path semantics: patterns carry no PATH but actions do, folder name measured (retarget), server type detection, X-Powered-By removal.
 - server-config-web-root-rules.md: includes/server_config.php: why web-root web.config/.htaccess rules live in one list, how to add a block, default-must-pass-detect invariant, repair rules.
 - short-link-csv.md: Short links as a CSV file (2026.11.0): the list's export (from,to,code), import_short_links.php and its line rules, the reader's encodings, separators and heading, the formula guard.

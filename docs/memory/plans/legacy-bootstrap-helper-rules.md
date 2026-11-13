@@ -19,7 +19,7 @@ description: Legacy to Bootstrap helper after LB1 (#8942): the owner's answers, 
 
 ## What does the trial design get beside its sheets? (architect)
 - Its own copy of the theme's `scripts.js` with the tooltip line changed to `bootstrap.Tooltip.getOrCreateInstance()` on `[data-bs-toggle="tooltip"]`: under 5.3.8 the old line throws and every theme script after it stops (`designer/legacy-bootstrap-trial.md`). LB4 makes the copy as it makes the sheet copies.
-- A small compatibility sheet for the Bootstrap 3 form names the page types' layouts print (`form-group`, `text-right`, `input-group-btn`, `input-group-addon`, `visible-xs-inline`, `btn-default`, `checkbox`, `help-block`, `img-responsive`, `glyphicon`), loaded on the trial design only. It leaves as `legacy-layouts-bootstrap.md` converts the layouts.
+- A small compatibility sheet for the Bootstrap 3 form names the page types' layouts print (`form-group`, `text-right`, `input-group-btn`, `input-group-addon`, `visible-xs-inline`, `btn-default`, `checkbox`, `help-block`, `img-responsive`, `glyphicon`), loaded on the trial design only. Since the layout pass maps the page types' output, it keeps only a bare `checkbox` and a theme widget's glyphicons (`designer/legacy-layouts-left.md`).
 - The Legacy design's own files are never touched.
 
 ## What does the helper do on a design that is not Bootstrap?
@@ -27,4 +27,4 @@ description: Legacy to Bootstrap helper after LB1 (#8942): the owner's answers, 
 - The helper finds Bootstrap 3 by the design's classic framework sheet row (`bootstrap.css`, `bootstrap.min.css`), never by class names: Materialize shares `row`, `container`, `btn`, `badge`, `active` and `right` with it (architect). LB3 builds the card's line with this rule.
 
 ## Why are the custom layouts not in this plan?
-- `data/layouts/<id>.php` and `includes/templates/` serve the classic styles and every Legacy design too, and the helper never changes what a Legacy design uses. Their move is `legacy-layouts-bootstrap.md`.
+- `data/layouts/<id>.php` and `includes/templates/` serve the classic styles and every Legacy design too, and the helper never changes what a Legacy design uses. Their move: `designer/legacy-layouts-output-map.md`.

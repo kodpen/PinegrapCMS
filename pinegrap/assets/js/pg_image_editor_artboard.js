@@ -654,11 +654,130 @@
         items[0].focus();
     };
 
-    // "From the site": the Files list of the sticker part (pictures and SVG
-    // files, the newest or by name) over the editor; a press imports one,
-    // or, given pick(file), hands that picture (no SVG) to it.
+    // ---- the one picker ----
+
+    // The one picker (assets/js/pg_picker.js) answers From the site on a
+    // panel screen, where Bootstrap 6 dialogs are (pgUI 6): it opens over
+    // the editor in the browser's top layer. A site page in Edit mode has
+    // neither, so it keeps the editor's own Files lists.
+    Editor.prototype.sitePickerOk = function () {
+        var ui = window.pgUI;
+
+        return !!X.config().picker && !!ui && (typeof ui.version === 'function') && (ui.version() === 6);
+    };
+
+    // The picker's script, and its settings where the screen did not print
+    // them (#pg_picker_config), loaded once.
+    var pickerLoading = null;
+
+    function pickerLoad() {
+        if (window.pgPicker && window.pgPicker.open) {
+            return Promise.resolve(window.pgPicker);
+        }
+
+        if (pickerLoading) {
+            return pickerLoading;
+        }
+
+        var cfg = X.config().picker || {}, urls = (cfg.scripts || []).slice();
+
+        if (!document.getElementById('pg_picker_config')) {
+            document.head.appendChild(el('script', { type: 'application/json', id: 'pg_picker_config', text: JSON.stringify(cfg.config || {}) }));
+        }
+
+        pickerLoading = new Promise(function (resolve, reject) {
+            (function next() {
+                if (!urls.length) {
+                    if (window.pgPicker && window.pgPicker.open) {
+                        resolve(window.pgPicker);
+                    } else {
+                        reject(new Error('picker'));
+                    }
+
+                    return;
+                }
+
+                var tag = document.createElement('script');
+
+                tag.src = urls.shift();
+                tag.onload = next;
+                tag.onerror = function () { reject(new Error('picker')); };
+                document.head.appendChild(tag);
+            })();
+        }).catch(function (e) {
+            pickerLoading = null;
+            throw e;
+        });
+
+        return pickerLoading;
+    }
+
+    // A pick of the picker as the editor's Files lists hand a file on:
+    // id, name, address, picture size, size as text and whether it is SVG.
+    Editor.pickedFile = function (item) {
+        return {
+            id: item.id, name: String(item.text || ''), url: String(item.url || ''),
+            width: item.width || 0, height: item.height || 0,
+            size: item.size_label || '', svg: String(item.type || '').toLowerCase() === 'svg'
+        };
+    };
+
+    // Opens the picker on a kind of pg_picker_kinds() and answers the file
+    // picked, or null. The focus goes back to back (or the Import button)
+    // when the button that opened it has gone with its menu.
+    Editor.prototype.sitePick = function (kind, title, back) {
+        var self = this;
+
+        return pickerLoad().then(function (P) {
+            return P.open({ kind: kind, title: title });
+        }).then(function (item) {
+            var to = back || self.importBtn;
+
+            if (!self.finished && to && to.focus && self.root.contains(to) && (!document.activeElement || (document.activeElement === document.body))) {
+                to.focus();
+            }
+
+            return (item && !self.finished) ? Editor.pickedFile(item) : null;
+        }, function () {
+            self.showMessage(t('stickerFilesError'), true);
+
+            return null;
+        });
+    };
+
+    // A file from the site imported: an SVG as its own layer, a picture as
+    // a picture layer; given pick(file), that picture is handed to it.
+    Editor.prototype.importPicked = function (f, pick) {
+        if (pick) {
+            pick(f);
+            return;
+        }
+
+        this.toSelect();
+
+        if (f.svg) {
+            this.importSvgRequest({ file_id: f.id }, f.name);
+        } else {
+            this.addFilePicture(f);
+        }
+    };
+
+    // "From the site": the picker (pictures and SVG files; given pick(file),
+    // pictures only, handed to it) or, without it, the Files list of the
+    // sticker part over the editor.
     Editor.prototype.openImportFiles = function (pick) {
         var self = this, st = this.importFiles, timer = null;
+
+        if (this.sitePickerOk()) {
+            pick = (typeof pick === 'function') ? pick : null;
+            this.sitePick(pick ? 'canvas_photo' : 'canvas_picture', t('importSite'), pick ? document.activeElement : this.importBtn).then(function (f) {
+                if (f) {
+                    self.importPicked(f, pick);
+                }
+            });
+
+            return;
+        }
 
         st.pick = (typeof pick === 'function') ? pick : null;
         var find = el('input', { type: 'search', class: 'pgie-input pgie-stkfind', value: st.search, placeholder: t('stickerFilesFind'), 'aria-label': t('stickerFilesFind') });
@@ -717,19 +836,7 @@
                 var pick = self.importFiles.pick;
 
                 self.closeConfirm();
-
-                if (pick) {
-                    pick(f);
-                    return;
-                }
-
-                self.toSelect();
-
-                if (f.svg) {
-                    self.importSvgRequest({ file_id: f.id }, f.name);
-                } else {
-                    self.addFilePicture(f);
-                }
+                self.importPicked(f, pick);
             } }, [
                 el('img', { src: f.url, alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' })
             ]));

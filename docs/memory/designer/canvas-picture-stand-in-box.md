@@ -16,7 +16,7 @@ description: A bound picture's canvas stand-in (a sample photo SVG) takes the no
 
 ## What must a round picture in a starter carry?
 - Equal sides: equal `width` / `height` attributes or a `pg-circle-*` class, with `rounded-circle object-fit-cover`, so a photo that is not square is still drawn as a circle on the canvas and on the page. The same test checks every round image node of the editor's starters in `style_designer.src.js`.
-- The design templates' staff directory cards (`$optional_image('photo', 'full_name', 'rounded-circle object-fit-cover', …)` in about 45 templates; Café already has 64x64) have no size: a non-square member photo is oval at its own size on the page and on the canvas. Left open while design template work is paused (`workflow/coordinator-no-plans.md`); noted in `plans/designer-canvas-faults.md`.
+- The design templates' staff directory cards (`$optional_image('photo', 'full_name', 'rounded-circle object-fit-cover', …)` in about 45 templates; Café already has 64x64) have no size: a non-square member photo is oval at its own size on the page and on the canvas. Left open while design template work is paused (`workflow/coordinator-no-plans.md`).
 
 ## How was it checked?
 - In a sandbox, the Google Reviews starter and a 64x64 bound team photo on the canvas: 120x60 / 120x64 before, 40x40 / 64x64 circles after, light and dark (pictures in #9184).

@@ -374,6 +374,7 @@ function pg_cf_form_mails_send($page_id, $form_id, array $settings, array $mail)
             // delivery-failed notice.
             'secret' => (($to_email_address == $submitter_email_address) && (pg_cf_new_account_email($form_id) !== ''))
                 || pg_cf_mail_links_in($subject . $body, $mail_link_values),
+            'source' => 'form:' . (int) $form_id,
             'queue' => true));
 
         pg_cf_mail_links_context(false);
@@ -468,6 +469,7 @@ function pg_cf_form_mails_send($page_id, $form_id, array $settings, array $mail)
             'subject' => $administrator_email_subject,
             'format' => $administrator_email_format,
             'body' => $body,
+            'source' => 'form:' . (int) $form_id,
             'queue' => true));
 
     }

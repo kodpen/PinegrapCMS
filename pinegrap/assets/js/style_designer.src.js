@@ -6430,8 +6430,10 @@ const StyleDesigner = (function () {
             '.d-sm-flex > .sd-wrap:not(.sd-shared-wrap), .d-md-flex > .sd-wrap:not(.sd-shared-wrap), ' +
             '.d-lg-flex > .sd-wrap:not(.sd-shared-wrap), .d-xl-flex > .sd-wrap:not(.sd-shared-wrap), .d-xxl-flex > .sd-wrap:not(.sd-shared-wrap) ' +
             '{ display:contents !important; }',
-        _SD_BX + '.d-flex > .sd-wrap > .sd-tb, .d-inline-flex > .sd-wrap > .sd-tb, .d-sm-flex > .sd-wrap > .sd-tb, .d-md-flex > .sd-wrap > .sd-tb, ' +
-            '.d-lg-flex > .sd-wrap > .sd-tb, .d-xl-flex > .sd-wrap > .sd-tb, .d-xxl-flex > .sd-wrap > .sd-tb { display:none !important; }',
+        // A see-through wrapper's toolbar shows only for the selection,
+        // placed at the element by _sdPlaceChromeOf().
+        _SD_BX + '.d-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-inline-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-sm-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-md-flex > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.d-lg-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-xl-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-xxl-flex > .sd-wrap:not(.sd-selected) > .sd-tb { display:none !important; }',
         _SD_BX + '.d-flex > .sd-wrap.sd-selected > *, .d-inline-flex > .sd-wrap.sd-selected > *, .d-sm-flex > .sd-wrap.sd-selected > *, .d-md-flex > .sd-wrap.sd-selected > *, ' +
             '.d-lg-flex > .sd-wrap.sd-selected > *, .d-xl-flex > .sd-wrap.sd-selected > *, .d-xxl-flex > .sd-wrap.sd-selected > * ' +
             '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
@@ -6541,22 +6543,24 @@ const StyleDesigner = (function () {
             '.form-floating > .sd-wrap, .form-check > .sd-wrap, ' +
             '.input-group > .sd-wrap, ' +
             '.figure > .sd-wrap { display:contents !important; }',
-        // Hide toolbars and transfer outline for the sweep above
-        _SD_BX + '.accordion-item > .sd-wrap > .sd-tb, .accordion-header > .sd-wrap > .sd-tb, ' +
-            'h1.accordion-header > .sd-wrap > .sd-tb, h2.accordion-header > .sd-wrap > .sd-tb, h3.accordion-header > .sd-wrap > .sd-tb, ' +
-            'h4.accordion-header > .sd-wrap > .sd-tb, h5.accordion-header > .sd-wrap > .sd-tb, h6.accordion-header > .sd-wrap > .sd-tb, ' +
-            '.accordion-collapse > .sd-wrap > .sd-tb, .accordion-body > .sd-wrap > .sd-tb, ' +
-            '.card > .sd-wrap > .sd-tb, .card-body > .sd-wrap > .sd-tb, .card-header > .sd-wrap > .sd-tb, .card-footer > .sd-wrap > .sd-tb, ' +
-            '.modal-content > .sd-wrap > .sd-tb, .modal-header > .sd-wrap > .sd-tb, .modal-body > .sd-wrap > .sd-tb, .modal-footer > .sd-wrap > .sd-tb, ' +
-            '.modal-dialog > .sd-wrap > .sd-tb, ' +
-            '.offcanvas-header > .sd-wrap > .sd-tb, .offcanvas-body > .sd-wrap > .sd-tb, ' +
-            '.toast-header > .sd-wrap > .sd-tb, .toast-body > .sd-wrap > .sd-tb, ' +
-            '.alert > .sd-wrap > .sd-tb, ' +
-            '.breadcrumb > .sd-wrap > .sd-tb, .pagination > .sd-wrap > .sd-tb, ' +
-            '.dropdown-menu > .sd-wrap > .sd-tb, ' +
-            '.navbar > .sd-wrap > .sd-tb, .navbar-nav > .sd-wrap > .sd-tb, .nav-item > .sd-wrap > .sd-tb, ' +
-            '.form-floating > .sd-wrap > .sd-tb, .form-check > .sd-wrap > .sd-tb, ' +
-            '.figure > .sd-wrap > .sd-tb { display:none !important; }',
+        // Hide toolbars and transfer outline for the sweep above. The
+        // selection's toolbar stays: _sdPlaceChromeOf() puts it at the
+        // element, so a picked card body or title is never left without one.
+        _SD_BX + '.accordion-item > .sd-wrap:not(.sd-selected) > .sd-tb, .accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            'h1.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, h2.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, h3.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            'h4.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, h5.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, h6.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.accordion-collapse > .sd-wrap:not(.sd-selected) > .sd-tb, .accordion-body > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.card > .sd-wrap:not(.sd-selected) > .sd-tb, .card-body > .sd-wrap:not(.sd-selected) > .sd-tb, .card-header > .sd-wrap:not(.sd-selected) > .sd-tb, .card-footer > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.modal-content > .sd-wrap:not(.sd-selected) > .sd-tb, .modal-header > .sd-wrap:not(.sd-selected) > .sd-tb, .modal-body > .sd-wrap:not(.sd-selected) > .sd-tb, .modal-footer > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.modal-dialog > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.offcanvas-header > .sd-wrap:not(.sd-selected) > .sd-tb, .offcanvas-body > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.toast-header > .sd-wrap:not(.sd-selected) > .sd-tb, .toast-body > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.alert > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.breadcrumb > .sd-wrap:not(.sd-selected) > .sd-tb, .pagination > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.dropdown-menu > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.navbar > .sd-wrap:not(.sd-selected) > .sd-tb, .navbar-nav > .sd-wrap:not(.sd-selected) > .sd-tb, .nav-item > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.form-floating > .sd-wrap:not(.sd-selected) > .sd-tb, .form-check > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.figure > .sd-wrap:not(.sd-selected) > .sd-tb { display:none !important; }',
         _SD_BX + '.accordion-item > .sd-wrap.sd-selected > *, .accordion-header > .sd-wrap.sd-selected > *, ' +
             '.card-body > .sd-wrap.sd-selected > *, .card-header > .sd-wrap.sd-selected > *, .card-footer > .sd-wrap.sd-selected > *, ' +
             '.modal-content > .sd-wrap.sd-selected > *, .modal-header > .sd-wrap.sd-selected > *, .modal-body > .sd-wrap.sd-selected > *, .modal-footer > .sd-wrap.sd-selected > *, ' +
@@ -10101,6 +10105,10 @@ const StyleDesigner = (function () {
     // _sdFxSoon()), the pass that adds and drops sd-fx-unpos and sd-fx-abs.
     function _sdPlaceSelectedChrome() {
         if (!canvasDoc || !canvasDoc.body) return;
+        // The selection's toolbar spot is measured again once the pass has
+        // laid the page out: taken before it (a card's cover with no height
+        // yet), it stayed 'inside', over the picture, with room below it.
+        _sdTbFlipAll(Array.prototype.slice.call(canvasDoc.querySelectorAll('div.sd-wrap.sd-selected')));
         _sdPlaceChromeOf(Array.prototype.slice.call(
             canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge), .sd-wrap:has(> .sd-chip-row)')));
         // The size badge sits at the selection's corner: placed again once
@@ -15028,6 +15036,10 @@ const StyleDesigner = (function () {
         '__form_title': _sdT('Contact Form'),
         '__submit_label': _sdT('Submit'),
         '__success_message': _sdT('Thank you. Your message has been sent.'),
+        // The tag cloud's values.
+        '__search_page_name': _sdT('Search'),
+        '__tag_total': '12', '__tag_name': _sdT('linen'), '__tag_keyword': 'linen',
+        '__tag_count': '8', '__tag_size': '150', '__tag_weight': '3',
         '__search_query': _sdT('design'),
         '__results_heading': _sdT('Found 12 result(s) for: design'),
         '__result_title': _sdT('Sample Page'),
@@ -15407,6 +15419,51 @@ const StyleDesigner = (function () {
                    esc(_sdT('Your {var:1} is saved. To return to this {var:1} later, please use this link:', _sdT('cart'))) + '</div>' +
                    '<a href="#" class="small text-break">' + esc(url) + '</a></div>';
         },
+        // The catalog's blocks, in the markup widgets_catalog.php gives them;
+        // controls disabled.
+        '__group_tree_html': function () {
+            return '<nav class="pg-sw-cl-group-tree"><ul class="list-unstyled mb-0">' +
+                   '<li class="pg-sw-cl-tree-item active"><a href="#" class="text-decoration-none fw-bold">' + esc(_sdT('Shirts')) + '</a></li>' +
+                   '<li class="pg-sw-cl-tree-item"><a href="#" class="text-decoration-none">' + esc(_sdT('Trousers')) + '</a></li>' +
+                   '<li class="pg-sw-cl-tree-item"><a href="#" class="text-decoration-none">' + esc(_sdT('Accessories')) + '</a></li></ul></nav>';
+        },
+        '__filters_button': function () {
+            return '<button type="button" class="btn btn-outline-secondary" disabled><i class="bi bi-funnel me-1"></i>' +
+                   esc(_sdT('Filters')) + '</button>';
+        },
+        '__clear_filters_button': function () {
+            return '<a href="#" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i>' + esc(_sdT('Clear Filters')) + '</a>';
+        },
+        '__attribute_filters_html': function () {
+            var box = function (label, on) {
+                return '<div class="form-check"><input class="form-check-input" type="checkbox" disabled' + (on ? ' checked' : '') + '>' +
+                       '<label class="form-check-label">' + esc(label) + '</label></div>';
+            };
+            return '<div class="pg-sw-cl-attr-filters"><div class="fw-semibold small mb-1">' + esc(_sdT('Colour')) + '</div>' +
+                   box(_sdT('Natural'), true) + box(_sdT('Navy'), false) + '</div>';
+        },
+        // The filters panel opens from the Filters button; drawn open here.
+        '__filters_offcanvas': function () {
+            return '<div class="border rounded p-3"><div class="fw-semibold mb-2">' + esc(_sdT('Filters')) + '</div>' +
+                   _SD_HTML_PREVIEW_TOKENS.__attribute_filters_html() + '</div>';
+        },
+        '__variant_picker': function () {
+            return '<div class="pg-civ-variant-picker mb-3"><label class="form-label">' + esc(_sdT('Size')) + '</label>' +
+                   '<select class="form-select" disabled><option>M</option></select></div>';
+        },
+        // The strong password rules as the member widgets print them
+        // (get_strong_password_requirements()), the site's own text when
+        // the editor has it. Drawn while the site setting is off too, so
+        // the block can be placed; the page leaves it empty then.
+        '__password_rules': function () {
+            var html = _sdSiteWord('password_rules');
+            if (html) return html;
+            return '<div class="pg-password-rules small text-muted"><div>' + esc(_sdT('Your password must contain at least')) + ':</div><ul>' +
+                   '<li>' + esc(_sdT('{var:1} characters', ['10'])) + '</li>' +
+                   '<li>' + esc(_sdT('{var:1} capital letter', ['1'])) + '</li>' +
+                   '<li>' + esc(_sdT('{var:1} numbers', ['2'])) + '</li>' +
+                   '<li>' + esc(_sdT('{var:1} non-alphanumeric character (e.g. !, $)', ['1'])) + '</li></ul></div>';
+        },
         // The sample order's addresses as <br> lines, as the page writes them.
         '__recipient_address_html': function () {
             var a = _sdOrderAddress('shipping');
@@ -15702,11 +15759,11 @@ const StyleDesigner = (function () {
 
     // A person's picture previews as the server draws one who has no photo
     // (pg_initials_avatar_url()): the sample name's initials on a coloured
-    // circle, sized by the <img> — not the grey 300×200 "Image" card, which
+    // circle (the sample account's Alex Morgan), sized by the <img> — not the grey 300×200 "Image" card, which
     // looked nothing like the round avatar the page shows.
     var _SD_AVATAR_TOKENS = { '__user_avatar_url': 1, 'avatar_url': 1 };
     function _sdAvatarSample() {
-        var name = String(_sdT('Jane Cooper')).trim().split(/\s+/);
+        var name = String(_sdT('Alex Morgan')).trim().split(/\s+/);
         var initials = ((name[0] || '').charAt(0) + (name.length > 1 ? name[name.length - 1].charAt(0) : '')).toLocaleUpperCase();
         var svg = "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>" +
                   "<circle cx='32' cy='32' r='32' fill='#4f6bed'/>" +
@@ -15738,12 +15795,6 @@ const StyleDesigner = (function () {
                  subtotal: 1050, discount: 105, shipping: 49.9, tax: 189, total: 1183.9 };
     }
     var _sdOrderSampleMap = null;
-
-    // Whether `node` draws in a widget of the order family.
-    function _sdOrderSampleOn(node) {
-        var cfg = node ? _sdSystemWidgetCfgOf(node) : null;
-        return !!(cfg && _SD_ORDER_SAMPLE_REGIONS[cfg.regionType]);
-    }
 
     // The two addresses, as lines: [first, last, company, line 1, line 2,
     // city, state, zip, country, phone].
@@ -15900,6 +15951,148 @@ const StyleDesigner = (function () {
         _sdOrderSampleMap = out;
         return out;
     }
+
+    // ── The sample product ───────────────────────────────────────────────
+    // The catalog family (listing, product page, wishlist, order form,
+    // search results) draws one product, the sample order's first line:
+    // its prices, stock, codes and flags agree, flags written as the page
+    // writes them ('1' / '0'). The flags of _SD_FLAG_TOKENS stay out, so a
+    // discount or related block keeps the canvas state's choice.
+    var _SD_PRODUCT_SAMPLE_REGIONS = {
+        catalog_listing: 1, catalog_item_view: 1, wishlist: 1, order_form: 1, search_results: 1
+    };
+    var _sdProductSampleMap = null;
+    function _sdProductSample() {
+        if (_sdProductSampleMap) return _sdProductSampleMap;
+        var day = _sdDateSample(false);
+        var name = _sdT('Linen Shirt');
+        _sdProductSampleMap = {
+            __id: '1001', __name: 'PRD-1001', __sku: 'PRD-1001', __short_description: name, __image_alt: name,
+            __description: _sdT('Washed linen with a relaxed fit and mother-of-pearl buttons, sewn in small batches.'),
+            __details: _sdT('Care: wash at 30 °C and hang to dry.'),
+            __address_name: 'linen-shirt', __sort_order: '10', __created_at: day, __row_type: 'product',
+            __not_found_message: _sdT('This product could not be found.'),
+            __price: _sdMoney(450), __price_formatted: _sdMoney(450), __price_min: _sdMoney(450), __price_max: _sdMoney(520),
+            __price_range: _sdMoney(450) + ' – ' + _sdMoney(520), __reference_price: _sdMoney(480),
+            __original_price: _sdMoney(500), __original_price_formatted: _sdMoney(500),
+            __discount_amount: _sdMoney(50), __discount_amount_formatted: _sdMoney(50), __discount_percent: '10',
+            __gallery_count: '5', __inventory_tracked: '1', __inventory_quantity: '12', __quantity_available: '12',
+            __backorder: '0', __out_of_stock: '0', __preorder: '0',
+            __out_of_stock_message: _sdT('This product is out of stock right now.'),
+            __mpn: 'LS-2026-M', __gtin: '8690000010019', __brand: _sdT('Cooper Studio'), __manufacturer: _sdT('Cooper Studio'),
+            __weight: '0.35', __shippable: '1', __taxable: '1',
+            __category_id: '12', __category_name: _sdT('Shirts'), __active_cat_id: '12', __active_cat_name: _sdT('Shirts'),
+            __featured: '1', __is_new: '1', __has_variants: '1', __variant_count: '3', __has_children: '0', __has_breadcrumb: '1',
+            __custom_field_1: _sdT('Linen'), __custom_field_2: _sdT('Relaxed fit'), __custom_field_3: 'M', __custom_field_4: _sdT('Natural'),
+            __reward_points: '45', __seo_score: '82', __is_bundle: '0', __ai_generated: '',
+            __is_select_group: '1', __select_group_id: '7', __select_group_name: name,
+            __keywords: _sdT('linen, shirt, summer'), __length: '30', __width: '25', __height: '3',
+            __minimum_quantity: '1', __maximum_quantity: '10', __preparation_days: '2', __extra_shipping_cost: _sdMoney(0),
+            __vat_rate: '20', __payment_period: _sdT('Monthly'), __number_of_payments: '12',
+            __is_free_shipping: '0', __is_gift_card: '0', __is_donation: '0',
+            __empty_message: _sdT('No results found.'), __result_is_featured: '1'
+        };
+        return _sdProductSampleMap;
+    }
+
+    // ── The sample account ───────────────────────────────────────────────
+    // The account family (my account, sign-in, registration, membership,
+    // the password screens, profile, e-mail preferences, address book,
+    // security, invoices, the login region and the account e-mails) draws
+    // one member: Alex Morgan (alex), the sample order's billing person,
+    // whose saved recipient is the order's shipping address. The site's own
+    // name, consent and member number labels and password rules come from
+    // the site settings (sdDesign.siteWords). Canvas only: never in a tree,
+    // never on the site or in an e-mail.
+    var _SD_ACCOUNT_SAMPLE_REGIONS = {
+        my_account: 1, login_form: 1, forgot_password: 1, registration: 1, membership: 1, logout: 1,
+        change_password: 1, set_password: 1, account_profile: 1, email_preferences: 1, address_book: 1,
+        account_security: 1, account_invoices: 1, account_email: 1, login_region: 1, error_page: 1,
+        affiliate_sign_up_form: 1
+    };
+    // The site's words the member widgets print (designer_screen.php).
+    function _sdSiteWord(key) {
+        var w = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteWords) ? sdDesign.siteWords : null;
+        return (w && typeof w[key] === 'string') ? w[key] : '';
+    }
+    // The amounts of the sample account's statement: one invoice (the
+    // sample order's total) still owed and overdue, one paid.
+    function _sdAccountAmounts() {
+        return { open: 1183.9, paid: 450, overdue_days: 12 };
+    }
+    var _sdAccountSampleMap = null;
+    function _sdAccountSample() {
+        if (_sdAccountSampleMap) return _sdAccountSampleMap;
+        var day = _sdDateSample(false), stamp = _sdDateSample(true);
+        var bill = _sdOrderAddress('billing'), ship = _sdOrderAddress('shipping');
+        var full = bill[0] + ' ' + bill[1];
+        var initials = (bill[0].charAt(0) + bill[1].charAt(0)).toLocaleUpperCase();
+        var email = 'alex@example.com';
+        var m = _sdAccountAmounts();
+        _sdAccountSampleMap = {
+            // The site.
+            __site_name: _sdSiteWord('site_name') || _sdT('Sample Store'),
+            __opt_in_label: _sdSiteWord('opt_in_label') || _sdT('Send me news and offers by e-mail'),
+            __member_id_label: _sdSiteWord('member_id_label') || _sdT('Member ID'),
+            // The member.
+            __username: 'alex', username: 'alex', account_id: '3',
+            __email: email, __email_address: email, email_address: email, __user_email: email,
+            __user_name: full, __user_first_name: bill[0], __user_initials: initials, __display_name: full,
+            full_name: full, first_name: bill[0], last_name: bill[1],
+            __user_badge: _sdT('Gold member'), member_id: 'M-1042', member: '1',
+            form_item_view: 'contact-form-abc123xyz',
+            // More account details (SW_MEMBER_ENTITY_TOKENS).
+            __member_reward_points: '120', __member_expiry_date: day, __member_salutation: _sdT('Ms.'),
+            __member_nickname: bill[0], __member_company: bill[2], __member_job_title: _sdT('Interior designer'),
+            __member_website: 'https://example.com', __member_mobile_phone: bill[9],
+            __member_business_phone: '+90 212 000 00 00', __member_home_phone: '+90 216 000 00 00',
+            __member_business_city: bill[5], __member_business_country: bill[8], __member_time_zone: 'Europe/Istanbul',
+            __member_tax_number: '1234567890', __member_tax_office: _sdT('Springfield'), __member_affiliate_code: 'AFF-0042',
+            // E-mail preferences: a list of the loop.
+            __group_id: '3',
+            // Address book: two saved recipients, the card the order's
+            // shipping address.
+            __recipient_count: '2', __recipient_id: '1', __recipient_name: _sdT('Studio'),
+            __recipient_full_name: ship[0] + ' ' + ship[1], __recipient_company: ship[2],
+            __recipient_address: _sdOrderAddressLine(ship), __recipient_phone: ship[9],
+            __recipient_salutation: _sdT('Mr.'), __recipient_first_name: ship[0], __recipient_last_name: ship[1],
+            __recipient_address_1: ship[3], __recipient_address_2: ship[4], __recipient_city: ship[5],
+            __recipient_state: ship[6], __recipient_zip: ship[7], __recipient_country: ship[8],
+            __recipient_address_type: _sdT('Business address'),
+            // Account security: two devices, two-step verification on.
+            __device_count: '2', __device_label: _sdT('Chrome on Windows'),
+            __device_user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
+            __device_ip: '203.0.113.24', __device_last_used: _sdT('2 hours ago'), __device_first_seen: stamp,
+            __device_selector: 'a1b2c3d4e5f6', __device_passkey: _sdT('Work laptop'),
+            __mfa_status_text: _sdT('Two-step verification is on since {var:1}. {var:2} recovery codes left.', [day, '8']),
+            __mfa_enabled_since: day, __mfa_recovery_remaining: '8',
+            __mfa_recovery_left_text: _sdT('{var:1} recovery codes left. New codes replace them.', ['8']),
+            __mfa_key: 'JBSW Y3DP EHPK 3PXP', __mfa_key_uri: 'otpauth://totp/' + encodeURIComponent(email) + '?secret=JBSWY3DPEHPK3PXP',
+            __recovery_codes: 'K7QX-2M9P\nR4TB-8WNC\nH3ZD-6JLV\nP9FE-1YKS',
+            // The page writes the notice only when no passkey can be added;
+            // drawn here so it can be placed and styled.
+            __passkey_count: '1', __passkey_notice: _sdT('Passkeys work at {var:1} only. Open the site there and try again.', ['www.example.com']),
+            // Account invoices: the open invoice is the loop's card.
+            __account_title: bill[2], __document_count: '2',
+            __balance: _sdMoney(m.open), __overdue_total: _sdMoney(m.open),
+            __invoice_number: 'INV-2026-0042', __invoice_kind: _sdT('Invoice'), __invoice_date: day, __invoice_due_date: day,
+            __invoice_total: _sdMoney(m.open), __invoice_open: _sdMoney(m.open),
+            __invoice_status: _sdT('{var:1} days overdue', [String(m.overdue_days)]),
+            __invoice_overdue_days: String(m.overdue_days), __invoice_order_number: '12345'
+        };
+        return _sdAccountSampleMap;
+    }
+
+    // The sample record a node's widget draws (the order, the product or
+    // the account), or null outside those families.
+    function _sdSampleRecord(node) {
+        var cfg = node ? _sdSystemWidgetCfgOf(node) : null;
+        if (!cfg) return null;
+        if (_SD_ORDER_SAMPLE_REGIONS[cfg.regionType]) return _sdOrderSample();
+        if (_SD_PRODUCT_SAMPLE_REGIONS[cfg.regionType]) return _sdProductSample();
+        if (_SD_ACCOUNT_SAMPLE_REGIONS[cfg.regionType]) return _sdAccountSample();
+        return null;
+    }
     var _sdLabelFieldsAsked = {};
     function _displayValueForBinding(prop, fieldName, node) {
         // A sample comment after a comments widget's card draws its own
@@ -15941,11 +16134,9 @@ const StyleDesigner = (function () {
             if (fieldName && _sdIsHtmlPreviewToken(fieldName)) {
                 return _SD_HTML_PREVIEW_TOKENS[fieldName]();
             }
-            // A value of the sample order, in the order family's widgets.
-            if (fieldName && _sdOrderSampleOn(node)) {
-                var _ord = _sdOrderSample();
-                if (Object.prototype.hasOwnProperty.call(_ord, fieldName)) return _ord[fieldName];
-            }
+            // A value of the sample order or product, in those families' widgets.
+            var _rec = fieldName ? _sdSampleRecord(node) : null;
+            if (_rec && Object.prototype.hasOwnProperty.call(_rec, fieldName)) return _rec[fieldName];
             // Type-aware placeholder dispatch — order matters: currency
             // FIRST so __cart_total_formatted doesn't fall through to the
             // short-label map by accident.
@@ -16273,12 +16464,12 @@ const StyleDesigner = (function () {
     // into e.g. a title="" would be noise at best.
     function _sdResolveAttrTokens(val, allowHtml, node) {
         if (!val || typeof val !== 'string' || val.indexOf('^^') === -1) return val;
-        var order = (node && _sdOrderSampleOn(node)) ? _sdOrderSample() : null;
+        var order = _sdSampleRecord(node);
         return val.replace(/\^\^([a-zA-Z_][a-zA-Z0-9_]*)\^\^/g, function(_, tok) {
             // Reuse the same maps that drive bound text/src previews so the
             // canvas stays internally consistent.
             if (_sdIsHtmlPreviewToken(tok))   return allowHtml ? _SD_HTML_PREVIEW_TOKENS[tok]() : '';
-            // A list sample row's value, then the sample order's: plain
+            // A list sample row's value, then the sample record's: plain
             // text, escaped where the result is markup.
             var own = (_sdListSample && Object.prototype.hasOwnProperty.call(_sdListSample, tok)) ? _sdListSample[tok]
                 : ((order && Object.prototype.hasOwnProperty.call(order, tok)) ? order[tok] : null);

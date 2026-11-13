@@ -1079,6 +1079,7 @@ if (count($administrator_email_addresses) > 0) {
         'body' => $body,
         // Queued, so the writer never waits on the mail server; email()
         // still sends at once when the general job has not run lately.
+        'source' => 'comment',
         'queue' => true
     ));
 

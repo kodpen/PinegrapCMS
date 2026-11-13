@@ -245,7 +245,7 @@ function pg_arrival_date_list_cells(array $row, array $quick_edit, $today)
     return array(
         'name' => pg_list_cell('<a href="edit_arrival_date.php?id=' . $id . '" class="' . $output_status_class . '" data-pg-open>' . h($row['name']) . '</a>' . $output_state, 'align-middle', $attributes('name')),
         'arrival_date' => $date('arrival_date', $arrival_date),
-        'status' => pg_list_cell('<span class="badge fg-white fw-light ' . (($status == 'enabled') ? 'theme-success' : 'theme-danger') . '">' . h(lang(ucwords($status))) . '</span>', 'align-middle', $attributes('status')),
+        'status' => pg_list_cell('<span class="badge fw-light ' . (($status == 'enabled') ? 'theme-success' : 'theme-danger') . '">' . h(lang(ucwords($status))) . '</span>', 'align-middle', $attributes('status')),
         'start_date' => $date('start_date', pg_arrival_date_form_date_text($row['start_date'])),
         'end_date' => $date('end_date', pg_arrival_date_form_date_text($row['end_date'])),
         'last_modified' => pg_list_table_when_cell($row['timestamp'], (string) $row['user']),

@@ -4,6 +4,9 @@ description: The mail queue screen's e-mail and SMS lists on the list table driv
 module: mail_queue_list
 ---
 
+## Where is the mail queue now?
+- Since MA2b (#9275) `mail_queue.php` is a door to Communication › Sends (`messages_sends.php?channel=email`, `?tab=sms` to `channel=sms`; `platform/messages-area-sends.md`). Sends keeps this screen's rules below: the row confirm on `no-submit` buttons, the wrapped long texts, Retry sending at once while the queue is inactive, the Permanent badge. The two list sources stay for the driver's definitions.
+
 ## Why are the lists paged on the server?
 - The screen printed the newest 100 rows of `mail_outbox` / `sms_outbox` while the count cards counted the whole table: with 181 failed messages, 81 could not be found, retried or deleted, and search saw 100 rows (#5950). Failed rows are kept 30 days, so more than 100 is normal after an SMTP outage.
 - Since #6380 both are list table driver lists (`mail_queue`, `mail_queue_sms`; `pg_mail_queue_list_source()`, `pg_sms_queue_list_source()`: role <= 2, queue table present): the first batch printed, the next through `list_table_rows`, newest first (`created_at desc`, id last) unless a heading is clicked. Columns, rows and search live in `includes/fn/mail_queue_list.php` (`tests/mail_queue_list_test.php`).

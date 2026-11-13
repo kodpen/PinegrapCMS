@@ -26,15 +26,18 @@
 - canvas-closed-blocks.md: CB0 list (2026-11-13): what the designer canvas draws as one closed block, in four families, the counts, and the proposed order of opening them (for CB1, the owner's answer)
 - canvas-loop-as-published.md: A loop on the designer canvas draws one line of its grid (the card and hatched copies), a listing with no record too; a bound picture is a sample photo with its field in the title (#9104, CF4)
 - canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (a sample photo SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
+- canvas-sample-account.md: The sample account (Alex Morgan) the designer canvas draws in every account and member widget, and the site words it reads (CS4b, #9280)
 - canvas-sample-form-record.md: What a form record draws on the designer canvas (CS3, #9239): an answer of each field kind, fields fetched by the first value, fixed record samples
-- canvas-sample-gaps-account.md: CS0 census, account (CS4): my account, login, registration, password forms, preferences, address book, security, invoices, account e-mail card: canvas faults
-- canvas-sample-gaps-catalog.md: CS0 census, catalog (CS4): catalog listing, product page and values, wishlist, order form, search, photo gallery, tag cloud, folder view: canvas faults
+- canvas-sample-gaps-account.md: CS0 census, account: what my account, the member forms, address book, security, invoices and the account e-mail card still draw without a sample after CS4b
+- canvas-sample-gaps-catalog.md: CS0 census, catalog: what the catalog listing, product page, wishlist, order form, search, gallery, tag cloud and folder view still draw without a sample after CS4a (#9253)
 - canvas-sample-gaps-checkout.md: CS0 census, orders part two: what the cart, express order checkout, order preview and the shipping and billing steps still draw without a sample after CS2 (#9214)
 - canvas-sample-gaps-forms.md: CS0 census, forms: what custom forms, the form list and item views and the form e-mail cards still draw without a sample after CS3 (#9239)
 - canvas-sample-gaps-orders.md: CS0 census, orders: what the order view and order receipt e-mail card still draw without a sample after CS2 (#9214)
 - canvas-sample-gaps-other.md: CS0 census, the rest (CS4): comments and comment e-mail card, calendar, Google reviews, booking, accessibility statement, ads, menus, language, loop values
 - canvas-sample-gaps.md: CS0 census (#9179): what the designer canvas draws for each bound value (sample, ‹label›, empty, grey box, wrong sample); shared causes; false warning frames [decision: decisions-made-product-48.md]
 - canvas-sample-order.md: The sample order the designer canvas draws in the order view, its receipt e-mail, cart, checkout and its steps: one record whose lines add up to its totals (CS2, #9214) [decision: decisions-made-product-48.md]
+- canvas-sample-overview.md: Start file for the canvas-sample-* files: how the designer canvas draws a bound value with a realistic sample instead of its label, which file holds which family, what is still open [decision: decisions-made-product-48.md]
+- canvas-sample-product.md: The sample product the designer canvas draws in the catalog listing, product page, wishlist, order form and search results (CS4a, #9253); the tag cloud's samples; catalog block previews
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
 - catalog-listing-subtree-sort.md: Catalog listing widget's catalog-order sort while a search or filter spans the group subtree: the product's lowest sort order, not an arbitrary group row.
@@ -319,7 +322,7 @@
 - designer-canvas-selector-bridge.md: Canvas selector bridge for designs on their own framework: rules rewritten across .sd-wrap, only rules whose classes are on the page, flat selector lists instead of :is(), one place that rewrites.
 - designer-canvas-style-designer.md: style_designer.js canvas rules: widget tree root, lockstep cfg, table loop areas, the two wrapper models (IFRAME_CSS, measuring, chrome, column padding, margins), express order frame, cycle guard.
 - designer-canvas-theme-view.md: The editor's Dark/Light canvas view and the theme switchers on the canvas are one state on the canvas <html>, never stored: applyCanvasTheme(), pgThemeNoStore, why not <body>.
-- designer-canvas-toolbar-in-cards.md: A selected element's toolbar in a ratio box or a clipping card (a blog card's cover in a loop): the ratio rule skips chrome, room counts inside the clipping ancestor (#9217)
+- designer-canvas-toolbar-in-cards.md: The selected element's toolbar in a card (#9217, #9246): the ratio rule skips chrome, room counts inside the clip, it shows in see-through wrappers [decision: here]
 - designer-class-dedupe.md: How the designer replaces a class of the same family when one is added (deduplicateCssClass, CLASS_MUTEX_PREFIXES): longest prefix, same breakpoint only, callers, test
 - designer-code-editor-decisions.md: The designer's code editor: owner rules (2026-10-19) and lasting decisions behind it (CodeMirror 6 facade, lazy load, half-locked code, one emitter), and which PRs built which part
 - designer-code-view-bindings.md: Data bindings in the designer's code view: a bound text, href, src or alt prints as {{token}}, typing a token binds, a literal unbinds, {{ offers the widget's tokens; where the rules live
@@ -439,7 +442,7 @@
 - layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing [decision: here]
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
-- legacy-bootstrap-card.md: The "Towards Bootstrap 5" card (LB3): Legacy designs, Bootstrap 3 found by the framework sheet row, a design's report (names, sheets, scripts, files left out), nothing written [decision: decisions-made-product-48.md]
+- legacy-bootstrap-card.md: The "Towards Bootstrap 5" card (LB3): Legacy designs, Bootstrap 3 found by the framework sheet row, a design's report (names, system widgets, sheets, scripts, files left out), nothing written [decision: decisions-made-product-48.md]
 - legacy-bootstrap-census.md: Census of the starting sites' Legacy designs for the Bootstrap 5.3.8 helper (LB1, #8940): sets, Bootstrap 3 and theme classes, scripts, theme parts, map coverage and gaps
 - legacy-bootstrap-map.md: The Bootstrap 3 to 5.3.8 map and converter of a Legacy design (LB2, #8949): pg_lbs_* functions, the map's rules beyond renames, what a tree, a sheet and the report do, what is left for a designer [decision: decisions-made-product-46.md]
 - legacy-bootstrap-trial-design.md: The Bootstrap 5 trial design of a Legacy design (LB4): what Make a trial design copies and converts, the asset rows, the record file, Delete while unused, the side-by-side preview
@@ -450,8 +453,10 @@
 - legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move [decision: decisions-made-product-43.md]
 - legacy-layouts-census.md: Census of the page types' custom layouts for their move to Bootstrap 5.3.8 (LL1, #8968): per type the widget twin, layouts that differ from the template, Bootstrap 3 names
 - legacy-layouts-converter.md: The layout pass of the Bootstrap 3 to 5.3.8 converter (LL2 #8986, #9143): pg_lbs_layout_html(), its rules beyond the map, what stays, the starting layouts' counts
+- legacy-layouts-left.md: After the page types' move to Bootstrap 5.3.8 names (LL1-LL6): what the trial design's compatibility sheet still draws, what no rename reaches and the way out
 - legacy-layouts-map-cost.md: Mapping a page type's output per request against converted layout copies (LL1 census, #8968): measured cost, what each reaches, the proposal sent to the architect
 - legacy-layouts-output-join.md: Where a page type's layout output joins the page, the names built outside a written class attribute, and the gate a map at output needs (LL1 census, #8968)
+- legacy-layouts-output-map.md: How a bootstrap5 design's page types get 5.3.8 names (architect, #8969): the system region's output mapped per request, no converted copies; the rules every change keeps [decision: decisions-made-product-46.md]
 - legacy-layouts-output-pass.md: Where a Bootstrap 5.3.8 design's page prints its page type's 5.3.8 names (LL3, #9143): the gate, the part mapped, the code tab's line, the sandbox pictures
 - legacy-layouts-shapes.md: The names a page type's markup took from its tag or parent in Bootstrap 3 and the layout pass writes on a bootstrap5 design (LL4, #9170): rules, what stays by hand
 - legacy-materialize-trial.md: The LB1b hand trial: a Legacy design whose theme loads Materialize, Bootstrap 5.3.8 beside it as a trial design loads it; names both own, what each sheet does to the other [decision: decisions-made-product-48.md]

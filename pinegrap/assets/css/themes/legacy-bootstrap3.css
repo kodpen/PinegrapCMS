@@ -5,49 +5,17 @@
  * Bootstrap 5.3.8 and Bootstrap Icons and before the design's own sheets,
  * so the theme still wins (includes/fn/legacy_bootstrap_trial.php).
  *
- * The page types' layouts (data/layouts, includes/templates) print Bootstrap
- * 3 form names that 5.3.8 no longer defines; this sheet draws them close to
- * how Bootstrap 3 did. The pages' own trees are converted instead
- * (includes/fn/legacy_bootstrap.php), so nothing here is needed by them.
- * Rules leave this file as the layouts are converted.
+ * A page of a Bootstrap 5.3.8 design prints its page type's markup with
+ * 5.3.8 names (pg_lbs_layout_region(), get_page_content.php), and the pages'
+ * own trees are converted (includes/fn/legacy_bootstrap.php). This sheet
+ * keeps only what that pass leaves as it was:
+ * - a bare `checkbox` not in Bootstrap 3's block shape (an ambiguous name);
+ * - the glyphicons right inside a theme widget (`.unchecked`'s tick), kept
+ *   so the theme's sheet can lay them over the field.
  *
  * Glyphicons are drawn with the Bootstrap Icons font: each icon with a twin
  * in pg_lbs_icon_map() gets that icon's code point, the rest draw nothing.
- * visible-xs-inline follows the converter's breakpoints (xs is below sm).
  */
-
-.form-group {
-  margin-bottom: 1rem;
-}
-.help-block {
-  display: block;
-  margin-top: .25rem;
-  margin-bottom: .5rem;
-  color: var(--bs-secondary-color);
-}
-.text-right {
-  text-align: right !important;
-}
-.img-responsive {
-  display: block;
-  max-width: 100%;
-  height: auto;
-}
-
-.btn-default {
-  --bs-btn-color: var(--bs-body-color);
-  --bs-btn-bg: var(--bs-body-bg);
-  --bs-btn-border-color: var(--bs-border-color);
-  --bs-btn-hover-color: var(--bs-body-color);
-  --bs-btn-hover-bg: var(--bs-tertiary-bg);
-  --bs-btn-hover-border-color: var(--bs-border-color);
-  --bs-btn-active-color: var(--bs-body-color);
-  --bs-btn-active-bg: var(--bs-secondary-bg);
-  --bs-btn-active-border-color: var(--bs-border-color);
-  --bs-btn-disabled-color: var(--bs-body-color);
-  --bs-btn-disabled-bg: var(--bs-body-bg);
-  --bs-btn-disabled-border-color: var(--bs-border-color);
-}
 
 .checkbox {
   position: relative;
@@ -66,48 +34,6 @@
   position: absolute;
   margin-top: .3rem;
   margin-left: -1.25rem;
-}
-
-/* Bootstrap 5.3.8 joins an input group's direct children; a Bootstrap 3
-   button sits one level down, in .input-group-btn. */
-.input-group-addon {
-  display: flex;
-  align-items: center;
-  padding: .375rem .75rem;
-  font-size: 1rem;
-  font-weight: 400;
-  line-height: 1.5;
-  color: var(--bs-body-color);
-  text-align: center;
-  white-space: nowrap;
-  background-color: var(--bs-tertiary-bg);
-  border: var(--bs-border-width) solid var(--bs-border-color);
-  border-radius: var(--bs-border-radius);
-}
-.input-group-btn {
-  position: relative;
-  display: flex;
-}
-.input-group > .input-group-btn > .btn {
-  position: relative;
-  z-index: 2;
-}
-.input-group > .input-group-btn:not(:last-child) > .btn {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-.input-group > .input-group-btn:not(:first-child) > .btn {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-}
-
-.visible-xs-inline {
-  display: none !important;
-}
-@media (max-width: 575.98px) {
-  .visible-xs-inline {
-    display: inline !important;
-  }
 }
 
 .glyphicon {

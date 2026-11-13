@@ -186,8 +186,8 @@ function pg_messages_campaign_sort($rows)
 
 /**
  * The e-mail campaigns in the given statuses the user may manage, as merged
- * rows (id, modified, cells). Automatic campaigns, one per profile send,
- * stay listed until the Sends tab shows them as single messages.
+ * rows (id, modified, cells). Manual ones only: an automatic campaign, one
+ * per profile send, is a single message of the Sends tab.
  *
  * @param array $statuses
  * @param array $user
@@ -210,7 +210,7 @@ function pg_messages_campaign_email_rows(array $statuses, array $user)
             last_modified_user.user_username AS last_modified_username
         FROM email_campaigns
         LEFT JOIN user AS last_modified_user ON email_campaigns.last_modified_user_id = last_modified_user.user_id
-        WHERE email_campaigns.status IN ($in)");
+        WHERE (email_campaigns.status IN ($in)) AND (email_campaigns.type = 'manual')");
 
     $mine = array();
 
@@ -231,11 +231,7 @@ function pg_messages_campaign_email_rows(array $statuses, array $user)
         $count = db_q("SELECT COUNT(*), COALESCE(SUM(complete = '1'), 0) FROM email_recipients WHERE email_campaign_id = ?", array((string) $id)) or output_error('Query failed.');
         list($total, $done) = array_map('intval', mysqli_fetch_row($count));
 
-        if ($campaign['type'] === 'automatic') {
-            $to = h((string) db_value("SELECT email_address FROM email_recipients WHERE email_campaign_id = '" . $id . "' LIMIT 1"));
-        } else {
-            $to = h(lang(array('string' => '{var:1} Contact{suffix:1}', 'vars' => pg_format_number($total, 0), 'suffix' => ($total == 1) ? '' : 's')));
-        }
+        $to = h(lang(array('string' => '{var:1} Contact{suffix:1}', 'vars' => pg_format_number($total, 0), 'suffix' => ($total == 1) ? '' : 's')));
 
         $subject = ((string) $campaign['subject'] !== '') ? h($campaign['subject']) : '[' . h(lang('No name')) . ']';
         $start = ($campaign['start_time'] == '0000-00-00 00:00:00') ? 0 : (int) strtotime($campaign['start_time']);

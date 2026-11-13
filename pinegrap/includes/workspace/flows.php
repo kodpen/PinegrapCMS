@@ -204,8 +204,6 @@ function ws_flow_kinds_workspace()
         // Pinegrap AI, whose settings are the Workspace's; an MCP server's
         // tool; a scheduled action started.
         'ai', 'mcp', 'start_action',
-        // Its lines go to the Workspace inbox.
-        'notify',
     );
 }
 

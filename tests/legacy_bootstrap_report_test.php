@@ -271,9 +271,38 @@ function test_lbsr_card_html()
 	pg_assert_contains('loaded as it is', $html);
 	pg_assert_contains('tooltip() 1', $html);
 	pg_assert_contains('bootstrap.min.js</span>: Bootstrap 3&#039;s script', $html);
+	pg_assert_contains('No page of this design prints a page type', $html);
 	pg_assert_contains('Nothing has been written', $html);
 	// The report of an asked design that is gone shows only the lines.
 	pg_assert_false(strpos(pg_lbs_card_html($designs, 7, null), 'Hide the report') !== false);
+}
+
+function test_lbsr_widget_offers()
+{
+	$pages = array(
+		array('name' => 'Cart', 'type' => 'shopping cart', 'custom' => true, 'parts' => array(3)),
+		array('name' => 'Products', 'type' => 'catalog', 'custom' => false, 'parts' => array()),
+		array('name' => 'Login', 'type' => 'login', 'custom' => false, 'parts' => array(5)),
+		array('name' => 'Contact', 'type' => 'custom form', 'custom' => true, 'parts' => array()),
+		array('name' => 'Receipt', 'type' => 'order receipt', 'custom' => true, 'parts' => array()),
+		array('name' => 'Home', 'type' => 'standard', 'custom' => false, 'parts' => array()),
+	);
+	// Part 3 is a plain part, part 5 a Login widget the page already places.
+	$offers = pg_lbs_widget_offers($pages, array(3 => '', 5 => 'login_form'));
+	pg_assert_same(array(
+		array('page' => 'Cart', 'type' => 'shopping cart', 'kind' => 'shopping_cart', 'custom' => true),
+		array('page' => 'Products', 'type' => 'catalog', 'kind' => 'catalog_listing', 'custom' => false),
+	), $offers);
+	// A widget of another kind does not count as placed.
+	pg_assert_same(1, count(pg_lbs_widget_offers(array($pages[2]), array(5 => 'shopping_cart'))));
+	pg_assert_same(array(), pg_lbs_widget_offers(array(), array()));
+
+	$html = pg_lbs_widgets_html(array_merge($offers, array(array('page' => 'Cart <b>', 'type' => 'shopping cart', 'kind' => 'shopping_cart', 'custom' => false))));
+	pg_assert_contains('System widgets', $html);
+	pg_assert_contains('<code>Shopping Cart</code> 2 <span class="fg-secondary">Cart (own layout), Cart &lt;b&gt;</span>', $html);
+	pg_assert_contains('<code>Catalog</code> 1 <span class="fg-secondary">Products</span>', $html);
+	pg_assert_contains('the better move', $html);
+	pg_assert_contains('No page of this design prints a page type that has a system widget.', pg_lbs_widgets_html(array()));
 }
 
 function test_lbsr_names_html_limit()

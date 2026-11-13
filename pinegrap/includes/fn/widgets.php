@@ -6551,6 +6551,13 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
         // Pages since binned, archived or removed stay out until the index
         // is rebuilt.
         $sql_live = pg_search_items_live_sql(pg_recycle_bin_folder_ids());
+        // The records whose translated texts match come first too, at the
+        // address and behind the folder fence of their search index item.
+        if (function_exists('pg_tr_search_records')) {
+            foreach (pg_tr_search_records($query, $sql_folders, $sql_live) as $item) {
+                $tr_pages[] = $page_row($item['title'], $item['url'], $item['description'], true, $item);
+            }
+        }
         if ($filter !== '') $featured = pg_search_fulltext_items(
             "SELECT search_items.id, url, title, description, search_items.page_id,
                     sp.page_name, sp.page_title,

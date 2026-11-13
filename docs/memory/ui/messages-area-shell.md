@@ -15,12 +15,12 @@ module: messages_area
 
 ## Which old screens sit inside the shell?
 - Campaigns tab: `view_email_campaigns.php` (below). Automatic sends open: My Campaign Profiles.
-- `view_sms_campaigns.php`, `edit_sms_campaign.php` and the four new screens mark row 9 in the active-row map; `mail_queue.php` still marks row 25 until MA2 makes it a door.
-- Doors (`validate_user()`, then `go()`, no right of their own): `view_email_campaign_history.php` to `?state=finished`, `view_sms_campaigns.php` to `?channel=sms` (MA3). Still to come: mail queue (MA2), profiles (MA9f).
+- `view_sms_campaigns.php`, `edit_sms_campaign.php` and the four new screens mark row 9 in the active-row map; `mail_queue.php` is a door since MA2b (#9275); its row 25 case in the map stays, unused.
+- Doors (`validate_user()`, then `go()`, no right of their own): `view_email_campaign_history.php` to `?state=finished`, `view_sms_campaigns.php` to `?channel=sms` (MA3). `mail_queue.php` to the Sends tab with its channel (MA2b). Still to come: profiles (MA9f).
 
 ## What do the new tabs show before their step?
-- Rows (`pg_messages_place_rows()`) leading to where the job is done today. Sends: E-mail queue, SMS queue (`pg_sms_queue_shown()`), both role <= 2, and the finished campaigns. Templates: SMS Messages and WhatsApp settings cards (role <= 2). Automatic sends: My Campaign Profiles, Automation flows when `pg_flows_menu_row()` admits. Channels has its cards since MA7 (below).
-- MA2, MA6, MA8 replace each body; MA8 also moves Automatic sends to the flows' gate.
+- Rows (`pg_messages_place_rows()`) leading to where the job is done today. Templates: SMS Messages and WhatsApp settings cards (role <= 2). Automatic sends: My Campaign Profiles, Automation flows when `pg_flows_menu_row()` admits. Channels has its cards since MA7 (below).
+- Sends has its list since MA2b (`platform/messages-area-sends.md`); MA6 and MA8 replace the other bodies; MA8 also moves Automatic sends to the flows' gate.
 
 ## What does the Channels tab show? (MA7, #9200)
 - Four cards, two to a row: E-mail, SMS, WhatsApp, İYS; each a link to its settings (SMTP Settings, the Communication cards) with a state pill and one line.
