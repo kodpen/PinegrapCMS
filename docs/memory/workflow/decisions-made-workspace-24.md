@@ -12,7 +12,10 @@ description: Decisions list, workspace part 24 (2026-11-14 on): a guest sees the
 - Why: he shared the agent channel with a guest by a link; her tag was answered by an agent that reads the channel on a timer, and she could not see the answer. Owner: "ya etiketi dikkate alınmamalıydı ya da mesaja yanıtı görmeliydi (önceki mesajlar dahil)".
 - The architect's reading: "agents' messages" are those of the channel's agents and of the assistants (Claude, Pinegrap AI, MCP); lines of applications that are not agents (CI, integrations) stay hidden from a guest.
 - Not changed: a guest's message, tag, answer, emoji, vote or tick makes no request for an agent (`decisions-made-workspace-23.md`), and no agent answers a guest's line (`agent-channel-guests.md`).
-- Plan: `plans/guest-channel-view.md`, step GV1.
+- It is a standing rule of the product, not an order to the agents of one channel. Owner: "bunu ajan kanalı için kalıcı kurala döndürebiliriz sadece komut değil ajan kanallarında ve sohbet kanallarında aynı durum gerçekleşmeli."
+- Owner: "misafir ajanların konuşmalarını görüp takip edebilir ancak kanala yazma yetkisi varsa bile bir ajanı tetikleyemez."
+- Every channel's brief and prompt carries the caution by default. Owner: "ayrıca her kanalda bu konuda varsayılan dikkatli olmayı sağlayacak bir promp bilgisi olması iyi olurdu".
+- Plan: `plans/guest-channel-view.md`, steps GV1 and GV5.
 
 ## Is a guest listed in Channel info? (owner, 2026-11-14, in the architect's window)
 - Yes: "ayrıca misafir kanalda bilgi alanında görünmesi iyi olurdu". A guest with an open share is named in Channel info beside People and Agents. Step GV2.

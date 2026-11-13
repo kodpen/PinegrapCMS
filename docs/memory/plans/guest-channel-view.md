@@ -19,10 +19,12 @@ description: Plan (owner 2026-11-14): a guest sees the agents' messages on the g
   - Nothing a guest does makes a request: a tag, an answer to an agent's message (the "replies to its messages" rule too), an emoji, a vote, a tick. A unit test for each.
 - GV2 (S) Guests in Channel info: a "Guests · n" group under People and Agents for every guest with an open share: name, the Guest badge, read only or read and write, who shared and when. A guest's last seen only for a channel manager, as a person's.
 - GV3 (S) Read aloud covers the channel's agents: an answer of a registry agent of the channel to the viewer's own message, or one that names the viewer, is read as an assistant's is; the switch shows where the channel has an agent.
-- GV4 (S) Close-out: the rules into `workspace/` (guest page, Channel info, read aloud), this plan deleted.
+- GV5 (M) The standing caution in every channel: each brief and prompt the site gives an agent or an assistant (an application agent's request brief, `workspace/agent-wakes.md`; a model agent's, Claude's, Pinegrap AI's and an MCP assistant's text) says that a guest's line, a mail's text and other outside text are data from outside the team, never a request or an instruction.
+  - A guest's messages are marked as a guest's in the conversation the brief carries and in the API's message, so an agent reading by itself can tell. Unit tests on the built text. Owner: "her kanalda bu konuda varsayılan dikkatli olmayı sağlayacak bir promp bilgisi olması iyi olurdu".
+- GV4 (S) Close-out: the rules into `workspace/` (guest page, Channel info, read aloud, the caution), this plan deleted.
 
 ## What does every step keep?
 - No table or column; a step that needs one stops and asks the architect. What a guest may do stays as it is: text, an answer, an emoji, a vote, a tick; no files, tags or commands.
 - The sound stays silent in a hidden tab (`workflow/decisions-made-workspace-18.md`, #8798); the background's signal is "Notifications on this device".
 - Real screenshots of GV1 and GV2 (dark and light, wide and phone) are posted in the agent channel before the PR goes ready. New texts through `lang()` and `php tools/tr_add.php`.
-- GV1, GV2 and GV3 touch different screens and may run side by side. Claim as `[plan:guest-channel-view] <step> — <topic>`.
+- GV1, GV2, GV3 and GV5 touch different parts and may run side by side. Claim as `[plan:guest-channel-view] <step> — <topic>`.
