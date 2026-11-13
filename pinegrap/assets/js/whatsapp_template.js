@@ -2,15 +2,22 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The WhatsApp template designer (whatsapp_template.php): the type buttons,
- * the formatting buttons and Add variable, the character count, the sample
- * value rows kept in step with the message's variables, and the phone
- * preview redrawn as the message, footer and samples change.
+ * the message editor with its variables as chips (pg_var_chips.js), the
+ * formatting buttons, the character count, the sample value rows kept in
+ * step with the message's variables, and the phone preview redrawn as the
+ * message, footer and samples change.
+ *
+ * The form still posts the message with Meta's {{1}}, {{2}} …: the chips'
+ * editor keeps the hidden body field filled, and each sample row posts
+ * label_<n> (what the variable stands for) and sample_<n> under the number
+ * its variable has in the message now.
  *
  * pgWaFormat() draws a text as WhatsApp shows it; it is the twin of
  * pg_whatsapp_design_format_html() in includes/fn/whatsapp_design.php, and
  * the two are kept alike. The server checks everything again on save.
  *
- * Loaded by the screen with a plain <script src>; no jQuery.
+ * Loaded by the screen with a plain <script src> after pg_var_chips.js; no
+ * jQuery.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -23,7 +30,7 @@
 
     var form = document.getElementById('pg_wa_form');
 
-    if (!form) {
+    if (!form || !window.pgVarChips) {
         return;
     }
 
@@ -40,9 +47,11 @@
     var count = document.getElementById('body_count');
     var rows = document.getElementById('pg_wa_samples');
     var none = document.getElementById('pg_wa_samples_none');
+    var palette = document.getElementById('pg_wa_palette');
     var previewBody = document.getElementById('pg_wa_preview_body');
     var previewFooter = document.getElementById('pg_wa_preview_footer');
     var variablePattern = /\{\{\s*([a-z0-9_]{1,64})\s*\}\}/g;
+    var labels = [];
 
     function escapeHtml(text) {
         return String(text).replace(/[&<>"']/g, function (c) {
@@ -50,20 +59,8 @@
         });
     }
 
-    // The variables of a text in the order they first appear.
-    function variables(text) {
-        var seen = [];
-        var match;
-
-        variablePattern.lastIndex = 0;
-
-        while ((match = variablePattern.exec(text)) !== null) {
-            if (seen.indexOf(match[1]) === -1) {
-                seen.push(match[1]);
-            }
-        }
-
-        return seen;
+    function fill(template, value) {
+        return String(template || '').replace('{var:1}', value);
     }
 
     // Twin of pg_whatsapp_design_format_html().
@@ -89,67 +86,66 @@
         return html.replace(/\n/g, '<br>');
     }
 
+    // The samples by the variable's number in the message now; a variable
+    // without a sample is shown by its name.
     function samples() {
         var values = {};
 
-        Array.prototype.forEach.call(rows.querySelectorAll('[data-pg-wa-key]'), function (row) {
-            var input = row.querySelector('input[name^="sample_"]');
-            values[row.getAttribute('data-pg-wa-key')] = input ? input.value.trim() : '';
+        Array.prototype.forEach.call(rows.querySelectorAll('[data-pg-wa-label]'), function (row) {
+            var number = row.getAttribute('data-pg-wa-number');
+            var input = row.querySelector('input[data-pg-wa-sample]');
+
+            if (number) {
+                values[number] = (input && input.value.trim() !== '') ? input.value.trim() : row.getAttribute('data-pg-wa-label');
+            }
         });
 
         return values;
     }
 
-    function fill(template, value) {
-        return String(template || '').replace('{var:1}', value);
-    }
-
-    function sampleRow(key) {
+    function sampleRow(label) {
         var row = document.createElement('div');
-        var name = '{{' + key + '}}';
 
         row.className = 'pg-wa-sample';
-        row.setAttribute('data-pg-wa-key', key);
-        row.innerHTML = '<code class="pg-wa-sample-key">' + escapeHtml(name) + '</code>'
-            + '<div class="pg-wa-sample-fields">'
-            + '<input type="text" class="pg-input pg-input-sm" name="label_' + escapeHtml(key) + '" maxlength="200" placeholder="' + escapeHtml(data.label || '') + '" aria-label="' + escapeHtml(fill(data.labelOf, name)) + '">'
-            + '<input type="text" class="pg-input pg-input-sm" name="sample_' + escapeHtml(key) + '" maxlength="200" placeholder="' + escapeHtml(data.sample || '') + '" aria-label="' + escapeHtml(fill(data.sampleOf, name)) + '">'
-            + '</div>';
+        row.setAttribute('data-pg-wa-label', label);
+        row.appendChild(window.pgVarChips.chip(label));
+        row.insertAdjacentHTML('beforeend', '<input type="hidden" data-pg-wa-label-field value="' + escapeHtml(label) + '">'
+            + '<input type="text" class="pg-input pg-input-sm" data-pg-wa-sample maxlength="200" placeholder="' + escapeHtml(data.sample || '') + '" aria-label="' + escapeHtml(fill(data.sampleOf, label)) + '">');
 
         return row;
     }
 
-    // The rows follow the message: one per variable in its order; a row
-    // whose variable left the message keeps its values till the next save,
-    // in case the variable comes back.
+    // The rows follow the message: one per variable in its order, named by
+    // its number now; a row whose variable left the message keeps its value
+    // till the page is left, in case the chip comes back.
     var parked = {};
 
     function syncRows() {
-        if (!data.editable) {
-            return;
-        }
-
-        var keys = variables(body.value).slice(0, data.variables || 20);
         var current = {};
 
-        Array.prototype.forEach.call(rows.querySelectorAll('[data-pg-wa-key]'), function (row) {
-            current[row.getAttribute('data-pg-wa-key')] = row;
+        Array.prototype.forEach.call(rows.querySelectorAll('[data-pg-wa-label]'), function (row) {
+            current[row.getAttribute('data-pg-wa-label')] = row;
         });
 
-        Object.keys(current).forEach(function (key) {
-            if (keys.indexOf(key) === -1) {
-                parked[key] = current[key];
-                rows.removeChild(current[key]);
+        Object.keys(current).forEach(function (label) {
+            if (labels.indexOf(label) === -1) {
+                parked[label] = current[label];
+                rows.removeChild(current[label]);
             }
         });
 
-        keys.forEach(function (key) {
-            var row = current[key] || parked[key] || sampleRow(key);
+        labels.forEach(function (label, index) {
+            var row = current[label] || parked[label] || sampleRow(label);
+            var number = String(index + 1);
+
+            row.setAttribute('data-pg-wa-number', number);
+            row.querySelector('[data-pg-wa-label-field]').name = 'label_' + number;
+            row.querySelector('[data-pg-wa-sample]').name = 'sample_' + number;
             rows.appendChild(row);
-            delete parked[key];
+            delete parked[label];
         });
 
-        none.hidden = keys.length > 0;
+        none.hidden = labels.length > 0;
     }
 
     function update() {
@@ -160,7 +156,10 @@
             count.classList.toggle('fg-danger', used > data.max);
         }
 
-        syncRows();
+        if (data.editable) {
+            syncRows();
+        }
+
         previewBody.innerHTML = pgWaFormat(body.value, samples());
 
         if (footer && previewFooter) {
@@ -169,44 +168,26 @@
         }
     }
 
-    // Wraps the selection in a WhatsApp marker, or puts a pair at the caret.
-    function wrap(marker) {
-        var start = body.selectionStart;
-        var end = body.selectionEnd;
-        var chosen = body.value.slice(start, end);
+    // The labels the message was opened with, by number.
+    var opened = {};
 
-        body.setRangeText(marker + chosen + marker, start, end, 'end');
+    Array.prototype.forEach.call(rows.querySelectorAll('[data-pg-wa-label]'), function (row) {
+        opened[row.getAttribute('data-pg-wa-number')] = row.getAttribute('data-pg-wa-label');
+    });
 
-        if (chosen === '') {
-            body.setSelectionRange(start + marker.length, start + marker.length);
-        }
+    var editor = window.pgVarChips.mount(body, {
+        labels: opened,
+        palette: palette,
+        max: data.variables || 20,
+        readonly: !data.editable,
+        texts: {remove: data.remove, fallback: data.fallback},
+        onChange: function (text, list) {
+            labels = list;
+            update();
+        },
+    });
 
-        body.focus();
-        update();
-    }
-
-    // Puts the next free number at the caret and fills its label.
-    function addVariable(label) {
-        var numbers = variables(body.value).map(function (key) {
-            return parseInt(key, 10) || 0;
-        });
-        var next = (numbers.length ? Math.max.apply(null, numbers) : 0) + 1;
-        var token = '{{' + next + '}}';
-        var start = body.selectionStart;
-        var before = body.value.slice(0, start);
-        var spaced = (before !== '' && !/\s$/.test(before) ? ' ' : '') + token;
-
-        body.setRangeText(spaced, start, body.selectionEnd, 'end');
-        body.focus();
-        update();
-
-        var row = rows.querySelector('[data-pg-wa-key="' + next + '"]');
-        var input = row ? row.querySelector('input[name^="label_"]') : null;
-
-        if (input && label && input.value === '') {
-            input.value = label;
-        }
-    }
+    labels = editor.serialize().labels;
 
     Array.prototype.forEach.call(form.querySelectorAll('[data-pg-wa-category]'), function (button) {
         button.addEventListener('click', function () {
@@ -226,24 +207,54 @@
     });
 
     Array.prototype.forEach.call(form.querySelectorAll('[data-pg-wa-wrap]'), function (button) {
+        // The caret stays in the message while the button is pressed.
+        button.addEventListener('mousedown', function (event) {
+            event.preventDefault();
+        });
+
         button.addEventListener('click', function () {
-            wrap(button.getAttribute('data-pg-wa-wrap'));
+            editor.wrap(button.getAttribute('data-pg-wa-wrap'));
         });
     });
 
-    var add = document.getElementById('pg_wa_add');
+    // A variable of the person's own name: a chip for the palette, and in
+    // the message at once.
+    var own = document.getElementById('pg_wa_own');
+    var ownAdd = document.getElementById('pg_wa_own_add');
 
-    if (add) {
-        add.addEventListener('change', function () {
-            if (add.value !== '') {
-                addVariable(add.value === '-' ? '' : add.value);
-            }
+    function addOwn() {
+        var name = own.value.replace(/\s+/g, ' ').trim().slice(0, 200);
 
-            add.value = '';
-        });
+        if (name === '') {
+            own.focus();
+            return;
+        }
+
+        if (!palette.querySelector('[data-pg-var-label="' + (window.CSS && CSS.escape ? CSS.escape(name) : name) + '"]')) {
+            var made = window.pgVarChips.chip(name, {drag: true});
+            var button = document.createElement('button');
+
+            button.type = 'button';
+            button.className = made.className;
+            button.setAttribute('draggable', 'true');
+            button.setAttribute('data-pg-var-label', name);
+            button.innerHTML = made.innerHTML;
+            palette.insertBefore(button, own.closest('.pg-wa-own'));
+        }
+
+        own.value = '';
+        editor.insert(name);
     }
 
-    body.addEventListener('input', update);
+    if (own && ownAdd) {
+        ownAdd.addEventListener('click', addOwn);
+        own.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                addOwn();
+            }
+        });
+    }
 
     if (footer) {
         footer.addEventListener('input', update);
