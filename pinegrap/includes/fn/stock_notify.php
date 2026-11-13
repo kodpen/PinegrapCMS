@@ -186,6 +186,18 @@ function pg_stock_notify_sms_on()
 }
 
 /**
+ * Whether the request form asks for a mobile number: while the notice can go
+ * out as a text message, or as a WhatsApp message (the WhatsApp Messages
+ * card's Product back in stock event, pg_whatsapp_stock_back_on()).
+ *
+ * @return bool
+ */
+function pg_stock_notify_phone_asked()
+{
+    return pg_stock_notify_sms_on() || (function_exists('pg_whatsapp_stock_back_on') && pg_whatsapp_stock_back_on());
+}
+
+/**
  * Whether a notice goes out as a text message now: the SMS event is on and
  * the general job sends the SMS queue (pg_sms_job_alive()). Without the job
  * the text would only wait there and expire, so the sender mails instead,
@@ -313,8 +325,11 @@ function pg_stock_notify_request($product_id, $email, $user_id, $phone = '')
 {
     $product_id = (int) $product_id;
     $user_id = max(0, (int) $user_id);
-    $typed = is_string($phone) && (trim($phone) !== '') && pg_stock_notify_sms_on();
-    $phone = $typed ? pg_stock_notify_phone($phone) : '';
+    $typed = is_string($phone) && (trim($phone) !== '') && pg_stock_notify_phone_asked();
+
+    // Asked for WhatsApp alone, the number is any mobile number WhatsApp can
+    // take; the SMS provider's own limit applies only while it texts.
+    $phone = $typed ? (pg_stock_notify_sms_on() ? pg_stock_notify_phone($phone) : pg_sms_number($phone)) : '';
 
     if (!pg_stock_notify_ready()) {
         return 'unavailable';
@@ -567,7 +582,10 @@ function pg_stock_notify_send($product_id)
     $sms_on = pg_stock_notify_sms_sends();
     $provider = $sms_on ? pg_sms_provider() : '';
 
+    $whatsapp_on = function_exists('pg_whatsapp_stock_back_on') && pg_whatsapp_stock_back_on();
+
     $mailed = array();
+    $whatsapped = array();
     $sent = 0;
 
     foreach ($rows as $row) {
@@ -588,7 +606,18 @@ function pg_stock_notify_send($product_id)
         // have changed since the request.
         $phone = ($provider !== '') ? pg_stock_notify_phone(pg_sms_dial((string) $row['phone']), $provider) : '';
 
+        // The WhatsApp message goes once per number, beside the text or the
+        // mail and never in place of the mail.
+        $whatsapp = $whatsapp_on ? pg_sms_number(pg_sms_dial((string) $row['phone'])) : '';
+        $told = false;
+
+        if (($whatsapp !== '') && !isset($whatsapped[$whatsapp])) {
+            $whatsapped[$whatsapp] = true;
+            $told = pg_whatsapp_message_queue('stock_back', pg_sms_dial($whatsapp), pg_stock_notify_sms_fields($name, $url), 'stock:' . (int) $row['id']);
+        }
+
         if ((($to === '') && ($phone === '')) || (($to !== '') && isset($mailed[strtolower($to)])) || (($phone !== '') && isset($mailed[$phone]))) {
+            $sent += $told ? 1 : 0;
             continue;
         }
 
@@ -606,6 +635,7 @@ function pg_stock_notify_send($product_id)
         }
 
         if ($to === '') {
+            $sent += $told ? 1 : 0;
             continue;
         }
 
