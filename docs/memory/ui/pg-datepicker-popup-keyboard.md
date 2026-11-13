@@ -12,7 +12,7 @@ description: The popup date calendar from the keyboard: Tab on the field moves o
 - Focus moving to another element closes it; focus lost to nothing (window blur, a redrawn day, a press on a blank spot) keeps it; an opening that comes after focus moved on (the library opens on a timer after focus) closes again.
 
 ## Why?
-- #9092: the library takes Tab on the field into the calendar, and the calendar hangs off `<body>` (or the end of the dialog), after everything else. Tab went Previous month, month, year, Next month, the day, then off the page; the rest of the form (Create Gift Card: Quantity, Notes, Create) was never reached, the calendar stayed open over it, and Shift+Tab from its first stop went to the page's last control.
+- #9092 (fixed in #9114): the library takes Tab on the field into the calendar, and the calendar hangs off `<body>` (or the end of the dialog), after everything else. Tab went Previous month, month, year, Next month, the day, then off the page; the rest of the form (Create Gift Card: Quantity, Notes, Create) was never reached, the calendar stayed open over it, and Shift+Tab from its first stop went to the page's last control.
 - Drawers draw the calendar after the field instead (`pg-datepicker-drawer.md`); the popup keeps its place on `<body>` / the overlay host so it is not clipped.
 
 ## How is it tested?

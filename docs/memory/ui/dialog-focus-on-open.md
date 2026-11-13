@@ -12,7 +12,7 @@ description: Bootstrap 6 dialogs and drawers take focus when shown (pg_ui.js foc
 - Closing gives focus back to the button that opened it (Bootstrap's own focus restoration).
 
 ## Why?
-- #9095: Bootstrap 6 calls `showModal()` while the dialog is still `visibility: hidden` (start of its opening transition), so the browser's dialog focusing finds nothing and leaves focus on `<body>` behind the inert page. A screen reader was not taken into the dialog and the first Tab landed on Close (New Application, content permissions drawer, Cancel order, changelog, Sessions, new holiday drawer, product attribute dialog).
+- #9095 (fixed in #9114): Bootstrap 6 calls `showModal()` while the dialog is still `visibility: hidden` (start of its opening transition), so the browser's dialog focusing finds nothing and leaves focus on `<body>` behind the inert page. A screen reader was not taken into the dialog and the first Tab landed on Close (New Application, content permissions drawer, Cancel order, changelog, Sessions, new holiday drawer, product attribute dialog).
 
 ## How is it tested?
 - `tests/pg_ui_dialog_focus_test.php` (Node, fake document). Checked by hand in Chromium with Bootstrap 6: a dialog with fields, one without, a drawer, a phone.
