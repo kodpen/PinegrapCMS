@@ -13,7 +13,7 @@ description: An agent's role from a fixed list (ws_agents.role, step 11.0.195, #
 - `ws_agent_role_key()` reads a stored value: a key of the list, else '' (an unknown or removed key shows as no role). `ws_agent_role_label()` gives '' for none.
 
 ## Where is it stored and checked?
-- `ws_agents.role` VARCHAR(32), '' by default, step 11.0.195 `upgrade_2026_11_0_ws_agent_profile()` (#9302). The same step adds `report_model` VARCHAR(100), `report_usage` VARCHAR(1000) and `report_at` INT, all empty, for the report route of `plans/agent-profile.md` AP2.
+- `ws_agents.role` VARCHAR(32), '' by default, step 11.0.195 `upgrade_2026_11_0_ws_agent_profile()` (#9302). The same step adds `report_model` VARCHAR(100), `report_usage` VARCHAR(1000) and `report_at` INT, all empty, for the report route (`agent-report.md`).
 - `ws_agent_save_check()` refuses a key not on the list (field `role`, "Choose a role from the list."). `ws_agent_save()` writes the role only when `pg_schema_has('ws_agents', 'role')`; the form shows the select only then, so files landed before the upgrade keep working.
 
 ## Where is it shown?
