@@ -1541,6 +1541,7 @@
     "Duplicate with Find & Replace": "Bul ve Değiştirerek Çoğalt",
     "Duplicate “{var:1}”. Please select any additional items that you want to duplicate.": "“{var:1}” çoğaltılıyor. Lütfen çoğaltmak istediğiniz ek öğeleri seçin.",
     "Duplicated as {var:1}.": "{var:1} olarak çoğaltıldı.",
+    "Duplicated: {var:1}": "Çoğaltıldı: {var:1}",
     "Duplicating": "Çoğaltılıyor",
     "Duration": "Süre",
     "During Your Stay": "Konaklama Süresince",

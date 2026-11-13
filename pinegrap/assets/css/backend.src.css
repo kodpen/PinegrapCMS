@@ -21651,6 +21651,136 @@ html.ws-flow-layer-on body {
   text-transform: uppercase;
   color: var(--pg-fg-2);
 }
+/* The right panel of a chosen box, arrow or thread (sideHead() in
+   workspace_flow.js): the tile, the kind in small capitals over the name,
+   then ⋯ and Close; the tabs; the foot line at the bottom. */
+.wsf-side {
+  display: flex;
+  flex-direction: column;
+}
+.wsf-side-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.wsf-side-tile {
+  --pg-tone: var(--wsf-kind, var(--pg-tone-gray));
+}
+.wsf-side-words {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.wsf-side-kind {
+  font-size: var(--pg-text-count);
+  font-weight: var(--pg-weight-title);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--wsf-kind, var(--pg-fg-2));
+}
+.wsf-side-head .wsf-side-kind {
+  color: var(--pg-fg-2);
+}
+.wsf-side-name {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.wsf-side-tabs {
+  flex-shrink: 0;
+  margin-bottom: 14px;
+}
+.wsf-side-panel {
+  flex: 1 0 auto;
+}
+.wsf-side-sub {
+  margin: 0 0 6px;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+}
+.wsf-links .wsf-side-sub ~ .wsf-side-sub {
+  margin-top: 14px;
+}
+/* Connections: each box a row (its tile and name choose it); an arrow
+   after it with its outcome and ×; Add an arrow under the list. */
+.wsf-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 4px 6px 4px 4px;
+  border-radius: 11px;
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.wsf-link-go {
+  display: flex;
+  flex: 1 1 8rem;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--pg-fg-body);
+  font-size: var(--pg-text-2);
+  text-align: left;
+}
+.wsf-link-go:hover {
+  background: var(--pg-hover);
+}
+.wsf-link-row .wsf-link-on {
+  flex: 0 1 9rem;
+  width: auto;
+}
+.wsf-link-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.wsf-link-add .wsf-connect {
+  flex: 1 1 8rem;
+  width: auto;
+}
+.wsf-link-go:focus-visible,
+.wsf-side-foot-go:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 1px;
+}
+/* The foot line: the box before and what comes after, each choosing it. */
+.wsf-side-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.wsf-side-foot:empty {
+  display: none;
+}
+.wsf-side-foot-go {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--pg-fg-body);
+}
+.wsf-side-foot-after {
+  margin-left: auto;
+}
+.wsf-side-foot-go:hover {
+  background: var(--pg-hover);
+}
+.wsf-scrim {
+  display: none;
+}
 /* Somebody else's flow in the list: under its name what the person may do
    with it (Can view, Can run, Can edit). */
 .wsf-list-level {
@@ -23086,6 +23216,26 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   }
   .wsf-app.wsf-no-palette { grid-template-columns: minmax(0, 1fr); }
   .wsf-palette { display: none; }
+  /* A box chosen on the canvas: its panel is a sheet from the bottom over a
+     scrim (closeSide() on a tap there, Close or Esc). */
+  .wsf-app.wsf-side-chosen .wsf-side {
+    position: fixed;
+    z-index: 1046;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    max-height: 85vh;
+    padding-bottom: calc(var(--ws-space-3) + env(safe-area-inset-bottom, 0px));
+    border-radius: var(--pg-radius-sheet) var(--pg-radius-sheet) 0 0;
+    box-shadow: var(--pg-shadow-float);
+  }
+  .wsf-app.wsf-side-chosen .wsf-scrim {
+    display: block;
+    position: fixed;
+    z-index: 1045;
+    inset: 0;
+    background: color-mix(in srgb, var(--pg-fg-body) 32%, transparent);
+  }
   .pgc-stage { height: 60vh; }
   .wsf-outline { height: auto; overflow: visible; }
   .wsf-bar .wsf-name { flex: 1 1 8rem; min-width: 0; }
