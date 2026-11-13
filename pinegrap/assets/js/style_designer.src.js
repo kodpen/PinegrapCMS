@@ -6942,10 +6942,9 @@ const StyleDesigner = (function () {
         '.sd-wrap.sd-has-binding:hover > .sd-tb { display:flex !important; background:rgba(99,102,241,.85) !important; pointer-events:auto !important; }',
         '.sd-wrap.sd-has-binding:hover > .sd-tb .sd-tb-name { display:flex !important; }',
         '.sd-wrap.sd-has-binding.sd-selected > .sd-tb { display:flex !important; pointer-events:auto !important; }',
-        // Bound image content min-height — guarantees a hoverable area even if the
-        // SVG placeholder briefly has 0 dimensions while loading.
-        '.sd-wrap[data-content-type="image"]:has(img[src^="data:image/svg+xml"]) > img,' +
-        '.sd-wrap[data-content-type="image"] > img[src^="data:image/svg+xml"] { min-height:60px !important; min-width:120px !important; }',
+        // A bound picture's SVG stand-in takes the node's own box (its width
+        // and height, a ratio class, a size class) and brings no minimum of
+        // its own: a 120x60 floor drew every round 40x40 avatar as an oval.
         // Toolbar's "Remove" button (remove this canvas placement of a shared_ref).
         // Distinct from the red trash (.sd-del) — uses an "unlink" icon + neutral gray.
         '.sd-tb-unlink-btn { color:#cbd5e1 !important; }',
