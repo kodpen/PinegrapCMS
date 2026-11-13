@@ -106,7 +106,7 @@ description: Generated from the module field of the memory files: each includes/
 - `google_analytics`: [[google-analytics-card]]
 - `google_reviews`: [[google-reviews-widget]]
 - `graph_canvas`: [[graph-canvas-core-module]]
-- `guarded_frame`: [[canvas-bridge]], [[canvas-consents]], [[guarded-frame]]
+- `guarded_frame`: [[canvas-bridge]], [[canvas-consents]], [[canvas-measures]], [[guarded-frame]]
 - `health_gauge`: [[dashboard-system-status-gauge]]
 - `image`: [[helper-fixes-2026-11]], [[image-accent-colour]], [[image-derivative-upkeep]], [[image-gd-palette-png]], [[image-panel-thumbnails]], [[image-same-address-switches]], [[image-upload-cap]], [[no-image-placeholder]]
 - `image_draw`: [[image-server-draw]], [[image-server-draw-fidelity]]

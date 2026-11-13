@@ -37,8 +37,7 @@ if (!ws_wtables_ready() || !ws_canvas_tables_ready()) {
     exit(1);
 }
 
-$user = db_item("SELECT * FROM user ORDER BY id LIMIT 1");
-$viewer = ws_rights($user);
+$viewer = ws_rights_for_id((int) db_value("SELECT user_id FROM user ORDER BY user_id LIMIT 1"));
 
 /**
  * Stops with the step that failed.
@@ -142,18 +141,26 @@ $cases = array(
 );
 
 printf("%d rows, %d runs each; PHP %s\n\n", $rows_wanted, $runs, PHP_VERSION);
-printf("%-28s %10s %10s %12s %10s\n", 'read', 'median ms', 'max ms', 'answer KB', 'rows');
+printf("%-28s %10s %10s %12s %10s %10s\n", 'read', 'median ms', 'max ms', 'answer KB', 'rows', 'peak MB');
+$base = memory_get_usage(true);
 
 foreach ($cases as $name => $args) {
     $args['table'] = (int) $orders['id'];
     $times = array();
+    $peak = 0;
     $bytes = 0;
     $count = 0;
 
     for ($run = 0; $run < $runs; $run++) {
+        // The read's own peak above what the script holds (PHP 8.2+).
+        if (function_exists('memory_reset_peak_usage')) {
+            memory_reset_peak_usage(); // phpcs:ignore PHPCompatibility.FunctionUse.NewFunctions -- guarded by function_exists()
+        }
+
         $start = microtime(true);
         $answer = ws_page_bridge_rows($viewer, array('id' => $canvas_id), $args);
         $times[] = (microtime(true) - $start) * 1000;
+        $peak = max($peak, memory_get_peak_usage() - $base);
 
         if (empty($answer['ok'])) {
             fwrite(STDERR, $name . ': ' . json_encode($answer) . "\n");
@@ -165,10 +172,20 @@ foreach ($cases as $name => $args) {
     }
 
     sort($times);
-    printf("%-28s %10.1f %10.1f %12.1f %10d\n", $name, $times[(int) floor(count($times) / 2)], end($times), $bytes / 1024, $count);
+    printf("%-28s %10.1f %10.1f %12.1f %10d %10.1f\n", $name, $times[(int) floor(count($times) / 2)], end($times), $bytes / 1024, $count, $peak / 1048576);
 }
 
-printf("\npeak memory %.1f MB\n", memory_get_peak_usage(true) / 1048576);
+// Where the time goes: the stored rows read and their formulas worked out,
+// then the lookups for one page of 500.
+$columns = ws_wtable_columns((int) $orders['id']);
+$start = microtime(true);
+$all = ws_wtable_rows((int) $orders['id'], $columns);
+$read_ms = (microtime(true) - $start) * 1000;
+$start = microtime(true);
+ws_wtable_joined_fill($viewer, $columns, array_slice($all, 0, 500));
+printf("\nws_wtable_rows() %.1f ms, ws_wtable_joined_fill() of 500 %.1f ms\n", $read_ms, (microtime(true) - $start) * 1000);
+
+printf("script peak memory %.1f MB, PHP memory_limit %s\n", memory_get_peak_usage(true) / 1048576, ini_get('memory_limit'));
 
 db("DELETE FROM ws_canvas_tables WHERE message_id = '" . $canvas_id . "'");
 ws_wtable_delete_final((int) $orders['id']);
