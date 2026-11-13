@@ -20,6 +20,6 @@ description: A tag in a channel item asks the tagged assistant or wakes the tagg
 - An edit: the panel's `ws_edit` and PATCH messages (an agent's own edit asks as an application). `ws_message_edit()` itself does not ask, so a poll's question edit (interact.php) waits for TW3.
 - Notes and decisions: /note, /decision, a meeting's decisions, the API's kinds note and decision (`ws_api_message_asks_assistants()`, `ws_api_message_wakes_agents()` take message, note and decision).
 
-## Which other messages ask? (TW2, #TW2PR)
+## Which other messages ask? (TW2, #9378)
 - Forward with a comment (`ws_forward_to_channel()`: the comment only, an application's as an application), approval request (`ws_approval_create()`, after its row), status update (`ws_status_post()`), check-in question (`ws_checkin_start()`), template welcome and pinned text (`ws_template_apply()`), a flow's or scheduled action's "Post a message" (`ws_scheduled_do()`, as the flow owner; the brakes hold a flow answering its own wake).
 - Not yet: TW3 and TW4 in `plans/channel-item-tags-wake-steps.md`.
