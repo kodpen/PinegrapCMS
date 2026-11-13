@@ -1,6 +1,6 @@
 ---
 name: workspace-api-message-canvas
-description: file.canvas of an API message (#8649): a canvas picture's newest version and pending, server or drawn, read once a page; which writes touch the message so changed_since and sync bring it
+description: file.canvas of an API message (#8649, PR #9161): a canvas picture's newest version and pending, server or drawn, read once a page; which writes touch the message so changed_since and sync bring it
 ---
 
 ## What does an API client see in the message?
@@ -17,7 +17,7 @@ description: file.canvas of an API message (#8649): a canvas picture's newest ve
 - `ws_api_messages_present()` passes the map to `ws_api_message_present()` (its last argument); a message presented alone reads its own.
 
 ## When does the message come again?
-- A browser's take, Undo, the server's drawing (`ws_canvas_draw_now()`, only when it draws), Pinegrap AI's edit and `POST messages/{id}/canvas` touch it (`ws_message_touch()`); the API edit did not before #8649. `changed_since` on the channel's messages and `changed` of `/workspace/sync` then bring it with the new `file.canvas`.
+- A browser's take, Undo, the server's drawing (`ws_canvas_draw_now()`, only when it draws), Pinegrap AI's edit and `POST messages/{id}/canvas` touch it (`ws_message_touch()`); the API edit did not before PR #9161 (#8649). `changed_since` on the channel's messages and `changed` of `/workspace/sync` then bring it with the new `file.canvas`.
 
 ## Tests?
 - `tests/workspace_api_message_canvas_test.php`: the state rule, which files, the object, the schema, the one query, the edit's touch, the route text.

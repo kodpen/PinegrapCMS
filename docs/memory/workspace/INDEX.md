@@ -123,7 +123,7 @@
 - workspace-api-endpoint-rules.md: Writing a Workspace API endpoint: Site Log lines in the owner's name (ws_api_as_owner()), bell rows, search scopes per record type, the scope ceiling, files, events, where the other rules are
 - workspace-api-forward.md: Forwarding messages over the Workspace API and MCP (POST /workspace/channels/{id}/forwards): the check shared with the panel, access, whose name it carries, why it is a tool
 - workspace-api-layout-writes.md: Workspace API layout writes the same for everybody (a channel into a group): gated like changing the channel, not ws_api_person_only(); access writes name who comes in and leaves
-- workspace-api-message-canvas.md: file.canvas of an API message (#8649): a canvas picture's newest version and pending, server or drawn, read once a page; which writes touch the message so changed_since and sync bring it
+- workspace-api-message-canvas.md: file.canvas of an API message (#8649, PR #9161): a canvas picture's newest version and pending, server or drawn, read once a page; which writes touch the message so changed_since and sync bring it
 - workspace-api-overview.md: The Workspace part of the external API as a whole: who may call which write (key, OAuth, team devices), dry runs, sync and inbox, tasks, plan, time, forwards; which workspace-api-* file holds each
 - workspace-api-plan.md: GET /workspace/plan: what a cell and a row carry (task entries with their flags, plan items, the undated count) and where they come from
 - workspace-api-sync-inbox.md: Keeping a Workspace app current through the API: GET /workspace/sync cursor marks, inbox deletions and reach changes for changed_since, hidden messages and touched_at, assistants carried on

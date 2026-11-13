@@ -21,7 +21,7 @@ description: How an agent's canvas gets its picture: the server draws it where i
 
 ## Why the `?v=` on a canvas's address?
 - The file keeps its address when drawn. A picture with a kept document is shown under `ws_canvas_picture_url()`: `?v=<version>` plus `p` while pending, `s` with the server's picture, nothing once a browser drew it.
-- The external API says the same in the message's file (`file.canvas`, #8649): `workspace-api-message-canvas.md`.
+- The external API says the same in the message's file (`file.canvas`, #8649, PR #9161): `workspace-api-message-canvas.md`.
 
 ## A mark only on an agent's version?
 - A person who opens a marked canvas in the editor saves the whole document, the mark included; that version (source `new`/`saved`) is drawn by their browser, so `ws_canvas_doc_mark()` needs source `agent`. The read (`ws_canvas_read()`) says pending only for `pending`.
