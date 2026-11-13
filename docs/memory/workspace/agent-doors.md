@@ -22,4 +22,4 @@ description: The agents' request queue: wake rules make one ws_ai_requests row p
 
 ## What did the live trial show? (dev, 2026-11-10)
 - `@mimar` (application 13, registry id 2, poll door) in channel 25, row mention, tier 1. A mention picked from the @ list (stored `<@app:13>`) and `@mimar` typed as text each made one queued row at once (`agent` `app:2`). Under the message: "Waiting for @mimar". No knock (`door_last_knock` 0). The system line `/wake` writes names `@mimar` and woke nothing.
-- The routes answered as written here with the agent's own key: `agent-key-trial.md`. Not tried: a knock against a real receiver. How an agent shows: `agent-shown.md`.
+- The routes answered as written here with the agent's own key: `agent-key-trial.md`. A real receiver was knocked on 2026-11-13: `agent-door-knock-trial.md`. How an agent shows: `agent-shown.md`.
