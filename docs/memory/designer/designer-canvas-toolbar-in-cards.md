@@ -16,6 +16,9 @@ description: The selected element's toolbar in a card (#9217, #9246): the ratio 
 - The hide rules now read `> .sd-wrap:not(.sd-selected) > .sd-tb`: the selection's toolbar shows and `_sdPlaceChromeOf()` puts it at the element. A hovered one still shows none.
 - `_sdPlaceSelectedChrome()` runs `_sdTbFlipAll()` on the selection first: a spot taken before the pass (a cover with no height yet) left the toolbar inside the picture with room below it.
 
+## Was the card editing walk approved?
+- Owner (2026-11-13): "Onaylıyorum", on the before and after pictures of the 33 picks of the blog, Google reviews and team cards (#9246); no other editing fault of the card named. Moving an element and changing the card layout were not walked by script.
+
 ## How is it checked?
 - `tests/designer_canvas_card_edit_test.php`: the selection's toolbar in a card or flex row, the spot after the pass.
 - `tests/designer_canvas_chrome_test.php`: the clip cases of `_sdTbSpot()` under Node, every writer passing the clip, the ratio rule ending in `_SD_FX_EL`.
