@@ -36,7 +36,7 @@ function image_editor_includes_run()
 		. "define('OUTPUT_PATH', '/');\n"
 		. "define('OUTPUT_SOFTWARE_DIRECTORY', 'pinegrap');\n"
 		. 'require ' . var_export(PG_FUNCTIONS_DIR . '/functions.php', true) . ";\n"
-		. "echo json_encode(array('first' => pg_image_editor_includes(), 'second' => pg_image_editor_includes(), 'config' => pg_image_editor_config()));\n");
+		. "echo json_encode(array('first' => pg_image_editor_includes(), 'second' => pg_image_editor_includes(), 'config' => pg_image_editor_config(), 'once' => strpos(pg_picker_script(), 'pg_picker_config') === false));\n");
 
 	$out = array();
 	$code = 1;
@@ -68,7 +68,11 @@ function test_image_editor_includes_print_the_loader_once()
 
 	pg_assert_contains('window.pgImageEditorConfig = ', $first, 'the config is printed');
 	pg_assert_contains('window.pgImageEditor = {', $first, 'the loader is printed');
-	pg_assert_same(1, substr_count($first, '</'), 'only the closing tag starts with </');
+	// The panel's picker comes first (pg_picker_script()), then the loader.
+	pg_assert_contains('id="pg_picker_config"', $first, 'the picker comes with it on a panel screen');
+	pg_assert_true($run['res']['once'], 'the picker is printed once');
+	$loader = (string) strstr($first, '<script>window.pgImageEditorConfig');
+	pg_assert_same(1, substr_count($loader, '</'), 'only the closing tag starts with </');
 	pg_assert_same('', $run['res']['second'], 'a second call prints nothing');
 	pg_assert_true(count($config['scripts']) > 0, 'the bundle has scripts');
 
