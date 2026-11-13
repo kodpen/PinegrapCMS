@@ -19,6 +19,7 @@
 - campaign-email-body-mail-programs.md: MA4 (2026-11-13): what an HTML e-mail body must be for Gmail, Outlook and Apple Mail: width, tables, inline styles, head style, pictures, the 102 KB clip, the parts it keeps
 - campaign-email-body-today.md: MA4 census (2026-11-13): how a campaign's HTML body and the designed e-mails (account, form, comment, receipt) are made today, what the e-mail render leaves in, and who may design one
 - campaign-email-body-way.md: MA4 proposal (2026-11-13, open on #9083): a campaign's e-mail body as an e-mail design page (600 px canvas, mail blocks), the mail pass, ready designs, pasted HTML, test send
+- canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (the grey "Image [token]" SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
 - canvas-sample-gaps-account.md: CS0 census, account (CS4): my account, login, registration, password forms, preferences, address book, security, invoices, account e-mail card: canvas faults
 - canvas-sample-gaps-catalog.md: CS0 census, catalog (CS4): catalog listing, product page and values, wishlist, order form, search, photo gallery, tag cloud, folder view: canvas faults
 - canvas-sample-gaps-checkout.md: CS0 census, orders (CS2) part two: shopping cart, express order checkout, order preview, shipping and billing steps and their lists: canvas drawing and faults
