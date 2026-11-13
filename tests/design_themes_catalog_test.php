@@ -280,3 +280,20 @@ function test_design_themes_catalog_bridge_reads_what_a_pale_colour_sets()
 	// Without a palette every fallback is Bootstrap's own white mark.
 	pg_assert_same(4, substr_count($bridge, "%23fff'"), 'four white fallbacks');
 }
+
+// Danger text and the outline danger button read 4.5:1 in dark mode (#9097):
+// Bootstrap keeps its light red there. Light mode and fills stay Bootstrap's.
+function test_design_themes_catalog_bridge_gives_dark_mode_a_readable_danger()
+{
+	$bridge = (string)@file_get_contents(pg_design_theme_dir() . '/bridge.css');
+	pg_assert_true(preg_match('/^\[data-bs-theme=dark\] \{\s*--pg-danger-fg-rgb: 234, 134, 143;\s*\}/m', $bridge) === 1, 'dark mode sets the danger text shade');
+	pg_assert_true(preg_match('/^\[data-bs-theme=light\] \{\s*--pg-danger-fg-rgb: 220, 53, 69;\s*\}/m', $bridge) === 1, 'a light section inside a dark page takes the red back');
+	pg_assert_contains('color: rgba(var(--pg-danger-fg-rgb, var(--bs-danger-rgb)), var(--bs-text-opacity)) !important;', $bridge, '.text-danger reads the shade');
+	foreach (array('--bs-btn-color', '--bs-btn-border-color', '--bs-btn-disabled-color', '--bs-btn-disabled-border-color') as $var) {
+		pg_assert_contains($var . ': rgb(var(--pg-danger-fg-rgb, var(--bs-danger-rgb)));', $bridge, 'the outline danger button takes the shade for ' . $var);
+	}
+	pg_assert_true(strpos($bridge, '--bs-danger-rgb:') === false, 'the danger fill itself is left alone');
+	$shade = array(234, 134, 143);
+	pg_assert_true(_pg_theme_contrast($shade, array(33, 37, 41)) >= 4.5, 'the shade reads 4.5:1 on the dark body');
+	pg_assert_true(_pg_theme_contrast($shade, array(43, 48, 53)) >= 4.5, 'the shade reads 4.5:1 on the dark tertiary surface');
+}

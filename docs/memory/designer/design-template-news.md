@@ -30,7 +30,7 @@ description: News Portal template (pinegrap-news): what it ships, the Articles f
 
 ## What can the platform not do yet?
 - "More in this section"; offsets; share links; a status-change e-mail; author edits after sending; an empty message for an unknown writer; feeds dated by publish_date ([[design-template-news-publishing]]).
-- Core a11y follow-ups: list-search icon buttons unnamed; `account_security` starter: outline-danger "log out everywhere" 3.4:1 in dark, h4/h6 right after the page's h2.
+- Core a11y follow-ups: list-search icon buttons unnamed; `account_security` starter: h4/h6 right after the page's h2.
 
 ## Which owner question does it inherit?
 - CKEditor's `oembed` plugin loads unpinned jQuery 1.x from ajax.googleapis.com on `/submit-an-article`, the first page with a visitor rich field ([[custom-form-rich-text]]).
