@@ -1962,6 +1962,7 @@
     "{var:1} would be over their day: {var:2}.": "{var:1} için gün aşılacak: {var:2}.",
     "{var:1} would like to share the following link with you:": "{var:1} sizinle şu bağlantıyı paylaşmak istiyor:",
     "{var:1} writes": "{var:1} kayıt yazılır",
+    "{var:1} writes in your name?": "{var:1} sizin adınıza yazsın mı?",
     "{var:1} wrote": "{var:1} yazdı",
     "{var:1} wrote a note on {var:2}": "{var:1}, {var:2} görevine not yazdı",
     "{var:1} wrote again in {var:2}": "{var:1}, {var:2} kanalında yeniden yazdı",

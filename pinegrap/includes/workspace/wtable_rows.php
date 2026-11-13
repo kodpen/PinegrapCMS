@@ -300,7 +300,8 @@ function ws_wtable_formulas_renamed($columns, $column_id, $name)
  * @param array      $record  the ws_wtable_rows row
  * @param array      $columns column id => column
  * @param array|null $bound   ws_wtable_formulas_bound()
- * @return array id, position, revision, cells, formula_errors, created_by, created_at, updated_by, updated_at
+ * @return array id, position, revision, cells, formula_errors, created_by, created_at, updated_by, updated_at,
+ *               via_message_id (the canvas it was last written through, 0 for none)
  */
 function ws_wtable_row_out($record, $columns, $bound = null)
 {
@@ -322,6 +323,7 @@ function ws_wtable_row_out($record, $columns, $bound = null)
         'created_at' => (int) $record['created_at'],
         'updated_by' => (int) $record['updated_by'],
         'updated_at' => (int) $record['updated_at'],
+        'via_message_id' => (int) ($record['via_message_id'] ?? 0),
     );
 }
 
@@ -346,6 +348,7 @@ function ws_wtable_row_present($row)
         'created_at' => ws_flow_time($row['created_at']),
         'updated_by' => (int) $row['updated_by'],
         'updated_at' => ws_flow_time($row['updated_at']),
+        'via_message_id' => (int) ($row['via_message_id'] ?? 0),
     );
 }
 
@@ -526,6 +529,58 @@ function ws_wtable_number_field($number)
 function ws_wtable_number_value($number)
 {
     return ws_wtable_numbers_ready() ? ", '" . max(0, (int) $number) . "'" : '';
+}
+
+/**
+ * Has the step that keeps the canvas a row was written through run
+ * (ws_wtable_rows.via_message_id, 11.0.193)?
+ *
+ * @return bool
+ */
+function ws_wtable_via_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = pg_schema_has('ws_wtable_rows', 'via_message_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * The canvas a write comes through (a live page's bridge), 0 for any other
+ * write. Pure.
+ *
+ * @param mixed $input via_message_id
+ * @return int
+ */
+function ws_wtable_row_via_given($input)
+{
+    $via = is_array($input) ? ($input['via_message_id'] ?? 0) : 0;
+
+    return (ws_wtable_is_whole($via) && ((int) $via > 0)) ? (int) $via : 0;
+}
+
+/**
+ * The via_message_id column of an INSERT of a row, '' before the step ran.
+ *
+ * @return string
+ */
+function ws_wtable_via_field()
+{
+    return ws_wtable_via_ready() ? ', via_message_id' : '';
+}
+
+/**
+ * Its value in that INSERT, '' before the step ran.
+ *
+ * @param int $via
+ * @return string
+ */
+function ws_wtable_via_value($via)
+{
+    return ws_wtable_via_ready() ? ", '" . max(0, (int) $via) . "'" : '';
 }
 
 /**
@@ -724,7 +779,8 @@ function ws_wtable_row_create_check($viewer, $table, $input)
  *
  * @param array      $viewer
  * @param array|null $table
- * @param mixed      $input cells
+ * @param mixed      $input cells; via_message_id, the canvas a live page
+ *                          writes through (page_bridge.php)
  * @return array ok, error, field, status, row_id, revision
  */
 function ws_wtable_row_create($viewer, $table, $input)
@@ -769,9 +825,10 @@ function ws_wtable_row_create_write($viewer, $table, $input)
     $position = (int) db_value("SELECT COALESCE(MAX(position), 0) FROM ws_wtable_rows WHERE table_id = '" . $table_id . "'") + 1;
     $number = ws_wtable_number_take($table_id);
 
-    db("INSERT INTO ws_wtable_rows (table_id, position, cells, revision, created_by, created_at, updated_by, updated_at" . ws_wtable_number_field($number) . ")
+    db("INSERT INTO ws_wtable_rows (table_id, position, cells, revision, created_by, created_at, updated_by, updated_at" . ws_wtable_number_field($number) . ws_wtable_via_field() . ")
         VALUES ('" . $table_id . "', '" . $position . "', '" . e(ws_wtable_cells_encode($cells)) . "', 1,
-            '" . (int) $viewer['id'] . "', '" . $now . "', '" . (int) $viewer['id'] . "', '" . $now . "'" . ws_wtable_number_value($number) . ")");
+            '" . (int) $viewer['id'] . "', '" . $now . "', '" . (int) $viewer['id'] . "', '" . $now . "'" . ws_wtable_number_value($number)
+            . ws_wtable_via_value(ws_wtable_row_via_given($input)) . ")");
 
     $row_id = (int) mysqli_insert_id(db::$con);
 
@@ -846,7 +903,8 @@ function ws_wtable_row_update_check($viewer, $table, $row, $input)
  * @param array      $viewer
  * @param array|null $table
  * @param array|null $row
- * @param mixed      $input cells, revision
+ * @param mixed      $input cells, revision; via_message_id, the canvas a
+ *                          live page writes through (page_bridge.php)
  * @return array ok, error, field, status, revision
  */
 function ws_wtable_row_update($viewer, $table, $row, $input)
@@ -881,8 +939,12 @@ function ws_wtable_row_update_write($viewer, $table, $row, $input)
     $columns = ws_wtable_columns($table_id);
     $cells = ws_wtable_cells_merge($columns, ws_wtable_cells_decode($row['cells']), $check['cells']);
 
+    // The canvas the change came through, 0 for any other write: the row
+    // names the last way it was written.
+    $via = ws_wtable_via_ready() ? ", via_message_id = '" . ws_wtable_row_via_given($input) . "'" : '';
+
     db("UPDATE ws_wtable_rows SET cells = '" . e(ws_wtable_cells_encode($cells)) . "', revision = revision + 1,
-            updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'
+            updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'" . $via . "
         WHERE id = '" . (int) $row['id'] . "' AND table_id = '" . $table_id . "' AND revision = '" . $revision . "'");
 
     if ((int) mysqli_affected_rows(db::$con) !== 1) {

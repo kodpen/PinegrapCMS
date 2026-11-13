@@ -654,6 +654,7 @@ function ws_api_wtable_row_schema()
         'created_at'     => 'string?',
         'updated_by'     => 'integer',
         'updated_at'     => 'string?',
+        'via_message_id' => 'integer',
     );
 }
 

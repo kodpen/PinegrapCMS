@@ -4551,6 +4551,7 @@
     "Adds a webhook to the repositories linked to a Workspace channel, so their events are written into the channel.": "Bir Çalışma Alanı kanalına bağlanan depolara webhook ekler; olayları kanala yazılır.",
     "Adds accounts, cash and bank, invoices and delivery notes to the panel. Switching it off hides the screens; nothing that was entered is deleted.": "Panele cari hesap, kasa ve banka, fatura ve irsaliye ekler. Kapatmak ekranları gizler; girilen hiçbir şey silinmez.",
     "Adds an amount or a percentage; a minus sign lowers the price.": "Tutar ya da yüzde ekler; eksi işareti fiyatı düşürür.",
+    "Adds and changes rows, cannot delete": "Satır ekler ve değiştirir, silemez",
     "Adds it and opens the service's page to sign in.": "Ekler ve giriş için hizmetin sayfasını açar.",
     "Adds it and reads its tools at once.": "Ekler ve araçlarını hemen okur.",
     "Adds max-image-preview:large to the robots meta tag of every page in the search engines, so a page can be shown with its large picture, as Google Discover does. Pages closed to search engines never get it.": "Arama motorlarındaki her sayfanın robots meta etiketine max-image-preview:large ekler; böylece sayfa, Google Discover'da olduğu gibi büyük görseliyle gösterilebilir. Arama motorlarına kapalı sayfalar bunu hiçbir zaman almaz.",

@@ -73,6 +73,7 @@
     "Name the product with product_id or with code, one of the two.": "Ürünü product_id ya da code ile belirtin, ikisinden yalnız biriyle.",
     "Name the record by its id or by one value, such as {{trigger.record_id}}.": "Kaydı numarasıyla ya da {{trigger.record_id}} gibi tek bir değerle belirtin.",
     "Name the row by its id or by one value, such as {{trigger.row_id}}.": "Satırı kimliğiyle ya da {{trigger.row_id}} gibi tek bir değerle belirtin.",
+    "Name the row by its id.": "Satırı kimliğiyle belirtin.",
     "Name the song from the first five seconds.": "Şarkıyı ilk beş saniyesinden bilin.",
     "Name the table by its id.": "Tabloyu numarasıyla belirtin.",
     "Name the treatment in your booking request and we keep the hour for you.": "Bakımı rezervasyon isteğinizde belirtin, saatini sizin için ayıralım.",
