@@ -4902,6 +4902,7 @@
     "Steps Row": "Adımlar Satırı",
     "Steps for each application": "Uygulamaya göre adımlar",
     "Steps in the order you take them, as a numbered list": "Uyguladığınız sırayla, numaralı liste hâlinde adımlar",
+    "Steps may be held at most {var:1} deep.": "Adımlar en fazla {var:1} kat iç içe olabilir.",
     "Steps of the order": "Siparişin adımları",
     "Steps: Numbered": "Adımlar: Numaralı",
     "Sticker": "Etiket",

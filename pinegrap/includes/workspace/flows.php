@@ -3940,10 +3940,19 @@ function ws_flow_js_config($viewer, $mode)
         $templates = ws_flow_templates_for($viewer, $scheduled);
     }
 
+    // What the quick setup offers the person (flow_quick.php), a role-3
+    // member's own kinds of box included: it places only what they may use.
+    $quick = null;
+
+    if ($build && is_array($scheduled ?? null) && function_exists('ws_flow_quick_for')) {
+        $quick = ws_flow_quick_for($viewer, $scheduled, array('tables' => !empty($steps['tables']), 'no_order' => !empty($steps['no_order'])));
+    }
+
     return $config + $member + array(
         'ready'    => ws_flows_ready(),
         'build'    => $build,
         'templates' => $templates,
+        'quick'    => $quick,
         'template_categories' => function_exists('ws_flow_template_categories') ? ws_flow_template_categories() : array(),
         // "Save as template" in the editor: builders, once the table of
         // saved templates is there (flow_templates_saved.php).

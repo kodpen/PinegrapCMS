@@ -115,6 +115,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_templates_saved.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_shares.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_versions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_catalogue.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_quick.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_rows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_where.php');

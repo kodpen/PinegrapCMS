@@ -22,8 +22,8 @@ description: Plan (owner 2026-11-12, #8950): a quick setup that builds a flow by
 - The names in the drawing are examples; the labels are the boxes' own.
 
 ## Which steps?
-- QS0 (S, no product code) The map: each drawn start and action against today's kinds and events; what has no box (an SMS step, "Add to a group", "Give an offer code") as proposals to the architect; the shape of the areas list, of a recipe and of the choices the dialog sends.
-- QS1 (M) Server: the catalogue (areas, starts, action groups, recipes filtered by start) and the function that turns the choices into a draft through the store; tests on the graph it makes.
+- QS0 (S, no product code) done #9082. The map: each drawn start and action against today's kinds and events; what has no box (an SMS step, "Add to a group", "Give an offer code") as proposals to the architect; the shape of the areas list, of a recipe and of the choices the dialog sends.
+- QS1 (M) done #9082. Server: the catalogue (areas, starts, action groups, recipes filtered by start) and the function that turns the choices into a draft through the store; tests on the graph it makes.
 - QS2 (M) The dialog's first stage: rail, search, start cards, "Only when".
 - QS3 (M) The second stage: recipes, actions, a step's setting, "One more step".
 - QS4 (M) The summary: order, edit, insert, a condition's indented steps, the name, start or open on the canvas.

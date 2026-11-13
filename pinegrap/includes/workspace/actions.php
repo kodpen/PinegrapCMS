@@ -856,6 +856,27 @@ function ws_handle_action($action, $request)
             return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit')),
                 'published' => $result['published'], 'publish_error' => $result['publish_error']));
 
+        // The quick setup (flow_quick.php): a new flow from the dialog's
+        // choices, a draft or, with publish, published through Publish's
+        // own checks; a refused publish keeps the draft.
+        case 'ws_flow_quick_setup':
+            $result = ws_flow_quick_setup($viewer, array(
+                'start'      => (string) ($request['start'] ?? ''),
+                'config'     => is_array($request['config'] ?? null) ? $request['config'] : array(),
+                'only_when'  => is_array($request['only_when'] ?? null) ? $request['only_when'] : array(),
+                'steps'      => is_array($request['steps'] ?? null) ? $request['steps'] : array(),
+                'name'       => (string) ($request['name'] ?? ''),
+                'channel_id' => (int) ($request['channel_id'] ?? 0),
+                'publish'    => !empty($request['publish']),
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $result['flow_id'], 'edit')),
+                'published' => $result['published'], 'publish_error' => $result['publish_error']));
+
         // "Describe it to AI" in New flow: a draft flow from one sentence.
         case 'ws_flow_ai_sketch':
             return ws_action_flow_ai_sketch($viewer, $request);
