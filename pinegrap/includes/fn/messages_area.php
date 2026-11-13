@@ -248,3 +248,214 @@ function pg_messages_tab_page($key, $user, $description, $body)
         . '</div></div></main>'
         . output_footer();
 }
+
+/**
+ * The worst of the sending domain's record states (SPF, DKIM, DMARC):
+ * error over warning over unknown over ok. No state reads as unknown.
+ *
+ * @param array $states 'ok', 'warning', 'error' or 'unknown' each
+ * @return string
+ */
+function pg_messages_health_worst($states)
+{
+    $rank = array('ok' => 0, 'unknown' => 1, 'warning' => 2, 'error' => 3);
+    $worst = '';
+
+    foreach ((array) $states as $state) {
+        $state = isset($rank[$state]) ? $state : 'unknown';
+
+        if (($worst === '') || ($rank[$state] > $rank[$worst])) {
+            $worst = $state;
+        }
+    }
+
+    return ($worst === '') ? 'unknown' : $worst;
+}
+
+/**
+ * The Channels tab's four cards from the facts read now
+ * (pg_messages_channel_facts()). Each card: key, title, icon, tone, state
+ * (on, check, off), state label, line, url. Pure, so tested without a site.
+ *
+ * Facts:
+ *   email     from, via (transport or server), domain, health (ok, warning,
+ *             error, unknown)
+ *   sms       provider (label, '' when none is complete), sender, started
+ *             (an account is switched on but incomplete)
+ *   whatsapp  ready, number, name, started
+ *   iys       ready, brand, test, started
+ *
+ * @param array $facts
+ * @param array $urls  key => settings address
+ * @return array
+ */
+function pg_messages_channel_cards($facts, $urls)
+{
+    $get = function ($channel, $key, $default = '') use ($facts) {
+        return (isset($facts[$channel]) && is_array($facts[$channel]) && isset($facts[$channel][$key])) ? $facts[$channel][$key] : $default;
+    };
+    $url = function ($key) use ($urls) {
+        return isset($urls[$key]) ? (string) $urls[$key] : '';
+    };
+    $join = function ($parts) {
+        return implode(' · ', array_values(array_filter(array_map('strval', $parts), 'strlen')));
+    };
+
+    // E-mail always sends; its state is the sending domain's health.
+    $health = (string) $get('email', 'health', 'unknown');
+    $health_states = array(
+        'ok'      => array('on', lang('Good')),
+        'warning' => array('check', lang('Check')),
+        'error'   => array('check', lang('Missing or wrong')),
+        'unknown' => array('off', lang('Could not check')),
+    );
+    $email_state = isset($health_states[$health]) ? $health_states[$health] : $health_states['unknown'];
+    $domain = (string) $get('email', 'domain');
+    $from = (string) $get('email', 'from');
+    $cards = array();
+
+    $cards[] = array(
+        'key' => 'email', 'title' => lang('E-mail'), 'icon' => 'bi-envelope', 'tone' => 'blue',
+        'state' => $email_state[0], 'state_label' => $email_state[1],
+        'line' => $join(array(
+            ($from !== '') ? lang(array('string' => 'Sender: {var:1}', 'vars' => array($from))) : lang('No sender address'),
+            (string) $get('email', 'via'),
+            ($domain !== '') ? lang(array('string' => 'Sending domain {var:1}', 'vars' => array($domain))) : '',
+        )),
+        'url' => $url('email'),
+    );
+
+    $provider = (string) $get('sms', 'provider');
+    $sender = (string) $get('sms', 'sender');
+    $cards[] = pg_messages_channel_card('sms', lang('SMS'), 'bi-chat-dots', 'amber',
+        ($provider !== ''), (bool) $get('sms', 'started', false),
+        ($provider !== '') ? $join(array($provider, ($sender !== '') ? lang(array('string' => 'Sender: {var:1}', 'vars' => array($sender))) : '')) : lang('No provider chosen'),
+        $url('sms'));
+
+    $cards[] = pg_messages_channel_card('whatsapp', lang('WhatsApp'), 'bi-whatsapp', 'teal',
+        (bool) $get('whatsapp', 'ready', false), (bool) $get('whatsapp', 'started', false),
+        $get('whatsapp', 'ready', false) ? $join(array((string) $get('whatsapp', 'number'), (string) $get('whatsapp', 'name'))) : lang('No business number connected'),
+        $url('whatsapp'));
+
+    $brand = (string) $get('iys', 'brand');
+    $cards[] = pg_messages_channel_card('iys', lang('İYS'), 'bi-shield-check', 'violet',
+        (bool) $get('iys', 'ready', false), (bool) $get('iys', 'started', false),
+        $get('iys', 'ready', false) ? $join(array(($brand !== '') ? lang(array('string' => 'Brand code {var:1}', 'vars' => array($brand))) : '', $get('iys', 'test', false) ? lang('Test environment') : '')) : lang('Consent is not kept in step with İYS'),
+        $url('iys'));
+
+    return $cards;
+}
+
+/**
+ * One switched channel's card: Connected, Incomplete (switched on, a field
+ * missing) or Off.
+ *
+ * @return array
+ */
+function pg_messages_channel_card($key, $title, $icon, $tone, $ready, $started, $line, $url)
+{
+    if ($ready) {
+        $state = array('on', lang('Connected'));
+    } elseif ($started) {
+        $state = array('check', lang('Incomplete'));
+    } else {
+        $state = array('off', lang('Off'));
+    }
+
+    return array('key' => $key, 'title' => $title, 'icon' => $icon, 'tone' => $tone, 'state' => $state[0], 'state_label' => $state[1], 'line' => $line, 'url' => $url);
+}
+
+/**
+ * The cards as markup: two to a row from md up, each a link to its
+ * settings with its state as a pill.
+ *
+ * @param array $cards pg_messages_channel_cards()
+ * @return string
+ */
+function pg_messages_channel_cards_html($cards)
+{
+    $pill_tones = array('on' => 'teal', 'check' => 'amber', 'off' => 'gray');
+    $html = '';
+
+    foreach ($cards as $card) {
+        $tone = isset($pill_tones[$card['state']]) ? $pill_tones[$card['state']] : 'gray';
+
+        $html .= '<div class="col-12 md:col-6"><div class="pg-card-inner h-100"><div class="pg-card-inner-row">'
+            . '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-' . h($card['tone']) . '" aria-hidden="true"><span class="bi ' . h($card['icon']) . '"></span></span>'
+            . '<div class="flex-grow-1 min-w-0">'
+            . '<a class="pg-list-row-title" href="' . h($card['url']) . '">' . h($card['title']) . '</a>'
+            . '<div class="pg-text-meta text-break">' . h($card['line']) . '</div>'
+            . '</div>'
+            . '<span class="pg-pill pg-tone-' . $tone . '">' . h($card['state_label']) . '</span>'
+            . '</div></div></div>';
+    }
+
+    return '<section class="pg-card mb-12"><h2 class="pg-title-section">' . h(lang('Channels')) . '</h2><div class="row g-7">' . $html . '</div></section>';
+}
+
+/**
+ * What the Channels tab shows, read now. The sending domain's records are
+ * looked up in DNS as SMTP Settings does on each visit.
+ *
+ * @return array pg_messages_channel_cards()'s facts
+ */
+function pg_messages_channel_facts()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_domain_health.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
+
+    $health = pg_mail_domain_health();
+    $transports = pg_mail_transports();
+    $transport = pg_mail_transport();
+
+    if (isset($transports[$transport])) {
+        $via = $transports[$transport]['label'];
+    } elseif (defined('SYSTEM_SMTP_HOSTNAME') && (string) SYSTEM_SMTP_HOSTNAME !== '') {
+        $via = (string) SYSTEM_SMTP_HOSTNAME;
+    } else {
+        $via = lang('the server\'s own mail');
+    }
+
+    $facts = array(
+        'email' => array(
+            'from'   => defined('EMAIL_ADDRESS') ? (string) EMAIL_ADDRESS : '',
+            'via'    => $via,
+            'domain' => (string) $health['domain'],
+            'health' => pg_messages_health_worst(array($health['spf']['state'], $health['dkim']['state'], $health['dmarc']['state'])),
+        ),
+    );
+
+    $provider = pg_sms_provider();
+    $providers = pg_sms_providers();
+    $started = false;
+
+    foreach (array_keys($providers) as $key) {
+        $app = pg_sms_app($key);
+        $started = $started || $app['enabled'];
+    }
+
+    $facts['sms'] = array(
+        'provider' => ($provider !== '') ? $providers[$provider]['label'] : '',
+        'sender'   => ($provider !== '') ? pg_sms_app($provider)['sender'] : '',
+        'started'  => $started,
+    );
+
+    $whatsapp = pg_whatsapp_app();
+    $facts['whatsapp'] = array(
+        'ready'   => pg_whatsapp_ready(),
+        'number'  => $whatsapp['display_phone_number'],
+        'name'    => $whatsapp['verified_name'],
+        'started' => $whatsapp['enabled'],
+    );
+
+    $iys = pg_iys_app();
+    $facts['iys'] = array(
+        'ready'   => pg_iys_app_complete($iys),
+        'brand'   => is_array($iys) ? $iys['brand_code'] : '',
+        'test'    => is_array($iys) && ($iys['env'] === 'test'),
+        'started' => is_array($iys) && $iys['enabled'],
+    );
+
+    return $facts;
+}
