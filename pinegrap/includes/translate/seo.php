@@ -2,10 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Front-end translation - what search engines and the site search see of the
- * other languages: the language addresses in sitemap.xml with their
+ * Front-end translation - what search engines see of the other languages:
+ * the language addresses in sitemap.xml with their
  * alternates, which of them may be offered at all (and what the pages
- * answered when they were drawn), the robots.txt rules repeated under every
+ * answered when they were drawn) and the robots.txt rules repeated under every
  * language directory.
  *
  * @author      Erdal Güral (Kodpen)
