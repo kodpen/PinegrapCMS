@@ -1,6 +1,6 @@
 ---
 name: canvas-sample-other
-description: What the designer canvas draws in comments, calendar, Google reviews, booking, accessibility statement, ads, menus and the language switcher, and a loop row's place (CS4c)
+description: What the designer canvas draws in comments, calendar, Google reviews, booking, accessibility statement, ads, menus and the language switcher, and a loop row's place (CS4c, #9299)
 ---
 
 ## Where do these kinds' samples come from?

@@ -16,7 +16,7 @@ description: Start file for the canvas-sample-* files: how the designer canvas d
 - Forms, form list and item views, form e-mails: `canvas-sample-form-record.md` (#9239).
 - Catalog, product, wishlist, order form, search, tag cloud: `canvas-sample-product.md` (#9253).
 - Account and members: `canvas-sample-account.md` (CS4b, #9280).
-- Comments, calendar, reviews, booking, accessibility, ads, menus, language, loop row places: `canvas-sample-other.md` (CS4c).
+- Comments, calendar, reviews, booking, accessibility, ads, menus, language, loop row places: `canvas-sample-other.md` (CS4c, #9299).
 
 ## What is still open?
 - The census per family, cut to what is left: `canvas-sample-gaps.md` (shared causes), `-orders.md`, `-checkout.md`, `-forms.md`, `-catalog.md`, `-account.md`, `-other.md`; deleted at the plan's close-out.
