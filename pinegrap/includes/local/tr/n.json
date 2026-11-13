@@ -2733,6 +2733,7 @@
     "Not used on any page": "Hiçbir sayfada kullanılmıyor",
     "Not used yet": "Henüz kullanılmadı",
     "Not verified": "Doğrulanmamış",
+    "Not woken by this message: {var:1}": "Bu mesajın uyandırmadıkları: {var:1}",
     "Not written": "Yazılmaz",
     "Not written yet.": "Henüz yazılmadı.",
     "Not written: \"{var}\" is not a colour.": "Yazılmadı: \"{var}\" bir renk değil.",
