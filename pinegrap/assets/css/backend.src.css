@@ -26816,6 +26816,11 @@ body.pg-measure-edit .row > .order-2 .card-header.pg-title-section {
     margin: 0;
     padding-block: 11px;
   }
+  /* The chat launcher floats over the window's bottom right corner, where
+     the bar puts its buttons: they end before it. */
+  body.pg-measure-edit:has(#pg-chat-root) .row > .order-3 > nav.buttons.navigation > .container {
+    margin-inline-end: var(--pg-chat-clearance);
+  }
   body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn {
     --bs-btn-min-height: 34px;
     --bs-btn-padding-y: 0;
@@ -26897,6 +26902,10 @@ body.pg-measure-edit .row > .order-2 .card-header.pg-title-section {
     max-width: none;
     margin: 0;
     padding-block: 11px;
+  }
+  /* Its buttons end before the chat launcher, as on an edit screen. */
+  body:has(#pg-chat-root) #pg_settings_page_form > nav.buttons.navigation > .container {
+    margin-inline-end: var(--pg-chat-clearance);
   }
 }
 }

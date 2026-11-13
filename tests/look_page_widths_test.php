@@ -96,5 +96,6 @@ function test_settings_tool_and_import_pages_take_the_edit_measure()
 	foreach ($two as $screen) {
 		pg_assert_true(strpos(look_page_widths_test_source($screen . '.php'), 'pg-measure-single') === false, $screen . ' keeps its status column');
 	}
+	pg_assert_contains("body.pg-measure-edit:has(#pg-chat-root) .row > .order-3 > nav.buttons.navigation > .container {\n    margin-inline-end: var(--pg-chat-clearance);", look_page_widths_test_source('assets/css/backend.src.css'), 'the save bar buttons end before the chat launcher');
 	pg_assert_contains("body.pg-measure-edit.pg-measure-single #content {\n  max-width: calc(var(--pg-measure-form) + 2rem);", look_page_widths_test_block(), 'a one-column page is the form column wide');
 }
