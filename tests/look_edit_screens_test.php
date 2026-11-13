@@ -70,8 +70,8 @@ function test_edit_screen_block_sizes_columns_cards_and_save_bar()
 	$block = ($start === false) ? '' : substr($css, $start);
 
 	pg_assert_true($block !== '', 'the block is found');
-	pg_assert_contains("body.pg-measure-edit .row > .order-1.lg\\:col-8 {\n    flex: 760 1 0%;", $block, 'the form column takes 760 parts');
-	pg_assert_contains("body.pg-measure-edit .row > .order-2.lg\\:col-4 {\n    flex: 336 1 0%;", $block, 'the status column takes 336 parts');
+	pg_assert_contains("body.pg-measure-edit .row > .order-1.lg\\:col-8 {\n    flex: 1 1 0%;", $block, 'the form column takes the rest');
+	pg_assert_contains("body.pg-measure-edit .row > .order-2.lg\\:col-4 {\n    flex: 0 0 calc(var(--pg-measure-status) + var(--pg-measure-gap));", $block, 'the status column keeps its measure');
 	pg_assert_contains('font-size: var(--pg-text-status-title);', $block, 'a status card title is the status title');
 	pg_assert_contains('min-height: 56px;', $block, 'the save bar is 56 px');
 	pg_assert_contains("body.pg-measure-edit .row > .order-1 > .card,\nbody.pg-measure-edit .row > .order-2 > .position-sticky > .card,\n#pg_settings_sections > .pg-set-card > .card {\n  background: linear-gradient", $css, 'the cards are the look card');
