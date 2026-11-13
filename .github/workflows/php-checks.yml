@@ -63,6 +63,10 @@ jobs:
         if: ${{ hashFiles('tools/check_bindings.php') != '' }}
         run: php tools/check_bindings.php
 
+      - name: Designer canvas samples (every palette token has a canvas sample)
+        if: ${{ hashFiles('tools/check_canvas_samples.php') != '' }}
+        run: php tools/check_canvas_samples.php
+
       - name: External API schema (endpoint fields against the schema)
         if: ${{ hashFiles('tools/check_api_schema.php') != '' }}
         run: php tools/check_api_schema.php

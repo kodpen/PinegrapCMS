@@ -17,7 +17,7 @@ description: Decisions list, product part 48 (2026-11-12 on): Legacy to Bootstra
 - It replaces the opening on a folder of the screens approved on 2026-11-10 (`decisions-made-product-42.md`, #8514); the rest of those screens stays.
 
 ## What does the designer canvas draw for a bound value, and what of closed blocks? (owner, 2026-11-13, #9076)
-- A realistic sample for every bound value, never its label in ‹…› or an empty box, so the canvas looks like the published page; and the components still drawn as one closed block are listed and opened into editable elements. Plans `plans/designer-canvas-real-samples.md`, `plans/designer-closed-blocks.md`.
+- A realistic sample for every bound value, never its label in ‹…› or an empty box, so the canvas looks like the published page; and the components still drawn as one closed block are listed and opened into editable elements. Done by `designer/canvas-sample-overview.md` (#9179-#9299) and planned in `plans/designer-closed-blocks.md`.
 - Owner (2026-11-13), with a picture of an order e-mail card: "şu anda birçok bileşen yer tutucudan ibaret. bunu bir an önce değiştirmeliyiz. kullanıcılar gerçek sayfa bileşenleri tasarlamayı bekliyor olacak."; asked which of the two, he chose "İkisi de".
 
 ## Do loop bands and condition chips stay on the canvas? (owner, 2026-11-13, #9076)
