@@ -122,6 +122,7 @@ description: Generated from the module field of the memory files: each includes/
 - `layout_convert`: [[layout-form-converter]]
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
 - `legacy_bootstrap`: [[legacy-bootstrap-map]], [[legacy-layouts-converter]], [[legacy-layouts-left]], [[legacy-layouts-output-pass]], [[legacy-layouts-shapes]]
+- `legacy_bootstrap_move`: [[legacy-bootstrap-move]]
 - `legacy_bootstrap_report`: [[legacy-bootstrap-card]]
 - `legacy_bootstrap_trial`: [[legacy-bootstrap-trial-design]]
 - `legacy_design_theme`: [[legacy-design-theme]]

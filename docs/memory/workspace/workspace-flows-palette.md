@@ -22,7 +22,7 @@ description: The flow window's left panel "Add a box" (flow-window FW2, #9178): 
 ## How does it fold to a rail?
 - 1280 px and up: the fold button folds the panel to a 48 px rail ("+" and the numbers 1, 2, 3); the choice is kept in this browser (`localStorage` `pg_wsf_palette`).
 - 768-1279 px: the rail at rest; "+" or a number opens the 264 px panel over the canvas's left edge (`wsf-palette-over`); Esc (focus back on "+"), a box added or a click on the canvas folds it (`foldPalette()`).
-- Under 768 px the panel is hidden, as before: the List view's add buttons add boxes. The phone's "Add a box" sheet (`plans/flow-window-paths.md`) is not built yet.
+- Under 768 px the panel is hidden; one "Add a box" button opens it as a full-height page (`workspace-flows-empty-panel.md`).
 
 ## Tests
 - `test_workspace_flows_canvas_palette_groups` (Node): group and section order, Records and tables, folding, search, Turkish fold, hints, start rows, `startFilled()`, `startTaken()`.
