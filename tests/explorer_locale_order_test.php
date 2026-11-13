@@ -4,8 +4,9 @@
  *
  * The File and Catalog Manager list rows in the panel language's order and
  * find words written with İ, I, ı or i alike (view_folders.php): one fold
- * helper for the search, type-ahead, picker filters and bulk-rename find,
- * one Intl.Collator for the text sort keys, and the Shared view's folder
+ * helper for the bulk-rename find, the same plus accents dropped for the
+ * search, type-ahead and picker filters (ü finds u, #9021), one
+ * Intl.Collator for the text sort keys, and the Shared view's folder
  * groups ordered by pg_geo_label_compare(). The browser script is pinned
  * by its source; the PHP compare is run.
  *
@@ -52,17 +53,83 @@ function test_explorer_fold_makes_dotted_and_dotless_i_equal()
 	pg_assert_true(strpos($fold, 'normalize(') === false, 'no normalisation that changes the length');
 }
 
-// Every matcher reads the fold; none lowers on its own any more.
+// Every matcher reads a fold; none lowers on its own any more. The searches
+// read searchFold() (accents dropped too); the bulk-rename find keeps
+// foldText() alone, so an "s" does not replace a "ş".
 function test_explorer_matchers_use_the_fold()
 {
-	foreach (array('visibleItems', 'typeAheadJump', 'renderTransferTargets', 'renderWsSendChannels', 'bulkRenameReplace') as $name) {
+	$folds = array(
+		'visibleItems' => 'searchFold(',
+		'typeAheadJump' => 'searchFold(',
+		'renderTransferTargets' => 'searchFold(',
+		'renderWsSendChannels' => 'searchFold(',
+		'bulkRenameReplace' => 'foldText(',
+	);
+
+	foreach ($folds as $name => $fold) {
 		$body = explorer_locale_order_function($name);
 
 		pg_assert_true($body !== '', $name . '() is found');
-		pg_assert_contains('foldText(', $body, $name . '() folds through foldText()');
+		pg_assert_contains($fold, $body, $name . '() folds through ' . $fold . ')');
 		pg_assert_true(strpos($body, '.toLowerCase()') === false, $name . '() does not use toLowerCase()');
 		pg_assert_true(strpos($body, "toLocaleLowerCase('tr')") === false, $name . '() does not use the bare Turkish fold');
 	}
+
+	pg_assert_false(strpos(explorer_locale_order_function('bulkRenameReplace'), 'searchFold(') !== false, 'the rename find does not drop accents');
+}
+
+// A search typed with ü, ç, ş, ğ or ö finds the ASCII name the file was
+// stored under (#9021), and no character grows or shrinks. Run in Node;
+// skipped where Node cannot run.
+function test_explorer_search_fold_drops_accents()
+{
+	$fold = explorer_locale_order_function('foldText');
+	$search = explorer_locale_order_function('searchFold');
+
+	pg_assert_true($search !== '', 'searchFold() is found');
+	pg_assert_contains('return foldText(text).replace(', $search, 'searchFold() starts from foldText()');
+
+	if (!function_exists('exec')) {
+		return;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	// The two functions and the lines between them (the letter table).
+	$source = explorer_locale_order_source();
+	$start = strpos($source, "\n    function foldText(");
+	$end = strpos($source, "\n    function ", strpos($source, "\n    function searchFold(") + 1);
+	$script = substr($source, $start, $end - $start) . "\n"
+		. 'var words = ["Türkçe", "İĞÜŞÖÇ", "ığüş", "Straße", "Ørsted", "Łódź", "Crème brûlée", "Việt", "naïve", "×÷"];'
+		. 'process.stdout.write(JSON.stringify(words.map(function (w) { return [searchFold(w), searchFold(w).length === w.length, foldText(w)]; })));';
+
+	$file = tempnam(sys_get_temp_dir(), 'pgfold') . '.js';
+	file_put_contents($file, $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	pg_assert_same(0, $code, 'node ran: ' . implode("\n", $out));
+
+	$result = json_decode(implode("\n", $out), true);
+
+	pg_assert_same(array('turkce', true, 'türkçe'), $result[0], 'Türkçe');
+	pg_assert_same(array('igusoc', true, 'iğüşöç'), $result[1], 'Turkish capitals');
+	pg_assert_same(array('igus', true, 'iğüş'), $result[2], 'dotless i and accents');
+	pg_assert_same(array('straße', true, 'straße'), $result[3], 'ß stays one letter');
+	pg_assert_same('orsted', $result[4][0], 'ø');
+	pg_assert_same('lodz', $result[5][0], 'ł and the accents');
+	pg_assert_same('creme brulee', $result[6][0], 'French');
+	pg_assert_same(array('viet', true), array($result[7][0], $result[7][1]), 'Latin Extended Additional');
+	pg_assert_same('naive', $result[8][0], 'diaeresis');
+	pg_assert_same('×÷', $result[9][0], 'signs are not letters');
+	pg_assert_true(strpos($fold, 'normalize(') === false, 'foldText() itself is unchanged');
 }
 
 // Text keys are compared with the panel language's collator, numbers as

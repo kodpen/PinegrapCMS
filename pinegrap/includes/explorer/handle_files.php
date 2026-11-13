@@ -69,6 +69,13 @@ function pg_explorer_handle_paste($type, $request, $user)
                     break;
                 }
 
+                // A copy of a binned file would carry its parked
+                // "pgbin_<id>_" name onto the site.
+                if (pg_recycle_is_inside((int) $file['folder'])) {
+                    $errors[] = pg_recycle_binned_message($file['name'], $file['id']);
+                    break;
+                }
+
                 // A copy of the signing key would carry another name,
                 // and get_file.php serves it under that name; a copy of a
                 // team chat attachment is no attachment any more, so only
@@ -182,6 +189,11 @@ function pg_explorer_handle_paste($type, $request, $user)
 
                 if (!$page) {
                     $errors[] = lang('Sorry, the page could not be found.');
+                    break;
+                }
+
+                if (pg_recycle_is_inside((int) $page['folder'])) {
+                    $errors[] = pg_recycle_binned_message($page['name'], $page['id']);
                     break;
                 }
 

@@ -11,6 +11,9 @@ description: API and MCP answers as JSON (pg_json_encode_answer()): broken UTF-8
 - On `null`, `api_send()` writes a warning line to `data/temp/php_errors.log` (method, path, `json_last_error_msg()`) and answers 500 `server_error` with the usual body and request id, without an ETag. The idempotency reservation is then given back (an error is never recorded).
 - `api_idempotency_store()` writes the record with the same encoder, so a stored answer is never an empty string the replay cannot read.
 
+## Who else writes with it?
+- The panel's `respond()` (`api.php`) falls back to it when `encode_json()` fails (`pg_panel_answer_json()`, `ui/explorer-file-window-encoding.md`).
+
 ## How does PHP 7.1 get U+FFFD?
 - 7.2+ uses `JSON_INVALID_UTF8_SUBSTITUTE`. 7.1 lacks it: on a `JSON_ERROR_UTF8` failure, `pg_json_utf8_substitute()` replaces the broken bytes of every string, array key and object property (`htmlspecialchars()` with `ENT_SUBSTITUTE` and back, the same sequences), then the value is encoded again with the same flags.
 - Never `JSON_PARTIAL_OUTPUT_ON_ERROR` for an answer, as was done before: on 7.1 it wrote a broken key as a bare `null` (`{null:"v"}`, not JSON, sent as a 200), and it hid every other error of the value: INF and NAN came out as 0, a resource as null, any depth written in full, so a body with a broken byte and an INF was a successful answer instead of the 500/-32603.

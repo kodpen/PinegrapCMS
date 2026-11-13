@@ -258,6 +258,12 @@ function pg_explorer_handle_rename($type, $request, $user)
                 respond(array('status' => 'error', 'message' => lang('Access denied')));
             }
 
+            // Nothing in the bin is renamed: a binned row is parked under a
+            // name nobody types, and the bin's menu offers no Rename.
+            if (pg_recycle_is_inside($item_id)) {
+                respond(array('status' => 'error', 'message' => pg_recycle_binned_message($folder['folder_name'], $item_id)));
+            }
+
             db(
                 "UPDATE folder SET
                     folder_name = '" . e($name) . "',
@@ -281,6 +287,10 @@ function pg_explorer_handle_rename($type, $request, $user)
             if (check_edit_access($page['page_folder']) == false) {
                 log_activity(lang('access denied because user does not have access to modify folder'), $_SESSION['sessionusername']);
                 respond(array('status' => 'error', 'message' => lang('Access denied')));
+            }
+
+            if (pg_recycle_is_inside((int) $page['page_folder'])) {
+                respond(array('status' => 'error', 'message' => pg_recycle_binned_message($page['page_name'], $item_id)));
             }
 
             if ($name != $page['page_name']) {
@@ -331,6 +341,10 @@ function pg_explorer_handle_rename($type, $request, $user)
             ) {
                 log_activity(lang('access denied to modify files because user does not have access to file'), $_SESSION['sessionusername']);
                 respond(array('status' => 'error', 'message' => lang('Access denied')));
+            }
+
+            if (pg_recycle_is_inside((int) $file['folder'])) {
+                respond(array('status' => 'error', 'message' => pg_recycle_binned_message($file['name'], $item_id)));
             }
 
             // Renaming "photo.jpg" to "photo.php" is uploading a
@@ -418,6 +432,8 @@ function pg_explorer_handle_move($type, $request, $user)
 
     $moved = 0;
     $errors = array();
+    // What really moved, kind and id: only these may leave the bin.
+    $moved_items = array();
 
     foreach ($items as $item) {
 
@@ -459,6 +475,7 @@ function pg_explorer_handle_move($type, $request, $user)
                     pg_audit_record('update', 'files', $item_id, $audit_before);
 
                     $moved++;
+                    $moved_items[] = array('file', $item_id);
                 }
                 break;
 
@@ -489,6 +506,7 @@ function pg_explorer_handle_move($type, $request, $user)
                     pg_audit_record('update', 'page', $item_id, $audit_before);
 
                     $moved++;
+                    $moved_items[] = array('page', $item_id);
                 }
                 break;
 
@@ -534,8 +552,33 @@ function pg_explorer_handle_move($type, $request, $user)
                     pg_explorer_change_level($item_id, $target_level + 1);
 
                     $moved++;
+                    $moved_items[] = array('folder', $item_id);
                 }
                 break;
+        }
+    }
+
+    // Moved out of the bin (dragged onto a folder) is restored: the row
+    // gets its own name back, or the next free "[1]" form of it, as
+    // Restore gives it, then its bin record goes. Dropping the record
+    // alone would leave a file live under its parked "pgbin_<id>_" name.
+    $notes = array();
+
+    if (pg_recycle_ready()) {
+        foreach ($moved_items as $moved_item) {
+            list($item_kind, $item_id) = $moved_item;
+
+            if (db_value("SELECT id FROM recycle_bin WHERE (item_type = '" . e($item_kind) . "') AND (item_id = '" . e($item_id) . "')") === null) {
+                continue;
+            }
+
+            $released = pg_recycle_release_name($item_kind, $item_id, $user);
+
+            if (isset($released['from'], $released['to'])) {
+                $notes = array_merge($notes, pg_explorer_restore_notes($released['from'], '', $released['to']));
+            }
+
+            db("DELETE FROM recycle_bin WHERE (item_type = '" . e($item_kind) . "') AND (item_id = '" . e($item_id) . "')");
         }
     }
 
@@ -544,18 +587,16 @@ function pg_explorer_handle_move($type, $request, $user)
         log_activity(($moved == 1)
             ? lang(array('string' => '{var:1} item was moved to the folder {var:2}', 'vars' => array($moved, $target_name)))
             : lang(array('string' => '{var:1} items were moved to the folder {var:2}', 'vars' => array($moved, $target_name))), $_SESSION['sessionusername']);
+    }
 
-        // An item dragged out of the bin is restored: forget it.
-        if (pg_recycle_ready()) {
-            foreach ($items as $item) {
-                $item_kind = isset($item['kind']) ? $item['kind'] : '';
-                $item_id = (int) (isset($item['id']) ? $item['id'] : 0);
+    $message = (count($errors) > 0)
+        ? implode(' ', $errors)
+        : (($moved == 1)
+            ? lang(array('string' => '{var:1} item was moved.', 'vars' => $moved))
+            : lang(array('string' => '{var:1} items were moved.', 'vars' => $moved)));
 
-                if (($item_id > 0) && in_array($item_kind, array('folder', 'page', 'file'), true)) {
-                    db("DELETE FROM recycle_bin WHERE (item_type = '" . e($item_kind) . "') AND (item_id = '" . e($item_id) . "')");
-                }
-            }
-        }
+    if (count($notes) > 0) {
+        $message = rtrim($message, '.') . '. ' . implode(' ', $notes);
     }
 
     respond(array(
@@ -563,9 +604,5 @@ function pg_explorer_handle_move($type, $request, $user)
         'request' => $type,
         'moved' => $moved,
         'errors' => $errors,
-        'message' => (count($errors) > 0)
-            ? implode(' ', $errors)
-            : (($moved == 1)
-                ? lang(array('string' => '{var:1} item was moved.', 'vars' => $moved))
-                : lang(array('string' => '{var:1} items were moved.', 'vars' => $moved)))));
+        'message' => $message));
 }
