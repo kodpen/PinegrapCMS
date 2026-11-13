@@ -21,7 +21,7 @@ module: report_view
 - Shipping and ERP tax print no `h2`: the top bar names them already. They drop `pg_dash.min.js` and the dashboard sheet (no map); order and visitor keep both for the map.
 - Figures: up to five share a row, more go in two even rows of at most four; a phone draws two a row.
 - A level with no chart prints one line saying so (`p.pg-report-nochart`), never an empty plot.
-- Bootstrap's `.switch` (a settings card's, the drawer's): `--bs-switch-border-width: 0px`, since a bare 0 made the knob's size invalid and it vanished; the knob is white, where Bootstrap painted it dark when on.
+- The drawer's Bootstrap `.switch` is the look's switch (`look-switch.md`).
 
 ## What is not done?
 - Each is a behaviour, not only a look: compare with the previous period (dashed line, change marks), a segmented control choosing the figure, period presets on the order report, filters as pills with "Add filter" in the tools row, Export in the head.
