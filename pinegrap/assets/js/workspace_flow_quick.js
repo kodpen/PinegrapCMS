@@ -195,7 +195,7 @@
         var foot = el('div', 'dialog-footer wsf-quick-foot');
         var hint = el('span', 'pg-text-meta wsf-quick-hint');
         var back = K.button('pg-button pg-button-ghost', t('fl_quick_back'), 'bi-arrow-left');
-        var cancel = K.button('pg-button pg-button-ghost', t('fl_quick_cancel'));
+        var cancel = K.button('pg-button pg-button-quiet', t('fl_quick_cancel'));
         var next = K.button('pg-button pg-button-fill', t('fl_quick_next'));
 
         modal.id = 'wsf-quick';

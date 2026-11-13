@@ -22012,6 +22012,11 @@ html.ws-flow-layer-on body {
 .wsf-quick-area.is-quiet {
   opacity: .6;
 }
+.wsf-quick-area.is-quiet.is-active {
+  background: none;
+  box-shadow: none;
+  font-weight: inherit;
+}
 .wsf-quick-area-name {
   overflow: hidden;
   text-overflow: ellipsis;
