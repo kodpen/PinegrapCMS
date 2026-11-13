@@ -83,3 +83,25 @@ function test_ws_item_tags_are_wired()
 	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$result['message_id'], \$rest);", $read('includes/workspace/commands.php'), '/note and /decision');
 	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$row['text']);", $read('includes/workspace/meetings.php'), 'a meeting\'s decisions');
 }
+
+// The other messages written for a person or an application (TW2): their
+// tags ask once the message and its card are written.
+function test_ws_item_tags_other_messages_wired()
+{
+	$read = function ($path) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/' . $path);
+	};
+
+	pg_assert_contains("ws_message_ask_noted(\$viewer, \$target, \$sent['message_id'], (string) \$comment, ws_message_by_app(\$options['app_id'] ?? 0, \$options['via_client_id'] ?? 0));", $read('forward.php'), 'a forward\'s comment');
+	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$body, ws_message_by_app(\$app_id));\n\n    return array('ok' => true, 'error' => '', 'field' => '', 'message_id' => (int) \$sent['message_id'], 'approval_id' => \$approval_id);", $read('approvals.php'), 'an approval request, after its row');
+
+	$status = $read('status.php');
+	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$body);", $status, 'a status update');
+	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$question, ws_message_by_app(\$app_id));", $status, 'a check-in question');
+
+	$templates = $read('templates.php');
+	pg_assert_contains("(string) \$template['welcome'], ws_message_by_app(\$app_id));", $templates, 'a template\'s welcome');
+	pg_assert_contains("(string) \$template['pinned'], ws_message_by_app(\$app_id));", $templates, 'a template\'s pinned text');
+
+	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$body);", $read('scheduled.php'), 'a flow\'s Post a message');
+}
