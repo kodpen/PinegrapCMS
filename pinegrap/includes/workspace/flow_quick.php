@@ -105,7 +105,7 @@ function ws_flow_quick_groups()
     return array(
         'message' => array('label' => lang('Message'), 'kinds' => array('email', 'sms', 'notify', 'post', 'report')),
         'people'  => array('label' => lang('People'), 'kinds' => array('task_open', 'task', 'approval', 'lead', 'checkin', 'task_digest')),
-        'records' => array('label' => lang('Records'), 'kinds' => array('change', 'record_get', 'row_add', 'row_set', 'row_get', 'rows_get')),
+        'records' => array('label' => lang('Records'), 'kinds' => array('change', 'contact_group', 'record_get', 'row_add', 'row_set', 'row_get', 'rows_get')),
         'logic'   => array('label' => lang('Logic'), 'kinds' => array('delay', 'condition', 'for_each')),
         'system'  => array('label' => lang('System'), 'kinds' => array('ai', 'agent', 'webhook', 'web_check', 'start_flow', 'mcp')),
     );

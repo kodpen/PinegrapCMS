@@ -164,6 +164,7 @@ function test_workspace_flow_outputs_answered()
 		'row_get'     => array('ws_step_row_get_data'),
 		'rows_get'    => array('ws_step_rows_get_data'),
 		'record_get'  => array('ws_step_record_get_data'),
+		'contact_group' => array('ws_step_contact_group_do'),
 		'ai'          => array('ws_step_ai_parse'),
 		'sms'         => array('ws_step_sms_do'),
 		'agent'       => array('ws_step_agent_settlement'),

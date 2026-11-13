@@ -14,7 +14,7 @@ description: Flows quick setup drawing against today's boxes and events: drawn s
 ## Which drawn steps are there? (drawn label: kind)
 - Message: E-posta gönder `email`, Ekibe bildir `notify`, Kanala yaz `post`; also `report`. WhatsApp mesajı gönder: none until WA7 (`plans/whatsapp-channel-steps.md`), then its kind joins the message group. SMS gönder: `sms` (QS6, offered while SMS is set up).
 - People: Görev aç `task_open` (also `task`, which waits), Onay iste `approval`, Müşteriyi kanala al `lead`; also `checkin`, `task_digest`.
-- Records: Sipariş durumunu değiştir: `change` with id `{{trigger.record_id}}` (the start's `read` id), the order of the run (QS1b); Kişiyi gruba ekle: none; Tabloya satır ekle `row_add`; Teklif kodu ver: none; also `record_get`, `row_set`, `row_get`, `rows_get`.
+- Records: Sipariş durumunu değiştir: `change` with id `{{trigger.record_id}}` (the start's `read` id), the order of the run (QS1b); Kişiyi gruba ekle `contact_group` (QS7, `workspace-flows-contact-group-box.md`); Tabloya satır ekle `row_add`; Teklif kodu ver: none; also `record_get`, `row_set`, `row_get`, `rows_get`.
 - Logic: Bekle `delay`, Yalnızca şu durumda `condition`, Her biri için `for_each` (its End box placed by the setup).
 - System: Pinegrap AI'ya sor `ai`, Webhook çağır `webhook`, Başka bir akış başlat `start_flow`; also `agent`, `web_check`, `mcp`.
 
@@ -25,7 +25,6 @@ description: Flows quick setup drawing against today's boxes and events: drawn s
 - Added beside them: `form_reply`, `booking_tell`, `welcome_contact`, `restock`, `win_back`.
 
 ## Which general boxes are proposed for what has none?
-- Each by `workspace-flows-adding.md`, never for the quick setup alone; the drawn step stays hidden until its box lands. Decided (architect, 2026-11-13, `plans/flows-quick-setup-steps-2.md`): the change box's value id is done (QS1b), the SMS box done (QS6, `workspace-flows-sms-box.md`), the contact group box QS7; the offer code waits for a question to the owner.
+- Each by `workspace-flows-adding.md`, never for the quick setup alone; the drawn step stays hidden until its box lands. Decided (architect, 2026-11-13, `plans/flows-quick-setup-steps-2.md`): the change box's value id is done (QS1b), the SMS box done (QS6, `workspace-flows-sms-box.md`), the contact group box done (QS7, #9291); the offer code waits for a question to the owner.
 - Send an SMS (new step kind): to the record's person's mobile (as the e-mail box's `record_person`) or a typed number, text with values, info or marketing with the same consent rule; sent through `pg_sms_send()` (`includes/fn/sms.php`); outputs `sent`.
-- Add to or take out of a contact group (new step kind): the contact of the run or of a value, the group chosen; no change kind writes groups today.
 - Give an offer code (new step kind): a single-use code of an existing offer for the run's person, the code an output for the next e-mail; offers can only be changed today.
