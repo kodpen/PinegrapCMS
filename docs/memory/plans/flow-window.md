@@ -17,7 +17,7 @@ description: Plan (owner 2026-11-12, #8950): the flow window rearranged: the lef
 ## What stays?
 - Every function of today's window (`workspace/workspace-flows-canvas.md`): autosave and its states, the 409 rule, keys and focus order, the outline as a full view, data threads, the run view, read-only embedding (`workspace/workspace-flow-embed.md`). A control is moved, never dropped: FW0 lists each one with its new place.
 - The boxes' size, grid and look (`workspace/workspace-flows-box-look.md`, `workspace/workspace-flows-visual-spec.md`); the drawing's boxes are not a new size. Colours and parts come from look A (`panel-design-language-look.md`) where the Workspace already uses it.
-- No schema, no change to the store or the runner. The name and the way in follow `automation-flows-menu.md`; the view inside a channel (`workspace/workspace-flow-draft-card-window.md`) stays and takes the same look.
+- No schema, no change to the store or the runner. The name and the way in follow `workspace/automation-flows-decisions.md`; the view inside a channel (`workspace/workspace-flow-draft-card-window.md`) stays and takes the same look.
 
 ## Which steps?
 - FW0 (S, no product code) The map of today's controls and the keyboard and narrow/phone paths. Done #9102: `flow-window-map.md`, `flow-window-map-2.md`, `flow-window-paths.md`, `flow-window/flow-window-narrow.html`. Its open proposals were ruled on by the architect (2026-11-13): built in FW2-FW4.

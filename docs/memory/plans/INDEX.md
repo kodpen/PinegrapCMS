@@ -8,9 +8,6 @@
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - agent-knock-routine-form.md: Plan (architect 2026-11-13, #9241): a push door on a routine's fire address is knocked in the routine's form (it answered HTTP 400 to the webhook form); one step, RK1, then a live check
-- automation-flows-menu-census.md: Census of the automation-flows-menu plan (AF0): where flows asked the Workspace switch, what the Flows screen takes from its shell, the API, the entries, who holds the right
-- automation-flows-menu-steps-2.md: Steps AF3b, AF3c, AF4b, AF4c of the automation-flows-menu plan, decided after the census (AF0): more boxes that need the Workspace, the API routes, the dashboard entries, the bell
-- automation-flows-menu.md: Plan (owner 2026-11-12, #8961): Flows become "Automation flows", a main menu row with a moving icon, and run on a site whose Workspace is off; the in-channel view stays; steps AF0-AF6
 - canvas-one-model.md: CO0 model of plans/canvas-one.md: what one canvas is in the store and the API: the message as its id, the drawing, page and data parts, one list of versions, the routes and the bridge's calls
 - canvas-one-schema.md: CO0 of plans/canvas-one.md: the five schema changes the later CO steps need (parts, bindings, consent, "through" on a row, channel tables), their issues and answers
 - canvas-one-screens.md: CO0 drawings of plans/canvas-one.md in look A (plans/canvas-one/): the canvas card, one list of versions, the first-write question, the Data list, the phone

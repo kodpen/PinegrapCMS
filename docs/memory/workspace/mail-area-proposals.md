@@ -4,7 +4,7 @@ description: Incoming e-mail in the messages area as decided after MA10a (#9077,
 ---
 
 ## Is mail read and answered where the Workspace is off? (owner, 2026-11-13, #9203)
-- Yes, in step MA10c after MA10b (`workflow/decisions-made-workspace-22.md`). Mail gets a gate of its own (`ws_mail_on()`: the mail tables ready, never `WORKSPACE_ENABLED`) asked by the Incoming e-mail tab, its panel actions, the job's IMAP and orphan passes, `workspace_mail_job.php`, the frame and the Mailboxes card. The Workspace's gate stays for all else, as flows do (`plans/automation-flows-menu.md`, M1a).
+- Yes, in step MA10c after MA10b (`workflow/decisions-made-workspace-22.md`). Mail gets a gate of its own (`ws_mail_on()`: the mail tables ready, never `WORKSPACE_ENABLED`) asked by the Incoming e-mail tab, its panel actions, the job's IMAP and orphan passes, `workspace_mail_job.php`, the frame and the Mailboxes card. The Workspace's gate stays for all else, as flows do (`automation-flows-decisions.md`, M1a).
 - Why: the owner moved the list out of the Workspace into the messages area, beside campaigns a shop runs without the Workspace; stored mail, rooms and the queue need none of the Workspace's screens ([[mail-area-shell]]).
 - Who reads stays the rule it is: team accounts (`ws_viewer()['member']`) who are members of the box's channel or room; who answers, `ws_mail_can_answer()`. No mailbox right of its own: it would be a second rule beside the room's people.
 - With the Workspace off: a new box is kept in "The mailbox itself" only (no channel to pick); a box kept in a channel goes on writing its cards (they anchor the conversations) and that channel's members read it in the area; no "Open in channel", no AI suggestion (a channel message); the notices reach the panel's bell (MA10c checks that `pg_panel_get_notifications()` shows those `ws_inbox` rows then).
@@ -21,4 +21,4 @@ description: Incoming e-mail in the messages area as decided after MA10a (#9077,
 
 ## In which steps? (decided)
 - MA10b (Workspace on): the tab, list and conversation in the area; the Mailboxes card's move; the card as above; the Workspace menu's E-mails entry leaving, its redirects pointing at the area (`ws_mail_room_redirect()`, `ws_mail_room_url()`, `ws_mail_notice_url()`); an answer marking the card; an HTML body for a written e-mail.
-- MA10c (after MA10b; the flows' gate of AF1 is set the same way): `ws_mail_on()` and its callers, the job's passes, the room-only box form, the bell with the Workspace off, a test that every `ws_mail_*` entry asks `ws_mail_on()`.
+- MA10c (after MA10b; the flows' gate (#9109, `automation-flows-gate.md`) is set the same way): `ws_mail_on()` and its callers, the job's passes, the room-only box form, the bell with the Workspace off, a test that every `ws_mail_*` entry asks `ws_mail_on()`.
