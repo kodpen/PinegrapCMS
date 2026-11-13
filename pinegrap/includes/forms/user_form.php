@@ -747,3 +747,25 @@ function pg_user_form_may_disable($user_id, $editor_id)
     return (bool) db_value("SELECT user_id FROM user
         WHERE (user_role = '0') AND (user_id != '" . $user_id . "')" . pg_user_enabled_sql() . " LIMIT 1");
 }
+
+/**
+ * The attributes that keep a browser's autofill and password managers out
+ * of a user's Username and User Email fields (Create User, Edit User). With
+ * no password field on the form, a manager takes the Username for a sign-in
+ * name and writes the saved one ("admin") into it: the save is refused
+ * ("already in use") or, with a free name, would rename the account.
+ * "off" alone is ignored by Chrome on a field it is sure about; a token it
+ * does not know is respected. The vendor opt-outs are each manager's own and
+ * ignored by the others. data-pg-own-value (assets/js/backend.src.js) takes
+ * back a value nobody typed, for the managers that heed none of it; the
+ * e-mail field goes without it, since its input mask writes the typed
+ * characters itself.
+ *
+ * @param bool $own_value whether the field also keeps only typed values
+ * @return string HTML attributes, each with a leading space
+ */
+function pg_user_form_no_autofill($own_value = false)
+{
+    return ' autocomplete="pg-no-autofill" data-lpignore="true" data-1p-ignore data-bwignore data-form-type="other"'
+        . ($own_value ? ' data-pg-own-value' : '');
+}

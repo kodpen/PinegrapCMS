@@ -13644,6 +13644,40 @@ window.pgConfirmTicked = function (form) {
 
 
 /**
+ * The question a form asks before it is sent.
+ *
+ * A form carrying data-pg-confirm holds the sentence (Void on a customer's
+ * store credit card); data-pg-confirm-title and data-pg-confirm-ok give the
+ * dialog's title and button. It is asked on submit, so the browser has
+ * checked the form's fields first: a required reason left empty is pointed
+ * at before anything is asked. A button's data-confirm-content is asked on
+ * click, before that check.
+ *
+ * @param {HTMLFormElement} form
+ * @return {?Promise<boolean>} null when the form asks nothing
+ */
+window.pgConfirmForm = function (form) {
+
+    var sentence = (form && form.getAttribute) ? (form.getAttribute('data-pg-confirm') || '') : '';
+
+    if (sentence === '') {
+        return null;
+    }
+
+    if (typeof window.pgConfirm === 'function') {
+        return window.pgConfirm({
+            title: form.getAttribute('data-pg-confirm-title') || null,
+            message: sentence,
+            confirmText: form.getAttribute('data-pg-confirm-ok') || null,
+            variant: 'danger'
+        });
+    }
+
+    return Promise.resolve(window.confirm(sentence));
+};
+
+
+/**
  * A settings page after a save the server refused: what was typed is put back
  * over the cards, which were drawn from storage, and the refused fields are
  * marked with their sentence, the first one focused. The settings dialog never
@@ -13776,8 +13810,9 @@ window.pgSettingsRestore = function (form, data) {
 };
 
 
-// A settings page posts its form natively; a ticked box that asks first holds
-// the submit until the answer. The settings dialog asks in its own save().
+// A settings page posts its form natively; a ticked box that asks first, or a
+// form that asks itself (data-pg-confirm), holds the submit until the answer.
+// The settings dialog asks in its own save().
 $(document).on('submit', 'form', function (event) {
 
     var form = this;
@@ -13787,7 +13822,7 @@ $(document).on('submit', 'form', function (event) {
         return;
     }
 
-    var asking = window.pgConfirmTicked(form);
+    var asking = window.pgConfirmTicked(form) || window.pgConfirmForm(form);
 
     if (!asking) {
         return;
@@ -13812,6 +13847,95 @@ $(document).on('submit', 'form', function (event) {
         }
     });
 });
+
+/* ---------------------------------------------------------------------------
+ * A field that keeps only what the person writes in it.
+ *
+ * A text field carrying data-pg-own-value (a user's Username on Create User
+ * and Edit User) is never filled in for the person: a password manager that
+ * takes it for a sign-in name writes the saved one ("admin") into it, over
+ * what was typed or into an account that was only opened and saved.
+ *
+ * The browser announces the person's own edits (typing, paste, drop, undo,
+ * an input method) with a trusted beforeinput event; a fill comes without
+ * one, whether it raises an input event (the browser's autofill, an
+ * extension) or none at all. A value that arrives without one is taken back
+ * to the field's last own value, on input, on change and, for a fill that
+ * raised nothing, when the form is sent. The value the page brought is the
+ * first own value.
+ * ------------------------------------------------------------------------- */
+(function () {
+
+    var OWN = 'input[data-pg-own-value], textarea[data-pg-own-value]';
+
+    function own(target) {
+
+        if (!target || !target.matches || !target.matches(OWN)) {
+            return null;
+        }
+
+        if (target.pgOwnValue === undefined) {
+            target.pgOwnValue = target.defaultValue;
+        }
+
+        return target;
+    }
+
+    function takeBack(field) {
+
+        if (field.value !== field.pgOwnValue) {
+            field.value = field.pgOwnValue;
+        }
+    }
+
+    document.addEventListener('beforeinput', function (event) {
+
+        var field = own(event.target);
+
+        if (field && event.isTrusted) {
+            field.pgOwnWriting = true;
+        }
+    }, true);
+
+    document.addEventListener('input', function (event) {
+
+        var field = own(event.target);
+
+        if (!field) {
+            return;
+        }
+
+        if (field.pgOwnWriting) {
+            field.pgOwnWriting = false;
+            field.pgOwnValue = field.value;
+            return;
+        }
+
+        takeBack(field);
+    }, true);
+
+    document.addEventListener('change', function (event) {
+
+        var field = own(event.target);
+
+        if (field) {
+            takeBack(field);
+        }
+    }, true);
+
+    document.addEventListener('submit', function (event) {
+
+        var form = event.target;
+
+        if (!form || !form.querySelectorAll) {
+            return;
+        }
+
+        Array.prototype.forEach.call(form.querySelectorAll(OWN), function (field) {
+            takeBack(own(field));
+        });
+    }, true);
+}());
 
 /* ---------------------------------------------------------------------------
  * Sortable tables.

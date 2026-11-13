@@ -23,6 +23,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/user_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
 $liveform_view_users = new liveform('view_users');
 $liveform = new liveform('edit_user');
+$liveform_credit = new liveform('edit_user_store_credit');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
@@ -187,11 +188,20 @@ if (isset($_POST['pg_credit_action'])) {
 
     $credit_result = pg_credit_staff_post($id, $_POST, (int) $user['id']);
 
+    // The card has a form of its own: the answer is printed on the card, where
+    // the screen opens again (#store_credit), and a refusal keeps what was
+    // typed there.
+    $liveform_credit->remove_form();
+
     if ($credit_result['ok']) {
-        $liveform->add_notice(h($credit_result['message']));
+        $liveform_credit->add_notice(h($credit_result['message']));
     } else {
-        $liveform->mark_error('_error', h($credit_result['message']));
+        $liveform_credit->add_fields_to_session();
+        $liveform_credit->mark_error(($credit_result['field'] !== '') ? $credit_result['field'] : '_error', h($credit_result['message']));
     }
+
+    // For this account only: another account's card draws without it.
+    $liveform_credit->assign_field_value('id', (string) $id);
 
     $credit_send_to = ((isset($_POST['send_to'])) && is_string($_POST['send_to']) && ($_POST['send_to'] != '')) ? '&send_to=' . urlencode($_POST['send_to']) : '';
 
@@ -1236,12 +1246,12 @@ if (!$_POST) {
                                     <div class="row g-5">
                                         <div class="col-12 lg:col-4">
                                             <label for="username" class="form-label">' . lang('Username') . '</label>
-                                            <input value="' . h($username) . '" type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control" required />
+                                            <input value="' . h($username) . '" type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control" required' . pg_user_form_no_autofill(true) . ' />
                                             <div class="form-text">' . lang('Used when signing in.') . '</div>
                                         </div>
                                         <div class="col-12 lg:col-4">
                                             <label class="form-label" for="email">' . lang('User Email') . '</label>
-                                            <input value="' . h($email) . '" type="email" class="form-control" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required/>
+                                            <input value="' . h($email) . '" type="email" class="form-control" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required' . pg_user_form_no_autofill() . '/>
                                             <div class="form-text">' . lang('Password reset goes to this address.') . '</div>
                                         </div>
                                         <div class="col-12 lg:col-4">
@@ -1290,7 +1300,7 @@ if (!$_POST) {
                     ' . $permission_ui['panels'] . '
                 </form>
                 ' . $output_sessions_panel . '
-                ' . (pg_credit_staff_allowed($user) ? pg_credit_staff_panel_html($id, isset($_REQUEST['send_to']) && is_string($_REQUEST['send_to']) ? $_REQUEST['send_to'] : '', time()) : '') . '
+                ' . (pg_credit_staff_allowed($user) ? pg_credit_staff_panel_html($id, isset($_REQUEST['send_to']) && is_string($_REQUEST['send_to']) ? $_REQUEST['send_to'] : '', time(), ($liveform_credit->get_field_value('id') === (string) $id) ? $liveform_credit : null) : '') . '
             </div>
         </div>
     
@@ -1307,6 +1317,7 @@ if (!$_POST) {
     print $output_page_shell . $output_main . output_footer();
 
     $liveform->remove_form();
+    $liveform_credit->remove_form();
         
 } else {
     validate_token_field();

@@ -59,7 +59,29 @@ if (($_SESSION['software']['kiosk']['enabled'] ?? '') == true) {
     go(PATH . SOFTWARE_DIRECTORY . '/kiosk.php?action=logout&token=' . urlencode($session_token));
 }
 
+// Signing out of an account opened with "log in as" hands the operator back
+// their own (pg_logout_login_as_return()): read before logout() ends the
+// session it looks at.
+$login_as_return = pg_logout_login_as_return();
+
 logout();
+
+// Back in the panel, on Edit User of the account just left, and told so: the
+// remember-me cookie logout() kept signs the operator in on that request,
+// and a fresh session carries the notice there. A send_to was the left
+// account's own page, so it is not followed.
+if ($login_as_return) {
+    session_start();
+
+    include_once('liveform.class.php');
+    $liveform_return = new liveform(($login_as_return['user_id'] > 0) ? 'edit_user' : 'view_users');
+    $liveform_return->add_notice(h(lang(array(
+        'string' => 'You signed out of {var:1} and are back in your own account.',
+        'vars'   => $login_as_return['username']))));
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . $login_as_return['url']);
+    exit();
+}
 
 // if there is a send to value, then send the user to that page
 if (($_REQUEST['send_to'] ?? '') != '') {

@@ -17,6 +17,9 @@
  */
 
 include('init.php');
+// functions.php does not load the list table driver; the list below is drawn
+// with it (pg_list_table_printed() and its cell helpers).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_schedule.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
 $user = validate_user();

@@ -136,15 +136,36 @@ function pg_credit_staff_issue_error($code)
 }
 
 /**
- * Where a bound card stands (pure): open (spendable), used (balance 0: spent
- * or voided) or expired.
+ * The issue form's field an error code is about (pure).
+ *
+ * @param string $code pg_credit_staff_issue_input()'s error
+ * @return string the field's name, '' for none
+ */
+function pg_credit_staff_issue_field($code)
+{
+    $fields = array('amount' => 'credit_amount', 'date' => 'credit_last_day', 'reason' => 'credit_reason');
+
+    return $fields[(string) $code] ?? '';
+}
+
+/**
+ * Where a bound card stands (pure): open (spendable), voided (closed by
+ * staff), used (balance 0: spent) or expired.
  *
  * @param array $card gift_cards row (balance, expires_at, expiration_date)
+ *                    and void_reason (pg_credit_staff_cards(): the reason of
+ *                    its void line, null when it was never voided)
  * @param int   $now
- * @return string open, used or expired
+ * @return string open, voided, used or expired
  */
 function pg_credit_staff_card_state(array $card, $now)
 {
+    // A void writes the balance to 0 and leaves the reason in the notes; it
+    // stays the card's story after its last day has gone by too.
+    if (((int) ($card['balance'] ?? 0) <= 0) && isset($card['void_reason'])) {
+        return 'voided';
+    }
+
     // The expiry pass closes an ended card by writing its balance to 0, so a
     // card past its end reads expired whatever is left on it.
     $expires = (int) ($card['expires_at'] ?? 0);
@@ -219,13 +240,81 @@ function pg_credit_staff_cards($user_id)
     }
 
     $rows = db_items(
-        "SELECT id, code, amount, balance, kind, reason, issued_by, expires_at, expiration_date, created_timestamp
+        "SELECT id, code, amount, balance, kind, reason, issued_by, expires_at, expiration_date, notes, created_timestamp
         FROM gift_cards
         WHERE user_id = '" . (int) $user_id . "'
         ORDER BY id DESC
         LIMIT " . PG_CREDIT_STAFF_CARDS);
 
-    return is_array($rows) ? $rows : array();
+    if (!is_array($rows)) {
+        return array();
+    }
+
+    $lines = pg_credit_staff_void_lines();
+
+    foreach ($rows as $key => $row) {
+        $rows[$key]['void_reason'] = pg_credit_staff_void_reason((string) $row['notes'], $lines);
+    }
+
+    return $rows;
+}
+
+/**
+ * The forms the line pg_credit_void() adds to a card's notes can have: in
+ * English and in the panel's language, the one it was written in.
+ *
+ * @return array line templates with {var:1} (the date) and {var:2} (the reason)
+ */
+function pg_credit_staff_void_lines()
+{
+    $line = 'Store credit voided on {var:1}: {var:2}';
+
+    return array_values(array_unique(array($line, (string) lang($line))));
+}
+
+/**
+ * The reason a card was voided for, read from its notes (pure): the last
+ * line in one of the void line's forms. A card has no column of its own for
+ * it; pg_credit_void() writes the balance to 0 and adds the line, which is
+ * also how the staff screen tells a voided card from a spent one.
+ *
+ * @param string $notes gift_cards.notes
+ * @param array  $lines pg_credit_staff_void_lines()
+ * @return string|null the reason ('' when none was given), null when the
+ *                     notes hold no void line
+ */
+function pg_credit_staff_void_reason($notes, array $lines)
+{
+    $patterns = array();
+    $date = function ($part) {
+        return str_replace(preg_quote('{var:1}', '/'), '\\d{4}-\\d{2}-\\d{2}', preg_quote($part, '/'));
+    };
+
+    foreach ($lines as $line) {
+        $line = (string) $line;
+
+        if ((strpos($line, '{var:1}') === false) || (strpos($line, '{var:2}') === false)) {
+            continue;
+        }
+
+        // The notes are trimmed when a line is added, so the space before
+        // an empty reason may be gone.
+        list($head, $tail) = explode('{var:2}', $line, 2);
+        $patterns[] = '/^' . $date(rtrim($head)) . '\\s*(.*?)' . $date($tail) . '$/u';
+    }
+
+    $reason = null;
+
+    foreach (preg_split('/\r\n|\r|\n/', (string) $notes) as $note) {
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, trim($note), $match)) {
+                $reason = trim($match[1]);
+                break;
+            }
+        }
+    }
+
+    return $reason;
 }
 
 /**
@@ -272,12 +361,13 @@ function pg_credit_staff_money($cents, $symbol)
  *                        void), credit_amount, credit_last_day,
  *                        credit_reason, credit_card_id, credit_void_reason
  * @param int   $staff_id
- * @return array ok, message
+ * @return array ok, message, field (the posted field a refusal is about,
+ *               '' for none)
  */
 function pg_credit_staff_post($user_id, array $post, $staff_id)
 {
     if (!pg_credit_ready()) {
-        return array('ok' => false, 'message' => lang('Store credit is not installed yet: the database has to be updated first.'));
+        return array('ok' => false, 'message' => lang('Store credit is not installed yet: the database has to be updated first.'), 'field' => '');
     }
 
     $action = isset($post['pg_credit_action']) && is_string($post['pg_credit_action']) ? $post['pg_credit_action'] : '';
@@ -287,13 +377,13 @@ function pg_credit_staff_post($user_id, array $post, $staff_id)
             $post['credit_amount'] ?? '', $post['credit_last_day'] ?? '', $post['credit_reason'] ?? '', time());
 
         if ($input['error'] !== '') {
-            return array('ok' => false, 'message' => pg_credit_staff_issue_error($input['error']));
+            return array('ok' => false, 'message' => pg_credit_staff_issue_error($input['error']), 'field' => pg_credit_staff_issue_field($input['error']));
         }
 
         $card_id = pg_credit_issue((int) $user_id, $input['amount'], 'manual', $input['reason'], $input['expires'], (int) $staff_id);
 
         if ($card_id <= 0) {
-            return array('ok' => false, 'message' => lang('The store credit could not be written.'));
+            return array('ok' => false, 'message' => lang('The store credit could not be written.'), 'field' => '');
         }
 
         log_activity(lang(array(
@@ -302,7 +392,7 @@ function pg_credit_staff_post($user_id, array $post, $staff_id)
 
         return array('ok' => true, 'message' => lang(array(
             'string' => 'Store credit of {var:1} was issued.',
-            'vars'   => array(pg_order_log_money($input['amount'])))));
+            'vars'   => array(pg_order_log_money($input['amount'])))), 'field' => '');
     }
 
     if ($action === 'void') {
@@ -313,25 +403,25 @@ function pg_credit_staff_post($user_id, array $post, $staff_id)
         $owner = ($card_id > 0) ? (int) db_value("SELECT user_id FROM gift_cards WHERE id = '" . $card_id . "'") : 0;
 
         if (($owner <= 0) || ($owner !== (int) $user_id)) {
-            return array('ok' => false, 'message' => lang('The store credit card could not be found.'));
+            return array('ok' => false, 'message' => lang('The store credit card could not be found.'), 'field' => '');
         }
 
         if ($reason === '') {
-            return array('ok' => false, 'message' => lang('Enter the reason for voiding this store credit.'));
+            return array('ok' => false, 'message' => lang('Enter the reason for voiding this store credit.'), 'field' => 'credit_void_reason');
         }
 
         if (!pg_credit_void($card_id, $reason)) {
-            return array('ok' => false, 'message' => lang('The store credit card could not be voided: it may have been used meanwhile. Check it and try again.'));
+            return array('ok' => false, 'message' => lang('The store credit card could not be voided: it may have been used meanwhile. Check it and try again.'), 'field' => '');
         }
 
         log_activity(lang(array(
             'string' => 'Store credit card #{var:1} of user #{var:2} was voided: {var:3}',
             'vars'   => array($card_id, (int) $user_id, $reason))));
 
-        return array('ok' => true, 'message' => lang('The store credit card was voided.'));
+        return array('ok' => true, 'message' => lang('The store credit card was voided.'), 'field' => '');
     }
 
-    return array('ok' => false, 'message' => lang('Invalid request.'));
+    return array('ok' => false, 'message' => lang('Invalid request.'), 'field' => '');
 }
 
 /**
@@ -339,16 +429,56 @@ function pg_credit_staff_post($user_id, array $post, $staff_id)
  * the issue form. It is its own form, so it sits outside the screen's main
  * form.
  *
- * @param int    $user_id
- * @param string $send_to
- * @param int    $now
+ * What the last issue or void answered is printed at the top of the card,
+ * where the screen opens after it (#store_credit), not at the top of the
+ * page; after a refusal the typed values are back in their fields and the
+ * field the refusal is about is marked.
+ *
+ * @param int           $user_id
+ * @param string        $send_to
+ * @param int           $now
+ * @param liveform|null $liveform the card's own form (edit_user_store_credit):
+ *                                the answer and the posted values
  * @return string HTML, '' before the store credit columns exist
  */
-function pg_credit_staff_panel_html($user_id, $send_to, $now)
+function pg_credit_staff_panel_html($user_id, $send_to, $now, $liveform = null)
 {
     if (!pg_credit_ready()) {
         return '';
     }
+
+    $messages = '';
+    $kept = function ($field) {
+        return '';
+    };
+    $marked = function ($field) {
+        return '';
+    };
+    $kept_action = '';
+    $kept_card = 0;
+
+    if ($liveform) {
+        $messages = (string) $liveform->output_errors() . (string) $liveform->output_notices();
+        $kept_action = (string) $liveform->get_field_value('pg_credit_action');
+        $kept_card = (int) $liveform->get_field_value('credit_card_id');
+        $kept = function ($field) use ($liveform) {
+            $value = $liveform->get_field_value($field);
+
+            return is_scalar($value) ? (string) $value : '';
+        };
+        $marked = function ($field) use ($liveform) {
+            return $liveform->check_field_error($field) ? ' is-invalid' : '';
+        };
+    }
+
+    // A refused issue keeps what was typed in the issue form, a refused void
+    // what was typed on the row of that card.
+    $issue_value = function ($field) use ($kept, $kept_action) {
+        return ($kept_action === 'issue') ? h($kept($field)) : '';
+    };
+    $issue_mark = function ($field) use ($marked, $kept_action) {
+        return ($kept_action === 'issue') ? $marked($field) : '';
+    };
 
     $money = function ($cents) {
         return pg_credit_staff_money($cents, BASE_CURRENCY_SYMBOL);
@@ -359,6 +489,7 @@ function pg_credit_staff_panel_html($user_id, $send_to, $now)
 
     $states = array(
         'open'    => array(lang('Open'), 'theme-success'),
+        'voided'  => array(lang('Voided'), 'theme-danger'),
         'used'    => array(lang('Used'), 'theme-secondary'),
         'expired' => array(lang('Expired'), 'theme-warning'),
     );
@@ -368,6 +499,10 @@ function pg_credit_staff_panel_html($user_id, $send_to, $now)
     foreach (pg_credit_staff_cards($user_id) as $card) {
         $state = pg_credit_staff_card_state($card, $now);
         $expires = (int) $card['expires_at'];
+        $void_row = ($kept_action === 'void') && ($kept_card === (int) $card['id']);
+        $void_reason = (($state === 'voided') && ((string) $card['void_reason'] !== ''))
+            ? '<div class="small fg-secondary text-break">' . h((string) $card['void_reason']) . '</div>'
+            : '';
 
         $rows .= '
                         <tr>
@@ -376,13 +511,13 @@ function pg_credit_staff_panel_html($user_id, $send_to, $now)
                             <td class="text-end">' . $money($card['amount']) . '</td>
                             <td class="text-end fw-semibold">' . $money($card['balance']) . '</td>
                             <td>' . (($expires > 0) ? h(pg_credit_expiration_date($expires)) : h(lang('Never'))) . '</td>
-                            <td><span class="badge ' . $states[$state][1] . '">' . h($states[$state][0]) . '</span></td>
+                            <td><span class="badge ' . $states[$state][1] . '">' . h($states[$state][0]) . '</span>' . $void_reason . '</td>
                             <td class="text-end">' . (($state === 'open') ? '
-                                <form method="post" action="edit_user.php" class="d-flex gap-3 justify-content-end disable_shortcut" style="margin:0">' . $keys . '
+                                <form method="post" action="edit_user.php" id="store_credit_void_' . (int) $card['id'] . '" class="d-flex gap-3 justify-content-end disable_shortcut" style="margin:0" data-pg-confirm="' . h(lang('The card\'s balance becomes 0 and the customer can no longer spend it.')) . '" data-pg-confirm-title="' . h(lang('Void')) . '" data-pg-confirm-ok="' . h(lang('Void')) . '">' . $keys . '
                                     <input type="hidden" name="pg_credit_action" value="void"/>
                                     <input type="hidden" name="credit_card_id" value="' . (int) $card['id'] . '"/>
-                                    <input type="text" name="credit_void_reason" class="form-control form-control-sm" maxlength="255" required placeholder="' . h(lang('Reason')) . '" aria-label="' . h(lang('Reason for voiding')) . '" style="max-width:12rem"/>
-                                    <button type="submit" class="btn btn-sm btn-outline theme-danger" data-confirm-content="' . h(lang('The card\'s balance becomes 0 and the customer can no longer spend it.')) . '">' . h(lang('Void')) . '</button>
+                                    <input type="text" name="credit_void_reason" class="form-control form-control-sm' . ($void_row ? $marked('credit_void_reason') : '') . '" maxlength="255" required placeholder="' . h(lang('Reason')) . '" aria-label="' . h(lang('Reason for voiding')) . '" style="max-width:12rem" value="' . ($void_row ? h($kept('credit_void_reason')) : '') . '"/>
+                                    <button type="submit" class="btn btn-sm btn-outline theme-danger">' . h(lang('Void')) . '</button>
                                 </form>' : '') . '</td>
                         </tr>';
     }
@@ -394,7 +529,7 @@ function pg_credit_staff_panel_html($user_id, $send_to, $now)
                         <span class="small fg-secondary">' . h(lang('Balance')) . ': <strong>' . $money(pg_credit_balance($user_id, $now)) . '</strong></span>
                     </div>
                     <div class="card-body">
-                        ' . (($rows !== '') ? '<div class="table-responsive mb-5">
+                        ' . $messages . (($rows !== '') ? '<div class="table-responsive mb-5">
                             <table class="table table-sm align-middle mb-0">
                                 <thead>
                                     <tr>
@@ -411,23 +546,23 @@ function pg_credit_staff_panel_html($user_id, $send_to, $now)
                                 </tbody>
                             </table>
                         </div>' : '<p class="small fg-secondary">' . h(lang('This customer has no store credit yet.')) . '</p>') . '
-                        <form method="post" action="edit_user.php" class="disable_shortcut">' . $keys . '
+                        <form method="post" action="edit_user.php" id="store_credit_issue" class="disable_shortcut">' . $keys . '
                             <input type="hidden" name="pg_credit_action" value="issue"/>
                             <div class="row g-5 align-items-end">
                                 <div class="col-12 md:col-3">
                                     <label for="credit_amount" class="form-label">' . h(lang('Amount')) . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . h(BASE_CURRENCY_CODE) . '</span>
-                                        <input type="text" name="credit_amount" id="credit_amount" class="form-ghost" maxlength="14" inputmode="decimal" required style="text-align: right;"/>
+                                        <input type="text" name="credit_amount" id="credit_amount" class="form-ghost' . $issue_mark('credit_amount') . '" maxlength="14" inputmode="decimal" required style="text-align: right;" value="' . $issue_value('credit_amount') . '"/>
                                     </label>
                                 </div>
                                 <div class="col-12 md:col-3">
                                     <label for="credit_last_day" class="form-label">' . h(lang('Last day')) . ' <span class="fg-secondary fw-normal">(' . h(lang('optional')) . ')</span></label>
-                                    <input type="date" data-pg-date name="credit_last_day" id="credit_last_day" class="form-control"/>' . get_date_picker_format() . pg_fields_script() . '
+                                    <input type="date" data-pg-date name="credit_last_day" id="credit_last_day" class="form-control' . $issue_mark('credit_last_day') . '" value="' . $issue_value('credit_last_day') . '"/>' . get_date_picker_format() . pg_fields_script() . '
                                 </div>
                                 <div class="col-12 md:col-4">
                                     <label for="credit_reason" class="form-label">' . h(lang('Reason')) . '</label>
-                                    <input type="text" name="credit_reason" id="credit_reason" class="form-control" maxlength="255" required/>
+                                    <input type="text" name="credit_reason" id="credit_reason" class="form-control' . $issue_mark('credit_reason') . '" maxlength="255" required value="' . $issue_value('credit_reason') . '"/>
                                 </div>
                                 <div class="col-12 md:col-2">
                                     <button type="submit" class="btn btn-solid theme-primary w-100">' . h(lang('Issue Credit')) . '</button>

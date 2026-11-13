@@ -2428,6 +2428,50 @@ function pg_session_signed_in()
     return (bool) db_value("SELECT user_id FROM user
         WHERE user_id = '" . (int) $_SESSION['sessionuserid'] . "'" . pg_user_enabled_sql() . " LIMIT 1");
 }
+
+/**
+ * Where the sign-out that ends a "log in as" session (login_as_user.php)
+ * sends the operator, when it hands them back their own account.
+ *
+ * logout() keeps the operator's remember-me cookie after "log in as", and
+ * the next request signs them in with it. Sent to the site's logout page,
+ * as an ordinary sign-out is, they were greeted there signed in as
+ * themselves and asked "Do you want to log out?", which reads as the
+ * sign-out of the account they left and signs them out too. They go back
+ * to Edit User of that account instead, or to the users list when it is
+ * gone.
+ *
+ * Read before logout(), which ends the session it looks at.
+ *
+ * @return array url (the panel path to go to), user_id and username (the
+ *               account left); empty for an ordinary sign-out, and when no
+ *               valid cookie of an enabled account brings the operator back,
+ *               so the sign-out ends both and the logout page follows
+ */
+function pg_logout_login_as_return()
+{
+    if (empty($_SESSION['software']['logged_in_as_different_user'])
+        || !defined('REMEMBER_ME') || (REMEMBER_ME != true)
+        || !isset($_COOKIE['software']['auth'])
+        || !pg_auth_tokens_table_exists()) {
+        return array();
+    }
+
+    $operator_id = pg_auth_token_verify($_COOKIE['software']['auth']);
+
+    if (!$operator_id || pg_user_id_is_disabled($operator_id)) {
+        return array();
+    }
+
+    $left_id = (int) ($_SESSION['sessionuserid'] ?? 0);
+    $left_exists = ($left_id > 0) && (bool) db_value("SELECT user_id FROM user WHERE user_id = '" . $left_id . "' LIMIT 1");
+
+    return array(
+        'url'      => $left_exists ? 'edit_user.php?id=' . $left_id : 'view_users.php',
+        'user_id'  => $left_exists ? $left_id : 0,
+        'username' => (string) ($_SESSION['sessionusername'] ?? ''),
+    );
+}
 // The username can either be a username or email address for a user.
 function validate_username($username)
 {

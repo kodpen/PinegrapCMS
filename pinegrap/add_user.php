@@ -199,12 +199,12 @@ if (!$_POST) {
                             <div class="row g-5">
                                 <div class="col-12 lg:col-4">
                                     <label for="username" class="form-label">' . lang('Username') . '</label>
-                                    <input type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control" required />
+                                    <input type="text" name="username" placeholder="' . lang('Username') . '" id="username" maxlength="100" class="form-control" required' . pg_user_form_no_autofill(true) . ' />
                                     <div class="form-text">' . lang('Used when signing in.') . '</div>
                                 </div>
                                 <div class="col-12 lg:col-4">
                                     <label class="form-label" for="email">' . lang('User Email') . '</label>
-                                    <input value="' . h($email_address) . '" type="email" class="form-control" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required/>
+                                    <input value="' . h($email_address) . '" type="email" class="form-control" id="email" name="email" maxlength="100" inputmode="email" data-inputmask-alias="email" required' . pg_user_form_no_autofill() . '/>
                                     <div class="form-text">' . lang('Password reset goes to this address.') . '</div>
                                 </div>
                                 <div class="col-12 lg:col-4">
