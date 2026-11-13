@@ -15,7 +15,6 @@
 - canvas-one.md: Plan (owner 2026-11-12, #8850): the Workspace canvas as one thing with a drawing, a live page and data; the guarded bridge to the tables bound to it; tables as Data; steps in canvas-one-steps.md
 - channel-item-tags-wake-steps.md: Steps TW1-TW5 of the channel-item-tags-wake plan: file caption, edit, note and decision; other messages; polls, tasks; shared notes, table cells (agent channels, managers); close-out
 - channel-item-tags-wake.md: Plan: a tag anywhere in a Workspace channel item (file caption, edit, note, poll, task, table cell) wakes the tagged assistant as a text message does; rulings, shared helper
-- channel-post-tool.md: Plan (2026-11-13): tools/ws_post.php never writes a channel message twice after a call without an answer, and posts a picture file, so visuals go straight into the agent channel
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
