@@ -2062,24 +2062,26 @@ function waf_rules()
 
     $rules = array(
         // ── SQL injection ────────────────────────────────────────────────
-        // UNION and SELECT with nothing but spacing, comments, brackets or
-        // ALL / DISTINCT between them: "the union will select" is prose.
+        // UNION and SELECT with nothing between them but what MySQL skips:
+        // spacing (no-break space included), block, # and -- comments,
+        // brackets, ALL / DISTINCT. "the union will select" is prose.
         array('id' => 'sqli-union',   'cat' => 'sqli', 'score' => 10,
-              're'  => '/\bunion\b(?:\s|\+|\(|\/\*[\s\S]{0,40}?\*\/|\ball\b|\bdistinct\b)*select\b/i'),
+              're'  => '/\bunion\b(?:\s|\xC2\xA0|\xA0|\+|\(|\/\*[\s\S]{0,60}?\*\/|\/\*!?\d*|(?:#|--)[^\n]{0,60}\n|\ball\b|\bdistinct(?:row)?\b)*select\b/i'),
         // A quote closed, then OR/AND comparing two literals: quoted values,
-        // numbers, or one name with itself (x=x). "great" and I like it, or
+        // numbers, one name with itself (x=x), a comparison ended by a
+        // comment, or LIKE with a wildcard. "great" and I like it, or
         // "n" and Roll = hayat, compares nothing.
         array('id' => 'sqli-tauto',   'cat' => 'sqli', 'score' => 10,
-              're'  => '/[\'"]\s*(?:or|and)\s+(?:([\'"])[^\'"]{0,12}\1\s*(?:=|like)\s*[\'"]|\d+\s*(?:=|like)\s*[\'"]?\d|(\w{1,12})\s*(?:=|like)\s*\2\b)/i'),
+              're'  => '/[\'"]\s*(?:or|and)\s+(?:([\'"])[^\'"]{0,12}\1\s*(?:=|like)\s*[\'"]|\d+\s*(?:=|like)\s*[\'"]?\d|(\w{1,12})\s*(?:=|like)\s*\2\b|\w{1,12}\s*=\s*\w{1,12}\s*(?:--|#|\/\*)|\w{1,12}\s+like\s*[\'"]?%)/i'),
         // The comparison ends the injection: the value, a comment, a quote,
         // a bracket or the next SQL word follows. "and 2 = 2 adet" goes on
         // as a sentence.
         array('id' => 'sqli-numeq',   'cat' => 'sqli', 'score' => 10,
-              're'  => '/\b(?:or|and)\b\s+\d+\s*=\s*\d+\s*(?:$|--|#|\/\*|[\'"\);]|\b(?:and|or|limit|order|union|having)\b)/i'),
-        // The call takes a number, a nested call, a variable or a subquery:
-        // "sleep (badly)" takes a word.
+              're'  => '/\b(?:or|and)\b\s+\d+\s*=\s*\d+\s*(?:$|--|#|\/\*|[\'"\);(]|\b(?:and|or|xor|limit|order|group|union|having|select|into|procedure)\b)/i'),
+        // The call takes a number, a string, a nested call, a variable, a
+        // comment or a subquery: "sleep (badly)" takes a word.
         array('id' => 'sqli-timing',  'cat' => 'sqli', 'score' => 10,
-              're'  => '/\b(?:sleep|benchmark|pg_sleep)\s*\(\s*(?:\d|\(|@|select\b)|\bdbms_pipe\.receive_message\s*\(|\bwaitfor\s+delay\b/i'),
+              're'  => '/\b(?:sleep|benchmark|pg_sleep)\s*\(\s*(?:\d|\(|@|-|[\'"]|\/\*|select\b|[a-z_]\w*\s*\()|\bdbms_pipe\.receive_message\s*\(|\bwaitfor\s+delay\b/i'),
         array('id' => 'sqli-schema',  'cat' => 'sqli', 'score' => 10,
               're'  => '/\b(?:information_schema|sysobjects|syscolumns|pg_catalog|mysql\s*\.\s*user)\b/i'),
         array('id' => 'sqli-stacked', 'cat' => 'sqli', 'score' => 10,
@@ -2096,16 +2098,19 @@ function waf_rules()
         // ── Cross-site scripting ─────────────────────────────────────────
         array('id' => 'xss-script',   'cat' => 'xss', 'score' => 10,
               're'  => '/<\s*\/?\s*script\b/i'),
-        // The handler is given code: a call, an assignment, an index, a
-        // template literal, a javascript: address or an entity. "Onload =
-        // sayfa acilinca" is a question about the word.
+        // Inside a tag a handler counts whatever its value. Outside one
+        // (an attribute broken out of) it is given code: a call, an
+        // assignment, an index, an operator, a template literal, a
+        // javascript: address or an entity. "Onload = sayfa acilinca" is a
+        // question about the word.
         array('id' => 'xss-handler',  'cat' => 'xss', 'score' => 10,
-              're'  => '/\bon(?:error|load|click|mouseover|mouseenter|focus|blur|submit|abort|toggle|animationstart|animationend|transitionend|beforeunload|pointerover|contextmenu)\s*=\s*[\'"]?\s*(?:[a-z_$][\w$.]*\s*[\(`=\[]|javascript\s*:|&#|\\\\u)/i'),
-        // A browser reads a tag only with the name straight after "<", and
-        // these tags act only through an attribute: "< base rate" and a bare
-        // "<form>" in a support message are text.
+              're'  => '/<[a-z!\/][^>]{0,500}?[\s\/\'"`]on(?:error|load|click|mouseover|mouseenter|focus|blur|submit|abort|toggle|animationstart|animationend|transitionend|beforeunload|pointerover|contextmenu)\s*=|\bon(?:error|load|click|mouseover|mouseenter|focus|blur|submit|abort|toggle|animationstart|animationend|transitionend|beforeunload|pointerover|contextmenu)\s*=\s*[\'"`]?\s*(?:[a-z_$][\w$.]*\s*[\(`=\[&]|(?:new|throw|void|typeof|delete|await|import)\b|[\(\[\-+!~`]|javascript\s*:|&#|\\\\u)/i'),
+        // Tags that act alone count bare. META, BASE, LINK and FORM act only
+        // through an attribute or the markup that follows, and only with the
+        // name straight after "<": "< base rate" and a bare "<form>" in a
+        // support message are text.
         array('id' => 'xss-tag',      'cat' => 'xss', 'score' => 10,
-              're'  => '/<(?:iframe|object|embed|applet|meta|base|svg|math|link|form|isindex|marquee|frameset)\b[^>]{0,200}?[\s\/][a-z:\-]+\s*=/i'),
+              're'  => '/<\s*(?:iframe|object|embed|applet|svg|math|isindex|marquee|frameset)\b|<(?:meta|base|link|form)\b(?:[^>]{0,200}?[\s\/][a-z:\-]+\s*=|[^>]{0,200}>\s*<[a-z!\/])/i'),
         // Scoped away from BODY: prose legitimately contains the word
         // "javascript:" (a product review, a support message about code),
         // whereas a redirect parameter carrying it is always an attack.
@@ -2129,30 +2134,34 @@ function waf_rules()
               're'  => '/(?:\.\.[\/\\\\]){2,}|(?:%2e%2e(?:%2f|%5c|\/|\\\\)){1,}|\.\.%c0%af/i'),
         array('id' => 'lfi-unix',     'cat' => 'lfi', 'score' => 10,
               're'  => '/(?:\/etc\/(?:passwd|shadow|group|hosts|my\.cnf)|\/proc\/self\/(?:environ|cmdline)|\/var\/log\/)/i'),
-        // The file names as whole words (edwin.iniesta@ is an address), and
-        // cmd.exe only in a path or with a switch ("cmd.exe acilmiyor").
+        // The file names ending at a word boundary (edwin.iniesta@ is an
+        // address), and cmd.exe in a path, with a switch, alone or before a
+        // separator ("cmd.exe acilmiyor" is a sentence).
         array('id' => 'lfi-windows',  'cat' => 'lfi', 'score' => 10,
-              're'  => '/(?:\bboot\.ini\b|\bwin\.ini\b|windows[\/\\\\]system32|[\/\\\\]cmd\.exe\b|\bcmd\.exe\s+\/[ck]\b)/i'),
-        // file:// only to this machine (file:///, localhost, 127.0.0.1): a
-        // share on another host (file://sunucu/...) is a link someone pasted.
+              're'  => '/(?:boot\.ini\b|win\.ini\b|windows[\/\\\\]system32|[\/\\\\]cmd\.exe\b|cmd\.exe\s+\/[ck]\b|\bcmd\.exe\s*(?:$|[&|;"\'?%]))/i'),
+        // file:// only to this machine (file:///, a drive, ./, localhost,
+        // 127.0.0.1): a share on another host (file://sunucu/...) is a link
+        // someone pasted.
         array('id' => 'lfi-wrapper',  'cat' => 'lfi', 'score' => 10,
-              're'  => '/\b(?:(?:php|phar|zip|expect|glob|data)\s*:\s*\/\/|file\s*:\s*\/\/(?:\/|localhost\b|127\.0\.0\.1\b))/i'),
+              're'  => '/\b(?:(?:php|phar|zip|expect|glob|data)\s*:\s*\/\/|file\s*:\s*\/\/(?:[\/\\\\.]|[a-z]:|localhost\b|127\.0\.0\.1\b))/i'),
         array('id' => 'lfi-secrets',  'cat' => 'lfi', 'score' => 10,
               'targets' => array('ARGS', 'REQUEST_URI'),
               're'  => '/(?:^|[\/\\\\])(?:\.env|\.git[\/\\\\]config|wp-config\.php|config\.php\.bak|id_rsa|\.htpasswd)(?:$|[?&])/i'),
 
         // ── Remote code execution ────────────────────────────────────────
-        // A command in lower case (a shell has no CAT or ID) given a shell
-        // argument: an option, a path, a variable, a quote, a redirection,
-        // an address or an IP. "; ping atarsaniz" and "| cat ve kopek" go
-        // on in words; "; CP 28013" is a postcode.
+        // A command in lower case after a separator: a shell has no CAT, ID
+        // or CP ("; CP 28013" is a postcode). cat and ping are also words,
+        // so they need a shell argument (an option, a path, a file name, a
+        // variable, a quote, a redirection, an address, an IP or a file the
+        // probes read): "; ping atarsaniz" and "| cat ve kopek" go on in words.
         array('id' => 'rce-shell',    'cat' => 'rce', 'score' => 10,
-              're'  => '/(?:;|\||&&|\$\(|`|%0[aA])\s*(?:cat|ls|id|pwd|whoami|uname|wget|curl|nc|netcat|bash|sh|python|perl|ruby|chmod|chown|rm|mv|cp|ping|nslookup|dig)\s+(?:[\-\/~.$\'"<>|&]|\d+\.\d+|[a-z]+:\/\/)/'),
+              're'  => '/(?:;|\||&&|\$\(|`|%0[aA])\s*(?:(?:ls|id|pwd|whoami|uname|wget|curl|nc|netcat|bash|sh|python|perl|ruby|chmod|chown|rm|mv|cp|nslookup|dig)(?:\s|$|[;|&`)])|(?:cat|ping)\s+(?:[\-+\/~.$\'"<>|&`*]|\d+\.\d+|[a-z]+:\/\/|[\w\-]*[.\/][\w\-.\/]*|(?:passwd|shadow|hosts|group|flag\w*|index\w*|config\w*|id_rsa|\*)\b))/'),
         // Split by certainty: these names are never ordinary prose when
-        // called with code: a quote, a variable, a backtick or another call.
+        // called with code: a quote, a variable, a backtick, a cast, another
+        // call, or a bare name straight after the bracket (system(id)).
         // "System (5.1)" and "system (installed 2019)" are product names.
         array('id' => 'rce-php',      'cat' => 'rce', 'score' => 10,
-              're'  => '/\b(?:(?:system|shell_exec|passthru|popen|proc_open|pcntl_exec|create_function)\s*\(\s*(?:[\'"`$]|[a-z_]\w*\s*\()|preg_replace\s*\(\s*[\'"][^\'"]*\/[a-z]*e[a-z]*[\'"])/i'),
+              're'  => '/\b(?:(?:system|shell_exec|passthru|popen|proc_open|pcntl_exec|create_function)\s*\(\s*(?:[\'"`$@(<]|[a-z_]\w*\s*\()|(?:system|shell_exec|passthru|popen|proc_open|pcntl_exec)\(\w{2,}\)|preg_replace\s*\(\s*[\'"][^\'"]*\/[a-z]*e[a-z]*[\'"])/i'),
         // Softer: "exec(" and "base64_decode(" do turn up in support
         // messages and code snippets, so they corroborate rather than convict.
         array('id' => 'rce-php-soft', 'cat' => 'rce', 'score' => 5,

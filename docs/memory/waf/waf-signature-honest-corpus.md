@@ -9,15 +9,18 @@ description: tests/waf_rules_corpus_test.php: honest sentences stay under the Me
 
 ## How were the rules narrowed?
 - Owner (2026-11-13, #9125): a visitor's ordinary sentence scored 10 and was refused, six refusals banned the address. Each rule now needs the attack's own shape, not a word:
-- `rce-php`: the call takes code (a quote, `$`, a backtick or another call); "System (5.1)" passes. `rce-shell`: case-sensitive lower-case command with a shell argument (option, path, variable, quote, redirection, URL, IP); "; CAT 320", "; ping atarsaniz" pass.
-- `sqli-tauto`: OR/AND compares two literals (quoted, numbers, or `x=x`). `sqli-numeq`: the comparison ends the injection (end, comment, quote, bracket, next SQL word). `sqli-timing`: the call takes a number, call, `@` or subquery. `sqli-union`: only spacing, comments, brackets, ALL/DISTINCT between UNION and SELECT.
-- `xss-tag`: the name straight after `<` and an attribute (`< base rate`, a bare `<form>` pass). `xss-handler`: the handler is given code (call, assignment, index, template, `javascript:`, entity).
-- `lfi-windows`: `boot.ini`/`win.ini` as whole words (edwin.iniesta@ passes), `cmd.exe` in a path or with `/c`. `lfi-wrapper`: `file://` only to this machine (`file:///`, localhost, 127.0.0.1). `lfi-traverse`: passes a value that is one web address.
+- `rce-php`: the call takes code (quote, `$`, `@`, backtick, cast, another call) or a bare name straight after the bracket (`system(id)`); "System (5.1)" passes. `rce-shell`: case-sensitive lower-case command after a separator; only `cat` and `ping`, which are also words, need a shell argument (option, path, file name, variable, quote, redirection, URL, IP, `passwd`/`config…`); "; CAT 320", "; ping atarsaniz", "| cat ve kopek" pass.
+- `sqli-tauto`: OR/AND compares two literals (quoted, numbers, `x=x`), a comparison ended by a comment, or LIKE with `%`. `sqli-numeq`: the comparison ends the injection (end, comment, quote, bracket, next SQL word). `sqli-timing`: the call takes a number, string, call, `@`, comment or subquery. `sqli-union`: only what MySQL skips between UNION and SELECT (spacing incl. no-break space, `/*…*/`, `#…`/`--…` line comments, brackets, ALL/DISTINCT).
+- `xss-tag`: iframe, object, embed, applet, svg, math, isindex, marquee, frameset count bare; meta, base, link, form need the name straight after `<` and an attribute or following markup (`< base rate`, a bare `<form>` pass). `xss-handler`: inside a tag any value; outside one it is given code.
+- `lfi-windows`: `boot.ini`/`win.ini` end at a word boundary (edwin.iniesta@ passes), `cmd.exe` in a path, with `/c`, alone or before a separator. `lfi-wrapper`: `file://` only to this machine (`file:///`, a drive, `./`, localhost, 127.0.0.1). `lfi-traverse`: passes a value that is one web address.
+
+## How is a narrowing checked against what was caught before?
+- The merge train held #9238 back once: the first narrowing let `1 UNION#x\nSELECT 1`, a no-break space and `&& whoami ` through. Before a rule change, run the old `waf_rules()` (from `git show origin/development:pinegrap/waf.php`) and the new one over a few hundred attack probes and list what only the old one catches; each such form goes into the corpus's attack side. The one deliberate loss is a bare `<form>`.
 
 ## What is the 'unless' key?
 - A rule may carry `'unless' => regex`: when it matches the value, that rule passes it by (`waf_scan_value()`). Used by `lfi-traverse` for a value that is a single `http(s)://` or `ftp://` address with no spaces.
 
-## What is still not caught?
-- A bare command with no argument (`; id`, `$(whoami)`, `` `id` ``) was not caught before and is not now: widening a rule is its own change, with its honest cases.
+## What passes on purpose?
+- A bare `<form>`, `cat`/`ping` followed by an ordinary word, and `../` inside a value that is a single `http(s)://`/`ftp://` address (`/etc/passwd` in it is still caught by `lfi-unix`).
 
 Related: docs/memory/waf/waf-score-calibration-and-bot-order.md
