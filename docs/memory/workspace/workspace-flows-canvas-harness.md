@@ -15,10 +15,11 @@ description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #316
 - Reduced motion by default; `--motion` keeps fades. `--shots` pictures each end state (light, or `--dark`).
 
 ## What do the scenarios cover?
-- 32 scenarios (`flows_canvas_scenarios.js`; the last two: `workspace-flow-layer.md`): boxes at their places and sizes, arrows port to port, zoom, fit, pinch, pan (drag, wheel, Space, middle button), select, Tab order, arrow keys, drag on the grid, Esc, connect by port, C and the side panel, outcomes, Delete, undo, data threads (drag to bind, toggle kept), outline, phone, autosave after 1.5 s, 409, keepalive on hide and leave, the 60 000-byte limit, Ctrl+S, blur, Retry, back to the list for another flow; palette and drop, problems, Publish, read-only, ⋯ Share and Delete, no flow, New flow, Run and its token, runs list, polling.
+- 33 scenarios (`flows_canvas_scenarios.js`; the last three: `workspace-flow-layer.md`): boxes at their places and sizes, arrows port to port, zoom, fit, pinch, pan (drag, wheel, Space, middle button), select, Tab order, arrow keys, drag on the grid, Esc.
+- Then connect by port, C and the side panel, outcomes, Delete, undo, data threads (drag to bind, toggle kept), outline, phone, autosave after 1.5 s, 409, keepalive on hide and leave, the 60 000-byte limit, Ctrl+S, blur, Retry, back to the list for another flow; palette and drop, problems, Publish, Pause, read-only, ⋯ Share and Delete, no flow, New flow, Run and its token, runs list, polling.
 
 ## What does it give?
-- 2026-11-08: 32 of 32 (Chromium 153, sources and `--min`). 2026-11-01: 30 of 30, from sources and with `--min` (Chromium 153, Linux; Chrome 156, Windows 11 after #4418). The C › "Add the arrow" focus and the double keepalive on leave pass since #4322.
+- 2026-11-12: 33 of 33 (Chromium 153, sources and `--min`). 2026-11-01: 30 of 30, from sources and with `--min` (Chromium 153, Linux; Chrome 156, Windows 11 after #4418).
 - Seen: after Fit the first boxes sit under the palette (`fit()` ignores it); the no-flow screen shows an empty palette frame.
 
 ## Why does a scenario switch touch emulation itself?
@@ -26,4 +27,4 @@ description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #316
 - A profile folder Chrome still holds at the end (Windows, EPERM) is a warning on stderr; the exit code stays the result's.
 
 ## What keeps it in step?
-- A bundle the flows screen adds goes into `SCREEN_BUNDLES`, in order (`pg_graph_canvas.min.js` before `workspace_flow.min.js`). Scenarios find controls by their texts (`h.t()`), the `pgc-` and `wsf-` classes, `data-node`, `data-edge` and `data-refocus`; a refactor that renames them changes the scenarios with it.
+- A bundle the flows screen adds goes into `SCREEN_BUNDLES`, in order (`pg_graph_canvas.min.js` before `workspace_flow.min.js`). Scenarios find controls by their texts (`h.t()`) or `{ label }`, the `pgc-` and `wsf-` classes, `data-node`, `data-edge` and `data-refocus`; a refactor that renames them changes the scenarios with it.

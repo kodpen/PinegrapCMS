@@ -85,6 +85,11 @@
     // reads and the undo step wait until no key came for SETTLE_DELAY ms
     // (settle()): in a big flow each of them takes longer than a keystroke.
     var SETTLE_DELAY = 200;
+    // The recipes of the flow window's bar (drawBar()): the one filled
+    // button, quiet ones beside it, icon buttons for the tools.
+    var BAR_FILL = 'pg-button pg-button-fill pg-button-sm';
+    var BAR_QUIET = 'pg-button pg-button-quiet pg-button-sm';
+    var BAR_ICON = 'pg-icon-button';
 
     // An open run is read again after POLL_FIRST ms, then each look that
     // finds nothing new waits POLL_GROW times longer, up to POLL_MAX; a
@@ -1499,6 +1504,15 @@
         }).catch(K.fail);
     }
 
+    // The status in the bar: the panel's pill, live in teal, paused in
+    // amber, a draft in gray (ui/look-type-and-recipes.md).
+    function statusPill(flow) {
+        var tone = { live: 'teal', paused: 'amber' }[flow.status] || 'gray';
+        var text = (flow.status === 'live') ? t('fl_status_live', flow.version) : ((flow.status === 'paused') ? t('fl_status_paused', flow.version) : t('fl_status_draft'));
+
+        return el('span', 'pg-pill pg-tone-' + tone + ' wsf-status', text);
+    }
+
     function statusBadge(flow, small) {
         var text = t('fl_status_draft');
         var tone = 'secondary';
@@ -2701,7 +2715,8 @@
 
     // ── The toolbar ────────────────────────────────────────────────────
 
-    // "New flow", what the screen is for, in the toolbar's first slot.
+    // "New flow", what the flow list is for, in its bar's first slot; an
+    // open flow's bar has none (drawBar()).
     function newFlowButton() {
         if (!FL.build || singleFlow()) {
             return;
@@ -2750,8 +2765,10 @@
         return timeStarted() ? !!flow.run_now : ((flow.access === 'edit') || (flow.access === 'run'));
     }
 
-    // Run starts the live version; primary where "New flow" is not shown.
-    function runButton(primary) {
+    // Run starts the live version: quiet beside Publish, filled where the
+    // bar has no Publish (somebody who runs the flow, or edits it without
+    // publishing it).
+    function runButton(filled) {
         ui.runButton = null;
 
         if (!runnable()) {
@@ -2759,7 +2776,7 @@
         }
 
         var now = timeStarted();
-        var run = K.button(primary ? 'btn btn-sm btn-solid theme-primary rounded-pill px-5' : 'btn btn-sm btn-outline theme-secondary', t(now ? 'fl_run_now' : 'fl_run'), now ? 'bi-lightning' : 'bi-play-fill');
+        var run = barButton(filled ? BAR_FILL : BAR_QUIET, t(now ? 'fl_run_now' : 'fl_run'), now ? 'bi-lightning' : 'bi-play');
 
         run.title = t(now ? 'fl_run_now_help' : 'fl_run_help');
         run.setAttribute('data-refocus', 'run');
@@ -2782,8 +2799,7 @@
         var runs = ui.bar ? ui.bar.querySelector('[data-refocus="runs"]') : null;
 
         if (runs) {
-            runs.classList.toggle('active', runsShown());
-            runs.setAttribute('aria-pressed', runsShown() ? 'true' : 'false');
+            pressedLook(runs, runsShown());
         }
     }
 
@@ -2795,27 +2811,30 @@
         }
 
         var shown = runsShown();
-        var runs = K.button('btn btn-sm btn-text theme-secondary' + (shown ? ' active' : ''), t('fl_runs'), 'bi-clock-history');
+        var runs = barButton(BAR_QUIET, '', 'bi-clock-history');
 
-        runs.setAttribute('aria-pressed', shown ? 'true' : 'false');
+        // Its words from 1280 px up; narrower, its icon with the words as
+        // its name and tooltip, so the bar keeps to one row longer.
+        runs.appendChild(el('span', 'd-none xl:d-inline', t('fl_runs')));
+        runs.title = t('fl_runs');
+        runs.setAttribute('aria-label', t('fl_runs'));
+        pressedLook(runs, shown);
         runs.setAttribute('aria-controls', ui.side.id);
         runs.setAttribute('data-refocus', 'runs');
         runs.addEventListener('click', toggleRuns);
         ui.bar.appendChild(runs);
     }
 
+    // The bar of an open flow, in three parts: at the left the flow itself
+    // (its name, status pill and save state), in the middle the view
+    // (Canvas or List), at the right what is done with it (undo, redo, the
+    // data threads; the problems, its runs, Run, Publish and "⋯"). "New
+    // flow" is the flow list's, not the window's.
     function drawBar() {
         var flow = state.flow;
+        var publishing = state.edit && flow.manage;
 
         K.clear(ui.bar);
-        newFlowButton();
-
-        // Without "New flow" (somebody who runs flows, not builds them) Run
-        // is what the screen is for: the toolbar's one primary button.
-        if (!FL.build) {
-            runButton(true);
-        }
-
         backToList();
 
         if (state.edit) {
@@ -2844,116 +2863,201 @@
 
         // Publish and Pause redraw the bar; the focus then goes to the
         // status they changed.
-        ui.status = statusBadge(flow, false);
+        ui.status = statusPill(flow);
         ui.status.tabIndex = -1;
         ui.status.setAttribute('data-refocus', 'status');
         ui.bar.appendChild(ui.status);
 
         ui.unpublished = el('span', 'small fg-secondary wsf-unpublished d-none', t('fl_unpublished'));
         ui.bar.appendChild(ui.unpublished);
-        ui.save = el('span', 'small wsf-save');
+        ui.save = el('span', 'small fg-secondary wsf-save');
         ui.save.setAttribute('role', 'status');
         ui.bar.appendChild(ui.save);
-        ui.bar.appendChild(el('span', 'pg-toolbar-grow'));
 
-        var outline = K.button('btn btn-sm btn-text theme-secondary' + (state.outline ? ' active' : ''), t('fl_outline'), 'bi-list-nested');
-        outline.setAttribute('aria-pressed', state.outline ? 'true' : 'false');
-        outline.setAttribute('data-refocus', 'outline');
-        outline.addEventListener('click', function () {
-            state.outline = !state.outline;
-            state.refocus = 'outline';
-            drawBar();
-            drawAll();
+        // Somebody who only reads the flow has no save state: the bar says
+        // in its place why nothing can be changed. A run shown says so in
+        // its own bar above the canvas.
+        if (!state.edit && !state.run) {
+            ui.bar.appendChild(el('span', 'small fg-secondary', t('fl_read_only')));
+        }
 
-            if (!state.outline) {
-                fit();
-            }
-        });
-        ui.bar.appendChild(outline);
+        ui.bar.appendChild(viewSwitch());
 
+        var tools = 0;
+
+        if (state.edit) {
+            ui.undo = barButton(BAR_ICON, t('fl_undo'), 'bi-arrow-counterclockwise', true);
+            ui.undo.setAttribute('data-refocus', 'undo redo');
+            ui.undo.addEventListener('click', function () { undo(true); });
+            ui.bar.appendChild(ui.undo);
+            ui.redo = barButton(BAR_ICON, t('fl_redo'), 'bi-arrow-clockwise', true);
+            ui.redo.setAttribute('data-refocus', 'redo undo');
+            ui.redo.addEventListener('click', function () { undo(false); });
+            ui.bar.appendChild(ui.redo);
+            tools += 2;
+        }
+
+        // The threads are drawn on the canvas only; the list says in words
+        // what each box reads.
         if (!state.outline) {
             ui.bar.appendChild(threadsButton());
+            tools++;
+        }
+
+        if (tools) {
+            // Under 768 px the bar wraps, and a divider would end a row.
+            var divider = el('span', 'vr my-2 mx-1 d-none md:d-inline-block');
+
+            divider.setAttribute('aria-hidden', 'true');
+            ui.bar.appendChild(divider);
+        }
+
+        if (state.edit) {
+            ui.problemButton = barButton(BAR_QUIET, '', '');
+            ui.problemButton.setAttribute('aria-controls', 'wsf-problems');
+            ui.problemButton.setAttribute('aria-expanded', ui.problemBox.classList.contains('d-none') ? 'false' : 'true');
+            ui.problemButton.addEventListener('click', function () {
+                var shown = ui.problemBox.classList.toggle('d-none') === false;
+
+                ui.problemButton.setAttribute('aria-expanded', shown ? 'true' : 'false');
+
+                if (shown && ui.problemBox.querySelector('button')) {
+                    ui.problemBox.querySelector('button').focus();
+                }
+            });
+            ui.bar.appendChild(ui.problemButton);
         }
 
         runsButton();
-
-        if (FL.build) {
-            runButton(false);
-        }
-
-        // A run shown says so in its own bar above the canvas.
-        if (!state.edit) {
-            if (!state.run) {
-                ui.bar.appendChild(el('span', 'small fg-secondary', t('fl_read_only')));
-            }
-
-            moreMenu();
-            return;
-        }
-
-        ui.undo = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-arrow-counterclockwise', t('fl_undo'));
-        ui.undo.setAttribute('data-refocus', 'undo redo');
-        ui.undo.addEventListener('click', function () { undo(true); });
-        ui.bar.appendChild(ui.undo);
-        ui.redo = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-arrow-clockwise', t('fl_redo'));
-        ui.redo.setAttribute('data-refocus', 'redo undo');
-        ui.redo.addEventListener('click', function () { undo(false); });
-        ui.bar.appendChild(ui.redo);
-
-        ui.problemButton = K.button('btn btn-sm', '', '');
-        ui.problemButton.setAttribute('aria-controls', 'wsf-problems');
-        ui.problemButton.setAttribute('aria-expanded', ui.problemBox.classList.contains('d-none') ? 'false' : 'true');
-        ui.problemButton.addEventListener('click', function () {
-            var shown = ui.problemBox.classList.toggle('d-none') === false;
-
-            ui.problemButton.setAttribute('aria-expanded', shown ? 'true' : 'false');
-
-            if (shown && ui.problemBox.querySelector('button')) {
-                ui.problemBox.querySelector('button').focus();
-            }
-        });
-        ui.bar.appendChild(ui.problemButton);
+        runButton(!publishing);
 
         // Only the owner publishes: a published flow runs with the owner's
         // rights, so a colleague shared at edit changes the draft and the
         // server refuses them a publish (ws_flow_publish_check()).
-        if (flow.manage) {
-            ui.publish = K.button('btn btn-sm btn-outline theme-secondary', t('fl_publish'), 'bi-send');
+        if (publishing) {
+            ui.publish = barButton(BAR_FILL, t('fl_publish'), 'bi-send');
             ui.publish.addEventListener('click', publish);
             ui.bar.appendChild(ui.publish);
         } else {
             ui.publish = null;
-            ui.bar.appendChild(el('span', 'small fg-secondary wsf-publish-owner', t('fl_publish_owner')));
-        }
 
-        if (flow.status === 'live') {
-            var pause = K.button('btn btn-sm btn-outline theme-secondary', t('fl_pause'), 'bi-pause-circle');
-            pause.addEventListener('click', function () { act('ws_flow_pause', pause, t('fl_paused')); });
-            ui.bar.appendChild(pause);
-        } else if ((flow.status === 'paused') && flow.manage) {
-            // Live again on the version it was paused at; Publish would make
-            // the same draft a new version.
-            var resume = K.button('btn btn-sm btn-outline theme-secondary', t('fl_resume'), 'bi-play-circle');
-            resume.addEventListener('click', function () { act('ws_flow_resume', resume, t('fl_resumed')); });
-            ui.bar.appendChild(resume);
+            if (state.edit) {
+                ui.bar.appendChild(el('span', 'small fg-secondary wsf-publish-owner', t('fl_publish_owner')));
+            }
         }
 
         moreMenu();
         drawState();
     }
 
-    // "⋯": the flow's shares for everybody who reaches it (to change for its
-    // owner, to read for the others), and deleting it for its owner alone.
+    // A button of the bar in the panel's look: its icon, then its label;
+    // or the icon only, the label its name and its tooltip.
+    function barButton(className, label, iconName, iconOnly) {
+        var button = el('button', className);
+
+        button.type = 'button';
+
+        if (iconName) {
+            button.appendChild(K.icon(iconName));
+        }
+
+        if (iconOnly) {
+            button.title = label;
+            button.setAttribute('aria-label', label);
+        } else if (label) {
+            button.appendChild(document.createTextNode(label));
+        }
+
+        return button;
+    }
+
+    // A toggle of the bar pressed or not: said by aria-pressed, shown by
+    // the quiet fill of an icon button, or by the accent ink of a quiet
+    // one (it has its fill at rest).
+    function pressedLook(button, on) {
+        button.setAttribute('aria-pressed', on ? 'true' : 'false');
+
+        if (button.classList.contains('pg-button')) {
+            button.classList.toggle('fg-primary', on);
+        }
+    }
+
+    // A control of the bar that may be pressed or not, drawn dimmed while
+    // it cannot: the panel's icon button has no look of its own for that.
+    function dimmed(button, off) {
+        button.disabled = off;
+        button.classList.toggle('opacity-50', off && button.classList.contains('pg-icon-button'));
+    }
+
+    // Canvas or List: the flow drawn, or its boxes in the order of their
+    // arrows (the outline, the default under 768 px). The middle of the
+    // bar; the choice is kept until the screen is left.
+    function viewSwitch() {
+        // Centred between the two ends of the bar; under 768 px it starts
+        // its row, wherever the bar wraps.
+        var group = el('div', 'pg-seg md:mx-auto wsf-view');
+
+        group.setAttribute('role', 'group');
+        group.setAttribute('aria-label', t('fl_view'));
+
+        [[false, 'fl_canvas', 'bi-diagram-3', 'view-canvas'], [true, 'fl_view_list', 'bi-list-ol', 'view-list']].forEach(function (item) {
+            var choice = barButton('pg-seg-item', t(item[1]), item[2]);
+
+            choice.setAttribute('aria-pressed', (state.outline === item[0]) ? 'true' : 'false');
+            choice.setAttribute('data-refocus', item[3]);
+
+            if (item[0]) {
+                choice.title = t('fl_outline_help');
+            }
+
+            choice.addEventListener('click', function () {
+                if (state.outline === item[0]) {
+                    return;
+                }
+
+                state.outline = item[0];
+                state.refocus = item[3];
+                drawBar();
+                drawAll();
+
+                if (!state.outline) {
+                    fit();
+                }
+            });
+            group.appendChild(choice);
+        });
+
+        return group;
+    }
+
+    // "⋯": Pause or Resume while the draft is edited, the flow's shares for
+    // everybody who reaches it (to change for its owner, to read for the
+    // others), keeping it as a template, and deleting it for its owner
+    // alone.
     function moreMenu() {
         var flow = state.flow;
         var more = el('div', 'pg-menu-wrap');
-        var moreButton = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('fl_more'));
+        var moreButton = barButton(BAR_ICON, t('fl_more'), 'bi-three-dots', true);
         var menu = el('ul', 'menu pg-menu-end');
 
         moreButton.setAttribute('data-bs-toggle', 'menu');
         moreButton.setAttribute('data-bs-placement', 'bottom-end');
         moreButton.setAttribute('aria-expanded', 'false');
         moreButton.setAttribute('data-refocus', 'more');
+
+        if (state.edit && (flow.status === 'live')) {
+            var pause = K.button('menu-item pg-link-body-emphasis', t('fl_pause'), 'bi-pause-circle');
+
+            pause.addEventListener('click', function () { act('ws_flow_pause', pause, t('fl_paused')); });
+            menu.appendChild(el('li')).appendChild(pause);
+        } else if (state.edit && (flow.status === 'paused') && flow.manage) {
+            // Live again on the version it was paused at; Publish would make
+            // the same draft a new version.
+            var resume = K.button('menu-item pg-link-body-emphasis', t('fl_resume'), 'bi-play-circle');
+
+            resume.addEventListener('click', function () { act('ws_flow_resume', resume, t('fl_resumed')); });
+            menu.appendChild(el('li')).appendChild(resume);
+        }
 
         if (shareOffered()) {
             var share = K.button('menu-item pg-link-body-emphasis', flow.manage ? t('fl_share') : t('fl_shared_with'), flow.manage ? 'bi-share' : 'bi-people');
@@ -3005,8 +3109,8 @@
         var count = state.problems.length;
         var text = t('fl_saved');
 
-        ui.undo.disabled = !undoable(true);
-        ui.redo.disabled = !undoable(false);
+        dimmed(ui.undo, !undoable(true));
+        dimmed(ui.redo, !undoable(false));
 
         // A live or paused flow whose draft holds what its version does not.
         ui.unpublished.classList.toggle('d-none', !((state.flow.status !== 'draft') && (state.flow.changed || state.dirty)));
@@ -3018,6 +3122,12 @@
         }
 
         ui.save.textContent = text;
+
+        // Saved: a tick before the words, as the drawing has it.
+        if (text === t('fl_saved')) {
+            ui.save.insertBefore(K.icon('bi-check2', 'me-1'), ui.save.firstChild);
+        }
+
         ui.save.title = state.saveError || '';
         ui.save.classList.toggle('fg-danger', !!(state.saveError || state.conflict));
         ui.save.classList.toggle('fg-secondary', !(state.saveError || state.conflict));
@@ -3035,9 +3145,11 @@
         // Warnings alone open the list too, but leave Publish as it is.
         var warned = state.warnings.length;
 
+        // Problems in rose, warnings quiet with an amber mark, none a quiet
+        // word that cannot be pressed.
         K.clear(ui.problemButton);
-        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline theme-danger' : (warned ? 'btn-outline theme-warning' : 'btn-text theme-secondary'));
-        ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : (warned ? 'bi-exclamation-circle' : 'bi-check2-circle'), 'me-1'));
+        ui.problemButton.className = 'pg-button pg-button-sm ' + (count ? 'pg-button-danger' : (warned ? 'pg-button-quiet' : 'pg-button-ghost'));
+        ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : (warned ? 'bi-exclamation-circle fg-warning' : 'bi-check2-circle')));
         ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : (warned ? t('fl_warnings', warned) : t('fl_no_problems'))));
         ui.problemButton.disabled = !count && !warned;
 
@@ -4131,12 +4243,12 @@
     }
 
     function threadsButton() {
-        var button = K.button('btn btn-sm btn-text theme-secondary' + (state.threads ? ' active' : ''), t('fl_threads'), 'bi-bezier2');
+        var button = barButton(BAR_ICON, t('fl_threads'), 'bi-bezier2', true);
 
         button.setAttribute('aria-pressed', state.threads ? 'true' : 'false');
+        button.setAttribute('data-refocus', 'threads');
         button.addEventListener('click', function () {
             state.threads = !state.threads;
-            button.classList.toggle('active', state.threads);
             button.setAttribute('aria-pressed', state.threads ? 'true' : 'false');
             ui.stage.classList.toggle('wsf-threads-off', !state.threads);
 

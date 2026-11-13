@@ -2976,6 +2976,8 @@ function ws_flow_js_strings()
         'fl_zoom_out'         => lang('Zoom out'),
         'fl_fit'              => lang('Fit to the screen'),
         'fl_outline'          => lang('Outline view'),
+        'fl_view'             => lang('Flow view'),
+        'fl_view_list'        => lang('List'),
         'fl_outline_help'     => lang('The boxes in the order of their arrows, each with its settings. Everything the canvas does can be done here too.'),
         'fl_threads'          => lang('Data threads'),
         'fl_thread_line'      => ws_js_template('{var:1} reads {var:2}', 2),

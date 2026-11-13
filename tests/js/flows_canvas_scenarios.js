@@ -622,11 +622,11 @@ module.exports = [
             h.same('the value put at the end of the field', nodeIn(save.data.graph, 'task_2').config.title, 'Send the welcome pack {{node.task_1.task_id}}');
             h.same('the server finds nothing wrong with it', (await h.state()).problems.text, h.t('fl_no_problems'));
 
-            await h.click({ text: h.t('fl_threads'), within: BAR });
+            await h.click({ label: h.t('fl_threads'), within: BAR });
             h.ok('the toggle hides them', await h.page(() => document.querySelector('#ws-root .pgc-stage').classList.contains('wsf-threads-off')));
             await h.open();
             h.ok('still hidden when the screen is opened again', await h.page(() => document.querySelector('#ws-root .pgc-stage').classList.contains('wsf-threads-off')));
-            h.same('the toggle says so', await h.page((harness, text) => harness.find({ text: text, within: '#ws-root .wsf-bar' }).getAttribute('aria-pressed'), h.t('fl_threads')), 'false');
+            h.same('the toggle says so', await h.page((harness, label) => harness.find({ label: label, within: '#ws-root .wsf-bar' }).getAttribute('aria-pressed'), h.t('fl_threads')), 'false');
         }
     },
 
@@ -636,12 +636,14 @@ module.exports = [
         name: 'the outline view lists the boxes in the order of their arrows with their settings, and connects and adds without the canvas',
         run: async (h) => {
             await h.open();
-            await h.click({ text: h.t('fl_outline'), within: BAR });
+            await h.click({ text: h.t('fl_view_list'), within: BAR });
 
             let state = await h.state();
 
             h.ok('the outline in place of the canvas', state.outline && !state.canvas, state);
-            h.same('pressed', await h.page((harness, text) => harness.find({ text: text, within: '#ws-root .wsf-bar' }).getAttribute('aria-pressed'), h.t('fl_outline')), 'true');
+            h.same('List pressed, Canvas not', await h.page((harness, texts) => texts.map((text) => harness.find({ text: text, within: '#ws-root .wsf-bar .wsf-view' }).getAttribute('aria-pressed')), [h.t('fl_view_list'), h.t('fl_canvas')]), ['true', 'false']);
+            await h.eventually('List keeps the focus', (harness) => harness.focused() && (harness.focused().refocus === 'view-list'), 2000);
+            h.ok('no data threads toggle with the list', !(await h.probe('find', { label: h.t('fl_threads'), within: BAR })));
             h.same('the boxes in the order of their arrows', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-outline-item'), (item) => item.getAttribute('data-node'))), ['manual_1', 'task_1', 'end_1', 'task_2']);
             h.ok('each heading opens its settings, none open yet', await h.page(() => Array.prototype.every.call(document.querySelectorAll('#ws-root .wsf-outline-item'), (item) => !!item.querySelector('.wsf-outline-toggle[aria-expanded="false"]') && !item.querySelector('input, select'))));
             await h.click(OUTLINE + ' .wsf-outline-item[data-node="task_1"] .wsf-outline-toggle');
@@ -664,7 +666,7 @@ module.exports = [
             h.same('saved: the arrow and the task', [arrows(save.data.graph).indexOf('task_1>task_2:done') !== -1, added && added.config.title], [true, 'Book the training']);
             h.same('placed right of the last box', added && [added.x, added.y], [640 + BOX_W + GRID * 5, 0]);
 
-            await h.click({ text: h.t('fl_outline'), within: BAR });
+            await h.click({ text: h.t('fl_canvas'), within: BAR });
             state = await h.state();
             h.ok('the canvas again', state.canvas && !state.outline, state);
             h.same('drawn with the new box', (await h.probe('boxes')).map((box) => box.id).sort(), ['end_1', 'manual_1', 'task_1', 'task_2', 'task_3']);
@@ -937,6 +939,18 @@ module.exports = [
             await h.waitFor('a toast says so', (harness, text) => harness.toasts.some((toast) => toast.text === text), 3000, h.t('fl_published', 1));
             h.ok('nothing left to publish', (await h.state()).publish.disabled);
             await h.eventually('the status has the focus', (harness) => harness.focused() && (harness.focused().refocus === 'status'), 2000);
+
+            h.ok('Pause is not on the bar, the ⋯ menu closed', !(await h.probe('find', { text: h.t('fl_pause'), within: BAR })));
+            await h.click({ label: h.t('fl_more'), within: BAR });
+            await h.click({ text: h.t('fl_pause'), within: BAR });
+            await h.until('paused', () => h.store.callsOf('ws_flow_pause').length === 1, 3000);
+            await h.waitFor('the pill says so', (harness, text) => harness.state().status === text, 3000, h.t('fl_status_paused', 1));
+            await h.eventually('the status has the focus', (harness) => harness.focused() && (harness.focused().refocus === 'status'), 2000);
+            await h.click({ label: h.t('fl_more'), within: BAR });
+            h.ok('Resume in its place', !!(await h.probe('find', { text: h.t('fl_resume'), within: BAR })) && !(await h.probe('find', { text: h.t('fl_pause'), within: BAR })));
+            await h.click({ text: h.t('fl_resume'), within: BAR });
+            await h.until('live again', () => h.store.callsOf('ws_flow_resume').length === 1, 3000);
+            await h.waitFor('the pill says so', (harness, text) => harness.state().status === text, 3000, h.t('fl_status_live', 1));
         }
     },
 
@@ -1025,7 +1039,11 @@ module.exports = [
             h.same('saved through the panel action', h.store.callsOf('ws_flow_template_save').map((call) => [call.data.title, call.data.help, call.data.category]), [['Customer onboarding', 'Welcome a new customer', 'sales']]);
             await h.eventually('a toast says so', (harness, text) => harness.toasts.some((toast) => toast.text === text), 3000, h.t('fl_tpl_saved'));
             await h.eventually('the ⋯ button has the focus again', (harness) => harness.focused() && (harness.focused().refocus === 'more'), 2000);
+            h.ok('New flow is the list\'s, not the window\'s', !(await h.probe('find', { text: h.t('fl_new'), within: BAR })));
 
+            await h.click('#ws-view-back');
+            await h.waitFor('the flow list shown', () => !!document.querySelector('#ws-root .wsf-nothing'), 3000);
+            await h.settle();
             await h.click({ text: h.t('fl_new'), within: BAR });
             await h.waitFor('the gallery opens', () => !!document.querySelector('#ws-root .wsf-tpl-card'), 4000);
             h.same('the saved card, marked with its group', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-tpl-card'), (card) => [card.querySelector('.wsf-tpl-name').textContent, (card.querySelector('.badge') || {}).textContent || ''])), [['Customer onboarding', 'Sales']]);
@@ -1069,7 +1087,7 @@ module.exports = [
     {
         name: 'New flow makes an empty draft and puts its name in the field; left untouched, it is not kept',
         run: async (h) => {
-            await h.open();
+            await h.openList();
             await h.click({ text: h.t('fl_new'), within: BAR });
             await h.until('created', () => h.store.callsOf('ws_flow_create').length === 1, 3000);
             await h.settle();
