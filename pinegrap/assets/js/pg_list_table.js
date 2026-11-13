@@ -1890,12 +1890,14 @@
 
     /**
      * The least width a list screen's box keeps while search words or a
-     * filter narrow its rows: the width it had before them, or the list
-     * measure when that is wider, never more than the window
-     * (body.pg-measure-list #content, backend.css).
+     * filter narrow its rows: the width it had before them without an open
+     * details panel beside the rows (panel), so the stylesheet adds the panel
+     * again while it is open. The stylesheet takes the list measure when it
+     * is wider and never more than the window (body.pg-measure-list #content,
+     * backend.css).
      */
-    function heldWidth(width) {
-        return 'min(100%, max(' + Math.ceil(width) + 'px, var(--pg-measure-list-min, 1280px) + 2rem))';
+    function heldWidth(width, panel) {
+        return Math.ceil(width - (panel || 0)) + 'px';
     }
 
     /**
@@ -1908,16 +1910,19 @@
     Driver.prototype.holdWidth = function () {
         var box = document.body.classList.contains('pg-measure-list') ? document.getElementById('content') : null;
 
-        if (this.widthHeld || !box || !box.contains(this.root) || (box.style.minWidth !== '')) {
+        if (this.widthHeld || !box || !box.contains(this.root) || (box.style.getPropertyValue('--pg-list-held') !== '')) {
             return;
         }
 
         var width = box.getBoundingClientRect().width;
+        var details = this.details;
+        // Below 1024 px the panel is a sheet over the list, not beside it.
+        var panel = (details && !details.hidden && window.getComputedStyle(details).position !== 'fixed') ? details.getBoundingClientRect().width : 0;
 
         this.widthHeld = true;
 
         if (width > 0) {
-            box.style.minWidth = heldWidth(width);
+            box.style.setProperty('--pg-list-held', heldWidth(width, panel));
         }
     };
 

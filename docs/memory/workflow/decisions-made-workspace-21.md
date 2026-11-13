@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-21
-description: Decisions list, workspace part 21 (2026-11-12 on): the incoming e-mail sits in the messages area, a mail still drops as a card (#8961); the canvas card's line of tables approved (#8964)
+description: Decisions list, workspace part 21 (2026-11-12 on): incoming e-mail in the messages area (#8961); the canvas card's line of tables approved (#8964); a message's line shows every agent it woke (#9188)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -16,3 +16,8 @@ description: Decisions list, workspace part 21 (2026-11-12 on): the incoming e-m
 ## Is the canvas card's line of tables and Bind a table approved? (owner, 2026-11-12, #8964)
 - Approved with three corrections wanted in the same PR (#8960, step CO2 of `plans/canvas-one-steps.md`): at 390 px a bound table's name keeps its own line in the Bind a table drawer; the card's Open button reads "Aç" in Turkish through a text of its own; the chip says "okur" where the page only reads.
 - Shown the card and the drawer drawn from the PR's own code, wide and phone, the owner (2026-11-12): "Ta, Ma" (Ta: approved, with the three corrections the architect found).
+
+## What does the line under a message show when the message woke more than one agent? (owner, 2026-11-13, #9188)
+- The state of every agent the message woke, not only the last one asked.
+- Owner (2026-11-13), with a picture of his message naming two agents and one line under it, "Bekliyor: `@prmerge`": "bakarmısın 2 kişiden bahsettim biri bekleniyor yazıyor". Asked what the line should show, he chose "Satır her ajanı göstersin".
+- The architect's, not the owner's words: one state per agent in the order asked, each with its own Stop link; a message that woke one agent looks as before; no table or column. Plan `plans/agent-request-lines.md` (RL1).

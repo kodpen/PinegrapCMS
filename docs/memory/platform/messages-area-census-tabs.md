@@ -4,7 +4,7 @@ description: MA0 proposals (2026-11-13, open on #9081) for the messages area's s
 ---
 
 ## Are these settled?
-- No: step MA0's proposals of 2026-11-13, waiting for the architect on #9081 (questions 1, 4, 5). MA1 starts from the answer, not from this file. Facts: [[messages-area-census-screens]].
+- Decided by the architect on #9081 (`plans/messages-area-decided.md`); the shell is built (`ui/messages-area-shell.md`, #9182). Facts: [[messages-area-census-screens]].
 
 ## What would the menu row be?
 - Row 9 keeps its slot and its place under Marketing; its title becomes "Communication" (the existing key, İletişim, the drawing's name). The Site Settings category of the same name keeps it: it holds the channels' settings the Channels tab leads to.
