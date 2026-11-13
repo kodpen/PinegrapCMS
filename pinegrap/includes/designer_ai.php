@@ -2421,6 +2421,79 @@ function _pg_dai_seen($node, &$seen)
 }
 
 /**
+ * The class names a classes, add_classes or remove_classes field holds: one
+ * string of names separated by spaces, or a list of such strings (a model
+ * writes ["a", "b"] as readily as "a b").
+ *
+ * @param mixed $value
+ * @return string[]|null null when the value is neither
+ */
+function pg_design_ai_class_words($value)
+{
+    if ($value === null) {
+        return array();
+    }
+
+    if (is_scalar($value)) {
+        return preg_split('/\s+/', (string) $value, -1, PREG_SPLIT_NO_EMPTY);
+    }
+
+    if (!is_array($value)) {
+        return null;
+    }
+
+    $words = array();
+
+    foreach ($value as $item) {
+        if (!is_scalar($item)) {
+            return null;
+        }
+
+        foreach (preg_split('/\s+/', (string) $item, -1, PREG_SPLIT_NO_EMPTY) as $word) {
+            $words[] = $word;
+        }
+    }
+
+    return $words;
+}
+
+/**
+ * An operation's fields in the shape _pg_dai_op() reads them, checked before
+ * anything casts one: a list of class names becomes one string, and any other
+ * field that holds words must be a string or a number. Cast to a string, a
+ * list is the word "Array" and a PHP warning, which lands in front of the
+ * editor's JSON answer; refused by name instead, so the proposal is never
+ * made.
+ *
+ * @param array $op
+ * @return array op, error ('' when every field fits)
+ */
+function pg_design_ai_op_fields($op)
+{
+    foreach (array('classes', 'add_classes', 'remove_classes') as $key) {
+        if (!isset($op[$key]) || !is_array($op[$key])) {
+            continue;
+        }
+
+        $words = pg_design_ai_class_words($op[$key]);
+
+        if ($words === null) {
+            return array('op' => $op, 'error' => $key . ': class names as one string separated by spaces, or a list of names.');
+        }
+
+        $op[$key] = implode(' ', $words);
+    }
+
+    foreach (array('op', 'node', 'parent', 'before', 'after', 'index', 'text', 'classes', 'add_classes', 'remove_classes', 'style', 'html', 'css', 'name') as $key) {
+        if (isset($op[$key]) && !is_scalar($op[$key])) {
+            return array('op' => $op, 'error' => $key . ': a string, not a list or an object.');
+        }
+    }
+
+    return array('op' => $op, 'error' => '');
+}
+
+/**
  * One operation.
  *
  * @param array $tree
@@ -2429,10 +2502,18 @@ function _pg_dai_seen($node, &$seen)
  */
 function _pg_dai_op($tree, $op)
 {
-    $name = isset($op['op']) ? strtolower((string) $op['op']) : '';
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'tree' => null, 'line' => '', 'dropped' => array());
     };
+
+    $read = pg_design_ai_op_fields($op);
+
+    if ($read['error'] !== '') {
+        return $fail($read['error']);
+    }
+
+    $op = $read['op'];
+    $name = isset($op['op']) ? strtolower((string) $op['op']) : '';
     $done = function ($tree, $line, $dropped = array()) {
         return array('ok' => true, 'error' => '', 'tree' => $tree, 'line' => $line, 'dropped' => $dropped);
     };
@@ -4403,7 +4484,9 @@ function pg_design_ai_bare_classes($ops, $tree, $framework)
             continue;
         }
 
-        $words = array_merge($words, preg_split('/\s+/', (string) ($op['add_classes'] ?? '') . ' ' . (string) ($op['classes'] ?? ''), -1, PREG_SPLIT_NO_EMPTY));
+        foreach (array('add_classes', 'classes') as $key) {
+            $words = array_merge($words, (array) pg_design_ai_class_words($op[$key] ?? null));
+        }
 
         if (isset($op['html']) && preg_match_all('/\bclass\s*=\s*(["\'])(.*?)\1/is', (string) $op['html'], $found)) {
             foreach ($found[2] as $list) {
@@ -4902,6 +4985,10 @@ function pg_design_ai_tool_op($name, $args)
             foreach (array('text', 'add_classes', 'remove_classes', 'style', 'classes') as $key) {
                 if (array_key_exists($key, $args) && is_scalar($args[$key]) && (($key === 'style') || ($key === 'text') || ((string) $args[$key] !== ''))) {
                     $op[$key] = (string) $args[$key];
+                } elseif (($key !== 'style') && ($key !== 'text') && !empty($args[$key]) && is_array($args[$key])) {
+                    // A list of class names: the operation reads it
+                    // (pg_design_ai_op_fields()).
+                    $op[$key] = $args[$key];
                 }
             }
 
