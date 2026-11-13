@@ -259,7 +259,7 @@ function test_workspace_flow_ai_box_canvas()
 	pg_assert_contains("add(prefix, { key: 'number'", $source);
 	pg_assert_contains("add(prefix, { key: 'found'", $source);
 	pg_assert_contains('return [on, outcomeText(from, on)];', $source, 'the arrow picker names a class by its name');
-	pg_assert_contains('label.textContent = outcomeText(nodeById(edge.from), edge.on);', $source);
+	pg_assert_contains('edgePill(group, path, outcomeText(from, edge.on));', $source);
 	pg_assert_contains("\$steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php'));
 
 	$min = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.min.js');

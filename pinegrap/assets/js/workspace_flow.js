@@ -3419,21 +3419,50 @@
                 group.classList.add('wsf-edge-taken');
             }
 
-            // An arrow taken when a task is cancelled, or a step failed, says
-            // so on itself.
-            if ((edge.on === 'cancelled') || (edge.on === 'failed') || (edge.on === 'always') || (edge.on === 'each') || (edge.on === 'other') || /^class_/.test(edge.on)) {
-                var label = svgEl('text', 'pgc-edge-label');
-
-                label.setAttribute('x', String(path.mx));
-                label.setAttribute('y', String(path.my - 6));
-                label.setAttribute('text-anchor', 'middle');
-                label.textContent = outcomeText(nodeById(edge.from), edge.on);
-                group.appendChild(label);
+            if (edgeNamed(from, edge.on)) {
+                edgePill(group, path, outcomeText(from, edge.on));
             }
         });
 
         markSelected();
         markProblems();
+    }
+
+    // An arrow names its outcome when its box has more than one (done or
+    // failed, yes or no, a class of the AI box), and on always, each and
+    // other, which say how it is taken; the only outcome of a box goes
+    // unnamed.
+    function edgeNamed(from, on) {
+        return (kindOf(from).out.length > 1) || (on === 'cancelled') || (on === 'failed') || (on === 'always') || (on === 'each') || (on === 'other') || /^class_/.test(on || '');
+    }
+
+    // The outcome's name on a pill at the middle of its arrow, measured
+    // when the canvas is shown, else told by its length (the List view
+    // draws the hidden canvas too).
+    function edgePill(group, path, text) {
+        var pill = svgEl('rect', 'pgc-edge-pill');
+        var label = svgEl('text', 'pgc-edge-label');
+        var width = 0;
+
+        label.setAttribute('x', String(path.mx));
+        label.setAttribute('y', String(path.my + 4));
+        label.setAttribute('text-anchor', 'middle');
+        label.textContent = text;
+        group.appendChild(pill);
+        group.appendChild(label);
+
+        try {
+            width = label.getComputedTextLength();
+        } catch (e) {
+            width = 0;
+        }
+
+        width = Math.ceil(width || (text.length * 6.2)) + 14;
+        pill.setAttribute('x', String(path.mx - width / 2));
+        pill.setAttribute('y', String(path.my - 9));
+        pill.setAttribute('width', String(width));
+        pill.setAttribute('height', '18');
+        pill.setAttribute('rx', '9');
     }
 
     // ── Data threads ───────────────────────────────────────────────────
