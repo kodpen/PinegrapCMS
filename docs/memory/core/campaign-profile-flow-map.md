@@ -1,6 +1,6 @@
 ---
 name: campaign-profile-flow-map
-description: An e-mail campaign profile's action, delay and send time laid against the flow boxes that would do their work (MA9a, #NNNN): which action has a start box, what the Wait box covers
+description: An e-mail campaign profile's action, delay and send time laid against the flow boxes that would do their work (MA9a, #9077): which action has a start box, what the Wait box covers
 ---
 
 ## Which start box does each action become?

@@ -1,6 +1,6 @@
 ---
 name: campaign-profile-flow-email
-description: An e-mail campaign profile's purpose, consent, recipient, fields, HTML page and sender laid against the flow's e-mail box (MA9a, #NNNN): what each does today and where they differ
+description: An e-mail campaign profile's purpose, consent, recipient, fields, HTML page and sender laid against the flow's e-mail box (MA9a, #9077): what each does today and where they differ
 ---
 
 ## Purpose and consent?

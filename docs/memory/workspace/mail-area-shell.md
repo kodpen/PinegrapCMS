@@ -1,6 +1,6 @@
 ---
 name: mail-area-shell
-description: What incoming e-mail takes from the Workspace today (MA10a, #NNNN): the E-mails list, the conversation, New e-mail and the card against the Workspace's gate, shell, script bundle, menu and job passes
+description: What incoming e-mail takes from the Workspace today (MA10a, #9077): the E-mails list, the conversation, New e-mail and the card against the Workspace's gate, shell, script bundle, menu and job passes
 ---
 
 ## Which gate stops it?
@@ -22,4 +22,4 @@ description: What incoming e-mail takes from the Workspace today (MA10a, #NNNN):
 
 ## And the card?
 - A `ws_messages` row in the box's channel or room, drawn by `ws_mail_card_html()` (`mail-card.md`). The conversation's `message_id` is that card and its items hang on messages, so the card is the conversation's anchor and is written even where nobody opens the channel.
-- What changes: [[mail-area-decisions]].
+- What is proposed: [[mail-area-proposals]].
