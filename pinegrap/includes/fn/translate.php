@@ -880,6 +880,24 @@ function pg_tr_search_records($query, $fence, $live)
 }
 
 /**
+ * The records of a form whose translated texts, in the fields a list's own
+ * search box searches, match a search made on a page in another language;
+ * empty in the source language.
+ *
+ * @return int[] forms.id
+ */
+function pg_tr_search_list_records($form_page_id, array $field_ids, $query)
+{
+    if (!pg_tr_active()) {
+        return array();
+    }
+
+    pg_tr_load();
+
+    return pg_tr_search_list_records_find($form_page_id, $field_ids, $query);
+}
+
+/**
  * The query string an address of the software gets on a translated page, so
  * a request made from it is answered in the same language; '' otherwise.
  */
