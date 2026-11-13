@@ -242,7 +242,7 @@
 - designer-audit-form-action.md: Designer audit hint form_no_action: a form outside every system widget with no action is sent nowhere; what counts as wired, why it is a hint and not a ban, and the test.
 - designer-audit-targets-entry.md: Designer audit's target size (WCAG 2.5.8, 24px with the spacing exception) and redundant entry (3.3.7) hints: measured on the canvas, exemptions
 - designer-audit-tree-rules.md: Designer audit's tree rules for empty links/buttons, image alt, form submit and empty headings: what counts as a name, an alt decision, a submit and a heading, and the test
-- designer-autosave.md: Visual Page Editor autosave: one browser entry per design and page, kept until the server has it, swept on start, oldest removed for room, one notice when a write fails.
+- designer-autosave.md: Page Design Studio autosave: one browser entry per design and page, kept until the server has it, swept on start, oldest removed for room, one notice when a write fails.
 - designer-block-family-files.md: Block families in their own files (style_designer_blocks_<family>.js): the registration call, the kit, how the palette, drop, block rules and PHP readers take them, the checks (B0)
 - designer-block-forms.md: How a ready-made designer block writes a form that can be sent and read aloud: a label for every field, a real submit button, POST unless search, and what the audit and the block test check.
 - designer-block-full-bleed-giant-type.md: Block rules pg-display-xl / pg-display-xxl (giant type), pg-bleed (edge to edge), pg-screen (one screen tall), pg-shade-tint, and the Hero: Full-Screen Media block (spotlight-media) in Marketing
@@ -336,9 +336,9 @@
 - designer-grid-node-tag.md: Opening tag of designer container/row/col on the page and in the editor HTML: twin helpers, classes once, attribute order, column widths, sizing props; page bodies drawn before
 - designer-gutter-overflow.md: Why wide row gutters (g-5) overflow inside .container on phones, the g-4 g-lg-5 rule, and how to measure responsive overflow of a block.
 - designer-hidden-page-endpoints.md: Editor endpoints asked by page id keep the hidden-page rule of the tab list: page_load, form_fields and notes_fetch refuse a page behind a folder the operator may not know about
-- designer-home-colours.md: Visual Page Editor home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, token-class drawings, status as words and a shaped mark, tooltips
-- designer-home-pictures.md: The Visual Page Editor home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback [decision: decisions-made-product-35.md]
-- designer-home-screen.md: Visual Page Editor home (view_system_styles.php): one-accent colours, start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
+- designer-home-colours.md: Page Design Studio home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, token-class drawings, status as words and a shaped mark, tooltips
+- designer-home-pictures.md: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback [decision: decisions-made-product-35.md]
+- designer-home-screen.md: Page Design Studio home (view_system_styles.php): one-accent colours, start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
 - designer-import-validation-theme.md: Designer HTML/ZIP import rules, SEO validation badges (client twin), theme as files row, canvas direct-child CSS rules, image placeholder and loop band.
 - designer-incremental-canvas.md: How a one-node edit redraws only that node's element on the designer canvas (_sdRenderNode, _sdCanvasRedrawNode), which edits keep the full rebuild, and what the in-place redraw keeps (D2, PR #8048)
 - designer-inline-text-editing.md: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
@@ -400,7 +400,7 @@
 - dynamic-region-in-designer.md: A dynamic region placed in the visual designer: the region node's attribute ($dregion_attribute), its PHP code as a code-view tab for administrators, the dynamic_region_code endpoint
 - editor-a11y-measurements.md: Contrast and target size measured on the editor's canvas are kept with the accessibility report: seo_issue rows with source editor:<time>, replaced on each save, left alone by the nightly pass
 - editor-audit-panel.md: Editor audit panel Accessibility section: rows per registry concept, the rendered draft's a11y findings, canvas checks under them, badges via data-pg-node
-- editor-turkish-terms.md: Which English terms the visual editor's Turkish labels may not keep (legacy, checkbox, alert, Attribute, Breadcrumb, file names) and the test that checks every _sdT() key
+- editor-turkish-terms.md: The names Page Design Studio, Design Canvas, Designs and their Turkish; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Breadcrumb); _sdT() test [decision: decisions-made-panel-6.md]
 - error-page-widget.md: The error page system widget: when it is shown, which block shows for 404, maintenance and other errors, its tokens, and the maintenance screen's title.
 - express-order-legal-documents.md: Checkout document boxes and KVKK lines in the designer's express order tree: legal_* field bindings, has_legal_documents / has_legal_kvkk* flags, __legal_* tokens, sentence split of the label
 - folder-view-widget.md: The Folder View widget (classic "folder view" page type): settings and their fallback, the folder tree as a main loop plus nested folder_view.children lists, row tokens, flags, what is left out.
@@ -437,7 +437,7 @@
 - legacy-bootstrap-trial-design.md: The Bootstrap 5 trial design of a Legacy design (LB4): what Make a trial design copies and converts, the asset rows, the record file, Delete while unused, the side-by-side preview
 - legacy-bootstrap-trial-why.md: Why a Bootstrap 5 trial design keeps Bootstrap 3's script row switched off, and why only a design the card's test calls Bootstrap 3 gets a trial (architect, 2026-11-13, asked in #9159) [decision: here]
 - legacy-bootstrap-trial.md: The LB1 hand trial (#8940): a Legacy page with Bootstrap 5.3.8 in place of the classic sheet, how it was made, what broke, how near it came; pictures beside the plan
-- legacy-design-framework.md: The legacy framework key of a classic style moved into the editor (LG3): registry entry and flags, who writes it, the 11.0.187 data step, the Legacy / Eski badge on Visual Designs
+- legacy-design-framework.md: The legacy framework key of a classic style moved into the editor (LG3): registry entry and flags, who writes it, the 11.0.187 data step, the Legacy / Eski badge on Designs
 - legacy-design-theme.md: The theme file of a design moved from a classic style: the activated theme the classic head printed, on the site, the canvas and the Theme file hint; the dry run's warning (LG1, #8694)
 - legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move [decision: decisions-made-product-43.md]
 - legacy-layouts-census.md: Census of the page types' custom layouts for their move to Bootstrap 5.3.8 (LL1, #8968): per type the widget twin, layouts that differ from the template, Bootstrap 3 names
@@ -465,7 +465,7 @@
 - member-widgets-tokens-and-fields.md: Membership widget tokens/sections, Google rules, core vs contacts-column fields, login-screen redirect, register-link tri-state, reset screens, page-name box. [decision: decisions-made-product-13.md]
 - menu-sequence-widget.md: Menu Sequence widget (menu_sequence_region, #1817): the classic <menu_sequence> region in the designer; reading order of a menu's pages, previous and next links, wrap to the first, tokens, flags.
 - menu-widget.md: Menu widget (menu_region, #1781): a classic menu region in the designer; items stay in the menu screen; menu.children lists, row tokens, current item, access, window, edit chip, gaps.
-- migration-carries-designs.md: Migration screen Visual Designs switch (LD4): get_designs via the template export, managed files, install with target ids, skipped bin/drafts/Workspace folders, what stays behind [decision: decisions-made-product-21.md]
+- migration-carries-designs.md: Migration screen Designs switch (LD4): get_designs via the template export, managed files, install with target ids, skipped bin/drafts/Workspace folders, what stays behind [decision: decisions-made-product-21.md]
 - multi-page-design-model.md: Data model of multi-page visual designer designs (style + page_style, page_tree_json), tree-reading helpers, design-page detection, start screen, recycle bin rules.
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, the dirty check and unchanged pages, tab switching/menu/rename DOM rules, toolbar overflow, palette order and designer texts.
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
@@ -496,7 +496,7 @@
 - page-schedule.md: Scheduled publishing of visual-designer pages (page.publish_at/unpublish_at, 11.0.17): what is stored, what a save does with the two times, the general job's pass, manual moves [decision: here]
 - page-type-pane-in-designer.md: Designer settings Page Type pane: a classic page's type fields, Layout Type and form editor links via edit_page.php?properties=1 (JSON), rights shared with edit_page.php.
 - palette-block-info.md: Blocks hover card: the one-line description of every ready-made block (core in _sdBlockInfo, family in its item's desc), how a line is written, the test that holds a new block to it
-- palette-block-sketch.md: Visual Page Editor Blocks list hover card: the block drawn from the tree its build returns (_sdBlockSketch), what each node becomes, what is left out, the cache, the test, the known limits
+- palette-block-sketch.md: Page Design Studio Blocks list hover card: the block drawn from the tree its build returns (_sdBlockSketch), what each node becomes, what is left out, the cache, the test, the known limits
 - palette-component-atomic.md: Palette components explode into a node tree; only btn, badge (atomic) and language_switcher (per request) carry render/toHTML; the two button models, their panel, children in a component button.
 - palette-component-drawings.md: The Components tab's hover card drawings (_sdPalDrawing): every row has one, the drawing key v in _sdPalInfo(), the l: key of the Lists in a record rows, the drawing style, the test
 - palette-component-rules.md: Rules for a new designer palette component: the full guide, no script or stylesheet, render equals toHTML, tree by default, inline style, cssClass vs _attrs, grid, canDrop, accessibility, registration

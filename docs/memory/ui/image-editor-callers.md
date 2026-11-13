@@ -1,6 +1,6 @@
 ---
 name: image-editor-callers
-description: Who opens the image editor and how (#4609): the openImageEditor alias, data-pg-image-edit buttons, the live site's copy into content, Workspace's save.url, the redirect
+description: Who opens the Design Canvas and how (#4609): the openImageEditor alias, data-pg-image-edit buttons, the live site's copy into content, Workspace's save.url, the redirect
 module: image_editor
 ---
 

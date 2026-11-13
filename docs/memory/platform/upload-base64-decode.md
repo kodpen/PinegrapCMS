@@ -19,7 +19,7 @@ module: files
 
 ## Which doors decode base64 another way?
 - File Manager uploads: `pg_explorer_write_base64()` (`view_folder_and_files_f.php`) cuts at the first comma and decodes in 64 KB slices.
-- The image editor, Edit File, contact photos and signatures match a fixed `data:image/...;base64,` prefix.
+- The Design Canvas, Edit File, contact photos and signatures match a fixed `data:image/...;base64,` prefix.
 
 ## How is it tested?
 - `tests/upload_base64_decode_test.php`: texts holding `base64` at the start, in the middle and at the end, a browser data URL, spaces for `+`, line breaks, an empty body, the refusals, and a guard that both doors call the helper. Before the change it failed on the missing function and on the two `explode('base64', …)` splits.

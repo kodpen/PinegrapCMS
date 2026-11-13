@@ -1,6 +1,6 @@
 ---
 name: image-editor-recycle-bin
-description: The image editor's server refuses the Recycle Bin: a binned file is not opened, replaced or copied, and a new picture is not written into the bin folder (#4297)
+description: The Design Canvas's server refuses the Recycle Bin: a binned file is not opened, replaced or copied, and a new picture is not written into the bin folder (#4297)
 module: image_editor
 ---
 

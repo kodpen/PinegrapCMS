@@ -1,6 +1,6 @@
 ---
 name: image-editor-fonts
-description: The image editor's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
+description: The Design Canvas's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 module: image_editor
 ---
 

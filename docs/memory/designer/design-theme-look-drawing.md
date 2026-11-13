@@ -11,7 +11,7 @@ module: design_themes
 - No preview (null) draws Plain Bootstrap: `pg_design_plain_look_preview()` / `_SD_PLAIN_LOOK_PREVIEW`.
 
 ## Where is it shown?
-- The Themes tab's head row in the Visual Page Editor (`_renderThemeHead()` in `style_designer_theme.js`): the design's look in place of the old brush icon, through `_sdLookDrawingOf(key)` from the kit. A custom look draws the look it is based on; no look or an unknown one draws Plain Bootstrap.
+- The Themes tab's head row in the Page Design Studio (`_renderThemeHead()` in `style_designer_theme.js`): the design's look in place of the old brush icon, through `_sdLookDrawingOf(key)` from the kit. A custom look draws the look it is based on; no look or an unknown one draws Plain Bootstrap.
 - Choose a Template's look pills (`pg_designer_template_theme_picker()`): each look before its name, shown at 36×24 (`designer_home.css`); "Template's theme" keeps its stars icon.
 - Settings > Theme cards keep their own HTML sample (`_sdThemeLookDemo()`), drawn in the palette of the moment.
 

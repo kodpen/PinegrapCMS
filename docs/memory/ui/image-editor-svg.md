@@ -1,6 +1,6 @@
 ---
 name: image-editor-svg
-description: The image editor's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
+description: The Design Canvas's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
 module: image_editor
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: image-editor-area
-description: The image editor's Select area tool (E27a): shapes, magic wand, add and subtract, invert, feather, marching ants, doc.selection, outline from pixels; the actions of E27b
+description: The Design Canvas's Select area tool (E27a): shapes, magic wand, add and subtract, invert, feather, marching ants, doc.selection, outline from pixels; the actions of E27b
 module: image_editor
 ---
 

@@ -26,7 +26,7 @@ module: legacy_bootstrap_trial
 - The Bootstrap 3 names the page types' layouts print (form-group, text-right, help-block, img-responsive, btn-default, checkbox, input-group-addon/-btn, visible-xs-inline below sm as the converter, glyphicon drawn with the Bootstrap Icons twin's code point). A software file: rules leave as `legacy-layouts-bootstrap.md` converts the layouts.
 
 ## Where is a trial recorded?
-- `data/legacy_to_bootstrap/trials.json`: Legacy id => trial, map (part => copy), files (ids), made, user. `pg_lbs_trial_of()` drops one whose row is gone (deleted or binned in Visual Designs).
+- `data/legacy_to_bootstrap/trials.json`: Legacy id => trial, map (part => copy), files (ids), made, user. `pg_lbs_trial_of()` drops one whose row is gone (deleted or binned in Designs).
 - Delete (`pg_lbs_trial_delete()`): refused while pages (bin too) or folders use it or the editor has it open; deletes the row, the copies of its category no tree places, the files no other style links.
 
 ## How is a page previewed?

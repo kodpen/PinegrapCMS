@@ -4,7 +4,7 @@ description: Why a JPEG/PNG keeps its address and file and WebP is negotiated th
 ---
 
 ## What rule came out of it?
-- A file's bytes match its name's extension; a stored format change is a new file. No door renames a picture to change its format (File Manager "Prepare WebP" and the image editor make copies, Replace keeps the format).
+- A file's bytes match its name's extension; a stored format change is a new file. No door renames a picture to change its format (File Manager "Prepare WebP" and the Design Canvas make copies, Replace keeps the format).
 - The upload is the master, never its WebP copy. Every other copy of a picture (WebP at the own address, panel thumbnails at 320 px, Workspace previews) is a derivative in `data/cache/img`, never a file row (`image-derivatives.md`).
 
 ## Which options were weighed? (2026-11-01)

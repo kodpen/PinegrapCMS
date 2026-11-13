@@ -1,6 +1,6 @@
 ---
 name: image-editor-parts
-description: The image editor in parts: core, model, one file per tool; the hooks a tool hangs on the editor (panels, pointers, layer types), its model section, labels, API actions, styles and tests
+description: The Design Canvas in parts: core, model, one file per tool; the hooks a tool hangs on the editor (panels, pointers, layer types), its model section, labels, API actions, styles and tests
 module: image_editor
 ---
 

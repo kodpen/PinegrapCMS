@@ -1,6 +1,6 @@
 ---
 name: image-editor-text
-description: The image editor's text layers: fields, the one line layout the stage and the save share, typing in place, system and site fonts, resize scaling the letters, the panel
+description: The Design Canvas's text layers: fields, the one line layout the stage and the save share, typing in place, system and site fonts, resize scaling the letters, the panel
 module: image_editor
 ---
 

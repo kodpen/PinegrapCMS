@@ -1,6 +1,6 @@
 ---
 name: designer-home-screen
-description: Visual Page Editor home (view_system_styles.php): one-accent colours, start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
+description: Page Design Studio home (view_system_styles.php): one-accent colours, start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
 ---
 
 ## Which colours may the screen use?

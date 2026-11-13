@@ -38,5 +38,5 @@ migrate were found on the source site." and no activity line is logged
 
 ## Does it carry visual designs?
 
-Yes, with the "Visual Designs" switch (LD4, #6221): `designer/migration-carries-designs.md`.
+Yes, with the "Designs" switch (LD4, #6221): `designer/migration-carries-designs.md`.
 The source never sends its Recycle Bin, Drafts or Workspace folders.

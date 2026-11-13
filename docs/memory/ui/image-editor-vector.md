@@ -1,6 +1,6 @@
 ---
 name: image-editor-vector
-description: The image editor's vector pen: path layers as boxes with knots inside, drawing point by point, editing points and handles, smooth and corner, open and closed, convert to path
+description: The Design Canvas's vector pen: path layers as boxes with knots inside, drawing point by point, editing points and handles, smooth and corner, open and closed, convert to path
 module: image_editor
 ---
 

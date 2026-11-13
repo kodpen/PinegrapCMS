@@ -1,6 +1,6 @@
 ---
 name: image-editor-access
-description: The image editor's access part: tool letters, the keyboard help sheet with its per-tool groups, shortcut names on the controls, Tab kept inside, reduced motion
+description: The Design Canvas's access part: tool letters, the keyboard help sheet with its per-tool groups, shortcut names on the controls, Tab kept inside, reduced motion
 module: image_editor
 ---
 

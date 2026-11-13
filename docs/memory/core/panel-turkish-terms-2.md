@@ -6,7 +6,7 @@ module: cloudflare_tools
 
 ## Which word does the panel use? (continued from [[panel-turkish-terms]])
 - Shipping method: "nakliye yöntemi" everywhere (headings, sub-headings, messages; #4112, #4263). "gönderim" stays only in "gönderim tarihi ayarlaması" (Ship Date Adjustment) and "gönderim kesintisi".
-- Site Log file lines: one pattern, "dosya ({var:1}) oluşturuldu / düzenlendi / silindi / Görsel Düzenleyici ile …"; never "dosyası (x)" or "(x) dosyası" (#4263).
+- Site Log file lines: one pattern, "dosya ({var:1}) oluşturuldu / düzenlendi / silindi / Tasarım Tuvali'nde oluşturuldu"; never "dosyası (x)" or "(x) dosyası" (#4263).
 - Private Label Branding card (Site Settings › Appearance, administrators only): "Özel Marka Kimliği"; its switch "Enable private label branding" ("Özel marka kimliğini etkinleştir"), the logo hint "Leave blank to use the default Pinegrap logo". The administrator's Appearance description names all four cards; "Dashboard" in a description is "Panel kartı", the card title "Panel" (#4263).
 - Gift card "Original Amt": "İlk Tutar"; commission frequency "One-Time": "Tek seferlik" (#4263).
 - Workspace agent: "ajan". The keys `Agent`, `Agents`, `Agent Card` and `Our Agents` are the real-estate template's estate agents ("Danışman", "Danışmanlar"), so the Workspace takes keys of its own: `The agent` ("Ajan") and, for the heading of the Agents card, `Workspace agents` ("Ajanlar"); under `Agents` the card was headed "Danışmanlar" (#8413, `tests/workspace_agents_test.php`).

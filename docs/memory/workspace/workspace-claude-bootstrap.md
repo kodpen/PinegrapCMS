@@ -17,7 +17,7 @@ description: Claude's routine reads its instructions and each request's briefing
 ## What is the shared briefing?
 - `ws_ai_briefing($row, $asker, $agent)` (includes/workspace/ai.php): head (`ws_ai_briefing_head()`: who it is, now, who asked), then the note, task, channel, discussion, people, reply-to and request in data blocks, then `ws_ai_briefing_text()`: "Answer in …" and the assistant rules last.
 - `ws_ai_start()` takes its `parts` as Pinegrap AI's first message; `ws_ai_system_prompt()` takes its head. Claude takes `text`.
-- `$agent` 'claude' switches the channel check to `ws_claude_channel_allowed()`, the name in the head and errors, the "left out" line of `ws_ai_channel_context()` (the context endpoint instead of read_channel), and adds the Visual Page Editor case through `pg_design_ai_brief()`.
+- `$agent` 'claude' switches the channel check to `ws_claude_channel_allowed()`, the name in the head and errors, the "left out" line of `ws_ai_channel_context()` (the context endpoint instead of read_channel), and adds the Page Design Studio case through `pg_design_ai_brief()`.
 
 ## How does the card know the paste is old?
 - The instructions route compares the version sent (`ws_claude_version_state()`: none, older, current) and the Site API sent (`ws_claude_site_state()`: none, other, current; a slash or space around it is the same address); the requests list notes "none" when it is called without `version` (the long prompt pasted before). The served instructions send `?version=` with the list.

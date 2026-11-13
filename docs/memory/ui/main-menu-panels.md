@@ -6,9 +6,9 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 ## What does a click on a menu row do?
 - A row with more than one entry, a control, or one entry that goes elsewhere opens a panel in place of the rows: back arrow, row name, entries (`pg_menu_row_opens_panel()`, `pg_menu_panel()`, `includes/fn/output.php`; `tests/menu_panel_test.php`). The arrow or Escape brings the rows back.
 - A row with no entries, or one that is its own screen, stays a plain link (Dashboard).
-- An entry can open a panel of its own (Site Settings, `main-menu-settings-row.md`); the back arrow and Escape go up one level (`backMenuPanel()`).
+- An entry can open a panel of its own: System tools' groups (`settings-system-tools.md`), the Page Design Studio's Other (`main-menu-design-studio-row.md`). The back arrow and Escape go up one level (`backMenuPanel()`).
 - The pinned My Notes row opens the Workspace list (`'panel_of' => 23`, `pg_menu_row_panel_id()`; #4889), not a panel of its own; `workspace.js` `drawMenuRow()` hooks a row pinned at runtime to it. Back returns the focus to the opening row (`data-pg-menu-opener`).
-- The row keeps its `href`: a middle or Ctrl/Cmd click or a new tab opens its screen.
+- The row keeps its `href`: a middle or Ctrl/Cmd click opens its screen.
 
 ## Where do the entries and their permissions come from?
 - The panel body is the row's `data-bs-content` string, built in `output_menu()` under each entry's own gate (role, `USER_MANAGE_*`, ERP, workspace rights, module switches), drawn as it is. A new entry goes into that string under the gate of its screen (`main-menu-entry-gates.md`).
@@ -24,11 +24,11 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 
 ## How are the current entry and the row's hint found?
 - `markMenuCurrent()` (`backend.src.js`) marks in each panel the entry whose path is the page's, whose query parameters are all on the page (more wins, the same set best) and whose `#section`, if any, is the page's: `.pg-menu-current`, `aria-current="page"`, coloured through `--bs-emphasis-color-rgb` (`.link-body-emphasis` is `!important`). Its name goes into the row's `.pg-menu-hint` (unless it is the row's own name); CSS shows the hint on the `.active` row only, so it follows `.active` when `workspace.js` pins or unpins My Notes.
-- `MENU_PANEL_KEY` is assigned above the init calls; below them it was undefined at load.
+- `MENU_PANEL_KEY` is set above the init calls; below them it was undefined.
 
 ## What else had to change with it?
 - Their handler cancels the click (no leaving bar); the drawer's close-on-link handler ignores them.
-- Rows carry `no-popover`, so `pgBindTitlePopovers()` leaves them the browser's title hint.
+- Rows carry `no-popover`: `pgBindTitlePopovers()` leaves them the title hint.
 - The panel CSS outweighs `#menu .menu-body .bi { font-size: 1.3rem }` (entries carry `bi`). The head is a tinted bar with a smaller title.
 - A long entry wraps beside its icon (flex row), no ellipsis: `pg_menu_panel()` drops the entries' `text-truncate`, whose utilities layer beats the panel CSS.
 
