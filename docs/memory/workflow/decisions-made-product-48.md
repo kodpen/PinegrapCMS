@@ -12,7 +12,7 @@ description: Decisions list, product part 48 (2026-11-12 on): Legacy to Bootstra
 - The architect's, not the owner's words: Bootstrap 3 is found by the classic framework sheet's asset row, never by class names.
 
 ## What does the picker open on? (owner, 2026-11-12, #9070)
-- A list of everything of its kind: the files, pictures or pages of every folder in one list, newest first, search and sort above; the folder tree stays at the side as a filter. Plan `plans/picker-all-list.md`.
+- A list of everything of its kind: the files, pictures or pages of every folder in one list, newest first, search and sort above; the folder tree stays at the side as a filter. Built in #9186, #9201, #9226: `ui/picker-all-list-server.md`, `ui/picker-all-list-dialog.md`.
 - Owner (2026-11-12): "her seferinde klasör klasör açtığı için […] aranan dosya bulmak zorluyor. dosya klasör sistemi ek olarak olmalıydı."; asked what it opens on, he chose "Tümü listesi".
 - It replaces the opening on a folder of the screens approved on 2026-11-10 (`decisions-made-product-42.md`, #8514); the rest of those screens stays.
 

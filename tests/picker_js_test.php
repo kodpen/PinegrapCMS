@@ -294,6 +294,7 @@ function test_picker_js_all_opening_and_sort()
 			first: P.allParams("image", "modified", "desc", "", 100),
 			next: P.allParams("page", "name", "asc", "abc_-1", 50),
 			sorts: [P.allSort(null, null, false), P.allSort("size", null, false), P.allSort("size", "asc", true), P.allSort("best", "asc", false), P.allSort("name", "sideways", false), P.allSort("type", "desc", true)],
+			keys: [P.allSortKeys(true), P.allSortKeys(false)],
 			views: [P.viewFor(null, true, false), P.viewFor(null, false, false), P.viewFor("list", true, false), P.viewFor("grid", false, false), P.viewFor("grid", false, true), P.viewFor("x", true, false)]
 		};');
 
@@ -310,8 +311,9 @@ function test_picker_js_all_opening_and_sort()
 		array('sort' => 'modified', 'dir' => 'desc'),
 		array('sort' => 'modified', 'dir' => 'desc'),
 		array('sort' => 'name', 'dir' => 'asc'),
-		array('sort' => 'type', 'dir' => 'desc'),
-	), $out['sorts'], 'newest first by default; a page has no size; best match is a search sort');
+		array('sort' => 'modified', 'dir' => 'desc'),
+	), $out['sorts'], 'newest first by default; a page has no size and no type sort on All; best match is a search sort');
+	pg_assert_same(array(array('modified', 'name'), array('modified', 'name', 'size', 'type')), $out['keys'], 'the server cannot sort pages by their type label');
 	pg_assert_same(array('grid', 'list', 'list', 'grid', 'list', 'grid'), $out['views'], 'pictures as tiles, files and pages as a list, the person\'s choice kept');
 }
 
