@@ -32,7 +32,7 @@ description: Steps PKV and PK1-PK10 of plans/one-picker.md: screens, registry an
 
 - PK9 (M) Product builder pictures, contact photo (`software_image_picker()`), theme designer file list; `editor_select_image.php` deleted. Done in #8904 (`ui/picker-remaining-screens.md`).
 
-- PK9b (M) The image editor's From the site lists (after V10, #8854) and the Workspace's "from the files" picker with its chat attachment refusal kept (`platform/file-copy-chat-attachments.md`).
+- PK9b (M) The image editor's From the site lists (after V10, #8854) and the Workspace's "from the files" picker with its chat attachment refusal kept (`platform/file-copy-chat-attachments.md`). In progress.
 
 - PK10 (S) Close-out. Helpers nothing calls are removed, `ui/picker-overview.md` is current, the PR body names the `[NEW]` changelog line, the four plan files and `plans/one-picker/` are deleted.
 
