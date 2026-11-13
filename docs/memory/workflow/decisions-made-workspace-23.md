@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-23
-description: Decisions list, workspace part 23 (2026-11-13 on): a warning before mail to a missing domain (#9267); SMS answer and stop words (#9286); agents among who has seen a message (#9314)
+description: Decisions list, workspace part 23 (2026-11-13 on): missing-domain mail warning (#9267); SMS answer and stop words (#9286); agents among who has seen a message (#9314); what a tag wakes (#9341)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -24,3 +24,9 @@ description: Decisions list, workspace part 23 (2026-11-13 on): a warning before
 - Yes, under the message and in the "Who has seen it" drawer, in every channel. Owner (2026-11-13): "hem mesajların altında hemde kimler gördü alanında gören ajanların bilgileri yer almıyor. bu hem burası hemde normal kanallarda önemli".
 - Why: a message naming three agents read "Everyone in the channel has seen it" and said nothing of them, so he could not tell whether an order had reached them.
 - How it is counted is the architect's (technical, no table or column): `plans/message-seen-agents.md`.
+
+## Whose tag wakes an agent, and where? (owner, 2026-11-13, #9341)
+- A guest's message, a mail's text and an answer of Claude, Pinegrap AI or an MCP assistant never wake an agent. Owner (2026-11-13): "misafir mesajı, e-posta ve yapay zekâ yanıtı ajan uyandırmaz kalmalı bu kural geçerli."
+- The channel's own agents (the registry agents added to it, application and model agents alike) are not under that rule: one naming another in its answer wakes it, with the brakes. Owner: "yapay zekâ yanıtı yanlış anlaşılmasın kanaldaki ajanlar bundan muaf bu arada".
+- In an agent channel (its agent switch on) a tag written by the owner or a manager of that channel wakes the tagged agent wherever it stands in a channel item (poll, task, table cell, note), but not in a canvas. Owner: "ancak ajan kanallarında sahip veya atanmış yönetici nerede geçirirse geçirsin uyanabilir yapabiliriz.(tuval hariç)". The two readings in brackets and of "manager" he confirmed: "okumaların doğru."
+- A tag in a message's own body keeps its rule for every team member in every channel; the send paths that skipped the ask call are a fix. Why: he tagged an agent in a message with a picture and got no answer. Plan: `channel-item-tags-wake` (TW1, TW2).

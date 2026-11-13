@@ -38,7 +38,7 @@ none
 
 ## Decision question
 
-<!-- A schema or product-behaviour question, or one this PR cannot settle: open an architect issue (docs/memory/workflow/architect-asking.md), write "Decision: #<issue>" here, turn the PR back to draft and end the session; the architect answers on the issue and comments on this PR. Never ask the owner here or in your reply. Leave "none" otherwise. -->
+<!-- A schema or product-behaviour question, or one this PR cannot settle: ask it in the agent channel naming the architect (docs/memory/workflow/architect-asking.md) and write "Decision: channel message <id>" here, or write the question here when you have no channel key; turn the PR back to draft and end the session. The architect answers in the channel. Never ask the owner here or in your reply. Leave "none" otherwise. -->
 
 none
 
