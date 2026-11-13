@@ -71,7 +71,7 @@
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - whatsapp-channel-steps.md: Steps WA0-WA11 of the WhatsApp channel plan (#8950): facts and storage first, connection, queue, templates, webhook, orders, forms, the Flows box, the template designer, offer codes
-- whatsapp-channel-storage.md: WA0's answers (2026-11-12): queue, templates and customer messages in their own tables, SMS marketing consent as the gate, per-recipient keys as single-use key codes
+- whatsapp-channel-storage.md: WA0's proposals (2026-11-12), open for the architect before WA2: queue, templates and customer messages in tables of their own, SMS marketing consent as the gate, single-use key codes
 - whatsapp-channel.md: Plan (owner 2026-11-12, #8950): WhatsApp as a message channel beside e-mail for orders, forms and flows; the site's own Meta app, templates designed in the panel, offer codes; what binds every step
 - workspace-channel-look-prototype.md: The style sheet tried on dev for step CL1 of plans/workspace-channel-look.md (one header card, colour wash, pill tabs, day chip, writing box card); a browser trial, not in the code
 - workspace-channel-look.md: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspace channel screen in the dashboard's manner (one header card, colour wash, pill tabs, panes as cards); steps CL1-CL4 in order

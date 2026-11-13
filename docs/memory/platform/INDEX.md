@@ -201,6 +201,7 @@
 - vendor-api-update.md: The Kodpen API's release check (GET /releases/latest, PR #3282, PG_VENDOR_API_V1 on): how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts [decision: decisions-made-product-5.md]
 - whatsapp-cloud-api-facts.md: Meta's WhatsApp Cloud API on 2026-11-12: Graph version, ids and permanent token, sending a template, the 24-hour window, template limits, categories, prices, media
 - whatsapp-cloud-api-webhooks.md: Meta's WhatsApp webhooks and error codes on 2026-11-12: verify call, X-Hub-Signature-256, retries, fields, delivery and template states, BSUIDs, which codes may be retried
+- whatsapp-connection.md: WhatsApp account (WA1, #9067): the Communication › WhatsApp card and its five steps, connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature
 - windows-folder-is-writable.md: Ask pg_dir_writable(), never is_writable(), about a folder: PHP on Windows reads its read-only attribute (OneDrive, Explorer), which stops nothing; where it bit, how each check asks now
 - x-rewrite-url-iis-only.md: The request's address is read by pg_request_uri_from_server(): X-Rewrite-URL counts on IIS only, else a client header could replace the routed address and slip past the firewall
 - zip-entry-declared-size.md: A zip entry is read no further than its archive declares: streams via pg_zip_entry_uri(), whole entries via pg_zip_entry_contents(), ZIP imports via pg_zip_import_open(), .ods checked
