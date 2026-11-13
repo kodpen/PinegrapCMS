@@ -46,6 +46,23 @@ function pg_explorer_upload_image_options($image_settings, $optimize, $to_webp, 
     return $image_options;
 }
 
+// The largest file the File Manager's upload window takes, in bytes, and
+// the figure it prints: the server's ceiling for one JSON request
+// (pg_upload_limits()['json_max']; 0 when the server gives no memory figure),
+// never above what a browser can send that way. The window reads a file
+// into a base64 data URL inside one JSON text, and a JavaScript string holds
+// at most 2^29 - 24 characters in Chrome and Edge (Firefox and Safari hold
+// more): base64 writes 4 characters for 3 bytes, and 1 MB of the string is
+// kept for the data URL's head and the rest of the request, so about
+// 383 MB. A larger file is read as an empty string, with no error.
+function pg_explorer_upload_max_bytes($json_max)
+{
+    $browser_max = (int) (floor(((536870888 - 1048576) / 4)) * 3);
+    $json_max = (int) $json_max;
+
+    return ($json_max > 0) ? min($json_max, $browser_max) : $browser_max;
+}
+
 // ── Upload (drag files from the computer into the folder) ───────
 function pg_explorer_handle_upload($type, $request, $user)
 {

@@ -361,6 +361,23 @@ function pg_event_workspace_awaited($event, $rules_rows)
         return true;
     }
 
+    return pg_event_rules_name($event, $rules_rows);
+}
+
+// Is the event kept on a site with the Workspace on or off? On, as
+// pg_event_workspace_awaited() says: its channels hear about the records
+// they watch. Off, only a flow's start box hears a site event, so every
+// event is kept the way an on-demand one is: while an event rule of a live
+// flow names it ($rules_rows read for flows only). Pure.
+function pg_event_workspace_kept($event, $workspace_on, $rules_rows)
+{
+    return $workspace_on ? pg_event_workspace_awaited($event, $rules_rows) : pg_event_rules_name($event, $rules_rows);
+}
+
+// Does one of the rules name this event in an event rule? $rules_rows are
+// ws_scheduled_actions.rules, JSON lists of rules. Pure.
+function pg_event_rules_name($event, $rules_rows)
+{
     foreach ((array) $rules_rows as $rules) {
         foreach ((array) json_decode((string) $rules, true) as $rule) {
             if (is_array($rule) && (($rule['type'] ?? '') === 'event') && ((string) ($rule['event'] ?? '') === (string) $event)) {
@@ -372,24 +389,27 @@ function pg_event_workspace_awaited($event, $rules_rows)
     return false;
 }
 
-// The rules of the active scheduled actions that may name an on-demand
-// event, read once a request for each event.
-function pg_event_workspace_waiting_rules($event)
+// The rules of the active scheduled actions that may name an event, read
+// once a request for each event: an on-demand event's, or any event's on a
+// site whose Workspace is off, where only the anchors of flows (flow_id > 0)
+// run ($flows_only).
+function pg_event_workspace_waiting_rules($event, $flows_only = false)
 {
     static $read = array();
 
     $event = (string) $event;
+    $key = ($flows_only ? 'flows:' : 'all:') . $event;
 
-    if (!isset($read[$event])) {
-        $read[$event] = pg_schema_has('ws_scheduled_actions')
-            ? array_column((array) db_items("SELECT rules FROM ws_scheduled_actions WHERE status = 'active' AND rules LIKE '%" . e($event) . "%' LIMIT 50"), 'rules')
+    if (!isset($read[$key])) {
+        $read[$key] = (pg_schema_has('ws_scheduled_actions') && (!$flows_only || pg_schema_has('ws_scheduled_actions', 'flow_id')))
+            ? array_column((array) db_items("SELECT rules FROM ws_scheduled_actions WHERE status = 'active'" . ($flows_only ? ' AND flow_id > 0' : '') . " AND rules LIKE '%" . e($event) . "%' LIMIT 50"), 'rules')
             : array();
     }
 
-    return $read[$event];
+    return $read[$key];
 }
 
-// Keeps an event for the workspace to pick up (ws_events_in).
+// Keeps an event for the workspace and its flows to pick up (ws_events_in).
 //
 // One INSERT and nothing else: the visitor's checkout or form submission is
 // still waiting, so nothing here reads a channel or runs an action. The
@@ -397,11 +417,18 @@ function pg_event_workspace_waiting_rules($event)
 // the general job) works the rows off later. The workspace's files are not
 // loaded for this; front pages never load them.
 //
-// Silent when the workspace is switched off, when the event is not one it
-// listens to, and when the table is not there yet (2026.4.8, 8.85).
+// Automation flows run whether or not the Workspace is switched on
+// (pg_flows_enabled()). With it off only a flow's start box hears an event,
+// so the event is kept only while a live flow waits for it: one read of the
+// waiting rules, once a request for each event.
+//
+// Silent when neither the Workspace nor flows run, when the event is not one
+// they listen to, and when the table is not there yet (2026.4.8, 8.85).
 function pg_event_record($event, $payload = array())
 {
-    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+    $workspace = defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED;
+
+    if (!$workspace && !(function_exists('pg_flows_enabled') && pg_flows_enabled())) {
         return;
     }
 
@@ -413,7 +440,9 @@ function pg_event_record($event, $payload = array())
         return;
     }
 
-    if (in_array((string) $event, pg_event_workspace_on_demand(), true) && !pg_event_workspace_awaited($event, pg_event_workspace_waiting_rules($event))) {
+    $ask = !$workspace || in_array((string) $event, pg_event_workspace_on_demand(), true);
+
+    if ($ask && !pg_event_workspace_kept($event, $workspace, pg_event_workspace_waiting_rules($event, !$workspace))) {
         return;
     }
 

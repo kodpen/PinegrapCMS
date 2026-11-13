@@ -25,4 +25,5 @@ description: includes/server_config.php: why web-root web.config/.htaccess rules
 - When writing at the closing tag's offset use `pg_server_config_split_indent()`: text up to that point ends with the tag's indent, appending the snippet directly indents the first line twice.
 
 Compression and browser caching blocks: docs/memory/platform/server-config-compression-cache.md
+IIS error pages block (httpErrors): docs/memory/platform/server-config-iis-error-pages.md
 Related: docs/memory/platform/server-config-paths-and-detection.md

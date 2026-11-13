@@ -3334,6 +3334,35 @@ function pg_designer_target_modal()
 }
 
 /**
+ * Why a visual-editor page may not take a name, '' when it may: the name is
+ * the page's address. Longer than the page_name column (100 characters) is
+ * refused, as the classic page screens do: the session is not strict, so
+ * the column would cut it, the page would answer only at the cut name and
+ * could end up with another page's name. A "?" (sent as %3F, IIS decodes it
+ * before PHP reads the path and the router takes it for the query string),
+ * a "+" or a "%" (IIS request filtering answers either with its own 404.11)
+ * and control characters are refused only in a name given now ($renamed):
+ * a page saved earlier with one keeps saving until it is renamed.
+ *
+ * Pure.
+ *
+ * @param string $name    the trimmed page name, not empty
+ * @param bool   $renamed true for a new page or a rename
+ * @return string
+ */
+function pg_designer_page_name_error($name, $renamed)
+{
+    $name = (string)$name;
+    if (mb_strlen($name, 'UTF-8') > 100) {
+        return $name . ': ' . lang(array('string' => 'The page name can be at most {var:1} characters long.', 'vars' => array(100)));
+    }
+    if ($renamed && preg_match('/[?%+\x00-\x1f\x7f]/', $name)) {
+        return $name . ': ' . lang('A page name cannot contain ?, % or +: the page would not open at its address.');
+    }
+    return '';
+}
+
+/**
  * Is a page name taken by something other than a page: a file, a short
  * link, a file or folder in the site root, or an address the site answers
  * itself (sitemap.xml, robots.txt)? Each of them is served at that address
@@ -3501,6 +3530,11 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
             || ((string)db_value("SELECT page_name FROM page WHERE page_id = '$page_id' LIMIT 1") !== $name);
         if ($dup > 0 || ($renamed && pg_designer_page_name_taken_elsewhere($name, $page_id))) {
             $errors[] = lang(array('string' => 'The page name "{var:1}" is already in use.', 'vars' => $name));
+        }
+        // Too long for the column, or a character the address cannot carry.
+        $name_error = pg_designer_page_name_error($name, $renamed);
+        if ($name_error !== '') {
+            $errors[] = $name_error;
         }
         // A language directory (/en/...) would shadow a page of the same name.
         if (pg_tr_is_reserved_name($name)) {

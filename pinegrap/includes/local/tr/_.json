@@ -1144,6 +1144,7 @@
     "{var:1} is done; {var:2} can start": "{var:1} bitti, {var:2} başlayabilir",
     "{var:1} is empty or larger than 5 MB.": "{var:1} boş ya da 5 MB'tan büyük.",
     "{var:1} is in the Recycle Bin, so it was not listed.": "{var:1} Geri Dönüşüm Kutusu'nda olduğu için ilana çıkmadı.",
+    "{var:1} is in the Recycle Bin. Restore it first.": "{var:1} Geri Dönüşüm Kutusunda. Önce geri yükleyin.",
     "{var:1} is in use (lock wait timeout); it will be tried again": "{var:1} kullanımda (kilit bekleme süresi doldu); yeniden denenecek",
     "{var:1} is invalid": "{var:1} geçersiz",
     "{var:1} is invalid.": "{var:1} geçersiz.",

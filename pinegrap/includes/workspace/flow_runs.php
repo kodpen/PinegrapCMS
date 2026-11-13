@@ -2743,6 +2743,11 @@ function ws_flow_step_run($step)
         $refusal = ws_flow_member_box_refusal(ws_flow_builder_kind(ws_change_viewer_for_id($run['actor_id'])), $node);
     }
 
+    // Flows run with the Workspace off; a box acting in it does not.
+    if ($refusal === '') {
+        $refusal = ws_flow_workspace_box_refusal(ws_enabled(), $node);
+    }
+
     if ($refusal !== '') {
         ws_flow_step_settle($step, 'running', 'failed', '', $refusal);
         return;

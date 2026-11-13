@@ -220,7 +220,7 @@ respond(array(
 
 function respond($response)
 {
-    echo encode_json($response);
+    echo pg_panel_answer_json($response);
     exit;
 }
 

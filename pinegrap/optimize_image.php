@@ -99,43 +99,7 @@ function optimize_image($file_id, $mode = 'optimize') {
 
     if ($report['status'] !== 'success') {
 
-        // Each of these is a different thing to do about it, so each gets its
-        // own sentence. "Could not optimize" for all of them sends the
-        // operator looking for a fault that is not there.
-        if ($report['reason'] === 'animated') {
-            $message = lang(array(
-                'string' => 'Sorry, {var:1} is an animated image. Optimizing it would leave only the first frame, so it was left alone.',
-                'vars'   => $file['name']));
-
-        } elseif ($report['reason'] === 'orientation_unreadable') {
-            $message = lang(array(
-                'string' => 'Sorry, {var:1} has a rotation tag this server cannot read. Changing it here could leave the picture on its side, so it was left alone.',
-                'vars'   => $file['name']));
-
-        } elseif ($report['reason'] === 'color_profile') {
-            $message = lang(array(
-                'string' => 'Sorry, {var:1} has a colour profile this server cannot carry over. Changing it here would wash out its colours, so it was left alone.',
-                'vars'   => $file['name']));
-
-        } elseif ($report['reason'] === 'too_large_to_process') {
-            $message = lang(array(
-                'string' => 'Sorry, {var:1} needs more memory than this server allows. Please resize it on your computer and upload it again.',
-                'vars'   => $file['name']));
-
-        } elseif ($report['reason'] === 'no_library') {
-            $message = lang('No image library (Imagick or GD) is installed on this server, so images cannot be optimized or resized.');
-
-        } elseif ($report['reason'] === 'missing') {
-            $message = lang(array(
-                'string' => 'Sorry, {var:1} is recorded here but is not on the disk.',
-                'vars'   => $file['name']));
-
-        } elseif ($report['reason'] === 'write_failed') {
-            $message = lang(array('string'=>'Sorry, we could not save the optimized image to the file system, so the image has not been optimized ({var:1}).','vars'=>$file['name']));
-
-        } else {
-            $message = lang(array('string'=>'Sorry, we could not download the optimized image from the image optimization service ({var:1}).','vars'=>$file['name']));
-        }
+        $message = pg_optimize_failure_message($report['reason'], $file['name']);
 
         log_activity($message);
 

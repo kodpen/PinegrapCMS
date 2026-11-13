@@ -18,7 +18,7 @@ description: Webhook events a flow can start on as well (reviews, returns, cart 
 
 ## Why is a stock change kept only on demand?
 - `inventory.changed` comes with every tracked line of every sale. Kept always, it would fill `ws_events_in` and hold the run's batch (`WS_EVENTS_BATCH`) back from the events flows do wait for.
-- `pg_event_workspace_on_demand()` lists it; `pg_event_record()` keeps it only when an active row of `ws_scheduled_actions` has an event rule naming it (`pg_event_workspace_awaited()`, one read per request and event).
+- `pg_event_workspace_on_demand()` lists it; `pg_event_record()` keeps it only when an active row of `ws_scheduled_actions` has an event rule naming it (`pg_event_workspace_awaited()`, one read per request and event). With the Workspace off every event is kept this way, by the anchors of flows alone (`automation-flows-gate.md`).
 
 ## Does the API's stock write reach the Workspace?
 - Yes, through `api_webhook_enqueue()` (`includes/api/resources/inventory.php`): it calls `pg_event_record()` itself unless `$recorded` says `pg_announce()` already did. A second `pg_event_record()` beside it kept `inventory.changed` and `stock.low` twice, so each waiting flow started twice; removed.

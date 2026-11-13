@@ -2151,3 +2151,71 @@ function pg_optimize_unsupported_message($name, $type)
         'vars'   => array((string) $name, mb_strtolower((string) $type), implode(', ', pg_optimizable_image_types())),
     ));
 }
+
+/**
+ * The answer for a picture the image optimizer left alone, by the reason
+ * pg_process_image_file() gave. Each reason is a different thing to do
+ * about it, so each gets its own sentence; one catch-all sentence sends
+ * the operator looking for a fault that is not there. The picture is
+ * processed on this server, so no sentence speaks of a service, and a
+ * reason without a sentence of its own says only that the file could not
+ * be optimized.
+ *
+ * @param string $reason the report's reason
+ * @param string $name   the file name
+ * @return string plain text
+ */
+function pg_optimize_failure_message($reason, $name)
+{
+    $name = (string) $name;
+
+    switch ((string) $reason) {
+
+        case 'unsupported':
+            return lang(array(
+                'string' => 'Sorry, {var:1} could not be read as a picture. It may be damaged, or not the type its name says, so it was left alone.',
+                'vars'   => $name));
+
+        case 'animated':
+            return lang(array(
+                'string' => 'Sorry, {var:1} is an animated image. Optimizing it would leave only the first frame, so it was left alone.',
+                'vars'   => $name));
+
+        case 'orientation_unreadable':
+            return lang(array(
+                'string' => 'Sorry, {var:1} has a rotation tag this server cannot read. Changing it here could leave the picture on its side, so it was left alone.',
+                'vars'   => $name));
+
+        case 'color_profile':
+            return lang(array(
+                'string' => 'Sorry, {var:1} has a colour profile this server cannot carry over. Changing it here would wash out its colours, so it was left alone.',
+                'vars'   => $name));
+
+        case 'too_large_to_process':
+            return lang(array(
+                'string' => 'Sorry, {var:1} needs more memory than this server allows. Please resize it on your computer and upload it again.',
+                'vars'   => $name));
+
+        case 'no_library':
+            return lang('No image library (Imagick or GD) is installed on this server, so images cannot be optimized or resized.');
+
+        case 'missing':
+            return lang(array(
+                'string' => 'Sorry, {var:1} is recorded here but is not on the disk.',
+                'vars'   => $name));
+
+        case 'failed':
+            return lang(array(
+                'string' => 'Sorry, the image library on this server could not process {var:1}, so it was left alone. The file may be damaged.',
+                'vars'   => $name));
+
+        case 'write_failed':
+            return lang(array(
+                'string' => 'Sorry, we could not save the optimized image to the file system, so the image has not been optimized ({var:1}).',
+                'vars'   => $name));
+    }
+
+    return lang(array(
+        'string' => 'Sorry, {var:1} could not be optimized, so it was left alone.',
+        'vars'   => $name));
+}
