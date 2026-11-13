@@ -46,7 +46,7 @@ function ws_canvas_consents_ready()
  */
 function ws_canvas_page_version($message)
 {
-    $file_id = (int) ($message['file_id'] ?? 0);
+    $file_id = is_array($message) ? ws_canvas_part_file($message, 'page') : 0;
 
     if (($file_id <= 0) || !pg_file_versions_ready()) {
         return 0;

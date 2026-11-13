@@ -19,10 +19,10 @@ description: The canvas as one thing in the API and MCP (CO7, #9231): GET /works
 
 ## Who may, and what is refused?
 - Reading: any reader of the channel, as `GET /workspace/messages/{id}/canvas` is.
-- Binding and taking off: the owner may write in the channel and may change the table, for a read binding too (`ws_canvas_table_bind_check()`, `ws_canvas_table_unbind_check()`, shared with the panel's actions). Refusals: 404 `not_found` for a table out of reach or a binding that is not there, 403 `forbidden`, 409 `too_many_tables` over the 20 a canvas, 409 `part_missing` for a canvas with no page (a drawing reads no table), 422 on `access`.
+- Binding and taking off: the owner may write in the channel and may change the table, for a read binding too (`ws_canvas_table_bind_check()`, `ws_canvas_table_unbind_check()`, shared with the panel's actions). Refusals: 404 `not_found` for a table out of reach or a binding that is not there, 403 `forbidden`, 409 `too_many_tables` over the 20 a canvas, 409 `part_missing` for a canvas with no page (a drawing reads no table; add the page first), 422 on `access`.
 - A key's binding is kept as `bound_by_kind` `app` with the application's id (`ws_api_canvas_table_binder()`, pure); from a team devices session the person binds in their own name.
 - Writing a part: an agent of the channel (`ws_api_canvas_agent()`), as the create routes ask; a person's device 403. A stale `version` is 409 `conflict`.
-- A part the canvas has not got is 409 `part_missing`: it is made where it is made, `POST /workspace/channels/{id}/pages` or `…/canvases`. A second part beside the first waits for the `ws_canvas_parts` row (`plans/canvas-one-schema.md` S1).
+- `version` 0 on the page or drawing route adds that part beside the first (#CO7B); any other version on a missing part, or a part another call added first, is 409 `conflict`. How parts are kept: `workspace/canvas-parts.md`.
 
 ## Where is the write itself done?
 - Nowhere new: `ws_api_page_new_version()` (api_page.php) and `ws_api_canvas_new_version()` (api_canvas.php) hold what the message routes did, and both addresses call them, so the version check, the pruning, the picture, the author's inbox line and `ws_message_touch()` happen once.

@@ -27,6 +27,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_parts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_tables.php');
 
 /**
@@ -61,7 +62,7 @@ function ws_canvases_api_routes()
             'dry_run'     => true,
             'returns'     => ws_api_canvas_one_returns(),
             'summary'     => 'Bind a workflow table to a canvas',
-            'description' => 'Lets the canvas\'s live page read a workflow table, or read and write it: the page asks the panel, which answers for the bound tables and no other, with the rights of the person looking at it - never with the owner\'s. Binding a table already bound changes its access. Only where the owner of the application may write in the canvas\'s channel and may change the table, for a read binding too, so a table nobody may change is not put under a page others run (403 forbidden); a table that is not there or out of the owner\'s reach is 404 not_found.' . $bound . ' One more answers 409 too_many_tables, and a canvas with no live page 409 part_missing, since a drawing reads no table. The answer is the canvas as GET /workspace/canvases/{id} gives it.',
+            'description' => 'Lets the canvas\'s live page read a workflow table, or read and write it: the page asks the panel, which answers for the bound tables and no other, with the rights of the person looking at it - never with the owner\'s. Binding a table already bound changes its access. Only where the owner of the application may write in the canvas\'s channel and may change the table, for a read binding too, so a table nobody may change is not put under a page others run (403 forbidden); a table that is not there or out of the owner\'s reach is 404 not_found.' . $bound . ' One more answers 409 too_many_tables, and a canvas with no live page 409 part_missing, since a drawing reads no table: add the page first with POST /workspace/canvases/{id}/page. The answer is the canvas as GET /workspace/canvases/{id} gives it.',
             'params'      => array(
                 $id,
                 array('name' => 'table_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The workflow table (GET /workspace/tables).'),
@@ -111,7 +112,7 @@ function ws_canvases_api_routes()
             'dry_run'      => true,
             'returns'      => ws_api_canvas_one_returns(),
             'summary'      => 'Write a new version of a canvas\'s page',
-            'description'  => 'Replaces the live page of the canvas with a whole new document, kept as a new version made by the agent; the earlier ones stay among the versions and a member of the channel may undo the edit. version is the number the page part has now (GET /workspace/canvases/{id}): when it changed since, the call answers 409 conflict. A canvas with no page part answers 409 part_missing: make the page with POST /workspace/channels/{id}/pages, which posts it into the channel as its own card. Only an agent of the channel writes, as for that route (403 forbidden). The answer is the canvas as GET /workspace/canvases/{id} gives it.',
+            'description'  => 'Replaces the live page of the canvas with a whole new document, kept as a new version made by the agent; the earlier ones stay among the versions and a member of the channel may undo the edit. version is the number the page part has now (GET /workspace/canvases/{id}): when it changed since, the call answers 409 conflict. On a canvas with no page, version 0 adds one beside its drawing: the same canvas then has both parts, and its tables are bound to that page. A page added at the same moment by another call answers 409 conflict. Only an agent of the channel writes, as for that route (403 forbidden). The answer is the canvas as GET /workspace/canvases/{id} gives it.',
             'params'       => ws_api_canvas_one_page_params($id),
         ),
 
@@ -125,7 +126,7 @@ function ws_canvases_api_routes()
             'dry_run'      => true,
             'returns'      => ws_api_canvas_one_returns(),
             'summary'      => 'Write a new version of a canvas\'s drawing',
-            'description'  => 'Draws the canvas anew from SVG, kept as a new version made by the agent, as POST /workspace/messages/{id}/canvas does with single operations; the earlier versions stay and a member may undo the edit. version is the number the drawing part has now (GET /workspace/canvases/{id}): when it changed since, the call answers 409 conflict. A canvas with no drawing part answers 409 part_missing: draw one with POST /workspace/channels/{id}/canvases. The picture is drawn by the server where it can, else by the first member\'s browser that shows it (picture pending). Only an agent of the channel writes (403 forbidden).',
+            'description'  => 'Draws the canvas anew from SVG, kept as a new version made by the agent, as POST /workspace/messages/{id}/canvas does with single operations; the earlier versions stay and a member may undo the edit. version is the number the drawing part has now (GET /workspace/canvases/{id}): when it changed since, the call answers 409 conflict. On a canvas with no drawing, version 0 adds one beside its page; a drawing added at the same moment by another call answers 409 conflict. The picture is drawn by the server where it can, else by the first member\'s browser that shows it (picture pending). Only an agent of the channel writes (403 forbidden).',
             'params'       => ws_api_canvas_one_drawing_params($id),
         ),
     );
@@ -140,7 +141,7 @@ function ws_canvases_api_routes()
  */
 function ws_api_canvas_one_page_params($id)
 {
-    $params = array($id, array('name' => 'version', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The number the page part has now.'));
+    $params = array($id, array('name' => 'version', 'in' => 'body', 'type' => 'int', 'min' => 0, 'required' => true, 'description' => 'The number the page part has now; 0 to add a page to a canvas that has none.'));
 
     foreach (ws_page_api_routes() as $route) {
         if ($route['id'] !== 'workspace.messages.page.edit') {
@@ -166,7 +167,7 @@ function ws_api_canvas_one_page_params($id)
  */
 function ws_api_canvas_one_drawing_params($id)
 {
-    $params = array($id, array('name' => 'version', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The number the drawing part has now.'));
+    $params = array($id, array('name' => 'version', 'in' => 'body', 'type' => 'int', 'min' => 0, 'required' => true, 'description' => 'The number the drawing part has now; 0 to add a drawing to a canvas that has none.'));
 
     foreach (ws_canvas_api_routes() as $route) {
         if ($route['id'] !== 'workspace.channels.canvases.create') {
@@ -308,8 +309,9 @@ function ws_api_canvas_one_tables($viewer, $message_id)
 function ws_api_canvas_one_present($viewer, $message)
 {
     // The times of both parts are formatted once, after the merge.
-    $drawing = ws_api_canvas_present($message, null, true);
-    $rows = ws_page_versions((int) $message['file_id']);
+    $drawn = ws_canvas_part_message($message, 'drawing');
+    $drawing = $drawn ? ws_api_canvas_present($drawn, null, true) : null;
+    $rows = ws_page_versions(ws_canvas_part_file($message, 'page'));
     $page = $rows ? ws_page_versions_read($rows) : array();
     $newest = $rows ? end($rows) : null;
     $last = $page ? end($page) : null;
@@ -485,7 +487,7 @@ function ws_api_canvas_table_fail($code)
     $text = ws_canvas_table_refusal_text($code);
 
     if ($code === 'not_page') {
-        api_fail(409, 'part_missing', lang('This canvas has no live page: make one with POST /workspace/channels/{id}/pages.'));
+        api_fail(409, 'part_missing', lang('This canvas has no live page: add one with POST /workspace/canvases/{id}/page.'));
     }
 
     if ($code === 'not_found') {
@@ -519,12 +521,14 @@ function ws_api_canvases_page_put($params)
 {
     $viewer = ws_api_viewer();
     $found = ws_api_canvas_one_write_target($viewer, $params['id']);
+    $part = ws_canvas_part_message($found['message'], 'page');
 
-    if ($found['canvas']['parts']['page'] === null) {
-        api_fail(409, 'part_missing', lang('This canvas has no live page: make one with POST /workspace/channels/{id}/pages.'));
+    if ($part !== null) {
+        ws_api_page_new_version($viewer, $part, $found['channel'], $params);
+    } else {
+        ws_api_canvas_part_check($params, lang('The canvas has a page now: read it again.'));
+        ws_api_canvas_page_add($viewer, $found['message'], $found['channel'], $params);
     }
-
-    ws_api_page_new_version($viewer, $found['message'], $found['channel'], $params);
 
     api_ok(ws_api_canvas_one_present($viewer, ws_message($found['message']['id'])));
 }
@@ -533,12 +537,130 @@ function ws_api_canvases_drawing_put($params)
 {
     $viewer = ws_api_viewer();
     $found = ws_api_canvas_one_write_target($viewer, $params['id']);
+    $part = ws_canvas_part_message($found['message'], 'drawing');
 
-    if ($found['canvas']['parts']['drawing'] === null) {
-        api_fail(409, 'part_missing', lang('This canvas has no drawing: draw one with POST /workspace/channels/{id}/canvases.'));
+    if ($part !== null) {
+        ws_api_canvas_new_version($viewer, $part, $found['channel'], $params);
+    } else {
+        ws_api_canvas_part_check($params, lang('The canvas has a drawing now: read it again.'));
+        ws_api_canvas_drawing_add($viewer, $found['message'], $found['channel'], $params);
     }
 
-    ws_api_canvas_new_version($viewer, $found['message'], $found['channel'], $params);
-
     api_ok(ws_api_canvas_one_present($viewer, ws_message($found['message']['id'])));
+}
+
+/**
+ * What a call adding a part must hold: version 0, the part it adds not
+ * being there, and the step that keeps parts having run. Never returns on
+ * a refusal.
+ *
+ * @param array  $params
+ * @param string $changed the refusal when version is not 0
+ */
+function ws_api_canvas_part_check($params, $changed)
+{
+    if ((int) $params['version'] !== 0) {
+        api_fail(409, 'conflict', $changed);
+    }
+
+    if (!ws_canvas_parts_ready() || !pg_file_versions_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+}
+
+/**
+ * Keeps a part's new file as the canvas's part, or takes it back when
+ * another call named one first. Never returns on a refusal.
+ *
+ * @param array  $message
+ * @param string $part
+ * @param int    $file_id
+ */
+function ws_api_canvas_part_keep($message, $part, $file_id)
+{
+    if (!ws_canvas_part_add((int) $message['id'], $part, $file_id, ws_api_canvas_table_binder(ws_api_writer_app_id()))) {
+        pg_file_versions_delete_file($file_id);
+        ws_upload_discard($file_id);
+        api_fail(409, 'conflict', lang('The canvas changed since: read it again.'));
+    }
+
+    // Open conversations and a client reading the channel's changes fetch
+    // the canvas again.
+    ws_message_touch((int) $message['id']);
+}
+
+/**
+ * Adds a live page beside a canvas's drawing: a file of the channel,
+ * named by the canvas's part row; the message stays as it is.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @param array $channel
+ * @param array $params html, libraries
+ */
+function ws_api_canvas_page_add($viewer, $message, $channel, $params)
+{
+    $agent = ws_api_canvas_agent($channel, lang('A live page is made here only by an agent of the channel.'));
+    $html = ws_api_page_html($params);
+    $libraries = ws_api_page_libraries($params['libraries'] ?? null);
+    $name = ws_page_file_name((string) $message['file_name']);
+
+    api_dry_run_stop('created', 'workspace_canvas_part', array(
+        'canvas_id' => (int) $message['id'],
+        'part'      => 'page',
+        'size'      => strlen($html),
+        'libraries' => $libraries,
+    ));
+
+    $stored = ws_store_file_bytes($channel, $name, 'html', $html, (int) $viewer['id']);
+
+    if (!$stored['ok']) {
+        api_fail(503, 'service_unavailable', $stored['error']);
+    }
+
+    if (!ws_page_version_add($stored['file_id'], $html, $agent, (int) $viewer['id'], $libraries)) {
+        ws_upload_discard($stored['file_id']);
+        api_fail(503, 'service_unavailable', lang('The file could not be saved.'));
+    }
+
+    ws_api_canvas_part_keep($message, 'page', (int) $stored['file_id']);
+}
+
+/**
+ * Adds a drawing beside a canvas's page: a blank picture of the channel
+ * keeping the document, named by the canvas's part row and drawn by the
+ * server where it can; the message stays as it is.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @param array $channel
+ * @param array $params svg, background, layers
+ */
+function ws_api_canvas_drawing_add($viewer, $message, $channel, $params)
+{
+    $agent = ws_api_canvas_agent($channel);
+    $doc = ws_api_canvas_svg_doc($params, $channel, $agent);
+    $name = ws_canvas_file_name((string) $message['file_name']);
+    $png = ws_canvas_blank_png($doc->artboard->width, $doc->artboard->height, $doc->artboard->background);
+
+    api_dry_run_stop('created', 'workspace_canvas_part', array(
+        'canvas_id' => (int) $message['id'],
+        'part'      => 'drawing',
+        'artboard'  => array('width' => (int) $doc->artboard->width, 'height' => (int) $doc->artboard->height, 'background' => (string) $doc->artboard->background),
+        'layers'    => count($doc->layers),
+    ));
+
+    $stored = ws_store_file_bytes($channel, $name, 'png', $png, (int) $viewer['id']);
+
+    if (!$stored['ok']) {
+        api_fail(503, 'service_unavailable', $stored['error']);
+    }
+
+    if (!pg_image_editor_canvas_keep((int) $stored['file_id'], $doc, (int) $viewer['id'], 'agent')) {
+        ws_upload_discard($stored['file_id']);
+        api_fail(503, 'service_unavailable', lang('The file could not be saved.'));
+    }
+
+    ws_api_canvas_part_keep($message, 'drawing', (int) $stored['file_id']);
+    ws_canvas_draw_now(array('file_id' => (int) $stored['file_id']) + $message);
 }
