@@ -348,14 +348,14 @@
         var layer = viewport() ? viewport().firstElementChild : null;
         var selected = layer ? layer.querySelector('[aria-current="true"]') : null;
         var name = document.querySelector('#ws-root .wsf-name, #ws-root .wsf-name-text');
-        var problems = document.querySelector('#ws-root [aria-controls="wsf-problems"]');
+        var problems = document.querySelector('#ws-root .wsf-problems-button');
         var conflict = document.querySelector('#ws-root .wsf-app') ? document.querySelector('#ws-root .wsf-app').parentNode.querySelector(':scope > .alert') : null;
         var publish = harness.find({ text: (window.PGWsKit ? window.PGWsKit.t('fl_publish') : ''), within: '#ws-root .wsf-bar' });
 
         return {
             save: words(document.querySelector('#ws-root .wsf-save')),
-            problems: problems ? { text: words(problems), disabled: problems.disabled, expanded: problems.getAttribute('aria-expanded') === 'true' } : null,
-            problemList: shown(document.getElementById('wsf-problems')) ? Array.prototype.map.call(document.querySelectorAll('#wsf-problems .wsf-problem'), words) : [],
+            problems: problems ? { text: words(problems), disabled: problems.disabled } : null,
+            problemList: Array.prototype.map.call(document.querySelectorAll('#wsf-side .wsf-problem:not(.wsf-warning) .wsf-problem-text'), words),
             zoom: words(document.querySelector('#ws-root .wsf-zoom-label')),
             canvas: shown(document.querySelector('#ws-root .pgc-stage')),
             outline: shown(document.querySelector('#ws-root .wsf-outline')),

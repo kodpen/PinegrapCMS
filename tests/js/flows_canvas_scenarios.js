@@ -140,7 +140,7 @@ module.exports = [
 
             h.ok('the box no arrow reaches is outlined', lone && lone.bad);
             h.same('its tooltip says why, in the server\'s words', lone && lone.tip, h.store.flows.get(7).problems.map((problem) => problem.text).join('\n'));
-            h.same('the side panel shows the flow', state.side, h.t('fl_flow_settings'));
+            h.same('the side panel shows the flow', state.side, h.t('fl_side_flow'));
             h.same('the list', await listNames(h), ['Customer onboarding', 'Weekly report', 'Stock check']);
             h.ok('the palette is shown to whoever may edit', state.palette);
         }
@@ -536,13 +536,13 @@ module.exports = [
             await h.key('F6', 'Shift');
             h.ok('Shift+F6: back to the right panel', await h.page(() => document.querySelector('#wsf-side').contains(document.activeElement)));
             await h.click({ css: '#wsf-side .wsf-side-close' });
-            h.ok('Close: nothing chosen, the focus on the box', await h.page(() => (document.activeElement.getAttribute('data-node') === 'task_3') && !document.querySelector('#wsf-side .wsf-side-head')));
+            h.ok('Close: the flow in the panel, the focus on the box', await h.page((harness, flow) => (document.activeElement.getAttribute('data-node') === 'task_3') && (document.querySelector('#wsf-side .wsf-side-kind').textContent === flow), h.t('fl_side_flow')));
             h.same('nothing chosen', (await h.state()).selected, null);
         }
     },
 
     {
-        name: 'on a phone a box chosen on the canvas opens its panel as a sheet from the bottom; a tap on the scrim closes it',
+        name: 'on a phone a box chosen on the canvas opens its panel as a sheet from the bottom, a tap on the scrim closes it; Add a box opens the left panel as a page',
         width: 390,
         run: async (h) => {
             await h.open();
@@ -559,6 +559,21 @@ module.exports = [
             h.same('a fixed sheet at the bottom, at most 85 % high, over the scrim', sheet, ['fixed', true, true, 'block']);
             await h.page(() => document.querySelector('#ws-root .wsf-scrim').click());
             h.same('the scrim closes it: nothing chosen', (await h.state()).selected, null);
+            await h.click({ css: '#ws-root .wsf-add-box' });
+
+            const page = await h.page(() => {
+                const palette = document.querySelector('#ws-root .wsf-palette').getBoundingClientRect();
+
+                return [getComputedStyle(document.querySelector('#ws-root .wsf-palette')).position, Math.round(palette.height) === window.innerHeight, Math.round(palette.width) === window.innerWidth, document.activeElement.classList.contains('wsf-palette-search')];
+            });
+
+            h.same('Add a box opens the left panel as a page of the full height, the search focused', page, ['fixed', true, true, true]);
+            await h.click({ css: '#ws-root [data-refocus="palette-add-task"]' });
+            await h.waitFor('the box added and chosen', (harness) => harness.state().selected && (harness.state().selected.id === 'task_3'), 3000);
+            h.ok('the page closes, the box opens as a sheet', await h.page(() => (getComputedStyle(document.querySelector('#ws-root .wsf-palette')).display === 'none') && (getComputedStyle(document.querySelector('#wsf-side')).position === 'fixed')));
+            await h.page(() => document.querySelector('#ws-root .wsf-scrim').click());
+            await h.click({ text: h.t('fl_view_list'), within: BAR });
+            h.ok('List: one Add a box button, not a row of every kind', await h.page(() => (document.querySelector('#ws-root .wsf-add-box').offsetParent !== null) && !document.querySelector('#ws-root .wsf-outline [data-refocus^="outline-add-"]').offsetParent));
             h.ok('nothing scrolls sideways', await h.page(() => document.documentElement.scrollWidth <= window.innerWidth));
         }
     },
@@ -1087,11 +1102,13 @@ module.exports = [
             const edges = await h.probe('edges');
 
             h.same('the arrow the server names is outlined, no other', edges.map((edge) => edge.bad), [false, false, true]);
-            await h.click({ css: '#ws-root [aria-controls="wsf-problems"]' });
+            await pick(h, 'task_1');
+            await h.click({ css: '#ws-root .wsf-problems-button' });
             state = await h.state();
-            h.ok('the list opens', state.problems.expanded);
+            h.same('Problems shows the flow in the right panel, nothing chosen', [state.side, state.selected], [h.t('fl_side_flow'), null]);
             h.same('the server\'s words', state.problemList, h.store.flows.get(7).problems.map((problem) => problem.text));
-            await h.waitFor('the first problem has the focus', (harness) => harness.focused() && /wsf-problem/.test(document.activeElement.className), 3000);
+            h.same('the flow\'s facts', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#wsf-side .wsf-side-facts dt'), (dt) => dt.textContent)), [h.t('fl_side_start'), h.t('fl_side_size'), h.t('fl_flag_last'), h.t('fl_side_published')]);
+            await h.waitFor('the first problem\'s Go to the box has the focus', (harness) => harness.focused() && /wsf-problem-go/.test(document.activeElement.className), 3000);
             await h.key('Enter');
             await h.waitFor('its box selected and focused', (harness) => harness.state().selected && (harness.state().selected.id === 'task_2') && (harness.focused().node === 'task_2'), 3000);
             h.ok('in sight', (await h.probe('box', 'task_2')).inside);

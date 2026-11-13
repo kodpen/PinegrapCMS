@@ -1142,8 +1142,6 @@
         ui.root = root;
         ui.bar = el('nav', 'pg-toolbar navigation mb-3 wsf-bar');
         ui.bar.setAttribute('aria-label', t('fl_toolbar'));
-        ui.problemBox = el('div', 'wsf-problems d-none');
-        ui.problemBox.id = 'wsf-problems';
         // The boxes a patch of Pinegrap AI added or changed, each leading to
         // its box.
         ui.marksBox = el('div', 'wsf-ai-marks d-none');
@@ -1162,6 +1160,12 @@
         ui.palette = el('aside', 'wsf-palette');
         ui.palette.setAttribute('aria-label', t('fl_palette'));
         ui.main = el('div', 'wsf-main');
+        // On a phone, in both views: the one button that opens the left panel
+        // as a sheet of the full height (foldPalette()).
+        ui.addBox = K.button('pg-button pg-button-quiet pg-button-sm wsf-add-box md:d-none', t('fl_palette'), 'bi-plus-lg');
+        ui.addBox.setAttribute('aria-controls', 'wsf-palette-panel');
+        ui.addBox.addEventListener('click', function () { foldPalette(true, true); });
+        ui.main.appendChild(ui.addBox);
         // The four areas F6 goes round are named regions: the bar, the left
         // panel, this one and the right panel.
         ui.main.setAttribute('role', 'region');
@@ -1219,7 +1223,6 @@
         root.appendChild(ui.bar);
         root.appendChild(ui.conflictBox);
         root.appendChild(ui.runBox);
-        root.appendChild(ui.problemBox);
         root.appendChild(ui.marksBox);
         root.appendChild(ui.sketchBox);
         root.appendChild(ui.flows);
@@ -1644,7 +1647,6 @@
         state.section = '';
         ui.scheduled.classList.add('d-none');
         ui.gallery.classList.add('d-none');
-        ui.problemBox.classList.add('d-none');
         ui.sketchBox.classList.add('d-none');
         ui.app.classList.add('wsf-nothing');
         ui.app.classList.add('wsf-no-palette');
@@ -1835,12 +1837,8 @@
                 state.refocus = 'ai-sketch';
                 show(data.flow);
 
-                // What is left to fix is in sight at once.
-                if (state.problems.length || state.warnings.length) {
-                    ui.problemBox.classList.remove('d-none');
-                    ui.problemButton.setAttribute('aria-expanded', 'true');
-                }
-
+                // What is left to fix is in sight at once: nothing is
+                // chosen, so the right panel lists it.
                 refocus();
             }).catch(function (error) {
                 go.disabled = false;
@@ -2972,17 +2970,8 @@
 
         if (state.edit) {
             ui.problemButton = barButton(BAR_QUIET, '', '');
-            ui.problemButton.setAttribute('aria-controls', 'wsf-problems');
-            ui.problemButton.setAttribute('aria-expanded', ui.problemBox.classList.contains('d-none') ? 'false' : 'true');
-            ui.problemButton.addEventListener('click', function () {
-                var shown = ui.problemBox.classList.toggle('d-none') === false;
-
-                ui.problemButton.setAttribute('aria-expanded', shown ? 'true' : 'false');
-
-                if (shown && ui.problemBox.querySelector('button')) {
-                    ui.problemBox.querySelector('button').focus();
-                }
-            });
+            ui.problemButton.setAttribute('aria-controls', ui.side.id);
+            ui.problemButton.addEventListener('click', showProblems);
             ui.bar.appendChild(ui.problemButton);
         }
 
@@ -3206,7 +3195,7 @@
         // Problems in rose, warnings quiet with an amber mark, none a quiet
         // word that cannot be pressed.
         K.clear(ui.problemButton);
-        ui.problemButton.className = 'pg-button pg-button-sm ' + (count ? 'pg-button-danger' : (warned ? 'pg-button-quiet' : 'pg-button-ghost'));
+        ui.problemButton.className = 'pg-button pg-button-sm wsf-problems-button ' + (count ? 'pg-button-danger' : (warned ? 'pg-button-quiet' : 'pg-button-ghost'));
         ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : (warned ? 'bi-exclamation-circle fg-warning' : 'bi-check2-circle')));
         ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : (warned ? t('fl_warnings', warned) : t('fl_no_problems'))));
         ui.problemButton.disabled = !count && !warned;
@@ -4581,6 +4570,11 @@
         if (focus) {
             var target = ui.palette.querySelector(open ? '.wsf-palette-search' : '.wsf-palette-rail-open');
 
+            // On a phone the sheet closes onto its "Add a box" button.
+            if (!open && (!target || (target.offsetParent === null))) {
+                target = ui.addBox;
+            }
+
             if (target) {
                 target.focus();
             }
@@ -4601,6 +4595,7 @@
         K.clear(ui.palette);
         ui.paletteStart = null;
         ui.app.classList.toggle('wsf-no-palette', !shown);
+        ui.addBox.classList.toggle('d-none', !shown);
         setPaletteClasses();
 
         if (!shown) {
@@ -5167,48 +5162,6 @@
         Array.prototype.forEach.call(ui.svg.querySelectorAll('.pgc-edge'), function (group) {
             group.classList.toggle('wsf-bad', !!byEdge[group.getAttribute('data-edge')]);
         });
-    }
-
-    function drawProblems() {
-        K.clear(ui.problemBox);
-
-        if (!state.edit || (!state.problems.length && !state.warnings.length)) {
-            ui.problemBox.classList.add('d-none');
-            return;
-        }
-
-        ui.problemBox.classList.toggle('wsf-warned', !state.problems.length);
-
-        if (state.problems.length) {
-            ui.problemBox.appendChild(el('div', 'wsf-side-title', t('fl_problems', state.problems.length)));
-            ui.problemBox.appendChild(problemList(state.problems, 'wsf-problem', 'bi-exclamation-triangle'));
-        }
-
-        if (state.warnings.length) {
-            ui.problemBox.appendChild(el('div', 'wsf-side-title', t('fl_warnings', state.warnings.length)));
-            ui.problemBox.appendChild(problemList(state.warnings, 'wsf-problem wsf-warning', 'bi-exclamation-circle'));
-        }
-    }
-
-    // A list of problems or warnings, each leading to its box or arrow.
-    function problemList(problems, className, icon) {
-        var list = el('ul', 'list-unstyled mb-0');
-
-        problems.forEach(function (problem) {
-            var row = K.button(className, problem.text, icon);
-
-            if (problem.node && nodeById(problem.node)) {
-                row.addEventListener('click', function () { select({ type: 'node', id: problem.node }, { reveal: true, focus: true }); });
-            } else if ((problem.edge !== null) && (problem.edge !== undefined) && state.graph.edges[problem.edge]) {
-                row.addEventListener('click', function () { select({ type: 'edge', id: problem.edge }, { reveal: true }); });
-            } else {
-                row.disabled = true;
-            }
-
-            list.appendChild(el('li')).appendChild(row);
-        });
-
-        return list;
     }
 
     // ── Settings ───────────────────────────────────────────────────────
@@ -6354,8 +6307,7 @@
         } else if (selected && (selected.type === 'thread') && threadByKey(selected.id) && !state.outline) {
             sideThread(threadByKey(selected.id));
         } else {
-            ui.side.appendChild(el('div', 'wsf-side-title', t('fl_flow_settings')));
-            ui.side.appendChild(flowForm());
+            sideFlow();
         }
 
         markRunsButton();
@@ -6418,7 +6370,7 @@
 
     // The head of the panel: the tile, the kind in small capitals, the name,
     // then ⋯ (when it holds anything) and Close.
-    function sideHead(tile, kind, name, items) {
+    function sideHead(tile, kind, name, items, noClose) {
         var head = el('div', 'wsf-side-head');
         var words = el('div', 'wsf-side-words');
         var title = el('h2', 'wsf-side-name pg-title-status');
@@ -6451,9 +6403,11 @@
             head.appendChild(wrap);
         }
 
-        close.setAttribute('data-refocus', 'side-close');
-        close.addEventListener('click', closeSide);
-        head.appendChild(close);
+        if (!noClose) {
+            close.setAttribute('data-refocus', 'side-close');
+            close.addEventListener('click', closeSide);
+            head.appendChild(close);
+        }
         return head;
     }
 
@@ -6520,6 +6474,142 @@
         return Array.prototype.filter.call(area.querySelectorAll('button, input, select, textarea, [tabindex="0"]'), function (item) {
             return !item.disabled && (item.offsetParent !== null) && (item.tabIndex >= 0);
         })[0] || null;
+    }
+
+    // Nothing chosen: the flow itself. Its head, then what starts it, its
+    // boxes and arrows, the last run and how far it is published; the home
+    // channel; the problems and warnings, each with "Go to the box"; the
+    // keys folded at the foot.
+    function sideFlow() {
+        var flow = state.flow;
+        var facts = el('dl', 'wsf-side-facts');
+        var start = startNode();
+        var last = lastRunOf(flow.id);
+        var published = el('dd', '');
+
+        ui.side.appendChild(sideHead(sideTile('', 'bi-diagram-3'), t('fl_side_flow'), el('span', '', flow.name), [], true));
+
+        var fact = function (label, value) {
+            facts.appendChild(el('dt', 'fg-secondary', label));
+            facts.appendChild((typeof value === 'string') ? el('dd', '', value) : value);
+        };
+
+        fact(t('fl_side_start'), start ? t(kindOf(start).name) : t('fl_side_start_none'));
+        fact(t('fl_side_size'), t('fl_side_counts', state.graph.nodes.length, state.graph.edges.length));
+
+        if (last) {
+            var flag = el('dd', '');
+
+            flag.appendChild(runFlag(last, { key: 'side-flag', label: t('fl_flag_last') + ': ' + flow.name, open: openLastRun }));
+            fact(t('fl_flag_last'), flag);
+        } else {
+            fact(t('fl_flag_last'), t('fl_list_never'));
+        }
+
+        published.appendChild(statusPill(flow));
+
+        if ((flow.status !== 'draft') && (flow.changed || state.dirty)) {
+            published.appendChild(el('span', 'pg-text-meta fg-secondary ms-2', t('fl_unpublished')));
+        }
+
+        fact(t('fl_side_published'), published);
+        ui.side.appendChild(facts);
+        ui.side.appendChild(el('p', 'pg-text-meta fg-secondary', state.edit ? flowHelp() : t('fl_read_only')));
+
+        homeField(ui.side);
+        ui.sideProblems = el('div', 'wsf-side-problems');
+        ui.side.appendChild(ui.sideProblems);
+        drawProblems();
+
+        var keys = el('details', 'pg-text-meta wsf-keys');
+        var list = el('ul', 'mb-0 ps-5 fg-secondary');
+
+        keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
+        ['tab', 'areas', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
+            list.appendChild(el('li', '', t('fl_key_' + key)));
+        });
+        keys.appendChild(list);
+        ui.side.appendChild(keys);
+    }
+
+    // The problems and warnings of the flow in the panel with nothing
+    // chosen, each with "Go to the box" (or the arrow it names); refilled as
+    // the server's check comes back, without drawing the panel again.
+    function drawProblems() {
+        var box = ui.sideProblems;
+
+        if (!box || !ui.side.contains(box)) {
+            return;
+        }
+
+        K.clear(box);
+
+        if (!state.edit) {
+            return;
+        }
+
+        box.appendChild(el('h3', 'wsf-side-sub', state.problems.length ? t('fl_problems', state.problems.length) : t('fl_no_problems')));
+        box.appendChild(problemList(state.problems, 'wsf-problem', 'bi-exclamation-triangle'));
+
+        if (state.warnings.length) {
+            box.appendChild(el('h3', 'wsf-side-sub', t('fl_warnings', state.warnings.length)));
+            box.appendChild(problemList(state.warnings, 'wsf-problem wsf-warning', 'bi-exclamation-circle'));
+        }
+    }
+
+    // Problems in the bar: the right panel with nothing chosen, which lists
+    // them; the focus on the first one's "Go to the box", else its heading.
+    function showProblems() {
+        state.panel = '';
+
+        if (state.selected) {
+            select(null);
+        } else {
+            drawSettings();
+        }
+
+        var first = ui.sideProblems && (ui.sideProblems.querySelector('.wsf-problem-go') || ui.sideProblems.querySelector('h3'));
+
+        if (first) {
+            if (first.tagName === 'H3') {
+                first.tabIndex = -1;
+            }
+
+            first.focus();
+        }
+    }
+
+    // A list of problems or warnings: its words, then "Go to the box" (or
+    // to the arrow) choosing what it names.
+    function problemList(problems, className, icon) {
+        var list = el('ul', 'list-unstyled mb-0');
+
+        problems.forEach(function (problem, index) {
+            var row = el('li', className);
+            var go = null;
+
+            row.appendChild(K.icon(icon));
+            row.appendChild(el('span', 'wsf-problem-text', problem.text));
+
+            if (problem.node && nodeById(problem.node)) {
+                go = K.button('pg-button pg-button-ghost pg-button-sm wsf-problem-go', t('fl_go_box'));
+                go.addEventListener('click', function () { select({ type: 'node', id: problem.node }, { reveal: true, focus: true }); });
+            } else if ((problem.edge !== null) && (problem.edge !== undefined) && state.graph.edges[problem.edge]) {
+                go = K.button('pg-button pg-button-ghost pg-button-sm wsf-problem-go', t('fl_go_arrow'));
+                go.addEventListener('click', function () { select({ type: 'edge', id: problem.edge }, { reveal: true }); });
+            }
+
+            if (go) {
+                go.setAttribute('data-refocus', 'problem-' + className.length + '-' + index);
+                go.setAttribute('aria-describedby', 'wsf-problem-' + className.length + '-' + index);
+                row.lastChild.id = 'wsf-problem-' + className.length + '-' + index;
+                row.appendChild(go);
+            }
+
+            list.appendChild(row);
+        });
+
+        return list;
     }
 
     // Close: nothing chosen, the focus back on the box on the canvas (on
@@ -6828,25 +6918,6 @@
                 return;
             }
         }
-    }
-
-    function flowForm() {
-        var box = el('div');
-
-        homeField(box);
-
-        var keys = el('details', 'small wsf-keys');
-        var list = el('ul', 'mb-0 ps-5 fg-secondary');
-
-        keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
-        ['tab', 'areas', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
-            list.appendChild(el('li', '', t('fl_key_' + key)));
-        });
-        keys.appendChild(list);
-        box.appendChild(el('p', 'small fg-secondary', state.edit ? flowHelp() : t('fl_read_only')));
-        box.appendChild(keys);
-
-        return box;
     }
 
     // A live flow runs its published version while the draft is changed;
@@ -10556,7 +10627,9 @@
         drawReads(dataThreads());
 
         if (state.edit) {
-            var adds = el('div', 'd-flex flex-wrap gap-3 mb-5');
+            // On a phone one "Add a box" button opens the left panel as a
+            // sheet in place of this row (ui.addBox).
+            var adds = el('div', 'd-none md:d-flex flex-wrap gap-3 mb-5');
 
             adds.setAttribute('role', 'group');
             adds.setAttribute('aria-label', t('fl_palette'));

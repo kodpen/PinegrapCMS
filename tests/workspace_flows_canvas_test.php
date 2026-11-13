@@ -2967,11 +2967,11 @@ function test_workspace_flows_canvas_address_opens_a_run()
 	pg_assert_contains('openLastRun({ id: askedRun, flow_id: asked })', ws_flows_canvas_test_script_function($source, 'mount'));
 }
 
-// A live flow's side panel says changes stay in the draft; the cancel
-// dialog's way out reads Keep running, not a second Cancel.
+// A live flow's right panel with nothing chosen says changes stay in the
+// draft; the cancel dialog's way out reads Keep running, not a second Cancel.
 function test_workspace_flows_canvas_live_hint_and_cancel_dialog()
 {
-	pg_assert_contains("state.edit ? flowHelp() : t('fl_read_only')", ws_flows_canvas_test_function('flowForm'));
+	pg_assert_contains("state.edit ? flowHelp() : t('fl_read_only')", ws_flows_canvas_test_function('sideFlow'));
 	pg_assert_contains("(flow.status === 'live') && (flow.version > 0)) ? t('fl_flow_help_live')", ws_flows_canvas_test_function('flowHelp'));
 	pg_assert_contains("t('fl_run_keep')", ws_flows_canvas_test_function('askCancel'));
 	pg_assert_contains('askCancel()', ws_flows_canvas_test_function('cancelRun'));
