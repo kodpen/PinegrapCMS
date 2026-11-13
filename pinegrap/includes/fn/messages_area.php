@@ -100,9 +100,12 @@ function pg_messages_tabs_for_user($user)
 }
 
 /**
- * The tab strip under a tab screen's heading: links between screens, so the
+ * The tab strip under a tab screen's heading, drawn as the segmented control
+ * the flow window has for Canvas and List: links between screens, so the
  * open one carries aria-current="page" (not role=tab: each tab is its own
- * address). Empty when the viewer may open fewer than two tabs.
+ * address). It stays one line at a phone's width: there only the open tab
+ * shows its label, the others their icon (the label kept for screen readers
+ * and as the title). Empty when the viewer may open fewer than two tabs.
  *
  * @param string $active a key of pg_messages_area_tabs(), or '' for none
  * @param array  $keys   the viewer's tabs (pg_messages_tabs_for_user())
@@ -121,21 +124,20 @@ function pg_messages_tab_strip($active, $keys, $prefix = '')
         }
 
         $tab = $tabs[$key];
+        $label = h(lang($tab['label']));
         $current = ($key === $active);
         $count++;
 
-        $items .= '<li class="nav-item">'
-            . '<a class="nav-link' . ($current ? ' active' : '') . '"' . ($current ? ' aria-current="page"' : '')
-            . ' href="' . h($prefix . $tab['file']) . '">'
-            . '<i class="bi ' . h($tab['icon']) . ' me-3" aria-hidden="true"></i>' . h(lang($tab['label'])) . '</a>'
-            . '</li>';
+        $items .= '<a class="pg-seg-item' . ($current ? ' is-active' : '') . '"' . ($current ? ' aria-current="page"' : '')
+            . ' href="' . h($prefix . $tab['file']) . '" title="' . $label . '">'
+            . '<i class="bi ' . h($tab['icon']) . '" aria-hidden="true"></i><span class="pg-messages-tab-label">' . $label . '</span></a>';
     }
 
     if ($count < 2) {
         return '';
     }
 
-    return '<ul class="nav nav-tabs mb-5 pg-messages-tabs" aria-label="' . h(lang('Communication')) . '">' . $items . '</ul>';
+    return '<nav class="pg-messages-tabs" aria-label="' . h(lang('Communication')) . '"><div class="pg-seg">' . $items . '</div></nav>';
 }
 
 /**

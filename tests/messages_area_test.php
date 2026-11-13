@@ -53,8 +53,10 @@ function test_messages_area_tab_strip_marks_the_open_tab()
 {
 	$html = pg_messages_tab_strip('sends', array('campaigns', 'sends'), '/p/');
 	pg_assert_contains('href="/p/messages_sends.php"', $html, 'the tab address');
-	pg_assert_contains('class="nav-link active" aria-current="page" href="/p/messages_sends.php"', $html, 'the open tab is current');
-	pg_assert_contains('class="nav-link" href="/p/view_email_campaigns.php"', $html, 'another tab is a plain link');
+	pg_assert_contains('class="pg-seg-item is-active" aria-current="page" href="/p/messages_sends.php"', $html, 'the open tab is current');
+	pg_assert_contains('class="pg-seg-item" href="/p/view_email_campaigns.php"', $html, 'another tab is a plain link');
+	pg_assert_contains('<div class="pg-seg">', $html, 'drawn as the segmented control');
+	pg_assert_contains('title="Campaigns"', $html, 'a tab keeps its label as the title for its icon alone at a phone width');
 	pg_assert_false(strpos($html, 'messages_channels.php') !== false, 'a tab outside the list is not drawn');
 }
 

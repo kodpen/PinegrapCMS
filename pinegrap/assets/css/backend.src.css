@@ -27707,4 +27707,28 @@ body.pg-measure-report #content {
   align-self: center;
 }
 
+/* The area's tab strip: the segmented control, one line at any width. Under
+   576 px only the open tab shows its label, the others their icon. */
+.pg-messages-tabs {
+  margin-bottom: 20px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+@media (max-width: 575.98px) {
+  .pg-messages-tabs .pg-seg {
+    display: flex;
+  }
+  .pg-messages-tabs .pg-seg-item {
+    flex: 1 1 auto;
+  }
+  .pg-messages-tabs .pg-seg-item:not(.is-active) .pg-messages-tab-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 }
