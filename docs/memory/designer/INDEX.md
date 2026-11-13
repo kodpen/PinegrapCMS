@@ -409,7 +409,7 @@
 - legacy-design-theme.md: The theme file of a design moved from a classic style: the activated theme the classic head printed, on the site, the canvas and the Theme file hint; the dry run's warning (LG1, #8694)
 - legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move [decision: decisions-made-product-43.md]
 - legacy-layouts-census.md: Census of the page types' custom layouts for their move to Bootstrap 5.3.8 (LL1, #8968): per type the widget twin, layouts that differ from the template, Bootstrap 3 names
-- legacy-layouts-converter.md: The layout pass of the Bootstrap 3 to 5.3.8 converter (LL2, #8986): pg_lbs_layout_html() over a page type's output, its rules beyond the map, what stays, the starting layouts' counts [decision: here]
+- legacy-layouts-converter.md: The layout pass of the Bootstrap 3 to 5.3.8 converter (LL2, #8986): pg_lbs_layout_html() over a page type's output, its rules beyond the map, what stays, the starting layouts' counts
 - legacy-layouts-map-cost.md: Mapping a page type's output per request against converted layout copies (LL1 census, #8968): measured cost, what each reaches, the proposal sent to the architect
 - legacy-layouts-output-join.md: Where a page type's layout output joins the page, the names built outside a written class attribute, and the gate a map at output needs (LL1 census, #8968)
 - legacy-materialize-trial.md: The LB1b hand trial: a Legacy design whose theme loads Materialize, Bootstrap 5.3.8 beside it as a trial design loads it; names both own, what each sheet does to the other

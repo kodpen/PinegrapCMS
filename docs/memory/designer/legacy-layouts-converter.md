@@ -5,7 +5,7 @@ module: legacy_bootstrap
 ---
 
 ## What is it for?
-- Architect (2026-11-12, #8969): a page type's markup (template, `data/layouts/<id>.php`, the database layouts) is mapped at output, on a page of a `bootstrap5` visual design only; no converted copies, since only the output shows the names PHP writes. LL3 calls it in `get_page_content.php` ([[legacy-layouts-output-join]]).
+- The answer on #8969 (2026-11-12) is recorded by the architect; in short: a page type's markup (template, `data/layouts/<id>.php`, the database layouts) is mapped at output, on a page of a `bootstrap5` visual design only; no converted copies, since only the output shows the names PHP writes. LL3 calls it in `get_page_content.php` ([[legacy-layouts-output-join]]).
 - `pg_lbs_layout_html($html)`: `html`, `converted`, `kept`, `by_hand`, `done`. `pg_lbs_layout_source($code)` runs it over a file's text for counts: PHP kept, `php` counts class lists PHP writes in part. Pure; tests in `tests/legacy_bootstrap_layout_test.php`.
 
 ## What does it change?
@@ -17,7 +17,7 @@ module: legacy_bootstrap
 - No theme names: `bg-primary` and the rest of `pg_lbs_theme_names()` are 5.3.8's own utilities here.
 - Ambiguous names (`pg_lbs_layout_ambiguous_names()`) convert only in Bootstrap 3's shape: a partner name on the element (`label label-success`), or a `checkbox`/`radio` block whose first tag is an input of the type or a label opening with one. A bare one is kept and counted: the form views date posts with a bare `.label`, the payment options sit in a theme `.radio`.
 - The data family is renamed only where a value starts a plugin 5.3.8 has (`pg_lbs_layout_triggers()`; not `data-toggle="lightbox"`) or on a `.modal` or `.carousel`.
-- A class an inline script of the markup names (`pg_lbs_layout_script_names()`) is written beside its 5.3.8 names; a state name (`hidden`, `hide`, `in`, visibility) stays alone, or a `removeClass('hidden')` would leave `d-none` behind. A data attribute a script reads is written twice.
+- A class an inline script of the markup names (`pg_lbs_layout_script_names()`) is written beside its 5.3.8 names; a state name (`hidden`, `hide`, `in`, visibility) stays alone, or a `removeClass('hidden')` would leave `d-none` behind (a proposal open on #8986 for the architect). A data attribute a script reads is written twice.
 - An element hidden at one width is shown again as its tag's display (`pg_lbs_layout_display()`): `<td class="hidden-xs">` gets `d-sm-table-cell`, not a block that leaves its row.
 
 ## What changed for both paths?
