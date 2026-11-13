@@ -1605,6 +1605,7 @@
     "Restoration permits on file": "Restorasyon izinleri hazır",
     "Restore": "Geri Yükle",
     "Restore Order": "Siparişi Geri Al",
+    "Restore items from the Recycle Bin before you copy, cut or rename them.": "Kopyalamadan, kesmeden ya da yeniden adlandırmadan önce öğeleri Geri Dönüşüm Kutusundan geri yükleyin.",
     "Restored": "Geri yüklendi",
     "Restored cancelled order #{var:1} to {var:2}.": "İptal edilen #{var:1} numaralı sipariş {var:2} durumuna geri alındı.",
     "Restored from an earlier version": "Önceki bir sürümden geri yüklendi",
