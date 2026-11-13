@@ -60,7 +60,7 @@ $team_card = function ($n) use ($el, $heading, $para, $image, $col, $attr, $port
         $el('article', 'card h-100 border-0 shadow-sm text-center', lang('Team Member'), array(
             $el('div', 'card-body p-4', lang('Card Body'), array(
                 $image($portrait($t['name'], 192), $t['name'], 'rounded-circle mb-3',
-                    array('_attrs' => array($attr('width', '96'), $attr('height', '96'), $attr('loading', 'lazy')))),
+                    array('width' => '96', 'height' => '96', '_attrs' => array($attr('loading', 'lazy')))),
                 $heading('h3', $t['name'], 'h5 fw-semibold mb-1'),
                 $para($t['role'], 'small fw-semibold text-primary mb-2'),
                 $para($t['bio'], 'small text-body-secondary mb-0'),

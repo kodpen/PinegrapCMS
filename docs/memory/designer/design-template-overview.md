@@ -20,7 +20,7 @@ description: Start file for the design-template(s)-* files: the Choose a Templat
 - Rows made on opening, discarded, reused: `design-templates-rows.md`.
 - Pages every template has (account, inbox, staff, blog, search, e-mail pages), sample records: `design-templates-standard-pages.md`.
 - Made from a design: `design-templates-from-design.md`; at setup: `platform/design-template-install-at-setup.md`.
-- For every template: comment labels (`design-template-comment-labels.md`), the blog cover input (`design-template-blog-cover.md`), text colours and shared names (`design-template-text-contrast.md`).
+- For every template: comment labels (`design-template-comment-labels.md`), blog cover input (`-blog-cover.md`), text colours and names (`-text-contrast.md`), header width, image sizes, tinted surfaces (`-fit.md`).
 
 ## Which file is each template's?
 - `design-template-<name>.md`: appstudio, architecture, bakery, brewery, campsite, carrental, charity, cityhall, construction, courses, coworking, dealership, drivingschool, events, ferry, filmstudio, florist, forum, gallery, gym, hello, homeservices, hotel, launch, law, library;
