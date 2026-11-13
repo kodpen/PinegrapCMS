@@ -155,6 +155,7 @@
 - designer-region-shared-form.md: The designer region create and edit screens share includes/forms/designer_region_form.php: what it holds, the label fix, what stays in the screens
 - detail-screen-values.md: Read-only values on details screens (Visit Details, submitted forms) as text not headings, escaped once, long links wrapping; Visit Details' wide layout; ERP quarter option wording
 - details-panel-rule.md: The one structure rule of a list's details panel ("Detaylar"): fixed section order, label/value lines with a fixed label column, empty values left out; how the table driver applies it [decision: here]
+- dialog-focus-on-open.md: Bootstrap 6 dialogs and drawers take focus when shown (pg_ui.js focusShown()): [autofocus], else the first field, else the dialog itself; never a button; touch screens; screens' own focus left alone
 - dialog-result-after-close.md: A Bootstrap 6 dialog or drawer hands its result to the page only once closed; the writing box's + menu windows put in nothing before that (#4196); the caret after a card [decision: here]
 - duplicate-products-options.md: Duplicate Products (duplicate_products.php) copy options as a titled card of labelled form-field boxes above the list (step B11, #7552)
 - dynamic-region-shared-form.md: The dynamic region create and edit screens share includes/forms/dynamic_region_form.php: what it holds, the label fix, what stays in the screens
@@ -477,6 +478,7 @@
 - pg-combobox.md: data-pg-combobox on Bootstrap 6 Combobox (B9b, #2243, #2362): toggle and menu after the hidden select, silent fill, native change, empty item instead of clear, server search for data-pg-source
 - pg-date-stores.md: What each hooked date/time field keeps (site text, ISO on native inputs, a 24-hour text time, month/day/year selects), how the box writes it, min/max bounds, fields a script builds
 - pg-datepicker-drawer.md: The date calendar in a panel drawer: drawn after the field in a hidden .pg-date-inline wrapper, opened on focus, click or ArrowDown, with the popup's surface inside its column
+- pg-datepicker-popup-keyboard.md: The popup date calendar from the keyboard: Tab on the field moves on, Tab from its last stop goes past the field, Shift+Tab back, ArrowDown, Escape in a dialog, focus leaving
 - pg-datepicker.md: data-pg-date, data-pg-datetime, data-pg-time on the pg_datetime.js calendar, time row in the same popup: own parse, hidden store, clock, keys, theme, dialogs, drawers
 - pg-field-wrappers.md: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, engines, screens [decision: decisions-made-panel.md]
 - pg-fields-speech.md: Screen readers and panel combobox/chip fields (pg_fields.js v6): toggle name and value, listbox options, no-match line, hidden select out of Tab, focused chip deleted, named remove buttons

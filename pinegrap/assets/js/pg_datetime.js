@@ -471,7 +471,8 @@
     //   library opens on a timer after focus).
     // Left and Right on the box keep moving the text cursor. `state()` gives
     // { calendar, shown }. Returns { drawn(main), opened(), off() }: drawn()
-    // binds the calendar once the library has made it, opened() is its show.
+    // binds the calendar once the library has made it, opened() runs on its
+    // show.
     function popupKeys(box, state) {
         var main = null, bound = [];
         var stays = function (node) {
@@ -562,12 +563,11 @@
                 bind(main, 'keydown', calendarKeys);
                 bind(main, 'focusout', left);
             },
+            // The library calls onShow last, its own setup done.
             opened: function () {
-                window.setTimeout(function () {
-                    if (movedOn()) {
-                        hide();
-                    }
-                }, 0);
+                if (movedOn()) {
+                    hide();
+                }
             },
             off: function () {
                 bound.forEach(function (b) { b[0].removeEventListener(b[1], b[2]); });

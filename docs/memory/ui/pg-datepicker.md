@@ -11,7 +11,7 @@ description: data-pg-date, data-pg-datetime, data-pg-time on the pg_datetime.js 
 
 ## How does the calendar work?
 - `pgDateTime.attach(box, options)` makes a vanilla-calendar-pro `Calendar` (`core/vanilla-calendar-library.md`) in input mode, opened on click or focus. A date pick writes `formatDate()`, fires one `change` and closes; typed text moves it with `set()`, never redrawn. It gets `selectedDates` from `parseDate()`, never reads the box, so `5/3/2026` stays 5 March on a day-first site. `enableDateToggle: false`: a second click keeps the day.
-- Keys: the library moves focus into the open calendar on every arrow key; our keydown listener, bound first, stops Left and Right so they move the text cursor.
+- Keys (Tab, arrows, Escape, focus leaving): `pg-datepicker-popup-keyboard.md`.
 - Theme: `selectedTheme` from the nearest `data-bs-theme` (else `system`), synced onto the calendar box on init and show; `bootstrap.css` styles every `[data-vc=calendar]`.
 - Clock and words: `data-pg-calendar` on the `pg_datetime.js` tag (`pg_calendar_settings()`): `timeMode` 24 when `pg_time_format_code()` is `H:i`, else 12 (#2040: every picker follows the site's clock; the native time box followed the browser), the Done word and the calendar's screen-reader names in `lang()`. The hour goes in zero-padded (`05:00 PM`): the library's 12-hour pattern refuses `5:00 PM` and shows midnight. AM/PM stay English (the library's).
 

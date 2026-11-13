@@ -649,10 +649,16 @@ function main() {
     dp.calls.length = 0;
     q('d').instance.pick('2026-03-12');
     out.dp_pick = { value: q('d').value, heard: dHeard.slice(), redrawn: dp.calls.length, hidden: q('d').instance.hidden };
-    // Left and Right move the text cursor in the box; the other arrows go
-    // into the open calendar, as the library has them.
+    // Left and Right move the text cursor in the box; with the calendar
+    // open, Down goes into it as the library has it, and Tab moves on and
+    // closes it.
+    q('d').instance.open();
+    var dpHidden = q('d').instance.hidden;
     ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'Tab'].forEach(function (key) { q('d').dispatchEvent({ type: 'keydown', key: key }); });
-    out.dp_keys = dp.calls.filter(function (c) { return c[0] === 'vcp-key'; }).map(function (c) { return c[2]; });
+    out.dp_keys = {
+        library: dp.calls.filter(function (c) { return c[0] === 'vcp-key'; }).map(function (c) { return c[2]; }),
+        closed: q('d').instance.hidden - dpHidden
+    };
     dp.calls.length = 0;
     q('d').value = '7/4/2026';
     q('d').dispatchEvent({ type: 'change', bubbles: true });
@@ -1362,7 +1368,7 @@ function test_pg_fields_dates_on_the_calendar_control()
 		'5/3/2026 is 5 March in a day-first site, read by our parse, its month shown; the panel language, Monday first; the theme of the nearest data-bs-theme'
 	);
 	pg_assert_same(array('value' => '12/3/2026', 'heard' => array('12/3/2026'), 'redrawn' => 0, 'hidden' => 1), $r['dp_pick'], 'a pick writes the site text, fires one change and closes the popup');
-	pg_assert_same(array('ArrowDown', 'Tab'), $r['dp_keys'], 'Left and Right keep moving the text cursor; Down and Tab go into the calendar');
+	pg_assert_same(array('library' => array('ArrowDown'), 'closed' => 1), $r['dp_keys'], 'Left and Right keep moving the text cursor; Down goes into the open calendar, Tab closes it and moves on');
 	pg_assert_same(
 		array('calls' => array('calendar-set:d:["2026-04-07"]', 'calendar-set:d:[]'), 'value' => 'tomorrow'),
 		$r['dp_typed'],
