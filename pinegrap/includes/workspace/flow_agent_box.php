@@ -315,11 +315,20 @@ function ws_step_agent_ask($step, $owner, $action, $routed)
         return;
     }
 
-    $sent = ws_message_send($owner, $channel, ws_step_agent_message($agent['handle'], (string) $action['prompt'], WS_MESSAGE_MAX), array('app_id' => 0));
+    $body = ws_step_agent_message($agent['handle'], (string) $action['prompt'], WS_MESSAGE_MAX);
+    $sent = ws_message_send($owner, $channel, $body, array('app_id' => 0));
 
     if (!$sent['ok']) {
         $fail(lang(array('string' => 'Could not write in #{var:1}: {var:2}', 'vars' => array($channel['name'], $sent['error']))));
         return;
+    }
+
+    // ws_message_send() only writes the message; the composer's Send asks
+    // the assistants afterwards. The box wakes its own agent alone (within
+    // the depth and hourly brakes), so a value filled into the prompt that
+    // tags another assistant asks nobody else.
+    if (function_exists('ws_agent_after_send')) {
+        ws_agent_after_send($owner, $channel, (int) $sent['message_id'], $body, ws_agent_request_value($agent));
     }
 
     $request_id = (int) db_value("SELECT id FROM ws_ai_requests
