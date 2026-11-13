@@ -14165,10 +14165,15 @@
             // A discussion's box does not name its title as a channel.
             var placeholder = self.isThread ? t('thread_composer_placeholder') : t('composer_placeholder', self.channel.name);
 
+            // A pasted picture or file is posted as "Add file" posts it, the
+            // box's words with it. The box takes it itself: a discussion's
+            // panel is not inside the channel screen's centre.
             self.rich = window.PGWsEditor ? window.PGWsEditor.create({
                 placeholder: placeholder,
                 onKeydown: keys,
-                onEnter: function () { self.send(); }
+                onEnter: function () { self.send(); },
+                pasteFiles: function (files) { self.uploadFiles(files); },
+                pasteAnyFile: true
             }) : null;
 
             var input = self.rich ? self.rich.node : el('textarea');
@@ -14177,6 +14182,14 @@
                 input.rows = 1;
                 input.placeholder = placeholder;
                 input.setAttribute('aria-label', input.placeholder);
+                input.addEventListener('paste', function (event) {
+                    var files = Array.prototype.slice.call((event.clipboardData && event.clipboardData.files) || []);
+
+                    if (files.length) {
+                        event.preventDefault();
+                        self.uploadFiles(files);
+                    }
+                });
             }
 
             self.input = input;
@@ -15987,8 +16000,8 @@
             next();
         },
 
-        // Files dragged onto the conversation are posted into it; a picture
-        // pasted into the composer too.
+        // Files dragged onto the conversation are posted into it (a pasted
+        // one is the writing box's own, composer()).
         bindDrop: function () {
             var self = this;
             var center = self.center;
@@ -16062,18 +16075,6 @@
                 self.uploadFiles(Array.prototype.slice.call(event.dataTransfer.files || []));
             });
 
-            center.addEventListener('paste', function (event) {
-                if (!event.target.closest('.ws-composer')) {
-                    return;
-                }
-
-                var files = Array.prototype.slice.call((event.clipboardData && event.clipboardData.files) || []);
-
-                if (files.length) {
-                    event.preventDefault();
-                    self.uploadFiles(files);
-                }
-            });
         },
 
         // ── The tag picker in the composer ──
