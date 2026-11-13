@@ -205,8 +205,8 @@ function pg_image_editor_config()
 
 /**
  * The Design Canvas's own icon, the main menu's drawing (pg_menu_icon()) in
- * the design colour, for the places that open the editor: the File Manager,
- * Workspace's New canvas, the editor's top bar. .pg-dc-icon colours it
+ * the design colour, for the editor's top bar; lists of one-colour icons
+ * take pg_design_canvas_icon_one_colour(). .pg-dc-icon colours it
  * outside the main menu (backend.src.css, pg_image_editor.src.css).
  *
  * @param string $space margin class after the icon ('' for none)
@@ -215,6 +215,22 @@ function pg_image_editor_config()
 function pg_design_canvas_icon($space = '')
 {
     return pg_menu_icon('design_canvas', 'design-color pg-dc-icon', $space);
+}
+
+/**
+ * The Design Canvas's icon in one colour, for the places where it stands
+ * among one-colour icons: Workspace's New canvas entries, the File Manager's
+ * context menu and file tools. The same drawing without the design colour,
+ * the tints and the second hue: every line takes the text colour around it
+ * (.pg-dc-mono in backend.src.css), so it follows its neighbours at rest, on
+ * hover and when disabled.
+ *
+ * @param string $space margin class after the icon ('' for none)
+ * @return string SVG markup
+ */
+function pg_design_canvas_icon_one_colour($space = '')
+{
+    return pg_menu_icon('design_canvas', 'pg-dc-icon pg-dc-mono', $space);
 }
 
 /**

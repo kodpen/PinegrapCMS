@@ -184,3 +184,49 @@ function test_translate_search_catalog_query()
 	$at = strpos($content, 'get_catalog_search_results_translated($search_query');
 	pg_assert_true($at !== false && $at < strpos($content, "get_catalog_search_results_for_field('keywords'"), 'translated items come first');
 }
+
+// A record is read from its use's field.
+function test_translate_search_record_id()
+{
+	pg_assert_same(12, pg_tr_search_record_id('r12:4'), 'plain');
+	pg_assert_same(12, pg_tr_search_record_id('r12:4@1#0'), 'rich text');
+	pg_assert_same(0, pg_tr_search_record_id('label'), 'no record');
+}
+
+// Records are grouped by id and found by every word.
+function test_translate_search_record_texts_and_rank()
+{
+	$rows = array(
+		array('field' => 'r3:1', 'text' => 'Kahvaltı menüsü'),
+		array('field' => 'r3:2#1', 'text' => '<p>Sabah &amp; öğle</p>'),
+		array('field' => 'r5:1', 'text' => 'Akşam menüsü'),
+		array('field' => 'label', 'text' => 'menu'),
+	);
+	$texts = pg_tr_search_record_texts($rows);
+	pg_assert_same(array(3, 5), array_keys($texts), 'records');
+	pg_assert_same("Kahvaltı menüsü\nSabah & öğle", $texts[3]['body'], 'body');
+	pg_assert_same(array(3), pg_tr_search_rank($texts, pg_tr_search_words('KAHVALTI ogle')), 'every word, folded');
+}
+
+// An item is a record's only at the address the index writes for it.
+function test_translate_search_record_item_matches()
+{
+	$record = array('reference_code' => 'AB-12', 'address_name' => 'my-post');
+	pg_assert_true(pg_tr_search_record_item_matches('blog?r=AB-12', 'blog', $record), 'reference code');
+	pg_assert_true(pg_tr_search_record_item_matches('blog/my-post', 'blog', $record), 'address name');
+	pg_assert_false(pg_tr_search_record_item_matches('news/my-post', 'blog', $record), 'another page');
+	pg_assert_false(pg_tr_search_record_item_matches('blog/my-post-2', 'blog', $record), 'another record');
+	pg_assert_false(pg_tr_search_record_item_matches('blog?r=AB-123', 'blog', $record), 'another code');
+}
+
+// In the source language no record is asked for; the advanced search passes
+// its own fences.
+function test_translate_search_records_source_language_and_fences()
+{
+	pg_assert_same(array(), pg_tr_search_records('menu', '', ''), 'source language');
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
+	pg_assert_contains('pg_tr_search_records($query, $sql_folders, $sql_live)', $src, 'fences passed');
+	$search = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/translate/search.php');
+	pg_assert_contains("u.owner_type = 'form_records'", $search, 'record uses');
+	pg_assert_contains('WHERE $fence (', $search, 'folder fence');
+}

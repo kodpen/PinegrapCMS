@@ -5231,6 +5231,12 @@
     margin-top: -.375rem;
   }
 
+  /* The chat box sits in .pg-dash-ai-talk, a plain block with no gap to
+     absorb the pull-up above, so its note gets the job box's 8px space. */
+  .pg-dash-ai-talk .pg-dash-ai-chat-form + .pg-dash-ai-status {
+    margin-top: .5rem;
+  }
+
   .pg-dash-ai-status[data-tone="good"] { color: var(--pgd-good); }
   .pg-dash-ai-status[data-tone="bad"] { color: var(--pgd-bad); }
 

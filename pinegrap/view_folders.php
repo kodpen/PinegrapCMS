@@ -290,7 +290,7 @@ $explorer_lang = array(
     'optimize_image' => lang('Optimize this image'),
     'image_editor' => lang('Design Canvas'),
     // The Design Canvas's icon (SVG) before its name in the menu and the tools.
-    'image_editor_icon' => pg_design_canvas_icon(),
+    'image_editor_icon' => pg_design_canvas_icon_one_colour(),
     'image_export' => lang('Export settings…'),
     'new_image' => lang('New image'),
     'new_image_name' => lang('New image'),
@@ -1380,7 +1380,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
    they reach shows the focus, the list draws no ring. */
 #explorer_menu:focus { outline: none; }
 #explorer_menu .menu-item { cursor: pointer; border-radius: .45rem; padding: .32rem .7rem; }
-#explorer_menu .menu-item .bi { width: 1.35rem; display: inline-block; }
+#explorer_menu .menu-item .bi, #explorer_menu .menu-item .pg-dc-mono { width: 1.35rem; display: inline-block; }
 #explorer_menu { padding: .35rem; }
 /* The upload window's drop area. Dashed rather than solid so it reads as a
    place to put something rather than a box that already holds something. */
