@@ -5,7 +5,7 @@
  * Tests for the folders a person may pick a file of the file manager from
  * when it goes into a Workspace channel (includes/workspace/library.php):
  * a branch of the folder tree, the closed branches taken out of what was
- * granted, where the picker starts, and the way down to a folder.
+ * granted, and why the picker marks a file a channel would refuse.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -18,6 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/library.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/files.php');
 
 // A tree as the folder table holds it, folder id => parent id:
 //
@@ -77,28 +78,25 @@ function test_workspace_library_open_set_takes_closed_branches_out()
 	pg_assert_same(array(9, 10, 11), pg_test_workspace_library_ids(ws_library_open_set($tree, array('9', '10', '11'), array(0))), 'string ids read as numbers; 0 closes nothing');
 }
 
-function test_workspace_library_tops_are_where_the_picker_starts()
+// What the picker marks under the paperclip: the signing key, a kind of
+// file a channel refuses, one past the upload limit; anything else passes.
+function test_workspace_library_refusal_names_why()
 {
-	$tree = pg_test_workspace_library_tree();
-
-	pg_assert_same(array(1), ws_library_tops($tree, ws_library_open_set($tree, array_keys($tree), array(5, 7))), 'staff start at the top folder');
-	pg_assert_same(array(3, 9), ws_library_tops($tree, ws_library_open_set($tree, array(3, 4, 9, 10, 11), array())), 'a user starts at the top of each grant');
-	$open = ws_library_open_set($tree, array(3, 4, 9, 10, 11), array(10));
-
-	pg_assert_same(array(3, 4, 9), pg_test_workspace_library_ids($open), 'a closed folder takes what is below it along');
-	pg_assert_same(array(3, 9), ws_library_tops($tree, $open), 'and what is left starts where it did');
+	pg_assert_same(ws_library_withheld_message(), ws_library_refusal('dkim.key', 10), 'the signing key');
+	pg_assert_same(lang('Channels do not take this kind of file.'), ws_library_refusal('page.html', 10), 'a page');
+	pg_assert_same(lang('Channels do not take this kind of file.'), ws_library_refusal('q3.xlsm.zip', 10), 'an Office file with macros, under another extension');
+	pg_assert_contains('MB', ws_library_refusal('film.mp4', ws_upload_max_bytes() + 1), 'past the limit');
+	pg_assert_same('', ws_library_refusal('report.pdf', 10), 'a file a channel takes');
 }
 
-function test_workspace_library_trail_stops_where_the_person_cannot_go()
+// The tops the picker's channel kind closes are the ones the copy is
+// refused from (ws_library_open()).
+function test_workspace_library_closed_tops_are_shared()
 {
-	$tree = pg_test_workspace_library_tree();
-	$staff = ws_library_open_set($tree, array_keys($tree), array(5, 7));
-	$user = ws_library_open_set($tree, array(3, 4), array());
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/library.php');
 
-	pg_assert_same(array(1, 2, 3, 4), ws_library_trail($tree, $staff, 4), 'staff walk down from the top');
-	pg_assert_same(array(3, 4), ws_library_trail($tree, $user, 4), 'a user from the top of the grant');
-	pg_assert_same(array(), ws_library_trail($tree, $user, 2), 'a folder the person cannot open has no trail');
-	pg_assert_same(array(), ws_library_trail($tree, $staff, 6), 'nor has one in a closed branch');
+	pg_assert_contains('ws_library_open_set(ws_library_parents(), ws_library_granted($viewer), ws_library_closed_tops())', $source, 'the copy refuses what the picker leaves out');
+	pg_assert_false(function_exists('ws_library_browse'), 'the drawer\'s own listing is gone');
 }
 
 // The ids of a set (id => true), in order, for comparing.

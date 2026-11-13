@@ -49,11 +49,19 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/picker_all.php');
  *   tree      the dialog shows the folder tree
  *   pictures  items are drawn as pictures
  *   upload    the dialog may upload into the open folder
+ *   channel   files: a copy goes into a Workspace channel; the kind is
+ *             open to the Workspace's members only, the Workspace folder and
+ *             archived folders are closed (ws_library_closed_tops()), and a
+ *             file a channel refuses is listed marked (ws_library_refusal())
  *
  * site_icon and public_image are the Site Settings pictures (Site Icon; App
  * Icon, Default Share Image, Organization Logo, Fediverse avatar), behind the
  * settings gate; file is a file by id (short link destination); image is a
  * picture by name (content and product pictures); page is a page by id.
+ * channel_file is the Workspace writing box's "From the file manager";
+ * canvas_picture (SVG too), canvas_photo, canvas_video and canvas_sound are
+ * the Design Canvas's From the site lists, by id, in the types the editor
+ * draws or plays.
  *
  * @return array name => definition
  */
@@ -72,6 +80,11 @@ function pg_picker_kinds()
         'image' => array_merge($file, array('types' => pg_picker_image_types(), 'value' => 'name', 'pictures' => true)),
         'public_image' => array_merge($file, array('types' => pg_public_image_file_types(), 'public' => true, 'value' => 'name', 'role' => 2, 'pictures' => true)),
         'site_icon' => array_merge($file, array('types' => array('png', 'svg'), 'public' => true, 'value' => 'name', 'role' => 2, 'pictures' => true)),
+        'channel_file' => array_merge($file, array('upload' => false, 'channel' => true)),
+        'canvas_picture' => array_merge($file, array('types' => array('jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'), 'pictures' => true)),
+        'canvas_photo' => array_merge($file, array('types' => array('jpg', 'jpeg', 'png', 'gif', 'webp'), 'pictures' => true)),
+        'canvas_video' => array_merge($file, array('types' => function_exists('pg_image_editor_clip_types') ? pg_image_editor_clip_types() : array('mp4', 'm4v', 'webm'))),
+        'canvas_sound' => array_merge($file, array('types' => function_exists('pg_image_editor_sound_types') ? pg_image_editor_sound_types() : array('mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'opus'))),
         'page' => array('source' => 'pages', 'types' => array(), 'public' => false, 'design' => false, 'archived' => true, 'forms' => false, 'access' => 'edit', 'value' => 'id', 'role' => 3, 'tree' => true, 'pictures' => false, 'upload' => false),
     );
 
@@ -199,6 +212,58 @@ function pg_picker_access_verdict($kind, $role, $edit_rights, $kinds = null)
     }
 
     return 'ok';
+}
+
+/**
+ * Whether the Workspace is there for a channel kind: switched on, its module
+ * loaded, and with $user, that person one of its members.
+ *
+ * @param array|null $user validate_user(); null asks only for the module
+ * @return bool
+ */
+function pg_picker_channel_ready($user = null)
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    return ws_enabled() && (($user === null) || !empty(ws_rights($user)['member']));
+}
+
+/**
+ * Whether a kind is open to a user beyond its role: a channel kind only to
+ * the Workspace's members.
+ *
+ * @param string $kind_name a kind of pg_picker_kinds()
+ * @param array  $user      validate_user()
+ * @return bool
+ */
+function pg_picker_kind_open($kind_name, $user)
+{
+    $kinds = pg_picker_kinds();
+
+    return empty($kinds[$kind_name]['channel']) || pg_picker_channel_ready($user);
+}
+
+/**
+ * The folders a kind never lists from: the Recycle Bin and its sub-folders,
+ * and for a channel kind also the Workspace folder, archived folders and
+ * everything under them, as the Workspace picker always left them out.
+ *
+ * @param array $kind one of pg_picker_kinds()
+ * @return int[]
+ */
+function pg_picker_closed_folder_ids($kind)
+{
+    $closed = pg_recycle_bin_folder_ids();
+
+    if (!empty($kind['channel']) && pg_picker_channel_ready()) {
+        $closed = array_merge($closed, array_keys(ws_library_branch(ws_library_parents(), ws_library_closed_tops())));
+    }
+
+    return pg_picker_ids($closed);
 }
 
 /**
@@ -425,6 +490,11 @@ function pg_picker_files_where($kind, $public_where, $bin_ids, $folders, $folder
 
     if (empty($kind['design'])) {
         $where[] = '(design = 0)';
+    }
+
+    // Files without a folder belong to other modules (ERP documents).
+    if (!empty($kind['channel'])) {
+        $where[] = '(folder > 0)';
     }
 
     $types = array();
@@ -915,6 +985,17 @@ function pg_picker_file_details($kind, $items, $paths = false)
             $item['path'] = pg_picker_folder_path($folder, $map);
         }
 
+        // A file a channel would refuse is listed with the reason and cannot
+        // be chosen, as the Workspace picker showed it.
+        if (!empty($kind['channel']) && function_exists('ws_library_refusal')) {
+            $reason = ws_library_refusal($item['text'], $item['size']);
+
+            if ($reason !== '') {
+                $item['mark'] = 'refused';
+                $item['mark_text'] = $reason;
+            }
+        }
+
         $items[$index] = $item;
     }
 
@@ -1098,13 +1179,13 @@ function pg_picker_select($kind, $where)
 function pg_picker_where_for($kind, $user, $folder = null)
 {
     if ($kind['source'] === 'pages') {
-        return pg_picker_pages_where($kind, pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user, $kind), $folder, !empty($kind['forms']) ? pg_form_page_sql('page') : '');
+        return pg_picker_pages_where($kind, pg_picker_closed_folder_ids($kind), pg_picker_granted_folders($user, $kind), $folder, !empty($kind['forms']) ? pg_form_page_sql('page') : '');
     }
 
     return pg_picker_files_where(
         $kind,
         !empty($kind['public']) ? pg_public_image_files_where() : '',
-        pg_recycle_bin_folder_ids(),
+        pg_picker_closed_folder_ids($kind),
         pg_picker_granted_folders($user, $kind),
         $folder);
 }
@@ -1184,7 +1265,7 @@ function pg_picker_list_answer($request, $user)
     $kind = $kinds[$request['kind']];
     $answer = array('folder' => $request['folder'], 'crumbs' => array(), 'items' => array(), 'page' => $request['page'], 'per_page' => $request['per_page'], 'more' => false);
 
-    if (!pg_picker_folder_allowed($request['folder'], pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user, $kind))) {
+    if (!pg_picker_folder_allowed($request['folder'], pg_picker_closed_folder_ids($kind), pg_picker_granted_folders($user, $kind))) {
         return $answer;
     }
 
@@ -1250,7 +1331,7 @@ function pg_picker_tree_answer($request, $user)
     $kinds = pg_picker_kinds();
     $granted = pg_picker_granted_folders($user, $kinds[$request['kind']]);
     $folders_that_user_has_access_to = ($granted !== null) ? $granted : array();
-    $bin_ids = pg_recycle_bin_folder_ids();
+    $bin_ids = pg_picker_closed_folder_ids($kinds[$request['kind']]);
 
     // Which folders hold a folder this person may use.
     $under = array();
@@ -1732,7 +1813,7 @@ function pg_picker_texts()
         'Pages you choose appear here.', 'Archived pages and pages in the Recycle Bin cannot be chosen.',
         'Type to search…', '1 result · in every folder', '{n} results · in every folder', '{n}+ results · in every folder',
         'All results for “{q}” in Browse', 'Browse…',
-        'All folders', 'Show in its folder', 'Upload into', 'There is nothing to choose yet',
+        'All folders', 'Show in its folder', 'Upload into', 'There is nothing to choose yet', 'Marked files cannot be chosen.',
         'Drag files here or choose them from your computer. An uploaded file is saved in “{folder}” and chosen.',
     ) as $text) {
         $texts[$text] = lang($text);
@@ -1758,6 +1839,19 @@ function pg_picker_script()
 
     $printed = true;
 
+    return '<script type="application/json" id="pg_picker_config">' . json_encode(pg_picker_config(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
+        . pg_js_bundle_tags('assets/js/pg_picker.min.js');
+}
+
+/**
+ * The settings the picker dialog reads from #pg_picker_config; the Design
+ * Canvas carries them too and writes that element when it loads the picker
+ * on a screen that did not print it.
+ *
+ * @return array
+ */
+function pg_picker_config()
+{
     $limits = pg_upload_limits();
 
     // One file goes in one request, so the request's own ceiling holds it
@@ -1792,7 +1886,7 @@ function pg_picker_script()
         $groups[] = array('key' => $key, 'label' => $label);
     }
 
-    $config = array(
+    return array(
         'endpoint' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/picker.php',
         'texts' => pg_picker_texts(),
         'token' => (string) ($_SESSION['software']['token'] ?? ''),
@@ -1802,9 +1896,6 @@ function pg_picker_script()
         'page_kinds' => $page_kinds,
         'picture_kinds' => $picture_kinds,
         'page_groups' => $groups);
-
-    return '<script type="application/json" id="pg_picker_config">' . json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'
-        . pg_js_bundle_tags('assets/js/pg_picker.min.js');
 }
 
 /**
