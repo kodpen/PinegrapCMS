@@ -381,6 +381,14 @@ StyleDesigner.definePart('code', function (K) {
         var pane = document.createElement('div');
         pane.className = 'sd-code-pane pg-code-editor';
         pane.setAttribute('data-key', spec.key);
+        // A line about the file above its editor (spec.note, plain text).
+        if (spec.note) {
+            var note = document.createElement('div');
+            note.className = 'sd-code-note';
+            note.textContent = spec.note;
+            pane.appendChild(note);
+            pane.classList.add('sd-code-pane-noted');
+        }
         document.getElementById('sd-code-panes').appendChild(pane);
         tab = { key: spec.key, title: spec.title || '', icon: spec.icon || 'bi-file-earmark-code', pane: pane, ed: null, dirty: false, spec: spec, loaded: false };
         _sdCode.tabs.push(tab);
@@ -523,6 +531,10 @@ StyleDesigner.definePart('code', function (K) {
             language: 'php',
             readOnly: readOnly,
             url: null,
+            // The tab shows the file as written; a page of a Bootstrap 5.3.8
+            // design prints its Bootstrap 3 names as their 5.3.8 names
+            // (pg_lbs_layout_html() in get_page_content.php).
+            note: (K.design && K.design.framework === 'bootstrap5') ? _sdT('Pages of this design print the layout\'s Bootstrap 3 class names as their Bootstrap 5.3.8 names; the file keeps them as written.') : '',
             load: function (cb) {
                 if (!regenerate) { post('read', null, cb); return; }
                 // A new tab starts from the generated text, unsaved.

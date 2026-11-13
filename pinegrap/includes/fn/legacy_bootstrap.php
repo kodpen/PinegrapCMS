@@ -943,6 +943,42 @@ function pg_lbs_layout_html($html)
 }
 
 /**
+ * A system region's output with its page type's markup printed through
+ * pg_lbs_layout_html(). The bytes before $from (a secondary region's header,
+ * which is the page's own content) stay as written, and so does the whole
+ * output when the pass cannot finish.
+ *
+ * @param string $output  the region's output so far
+ * @param int    $from    where the page type's markup starts in it
+ * @return string
+ */
+function pg_lbs_layout_region($output, $from = 0)
+{
+    $output = (string)$output;
+    $from = max(0, (int)$from);
+    if ($from >= strlen($output)) return $output;
+    $r = pg_lbs_layout_html(substr($output, $from));
+    return $r['done'] ? substr($output, 0, $from) . $r['html'] : $output;
+}
+
+/**
+ * Whether a page's system regions print their page type's markup through
+ * pg_lbs_layout_html(): only on a page drawn in a browser whose style is a
+ * visual design built on Bootstrap 5.3.8. The framework key alone is not
+ * enough, as a classic style has none and reads as bootstrap5; a Legacy
+ * design keeps Bootstrap 3, and an e-mail is drawn as it was.
+ *
+ * @param string $style_layout   the style's layout ('visual_designer' …)
+ * @param string $framework_key  pg_design_framework()'s key for the style
+ * @param bool   $email          the page is drawn as an e-mail
+ * @return bool
+ */
+function pg_lbs_layout_output_applies($style_layout, $framework_key, $email = false)
+{
+    return !$email && $style_layout === 'visual_designer' && $framework_key === 'bootstrap5';
+}
+
+/**
  * The same pass over the text of a layout file or a template, for a count
  * before any page is drawn: PHP blocks stay byte for byte and a class list
  * PHP writes in part is counted in 'php', since only the output shows its

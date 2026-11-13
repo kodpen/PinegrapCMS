@@ -226,6 +226,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // design loads no framework files; a design from before the column, or
     // a style that is not a visual design, reads as Bootstrap 5.
     $pg_design_fw = pg_design_framework($row['style_framework'] ?? '');
+    // A page of a Bootstrap 5.3.8 design prints its page types' Bootstrap 3
+    // class names as their 5.3.8 names (pg_lbs_layout_html(), where each
+    // system region is drawn); every other page gets its markup as written.
+    if ($style_layout === 'visual_designer' && !$email) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap.php');
+    }
+    $pg_lbs_layout_map = function_exists('pg_lbs_layout_output_applies')
+        && pg_lbs_layout_output_applies($style_layout, $pg_design_fw['key'], $email);
     // The design's look and colour palette (2026.4.5): stylesheets loaded
     // right after the framework's, so everything the design adds still wins.
     $pg_theme_links = ($style_layout === 'visual_designer' && function_exists('pg_design_theme_links'))
@@ -2458,6 +2466,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
         
         $system_output = '';
+        // Where the page type's own markup starts in $system_output: after
+        // a secondary region's header.
+        $pg_lbs_from = 0;
         $strutured_data_feeds = '';
         // if this is the primary system region
         // or this secondary system region's page type is valid,
@@ -2522,6 +2533,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 }
 
                 $system_output .= $output_system_region_header;
+                $pg_lbs_from = strlen($system_output);
             }
 
             $access_control_type = '';
@@ -5308,6 +5320,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // (widgets_comments.php)
             if (($extra_system_content != '') && ($primary_system_region == TRUE) && pg_comments_email_keeps_fixed_markup($email, $page_id, $pg_cw_pages)) {
                 $system_output .= $extra_system_content;
+            }
+
+            // The page type's markup with its Bootstrap 3 names printed as
+            // their 5.3.8 names on a Bootstrap 5.3.8 design. A secondary
+            // region's header and footer are the page's own content, edited
+            // in place in edit mode, and stay as written like every other
+            // region; a pass that cannot finish leaves the markup as it came.
+            if ($pg_lbs_layout_map) {
+                $system_output = pg_lbs_layout_region($system_output, $pg_lbs_from);
             }
 
             // if this system region is a secondary system region then add system region footer

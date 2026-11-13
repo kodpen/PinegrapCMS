@@ -2418,6 +2418,14 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-code-pane { display: none; height: 100%; min-height: 0; }
 .sd-code-pane-active { display: block; }
 .sd-html-code .cm-editor { height: 100%; }
+/* A line about the file above a file tab's editor (spec.note) */
+.sd-code-pane-noted.sd-code-pane-active { display: flex; flex-direction: column; }
+.sd-code-pane-noted > .cm-editor { flex: 1 1 auto; min-height: 0; height: auto; }
+.sd-code-note {
+    flex-shrink: 0; padding: .2rem .5rem;
+    background: #15171b; border-bottom: 1px solid var(--sd-panel-border);
+    color: var(--sd-text-muted); font-size: .66rem; line-height: 1.4;
+}
 .sd-html-code-toggle { margin-right: .35rem; }
 .sd-html-code-toggle.active {
     background: rgba(13,110,253,.18);

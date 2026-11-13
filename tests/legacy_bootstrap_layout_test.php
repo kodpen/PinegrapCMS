@@ -5,8 +5,9 @@
  * Tests for the Bootstrap 3 to 5.3.8 converter on a page type's markup
  * (includes/fn/legacy_bootstrap.php): the rules of a class list where no
  * Legacy theme styles the markup, the pass over rendered markup and over a
- * layout file's text, the starting sites' layouts and templates, and the
- * names the site's own scripts and sheets use.
+ * layout file's text, the starting sites' layouts and templates, the
+ * names the site's own scripts and sheets use, and where a page drawn by
+ * get_page_content.php runs the pass.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -511,4 +512,90 @@ function test_lbs_layout_site_scripts_and_sheets_name_no_converted_class()
 		pg_assert_same(array(), array_values(array_diff(array_keys($r['converted']), $stay)), $file . ' selects a converted class');
 		pg_assert_same(array(), $r['kept'], $file . ' selects a class the pass rewrites');
 	}
+}
+
+function test_lbs_layout_output_applies_on_a_bootstrap_5_design_only()
+{
+	pg_assert_true(pg_lbs_layout_output_applies('visual_designer', 'bootstrap5', false), 'a page of a Bootstrap 5.3.8 design');
+	pg_assert_true(pg_lbs_layout_output_applies('visual_designer', 'bootstrap5'), 'drawn in a browser unless told otherwise');
+	pg_assert_false(pg_lbs_layout_output_applies('visual_designer', 'bootstrap5', true), 'the same page drawn as an e-mail');
+	pg_assert_false(pg_lbs_layout_output_applies('visual_designer', 'legacy', false), 'a Legacy design keeps Bootstrap 3');
+	pg_assert_false(pg_lbs_layout_output_applies('visual_designer', 'custom', false), 'a design on its own framework');
+	// A classic style has no framework of its own and reads as bootstrap5.
+	pg_assert_false(pg_lbs_layout_output_applies('one_column_mobile', 'bootstrap5', false), 'a classic style');
+	pg_assert_false(pg_lbs_layout_output_applies('', 'bootstrap5', false), 'a page without a style');
+}
+
+function test_lbs_layout_region_keeps_the_header_and_fails_open()
+{
+	$header = '<div class="software_system_region_header"><p class="text-right">Own text</p></div>';
+	$type = '<form><div class="form-group"><input class="form-control"></div><button class="btn btn-default pull-right">Go</button></form>';
+	pg_assert_same(
+		$header . '<form><div class="mb-3"><input class="form-control"></div><button class="btn btn-light float-end">Go</button></form>',
+		pg_lbs_layout_region($header . $type, strlen($header)),
+		'the page type\'s markup gets 5.3.8 names, the header stays as written'
+	);
+	pg_assert_same(
+		'<p class="text-end">Own text</p>',
+		pg_lbs_layout_region('<p class="text-right">Own text</p>'),
+		'a primary region is mapped from its start'
+	);
+	pg_assert_same($header, pg_lbs_layout_region($header, strlen($header)), 'a header with nothing after it');
+	pg_assert_same('', pg_lbs_layout_region('', 0), 'an empty region');
+	pg_assert_same($header, pg_lbs_layout_region($header, strlen($header) + 9), 'a start past the end');
+	pg_assert_same('<p class="text-end">x</p>', pg_lbs_layout_region('<p class="text-right">x</p>', -4), 'a start before the beginning');
+
+	// A tag that never ends: the region comes back as it came, never empty.
+	$broken = $header . '<div class="form-group"><a class="pull-right" title="never closed';
+	pg_assert_same($broken, pg_lbs_layout_region($broken, strlen($header)), 'a broken tag');
+
+	// A second pass changes nothing.
+	$once = pg_lbs_layout_region($header . $type, strlen($header));
+	pg_assert_same($once, pg_lbs_layout_region($once, strlen($header)), 'a second pass');
+}
+
+function test_lbs_layout_get_page_content_runs_the_pass_once_on_the_page_type_s_markup()
+{
+	$src = (string)file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+	$at = function ($needle) use ($src) {
+		pg_assert_same(1, substr_count($src, $needle), 'get_page_content.php holds once: ' . $needle);
+		return strpos($src, $needle);
+	};
+
+	// The gate: a visual design's page in a browser loads the module, and
+	// the framework decides.
+	$load = $at("if (\$style_layout === 'visual_designer' && !\$email) {\n        require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap.php');");
+	$gate = $at("pg_lbs_layout_output_applies(\$style_layout, \$pg_design_fw['key'], \$email)");
+	pg_assert_true($at("\$pg_design_fw = pg_design_framework(") < $load && $load < $gate, 'the gate reads the framework of the page\'s style');
+
+	// Each region starts where its header ends and is mapped before its
+	// footer, the edit mode frame, the canvas marks and the join.
+	$reset = $at("\$system_output = '';\n        // Where the page type's own markup starts in \$system_output: after\n        // a secondary region's header.\n        \$pg_lbs_from = 0;");
+	$header = $at("\$system_output .= \$output_system_region_header;\n                \$pg_lbs_from = strlen(\$system_output);");
+	$extra = $at("\$system_output .= \$extra_system_content;");
+	$pass = $at("if (\$pg_lbs_layout_map) {\n                \$system_output = pg_lbs_layout_region(\$system_output, \$pg_lbs_from);");
+	$footer = $at("\$system_output .= \$output_system_region_footer;");
+	$frame = $at("<div style=\"padding: 2em 0 0 0\">' . \$system_output . '</div>");
+	$marks = $at("'<!--pg-layout-region-start-->' . \$system_output");
+	$join = $at("pg_regex_replacement(\$system_output)");
+	pg_assert_true($gate < $reset && $reset < $header && $header < $extra && $extra < $pass, 'the pass follows the page type\'s markup');
+	pg_assert_true($pass < $footer && $footer < $frame && $frame < $marks && $marks < $join, 'the pass comes before the footer, the frame, the marks and the join');
+	$code = '';
+	foreach (token_get_all($src) as $t) {
+		if (is_array($t) && ($t[0] === T_COMMENT || $t[0] === T_DOC_COMMENT)) continue;
+		$code .= is_array($t) ? $t[1] : $t;
+	}
+	pg_assert_same(2, preg_match_all('/pg_lbs_[a-z_]+\s*\(/', $code), 'get_page_content.php calls the converter in the gate and the pass only');
+}
+
+function test_lbs_layout_code_tab_says_the_names_change_on_a_bootstrap_5_design()
+{
+	$src = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_code.js');
+	$text = "Pages of this design print the layout\\'s Bootstrap 3 class names as their Bootstrap 5.3.8 names; the file keeps them as written.";
+	pg_assert_true(strpos($src, "note: (K.design && K.design.framework === 'bootstrap5') ? _sdT('" . $text . "') : ''") !== false, 'the layout tab carries the line on a Bootstrap 5.3.8 design only');
+	pg_assert_true(strpos($src, "note.textContent = spec.note;") !== false, 'the line is written as text');
+	$min = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_code.min.js');
+	pg_assert_true(strpos($min, 'sd-code-note') !== false, 'the served bundle carries the line');
+	$css = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+	pg_assert_true(strpos($css, '.sd-code-pane-noted > .cm-editor') !== false, 'the editor gives the line its room');
 }
