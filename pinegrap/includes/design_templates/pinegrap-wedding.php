@@ -197,7 +197,7 @@ $wedding_css = implode("\n", array(
 
 return array(
     'name'        => lang('Wedding Planner and Venue'),
-    'version'     => '2.0.1',
+    'version'     => '2.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 87,
     'icon'        => 'bi-balloon-heart',

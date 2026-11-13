@@ -175,7 +175,7 @@ $salon_css = implode("\n", array(
 
 return array(
     'name'        => lang('Beauty Salon'),
-    'version'     => '1.2.0',
+    'version'     => '1.2.1',
     'framework'   => 'bootstrap5',
     'order'       => 55,
     'icon'        => 'bi-flower2',

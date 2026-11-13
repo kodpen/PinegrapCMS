@@ -217,7 +217,7 @@ $veterinary_css = implode("\n", array(
 
 return array(
     'name'        => lang('Veterinary'),
-    'version'     => '1.0.1',
+    'version'     => '1.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 125,
     'icon'        => 'bi-heart-pulse',

@@ -207,7 +207,7 @@ $travel_css = implode("\n", array(
 
 return array(
     'name'        => lang('Travel Agency'),
-    'version'     => '2.0.1',
+    'version'     => '2.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 83,
     'icon'        => 'bi-airplane',

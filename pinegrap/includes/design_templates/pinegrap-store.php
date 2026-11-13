@@ -2979,7 +2979,7 @@ $store_css = implode("\n", array(
 
 return array(
     'name'        => lang('Online Store'),
-    'version'     => '1.2.4',
+    'version'     => '1.2.5',
     'framework'   => 'bootstrap5',
     'order'       => 20,
     'icon'        => 'bi-bag-heart',

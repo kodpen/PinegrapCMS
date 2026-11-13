@@ -221,7 +221,7 @@ $theatre_css = implode("\n", array(
 
 return array(
     'name'        => lang('Theatre'),
-    'version'     => '1.0.1',
+    'version'     => '1.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 107,
     'icon'        => 'bi-ticket-perforated',
