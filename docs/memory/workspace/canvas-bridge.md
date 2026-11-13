@@ -16,7 +16,7 @@ module: guarded_frame
 ## What are the bounds?
 - In the shell (`PG_GUARDED_FRAME_BRIDGE_*`): an id is a string of 1-64 characters or a number, else the request is dropped unanswered; a call name `[a-z][a-z_]{0,23}`, arguments an object, else `invalid`; arguments over 16 KB as JSON, or 8 requests already waiting, `limit`; an answer over 1 MB reaches the page as `limit`.
 - More than 120 requests in a minute: the shell removes the page's frame and posts `{pg: 'canvas-data', stopped: 'limit'}`; the card closes and shows "The page was stopped: it asked the site too often." with Open again.
-- The site checks again (`ws_page_bridge_request()`): the same name and size rules, the call among `ws_page_bridge_calls()`, else `unknown_call`. The numbers are first values; CO5 measures and sets them.
+- The site checks again (`ws_page_bridge_request()`): the same name and size rules, the call among `ws_page_bridge_calls()`, else `unknown_call`. The numbers are kept from CO5's measures (`canvas-measures.md`).
 
 ## Which calls are there?
 - `who`: the reader's display name (`ws_person_name()`), nothing else of them.
