@@ -215,7 +215,8 @@
 - workspace-editor-find-replace.md: Find and replace in the Workspace writing boxes (Ctrl+F, openFind()): where the shortcut works, how matches are found and painted, how a replacement keeps marks and undo, its labels and tests
 - workspace-editor-link-keys.md: The link tip's Text field (linkText()), the Ctrl+/ shortcut sheet (openKeys(), shortcutRows(), keyLabel()) of the Workspace writing boxes since #2101, and the selection bar acting on click
 - workspace-editor-lists.md: Lists and quotes in the Workspace writing box (#1897): twins of the server's rules, lines written back as stored, keys, the three tools, a pick inside a mark, select all and delete
-- workspace-editor-smart-paste.md: Pasting into a Workspace writing box (#2018): HTML mapped to the box's markup and why it is safe, sheet ranges to the table window, a URL over words, a note's picture
+- workspace-editor-pasted-files.md: A picture or file pasted into a Workspace writing box (#9250): which box takes it, words beside it, why the box takes it itself [decision: decisions-made-panel-8.md]
+- workspace-editor-smart-paste.md: Pasting into a Workspace writing box (#2018): HTML mapped to the box's markup and why it is safe, sheet ranges to the table window, a URL over words, pasted files elsewhere
 - workspace-editor-toolbar.md: One row of tools for every Workspace writing box (PGWsEditor.toolbar()); marks made on the nodes by format(), never execCommand; waiting marks, IME, pressed state, undo, labels
 - workspace-empty-states.md: Workspace empty lists with a small theme-coloured drawing (emptyState(), the shared ART kit / window.PGWsArt) and skeleton rows instead of "Loading…" (U4, PR #2027)
 - workspace-field-names.md: How Workspace drawer and dialog fields get their screen-reader names: formRow(), saLabelled(), ask(), labelTarget()/hasName(), the pickers
