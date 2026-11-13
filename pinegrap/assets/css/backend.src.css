@@ -1635,11 +1635,13 @@ html[data-bs-theme="dark"] .accordion {
 }
 /* v6's .switch::before reads only --bs-switch-indicator-bg: a checked thumb
    takes the dark on-accent ink against the light blue track, and the blue
-   focus knob is kept for unchecked switches, where the track is not blue. */
-.switch:has(input:checked) {
+   focus knob is kept for unchecked switches, where the track is not blue.
+   A look switch (a settings card's, the report drawer's) has its own white
+   thumb on the accent gradient, so neither reaches it. */
+.switch:not(:where(.pg-set-card *, #report_settings *)):has(input:checked) {
   --bs-switch-indicator-bg: var(--pg-on-accent);
 }
-.switch:focus-within:not(:has(input:checked)) {
+.switch:not(:where(.pg-set-card *, #report_settings *)):focus-within:not(:has(input:checked)) {
   --bs-switch-indicator-bg: var(--pg-primary);
 }
 .form-range {
@@ -25536,8 +25538,15 @@ textarea.pg-input {
 .pg-switch:checked::after {
   left: 18px;
 }
-/* A settings row's Bootstrap switch is the look's switch. */
-.pg-set-card .switch {
+.pg-switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* A settings row's and the report drawer's Bootstrap switch is the look's
+   switch: 38 x 22, a white 18 px thumb with its shadow, left when off on
+   the grey track, right when on on the accent gradient, in both themes. */
+.pg-set-card .switch,
+#report_settings .switch {
   --bs-switch-height: 22px;
   --bs-switch-width: 38px;
   --bs-switch-padding: 2px;
@@ -25547,14 +25556,39 @@ textarea.pg-input {
   --bs-switch-bg: color-mix(in srgb, var(--pg-fg-3) 40%, transparent);
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
 }
-.pg-set-card .switch::before {
+.pg-set-card .switch::before,
+#report_settings .switch::before {
   /* White in both states, as the look's own switch: Bootstrap paints the
-     knob in the theme's contrast colour, dark on a checked row. */
+     knob in the theme's contrast colour, dark on a checked row, and fades
+     it on a disabled one. */
   background-color: #ffffff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  opacity: 1;
 }
-.pg-set-card .switch:has(input:checked) {
+.pg-set-card .switch:has(input:checked),
+#report_settings .switch:has(input:checked) {
   background-image: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+}
+/* The look's focus ring, from the keyboard only, in place of Bootstrap's
+   outline; a validation ring keeps its own colour. */
+.pg-set-card .switch:has(input:focus),
+#report_settings .switch:has(input:focus),
+.pg-set-card .switch input:focus-visible,
+#report_settings .switch input:focus-visible {
+  outline: 0;
+}
+.pg-set-card .switch:has(input:focus-visible):not(:has(.is-invalid, .is-valid)),
+#report_settings .switch:has(input:focus-visible):not(:has(.is-invalid, .is-valid)) {
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 4px color-mix(in srgb, var(--pg-accent) 24%, transparent);
+}
+/* Disabled, on or off: the whole switch faded, the thumb still white. */
+.pg-set-card .switch:has(input:disabled),
+#report_settings .switch:has(input:disabled) {
+  opacity: 0.5;
+}
+.pg-set-card .switch:has(input:disabled) input,
+#report_settings .switch:has(input:disabled) input {
+  cursor: default;
 }
 @media (prefers-reduced-motion: no-preference) {
   .pg-switch::after {
@@ -26850,22 +26884,7 @@ body.pg-measure-report #content {
   --bs-control-box-shadow: var(--pg-field-shadow);
   border-radius: 10px;
 }
-/* The detail switch: the look's switch, a white knob on the accent. */
-#report_settings .switch {
-  --bs-switch-height: 22px;
-  --bs-switch-width: 38px;
-  --bs-switch-padding: 2px;
-  --bs-switch-border-width: 0px;
-  --bs-switch-bg: color-mix(in srgb, var(--pg-fg-3) 40%, transparent);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.25);
-}
-#report_settings .switch::before {
-  background-color: #ffffff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-}
-#report_settings .switch:has(input:checked) {
-  background-image: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
-}
+/* The detail switch is the look's switch (block "Look A", beside .pg-switch). */
 
 /* A level: its number, what it summarizes by, how it is ordered. */
 .pg-report-level {
