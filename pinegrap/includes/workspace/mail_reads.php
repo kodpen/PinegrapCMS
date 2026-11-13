@@ -189,7 +189,8 @@ function ws_mail_read_all($viewer)
 
 /**
  * How many open conversations of the channels a person reads are unread
- * for them: the number on the E-mails tile of the menu.
+ * for them: the number on the E-mails tile of the menu. Every conversation
+ * of a plain box counts as open.
  *
  * @param array $viewer
  * @return int
@@ -200,7 +201,7 @@ function ws_mail_unread_count($viewer)
         return 0;
     }
 
-    $where = ws_mail_list_where(array('view' => 'all', 'status' => 'open', 'holder' => 'all', 'overdue' => false), (int) $viewer['id'], ws_mail_list_channels($viewer));
+    $where = ws_mail_list_where(array('view' => 'all', 'status' => 'open', 'holder' => 'all', 'overdue' => false), (int) $viewer['id'], ws_mail_list_channels($viewer), '', ws_mail_plain_box_ids());
 
     if ($where === '') {
         return 0;
