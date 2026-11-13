@@ -3524,6 +3524,7 @@ function ws_flow_js_strings()
         'fl_kind_rows_get'    => lang('Read rows of a table'),
         'fl_rows_read_help'   => lang('The tables the flow\'s owner may read; the box reads with their rights.'),
         'fl_kind_record_get'  => lang('Read a record'),
+        'fl_kind_sms'         => lang('Send an SMS'),
         'fl_record_kind'      => lang('Kind of record'),
         'fl_record_kind_pick' => lang('Choose a kind of record'),
         'fl_record_kind_help' => lang('The kinds of record the flow\'s owner may read; the box reads with their rights.'),
@@ -3723,6 +3724,12 @@ function ws_flow_js_strings()
         'fl_email_person_marketing' => lang('Marketing to the record\'s person'),
         'fl_email_subject'    => lang('Subject'),
         'fl_email_body'       => lang('Text of the e-mail'),
+        'fl_sms_typed'        => lang('The number typed here'),
+        'fl_sms_to'           => lang('Mobile number'),
+        'fl_sms_to_help'      => lang('One mobile number, with its country code when it is not a Turkish one.'),
+        'fl_sms_no_to'        => lang('No number yet'),
+        'fl_sms_purpose_help' => lang('Marketing goes only to a number whose person agreed to marketing SMS, with the sender identity added; otherwise the box sends nothing and the run says why.'),
+        'fl_sms_text'         => lang('Text of the message'),
         'fl_values_hint'      => lang('Add value puts in what started the run or what an earlier box gave; {{date}} and the other words of scheduled actions work too.'),
         'fl_values_hint_plain' => lang('Add value puts in what started the run or what an earlier box gave.'),
         'fl_values_hint_value' => lang('Add value puts in what started the run or what an earlier box gave; {{date}}, {{time}} and {{weekday}} give today\'s date, the time and the day of the week.'),
@@ -4170,6 +4177,9 @@ function ws_flow_js_config($viewer, $mode)
         // The Pinegrap AI box is offered while the site has it set up
         // (ws_step_ai_check()).
         $steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();
+        // The SMS box is offered while the site can send SMS
+        // (ws_step_sms_check()).
+        $steps['sms'] = function_exists('pg_sms_ready') && pg_sms_ready();
         // The agents an agent box may ask, each with the channels the owner
         // may write in where it is allowed (flow_agent_box.php).
         $steps['agents'] = function_exists('ws_step_agent_form_list') ? ws_step_agent_form_list($viewer) : array();

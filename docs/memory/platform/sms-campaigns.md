@@ -20,7 +20,7 @@ module: sms_campaigns
 - Text limit, labels, group delete: `sms-campaign-limit-and-labels.md`.
 
 ## What is not done?
-- No Flows action. API: `api/api-sms-campaigns.md`. Not run through a live provider.
+- API: `api/api-sms-campaigns.md`. Not run through a live provider.
 - `pg_sms_marketing_permission()` scans contacts and orders per number, so a campaign of many thousand numbers queues slowly; the contact id could be passed in.
 
 ## Tests?

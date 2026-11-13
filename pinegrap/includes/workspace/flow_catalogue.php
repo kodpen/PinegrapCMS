@@ -64,6 +64,8 @@ function ws_flow_setting_values()
         'delay.mode'         => array('for', 'until'),
         'email.recipient'    => ws_flow_mail_recipients(),
         'email.purpose'      => ws_flow_mail_purposes(),
+        'sms.recipient'      => ws_step_sms_recipients(),
+        'sms.purpose'        => ws_step_sms_purposes(),
         'webhook.format'     => array('generic', 'text', 'discord'),
         'web_check.mode'     => array('status', 'ssl'),
         'task_digest.mode'   => array('mine', 'channel'),

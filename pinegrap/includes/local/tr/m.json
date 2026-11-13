@@ -410,6 +410,7 @@
     "Marketing Director, Acme Co": "Pazarlama Direktörü, Acme Co",
     "Marketing Director, Vertex": "Pazarlama Direktörü, Vertex",
     "Marketing Messages": "Pazarlama Mesajları",
+    "Marketing goes only to a number whose person agreed to marketing SMS, with the sender identity added; otherwise the box sends nothing and the run says why.": "Pazarlama mesajı yalnızca pazarlama SMS'ine izin veren kişinin numarasına, gönderici kimliği eklenerek gider; aksi halde kutu hiçbir şey göndermez ve çalışma nedenini yazar.",
     "Marketing messages are not sent by SMS: they need the recipient's consent recorded in İYS.": "Pazarlama mesajları SMS ile gönderilmez: alıcının İYS'de kayıtlı onayı gerekir.",
     "Marketing to the record's person": "Kaydın kişisine pazarlama",
     "Marketplace": "Pazaryeri",

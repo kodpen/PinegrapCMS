@@ -103,7 +103,7 @@ function ws_flow_quick_areas()
 function ws_flow_quick_groups()
 {
     return array(
-        'message' => array('label' => lang('Message'), 'kinds' => array('email', 'notify', 'post', 'report')),
+        'message' => array('label' => lang('Message'), 'kinds' => array('email', 'sms', 'notify', 'post', 'report')),
         'people'  => array('label' => lang('People'), 'kinds' => array('task_open', 'task', 'approval', 'lead', 'checkin', 'task_digest')),
         'records' => array('label' => lang('Records'), 'kinds' => array('change', 'record_get', 'row_add', 'row_set', 'row_get', 'rows_get')),
         'logic'   => array('label' => lang('Logic'), 'kinds' => array('delay', 'condition', 'for_each')),
@@ -728,6 +728,11 @@ function ws_flow_quick_fill($viewer, $scheduled = null, $lists = null)
     // With the Workspace off the boxes and starts that need it are left out.
     if (!ws_enabled()) {
         $kinds = array_values(array_diff(($kinds === null) ? array_keys(ws_flow_kinds()) : $kinds, ws_flow_kinds_workspace()));
+    }
+
+    // The SMS box only where the site can send SMS (ws_step_sms_check()).
+    if (!function_exists('pg_sms_ready') || !pg_sms_ready()) {
+        $kinds = array_values(array_diff(($kinds === null) ? array_keys(ws_flow_kinds()) : $kinds, array('sms')));
     }
 
     return array(

@@ -18,7 +18,7 @@ description: The marketing SMS kind (PR #3820, #3570): sender identity and type 
 - The drivers get `$commercial` true for this kind: Netgsm `iysfilter` 11, İleti Merkezi `iys` 1 with list BIREYSEL; Twilio ignores it.
 
 ## What is not done?
-- Nothing queues a marketing SMS yet: step 10 (SMS campaign) is the sender, so running sites change nothing. Not sent through a live provider.
+- Senders: SMS campaigns (`sms-campaigns.md`) and a flow's Send an SMS box with purpose marketing (`workspace/workspace-flows-sms-box.md`). Not sent through a live provider.
 - The lookup scans contacts and orders with `REPLACE()` per message; a campaign of many numbers may want the contact id passed in (step 10).
 
 ## Tests?
