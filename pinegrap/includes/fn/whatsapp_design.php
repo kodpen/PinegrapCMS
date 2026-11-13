@@ -718,3 +718,45 @@ function pg_whatsapp_design_own_number()
 
     return pg_sms_number((string) db_value("SELECT mobile_phone FROM contacts WHERE id = '" . (int) USER_CONTACT_ID . "'"));
 }
+
+
+/* ---------------------------------------------------------------------------
+   The screen's parts
+   --------------------------------------------------------------------------- */
+
+/**
+ * One row of the sample values: the variable, what it stands for and its
+ * sample. whatsapp_template.js builds the same row as the message changes.
+ *
+ * @param string $key      the variable's number
+ * @param string $label
+ * @param string $sample
+ * @param bool   $editable
+ * @param array  $errors   pg_whatsapp_design_check()
+ * @return string HTML
+ */
+function pg_whatsapp_design_sample_row($key, $label, $sample, $editable, $errors)
+{
+    $key = preg_replace('/[^a-z0-9_]/', '', (string) $key);
+    $disabled = $editable ? '' : ' disabled';
+    $error = '';
+    $invalid = '';
+
+    foreach (array('sample_', 'label_') as $prefix) {
+        if (isset($errors[$prefix . $key])) {
+            $error .= '<div class="pg-field-help pg-field-error" id="' . $prefix . h($key) . '_error">' . h($errors[$prefix . $key]) . '</div>';
+        }
+    }
+
+    if (isset($errors['sample_' . $key])) {
+        $invalid = ' aria-invalid="true" aria-describedby="sample_' . h($key) . '_error"';
+    }
+
+    return '<div class="pg-wa-sample" data-pg-wa-key="' . h($key) . '">'
+        . '<code class="pg-wa-sample-key">{{' . h($key) . '}}</code>'
+        . '<div class="pg-wa-sample-fields">'
+        . '<input type="text" class="pg-input pg-input-sm" name="label_' . h($key) . '" value="' . h($label) . '" maxlength="' . PG_WHATSAPP_DESIGN_SAMPLE_MAX . '" placeholder="' . h(lang('What it stands for')) . '" aria-label="' . h(lang(array('string' => 'What {var:1} stands for', 'vars' => array('{{' . $key . '}}')))) . '"' . $disabled . '>'
+        . '<input type="text" class="pg-input pg-input-sm" name="sample_' . h($key) . '" value="' . h($sample) . '" maxlength="' . PG_WHATSAPP_DESIGN_SAMPLE_MAX . '" placeholder="' . h(lang('Sample value')) . '" aria-label="' . h(lang(array('string' => 'Sample value of {var:1}', 'vars' => array('{{' . $key . '}}')))) . '"' . $invalid . $disabled . '>'
+        . $error
+        . '</div></div>';
+}
