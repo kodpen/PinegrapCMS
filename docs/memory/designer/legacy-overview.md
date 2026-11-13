@@ -21,5 +21,5 @@ description: Start file for moving classic styles to the visual designer: owner 
 ## What is still open?
 - A style moved alone: the run writes no stylesheet or script rows, so the classic head's other files are missing (`legacy-design-theme.md`). A set's design has them (`pg_ltd_set_assets()`).
 - Photos in a `.background-image-holder`: a common region made a shared component draws its `<img>` in a `<picture data-pg-picture>`, and a classic theme's scripts.js reading `children('img')` sets `url(undefined)`, so slider and parallax photos are lost (`legacy-set-run.md`, `responsive-images.md`).
-- The Bootstrap 5.3.8 helper: not built; its plan is `plans/legacy-bootstrap-helper.md` (#8856), steps LB1-LB7. LB1's census and hand trial: `legacy-bootstrap-census.md`, `legacy-bootstrap-trial.md`.
+- The Bootstrap 5.3.8 helper: being built from `plans/legacy-bootstrap-helper.md` (#8856), steps LB1-LB7. LB1's census and hand trial: `legacy-bootstrap-census.md`, `legacy-bootstrap-trial.md`; the map: `legacy-bootstrap-map.md`; the card and its report: `legacy-bootstrap-card.md`. No trial design yet (LB4).
 - A design left with no page after Back to classic stays until deleted; a later move makes a new one (`legacy-to-classic.md`).

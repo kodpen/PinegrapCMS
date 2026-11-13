@@ -120,6 +120,7 @@ description: Generated from the module field of the memory files: each includes/
 - `layout_convert`: [[layout-form-converter]]
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
 - `legacy_bootstrap`: [[legacy-bootstrap-map]]
+- `legacy_bootstrap_report`: [[legacy-bootstrap-card]]
 - `legacy_design_theme`: [[legacy-design-theme]]
 - `legacy_to_classic`: [[legacy-to-classic]]
 - `legacy_to_designer`: [[legacy-set]], [[legacy-to-designer-report]]
