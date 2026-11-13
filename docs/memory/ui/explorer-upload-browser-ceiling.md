@@ -10,7 +10,7 @@ description: File Manager upload window limit capped at what a browser can send 
 
 ## What happens to a file the browser cannot read?
 - `uploadReadUsable(reader.result)` is false for an empty or non data URL result. The file is not sent and a toast says "{file}: The browser could not read the file, so it was not sent." (`L.upload_read_failed`); a FileReader error says the same. Both the folder path (`uploadEntries()`) and the backup path (`uploadToBackups()`) check it.
-- Before (#8989): a 420 MB file under the stated 1.1 GB was read as `""` with no error, sent with `"data":""` and answered by a bare "Invalid request." naming no file.
+- Before (#8989, PR #9090): a 420 MB file under the stated 1.1 GB was read as `""` with no error, sent with `"data":""` and answered by a bare "Invalid request." naming no file.
 
 ## What is left?
 - Files larger than the ceiling need the upload in parts the image editor uses (`ui/image-editor-upload.md`); the File Manager has no such path yet.

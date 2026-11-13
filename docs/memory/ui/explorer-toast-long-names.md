@@ -4,7 +4,7 @@ description: File Manager notices (toast()) wrap a long file name inside the 350
 ---
 
 ## Why did a long file name push a notice's text and buttons out of the box?
-- A Bootstrap 6 `.toast.show` is a flex column, and the explorer's toast carries `align-items-center`, so its inner `.d-flex` row was only as wide as its widest word. A name of one hundred letters without a break (the stored name is cut to 100) made the row 900 px to 2,000 px wide inside the 350 px toast, centred and clipped by its `overflow: hidden`: the text was cut on both sides and the close and Undo buttons sat outside (#8979). The upload notice is sticky, so it stayed until a reload.
+- A Bootstrap 6 `.toast.show` is a flex column, and the explorer's toast carries `align-items-center`, so its inner `.d-flex` row was only as wide as its widest word. A name of one hundred letters without a break (the stored name is cut to 100) made the row 900 px to 2,000 px wide inside the 350 px toast, centred and clipped by its `overflow: hidden`: the text was cut on both sides and the close and Undo buttons sat outside (#8979, PR #9090). The upload notice is sticky, so it stayed until a reload.
 - Bootstrap 5 drew `.toast` as a block, where the same markup filled the box.
 
 ## What does the toast do now?

@@ -6,7 +6,7 @@ description: File Manager Recycle Bin: Ctrl+C, Ctrl+X, F2 and Enter do what the 
 ## What do the keys do in the Recycle Bin?
 - What the bin's menu offers (Restore, Delete permanently, Open in new tab). `clipboardSet()` (Ctrl+C, Ctrl+X) and `beginRename()` (F2) show `L.bin_restore_first` ("Restore items from the Recycle Bin before you copy, cut or rename them.") and do nothing; `itemRenamable()` is false inside the bin.
 - Enter and double click on a binned file open it as itself (`openItem()`), not the Edit File window, whose Save renamed or rewrote it there. Delete inside the bin is still Delete permanently.
-- Before (#8980): Ctrl+C then Ctrl+V made a live copy named `pgbin_7383_name[1].txt`; Ctrl+X then Ctrl+V moved the file out as a public `/pgbin_7383_name.txt`; F2 dropped the parked prefix while the file sat in the bin.
+- Before (#8980, PR #9090): Ctrl+C then Ctrl+V made a live copy named `pgbin_7383_name[1].txt`; Ctrl+X then Ctrl+V moved the file out as a public `/pgbin_7383_name.txt`; F2 dropped the parked prefix while the file sat in the bin.
 
 ## What does the server refuse?
 - A row inside the bin (`pg_recycle_is_inside()` on its folder; a folder on itself) is refused by `explorer_paste` (file and page, as a folder already was), `explorer_rename` (folder, page, file) and `explorer_file_save`, with `pg_recycle_binned_message()` (`includes/explorer/recycle_names.php`): "{name} is in the Recycle Bin. Restore it first.", the name unparked.
