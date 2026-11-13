@@ -379,7 +379,7 @@ pg_page_shell(
             </form>
         </div>
     </div>
-    ' . pg_seo_render_detail_offcanvas() . '
+    ' . pg_seo_render_run_script() . '
     ' . pg_page_bulk_edit_dialog($user, 'view_pages_form') . '
 </main>
 <script>
