@@ -27,3 +27,4 @@ description: Workflow table rows (wtable_rows.php, T1b): add, change, delete, mo
 - On every read, never stored (`ws_wtable_formula_values()`). The expression names other columns by name (`Price * Quantity`), bound once per read by `ws_calc_bind()` with the column id as slot, then `ws_calc_evaluate()` per row.
 - Operands: number as stored, money in whole units (minor / 10^decimals), checkbox 1/0, empty 0; text, date, status, person, link `value`; an unknown name or a sheet reference (`A1`) `ref`; a lookup `ref` (`workflow-tables-lookup.md`); a loop `cycle`. Results rounded to 10 decimals.
 - A read row carries the value in `cells` (null on error) and the code in `formula_errors`.
+- A column rename rewrites the expressions naming it, or is refused when it would change one (`workflow-tables-column-rename.md`).

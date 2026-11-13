@@ -201,12 +201,7 @@ function ws_wtable_formula_values($columns, $cells, $bound = null)
  */
 function ws_wtable_formulas_bound($columns)
 {
-    $known = array();
-
-    foreach ($columns as $id => $column) {
-        $known[ws_calc_fold((string) $column['name'])] = array('text' => (string) $column['name'], 'slot' => (int) $id);
-    }
-
+    $known = ws_wtable_formula_names($columns);
     $bound = array();
 
     foreach ($columns as $id => $column) {
@@ -216,6 +211,86 @@ function ws_wtable_formulas_bound($columns)
     }
 
     return $bound;
+}
+
+/**
+ * The names a formula of the table may use, as ws_calc_bind() takes them:
+ * every column by its name, its id as the slot. Of two columns of one name
+ * the later one is meant.
+ *
+ * @param array $columns column id => column
+ * @return array[] folded name => text, slot
+ */
+function ws_wtable_formula_names($columns)
+{
+    $known = array();
+
+    foreach ($columns as $id => $column) {
+        $known[ws_calc_fold((string) $column['name'])] = array('text' => (string) $column['name'], 'slot' => (int) $id);
+    }
+
+    return $known;
+}
+
+/**
+ * What renaming a column does to the other formula columns of its table:
+ * each one naming the column is written with the new name, as a spreadsheet
+ * keeps its formulas (ws_calc_rename()), so that no formula turns into a
+ * ref error. Refused when the new name would make a formula work out
+ * something else: read another column where it read this one (another
+ * column has the name), read this one where it read another or a figure
+ * (name_changes_formula), or grow past the formula limit
+ * (name_formula_too_long). The renamed column's own expression, if it is a
+ * formula, is what the person gives.
+ *
+ * @param array  $columns   column id => column, with the names they have now
+ * @param int    $column_id the column renamed
+ * @param string $name      its new name, checked (ws_wtable_name_check())
+ * @return array ok, error, expressions (column id => expression, those
+ *               rewritten), formula_names (the names of the formula
+ *               columns rewritten, or at fault when refused)
+ */
+function ws_wtable_formulas_renamed($columns, $column_id, $name)
+{
+    $id = (string) (int) $column_id;
+    $name = (string) $name;
+    $out = array('ok' => true, 'error' => '', 'expressions' => array(), 'formula_names' => array());
+
+    if (!isset($columns[$id]) || ((string) $columns[$id]['name'] === $name)) {
+        return $out;
+    }
+
+    $renamed = $columns;
+    $renamed[$id]['name'] = $name;
+    $before = ws_wtable_formula_names($columns);
+    $after = ws_wtable_formula_names($renamed);
+    $limit = ws_wtable_limits()['formula'];
+    $faults = array('name_changes_formula' => array(), 'name_formula_too_long' => array());
+
+    foreach ($columns as $other => $column) {
+        if (((string) $other === $id) || ((string) $column['type'] !== 'formula')) {
+            continue;
+        }
+
+        $rename = ws_calc_rename((string) ($column['options']['expression'] ?? ''), $before, $after, (int) $id, $name);
+
+        if (!$rename['faithful']) {
+            $faults['name_changes_formula'][] = (string) $column['name'];
+        } elseif ($rename['changed'] && (ws_wtable_length($rename['expression']) > $limit)) {
+            $faults['name_formula_too_long'][] = (string) $column['name'];
+        } elseif ($rename['changed']) {
+            $out['expressions'][(string) $other] = $rename['expression'];
+            $out['formula_names'][] = (string) $column['name'];
+        }
+    }
+
+    foreach ($faults as $error => $names) {
+        if (!empty($names)) {
+            return array('ok' => false, 'error' => $error, 'expressions' => array(), 'formula_names' => $names);
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -316,6 +391,25 @@ function ws_wtable_row_revision_given($input)
 /* ---------------------------------------------------------------------------
    Reading
    --------------------------------------------------------------------------- */
+
+/**
+ * The columns of a table in order, by id, locked for the transaction open
+ * (SELECT … FOR UPDATE): a column rename reads the formulas it rewrites
+ * this way, so that no other change of them comes in between.
+ *
+ * @param int $table_id
+ * @return array column id => column (ws_wtable_column_from_row())
+ */
+function ws_wtable_columns_locked($table_id)
+{
+    $columns = array();
+
+    foreach ((array) db_items("SELECT * FROM ws_wtable_columns WHERE table_id = '" . (int) $table_id . "' ORDER BY position, id FOR UPDATE") as $row) {
+        $columns[(string) $row['id']] = ws_wtable_column_from_row($row);
+    }
+
+    return $columns;
+}
 
 /**
  * One row of a table as stored, or null.
