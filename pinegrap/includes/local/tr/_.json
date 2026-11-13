@@ -2087,6 +2087,7 @@
     "{var:1}: {var:2} overdue receivable(s)": "{var:1}: {var:2} gecikmiş alacak",
     "{var:1}: {var:2} record(s), {var:3} row(s). The download starts now.": "{var:1}: {var:2} kayıt, {var:3} satır. İndirme şimdi başlıyor.",
     "{var:1}: {var:2} removed": "{var:1}: {var:2} silindi",
+    "{var:1}: {var:2} shared parts placed after the trial design was made stay as they are.": "{var:1}: deneme tasarımı yapıldıktan sonra yerleştirilen {var:2} ortak parça olduğu gibi kalır.",
     "{var:1}: {var:2} tables moved so far, {var:3} remain; continuing": "{var:1}: şimdiye kadar {var:2} tablo taşındı, {var:3} kaldı; devam ediliyor",
     "{var:1}: {var:2} uses of {var:3} names": "{var:1}: {var:3} adın {var:2} kullanımı",
     "{var:1}: {var:2} {var:3} on {var:4} records ({var:5})": "{var:1}: {var:4} kayıtta {var:3} {var:2} ({var:5})",
