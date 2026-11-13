@@ -24,7 +24,7 @@ description: Plan (owner 2026-11-12, #9070): the picker opens on a list of every
 ## Which steps?
 - PA1 (S to M) The server. Done in #9186 (`ui/picker-all-list-server.md`). `list` without a folder answers every item of the kind, paged by a cursor, sorted by modified, name, size or type, each with `path`; the tree answer carries the total. The same access verdict as `search`.
   - Its time on a site of 50,000 files is measured and written into the PR; a need for an index comes back as an `architect` question: no schema in this plan.
-- PA2 (M) The dialog and the phone sheet as described above; `tests/picker_js_test.php` covers the opening, the All row, the folder line, the sort key and the upload target.
+- PA2 (M) The dialog and the phone sheet as described above. Done in #9201 (`ui/picker-all-list-dialog.md`); `tests/picker_js_test.php` covers the opening, the All row, the folder line, the sort key and the upload target.
 - PA3 (S) Pages and the other kinds checked on their screens (the page field, the editor's Link dialog, the designer's bridge); real panel pictures, wide and phone, both themes; `ui/picker-dialog.md` brought up to date; this plan deleted.
 
 ## In which order?

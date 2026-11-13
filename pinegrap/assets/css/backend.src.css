@@ -24440,6 +24440,17 @@ select.pg-list-table-field option.private {
 .pg-picker-folders .pg-picker-upload {
   display: none;
 }
+/* All heads the tree: its total at the row's end, as a folder's count. */
+.pg-picker-all-row .pg-btn-label {
+  flex: 1 1 auto;
+}
+/* The pick's way back to its folder, under its line. */
+.pg-picker-in-folder {
+  font-size: 0.75rem;
+}
+.pg-picker-folders .pg-picker-target {
+  display: none;
+}
 /* Files dragged over the pane: the folder they go into, or why not. */
 .pg-picker-pane {
   position: relative;
