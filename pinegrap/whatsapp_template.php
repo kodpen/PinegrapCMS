@@ -310,6 +310,7 @@ echo
 pg_page_shell(
     array(
         'title'               => lang('WhatsApp template'),
+        'help'                => 'campaigns',
         'extra classes'       => 'campaign pg-measure-edit pg-wa-designer',
         'icon'                => 'campaign',
         'heading'             => lang('WhatsApp template'),
