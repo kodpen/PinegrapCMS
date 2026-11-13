@@ -7,12 +7,12 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - Every step that builds or changes a screen here builds from the drawing (`messages-area/messages-area.html`) with look A's recipes and posts real screenshots in the agent channel for the owner's approval before it goes ready; an old screen is never moved in as it is (#9295, `workflow/architect-asking.md`).
 - MA0 (S, done #9074) The census (`platform/messages-area-census-*.md`); its proposals were answered on #9081.
 - MA1 (M, done #9182) The shell: the menu row, the five tabs with their gates, old addresses leading in.
-- MA2 (M, done #9252) Sends: the list, tiles, filters, row buttons and e-mail sources built behind `pg_messages_sends_list_open()` (`platform/messages-area-sends.md`); the measured batch was over 300 ms.
-- MA2b (M, done #9275) The list table driver puts a source's keyset bound and batch limit into each branch and counts per branch (a source key the driver reads); then the Sends list opens, `mail_queue.php` becomes a door (`pg_messages_sends_queue_door()`) and automatic campaigns leave the Campaigns list.
+- MA2 (M, done #9252) Sends: the list, tiles, filters, row buttons and e-mail sources (`platform/messages-area-sends.md`).
+- MA2b (M, done #9275) The list table driver bounds and counts each source's branch; the Sends list opens, `mail_queue.php` becomes a door and automatic campaigns leave the Campaigns list.
 - MA3 (M, done #9215) Campaigns: one list for e-mail and SMS campaigns; "New campaign" asks the channel first, then recipients, content, time.
 - MA4 (S, done #9074) E-mail body as a page: a proposed way for MA5 (`designer/campaign-email-body-*.md`), answered on #9083.
 - MA5 (M to L, shaped after MA4) The campaign's content step: edit the design, ready designs, paste HTML, phone preview, a test to oneself.
-- MA6 (M) Templates: e-mail designs, SMS texts and, once `whatsapp-channel-steps.md` reaches WA3, WhatsApp templates in one tab.
+- MA6 (M, SMS texts done #9294, `ui/messages-area-templates-tab.md`) Templates: e-mail designs (with MA5), SMS texts and, once `whatsapp-channel-steps.md` reaches WA3, WhatsApp templates in one tab.
 - MA7 (S, done #9200) Channels: e-mail sender, SMS, WhatsApp and İYS as cards with their state, each leading to its settings.
 - MA8 (M) Automatic sends: the flows that send a message, their recipes, the way into the quick setup; the Flows screen opens with the Workspace off since #9154.
 - MA9 Profiles into flows (M2b), MA9a to MA9f, and MA10 Incoming e-mail, MA10a to MA10c: `messages-area-steps-2.md`.
@@ -26,8 +26,9 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - Where WhatsApp's card, template list and queue sit follows this area once MA1 has landed; before that they sit beside the SMS ones.
 - Claim as `[plan:messages-area] <step> — <topic>`.
 
-## What is left for the next session? (2026-11-13)
-- Free now: MA12. In flight: MA6 (#9294, SMS texts; e-mail designs come with MA5, WhatsApp templates with WA3). MA5 and MA8 wait for MA12.
+## What is left for the next session? (2026-11-13, after #9294)
+- Free now: MA12 (the look, #9295). MA5 (MA3 and MA4 done; it also lists the e-mail designs in the Templates tab) and MA8 wait for it. MA6's WhatsApp templates wait for WA3.
+- Left open by MA2b (#9275): Sends' search (3.2 s) and a heading sort other than Date or Channel (about 2 s) at 500,000 rows per queue a week (`platform/messages-area-sends.md`); a question for the architect only if a real site reaches that volume.
 - The shell, the doors and the tabs so far: `ui/messages-area-shell.md`, `ui/messages-area-campaigns-tab.md`.
 
 ## What is asked of the owner along the way?

@@ -264,6 +264,12 @@ function pg_mail_queue_list_row(array $row, $now)
 
     $status = isset($statuses[$row['status']]) ? $statuses[$row['status']] : array((string) $row['status'], 'bg-1 fg-body');
 
+    // The mail server took it, but a delivery failure came back for it.
+    if (isset($row['bounce']) && ($row['status'] === 'sent')) {
+        $status = array(lang('Not delivered'), 'theme-danger');
+        $row['last_error'] = (string) $row['bounce'];
+    }
+
     // When it went, or when it goes next.
     if ($row['status'] === 'sent') {
         $when = pg_mail_queue_list_time($row['sent_at']);
@@ -302,6 +308,134 @@ function pg_mail_queue_list_row(array $row, $now)
         'number' => pg_list_cell((string) $id, 'align-middle text-end'),
         'actions' => pg_list_cell($buttons, 'align-middle text-nowrap'),
     ));
+}
+
+/**
+ * Which sent queue rows a delivery failure answered: a Workspace mail's
+ * row names its item in outcome_ref ("<item>:<previous row>",
+ * ws_mail_send_ref()); the item is the row's only while its outbox_id is
+ * that row (Send again moves it); a bounce is an incoming item with no
+ * conversation, a writer and in_reply_to the item's Message-ID in the same
+ * box (ws_mail_bounce_store()). Pure: the reads are given.
+ *
+ * @param array $refs    queue row id => outcome_ref
+ * @param array $items   ws_mail_items rows (id, box_id, direction, outbox_id, rfc_message_id)
+ * @param array $bounces ws_mail_items rows (box_id, in_reply_to, body_text), oldest first
+ * @return array queue row id => the failure's words
+ */
+function pg_mail_queue_bounce_ties(array $refs, array $items, array $bounces)
+{
+    $by_id = array();
+
+    foreach ($items as $item) {
+        $by_id[(int) $item['id']] = $item;
+    }
+
+    $said = array();
+
+    foreach ($bounces as $bounce) {
+        $key = (int) $bounce['box_id'] . '|' . (string) $bounce['in_reply_to'];
+
+        if (!isset($said[$key])) {
+            $said[$key] = trim((string) $bounce['body_text']);
+        }
+    }
+
+    $out = array();
+
+    foreach ($refs as $row_id => $ref) {
+        if (!preg_match('/^(\d+):\d+$/', (string) $ref, $match) || !isset($by_id[(int) $match[1]])) {
+            continue;
+        }
+
+        $item = $by_id[(int) $match[1]];
+        $key = (int) $item['box_id'] . '|' . (string) $item['rfc_message_id'];
+
+        if (((string) $item['direction'] === 'out') && ((int) $item['outbox_id'] === (int) $row_id)
+            && ((string) $item['rfc_message_id'] !== '') && isset($said[$key])) {
+            $out[(int) $row_id] = $said[$key];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The delivery failures of the given sent Workspace queue rows, read for
+ * one page of a list: the rows' properties by primary key, their items by
+ * primary key, the bounces through idx_conversation (conversation 0).
+ * Nothing is stored. A site without the Workspace's mail tables reads none.
+ *
+ * @param int[] $row_ids mail_outbox ids, sent and of type workspace
+ * @return array queue row id => the failure's words
+ */
+function pg_mail_queue_bounced(array $row_ids)
+{
+    $row_ids = array_values(array_unique(array_filter(array_map('intval', $row_ids))));
+
+    if (!$row_ids) {
+        return array();
+    }
+
+    $refs = array();
+
+    foreach ((array) db_items("SELECT id, properties FROM mail_outbox WHERE id IN (" . implode(',', $row_ids) . ")") as $row) {
+        $properties = pg_mail_properties_decode($row['properties']);
+
+        if (is_array($properties) && (($properties['on_outcome'] ?? '') === 'workspace_mail') && is_string($properties['outcome_ref'] ?? null)) {
+            $refs[(int) $row['id']] = $properties['outcome_ref'];
+        }
+    }
+
+    $item_ids = array();
+
+    foreach ($refs as $ref) {
+        if (preg_match('/^(\d+):\d+$/', $ref, $match)) {
+            $item_ids[] = (int) $match[1];
+        }
+    }
+
+    // A failed read (no ws_mail_items table) returns false: nothing to show.
+    $items = $item_ids ? db_items("SELECT id, box_id, direction, outbox_id, rfc_message_id FROM ws_mail_items WHERE id IN (" . implode(',', array_unique($item_ids)) . ")") : array();
+
+    if (!is_array($items) || !$items) {
+        return array();
+    }
+
+    $ids = array();
+
+    foreach ($items as $item) {
+        if ((string) $item['rfc_message_id'] !== '') {
+            $ids[] = "'" . e((string) $item['rfc_message_id']) . "'";
+        }
+    }
+
+    $bounces = $ids ? db_items("SELECT box_id, in_reply_to, body_text FROM ws_mail_items WHERE conversation_id = 0 AND direction = 'in' AND user_id > 0
+        AND in_reply_to IN (" . implode(',', array_unique($ids)) . ") ORDER BY id LIMIT 200") : array();
+
+    return pg_mail_queue_bounce_ties($refs, $items, is_array($bounces) ? $bounces : array());
+}
+
+/**
+ * The ids of a page's rows to look a delivery failure up for: sent rows of
+ * type workspace. Pure.
+ *
+ * @param array  $records list rows
+ * @param string $state   the column holding the status
+ * @param string $type    the column holding the mail type
+ * @return int[]
+ */
+function pg_mail_queue_bounce_candidates(array $records, $state, $type)
+{
+    $ids = array();
+
+    foreach ($records as $record) {
+        if ((($record[$state] ?? '') === 'sent') && (($record[$type] ?? '') === 'workspace')) {
+            $ids[] = (int) ($record['rid'] ?? $record['id']);
+        }
+    }
+
+    return $ids;
 }
 
 /**
@@ -435,10 +569,15 @@ function pg_mail_queue_list_queue_source($queue, $user)
         'search' => $search,
         'levels' => $levels,
         'created' => 'created_at',
-        'rows' => function ($records) use ($builder, $now) {
+        'rows' => function ($records) use ($builder, $now, $queue) {
             $rows = array();
+            $bounced = ($queue === 'sms') ? array() : pg_mail_queue_bounced(pg_mail_queue_bounce_candidates($records, 'status', 'mail_type'));
 
             foreach ($records as $record) {
+                if (isset($bounced[(int) $record['id']])) {
+                    $record['bounce'] = $bounced[(int) $record['id']];
+                }
+
                 $rows[] = $builder($record, $now);
             }
 

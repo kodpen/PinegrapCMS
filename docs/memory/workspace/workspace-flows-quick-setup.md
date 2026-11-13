@@ -31,4 +31,4 @@ description: Flows quick setup server (flow_quick.php): catalogue of areas, star
 
 ## Where is it wired?
 - Panel action `ws_flow_quick_setup` (`workspace/actions.php`, listed in `panel/actions.php`): answers the flow (`ws_flow_detail()`), `published`, `publish_error`.
-- `ws_flow_js_config()` mode flows serves the catalogue as `quick` to builders. The dialog and its ways in: `plans/flows-quick-setup.md` QS2-QS5.
+- `ws_flow_js_config()` mode flows serves the catalogue as `quick` to builders. The dialog and its ways in: `workspace-flows-quick-setup-rules.md`.

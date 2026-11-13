@@ -4,7 +4,7 @@ description: Flows' Send an SMS box (kind sms, #9290): the record's person's mob
 ---
 
 ## What is it?
-- Step kind `sms` ("Send an SMS") in `ws_step_kinds()`, functions in `includes/workspace/flow_sms_box.php` (prefix `ws_step_sms_`). Plan step QS6 (`plans/flows-quick-setup-steps-2.md`), PR #9290. Tests `tests/workspace_flow_sms_box_test.php`.
+- Step kind `sms` ("Send an SMS") in `ws_step_kinds()`, functions in `includes/workspace/flow_sms_box.php` (prefix `ws_step_sms_`). Plan step QS6 (`workspace-flows-quick-setup-rules.md`), PR #9290. Tests `tests/workspace_flow_sms_box_test.php`.
 - Settings (`ws_step_sms_normalize()`): `to` (one typed number, 200), `recipient` typed | record_person, `purpose` info | marketing, `text` (900, takes values and the scheduled words such as `{{customer}}`). The number never takes a value, as no recipient does.
 - Problems: a typed number empty or not one `pg_sms_number()` reads (a landline, a value), an empty text. `ws_step_sms_check()` also refuses while SMS is not set up (`pg_sms_ready()`) and a marketing box without the sender identity.
 

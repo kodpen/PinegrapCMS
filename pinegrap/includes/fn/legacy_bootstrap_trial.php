@@ -882,6 +882,8 @@ function pg_lbs_trial_pages($legacy_id)
  *                              (a move runs), 'preview' (null, or 'pages'
  *                              (pg_lbs_trial_pages()) and 'page' (the page
  *                              shown, 0 for none))
+ *                              'theme' (HTML of the palette and look,
+ *                              pg_lbs_theme_card_html()),
  *                              'move' (HTML of Move pages and Send back,
  *                              pg_lbs_move_card_html())
  * @return array  'actions', 'below' (HTML)
@@ -919,7 +921,7 @@ function pg_lbs_trial_card_html($design_id, $trial, $info)
         . h(lang('Trial design')) . ': <a href="edit_system_style.php?id=' . (int)$trial['trial'] . '">' . h($trial['name']) . '</a>'
         . '<div class="fg-secondary">' . h($state) . '</div></div>' . $actions . '</div>';
     if ($preview !== null) $below .= pg_lbs_trial_preview_html($id, $trial, $preview['pages'], (int)$preview['page']);
-    $below .= (string)($info['move'] ?? '');
+    $below .= (string)($info['theme'] ?? '') . (string)($info['move'] ?? '');
     return array('actions' => '', 'below' => $below . '</div>');
 }
 

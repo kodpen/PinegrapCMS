@@ -538,3 +538,122 @@ function pg_whatsapp_cloud_send($app, $number, $name, $language, $components = a
         $response['connect'],
         $response['request_size']));
 }
+
+/**
+ * One page of the WhatsApp Business account's templates.
+ *
+ * @param array  $app
+ * @param string $after the cursor of the page before, '' for the first
+ * @return array url, headers
+ */
+function pg_whatsapp_cloud_templates_request($app, $after = '')
+{
+    $query = array(
+        'fields' => 'id,name,language,status,category,components,parameter_format,rejected_reason,quality_score',
+        'limit'  => '100',
+    );
+
+    if ((string) $after !== '') {
+        $query['after'] = (string) $after;
+    }
+
+    return pg_whatsapp_cloud_get_request($app, rawurlencode($app['account_id']) . '/message_templates', $query);
+}
+
+/**
+ * Reads one page of templates.
+ *
+ * A template without Meta's id, name or language is skipped: it could not be
+ * kept or sent. Components stay as Meta wrote them; the reason of a rejection
+ * is Meta's code (INVALID_FORMAT, TAG_CONTENT_MISMATCH, …), NONE read as none.
+ *
+ * @param array $answer pg_whatsapp_cloud_answer()
+ * @return array ok, error, templates (meta_id, name, language, status,
+ *               category, reason, parameter_format, components, quality),
+ *               after (the next page's cursor, '' at the end)
+ */
+function pg_whatsapp_cloud_templates_parse($answer)
+{
+    if ($answer['error'] !== '') {
+        return array('ok' => false, 'error' => $answer['error'], 'templates' => array(), 'after' => '');
+    }
+
+    if (!isset($answer['data']['data']) || !is_array($answer['data']['data'])) {
+        return array('ok' => false, 'error' => lang('Meta\'s list of templates could not be read.'), 'templates' => array(), 'after' => '');
+    }
+
+    $text = function ($from, $name, $length) {
+        return (isset($from[$name]) && is_scalar($from[$name])) ? mb_substr(trim((string) $from[$name]), 0, $length, 'UTF-8') : '';
+    };
+
+    $templates = array();
+
+    foreach ($answer['data']['data'] as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $template = array(
+            'meta_id'          => $text($item, 'id', 32),
+            'name'             => $text($item, 'name', 512),
+            'language'         => $text($item, 'language', 16),
+            'status'           => strtoupper($text($item, 'status', 24)),
+            'category'         => strtoupper($text($item, 'category', 16)),
+            'reason'           => $text($item, 'rejected_reason', 500),
+            'parameter_format' => strtoupper($text($item, 'parameter_format', 16)),
+            'components'       => (isset($item['components']) && is_array($item['components'])) ? array_values($item['components']) : array(),
+            'quality'          => isset($item['quality_score']) && is_array($item['quality_score']) ? strtoupper($text($item['quality_score'], 'score', 16)) : '',
+        );
+
+        if (!preg_match('/^[0-9]{1,32}$/D', $template['meta_id']) || !preg_match('/^[a-z0-9_]{1,512}$/D', $template['name'])
+            || !preg_match('/^[A-Za-z0-9_]{2,16}$/D', $template['language'])) {
+            continue;
+        }
+
+        if ($template['reason'] === 'NONE') {
+            $template['reason'] = '';
+        }
+
+        $templates[] = $template;
+    }
+
+    $after = '';
+
+    if (isset($answer['data']['paging']['next']) && isset($answer['data']['paging']['cursors']['after'])
+        && is_scalar($answer['data']['paging']['cursors']['after'])) {
+        $after = (string) $answer['data']['paging']['cursors']['after'];
+    }
+
+    return array('ok' => true, 'error' => '', 'templates' => $templates, 'after' => $after);
+}
+
+/**
+ * Reads every template of the account, page by page.
+ *
+ * @param array $app
+ * @param int   $pages the most pages read (100 templates each)
+ * @return array ok (every page was read), error, templates
+ */
+function pg_whatsapp_cloud_templates($app, $pages = 10)
+{
+    $templates = array();
+    $after = '';
+
+    for ($page = 0; $page < (int) $pages; $page++) {
+        $response = pg_whatsapp_http('GET', pg_whatsapp_cloud_templates_request($app, $after));
+        $read = pg_whatsapp_cloud_templates_parse(pg_whatsapp_cloud_answer($response['status'], $response['body'], $response['error']));
+
+        if (!$read['ok']) {
+            return array('ok' => false, 'error' => $read['error'], 'templates' => $templates);
+        }
+
+        $templates = array_merge($templates, $read['templates']);
+        $after = $read['after'];
+
+        if ($after === '') {
+            return array('ok' => true, 'error' => '', 'templates' => $templates);
+        }
+    }
+
+    return array('ok' => false, 'error' => lang('The account has more templates than are read at once.'), 'templates' => $templates);
+}

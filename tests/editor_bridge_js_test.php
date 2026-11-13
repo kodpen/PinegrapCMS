@@ -231,3 +231,54 @@ function test_editor_bridge_image_window_deleted()
 	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/product_builder.php'), 'pg_editor_bridge_script()') !== false, 'the product builder prints the bridge');
 	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/contact_form.php'), 'return pg_editor_bridge_script()') !== false, 'the contact picture card prints the bridge');
 }
+
+// On a site page in Edit mode the picker opens framed (#9117): the frame's
+// address carries the kind and, in the fragment, the opening's key; only a
+// message with that key is taken.
+function test_editor_bridge_frame_messages()
+{
+	$out = editor_bridge_js_test_run('return [
+		B.frameUrl("/pg/picker_frame.php", "page", "k1"),
+		B.frameUrl("/pg/picker_frame.php", "a&b", "k2"),
+		B.frameMessage({pgPickerFrame: "k1", ready: true}, "k1"),
+		B.frameMessage({pgPickerFrame: "k9", ready: true}, "k1"),
+		B.frameMessage({pgPickerFrame: "", ready: true}, ""),
+		B.frameMessage("k1", "k1"),
+		B.frameMessage(null, "k1")
+	];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same('/pg/picker_frame.php?kind=page#k1', $out[0]);
+	pg_assert_same('/pg/picker_frame.php?kind=a%26b#k2', $out[1], 'the kind is encoded');
+	pg_assert_same(array('pgPickerFrame' => 'k1', 'ready' => true), $out[2], 'its own key');
+	pg_assert_same(null, $out[3], 'another opening');
+	pg_assert_same(null, $out[4], 'no key');
+	pg_assert_same(null, $out[5], 'not an object');
+	pg_assert_same(null, $out[6], 'nothing');
+}
+
+// The frame page: only the editor's three kinds, the picker endpoint's
+// rights, framed by the site itself only; the bridge names it.
+function test_editor_bridge_frame_page()
+{
+	pg_assert_same('page', pg_editor_frame_kind('page'));
+	pg_assert_same('image', pg_editor_frame_kind('image'));
+	pg_assert_same('file', pg_editor_frame_kind('file'));
+	pg_assert_same('', pg_editor_frame_kind('canvas_video'), 'another kind');
+	pg_assert_same('', pg_editor_frame_kind(array('page')), 'not a string');
+
+	$page = file_get_contents(PG_FUNCTIONS_DIR . '/picker_frame.php');
+	pg_assert_true(strpos($page, "header('X-Frame-Options: SAMEORIGIN');") !== false, 'framed by the site only');
+	pg_assert_true(strpos($page, '$user = validate_user();') !== false, 'signed in');
+	pg_assert_true(strpos($page, 'pg_picker_access_verdict($kind_name,') !== false, 'the endpoint\'s rights');
+	pg_assert_true(strpos($page, 'pgCkeditorPicker.frameChild()') !== false, 'the child side runs');
+
+	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/editor.php'), "'/picker_frame.php'") !== false, 'the config names the frame page');
+
+	$bridge = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_ckeditor_picker.js');
+	pg_assert_true(strpos($bridge, 'event.origin !== origin || event.source !== frame.contentWindow') !== false, 'the opener checks origin and window');
+	pg_assert_true(strpos($bridge, 'event.origin !== origin || event.source !== opener') !== false, 'the frame checks origin and window');
+}

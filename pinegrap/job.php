@@ -1015,6 +1015,10 @@ if (pg_whatsapp_queue_ready()) {
     pg_whatsapp_queue_run(10, 15);
 }
 
+// The account's templates read from Meta again every six hours, and at once
+// after its card was saved (pg_whatsapp_templates_job()).
+pg_whatsapp_templates_job();
+
 // Workspace task reminders, and the notice that a task went overdue
 // (includes/workspace/reminders.php). Each look is one read; the workspace is
 // loaded only when one of them is due, so the general job stays as light as

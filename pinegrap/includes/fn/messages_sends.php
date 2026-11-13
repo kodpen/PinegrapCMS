@@ -544,6 +544,13 @@ function pg_messages_sends_row(array $record, $now)
     $id = ($parts !== null) ? $parts['id'] : 0;
     $sid = (int) $record['sid'];
     $state = isset($states[$record['state']]) ? $states[$record['state']] : array((string) $record['state'], 'bg-1 fg-body');
+
+    // The mail server took it, but a delivery failure came back for it
+    // (a Workspace mail, pg_mail_queue_bounced()).
+    if (isset($record['bounce']) && ((string) $record['state'] === 'sent')) {
+        $state = array(lang('Not delivered'), 'theme-danger');
+        $record['error'] = (string) $record['bounce'];
+    }
     $what = (string) $record['what'];
     $what_html = ($what !== '') ? h($what) : '[' . h(lang('No name')) . ']';
 
@@ -670,8 +677,25 @@ function pg_messages_sends_list_source($user, $params, $now = null)
         'params_out' => array('filters' => $filters),
         'rows' => function ($records) use ($now) {
             $rows = array();
+            $mail = array();
 
             foreach ($records as $record) {
+                $parts = pg_messages_sends_sid_parts($record['sid']);
+
+                if (($parts !== null) && ($parts['branch'] === 'mail')) {
+                    $mail[] = array('rid' => $parts['id'], 'state' => $record['state'], 'source' => $record['source']);
+                }
+            }
+
+            $bounced = pg_mail_queue_bounced(pg_mail_queue_bounce_candidates($mail, 'state', 'source'));
+
+            foreach ($records as $record) {
+                $parts = pg_messages_sends_sid_parts($record['sid']);
+
+                if (($parts !== null) && ($parts['branch'] === 'mail') && isset($bounced[$parts['id']])) {
+                    $record['bounce'] = $bounced[$parts['id']];
+                }
+
                 $rows[] = pg_messages_sends_row($record, $now);
             }
 
