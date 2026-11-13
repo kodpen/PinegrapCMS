@@ -2565,13 +2565,32 @@
         return d;
     }
 
+    // Convert to a layer: the photo's document as an artboard of its canvas
+    // (dropPicture()) with src, the picture as the server drew it (crop,
+    // turns, colour, erased and adjusted areas and redaction in its pixels),
+    // as a picture layer at the bottom where the picture lay, so other
+    // layers can go under it. The selection, made on the picture, goes.
+    function pictureLayer(doc, src, fileName) {
+        var b = canvasBox(doc), p = pictureBox(doc), d = dropPicture(doc);
+        var l = { type: 'image', src: src, fileName: fileName, x: p.x - b.x, y: p.y - b.y, w: p.w, h: p.h, rot: 0, opacity: 1 };
+
+        // An id none of the photo's layers had: after an undo the selection
+        // kept by id must not land on an area the drawn picture took in.
+        l.id = newId({ layers: doc.layers.concat(d.layers) });
+        d.layers.unshift(l);
+        delete d.selection;
+
+        return d;
+    }
+
     var ARTBOARD = {
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
         canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
         saveLayout: saveLayout, cropShapePath: cropShapePath, saveSize: saveSize, applyCanvas: applyCanvas,
         picturePlace: picturePlace, placeMatrix: placeMatrix, pictureBox: pictureBox, placedMatrix: placedMatrix, pictureFree: pictureFree,
-        keepCanvas: keepCanvas, lockPicture: lockPicture, placePicture: placePicture, dropPicture: dropPicture, pictureArea: pictureArea
+        keepCanvas: keepCanvas, lockPicture: lockPicture, placePicture: placePicture, dropPicture: dropPicture, pictureArea: pictureArea,
+        pictureLayer: pictureLayer
     };
 
     // -- export (pg_image_editor_export.js) --
@@ -4703,9 +4722,11 @@
     // selected layers (with a tool that selects layers) and how many of them
     // are unlocked; s.picture: the picture selected; s.area: an area
     // selected with Select area; s.sheet: a closed panel sheet that Options
-    // opens; s.can: which of the area's commands the editor has. Options
-    // comes first; the rest keep the panel's order. Short enough for a
-    // phone's width: what does not fit (arrange, align) is in the panel.
+    // opens; s.can: which of the area's commands the editor has, and
+    // pictureLayer, whether it can have the server draw the picture for
+    // Convert to a layer. Options comes first; the rest keep the panel's
+    // order. Short enough for a phone's width: what does not fit (arrange,
+    // align) is in the panel.
     function actionList(s) {
         var can = s.can || {}, out = [];
         var add = function (name, off) { out.push({ name: name, off: !!off }); };
@@ -4734,6 +4755,11 @@
             add('remove', !s.free);
         } else if (s.picture) {
             add('lockPicture');
+
+            if (can.pictureLayer) {
+                add('pictureLayer');
+            }
+
             add('removePicture');
         } else {
             ['erase', 'keep', 'copy', 'cutToLayer', 'adjust'].forEach(function (name) {

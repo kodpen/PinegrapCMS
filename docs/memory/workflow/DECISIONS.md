@@ -265,6 +265,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-49.md: Where are the rules and the earlier parts?
 - decisions-made-product-49.md: Do a customer's WhatsApp message and SMS land in a channel, and are they answered there? (owner, 2026-11-13, #9151)
 - decisions-made-product-49.md: Are the image editor's rows on a phone approved? (owner, 2026-11-13, #8863)
+- decisions-made-product-49.md: Can a layer go under the photo in the image editor? (owner, 2026-11-08, #9198)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -605,6 +606,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/image-editor-layers.md: The image editor's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
 - ui/image-editor-menu.md: The image editor's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes
 - ui/image-editor-overview.md: Pinegrap's own image editor as a whole: what it is, the owner decisions that bind it, who does what (browser or server), the document in rotated space, and which topic file holds each part
+- ui/image-editor-picture-to-layer.md: Convert to a layer in the image editor (#9198): the photo as a picture layer at the bottom of a canvas, so layers can go under it; what goes into its pixels, where offered, saving
 - ui/image-editor-rail.md: The image editor rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
 - ui/image-editor-subject.md: The image editor's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
 - ui/image-editor-upload-setting.md: The image editor's largest upload as a setting (V8b): the config_text row image_editor_upload_max_mb in MB, 0 keeps upload_max_filesize, 10240 at most, its field on Settings, Features

@@ -2701,6 +2701,8 @@ function pg_image_editor_strings_artboard()
         'pictureFree'       => lang('Move and resize the picture on the canvas'),
         'pictureDelete'     => lang('Delete the picture'),
         'pictureTitle'      => lang('Picture'),
+        'pictureLayer'      => lang('Convert to a layer'),
+        'pictureLayerError' => lang('Sorry, the picture could not be made a layer.'),
         'import'            => lang('Import'),
         'importComputer'    => lang('From this computer'),
         'importSite'        => lang('From the site'),
@@ -4129,10 +4131,13 @@ function pg_image_editor_strings_render()
 }
 
 /**
- * Action base { file_id, doc, base, redact, colour }: the picture an
- * animation's frames are drawn on, its layers left out: the document's
- * crop, turn and colour on the version the browser opened, the redaction
- * burned in (pg_image_editor_render()). Nothing is written.
+ * Action base { file_id, doc, base, redact, masks, colour, png }: the
+ * picture an animation's frames are drawn on, its layers left out: the
+ * document's crop, turn and colour on the version the browser opened, the
+ * redaction burned in (pg_image_editor_render()). png: true writes a PNG
+ * whatever the file's format, so erased areas and a crop shape's corners
+ * stay see-through: the picture Convert to a layer turns into a layer.
+ * Nothing is written.
  *
  * @return array array(payload, HTTP status); payload data holds the bytes
  *               image_editor_api.php sends instead of JSON
@@ -4166,7 +4171,7 @@ function pg_image_editor_action_base($request, $user)
     $request['doc']['layers'] = array();
     unset($request['overlay']);
 
-    $made = pg_image_editor_render($source, $request);
+    $made = pg_image_editor_render($source, $request, !empty($request['png']));
 
     if ($made['error'] !== '') {
         return pg_image_editor_refusal($made['error']);
@@ -5223,10 +5228,13 @@ function pg_image_editor_action_font($request, $user)
  *
  * @param string $path
  * @param array  $request
+ * @param bool   $png     write a PNG whatever the file's format, so what is
+ *                        see-through stays clear (action base for Convert to
+ *                        a layer); the endpoints keep the file's own format
  * @return array error: '' or why not; data: the bytes; extension: jpg,
  *               png, webp or gif; redacted: whether areas were burnt in
  */
-function pg_image_editor_render($path, $request)
+function pg_image_editor_render($path, $request, $png = false)
 {
     $check = pg_image_edit_validate(isset($request['doc']) ? $request['doc'] : null);
     $refused = array('error' => lang('Invalid request.'), 'data' => '', 'extension' => '', 'redacted' => false);
@@ -5304,6 +5312,10 @@ function pg_image_editor_render($path, $request)
         @unlink($overlay);
         pg_image_editor_drop_redactions(array_merge($redactions, $masks));
         return $refused;
+    }
+
+    if ($png) {
+        $edit['type'] = IMAGETYPE_PNG;
     }
 
     $report = pg_image_edit_apply($source, $edit, array('quality' => 92));
