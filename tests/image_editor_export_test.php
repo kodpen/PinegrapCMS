@@ -91,6 +91,29 @@ function test_image_editor_export_model()
 	pg_assert_same(array('900 B', '245 KB', '1,4 MB', '0 B'), $r['bytes'], 'sizes in B, KB and MB with the panel\'s separator');
 }
 
+// The quality the panel opens on follows the server's start quality.
+function test_image_editor_export_start_quality()
+{
+	$r = image_editor_export_node(
+		'console.log(JSON.stringify({ start: [M.exportStart(70), M.exportStart(), M.exportStart("x"), M.exportStart(20), M.exportStart(101)],'
+		. ' opens: M.exportDefaults(70).quality,'
+		. ' same: M.exportRequest(M.exportDefaults(70), "jpeg", 70),'
+		. ' raised: M.exportRequest({ format: "keep", quality: 92, edge: 0 }, "jpeg", 70),'
+		. ' old: M.exportRequest({ format: "keep", quality: 92, edge: 0 }, "jpeg") }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(70, 92, 92, 92, 92), $r['start'], 'a start of 40-100, else 92');
+	pg_assert_same(70, $r['opens'], 'the quality field opens on the start');
+	pg_assert_same(null, $r['same'], 'the start quality is not sent; the server starts at it');
+	pg_assert_same(array('quality' => 92), $r['raised'], 'a raised quality is sent');
+	pg_assert_same(null, $r['old'], 'without an answer the start is 92');
+}
+
 // The settings a save sends, checked on the server.
 function test_image_editor_export_options()
 {

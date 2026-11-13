@@ -934,10 +934,11 @@ $liveform->remove_form('edit_file');
         // quarters to the right. Encoded at a high quality rather than the
         // optimize ladder: the operator asked for the picture the other way
         // up, not for a lighter file, and each turn would otherwise cost
-        // another generation of compression.
+        // another generation of compression. A JPEG saved lower keeps its
+        // own quality, so the turn is not heavier than the original.
         $rotate_report = pg_process_image_file($stored_file_path, array(
             'rotate'  => !empty($_POST['rotate_left']) ? 270 : 90,
-            'quality' => 92));
+            'quality' => pg_image_jpeg_start_quality($stored_file_path)));
 
         // The form's errors are printed as markup, and the sentence carries
         // the file name.

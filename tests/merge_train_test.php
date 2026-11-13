@@ -159,6 +159,32 @@ function test_merge_train_approval_issue_and_answer()
 	pg_assert_false(merge_train_approval_given(array("Onaylıyorum seçeneği listede.")));
 }
 
+// A PR whose body says "Approval: channel" waits for a decision comment on
+// the PR itself, from an account with write access to the repository.
+function test_merge_train_approval_channel()
+{
+	pg_assert_true(merge_train_approval_channel("Approval: channel (the owner approves the screenshots before merge).\n\nStep V3"));
+	pg_assert_true(merge_train_approval_channel("Step B11.\n\napproval: Channel"));
+	pg_assert_false(merge_train_approval_channel('Approval: #8229'));
+	pg_assert_false(merge_train_approval_channel('The approval: channel message 41 asks it.'));
+	pg_assert_false(merge_train_approval_channel('Approval: channels'));
+
+	$approved = "**Karar (sahip):** Onaylıyorum — ekran indiği gibi kalır.";
+
+	pg_assert_false(merge_train_approval_given_on_pr(array()));
+	pg_assert_true(merge_train_approval_given_on_pr(array(array('body' => $approved, 'author_association' => 'OWNER'))));
+	pg_assert_true(merge_train_approval_given_on_pr(array(array('body' => $approved, 'author_association' => 'MEMBER'))));
+	pg_assert_true(merge_train_approval_given_on_pr(array(array('body' => 'Decision (owner): Approved.', 'author_association' => 'COLLABORATOR'))));
+	pg_assert_false(merge_train_approval_given_on_pr(array(array('body' => $approved, 'author_association' => 'CONTRIBUTOR'))));
+	pg_assert_false(merge_train_approval_given_on_pr(array(array('body' => $approved, 'author_association' => 'NONE'))));
+	pg_assert_false(merge_train_approval_given_on_pr(array(array('body' => $approved))));
+	pg_assert_false(merge_train_approval_given_on_pr(array(array('body' => "## Karar (sahip)\nDeğişiklik istiyorum: başlık daha küçük.", 'author_association' => 'OWNER'))));
+	pg_assert_true(merge_train_approval_given_on_pr(array(
+		array('body' => $approved, 'author_association' => 'NONE'),
+		array('body' => "## Karar (sahip)\nOnaylandı.", 'author_association' => 'OWNER'),
+	)));
+}
+
 // Only a branch of this repository rides a train: a fork's branch, a deleted
 // fork's (no head repository) or a PR read without its repositories does not.
 function test_merge_train_same_repo()

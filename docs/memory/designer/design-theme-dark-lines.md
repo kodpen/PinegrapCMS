@@ -1,6 +1,6 @@
 ---
 name: design-theme-dark-lines
-description: A palette colour too dark for the dark surfaces draws its outline-button border, focus halo and range thumb lifted to 3:1, and the readable text shade is made for bg-body-tertiary in dark mode (#9057)
+description: Dark mode lines and text: a dark palette colour lifted to 3:1 for outlines, focus and range (#9057); the readable text shade for bg-body-tertiary; danger red as #ea868f (#9097)
 module: design_themes
 ---
 
@@ -19,6 +19,11 @@ module: design_themes
 - Filled buttons and the outline button's hover and active fill keep the brand colour in dark mode (1.1–1.5:1 against the body for the darkest); their text reads on the fill. Changing the fill would repaint every running site's brand colour.
 - `bg-body-secondary` (#343a40) is not measured: text there is about 4:1.
 - A palette made in the editor gets the new pair the next time it is saved (`theme_palette_css`); the 22 shipped files are rebuilt with `php tools/build_theme_palettes.php`.
+
+## What does dark mode do with danger red (#9097)?
+- Palettes write no danger role, so Bootstrap kept #dc3545 for `.text-danger` and `.btn-outline-danger` in dark: 3.41:1 on the body (My Account's overdue total, "Sign out of all devices").
+- `bridge.css` sets `--pg-danger-fg-rgb` to Bootstrap's dark danger text shade #ea868f under `[data-bs-theme=dark]` (6.1:1 on the body, 5.3:1 on #2b3035) and back to the red under `[data-bs-theme=light]`; `.text-danger` and the outline button's text, border and disabled state read it. `--bs-danger-rgb` is untouched, so `.bg-danger`, `.btn-danger` and the outline hover fill keep the red under white text.
+- `bridge.css` loads only with a look or a palette: a design with a colour mode and neither keeps the light red.
 
 ## What guards it?
 - `tests/design_themes_catalog_test.php`: dark text at 4.5:1 on the body and on #2b3035, every line at 3:1 on both, the lifted line's RGB list, the light block keeping the colour itself.

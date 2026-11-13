@@ -221,6 +221,9 @@ function ws_message_payloads($viewer, $rows, $options = array())
         'scheduled'  => function_exists('ws_scheduled_cards_map') ? ws_scheduled_cards_map($viewer, $ids) : array(),
         // Flow runs started from the composer (flow_run_cards.php).
         'flow_runs'  => function_exists('ws_flow_run_cards_map') ? ws_flow_run_cards_map($viewer, $ids) : array(),
+        // An application's binding of a table to a canvas, with Undo
+        // (canvas_binding_lines.php).
+        'canvas_bindings' => function_exists('ws_canvas_binding_lines_map') ? ws_canvas_binding_lines_map($viewer, $ids) : array(),
         // The other messages an answer answers, and the copies a forward
         // carries (forward.php).
         'quotes'     => function_exists('ws_message_quotes_map') ? ws_message_quotes_map($viewer, $ids) : array(),
@@ -422,6 +425,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'note_group_card' => $deleted ? null : ($extra['note_group_cards'][$id] ?? null),
         'scheduled'   => $deleted ? null : ($extra['scheduled'][$id] ?? null),
         'flow_run'    => $deleted ? null : ($extra['flow_runs'][$id] ?? null),
+        'canvas_binding' => $deleted ? null : ($extra['canvas_bindings'][$id] ?? null),
         'quotes'      => $deleted ? array() : ($extra['quotes'][$id] ?? array()),
         'forwards'    => $deleted ? array() : ($extra['forwards'][$id] ?? array()),
         'thread'      => $deleted ? null : ($extra['threads'][$id] ?? null),
@@ -1072,6 +1076,165 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
     }
 
     return array('claude' => $claude, 'agent' => ($agent === true), 'ai' => $ai, 'agents' => $woken, 'models' => $models);
+}
+
+/**
+ * The tags of a text that can ask an assistant or wake an agent: an
+ * application's tag (<@app:N>) and an @word (an agent's handle, @ai,
+ * @claude, an MCP server's alias), each once, in the order written. An
+ * @word is kept lower-case, so a tag written again in other letters is the
+ * same tag. Pure.
+ *
+ * @param string $text
+ * @return string[]
+ */
+function ws_message_tags($text)
+{
+    $out = array();
+
+    if (!preg_match_all('/<@app:[0-9]{1,10}>|(?<![\w@.<-])@[\p{L}\p{N}_][\p{L}\p{N}_-]*/u', (string) $text, $matches)) {
+        return $out;
+    }
+
+    foreach ($matches[0] as $tag) {
+        $tag = (strpos($tag, '<') === 0) ? $tag : mb_strtolower($tag);
+
+        if (!in_array($tag, $out, true)) {
+            $out[] = $tag;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The tags the new text of an item has that its old text had not, as a
+ * text of tags alone ('' for none): what an edit, or an item asked again,
+ * asks. A tag that stays asks nobody again. Pure.
+ *
+ * @param string $old the text before ('' for a new item)
+ * @param string $new the text now
+ * @return string the added tags, one space apart
+ */
+function ws_message_tags_added($old, $new)
+{
+    return implode(' ', array_values(array_diff(ws_message_tags($new), ws_message_tags($old))));
+}
+
+/**
+ * Who an item's words ask as: a person, whose tags ask Claude, Pinegrap AI,
+ * an MCP server and the registry's agents; or an application (written with
+ * its key or through an OAuth connection), whose tags wake only the
+ * registry's agents (agent_queue.php). Pure.
+ *
+ * @param int $app_id        the writing application, 0 for none
+ * @param int $via_client_id the OAuth client written through, 0 for none
+ * @return bool an application wrote it
+ */
+function ws_message_by_app($app_id, $via_client_id = 0)
+{
+    return ((int) $app_id > 0) || ((int) $via_client_id > 0);
+}
+
+/**
+ * After an item that carries its text in a message was written (a message
+ * with a file, a note, a decision): its tags ask as a text message's do.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param int    $message_id
+ * @param string $body   as written
+ * @param bool   $by_app ws_message_by_app()
+ * @return array ws_message_ask_assistants()'s shape
+ */
+function ws_message_ask_written($viewer, $channel, $message_id, $body, $by_app = false)
+{
+    if ($by_app) {
+        return function_exists('ws_agent_after_app_send') ? ws_agent_after_app_send($viewer, $channel, $message_id, $body) : ws_message_asked_none();
+    }
+
+    return ws_message_ask_assistants($viewer, $channel, $message_id, $body);
+}
+
+/**
+ * A person's note or decision written with no writing box to carry the
+ * requests on (/note, /decision, a meeting's decisions): its tags ask as a
+ * message's do; Claude's run starts here, the screens showing the message
+ * carry Pinegrap AI and an MCP agent on.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param int    $message_id
+ * @param string $body as written
+ * @return array ws_message_ask_assistants()'s shape
+ */
+function ws_message_ask_noted($viewer, $channel, $message_id, $body)
+{
+    $asked = ws_message_ask_written($viewer, $channel, $message_id, $body);
+
+    if (!empty($asked['claude']) && function_exists('ws_claude_dispatch')) {
+        ws_claude_dispatch();
+    }
+
+    return $asked;
+}
+
+/**
+ * Nobody asked: ws_message_ask_assistants()'s shape. Pure.
+ *
+ * @return array
+ */
+function ws_message_asked_none()
+{
+    return array('claude' => false, 'agent' => false, 'ai' => false, 'agents' => array(), 'models' => false);
+}
+
+/**
+ * After an item's text changed (an edit): only the tags it newly adds ask,
+ * by name alone. An answer to an assistant's answer, a followed discussion
+ * and an agent's all, prefix and replies rules asked when it was written,
+ * not again. The brakes stay (ws_agent_after_send()).
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param int    $message_id the message the request hangs on
+ * @param string $old        the text before
+ * @param string $new        the text now
+ * @param bool   $by_app     ws_message_by_app()
+ * @return array ws_message_ask_assistants()'s shape
+ */
+function ws_message_ask_added($viewer, $channel, $message_id, $old, $new, $by_app = false)
+{
+    $added = ws_message_tags_added(ws_tokens_normalise((string) $old), ws_tokens_normalise((string) $new));
+    $asked = ws_message_asked_none();
+
+    if ($added === '') {
+        return $asked;
+    }
+
+    $asked['agents'] = function_exists('ws_agent_after_send') ? ws_agent_after_send($viewer, $channel, $message_id, $added, '', true) : array();
+    $asked['models'] = !empty(array_filter($asked['agents'], function ($value) {
+        return strpos($value, 'model:') === 0;
+    }));
+
+    // Claude, Pinegrap AI and the MCP aliases stay a person's to ask.
+    if ($by_app) {
+        return $asked;
+    }
+
+    $asked['claude'] = function_exists('ws_claude_asked') && ws_claude_asked($added) && ws_claude_after_send($viewer, $channel, $message_id, $added);
+
+    // Without a message id only an alias written counts, not an answer.
+    $server = function_exists('ws_mcp_ask_server') ? ws_mcp_ask_server($added, 0) : null;
+    $agent = ($server && function_exists('ws_mcp_agent_after_send')) ? ws_mcp_agent_after_send($viewer, $channel, $message_id, $added) : null;
+    $asked['agent'] = ($agent === true);
+    $asked['ai'] = ($agent === null) && function_exists('ws_ai_asked') && ($server || ws_ai_asked($added)) && ws_ai_after_send($viewer, $channel, $message_id, $added);
+
+    if (($asked['claude'] || $asked['ai']) && ws_channel_is_thread($channel)) {
+        ws_thread_assistant_asked($channel, $asked['claude'] ? 'claude' : 'ai');
+    }
+
+    return $asked;
 }
 
 /**

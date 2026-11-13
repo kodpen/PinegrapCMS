@@ -452,9 +452,12 @@ function ws_agent_chain($message_id, $agent_apps)
  * @param int    $message_id
  * @param string $body tags normalised
  * @param string $followed agent:<id> | model:<id> in followed mode, '' otherwise
+ * @param bool   $mentions_only only the agents the body names wake (an edit's
+ *                              added tags, ws_message_ask_added()): no all,
+ *                              prefix or replies rule
  * @return string[] the agent values a request was made for
  */
-function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = '')
+function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = '', $mentions_only = false)
 {
     if (!ws_agents_ready() || !ws_ai_schema_ready()) {
         return array();
@@ -497,7 +500,8 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = 
 
         $replies_own = $parent && ($own_app > 0) && ($parent['sender_kind'] === 'app') && ($parent['sender_id'] === $own_app);
 
-        if (($followed === '') && !ws_agent_wake_matches($row, $body, $replies_own, $by_app)) {
+        // Only a mention matches an application's words (ws_agent_wake_matches()).
+        if (($followed === '') && !ws_agent_wake_matches($row, $body, $replies_own && !$mentions_only, $by_app || $mentions_only)) {
             continue;
         }
 

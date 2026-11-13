@@ -138,8 +138,9 @@ function pg_explorer_handle_rotate($type, $request, $user)
     // Encoded at a high quality rather than the optimize ladder: the
     // operator asked for the picture the other way up, not for a
     // lighter file, and each turn would otherwise cost another
-    // generation of compression.
-    $report = pg_process_image_file($path, array('rotate' => 90, 'quality' => 92));
+    // generation of compression. A JPEG saved lower keeps its own
+    // quality, so the turn is not heavier than the original.
+    $report = pg_process_image_file($path, array('rotate' => 90, 'quality' => pg_image_jpeg_start_quality($path)));
 
     if ($report['status'] !== 'success') {
 

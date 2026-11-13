@@ -24,5 +24,6 @@ description: Plan (owner 2026-11-12, #8961): one messages area in place of My Ca
 - No table or column without the owner's yes; a step that needs one stops and asks through the architect.
 - Rights stay per screen as today; a tab shows only to who may open its screen.
 - Lists on the table driver, the look from look A (`panel-design-language-sheet.md`); the names in the drawing are examples.
+- Made anew means redrawn: a screen is built from the drawing, an old screen moved in is redrawn and never carried as it is, and each step shows its real screens to the owner before its PR goes ready. Owner (2026-11-13, #9295), on the area as first built: "kampanyalar ekranları olduğu gibi geçmiş ve yeni ekranlarda o sayfalar kadar eski olarak üretilmiş"; "ben modernleştirme turu da istemiştim birlikteliğinde".
 - A profile is turned into a flow only where flows run without the Workspace (since #9154, `workspace/automation-flows-workspace-boxes.md`). Across the update no send is lost or sent twice; a profile with a part no box covers keeps running and is listed, never dropped silently.
 - The settings of a channel stay in the settings; the Channels tab shows each channel's state and leads there.

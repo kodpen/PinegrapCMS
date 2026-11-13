@@ -459,7 +459,7 @@ function ws_handle_action($action, $request)
     if (function_exists('ws_message_in_past') && ws_eras_ready()) {
         $touched = null;
 
-        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_canvas_restore', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
+        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_canvas_restore', 'ws_canvas_binding_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
@@ -2225,9 +2225,19 @@ function ws_handle_action($action, $request)
                 return ws_action_error($result['error']);
             }
 
-            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+            $edited = ws_message($message['id']);
 
-            return ws_action_ok(array('message' => $payload[0], 'notice' => ws_app_mention_unread_line($result['apps_unread'] ?? array())));
+            // A tag the edit adds asks as it would in a new message; the
+            // tags it kept asked already.
+            $asked = ws_message_ask_added($viewer, ws_channel($message['channel_id']), $message['id'], (string) $message['body'], (string) $edited['body']);
+
+            if (!empty($asked['claude']) && function_exists('ws_claude_dispatch')) {
+                ws_claude_dispatch();
+            }
+
+            $payload = ws_message_payloads($viewer, array($edited));
+
+            return ws_action_ok(array('message' => $payload[0], 'ai' => !empty($asked['ai']) || !empty($asked['models']), 'agent' => !empty($asked['agent']), 'notice' => ws_app_mention_unread_line($result['apps_unread'] ?? array())));
 
         // The writer's edit box of a message that asked an agent is open,
         // or they typed (beat), or they closed it unsaved (release): the
@@ -2347,6 +2357,19 @@ function ws_handle_action($action, $request)
             }
 
             $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
+        // Undo of an application's binding, from its line in the channel
+        // (canvas_binding_lines.php); the line is sent back.
+        case 'ws_canvas_binding_undo':
+            $result = ws_canvas_binding_undo($viewer, (int) ($request['message_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message((int) $request['message_id'])));
 
             return ws_action_ok(array('message' => $payload[0]));
 
@@ -2966,7 +2989,17 @@ function ws_handle_action($action, $request)
                 return ws_action_error($result['error']);
             }
 
+            // Its words asked as a message's (ws_voice_posted()): Claude's
+            // run starts now, the screen carries the others on.
+            $asked = (array) ($result['asked'] ?? array());
+
+            if (!empty($asked['claude']) && function_exists('ws_claude_dispatch')) {
+                ws_claude_dispatch();
+            }
+
             return ws_action_ok(array(
+                'ai'         => !empty($asked['ai']) || !empty($asked['models']),
+                'agent'      => !empty($asked['agent']),
                 'message_id' => $result['message_id'],
                 'channel'    => array('id' => (int) $channel['id'], 'name' => (string) $channel['name']),
                 'url'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php?channel=' . (int) $channel['id'] . '&message=' . (int) $result['message_id'],
