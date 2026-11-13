@@ -1996,6 +1996,7 @@
     "{var:1} · row id {var:2}": "{var:1} · satır kimliği {var:2}",
     "{var:1} · row {var:2}": "{var:1} · satır {var:2}",
     "{var:1} · timeout {var:2} h": "{var:1} · zaman aşımı {var:2} sa",
+    "{var:1} · version {var:2}": "{var:1} · sürüm {var:2}",
     "{var:1} · {var:2}": "{var:1} · {var:2}",
     "{var:1} · {var:2} lines": "{var:1} · {var:2} kalem",
     "{var:1} · {var:2} line{suffix:1}": "{var:1} · {var:2} kalem",

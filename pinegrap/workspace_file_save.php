@@ -202,7 +202,7 @@ if (isset($_GET['channel'])) {
     exit();
 }
 
-$target = ws_file_edit_target($viewer, (int) ($_GET['message'] ?? 0), 'image');
+$target = ws_file_edit_target($viewer, (int) ($_GET['message'] ?? 0), 'image', (($_GET['part'] ?? '') === 'drawing') ? 'drawing' : '');
 
 if (!is_array($target)) {
     ws_file_save_refuse($target);

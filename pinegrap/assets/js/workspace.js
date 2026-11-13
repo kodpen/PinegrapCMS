@@ -11170,6 +11170,15 @@
             var file = message.file;
             var kind = file.kind || (file.image ? 'image' : 'file');
 
+            // A canvas with a drawing and a page: one card for both
+            // (assets/js/workspace_page_card.js, joined()).
+            if (file.joined && window.PGWsPageCard && window.PGWsPageCard.joined) {
+                return window.PGWsPageCard.joined(message, featureHelpers(), {
+                    replace: function (changed) { self.replaceMessage(changed); },
+                    showImage: function (url) { self.showImage(url); }
+                });
+            }
+
             // An agent's live page: its card, which runs it only when opened
             // (assets/js/workspace_page_card.js).
             if (file.page && window.PGWsPageCard) {

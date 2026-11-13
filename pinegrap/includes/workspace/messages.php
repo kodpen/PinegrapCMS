@@ -466,6 +466,9 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 // the file line; null for any other file.
                 'page'     => (($extension === 'html') && function_exists('ws_page_card'))
                     ? ws_page_card($id, (int) $row['file_id'], $can_post, $viewer) : null,
+                // A canvas with a drawing and a page (canvas_card.php): the
+                // joined card instead of either part's own; null otherwise.
+                'joined'   => function_exists('ws_canvas_joined_card') ? ws_canvas_joined_card($row, $can_post, $viewer) : null,
                 'image'    => ($kind === 'image'),
                 'kind'     => $kind,
                 'ext'      => $extension,

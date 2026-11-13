@@ -16,8 +16,8 @@ description: A canvas's second part (ws_canvas_parts, 11.0.194, #9258): the mess
 - Over the API only: `POST /workspace/canvases/{id}/page` or `…/drawing` with `version` 0 (`api/workspace-canvas-api.md`). The file is stored in the channel's folder (`ws_store_file_bytes()`, an `.html` page or a blank `.png` keeping the canvas document), its first version kept as the agent's, then the row; the message is not changed, only touched.
 - Two adds at once keep one row (`INSERT IGNORE` on the unique key): the loser deletes its file and versions and answers 409 `conflict`.
 
-## What does the panel show yet?
-- Architect (2026-11-13, ch.25 #1931): until the joined card (CO7c), a canvas with two parts shows its first part only on its card; accepted as the state between the steps.
+## What does the panel show?
+- The joined card (`workspace/canvas-card.md`, #9274): both parts on one card with one Versions drawer.
 
 ## What removes a part?
 - A thread's purge deletes the rows (`threads.php`); the part files stay in the channel's folder, as a thread's other files do. A deleted message's row stays and reaches nothing, as the bindings do.
