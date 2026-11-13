@@ -575,6 +575,7 @@ function pg_whatsapp_message_event_html($event, $definition, $stored, $offered)
         $options .= '<option value="' . h($key) . '"' . (($key === $stored['template']) ? ' selected="selected"' : '') . '>' . h($template['name'] . ' · ' . $template['language'] . ' · ' . $category) . '</option>';
 
         $rows = '';
+        $hidden = ($key === $stored['template']) ? '' : ' d-none';
 
         foreach ($template['slots'] as $position => $slot) {
             $field_name = pg_whatsapp_message_var_name($event, $key, $position);
@@ -586,31 +587,36 @@ function pg_whatsapp_message_event_html($event, $definition, $stored, $offered)
             }
 
             $rows .= '
-                                                    <div class="col-12 md:col-6">
-                                                        <label class="form-label" for="' . h($field_name) . '">' . h(pg_whatsapp_message_slot_label($slot)) . '</label>
-                                                        <select name="' . h($field_name) . '" id="' . h($field_name) . '" class="form-control">' . $choices . '</select>
-                                                    </div>';
+                                        <div class="col-12' . $hidden . '" data-pg-wa-for="' . h($event) . '" data-pg-wa-vars="' . h($key) . '">
+                                            <label class="form-label" for="' . h($field_name) . '">' . h(pg_whatsapp_message_slot_label($slot)) . '</label>
+                                            <select name="' . h($field_name) . '" id="' . h($field_name) . '" class="form-control">' . $choices . '</select>
+                                        </div>';
         }
 
-        if ($rows === '') {
+        if ($template['slots'] === array()) {
             $rows = '
-                                                    <div class="col-12 form-text">' . lang('This template has no variables.') . '</div>';
+                                        <div class="col-12 form-text' . $hidden . '" data-pg-wa-for="' . h($event) . '" data-pg-wa-vars="' . h($key) . '">' . lang('This template has no variables.') . '</div>';
         }
 
-        $blocks .= '
-                                                <div class="row gy-3 mt-0" data-pg-wa-vars="' . h($key) . '"' . (($key === $stored['template']) ? '' : ' hidden') . '>' . $rows . '
-                                                </div>';
+        $blocks .= $rows;
     }
 
+    // Columns of the card's own row, so the settings layout puts each label
+    // beside its list; the variables of a template not chosen stay hidden.
     return '
-                                        <div class="col-12" data-pg-wa-event="' . h($event) . '">
+                                        <div class="col-12">
+                                            <h6 class="fw-bold mb-0">' . h($definition['label']) . '</h6>
+                                        </div>
+                                        <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input type="checkbox" name="' . h($name) . 'on" id="' . h($name) . 'on" value="1"' . ($stored['on'] ? ' checked="checked"' : '') . ' class=""/></div>
-                                                <label class="" for="' . h($name) . 'on" id="' . h($name) . 'label">' . h($definition['label']) . '</label>
+                                                <label class="" for="' . h($name) . 'on">' . lang('Send this message') . '</label>
                                             </div>
-                                            <label class="form-label mt-3" for="' . h($name) . 'template">' . lang('Template') . '</label>
-                                            <select name="' . h($name) . 'template" id="' . h($name) . 'template" class="form-control" data-pg-wa-template>' . $options . '</select>' . $blocks . '
-                                        </div>';
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label" for="' . h($name) . 'template">' . lang('Template') . '</label>
+                                            <select name="' . h($name) . 'template" id="' . h($name) . 'template" class="form-control" data-pg-wa-template="' . h($event) . '">' . $options . '</select>
+                                        </div>' . $blocks;
 }
 
 /**
@@ -665,14 +671,14 @@ function pg_whatsapp_message_settings_script()
 
             document.addEventListener("change", function (event) {
                 var select = event.target.closest("[data-pg-wa-template]");
-                var block = select ? select.closest("[data-pg-wa-event]") : null;
+                var form = select ? select.form : null;
 
-                if (!block) {
+                if (!form) {
                     return;
                 }
 
-                block.querySelectorAll("[data-pg-wa-vars]").forEach(function (vars) {
-                    vars.hidden = (vars.getAttribute("data-pg-wa-vars") !== select.value);
+                form.querySelectorAll("[data-pg-wa-for=\"" + select.getAttribute("data-pg-wa-template") + "\"]").forEach(function (vars) {
+                    vars.classList.toggle("d-none", vars.getAttribute("data-pg-wa-vars") !== select.value);
                 });
             });
         })();
