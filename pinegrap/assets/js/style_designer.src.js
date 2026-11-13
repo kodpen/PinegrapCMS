@@ -10447,21 +10447,10 @@ const StyleDesigner = (function () {
         return false;
     }
 
-    // The bound-picture placeholder (_sdImgPlaceholderForToken()) at a given
-    // natural size; the labels scale with it.
+    // The bound-picture sample (_sdImgPlaceholderForToken()) at a given
+    // natural size: the same picture, cut to that ratio.
     function _sdImgPlaceholderSized(tokenName, w, h) {
-        w = Math.max(1, Math.round(w));
-        h = Math.max(1, Math.round(h));
-        var label = '[' + String(tokenName || 'image').replace(/[^a-z0-9_]/gi, '') + ']';
-        if (label.length > 28) label = label.slice(0, 26) + '…]';
-        var fs = Math.max(10, Math.round(Math.min(w, h) / 9));
-        var svg =
-            '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' +
-                '<rect fill="#e5e7eb" width="' + w + '" height="' + h + '"/>' +
-                '<text x="50%" y="47%" text-anchor="middle" fill="#6c757d" font-family="sans-serif" font-size="' + fs + '" font-weight="600">' + esc(_sdT('Image')) + '</text>' +
-                '<text x="50%" y="47%" dy="1.4em" text-anchor="middle" fill="#0d6efd" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="' + Math.round(fs * .85) + '">' + label + '</text>' +
-            '</svg>';
-        return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+        return _sdSamplePictureUri(Math.max(1, Math.round(w)), Math.max(1, Math.round(h)));
     }
 
     // ========================= CANVAS SELECTOR BRIDGE =========================
@@ -13264,8 +13253,89 @@ const StyleDesigner = (function () {
 
     // The ghost elements of a list's sample rows, in order.
     function _sdListGhostEls(node) {
+        return _sdLoopSampleEls(node, _sdMainLoopRowsOfGrid(node, _sdListSampleRows(node)));
+    }
+
+    // ── A loop as published: one row of its grid ─────────────────────────
+    // The page prints a loop's records side by side in its row; the canvas
+    // draws as many cards as that row holds at the canvas's width (three for
+    // a col-lg-4 card on a desktop), the card first and hatched copies after
+    // it. A loop whose cards stack keeps its three rows.
+
+    // How many cards one line holds at `width` px (0: a desktop's 1200), as
+    // Bootstrap's grid sizes them: the card's col-<bp>-<n> of the widest
+    // breakpoint that applies wins; a card without one (or an equal-share
+    // col) takes the row's row-cols-<bp>-<n>; col-auto, an equal share
+    // without row-cols and a card with no column class count as one.
+    function _sdLoopRowCards(cardCls, rowCls, width) {
+        var w = (typeof width === 'number' && width > 0) ? width : 1200;
+        // The widest breakpoint's value of `prefix`: a number, 'auto',
+        // 'col' for the bare class, '' for none.
+        var pick = function (cls, prefix) {
+            var words = ' ' + String(cls || '').replace(/\s+/g, ' ') + ' ';
+            var found = '';
+            _SD_BS_BREAKPOINTS.forEach(function (b) {
+                if (b[1] > w) return;
+                var m = words.match(new RegExp(' ' + prefix + b[0] + '(?:-(\\d+|auto))? '));
+                if (m) found = m[1] || 'col';
+            });
+            return found;
+        };
+        var col = pick(cardCls, 'col');
+        if (col === 'auto') return 1;
+        var n = parseInt(col, 10);
+        if (n > 0) return Math.max(1, Math.floor(12 / Math.min(12, n)));
+        var rc = parseInt(pick(rowCls, 'row-cols'), 10);
+        return (rc > 0) ? Math.min(12, rc) : 1;
+    }
+
+    // How many copies follow the card: one line of `perRow` cards, three
+    // rows when the cards stack, never more records than the widget prints
+    // (`limit`, 0 for no limit).
+    function _sdLoopCopyCount(perRow, limit) {
+        var n = (perRow > 1) ? perRow : 3;
+        if (limit > 0) n = Math.min(n, limit);
+        return Math.max(0, n - 1);
+    }
+
+    // The most records a widget of `cfg` prints on a page (0: no limit).
+    function _sdWidgetRecordLimit(cfg) {
+        var out = 0;
+        ['items_per_page', 'max_results'].forEach(function (k) {
+            var v = cfg ? parseInt(cfg[k], 10) : 0;
+            if (v > 0 && (!out || v < out)) out = v;
+        });
+        return out;
+    }
+
+    // Cards per line of a loop area's grid at the canvas's width.
+    function _sdLoopAreaRowCards(node) {
+        var card = (node && Array.isArray(node.children)) ? node.children[0] : null;
+        if (!card || !card.props) return 1;
+        var cardCls = (card.type === 'col') ? buildColClasses(card.props) : (card.props.cssClass || '');
+        var root = _sysWidgetRenderTreeRoot || tree;
+        var parent = root ? findParent(node, root) : null;
+        var rowCls = (parent && parent.props) ? (parent.props.cssClass || '') : '';
+        var win = (canvasDoc && canvasDoc.defaultView) ? canvasDoc.defaultView : null;
+        return _sdLoopRowCards(cardCls, rowCls, win ? win.innerWidth : 0);
+    }
+
+    // The main loop's sample rows sized to one line of its grid. Only the
+    // plain copies ({}) are resized: rows with values of their own (a
+    // sample order's second line) are drawn as they are.
+    function _sdMainLoopRowsOfGrid(node, rows) {
+        if (!rows.length || _sdListIsSourced(node)) return rows;
+        for (var i = 0; i < rows.length; i++) if (Object.keys(rows[i]).length) return rows;
+        var n = _sdLoopCopyCount(_sdLoopAreaRowCards(node), _sdWidgetRecordLimit(_sysWidgetRenderCfg));
         var out = [];
-        _sdListSampleRows(node).forEach(function (row) {
+        for (var k = 0; k < n; k++) out.push({});
+        return out;
+    }
+
+    // The ghost elements of a loop's sample rows, built from its card.
+    function _sdLoopSampleEls(node, rows) {
+        var out = [];
+        rows.forEach(function (row) {
             _sdListSample = row;
             try {
                 (node.children || []).forEach(function (child) {
@@ -13950,7 +14020,11 @@ const StyleDesigner = (function () {
             // placeholder after a real record's picture (_sdFxGhostImageSizes()).
             if (node.props._bindings && node.props._bindings.src) {
                 var _bImg = (innerEl.tagName === 'IMG') ? innerEl : innerEl.querySelector('img');
-                if (_bImg) _bImg.setAttribute('data-sd-bind-src', String(node.props._bindings.src));
+                if (_bImg) {
+                    _bImg.setAttribute('data-sd-bind-src', String(node.props._bindings.src));
+                    // The sample photo names the field it stands for.
+                    if (!_bImg.hasAttribute('title')) _bImg.setAttribute('title', _sdBoundPictureTitle(String(node.props._bindings.src)));
+                }
             }
             if (innerEl !== wrapper) wrapper.appendChild(innerEl);
 
@@ -14804,21 +14878,40 @@ const StyleDesigner = (function () {
         '</svg>'
     );
 
-    // Token-aware image placeholder — when an <img> src is bound to a field,
-    // generate an SVG that shows the token name (e.g. "[item_image]") so the
-    // designer can tell at a glance WHICH binding the slot represents.
+    // A bound picture is drawn as a sample photo (a landscape in the editor's
+    // own colours), as the published page draws the record's photo: never a
+    // grey box with the token's name. The field's label goes in the
+    // picture's title (buildNodeEl()). The art is cut, not stretched, to the
+    // node's box (`slice`), so a round 40x40 avatar or a 16:9 cover keeps
+    // its shape; with no box it has the 300x200 size of its own.
     // Canvas-only; the saved tree still carries ^^token^^ for server render.
     function _sdImgPlaceholderForToken(tokenName) {
-        var label = '[' + String(tokenName || 'image').replace(/[^a-z0-9_]/gi, '') + ']';
-        // Trim very long names so they don't overflow the SVG viewBox
-        if (label.length > 28) label = label.slice(0, 26) + '…]';
+        return _sdSamplePictureUri(0, 0);
+    }
+
+    // The sample photo as an SVG data URI; w and h set its natural size
+    // (0: the viewBox's own 300x200).
+    function _sdSamplePictureUri(w, h) {
+        var size = (w > 0 && h > 0) ? ' width="' + w + '" height="' + h + '"' : '';
         var svg =
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200">' +
-                '<rect fill="#e5e7eb" width="300" height="200"/>' +
-                '<text x="50%" y="44%" text-anchor="middle" fill="#6c757d" font-family="sans-serif" font-size="14" font-weight="600">' + _sdT('Image') + '</text>' +
-                '<text x="50%" y="62%" text-anchor="middle" fill="#0d6efd" font-family="ui-monospace,Menlo,Consolas,monospace" font-size="13">' + label + '</text>' +
+            '<svg xmlns="http://www.w3.org/2000/svg"' + size + ' viewBox="0 0 300 200" preserveAspectRatio="xMidYMid slice">' +
+                '<defs><linearGradient id="s" x1="0" y1="0" x2="0" y2="1">' +
+                    '<stop offset="0" stop-color="#bcd7f2"/><stop offset="1" stop-color="#eef4fb"/>' +
+                '</linearGradient></defs>' +
+                '<rect fill="url(#s)" width="300" height="200"/>' +
+                '<circle cx="222" cy="58" r="22" fill="#f6c453"/>' +
+                '<path fill="#8fb3d9" d="M0 200V142l72-52 58 44 62-56 108 72v50z"/>' +
+                '<path fill="#4f7cac" d="M0 200v-34c46-30 98-36 160-10 50 20 96 14 140-6v50z"/>' +
             '</svg>';
         return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    // The title of a bound picture's sample photo: the Bind Data option of
+    // its field, as the widget being drawn names it.
+    function _sdBoundPictureTitle(token) {
+        var cfg = _sysWidgetRenderCfg;
+        var label = cfg ? _swBindLabel(_swKindOf(cfg), token) : '';
+        return _sdT('Sample picture: {var}', label || token);
     }
 
     // Currency-bearing tokens — when bound to one of these, the canvas
@@ -15427,7 +15520,10 @@ const StyleDesigner = (function () {
         if (!entry || (entry.key !== key && entry.pending !== key)) _sdFetchGhosts(sid, cached, key);
         entry = _sdGhostCache[sid];
         var rows = (entry && entry.rows) ? entry.rows : [];
-        if (!rows.length) return;
+        if (!rows.length) {
+            _sdAppendLoopCopies(loopEl, cached, cfg);
+            return;
+        }
 
         rows.forEach(function (html) {
             var tpl = doc.createElement('template');
@@ -15448,6 +15544,23 @@ const StyleDesigner = (function () {
             note.textContent = '· ' + _sdT('{var} real records after the card', rows.length);
             band.appendChild(note);
             band.title = band.textContent;
+        }
+    }
+
+    // A listing with no record yet (a new site's blog) is drawn as published
+    // with records: the card and hatched copies of it filling one line of
+    // its grid (_sdMainLoopRowsOfGrid()), until the server has real ones.
+    function _sdAppendLoopCopies(loopEl, cached, cfg) {
+        var node = _sdFirstLoopArea(cached.tree);
+        if (!node || !Array.isArray(node.children) || !node.children.length) return;
+        var prevCfg = _sysWidgetRenderCfg, prevRoot = _sysWidgetRenderTreeRoot;
+        _sysWidgetRenderCfg = cfg;
+        _sysWidgetRenderTreeRoot = cached.tree;
+        try {
+            _sdLoopSampleEls(node, _sdMainLoopRowsOfGrid(node, [{}])).forEach(function (el) { loopEl.appendChild(el); });
+        } finally {
+            _sysWidgetRenderCfg = prevCfg;
+            _sysWidgetRenderTreeRoot = prevRoot;
         }
     }
 
