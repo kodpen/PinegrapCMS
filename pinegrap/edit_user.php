@@ -454,8 +454,8 @@ if (!$_POST) {
 
         $output_account_enabled_field =
             '<div class="card mb-5">
-            <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Status') . '</span>
+            <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                <span>' . lang('Status') . '</span>
             </div>
             <div class="card-body">
                 ' . ($may_disable ? '<input type="hidden" name="account_enabled_drawn" value="1" />' : '') . '
@@ -892,8 +892,8 @@ if (!$_POST) {
 
     $output_contact_card =
         '<div class="card mb-5">
-            <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Contact')) . '</span>
+            <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                <span>' . h(lang('Contact')) . '</span>
                 <span class="d-flex flex-wrap justify-content-end gap-1">' . $output_contact_header . '</span>
             </div>
             <div class="card-body">' . $output_contact_body . '</div>
@@ -983,8 +983,8 @@ if (!$_POST) {
 
     $output_sign_in_card =
         '<div class="card mb-5">
-            <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Sign-in and Sessions')) . '</span>
+            <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                <span>' . h(lang('Sign-in and Sessions')) . '</span>
             </div>
             <div class="card-body">
                 <div class="pg-fact">
@@ -1030,8 +1030,8 @@ if (!$_POST) {
 
     $output_activity_card =
         '<div class="card mb-5">
-            <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Recent Activity')) . '</span>
+            <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                <span>' . h(lang('Recent Activity')) . '</span>
                 ' . (($log_count > 5) ? '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="drawer" data-bs-target="#pg_activity_panel">' . h(($log_total > $log_count) ? lang(array('string' => 'Last {var:1} of {var:2}', 'vars' => array($log_count, pg_format_number($log_total, 0)))) : lang(array('string' => 'All ({var:1})', 'vars' => $log_count))) . '</button>' : '') . '
             </div>
             <div class="card-body">
@@ -1188,7 +1188,7 @@ if (!$_POST) {
 <main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
-                <div class="card mb-5">
+                <div class="card pg-card mb-5">
                     <div class="card-body py-5">
                         <div class="pg-identity">
                             ' . $output_identity_picture . '
@@ -1219,9 +1219,9 @@ if (!$_POST) {
                     ' . pg_user_form_layout('
 
                             <div class="card mb-5">
-                                <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Role') . '</span>
-                                    <span class="small fg-secondary">' . lang('Changing the role changes the rights below.') . '</span>
+                                <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap justify-content-between align-items-center gap-3 row-gap-1">
+                                    <span>' . lang('Role') . '</span>
+                                    <span class="small fw-normal fg-secondary">' . lang('Changing the role changes the rights below.') . '</span>
                                 </div>
                                 <div class="card-body">
                                     ' . pg_user_role_cards($role, $user['role'], $role_cards_disabled) . '
@@ -1229,8 +1229,8 @@ if (!$_POST) {
                             </div>
 
                             <div class="card mb-5">
-                                <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Account') . '</span>
+                                <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                                    <span>' . lang('Account') . '</span>
                                 </div>
                                 <div class="card-body">
                                     <div class="row g-5">

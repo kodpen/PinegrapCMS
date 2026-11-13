@@ -115,19 +115,22 @@ if (!$_POST) {
         <div class="row">
             <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 ' . erp_account_form_cards($liveform, true, false, $linked_contact, null, false) . '
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-plus-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Create')) . '</span></button>
-                        </div>
-                    </div>
-                </nav>
             </div>
 
             <div class="col-12 lg:col-4 2xl:col-3 order-2">
                 <div class="position-sticky" style="top:3.3rem;">
                     ' . erp_account_form_notes_card($liveform) . '
                 </div>
+            </div>
+
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-plus-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Create')) . '</span></button>
+                        </div>
+                    </div>
+                </nav>
             </div>
         </div>
     </form>

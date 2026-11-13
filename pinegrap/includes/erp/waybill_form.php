@@ -206,6 +206,31 @@ function erp_waybill_form_prefill($liveform, $data)
 }
 
 /**
+ * The attributes of the line editor's box: the element the editor script
+ * (erp_invoice_editor.js) starts from, holding its settings and texts.
+ * erp_waybill_form_cards() puts them on its own box; a screen with a form
+ * column puts them on the column and asks for the cards without the box.
+ *
+ * @return string  The attributes, escaped, for inside a start tag
+ */
+function erp_waybill_form_editor_attributes()
+{
+    return 'id="erp_waybill_editor"
+         data-erp-editor
+         data-products-url="get_erp_products.php"
+         data-max-lines="' . (int) ERP_WAYBILL_MAX_LINES . '"
+         data-decimal-comma="' . (erp_decimal_comma() ? '1' : '0') . '"
+         data-text-no-results="' . lang('No products match.') . '"
+         data-text-stock="' . h(lang('In stock: {var:1}')) . '"
+         data-text-no-stock-tracking="' . h(lang('Stock not tracked')) . '"
+         data-text-out-of-stock="' . h(lang('Out of stock')) . '"
+         data-text-disabled="' . h(lang('not on sale')) . '"
+         data-text-sku="' . h(lang('SKU')) . '"
+         data-text-over-stock="' . h(lang('More than is in stock ({var:1}).')) . '"
+         data-text-max-lines="' . lang(array('string' => 'A delivery note can carry at most {var:1} lines.', 'vars' => ERP_WAYBILL_MAX_LINES)) . '"';
+}
+
+/**
  * The cards of the form.
  *
  * @param liveform $liveform
@@ -214,13 +239,18 @@ function erp_waybill_form_prefill($liveform, $data)
  *                           erp_invoices row when the note is for an invoice),
  *                           aside (false leaves out the order or invoice note
  *                           and the Notes card, drawn by
- *                           erp_waybill_form_aside_cards() in a status column)
+ *                           erp_waybill_form_aside_cards() in a status column),
+ *                           wrap (false leaves out the editor's box: the
+ *                           caller's form column carries
+ *                           erp_waybill_form_editor_attributes(), so the
+ *                           cards stand straight in the column)
  * @return string  HTML
  */
 function erp_waybill_form_cards($liveform, $options = array())
 {
     $lines = isset($options['lines']) ? (array) $options['lines'] : erp_waybill_form_lines($liveform);
     $with_aside = !isset($options['aside']) || $options['aside'];
+    $wrap = !isset($options['wrap']) || $options['wrap'];
 
     $account_options = array();
     $account_options[lang('Choose an account')] = '';
@@ -239,22 +269,10 @@ function erp_waybill_form_cards($liveform, $options = array())
 
     $output_order = $with_aside ? erp_waybill_form_source($options, 'alert') : '';
 
-    return '
-    <div id="erp_waybill_editor"
-         data-erp-editor
-         data-products-url="get_erp_products.php"
-         data-max-lines="' . (int) ERP_WAYBILL_MAX_LINES . '"
-         data-decimal-comma="' . (erp_decimal_comma() ? '1' : '0') . '"
-         data-text-no-results="' . lang('No products match.') . '"
-         data-text-stock="' . h(lang('In stock: {var:1}')) . '"
-         data-text-no-stock-tracking="' . h(lang('Stock not tracked')) . '"
-         data-text-out-of-stock="' . h(lang('Out of stock')) . '"
-         data-text-disabled="' . h(lang('not on sale')) . '"
-         data-text-sku="' . h(lang('SKU')) . '"
-         data-text-over-stock="' . h(lang('More than is in stock ({var:1}).')) . '"
-         data-text-max-lines="' . lang(array('string' => 'A delivery note can carry at most {var:1} lines.', 'vars' => ERP_WAYBILL_MAX_LINES)) . '">
+    return ($wrap ? '
+    <div ' . erp_waybill_form_editor_attributes() . '>' : '') . '
     <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <div class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Delivery Note') . '
         </div>
         <div class="card-body">
@@ -293,7 +311,7 @@ function erp_waybill_form_cards($liveform, $options = array())
     </div>
     ' . get_date_picker_format() . pg_fields_script() . pg_places_suggest_script() . '
     <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <div class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Delivered to') . '
         </div>
         <div class="card-body">
@@ -359,7 +377,7 @@ function erp_waybill_form_cards($liveform, $options = array())
     </div>
 
     <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <div class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Transport') . '
         </div>
         <div class="card-body">
@@ -404,7 +422,7 @@ function erp_waybill_form_cards($liveform, $options = array())
     </div>
 
     <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap justify-content-between align-items-center gap-3">
             <span>' . lang('Lines') . '</span>
             <button type="button" class="btn btn-sm btn-outline theme-secondary no-submit" data-erp-add-line><i class="bi bi-plus-lg me-3"></i>' . lang('Add line') . '</button>
         </div>
@@ -432,7 +450,7 @@ function erp_waybill_form_cards($liveform, $options = array())
     </div>
 
     ' . ($with_aside ? erp_waybill_form_notes_card($liveform) : '') . '
-    </div>
+    ' . ($wrap ? '</div>' : '') . '
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/erp_invoice_editor.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/erp_invoice_editor.js') . '"></script>';
 }
 
@@ -463,7 +481,7 @@ function erp_waybill_form_source($options, $kind = 'alert')
     if ($kind === 'card') {
         return '
     <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <div class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Source') . '
         </div>
         <div class="card-body">
@@ -490,7 +508,7 @@ function erp_waybill_form_notes_card($liveform)
 {
     return '
     <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <div class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Notes') . '
         </div>
         <div class="card-body">

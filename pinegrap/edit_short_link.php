@@ -112,8 +112,8 @@ if (!$_POST) {
         $output_short_link_qr_card =
             '
                                 <div class="card mb-7">
-                                <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('QR Code')) . '</span>
+                                <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                                    <span>' . h(lang('QR Code')) . '</span>
                                     <a class="btn btn-sm btn-outline theme-secondary" download="' . h((($short_link_qr_file !== '') ? $short_link_qr_file : 'short-link') . '-qr.svg') . '" href="' . h(pg_qr_svg_data_uri($short_link_qr_url, 0, $short_link_qr_options)) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download SVG')) . '</a>
                                 </div>
                                 <div class="card-body text-center">

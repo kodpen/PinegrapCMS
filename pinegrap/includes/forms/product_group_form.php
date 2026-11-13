@@ -107,7 +107,6 @@ function pg_product_group_form_cards($liveform, $values, $form)
     $display_type_select_checked = ($v['display_type'] == 'browse') ? '' : ' checked="checked"';
 
     return '
-                        <div class="col-12">
                             <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . ($form['is_new'] ? lang('New Product Group Information') : lang('Product Group Information')) . '
@@ -129,8 +128,6 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12">
                             <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Catalog Page Display Options') . '
@@ -175,9 +172,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="col-12">
                             <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Image Options') . '
@@ -210,9 +205,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="col-12">
                             <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('SEO') . $form['seo_badge'] . '
@@ -242,8 +235,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                         ' . $form['seo_checklist'] . '
                                     </div>
                                 </div>
-                            </div>
-                        </div>';
+                            </div>';
 }
 
 /**
@@ -282,7 +274,9 @@ function pg_product_group_form_status_card($values, $parent_row)
  * The edit screen layout (ui/edit-screen-wide-layout.md): the form column,
  * the status column with a sticky box, then the products table across the
  * full width (eight columns with pictures do not fit the form column), and
- * the sticky save bar last.
+ * the sticky save bar last. The cards stand straight in their columns and
+ * the bar's column is order-3 like the table's, after it in the source, so
+ * both take look A's card and floating bar.
  *
  * @param array $parts  'form', 'status', 'wide' (the products card),
  *                      'buttons' (inside the bar's button group),
@@ -295,8 +289,8 @@ function pg_product_group_form_layout($parts)
 
     return '
                     <div class="row' . ($parts['row_class'] !== '' ? ' ' . $parts['row_class'] : '') . '">
-                        <div class="col-12 lg:col-8 2xl:col-9 order-1"><div class="row">' . $parts['form'] . '
-                        </div></div>
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $parts['form'] . '
+                        </div>
                         <div class="col-12 lg:col-4 2xl:col-3 order-2">
                             <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
                             <div class="position-sticky" style="top:3.3rem;">' . $parts['status'] . '
@@ -304,7 +298,7 @@ function pg_product_group_form_layout($parts)
                         </div>
                         <div class="col-12 order-3"><div class="row">' . $parts['wide'] . '
                         </div></div>
-                        <div class="col-12 order-4 position-sticky" style="bottom:0; z-index:3;">
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
                             <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                                 <div class="container">
                                     <div class="btn-group flex-wrap justify-content-center">' . $parts['buttons'] . '
@@ -329,8 +323,8 @@ function pg_product_group_form_products_card($form)
 {
     return '
                         <div class="col-12">
-                            <div class="card mb-7' . $form['card_class'] . '">
-                                <h2 class="card-header bg-reset text-uppercase fg-primary h5 fw-bold">' . $form['title'] . '</h2>
+                            <div class="card pg-card mb-7' . $form['card_class'] . '">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">' . $form['title'] . '</h2>
                                 <div class="card-body p-0 position-relative">
                                     <div class="table-responsive">
                                     <table id="' . $form['table_id'] . '" class="table table-hover mb-0" data-pg-sort>

@@ -189,29 +189,24 @@ pg_page_shell([
             column of full-width cards.
         -->
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
-            <div class="row">
-                <div class="col-12 xl:col-6">
-                    <div class="card my-7">
-                        <div class="card-header bg-reset border-0 pg-title-section">
-                            ' . lang('Delivered to') . '
-                        </div>
-                        <div class="card-body">
-                            <div class="fw-bold">' . h($waybill['ship_to_title']) . '</div>
-                            <div>' . h($waybill['ship_to_address']) . '</div>
-                            <div>' . h($ship_to_line) . '</div>
-                        </div>
-                    </div>
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 pg-title-section">
+                    ' . lang('Delivered to') . '
                 </div>
-                <div class="col-12 xl:col-6">
-                    <div class="card my-7">
-                        <div class="card-header bg-reset border-0 pg-title-section">
-                            ' . lang('Transport') . '
-                        </div>
-                        <div class="card-body">
-                            <div>' . ((trim((string) $waybill['carrier_title']) !== '') ? h($waybill['carrier_title']) . ((trim((string) $waybill['carrier_vkn']) !== '') ? ' <span class="fg-secondary">' . h($waybill['carrier_vkn']) . '</span>' : '') : $empty) . '</div>
-                            <div>' . ((trim((string) $waybill['plate']) !== '') ? '<span class="fg-secondary">' . lang('Plate') . ':</span> ' . h($waybill['plate']) : '') . ((trim((string) $waybill['driver_name']) !== '') ? ' <span class="fg-secondary ms-3">' . lang('Driver') . ':</span> ' . h($waybill['driver_name']) . ((trim((string) $waybill['driver_tckn']) !== '') ? ' <span class="fg-secondary">' . h($waybill['driver_tckn']) . '</span>' : '') : '') . '</div>
-                        </div>
-                    </div>
+                <div class="card-body">
+                    <div class="fw-bold">' . h($waybill['ship_to_title']) . '</div>
+                    <div>' . h($waybill['ship_to_address']) . '</div>
+                    <div>' . h($ship_to_line) . '</div>
+                </div>
+            </div>
+
+            <div class="card my-7">
+                <div class="card-header bg-reset border-0 pg-title-section">
+                    ' . lang('Transport') . '
+                </div>
+                <div class="card-body">
+                    <div>' . ((trim((string) $waybill['carrier_title']) !== '') ? h($waybill['carrier_title']) . ((trim((string) $waybill['carrier_vkn']) !== '') ? ' <span class="fg-secondary">' . h($waybill['carrier_vkn']) . '</span>' : '') : $empty) . '</div>
+                    <div>' . ((trim((string) $waybill['plate']) !== '') ? '<span class="fg-secondary">' . lang('Plate') . ':</span> ' . h($waybill['plate']) : '') . ((trim((string) $waybill['driver_name']) !== '') ? ' <span class="fg-secondary ms-3">' . lang('Driver') . ':</span> ' . h($waybill['driver_name']) . ((trim((string) $waybill['driver_tckn']) !== '') ? ' <span class="fg-secondary">' . h($waybill['driver_tckn']) . '</span>' : '') : '') . '</div>
                 </div>
             </div>
 
@@ -243,24 +238,6 @@ pg_page_shell([
             </div>'
                 : '') . '
 
-            ' . (($can_invoice || $can_cancel)
-                ? '<form name="form" action="' . $self_action . '" method="post">
-                ' . get_token_field() . '
-                <input type="hidden" name="id" value="' . $waybill_id . '" />
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            ' . ($can_invoice
-                                ? '<button type="submit" name="erp_action" value="invoice" class="btn my-1 btn-solid theme-success"><i class="bi bi-receipt me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Invoice the Delivery Note') . '</span></button>'
-                                : '') . '
-                            ' . ($can_cancel
-                                ? '<button type="submit" name="erp_action" value="cancel" class="btn my-1 btn-outline theme-danger" data-confirm-content="' . lang('Cancel this delivery note? It keeps its number and stays in the register as cancelled.') . '"><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button>'
-                                : '') . '
-                        </div>
-                    </div>
-                </nav>
-            </form>'
-                : '') . '
         </div>
 
         <!--
@@ -305,6 +282,27 @@ pg_page_shell([
                 </div>
             </div>
         </div>
+
+        ' . (($can_invoice || $can_cancel)
+            // The form is the save bar's column, so the bar stands straight
+            // in it as on every edit screen.
+            ? '<form name="form" action="' . $self_action . '" method="post" class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+            ' . get_token_field() . '
+            <input type="hidden" name="id" value="' . $waybill_id . '" />
+            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                <div class="container">
+                    <div class="btn-group flex-wrap justify-content-center">
+                        ' . ($can_invoice
+                            ? '<button type="submit" name="erp_action" value="invoice" class="btn my-1 btn-solid theme-success"><i class="bi bi-receipt me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Invoice the Delivery Note') . '</span></button>'
+                            : '') . '
+                        ' . ($can_cancel
+                            ? '<button type="submit" name="erp_action" value="cancel" class="btn my-1 btn-outline theme-danger" data-confirm-content="' . lang('Cancel this delivery note? It keeps its number and stays in the register as cancelled.') . '"><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button>'
+                            : '') . '
+                    </div>
+                </div>
+            </nav>
+        </form>'
+            : '') . '
     </div>
 </main>
 ' .

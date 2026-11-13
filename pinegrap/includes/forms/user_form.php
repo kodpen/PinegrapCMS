@@ -66,7 +66,9 @@ function pg_user_form_rights_cards($permission_rows)
 function pg_user_form_layout($form_html, $status_html, $buttons_html, $sticky_status = true)
 {
     // 3.3rem: the fixed control panel header covers the top of the window.
-    $box = $sticky_status ? '<div class="position-sticky" style="top:3.3rem;">' : '<div>';
+    // Without an offset position-sticky never pins the box; the class keeps
+    // its cards the status column's look cards either way.
+    $box = $sticky_status ? '<div class="position-sticky" style="top:3.3rem;">' : '<div class="position-sticky">';
 
     return '
                     <div class="row">

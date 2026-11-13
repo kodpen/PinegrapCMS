@@ -103,7 +103,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
 
     $output = '
     <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <div class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Account') . '
         </div>
         <div class="card-body">
@@ -195,7 +195,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
     </div>
 
     <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <div class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Tax Details') . '
         </div>
         <div class="card-body">
@@ -236,7 +236,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
     </div>
 
     <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <div class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Contact Information') . '
         </div>
         <div class="card-body">
@@ -424,7 +424,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
     if ($with_opening) {
         $output .= '
     <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <div class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Opening Balance') . '
         </div>
         <div class="card-body">
@@ -474,7 +474,7 @@ function erp_account_form_notes_card($liveform)
 {
     return '
     <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <div class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Notes') . '
         </div>
         <div class="card-body">
@@ -616,7 +616,7 @@ function erp_account_form_contact_card($liveform, $contact)
 
     return '
     <div class="card my-7" data-erp-contact-card data-erp-contacts-url="get_erp_contacts.php" data-erp-own-account="' . (int) $liveform->get_field_value('id') . '">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <div class="card-header bg-reset border-0 pg-title-section">
             ' . lang('Linked Contact') . '
         </div>
         <div class="card-body">

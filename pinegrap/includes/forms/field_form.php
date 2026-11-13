@@ -1216,8 +1216,8 @@ function pg_field_form_cards($liveform, $field, $context)
                                     </div>
                                 </div>
                             </div>
-                            <div class="collapse" id="options_field_row">
-                                <div class="card mb-7">
+                            <!-- The card collapses itself, so it stands straight in the form column. -->
+                            <div class="card mb-7 collapse" id="options_field_row">
                                     <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . lang('Field Settings') . '
                                     </h2>
@@ -1340,7 +1340,6 @@ function pg_field_form_cards($liveform, $field, $context)
                                             </div>
                                         </div>
                                     </div>
-                                </div>
                             </div>
                         </div>
                         <div class="col-12 lg:col-4 2xl:col-3 order-2">

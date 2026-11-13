@@ -161,7 +161,7 @@ function pg_form_item_view_form_variables($help, $options = array())
     return '
                                 <div class="card mb-7" id="' . h($id) . '">
                                     <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center justify-content-between gap-3 row-gap-1">
-                                        <h2 class="h5 mb-0"><button type="button" class="btn btn-sm btn-text theme-secondary px-1 fw-bold fg-primary text-uppercase" data-bs-toggle="collapse" data-bs-target="#' . h($id) . '_list" aria-expanded="' . ($open ? 'true' : 'false') . '" aria-controls="' . h($id) . '_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button></h2>' . $hints . '
+                                        <h2 class="pg-title-status"><button type="button" class="btn btn-sm btn-text theme-secondary px-1 pg-title-status" data-bs-toggle="collapse" data-bs-target="#' . h($id) . '_list" aria-expanded="' . ($open ? 'true' : 'false') . '" aria-controls="' . h($id) . '_list"><i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' . lang('Available variables') . '</button></h2>' . $hints . '
                                     </div>
                                     <div class="card-body pt-0 collapse' . ($open ? ' show' : '') . '" id="' . h($id) . '_list">
                                         <p class="form-text mt-0 mb-3">' . h($hint) . '</p>
@@ -273,14 +273,16 @@ function pg_form_item_view_form_status($summary, $variables)
                                 /* From lg, where the columns stand side by side: the box sticks
                                    below the fixed control panel header (3.3rem) and scrolls on
                                    its own. Stacked on a narrow screen it is in the page flow, so
-                                   a height cap there would only cut the lists off. */
+                                   a height cap there would only cut the lists off. The
+                                   position-sticky class (no offset below lg, so it stays in the
+                                   flow) makes its cards the look cards of a status column. */
                                 @layer custom {
                                     @media (min-width: 1024px) {
                                         #pg_fiv_status { position: sticky; top: 3.3rem; max-height: calc(100vh - 4.3rem); overflow-y: auto; }
                                     }
                                 }
                             </style>
-                            <div id="pg_fiv_status">
+                            <div id="pg_fiv_status" class="position-sticky">
                                 <div class="card mb-7">
                                     <h2 class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Summary') . '

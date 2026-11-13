@@ -322,28 +322,22 @@ function pg_zone_form_cards($values, $country_options, $state_options, $errors =
                                     </div>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-12 mb-7">
-                                    <div class="card h-100">
-                                        <h2 class="card-header bg-reset border-0 pg-title-section">
-                                            ' . lang('Shipping Zone Countries') . '
-                                        </h2>
-                                        <div class="card-body pt-0">
-                                            <label for="allowed_countries" class="form-label mt-3">' . lang('Allowed Countries') . '</label>
-                                            <select data-pg-combobox class="form-control w-100" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $country_options . '</select>
-                                        </div>
-                                    </div>
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
+                                    ' . lang('Shipping Zone Countries') . '
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <label for="allowed_countries" class="form-label mt-3">' . lang('Allowed Countries') . '</label>
+                                    <select data-pg-combobox class="form-control w-100" data-placeholder="' . lang('Click to select country(s)') . '" id="allowed_countries" name="allowed_countries[]" multiple="multiple">' . $country_options . '</select>
                                 </div>
-                                <div class="col-12 mb-7">
-                                    <div class="card h-100">
-                                        <h2 class="card-header bg-reset border-0 pg-title-section">
-                                            ' . lang('Shipping Zone States or Provinces') . '
-                                        </h2>
-                                        <div class="card-body pt-0">
-                                            <label for="allowed_states" class="form-label mt-3">' . lang('Allowed States') . '</label>
-                                            <select data-pg-combobox class="form-control w-100" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $state_options . '</select>
-                                        </div>
-                                    </div>
+                            </div>
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
+                                    ' . lang('Shipping Zone States or Provinces') . '
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <label for="allowed_states" class="form-label mt-3">' . lang('Allowed States') . '</label>
+                                    <select data-pg-combobox class="form-control w-100" data-placeholder="' . lang('Click to select state(s)') . '" id="allowed_states" name="allowed_states[]" multiple="multiple">' . $state_options . '</select>
                                 </div>
                             </div>' . pg_fields_script() . '
                         </div>
