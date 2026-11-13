@@ -14,6 +14,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
 
@@ -179,6 +180,7 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
             ' . $output_warning . '
+            ' . pg_messages_tab_strip_for('campaigns', $user) . '
             ' . pg_screen_toolbar(array(
                 'primary'   => array('label' => lang('Create'), 'url' => 'edit_sms_campaign.php', 'icon' => 'bi-plus-circle'),
                 'secondary' => array('label' => lang('My Campaigns'), 'url' => 'view_email_campaigns.php', 'icon' => 'bi-megaphone'),

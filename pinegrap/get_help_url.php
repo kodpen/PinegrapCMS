@@ -256,6 +256,10 @@ function get_help_url($properties = array())
         'add_email_campaign_profile'     => 'campaigns#create-edit-campaign-profile',
         'edit_email_campaign_profile'    => 'campaigns#create-edit-campaign-profile',
         'import_email_campaign_profiles' => 'campaigns#import-campaign-profiles',
+        'messages_automatic'             => 'campaigns',
+        'messages_templates'             => 'campaigns',
+        'messages_sends'                 => 'site-settings#mail-queue',
+        'messages_channels'              => 'site-settings',
 
         // Commerce
         'view_orders'                        => 'commerce#orders',

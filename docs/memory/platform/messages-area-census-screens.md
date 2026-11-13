@@ -13,7 +13,7 @@ description: MA0 census (2026-11-13): today's campaign, campaign profile, SMS ca
 - The web version of a sent campaign (`view_email_campaign.php?r=<reference_code>`): public, no sign-in.
 
 ## Where do they sit in the menu?
-- Row 9 "My Campaigns" (Kampanyalarım) under Marketing (`pg_menu_categories()`, slots 6, 7, 9, 16), shown for role <= 2 or the Campaign Manager right. Its panel: My Campaigns, Create Campaign, My Campaign History, My Campaign Profiles, Create Campaign Profile (`includes/fn/output.php`).
+- Row 9 was "My Campaigns" (Kampanyalarım) under Marketing until MA1 (#9182) made it "Communication" with the five tabs (`ui/messages-area-shell.md`); its old panel listed My Campaigns, Create Campaign, My Campaign History, My Campaign Profiles, Create Campaign Profile.
 - The active-row map in `output.php` lists the campaign and profile files under row 9 and `mail_queue.php` under row 25 (System). The SMS campaign screens are in neither.
 
 ## Which right does each screen ask?
