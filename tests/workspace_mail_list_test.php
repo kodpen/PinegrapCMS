@@ -212,8 +212,8 @@ function test_workspace_mail_pane_html()
 	pg_assert_contains('<h2 class="h5 mb-1" tabindex="-1">Order &lt;late&gt;</h2>', $html, 'the subject as text');
 	pg_assert_contains('Ayşe &lt;ayse@example.com&gt; · Support · #support', $html, 'customer, mailbox, channel');
 	pg_assert_contains('href="/pg/workspace.php?channel=3&amp;message=90"', $html, 'the card in its channel');
-	pg_assert_contains('<article class="ws-mail-item ws-mail-in">', $html);
-	pg_assert_contains('<article class="ws-mail-item ws-mail-out">', $html);
+	pg_assert_contains('<article class="ws-mail-item ws-mail-in text-break">', $html);
+	pg_assert_contains('<article class="ws-mail-item ws-mail-out text-break">', $html);
 	pg_assert_contains('Hello &lt;b&gt;<br>' . "\n" . 'there', $html, 'the text escaped, its lines kept');
 	pg_assert_contains('<a href="/files/bill.pdf" target="_blank" rel="noopener">bill.pdf</a>', $html, 'its files');
 	pg_assert_contains(h(lang(array('string' => 'Not taken in: {var:1}', 'vars' => 'virus.exe'))), $html, 'the files not taken in');

@@ -12,6 +12,11 @@ description: A settings drawer that edits a record (a department): fields and a 
 - jQuery's `serialize()` reads `form.elements`, which holds form-associated controls outside the form, so the snapshot, the dirty mark and the save body include them.
 - The click that remembers the card button also listens on `#pg_settings_modal_drawers [type="submit"][form="pg_settings_modal_form"]`; `markable()` and `unmark()` look in the drawers too, so a refused field is marked in the open drawer.
 
+## What does the page path do after a refused save?
+- `settings_<key>.php` posts natively and draws every drawer shut. `pgSettingsRestore()` (backend.src.js) puts the typed values back and marks the refused fields through `form.elements`, which holds a drawer's `form=` fields.
+- It opens the shut `dialog.drawer` holding the first marked field (`pgUI.drawer.show()`), then focuses it; the mark goes once the field is edited (listened for on the document).
+- Before #9006 it searched the form's descendants only, so a drawer's field kept its typed value but no mark, and the drawer stayed shut.
+
 ## What are the rules for such fields?
 - Names carry the record id (`ws_dept[3][name]`), so every drawer's fields stay apart in the one form; the category's `lists` entry allows the depth (`'ws_dept' => 3`).
 - No `required` (the pane's Save would be blocked by a drawer field); the server checks and marks it.

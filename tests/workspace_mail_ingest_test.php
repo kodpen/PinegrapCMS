@@ -5,7 +5,7 @@
  * Tests for the pure parts of the incoming mail ingest
  * (includes/workspace/mail.php): the de-duplication key, the loop gate, the
  * DMARC result believed only from the box's own server, the Message-IDs a
- * mail answers, the subject tag, HTML and plain text made even, Workspace
+ * mail answers and who a conversation lets in by them, the subject tag, HTML and plain text made even, Workspace
  * tags taken apart in the channel message, which attachments come in, and
  * where the raw mail is kept. ws_mail_ingest() itself writes to the
  * database and is not run here.
@@ -92,6 +92,35 @@ function test_workspace_mail_thread_ids_closest_first()
 
 	pg_assert_same(30, count(ws_mail_thread_ids(array('in_reply_to' => array(), 'references' => $refs))), 'at most 30');
 	pg_assert_same(array(), ws_mail_thread_ids(array()), 'none');
+}
+
+function test_workspace_mail_sender_took_part()
+{
+	$mails = array(
+		array('from_email' => 'report@dmarc.example', 'to_list' => 'support@shop.test', 'cc_list' => ''),
+		array('from_email' => 'ayse@example.com', 'to_list' => 'support@shop.test', 'cc_list' => 'Boss <Boss@Example.com>, ali@example.com'),
+		array('from_email' => 'support@shop.test', 'to_list' => 'ayse@example.com', 'cc_list' => '', 'bcc_list' => 'audit@example.com'),
+	);
+
+	pg_assert_true(ws_mail_sender_took_part('Ayse@Example.com', 'ayse@example.com', array()), 'the customer, any case, without the mails');
+	pg_assert_true(ws_mail_sender_took_part('boss@example.com', 'ayse@example.com', $mails), 'one the customer copied');
+	pg_assert_true(ws_mail_sender_took_part('ali@example.com', 'ayse@example.com', $mails), 'the second address of a list');
+	pg_assert_true(ws_mail_sender_took_part('audit@example.com', 'ayse@example.com', $mails), 'one an answer was sent to in Bcc');
+	pg_assert_true(ws_mail_sender_took_part('report@dmarc.example', 'ayse@example.com', $mails), 'one who wrote in it');
+	pg_assert_true(!ws_mail_sender_took_part('stranger@example.com', 'report@dmarc.example', $mails), 'a sender none of its mails names stays out');
+	pg_assert_true(!ws_mail_sender_took_part('example.com', 'report@dmarc.example', $mails), 'a part of an address is no address');
+	pg_assert_true(!ws_mail_sender_took_part('', '', $mails), 'no sender');
+}
+
+function test_workspace_mail_find_conversation_lets_in_who_took_part()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail.php');
+	$start = strpos($source, 'function ws_mail_find_conversation(');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_contains('ws_mail_sender_took_part($from_email, (string) $row[\'customer_email\'], (array) $mails)', $body, 'a mail named by its headers lets in only who took part');
+	pg_assert_contains("pg_schema_has('ws_mail_items', 'bcc_list')", $body, 'Bcc read only once the column is there');
+	pg_assert_true(strpos($body, 'ws_mail_subject_tag(') > strpos($body, 'ws_mail_sender_took_part('), 'then the subject tag, with the same customer');
 }
 
 function test_workspace_mail_subject_tag()

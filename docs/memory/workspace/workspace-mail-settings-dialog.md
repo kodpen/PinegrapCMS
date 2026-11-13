@@ -19,5 +19,9 @@ description: The Mailboxes card in Site Settings (Channels, mail and voice) and 
 ## How do the two screens share the save?
 - `ws_mail_box_save_check($viewer, $box, $post)` does every check and writes nothing; a refusal names its field (`ws_mail_box_input()` gives `field` too). `ws_mail_box_save_write()` stores and logs. `ws_mail_settings_post($viewer, $action, $liveform, $input, $file, $refuse)` runs both for the old screen, and Test connection and the .eml for both.
 - The save module checks the box before anything of the pane is written and marks `ws_mail[<id>][<field>]`; after the save a refusal is a warning.
+- On the category's page a refused box save comes back with its drawer open again, the field marked with its sentence and focused (`pgSettingsRestore()`, `ui/settings-drawer-card-form.md`, #9006); before, the page reloaded with the drawer shut and only the notice at the top.
+
+## Why is a port never drawn as 0?
+- A box without a sending server stores `smtp_port` 0 (`ws_mail_box_input()`). The Port fields carry `min="1"`, and the drawer's Save submits the whole page form, so a drawn 0, even hidden, made the browser refuse every later save of that box (#9023). `ws_mail_box_port_shown()` draws the stored port, else the chosen service's (993 IMAP, 587 SMTP without one); the server still ignores the port while the SMTP server is empty.
 
 Tests: `tests/settings_workspace_channels_test.php`.

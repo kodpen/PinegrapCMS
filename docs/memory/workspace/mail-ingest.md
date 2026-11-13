@@ -19,7 +19,7 @@ description: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loo
 - Only `pass` ties a new conversation to `contacts.email_address` (`contact_id`) or `user.user_email` (`user_id`).
 
 ## How is the conversation found?
-- `ws_mail_find_conversation()`: In-Reply-To, then References newest first (at most 30), hashed and looked up in the box's items, ours or the customer's; then a `[#T<id>]` subject tag, only when that conversation's `customer_email` is the sender. Never by subject. Outgoing answers are items too (`mail-reply.md`), so our own Message-IDs are found by hash.
+- `ws_mail_find_conversation()`, by the threading headers and who took part: `mail-threading.md`.
 
 ## What is written in the channel?
 - Channel: the conversation's, else routed (`mail-routing.md`); missing or archived: `refused` / `no_channel`.
