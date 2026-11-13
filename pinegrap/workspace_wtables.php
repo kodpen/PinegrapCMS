@@ -828,6 +828,7 @@ if (!$table) {
                 'people'   => empty($tables) ? array() : ws_people(array_column($tables, 'user_id')),
                 'channels' => $channels,
                 'confirms' => $confirms,
+                'canvases' => ws_canvas_uses($viewer, array_column($tables, 'id')),
             )),
         ));
 
@@ -1729,6 +1730,11 @@ if (!$table) {
             . h(lang(array('string' => '{var:1}\'s table · {var:2}', 'vars' => array($owner[(int) $table['user_id']]['name'] ?? '', $access_labels[$table['access']] ?? '')))) . '</p>';
     }
 
+    // The canvases whose live page uses the table, under its title.
+    $canvas_uses = ws_canvas_uses($viewer, array((int) $table['id']))[(int) $table['id']] ?? array();
+    $canvas_note = empty($canvas_uses) ? ''
+        : '<p class="small fg-secondary mb-5 d-flex flex-wrap align-items-center gap-2"><span>' . h(lang('Canvases that use it')) . '</span>' . ws_canvas_uses_html($canvas_uses, 10) . '</p>';
+
     // The board view: the rows as cards by a status column, drawn by the
     // channel Board tab's component (assets/js/workspace_board_channel.js).
     $status_columns = ws_wtable_board_status_columns($columns);
@@ -1833,7 +1839,7 @@ if (!$table) {
     } else {
 
         $body = $import_card . '
-        ' . $owner_note . (((string) $table['description'] !== '') ? '<p class="fg-secondary mb-5" style="white-space: pre-line;">' . h($table['description']) . '</p>' : '') . '
+        ' . $owner_note . $canvas_note . (((string) $table['description'] !== '') ? '<p class="fg-secondary mb-5" style="white-space: pre-line;">' . h($table['description']) . '</p>' : '') . '
         <div class="row g-5">
             <div class="col-12 xl:col-8">
                 <div class="card mb-5" id="ws-wt-rows">

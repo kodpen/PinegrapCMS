@@ -203,6 +203,7 @@ function ws_wtable_list_columns()
         'name'    => array('heading' => lang('Name'), 'kind' => 'link'),
         'rows'    => array('heading' => lang('Rows'), 'kind' => 'number'),
         'columns' => array('heading' => lang('Columns'), 'kind' => 'number'),
+        'canvases' => array('heading' => lang('Canvases')),
         'place'   => array('heading' => lang('Where')),
         'updated' => array('heading' => lang('Updated'), 'kind' => 'date'),
         'actions' => array('heading' => lang('Action'), 'kind' => 'actions'),
@@ -272,7 +273,8 @@ function ws_wtable_list_place_html($table, $owner, $channel = null)
  * @param array $facts url (the screen's address), columns (the table's
  *                     column count), owner (the owner's brief or null),
  *                     channel (the channel it belongs to, or null), confirm
- *                     (the question a delete asks, for the owner)
+ *                     (the question a delete asks, for the owner), canvases
+ *                     (ws_canvas_uses() of this table)
  * @return array key => pg_list_cell()
  */
 function ws_wtable_list_cells(array $table, array $facts)
@@ -296,6 +298,10 @@ function ws_wtable_list_cells(array $table, array $facts)
         'name'    => pg_list_cell(ws_wtable_list_name_html($table, $url), 'align-middle', array('data-pg-sort-value' => (string) $table['name'])),
         'rows'    => pg_list_cell((string) $rows, 'align-middle pg-tabular', array('data-pg-sort-value' => $rows)),
         'columns' => pg_list_cell((string) $columns, 'align-middle pg-tabular', array('data-pg-sort-value' => $columns)),
+        // The canvases whose live page uses the table (canvas_tables.php),
+        // sorted by how many.
+        'canvases' => pg_list_cell(ws_canvas_uses_html((array) ($facts['canvases'] ?? array())), 'align-middle',
+            array('data-pg-sort-value' => count((array) ($facts['canvases'] ?? array())))),
         'place'   => pg_list_cell(ws_wtable_list_place_html($table, $facts['owner'] ?? null, $facts['channel'] ?? null)),
         'updated' => pg_list_table_when_cell((int) $table['updated_at']),
         'actions' => pg_list_cell($actions),
@@ -309,7 +315,7 @@ function ws_wtable_list_cells(array $table, array $facts)
  * @param array $facts  url, counts (table id => column count), people
  *                      (user id => brief, the owners), channels (table id
  *                      => the channel a table belongs to), confirms (table
- *                      id => the delete question)
+ *                      id => the delete question), canvases (ws_canvas_uses())
  * @return array list of array('id', 'cells')
  */
 function ws_wtable_list_rows(array $tables, array $facts)
@@ -325,6 +331,7 @@ function ws_wtable_list_rows(array $tables, array $facts)
             'owner'   => $facts['people'][(int) $table['user_id']] ?? null,
             'channel' => $facts['channels'][$id] ?? null,
             'confirm' => (string) ($facts['confirms'][$id] ?? ''),
+            'canvases' => $facts['canvases'][$id] ?? array(),
         )));
     }
 
