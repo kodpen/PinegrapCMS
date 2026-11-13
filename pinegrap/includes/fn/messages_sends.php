@@ -636,7 +636,7 @@ function pg_messages_sends_row(array $record, $now)
 
     if ((string) $record['row_kind'] === 'campaign') {
         $recipient = h(lang(array('string' => '{var:1} Contact{suffix:1}', 'vars' => pg_format_number($total, 0), 'suffix' => ($total == 1) ? '' : 's')));
-        $result = h(lang(array('string' => '{var:1} of {var:2}', 'vars' => array(pg_format_number((int) $record['done'], 0), pg_format_number($total, 0)))));
+        $result = pg_messages_progress_html((int) $record['done'], $total, pg_format_number((int) $record['done'], 0) . ' / ' . pg_format_number($total, 0));
     } else {
         $recipient = (($branch === 'sms') ? '+' : '') . h((string) $record['recipient']);
         $result = '';

@@ -194,6 +194,34 @@ function pg_messages_note($text, $button = '', $url = '', $tone = 'amber', $role
 }
 
 /**
+ * A campaign's progress as the drawing has it: a slim bar of the done share
+ * with its figure beside it, a note under them. The bar is a progressbar for
+ * screen readers. Nothing done of nothing draws an empty bar.
+ *
+ * @param int    $done
+ * @param int    $total
+ * @param string $figure    the figure beside the bar (plain text)
+ * @param string $note_html the line under it, markup ('' for none)
+ * @return string
+ */
+function pg_messages_progress_html($done, $total, $figure, $note_html = '')
+{
+    $done = max(0, (int) $done);
+    $total = max(0, (int) $total);
+    $share = ($total > 0) ? min(100, round($done / $total * 100, 1)) : 0;
+    $full = ($total > 0) && ($done >= $total);
+
+    return '<div class="pg-messages-progress">'
+        . '<div class="pg-messages-progress-line">'
+        . '<span class="pg-messages-progress-track' . ($full ? ' is-full' : '') . '" role="progressbar" aria-valuemin="0" aria-valuemax="' . $total . '" aria-valuenow="' . min($done, $total) . '" aria-label="' . h((string) $figure) . '">'
+        . '<span class="pg-messages-progress-fill" style="width: ' . $share . '%"></span></span>'
+        . '<span class="pg-messages-progress-figure">' . h((string) $figure) . '</span>'
+        . '</div>'
+        . (((string) $note_html !== '') ? '<div class="pg-messages-progress-note">' . $note_html . '</div>' : '')
+        . '</div>';
+}
+
+/**
  * The strip for the signed-in user on a panel screen.
  *
  * @param string $active

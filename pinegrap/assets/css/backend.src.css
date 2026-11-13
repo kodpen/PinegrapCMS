@@ -27786,6 +27786,45 @@ body.pg-measure-report #content {
   align-items: center;
   gap: 8px;
 }
+/* A campaign's progress: a slim bar of the done share, its figure beside
+   it, a note under them (the drawing's Sends rows). */
+.pg-messages-progress {
+  min-width: 11rem;
+}
+.pg-messages-progress-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pg-messages-progress-track {
+  flex: 0 1 120px;
+  min-width: 48px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.pg-messages-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--pg-accent-1), var(--pg-accent-2));
+}
+.pg-messages-progress-track.is-full .pg-messages-progress-fill {
+  background: var(--pg-tone-teal);
+}
+.pg-messages-progress-figure {
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-medium);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pg-messages-progress-note {
+  margin-top: 3px;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
 /* A list's filters: segmented controls side by side, wrapping as a row. */
 .pg-messages-filters {
   display: flex;

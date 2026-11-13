@@ -177,3 +177,16 @@ function test_messages_area_channel_cards_are_links_in_a_padded_card()
 	pg_assert_contains('<a class="pg-card-inner pg-messages-channel" href="smtp_settings.php">', $html, 'the whole card is the link');
 	pg_assert_contains('<div class="pg-messages-channels">', $html, 'the even grid');
 }
+
+function test_messages_area_progress_bar()
+{
+	$html = pg_messages_progress_html(1, 2, '1 / 2 · 50%', '1 <b>delivered</b>');
+	pg_assert_contains('role="progressbar" aria-valuemin="0" aria-valuemax="2" aria-valuenow="1"', $html, 'a progressbar for screen readers');
+	pg_assert_contains('style="width: 50%"', $html, 'the done share fills half');
+	pg_assert_contains('<span class="pg-messages-progress-figure">1 / 2 · 50%</span>', $html, 'the figure beside the bar');
+	pg_assert_contains('<div class="pg-messages-progress-note">1 <b>delivered</b></div>', $html, 'the note under it, as markup');
+	pg_assert_contains('is-full', pg_messages_progress_html(3, 3, '3 / 3'), 'a finished campaign is full');
+	pg_assert_contains('style="width: 0%"', pg_messages_progress_html(0, 0, '0 / 0'), 'nothing of nothing is an empty bar');
+	pg_assert_contains('style="width: 100%"', pg_messages_progress_html(5, 3, '5 / 3'), 'never past the end');
+	pg_assert_false(strpos(pg_messages_progress_html(1, 2, 'x'), 'progress-note') !== false, 'no note without one');
+}

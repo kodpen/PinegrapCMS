@@ -20,6 +20,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
+
 /**
  * The statuses each state shows, per channel. Active: still to send or
  * sending; finished: done or cancelled.
@@ -267,9 +269,12 @@ function pg_messages_campaign_email_rows(array $statuses, array $user)
         $subject = ((string) $campaign['subject'] !== '') ? h($campaign['subject']) : '[' . h(lang('No name')) . ']';
         $start = pg_messages_campaign_start_time($campaign['start_time']);
         $percentage = ($total > 0) ? $done / $total * 100 : 100;
-        $result = lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($percentage, 0))))
-            . ' (' . lang(array('string' => '{var:1} of {var:2}', 'vars' => array(pg_format_number($done, 0), pg_format_number($total, 0)))) . ')'
-            . '<div class="small fg-secondary">' . pg_mail_bounce_campaign_cell($delivery[$id] ?? array()) . '</div>';
+        $result = pg_messages_progress_html(
+            $done,
+            $total,
+            pg_format_number($done, 0) . ' / ' . pg_format_number($total, 0) . ' · ' . lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($percentage, 0)))),
+            pg_mail_bounce_campaign_cell($delivery[$id] ?? array())
+        );
 
         $rows[] = array(
             'id' => pg_messages_campaign_row_id('email', $id),
@@ -334,18 +339,23 @@ function pg_messages_campaign_sms_rows(array $statuses, array $user)
 
         // What the queue still knows, then the counts kept on the campaign.
         if ($campaign['status'] === 'queued') {
-            $result = lang(array('string' => '{var:1} queued, {var:2} refused', 'vars' => array(pg_format_number($campaign['queued_count'], 0), pg_format_number($campaign['refused_count'], 0))));
+            $refused = lang(array('string' => '{var:1} queued, {var:2} refused', 'vars' => array(pg_format_number($campaign['queued_count'], 0), pg_format_number($campaign['refused_count'], 0))));
             $outbox = pg_sms_campaign_outbox_counts($id);
 
             if ($outbox) {
-                $result .= '<div class="small fg-secondary">' . lang(array(
+                // The bar is the share of the queued texts the provider took.
+                $sent = (int) ($outbox['sent'] ?? 0);
+                $queued = (int) $campaign['queued_count'];
+                $result = pg_messages_progress_html($sent, $queued, pg_format_number($sent, 0) . ' / ' . pg_format_number($queued, 0), h($refused) . ' · ' . h(lang(array(
                     'string' => 'In the SMS queue: {var:1} sent, {var:2} waiting, {var:3} failed',
                     'vars'   => array(
-                        pg_format_number($outbox['sent'] ?? 0, 0),
+                        pg_format_number($sent, 0),
                         pg_format_number(($outbox['queued'] ?? 0) + ($outbox['sending'] ?? 0), 0),
                         pg_format_number(($outbox['failed'] ?? 0) + ($outbox['uncertain'] ?? 0), 0),
                     ),
-                )) . '</div>';
+                ))));
+            } else {
+                $result = h($refused);
             }
         }
 
