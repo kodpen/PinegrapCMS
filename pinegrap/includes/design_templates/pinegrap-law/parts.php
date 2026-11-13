@@ -270,8 +270,8 @@ $account_bar_tree = function () use ($el, $widget, $shared, $lang_switcher) {
     return $el('div', 'border-bottom small bg-body-tertiary', lang('Account Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center justify-content-between gap-2 py-1', lang('Account Area'), array(
             $el('div', '', lang('Announcement Area'), array($shared('notice'))),
-            $el('div', 'd-flex align-items-center gap-2 ms-auto', lang('Account Links'), array(
-                $lang_switcher(), $widget('login_region'),
+            $el('div', 'd-flex flex-wrap align-items-center justify-content-end column-gap-1 column-gap-sm-2 row-gap-1 ms-auto', lang('Account Links'), array(
+                $lang_switcher('text-nowrap'), $widget('login_region'),
             )),
         )),
     ));

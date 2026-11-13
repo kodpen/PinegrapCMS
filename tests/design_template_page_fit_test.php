@@ -6,7 +6,7 @@
  * browser: a long site name ends with an ellipsis in the header; the
  * headers whose links ran past the container open out from 1200 px; small
  * coloured text on a tertiary band is mixed darker or lighter with the
- * theme; an image's width and height are props (the renderer drops them
+ * theme; the account bar's row wraps; an image's width and height are props (the renderer drops them
  * from _attrs); a paragraph holds no block; every sideways scroll box is
  * positioned; the notice line wraps as text; the ferry wake keeps clear of
  * the text around it.
@@ -211,6 +211,38 @@ function test_design_template_fit_notice_wraps_as_text()
 				pg_assert_false(strpos(_test_tpl_fit_class($n), ' flex-wrap ') !== false, $id . ': the notice line wraps as text');
 			}
 		});
+	}
+}
+
+// With a second site language the account bar's row (switcher, login
+// region, cart) ran past the page at 320 to 414 px (hotel by 126 px): it
+// wraps to the right, and no button breaks inside.
+function test_design_template_fit_account_bar_wraps()
+{
+	foreach (_test_tpl_fit_ids() as $id => $p) {
+		$tpl = _test_tpl_fit_tpl($id);
+		$rows = array();
+		_test_tpl_fit_walk($tpl['shared']['account_bar']['tree'], function ($n) use (&$rows) {
+			if (isset($n['props']['_label']) && $n['props']['_label'] === lang('Account Links')) $rows[] = $n;
+		});
+		pg_assert_same(1, count($rows), $id . ': one row of account links');
+		pg_assert_contains(' flex-wrap ', _test_tpl_fit_class($rows[0]), $id . ': the row wraps');
+		pg_assert_contains(' justify-content-end column-gap-1 column-gap-sm-2 row-gap-1 ', _test_tpl_fit_class($rows[0]), $id . ': to the right, closer on a phone');
+		pg_assert_contains('"componentType":"language_switcher"', json_encode($rows[0]), $id . ': the switcher sits in the row');
+		$switcher = null;
+		_test_tpl_fit_walk($rows[0], function ($n) use (&$switcher) {
+			if (isset($n['props']['componentType']) && $n['props']['componentType'] === 'language_switcher') $switcher = $n;
+		});
+		pg_assert_same('text-nowrap', $switcher['props']['cssClass'], $id . ': the switcher keeps one line');
+		pg_assert_true(isset($tpl['widgets']['login_region']), $id . ': the login region');
+		$region = $tpl['widgets']['login_region'];
+		$nowrap = array();
+		_test_tpl_fit_walk($region['tree'], function ($n) use (&$nowrap) {
+			$label = isset($n['props']['_label']) ? $n['props']['_label'] : (isset($n['props']['text']) ? $n['props']['text'] : '');
+			if ($label === lang('Signed Out')) pg_assert_contains(' gap-1 gap-sm-2 ', _test_tpl_fit_class($n), 'Signed Out is closer on a phone');
+			if (in_array($label, array(lang('Log In'), lang('Sign Up'), lang('Account Button')), true)) $nowrap[$label] = strpos(_test_tpl_fit_class($n), ' text-nowrap ') !== false;
+		});
+		pg_assert_same(array(lang('Log In') => true, lang('Sign Up') => true, lang('Account Button') => true), $nowrap, $id . ': no button breaks inside');
 	}
 }
 
