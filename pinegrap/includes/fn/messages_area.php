@@ -141,6 +141,59 @@ function pg_messages_tab_strip($active, $keys, $prefix = '')
 }
 
 /**
+ * A filter of an area list as a segmented control of links (look A): each
+ * choice an address keeping the other filters, the chosen one raised. A
+ * choice equal to $default leaves its parameter out of the address.
+ *
+ * @param string $name    the query parameter
+ * @param array  $options value => label (plain text)
+ * @param string $current the chosen value
+ * @param string $default the value the screen takes without the parameter
+ * @param string $file    the screen's address
+ * @param array  $keep    the other filters, name => value ('' left out)
+ * @param string $label   the group's accessible name
+ * @return string
+ */
+function pg_messages_seg_filter($name, $options, $current, $default, $file, $keep, $label)
+{
+    $items = '';
+
+    foreach ($options as $value => $text) {
+        $value = (string) $value;
+        $params = $keep;
+        $params[$name] = ($value === (string) $default) ? '' : $value;
+        $query = http_build_query(array_filter($params, 'strlen'));
+        $chosen = ($value === (string) $current);
+
+        $items .= '<a class="pg-seg-item' . ($chosen ? ' is-active" aria-current="true"' : '"')
+            . ' href="' . h($file . (($query !== '') ? '?' . $query : '')) . '">' . h((string) $text) . '</a>';
+    }
+
+    return '<div class="pg-seg" role="group" aria-label="' . h($label) . '">' . $items . '</div>';
+}
+
+/**
+ * A notice of an area screen as the drawing has it: an inner card row with
+ * a tone tile, the sentence, and the way to fix it as a quiet button at the
+ * right. Under the tab strip, never above it.
+ *
+ * @param string $text   the sentence (plain text)
+ * @param string $button the button's label ('' for none)
+ * @param string $url    its address
+ * @param string $tone   a .pg-tone-* name
+ * @param string $role   'status' or 'alert'
+ * @return string
+ */
+function pg_messages_note($text, $button = '', $url = '', $tone = 'amber', $role = 'status')
+{
+    return '<div class="pg-card-inner pg-messages-note" role="' . h($role) . '"><div class="pg-card-inner-row">'
+        . '<span class="pg-icon-tile pg-tone-' . h($tone) . '" aria-hidden="true"><span class="bi bi-exclamation-triangle"></span></span>'
+        . '<div class="pg-text-2 flex-grow-1 min-w-0">' . h($text) . '</div>'
+        . ((($button !== '') && ($url !== '')) ? '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url) . '">' . h($button) . '</a>' : '')
+        . '</div></div>';
+}
+
+/**
  * The strip for the signed-in user on a panel screen.
  *
  * @param string $active
@@ -368,8 +421,9 @@ function pg_messages_channel_card($key, $title, $icon, $tone, $ready, $started, 
 }
 
 /**
- * The cards as markup: two to a row from md up, each a link to its
- * settings with its state as a pill.
+ * The cards as markup: a padded section card holding a grid of inner cards,
+ * two to a row from md up and all as high as the highest, each card a link
+ * to its settings with its state as a pill.
  *
  * @param array $cards pg_messages_channel_cards()
  * @return string
@@ -382,17 +436,18 @@ function pg_messages_channel_cards_html($cards)
     foreach ($cards as $card) {
         $tone = isset($pill_tones[$card['state']]) ? $pill_tones[$card['state']] : 'gray';
 
-        $html .= '<div class="col-12 md:col-6"><div class="pg-card-inner h-100"><div class="pg-card-inner-row">'
+        $html .= '<a class="pg-card-inner pg-messages-channel" href="' . h($card['url']) . '"><div class="pg-card-inner-row">'
             . '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-' . h($card['tone']) . '" aria-hidden="true"><span class="bi ' . h($card['icon']) . '"></span></span>'
             . '<div class="flex-grow-1 min-w-0">'
-            . '<a class="pg-list-row-title" href="' . h($card['url']) . '">' . h($card['title']) . '</a>'
+            . '<div class="pg-list-row-title">' . h($card['title']) . '</div>'
             . '<div class="pg-text-meta text-break">' . h($card['line']) . '</div>'
             . '</div>'
             . '<span class="pg-pill pg-tone-' . $tone . '">' . h($card['state_label']) . '</span>'
-            . '</div></div></div>';
+            . '</div></a>';
     }
 
-    return '<section class="pg-card mb-12"><h2 class="pg-title-section">' . h(lang('Channels')) . '</h2><div class="row g-7">' . $html . '</div></section>';
+    return '<section class="pg-card pg-messages-card"><div class="pg-messages-card-head"><div class="pg-messages-card-heading"><h2 class="pg-title-section">' . h(lang('Channels')) . '</h2></div></div>'
+        . '<div class="pg-messages-channels">' . $html . '</div></section>';
 }
 
 /**

@@ -150,3 +150,30 @@ function test_messages_area_channel_cards_html()
 	pg_assert_contains('<span class="pg-pill pg-tone-gray">Off</span>', $html, 'an off channel is gray');
 	pg_assert_contains('href="smtp_settings.php"', $html, 'the e-mail card leads to SMTP Settings');
 }
+
+function test_messages_area_seg_filter_keeps_the_other_filters()
+{
+	$html = pg_messages_seg_filter('state', array('active' => 'Active', 'finished' => 'Finished'), 'finished', 'active', 'list.php', array('channel' => 'sms'), 'Status');
+	pg_assert_contains('<div class="pg-seg" role="group" aria-label="Status">', $html, 'a labelled segmented control');
+	pg_assert_contains('class="pg-seg-item" href="list.php?channel=sms">Active</a>', $html, 'the default choice leaves its parameter out');
+	pg_assert_contains('class="pg-seg-item is-active" aria-current="true" href="list.php?channel=sms&amp;state=finished">Finished</a>', $html, 'the chosen one is raised and keeps the channel');
+	$plain = pg_messages_seg_filter('channel', array('all' => 'All'), 'all', 'all', 'list.php', array('state' => ''), 'Channel');
+	pg_assert_contains('href="list.php"', $plain, 'no query when every filter is its default');
+}
+
+function test_messages_area_note()
+{
+	$html = pg_messages_note('Not <set> up', 'Set up', '/s?a=1&b=2');
+	pg_assert_contains('Not &lt;set&gt; up', $html, 'the sentence is escaped');
+	pg_assert_contains('href="/s?a=1&amp;b=2">Set up</a>', $html, 'the button leads to its address');
+	pg_assert_contains('pg-tone-amber', $html, 'amber by default');
+	pg_assert_false(strpos(pg_messages_note('Text'), '<a ') !== false, 'no button without a label');
+}
+
+function test_messages_area_channel_cards_are_links_in_a_padded_card()
+{
+	$html = pg_messages_channel_cards_html(pg_messages_channel_cards(array(), messages_area_channel_urls()));
+	pg_assert_contains('<section class="pg-card pg-messages-card">', $html, 'the heading sits inside a padded card');
+	pg_assert_contains('<a class="pg-card-inner pg-messages-channel" href="smtp_settings.php">', $html, 'the whole card is the link');
+	pg_assert_contains('<div class="pg-messages-channels">', $html, 'the even grid');
+}
