@@ -13,10 +13,7 @@ description: Steps MA0-MA11 of the messages area plan (#8961): census, shell and
 - MA6 (M) Templates: e-mail designs, SMS texts and, once `whatsapp-channel-steps.md` reaches WA3, WhatsApp templates in one tab.
 - MA7 (S) Channels: e-mail sender, SMS, WhatsApp and İYS as cards with their state, each leading to its settings.
 - MA8 (M) Automatic sends: the flows that send a message, their recipes, the way into the quick setup; shown once AF2 of `automation-flows-menu.md` has landed.
-- MA9 Profiles into flows (M2b), in four parts: MA9a (S, no product code) every field of a campaign profile against the boxes (trigger, delay and send time, followed profile, purpose and consent, the e-mail), what no box covers, the rule for the moment each profile switches so nothing is lost or sent twice, a dry-run report.
-- MA9 goes on: MA9b (M) the converter as pure functions with tests; MA9c (M) the update step that converts, with its report in the panel; MA9d (S) the profile screens and import leave, their addresses lead to the flows.
-- MA10 Incoming e-mail, in two parts: MA10a (S, no product code) what the E-mails list, the conversation, New e-mail and the card take from the Workspace shell and its gate (`workspace/mail-list.md`, `workspace/mail-card.md`), whether mail is read and answered where the Workspace is off, what the card keeps besides its link; proposals to the architect.
-- MA10 goes on: MA10b (M) "Incoming e-mail" as the area's first tab with the list and the conversation, the boxes' settings in the settings, the list out of the Workspace's menu, the card's click opening the e-mail in the area, an answer from the area marking the card answered, an HTML body for a written e-mail (`workspace/mail-compose.md`, `workspace/mail-html.md`).
+- MA9 Profiles into flows (M2b), four parts, and MA10 Incoming e-mail, two parts: `messages-area-steps-2.md`.
 - MA11 (S) Close-out: the lasting rules into `platform/` and `ui/`, an overview file, this plan deleted.
 
 ## In which order?
