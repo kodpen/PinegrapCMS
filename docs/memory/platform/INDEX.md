@@ -115,6 +115,11 @@
 - main-host-redirect.md: Redirect to the main host (config.main_host_redirect, 11.0.52, #2179): which requests get a 301 to config.hostname, which never do, why it starts off everywhere
 - maintenance-mode-end-time.md: How Settings › General reads the maintenance end time (the zone of the same save) and when a passed end time refuses the save (only switching on or a new end)
 - maintenance-mode-health.md: Maintenance mode (503 + Retry-After on page renders only, who passes, end time) and health.php for uptime monitors (statuses, no session); settings, status tile, API field
+- messages-area-census-addresses.md: MA0 census (2026-11-13): addresses never moved (web version, preferences, cron jobs, API), old panel addresses and the tab each leads to, and every link in the code to them
+- messages-area-census-screens.md: MA0 census (2026-11-13): today's campaign, campaign profile, SMS campaign and mail queue screens, their files, menu place and the right each asks, before the messages area replaces My Campaigns
+- messages-area-census-sends.md: MA0 proposal (2026-11-13, open on #9081): the one Sends list reads the queues and campaigns with no new table (a UNION source on the list table driver): ids, period, states, rights
+- messages-area-census-sources.md: MA0 census (2026-11-13): what the e-mail queue, SMS queue, WhatsApp queue, e-mail campaigns and SMS campaigns store per message, how long, and which sends leave no row in any of them
+- messages-area-census-tabs.md: MA0 proposals (2026-11-13, open on #9081) for the messages area's shell: the menu row's name and slot, what each of the five tabs takes from today's screens and settings cards, and who sees each tab
 - not-found-log-screen.md: The 404 log screen (view_not_found_log.php): rows and their state, the search in the stored form with the Turkish rule, wrapping cells, Create redirect
 - not-found-log.md: The 404 log (2026.11.0, 11.0.30, not_found_log): which 404s are recorded and which not, bots and verified crawlers, the end-of-request write, row cap and 90 days, the screen and its Create redirect
 - notification-channels-delivery.md: Slack, Teams and Telegram delivery: targets in the sealed notify_channels entry, api_webhook_queue rows with webhook_id 0, the retry ladder, secrets masked
