@@ -568,6 +568,7 @@
     "{var:1} (not sent yet)": "{var:1} (henüz gönderilmedi)",
     "{var:1} (not set up)": "{var:1} (kurulu değil)",
     "{var:1} (overdue)": "{var:1} (gecikti)",
+    "{var:1} (own layout)": "{var:1} (kendi yerleşimi)",
     "{var:1} (shared part)": "{var:1} (paylaşılan parça)",
     "{var:1} (this table)": "{var:1} (bu tablo)",
     "{var:1} (was {var:2})": "{var:1} (önceki: {var:2})",
