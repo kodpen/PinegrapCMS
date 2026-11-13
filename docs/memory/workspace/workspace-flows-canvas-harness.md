@@ -16,7 +16,7 @@ description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #316
 
 ## What do the scenarios cover?
 - 38 scenarios (`flows_canvas_scenarios.js`; the last three: `workspace-flow-layer.md`): boxes at their places and sizes, arrows port to port, zoom, fit, pinch, pan (drag, wheel, Space, middle button), select, Tab order, arrow keys, drag on the grid, Esc.
-- Then connect by port, C and the side panel, outcomes, Delete, undo, data threads (drag to bind, toggle kept), outline, phone, autosave after 1.5 s, 409, keepalive on hide and leave, the 60 000-byte limit, Ctrl+S, blur, Retry, back to the list for another flow, the row's start words and home kept (#9127); palette, Change, rail, right panel, problems, Publish, Pause, read-only, ⋯ Share and Delete, no flow, New flow, Run and its token, runs list, polling.
+- Then connect by port, C and the side panel, outcomes, Delete, undo, threads, outline, phone, autosave, 409, keepalive, the 60 000-byte limit, Ctrl+S, Retry, back to the list (#9127); palette, Change, rail, right panel, the empty panel, the phone sheet and Add a box page, Publish, Pause, read-only, ⋯, no flow, New flow, Run, runs list, polling.
 
 ## What does it give?
 - 2026-11-13: 38 of 38 (#9196, Chromium 153); zoom checks allow 1e-5, the computed matrix keeps six digits. 2026-11-01: 30 of 30 also on Chrome 156, Windows 11.
