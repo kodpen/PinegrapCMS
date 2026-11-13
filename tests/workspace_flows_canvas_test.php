@@ -308,32 +308,46 @@ JS
 	pg_assert_same(array(1), $result['opened'], 'the row\'s button opens the flow');
 }
 
-// The palette is the editor's left column, laid out in the order a flow is
-// built: 1 what starts it, 2 the steps after it (message, people and tasks,
-// logic, system), 3 what ends it, then the value boxes, which no arrow joins.
-// Each section has a hint; the first says which box starts this flow once it
-// has one, and every other start box is then refused. A search keeps the
-// boxes whose name holds every word. Nothing floats over the canvas.
+// The palette is the editor's left column, "Add a box", laid out in the
+// order a flow is built: 1 what starts it, 2 the steps after it (message,
+// people and tasks, logic, records and tables, system), 3 what ends it, then
+// the value boxes, which no arrow joins. Each section's hint is its heading's
+// tooltip. With a start box the first section is that box as one row; the
+// other start kinds show only under its Change or when searched for. The
+// steps' groups fold (logic, records, system and values folded at first),
+// and a search unfolds them. A search keeps the boxes whose name holds every
+// word. Nothing floats over the canvas.
 function test_workspace_flows_canvas_palette_groups()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 	preg_match('/^    var PALETTE_GROUPS = \[.*?\];$/ms', $source, $groups);
 	preg_match('/^    var PALETTE_STAGES = \[.*?\];$/ms', $source, $stages);
 	preg_match('/^    var PALETTE = \[.*?\];$/ms', $source, $palette);
+	preg_match('/^    var PALETTE_RECORDS = \[.*?\];$/m', $source, $records);
+	preg_match('/^    var PALETTE_FOLDED = \{.*?\};$/m', $source, $folded);
 	preg_match('/^    var KINDS = \{.*?\n    \};$/ms', $source, $kinds);
-	pg_assert_true(!empty($groups) && !empty($stages) && !empty($palette) && !empty($kinds), 'the groups, the sections, the palette and the kinds are declared');
+	pg_assert_true(!empty($groups) && !empty($stages) && !empty($palette) && !empty($kinds) && !empty($records) && !empty($folded), 'the groups, the sections, the palette and the kinds are declared');
 	pg_assert_false(strpos($source, "ui.stage.appendChild(ui.palette)") !== false, 'the palette does not float over the canvas');
 	pg_assert_false(strpos($source, 'listToggle') !== false, 'the flow list is no longer a column of the editor');
 
 	$result = ws_flows_canvas_test_node(
-		array('paletteGroups', 'paletteGroupOf', 'paletteStages', 'stageHint', 'stageStart', 'startTaken', 'startNode', 'kindOf'),
-		($groups[0] ?? '') . "\n" . ($stages[0] ?? '') . "\n" . ($palette[0] ?? '') . "\n" . ($kinds[0] ?? '') . "\n" . <<<'JS'
+		array('paletteGroups', 'paletteGroupOf', 'paletteStages', 'stageHint', 'stageStart', 'startTaken', 'startNode', 'kindOf', 'paletteGroupOpen', 'startRows', 'startFilled'),
+		($groups[0] ?? '') . "\n" . ($stages[0] ?? '') . "\n" . ($palette[0] ?? '') . "\n" . ($kinds[0] ?? '') . "\n" . ($records[0] ?? '') . "\n" . ($folded[0] ?? '') . "\n" . <<<'JS'
 var names = { fl_add_manual: 'Started by hand', fl_kind_schedule: 'At a time', fl_add_task: 'Task', fl_kind_condition: 'Condition', fl_add_email: 'E-mail', fl_kind_webhook: 'Webhook', fl_kind_value: 'Value', fl_kind_constants: 'Constants', fl_add_end: 'End' };
 t = function (key, value) { return (names[key] || key) + ((value === undefined) ? '' : ' ' + value); };
 function shape(groups) { return groups.map(function (group) { return group.group + ':' + group.items.map(function (item) { return item[0]; }).join(','); }); }
 function stagesOf(stages) { return stages.map(function (stage) { return stage.stage + ':' + stage.groups.map(function (group) { return group.group; }).join(','); }); }
-state = { graph: { nodes: [] } };
+state = { graph: { nodes: [] }, paletteFolded: null, paletteChange: false };
+function kinds(items) { return items.map(function (item) { return item[0]; }).join(','); }
+var starts = PALETTE.filter(function (item) { return paletteGroupOf(item[0]) === 'start'; });
 var out = {};
+out.records = shape(paletteGroups(PALETTE, '')).filter(function (line) { return /^(records|system):/.test(line); });
+out.open = ['start', 'message', 'people', 'logic', 'records', 'system', 'end', 'values'].map(function (group) { return paletteGroupOpen(group, ''); });
+out.openSearched = paletteGroupOpen('system', 'web');
+state.paletteFolded = { message: true, logic: false, records: true, system: true, values: true };
+out.openChosen = [paletteGroupOpen('message', ''), paletteGroupOpen('logic', ''), paletteGroupOpen('records', '')];
+state.paletteFolded = null;
+out.rowsNoStart = kinds(startRows(starts, '').rows) === kinds(starts);
 out.order = shape(paletteGroups(PALETTE, '')).map(function (line) { return line.split(':')[0]; });
 out.firstItems = shape(paletteGroups(PALETTE, '')).slice(0, 2);
 out.endItems = shape(paletteGroups(PALETTE, '')).slice(-2);
@@ -351,6 +365,22 @@ out.stepsHint = stageHint('steps');
 out.free = [startTaken('schedule'), startTaken('task')];
 state.graph.nodes = [{ id: 'task_1', kind: 'task' }, { id: 'schedule_1', kind: 'schedule' }];
 out.started = [stageStart(), stageHint('first')];
+var rows = startRows(starts, '');
+out.rowsStarted = [rows.current, rows.rows.length];
+state.paletteChange = true;
+rows = startRows(starts, '');
+out.rowsChange = [rows.current, rows.rows.length === starts.length - 1, rows.rows.some(function (item) { return item[0] === 'schedule'; })];
+state.paletteChange = false;
+out.rowsSearched = startRows(starts, 'by').rows.length === starts.length - 1;
+out.filled = [
+    startFilled({}, { subject: '' }),
+    startFilled({ subject: '' }, { subject: '' }),
+    startFilled({ channel_id: 0, fields: [], rule: {} }, { channel_id: 0 }),
+    startFilled({ time: '09:00', repeat: 'none' }, { time: '09:00', repeat: 'none' }),
+    startFilled({ subject: 'New lead' }, { subject: '' }),
+    startFilled({ channel_id: 4 }, { channel_id: 0 }),
+    startFilled({ days: [1] }, { days: [] })
+];
 out.taken = [startTaken('manual'), startTaken('event'), startTaken('task'), startTaken('end')];
 console.log(JSON.stringify(out));
 JS
@@ -366,20 +396,29 @@ JS
 		return;
 	}
 
-	pg_assert_same(array('start', 'message', 'people', 'logic', 'system', 'end', 'values'), $result['order'], 'groups in the order a flow is built');
+	pg_assert_same(array('start', 'message', 'people', 'logic', 'records', 'system', 'end', 'values'), $result['order'], 'groups in the order a flow is built');
+	pg_assert_same(array('records:change,row_add,row_set,row_get,rows_get,record_get', 'system:webhook,web_check,start_flow,mcp,ai,agent'), $result['records'], 'the boxes on records and table rows have a group of their own, out of System');
+	pg_assert_same(array(true, true, true, false, false, false, true, false), $result['open'], 'at first Message and People are open, Logic, Records and tables, System and Values folded');
+	pg_assert_same(true, $result['openSearched'], 'a search unfolds the groups');
+	pg_assert_same(array(false, true, false), $result['openChosen'], 'a group stays as the person folded it');
+	pg_assert_same(true, $result['rowsNoStart'], 'no start box yet: every start kind is a row');
+	pg_assert_same(array('schedule', 0), $result['rowsStarted'], 'with a start: one row naming it, no other start kind');
+	pg_assert_same(array('schedule', true, false), $result['rowsChange'], 'Change lists the other start kinds');
+	pg_assert_same(true, $result['rowsSearched'], 'a search lists them too');
+	pg_assert_same(array(false, false, false, false, true, true, true), $result['filled'], 'Change asks first only for a start whose settings were filled in');
 	pg_assert_same(array('start:manual,schedule,event,join,row,no_order,web,mention', 'message:post,email,notify,report'), $result['firstItems'], 'each group keeps the palette\'s order');
 	pg_assert_same(array('end:end', 'values:constants,value'), $result['endItems'], 'the End box has its own group, the value boxes come last');
 	pg_assert_same(array('start:schedule'), $result['search'], 'a search keeps the boxes whose name holds it, any case');
 	pg_assert_same(array('start:manual'), $result['words'], 'every word searched for');
 	pg_assert_same(0, $result['none'], 'nothing found: no group');
 	pg_assert_same(array(array('end:end'), array('end:end'), array('people:task'), array('people:task')), $result['turkish'], 'Turkish I, İ, ı and i fold alike in the box search');
-	pg_assert_same(array('first:start', 'steps:message,people,logic,system', 'last:end', 'aside:values'), $result['stages'], 'first, steps, last, then the boxes outside the order');
+	pg_assert_same(array('first:start', 'steps:message,people,logic,records,system', 'last:end', 'aside:values'), $result['stages'], 'first, steps, last, then the boxes outside the order');
 	pg_assert_same(array('first:start'), $result['stagesFound'], 'a section with nothing found is left out');
 	pg_assert_same('fl_stage_first_hint', $result['hint'], 'no start box yet: which boxes start a flow');
 	pg_assert_same('', $result['noStart'], 'and no line naming a start');
 	pg_assert_same('fl_stage_steps_hint', $result['stepsHint'], 'each section its hint');
 	pg_assert_same(array(false, false), $result['free'], 'no start box yet: every start box may be added');
-	pg_assert_same(array('fl_palette_this_flow At a time', 'fl_stage_first_taken'), $result['started'], 'with a start: This flow: <kind>, and how to start it another way');
+	pg_assert_same(array('fl_palette_this_flow At a time', 'fl_stage_first_hint'), $result['started'], 'with a start: This flow: <kind>, the hint unchanged');
 	pg_assert_same(array(true, true, false, false), $result['taken'], 'with a start: every other start box is refused, the steps are not');
 }
 

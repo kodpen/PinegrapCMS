@@ -166,7 +166,8 @@ module.exports = [
             const zoomed = await h.probe('view');
             const after = await h.probe('canvasPoint', middle.x, middle.y);
 
-            h.near('Zoom in: 1.2 times', zoomed.k, Math.min(2, fitted.k * 1.2), 1e-6);
+            // The scale is read from the computed matrix, which keeps about six digits.
+            h.near('Zoom in: 1.2 times', zoomed.k, Math.min(2, fitted.k * 1.2), 1e-5);
             h.ok('the middle stays where it was', (Math.abs(after.x - before.x) < 0.5) && (Math.abs(after.y - before.y) < 0.5), { before: before, after: after });
             h.same('the label says so', (await h.state()).zoom, Math.round(zoomed.k * 100) + '%');
 
@@ -220,7 +221,7 @@ module.exports = [
             const k1 = (await h.probe('view')).k;
             const kept = await h.probe('canvasPoint', spot.x, spot.y);
 
-            h.near('Ctrl+wheel zooms in', k1, Math.min(2, k0 * Math.exp(0.2)), 1e-6);
+            h.near('Ctrl+wheel zooms in', k1, Math.min(2, k0 * Math.exp(0.2)), 1e-5);
             h.ok('the point under the pointer stays', (Math.abs(kept.x - under.x) < 0.5) && (Math.abs(kept.y - under.y) < 0.5), { under: under, kept: kept });
 
             const v1 = await h.probe('view');
@@ -903,8 +904,16 @@ module.exports = [
         name: 'the palette adds a box, selected, where there is room; dragged from the palette it lands where it is dropped',
         run: async (h) => {
             await h.open();
-            h.ok('one start: the palette offers no second', await h.page((harness, text) => harness.find({ text: text, within: '#ws-root .wsf-palette' }).disabled, h.t('fl_add_manual')));
-            h.ok('nor a start of another kind', await h.page((harness, text) => harness.find({ text: text, within: '#ws-root .wsf-palette' }).disabled, h.t('fl_kind_schedule')));
+            h.same('one start: one row naming it, no start kind to add', await h.page(() => {
+                const panel = document.querySelector('#ws-root .wsf-palette');
+                const current = panel.querySelector('.wsf-palette-current');
+
+                return [!!current && current.textContent, panel.querySelectorAll('[data-refocus^="palette-add-"]').length > 0, !!panel.querySelector('[data-refocus="palette-add-manual"], [data-refocus="palette-add-schedule"]')];
+            }), [h.t('fl_kind_manual') + h.t('fl_start_change'), true, false]);
+            h.same('Message and People open, Logic, Records and tables, System and Values folded with their counts', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-palette-head'), (head) => head.getAttribute('aria-expanded') + (head.querySelector('.wsf-palette-count') ? '#' : ''))), ['true', 'true', 'false#', 'false#', 'false#', 'false#']);
+            h.ok('every box row is 32 px high', await h.page(() => Array.prototype.every.call(document.querySelectorAll('#ws-root .wsf-palette-groups .wsf-palette-item'), (row) => Math.round(row.getBoundingClientRect().height) === 32)));
+            await h.click({ css: '#ws-root [data-refocus="palette-group-logic"]' });
+            h.ok('a folded group opens, its heading keeps the focus', await h.page(() => (document.activeElement.getAttribute('data-refocus') === 'palette-group-logic') && (document.activeElement.getAttribute('aria-expanded') === 'true') && !!document.querySelector('#ws-root [data-refocus="palette-add-condition"]')));
             h.ok('the palette is laid out start, steps, end, then the value boxes', JSON.stringify(await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-palette-stage'), (stage) => stage.className.replace(/.*wsf-stage-/, '')))) === JSON.stringify(['first', 'steps', 'last', 'aside']));
             await h.click({ text: h.t('fl_add_task'), within: PALETTE });
             await h.waitFor('a new box, selected', (harness) => harness.state().selected && (harness.state().selected.id === 'task_3'), 3000);
@@ -934,6 +943,59 @@ module.exports = [
 
             h.same('both saved', [nodeIn(save.data.graph, 'task_3') && nodeIn(save.data.graph, 'task_3').config.title, nodeIn(save.data.graph, 'post_1') && nodeIn(save.data.graph, 'post_1').kind], ['Book the training', 'post']);
             h.ok('the server finds what the post box lacks', (await h.state()).problems.text !== h.t('fl_no_problems'));
+        }
+    },
+
+    {
+        name: 'Change on the start row makes the start another kind in place, its arrows kept, one undo step',
+        run: async (h) => {
+            await h.open();
+            await h.click({ text: h.t('fl_start_change'), within: PALETTE });
+            h.ok('Change unfolds the other start kinds, the focus kept on it', await h.page(() => (document.activeElement.getAttribute('data-refocus') === 'palette-change') && (document.activeElement.getAttribute('aria-expanded') === 'true') && !!document.querySelector('#ws-root [data-refocus="palette-swap-schedule"]') && !document.querySelector('#ws-root [data-refocus="palette-swap-manual"]')));
+            await h.click({ css: '#ws-root [data-refocus="palette-swap-schedule"]' });
+            await h.waitFor('the start is At a time', (harness, text) => document.querySelector('#ws-root .wsf-palette-current .wsf-palette-name').textContent === text, 3000, h.t('fl_kind_schedule'));
+
+            const save = await saveNumber(h, 1);
+            const start = nodeIn(save.data.graph, 'manual_1');
+
+            h.same('same box, new kind, its settings the new kind\'s', [start && start.kind, start && start.x, start && start.y, start && start.config.repeat], ['schedule', 0, 0, 'none']);
+            h.same('its arrow kept', arrows(save.data.graph).filter((arrow) => arrow.indexOf('manual_1>') === 0), ['manual_1>task_1:next']);
+            h.same('the row names the new start', await h.page(() => document.querySelector('#ws-root .wsf-palette-current .wsf-palette-name').textContent), h.t('fl_kind_schedule'));
+            await h.key('z', 'Control');
+            await h.eventually('one undo brings the start by hand back', (harness, text) => document.querySelector('#ws-root .wsf-palette-current .wsf-palette-name').textContent === text, 3000, h.t('fl_kind_manual'));
+        }
+    },
+
+    {
+        name: 'on a narrow window the left panel is a rail: + opens it over the canvas, Esc folds it and gives the focus back',
+        width: 1024,
+        run: async (h) => {
+            await h.open();
+
+            const rail = await h.page(() => {
+                const palette = document.querySelector('#ws-root .wsf-palette');
+                const panel = palette.querySelector('.wsf-palette-panel');
+
+                return [Math.round(palette.getBoundingClientRect().width), getComputedStyle(panel).display, palette.querySelectorAll('.wsf-palette-rail-num').length];
+            });
+
+            h.same('a 48 px rail, the panel hidden, the three section numbers', rail, [48, 'none', 3]);
+            await h.click({ css: '#ws-root .wsf-palette-rail-open' });
+
+            const over = await h.page(() => {
+                const panel = document.querySelector('#ws-root .wsf-palette-panel');
+
+                return [Math.round(panel.getBoundingClientRect().width), getComputedStyle(panel).position, document.activeElement.classList.contains('wsf-palette-search')];
+            });
+
+            h.same('+ opens the 264 px panel over the canvas, the search focused', over, [264, 'absolute', true]);
+            await h.key('Escape');
+            h.ok('Esc folds it, the focus back on +', await h.page(() => (getComputedStyle(document.querySelector('#ws-root .wsf-palette-panel')).display === 'none') && document.activeElement.classList.contains('wsf-palette-rail-open')));
+            await h.click({ css: '#ws-root .wsf-palette-rail-open' });
+            await h.click({ css: '#ws-root [data-refocus="palette-add-task"]' });
+            await h.waitFor('the box added', (harness) => harness.state().selected && (harness.state().selected.id === 'task_3'), 3000);
+            h.ok('a box added folds the panel', await h.page(() => getComputedStyle(document.querySelector('#ws-root .wsf-palette-panel')).display === 'none'));
+            h.ok('nothing scrolls sideways', await h.page(() => document.documentElement.scrollWidth <= window.innerWidth));
         }
     },
 

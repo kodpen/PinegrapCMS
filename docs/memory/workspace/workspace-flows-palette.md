@@ -1,19 +1,29 @@
 ---
 name: workspace-flows-palette
-description: The Flows canvas palette laid out in the order a flow is built: numbered sections (start, steps, end) and the value boxes outside the order, their hints, one start box only
+description: The flow window's left panel "Add a box" (flow-window FW2, #9178): numbered sections, the start as one row with Change, folding groups of 32 px rows, the rail when folded or narrow
 ---
 
 ## Why sections?
-- The palette listed its groups as start, values, logic (with End), people, message, system: nothing said which box goes first, which in the middle and which last, and the owner could not tell (2026-11-03). Value boxes, which no arrow joins, sat second.
-- Only Start manually was refused once the flow had a start; At a time, When something happens and the other start boxes could still be added, each a second start the graph check then refused.
+- The palette listed its groups as start, values, logic, people, message, system: nothing said which box goes first, and the owner could not tell (2026-11-03). The flow window drawing (`workflow/decisions-made-workspace-20.md`) then gave the left panel one job, adding boxes, in rows that fold.
 
-## How is it laid out? (workspace_flow.js)
-- `PALETTE_STAGES`: `first` 1 Start (`start`), `steps` 2 Steps (`message`, `people`, `logic`, `system`), `last` 3 End (`end`), `aside` Values, no number (`values`). Each a heading with its number badge, a hint (`fl_stage_*_hint`), then its boxes; a section of one group draws no group heading, the steps section names its groups in their colours.
-- `PALETTE_GROUPS` order: start, message, people, logic, system, end, values. `paletteGroupOf()` lists the End box under its own `end` group (palette only; on the canvas it keeps the logic colour, `KINDS`). `PALETTE` has End before the value boxes, so the outline's add buttons follow the same order.
-- `paletteStages(groups)` keeps the sections whose groups a search left; `paletteGroups()` filters by every word as before.
-- With a start box: `stageStart()` "This flow: <kind>" over the hint, the hint `fl_stage_first_taken` ("To start it another way, remove that box first."), and `startTaken(kind)` disables every start box (title `fl_one_start`), in the palette and the outline. `drawPalette()` runs again when `stageStart()` changes (a start placed or removed).
-- CSS `.wsf-palette-stage`, `-stage-head`, `-stage-num` (accent on `color-mix`), `-stage-now`, `-stage-hint` (`--pg-fg-2`) in backend.src.css.
+## How is it laid out? (drawPalette() in workspace_flow.js)
+- Head "Add a box" with the fold button; "Start from a template" while the flow is empty; the search (`pg-input pg-input-sm`); the sections in a scroll of their own; the foot line "Click or drag onto the canvas".
+- `PALETTE_STAGES`: 1 Start (`start`), 2 Steps (`message`, `people`, `logic`, `records`, `system`), 3 End (`end`), Values (`values`, no number). A section's hint (`fl_stage_*_hint`) is its heading's tooltip.
+- Records and tables (`fl_group_records`, `PALETTE_RECORDS`): `change`, `record_get`, `row_add`, `row_get`, `row_set`, `rows_get`, out of System; `paletteGroupOf()` decides, the canvas keeps their system colour (`KINDS`).
+- A box is a 32 px row: its tile (`pg-icon-tile` in the group's `--wsf-kind`) and its name on one line, the full name as its tooltip, the foot line as its description. Click or Enter adds it, drag drops it.
+
+## Which groups fold?
+- The steps' groups and Values are buttons with `aria-expanded`; a folded one shows its count. At first Message and People are open, the rest folded (`PALETTE_FOLDED`); the person's choice stays while the page is open (`state.paletteFolded`). A search unfolds every group it found a box in (`paletteGroupOpen()`).
+
+## How is the start shown?
+- Without a start box: the start kinds as rows. With one: a single row naming it (`aria-label` "This flow: …") with "Change"; no start kind is listed, refused or disabled (`startRows()`). The outline's add buttons still disable a second start (`startTaken()`, `fl_one_start`).
+- Change (`aria-expanded`) unfolds the other start kinds; choosing one makes the start box that kind in place (`swapStart()`): id, place, title and arrows kept, settings those of the new kind (`newConfig()`), one undo step. A start whose settings were filled in (`startFilled()`) asks first (`fl_start_change_ask`).
+
+## How does it fold to a rail?
+- 1280 px and up: the fold button folds the panel to a 48 px rail ("+" and the numbers 1, 2, 3); the choice is kept in this browser (`localStorage` `pg_wsf_palette`).
+- 768-1279 px: the rail at rest; "+" or a number opens the 264 px panel over the canvas's left edge (`wsf-palette-over`); Esc (focus back on "+"), a box added or a click on the canvas folds it (`foldPalette()`).
+- Under 768 px the panel is hidden, as before: the List view's add buttons add boxes. The phone's "Add a box" sheet (`plans/flow-window-paths.md`) is not built yet.
 
 ## Tests
-- `test_workspace_flows_canvas_palette_groups` (Node): group and section order, items per group, search, Turkish fold, hints, `startTaken()`.
-- Harness `the palette adds a box…`: the second start of another kind refused, the sections in order (30 of 30 on 2026-11-03).
+- `test_workspace_flows_canvas_palette_groups` (Node): group and section order, Records and tables, folding, search, Turkish fold, hints, start rows, `startFilled()`, `startTaken()`.
+- Harness (`workspace-flows-canvas-harness.md`): the palette scenario (one start row, folds, 32 px rows), Change swapping the start with one undo, the narrow rail.

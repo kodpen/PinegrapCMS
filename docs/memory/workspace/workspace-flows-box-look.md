@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-box-look
-description: How a flow box looks (V1, V2 of the flows look work, PRs #3118, #3158): group colour per theme, line icon, 1.5 px border, selection ring, arrows, palette wrapping
+description: How a flow box looks (V1, V2 of the flows look work, PRs #3118, #3158): group colour per theme, line icon, 1.5 px border, selection ring, arrows, the palette's rows in their column
 ---
 
 ## Which group is a box in?
@@ -26,7 +26,7 @@ description: How a flow box looks (V1, V2 of the flows look work, PRs #3118, #31
 - Control arrows `.pgc-edge-line`: 2 px #7d8696 (3.67:1 on white), filled head `#wsf-arrow` in the same grey; selected, bad and the run view's taken (green) and not-taken (faded) arrows unchanged.
 
 ## How does the palette fit its column?
-- A long box name wraps (`.wsf-palette-item`: `--bs-btn-white-space: normal`, `min-width: 0`, `overflow-wrap: anywhere`) and the search field never shrinks (`.wsf-palette-search`: `flex-shrink: 0`). Under Bootstrap 6 `.btn` is nowrap and `.form-control` a flex box: the long names ran past the column with a sideways scroll bar, and the field was squeezed to a thin line (#3805).
+- Since FW2 (#9178) a box is a 32 px row whose name stays on one line, cut with an ellipsis, the full name its tooltip (`.wsf-palette-name`); the row is a plain button, not `.btn`, so Bootstrap 6's nowrap never pushes it past the column. The search field keeps its height (`flex-shrink: 0`) inside its margins (`.wsf-palette .wsf-palette-search`, over the look's full width).
 
 ## Other drawings?
 - A scheduled action drawn read-only (`showAction()`): `ACTION_KINDS` gives its boxes groups: when start, condition logic, step people, follow-up system (it starts another action). Their own `wsf-node-sa-*` colours went.
