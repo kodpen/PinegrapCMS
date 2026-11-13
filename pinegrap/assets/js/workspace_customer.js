@@ -170,7 +170,8 @@
         note: 'bi-journal-text',
         wtable_row: 'bi-table',
         visit: 'bi-geo-alt',
-        cart_quote: 'bi-cart3'
+        cart_quote: 'bi-cart3',
+        whatsapp: 'bi-whatsapp'
     };
 
     // What happened with the customer, newest first, read only when asked

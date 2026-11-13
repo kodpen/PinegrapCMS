@@ -182,6 +182,12 @@ function pg_notification_visible($notification, $rights)
 		return pg_notification_comment_visible($notification, $rights);
 	}
 
+	// A customer's WhatsApp message (includes/fn/whatsapp_webhook.php): for
+	// whoever may open contacts, where it is kept in the contact's history.
+	if ($action == 'whatsapp_message') {
+		return (($rights['role'] < 3) || !empty($rights['manage_contacts']));
+	}
+
 	// An overdue-receivable digest is for whoever may use the ERP; with the
 	// module off the row stays in the table but reaches nobody.
 	if ($action == 'erp_overdue') {
@@ -224,7 +230,8 @@ function pg_notification_visible_to($notification, $user)
 		'manage_ecommerce' => (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE),
 		'manage_forms'     => (($user['role'] < 3) || ($user['manage_forms'] == true)),
 		'manage_erp'       => (($user['role'] < 3) || !empty($user['manage_erp'])),
-		'manage_erp_cash'  => (($user['role'] < 3) || !empty($user['manage_erp_cash']))
+		'manage_erp_cash'  => (($user['role'] < 3) || !empty($user['manage_erp_cash'])),
+		'manage_contacts'  => (($user['role'] < 3) || (($user['manage_contacts'] ?? false) === true))
 	));
 }
 
@@ -242,7 +249,8 @@ function pg_notification_visible_to_user($notification, $user_row)
 		'manage_ecommerce' => (($role < 3) || ($user_row['manage_ecommerce'] == 'yes')),
 		'manage_forms'     => (($role < 3) || ($user_row['manage_forms'] == 'yes')),
 		'manage_erp'       => (($role < 3) || ((int) ($user_row['manage_erp'] ?? 0) === 1)),
-		'manage_erp_cash'  => (($role < 3) || ((int) ($user_row['manage_erp_cash'] ?? 0) === 1))
+		'manage_erp_cash'  => (($role < 3) || ((int) ($user_row['manage_erp_cash'] ?? 0) === 1)),
+		'manage_contacts'  => (($role < 3) || (($user_row['manage_contacts'] ?? '') === 'yes'))
 	));
 }
 
@@ -676,6 +684,26 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['icon']   = 'assets/images/notification-general.png';
 		$display['badge']  = 'assets/images/notification-general-badge.png';
 		$display['action'] = $action;
+
+	} elseif ($action == 'whatsapp_message') {
+
+		// title is the message's text, order_total who sent it and form_id
+		// the whatsapp_inbox row (pg_whatsapp_inbox_notice()). The link opens
+		// the contact the number belongs to while the row is kept.
+		if (!function_exists('pg_whatsapp_inbox_row')) {
+			require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
+		}
+
+		$received   = pg_whatsapp_inbox_row((int) ($notification['form_id'] ?? 0));
+		$contact_id = is_array($received) ? (int) $received['contact_id'] : 0;
+
+		$display['title']       = lang(array('string' => 'WhatsApp message from {var:1}', 'vars' => array(h($notification['order_total'] ?? ''))));
+		$display['short']       = lang('New WhatsApp message');
+		$display['description'] = h($notification['title'] ?? '');
+		$display['url']         = ($contact_id > 0) ? 'edit_contact.php?id=' . $contact_id : 'view_contacts.php';
+		$display['icon']        = 'assets/images/notification-general.png';
+		$display['badge']       = 'assets/images/notification-general-badge.png';
+		$display['action']      = $action;
 
 	} elseif ($action == 'ops') {
 
