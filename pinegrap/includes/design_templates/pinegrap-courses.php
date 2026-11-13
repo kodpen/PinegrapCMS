@@ -147,9 +147,6 @@ $courses_css = implode("\n", array(
     '.pco-eyebrow{letter-spacing:.1em;font-size:.75rem}',
     // The school's name in the header, in the heading font.
     '.pco-brand{font-family:var(--pg-font-heading);font-weight:800}',
-    // The home page's first section: a wash of the palette's two colours.
-    '.pco-hero{background-color:var(--bs-tertiary-bg)}',
-    '@supports (background-color:color-mix(in srgb,red 8%,blue)){.pco-hero{background-image:linear-gradient(160deg,color-mix(in srgb,var(--bs-primary) 14%,var(--bs-body-bg)) 0%,var(--bs-body-bg) 60%,color-mix(in srgb,var(--bs-secondary) 8%,var(--bs-body-bg)) 100%);background-color:var(--bs-body-bg)}}',
     // Cards that lead somewhere rise a little under the pointer.
     '.pco-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.pco-lift:hover,.pco-lift:focus-visible,.pco-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
@@ -191,7 +188,7 @@ $courses_folders['members'] = array('name' => 'members', 'parent' => 'root', 'ac
 
 return array(
     'name'        => lang('Online Courses'),
-    'version'     => '1.1.3',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 67,
     'icon'        => 'bi-mortarboard',
@@ -241,10 +238,10 @@ return array(
         'email_footer' => array('name' => lang('Courses E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pco- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the Online Courses blocks' rules and its pco-
+    // rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $courses_css),
+        'css'   => pg_design_template_user_styles(array('courses-hero', 'courses-shelf', 'courses-curriculum'), $courses_css),
         'fonts' => json_encode($courses_fonts),
     ),
 );

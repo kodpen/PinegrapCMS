@@ -123,7 +123,8 @@
 - design-template-construction-pages.md: Construction template 2.0.0: home, projects and safety on the Construction blocks: the builders, each page's composition, motion, what left, the test
 - design-template-construction.md: Construction Firm template 2.0.0 (pinegrap-construction): services, a projects portfolio collection, quote requests and careers followed from the account, News, no shop, pcn- look, tests.
 - design-template-contrast-planetarium-zoo.md: Planetarium to Zoo: User Styles keep palette text readable on dark grey and soft-tint sections in every palette; vet red and zoo green readable; store's User Styles
-- design-template-courses.md: Online Courses template (pinegrap-courses): courses as products granting a private folder, lessons as pages, membership library, enrolment and assignments, what is not built, pco- look, tests.
+- design-template-courses-pages.md: Online Courses template 2.0.0: home, courses page and course pages on the Online Courses blocks: the builders, each page's composition, prices in the base currency, what left, the test
+- design-template-courses.md: Online Courses template (pinegrap-courses): courses as products granting a private folder, lessons as pages, membership library, enrolment and assignments, what is not built, pco- classes, tests.
 - design-template-coworking-pages.md: Coworking template 2.0.0: home, plans and amenities on the palette blocks (workspace hero, spaces to hire, floor directory, alternating features), builders, motion, tests
 - design-template-coworking.md: Coworking template (pinegrap-coworking): spaces and events as collections, tour, office and event requests, meeting rooms booked online, memberships in the shop, pcw- look, tests.
 - design-template-dealership.md: Car Dealership template (pinegrap-dealership): vehicles as a collection with filters, test drive, trade-in and finance requests followed from the account, pdl- look, tests.

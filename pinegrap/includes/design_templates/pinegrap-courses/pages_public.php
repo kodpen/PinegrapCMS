@@ -25,30 +25,243 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 $public_pages = array();
 
-// A course as a card of the lists: its picture, subject and level, title,
-// summary, instructor, length and price, linked to its overview page.
-$course_card = function ($key) use ($courses, $instructors, $course_lessons, $el, $col, $image, $heading, $para, $span, $icon, $photo, $attr, $subject_badge, $level_badge) {
+// ── The Online Courses blocks ───────────────────────────────────────────
+// The home, the courses page and each course's page are built on the
+// visual designer's Online Courses blocks (assets/js/style_designer_blocks_
+// courses.js): the same structure and classes with the school's own
+// courses; their rules ship in the template's User Styles. Motion comes
+// from the interactions on the nodes (pg_fx; nothing moves under reduced
+// motion): $fx gives a node one effect.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// Section headings fade in; a list's or a row's children rise one by one.
+$fade_in = function ($node) use ($fx) {
+    return $fx($node, array('effect' => 'fade', 'trigger' => 'view', 'duration' => 700));
+};
+$rise = function ($node, $stagger = 100) use ($fx) {
+    return $fx($node, array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 600, 'stagger' => $stagger));
+};
+// An icon and a short text side by side, as one line of details.
+$line_detail = function ($icon_name, $text, $class = '') use ($el, $icon, $span) {
+    return $el('span', trim('d-inline-flex align-items-center gap-1 ' . $class), $text, array(
+        $icon($icon_name),
+        $span($text, '', lang('Text')),
+    ));
+};
+// A second button: the body's text colour and a border, readable on any
+// band, with its own focus ring (pg-courses-second).
+$second_button = function ($text, $href, $size = '') use ($link) {
+    return $link($text, $href, trim('btn ' . $size . ' border px-4 link-body-emphasis pg-courses-second'));
+};
+// The small spaced line above a block's title, as the template's other
+// sections write it (pco-eyebrow), so the home reads as one page.
+$block_eyebrow = function ($text) use ($para) {
+    return $para($text, 'small text-uppercase fw-semibold text-primary mb-2 pco-eyebrow');
+};
+// A lesson's length, machine-readable as a duration.
+$minutes = function ($n) use ($el, $attr) {
+    return $el('time', 'small text-body-secondary text-nowrap', lang('Length'), array(), array(
+        'text' => sprintf(lang('%d min'), $n), '_attrs' => array($attr('datetime', 'PT' . (int)$n . 'M')),
+    ));
+};
+// What a screen reader hears beside a locked lesson; the lock is a picture
+// only.
+$locked = function () use ($span) {
+    return $span(lang('Enrolled students only'), 'visually-hidden', lang('Text'));
+};
+// The free preview's mark, at the size of the text around it.
+$preview_pill = function () use ($span) {
+    return $span(lang('Free preview'), 'd-inline-block rounded-pill px-2 lh-base fw-semibold text-nowrap bg-success-subtle text-success-emphasis', lang('Preview'));
+};
+// A course's level: three bars filled up to it (a picture only), then its
+// name.
+$level_meter = function ($key) use ($el, $span, $attr, $levels) {
+    $n = array_search($key, array_keys($levels), true) + 1;
+    $bars = array();
+    foreach (array('', 'pg-courses-mid', 'pg-courses-tall') as $i => $size) {
+        $bars[] = $el('span', trim('pg-courses-bar ' . $size . ($i < $n ? ' pg-courses-on' : '')), lang('Bar'));
+    }
+    return $el('span', 'd-inline-flex align-items-center gap-2 small fw-semibold text-body-emphasis', lang('Level'), array(
+        $el('span', 'pg-courses-level', lang('Level Meter'), $bars, array('_attrs' => array($attr('aria-hidden', 'true')))),
+        $span($levels[$key], '', lang('Text')),
+    ));
+};
+// A subject as a pill link to its section of the courses page: its icon and
+// name on its soft colour, so the colour never names it alone.
+$subject_link = function ($key) use ($el, $icon, $span, $subjects) {
+    $s = $subjects[$key];
+    return $el('li', '', $s['title'], array(
+        $el('a', 'btn rounded-pill border-0 d-inline-flex align-items-center gap-2 px-3 py-1 bg-' . $s['color'] . '-subtle text-' . $s['color'] . '-emphasis', $s['title'], array(
+            $icon($s['icon']),
+            $span($s['title'], '', lang('Text')),
+        ), array('href' => '{{page:courses}}#subject-' . $key)),
+    ));
+};
+
+// A course as a card of the shelf: its picture with the length on it, its
+// subject, title (the card's link to its page), what it teaches, its level,
+// the instructor and the price.
+$course_card = function ($key) use ($courses, $instructors, $subjects, $el, $col, $image, $para, $span, $icon, $link, $photo, $portrait, $attr, $level_meter) {
     $c = $courses[$key];
+    $s = $subjects[$c['subject']];
+    $t = $instructors[$c['instructor']];
     return $col(array(
-        $el('article', 'card h-100 border-0 shadow-sm rounded-4 overflow-hidden pco-lift', $c['title'], array(
-            $el('div', 'ratio ratio-16x9 bg-body-tertiary', lang('Picture Frame'), array(
-                $image($photo('course-' . $key, 800, 450), $c['title'], 'object-fit-cover', array('_attrs' => array($attr('loading', 'lazy')))),
+        $el('article', 'pg-courses-card card h-100 border-0 shadow-sm rounded-4 overflow-hidden', $c['title'], array(
+            $el('div', 'position-relative', lang('Picture'), array(
+                $el('div', 'ratio ratio-16x9 bg-body-tertiary', lang('Picture Frame'), array(
+                    $image($photo('course-' . $key, 800, 450), $c['title'], 'object-fit-cover', array('_attrs' => array($attr('loading', 'lazy')))),
+                )),
+                $el('span', 'position-absolute bottom-0 end-0 m-3 badge rounded-pill bg-body text-body-emphasis d-inline-flex align-items-center gap-1 shadow-sm', lang('Length'), array(
+                    $icon('bi-clock'),
+                    $span($c['length'], '', lang('Text')),
+                )),
             )),
             $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
-                $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array($subject_badge($c['subject']), $level_badge($c['level']))),
-                $el('h3', 'h5 fw-bold position-static', lang('Course Title'), array(
-                    $el('a', 'stretched-link link-body-emphasis text-decoration-none', lang('Link'), array(), array('text' => $c['title'], 'href' => '{{page:course_' . $key . '}}')),
+                $el('p', 'd-flex align-items-center gap-2 small fw-semibold text-body-secondary mb-2', lang('Subject'), array(
+                    $icon($s['icon'], 'text-' . $s['color'] . '-emphasis'),
+                    $span($s['title'], '', lang('Text')),
                 )),
-                $para($c['summary'], 'small text-body-secondary'),
-                $para($instructors[$c['instructor']]['name'], 'small fw-semibold mb-3'),
-                $el('div', 'd-flex flex-wrap align-items-center gap-3 small text-body-secondary mt-auto', lang('Course Details'), array(
-                    $el('span', 'd-inline-flex align-items-center gap-1', lang('Lessons'), array($icon('bi-collection-play'), $span(sprintf(lang('%d lessons'), count($course_lessons($key))), '', lang('Text')))),
-                    $el('span', 'd-inline-flex align-items-center gap-1', lang('Length'), array($icon('bi-clock'), $span($c['length'], '', lang('Text')))),
-                    $span($c['price'], 'ms-auto fs-5 fw-bold text-body', lang('Price')),
+                $el('h3', 'h5 fw-bold', lang('Course Title'), array(
+                    $link($c['title'], '{{page:course_' . $key . '}}', 'stretched-link link-body-emphasis text-decoration-none'),
+                )),
+                $para($c['summary'], 'small text-body-secondary mb-3'),
+                $el('div', 'mb-3', lang('Level'), array($level_meter($c['level']))),
+                $el('div', 'd-flex align-items-center gap-2 border-top pt-3 mt-auto', lang('Card Footer'), array(
+                    $image($portrait($t['name'], 64), $t['name'], 'pg-courses-face rounded-circle object-fit-cover', array('width' => '32', 'height' => '32', '_attrs' => array($attr('loading', 'lazy')))),
+                    $para($t['name'], 'small fw-semibold text-body-emphasis mb-0'),
+                    $para($c['price'], 'pg-courses-price ms-auto fs-5 fw-bold text-body-emphasis mb-0'),
                 )),
             )),
         )),
     ), '6', '4');
+};
+
+// A lesson on a course's path: the free preview a link with its pill, the
+// others locked; what it covers and its length.
+$lesson_row = function ($l, $open) use ($el, $icon, $para, $link, $minutes, $locked, $preview_pill) {
+    return $el('li', 'd-flex align-items-start gap-3 py-3 border-top', $l['title'], array(
+        $icon($open ? 'bi-play-circle-fill' : 'bi-lock', ($open ? 'text-primary-emphasis' : 'text-body-secondary') . ' fs-5 lh-1 mt-1'),
+        $el('div', 'flex-grow-1', lang('Lesson'), array(
+            $open
+                ? $el('p', 'd-flex flex-wrap align-items-center column-gap-2 row-gap-1 fw-semibold mb-1', lang('Lesson Title'), array(
+                    $link($l['title'], '{{page:lesson_' . $l['key'] . '}}', 'link-body-emphasis'),
+                    $el('span', 'small', lang('Preview'), array($preview_pill())),
+                ))
+                : $para($l['title'], 'fw-semibold text-body-emphasis mb-1'),
+            $para($l['text'], 'small text-body-secondary mb-0'),
+        )),
+        $el('div', 'flex-shrink-0 text-end', lang('Lesson Details'), $open ? array($minutes($l['minutes'])) : array($minutes($l['minutes']), $locked())),
+    ));
+};
+// A course's curriculum on its dashed path: each module with its number (a
+// picture only: the heading says it), title, lessons and minutes, then the
+// course's project as the last stop.
+$course_path = function ($key) use ($courses, $course_lessons, $el, $heading, $para, $span, $icon, $attr, $line_detail, $lesson_row) {
+    $c = $courses[$key];
+    $lessons = $course_lessons($key);
+    $hidden = array('_attrs' => array($attr('aria-hidden', 'true')));
+    $items = array();
+    foreach ($c['modules'] as $mn => $m) {
+        $rows = array();
+        $total = 0;
+        foreach ($m['lessons'] as $l) {
+            $rows[] = $lesson_row($l, $l['key'] === $lessons[0]['key']);
+            $total += $l['minutes'];
+        }
+        $items[] = $el('li', 'pg-courses-module', $m['title'], array(
+            $el('span', 'pg-courses-marker bg-body border border-2 border-primary text-body-emphasis', lang('Marker'), array($span((string)($mn + 1), '', lang('Text'))), $hidden),
+            $heading('h3', sprintf(lang('Module %d: %s'), $mn + 1, $m['title']), 'h5 fw-bold mb-1'),
+            $el('p', 'd-flex flex-wrap column-gap-3 small text-body-secondary mb-2', lang('Module Details'), array(
+                $line_detail('bi-collection-play', sprintf(lang('%d lessons'), count($m['lessons']))),
+                $line_detail('bi-clock', sprintf(lang('%d min'), $total)),
+            )),
+            $el('ol', 'list-unstyled mb-0', lang('Lessons'), $rows),
+        ));
+    }
+    $items[] = $el('li', 'pg-courses-module pg-courses-project', lang('Your project'), array(
+        $el('span', 'pg-courses-marker text-bg-primary', lang('Marker'), array($icon('bi-flag-fill')), $hidden),
+        $heading('h3', lang('Your project'), 'h5 fw-bold mb-2'),
+        $para($c['assignment'], 'mb-2'),
+        $line_detail('bi-chat-left-text', lang('Written feedback from your instructor'), 'small text-body-secondary gap-2'),
+    ));
+    return $el('ol', 'pg-courses-modules', lang('Modules'), $items);
+};
+
+// The classroom hero: the school's line and the way in, beside a lesson
+// player: the first course's free lesson with its instructor, and the
+// lessons up next, locked until one enrols. The words rise and the player
+// grows as the page opens.
+$classroom_hero = function () use ($courses, $instructors, $course_lessons, $el, $heading, $para, $link, $icon, $image, $photo, $portrait, $container, $row, $col, $attr, $fx, $line_detail, $second_button, $minutes, $locked, $preview_pill) {
+    $c = $courses['web'];
+    $t = $instructors[$c['instructor']];
+    $lessons = $course_lessons('web');
+    $free = $lessons[0];
+    $next = array();
+    foreach (array_slice($lessons, 1, 3) as $l) {
+        $next[] = $el('li', 'd-flex align-items-center gap-3 py-2 border-top', $l['title'], array(
+            $icon('bi-lock', 'text-body-secondary'),
+            $para($l['title'], 'flex-grow-1 small fw-semibold text-body-emphasis mb-0'),
+            $minutes($l['minutes']),
+            $locked(),
+        ));
+    }
+    $words = $fx($el('div', '', lang('Hero Text'), array(
+        $el('p', 'd-inline-flex align-items-center gap-2 small text-uppercase fw-semibold text-body-secondary mb-3', lang('Tagline'), array(
+            $icon('bi-play-circle', 'text-primary-emphasis'),
+            $el('span', '', lang('Text'), array(), array('text' => lang('Learn online, at your own pace'))),
+        )),
+        $heading('h1', lang('Learn a skill you will use on Monday'), 'display-4 fw-bold mb-3'),
+        $para(lang('Short video lessons, a project in every course and instructors who answer your questions. Start with a free lesson; keep the course once you buy it.'), 'lead text-body-secondary mb-4'),
+        $el('div', 'd-flex flex-wrap gap-2 mb-4', lang('Buttons'), array(
+            $link(lang('Browse courses'), '{{page:courses}}', 'btn btn-primary btn-lg px-4'),
+            $second_button(lang('Watch a free lesson'), '{{page:lesson_' . $free['key'] . '}}', 'btn-lg'),
+        )),
+        $el('ul', 'list-unstyled d-flex flex-wrap column-gap-4 row-gap-2 small text-body-secondary mb-0', lang('Promises'), array(
+            $el('li', '', lang('First lesson free'), array($line_detail('bi-unlock', lang('First lesson free'), 'gap-2'))),
+            $el('li', '', lang('No end date'), array($line_detail('bi-infinity', lang('No end date'), 'gap-2'))),
+            $el('li', '', lang('Instructors who answer'), array($line_detail('bi-chat-dots', lang('Instructors who answer'), 'gap-2'))),
+        )),
+    )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 800));
+    $player = $fx($el('div', 'pg-courses-desk', lang('Desk'), array(
+        $el('article', 'pg-courses-player card border-0 shadow-lg rounded-4 overflow-hidden', lang('Lesson Player'), array(
+            $el('div', 'pg-courses-screen', lang('Screen'), array(
+                $el('div', 'ratio ratio-16x9 bg-body-tertiary', lang('Picture'), array(
+                    $image($photo('lesson-' . $free['key'], 1200, 675), lang('An instructor\'s screen with a web page and its code side by side'), 'object-fit-cover'),
+                )),
+                $el('a', 'pg-courses-play btn btn-primary rounded-circle', lang('Play the free lesson'), array($icon('bi-play-fill')), array(
+                    'href' => '{{page:lesson_' . $free['key'] . '}}', '_attrs' => array($attr('aria-label', lang('Play the free lesson'))),
+                )),
+            )),
+            $el('div', 'pg-courses-scrub', lang('Progress'), array(), array('_attrs' => array($attr('aria-hidden', 'true')))),
+            $el('div', 'card-body p-4', lang('Card Body'), array(
+                $el('p', 'd-flex flex-wrap align-items-center column-gap-3 row-gap-1 small text-body-secondary mb-2', lang('Course Line'), array(
+                    $line_detail('bi-collection-play', $c['title']),
+                    $preview_pill(),
+                )),
+                $heading('h2', $free['title'], 'h4 fw-bold mb-3'),
+                $el('div', 'd-flex align-items-center gap-3 mb-4', lang('Instructor'), array(
+                    $image($portrait($t['name'], 80), $t['name'], 'pg-courses-face rounded-circle object-fit-cover', array('width' => '40', 'height' => '40')),
+                    $el('div', 'flex-grow-1', lang('Text'), array(
+                        $para($t['name'], 'small fw-semibold text-body-emphasis mb-0'),
+                        $para($t['role'], 'small text-body-secondary mb-0'),
+                    )),
+                    $minutes($free['minutes']),
+                )),
+                $heading('h3', lang('Up next'), 'small text-uppercase fw-semibold text-body-secondary mb-1'),
+                $el('ol', 'list-unstyled mb-0', lang('Lessons'), $next),
+            )),
+        )),
+    )), array('effect' => 'scale', 'trigger' => 'load', 'duration' => 900, 'delay' => 200));
+    return $el('section', 'pg-courses-hero py-5 overflow-hidden', lang('Hero'), array(
+        $container(array(
+            $row(array(
+                $col(array($words), '', '6'),
+                $col(array($player), '', '6'),
+            ), '4', '', 'g-lg-5 align-items-center'),
+        ), 'py-lg-4'),
+    ));
 };
 
 // The school's figures, in a row of four.
@@ -94,26 +307,26 @@ $instructor_card = function ($key) use ($instructors, $subjects, $el, $col, $ima
     ), '4', '4', '', '12');
 };
 
+
 $all_course_cards = array();
 foreach (array_keys($courses) as $key) $all_course_cards[] = $course_card($key);
 $instructor_cards = array();
 foreach (array_keys($instructors) as $key) $instructor_cards[] = $instructor_card($key);
+$subject_links = array();
+foreach (array_keys($subjects) as $key) $subject_links[] = $subject_link($key);
 
-// A subject as a card of the home page, linked to its section of the
-// courses page.
-$subject_cards = array();
-foreach ($subjects as $key => $s) {
-    $subject_cards[] = $col(array(
-        $el('a', 'card h-100 border-0 bg-body-tertiary rounded-4 text-decoration-none link-body-emphasis', $s['title'], array(
-            $el('div', 'card-body p-4', lang('Card Body'), array(
-                $icon_tile($s['icon'], 'mb-3'),
-                $heading('h3', $s['title'], 'h5 fw-bold mb-2'),
-                $para($s['text'], 'small text-body-secondary mb-0'),
-            )),
-        ), array('href' => '{{page:courses}}#subject-' . $key)),
-    ), '', '4');
-}
+// The course the home opens up: its facts beside its curriculum.
+$inside = $courses['web'];
+$inside_lessons = $course_lessons('web');
+$fact = function ($term, $value) use ($el, $span) {
+    return $el('div', '', $term, array(
+        $el('dt', 'small fw-normal text-body-secondary', $term, array(), array('text' => $term)),
+        $el('dd', 'fw-semibold text-body-emphasis', $term, is_array($value) ? $value : array($span($value, '', lang('Text')))),
+    ));
+};
 
+// The home: the classroom hero, the course shelf, one course opened up
+// module by module, the instructors, what students say and the blog.
 $public_pages[] = array(
     'key'              => 'home',
     'name'             => lang('home'),
@@ -121,100 +334,81 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('Practical online courses in web development, data and design. Watch the first lesson of any course free, then learn at your own pace.'),
     'tree'             => $page(array(
-        // The school: what it teaches, the way to start and a picture.
-        $el('section', 'py-5 overflow-hidden pco-hero', lang('Hero'), array(
+        $classroom_hero(),
+
+        // The courses, under their subjects as links.
+        $el('section', 'pg-courses-shelf py-5', lang('Courses'), array(
+            $container(array(
+                $fade_in($row(array(
+                    $col(array(
+                        $block_eyebrow(lang('Start here')),
+                        $heading('h2', lang('Our courses'), 'display-6 fw-bold mb-3'),
+                        $para(lang('Every course starts with a free lesson. Pick a subject, watch, and enrol when it fits.'), 'lead text-body-secondary mb-0'),
+                    ), '', '6'),
+                    $col(array(
+                        $el('nav', '', lang('Subjects'), array(
+                            $el('ul', 'list-unstyled d-flex flex-wrap gap-2 justify-content-lg-end mb-0', lang('Subjects'), $subject_links),
+                        ), array('_attrs' => array($attr('aria-label', lang('Subjects'))))),
+                    ), '', '6'),
+                ), '4', '', 'align-items-end mb-5')),
+                $rise($row($all_course_cards, '4')),
+                $el('div', 'text-center mt-5', lang('Footer'), array($second_button(lang('All courses'), '{{page:courses}}'))),
+            )),
+        )),
+
+        // Inside a course: the first course's facts beside its modules and
+        // lessons on a path, the project at the end.
+        $el('section', 'py-5 bg-body-tertiary', lang('Curriculum'), array(
             $container(array(
                 $row(array(
                     $col(array(
-                        $el('p', 'd-flex flex-wrap align-items-center gap-2 small fw-semibold text-primary mb-3', lang('Tagline'), array(
-                            $icon('bi-play-circle'),
-                            $span(lang('Learn online, at your own pace'), '', lang('Text')),
-                        )),
-                        $heading('h1', lang('Learn a skill you will use on Monday'), 'display-4 fw-bold mb-3'),
-                        $para(lang('Short video lessons, a project in every course and instructors who answer your questions. Start with a free lesson; keep the course once you buy it.'), 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Browse courses'), '{{page:courses}}', 'btn btn-primary btn-lg px-4'),
-                            $link(lang('Watch a free lesson'), '{{page:lesson_web_1}}', 'btn btn-outline-secondary btn-lg px-4'),
-                        )),
-                    ), '', '6'),
-                    $col(array(
-                        $el('div', 'ratio ratio-4x3 rounded-4 overflow-hidden shadow-sm', lang('Picture Frame'), array(
-                            $image($photo('hero', 1200, 900), lang('A student taking notes beside a laptop showing a video lesson'), 'object-fit-cover'),
-                        )),
-                    ), '', '6'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
-
-        // The school in figures.
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
-
-        // The courses.
-        $el('section', 'py-5', lang('Courses'), array(
-            $container(array(
-                $section_header(lang('Start here'), lang('Our courses'), lang('All courses'), '{{page:courses}}'),
-                $row($all_course_cards, '4'),
-            )),
-        )),
-
-        // The subjects.
-        $el('section', 'py-5 bg-body-tertiary', lang('Subjects'), array(
-            $container(array(
-                $section_header(lang('What you can learn'), lang('Subjects')),
-                $row($subject_cards, '4'),
-            )),
-        )),
-
-        // How learning works.
-        $el('section', 'py-5', lang('How It Works'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('How it works'), 'small text-uppercase fw-semibold text-primary mb-1 pco-eyebrow'),
-                        $heading('h2', lang('From the first lesson to your own project'), 'h3 fw-bold mb-3'),
-                        $para(lang('Every course is short videos, a few pages to read and one project the instructor looks at with you.'), 'text-body-secondary mb-4'),
-                        $link(lang('Questions? Read the FAQ'), '{{page:faq}}', 'btn btn-outline-primary px-4'),
-                    ), '', '5'),
-                    $col(array(
-                        $el('ol', 'list-unstyled mb-0', lang('List'), array(
-                            $step(1, lang('Watch the free lesson'), lang('The first lesson of every course is open to everyone, no account needed.')),
-                            $step(2, lang('Enrol'), lang('Buy the course or ask us to enrol you; its classroom opens in your account.')),
-                            $step(3, lang('Learn and ask'), lang('Watch the lessons in any order and ask under each one; the instructor answers.')),
-                            $step(4, lang('Send your project'), lang('Hand in the course assignment and get written feedback.')),
-                        )),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
+                        $fade_in($el('div', '', lang('Course'), array(
+                            $block_eyebrow(lang('Inside a course')),
+                            $heading('h2', $inside['title'], 'display-6 fw-bold mb-3'),
+                            $para($inside['summary'], 'text-body-secondary mb-4'),
+                            $el('dl', 'pg-courses-facts mb-4', lang('Facts'), array(
+                                $fact(lang('Level'), array($level_meter($inside['level']))),
+                                $fact(lang('Instructor'), $instructors[$inside['instructor']]['name']),
+                                $fact(lang('Length'), $inside['length']),
+                                $fact(lang('Access'), lang('No end date')),
+                            )),
+                            $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+                                $link(lang('Watch the free lesson'), '{{page:lesson_' . $inside_lessons[0]['key'] . '}}', 'btn btn-primary px-4'),
+                                $second_button(lang('See the course'), '{{page:course_web}}'),
+                            )),
+                        ))),
+                    ), '', '4'),
+                    $col(array($rise($course_path('web'), 120)), '', '8'),
+                ), '4', '', 'g-lg-5'),
             )),
         )),
 
         // The instructors.
-        $el('section', 'py-5 bg-body-tertiary', lang('Instructors'), array(
+        $el('section', 'py-5', lang('Instructors'), array(
             $container(array(
-                $section_header(lang('Who teaches'), lang('Meet the instructors'), lang('All instructors'), '{{page:instructors}}'),
-                $row($instructor_cards, '4'),
+                $fade_in($section_header(lang('Who teaches'), lang('Meet the instructors'), lang('All instructors'), '{{page:instructors}}')),
+                $rise($row($instructor_cards, '4')),
             )),
         )),
 
         // What students say: three sample cards, and the reviews from
         // Google beside them once the place is set.
-        $el('section', 'py-5', lang('Testimonials'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Testimonials'), array(
             $container(array(
-                $section_header(lang('Our students'), lang('What students say')),
-                $row(array(
+                $fade_in($section_header(lang('Our students'), lang('What students say'))),
+                $rise($row(array(
                     $testimonial(lang('“I had tried to learn HTML three times. This time I published my site in the second week.”'), lang('Deniz K.'), lang('Build Your First Website')),
                     $testimonial(lang('“The pivot table lesson alone saved me an hour every Monday.”'), lang('Aylin M.'), lang('Data Analysis with Spreadsheets')),
                     $testimonial(lang('“Maya\'s feedback on my wireframes was worth the whole course.”'), lang('Tom R.'), lang('UX Design Fundamentals')),
-                ), '4'),
+                ), '4')),
                 $widget('google_reviews'),
             )),
         )),
 
         // The newest posts.
-        $el('section', 'py-5 border-top', lang('From the Blog'), array(
+        $el('section', 'py-5', lang('From the Blog'), array(
             $container(array(
-                $section_header(lang('Blog'), lang('Latest posts'), lang('All posts'), '{{page:blog}}'),
+                $fade_in($section_header(lang('Blog'), lang('Latest posts'), lang('All posts'), '{{page:blog}}')),
                 $widget('home_posts'),
             )),
         )),
@@ -224,14 +418,15 @@ $public_pages[] = array(
 );
 
 // ── Courses ─────────────────────────────────────────────────────────────
-// A section for each subject (#subject-<key>) with its courses.
+// A section for each subject (#subject-<key>) with its courses, as cards of
+// the Online Courses shelf.
 $subject_sections = array();
 foreach ($subjects as $skey => $s) {
     $cards = array();
     foreach ($courses as $ckey => $c) {
         if ($c['subject'] === $skey) $cards[] = $course_card($ckey);
     }
-    $subject_sections[] = $el('section', 'py-4', $s['title'], array(
+    $subject_sections[] = $el('section', 'pg-courses-shelf py-4', $s['title'], array(
         $el('div', 'd-flex align-items-center gap-3 mb-3', lang('Subject'), array(
             $icon_tile($s['icon']),
             $el('div', '', lang('Text'), array(
@@ -239,7 +434,7 @@ foreach ($subjects as $skey => $s) {
                 $para($s['text'], 'text-body-secondary mb-0'),
             )),
         )),
-        $row($cards, '4'),
+        $rise($row($cards, '4')),
     ), $searchable('subject-' . $skey, $s['topics']));
 }
 
@@ -257,33 +452,12 @@ $public_pages[] = array(
 );
 
 // ── One page per course ─────────────────────────────────────────────────
-// What it teaches, its curriculum by module (the first lesson linked as
-// the free preview), the instructor, the assignment, and the box with the
-// ways in.
+// What it teaches, its curriculum on the Online Courses path (the modules,
+// the first lesson linked as the free preview, the project as the last
+// stop), the instructor, and the box with the ways in.
 foreach ($courses as $key => $c) {
     $teacher = $instructors[$c['instructor']];
     $lessons = $course_lessons($key);
-    $modules = array();
-    foreach ($c['modules'] as $mn => $m) {
-        $items = array();
-        foreach ($m['lessons'] as $l) {
-            $is_preview = ($l['key'] === $lessons[0]['key']);
-            $title = $is_preview
-                ? $link($l['title'], '{{page:lesson_' . $l['key'] . '}}', 'fw-semibold link-body-emphasis')
-                : $span($l['title'], 'fw-semibold', lang('Lesson Title'));
-            $meta = array($span(sprintf(lang('%d min'), $l['minutes']), 'small text-body-secondary text-nowrap', lang('Length')));
-            if ($is_preview) array_unshift($meta, $span(lang('Free preview'), 'badge rounded-pill text-bg-success', lang('Preview')));
-            $items[] = $el('li', 'list-group-item d-flex align-items-start gap-3 px-0 bg-transparent', $l['title'], array(
-                $icon($is_preview ? 'bi-play-circle' : 'bi-lock', 'text-primary mt-1'),
-                $el('div', 'flex-grow-1', lang('Lesson'), array($title, $para($l['text'], 'small text-body-secondary mb-0'))),
-                $el('div', 'd-flex flex-column align-items-end gap-1', lang('Lesson Details'), $meta),
-            ));
-        }
-        $modules[] = $el('div', 'mb-4', $m['title'], array(
-            $heading('h3', sprintf(lang('Module %d: %s'), $mn + 1, $m['title']), 'h6 text-uppercase small fw-bold text-body-secondary mb-2'),
-            $el('ul', 'list-group list-group-flush', lang('Lessons'), $items),
-        ));
-    }
 
     $public_pages[] = array(
         'key'              => 'course_' . $key,
@@ -294,8 +468,11 @@ foreach ($courses as $key => $c) {
         'tree'             => $page(array(
             $page_header($c['title'], $c['summary'], array(
                 $el('div', 'd-flex flex-wrap align-items-center gap-3 small mt-3', lang('Course Details'), array(
-                    $subject_badge($c['subject']),
-                    $level_badge($c['level']),
+                    $el('span', 'd-inline-flex align-items-center gap-1 rounded-pill px-2 lh-base fw-semibold bg-' . $subjects[$c['subject']]['color'] . '-subtle text-' . $subjects[$c['subject']]['color'] . '-emphasis', lang('Subject'), array(
+                        $icon($subjects[$c['subject']]['icon']),
+                        $span($subjects[$c['subject']]['title'], '', lang('Text')),
+                    )),
+                    $level_meter($c['level']),
                     $el('span', 'd-inline-flex align-items-center gap-1', lang('Instructor'), array($icon('bi-person'), $span($teacher['name'], '', lang('Text')))),
                     $el('span', 'd-inline-flex align-items-center gap-1', lang('Lessons'), array($icon('bi-collection-play'), $span(sprintf(lang('%d lessons'), count($lessons)), '', lang('Text')))),
                     $el('span', 'd-inline-flex align-items-center gap-1', lang('Length'), array($icon('bi-clock'), $span($c['length'], '', lang('Text')))),
@@ -310,13 +487,9 @@ foreach ($courses as $key => $c) {
                                 $check_list($c['outcomes']),
                             ), $searchable('learn-' . $key, $subjects[$c['subject']]['topics'])),
                             $el('div', 'mb-5', lang('Curriculum'), array(
-                                $heading('h2', lang('Curriculum'), 'h4 fw-bold mb-3'),
-                                $el('div', '', lang('Modules'), $modules),
+                                $heading('h2', lang('Curriculum'), 'h4 fw-bold mb-4'),
+                                $rise($course_path($key), 120),
                             ), array('id' => 'curriculum')),
-                            $el('div', 'p-4 rounded-4 bg-body-tertiary mb-5', lang('Assignment'), array(
-                                $heading('h2', lang('Your project'), 'h5 fw-bold mb-2'),
-                                $para($c['assignment'], 'mb-0'),
-                            )),
                             $el('div', 'd-flex gap-3 align-items-start', lang('Instructor'), array(
                                 $image($portrait($teacher['name'], 160), $teacher['name'], 'rounded-circle object-fit-cover flex-shrink-0', array('width' => '80', 'height' => '80', '_attrs' => array($attr('loading', 'lazy')))),
                                 $el('div', '', lang('Text'), array(
@@ -400,9 +573,12 @@ $public_pages[] = array(
 );
 
 // ── Pricing ─────────────────────────────────────────────────────────────
-// Each course on its own, the membership, and training for teams.
+// Each course on its own (from the cheapest, in the base currency), the
+// membership, and training for teams.
 $price_rows = array();
+$cheapest = null;
 foreach ($courses as $key => $c) {
+    if ($cheapest === null || $amount_in_base($c['prices']) < $amount_in_base($cheapest)) $cheapest = $c['prices'];
     $price_rows[] = $el('li', 'list-group-item d-flex justify-content-between align-items-center gap-3 px-0 bg-transparent', $c['title'], array(
         $link($c['title'], '{{page:course_' . $key . '}}', 'link-body-emphasis'),
         $span($c['price'], 'fw-bold text-nowrap', lang('Price')),
@@ -429,7 +605,7 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Plans'), array(
             $container(array(
                 $row(array(
-                    $col(array($plan_card(lang('One course'), lang('From $79'), lang('Pay once for a course and keep it, with every lesson, its project and the instructor\'s feedback.'), array(
+                    $col(array($plan_card(lang('One course'), sprintf(lang('From %s'), $money($cheapest)), lang('Pay once for a course and keep it, with every lesson, its project and the instructor\'s feedback.'), array(
                         $el('ul', 'list-group list-group-flush mb-3', lang('Courses'), $price_rows),
                         $link(lang('Browse courses'), '{{page:courses}}', 'btn btn-outline-primary mt-auto'),
                     ), false)), '', '4'),

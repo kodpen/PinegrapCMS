@@ -1,10 +1,10 @@
 ---
 name: design-template-courses
-description: Online Courses template (pinegrap-courses): courses as products granting a private folder, lessons as pages, membership library, enrolment and assignments, what is not built, pco- look, tests.
+description: Online Courses template (pinegrap-courses): courses as products granting a private folder, lessons as pages, membership library, enrolment and assignments, what is not built, pco- classes, tests.
 ---
 
 ## What does it ship?
-- Home, courses, `course_<key>` (syllabus, instructor, price, Enrol), instructors, pricing, about, FAQ; `learn_<key>` and `lesson_<key>_<n>` per course, `my_courses`, `library`; `enrolment`, `enrolment_view`, `assignment`, `assignment_view`, `my_assignments`, `staff_enrolments`, `staff_assignments`; product, cart, checkout, order; the standard pages ([[design-templates-standard-pages]]); sign-in and My Account pages, `staff_directory`, `staff`, `blog_new`, `staff_entry`; the e-mail pages.
+- Home, courses, `course_<key>` (curriculum, instructor, price, Enrol), instructors, pricing, about, FAQ; `learn_<key>` and `lesson_<key>_<n>` per course, `my_courses`, `library`; `enrolment`, `enrolment_view`, `assignment`, `assignment_view`, `my_assignments`, `staff_enrolments`, `staff_assignments`; product, cart, checkout, order; the standard pages ([[design-templates-standard-pages]]); sign-in and My Account pages, `staff_directory`, `staff`, `blog_new`, `staff_entry`; the e-mail pages.
 - Shared: account_bar, notice, header, footer, staff_bar, enrol_band, email_header/footer. Order 67, icon `bi-mortarboard`, look `modern-soft`, palette `ocean` (the e-mails' inline colours are its teal `#0f766e`). Contact group `newsletter` (Courses Newsletter). Built in #4770, #4788, #4838, #4849, #4880, #4912, #4930 and the assembly PR.
 
 ## Why a main file plus a folder?
@@ -23,8 +23,9 @@ description: Online Courses template (pinegrap-courses): courses as products gra
 - Progress, scored quizzes, certificates, drip release and a list of only the bought courses (My Courses lists all; the folder decides which classroom opens): new behaviour.
 
 ## What is the pco- look?
-- `pco-brand` (header name), `pco-eyebrow` (section header line), `pco-hero` (home's first section), `pco-lift` (course and instructor cards); two fonts (Nunito headings, Inter body) in `assets`. Form field ids share the prefix (`pco-enrol-…`), so the class check reads `cssClass` only.
+- `pco-brand` (header name), `pco-eyebrow` (section header line), `pco-lift` (instructor cards); two fonts (Nunito headings, Inter body) in `assets`. Form field ids share the prefix (`pco-enrol-…`), so the class check reads `cssClass` only. Home, courses and course pages (2.0.0): [[design-template-courses-pages]].
 - No `opacity-*` on text (the enrol band and the lesson length had it; [[design-template-text-contrast]]).
 
 ## Which tests cover it?
-- `design_template_courses_test.php` (data, public, learning, enrolment and assignments, shop), `…_standard_test.php`, `…_account_test.php` load the parts; `…_assembly_test.php` the main file: offered, folders and their access, every course product grants a template folder, pages in order, widgets once and all placed, placeholders name pages and folders, contact search sections, `pco-` classes equal rules. It is in the shared lists of the collection-form, account-e-mail, submitter-name, consent-privacy and faded-text tests.
+- `design_template_courses_test.php` (data, public, learning, enrolment and assignments, shop), `…_standard_test.php`, `…_account_test.php` load the parts.
+- `…_assembly_test.php` reads the main file: offered, folders and their access, every course product grants a template folder, pages in order, widgets once and all placed, placeholders name pages and folders, contact search sections, `pco-` classes equal rules, the pages on the blocks. It is in the shared lists of the collection-form, account-e-mail, submitter-name, consent-privacy and faded-text tests.

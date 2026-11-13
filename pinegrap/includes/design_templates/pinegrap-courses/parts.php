@@ -190,7 +190,7 @@ $instructors = array(
 $courses = array(
     'web'  => array(
         'sku' => 'COURSE-WEB', 'slug' => lang('build-your-first-website'), 'title' => lang('Build Your First Website'), 'subject' => 'development', 'instructor' => 'selin', 'level' => 'beginner',
-        'length' => lang('6 hours of video'), 'price' => lang('$79'), 'prices' => array('USD' => 79, 'TRY' => 2999), 'folder' => 'course_web',
+        'length' => lang('6 hours of video'), 'prices' => array('USD' => 79, 'TRY' => 2999), 'folder' => 'course_web',
         'summary'  => lang('HTML and CSS from the first tag to a site you can publish, with a small project in every lesson.'),
         'outcomes' => array(lang('Write a page in HTML that every browser reads'), lang('Lay it out with CSS on a phone and a large screen'),
             lang('Publish it on the internet under your own address'), lang('Know where to look when something breaks')),
@@ -212,7 +212,7 @@ $courses = array(
     ),
     'data' => array(
         'sku' => 'COURSE-DATA', 'slug' => lang('data-analysis-with-spreadsheets'), 'title' => lang('Data Analysis with Spreadsheets'), 'subject' => 'data', 'instructor' => 'jonas', 'level' => 'beginner',
-        'length' => lang('5 hours of video'), 'price' => lang('$89'), 'prices' => array('USD' => 89, 'TRY' => 3399), 'folder' => 'course_data',
+        'length' => lang('5 hours of video'), 'prices' => array('USD' => 89, 'TRY' => 3399), 'folder' => 'course_data',
         'summary'  => lang('From a messy export to a clear chart: cleaning, formulas, pivot tables and a report people read.'),
         'outcomes' => array(lang('Clean an export so every row can be counted'), lang('Answer questions with formulas and pivot tables'),
             lang('Choose the chart that says what the numbers say'), lang('Build a one-page report that updates itself')),
@@ -234,7 +234,7 @@ $courses = array(
     ),
     'ux'   => array(
         'sku' => 'COURSE-UX', 'slug' => lang('ux-design-fundamentals'), 'title' => lang('UX Design Fundamentals'), 'subject' => 'design', 'instructor' => 'maya', 'level' => 'intermediate',
-        'length' => lang('7 hours of video'), 'price' => lang('$99'), 'prices' => array('USD' => 99, 'TRY' => 3799), 'folder' => 'course_ux',
+        'length' => lang('7 hours of video'), 'prices' => array('USD' => 99, 'TRY' => 3799), 'folder' => 'course_ux',
         'summary'  => lang('Interviews, user flows, wireframes and a clickable prototype you test with real people.'),
         'outcomes' => array(lang('Run a short interview that teaches you something'), lang('Turn what you heard into a user flow'),
             lang('Sketch and wireframe the screens of that flow'), lang('Test a prototype and decide what to change')),
@@ -265,16 +265,31 @@ $course_lessons = function ($course_key) use ($courses) {
     return $out;
 };
 
+// A price of the template as the shop writes it: the figure for the site's
+// base currency, USD's figure for a currency not listed (the same choice
+// _pg_tpl_catalog() makes for a product), with the base currency's symbol.
+// A course's card and the product it sells therefore show one amount.
+$base_currency = defined('BASE_CURRENCY_CODE') ? strtoupper((string)BASE_CURRENCY_CODE) : 'USD';
+$amount_in_base = function (array $prices) use ($base_currency) {
+    return isset($prices[$base_currency]) ? $prices[$base_currency] : $prices['USD'];
+};
+$money = function (array $prices) use ($amount_in_base) {
+    return pg_money_text($amount_in_base($prices), defined('BASE_CURRENCY_SYMBOL') ? (string)BASE_CURRENCY_SYMBOL : '$');
+};
+foreach (array_keys($courses) as $course_key) $courses[$course_key]['price'] = $money($courses[$course_key]['prices']);
+unset($course_key);
+
 // The all-access membership: every course's library of extras for a year.
 // The shop sells it as a product (same SKU) that renews the membership by
 // 'days'; nothing renews by itself.
 $membership = array(
-    'sku' => 'COURSES-MEMBERSHIP', 'title' => lang('All-Access Membership'), 'price' => lang('$199 a year'),
+    'sku' => 'COURSES-MEMBERSHIP', 'title' => lang('All-Access Membership'),
     'prices' => array('USD' => 199, 'TRY' => 7499), 'days' => 365,
     'text'  => lang('The members\' library and the monthly live sessions, for a year.'),
     'items' => array(lang('The members\' library of workshops and recordings'), lang('A live question-and-answer session every month'),
         lang('A discount code for every course'), lang('Renew when the year ends: nothing is charged by itself')),
 );
+$membership['price'] = sprintf(lang('%s a year'), $money($membership['prices']));
 
 // The members' library: recordings of the monthly live sessions and
 // workshops, in the membership folder.
@@ -514,17 +529,6 @@ $level_badge = function ($key) use ($span, $levels) {
     return $span($levels[$key], 'badge rounded-pill bg-body text-body-emphasis border', lang('Level'));
 };
 
-
-// A numbered step of a short how-to.
-$step = function ($n, $title, $text) use ($el, $heading, $para, $span) {
-    return $el('li', 'd-flex gap-3 mb-4', lang('Step'), array(
-        $span((string)$n, 'badge rounded-pill text-bg-primary fs-6 align-self-start', lang('Step Number')),
-        $el('div', '', lang('Text'), array(
-            $heading('h3', $title, 'h6 fw-bold mb-1'),
-            $para($text, 'text-body-secondary mb-0'),
-        )),
-    ));
-};
 
 // A check list: a tick and the words on each line.
 $check_list = function ($items, $class = 'list-unstyled mb-0') use ($el, $icon, $span) {

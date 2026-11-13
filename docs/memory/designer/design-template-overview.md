@@ -26,7 +26,7 @@ description: Start file for the design-template(s)-* files: the Choose a Templat
 - `design-template-<name>.md`: appstudio, architecture, bakery, brewery, campsite, carrental, charity, cityhall, construction, courses, coworking, dealership, drivingschool, events, ferry, filmstudio, florist, forum, gallery, gym, hello, homeservices, hotel, launch, law, library;
   magazine, marina, market, museum, music, news, pharmacy, photo, planetarium, podcast, portfolio, realestate, recruitment, restaurant, salon, school, skiresort, social, sportsclub, theatre, travel, veterinary, wedding, zoo.
 - Cafe and Clinic: `design-template-cafe.md`; Bookshop events: `-bookshop-events.md`.
-- Pages on a block family (`design-template-<name>-pages.md` or `-home`): architecture, campsite, carrental, cityhall, construction, coworking, drivingschool, events, ferry, florist, gym, hotel, launch, marina, museum, music, pharmacy, photo, school, sportsclub, travel, wedding.
+- Pages on a block family (`design-template-<name>-pages.md` or `-home`): architecture, campsite, carrental, cityhall, construction, courses, coworking, drivingschool, events, ferry, florist, gym, hotel, launch, marina, museum, music, pharmacy, photo, school, sportsclub, travel, wedding.
 - More topics: forum (`-blog`, `-decisions`, `-layout`, `-moderation`, `-private-threads`, `-replies`), magazine (`-a11y`, `-issues`, `-layout`, `-publishing`), news (`-layout`, `-publishing`), events and salon (`-words`).
 - Boutique, Store, Playground: only in the shared files.
 
