@@ -210,6 +210,7 @@
 - design-templates-newsroom.md: News Portal and Magazine templates as one effort: the owner's decisions (2026-10-22), the platform steps built for them, the follow-ups still open (search, feeds, caching).
 - design-templates-rows.md: Rows a template or import makes on opening: origin markers, pagehide discard, 12-hour reuse read in one pass, page names freed on the first save, testing Publish inside them.
 - design-templates-standard-pages.md: What every design template carries: account, inbox, staff and blog pages under fixed keys, sample records, the support-center search sections, e-mail pages, settings keys checked against the renderer.
+- design-theme-dark-lines.md: A palette colour too dark for the dark surfaces draws its outline-button border, focus halo and range thumb lifted to 3:1, and the readable text shade is made for bg-body-tertiary in dark mode (#9057)
 - design-theme-look-and-palette.md: A visual design's look and colour palette (style.style_look / style_palette, 2026.4.5): values, the stylesheets and their load order on site, canvas and preview, tokens for new component styles. [decision: decisions-made-product-44.md]
 - design-theme-look-drawing.md: The small drawing of a look (pg_design_look_drawing() and its twin _sdLookDrawing()): what it draws from the preview row, where it shows, the twin test
 - design-theme-pale-colours.md: A palette colour too pale for a white page (Silver, Electric Blue's second colour): outline button border, focus ring, tick, radio dot and switch knob drawn in its readable shade

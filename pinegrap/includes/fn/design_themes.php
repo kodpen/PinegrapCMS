@@ -553,7 +553,10 @@ function _pg_theme_role($role, $c)
 {
     $white   = array(255, 255, 255);
     $ink     = array(17, 24, 39);
-    $dark_bg = array(33, 37, 41);   // Bootstrap's dark body
+    // Bootstrap's dark body-tertiary surface, the lighter of the two dark
+    // surfaces a design puts text and buttons on (the body is #212529): what
+    // reads on it reads on the body too.
+    $dark_bg = array(43, 48, 53);
 
     // Text on the colour: white wherever it reads at 4.5:1, else whichever
     // of white and ink reads better.
@@ -577,6 +580,10 @@ function _pg_theme_role($role, $c)
     // dark body such a colour stands out, and is its own line again.
     $pale = _pg_theme_contrast($c, $white) < 3;
     $line = $pale ? $fg_light : $c;
+    // The other way round on the dark surfaces: most palette colours are too
+    // dark to be seen there as a line, and an outline button read as loose
+    // text. Such a colour draws its lines lifted toward white to 3:1.
+    $line_dark = (_pg_theme_contrast($c, $dark_bg) >= 3) ? $c : _pg_theme_readable($c, $dark_bg, 3, true);
 
     $light = array(
         '--bs-' . $role                     => _pg_theme_hex($c),
@@ -599,11 +606,13 @@ function _pg_theme_role($role, $c)
         '--pg-' . $role . '-fg-rgb'         => _pg_theme_rgb_list($fg_dark),
         '--pg-' . $role . '-hover-rgb'      => _pg_theme_rgb_list(_pg_theme_tint($fg_dark, 0.2)),
     );
-    if ($pale) {
+    // Written in both blocks whenever either differs from the colour: a light
+    // section inside a dark page would otherwise inherit the dark line.
+    if ($pale || ($line_dark !== $c)) {
         $light['--pg-' . $role . '-line']     = _pg_theme_hex($line);
         $light['--pg-' . $role . '-line-rgb'] = _pg_theme_rgb_list($line);
-        $dark['--pg-' . $role . '-line']      = _pg_theme_hex($c);
-        $dark['--pg-' . $role . '-line-rgb']  = _pg_theme_rgb_list($c);
+        $dark['--pg-' . $role . '-line']      = _pg_theme_hex($line_dark);
+        $dark['--pg-' . $role . '-line-rgb']  = _pg_theme_rgb_list($line_dark);
     }
     if ($role === 'primary') {
         $light['--bs-link-color']            = _pg_theme_hex($fg_light);
