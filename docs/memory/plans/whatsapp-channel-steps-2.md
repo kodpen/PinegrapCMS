@@ -16,7 +16,7 @@ description: Steps WA12-WA18 of plans/whatsapp-channel.md (owner 2026-11-13, #91
 - A site with the Workspace off follows what MA10 settles for incoming e-mail (`workspace/mail-area-proposals.md`).
 
 ## Which steps?
-- WA12 (S, no product code) Census and proposal. What a WhatsApp or SMS conversation shares with the e-mail one (card, state, assignment, list, notices, event, AI draft, rights) and what is mail-only (subject, headers, Cc, quote). Storage: a row of the mail conversation tables with its transport, or tables of its own; where an arriving SMS is kept and how long.
+- WA12 (S, no product code) Census and proposal. In progress. What a WhatsApp or SMS conversation shares with the e-mail one (card, state, assignment, list, notices, event, AI draft, rights) and what is mail-only (subject, headers, Cc, quote). Storage: a row of the mail conversation tables with its transport, or tables of its own; where an arriving SMS is kept and how long.
   - Incoming SMS per provider (Netgsm, İleti Merkezi, Twilio): a number of its own, webhook or poll, signature, cost. The WhatsApp message kinds that arrive and which are shown. Opt-out words.
 - WA13 (M) WhatsApp into a channel: the account's card names a channel as a mailbox does; a message WA4 received opens a conversation there or joins the open one of that number; the contact found by number; the known customer's line in their channels, notices and assignment as e-mail's.
 - WA14 (M) Answering by WhatsApp: the card's "Reply by WhatsApp" and the drawer: text and a file from Files inside the 24 hours, the time left shown; after it the approved templates with their variables. Waiting, Not sent and Send again as e-mail's.
