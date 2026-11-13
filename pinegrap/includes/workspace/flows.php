@@ -2882,6 +2882,32 @@ function ws_flow_brief($viewer, $flow, $n, $start = '')
 }
 
 /**
+ * The flow list's words for one flow, the same ws_flow_list gives each row:
+ * how it starts, with the next run of a live flow that starts at a time
+ * (ws_flow_start_with_next()), and the name of its home channel when the
+ * person reads it (ws_flows_channel_names()). The flow's own answer carries
+ * them so that its row in the list keeps them once the flow has been opened,
+ * published, paused or resumed.
+ *
+ * @param array  $viewer
+ * @param array  $flow  ws_flows row with access
+ * @param array  $graph the graph it starts from (ws_flow_start_graph())
+ * @param string $start ws_flow_start_kind() of that graph
+ * @return array start_text, channel_name
+ */
+function ws_flow_list_words($viewer, $flow, $graph, $start)
+{
+    $id = (int) $flow['id'];
+    $next = ws_flows_next_runs(ws_flows_next_run_ids(array($flow), array($id => array('kind' => (string) $start))));
+    $channels = ws_flows_channel_names($viewer, array($flow));
+
+    return array(
+        'start_text'   => ws_flow_start_with_next(ws_flow_start_sentence($viewer, $graph), isset($next[$id]) ? ws_scheduled_moment($next[$id]) : ''),
+        'channel_name' => $channels[(int) $flow['channel_id']] ?? '',
+    );
+}
+
+/**
  * Whether the person reads a flow's draft: whoever may change it, and
  * whoever else reaches a flow never published (shared with them before it
  * was), read-only. Once a version is published, the others read that.
@@ -2912,9 +2938,10 @@ function ws_flow_detail($viewer, $flow)
     $edit = ((string) $flow['access'] === 'edit');
     $draft = ws_flow_draft_readable((string) $flow['access'], is_array($version) ? (int) $version['id'] : 0) ? ws_flow_graph_of($flow) : null;
 
-    $start = ws_flow_start_kind(ws_flow_start_graph($flow, $version));
+    $graph = ws_flow_start_graph($flow, $version);
+    $start = ws_flow_start_kind($graph);
 
-    return ws_flow_brief($viewer, $flow, is_array($version) ? (int) $version['n'] : 0, $start) + array(
+    return ws_flow_brief($viewer, $flow, is_array($version) ? (int) $version['n'] : 0, $start) + ws_flow_list_words($viewer, $flow, $graph, $start) + array(
         'draft'    => ($draft !== null) ? ws_flow_graph_present($draft, $edit) : null,
         'graph'    => ($live !== null) ? ws_flow_graph_present($live, $edit) : null,
         // A box its role-3 owner's own flows may not hold (kept from their

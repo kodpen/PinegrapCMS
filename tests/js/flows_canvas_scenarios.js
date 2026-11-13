@@ -847,6 +847,56 @@ module.exports = [
         }
     },
 
+    {
+        name: 'back on the list, a flow\'s row keeps how it starts and its home channel, the search finds it by that channel, and a name or home changed on its canvas shows',
+        run: async (h) => {
+            const row = (name) => h.page((harness, text) => {
+                const open = Array.prototype.filter.call(document.querySelectorAll('#ws-root .wsf-flow-row .wsf-flow-open'), (node) => node.textContent === text)[0];
+
+                return open ? Array.prototype.map.call(open.closest('tr').querySelectorAll('.wsf-flow-start, td:last-child'), (cell) => cell.textContent) : null;
+            }, name);
+            const back = async () => {
+                await h.click('#ws-view-back');
+                await h.waitFor('the flow list shown', () => !!document.querySelector('#ws-root .wsf-nothing'), 3000);
+                await h.settle();
+            };
+            const search = async (text) => {
+                await h.click({ css: '#ws-root .wsf-flows-search' });
+                await h.key('a', 'Control');
+                await h.key('Backspace');
+                await h.type(text);
+                await h.settle();
+            };
+
+            await h.openList();
+            h.same('the list says how it starts and names its home', await row('Weekly report'), ['By hand', '#general']);
+            await h.click({ css: '#ws-root .wsf-flow-row .wsf-flow-open', text: 'Weekly report' });
+            await h.waitFor('the flow draws', (harness) => harness.settled() && !document.querySelector('#ws-root .wsf-nothing'), 3000);
+            await h.settle();
+            await back();
+            h.same('back from its canvas, the row still says both', await row('Weekly report'), ['By hand', '#general']);
+            await search('general');
+            h.same('the search finds it by its home channel', await listNames(h), ['Weekly report']);
+
+            await h.click({ css: '#ws-root .wsf-flow-row .wsf-flow-open', text: 'Weekly report' });
+            await h.waitFor('the flow draws', (harness) => harness.settled() && !document.querySelector('#ws-root .wsf-nothing'), 3000);
+            await h.settle();
+            await h.click({ css: BAR + ' .wsf-name' });
+            await h.key('a', 'Control');
+            await h.type('Weekly summary');
+            await h.page((harness, text) => {
+                const home = harness.find({ labelled: text, within: '#wsf-side' });
+
+                home.value = '11';
+                home.dispatchEvent(new Event('change', { bubbles: true }));
+            }, h.t('fl_home'));
+            await back();
+            h.same('the home changed is saved on the way', [h.store.flows.get(8).name, h.store.flows.get(8).channel_id], ['Weekly summary', 11]);
+            await search('sales');
+            h.same('the row has the new name and home, found by it', [await listNames(h), await row('Weekly summary')], [['Weekly summary', 'Stock check'], ['By hand', '#sales']]);
+        }
+    },
+
     // ── What the flows screen adds ─────────────────────────────────────
 
     {

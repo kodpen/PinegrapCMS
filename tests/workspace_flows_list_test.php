@@ -4,7 +4,8 @@
  *
  * Tests for the Flows list (flows.php, workspace_flow.js): converted flows
  * are ordinary rows, merged into the list in its order; a flow that starts
- * at a time gives its next run in the start column; the list ends with the
+ * at a time gives its next run in the start column; the flow's own answer
+ * carries the list's words of its row; the list ends with the
  * scheduled actions the conversion refused only, and a cancelled row that
  * was never converted, a converted row and a flow's hidden anchor are not
  * in that group. Read from the source: the Scheduled actions section and
@@ -93,6 +94,29 @@ function test_workspace_flows_list_start_with_next()
 	pg_assert_same(lang(array('string' => '{var:1} · Next: {var:2}', 'vars' => array('Every day 09:00', 'Tomorrow 09:00'))), ws_flow_start_with_next('Every day 09:00', 'Tomorrow 09:00'), 'the next run follows the sentence');
 	pg_assert_same('Every day 09:00', ws_flow_start_with_next('Every day 09:00', ''), 'no next run, the sentence alone');
 	pg_assert_same('', ws_flow_start_with_next('', 'Tomorrow 09:00'), 'no sentence, nothing');
+}
+
+// The flow's own answer (ws_flow_detail()) carries the list's start words
+// and home channel name, so the flow's row keeps them once it is opened,
+// published, paused or resumed. A draft started by hand with no home: the
+// list's "By hand", no channel and no next run, nothing read.
+function test_workspace_flows_list_words_of_one_flow()
+{
+	$viewer = array('id' => 1, 'role' => 0);
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(array('id' => 'start', 'kind' => 'manual', 'config' => array()), array('id' => 'stop', 'kind' => 'end')),
+		'edges' => array(array('from' => 'start', 'to' => 'stop')),
+	));
+	$flow = array('id' => 7, 'status' => 'draft', 'channel_id' => 0);
+
+	pg_assert_same(array('start_text' => lang('By hand'), 'channel_name' => ''), ws_flow_list_words($viewer, $flow, $graph, ws_flow_start_kind($graph)), 'by hand, no home');
+	pg_assert_same(array('start_text' => '', 'channel_name' => ''), ws_flow_list_words($viewer, $flow, ws_flow_graph_empty(), ''), 'no start box');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
+	$detail = substr($source, strpos($source, 'function ws_flow_detail('), 1200);
+
+	pg_assert_contains('$start = ws_flow_start_kind($graph);', $detail, 'the kind of the graph it starts from');
+	pg_assert_contains('+ ws_flow_list_words($viewer, $flow, $graph, $start) +', $detail, 'the list\'s words in the flow\'s own answer');
 }
 
 // The Scheduled actions section and its entry are gone; ?view=scheduled

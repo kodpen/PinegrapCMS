@@ -1500,6 +1500,13 @@
 
             window.clearTimeout(state.saveTimer);
             state.refocus = 'row-' + id + ' flows-search';
+
+            // A name or home changed while the flow was open shows in its row;
+            // a new flow left untouched, dropped on the way, stays out.
+            if (state.flow && state.flows.some(function (item) { return item.id === state.flow.id; })) {
+                keepEntry(state.flow);
+            }
+
             showNone();
         }).catch(K.fail);
     }
@@ -1529,7 +1536,15 @@
     }
 
     function listEntry(flow) {
-        var brief = { id: flow.id, name: flow.name, status: flow.status, access: flow.access, mine: flow.mine, channel_id: flow.channel_id, draft_rev: flow.draft_rev, version: flow.version, start: flow.start, last_run: null };
+        keepEntry(flow);
+        drawList();
+    }
+
+    // The flow's row in the list, from the flow's own answer (ws_flow_detail()
+    // gives the list's start words and home channel name too); what an answer
+    // does not carry stays as the list had it.
+    function keepEntry(flow) {
+        var brief = { id: flow.id, name: flow.name, status: flow.status, access: flow.access, mine: flow.mine, channel_id: flow.channel_id, draft_rev: flow.draft_rev, version: flow.version, start: flow.start, start_text: flow.start_text, channel_name: flow.channel_name, last_run: null };
         var found = false;
 
         state.flows = state.flows.map(function (item) {
@@ -1537,6 +1552,11 @@
                 found = true;
                 // The flow's own answer carries no runs: its last one stays.
                 brief.last_run = item.last_run || null;
+                ['start_text', 'channel_name'].forEach(function (key) {
+                    if (brief[key] === undefined) {
+                        brief[key] = item[key];
+                    }
+                });
                 return brief;
             }
 
@@ -1546,8 +1566,6 @@
         if (!found) {
             state.flows.unshift(brief);
         }
-
-        drawList();
     }
 
     // The flow list, no flow open; a single editor has no list: it closes
@@ -6076,7 +6094,13 @@
         // the flow is shared with at edit does not.
         home.disabled = !state.flow.manage;
         home.addEventListener('change', function () {
-            state.flow.channel_id = parseInt(home.value, 10) || 0;
+            var id = parseInt(home.value, 10) || 0;
+            var named = (BOOT.channels || []).filter(function (channel) { return channel.id === id; })[0];
+
+            state.flow.channel_id = id;
+            // The list's Home channel column names it as the server would:
+            // a channel the person does not read is not named.
+            state.flow.channel_name = named ? named.name : '';
             changed(false);
         });
         box.appendChild(field(t('fl_home'), home, (state.edit && !state.flow.manage) ? t('fl_home_owner_only') : t('fl_home_help')));
@@ -10374,6 +10398,8 @@
                     // How the live version starts decides Run or Run now.
                     flow.start = data.flow.start;
                     flow.run_now = data.flow.run_now;
+                    // Its row's start words follow the live version.
+                    flow.start_text = data.flow.start_text;
                     flow.changed = true;
                     listEntry(flow);
                     redrawBar();
