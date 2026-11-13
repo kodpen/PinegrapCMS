@@ -13,7 +13,7 @@ description: File Manager upload window limit capped at what a browser can send 
 - Before (#8989, PR #9090): a 420 MB file under the stated 1.1 GB was read as `""` with no error, sent with `"data":""` and answered by a bare "Invalid request." naming no file.
 
 ## What is left?
-- Files larger than the ceiling need the upload in parts the image editor uses (`ui/image-editor-upload.md`); the File Manager has no such path yet.
+- Files larger than the ceiling need the upload in parts the Design Canvas uses (`ui/image-editor-upload.md`); the File Manager has no such path yet.
 - The Workspace's file uploads read their own ceiling (`includes/workspace/files.php`) and were not looked at.
 
 Related: tests/explorer_upload_notices_test.php

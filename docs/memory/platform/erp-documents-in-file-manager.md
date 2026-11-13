@@ -1,6 +1,6 @@
 ---
 name: erp-documents-in-file-manager
-description: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the image editor's save that used to write over it
+description: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the Design Canvas's save that used to write over it
 ---
 
 ## What is an ERP document row?
@@ -9,7 +9,8 @@ description: Why a file the ERP module keeps (erp_doc_type set, no folder) is re
 
 ## Why must every write door ask for it by name?
 - A file with no folder passes `check_edit_access(0)` for staff, and a file with no folder and no `erp-` name is public. So a screen that renames, replaces, deletes or copies a file must refuse ERP rows itself, or an issued invoice could be renamed, overwritten, or copied beside itself as a public file.
-- The doors that ask: `edit_file.php` (the file's screen), `edit_files.php` (the bulk move, design flag and delete of a checked list, which until then deleted or moved an ERP row named by id), `pg_explorer_handle()` for every type in `pg_explorer_file_id_actions()` (`view_folder_and_files_f.php`), the explorer's file read in `includes/panel/explorer.php`, and the image editor's `pg_image_editor_file()` (`includes/fn/image_editor.php`), which every open and save goes through (since PR #517 the editor's save refuses: a replace wrote over the picture the row named, a copy landed in folder 0; refused with the shared sentence "ERP documents are read-only in the file manager."). Test: `tests/files_erp_readonly_test.php`.
+- The doors that ask: `edit_file.php` (the file's screen), `edit_files.php` (the bulk move, design flag and delete of a checked list, which until then deleted or moved an ERP row named by id), `pg_explorer_handle()` for every type in `pg_explorer_file_id_actions()` (`view_folder_and_files_f.php`), the explorer's file read in `includes/panel/explorer.php`, and the Design Canvas's `pg_image_editor_file()` (`includes/fn/image_editor.php`), which every open and save goes through.
+- Since PR #517 the editor's save refuses too: a replace wrote over the picture the row named, a copy landed in folder 0; refused with the shared sentence "ERP documents are read-only in the file manager.". Test: `tests/files_erp_readonly_test.php`.
 - The Workspace does not reach these rows: `ws_file_edit_target()` works on the channel folder's copies only.
 
 ## What does a new file-writing endpoint do?

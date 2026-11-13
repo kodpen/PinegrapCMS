@@ -4,7 +4,7 @@ description: How a pinegrap.com documentation page is written and published: Eng
 ---
 
 ## Who writes a page, and in which language?
-- A session on the owner's machine, through his signed-in browser: the documentation is the pages of one design in the site's Visual Page Editor. The design and page ids and the panel addresses are in that machine's notes, never here (`owner-rules.md`).
+- A session on the owner's machine, through his signed-in browser: the documentation is the pages of one design in the site's Page Design Studio. The design and page ids and the panel addresses are in that machine's notes, never here (`owner-rules.md`).
 - Owner (2026-10-13): English only. The other languages come from the site's Translations screen, which he runs in bulk; a session never enters a translation and never edits a `/tr/…` page, the release notes included (2026-10-16).
 - Say which pages will change before publishing. A placeholder such as `^^name^^` never goes into page content (`owner-rules.md`).
 

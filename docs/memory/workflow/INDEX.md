@@ -79,6 +79,7 @@
 - decisions-made-product-48.md: Decisions list, product part 48 (2026-11-12 on): Legacy to Bootstrap helper (#8967), the picker's list of everything (#9070), designer canvas samples (#9076), WhatsApp marketing consent (#9087)
 - decisions-made-product-49.md: Decisions list, product part 49 (2026-11-13 on): a customer's WhatsApp message and SMS land in a channel and are answered as an e-mail is (#9151); the image editor's phone rows approved (#8863)
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
+- decisions-made-product-50.md: Decisions list, product part 50 (2026-11-13 on): the site search on a page in another language is developed further, its gaps closed by a plan (#9216)
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording

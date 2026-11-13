@@ -1,6 +1,6 @@
 ---
 name: image-editor-scissors
-description: The image editor's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
+description: The Design Canvas's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
 module: image_editor
 ---
 

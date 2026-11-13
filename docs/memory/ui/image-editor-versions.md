@@ -1,6 +1,6 @@
 ---
 name: image-editor-versions
-description: The image editor's versions (file_versions, 2026.11.0): base and save rows, what opening loads, what a save, restore and delete write, retention, the drawer, deleting a file, Disk Usage
+description: The Design Canvas's versions (file_versions, 2026.11.0): base and save rows, what opening loads, what a save, restore and delete write, retention, the drawer, deleting a file, Disk Usage
 module: image_editor
 ---
 

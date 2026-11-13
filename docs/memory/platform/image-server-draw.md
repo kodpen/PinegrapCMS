@@ -1,6 +1,6 @@
 ---
 name: image-server-draw
-description: The server draws an image editor document itself (Canvas Drawing on System Status): what it draws through Imagick, what it leaves to browsers, the probe, the guards and limits, no shell
+description: The server draws a Design Canvas document itself (Canvas Drawing on System Status): what it draws through Imagick, what it leaves to browsers, the probe, the guards and limits, no shell
 module: image_draw
 ---
 

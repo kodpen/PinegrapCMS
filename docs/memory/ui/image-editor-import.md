@@ -1,6 +1,6 @@
 ---
 name: image-editor-import
-description: Import in the image editor's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas
+description: Import in the Design Canvas's top bar (E31): from this computer or Files, a picture as a picture layer, an SVG as one svg layer with unique ids, Break apart, svg layers painted on a save's canvas
 module: image_editor
 ---
 

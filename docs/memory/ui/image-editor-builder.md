@@ -1,6 +1,6 @@
 ---
 name: image-editor-builder
-description: The image editor's Shape builder: pathfinder buttons, the drag that merges or removes overlap regions, and the model's own path booleans (flatten, Martinez-Rueda, refit)
+description: The Design Canvas's Shape builder: pathfinder buttons, the drag that merges or removes overlap regions, and the model's own path booleans (flatten, Martinez-Rueda, refit)
 module: image_editor
 ---
 

@@ -9,7 +9,7 @@ description: Testing on dev.pinegrap.com (the owner's PC): what may be written, 
 - A schema step dev lacks is run from Settings › Jobs › Repair Software (`release/rerun-upgrade-steps.md`). It writes the database, so his go-ahead comes first.
 
 ## Who else is on dev?
-- The owner and every session sign in to the panel with one account. Before editing a page in the Visual Page Editor read `designer_page_lock`: a `last_seen` under a minute old is somebody editing, and "Take over the design" would make their tab read-only. Ask the owner first.
+- The owner and every session sign in to the panel with one account. Before editing a page in the Page Design Studio read `designer_page_lock`: a `last_seen` under a minute old is somebody editing, and "Take over the design" would make their tab read-only. Ask the owner first.
 - The site runs from one checkout on `development`. Before switching it, look at `git branch --show-current` and for a running `git`: an `index.lock` held by a live process is the owner's own pull, so wait and never kill it. A local change there is the owner's: never commit, revert or stash it.
 - Dev is as fresh as its last pull: nobody keeps it in step since 2026-11-03, the owner pulls it himself. A session brings it up only with `git merge --ff-only origin/development`, while it is on `development` and not ahead; new commits under `includes/migrations` or `install` need the re-run above.
 - To try a branch: a `tmp/<topic>` branch at the checkout's own `development`, `git cherry-pick` of the PR's commits (`-c core.hooksPath=/dev/null`), look, `git switch development`, delete the branch. A conflict only under `docs/` may be dropped: the site reads no docs. Wait while another `tmp/` branch is checked out.

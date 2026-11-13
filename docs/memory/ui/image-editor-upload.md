@@ -1,6 +1,6 @@
 ---
 name: image-editor-upload
-description: Large files in the image editor (V8, V8b): video, sound and saved animation sent in parts and resumed, type by bytes, pg_image_editor_upload_limits(), parts in data/temp
+description: Large files in the Design Canvas (V8, V8b): video, sound and saved animation sent in parts and resumed, type by bytes, pg_image_editor_upload_limits(), parts in data/temp
 module: image_editor
 ---
 

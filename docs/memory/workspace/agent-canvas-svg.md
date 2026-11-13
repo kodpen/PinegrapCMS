@@ -4,11 +4,11 @@ description: Agents draw Workspace canvases from SVG (POST channels/{id}/canvase
 ---
 
 ## What are agent canvases for?
-- An agent shows something as a picture in a channel where it is a member and changes it on request, as Claude's artifacts: it writes SVG, people open it in the image editor (owner 2026-11-08, `workflow/decisions-made-workspace-9.md`). Claude, Pinegrap AI and model assistants alike (`agent-canvas-assistants.md`). No schema: source `agent` and the document's `by` name the agent.
+- An agent shows something as a picture in a channel where it is a member and changes it on request, as Claude's artifacts: it writes SVG, people open it in the Design Canvas (owner 2026-11-08, `workflow/decisions-made-workspace-9.md`). Claude, Pinegrap AI and model assistants alike (`agent-canvas-assistants.md`). No schema: source `agent` and the document's `by` name the agent.
 - Built in #8236, #8254, #8252, #8299, #8293; picture `agent-canvas-picture.md`, edits `agent-canvas-edit.md`. Notes' canvases: not yet.
 
 ## What does an agent's SVG become?
-- `ws_canvas_from_svg($svg, $background, $split)` (`includes/workspace/canvas_svg.php`) builds the image editor's canvas document as Import does (`ui/image-editor-import.md`): `pg_svg_sanitize()`, then one `svg` layer (id `l0`, kind `g`, `imported`) covering the artboard; an outer `<g id>` with the root's id (`svg` when none), an inner `<g transform>` with the view box's matrix and the root's inherited paint; ids prefixed `i<n>-` and references renamed.
+- `ws_canvas_from_svg($svg, $background, $split)` (`includes/workspace/canvas_svg.php`) builds the Design Canvas's canvas document as Import does (`ui/image-editor-import.md`): `pg_svg_sanitize()`, then one `svg` layer (id `l0`, kind `g`, `imported`) covering the artboard; an outer `<g id>` with the root's id (`svg` when none), an inner `<g transform>` with the view box's matrix and the root's inherited paint; ids prefixed `i<n>-` and references renamed.
 - With `layers: "split"`: a layer per element (`agent-canvas-layers.md`).
 - The ports of the model's `svgRoot()`, `svgMatrixText()`, `svgIdMap()`, `svgRenameValue()`, `svgRenameCss()` are checked against it under Node (`tests/workspace_agent_canvas_test.php`).
 - Artboard: the root's width and height (view box when missing, 300 x 150 when both are), each side 16-8000; fill `#rrggbb` or `transparent`, white by default. One layer keeps its definitions in its markup, as Import does (no `svgDefs`).

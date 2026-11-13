@@ -1235,7 +1235,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $output_banned_ip_addresses = implode(',', $blocked_ips);
     $output_allowed_ip_addresses = implode(',', $allowed_ips);
 
-    // Currently active automatic bans, for the read-only summary.
+    // Currently active automatic bans, each with its Release button (the
+    // button submits the hidden form firewall.php hands over, by its form
+    // attribute: forms cannot be nested).
     $output_auto_bans = '';
 
     if ($waf_ip_columns) {
@@ -1249,17 +1251,24 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         );
 
         if ($auto_result) {
-            $auto_rows = mysqli_fetch_items($auto_result);
-
-            foreach ($auto_rows as $auto_row) {
-                $remaining = max(0, (int) $auto_row['expires_at'] - time());
+            foreach (mysqli_fetch_items($auto_result) as $auto_row) {
+                // The ladder reaches 10,080 minutes: the end is shown as a
+                // relative time, the clock time on hover.
+                $auto_expires = ((int) $auto_row['expires_at'] === 0)
+                    ? h(lang('Never'))
+                    : '<span title="' . h(get_absolute_time(array('timestamp' => (int) $auto_row['expires_at'], 'format' => 'plain_text'))) . '">' . get_relative_time(array('timestamp' => (int) $auto_row['expires_at'])) . '</span>';
 
                 // Each ban opens the firewall log filtered by its address, so
                 // the operator sees what brought it without retyping it.
-                $output_auto_bans .= '<a href="' . h(pg_waf_ban_log_url($auto_row['ip_address'])) . '" title="' . h(lang('Open the firewall log for this address')) . '" class="badge bg-subtle-danger fg-emphasis-danger border border-subtle-danger me-1 text-decoration-none">'
-                    . '<i class="bi bi-shield-slash me-1"></i>' . h($auto_row['ip_address'])
-                    . ' <span class="opacity-75">(' . ceil($remaining / 60) . ' ' . lang('minute(s)') . ')</span>'
-                    . '</a>';
+                $output_auto_bans .= '
+                                                        <tr>
+                                                            <td class="font-monospace"><a href="' . h(pg_waf_ban_log_url($auto_row['ip_address'])) . '" title="' . h(lang('Open the firewall log for this address')) . '">' . h($auto_row['ip_address']) . '</a></td>
+                                                            <td class="small fg-secondary">' . h($auto_row['note']) . '</td>
+                                                            <td class="small text-nowrap">' . $auto_expires . '</td>
+                                                            <td class="text-end">
+                                                                <button type="submit" form="pgset_waf_release" name="release_ip" value="' . h($auto_row['ip_address']) . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-unlock me-1" aria-hidden="true"></i>' . lang('Release') . '</button>
+                                                            </td>
+                                                        </tr>';
             }
         }
     }

@@ -16,5 +16,5 @@ description: Values a liveform message carries (records, panel input, service an
 
 ## Are Site Log lines HTML?
 - No. `log_activity()` and `ws_change_log()` store plain text and every reader escapes it once: Site Log (`convert_text_to_html()`), the dashboard Activity card, Edit User's activity list; `GET /site-log` returns it raw. Pass names raw in a log sentence's `vars`. An explorer JSON `message` is plain too (the File/Catalog Manager toast sets it with `textContent`); the backup screen's error `message` stays escaped because it is appended as HTML.
-- Symptom fixed: about twenty bin, restore, upload, Image Editor and catalog lines wrapped the name in `h()`, so "Çay & Kahve" showed as `Çay &amp; Kahve` there and in the group-created and quick-edit toasts (`tests/log_lines_plain_text_test.php`).
+- Symptom fixed: about twenty bin, restore, upload, Design Canvas and catalog lines wrapped the name in `h()`, so "Çay & Kahve" showed as `Çay &amp; Kahve` there and in the group-created and quick-edit toasts (`tests/log_lines_plain_text_test.php`).
 

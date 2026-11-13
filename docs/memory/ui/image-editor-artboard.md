@@ -1,6 +1,6 @@
 ---
 name: image-editor-artboard
-description: The image editor canvas (E12): New image dialog, Canvas tool on a board and on a photo (grow or trim with a fill), outward frames, Image tool, the ARTBOARD model section
+description: The Design Canvas's board (E12): New image dialog, Canvas tool on a board and on a photo (grow or trim with a fill), outward frames, Image tool, the ARTBOARD model section
 module: image_editor
 ---
 

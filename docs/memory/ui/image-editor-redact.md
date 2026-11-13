@@ -1,6 +1,6 @@
 ---
 name: image-editor-redact
-description: The image editor's redaction (E10): layer fields, box and brush areas, the preview filters, the masks a save sends, the server's step 4 under Imagick and GD, metadata, versions
+description: The Design Canvas's redaction (E10): layer fields, box and brush areas, the preview filters, the masks a save sends, the server's step 4 under Imagick and GD, metadata, versions
 module: image_editor
 ---
 

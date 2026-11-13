@@ -7,7 +7,7 @@ module: picker_all
 ## What does a list without a folder answer?
 - `picker.php?kind=&request=list` with no `folder` (or an empty one): every item of the kind the user may use, from every folder, in one list (`pg_picker_all_answer()` in `includes/fn/picker_all.php`). `folder=0` stays the top, which holds no items: the dialog of today asks for it.
 - Answer: `{folder: 0, all: true, crumbs: [], items, sort, order, per_page, more, next}`; each item carries `path` (its folder line), as a search result.
-- No `upload` key: the target folder of an Upload on All is the dialog's choice (PA2 of `plans/picker-all-list.md`).
+- No `upload` key: the target folder of an Upload on All is the dialog's choice (`picker-all-list-dialog.md`).
 - Binned pages are not in it (the Recycle Bin is outside the kind's condition); search still finds them. Pages in an archived folder are, marked.
 
 ## Who sees what in it?

@@ -1,6 +1,6 @@
 ---
 name: image-editor-draw
-description: The image editor's Draw tool: nine kinds and the eraser's size, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
+description: The Design Canvas's Draw tool: nine kinds and the eraser's size, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
 module: image_editor
 ---
 

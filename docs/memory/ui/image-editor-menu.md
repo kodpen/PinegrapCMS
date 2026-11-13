@@ -1,6 +1,6 @@
 ---
 name: image-editor-menu
-description: The image editor's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes
+description: The Design Canvas's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes
 module: image_editor
 ---
 

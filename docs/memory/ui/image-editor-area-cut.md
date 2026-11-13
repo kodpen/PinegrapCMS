@@ -1,6 +1,6 @@
 ---
 name: image-editor-area-cut
-description: The image editor's Cut to a layer (owner, 2026-11-05), why Erase is named Erase inside, and why the hole an erase leaves is the picture's own, not a piece
+description: The Design Canvas's Cut to a layer (owner, 2026-11-05), why Erase is named Erase inside, and why the hole an erase leaves is the picture's own, not a piece
 module: image_editor
 ---
 

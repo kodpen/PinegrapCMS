@@ -1,6 +1,6 @@
 ---
 name: designer-home-pictures
-description: The Visual Page Editor home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
+description: The Page Design Studio home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
 module: design_previews
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: image-editor-animation
-description: The image editor's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note
+description: The Design Canvas's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note
 module: image_editor
 ---
 

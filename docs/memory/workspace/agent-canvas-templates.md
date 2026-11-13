@@ -5,7 +5,7 @@ module: canvas_templates
 ---
 
 ## How does a canvas become a template?
-- A person opens a canvas from Files in the image editor and chooses "Save as template" in the save menu ("Remove from templates" when it is one). Only for a canvas opened with its document (`pg_image_editor_canvas_open_doc()`) in replace mode; the open answer carries `template` (bool). Built in CV5.
+- A person opens a canvas from Files in the Design Canvas and chooses "Save as template" in the save menu ("Remove from templates" when it is one). Only for a canvas opened with its document (`pg_image_editor_canvas_open_doc()`) in replace mode; the open answer carries `template` (bool). Built in CV5.
 - Action `template` {file_id, on} (`pg_image_editor_action_template()`): `pg_image_editor_file()` checks the person may edit the file's folder; a Site Log line says which file.
 - The list is one `config_text` row, `canvas_templates`, a JSON list of file ids (`includes/fn/canvas_templates.php`), no column. At most 50 (`PG_CANVAS_TEMPLATES_MAX`). Marking reads and writes it as one `pg_config_text_claim()`, retried three times, so two people marking at once do not drop each other's template.
 

@@ -1,6 +1,6 @@
 ---
 name: palette-block-sketch
-description: Visual Page Editor Blocks list hover card: the block drawn from the tree its build returns (_sdBlockSketch), what each node becomes, what is left out, the cache, the test, the known limits
+description: Page Design Studio Blocks list hover card: the block drawn from the tree its build returns (_sdBlockSketch), what each node becomes, what is left out, the cache, the test, the known limits
 ---
 
 ## What does a block's hover card show?

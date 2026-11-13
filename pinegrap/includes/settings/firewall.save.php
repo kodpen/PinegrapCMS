@@ -441,6 +441,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $liveform->add_notice(lang('One or more banned IP addresses were not added because they were invalid.') );
     }
 
+    // The ban mirror (data/temp/ban_shield.txt) is rewritten now, not within
+    // five minutes: a block entry removed here, the mode switched to Monitor
+    // (whose mirror leaves automatic bans out) or a proxy listed must reach
+    // the layer in front of the database before the operator's next request.
+    // The config row is read again first: this request began with the old one.
+    pg_waf_save_refresh_mirror();
+
 
     // The location database, when the button asks for it or the country
     // restriction is on and the site has none yet. Last, so a slow download

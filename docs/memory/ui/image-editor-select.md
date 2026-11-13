@@ -1,6 +1,6 @@
 ---
 name: image-editor-select
-description: How the image editor's Select tool picks layers: a click, Shift, a press inside an unfilled shape, the selection box, Select all, touch
+description: How the Design Canvas's Select tool picks layers: a click, Shift, a press inside an unfilled shape, the selection box, Select all, touch
 ---
 
 ## How are several layers selected?

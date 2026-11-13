@@ -417,9 +417,11 @@
     }
 
     // All's own sort, kept apart from a folder's: newest first unless the
-    // person chose another; a page has no size and no best match there.
+    // person chose another; best match is a search's. A page has no size,
+    // and no type sort on All: the server orders page_type by its ENUM
+    // position, not by the label shown, which a folder's sort uses.
     function allSort(storedSort, storedDir, pages) {
-        var keys = pages ? ['modified', 'name', 'type'] : ['modified', 'name', 'size', 'type'];
+        var keys = allSortKeys(pages);
         // A stored direction belongs to its stored sort only.
         if (keys.indexOf(storedSort) === -1) {
             return { sort: 'modified', dir: 'desc' };
@@ -427,6 +429,10 @@
         var sort = storedSort;
         var dir = (storedDir === 'asc' || storedDir === 'desc') ? storedDir : defaultDir(sort);
         return { sort: sort, dir: dir };
+    }
+
+    function allSortKeys(pages) {
+        return pages ? ['modified', 'name'] : ['modified', 'name', 'size', 'type'];
     }
 
     // The view a kind opens in: what the person chose for its sort of
@@ -510,7 +516,7 @@
         rangePick: rangePick, formatSize: formatSize, pickable: pickable, groupChips: groupChips, inGroup: inGroup,
         extraItems: extraItems, extraMatches: extraMatches, fieldMeta: fieldMeta, resultsKey: resultsKey,
         openingMode: openingMode, allParams: allParams, allSort: allSort, viewFor: viewFor, appendRows: appendRows,
-        nearEnd: nearEnd, uploadTargets: uploadTargets, metaLine: metaLine
+        nearEnd: nearEnd, uploadTargets: uploadTargets, metaLine: metaLine, allSortKeys: allSortKeys
     };
 
     var doc = root.document;
@@ -1074,6 +1080,10 @@
     Picker.prototype.fillSort = function () {
         var keys = this.pages ? [['name', t('Name')], ['modified', t('Modified')], ['type', t('Type')]]
             : [['name', t('Name')], ['modified', t('Modified')], ['size', t('Size')], ['type', t('Type')]];
+        if (this.onAll()) {
+            var allowed = allSortKeys(this.pages);
+            keys = keys.filter(function (key) { return allowed.indexOf(key[0]) !== -1; });
+        }
         if (this.results) {
             keys.unshift(['best', t('Best match')]);
         }
@@ -1531,7 +1541,11 @@
         this.head.hidden = this.view !== 'list' || !this.items.length;
         var cols = this.pages ? [['name', t('Name')], ['', t('Address')], ['type', t('Type')], ['modified', t('Modified')]]
             : [['name', t('Name')], ['type', t('Type')], ['size', t('Size')], ['modified', t('Modified')], ['', t('Access')]];
+        var allowed = this.onAll() ? allSortKeys(this.pages) : null;
         cols.forEach(function (col) {
+            if (allowed && col[0] && allowed.indexOf(col[0]) === -1) {
+                col = ['', col[1]];
+            }
             var cell = col[0] ? button('pg-picker-col', col[1]) : el('span', 'pg-picker-col', col[1]);
             if (col[0]) {
                 var on = self.currentSort() === col[0];

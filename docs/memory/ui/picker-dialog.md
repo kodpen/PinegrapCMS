@@ -8,11 +8,11 @@ module: picker
 - `assets/js/pg_picker.js`, served as `assets/js/pg_picker.min.js` (`pg_js_bundles()`); styles in `backend.src.css` under "The picker dialog". PK2 of `plans/one-picker.md`, PR #8562.
 - A screen prints `pg_picker_script()` once (the `#pg_picker_config` JSON with the `picker.php` address and `pg_picker_texts()`, then the bundle); it works in markup injected with jQuery, as the Settings cards are.
 - `pgPicker.open({kind, value, title})` returns a promise of the picked item or null, settled once the dialog has closed (`dialog-result-after-close.md`).
-- The field's Browse… opens it on the value or the typed text (`query`), `picker-field.md`. `pg_picker_browse_button()` (Browse beside a select) has no caller since PK5; PK10 removes it.
+- It opens on All, a stored value too; a typed text (`query`) on its results (`picker-field.md`). `pg_picker_browse_button()` (Browse beside a select) has no caller since PK5; PK10 removes it.
 
 ## What does it show?
-- It opens on All, every item of the kind in one list (PA2, #9201): `picker-all-list-dialog.md`.
-- Title and the kind's types (`types` of the tree answer), toolbar: Up, breadcrumb, search, sort, grid and list; folder tree with counts; the open folder's sub-folders as folder tiles, then its files; footer with the pick (picture, folder path, size), a hint, Cancel and Choose.
+- All: `picker-all-list-dialog.md`.
+- Title and the kind's types (`types` of the tree answer), toolbar: Up, breadcrumb, search, sort, grid and list; folder tree with counts; a folder narrows the list to its sub-folders as folder tiles, then its files; footer with the pick (picture, folder path, size), a hint, Cancel and Choose.
 - Tree counts are the kind's files in a folder and every folder under it (`pg_picker_subtree_counts()`).
 - Search: results from every folder with their folder line, the match highlighted, Best match first (the server's order); a chip keeps them to the open folder and the folders under it.
 - A folder path leaves out the top folder once there is one below it (`pathText()`), as the screens draw "Görseller / Ürünler".
@@ -25,11 +25,11 @@ module: picker
 - Double click chooses; closing with ×, Cancel or Escape changes nothing and gives the focus back.
 
 ## What is drawn on a phone?
-- Below 576 px the dialog is a bottom sheet: search on its own row, a folder chip, sort, grid and list; three tiles a row; Cancel and the tree hidden.
+- Below 576 px the dialog is a bottom sheet, on All: search on its own row, a folder chip ("All folders"), sort, grid and list; three tiles a row; Cancel and the tree hidden.
 - The chip opens a folder list in the pane (the open folder among its siblings, at the top the folders inside it): tapping a row opens its files, the arrow goes into it, the path goes back, Back returns.
 
 ## How are names sorted and matched?
-- Sort keys name, modified, size, type, folders first, `Intl.Collator(lang, {numeric, sensitivity: 'base'})`; size and modified start largest/newest, a tie goes by name. View and sort are kept in localStorage (`pg.picker.*`).
+- Sort keys name, modified, size, type, folders first, `Intl.Collator(lang, {numeric, sensitivity: 'base'})`; size and modified start largest/newest, a tie goes by name. A folder's sort is kept in `pg.picker.sort`/`dir`; All's and the view: `picker-all-list-dialog.md`.
 - The highlight folds as the server matches (`fold_keyword_for_matching()`: case, İ/I/ı/i, accents, ß as ss) with an index map, so a letter that folds to two still slices the original.
 
 ## What did picker.php gain for it?

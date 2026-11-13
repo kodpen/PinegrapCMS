@@ -1,6 +1,6 @@
 ---
 name: image-editor-remove-background
-description: The image editor's Remove background (E28c, #6948): the subject a layer of its own over the picture erased whole; the erased part's fills (colour, blur, a picture from Files) in the mask step
+description: The Design Canvas's Remove background (E28c, #6948): the subject a layer of its own over the picture erased whole; the erased part's fills (colour, blur, a picture from Files) in the mask step
 module: image_editor
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: image-editor-layers
-description: The image editor's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
+description: The Design Canvas's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
 module: image_editor
 ---
 

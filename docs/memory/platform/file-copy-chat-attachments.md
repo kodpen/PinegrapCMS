@@ -9,7 +9,7 @@ module: file_copy_gate
 - Each asks `pg_chat_attachment_refused()` / `pg_chat_attachment_refused_ids()` (`includes/fn/file_copy_gate.php`): a panel chat attachment (`chat_messages.attachment_file_id` of a `backend` conversation) is copied only by a side of a conversation carrying it or a role-0 administrator (`pg_chat_attachment_access_verdict()`, `platform/chat-attachment-access.md`). A single file is refused with "Access denied for …"; in a folder copy or a folder zip it is left out; the picker answers that there is no such file.
 
 ## Why?
-- A copy, an archive entry or a channel copy is a new file no chat message carries, so `get_file.php` serves it by its folder alone. A manager or designer passes the folder edit check everywhere, so they could paste another staff conversation's attachment, zip it, or post it to a channel, and the copy in the public upload folder opened for anyone (the image editor door was closed the same way in #7149).
+- A copy, an archive entry or a channel copy is a new file no chat message carries, so `get_file.php` serves it by its folder alone. A manager or designer passes the folder edit check everywhere, so they could paste another staff conversation's attachment, zip it, or post it to a channel, and the copy in the public upload folder opened for anyone (the Design Canvas door was closed the same way in #7149).
 
 ## What about submitted-form and comment uploads in a zip?
 - A pasted copy keeps `files.attachment` (`tests/explorer_copy_attachment_test.php`); an archive did not. Now an archive gets `attachment = 1` when any form or comment upload went in, so `get_file.php` keeps it to whoever may edit its folder (#1989, `workflow/decisions-made-files.md`).

@@ -1,6 +1,6 @@
 ---
 name: image-editor-motion
-description: The image editor's Animate tool: anim and doc.motion, M.motionAt() and its spans, the play bar, the playhead and previews, the empty panel, what a still save sees
+description: The Design Canvas's Animate tool: anim and doc.motion, M.motionAt() and its spans, the play bar, the playhead and previews, the empty panel, what a still save sees
 module: image_editor
 ---
 

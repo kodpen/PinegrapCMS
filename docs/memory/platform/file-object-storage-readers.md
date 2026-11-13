@@ -8,7 +8,7 @@ module: file_storage
 - `pg_file_local_copy($file_id)`: a local file under the name wins, even for an 's3' row (a save wrote it); else a copy fetched to `.part` and renamed, reused while its size matches the row. By name: `pg_file_reader_path($name)` (one stat for files that never moved, a row query only when missing). Both give '' when the bytes cannot be had.
 
 ## What does a door that changes bytes in place call?
-- A door that changes bytes in place (rotate, optimize, office and text saves in the file window) calls `pg_file_make_local($name)`: the copy is copied into the file directory first, the reconcile pass then sets the row back to 'local'. The image editor reads `path` (copy) and writes `local`; a restore writes `local` too.
+- A door that changes bytes in place (rotate, optimize, office and text saves in the file window) calls `pg_file_make_local($name)`: the copy is copied into the file directory first, the reconcile pass then sets the row back to 'local'. The Design Canvas reads `path` (copy) and writes `local`; a restore writes `local` too.
 
 ## What may a pass over many files use?
 - A pass over many files must not download: `pg_file_present_path($row)` (local or existing copy). Used by `pg_file_image_dimensions()` and the derivative sweep; a stored file with no copy loses its derivatives there, which is right: a new copy signs anew.

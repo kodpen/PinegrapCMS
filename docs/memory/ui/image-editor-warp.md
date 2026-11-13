@@ -1,6 +1,6 @@
 ---
 name: image-editor-warp
-description: The image editor's Warp tool: presets and an envelope mesh kept as l.warp, drawn by mapping the flattened outline; Expand bakes it into the path
+description: The Design Canvas's Warp tool: presets and an envelope mesh kept as l.warp, drawn by mapping the flattened outline; Expand bakes it into the path
 module: image_editor
 ---
 

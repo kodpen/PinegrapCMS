@@ -1,6 +1,6 @@
 ---
 name: designer-autosave
-description: Visual Page Editor autosave: one browser entry per design and page, kept until the server has it, swept on start, oldest removed for room, one notice when a write fails.
+description: Page Design Studio autosave: one browser entry per design and page, kept until the server has it, swept on start, oldest removed for room, one notice when a write fails.
 ---
 
 ## Where does the editor autosave?

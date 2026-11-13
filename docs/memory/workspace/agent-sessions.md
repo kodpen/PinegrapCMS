@@ -6,7 +6,7 @@ description: The asker's own Claude session over OAuth: @Claude waits 2 min for 
 ## Who takes a request to Claude? (A8a1, #8489)
 - `ws_claude_request_holder()` (`includes/workspace/claude.php`, pure): a request the asker's connection claimed (`ws_ai_requests.claimed_device_id` > 0) stays with it; an open request asked in a message waits for the asker's own session while one is online, for `WS_CLAUDE_SESSION_WAIT` (120 s); after that, or with none online, it is the routine's as before.
 - Online: an `api_devices` row of the asker with `oauth_client_id > 0` and `last_used_timestamp` under 120 s old (the column is written at most once a minute, so a session polls more often than that). Any OAuth connection counts.
-- Always the routine's: a request whose asking message was written through a connection (`ws_messages.via_client_id` > 0; the session would be asking itself), the daily summary, a note, a task run, the Visual Page Editor.
+- Always the routine's: a request whose asking message was written through a connection (`ws_messages.via_client_id` > 0; the session would be asking itself), the daily summary, a note, a task run, the Page Design Studio.
 - Why: owner decision #8490 (2a), recorded in `workflow/decisions-made-workspace-11.md`.
 
 ## Which routes serve the session?

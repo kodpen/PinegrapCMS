@@ -1,6 +1,6 @@
 ---
 name: image-editor-video-decode
-description: How the image editor reads a video: own MP4 and WebM demuxers in the model, WebCodecs decoding, the frame cache, seeking, the messages when a browser cannot decode
+description: How the Design Canvas reads a video: own MP4 and WebM demuxers in the model, WebCodecs decoding, the frame cache, seeking, the messages when a browser cannot decode
 module: image_editor
 ---
 

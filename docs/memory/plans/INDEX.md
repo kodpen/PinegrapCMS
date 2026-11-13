@@ -18,7 +18,6 @@
 - canvas-one-screens.md: CO0 drawings of plans/canvas-one.md in look A (plans/canvas-one/): the canvas card, one list of versions, the first-write question, the Data list, the phone
 - canvas-one-steps.md: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the bridge and its proofs, bound tables read, writes with consent, channel tables, measures, Data, one API flow, the phone, close-out
 - canvas-one.md: Plan (owner 2026-11-12, #8850): the Workspace canvas as one thing with a drawing, a live page and data; the guarded bridge to the tables bound to it; tables as Data; steps in canvas-one-steps.md
-- design-names-menu-steps.md: Steps NM1-NM4 (owner 2026-11-12, #8849): Image Editor named Design Canvas with its own icon, Visual Page Editor named Page Design Studio, Designs, the legacy designer's menu and Ads under Other
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
@@ -63,7 +62,6 @@
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
 - panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860), the list rules, what is only a placeholder
 - panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
-- picker-all-list.md: Plan (owner 2026-11-12, #9070): the picker opens on a list of everything of its kind, newest first, the folder tree as a filter at the side; steps PA1-PA3
 - report-screens-steps.md: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out
 - report-screens.md: Plan (owner 2026-11-11, #8673): the order, visitor, shipping and ERP VAT report screens drawn as the dashboard: figures, a chart, the table, settings in a drawer, ready reports; steps RS1-RS8
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
@@ -76,6 +74,8 @@
 - storefront-api-routes-cart.md: Storefront API design note: the cart routes (create, read, add/update/remove line, coupon, shipping choice), their scopes and the cart code each one calls instead of copying it
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
+- translated-site-search-steps.md: Translated site search plan, steps TS1-TS5: the words and ı/i for pages, products and product groups, form records in the site search, a list's own search box, close-out
+- translated-site-search.md: Plan (owner 2026-11-13, #9216): the site search on a page served in another language closes its gaps: words and ı/i, products, form records, a list's search box; steps TS1-TS5
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - whatsapp-channel-steps-2.md: Steps WA12-WA18 of plans/whatsapp-channel.md (owner 2026-11-13, #9151): a customer's WhatsApp message and SMS land in a channel as an e-mail does and are answered the same way
 - whatsapp-channel-steps.md: Steps WA0-WA11 of the WhatsApp channel plan (#8950): facts and storage first, connection, queue, templates, webhook, orders, forms, the Flows box, the template designer, offer codes
