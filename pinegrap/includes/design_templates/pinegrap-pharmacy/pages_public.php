@@ -119,7 +119,7 @@ $rx_cell = function ($tag, $children, $class = '', $scope = '') use ($el, $attr)
 // A table in a frame that scrolls sideways on a phone: a named, focusable
 // region, so a keyboard can scroll it. The caption names the table.
 $rx_table = function ($label, $caption, $heads, $rows, $name) use ($el, $span, $attr) {
-    return $el('div', 'table-responsive rounded-4 border bg-body p-2 p-md-3', lang('Table Wrap'), array(
+    return $el('div', 'table-responsive position-relative rounded-4 border bg-body p-2 p-md-3', lang('Table Wrap'), array(
         $el('table', 'table align-middle mb-0 pg-pharmacy-figures', $name, array(
             $el('caption', 'visually-hidden', lang('Table Caption'), array($span($caption, '', lang('Text')))),
             $el('thead', '', lang('Table Head'), array($el('tr', '', lang('Head Row'), $heads))),

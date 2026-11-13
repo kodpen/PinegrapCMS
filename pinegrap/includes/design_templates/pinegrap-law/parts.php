@@ -270,8 +270,8 @@ $account_bar_tree = function () use ($el, $widget, $shared, $lang_switcher) {
     return $el('div', 'border-bottom small bg-body-tertiary', lang('Account Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center justify-content-between gap-2 py-1', lang('Account Area'), array(
             $el('div', '', lang('Announcement Area'), array($shared('notice'))),
-            $el('div', 'd-flex align-items-center gap-2 ms-auto', lang('Account Links'), array(
-                $lang_switcher(), $widget('login_region'),
+            $el('div', 'd-flex flex-wrap align-items-center justify-content-end column-gap-1 column-gap-sm-2 row-gap-1 ms-auto', lang('Account Links'), array(
+                $lang_switcher('text-nowrap'), $widget('login_region'),
             )),
         )),
     ));
@@ -299,7 +299,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-semibold', lang('Brand'), array(
                     $el('span', 'd-inline-flex p-2 rounded-2 text-bg-primary lh-1', lang('Icon Box'), array($icon('bi-bank', 'fs-5'))),
-                    $span('{{site_name}}', 'plw-brand fs-4', lang('Name')),
+                    $span('{{site_name}}', 'plw-brand fs-4 text-truncate', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),

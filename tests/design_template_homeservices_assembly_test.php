@@ -460,7 +460,11 @@ function test_homeservices_assembly_header_tables_and_dark_bands()
 
 	$styles = json_decode($tpl['assets']['css'], true);
 	$css = $styles[0]['content'];
-	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary :is(.text-primary,.link-primary){color:var(--bs-primary-text-emphasis)!important}', $css, 'primary text on a dark tertiary band');
-	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary .link-secondary{color:var(--bs-secondary-text-emphasis)!important}', $css, 'secondary links on a dark tertiary band');
-	pg_assert_contains('[data-bs-theme=dark] .bg-body-tertiary .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}', $css, 'outline buttons on a dark tertiary band');
+	// Small coloured text on a tertiary band is mixed darker in the light
+	// theme and lighter in the dark one (Steel's dark text colour: 4.2:1).
+	pg_assert_contains('{.bg-body-tertiary{--phs-band-primary:color-mix(in srgb,var(--pg-primary-fg,var(--bs-primary)) 90%,black);', $css, 'darker on a light tertiary band');
+	pg_assert_contains('{[data-bs-theme=dark] .bg-body-tertiary{--phs-band-primary:color-mix(in srgb,var(--pg-primary-fg,var(--bs-primary)) 85%,white);', $css, 'lighter on a dark tertiary band');
+	pg_assert_contains('.bg-body-tertiary :is(.text-primary,.link-primary:not(:hover,:focus)){color:var(--phs-band-primary,var(--pg-primary-fg,var(--bs-primary)))!important}', $css, 'primary text on a tertiary band');
+	pg_assert_contains('.bg-body-tertiary :is(.text-secondary,.link-secondary:not(:hover,:focus)){color:var(--phs-band-secondary,var(--pg-secondary-fg,var(--bs-secondary)))!important}', $css, 'secondary links on a tertiary band');
+	pg_assert_contains('.bg-body-tertiary .btn-outline-primary{--bs-btn-color:var(--phs-band-primary,var(--pg-primary-fg,var(--bs-primary)))}', $css, 'outline buttons on a tertiary band');
 }
