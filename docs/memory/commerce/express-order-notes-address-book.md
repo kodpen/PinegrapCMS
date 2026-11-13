@@ -1,6 +1,6 @@
 ---
 name: express-order-notes-address-book
-description: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
+description: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the checkout cart table's stacked layout below lg, its header row and the three places to update.
 ---
 
 ## How does the EO order note binding work? (2026.1.28)
@@ -18,7 +18,8 @@ description: Express order (EO) widget bindings for order note (eo_field notes) 
 
 ## How are table widgets made responsive on narrow screens? (2026.1.30)
 - Legacy `table.mobile_stacked` (livesite.src.css:490) was not ported. EO cart table's right columns are fixed `6+8+8+3 = 25rem`; below ~900px the name column shrank to 188px and wrapped to five lines. `table-responsive` is NOT a fix (the table is squeezed, not overflowing).
-- Fix (Bootstrap only, no extra CSS): `thead` -> `d-none d-md-table-header-group`; `tr` -> `d-block d-md-table-row` (+ border-bottom for row separation on mobile); `td/th` -> `d-block d-md-table-cell`; `text-end` -> `text-start text-md-end`.
-- Qty stepper fixed `width:9rem` became `max-width:9rem` (fixed width was the floor that stopped the table shrinking).
+- Fix (Bootstrap only, no extra CSS), stacked below lg: header `tr` -> `d-none d-lg-table-row` (the `thead` has no class); body `tr` -> `d-block d-lg-table-row` (+ border-bottom); `td` -> `d-block d-lg-table-cell`; `text-end` -> `text-start text-lg-end`; each stacked value cell starts with a `d-lg-none text-muted small` label (Quantity, Unit Price, Amount).
+- Bootstrap has no `d-*-table-header-group`: a `d-none d-md-table-header-group` thead stayed hidden at every width, so headings and column widths never applied and the stepper wrapped onto three lines at 768px (#9088). The table starts at lg because the 8/4 grid leaves the cart card about 460px at md.
+- Qty stepper: `max-width:9rem` (a fixed width was the floor that stopped the table shrinking) and `flex-nowrap`; the Quantity heading is 7rem wide.
 - Update in THREE places together: `_eo_default_designer_tree()` (PHP), `_buildExpressOrderStarterTree()` (JS), `_eo_render_cart_summary()` (server fallback).
 - Do NOT give `colspan` rows `d-block`: once the cell leaves table layout, colspan is cancelled.

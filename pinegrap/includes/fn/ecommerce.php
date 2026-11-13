@@ -541,18 +541,35 @@ function pg_offer_gift_refuse($order_id, $offer_id, $offer_action_id)
     }
 }
 
-// The quantity a cart form posts for one line, as the classic cart reads it:
-// thousands separators (commas) and surrounding spaces dropped, then a whole
-// number is the new quantity and 0 takes the line out. Anything else (an
-// emptied box, a minus sign, a decimal, a typo, a list) is null: the line
-// keeps its quantity instead of being removed.
-function pg_cart_posted_quantity($raw)
+// The quantity a storefront form posts for one line (cart, checkout, order
+// form, product page), read with the site's own separators
+// (pg_number_separators()): surrounding spaces dropped, a figure grouped by
+// the thousands mark ("1.250" on a site that writes 4.999,00, "1,250" on one
+// that writes 4,999.00) loses its marks, then a whole number is the quantity
+// and 0 takes the line out. Anything else (an emptied box, a sign, a figure
+// with the decimal mark such as "2,5" on a Turkish site, a mark out of
+// place, a typo, a list) is null, so the caller refuses it instead of
+// reading "2,5" as 25. $separators: the pair to read with, for tests.
+function pg_cart_posted_quantity($raw, $separators = null)
 {
     if (!is_string($raw)) {
         return null;
     }
-    $raw = trim(str_replace(',', '', $raw));
-    if (!preg_match('/^\d{1,9}$/', $raw)) {
+    if (!is_array($separators)) {
+        $separators = pg_number_separators();
+    }
+    $raw = trim($raw);
+    $thousands = isset($separators['thousands']) ? (string) $separators['thousands'] : '';
+    if ($thousands !== '') {
+        // A site that groups with a (no-break) space takes either space.
+        $mark = (($thousands === ' ') || ($thousands === "\u{00A0}"))
+            ? "(?: |\u{00A0})"
+            : preg_quote($thousands, '/');
+        if (preg_match('/^\d{1,3}(?:' . $mark . '\d{3})+$/Du', $raw)) {
+            $raw = preg_replace('/\D/u', '', $raw);
+        }
+    }
+    if (!preg_match('/^\d{1,9}$/D', $raw)) {
         return null;
     }
     return (int) $raw;

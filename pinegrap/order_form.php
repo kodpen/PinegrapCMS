@@ -178,8 +178,13 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                         break;
                         
                     case 'quantity':
-                        // Remove commas from quantity.
-                        $liveform->assign_field_value('product_' . $product['id'], str_replace(',', '', $liveform->get_field_value('product_' . $product['id'])));
+                        // Read with the site's separators (pg_cart_posted_quantity()):
+                        // "1.250" on a site that writes 4.999,00 is 1250, and "2,5"
+                        // stays as typed, so the check below refuses it.
+                        $posted_quantity = pg_cart_posted_quantity($liveform->get_field_value('product_' . $product['id']));
+                        if ($posted_quantity !== null) {
+                            $liveform->assign_field_value('product_' . $product['id'], (string) $posted_quantity);
+                        }
 
                         // if quantity entered is valid and greater than zero, then determine if we should add quantity to product in order
                         if ((preg_match("/^\d+$/", $liveform->get_field_value('product_' . $product['id'])) == true) && ($liveform->get_field_value('product_' . $product['id']) > 0)) {
@@ -204,6 +209,11 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                             } else {
                                 $liveform->mark_error('product_' . $product['id'], lang(array('string' => 'Sorry, {var:1} is not currently available.', 'vars' => h($product_description))));
                             }
+
+                        // A box the shopper filled with no whole number ("2,5", "-1")
+                        // says so instead of leaving the product out in silence.
+                        } elseif (($posted_quantity === null) && (trim((string) $liveform->get_field_value('product_' . $product['id'])) !== '')) {
+                            $liveform->mark_error('product_' . $product['id'], lang('Please enter a valid quantity.'));
                         }
                         break;
                         
@@ -520,9 +530,12 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                     || ($product['backorder'] == 1)
                 )
             ) {
-                // If a quantity was entered, then remove commas.
-                if ($liveform->get_field_value('quantity') != '') {
-                    $liveform->assign_field_value('quantity', str_replace(',', '', $liveform->get_field_value('quantity')));
+                // A quantity read with the site's separators (pg_cart_posted_quantity()):
+                // "1.250" on a site that writes 4.999,00 is 1250, and "2,5" stays as
+                // typed, so the checks below refuse it.
+                $posted_quantity = pg_cart_posted_quantity($liveform->get_field_value('quantity'));
+                if ($posted_quantity !== null) {
+                    $liveform->assign_field_value('quantity', (string) $posted_quantity);
                 }
 
                 // if product is a donation

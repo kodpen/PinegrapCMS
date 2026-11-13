@@ -1567,25 +1567,31 @@ function _eo_default_designer_tree()
                             // (when the order has a reference_code) — same
                             // alert pattern as the legacy /sepet layout.
                             $bind('saved_cart_link', 'p-3 pb-0 pg-eo-saved-cart-anchor'),
-                            // Responsive stacking below md — Bootstrap-only
+                            // Responsive stacking below lg — Bootstrap-only
                             // equivalent of the legacy `table.mobile_stacked`
                             // media query (livesite.src.css:490). The four
-                            // right-hand columns are pinned at 6+8+8+3 = 25rem,
-                            // which squeezed the item column to ~188px under
-                            // 900px and wrapped the product name to five lines.
-                            // `table-responsive` can't help — the table never
-                            // overflows, it just compresses.
+                            // right-hand columns are pinned at 7+8+8+3 = 26rem;
+                            // in the 8/4 grid the cart card is about 460px wide
+                            // at md, which left the picture and description a
+                            // sliver and wrapped the quantity stepper, so the
+                            // table starts at lg. `table-responsive` can't help
+                            // — the table never overflows, it just compresses.
+                            // The header row, not the <thead>, carries the
+                            // breakpoint classes: Bootstrap has no
+                            // table-header-group utility, so a `d-none` thead
+                            // stayed hidden at every width. Below lg each
+                            // stacked value carries its own label (`d-lg-none`).
                             // MUST stay in lockstep with _buildExpressOrderStarterTree()
                             // in style_designer.js (the "Load Default Layout" twin).
                             $sem('div', 'table-responsive', array(
                                 $sem('table', 'table align-middle mb-0', array(
-                                    $sem('thead', 'd-none d-md-table-header-group', array(
-                                        $sem('tr', 'd-block d-md-table-row', array(
-                                            $sem('th', 'text-muted small ps-3 d-block d-md-table-cell', lang('Item')),
-                                            $sem('th', 'text-muted small text-end d-block d-md-table-cell', lang('Quantity'), array('style' => 'width:6rem')),
-                                            $sem('th', 'text-muted small text-end d-block d-md-table-cell', lang('Unit Price'),  array('style' => 'width:8rem')),
-                                            $sem('th', 'text-muted small text-end d-block d-md-table-cell', lang('Amount'),  array('style' => 'width:8rem')),
-                                            $sem('th', 'd-block d-md-table-cell', '',         array('style' => 'width:3rem')),
+                                    $sem('thead', '', array(
+                                        $sem('tr', 'd-none d-lg-table-row', array(
+                                            $sem('th', 'text-muted small ps-3', lang('Item')),
+                                            $sem('th', 'text-muted small text-end', lang('Quantity'), array('style' => 'width:7rem')),
+                                            $sem('th', 'text-muted small text-end', lang('Unit Price'),  array('style' => 'width:8rem')),
+                                            $sem('th', 'text-muted small text-end', lang('Amount'),  array('style' => 'width:8rem')),
+                                            $sem('th', '', '',         array('style' => 'width:3rem')),
                                         )),
                                     )),
                                     $sem('tbody', '', array(
@@ -1596,13 +1602,13 @@ function _eo_default_designer_tree()
                                                 // border-bottom separates stacked rows on
                                                 // mobile, where cell borders stop reading
                                                 // as a single row.
-                                                $sem('tr', 'd-block d-md-table-row border-bottom', array(
+                                                $sem('tr', 'd-block d-lg-table-row border-bottom', array(
                                                     // Item cell: image + short description + full description.
                                                     // EACH element is independent + data-binding driven —
                                                     // designer can delete any of them, replace with a different
                                                     // element type, and re-bind from the data binding menu.
                                                     // No magic CSS classes; layout uses ONLY Bootstrap utilities.
-                                                    $sem('td', 'ps-3 d-block d-md-table-cell', array(
+                                                    $sem('td', 'ps-3 d-block d-lg-table-cell', array(
                                                         $sem('div', 'd-flex gap-3 align-items-start', array(
                                                             // Image — real <img> with src bound to __item_image.
                                                             array('type' => 'semantic', 'props' => array(
@@ -1626,8 +1632,9 @@ function _eo_default_designer_tree()
                                                     // Qty cell — input-group + - / + stepper. JS handler wires
                                                     // the buttons to the input. Designer can swap to a plain
                                                     // input or remove the steppers; works either way.
-                                                    $sem('td', 'text-start text-md-end align-middle d-block d-md-table-cell', array(
-                                                        $sem('div', 'input-group input-group-sm pg-qty-stepper ms-0 ms-md-auto', array(
+                                                    $sem('td', 'text-start text-lg-end align-middle ps-3 ps-lg-2 d-block d-lg-table-cell', array(
+                                                        $sem('span', 'd-lg-none text-muted small me-2', lang('Quantity')),
+                                                        $sem('div', 'input-group input-group-sm flex-nowrap pg-qty-stepper ms-0 ms-lg-auto', array(
                                                             array('type' => 'semantic', 'props' => array(
                                                                 'tag' => 'button',
                                                                 'cssClass' => 'btn btn-outline-secondary',
@@ -1677,13 +1684,15 @@ function _eo_default_designer_tree()
                                                     // targets a content element (span / heading / p / a / img);
                                                     // these two were the exception and the default tree is what
                                                     // every new design gets copied from.
-                                                    $sem('td', 'text-start text-md-end align-middle d-block d-md-table-cell', array(
+                                                    $sem('td', 'text-start text-lg-end align-middle ps-3 ps-lg-2 d-block d-lg-table-cell', array(
+                                                        $sem('span', 'd-lg-none text-muted small me-2', lang('Unit Price')),
                                                         $sem('span', '', pg_money_text(39.95), array('bindings' => array('text' => '__item_price'))),
                                                     )),
-                                                    $sem('td', 'text-start text-md-end fw-semibold align-middle d-block d-md-table-cell', array(
+                                                    $sem('td', 'text-start text-lg-end fw-semibold align-middle ps-3 ps-lg-2 d-block d-lg-table-cell', array(
+                                                        $sem('span', 'd-lg-none text-muted small fw-normal me-2', lang('Amount')),
                                                         $sem('span', '', pg_money_text(79.9), array('bindings' => array('text' => '__item_total'))),
                                                     )),
-                                                    $sem('td', 'text-start text-md-end align-middle pe-3 d-block d-md-table-cell', array(
+                                                    $sem('td', 'text-start text-lg-end align-middle ps-3 ps-lg-2 pe-3 d-block d-lg-table-cell', array(
                                                         // Remove link — action-bound. Designer can swap the
                                                         // <a> for a <button>, change icon, restyle freely;
                                                         // the action binding wires the right href/handler.
@@ -2147,17 +2156,18 @@ function _eo_render_cart_summary($items, $widget_id, $form_id, $fmt, $lf = null,
     $base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
     $sw_dir = defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software';
 
-    // Responsive stacking below md — same Bootstrap-only recipe as the default
-    // designer tree (see _eo_default_designer_tree). The fixed right-hand
-    // column widths total 24rem, which crushed the item column on narrow
-    // screens; from md up they still apply.
+    // Responsive stacking below lg — same Bootstrap-only recipe as the default
+    // designer tree (see _eo_default_designer_tree): the header row carries
+    // the breakpoint classes (Bootstrap has no table-header-group utility, so
+    // a hidden <thead> stayed hidden at every width), and below lg each
+    // stacked value carries its own label.
     $html = '<div class="table-responsive"><table class="table align-middle mb-0">'
-          . '<thead class="d-none d-md-table-header-group"><tr class="d-block d-md-table-row">'
-          .   '<th scope="col" class="text-muted small d-block d-md-table-cell">' . h(lang('Item')) . '</th>'
-          .   '<th scope="col" class="text-muted small text-end d-block d-md-table-cell" style="width:6rem">' . h(lang('Qty')) . '</th>'
-          .   '<th scope="col" class="text-muted small text-end d-block d-md-table-cell" style="width:8rem">' . h(lang('Price')) . '</th>'
-          .   '<th scope="col" class="text-muted small text-end d-block d-md-table-cell" style="width:8rem">' . h(lang('Amount')) . '</th>'
-          .   '<th scope="col" class="d-block d-md-table-cell" style="width:2rem"></th>'
+          . '<thead><tr class="d-none d-lg-table-row">'
+          .   '<th scope="col" class="text-muted small">' . h(lang('Item')) . '</th>'
+          .   '<th scope="col" class="text-muted small text-end" style="width:7rem">' . h(lang('Qty')) . '</th>'
+          .   '<th scope="col" class="text-muted small text-end" style="width:8rem">' . h(lang('Price')) . '</th>'
+          .   '<th scope="col" class="text-muted small text-end" style="width:8rem">' . h(lang('Amount')) . '</th>'
+          .   '<th scope="col" style="width:2rem"></th>'
           . '</tr></thead><tbody>';
 
     // remove_item_from_cart.php enforces validate_token_field() — without the
@@ -2198,10 +2208,11 @@ function _eo_render_cart_summary($items, $widget_id, $form_id, $fmt, $lf = null,
         // normal table-row display on purpose — they hold a single full-width
         // cell, and `d-block` on a colspan cell would cancel the span.
         $html .=
-            '<tr class="d-block d-md-table-row border-bottom">'
-          .   '<td class="pg-eo-item-name d-block d-md-table-cell">' . h($title) . '</td>'
-          .   '<td class="text-start text-md-end d-block d-md-table-cell">'
-          .     '<div class="input-group input-group-sm pg-qty-stepper ms-0 ms-md-auto" style="max-width:9rem;display:inline-flex">'
+            '<tr class="d-block d-lg-table-row border-bottom">'
+          .   '<td class="pg-eo-item-name d-block d-lg-table-cell">' . h($title) . '</td>'
+          .   '<td class="text-start text-lg-end d-block d-lg-table-cell">'
+          .     '<span class="d-lg-none text-muted small me-2">' . h(lang('Qty')) . '</span>'
+          .     '<div class="input-group input-group-sm flex-nowrap pg-qty-stepper ms-0 ms-lg-auto" style="max-width:9rem;display:inline-flex">'
           .       '<button type="button" class="btn btn-outline-secondary" data-pg-qty-action="dec"'
           .              ' aria-label="' . h(lang('Decrease')) . '" tabindex="-1">&minus;</button>'
           .       '<input type="number" min="0" step="1" class="form-control form-control-sm text-center"'
@@ -2210,9 +2221,13 @@ function _eo_render_cart_summary($items, $widget_id, $form_id, $fmt, $lf = null,
           .              ' aria-label="' . h(lang('Increase')) . '" tabindex="-1">+</button>'
           .     '</div>'
           .   '</td>'
-          .   '<td class="text-start text-md-end d-block d-md-table-cell">' . $fmt($price) . '</td>'
-          .   '<td class="text-start text-md-end fw-semibold d-block d-md-table-cell">' . $fmt($line) . '</td>'
-          .   '<td class="text-start text-md-end d-block d-md-table-cell">'
+          .   '<td class="text-start text-lg-end d-block d-lg-table-cell">'
+          .     '<span class="d-lg-none text-muted small me-2">' . h(lang('Price')) . '</span>' . $fmt($price)
+          .   '</td>'
+          .   '<td class="text-start text-lg-end fw-semibold d-block d-lg-table-cell">'
+          .     '<span class="d-lg-none text-muted small fw-normal me-2">' . h(lang('Amount')) . '</span>' . $fmt($line)
+          .   '</td>'
+          .   '<td class="text-start text-lg-end d-block d-lg-table-cell">'
           .     '<a href="' . h($remove_url) . '" class="text-danger" title="' . h(lang('Remove')) . '">'
           .       '<i class="bi bi-x-lg"></i>'
           .     '</a>'

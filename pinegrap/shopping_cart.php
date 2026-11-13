@@ -128,13 +128,17 @@ if (!empty($_POST['quick_add'])) {
                             break;
                             
                         case 'quantity':
-                            // Remove commas from quantity.
-                            $_POST['quick_add_quantity'] = str_replace(',', '', $_POST['quick_add_quantity']);
+                            // Read with the site's separators: "1.250" on a
+                            // site that writes 4.999,00 is 1250, "2,5" is no
+                            // quantity (pg_cart_posted_quantity()).
+                            $quick_add_quantity = pg_cart_posted_quantity(isset($_POST['quick_add_quantity']) ? $_POST['quick_add_quantity'] : '');
 
                             // if quantity entered is valid and greater than zero, then add order item
-                            if ((preg_match("/^\d+$/", $_POST['quick_add_quantity']) == true) && ($_POST['quick_add_quantity'] > 0)) {
-                                add_order_item($_POST['quick_add_product_id'], $_POST['quick_add_quantity'], 0, $_POST['quick_add_ship_to'], $_POST['quick_add_add_name']);
+                            if ($quick_add_quantity > 0) {
+                                add_order_item($_POST['quick_add_product_id'], $quick_add_quantity, 0, $_POST['quick_add_ship_to'], $_POST['quick_add_add_name']);
                                 $order_item_added = true;
+                            } else {
+                                $liveform->mark_error('quick_add_quantity', lang('Please enter a valid quantity.'));
                             }
                             break;
                             
@@ -304,25 +308,31 @@ foreach ($order_items as $order_item) {
     // else this order item is not a donation; a form without its quantity box
     // leaves the quantity as it is
     } elseif (!$pg_item_posted_as_list && isset($_POST['quantity'][$order_item['id']])) {
-        // Remove commas from quantity.
-        $_POST['quantity'][$order_item['id']] = str_replace(',', '', $_POST['quantity'][$order_item['id']]);
+        // Read with the site's separators (pg_cart_posted_quantity()): "2,5"
+        // on a site that writes 4.999,00 is no quantity, not 25.
+        $posted_quantity = pg_cart_posted_quantity($_POST['quantity'][$order_item['id']]);
+
+        // A box that holds no whole number keeps the line's quantity and
+        // says so, instead of falling back to the old figure in silence.
+        if ($posted_quantity === null) {
+            $liveform->mark_error('quantity[' . $order_item['id'] . ']', lang('Please enter a valid quantity.'));
 
         // if quantity was set to 0, remove order item from order
-        if ($_POST['quantity'][$order_item['id']] == '0') {
+        } elseif ($posted_quantity === 0) {
             pg_cart_remove_line($order_item['id']);
             $new_quantity = 0;
 
         // A gift card line over its unit limit keeps its quantity: the line
         // would be charged for cards it never issues.
-        } elseif (($order_item['gift_card'] == 1) && (preg_match("/^\d+$/", $_POST['quantity'][$order_item['id']]) == true) && !pg_gift_card_line_quantity_allowed($_POST['quantity'][$order_item['id']])) {
+        } elseif (($order_item['gift_card'] == 1) && !pg_gift_card_line_quantity_allowed($posted_quantity)) {
             $liveform->mark_error('quantity[' . $order_item['id'] . ']', pg_gift_card_line_quantity_error());
 
-        // else if quantity is a positive integer and new quantity is different from old quantity, update quantity for product
-        } elseif ((preg_match("/^\d+$/", $_POST['quantity'][$order_item['id']]) == true) && ($_POST['quantity'][$order_item['id']] != $order_item['quantity'])) {
+        // else if new quantity is different from old quantity, update quantity for product
+        } elseif ($posted_quantity != $order_item['quantity']) {
             $query = "UPDATE order_items SET quantity = ? WHERE id = ?";
-            $result = db_q($query, array((string) $_POST['quantity'][$order_item['id']], (string) $order_item['id'])) or output_error('Query failed.');
+            $result = db_q($query, array((string) $posted_quantity, (string) $order_item['id'])) or output_error('Query failed.');
             
-            $new_quantity = $_POST['quantity'][$order_item['id']];
+            $new_quantity = $posted_quantity;
             
             // check if there is a ship to and if ship to is complete
             $query =
@@ -759,6 +769,11 @@ if (isset($_POST['special_offer_code'])) {
     $affiliate_code_values = array();
 
     $special_offer_code = $liveform->get('special_offer_code');
+
+    // A typed code that is not found, or whose offers do not run today, is
+    // refused: the order keeps the code it already had (and its discount)
+    // instead of losing it to the typo.
+    $special_offer_code_refused = false;
     
     // if a special offer code was entered
     if ($special_offer_code != '') {
@@ -878,20 +893,19 @@ if (isset($_POST['special_offer_code'])) {
             // else an active offer does not exist, so add error
             } else {
                 $liveform->mark_error('special_offer_code', lang(array('string' => 'The {var:1} that you entered ({var:2}) is not available at this time. Please try a different code.', 'vars' => array(h($special_offer_code_label), h($special_offer_code)))));
-                $liveform->set('special_offer_code', '');
-                $special_offer_code = '';
+                $special_offer_code_refused = true;
             }
         
         // else an offer was not found, so prepare error
         } else {
             $liveform->mark_error('special_offer_code', lang(array('string' => 'The {var:1} that you entered ({var:2}) could not be found. Please try a different code.', 'vars' => array(h($special_offer_code_label), h($special_offer_code)))));
-            $liveform->set('special_offer_code', '');
-            $special_offer_code = '';
+            $special_offer_code_refused = true;
         }
         
         // if the affiliate program is enabled
         // then check if the special offer code is also an affiliate code, so we can set affiliate code for visitor and order
-        if (AFFILIATE_PROGRAM == TRUE) {
+        // (only for a code the order keeps)
+        if ((AFFILIATE_PROGRAM == TRUE) && !$special_offer_code_refused) {
             $query = "SELECT id FROM contacts WHERE (affiliate_code = ?) AND (affiliate_approved = '1')";
             $result = db_q($query, array((string) $special_offer_code)) or output_error('Query failed.');
             
@@ -916,13 +930,22 @@ if (isset($_POST['special_offer_code'])) {
         }
     }
     
-    $query =
-        "UPDATE orders
-        SET
-            special_offer_code = ?
-            $sql_affiliate_code
-        WHERE id = ?";
-    $result = db_q($query, array_merge(array((string) $special_offer_code), $affiliate_code_values, array((string) ($_SESSION['ecommerce']['order_id'] ?? '')))) or output_error('Query failed.');
+    // A refused code leaves the order's code as it was and puts it back in
+    // the box, so the shopper sees which code still applies.
+    if ($special_offer_code_refused) {
+        $result = db_q("SELECT special_offer_code FROM orders WHERE id = ?", array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
+        $stored_code_row = mysqli_fetch_assoc($result);
+        $liveform->set('special_offer_code', $stored_code_row ? (string) $stored_code_row['special_offer_code'] : '');
+
+    } else {
+        $query =
+            "UPDATE orders
+            SET
+                special_offer_code = ?
+                $sql_affiliate_code
+            WHERE id = ?";
+        $result = db_q($query, array_merge(array((string) $special_offer_code), $affiliate_code_values, array((string) ($_SESSION['ecommerce']['order_id'] ?? '')))) or output_error('Query failed.');
+    }
 }
 
 update_order_item_prices();
