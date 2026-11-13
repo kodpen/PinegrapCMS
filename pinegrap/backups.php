@@ -194,7 +194,7 @@ if (!$_POST) {
 	    pg_page_shell(
 	        array(
 	            'title'          => lang('Backup Manager'),
-	            'extra classes'  => 'setting',
+	            'extra classes'  => 'setting pg-measure-list',
 	            'icon'           => 'setting',
 	            'heading'        => lang('Backup Manager'),
 	            'heading_description' => lang('Take, download or delete website backups.'),

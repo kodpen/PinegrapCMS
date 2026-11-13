@@ -202,7 +202,7 @@ $output_new = (!$ready || $readonly) ? '' : '
 echo
 pg_page_shell([
     'title' => lang('Cheques and notes'),
-    'extra classes' => 'erp erp_cash',
+    'extra classes' => 'erp erp_cash pg-measure-list',
     'icon' => 'erp',
     'heading' => lang('Cheques and notes'),
     'heading_description' => lang('Cheques and promissory notes taken from customers and given to suppliers, soonest due first, and what became of each.'),

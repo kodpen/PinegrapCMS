@@ -788,7 +788,7 @@ $config = array(
 
 echo pg_page_shell(array(
     'title'               => lang('Translations'),
-    'extra classes'       => 'translations',
+    'extra classes'       => 'translations pg-measure-list',
     'icon'                => 'settings',
     'heading'             => lang('Translations'),
     'heading_description' => lang('The pages of the designs in the other languages of the site: scanned, translated, reviewed.'),

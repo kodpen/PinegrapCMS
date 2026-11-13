@@ -152,7 +152,7 @@ $output_more = ($page['next'] > 0)
 echo
 pg_page_shell([
     'title' => lang('Audit trail'),
-    'extra classes' => 'erp erp_audit',
+    'extra classes' => 'erp erp_audit pg-measure-list',
     'icon' => 'erp',
     'heading' => lang('Audit trail'),
     'heading_description' => lang('Who did what in the ERP, when and from where: documents, receipts, accounts, expenses and every change the ERP screens record. Kept for as long as the books are, unlike the site log, which is emptied after six months.'),

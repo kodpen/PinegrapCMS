@@ -69,7 +69,7 @@ if ($ready && isset($_GET['statement'])) {
 
 $shell = array(
     'title'               => lang('Accessibility report'),
-    'extra classes'       => 'page',
+    'extra classes'       => 'page pg-measure-list',
     'icon'                => 'page',
     'heading'             => lang('Accessibility report'),
     'heading_description' => lang('What the nightly accessibility check found on the published pages, against WCAG 2.2 Level A and the contrast and target size of Level AA. Only what the markup shows can be checked automatically; a person must review the rest.'),

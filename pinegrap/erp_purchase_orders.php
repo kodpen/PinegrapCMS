@@ -92,7 +92,7 @@ $output_filters = pg_filter_select('status', $filter_options, $status, array('la
 echo
 pg_page_shell([
     'title' => lang('Purchase orders'),
-    'extra classes' => 'erp erp_invoices',
+    'extra classes' => 'erp erp_invoices pg-measure-list',
     'icon' => 'erp',
     'heading' => lang('Purchase orders'),
     'heading_description' => lang('What the store asked its suppliers for, and how much of it has come. An order moves no money and no stock; the purchase invoice made from it does.'),

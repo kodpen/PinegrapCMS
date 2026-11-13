@@ -456,7 +456,7 @@ if ($filter_user_id > 0) {
 
 echo pg_page_shell(array(
     'title' => lang('Sessions and connected accounts'),
-    'extra classes' => 'users',
+    'extra classes' => 'users pg-measure-list',
     'icon' => 'devices',
     'heading' => lang('Sessions and connected accounts'),
     'heading_description' => lang('Active sign-ins on all accounts'),
