@@ -64,6 +64,26 @@ function test_request_uri_utf8_keeps_what_is_utf8()
 	pg_assert_same('ğ', pg_request_text_utf8('ğ'));
 }
 
+function test_uri_ascii_encodes_only_what_is_not_printable_ascii()
+{
+	pg_assert_same('/pg-%C4%9F%C5%9F?x=%C4%B1%201#%C3%A7', pg_uri_ascii('/pg-ğş?x=ı 1#ç'));
+	pg_assert_same('/pg-%C4%9F?a[]=1&b=%2F#c', pg_uri_ascii('/pg-%C4%9F?a[]=1&b=%2F#c'), 'an encoded address is kept');
+	pg_assert_same('%0D%0A%09%7F', pg_uri_ascii("\r\n\t\x7F"), 'controls are encoded, never passed on');
+	pg_assert_same('%F0', pg_uri_ascii("\xF0"), 'a byte that is not UTF-8 too');
+	pg_assert_same('', pg_uri_ascii(''));
+}
+
+// The Secure Mode redirects send the request's own address, which is UTF-8
+// (pg_request_uri_from_server()), so they write it for the header too.
+function test_secure_mode_redirects_write_the_address_in_ascii()
+{
+	$init = (string) file_get_contents(PG_FUNCTIONS_DIR . '/init.php');
+	$file = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_file.php');
+
+	pg_assert_same(2, substr_count($init, ". pg_uri_ascii(defined('PG_SECURE_MODE_REDIRECT_URL') ? PG_SECURE_MODE_REDIRECT_URL : REQUEST_URL), true, 302);"), 'init.php, both directions');
+	pg_assert_same(2, substr_count($file, '. pg_uri_ascii(get_request_uri()), true, 302);'), 'get_file.php, both directions');
+}
+
 // Every reader of the address goes through the one choice.
 function test_request_uri_callers_share_the_choice()
 {

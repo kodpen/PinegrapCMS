@@ -19,6 +19,7 @@ description: IIS hands non-ASCII paths over in the ANSI code page: file names ma
 ## Is the request address UTF-8?
 - Yes. `pg_request_uri_from_server()` (`includes/fn/request_scheme.php`) gives it back through `pg_request_uri_utf8()`: path and query string read apart, a part that is not UTF-8 read from Windows-1254 (ISO-8859-9 without it). So `REQUEST_URL` and `get_request_uri()` are UTF-8, and `router.php` writes the same back into `$_SERVER['REQUEST_URI']` for the widgets that read it for a back address. `router_utf8_name()` is the same reading for one name.
 - Symptom before (#8983): on `/pg-ÇĞİÖŞÜ` the edit mode switch, the toolbar frame and every `send_to` built with `urlencode(REQUEST_URL)` wrote `%C7%D0%DD…`; the browser read the bytes back as Latin-1 (`ÇÐÝ…`), a 404 and a 404 log line per press. `h()` of those bytes is empty, so Edit Page lost its `send_to`. `Ç Ö Ü` survived: the same byte in both code pages.
+- A redirect carries the address percent-encoded (`pg_uri_ascii()`, through `pg_safe_redirect_path()` and `go()`): with the raw UTF-8 in `Location` the browser read it as Latin-1 and IIS answered 400 (#8983 reopened).
 
 ## What is the rule?
 - When you generate a new name that enters a URL, reduce it to ASCII. Do not trust the server to behave correctly.

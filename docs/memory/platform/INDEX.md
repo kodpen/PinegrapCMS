@@ -148,7 +148,7 @@
 - proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which. [decision: decisions-made-product-19.md]
 - record-breadcrumb-list-step.md: The middle step of a post's BreadcrumbList JSON-LD: the list page that links its records to the record page (pg_record_list_page(), #2181), how one is picked, when there is none
 - record-page-schema-type.md: A custom form chooses the schema.org type of its record pages (BlogPosting, Article, NewsArticle, none) and their author; where each is stored, read and set.
-- redirect-after-hostname.md: Never append raw input after HOSTNAME in a redirect; use pg_safe_redirect_path() everywhere and why it checks only the first two characters (a design decision).
+- redirect-after-hostname.md: Never append raw input after HOSTNAME in a redirect; use pg_safe_redirect_path() everywhere, why it checks only the first two characters, and why it percent-encodes non-ASCII bytes.
 - redirect-validator-context.md: Redirect validation corner rules: leave escape_url() alone, validators are context-bound (pg_safe_back_url vs go()), go() hardening, no hand-written checks. [decision: decisions-made-access.md]
 - restore-files-placement.md: The install-screen restore replaces data/files and data/layouts only when the disk holds the backup's files, and names files it could not write (pg_restore_place_folder())
 - router-no-functions-php.md: What runs before functions.php is loaded (router.php, the firewall's router phase, get_file.php), why lang() is unavailable there, and the waf_text() / get_file_text() wrappers.

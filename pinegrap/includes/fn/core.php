@@ -1426,8 +1426,12 @@ function pg_glob_brace($pattern, $flags = 0)
  *     query parameters (fifty-four places in this software use name="x[]"), and
  *     pg_ascii_file_name() deliberately keeps them in file names for version
  *     suffixes. Stripping them is the classic way this fix gets broken.
- *   - ? # & = % and UTF-8 survive. send_to routinely carries a query string and
- *     a fragment: /product/x?previous_url_id=2#software_add_comment
+ *   - ? # & = % survive. send_to routinely carries a query string and a
+ *     fragment: /product/x?previous_url_id=2#software_add_comment
+ *   - UTF-8 and spaces survive percent-encoded (pg_uri_ascii()), the fallback
+ *     too: a Location value is ASCII only, and the browser read the raw bytes
+ *     of /pg-ğ as Latin-1, a 400 on IIS. A value encoded once comes back as
+ *     it is.
  *
  * What is rejected:
  *
@@ -1455,6 +1459,8 @@ function pg_safe_redirect_path($url, $fallback = '')
         $fallback = defined('PATH') ? PATH : '/';
     }
 
+    $fallback = pg_uri_ascii($fallback);
+
     if (!is_scalar($url)) {
         return $fallback;
     }
@@ -1480,7 +1486,7 @@ function pg_safe_redirect_path($url, $fallback = '')
         return $fallback;
     }
 
-    return $url;
+    return pg_uri_ascii($url);
 }
 
 /**
@@ -3849,7 +3855,8 @@ function go($url)
 
     // Everything reaching this point is a path. pg_safe_redirect_path() is what
     // makes the concatenation below safe; it only inspects the first two
-    // characters, so brackets, query strings and UTF-8 pass through unaltered.
+    // characters, so brackets and query strings pass through unaltered, and
+    // percent-encodes UTF-8 and spaces, which a Location header cannot carry.
     header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($url));
     exit();
 }

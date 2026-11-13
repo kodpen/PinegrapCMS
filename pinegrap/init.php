@@ -969,7 +969,7 @@ if (!empty($_SERVER['HTTP_HOST'])) {
             // request's address before this file ran (prototype.php: a share
             // link's token) names the address as it came, which REQUEST_URL no
             // longer is.
-            header('Location: https://' . HOSTNAME_SETTING . (defined('PG_SECURE_MODE_REDIRECT_URL') ? PG_SECURE_MODE_REDIRECT_URL : REQUEST_URL), true, 302);
+            header('Location: https://' . HOSTNAME_SETTING . pg_uri_ascii(defined('PG_SECURE_MODE_REDIRECT_URL') ? PG_SECURE_MODE_REDIRECT_URL : REQUEST_URL), true, 302);
             exit();
         }
 
@@ -982,7 +982,7 @@ if (!empty($_SERVER['HTTP_HOST'])) {
         && ($secure_request === true)
         && ($secure_mode === 'false')
     ) {
-        header('Location: http://' . HOSTNAME_SETTING . (defined('PG_SECURE_MODE_REDIRECT_URL') ? PG_SECURE_MODE_REDIRECT_URL : REQUEST_URL), true, 302);
+        header('Location: http://' . HOSTNAME_SETTING . pg_uri_ascii(defined('PG_SECURE_MODE_REDIRECT_URL') ? PG_SECURE_MODE_REDIRECT_URL : REQUEST_URL), true, 302);
         exit();
     }
 

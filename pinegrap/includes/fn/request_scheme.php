@@ -242,6 +242,26 @@ function pg_request_uri_from_server($server)
 }
 
 /**
+ * An address as a Location header may carry it: every byte outside printable
+ * ASCII (0x21-0x7E) percent-encoded, the rest left as it is, so an address
+ * encoded once already ("%C4%9F", a query string, a fragment) comes back
+ * unchanged. A Location value is a URI reference, ASCII only (RFC 9110
+ * 10.2.2, RFC 3986): the browser reads raw bytes there as Latin-1, so the
+ * UTF-8 of /pg-ğ led to /pg-%C3%84%C2%9F, which IIS answers with its own 400.
+ *
+ * Pure.
+ *
+ * @param string $uri
+ * @return string
+ */
+function pg_uri_ascii($uri)
+{
+    return (string) preg_replace_callback('/[^\x21-\x7E]/', function ($byte) {
+        return rawurlencode($byte[0]);
+    }, (string) $uri);
+}
+
+/**
  * A request address in UTF-8. IIS decodes the percent-encoded UTF-8 path and
  * hands it to PHP re-encoded in the server's ANSI code page
  * (docs/memory/ui/ascii-names-in-urls-iis.md), so /pg-ğ arrives with the byte
