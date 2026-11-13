@@ -93,3 +93,58 @@ function test_messages_area_menu_row_uses_the_shell()
 		pg_assert_contains("case '" . $file . "':", $source, $file . ' marks a row');
 	}
 }
+
+function test_messages_area_health_worst()
+{
+	pg_assert_same('ok', pg_messages_health_worst(array('ok', 'ok', 'ok')), 'all good');
+	pg_assert_same('error', pg_messages_health_worst(array('ok', 'error', 'warning')), 'error wins');
+	pg_assert_same('warning', pg_messages_health_worst(array('unknown', 'warning')), 'warning over unknown');
+	pg_assert_same('unknown', pg_messages_health_worst(array('ok', 'odd')), 'an odd value reads as unknown');
+	pg_assert_same('unknown', pg_messages_health_worst(array()), 'nothing is unknown');
+}
+
+function messages_area_channel_urls()
+{
+	return array('email' => 'smtp_settings.php', 'sms' => '/s#sms', 'whatsapp' => '/s#wa', 'iys' => '/s#iys');
+}
+
+function test_messages_area_channel_cards_nothing_set_up()
+{
+	$cards = pg_messages_channel_cards(array(), messages_area_channel_urls());
+	pg_assert_same(array('email', 'sms', 'whatsapp', 'iys'), array_map(function ($c) { return $c['key']; }, $cards), 'four cards in order');
+	pg_assert_same('off', $cards[0]['state'], 'e-mail with no health known');
+	pg_assert_same('No sender address', $cards[0]['line'], 'e-mail without an address');
+	foreach (array(1, 2, 3) as $i) {
+		pg_assert_same('off', $cards[$i]['state'], $cards[$i]['key'] . ' off');
+		pg_assert_same('Off', $cards[$i]['state_label'], $cards[$i]['key'] . ' label');
+	}
+	pg_assert_same('No provider chosen', $cards[1]['line'], 'SMS line');
+	pg_assert_same('/s#wa', $cards[2]['url'], 'each card leads to its settings');
+}
+
+function test_messages_area_channel_cards_set_up()
+{
+	$cards = pg_messages_channel_cards(array(
+		'email'    => array('from' => 'info@example.org', 'via' => 'Postmark', 'domain' => 'example.org', 'health' => 'warning'),
+		'sms'      => array('provider' => 'Netgsm', 'sender' => 'SHOP', 'started' => true),
+		'whatsapp' => array('ready' => false, 'started' => true),
+		'iys'      => array('ready' => true, 'brand' => '123', 'test' => true, 'started' => true),
+	), messages_area_channel_urls());
+
+	pg_assert_same('check', $cards[0]['state'], 'a domain warning asks for a check');
+	pg_assert_same('Sender: info@example.org · Postmark · Sending domain example.org', $cards[0]['line'], 'e-mail line');
+	pg_assert_same('on', $cards[1]['state'], 'SMS connected');
+	pg_assert_same('Netgsm · Sender: SHOP', $cards[1]['line'], 'SMS line');
+	pg_assert_same('check', $cards[2]['state'], 'WhatsApp switched on but incomplete');
+	pg_assert_same('Incomplete', $cards[2]['state_label'], 'its label');
+	pg_assert_same('Brand code 123 · Test environment', $cards[3]['line'], 'İYS line');
+}
+
+function test_messages_area_channel_cards_html()
+{
+	$html = pg_messages_channel_cards_html(pg_messages_channel_cards(array('email' => array('from' => 'a<b>@x', 'health' => 'ok')), messages_area_channel_urls()));
+	pg_assert_contains('a&lt;b&gt;@x', $html, 'escaped line');
+	pg_assert_contains('<span class="pg-pill pg-tone-teal">Good</span>', $html, 'a good domain is a teal pill');
+	pg_assert_contains('<span class="pg-pill pg-tone-gray">Off</span>', $html, 'an off channel is gray');
+	pg_assert_contains('href="smtp_settings.php"', $html, 'the e-mail card leads to SMTP Settings');
+}
