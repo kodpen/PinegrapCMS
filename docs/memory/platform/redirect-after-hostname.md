@@ -1,6 +1,6 @@
 ---
 name: redirect-after-hostname
-description: Never append raw input after HOSTNAME in a redirect; use pg_safe_redirect_path() everywhere and why it checks only the first two characters (a design decision).
+description: Never append raw input after HOSTNAME in a redirect; use pg_safe_redirect_path() everywhere, why it checks only the first two characters, and why it percent-encodes non-ASCII bytes.
 ---
 
 ## Why can raw input not follow HOSTNAME?
@@ -16,11 +16,16 @@ Pattern used everywhere: `header('Location: ' . URL_SCHEME . HOSTNAME . $send_to
 
 ## Why does pg_safe_redirect_path() look only at the first two characters?
 - A design decision. A string that starts with `/` and whose second character is not `/` or `\` cannot change the authority when appended after `https://host`; the rest is path. Besides those two characters it refuses only control characters (header splitting), an empty value and a non-scalar (an array sent as `x[]`); anything refused becomes the fallback (`PATH` by default).
-- So there is no `str_replace`, `preg_replace`, `urlencode`, or `parse_url` + reassembly in it, and there never will be. Any "fix" touching the body breaks:
+- So there is no `str_replace`, `parse_url` + reassembly or `urlencode()` of the whole value in it. Any "fix" that removes or rewrites characters of the body breaks:
   - `[` `]`: file version suffix, `name="x[]"` array params in 54 places (`/dosya [1].pdf`, `?filter[]=jpg`)
   - Turkish / UTF-8: product and page URLs (`/urun/çay_bardağı_seti`)
   - percent-encoding: searches, `send_to` (`?q=%C3%A7ay`)
   - `? # & =`: every query string
 - No normalization is needed: the danger is in the prefix, not the body.
+
+## Why does its answer come back percent-encoded?
+- A `Location` value is a URI reference, ASCII only (RFC 9110 10.2.2). The browser read raw UTF-8 there as Latin-1: `/pg-ğ` led to `/pg-%C3%84%C2%9F`, which IIS answers with its own 400 (#8983, after the request address became UTF-8).
+- So the answer, the fallback too, goes through `pg_uri_ascii()` (`includes/fn/request_scheme.php`): only bytes outside printable ASCII (0x21-0x7E), UTF-8 and spaces, become `%XX`. Every character above keeps its meaning, `[ ] ? # & = %` stay as they are, and a value encoded once comes back unchanged. The Secure Mode redirects (`init.php`, `get_file.php`) write the request address through it too.
+- Tests: `tests/safe_redirect_path_test.php`.
 
 Related: docs/memory/platform/redirect-validator-context.md

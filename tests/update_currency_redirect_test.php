@@ -5,8 +5,8 @@
  * Tests for the redirect of update_currency.php, the currency picker's form
  * target. It sends the visitor back to the posted send_to, which now goes
  * through pg_safe_redirect_path() like every other send_to redirect: a path on
- * this site is kept as it came, anything else sends the visitor to the home
- * page instead of to another host.
+ * this site is kept (UTF-8 percent-encoded for the header), anything else
+ * sends the visitor to the home page instead of to another host.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,18 +24,19 @@ function _test_update_currency_redirect_home()
 }
 
 // What the currency forms post: the page the visitor is on, query string and
-// fragment included. It comes back unchanged.
+// fragment included. It comes back as it came, UTF-8 percent-encoded for the
+// Location header (pg_uri_ascii()).
 function test_update_currency_redirect_keeps_site_path()
 {
 	$paths = array(
-		'/',
-		'/shop',
-		'/shop/catalog?previous_url_id=2&tags[]=a#software_currency',
-		'/ürünler/çay?sıra=artan',
+		'/' => '/',
+		'/shop' => '/shop',
+		'/shop/catalog?previous_url_id=2&tags[]=a#software_currency' => '/shop/catalog?previous_url_id=2&tags[]=a#software_currency',
+		'/ürünler/çay?sıra=artan' => '/%C3%BCr%C3%BCnler/%C3%A7ay?s%C4%B1ra=artan',
 	);
 
-	foreach ($paths as $path) {
-		pg_assert_same($path, pg_safe_redirect_path($path), $path);
+	foreach ($paths as $path => $location) {
+		pg_assert_same($location, pg_safe_redirect_path($path), $path);
 	}
 }
 

@@ -311,7 +311,8 @@ if (
     // Create a new request uri without "pages/" or "files/".
     $new_request_url_without_path = (string) substr($request_url_without_path, 6);
 
-    header('Location: ' . $config['url_scheme'] . $config['hostname'] . PATH . $new_request_url_without_path, true, 301);
+    // The request address is UTF-8; a Location header carries it encoded.
+    header('Location: ' . $config['url_scheme'] . $config['hostname'] . PATH . pg_uri_ascii($new_request_url_without_path), true, 301);
     exit();
 }
 
@@ -902,7 +903,7 @@ function router_language_file_redirect($rest)
     $result = mysqli_query(db::$con, "SELECT url_scheme, hostname FROM config") or router_output_error('Query failed.');
     $config = mysqli_fetch_assoc($result);
 
-    header('Location: ' . $config['url_scheme'] . $config['hostname'] . PATH . $rest, true, 301);
+    header('Location: ' . $config['url_scheme'] . $config['hostname'] . PATH . pg_uri_ascii($rest), true, 301);
     exit();
 }
 
