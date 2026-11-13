@@ -11,7 +11,7 @@ description: The agents' request queue: wake rules make one ws_ai_requests row p
 - Claude, Pinegrap AI and the MCP agents keep their own queues.
 
 ## How is a push door knocked?
-- At once for an `app` agent with door `push`, never the words, 10 s timeout. `ws_agent_knock_request()` picks the form by the address (#RK1):
+- At once for an `app` agent with door `push`, never the words, 10 s timeout. `ws_agent_knock_request()` picks the form by the address (#9273):
 - Webhook form: `{"event":"workspace.agent_request","site":<integration.php address>,"agent":<handle>,"request_id":N}`; with a secret `Authorization: Bearer`, `X-Pinegrap-Timestamp`, `X-Pinegrap-Signature: sha256=hmac(timestamp + "." + body)`.
 - Routine form, for an address `ws_claude_url_valid()` accepts: the headers `ws_claude_fire()` sends with the secret as token, body `{"text":"site: <address> · agent: @<handle> · request: <id>"}`. Each knock is one routine run.
 - A 2xx clears `door_failures` and `door_error`; anything else counts a failure with `ws_agent_knock_refusal()`'s sentence (a routine's 401/403/404/429 in `ws_claude_fire()`'s words; else the status and the answer's reason, ≤120 chars), `door_last_knock` the time.
