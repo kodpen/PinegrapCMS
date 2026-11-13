@@ -257,6 +257,7 @@
 - workspace-flows-derived-text.md: Text rules of a flow's derived value box (PR #7411): replace, extract a number or an e-mail address, capitals, small letters, tidy spaces, cut to N, split and take part N; the third input c
 - workspace-flows-email-record-person.md: Flow e-mail box to the person of the run's record (B8): recipient record_person, purpose info or marketing, campaign consent, unsubscribe link, nothing sent with its reason
 - workspace-flows-empty-fallback.md: The per-thread "When empty, write" fallback of a Flows value (T6, PR #3729, #2415 2a): token syntax, where it is filled, which references take it, the warning rule, the chip [decision: decisions-made-workspace-4.md]
+- workspace-flows-empty-panel.md: The flow window's right panel with no box chosen (FW4, #9228): the flow summary, home channel, the problems with "Go to the box"; the phone's "Add a box" page; the Problems button
 - workspace-flows-erp-start-events.md: ERP events a flow can start on (PR #7428): invoices, receipts, incoming e-documents, quote decisions; the new erp.invoice.overdue and erp.edoc.received
 - workspace-flows-event-depth.md: The chain depth a flow run's events carry: ws_event_depth() said by a step box around its work, stamped as _depth by ws_event() and pg_event_record(), read by ws_events_start()
 - workspace-flows-failure-reason.md: Why a flow box failed (FR1, PR #8425): data.empty_values, the added sentence on card, bell and run view, the canvas buttons and the card link to the failed box [decision: decisions-made-workspace-10.md]

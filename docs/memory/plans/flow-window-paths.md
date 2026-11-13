@@ -31,4 +31,4 @@ description: Flow window plan, FW0 part 3: the keyboard path through the bar, th
 - Two places where FW1 follows the panel's rules over the drawing: the back arrow stays in the breadcrumb strip; a draft's pill is gray (look A), not amber.
 
 ## Which step builds what?
-- FW2 (#9178): the left panel, the rail. FW3 (#9196): the right panel, its tabs and keys, the bottom sheet, F6 (built as proposed). FW4: no box chosen, the "Add a box" sheet. FW5: the canvas marks and the close-out.
+- FW2 (#9178): the left panel, the rail. FW3 (#9196): the right panel, its tabs and keys, the bottom sheet, F6 (built as proposed). FW4 (#9228): no box chosen, the "Add a box" page. FW5: the canvas marks and the close-out.
