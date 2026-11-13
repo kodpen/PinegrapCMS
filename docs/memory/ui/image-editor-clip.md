@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Where is it?
-- Part `clip`: `assets/js/pg_image_editor_clip.js` (bundled after `video`), the model's `CLIP` section, labels `pg_image_editor_strings_clip()`, actions `video_files` and `video_upload`, its stylesheet section, `tests/image_editor_clip_test.php`. Added in V2 of `plans/image-editor-video-steps.md` (#8483). Decoding is the `video` part's (`image-editor-video-decode.md`).
+- Part `clip`: `assets/js/pg_image_editor_clip.js` (bundled after `video`), the model's `CLIP` section, labels `pg_image_editor_strings_clip()`, actions `video_files` and `video_upload`, its stylesheet section, `tests/image_editor_clip_test.php`. Added in #8483. Decoding is the `video` part's (`image-editor-video-decode.md`).
 
 ## What does a layer hold?
 - `{ type: 'video', fileId, name, src, length, width, height, sound, from, to, start, speed, volume, muted, x, y, w, h, rot, opacity }`, times in ms. `from`/`to` cut the source, `start` places the cut on the open document's own timeline (`motionNow()`, not the whole scenes' timeline as a sound), `speed` is one of `M.CLIP_SPEEDS` (0.25-4×), so the clip lasts `(to - from) / speed` (`M.clipSpan()`). `sound` says whether the file has a sound track.

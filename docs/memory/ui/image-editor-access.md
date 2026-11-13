@@ -10,6 +10,7 @@ module: image_editor
 
 ## Which letters pick a tool?
 - V Select, C Crop, A Adjust (Arrow on the mini bar), D Draw, T Text, R Redact, U Rectangle, S Sticker, F Frame, P Vector (Pen on the mini bar), B Canvas, I Image, E Export, L Line, O Ellipse, M Animate; Q Select area, X Scissors, G Shape builder, W Warp, N Free deformation (E29). K stays Animate's play key. Only tools of the call; no letter with Ctrl, Alt or Shift; the tool already on is left as it is (a letter does not toggle the phone sheet).
+- While the Animate tool is on, J, K, L, I and O are the timeline's transport (`image-editor-clip-timeline.md`), not the Line, Image and Ellipse tool letters: the access letter handler returns them to the motion handler (`'jklio'` when `this.tool === 'motion'`). To reach those three tools from Animate, use the rail. #9234.
 - A tool button's title reads "Text (T)" and carries `aria-keyshortcuts`; a rail item holding several tools (Photo, Vector) lists its modes' letters ("Photo (C, A, R, Q, F)", `aria-keyshortcuts="C A R Q F"`), and each button of its mode switch carries its own letter (`modeSwitch()`). Undo, redo and save carry theirs too; the stage is named ("Press ? for the keyboard shortcuts").
 
 ## What does the help sheet show?

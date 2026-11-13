@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Where is it?
-- The VIDEO section of `assets/js/pg_image_editor_model.js` (pure, Node-tested in `tests/image_editor_video_decode_test.php` over `tests/fixtures/video/`) and the part `assets/js/pg_image_editor_video.js` (labels `pg_image_editor_strings_video()`). Added in V1 of `plans/image-editor-video-steps.md` (#7658).
+- The VIDEO section of `assets/js/pg_image_editor_model.js` (pure, Node-tested in `tests/image_editor_video_decode_test.php` over `tests/fixtures/video/`) and the part `assets/js/pg_image_editor_video.js` (labels `pg_image_editor_strings_video()`). Added in #7658.
 
 ## What does the model give?
 - `videoDemux(bytes)` → `{ kind: 'mp4'|'webm', duration (ms), tracks }`; a track has `kind`, `codec` (the WebCodecs string), `description`, `width`/`height` or `rate`/`channels`, `samples` in decode order as `{ at, size, ts, dur, key }` (times in microseconds, presentation time). The type is told by the bytes (`videoKind()`), never by the name.

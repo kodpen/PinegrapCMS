@@ -3817,7 +3817,7 @@ function pg_image_editor_strings_motion()
 {
     return array(
         'tool_motion'          => lang('Animate'),
-        'hintMotion'           => lang('Select a layer and give it an entrance, a loop and an exit. K: play or pause'),
+        'hintMotion'           => lang('Select a layer and give it an entrance, a loop and an exit. K: play or pause, J and L: backward or forward'),
         'motionPick'           => lang('Select a layer to give it motion.'),
         'motionNothing'        => lang('Add a text or a sticker, then give it motion here.'),
         'motionAddSticker'     => lang('Add a sticker'),
@@ -4924,10 +4924,13 @@ function pg_image_editor_strings_access()
         'keyPinNudgeMore' => lang('Move the chosen pin by 10 pixels'),
         'keysTimeline'  => lang('Timeline'),
         'keyPlay'       => lang('Play or pause'),
+        'keyShuttle'    => lang('Play backward or forward'),
         'keyFrame'      => lang('One frame back or forward'),
         'keySecond'     => lang('One second back or forward'),
         'keyStart'      => lang('Go to the start'),
         'keyEnd'        => lang('Go to the end'),
+        'keyMarkIn'     => lang('Trim the selected clip\'s start to the playhead'),
+        'keyMarkOut'    => lang('Trim the selected clip\'s end to the playhead'),
     );
 }
 
@@ -5663,6 +5666,7 @@ function pg_image_editor_strings_clip()
         'clipNeedsFiles'  => lang('A video is added through Files: save this image in the File Manager first.'),
         'clipSplit'       => lang('Split clip'),
         'clipSplitNote'   => lang('Splits the clip in two at the playhead: in the Animate tool, put the playhead inside the clip.'),
+        'clipMarkNote'    => lang('Put the playhead inside the clip to trim its start or end to it.'),
         'clipSameSource'  => lang('Same source'),
         'clipFromSource'  => lang('From the source'),
         'clipOnTimeline'  => lang('On the timeline'),

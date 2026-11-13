@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Where is it?
-- Part `phone` (`pg_image_editor_phone.js`, bundled after `upload`, before `actions` and `menu`, which stays last), the model's `PHONE` section (`phoneRows()`, `phoneSoundLine()`), labels in `pg_image_editor_strings_phone()`, rules at the end of `pg_image_editor.src.css`, tests in `tests/image_editor_phone_test.php`. Added in V10 of `plans/image-editor-video-steps.md`. Screen 42-phone-video.
+- Part `phone` (`pg_image_editor_phone.js`, bundled after `upload`, before `actions` and `menu`, which stays last), the model's `PHONE` section (`phoneRows()`, `phoneSoundLine()`), labels in `pg_image_editor_strings_phone()`, rules at the end of `pg_image_editor.src.css`, tests in `tests/image_editor_phone_test.php`. Added in #8854 (screen 42-phone-video).
 
 ## When do the rows show?
 - Under 600 px wide (a phone held upright, where the play bar is the sheet's first row), in the Animate tool, once the document holds a shown video layer (`M.phoneRows()`). Without a clip, and held sideways (the sheet over the stage's right, the stage only 390 px tall), the panel's delay and duration sliders and the Sounds list do it, as before.

@@ -29,4 +29,4 @@ description: Decisions list, product part 42 (2026-11-10 on): one modern picker 
 ## When does a clip edit change the image editor document's length? (owner, 2026-11-10)
 - Owner (2026-11-10, #8521): the clip timeline (V3, #8510) is approved as built: "Onay; ek adımda düzeltilsin."
 - The rule to change: the length follows the clips, but a clip edit never ends the document before another layer's motion. As built, every clip edit sets the length to the last clip's end, which cuts an end card or a text after the video, and the length slider holds only until the next clip edit.
-- Step V3b of `plans/image-editor-video-steps.md` builds it, with the filmstrip and waveform of screen 35 that V3 left out (`ui/image-editor-clip-timeline.md`).
+- Built with the filmstrip and waveform (#8559) that #8510 left out (`ui/image-editor-clip-timeline.md`).

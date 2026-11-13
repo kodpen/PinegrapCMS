@@ -15017,6 +15017,17 @@ const StyleDesigner = (function () {
     // (10–30 chars typical for product names, SKUs, labels).
     var _SD_SHORT_LABEL_TOKENS = {
         // Search results
+        // A form record's entity values, the address filter's value and
+        // the custom form's own words.
+        '__quiz_score': '80%',
+        '__post_title': _sdT('How we restored a 1920s bookshelf'),
+        '__post_date': _sdDateSample(false),
+        '__post_summary': _sdT('A weekend, a tin of oil and some patience: the steps, the tools and what we would do again.'),
+        '__post_author': _sdT('Alex Morgan'),
+        '__filter_value': _sdT('design'),
+        '__form_title': _sdT('Contact Form'),
+        '__submit_label': _sdT('Submit'),
+        '__success_message': _sdT('Thank you. Your message has been sent.'),
         '__search_query': _sdT('design'),
         '__results_heading': _sdT('Found 12 result(s) for: design'),
         '__result_title': _sdT('Sample Page'),
@@ -15453,6 +15464,13 @@ const StyleDesigner = (function () {
     // account fields beside them. Without these a reference code would fall
     // through to lorem ipsum and a card would preview nothing like the page it
     // becomes. A function entry is called; everything else is used as written.
+    // The first name (0) or the last name (1) of the sample person, so a
+    // name written as its two halves reads as full_name does.
+    function _sdNameHalf(part) {
+        var words = String(_sdT('Alex Morgan')).trim().split(/\s+/);
+        var last = words.length > 1 ? words.pop() : '';
+        return part ? last : words.join(' ');
+    }
     var _SD_STANDARD_FIELD_PREVIEWS = {
         reference_code:                'ABC123XYZ',
         complete:                      _sdT('Complete'),
@@ -15482,8 +15500,8 @@ const StyleDesigner = (function () {
         username:                      'alex',
         email_address:                 _sdT('sample@example.com'),
         full_name:                     _sdT('Alex Morgan'),
-        first_name:                    _sdT('First Name'),
-        last_name:                     _sdT('Last Name'),
+        first_name:                    function () { return _sdNameHalf(0); },
+        last_name:                     function () { return _sdNameHalf(1); },
         member_id:                     'M-1042',
         member:                        '1',
         not_logged_in:                 _sdT('You must be logged in to view this page.'),
@@ -15945,6 +15963,16 @@ const StyleDesigner = (function () {
             // One of the widget form's own fields: preview by its type, so a
             // date field reads as a date and a pick list as a short value
             // instead of lorem ipsum.
+            // The form's fields come with the first panel or label that asks
+            // for them; a field's value asks once too, and paints again
+            // when they arrive, so it draws its answer from the start.
+            if (fieldName && node && String(fieldName).indexOf('__') !== 0) {
+                var _ffForm = _getSystemWidgetCustomFormPageId(node);
+                if (_ffForm && !_formFieldsCache[_ffForm] && !_sdLabelFieldsAsked[_ffForm]) {
+                    _sdLabelFieldsAsked[_ffForm] = true;
+                    _fetchFormFields(_ffForm, function () { renderCanvas(); });
+                }
+            }
             var _ffPrev = (fieldName && node) ? _sdFormFieldOf(fieldName, node) : null;
             // A field's label ("Field labels" in a detail view) reads as itself.
             if (!_ffPrev && node && /^[^_].*__label$/.test(String(fieldName || ''))) {
@@ -15962,13 +15990,7 @@ const StyleDesigner = (function () {
                     }
                 }
             }
-            if (_ffPrev) {
-                if (_ffPrev.type === 'date' || _ffPrev.type === 'date and time') return _sdDatePlaceholder();
-                if (_ffPrev.type === 'time')          return '14:30';
-                if (_ffPrev.type === 'email address') return _sdT('sample@example.com');
-                if (_ffPrev.type === 'text area')     return _sdTokenPlaceholder(fieldName, node);
-                return _sdT('Example');
-            }
+            if (_ffPrev) return _sdFormFieldSample(_ffPrev);
             if (fieldName && _SD_CURRENCY_TOKENS[fieldName]) {
                 return _sdGetCurrencyPlaceholder();
             }
@@ -38388,6 +38410,58 @@ const StyleDesigner = (function () {
             if (_swFormFieldToken(fields[i]) === fieldName) return fields[i];
         }
         return null;
+    }
+
+    // A record's answer to form field `ff` on the canvas, of the field's
+    // kind: a date, a time, an e-mail address, one of its own choices, a
+    // file name, a few sentences for long text, its information text; a
+    // text box by its default, its role or the words of its label (a name,
+    // a phone, a company …), else its label as a sample. Canvas only.
+    var _SD_FIELD_WORD_SAMPLES = [
+        [/(e-?mail|e-posta)/i, function () { return _sdT('sample@example.com'); }],
+        [/(phone|mobile|telefon|gsm)/i, function () { return '+90 555 000 00 00'; }],
+        [/(company|organi[sz]ation|şirket|firma|kurum)/i, function () { return _sdT('Example Ltd.'); }],
+        [/(city|town|şehir|ilçe)/i, function () { return _sdT('Springfield'); }],
+        [/(web|site|url|link)/i, function () { return 'https://example.com'; }],
+        [/(address|adres)/i, function () { return _sdT('Sample Street 1') + ', ' + _sdT('Springfield'); }],
+        [/(subject|title|topic|konu|başlık)/i, function () { return _sdT('Question about my order'); }],
+        [/(name|isim|^ad\b|ad soyad|adınız)/i, function () { return _sdT('Alex Morgan'); }],
+        [/(message|comment|note|question|mesaj|yorum|not\b|soru|açıklama)/i, function () { return _sdT('Hello, I would like to know when the order can be delivered.'); }],
+        [/(number|no\b|code|kod|numara)/i, function () { return 'A-1042'; }]
+    ];
+    function _sdFormFieldSample(ff) {
+        var type = String(ff.type || '');
+        var label = String(ff.label || ff.name || '').replace(/<[^>]*>/g, '').replace(/\s*[:：*]\s*$/, '').trim();
+        var opts = Array.isArray(ff.options) ? ff.options : [];
+        var first = opts.length ? String(opts[0].label || opts[0].value || '') : '';
+        if (type === 'date' || type === 'date and time') return _sdDatePlaceholder();
+        if (type === 'time') return '14:30';
+        if (type === 'email address') return _sdT('sample@example.com');
+        if (type === 'pick list' || type === 'radio button') return first || _sdT('First choice');
+        if (type === 'check box') return first || _sdT('Yes');
+        if (type === 'file upload') return 'document.pdf';
+        if (type === 'signature') return _sdT('Signed');
+        if (type === 'information') {
+            var info = String(ff.information || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,;:!?])/g, '$1').trim();
+            return info || label || _sdT('Information');
+        }
+        if (ff.rss_field === 'title') return _sdT('How we restored a 1920s bookshelf');
+        if (ff.rss_field === 'description' || type === 'text area') {
+            // A message reads as one; any other long text as a few
+            // sentences in the visitor's own words.
+            return /(message|comment|note|question|mesaj|yorum|not\b|soru|ne oldu)/i.test(label)
+                ? _sdT('Hello, I would like to know when the order can be delivered.') + ' ' +
+                  _sdT('I am at home on weekdays after five, and the parcel can be left with the neighbour.')
+                : _sdT('Two or three sentences in my own words: what I need, by when, and anything else that helps.');
+        }
+        var dflt = String(ff.default_value || '').trim();
+        if (dflt !== '' && dflt.indexOf('^^') === -1) return dflt;
+        for (var i = 0; i < _SD_FIELD_WORD_SAMPLES.length; i++) {
+            if (_SD_FIELD_WORD_SAMPLES[i][0].test(label) || _SD_FIELD_WORD_SAMPLES[i][0].test(String(ff.name || ''))) {
+                return _SD_FIELD_WORD_SAMPLES[i][1]();
+            }
+        }
+        return label ? _sdT('{var:1} sample', label) : _sdT('Example');
     }
 
     // Identifiers whose value is a date, so the panel knows when to offer a
