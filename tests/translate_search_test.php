@@ -230,3 +230,34 @@ function test_translate_search_records_source_language_and_fences()
 	pg_assert_contains("u.owner_type = 'form_records'", $search, 'record uses');
 	pg_assert_contains('WHERE $fence (', $search, 'folder fence');
 }
+
+// A list's own search box reads only the fields it searches, every word
+// found in them together.
+function test_translate_search_list_record_ids()
+{
+	pg_assert_same(4, pg_tr_search_record_field_id('r12:4'), 'plain');
+	pg_assert_same(4, pg_tr_search_record_field_id('r12:4@1#0'), 'rich text');
+	pg_assert_same(0, pg_tr_search_record_field_id('label'), 'no record');
+
+	$rows = array(
+		array('field' => 'r3:1', 'text' => 'Breakfast menu'),
+		array('field' => 'r3:2#0', 'text' => '<p>Morning</p>'),
+		array('field' => 'r5:1', 'text' => 'Dinner menu'),
+		array('field' => 'r7:9', 'text' => 'Breakfast morning'),
+	);
+	pg_assert_same(array(3, 5), pg_tr_search_list_record_ids($rows, array(1), pg_tr_search_words('menu')), 'searched field only');
+	pg_assert_same(array(3), pg_tr_search_list_record_ids($rows, array(1, 2), pg_tr_search_words('MORNING breakfast')), 'fields together');
+	pg_assert_same(array(), pg_tr_search_list_record_ids($rows, array(1), pg_tr_search_words('morning')), 'other field not read');
+}
+
+// In the source language the box asks nothing; the list's count and rows
+// share the condition, and only a list that translates its records asks.
+function test_translate_search_list_source_language_and_wiring()
+{
+	pg_assert_same(array(), pg_tr_search_list_records(4, array(1), 'menu'), 'source language');
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
+	pg_assert_contains("!empty(\$cfg['translate_records'])\n            ? pg_tr_search_list_records(\$custom_form_page_id, \$search_field_ids, \$search_query)", $src, 'translated lists only');
+	pg_assert_contains('" OR forms.id IN ("', $src, 'joined to the source match');
+	$search = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/translate/search.php');
+	pg_assert_contains("AND u.owner_id = '\$form_page_id'", $search, 'the list\'s form only');
+}

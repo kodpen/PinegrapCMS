@@ -65,7 +65,7 @@ function test_settings_workspace_agents_section_list_and_anchor()
 function test_settings_workspace_agents_names_read_alike()
 {
 	$fields = array(
-		'kind' => 'model', 'handle' => 'koordinator', 'name' => 'Koordinatör', 'app_id' => '4', 'provider' => 'azure', 'model' => 'gpt-x',
+		'kind' => 'model', 'handle' => 'koordinator', 'name' => 'Koordinatör', 'role' => 'coordinator', 'app_id' => '4', 'provider' => 'azure', 'model' => 'gpt-x',
 		'status' => 'paused', 'door_kind' => 'poll', 'door_url' => '', 'base' => 'https://x.openai.azure.com/openai/v1', 'wake_every' => '30',
 		'wake_note' => 'Look at the board', 'key' => 'sk-1', 'key_clear' => '', 'door_secret' => '', 'door_secret_clear' => '1', 'token_limit' => '5000',
 	);
