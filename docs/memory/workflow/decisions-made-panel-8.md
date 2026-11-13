@@ -12,7 +12,7 @@ description: Decisions list, panel part 8 (2026-11-12 on): look A's report page 
 - The architect's, not the owner's words: the page re-dresses the parts of the report view (`ui/report-view.md`) and adds none; step DL5e of `plans/panel-design-language-steps.md` follows it.
 
 ## Is a settings switch without a thumb approved? (owner, 2026-11-12, #9070)
-- No. A switch is the reference sheet's: a thumb that can be seen in both states and both themes. Plan `plans/look-widths-and-switch.md` (LW3).
+- No. A switch is the reference sheet's: a thumb that can be seen in both states and both themes. Done #9197 (`ui/look-switch.md`).
 - Owner (2026-11-12), with a picture of a settings row in the dark theme: "ayarlardaki görsel 1 deki gibi switchler değişik bir checkbox türüne evrilmiş ben bunu onaylamadım".
 
 ## Where is the Design Canvas icon drawn in one colour? (owner, 2026-11-13, #9250)
@@ -22,6 +22,6 @@ description: Decisions list, panel part 8 (2026-11-12 on): look A's report page 
 - Built in DI1 (`ui/design-canvas-icon.md`): `pg_design_canvas_icon_one_colour()`.
 
 ## How do cards use the form column of an add or edit screen? (owner, 2026-11-13, #9271)
-- The measure alone: a card stays one per row and its fields keep the 12-column grid, so they widen with the form column up to 1300 px (way A of step LW2, `plans/look-widths-and-switch.md`). Not chosen: fields two abreast with each input capped at about 480 px (C).
+- The measure alone: a card stays one per row and its fields keep the 12-column grid, so they widen with the form column up to 1300 px (way A of #9269, `ui/look-page-widths.md`). Not chosen: fields two abreast with each input capped at about 480 px (C).
 - Owner (2026-11-13): "A olsun"; told that a full-row input becomes about 1270 px against the field sentence of #9070: "C çok salkım saçak olacak ya A ya B olsun".
 - The architect's, not the owner's words: he left A or B open and the architect takes A, his first answer; two cards abreast (B) is what to come back to if stretched fields look wrong on the real screens. It narrows #9070 (`decisions-made-panel-7.md`): an input may run the width of the form column, never of the window. The architect did not see the pictures.

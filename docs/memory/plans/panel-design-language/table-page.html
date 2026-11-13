@@ -6,7 +6,13 @@
 <link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
 <link rel="stylesheet" href="sheet.css">
 <style>
-.wrap { width: 1280px; }
+/* The main menu as the panel shows it at 1920 px: the mini rail; the content box keeps the panel's 16 px sides. */
+.screen { grid-template-columns: 60px 1fr; }
+.menu { padding: 16px 12px; }
+.menu .sk, .menu .mh { display: none; }
+.menu .logo { margin: 2px 5px 26px; }
+.content { padding: 24px 16px 0; }
+.wrap { width: 1700px; }
 .tools { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 .tools .in { width: 300px; height: 34px; }
 .fp { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px; border-radius: 10px; font-size: 13px; font-weight: 500; color: var(--fg2); box-shadow: inset 0 0 0 1px var(--line); white-space: nowrap; }
@@ -50,7 +56,7 @@ table.lt { width: 100%; border-collapse: separate; border-spacing: 0; }
 </head>
 <body>
 <div class="stage">
-<div class="cap"><b>Tablo sayfası</b>Tablo, sütunlarının istediği kadar geniş: en az 1280 px, ortada. Esneyen tek sütun ad sütunu. Sayfalama yok; kaydırdıkça satır eklenir.</div>
+<div class="cap"><b>Tablo sayfası</b>Tablo, sütunlarının istediği kadar geniş: en az 1700 px, ortada; detay paneli açılınca genişliği eklenir, ekrana kadar. Esneyen tek sütun ad sütunu. Sayfalama yok; kaydırdıkça satır eklenir.</div>
 <div class="screen">
   <aside class="menu">
     <div class="logo"><i></i><span class="sk" style="width:92px"></span></div>
@@ -117,7 +123,7 @@ table.lt { width: 100%; border-collapse: separate; border-spacing: 0; }
     </div>
   </div>
 </div>
-<div class="ruler"><span style="width:250px">menü 250</span><span style="flex:1">boş</span><span class="on" style="width:1276px">tablo en az 1280 · sütunlar çoğalınca ekrana kadar genişler</span><span style="flex:1">boş</span></div>
+<div class="ruler"><span style="width:56px">menü 60</span><span style="flex:1">boş</span><span class="on" style="width:1696px">tablo en az 1700 · sütunlar çoğalınca ekrana kadar genişler</span><span style="flex:1">boş</span></div>
 </div>
 </body>
 </html>
