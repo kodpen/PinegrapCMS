@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Shared pieces of tools/ws_post.php, tools/ws_wait.php and
+ * Shared pieces of tools/ws_post.php, tools/ws_wait.php, tools/ws_profile.php and
  * tools/ws_poll.php: the settings an agent passes in its environment, the
  * HTTP call to a site's external API with an application key, and the pure
  * helpers (options, matching, ETag, Idempotency-Key) the tests read.
