@@ -4,7 +4,7 @@ description: Flows quick setup drawing against today's boxes and events: drawn s
 ---
 
 ## Which drawing?
-- `plans/flows-quick-setup/quick-setup.html` (owner approved, 2026-11-12, #8950). Its names are examples; the dialog shows the boxes' and events' own labels. Server: `workspace-flows-quick-setup.md`.
+- `flows-quick-setup-look/quick-setup.html` (owner approved, 2026-11-12, #8950). Its names are examples; the dialog shows the boxes' and events' own labels. Server: `workspace-flows-quick-setup.md`.
 
 ## Which drawn starts are there?
 - Orders cards: "Sipariş geldiğinde" `order.created`, "kargolandığında" `order.shipped`, "teslim edildiğinde" `order.delivered`, "iptal edildiğinde" `order.cancelled`, "İade talebi" `order.return.requested`, "sipariş vermeyi bıraktığında" the start box `no_order`. All there.
@@ -25,6 +25,6 @@ description: Flows quick setup drawing against today's boxes and events: drawn s
 - Added beside them: `form_reply`, `booking_tell`, `welcome_contact`, `restock`, `win_back`.
 
 ## Which general boxes are proposed for what has none?
-- Each by `workspace-flows-adding.md`, never for the quick setup alone; the drawn step stays hidden until its box lands. Decided (architect, 2026-11-13, `plans/flows-quick-setup-steps-2.md`): the change box's value id is done (QS1b), the SMS box done (QS6, `workspace-flows-sms-box.md`), the contact group box done (QS7, #9291); the offer code waits for a question to the owner.
+- Each by `workspace-flows-adding.md`, never for the quick setup alone; the drawn step stays hidden until its box lands. Decided (architect, 2026-11-13, `workspace-flows-quick-setup-rules.md`): the change box's value id is done (QS1b), the SMS box done (QS6, `workspace-flows-sms-box.md`), the contact group box done (QS7, #9291); the offer code waits for a question to the owner.
 - Send an SMS (new step kind): to the record's person's mobile (as the e-mail box's `record_person`) or a typed number, text with values, info or marketing with the same consent rule; sent through `pg_sms_send()` (`includes/fn/sms.php`); outputs `sent`.
 - Give an offer code (new step kind): a single-use code of an existing offer for the run's person, the code an output for the next e-mail; offers can only be changed today.

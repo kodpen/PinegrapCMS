@@ -388,7 +388,7 @@ if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
 echo
 pg_page_shell([
         'title' => lang('Incoming e-invoice'),
-        'extra classes' => 'erp erp_inbox',
+        'extra classes' => 'erp erp_inbox pg-measure-edit',
         'icon' => 'erp',
         'heading' => h(((string) $row['supplier_title'] !== '') ? $row['supplier_title'] : $row['gib_number']),
         'heading_description' => lang('The e-invoice as the supplier sent it, and the purchase invoice it becomes.'),

@@ -19,6 +19,9 @@ description: How a session waits on the agent channel: on its request queue (too
 - `tools/ws_post.php --parent=<id>` answers a message (Reply), e.g. the decision that closes a question.
 - `tools/ws_poll.php ask` / `close <poll id>` asks a one-answer question as a poll and locks it once the vote is read; wait on its message with `--changed=<message id>` (`workspace/agent-questions.md`, #8564).
 
+## When does a session report its model and usage?
+- At its start and on its round, at most once an hour: `php tools/ws_profile.php --model=<model> [--windows=five_hour:<percent>:<reset>,weekly:<percent>:<reset>]` (`workspace/agent-report.md`). A session that cannot read its plan's usage sends the model alone; one without its own key sends nothing.
+
 ## Which handles are typed?
 - `@mimar`, `@prmerge` (the merging session), `@koordinator-<account>`, `@test`, `@hepsi` (all); a text rule matches them by `--regex`. CI writes its lines into the same agent channel (owner, 2026-11-08); such a line wakes nobody (an application's words wake only by a mention or a reply).
 

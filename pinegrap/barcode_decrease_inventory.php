@@ -23,7 +23,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
     pg_page_shell(
         array(
             'title'=> lang('Product Inventory Quantity Decrease'),
-            'extra classes'=>'products',
+            'extra classes'=>'products pg-measure-edit',
             'icon'=>'store',
             'heading'=>lang('Product Inventory Quantity Decrease'),
             'heading_description' => lang('You can make product inventory quantity decrease transactions with the barcode of the products from the local business/warehouse. Click an empty spot on this page before scanning; what you type into the boxes is not read as a barcode.'),

@@ -35,6 +35,7 @@ if (!$_POST) {
 
     echo  pg_page_shell(array(
         'title'=> lang('Create File'),
+        'extra classes'=>'pg-measure-edit',
         'icon'=>'file',
         'heading'=>lang('Create File'),
         'heading_description' => lang('Create a new editable file'),

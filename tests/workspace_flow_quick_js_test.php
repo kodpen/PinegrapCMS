@@ -344,6 +344,28 @@ function test_workspace_flow_quick_js_sent()
 	pg_assert_same(null, $out[1]);
 }
 
+// The Flows list offers the quick setup beside New flow and under the empty
+// list, to whoever builds flows when the catalogue is served, with the
+// comparisons' labels, the home channel and the flow it made opened.
+function test_workspace_flow_quick_js_ways_in()
+{
+	$canvas = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_contains("return !!(FL.build && FL.quick && window.PGWsFlowQuick && !singleFlow());", $canvas);
+	pg_assert_contains("window.PGWsFlowQuick.open(K, FL.quick, {", $canvas);
+	pg_assert_contains("operators: stepLists().operators,", $canvas);
+	pg_assert_contains("onDone: quickMade,", $canvas);
+	pg_assert_true(preg_match('~function newFlowButton\(\) \{.*?quickButton\(.*?\n    \}~s', $canvas) === 1, 'beside New flow');
+	pg_assert_true(preg_match('~ui\.flowsQuick\.appendChild\(quickButton\(~', $canvas) === 1, 'under the empty list');
+	pg_assert_true(preg_match('~function quickMade\(result\) \{.*?keepEntry\(result\.flow\);\s*show\(result\.flow\);~s', $canvas) === 1, 'the flow made opens');
+
+	$strings = ws_flow_js_strings();
+
+	foreach (array('fl_quick_title', 'fl_quick_started', 'fl_quick_not_started') as $key) {
+		pg_assert_true(isset($strings[$key]), $key);
+	}
+}
+
 // The dialog is served in the flow bundle after the canvas, and every text
 // it asks for is one of the flow strings.
 function test_workspace_flow_quick_js_wiring()

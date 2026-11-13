@@ -13,7 +13,7 @@ description: Decisions list, workspace part 20 (2026-11-12 on): canvas-one drawi
 - The schema the drawings rest on: `decisions-made-schema-17.md`. A later step's screen is approved from a real panel's screenshots.
 
 ## Do Flows get a quick setup? (owner, 2026-11-12, #8950)
-- Yes: a flow built by choices, a start, then steps one after the other, then a summary, over every area and action of the site; the result is a normal flow. Plan `plans/flows-quick-setup.md`.
+- Yes: a flow built by choices, a start, then steps one after the other, then a summary, over every area and action of the site; the result is a normal flow. Built by the flows-quick-setup plan (done and deleted): `workspace/workspace-flows-quick-setup-rules.md`.
 - Owner (2026-11-12): "birde akışlarda hızlı kurulum adımları olan bir yapımız olsun, kullanıcıya seçmeli sipariş geldiğinde x sonra sonraki adımlar sonra sonraki sonraki şeklinde ileri ile whatsappdan kullanıcıya yazılabilsin."
 - On the first drawing: "hızlı kurulum fena değil biraz daha geliştir ve kapsamı genişletelim. site diğer eylemlerinide kapsasın."; shown the widened drawing: "Ha".
 

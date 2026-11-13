@@ -4079,6 +4079,8 @@ function ws_flow_js_strings()
         'fl_quick_save_flow'  => lang('Save the flow'),
         'fl_quick_loop_empty' => ws_js_template('{var:1} needs at least one step inside it.', 1),
         'fl_quick_failed'     => lang('The flow could not be made.'),
+        'fl_quick_started'    => lang('The flow is working.'),
+        'fl_quick_not_started' => ws_js_template('The flow was saved as a draft: {var:1}', 1),
         'fl_home_owner_only'  => lang('Only the owner of a flow can move it to another home channel.'),
         'fl_home_none_other'  => lang('No channel'),
         // A role-3 member's own flow (flow_member.php), in the save check's words.

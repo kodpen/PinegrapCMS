@@ -1387,6 +1387,9 @@
         ui.flows.appendChild(el('div', 'table-responsive wsf-flow-scroll')).appendChild(table);
         ui.flowsNone = el('p', 'small fg-secondary wsf-flows-none d-none');
         ui.flows.appendChild(ui.flowsNone);
+        // With no flow yet, the quick setup is offered under the words.
+        ui.flowsQuick = el('div', 'wsf-flows-quick mt-2 d-none');
+        ui.flows.appendChild(ui.flowsQuick);
 
         // Staff's scheduled actions the conversion refused (a converted
         // one is a row of the table).
@@ -1458,6 +1461,19 @@
 
         ui.flowsNone.textContent = state.flows.length ? t('fl_list_none_match') : (FL.build ? t('fl_none_build') : t('fl_none_run'));
         ui.flowsNone.classList.toggle('d-none', flows.length > 0);
+
+        // With no flow yet, the quick setup under the words (none in a
+        // drawing without the list's box).
+        if (ui.flowsQuick) {
+            var offer = !state.flows.length && quickOffered();
+
+            K.clear(ui.flowsQuick);
+            ui.flowsQuick.classList.toggle('d-none', !offer);
+
+            if (offer) {
+                ui.flowsQuick.appendChild(quickButton('btn btn-sm btn-outline theme-primary rounded-pill px-5'));
+            }
+        }
     }
 
     // One flow of the table: its name (the row's header, a button that
@@ -2809,6 +2825,61 @@
             }
         });
         ui.bar.appendChild(create);
+
+        if (quickOffered()) {
+            ui.bar.appendChild(quickButton('btn btn-sm btn-outline theme-secondary rounded-pill px-5'));
+        }
+    }
+
+    // "Quick setup" (assets/js/workspace_flow_quick.js): a flow built by
+    // choices, offered to whoever builds flows beside New flow and in the
+    // empty list; the server serves its catalogue as FL.quick.
+    function quickOffered() {
+        return !!(FL.build && FL.quick && window.PGWsFlowQuick && !singleFlow());
+    }
+
+    function quickButton(className) {
+        var button = K.button(className, t('fl_quick_title'), 'bi-magic');
+
+        button.addEventListener('click', function () { openQuick(button); });
+
+        return button;
+    }
+
+    function openQuick(opener) {
+        leaveFlow().then(function (go) {
+            if (!go) {
+                return;
+            }
+
+            window.PGWsFlowQuick.open(K, FL.quick, {
+                operators: stepLists().operators,
+                home: newHome().channel_id || 0,
+                onDone: quickMade,
+                onClose: function () {
+                    if (opener && document.body.contains(opener)) {
+                        opener.focus();
+                    }
+                }
+            });
+        }).catch(K.fail);
+    }
+
+    // The flow the quick setup made opens on the canvas, as one New flow
+    // makes; a publish the server refused leaves it a draft and says why.
+    function quickMade(result) {
+        if (!result || !result.flow || !state.mounted) {
+            return;
+        }
+
+        keepEntry(result.flow);
+        show(result.flow);
+
+        if (result.publish_error) {
+            K.toast(t('fl_quick_not_started', result.publish_error), 'warning');
+        } else if (result.published) {
+            K.toast(t('fl_quick_started'), 'success');
+        }
     }
 
     // The page's back arrow goes back to the flow list; a single editor has

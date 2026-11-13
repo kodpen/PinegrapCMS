@@ -81,3 +81,21 @@ function test_reports_take_the_report_measure()
 	}
 	pg_assert_true(substr_count(look_page_widths_test_source('erp_cashflow.php'), 'pg-measure-report') === 2, 'the cash flow and the cash forecast are reports');
 }
+
+function test_settings_tool_and_import_pages_take_the_edit_measure()
+{
+	$two = array('api_settings', 'smtp_settings', 'marketplace_settings', 'erp_settings', 'connections', 'database_engine', 'clean_up', 'page_experiments', 'create_file', 'find_and_replace', 'mass_edit', 'privacy_erase', 'privacy_export', 'barcode_increase_inventory', 'barcode_decrease_inventory', 'import', 'import_contacts', 'import_email_campaign_profiles', 'import_key_codes', 'import_products', 'import_shipments', 'import_short_links', 'import_submitted_forms', 'import_zip', 'erp_export', 'erp_accounts_import', 'erp_account_sync_item', 'erp_bank_statement', 'erp_inbox_document', 'erp_reconciliation', 'erp_stock_count');
+	$one = array('connected_apps', 'device_pairing', 'developer_lock', 'system_tools', 'migration', 'experiments', 'api_docs', 'import_users', 'erp_accountant', 'approve_affiliate');
+
+	foreach (array_merge($two, $one) as $screen) {
+		pg_assert_true((bool) preg_match("/'extra classes'\\s*=>\\s*'[^']*\\bpg-measure-edit\\b/", look_page_widths_test_source($screen . '.php')), $screen . ' takes the edit measure');
+	}
+	foreach ($one as $screen) {
+		pg_assert_true((bool) preg_match("/'extra classes'\\s*=>\\s*'[^']*\\bpg-measure-single\\b/", look_page_widths_test_source($screen . '.php')), $screen . ' holds its form at the form column');
+	}
+	foreach ($two as $screen) {
+		pg_assert_true(strpos(look_page_widths_test_source($screen . '.php'), 'pg-measure-single') === false, $screen . ' keeps its status column');
+	}
+	pg_assert_contains("body.pg-measure-edit:has(#pg-chat-root) .row > .order-3 > nav.buttons.navigation > .container {\n    margin-inline-end: var(--pg-chat-clearance);", look_page_widths_test_source('assets/css/backend.src.css'), 'the save bar buttons end before the chat launcher');
+	pg_assert_contains("body.pg-measure-edit.pg-measure-single #content {\n  max-width: calc(var(--pg-measure-form) + 2rem);", look_page_widths_test_block(), 'a one-column page is the form column wide');
+}
