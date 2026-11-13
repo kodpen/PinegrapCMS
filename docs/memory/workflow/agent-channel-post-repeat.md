@@ -12,4 +12,4 @@ description: tools/ws_post.php never writes a channel line twice: every post has
 - Exits 0 (written), 1 (refused) and 2 (usage, settings) keep their meaning.
 
 ## Why?
-- `ws_client_request()` gives up after 30 s; on 2026-11-13 dev answered in about 30 s for forty minutes. A call that timed out could be written, and a repeat without a key wrote it twice (`plans/channel-post-tool.md` CP1, PR #PRNUM). The key rule of the site: `api/api-idempotency-key.md`.
+- `ws_client_request()` gives up after 30 s; on 2026-11-13 dev answered in about 30 s for forty minutes. A call that timed out could be written, and a repeat without a key wrote it twice (`plans/channel-post-tool.md` CP1, PR #9362). The key rule of the site: `api/api-idempotency-key.md`.
