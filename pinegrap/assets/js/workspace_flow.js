@@ -3577,11 +3577,10 @@
         post: [['body', 'fl_post_body', 4000]],
         email: [['subject', 'fl_email_subject', 250], ['body', 'fl_email_body', 20000]],
         sms: [['text', 'fl_sms_text', 900]],
-        whatsapp: [['v1', 'fl_wa_vars', 1000], ['v2', 'fl_wa_vars', 1000], ['v3', 'fl_wa_vars', 1000], ['v4', 'fl_wa_vars', 1000], ['v5', 'fl_wa_vars', 1000],
-            ['v6', 'fl_wa_vars', 1000], ['v7', 'fl_wa_vars', 1000], ['v8', 'fl_wa_vars', 1000], ['v9', 'fl_wa_vars', 1000], ['v10', 'fl_wa_vars', 1000],
-            ['v11', 'fl_wa_vars', 1000], ['v12', 'fl_wa_vars', 1000], ['v13', 'fl_wa_vars', 1000], ['v14', 'fl_wa_vars', 1000], ['v15', 'fl_wa_vars', 1000],
-            ['v16', 'fl_wa_vars', 1000], ['v17', 'fl_wa_vars', 1000], ['v18', 'fl_wa_vars', 1000], ['v19', 'fl_wa_vars', 1000], ['v20', 'fl_wa_vars', 1000],
-            ['fallback_subject', 'fl_email_subject', 250], ['fallback_body', 'fl_email_body', 20000]],
+        // A variable's label takes its number (the fourth item).
+        whatsapp: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(function (n) {
+            return ['v' + n, 'fl_wa_var', 1000, n];
+        }).concat([['fallback_subject', 'fl_email_subject', 250], ['fallback_body', 'fl_email_body', 20000]]),
         notify: [['text', 'fl_notify_text', 500]],
         task_open: [['title', 'fl_title', 200], ['description', 'fl_description', 8000]],
         webhook: [['text', 'fl_post_body', 4000], ['url', 'fl_url', 2000]],
@@ -3743,7 +3742,7 @@
                 && ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list')))
                 && ((node.kind !== 'delay') || (config.mode === 'until'));
         }).map(function (item) {
-            return { key: item[0], label: t(item[1]), text: config[item[0]] };
+            return { key: item[0], label: (item.length > 3) ? t(item[1], item[3]) : t(item[1]), text: config[item[0]] };
         }).concat(cells);
     }
 
@@ -3766,7 +3765,7 @@
         }).filter(function (item) {
             return ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list'))) && (!kindOf(node).loop || !config[item[0]]);
         }).map(function (item) {
-            return { key: item[0], label: t(item[1]), text: (typeof config[item[0]] === 'string') ? config[item[0]] : '', max: item[2] };
+            return { key: item[0], label: (item.length > 3) ? t(item[1], item[3]) : t(item[1]), text: (typeof config[item[0]] === 'string') ? config[item[0]] : '', max: item[2] };
         });
     }
 
@@ -7680,11 +7679,21 @@
             vars.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_wa_vars')));
             chosen.vars.forEach(function (variable) {
                 var key = 'v' + variable.n;
-                var row = valueField(node, t('fl_wa_var', variable.n), config[key], 1000, function (value) {
+                var row = valueField(node, t('fl_wa_var', variable.n) + ' · ' + variable.label, config[key], 1000, function (value) {
                     config[key] = value;
                     refreshNode(node);
-                }, false, variable.label);
+                });
+                var hint = row.querySelector('.form-text');
 
+                // The value hint is said once, under the group.
+                if (hint) {
+                    Array.prototype.forEach.call(row.querySelectorAll('[aria-describedby="' + hint.id + '"]'), function (control) {
+                        control.removeAttribute('aria-describedby');
+                    });
+                    hint.remove();
+                }
+
+                row.classList.replace('mb-5', 'mb-3');
                 row.setAttribute('data-wa-var', String(variable.n));
                 row.setAttribute('data-wa-part', variable.part);
                 vars.appendChild(row);

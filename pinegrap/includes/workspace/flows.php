@@ -4242,8 +4242,7 @@ function ws_flow_js_config($viewer, $mode)
         $steps['sms'] = function_exists('pg_sms_ready') && pg_sms_ready();
         // The WhatsApp box is offered while WhatsApp is set up, with the
         // approved templates it can fill (ws_step_whatsapp_check()).
-        $steps['whatsapp'] = function_exists('ws_step_whatsapp_offered') && function_exists('pg_whatsapp_ready') && pg_whatsapp_ready()
-            ? array('templates' => ws_step_whatsapp_offered()) : false;
+        $steps['whatsapp'] = ws_step_whatsapp_ready() ? array('templates' => ws_step_whatsapp_offered()) : false;
         // The agents an agent box may ask, each with the channels the owner
         // may write in where it is allowed (flow_agent_box.php).
         $steps['agents'] = function_exists('ws_step_agent_form_list') ? ws_step_agent_form_list($viewer) : array();

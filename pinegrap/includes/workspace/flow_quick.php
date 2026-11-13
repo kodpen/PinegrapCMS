@@ -739,7 +739,7 @@ function ws_flow_quick_fill($viewer, $scheduled = null, $lists = null)
     }
 
     // The WhatsApp box only where WhatsApp is set up (ws_step_whatsapp_check()).
-    if (!function_exists('pg_whatsapp_ready') || !pg_whatsapp_ready()) {
+    if (!ws_step_whatsapp_ready()) {
         $kinds = array_values(array_diff(($kinds === null) ? array_keys(ws_flow_kinds()) : $kinds, array('whatsapp')));
     }
 

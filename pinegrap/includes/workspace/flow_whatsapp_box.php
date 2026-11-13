@@ -40,6 +40,27 @@ define('WS_STEP_WHATSAPP_VAR_MAX', 1000);
 define('WS_STEP_WHATSAPP_MARKETING_HOURS', 6);
 
 /**
+ * Loads the WhatsApp layer, which the Workspace does not load on its own:
+ * its account, queue and templates (includes/fn/whatsapp.php).
+ */
+function ws_step_whatsapp_load()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+}
+
+/**
+ * Whether the site can send WhatsApp messages, so the box is offered.
+ *
+ * @return bool
+ */
+function ws_step_whatsapp_ready()
+{
+    ws_step_whatsapp_load();
+
+    return pg_whatsapp_ready();
+}
+
+/**
  * Whom the box writes to: the number typed in to, or the person of the
  * run's record.
  *
@@ -271,11 +292,13 @@ function ws_step_whatsapp_check($viewer, $config)
     // (ws_step_whatsapp_do()).
     $ok = array('ok' => true, 'error' => '', 'paused' => false);
 
-    if (!empty($config['fallback']) && (!function_exists('pg_whatsapp_ready') || !pg_whatsapp_ready())) {
+    $ready = ws_step_whatsapp_ready();
+
+    if (!empty($config['fallback']) && !$ready) {
         return $ok + array('action' => array('type' => 'whatsapp', 'category' => '') + $config);
     }
 
-    if (!function_exists('pg_whatsapp_ready') || !pg_whatsapp_ready()) {
+    if (!$ready) {
         return $refuse(lang('WhatsApp is not set up on this site.'));
     }
 
@@ -412,6 +435,7 @@ function ws_step_whatsapp_fallback($action, $context, $email, $why)
  */
 function ws_step_whatsapp_do($action, $context, $reference, $person = array())
 {
+    ws_step_whatsapp_load();
     $email = (string) ($person['email'] ?? '');
     $number = pg_sms_number((string) $action['to']);
 
@@ -509,7 +533,7 @@ function ws_step_whatsapp_text($action)
  */
 function ws_step_whatsapp_offered()
 {
-    if (!function_exists('pg_whatsapp_ready') || !pg_whatsapp_ready() || !pg_whatsapp_templates_ready()) {
+    if (!ws_step_whatsapp_ready() || !pg_whatsapp_templates_ready()) {
         return array();
     }
 
