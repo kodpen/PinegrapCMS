@@ -701,6 +701,18 @@ function pg_editor_bridge_texts()
 }
 
 /**
+ * The kind the framed picker (picker_frame.php) opens: the three the rich
+ * text editor's dialogs ask for. Pure.
+ *
+ * @param mixed $kind the kind named in the request
+ * @return string the kind, or '' for any other
+ */
+function pg_editor_frame_kind($kind)
+{
+    return (is_string($kind) && in_array($kind, array('page', 'file', 'image'), true)) ? $kind : '';
+}
+
+/**
  * The editors' bridge to the picker (assets/js/pg_ckeditor_picker.js and the
  * Unsplash dialog, in pg_editor_bridge.min.js) with its settings, and the
  * picker itself (pg_picker_script()): for get_wysiwyg_editor_code() when the
@@ -721,6 +733,9 @@ function pg_editor_bridge_script()
 
     $config = array(
         'endpoint' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/picker.php',
+        // Where the panel's dialog layer is missing (a site page in Edit
+        // mode) the picker opens in this page, framed.
+        'frame' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/picker_frame.php',
         'path' => PATH,
         'short_links' => defined('USER_ROLE') && ((int) USER_ROLE <= 2),
         'unsplash' => (defined('UNSPLASH_ACCESS_KEY') && (UNSPLASH_ACCESS_KEY !== '')) ? (string) UNSPLASH_ACCESS_KEY : '',

@@ -76,7 +76,7 @@ description: Generated from the module field of the memory files: each includes/
 - `designer_fx`: [[designer-interactions]], [[designer-interactions-chapter]], [[designer-interactions-count]], [[designer-video-autoplay]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
 - `ecommerce`: [[affiliate-code-on-order]], [[affiliate-link-offer-code]], [[barcode-stock-scan-checks]], [[card-data-manual-processing]], [[cart-default-quantity]], [[cart-posted-quantity]], [[contact-import-cells]], [[csv-import-headings]], [[currency-form-rules]], [[currency-names-display]], [[express-order-tax-address]], [[helper-fixes-2026-11]], [[import-decimal-cells]], [[marketplace-product-import-queue]], [[offer-gift-refusal]], [[order-cancel-commissions]], [[panel-image-alt]], [[product-bulk-duplicate-code]], [[product-mass-edit-checks]]
-- `editor`: [[picker-designer-bridge]], [[picker-editor-bridge]], [[picker-remaining-screens]], [[rich-text-editor-files]], [[rich-text-editor-turkish]], [[rich-text-path-placeholder]], [[rich-text-profiles]]
+- `editor`: [[picker-designer-bridge]], [[picker-editor-bridge]], [[picker-remaining-screens]], [[rich-text-editor-files]], [[rich-text-editor-turkish]], [[rich-text-path-placeholder]], [[rich-text-profiles]], [[site-editor-picker-frame]]
 - `email_campaign_create`: [[api-campaign-create]]
 - `email_campaign_list`: [[list-table-campaign-system-lists]]
 - `email_campaign_profiles`: [[api-campaign-profiles]]
