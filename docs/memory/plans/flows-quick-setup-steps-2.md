@@ -18,7 +18,7 @@ description: Steps QS1b, QS6, QS7 of the flows-quick-setup plan, the architect's
 ## In which order?
 - QS1b before QS3. QS6 and QS7 any time after QS1, each alone; they do not hold QS2 to QS5. Claim as `[plan:flows-quick-setup] <step> — <topic>`.
 
-## What does QS3 need first? (found 2026-11-13)
-- The stage hangs on `PGWsFlowQuick.stages.steps` (`workspace/workspace-flows-quick-setup-dialog.md`).
-- The canvas's field forms (`changeFields()`, `emailFields()` and the rest, dispatched in `nodeForm()` of `workspace_flow.js`) read the mounted canvas: `state.graph`, `state.edit`, `refreshNode()` (`ui.root`, `ui.outlineBox`), `drawSettings()`, and `valueField()` with the values of earlier boxes.
-- So a step's setting in the dialog needs a bridge in `workspace_flow.js` first, such as `PGWsFlow.boxForm(host, graph, nodeId, onChange)` with its own state, safe while a canvas is mounted beside it.
+## What does QS4 need first? (found 2026-11-13, #9278)
+- The stage hangs on `PGWsFlowQuick.stages.summary` (`workspace/workspace-flows-quick-setup-dialog.md`); Next shows once it is there.
+- QS3 adds steps one after the other; only a recipe brings held steps. Placing a step inside a condition or a loop is the Summary's: a loop with no step inside is refused by the server.
+- It sends `choices()` with `steps: pure.sentSteps(state.chosen.steps)`, a name, home and publish to `ws_flow_quick_setup`; a step's setting opens again with the same `PGWsFlow.boxForm()`.
