@@ -31,7 +31,7 @@ $crumb = lang('Experiments');
 $shell = function () use (&$heading, &$crumb) {
     return pg_page_shell(array(
         'title' => lang('Experiments'),
-        'extra classes' => 'page',
+        'extra classes' => 'page pg-measure-edit',
         'icon' => 'page',
         'heading' => $heading,
         'heading_description' => lang('Show part of the visitors a variant of this page and count which one reaches the goal more often. The variant is a draft you edit in the Page Design Studio; search engines and signed-in staff always see the live page.'),

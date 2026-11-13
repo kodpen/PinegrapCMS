@@ -481,7 +481,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'        => lang('Find & Replace'),
-        'extra classes'=> 'setting',
+        'extra classes'=> 'setting pg-measure-edit',
         'icon'         => 'setting',
         'heading'      => lang('Find & Replace'),
         'heading_description' => lang('Enter the text that you want to mass-find and replace throughout many types of items in the system.'),
@@ -811,7 +811,7 @@ if (!$_POST) {
         echo
         pg_page_shell([
             'title'        => lang('Find Results'),
-            'extra classes'=> 'setting',
+            'extra classes'=> 'setting pg-measure-edit',
             'icon'         => 'setting',
             'heading'      => lang('Find Results'),
             'heading_description' => lang('Enter the text that you want to mass-find and replace throughout many types of items in the system.'),

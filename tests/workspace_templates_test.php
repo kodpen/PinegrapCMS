@@ -173,3 +173,19 @@ function test_workspace_templates_builtin_icons_are_listed()
 		pg_assert_same($template['icon'], ws_channel_icon_clean($template['icon']), $id);
 	}
 }
+
+// Back and Cancel of the template screen leave it: a draft taken from a
+// channel goes back to the channel, every other entry to the dashboard with
+// the Channel templates card open. Never a settings.php address, which the
+// panel turns into the dialog over the template screen itself.
+function test_workspace_templates_back_url_leaves_the_screen()
+{
+	$base = '/pg/';
+
+	pg_assert_same('/pg/workspace.php?channel=12', ws_template_back_url(12, $base));
+	pg_assert_same('/pg/workspace.php?channel=12', ws_template_back_url('12', $base));
+	pg_assert_same('/pg/welcome.php#settings/workspace_channels/pgset-ws-templates', ws_template_back_url(0, $base));
+	pg_assert_same('/pg/welcome.php#settings/workspace_channels/pgset-ws-templates', ws_template_back_url(-3, $base));
+	pg_assert_same('/pg/welcome.php#settings/workspace_channels/pgset-ws-templates', ws_template_back_url(array(5), $base));
+	pg_assert_same(false, strpos(ws_template_back_url(0, $base), 'settings_'));
+}

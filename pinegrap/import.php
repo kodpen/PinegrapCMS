@@ -623,7 +623,7 @@ print
 pg_page_shell(
     array(
         'title' => lang('Import'),
-        'extra classes' => 'page',
+        'extra classes' => 'page pg-measure-edit',
         'icon' => 'page',
         'heading' => lang('Import from another platform'),
         'heading_description' => lang('Bring in posts, pages, files, comments, products and customers from a WordPress, WooCommerce or Shopify export.'),

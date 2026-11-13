@@ -3,9 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Communication › Templates: e-mail designs, SMS texts and WhatsApp
- * templates in one tab. Until that list is built it leads to where each is
- * edited today; SMS texts and WhatsApp templates sit in the settings, so
- * only for role <= 2.
+ * templates in one tab, in look A's cards and rows. The SMS texts are
+ * listed with their state and text (includes/fn/messages_templates.php)
+ * and still edited on the SMS Messages card; e-mail designs and WhatsApp
+ * templates are announced in a card of their own. The settings' texts and
+ * the WhatsApp card are for role <= 2 only.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -15,18 +17,29 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_templates.php');
 
 $user = validate_user();
 validate_email_access($user);
 
-$rows = array();
+$body = '';
 
+// The SMS texts and the WhatsApp card sit in the settings, so they are for
+// role <= 2, who may open them.
 if ($user['role'] < 3) {
-    $rows[] = array('title' => lang('SMS Messages'), 'text' => lang('The texts sent for orders and back-in-stock notices.'), 'url' => pg_settings_link('contact', 'pgset-sms-messages'), 'icon' => 'bi-chat-square-text', 'tone' => 'amber');
-    $rows[] = array('title' => lang('WhatsApp'), 'text' => lang('The approved WhatsApp message templates.'), 'url' => pg_settings_link('contact', 'pgset-whatsapp'), 'icon' => 'bi-whatsapp', 'tone' => 'teal');
+    $body .= pg_messages_template_sms_card(
+        pg_messages_template_sms_rows(
+            pg_sms_message_events(),
+            pg_sms_message_settings(),
+            defined('ERP_ENABLED') && ERP_ENABLED,
+            function_exists('pg_booking_ready') && pg_booking_ready(),
+            pg_sms_queue_list_kinds()
+        ),
+        pg_settings_link('contact', 'pgset-sms-messages')
+    );
 }
 
-$body = pg_messages_place_rows(lang('Where the templates are edited'), $rows)
-    . '<p class="pg-text-2">' . h(lang('E-mail designs for campaigns will be listed here.')) . '</p>';
+$body .= pg_messages_template_coming_card(($user['role'] < 3) ? pg_settings_link('contact', 'pgset-whatsapp') : '');
 
 echo pg_messages_tab_page('templates', $user, lang('E-mail designs and message texts to start a send from.'), $body);

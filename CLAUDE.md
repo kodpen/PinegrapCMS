@@ -133,9 +133,10 @@ PR that gives its reason (Fixed rules 6). Details: `workflow/working-mode.md`,
 10. **Decisions go to the architect.** A question only the owner can decide
    (product behaviour, a schema change, an entry of the decisions list), an
    architecture question, a large migration or a logic clash between PRs is
-   never decided by the session that meets it: it opens an `architect` issue
-   (`workflow/architect-asking.md`), links it from its PR, turns the PR back
-   to draft and ends. Only the architect asks the owner; what memory already
+   never decided by the session that meets it: it asks in the agent
+   channel, naming the architect (`workflow/architect-asking.md`; with no
+   channel key, under `## Decision question` in its PR body), turns the PR
+   back to draft and ends. Only the architect asks the owner; what memory already
    answers is not a question. Everything else is a
    session's own call, never asked: implementation choices inside its step,
    naming, structure within its files, tests; for a coordinator, the choice
@@ -165,7 +166,7 @@ PR that gives its reason (Fixed rules 6). Details: `workflow/working-mode.md`,
 6. **Owner decisions bind, and only the owner makes them.** An owner decision
    is about the product's behaviour, keeps running sites working and comes
    with its reason; it is recorded in `docs/memory/workflow/decisions-made.md`,
-   and a place listed there as reviewed stays. If you think one is wrong, open a decision issue first.
+   and a place listed there as reviewed stays. If you think one is wrong, ask the architect first.
    Working rules are the sessions' arrangement, never written as an owner
    decision.
 7. **Four silent traps:** table names are singular (`page`, `style`,

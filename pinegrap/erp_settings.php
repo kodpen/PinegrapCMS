@@ -432,7 +432,7 @@ $output_card_buttons = $template_toolbar ? '' : '
 // screen toolbar (role < 3) or in its card.
 echo pg_page_shell(array(
     'title'               => $can_site_settings ? lang('Document Templates') : lang('ERP Settings'),
-    'extra classes'       => 'erp erp_settings',
+    'extra classes'       => 'erp erp_settings pg-measure-edit',
     'icon'                => 'erp',
     'heading'             => $can_site_settings ? lang('Document Templates') : lang('ERP Settings'),
     'heading_description' => $can_site_settings

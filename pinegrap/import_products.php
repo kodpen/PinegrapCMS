@@ -59,7 +59,7 @@ if (!$_POST) {
     print
     pg_page_shell([
         'title'=> lang('Import Products'),
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-edit',
         'icon'=>'store',
         'heading'=>lang('Import Products'),
         'heading_description' => lang('Import new or existing products.'),

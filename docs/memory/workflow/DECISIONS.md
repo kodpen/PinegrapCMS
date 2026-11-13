@@ -427,6 +427,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-23.md: Is an e-mail to a domain that does not exist sent without a word? (owner, 2026-11-13, #9267)
 - decisions-made-workspace-23.md: Who can be answered by SMS from a channel? (owner, 2026-11-13, #9286)
 - decisions-made-workspace-23.md: What does a stop word received by SMS or WhatsApp do? (owner, 2026-11-13, #9286)
+- decisions-made-workspace-23.md: Are agents listed among who has seen a message? (owner, 2026-11-13, #9314)
+- decisions-made-workspace-23.md: Whose tag wakes an agent, and where? (owner, 2026-11-13, #9341)
 - decisions-made-workspace-24.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-24.md: Does a guest see the agents' messages? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-24.md: Is a guest listed in Channel info? (owner, 2026-11-14, in the architect's window)
@@ -596,7 +598,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/activitypub-decisions.md: Why the Fediverse (ActivityPub) feature is shaped as it is: off by default, one actor, no library, what is published, remote replies as comments, WAF rules, the decided tables; where each part lives
 - platform/backup-age-rule.md: When a backup's age is a problem - pg_backup_age_state() (none fail, over a month warn, else pass) and its readers: System Status tile, ops alert, greeting, API, agents
 - platform/ca-store-choice.md: pg_ca_bundle_effective() chooses the CA store: the CURL_CA_BUNDLE override, the shipped data/cacert.pem when PHP has no store or the probe failed, else the server's store; the probe record.
-- platform/image-editor-jpeg-start-quality.md: Decided, not built (#9118): a JPEG saved by the Design Canvas or Optimize starts at the lower of 92 and the source's own quality, so a save is not heavier than its original
+- platform/image-editor-jpeg-start-quality.md: A JPEG turned, flipped or cropped (Design Canvas, rotate buttons, Optimize) starts at the lower of 92 and its own quality, so a save is not heavier (#9118)
 - platform/import-decisions.md: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out
 - platform/iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter
 - platform/notification-channels.md: Chat notification channels (includes/fn/notify_channels.php): Slack, Teams and Telegram targets, the pure builders, the settings card and the Test button
@@ -649,6 +651,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail
 - ui/main-menu-automation-flows-row.md: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, icon A and its motion
 - ui/main-menu-overview.md: The panel's main menu as a whole: rows in categories, panels and second-level panels, states and the drawer, gates, the decisions that bind it, and which main-menu file holds each part
+- ui/messages-area-templates-tab.md: Communication › Templates (MA6, #9294): the SMS texts as look A card rows with kind, state, own or built-in text, edited on the SMS Messages card; e-mail designs and WhatsApp as Soon rows
 - ui/notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise
 - ui/notifications-one-inbox.md: The bell as the one inbox (#3817): module chips, Asked of me, Unread only, the search (BP3), the kept choice, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count
 - ui/panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
@@ -657,7 +660,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/picker-pages.md: Pages in the picker dialog (kind page, PK4): rows with address and type, the page type chips, archived and binned marks that cannot be chosen, a caller's own entries (extra)
 - ui/rich-text-path-placeholder.md: How rich text is stored with the {path} placeholder (prepare_rich_text_editor_content_for_input()): which addresses fold, why a //host address (Media Embed's YouTube player) keeps its two slashes
 - ui/settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()
-- ui/site-editor-picker-frame.md: Decided, not built (#9117): on a site page in Edit mode the editor's Link and Image dialogs open the picker in a same-origin frame inside a dialog; the conditions and what was refused
+- ui/site-editor-picker-frame.md: On a site page in Edit mode the editor's Link and Image dialogs open the picker in a same-origin frame (picker_frame.php) inside a native dialog (#9117); the messages, the rights, what was refused
 - ui/visitors-screen-look.md: How the Visitors overview is drawn: reference pictures, frames and blocks, one change column, folding lists, quiet dashes, anchors, calm charts, the menu's section links, the traps
 - visitors/translation-index-verdict.md: The "reviewed" policy's one rule for a translated page's robots meta, alternates and sitemap.xml: only the page's own words count; no kept answer means not offered; what drops or keeps it
 - visitors/web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go
@@ -675,13 +678,14 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/agent-channel-language.md: The language of the agent channel (owner, 2026-11-13): agents write English to each other; only the architect writes Turkish there, and only when it speaks with the owner
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
 - workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests; a person's or an agent's message makes the request), on text and changes, the handles typed in it
-- workflow/architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
+- workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; no bug hunt and no bug issue as work
 - workflow/design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest
 - workflow/memory-long-lines.md: The memory index tool refuses a memory line over 500 characters that a branch adds or rewrites; old lines pass; the base from pre_push, CI (PR base or push before) or merge-base; no base
 - workflow/merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
 - workflow/merger-wake.md: How the merging session keeps waking: a send_later chain, 3 minutes with more than 3 ready PRs and 15 minutes otherwise (2026-11-09), an hourly routine that re-arms it; GitHub events are not relied on
+- workflow/owner-contact-channel.md: Where sessions reach the owner (2026-11-13): no coordinator writes to him in its chat window or waits there; problems to PR MERGE in the agent channel; visuals posted there, his answer there
 - workflow/owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (memory; vendor Bootstrap skills aside), language, the mobile app, who edits which notes
 - workflow/sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout
 - workflow/user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog
@@ -711,6 +715,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified
 - workspace/mail-domain-warning.md: The warning before a Workspace e-mail goes to a domain that does not exist: Send anyway, Change the address, "Did you mean …?", the API's 409 unknown_domain
 - workspace/mail-list.md: The Workspace E-mails list (workspace_mail.php, mail_list.php): which conversations, the views Incoming, Sent and Not sent, the filters, mailbox, search, Load more, the row, the menu entry
+- workspace/mail-not-delivered-rows.md: A sent Workspace mail whose delivery failure came back reads "Not delivered" with the server's words on its Sends row and mail queue row, read at list time for the page's rows only (MW2)
 - workspace/mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it
 - workspace/mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test
 - workspace/mail-support-box.md: A mailbox's "Support box" switch (WM14, #9061): what a plain box leaves out (status, holder, first-answer time, automatic answer), how lists count its conversations, the default
@@ -751,6 +756,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-flows-decisions.md: Lasting decisions behind Workspace Flows ("Akışlar"): the three uses, the owner's answers 1-8 (editor, builders, record writes, AI drafts only), rights, data-passing rules (#2414)
 - workspace/workspace-flows-failure-reason.md: Why a flow box failed (FR1, PR #8425): data.empty_values, the added sentence on card, bell and run view, the canvas buttons and the card link to the failed box
 - workspace/workspace-flows-quick-setup-map.md: Flows quick setup drawing against today's boxes and events: drawn starts, steps and recipes by kind; general boxes proposed for what has none (SMS, contact group, offer code)
+- workspace/workspace-flows-quick-setup-rules.md: Flows quick setup's lasting rules (owner 2026-11-12, #8950; built QS0-QS7, #9082-#9333): only creates, only existing boxes, the drawing, the architect's decisions, where it opens
 - workspace/workspace-flows-quick-setup.md: Flows quick setup server (flow_quick.php): catalogue of areas, starts, step groups, recipes; the choices the dialog sends; how they become a draft graph; the panel action
 - workspace/workspace-flows-scheduled-merge.md: Scheduled actions moved into Flows (owner, 2026-10-24): what was decided, the two anchors, what stays a scheduled action, and the PRs of each slice
 - workspace/workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, actions, API, Share dialog

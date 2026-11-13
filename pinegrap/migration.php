@@ -34,7 +34,7 @@ if (!$_POST) {
     print
     pg_page_shell([
         'title'=> lang('Migration'),
-        'extra classes'=>'design',
+        'extra classes'=>'design pg-measure-edit pg-measure-single',
         'icon'=>'design',
         'heading'=>lang('Migration'),
         'heading_description' => lang('Copy items from a source site to this site.'),

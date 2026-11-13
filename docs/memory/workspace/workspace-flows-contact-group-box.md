@@ -6,7 +6,7 @@ description: Flow box Add to or take out of a contact group (contact_group, #929
 ## What does it do?
 - A step box, kind `contact_group` (`includes/workspace/flow_contact_group.php`), label "Add to or take out of a contact group". Settings: `group_id`, `way` (`add` or `remove`), `contact` (an id or one value such as `{{trigger.contact_id}}`; empty is the contact of the run's record).
 - Outputs `contact_id` and `changed` (1, or 0 when the contact was already as asked). A contact not found or out of the owner's reach fails the box.
-- Added because the quick setup's drawn step "Kişiyi gruba ekle" had no box (`plans/flows-quick-setup-steps-2.md`).
+- Added because the quick setup's drawn step "Kişiyi gruba ekle" had no box (`workspace-flows-quick-setup-rules.md`).
 
 ## Whose contact is it?
 - Empty contact: the run's record as the e-mail box reads its person (`ws_flow_mail_person_source()`): a contact run, an order's or a submitted form's `contact_id`, a received e-mail's conversation. A booking has no contact: the box fails.

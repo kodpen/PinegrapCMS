@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## What does the panel offer?
-- `assets/js/pg_image_editor_export.js`, tool `export`: format (Original, then JPEG, PNG, WebP, AVIF as the server writes them), quality 40-100 for JPEG, WebP and AVIF (default 92, the save's own), longest edge (Original, 2560, 1920, 1280, 1080; never enlarged), progressive JPEG (on by default), 256 colours for a PNG (Imagick only), metadata (below), and the size before and after.
+- `assets/js/pg_image_editor_export.js`, tool `export`: format (Original, then JPEG, PNG, WebP, AVIF as the server writes them), quality 40-100 for JPEG, WebP and AVIF (opens on the estimate's `start_quality`: 92, or a JPEG's own quality when lower, `platform/image-editor-jpeg-start-quality.md`), longest edge (Original, 2560, 1920, 1280, 1080; never enlarged), progressive JPEG (on by default), 256 colours for a PNG (Imagick only), metadata (below), and the size before and after.
 - Opened from the save menu ("Export settings…") or alone with `profile: 'optimise'`: the File Manager's context menu entry of the same name (`view_folders.php`, `openImageEditorFor(item, null, 'optimise')`).
 - The model's EXPORT section holds the maths (`exportRequest()`, `exportMode()`, `exportChange()`, `exportBytes()`); tested in `tests/image_editor_export_test.php`.
 

@@ -456,7 +456,7 @@ if (!$readonly) {
 echo
 pg_page_shell([
     'title' => lang('Bank statement'),
-    'extra classes' => 'erp erp_cash',
+    'extra classes' => 'erp erp_cash pg-measure-edit',
     'icon' => 'erp',
     'heading' => h(lang(array('string' => 'Statement of {var:1}', 'vars' => (string) $statement['till_name']))),
     'heading_description' => (string) $statement['file_name'] . ' · ' . prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $statement['created_at']), 'date and time', false),

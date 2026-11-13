@@ -248,7 +248,7 @@ $privacy_export_search = '
 echo
 pg_page_shell(array(
         'title'               => lang('Personal data export'),
-        'extra classes'       => 'contact',
+        'extra classes'       => 'contact pg-measure-edit',
         'icon'                => 'contact',
         'heading'             => lang('Personal data export'),
         'heading_description' => lang('Everything the site keeps about one person, as a JSON file and a PDF summary, for a request under KVKK or GDPR.'),

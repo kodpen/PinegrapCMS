@@ -10,8 +10,13 @@
  * has closed. The picker knows no editor; this file is the one that knows
  * both.
  *
- * Without pgPicker and pgUI (a site page, where the panel's scripts are not
- * loaded) neither the Link dialog nor the Image dialog has Browse Server.
+ * On a site page in Edit mode the panel's dialog layer (pgUI) and styles are
+ * not loaded: the picker then opens in a same-origin frame, picker_frame.php,
+ * inside a native <dialog>; frameChild() runs there and posts the pick back.
+ * Every message is checked for the origin, the frame's own window and a key
+ * made for that opening. Unsplash and the source choice need pgUI and are
+ * left out there. Without pgPicker or the config neither dialog has Browse
+ * Server.
  * #pg_editor_bridge_config (pg_editor_bridge_script(), includes/fn/editor.php)
  * holds the site's path, the texts, whether short links are offered and the
  * Unsplash key.
@@ -104,7 +109,26 @@
         return out.length ? out : null;
     }
 
-    var pure = { encodePath: encodePath, pickAddress: pickAddress, nameFromAddress: nameFromAddress, findElement: findElement, pictureItems: pictureItems };
+    // The framed picker's address: the kind in the query, the opening's key
+    // in the fragment, which is never sent to the server.
+    function frameUrl(base, kind, key) {
+        return String(base || '') + '?kind=' + encodeURIComponent(String(kind || '')) + '#' + String(key || '');
+    }
+
+    // A message of the framed picker for this opening: the data when it is
+    // an object carrying the opening's key, else null. The origin and the
+    // sending window are checked by the caller.
+    function frameMessage(data, key) {
+        if (!key || typeof key !== 'string' || !data || typeof data !== 'object' || data.pgPickerFrame !== key) {
+            return null;
+        }
+        return data;
+    }
+
+    var pure = {
+        encodePath: encodePath, pickAddress: pickAddress, nameFromAddress: nameFromAddress, findElement: findElement,
+        pictureItems: pictureItems, frameUrl: frameUrl, frameMessage: frameMessage
+    };
 
     var doc = root.document;
 
@@ -133,8 +157,154 @@
         return text === undefined ? key : text;
     }
 
+    // The picker can open: in place where the panel's dialog layer is
+    // loaded, else framed where the config names the frame page.
     function usable() {
-        return !!(root.pgPicker && root.pgPicker.open && root.pgUI && doc.getElementById('pg_editor_bridge_config'));
+        if (!(root.pgPicker && root.pgPicker.open && doc.getElementById('pg_editor_bridge_config'))) {
+            return false;
+        }
+        return !!(root.pgUI || (conf().frame && (typeof root.HTMLDialogElement === 'function') && root.crypto && root.crypto.getRandomValues));
+    }
+
+    // ── The framed picker (a site page in Edit mode) ──────────────────────
+
+    var framed = false;
+
+    function frameKey() {
+        var bytes = new Uint8Array(16);
+        root.crypto.getRandomValues(bytes);
+        return Array.prototype.map.call(bytes, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    }
+
+    // The panel's colour scheme, as its head works it out, so the frame is
+    // drawn see-through rather than on an opaque canvas of another scheme.
+    function panelScheme() {
+        var stored = null;
+        try {
+            stored = root.localStorage.getItem('pinegrap backend color scheme');
+        } catch (e) {
+            stored = null;
+        }
+        if (stored) {
+            return stored;
+        }
+        return (root.matchMedia && root.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    }
+
+    // Opens the picker in a frame over the page: opts as pgPicker.open()
+    // takes them -> Promise of the pick or null, once the dialog has closed.
+    // The page's styles are not trusted, so the few rules are inline.
+    function openFramed(opts) {
+        if (framed) {
+            return Promise.resolve(null);
+        }
+        framed = true;
+        return new Promise(function (resolve) {
+            var key = frameKey();
+            var origin = root.location.origin;
+            var done = false;
+            var dialog = doc.createElement('dialog');
+            dialog.setAttribute('aria-label', String(opts.title || ''));
+            dialog.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;overflow:hidden';
+            var frame = doc.createElement('iframe');
+            frame.title = String(opts.title || '');
+            frame.style.cssText = 'display:block;width:100%;height:100%;border:0;background:transparent;color-scheme:' + panelScheme();
+            // Until the picker answers (a page that failed, a sign-in form),
+            // a button of the page's own closes the dialog.
+            var close = doc.createElement('button');
+            close.type = 'button';
+            close.textContent = t('Close');
+            close.style.cssText = 'position:absolute;top:12px;right:12px;padding:6px 14px;font:14px/1.4 system-ui,sans-serif;color:#111;background:#fff;border:1px solid #888;border-radius:6px;cursor:pointer';
+
+            function finish(item) {
+                if (done) {
+                    return;
+                }
+                done = true;
+                framed = false;
+                root.removeEventListener('message', onMessage);
+                if (dialog.open) {
+                    dialog.close();
+                }
+                dialog.remove();
+                resolve(item || null);
+            }
+
+            function onMessage(event) {
+                if (event.origin !== origin || event.source !== frame.contentWindow) {
+                    return;
+                }
+                var data = frameMessage(event.data, key);
+                if (!data) {
+                    return;
+                }
+                if (data.ready) {
+                    close.hidden = true;
+                    frame.contentWindow.postMessage({ pgPickerFrame: key, opts: opts }, origin);
+                    frame.focus();
+                } else if (data.done) {
+                    finish(data.item);
+                }
+            }
+
+            close.addEventListener('click', function () { finish(null); });
+            dialog.addEventListener('cancel', function (event) {
+                event.preventDefault();
+                finish(null);
+            });
+            root.addEventListener('message', onMessage);
+            frame.src = frameUrl(conf().frame, opts.kind, key);
+            dialog.appendChild(frame);
+            dialog.appendChild(close);
+            doc.body.appendChild(dialog);
+            dialog.showModal();
+        });
+    }
+
+    // The picker in place when the panel's dialog layer is there, else framed.
+    function openPicker(opts) {
+        return root.pgUI ? root.pgPicker.open(opts) : openFramed(opts);
+    }
+
+    // Runs in picker_frame.php: tells the opener it is ready, opens the
+    // picker with the options the opener posts (the kind is the page's own,
+    // the one its rights were checked for) and posts the pick back.
+    function frameChild() {
+        var holder = doc.getElementById('pg_picker_frame');
+        var opener = root.parent;
+        var key = String(root.location.hash || '').slice(1);
+        var origin = root.location.origin;
+        var started = false;
+
+        if (!holder || !key || !opener || (opener === root) || !root.pgPicker || !root.pgPicker.open) {
+            return;
+        }
+
+        function send(message) {
+            message.pgPickerFrame = key;
+            opener.postMessage(message, origin);
+        }
+
+        root.addEventListener('message', function (event) {
+            if (started || event.origin !== origin || event.source !== opener) {
+                return;
+            }
+            var data = frameMessage(event.data, key);
+            if (!data || !data.opts || typeof data.opts !== 'object') {
+                return;
+            }
+            started = true;
+            var opts = {};
+            Object.keys(data.opts).forEach(function (name) { opts[name] = data.opts[name]; });
+            opts.kind = holder.getAttribute('data-kind');
+            root.pgPicker.open(opts).then(function (item) {
+                send({ done: true, item: item ? JSON.parse(JSON.stringify(item)) : null });
+            }, function () {
+                send({ done: true, item: null });
+            });
+        });
+
+        send({ ready: true });
     }
 
     // The short links, asked once per page.
@@ -173,7 +343,7 @@
     function pickPage(current) {
         var name = nameFromAddress(current, conf().path);
         return loadShortLinks().then(function (links) {
-            return root.pgPicker.open({
+            return openPicker({
                 kind: 'page', title: t('Choose a page'), query: name,
                 extra: links, extraLabel: t('Short links')
             });
@@ -181,14 +351,14 @@
     }
 
     function pickFile() {
-        return root.pgPicker.open({ kind: 'file', title: t('Choose a file') }).then(function (item) {
+        return openPicker({ kind: 'file', title: t('Choose a file') }).then(function (item) {
             return pickAddress(item, conf().path) || null;
         });
     }
 
     function pickPicture(current) {
         var name = nameFromAddress(current, conf().path);
-        return root.pgPicker.open({ kind: 'image', title: t('Choose a picture'), value: name || undefined }).then(function (item) {
+        return openPicker({ kind: 'image', title: t('Choose a picture'), value: name || undefined }).then(function (item) {
             return pickAddress(item, conf().path) || null;
         });
     }
@@ -356,7 +526,7 @@
 
         browse.label = t('Picture…');
         browse.onClick = function () { browseImage(this.getDialog()); };
-        if (conf().unsplash && root.pgUnsplash) {
+        if (conf().unsplash && root.pgUnsplash && root.pgUI) {
             found.list.splice(found.index + 1, 0, {
                 type: 'button', id: 'pgBrowseUnsplash', label: 'Unsplash…', style: browse.style,
                 onClick: function () { browseUnsplash(this.getDialog()); }
@@ -376,7 +546,7 @@
         doc.addEventListener('DOMContentLoaded', hook);
     }
 
-    root.pgCkeditorPicker = { pure: pure };
+    root.pgCkeditorPicker = { pure: pure, frameChild: frameChild };
 
     // The same pickers for another editor (the visual designer): each a
     // promise of an address or null; usable() says whether they can open.

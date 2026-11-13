@@ -78,7 +78,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Import Contacts'),
-            'extra classes'=>'contact',
+            'extra classes'=>'contact pg-measure-edit',
             'icon'=>'contact', 
             'heading'=>lang('Import Contacts'),
             'heading_description' => lang('Import contacts into any of my contact groups.'),

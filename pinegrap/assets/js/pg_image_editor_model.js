@@ -2614,10 +2614,18 @@
         return ((choice === 'keep') || (EXPORT_FORMATS.indexOf(choice) < 0)) ? (own || '') : choice;
     }
 
-    // The settings as a save starts: the file's own format at the editor's
-    // quality and size, as before there was a panel.
-    function exportDefaults() {
-        return { format: 'keep', quality: 92, edge: 0, colors: false, progressive: true, camera: false, srgb: false };
+    // The quality a save starts at: the server's answer (92, or a JPEG's own
+    // quality when lower), else 92.
+    function exportStart(start) {
+        start = Math.round(Number(start));
+
+        return ((start >= 40) && (start <= 100)) ? start : 92;
+    }
+
+    // The settings as a save starts: the file's own format at its start
+    // quality and its size.
+    function exportDefaults(start) {
+        return { format: 'keep', quality: exportStart(start), edge: 0, colors: false, progressive: true, camera: false, srgb: false };
     }
 
     // w x h brought within a longest edge; never enlarged.
@@ -2634,14 +2642,16 @@
     }
 
     // What the save request carries: null when the settings change nothing.
-    function exportRequest(ex, own) {
+    // A quality other than the start one is sent; the start one is not, and
+    // the server starts at it itself.
+    function exportRequest(ex, own, start) {
         var format = exportFormat(ex.format, own), out = {};
 
         if (format !== own) {
             out.format = format;
         }
 
-        if (Math.round(ex.quality) !== 92) {
+        if (Math.round(ex.quality) !== exportStart(start)) {
             out.quality = Math.round(clamp(Number(ex.quality) || 92, 40, 100));
         }
 
@@ -2703,7 +2713,7 @@
 
     var EXPORT = {
         EXPORT_FORMATS: EXPORT_FORMATS, EXPORT_EDGES: EXPORT_EDGES, fileFormat: fileFormat, exportFormat: exportFormat,
-        exportDefaults: exportDefaults, exportSize: exportSize, exportMode: exportMode, exportRequest: exportRequest,
+        exportDefaults: exportDefaults, exportStart: exportStart, exportSize: exportSize, exportMode: exportMode, exportRequest: exportRequest,
         exportChange: exportChange, exportBytes: exportBytes, exportCamera: exportCamera
     };
 

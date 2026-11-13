@@ -250,7 +250,7 @@ if ($download_url !== '') {
 echo
 pg_page_shell([
     'title' => lang('Export'),
-    'extra classes' => 'erp erp_export',
+    'extra classes' => 'erp erp_export pg-measure-edit',
     'icon' => 'erp',
     'heading' => lang('Export'),
     'heading_description' => lang('Hand accounts, invoices and receipts to another program as a CSV file or as the spreadsheet it imports.'),

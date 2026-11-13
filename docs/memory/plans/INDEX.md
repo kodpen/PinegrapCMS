@@ -8,12 +8,15 @@
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - agent-knock-routine-form.md: Plan (architect 2026-11-13, #9241): a push door on a routine's fire address is knocked in the routine's form (it answered HTTP 400 to the webhook form); one step, RK1, then a live check
-- agent-profile.md: Plan: an agent's role chosen from a fixed list on its form, and the model and plan usage an application agent reports with its own key; steps AP1-AP3 (owner 2026-11-13, #9260)
+- architect-channel-approvals.md: Plan (2026-11-13): no architect issues any more; the merge tool's approval gate reads a decision comment on the PR itself, and the memory files that still say "open an architect issue" are corrected
 - canvas-one-model.md: CO0 model of plans/canvas-one.md: what one canvas is in the store and the API: the message as its id, the drawing, page and data parts, one list of versions, the routes and the bridge's calls
 - canvas-one-schema.md: CO0 of plans/canvas-one.md: the five schema changes the later CO steps need (parts, bindings, consent, "through" on a row, channel tables), their issues and answers
 - canvas-one-screens.md: CO0 drawings of plans/canvas-one.md in look A (plans/canvas-one/): the canvas card, one list of versions, the first-write question, the Data list, the phone
 - canvas-one-steps.md: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the bridge and its proofs, bound tables read, writes with consent, channel tables, measures, Data, one API flow, the phone, close-out
 - canvas-one.md: Plan (owner 2026-11-12, #8850): the Workspace canvas as one thing with a drawing, a live page and data; the guarded bridge to the tables bound to it; tables as Data; steps in canvas-one-steps.md
+- channel-item-tags-wake-steps.md: Steps TW1-TW5 of the channel-item-tags-wake plan: file caption, edit, note and decision; other messages; polls, tasks; shared notes, table cells (agent channels, managers); close-out
+- channel-item-tags-wake.md: Plan: a tag anywhere in a Workspace channel item (file caption, edit, note, poll, task, table cell) wakes the tagged assistant as a text message does; rulings, shared helper
+- channel-post-tool.md: Plan (2026-11-13): tools/ws_post.php never writes a channel message twice after a call without an answer, and posts a picture file, so visuals go straight into the agent channel
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
@@ -23,15 +26,13 @@
 - designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): the components the designer canvas still draws as one closed block are listed, then opened into editable element trees; steps CB0-CB2
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
-- flows-quick-setup-steps-2.md: Steps QS1b, QS6, QS7 of the flows-quick-setup plan, the architect's decisions on QS0's open questions (#9082): "Only when" on a record field, the drawn steps with no box, the rail, the approval recipe
-- flows-quick-setup.md: Plan (owner 2026-11-12, #8950): a quick setup that builds a flow by choices (start, steps one after the other, summary) over every area and action of the site; rules and steps QS0-QS5
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - guest-channel-view.md: Plan (owner 2026-11-14): a guest sees the agents' messages on the guest page and still wakes no agent; guests listed in Channel info; the channel's agents' answers read aloud
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
 - kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
-- look-widths-and-switch.md: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the details panel added beside, add and edit screens up to 1700 px, the switch with its thumb again; steps LW1-LW7
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- message-seen-agents.md: Plan (owner 2026-11-13, #9314): agents listed among who has seen a message, under the message and in the "Who has seen it" drawer, counted from their requests with no new column
 - messages-area-decided-2.md: The architect's decisions on the proposals of MA9a and MA10a (#9077): campaign profiles into flows (boxes first, what stays, one flow per chain, the switch, the owner), incoming e-mail in the area
 - messages-area-decided.md: The architect's decisions on the proposals of MA0 and MA4 (#9081, #9083): the shell, the Sends list as a union with its measure, e-mail source, rights, the e-mail design page
 - messages-area-steps-2.md: Steps MA9a-MA9f and MA10a-MA10c of the messages area plan (#8961): campaign profiles turned into flows, incoming e-mail in the area; decisions in messages-area-decided-2.md
@@ -41,7 +42,7 @@
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
-- panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860), the list rules, what is only a placeholder
+- panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860, #9070), the list rules, what is only a placeholder
 - panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
 - report-screens-steps.md: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out
 - report-screens.md: Plan (owner 2026-11-11, #8673): the order, visitor, shipping and ERP VAT report screens drawn as the dashboard: figures, a chart, the table, settings in a drawer, ready reports; steps RS1-RS8
@@ -56,6 +57,7 @@
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
+- visitor-table-shrink.md: Plan (owner report 2026-11-13, was issue #9130): the visitor table that never gets smaller by itself where PHP cannot read the database disk, and the faults of the Visitor records card
 - whatsapp-channel-census.md: WA12's census (2026-11-13): what a WhatsApp or SMS conversation shares with the e-mail one (card, state, holder, list, notices, event, AI draft, rights) and what stays mail-only
 - whatsapp-channel-conversation-storage.md: WhatsApp and SMS conversations in the mail tables with a transport, an incoming SMS kept as a mail item, the answer's SMS kind, stop words (owner 2026-11-13, #9286)
 - whatsapp-channel-incoming-sms.md: Incoming SMS per provider (Netgsm, İleti Merkezi, Twilio), the WhatsApp message kinds shown, stop words, the SMS kind and consent of an answer (WA12; decided #9286)

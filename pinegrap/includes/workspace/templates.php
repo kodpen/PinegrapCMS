@@ -1220,6 +1220,30 @@ function ws_template_apply($viewer, $channel, $template, $options = array())
 }
 
 /**
+ * Where the template screen's back arrow and Cancel lead: a draft taken from
+ * a channel goes back to that channel; every other entry (Edit, Copy and New
+ * in the Channel templates card) to the dashboard with the Site Settings
+ * dialog opened on that card. A plain settings address is not used: the
+ * panel opens the dialog for it over the template screen itself, which the
+ * user then cannot leave by Back or Cancel.
+ *
+ * @param int    $channel_id The channel the draft was taken from, 0 for none
+ * @param string $base       OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/'
+ * @return string
+ */
+function ws_template_back_url($channel_id, $base)
+{
+    $channel_id = is_numeric($channel_id) ? (int) $channel_id : 0;
+
+    if ($channel_id > 0) {
+        return $base . 'workspace.php?channel=' . $channel_id;
+    }
+
+    // pg_settings_return_url('workspace_channels', 'pgset-ws-templates')
+    return $base . 'welcome.php#settings/workspace_channels/pgset-ws-templates';
+}
+
+/**
  * A draft template taken from a channel, for its editing screen to show
  * before anything is kept: the open tasks (their dates counted from today,
  * a date already past as 0), the notes shared in the channel, its summary

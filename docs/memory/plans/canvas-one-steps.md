@@ -29,7 +29,7 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 
 - CO7c (M) The joined card (`canvas-card` in `canvas-one-screens.md`): the part chips, the segmented control between Drawing and Page, the one Versions drawer. After CO7b. Done in #9274 (`workspace/canvas-card.md`).
 
-- CO7d (S) An agent's binding as a channel line with Undo.
+- CO7d (S) An agent's binding as a channel line with Undo. Done in #9323.
 
 - CO8 (M) The phone. The table screen and the canvas's screens from the approved `canvas-one/phone.html`, on look A's recipes as they stand (DL1, DL5b's lists); it does not wait for the Workspace family (DL5f, not drawn). No new recipe: what is missing is built from the nearest one and listed in the PR body for DL5f. After CO7c.
 

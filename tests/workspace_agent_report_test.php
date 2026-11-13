@@ -146,3 +146,28 @@ function test_workspace_agent_report_labels_and_route()
 	pg_assert_same(array_keys(ws_api_agent_report_schema()), array_keys($present), 'the answer matches its schema');
 	pg_assert_same(null, $present['reported_at'], 'a dry run writes no time');
 }
+
+// tools/ws_profile.php shapes what a session gives into the route's body;
+// the site's own check takes it as it is.
+function test_workspace_agent_report_profile_tool()
+{
+	require_once(dirname(PG_FUNCTIONS_DIR) . '/tools/ws_profile.php');
+
+	$built = ws_profile_body(array('model' => ' model-x ', 'windows' => 'five_hour:42:2026-11-13T22:00:00Z,weekly:61:1795000000'));
+	pg_assert_same('', $built['error']);
+	pg_assert_same(array('model' => 'model-x', 'windows' => array(
+		array('name' => 'five_hour', 'percent' => 42, 'resets_at' => '2026-11-13T22:00:00Z'),
+		array('name' => 'weekly', 'percent' => 61, 'resets_at' => 1795000000),
+	)), $built['body']);
+
+	$check = ws_agent_report_check($built['body']['model'], ws_api_agent_report_times($built['body']['windows']));
+	pg_assert_true($check['ok'], 'the site takes what the tool sends: ' . $check['error']);
+
+	pg_assert_same(array('model' => 'm'), ws_profile_body(array('model' => 'm'))['body'], 'a model alone');
+	pg_assert_same(null, ws_profile_body(array())['body'], 'nothing to report');
+	pg_assert_same(null, ws_profile_body(array('model' => str_repeat('m', 81)))['body'], 'a model over 80 characters');
+	pg_assert_same(null, ws_profile_body(array('windows' => 'weekly:61'))['body'], 'a window without its reset');
+	pg_assert_same(null, ws_profile_body(array('windows' => 'weekly:101:1795000000'))['body'], 'a percent over 100');
+	pg_assert_same(null, ws_profile_body(array('windows' => 'weekly:6.5:1795000000'))['body'], 'a percent that is not whole');
+	pg_assert_same(null, ws_profile_body(array('windows' => implode(',', array_fill(0, 5, 'weekly:1:1795000000'))))['body'], 'five windows');
+}

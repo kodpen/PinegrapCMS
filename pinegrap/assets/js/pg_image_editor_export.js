@@ -32,6 +32,10 @@
 
     Editor.inits.push(function () {
         this.exportSet = M.exportDefaults();
+        // The quality a save starts at, from the estimate's answer; whether
+        // the user moved the quality since the panel opened.
+        this.exportStartQuality = M.exportStart();
+        this.exportQualityMoved = false;
         // The last estimate: before, after, formats, colors (null till then).
         this.exportInfo = null;
         this.exportBusy = false;
@@ -53,13 +57,17 @@
 
     // What a save carries for the panel's settings, or null.
     Editor.prototype.exportRequest = function () {
-        return this.exportable() ? M.exportRequest(this.exportSet, this.exportOwn()) : null;
+        return this.exportable() ? M.exportRequest(this.exportSet, this.exportOwn(), this.exportStartQuality) : null;
     };
 
     Editor.prototype.setExport = function (patch) {
         var self = this;
 
         Object.keys(patch).forEach(function (key) { self.exportSet[key] = patch[key]; });
+
+        if ('quality' in patch) {
+            this.exportQualityMoved = true;
+        }
         this.render();
         this.estimateLater();
     };
@@ -110,6 +118,17 @@
 
             self.exportBusy = false;
             self.exportInfo = (r && (r.status === 'success')) ? r : { failed: true };
+
+            // The quality opens on the start the server answered (a JPEG
+            // saved lower keeps its own) until the user moves it.
+            if (r && (r.status === 'success') && (r.start_quality !== undefined)) {
+                self.exportStartQuality = M.exportStart(r.start_quality);
+
+                if (!self.exportQualityMoved) {
+                    self.exportSet.quality = self.exportStartQuality;
+                }
+            }
+
             self.render();
         }, function () {
             if (job === self.exportJob) {

@@ -231,6 +231,15 @@ function ws_canvas_table_bind($viewer, $message, $table_id, $access, $by = null)
             VALUES ('" . (int) $message['id'] . "', '" . (int) $table_id . "', '" . escape($access) . "', '" . escape($kind) . "', '" . $by_id . "', UNIX_TIMESTAMP())");
     }
 
+    // An application's binding shows in the channel as a line with Undo
+    // (canvas_binding_lines.php); binding again with the same access is
+    // no change and writes none.
+    if (($kind === 'app') && ($by_id > 0) && (!$bound || ((string) $bound['access'] !== (string) $access))) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_binding_lines.php');
+
+        ws_canvas_binding_line_post($message, (int) $table_id, (string) $access, $bound ? (string) $bound['access'] : '', $by_id);
+    }
+
     return array('ok' => true, 'error' => '', 'text' => '');
 }
 
