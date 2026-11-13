@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-quick-setup-dialog
-description: The quick setup dialog (workspace_flow_quick.js, QS2 #9244): its own script in the flow bundle, the stages line, the first stage (areas rail, start cards, search, Only when), window.PGWsFlowQuick, how a later stage hangs on it
+description: The quick setup dialog (workspace_flow_quick.js, QS2 #9244): own script in the flow bundle, the first stage (areas, start cards, search, Only when), PGWsFlowQuick and later stages
 ---
 
 ## Where is it?
