@@ -16,7 +16,7 @@ module: automation_flows
 - `flow_start.php` (`ws_flow_web_receive()`): 503 `not_ready` without the gate. It never asked the Workspace switch.
 - The Flows screen and its panel actions (`ws_screen_gate($user, true)`, `ws_action_switch_allows()`): `automation-flows-screen.md`.
 - The external API and the MCP server: `api_modules()` merges the flow routes alone with the Workspace off (`automation-flows-api.md`).
-- Still behind the Workspace: the dashboard's flow entries (step AF4b of `plans/automation-flows-menu-steps-2.md`).
+- The dashboard's Automation flows card, "Flow runs (today)" figure and Start flow shortcut: `pg_flows_user_may()` (`ui/dashboard-v2-flows-card.md`).
 
 ## Which site events are kept with the Workspace off?
 - Only those an event rule of an active flow anchor names (`flow_id > 0`): every event is treated as an on-demand one (`pg_event_workspace_kept()`, pure; `pg_event_workspace_waiting_rules($event, true)`, one read per event per request). With the Workspace on nothing changed: all but `inventory.changed` are kept, for the watching channels.

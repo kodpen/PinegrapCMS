@@ -10,7 +10,10 @@
  * (ws_approval_decide, ws_flow_step_mend), which check everything again.
  *
  * Only flows and runs the person reaches are read: ws_flows_list() and
- * ws_flow_run_access(), as the Flows screen reads them.
+ * ws_flow_run_access(), as the Flows screen reads them. The card asks the
+ * Flows screen's gate (pg_flows_user_may()), so it shows with the Workspace
+ * switched off too; an approval box needs the Workspace, so Approve then
+ * never shows.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -244,13 +247,14 @@ function pg_dashboard_v2_flow_approvals($user_id, $run_ids)
 
 function pg_dashboard_v2_card_flows($user, $period, $compare)
 {
-    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
-
-    $rights = pg_dashboard_workspace_rights($user);
-
-    if ($rights === null) {
+    // The Flows screen's own gate, with the Workspace on or off.
+    if (!pg_flows_user_may($user)) {
         return array('status' => 'denied');
     }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    $rights = ws_rights($user);
 
     if (!function_exists('ws_flows_ready') || !ws_flows_ready()) {
         return array('status' => 'success', 'data' => array('empty' => lang('Flows are not set up on this site yet.')));
