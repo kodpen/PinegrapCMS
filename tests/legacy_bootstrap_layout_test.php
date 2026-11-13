@@ -458,14 +458,17 @@ function test_lbs_layout_starting_site_layouts_and_templates()
 		pg_assert_true(isset($report['converted'][$name]), $name . ' is converted');
 	}
 	// The ambiguous names the layouts use are checkbox and radio. What stays
-	// is the theme's own .radio around its payment options and one input's
-	// own class.
+	// is the theme's own .radio around its payment options, one input's own
+	// class, and the icons the theme draws in its own widgets: the chevron of
+	// each .select-option and the tick of each .check-box.
 	ksort($left);
-	pg_assert_same(array('checkbox', 'radio'), array_keys($left));
+	pg_assert_same(array('checkbox', 'glyphicon', 'glyphicon-ok', 'radio', 'ti-angle-down'), array_keys($left));
 	$kept = array_keys($report['kept']);
 	sort($kept);
-	pg_assert_same(array('checkbox', 'radio'), $kept);
+	pg_assert_same(array('checkbox', 'glyphicon', 'glyphicon-ok', 'radio', 'ti-angle-down'), $kept);
 	pg_assert_true($report['kept']['radio'] < $report['converted']['radio'] && $report['kept']['checkbox'] < 5, 'the blocks are converted');
+	pg_assert_true($report['kept']['ti-angle-down'] > 250 && $report['kept']['glyphicon-ok'] > 80, 'the theme widgets keep their icons');
+	pg_assert_true(isset($report['converted']['ti-close'], $report['converted']['glyphicon-remove']), 'an icon of the layout\'s own is converted');
 	// What a designer finishes by hand until the names with no twin are done.
 	foreach (array('input-group-btn', 'dl-horizontal', 'pager', 'form-inline') as $name) {
 		pg_assert_true(isset($report['by_hand'][$name]), $name . ' is left by hand');
@@ -512,6 +515,44 @@ function test_lbs_layout_site_scripts_and_sheets_name_no_converted_class()
 		pg_assert_same(array(), array_values(array_diff(array_keys($r['converted']), $stay)), $file . ' selects a converted class');
 		pg_assert_same(array(), $r['kept'], $file . ' selects a class the pass rewrites');
 	}
+}
+
+function test_lbs_layout_theme_widgets_keep_the_icon_their_theme_draws()
+{
+	$cases = array(
+		// The theme lays the chevron over its select and shows the tick only
+		// in a ticked box.
+		"<div class=\"select-option\">\n\t<i class=\"ti-angle-down\"></i>\n\t<select name=\"a\"></select>\n</div>"
+			=> "<div class=\"select-option\">\n\t<i class=\"ti-angle-down\"></i>\n\t<select name=\"a\"></select>\n</div>",
+		'<label class="check-box"><input type="checkbox" name="b" value="1"> <span class="unchecked"><span class="glyphicon glyphicon-ok"></span></span> <span>Notify me</span></label>'
+			=> '<label class="check-box"><input type="checkbox" name="b" value="1"> <span class="unchecked"><span class="glyphicon glyphicon-ok"></span></span> <span>Notify me</span></label>',
+		'<div class=select-option><i class="ti-angle-down"></i></div>' => '<div class=select-option><i class="ti-angle-down"></i></div>',
+		// The widget's other names and the icon's other names still convert.
+		'<div class="select-option pull-left"><i class="ti-angle-down pull-right"></i></div>'
+			=> '<div class="select-option float-start"><i class="ti-angle-down float-end"></i></div>',
+		// Only the first tag inside the widget, with nothing but white space
+		// before it.
+		'<div class="select-option">Size <i class="ti-angle-down"></i></div>' => '<div class="select-option">Size <i class="bi bi-chevron-down"></i></div>',
+		'<span class="unchecked"></span><span class="glyphicon glyphicon-ok"></span>' => '<span class="unchecked"></span><span class="bi bi-check-lg"></span>',
+		'<div class="select-option"><div><i class="ti-angle-down"></i></div></div>' => '<div class="select-option"><div><i class="bi bi-chevron-down"></i></div></div>',
+		// A widget's name outside the class attribute names no widget.
+		'<div title="select-option" class="x"><i class="ti-angle-down"></i></div>' => '<div title="select-option" class="x"><i class="bi bi-chevron-down"></i></div>',
+		'<div class="no-select-option"><i class="ti-angle-down"></i></div>' => '<div class="no-select-option"><i class="bi bi-chevron-down"></i></div>',
+		// An icon a button shows is the layout's own and gets its twin.
+		'<button class="btn btn-secondary btn-thin"><span class="ti-close"></span></button>' => '<button class="btn btn-secondary btn-thin"><span class="bi bi-x-lg"></span></button>',
+	);
+	foreach ($cases as $in => $want) {
+		$r = pg_lbs_layout_html($in);
+		pg_assert_same($want, $r['html'], $in);
+		pg_assert_same($r['html'], pg_lbs_layout_html($r['html'])['html'], $in . ': a second pass');
+	}
+	$r = pg_lbs_layout_html('<span class="unchecked"><span class="glyphicon glyphicon-ok"></span></span>');
+	pg_assert_same(array('glyphicon' => 1, 'glyphicon-ok' => 1), $r['kept'], 'the icon is counted as kept');
+	pg_assert_same(array(), $r['converted'], 'nothing converted');
+
+	// In a layout file's text a PHP block between counts as white space.
+	$r = pg_lbs_layout_source("<div class=\"select-option\">\n<?php if (\$a): ?>\n<i class=\"ti-angle-down\"></i><?php endif ?></div>");
+	pg_assert_same(array('ti-angle-down' => 1), $r['kept'], 'a PHP block before the icon');
 }
 
 function test_lbs_layout_output_applies_on_a_bootstrap_5_design_only()

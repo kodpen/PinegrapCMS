@@ -634,6 +634,20 @@ function pg_lbs_layout_triggers()
 }
 
 /**
+ * A Legacy theme's own form widgets that hold a drawn icon: the chevron of
+ * a .select-option and the tick of a .check-box's .unchecked box. The
+ * theme's sheet lays the icon over the field and shows the tick only when
+ * the box is ticked. A page that does not load that sheet would show a
+ * Bootstrap Icons twin beside the field instead, a tick beside every box,
+ * ticked or not, so the icon right inside such a widget keeps its name and
+ * is counted as kept.
+ */
+function pg_lbs_layout_theme_widgets()
+{
+    return array('select-option', 'unchecked');
+}
+
+/**
  * One tag's class list by the rules of a page type's markup: the map
  * without the theme names, an ambiguous name only in Bootstrap 3's shape,
  * and no name taken from a script that uses it.
@@ -644,12 +658,15 @@ function pg_lbs_layout_triggers()
  * @param array  $scripted  class names the markup's own scripts select or
  *                          change (name => true)
  * @param string $display   the element's own display (pg_lbs_layout_display())
+ * @param bool   $drawn     the element is the icon of a theme widget
+ *                          (pg_lbs_layout_theme_widgets()): its icon names stay
  * @return array  as pg_lbs_classes()
  */
-function pg_lbs_layout_classes($class, $block = false, $scripted = array(), $display = 'block')
+function pg_lbs_layout_classes($class, $block = false, $scripted = array(), $display = 'block', $drawn = false)
 {
     $tokens = preg_split('/\s+/', trim((string)$class), -1, PREG_SPLIT_NO_EMPTY);
     $map = pg_lbs_class_map();
+    $icons = $drawn ? pg_lbs_icon_map() : array();
     $ambiguous = array_flip(pg_lbs_layout_ambiguous_names());
     $keep = array();
     $beside = array();
@@ -665,6 +682,10 @@ function pg_lbs_layout_classes($class, $block = false, $scripted = array(), $dis
                 $keep[] = $t;
                 continue;
             }
+        }
+        if ($drawn && ($t === 'glyphicon' || isset($icons[$t]))) {
+            $keep[] = $t;
+            continue;
         }
         if (isset($scripted[$t])) {
             // A script that takes "hidden" or "in" off would leave the 5.3.8
@@ -777,9 +798,12 @@ function pg_lbs_layout_choice_block($html, $after, $type)
  * @param array  $scripted  pg_lbs_layout_script_names()
  * @param array  $acc       counts, added to
  * @param array  $memo      class lists converted so far
+ * @param bool   $drawn     the tag is the first inside a theme widget
+ *                          (pg_lbs_layout_theme_widgets())
+ * @param bool   $widget    set: the tag opens a theme widget
  * @return string|null  the attribute text; null when it cannot be read
  */
-function pg_lbs_layout_attributes($tag, $attrs, $html, $after, $scripted, &$acc, &$memo)
+function pg_lbs_layout_attributes($tag, $attrs, $html, $after, $scripted, &$acc, &$memo, $drawn = false, &$widget = null)
 {
     $patterns = pg_lbs_layout_patterns();
     if (preg_match_all($patterns['attribute'], $attrs, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) return null;
@@ -805,15 +829,17 @@ function pg_lbs_layout_attributes($tag, $attrs, $html, $after, $scripted, &$acc,
     // attribute written twice at the end of one attribute never lands inside
     // the next one's name when no white space parts them.
     $edits = array();   // key => array(offset, length, text)
+    $widget = false;
     if ($class !== null) {
         $value = $values['class'];
+        $widget = (bool)array_intersect(pg_lbs_layout_theme_widgets(), preg_split('/\s+/', $value, -1, PREG_SPLIT_NO_EMPTY));
         // A class list PHP writes in part, in a layout file's text.
         if (isset($acc['php']) && strpos($value, "\x01") !== false) $acc['php']++;
         $block = $tag !== 'input' && preg_match('/(?:^|\s)(checkbox|radio)(?:\s|$)/', $value, $m)
             && pg_lbs_layout_choice_block($html, $after, $m[1]);
         $display = pg_lbs_layout_display($tag);
-        $key = ($block ? '1' : '0') . $display . ' ' . $value;
-        if (!isset($memo[$key])) $memo[$key] = pg_lbs_layout_classes($value, $block, $scripted['classes'], $display);
+        $key = ($block ? '1' : '0') . ($drawn ? '1' : '0') . $display . ' ' . $value;
+        if (!isset($memo[$key])) $memo[$key] = pg_lbs_layout_classes($value, $block, $scripted['classes'], $display, $drawn);
         pg_lbs_add_counts($acc, $memo[$key]);
         // A list with nothing to convert keeps its bytes, white space too.
         if ($memo[$key]['converted']) {
@@ -871,6 +897,8 @@ function pg_lbs_layout_pass($html, &$acc)
     if ($scripted === null) return null;
     $patterns = pg_lbs_layout_patterns();
     $memo = array();
+    $gap = '~\G(?:[ \t\n\f\r]|\x01\d+\x01)*+<~';
+    $widget_end = -1;   // where the last theme widget's start tag ends
     $n = strlen($html);
     $out = '';
     $from = 0;   // the start of what is not yet in $out
@@ -897,9 +925,13 @@ function pg_lbs_layout_pass($html, &$acc)
         if (preg_match($patterns['tag'], $html, $m, 0, $lt) !== 1) return null;
         $i = $lt + strlen($m[0]);
         $tag = strtolower($m[1]);
+        // The first tag inside a theme widget, with only white space between.
+        $drawn = $widget_end >= 0 && ($widget_end === $lt || preg_match($gap, $html, $g, 0, $widget_end) && $widget_end + strlen($g[0]) - 1 === $lt);
+        $widget_end = -1;
         if (stripos($m[2], 'class') !== false || stripos($m[2], 'data-') !== false) {
-            $attrs = pg_lbs_layout_attributes($tag, $m[2], $html, $i, $scripted, $acc, $memo);
+            $attrs = pg_lbs_layout_attributes($tag, $m[2], $html, $i, $scripted, $acc, $memo, $drawn, $widget);
             if ($attrs === null) return null;
+            if ($widget) $widget_end = $i;
             if ($attrs !== $m[2]) {
                 $out .= substr($html, $from, $lt - $from) . '<' . $m[1] . $attrs . '>';
                 $from = $i;
