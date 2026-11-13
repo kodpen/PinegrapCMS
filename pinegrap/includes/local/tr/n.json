@@ -2170,6 +2170,7 @@
     "No staff requests yet.": "Henüz personel talebi yok.",
     "No staff requests yet. Tell us the role you need to fill and a consultant calls you.": "Henüz personel talebi yok. Doldurmanız gereken pozisyonu bize anlatın, bir danışman sizi arasın.",
     "No start box yet": "Henüz başlangıç kutusu yok",
+    "No start matches “{var:1}”.": "“{var:1}” ile eşleşen bir başlangıç yok.",
     "No start yet": "Henüz başlangıç yok",
     "No statement taken in yet.": "Henüz ekstre alınmadı.",
     "No status": "Durum yok",
