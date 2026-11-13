@@ -452,8 +452,10 @@
 - legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move [decision: decisions-made-product-43.md]
 - legacy-layouts-census.md: Census of the page types' custom layouts for their move to Bootstrap 5.3.8 (LL1, #8968): per type the widget twin, layouts that differ from the template, Bootstrap 3 names
 - legacy-layouts-converter.md: The layout pass of the Bootstrap 3 to 5.3.8 converter (LL2 #8986, #9143): pg_lbs_layout_html(), its rules beyond the map, what stays, the starting layouts' counts
+- legacy-layouts-left.md: After the page types' move to Bootstrap 5.3.8 names (LL1-LL6): what the trial design's compatibility sheet still draws, what no rename reaches and the way out
 - legacy-layouts-map-cost.md: Mapping a page type's output per request against converted layout copies (LL1 census, #8968): measured cost, what each reaches, the proposal sent to the architect
 - legacy-layouts-output-join.md: Where a page type's layout output joins the page, the names built outside a written class attribute, and the gate a map at output needs (LL1 census, #8968)
+- legacy-layouts-output-map.md: How a bootstrap5 design's page types get 5.3.8 names (architect, #8969): the system region's output mapped per request, no converted copies; the rules every change keeps [decision: decisions-made-product-46.md]
 - legacy-layouts-output-pass.md: Where a Bootstrap 5.3.8 design's page prints its page type's 5.3.8 names (LL3, #9143): the gate, the part mapped, the code tab's line, the sandbox pictures
 - legacy-layouts-shapes.md: The names a page type's markup took from its tag or parent in Bootstrap 3 and the layout pass writes on a bootstrap5 design (LL4, #9170): rules, what stays by hand
 - legacy-materialize-trial.md: The LB1b hand trial: a Legacy design whose theme loads Materialize, Bootstrap 5.3.8 beside it as a trial design loads it; names both own, what each sheet does to the other [decision: decisions-made-product-48.md]
