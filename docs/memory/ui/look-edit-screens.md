@@ -1,6 +1,6 @@
 ---
 name: look-edit-screens
-description: Add and edit screens in look A (DL5c, #8934): the edit width on every add/edit screen, columns 760 and 336 from the shared classes, look cards and titles, the floating save bar; what is not done yet
+description: Add and edit screens in look A (DL5c, #8934): the edit width on every add/edit screen, columns 1300 and 376 from the shared classes, look cards and titles, the floating save bar; what is not done yet
 ---
 
 ## Which screens are on it?
@@ -9,7 +9,8 @@ description: Add and edit screens in look A (DL5c, #8934): the edit width on eve
 - `tests/look_edit_screens_test.php` refuses an add or edit screen with the columns but without the class.
 
 ## How are the columns sized?
-- Block "Look A: add and edit screens" at the end of `backend.src.css`. From 1024 px the two column classes take the row as `flex: 760 1 0%` and `flex: 336 1 0%`: at the full 1120 px measure exactly 760 and 336 with the 24 px gutter; narrower, both shrink in that ratio; below lg they stack as before. No row needs `pg-edit-columns` (only `product_builder.php` keeps that grid).
+- Block "Look A: add and edit screens" at the end of `backend.src.css`. From 1024 px the status column is `flex: 0 0 calc(var(--pg-measure-status) + var(--pg-measure-gap))` (376 px plus the two 12 px gutter paddings) and the form column `flex: 1 1 0%`: at the full 1700 px measure 1300 and 376 with the 24 px gutter; narrower, the form column gives way first; below lg they stack as before. No row needs `pg-edit-columns` (only `product_builder.php` keeps that grid).
+- Before #9269 both columns shrank in the 760:336 ratio of a 1120 px measure.
 - Both columns also carry `min-width: 0`. Without it a column whose content does not wrap (the Tax Zone and Shipping Zone state comboboxes listing every chosen state, a long address) widened the page to 3,000–17,000 px from 1024 px up; fixed in #9107 (`grid-column-min-width.md`).
 
 ## What do the cards and titles look like?

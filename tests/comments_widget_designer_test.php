@@ -1149,7 +1149,7 @@ function _sdDecodeEntities(s) { return String(s); }
 var _cmt = { pg_comments_message: '<img src=x onerror="alert(1)">', pg_comments_label: '' };
 function _getCmtVal(k) { return _cmt[k] || ''; }
 var _sdCommentSample = null, _sdListSample = null;
-var _SD_AVATAR_TOKENS = {};
+var _SD_AVATAR_TOKENS = {}, _SD_LOOP_POSITION_TOKENS = {};
 var _SD_RICH_TEXT_CONTENT = { heading: 1, link: 1, paragraph: 1, span: 1, text: 1 };
 var _SD_HTML_PREVIEW_TOKENS = { __comment_message_html: function () { return '<p>Comment text</p>'; } };
 var SW_COMMENTS_TOKEN_GROUPS = [{ label: 'Thread', tokens: [['__comments_intro', 'Intro'], ['__comments_label', 'Label']] },

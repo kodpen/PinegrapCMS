@@ -131,6 +131,88 @@ function ws_agent_wake_rules()
 }
 
 /**
+ * The roles an agent may be given on its form, key => English label in
+ * this order. The column holds the key; a new role is added here, never in
+ * the schema. A role is a label only: it gives no right and changes no wake
+ * rule. Pure.
+ *
+ * @return string[] key => English label (not translated)
+ */
+function ws_agent_role_list()
+{
+    return array(
+        'architect'           => 'Architect',
+        'general_coordinator' => 'General coordinator',
+        'coordinator'         => 'Coordinator',
+        'merger'              => 'Merger',
+        'worker'              => 'Worker',
+        'tester'              => 'Testing',
+        'bug_hunter'          => 'Bug hunter',
+        'marketing'           => 'Marketing',
+        'design'              => 'Design',
+        'data_analysis'       => 'Data analysis',
+        'other'               => 'Other',
+    );
+}
+
+/**
+ * The roles with their labels translated, for the form's select.
+ *
+ * @return string[] key => label
+ */
+function ws_agent_roles()
+{
+    // Each label written out, so the language check finds every key.
+    // 'Testing', not 'Tester': that key is a beta tester person elsewhere.
+    return array(
+        'architect'           => lang('Architect'),
+        'general_coordinator' => lang('General coordinator'),
+        'coordinator'         => lang('Coordinator'),
+        'merger'              => lang('Merger'),
+        'worker'              => lang('Worker'),
+        'tester'              => lang('Testing'),
+        'bug_hunter'          => lang('Bug hunter'),
+        'marketing'           => lang('Marketing'),
+        'design'              => lang('Design'),
+        'data_analysis'       => lang('Data analysis'),
+        'other'               => lang('Other'),
+    );
+}
+
+/**
+ * A stored role key as the code reads it: a key of the list, else '' (an
+ * unknown or removed key shows as no role). Pure.
+ *
+ * @param mixed $key
+ * @return string
+ */
+function ws_agent_role_key($key)
+{
+    $key = is_string($key) ? $key : '';
+
+    return array_key_exists($key, ws_agent_role_list()) ? $key : '';
+}
+
+/**
+ * The translated label of a role key, '' for none or an unknown key.
+ *
+ * @param mixed $key
+ * @return string
+ */
+function ws_agent_role_label($key)
+{
+    $key = ws_agent_role_key($key);
+
+    if ($key === '') {
+        return '';
+    }
+
+    $roles = ws_agent_roles();
+
+    return (string) $roles[$key];
+}
+
+/**
  * An agent's row as the code reads it: numbers as numbers, the sealed values
  * replaced by whether they are set. Pure.
  *
@@ -140,13 +222,16 @@ function ws_agent_wake_rules()
 function ws_agent_shape($row)
 {
     $row = (array) $row;
-    $int = array('id', 'app_id', 'door_failures', 'door_last_knock', 'wake_every', 'wake_next_at', 'seen_at', 'created_by', 'created_at', 'updated_at');
+    $int = array('id', 'app_id', 'door_failures', 'door_last_knock', 'wake_every', 'wake_next_at', 'seen_at', 'created_by', 'created_at', 'updated_at', 'report_at');
     $out = array();
 
     foreach (array('id', 'kind', 'handle', 'name', 'avatar', 'app_id', 'provider', 'model', 'status', 'door_kind', 'door_url',
-        'door_failures', 'door_last_knock', 'door_error', 'wake_every', 'wake_next_at', 'wake_note', 'seen_at', 'created_by', 'created_at', 'updated_at') as $field) {
+        'door_failures', 'door_last_knock', 'door_error', 'wake_every', 'wake_next_at', 'wake_note', 'seen_at', 'created_by', 'created_at', 'updated_at',
+        'report_model', 'report_usage', 'report_at') as $field) {
         $out[$field] = in_array($field, $int, true) ? (int) ($row[$field] ?? 0) : (string) ($row[$field] ?? '');
     }
+
+    $out['role'] = ws_agent_role_key($row['role'] ?? '');
 
     $out['key_set'] = (strpos((string) ($row['key_sealed'] ?? ''), ':') !== false);
     $out['door_secret_set'] = (strpos((string) ($row['door_secret_sealed'] ?? ''), ':') !== false);
@@ -718,7 +803,7 @@ function ws_agent_brake($depth, $last_hour)
  * Secrets are written apart. Pure: what other agents, MCP servers and people
  * hold is read by the caller.
  *
- * @param array      $input      kind, handle, name, app_id, provider, model, status, door_kind, door_url, wake_every, wake_note
+ * @param array      $input      kind, handle, name, role, app_id, provider, model, status, door_kind, door_url, wake_every, wake_note
  * @param array|null $current    ws_agent_shape() of the agent, null for a new one
  * @param string[]   $taken      handles other agents and MCP servers hold
  * @param string[]   $user_names the people's user names
@@ -733,6 +818,7 @@ function ws_agent_save_check($input, $current, $taken, $user_names, $app_ids)
         'kind'       => $current ? $current['kind'] : (string) ($input['kind'] ?? ''),
         'handle'     => $claude ? 'claude' : mb_strtolower(ltrim(trim((string) ($input['handle'] ?? '')), '@')),
         'name'       => trim((string) ($input['name'] ?? '')),
+        'role'       => trim((string) ($input['role'] ?? '')),
         'app_id'     => (int) ($input['app_id'] ?? 0),
         'provider'   => trim((string) ($input['provider'] ?? '')),
         'model'      => trim((string) ($input['model'] ?? '')),
@@ -760,6 +846,10 @@ function ws_agent_save_check($input, $current, $taken, $user_names, $app_ids)
 
     if (($values['name'] === '') || (mb_strlen($values['name']) > 100)) {
         return $fail(lang('Give the agent a name of up to 100 characters.'), 'name');
+    }
+
+    if (($values['role'] !== '') && (ws_agent_role_key($values['role']) === '')) {
+        return $fail(lang('Choose a role from the list.'), 'role');
     }
 
     if (($values['app_id'] !== 0) && !in_array($values['app_id'], array_map('intval', (array) $app_ids), true)) {
@@ -851,6 +941,11 @@ function ws_agent_save($viewer, $values, $current, $key_sealed = null, $door_sea
     }
 
     $sets[] = "app_id = '" . (int) $values['app_id'] . "'";
+
+    // Files can land before the upgrade adds the column: the role then waits.
+    if (pg_schema_has('ws_agents', 'role')) {
+        $sets[] = "role = '" . e(ws_agent_role_key($values['role'] ?? '')) . "'";
+    }
     $sets[] = "wake_every = '" . (int) $values['wake_every'] . "'";
     $sets[] = "updated_at = '" . $now . "'";
 

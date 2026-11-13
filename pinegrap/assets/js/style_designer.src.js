@@ -13286,7 +13286,8 @@ const StyleDesigner = (function () {
             var kind = _swKindOf(cfg);
             if (_SD_GHOST_TYPES[kind] || _SD_GHOST_TYPES[cfg.regionType] || kind === 'comments' || kind === 'comments_recent' || _sdLoopIsSingle(cfg)) return [];
             // The order family's item loop: the sample order's second line.
-            return _SD_ORDER_SAMPLE_REGIONS[cfg.regionType] ? [_sdOrderSampleLineTwo()] : [{}, {}];
+            if (_SD_ORDER_SAMPLE_REGIONS[cfg.regionType]) return [_sdOrderSampleLineTwo()];
+            return _SD_REGION_LOOP_ROWS[kind] ? _SD_REGION_LOOP_ROWS[kind]() : [{}, {}];
         }
         var src = SW_LIST_SOURCES[node.props.source];
         if (!src || _sdListBand(node).off) return [];
@@ -13381,7 +13382,10 @@ const StyleDesigner = (function () {
     // The ghost elements of a loop's sample rows, built from its card.
     function _sdLoopSampleEls(node, rows) {
         var out = [];
-        rows.forEach(function (row) {
+        rows.forEach(function (sample, i) {
+            // The row's place after the card, beside its own values.
+            var row = _sdLoopPosition(i + 2, rows.length + 1);
+            Object.keys(sample).forEach(function (k) { row[k] = sample[k]; });
             _sdListSample = row;
             try {
                 (node.children || []).forEach(function (child) {
@@ -15411,6 +15415,10 @@ const StyleDesigner = (function () {
         '__field_options_html': function () {
             return '<option>' + esc(_sdT('Navy')) + '</option><option>' + esc(_sdT('Cream')) + '</option>';
         },
+        // A recurring line's frequency choices, the sample's Monthly selected.
+        '__schedule_period_options_html': function () {
+            return '<option>' + esc(_sdT('Weekly')) + '</option><option selected>' + esc(_sdT('Monthly')) + '</option>';
+        },
         // _eo_render_saved_cart_link(): the link back to the saved cart.
         '__saved_cart_link': function () {
             var url = 'https://example.com/cart?r=ABC123XYZ';
@@ -15866,6 +15874,8 @@ const StyleDesigner = (function () {
             __currency_disclaimer: _sdT('Your card is charged in Turkish Lira; the amounts in other currencies are estimates.'),
             // Payment.
             __po_number: 'PO-7781',
+            // The express order form's id, for its hidden inputs.
+            __form_id: 'eo_form',
             // The billing address.
             __billing_name: bill[0] + ' ' + bill[1], __billing_first_name: bill[0], __billing_last_name: bill[1],
             __billing_salutation: _sdT('Ms.'), __billing_company: bill[2], __billing_email: _sdT('sample@example.com'),
@@ -15990,7 +16000,9 @@ const StyleDesigner = (function () {
             __minimum_quantity: '1', __maximum_quantity: '10', __preparation_days: '2', __extra_shipping_cost: _sdMoney(0),
             __vat_rate: '20', __payment_period: _sdT('Monthly'), __number_of_payments: '12',
             __is_free_shipping: '0', __is_gift_card: '0', __is_donation: '0',
-            __empty_message: _sdT('No results found.'), __result_is_featured: '1'
+            __empty_message: _sdT('No results found.'), __result_is_featured: '1',
+            // A product group's row kind in the listing (browse or select).
+            __display_type: 'browse'
         };
         return _sdProductSampleMap;
     }
@@ -16083,15 +16095,159 @@ const StyleDesigner = (function () {
         return _sdAccountSampleMap;
     }
 
-    // The sample record a node's widget draws (the order, the product or
-    // the account), or null outside those families.
+    // ── The other families' samples ──────────────────────────────────────
+    // Comments, calendar, Google reviews, booking, the accessibility
+    // statement, ads, menus and the language switcher: per widget kind, the
+    // values no other map gives a sample of, agreeing with those it does
+    // (the calendar's Sample Event on 23 September 2026, 10:00 – 12:00).
+    // A comment card's own sample comments (_sdCommentSample) and a list's
+    // sample rows still come first. Canvas only: never in a tree.
+    var _SD_REGION_SAMPLES = {
+        comments: function () {
+            var day = _sdDateSample(true);
+            return {
+                __comment_id: '42', __comment_anchor: 'c-42', __comment_datetime: day,
+                __comment_rating: '5', __comment_rating_label: _sdT('Rated {var:1} out of 5', ['5']),
+                __comment_stars_text: '★★★★★', __comment_parent_id: '41', __comment_depth: '0',
+                __comment_reply_count: '1',
+                __watcher_count_text: _sdT('{var:1} {var:2} will be notified when a {var:3} is added.',
+                    ['3', _sdT('people'), String(_sdT('Comment')).toLowerCase()])
+            };
+        },
+        calendar_view: function () { return _sdEventSample(); },
+        calendar_event_view: function () { return _sdEventSample(); },
+        google_reviews: function () {
+            return {
+                __place_name: _sdT('Cooper Studio'), __place_rating: '4.8', __place_review_count: '126',
+                __review_total: '5', __google_attribution: 'Google Maps',
+                __review_author_name: _sdT('Michael Brooks'), __review_rating: '5',
+                __review_text: _sdT('Friendly people and quick service. We will come back.'),
+                __review_relative_time: _sdT('2 weeks ago')
+            };
+        },
+        booking: function () {
+            return {
+                __service_total: '3', __service_id: '1', __service_name: _sdT('Consultation'),
+                __service_description: _sdT('A first talk about what you need, with a plan to take home.'),
+                __service_length: _sdT('{var:1} min', ['60']), __service_price: _sdMoney(450)
+            };
+        },
+        accessibility_statement: function () {
+            var site = _sdSiteWord('site_name') || _sdT('Sample Store');
+            var day = _sdIsoDate();
+            return {
+                __a11y_organisation: site, __a11y_scope: site, __a11y_standard: 'WCAG 2.2 AA, EN 301 549',
+                __a11y_conformance: _sdT('Partially conformant: some parts of the content do not fully conform to the standard.'),
+                __a11y_contact: 'accessibility@example.com',
+                __a11y_feedback: _sdT('Write to us at the address above; we answer within five working days.'),
+                __a11y_enforcement: _sdT('If our answer does not satisfy you, you may contact the enforcement body.'),
+                __a11y_date: day, __a11y_last_check: day, __a11y_pages: '24', __limit_total: '1',
+                __limit_label: _sdT('The page does not state its language'),
+                __limit_criterion: '3.1.1 ' + _sdT('Language of Page'), __limit_level: 'A', __limit_pages: '3'
+            };
+        },
+        ad_region: function () {
+            return {
+                __ad_region_name: _sdT('Home Banner'), __ad_count: '2', __ad_ride: 'carousel', __ad_interval: '5000', __ad_wrap: 'true',
+                __ad_name: _sdT('Summer Sale'), __ad_label: _sdT('Summer Sale'),
+                __ad_content_html: _sdT('Up to 30% off linen until the end of the month.'),
+                __ad_caption_html: _sdT('Summer Sale')
+            };
+        },
+        menu_region: function () { return { __menu_name: _sdT('Main Menu') }; },
+        menu_sequence_region: function () {
+            return {
+                __menu_name: _sdT('Getting started'), __sequence_position: '2', __sequence_count: '5',
+                __previous_name: _sdT('Introduction'), __next_name: _sdT('Your first page')
+            };
+        },
+        language_switcher: function () {
+            return {
+                __language_code: 'en', __language_label: 'English', __language_active_class: 'active', __language_aria_current: 'page',
+                __current_language_code: 'en', __current_language_label: 'English', __language_count: '3'
+            };
+        }
+    };
+    _SD_REGION_SAMPLES.comments_recent = _SD_REGION_SAMPLES.comments;
+    // The rows after a main loop's card, per kind: the other languages, the
+    // other reviews and ads. Kinds not named here copy the card.
+    var _SD_REGION_LOOP_ROWS = {
+        language_switcher: function () {
+            var row = function (code, label) {
+                return { __language_code: code, __language_label: label, __language_active_class: '', __language_aria_current: '' };
+            };
+            return [row('tr', 'Türkçe'), row('de', 'Deutsch')];
+        },
+        google_reviews: function () {
+            return [{ __review_author_name: _sdT('Emily Turner'), __review_rating: '4', __review_relative_time: _sdT('1 month ago'),
+                      __review_text: _sdT('Good advice, and they took the time to explain.') }];
+        },
+        ad_region: function () {
+            return [{ __ad_name: _sdT('New Arrivals'), __ad_label: _sdT('New Arrivals'),
+                      __ad_content_html: _sdT('The autumn collection is in.'), __ad_caption_html: _sdT('New Arrivals') }];
+        }
+    };
+    // Today as the accessibility statement writes a date (Y-m-d).
+    function _sdIsoDate() {
+        var d = new Date();
+        return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    }
+    // The sample event's values that _SD_SHORT_LABEL_TOKENS leaves out.
+    function _sdEventSample() {
+        return {
+            __month_name: _sdT('September'), __year: '2026', __view: 'monthly',
+            __empty_message: _sdT('There are no events to show.'),
+            __event_date: '23 ' + _sdT('September') + ' 2026', __event_is_all_day: '',
+            __event_excerpt: _sdT('Short talks in the morning, then a guided tour of the workshop.'),
+            __event_description: _sdT('Short talks in the morning, then a guided tour of the workshop.'),
+            __event_notes: _sdT('Please arrive ten minutes early.'),
+            __reservation_message: _sdT('There are no places left.'),
+            __event_spots_left: '12', __event_updated_date: _sdDateSample(false), __event_reservation_price: _sdMoney(150),
+            __event_recurrence: _sdT('Weekly'), __event_reservations_open: '1', __event_spots_limited: '1', __event_is_recurring: '1'
+        };
+    }
+    var _sdRegionSampleMaps = {};
+    function _sdRegionSample(type) {
+        if (!_SD_REGION_SAMPLES[type]) return null;
+        if (!_sdRegionSampleMaps[type]) _sdRegionSampleMaps[type] = _SD_REGION_SAMPLES[type]();
+        return _sdRegionSampleMaps[type];
+    }
+
+    // ── A row's place in its loop ─────────────────────────────────────────
+    // SW_LOOP_POSITION_TOKEN_GROUPS: the card is row 1 of the card and its
+    // sample rows; each sample row its own place (_sdLoopSampleEls()), so a
+    // "first row only" condition shows on the card alone.
+    var _SD_LOOP_POSITION_TOKENS = { __loop_index: 1, __loop_count: 1, __loop_is_first: 1, __loop_is_last: 1, __loop_is_odd: 1, __loop_is_even: 1 };
+    function _sdLoopPosition(index, count) {
+        return {
+            __loop_index: String(index), __loop_count: String(count),
+            __loop_is_first: index === 1 ? '1' : '', __loop_is_last: index === count ? '1' : '',
+            __loop_is_odd: (index % 2) ? '1' : '', __loop_is_even: (index % 2) ? '' : '1'
+        };
+    }
+    // The card's place: row 1 of as many rows as the canvas draws for the
+    // loop that holds `node`.
+    function _sdLoopCardPosition(node) {
+        var cur = node, loop = null;
+        for (var guard = 0; cur && guard < 500; guard++) {
+            var up = _sdAnyParent(cur);
+            if (!up || !up.parent) break;
+            if (up.parent.type === 'loop_area') { loop = up.parent; break; }
+            cur = up.parent;
+        }
+        var rows = loop ? _sdMainLoopRowsOfGrid(loop, _sdListSampleRows(loop)).length : 0;
+        return _sdLoopPosition(1, rows + 1);
+    }
+
+    // The sample record a node's widget draws (the order, the product, the
+    // account or another kind's values), or null outside those families.
     function _sdSampleRecord(node) {
         var cfg = node ? _sdSystemWidgetCfgOf(node) : null;
         if (!cfg) return null;
         if (_SD_ORDER_SAMPLE_REGIONS[cfg.regionType]) return _sdOrderSample();
         if (_SD_PRODUCT_SAMPLE_REGIONS[cfg.regionType]) return _sdProductSample();
         if (_SD_ACCOUNT_SAMPLE_REGIONS[cfg.regionType]) return _sdAccountSample();
-        return null;
+        return _sdRegionSample(_swKindOf(cfg)) || _sdRegionSample(cfg.regionType);
     }
     var _sdLabelFieldsAsked = {};
     function _displayValueForBinding(prop, fieldName, node) {
@@ -16105,6 +16261,10 @@ const StyleDesigner = (function () {
         // A list's sample row (_sdListGhostEls()).
         if (_sdListSample && fieldName && Object.prototype.hasOwnProperty.call(_sdListSample, fieldName)) {
             return _sdListSample[fieldName];
+        }
+        // A row position value of the card (the sample rows carry their own).
+        if (fieldName && _SD_LOOP_POSITION_TOKENS[fieldName] && !_sdCommentSample) {
+            return _sdLoopCardPosition(node)[fieldName];
         }
         // A value of the page's record outside a widget reads as its name.
         if (String(fieldName || '').indexOf('__record__') === 0 && !_sdValueSidOf(node)) {

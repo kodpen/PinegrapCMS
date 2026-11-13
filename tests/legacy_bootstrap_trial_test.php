@@ -368,3 +368,39 @@ function test_lbst_wiring()
 	pg_assert_same(1, preg_match_all('/DELETE FROM style\b/', $src));
 	pg_assert_true(strpos($src, "db(\"DELETE FROM style WHERE style_id = '\$trial_id'\");") !== false);
 }
+
+function test_lbst_assets_twins()
+{
+	$css = array(_test_lbst_row('external-css', '{path}bootstrap.css'), _test_lbst_row('css', '.background-image-holder{top:0}'));
+	$js = array(
+		_test_lbst_row('external-js', '{path}jquery.min.js'),
+		_test_lbst_row('external-js', 'https://cdnjs.cloudflare.com/ajax/libs/flexslider/2.3.0/jquery.flexslider-min.js'),
+		_test_lbst_row('external-js', '{path}lightbox.min.js'),
+		_test_lbst_row('external-js', '{path}scripts.js'),
+	);
+	$all = array('twins' => array('photo' => 3, 'slider' => 2, 'lightbox' => 4), 'kept' => array('photo' => 0, 'slider' => 0, 'lightbox' => 0));
+	$a = pg_lbs_trial_assets($css, $js, array(), '/', $all);
+	$fb = pg_lbs_trial_fancybox_rows();
+	pg_assert_same(false, $a['js'][2]['enabled'], 'every slider has a twin: flexslider is switched off');
+	pg_assert_same($js[1]['content'], $a['js'][2]['content'], 'and kept in its place');
+	pg_assert_same(false, $a['js'][3]['enabled'], 'the lightbox script too');
+	pg_assert_same(true, $a['js'][4]['enabled'] ?? true, 'scripts.js stays');
+	pg_assert_same(array($fb['js'], $fb['bind']), array_slice($a['js'], -2), 'Fancybox after the theme scripts');
+	pg_assert_same($fb['css'], end($a['css']));
+	pg_assert_contains('.background-image-holder, .legacy-photo{top:0}', $a['css'][3]['content'], 'an inline sheet gets the photo twin');
+	pg_assert_contains('Fancybox.bind("[data-fancybox]"', $fb['bind']['content']);
+	pg_assert_same('{path}{software_directory}/assets/lib/fancybox/fancybox.umd.js', $fb['js']['content']);
+
+	// A slider left without a twin keeps flexslider; no lightbox twin, no Fancybox.
+	$some = array('twins' => array('slider' => 2), 'kept' => array('slider' => 1));
+	$a = pg_lbs_trial_assets($css, $js, array(), '/', $some);
+	pg_assert_same(true, $a['js'][2]['enabled'] ?? true);
+	pg_assert_same(true, $a['js'][3]['enabled'] ?? true, 'no lightbox twin: the lightbox script stays');
+	pg_assert_same(4, count($a['js']) - 1, 'no Fancybox rows');
+	pg_assert_same(pg_lbs_trial_assets($css, $js, array(), '/'), pg_lbs_trial_assets($css, $js, array(), '/', array()), 'no counts: no change');
+
+	pg_assert_same('slider', pg_lbs_trial_twin_script(_test_lbst_row('external-js', '{path}jquery.flexslider.js')));
+	pg_assert_same('lightbox', pg_lbs_trial_twin_script(_test_lbst_row('external-js', '{path}lightbox.js')));
+	pg_assert_same('', pg_lbs_trial_twin_script(_test_lbst_row('js', 'flexslider.js')), 'an inline row is no theme script file');
+	pg_assert_same('', pg_lbs_trial_twin_script(_test_lbst_row('external-js', '{path}lightbox-extras.js')));
+}

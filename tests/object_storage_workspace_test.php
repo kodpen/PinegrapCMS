@@ -28,6 +28,8 @@ function object_storage_workspace_test_allowed()
 			"@unlink(FILE_DIRECTORY_PATH . '/' . basename(\$stored));",
 		),
 		'includes/workspace/canvas.php'  => array("\$path = FILE_DIRECTORY_PATH . '/' . \$name;"),
+		// A chosen version of a canvas's drawing put back, written as Undo's.
+		'includes/workspace/canvas_card.php' => array("\$path = FILE_DIRECTORY_PATH . '/' . \$name;"),
 		// The server's picture of an agent's canvas, written as a browser's.
 		'includes/workspace/canvas_draw.php' => array("\$path = FILE_DIRECTORY_PATH . '/' . basename((string) \$file['name']);"),
 		// A new version of a live page written over its file, as the canvas.

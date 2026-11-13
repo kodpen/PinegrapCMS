@@ -2,15 +2,15 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Server search of the panel's file and image pickers. A picker is a
- * <select data-pg-combobox data-pg-source> (assets/js/pg_fields.js) that
- * prints only the stored choice; as the operator types it asks
- * file_picker_search.php with a named kind and the typed text, and only the
- * matches travel. Before, each picker listed every file of the site on every
- * load of its screen, with no way to search.
+ * Server search of a file field that is a server-search combobox
+ * (assets/js/pg_fields.js), such as the short link list's quick edit File
+ * cell: as the operator types it asks file_picker_search.php with a named
+ * kind and the typed text, and only the matches travel. The other file and
+ * picture fields are picker fields (pg_picker_field(), includes/fn/picker.php).
  *
  * The kind names a file kind of the picker's registry (includes/fn/picker.php,
- * pg_picker_kinds()); the browser never sends a condition. Names are matched folded (fold_keyword_for_matching()), so
+ * pg_picker_kinds()); the browser never sends a condition. Names are matched
+ * folded (fold_keyword_for_matching()), so
  * "isik" finds "Işık.png" and "ist" finds "İstanbul.jpg".
  *
  * @author      Erdal Güral (Kodpen)
@@ -50,12 +50,6 @@ function pg_file_picker_limit()
     return 30;
 }
 
-/** The most rows one search reads (pg_picker_scan_limit()). */
-function pg_file_picker_scan_limit()
-{
-    return pg_picker_scan_limit();
-}
-
 /**
  * Whether a user may search a kind (pg_picker_access_verdict() over
  * pg_file_picker_kinds()). Pure.
@@ -68,42 +62,6 @@ function pg_file_picker_scan_limit()
 function pg_file_picker_access_verdict($kind, $role, $edit_rights)
 {
     return pg_picker_access_verdict($kind, $role, $edit_rights, pg_file_picker_kinds());
-}
-
-/**
- * The `files` condition of a kind (pg_picker_files_where()). Pure.
- *
- * @param array      $kind         one of pg_file_picker_kinds()
- * @param string     $public_where pg_public_image_files_where() for a public kind
- * @param int[]      $bin_ids      the Recycle Bin and its sub-folders
- * @param int[]|null $folders      the folders a role 3 user may edit; null for all
- * @return string
- */
-function pg_file_picker_where($kind, $public_where, $bin_ids, $folders)
-{
-    return pg_picker_files_where($kind, $public_where, $bin_ids, $folders);
-}
-
-/**
- * A name or a typed text folded for matching (pg_picker_fold()). Pure.
- *
- * @param mixed $text
- * @return string
- */
-function pg_file_picker_fold($text)
-{
-    return pg_picker_fold($text);
-}
-
-/**
- * The LIKE term the rows are read with (pg_picker_like_term()). Pure.
- *
- * @param mixed $query
- * @return string
- */
-function pg_file_picker_like_term($query)
-{
-    return pg_picker_like_term($query);
 }
 
 /**
@@ -167,117 +125,4 @@ function pg_file_picker_source($kind, $base = null)
     }
 
     return $base . 'file_picker_search.php?kind=' . rawurlencode((string) $kind);
-}
-
-/**
- * The data-pg-* hooks of a select that searches files of a kind, as
- * liveform's output_field() takes them.
- *
- * @param string      $kind
- * @param string|null $base see pg_file_picker_source()
- * @return array
- */
-function pg_file_picker_field_attributes($kind, $base = null)
-{
-    return array(
-        'data-pg-combobox' => '',
-        'data-pg-source' => pg_file_picker_source($kind, $base),
-        'data-pg-min-length' => '1',
-    );
-}
-
-/**
- * The same hooks as markup, for a <select> written by hand.
- *
- * @param string      $kind
- * @param string|null $base see pg_file_picker_source()
- * @return string
- */
-function pg_file_picker_attributes($kind, $base = null)
-{
-    $output = '';
-
-    foreach (pg_file_picker_field_attributes($kind, $base) as $name => $value) {
-        $output .= ' ' . $name . (($value === '') ? '' : '="' . h($value) . '"');
-    }
-
-    return $output;
-}
-
-/**
- * The options of a public picture picker: the empty choice and the stored
- * one, marked by pg_public_image_stored_option() when visitors cannot open it
- * or no file carries it. The search brings the rest.
- *
- * @param string $value the stored name
- * @param string $empty the empty choice's text
- * @return string
- */
-function pg_file_picker_public_options($value, $empty)
-{
-    $value = (string) $value;
-
-    return '<option value="">' . h($empty) . '</option>' . (($value !== '') ? pg_public_image_stored_option($value) : '');
-}
-
-/**
- * The label a file id picker shows for its stored file: its name, or for a
- * file in the Recycle Bin the name it had before the bin parked it, marked.
- * Pure.
- *
- * @param string $name     files.name
- * @param bool   $binned   the file is in the Recycle Bin
- * @param string $original the name it had before (pg_recycle_parked_original())
- * @return string
- */
-function pg_file_picker_id_label($name, $binned, $original = '')
-{
-    if (!$binned) {
-        return (string) $name;
-    }
-
-    return ((trim((string) $original) !== '') ? (string) $original : (string) $name) . ' [' . lang('IN RECYCLE BIN') . ']';
-}
-
-/**
- * The options of a file id picker (liveform, label => value): the empty
- * choice and the stored file, when it still exists, is no attachment and the
- * user may edit its folder. A file in the Recycle Bin is shown marked; the
- * save decides whether it may stay.
- *
- * @param mixed $file_id the stored or posted id
- * @return array
- */
-function pg_file_picker_id_options($file_id)
-{
-    global $user;
-
-    $options = array('-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('File')))) . '-' => '');
-    $file_id = is_scalar($file_id) ? (int) $file_id : 0;
-
-    if ($file_id < 1) {
-        return $options;
-    }
-
-    $row = db_item("SELECT id, name, folder FROM files WHERE (id = '" . $file_id . "') AND (attachment = 0) AND (name != '')");
-
-    if (!is_array($row) || !$row) {
-        return $options;
-    }
-
-    if (isset($user['role']) && ((int) $user['role'] >= 3) && !in_array((int) $row['folder'], array_map('intval', get_folders_that_user_has_access_to($user['id'])), true)) {
-        return $options;
-    }
-
-    $binned = in_array((int) $row['folder'], pg_recycle_bin_folder_ids(), true);
-    $original = '';
-
-    if ($binned) {
-        require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
-        $original = pg_recycle_parked_original($row['name'], $row['id']);
-    }
-
-    $options[h(pg_file_picker_id_label($row['name'], $binned, $original))] = (int) $row['id'];
-
-    return $options;
 }

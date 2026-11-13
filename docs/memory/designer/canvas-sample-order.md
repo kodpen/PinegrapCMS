@@ -6,7 +6,7 @@ description: The sample order the designer canvas draws in the order view, its r
 ## What does the order family draw on the canvas?
 - One sample order (`_sdOrderSample()` in `style_designer.src.js`), for widgets whose `regionType` is in `_SD_ORDER_SAMPLE_REGIONS`: `order_view` (the order page and the order receipt e-mail), `shopping_cart`, `express_order`, `order_preview`, `shipping_address_and_arrival`, `shipping_method`, `billing_information`.
 - `_displayValueForBinding()` reads it after the HTML previews and before every other map, so it beats the money, short label and name heuristics there; outside the family nothing changes.
-- Canvas only: never in a tree, never on the site or in an e-mail (plan rule of `plans/designer-canvas-real-samples.md`).
+- Canvas only: never in a tree, never on the site or in an e-mail (`canvas-sample-overview.md`).
 
 ## Which values agree?
 - Two lines: Linen Shirt 2 × 450 = 900 (PRD-1001) and Ceramic Mug 1 × 150 (PRD-1002); subtotal 1,050, offer code WELCOME10 takes 105, shipping 49.90, 20% tax on the discounted 945 = 189, total 1,183.90. `_sdOrderAmounts()` holds them; `tests/widget_condition_eval_test.php` checks they add up. Change them there and together.
@@ -22,7 +22,7 @@ description: The sample order the designer canvas draws in the order view, its r
 - HTML previews in `_SD_HTML_PREVIEW_TOKENS` mirror the page's markup, disabled: the offer code form, Update and Checkout buttons, applied offers, quick add, the quantity stepper, the saved cart link, the checkout consent sentence and line form, the return actions and reason options, the field options, the three `…_address_html` blocks as `<br>` lines.
 
 ## What is still not a sample?
-- `canvas-sample-gaps-orders.md` and `canvas-sample-gaps-checkout.md` list what CS2 left.
+- Flags meant to be empty in a shipped order (`__order_is_tax_exempt`, `__item_added_by_offer` …) stay empty; the rest is in `canvas-sample-overview.md`.
 
 ## How do I see it in a sandbox?
 - After `bash tools/setup_sandbox.sh`: sign in with Playwright, open `add_system_style.php` and read `StyleDesigner.starterTree(kind)` for each kind `pg_design_template_starter_kinds(pg_design_template('pinegrap-market'))` names (`StyleDesigner` is a `const`, not on `window`).
