@@ -329,6 +329,7 @@
 - list-period-week.md: Week's first day (Monday in Turkish, Sunday otherwise) for the list screens' period navigator (#2039) and the get_calendar() grids (#3328)
 - list-quick-edit-keyboard.md: List quick edit keys (backend.src.js cells, the list table driver): Enter, Escape, Tab to the next row, textarea and multiselect, focus past the last row, the old editor's style scope
 - list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
+- list-seo-details.md: A click on the SEO score of the Pages and Products lists loads the analysis into the Details panel under the SEO line (no drawer); the run buttons and failure lines there [decision: here]
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
 - list-table-branches.md: A list table driver source read as branches (MA2b, #9275): the branches and branch_id keys, the wrapper each batch puts round a branch, the count per branch, the measured times
