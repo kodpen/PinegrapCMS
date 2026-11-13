@@ -166,6 +166,7 @@
 - workspace-calendar-read.md: Reading a person's Google/Outlook calendar back (calendar_sync.php, #4490): syncToken and delta, what is a move, the drawer's check, refused moves written back, calendar_refused [decision: decisions-made-workspace-6.md]
 - workspace-calendar-side-cards.md: Work calendar side cards at laptop width (#5189): ws_minutes_label() uses no-break spaces, the "who carries the work" row puts the task count under the whole name
 - workspace-calendar-write.md: A person's Workspace tasks written to their own Google or Outlook calendar (calendar_sync.php, #4387, #4420): app-made calendar, derived ids, sealed state per person, the hourly job [decision: decisions-made-workspace-6.md]
+- workspace-card-long-words.md: Task card in a channel and template card in the New channel drawer wrap a long word or link (overflow-wrap anywhere)
 - workspace-cart-quote-tag.md: The cart quote's Workspace tag (cart_quote, #3256): prefixes, the ecommerce right, orders:read, what the chip shows, the search, view_cart_quotes.php?id= and its Workspace button
 - workspace-change-proposal-display.md: How an application's proposal is shown: its name on cards, bells, push, Site Log (every bulk slice) and decisions, the task drawer's "Proposed for" line, the agent GET /workspace/decisions gives
 - workspace-change-proposals.md: Record changes an application proposes as cards (proposals.php, api_proposals.php): routes, agents oauth:/app:, checks, role-3 contacts, the hourly limit and its lock, who applies, what is written
