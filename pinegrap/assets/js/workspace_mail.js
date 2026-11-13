@@ -153,22 +153,39 @@
 
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_reply_send'), 'bi-send');
 
-        send.addEventListener('click', function () {
+        function sendAnswer(anyway) {
             if (!text.value.trim()) {
                 text.focus();
                 return;
             }
 
             send.disabled = true;
+            domainWarningClear(footer);
 
-            formPost(h, 'ws_mail_reply', { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: text.value }, files).then(function (result) {
+            var post = { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: text.value };
+
+            if (anyway) {
+                post.send_anyway = 1;
+            }
+
+            formPost(h, 'ws_mail_reply', post, files).then(function (result) {
                 h.hideOffcanvas(node);
                 h.toast(result.state === 'failed' ? t('mail_new_failed') : t('mail_new_sent'), result.state === 'failed' ? 'warning' : 'success');
                 view.sync();
             }).catch(function (error) {
                 send.disabled = false;
+
+                if (error.code === 'unknown_domain') {
+                    domainWarning(h, footer, error.message, function () { sendAnswer(true); }, cc.field.value ? cc.field : bcc.field);
+                    return;
+                }
+
                 h.fail(error);
             });
+        }
+
+        send.addEventListener('click', function () {
+            sendAnswer(false);
         });
 
         footer.appendChild(send);
@@ -1025,6 +1042,43 @@
 
     // A form posted with its files as form parts (New e-mail, the answer);
     // read as api() reads an answer.
+    // The warning of an address whose domain does not exist (code
+    // unknown_domain), over the drawer's buttons. Send anyway posts the same
+    // form again with send_anyway; Change the address puts the cursor in the
+    // address field. Either takes the warning away.
+    function domainWarning(h, footer, message, again, field) {
+        domainWarningClear(footer);
+
+        var box = h.el('div', 'ws-mail-domain-warning alert theme-warning small mx-4 mb-3', '');
+        var actions = h.el('div', 'd-flex flex-wrap gap-2 mt-2', '');
+        var anyway = h.button('btn btn-sm btn-solid theme-warning rounded-pill', h.t('mail_send_anyway'), 'bi-send');
+        var change = h.button('btn btn-sm btn-outline theme-secondary rounded-pill', h.t('mail_change_address'), 'bi-pencil');
+
+        box.setAttribute('role', 'alert');
+        box.appendChild(h.el('div', '', message));
+        anyway.addEventListener('click', function () {
+            domainWarningClear(footer);
+            again();
+        });
+        change.addEventListener('click', function () {
+            domainWarningClear(footer);
+            field.focus();
+        });
+        actions.appendChild(anyway);
+        actions.appendChild(change);
+        box.appendChild(actions);
+        footer.parentNode.insertBefore(box, footer);
+        anyway.focus();
+    }
+
+    function domainWarningClear(footer) {
+        var old = footer.parentNode ? footer.parentNode.querySelector('.ws-mail-domain-warning') : null;
+
+        if (old) {
+            old.parentNode.removeChild(old);
+        }
+    }
+
     function formPost(h, action, fields, files) {
         var form = new FormData();
 
@@ -1046,6 +1100,7 @@
                 var error = new Error((json && json.message) ? json.message : h.t('error_generic'));
 
                 error.field = json ? json.field : '';
+                error.code = (json && json.code) ? json.code : '';
                 throw error;
             }
 
@@ -1340,7 +1395,7 @@
 
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_new_send'), 'bi-send');
 
-        send.addEventListener('click', function () {
+        function sendNew(anyway) {
             var fields = current();
             var empty = [[to.field, fields.to], [subject.field, fields.subject], [text, fields.text]].filter(function (pair) {
                 return !pair[1].trim();
@@ -1352,11 +1407,16 @@
             }
 
             send.disabled = true;
+            domainWarningClear(footer);
 
             var post = {
                 box_id: fields.box, channel_id: fields.channel, to: fields.to, cc: fields.cc, bcc: fields.bcc,
                 subject: fields.subject, text: fields.text
             };
+
+            if (anyway) {
+                post.send_anyway = 1;
+            }
 
             if (fill) {
                 post.forward_kind = fill.kind;
@@ -1376,8 +1436,18 @@
                 }
             }).catch(function (error) {
                 send.disabled = false;
+
+                if (error.code === 'unknown_domain') {
+                    domainWarning(h, footer, error.message, function () { sendNew(true); }, to.field);
+                    return;
+                }
+
                 h.fail(error);
             });
+        }
+
+        send.addEventListener('click', function () {
+            sendNew(false);
         });
 
         footer.appendChild(send);

@@ -214,6 +214,8 @@ function ws_mail_compose_mail($request, $files)
         'subject'    => $text('subject'),
         'text'       => $text('text'),
         'files'      => array_values((array) $files),
+        // Set when the person pressed Send anyway after the unknown-domain warning.
+        'send_anyway' => !empty($request['send_anyway']) && !in_array($text('send_anyway'), array('0', 'false'), true),
     );
 }
 

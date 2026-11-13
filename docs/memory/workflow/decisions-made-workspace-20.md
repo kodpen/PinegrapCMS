@@ -18,12 +18,12 @@ description: Decisions list, workspace part 20 (2026-11-12 on): canvas-one drawi
 - On the first drawing: "hızlı kurulum fena değil biraz daha geliştir ve kapsamı genişletelim. site diğer eylemlerinide kapsasın."; shown the widened drawing: "Ha".
 
 ## Is the flow window rearranged? (owner, 2026-11-12, #8950)
-- Yes, as drawn: the left panel only adds boxes, the right panel is only the chosen box (Settings, Connections, Try), the top bar holds the flow's name, status, views, problems, Run and Publish. Plan `plans/flow-window.md`.
+- Yes, as drawn: the left panel only adds boxes, the right panel is only the chosen box (Settings, Connections, Try), the top bar holds the flow's name, status, views, problems, Run and Publish. Built by the flow-window plan (done and deleted): `workspace/workspace-flows-window-bar.md`, `-palette.md`, `-side-panel.md`, `-empty-panel.md`, `-arrow-names.md`; the drawing `plans/flow-window/flow-window.html`.
 - Owner (2026-11-12): "akış penceresini de redesign edermisin o panelde sol ve sağ panel alanları karışık görünüyor"; shown the drawing in both themes: "Aa".
 - The architect's, not the owner's words: every function of the window stays and only moves; the boxes keep their size and look.
 
 ## Do flows leave the Workspace's menu and switch? (owner, 2026-11-12, #8961)
-- Yes: "Otomasyon akışları" is a row at the top of the main menu, between the Dashboard and the Workspace, and flows run at every site behind the right only, also where the Workspace is off. Plan `plans/automation-flows-menu.md`.
+- Yes: "Otomasyon akışları" is a row at the top of the main menu, between the Dashboard and the Workspace, and flows run at every site behind the right only, also where the Workspace is off. Rules: `workspace/automation-flows-decisions.md`.
 - Owner (2026-11-12): "önemli her şeyi workspace altına tıktık ama açılmadığında akış ve birçok özellik kapalı kalacak. akışları ana menüye taşıyalım ne dersin? animasyonlu bir ikonu olsun adını da otomasyon akışları olarak güncelleyelim."
 - Asked by letters with the drawing: "Ya" (the row's place as drawn), "M1a" (on everywhere; not chosen: a switch of their own). On the three moving icons: "simge için a iyi olur" (a path with a dot that follows it).
 - "akışlar kanal içinde açılır ekranı yine kanalda kalır modernize edilerek.": the view inside a channel stays.

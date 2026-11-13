@@ -5,7 +5,7 @@ description: New dashboard Flows card (cards/flows.php, renderer in pg_dash_card
 
 ## Where is it?
 - `includes/dashboard/v2/cards/flows.php`; renderer `pgDash.renderers.flows` in `assets/js/pg_dash_cards_work.js`; styles in the "Work cards: Flows" section of `pg_dash.src.css`. Tests: `tests/dashboard_v2_flows_test.php`.
-- Title Automation flows. Card gate `flows`: `pg_flows_user_may()`, the Flows screen's gate, so the card shows with the Workspace off (AF4b); rights from `ws_rights()`, never `pg_dashboard_workspace_rights()`, which asks the switch. With the Workspace off no approval box runs, so Approve never shows.
+- Title Automation flows. Card gate `flows`: `pg_flows_user_may()`, the Flows screen's gate, so the card shows with the Workspace off (#9279); rights from `ws_rights()`, never `pg_dashboard_workspace_rights()`, which asks the switch. With the Workspace off no approval box runs, so Approve never shows.
 
 ## Which other dashboard entries ask that gate?
 - The figure "Flow runs (today)" (gate `flow_runs`: role < 3 and the card gate, as it counts every run of the site) and the shortcut Start flow (gate `flows`). Tests: `tests/automation_flows_dashboard_test.php`.

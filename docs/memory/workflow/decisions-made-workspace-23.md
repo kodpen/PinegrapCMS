@@ -9,7 +9,7 @@ description: Decisions list, workspace part 23 (2026-11-13 on): a warning before
 ## Is an e-mail to a domain that does not exist sent without a word? (owner, 2026-11-13, #9267)
 - No: before a Workspace e-mail leaves, an address whose domain does not exist gets a warning.
 - Owner (2026-11-13), on a mail the queue showed as sent: "eposta iletildi görünyor ancak eposta kutusuna düşmemiş"; asked "Olmayan alan adına gönderimde uyarı veren küçük bir plan yazayım mı?": "Evet, yaz".
-- The architect's, not the owner's words: a warning and not a refusal, the person may send anyway; a lookup that fails warns of nothing; a near domain is named when the sending mailbox's own is within two letters; the queue's word "Sent" stays. Plan: `plans/mail-domain-warning.md` (MW1).
+- The architect's, not the owner's words: a warning and not a refusal, the person may send anyway; a lookup that fails warns of nothing; a near domain is named when the sending mailbox's own is within two letters; the queue's word "Sent" stays. Behaviour: `workspace/mail-domain-warning.md` (MW1, #9303).
 
 ## Who can be answered by SMS from a channel? (owner, 2026-11-13, #9286)
 - Only the conversation's number, within 7 days of its last SMS, as a transactional kind of its own (`reply`); no consent is asked, since it answers what the customer wrote.

@@ -18,7 +18,7 @@ description: How e-mail campaign profiles become flows with no mail lost or sent
 - A `ws_events_in` row created before S − 60 s never starts that flow: the profile served its action. After S + 60 s it always does. In between it starts only when the profile made no automatic campaign to the event's person from the event's second less 60 s on (`email_campaigns.email_campaign_profile_id`, its recipient).
 - Why the window: one request may run `create_auto_email_campaigns()` before or after `pg_event_record()` (a booking announces first, an order calls the profiles first), so a boundary on either alone loses or doubles the mail of a request caught at S.
 - Why the event's own time: rows wait in `ws_events_in` until the job takes them, and every active start box matches them then (`ws_events_start()`), so a flow published at S would also start for older rows.
-- Flows run with the Workspace off first (AF1 to AF3): until then `pg_event_record()` records nothing on such a site.
+- Flows run with the Workspace off since #9109 and #9154 (`workspace/automation-flows-gate.md`): `pg_event_record()` records an event there while a live flow waits for it.
 
 ## Twice by a retry?
 - No: an event start is keyed `sched:<ws_scheduled_runs id>`, and the e-mail box writes `began:email` before it sends, so a stale box fails instead of sending again (`workspace/workspace-flows-steps.md`).

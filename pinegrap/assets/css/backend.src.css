@@ -5854,11 +5854,9 @@ html[data-bs-theme="dark"] .cke_bottom {
   background-image: unset !important;
 }
 
-html[data-bs-theme="dark"] .cke_dialog_title {
-  background: #1f1f1f !important;
-  color: white !important;
-}
-
+/* The editor's dialogs and drop-down lists (Link, Format, Styles) keep the
+   light skin as one surface: the lists open in an iframe that does not load
+   this file, so a dark title bar alone left a white body under a black bar. */
 html[data-bs-theme="dark"] .cke_chrome {
   border: 1px solid #282828 !important;
 }
@@ -15078,6 +15076,8 @@ a.ws-chip:hover {
 .ws-task-card {
   margin-top: .35rem;
   max-width: 36rem;
+  /* A long word or link in the title wraps inside the card. */
+  overflow-wrap: anywhere;
   border: 1px solid var(--pg-border-color-translucent);
   border-left: 4px solid var(--ws-accent);
   border-radius: var(--ws-radius-sm);
@@ -21090,6 +21090,7 @@ a.ws-tag-card-head:hover span {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    overflow-wrap: anywhere;
 }
 .ws-tpl-card-name {
     font-weight: 600;
@@ -22092,6 +22093,225 @@ html.ws-flow-layer-on body {
 .wsf-quick-when-row .wsf-quick-when-value.d-none + .pg-icon-button {
   grid-column: 4;
 }
+/* The second stage: the steps chosen in a row, the recipes and the kinds
+   by group, a step's own setting (the canvas's fields, nodeForm()). */
+.wsf-quick-steps {
+  height: 100%;
+  padding-bottom: 16px;
+  overflow-y: auto;
+}
+.wsf-quick-tile {
+  --pg-tone: var(--wsf-kind, var(--pg-tone-gray));
+}
+.wsf-quick-tile .ws-flow-icon {
+  width: 14px;
+  height: 14px;
+}
+.wsf-quick-tile-sm {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+.wsf-quick-tile-sm .ws-flow-icon {
+  width: 12px;
+  height: 12px;
+}
+.wsf-quick-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+.wsf-quick-trail-step,
+.wsf-quick-trail-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 11px 0 5px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  white-space: nowrap;
+}
+.wsf-quick-trail-step:hover {
+  background: var(--pg-hover);
+}
+.wsf-quick-trail-step.is-active {
+  background: color-mix(in srgb, var(--pg-accent) 9%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--pg-accent);
+  color: var(--pg-fg-body);
+  font-weight: var(--pg-weight-strong);
+}
+.wsf-quick-trail-new {
+  padding-left: 11px;
+  box-shadow: inset 0 0 0 1px var(--pg-accent);
+  color: var(--pg-accent);
+  font-weight: var(--pg-weight-strong);
+}
+.wsf-quick-trail-n {
+  padding-left: 4px;
+  color: var(--pg-fg-3);
+}
+.wsf-quick-trail-name {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wsf-quick-lead {
+  outline: 0;
+}
+.wsf-quick-lead-sub {
+  margin: 3px 0 14px;
+}
+.wsf-quick-recipes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.wsf-quick-recipe {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 11px 12px 10px;
+  border: 0;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--pg-accent) 6%, var(--pg-card-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-accent) 22%, var(--pg-border-color-translucent));
+  color: inherit;
+  text-align: left;
+}
+.wsf-quick-recipe:hover {
+  background: color-mix(in srgb, var(--pg-accent) 11%, var(--pg-card-bg));
+}
+.wsf-quick-recipe-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  color: var(--pg-fg-3);
+}
+.wsf-quick-group {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 7px 0;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.wsf-quick-group-name {
+  padding-top: 8px;
+  color: var(--pg-fg-3);
+  font-weight: var(--pg-weight-strong);
+}
+.wsf-quick-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.wsf-quick-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 11px 0 5px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  white-space: nowrap;
+}
+.wsf-quick-act:hover {
+  background: var(--pg-hover);
+  color: var(--pg-fg-body);
+}
+.wsf-quick-step-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.wsf-quick-step-head h3 {
+  margin-right: auto;
+  outline: 0;
+}
+.wsf-quick-form {
+  max-width: 560px;
+}
+/* The summary: the start and the steps on a line, a held step indented
+   (--wsf-quick-depth), the name and "Start working when saved". */
+.wsf-quick-line {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.wsf-quick-event {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  margin-left: calc(var(--wsf-quick-depth, 0) * 30px);
+  padding-bottom: 14px;
+}
+.wsf-quick-event::before {
+  content: "";
+  position: absolute;
+  top: 38px;
+  bottom: 2px;
+  left: 16px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--pg-border-color-translucent);
+}
+.wsf-quick-event:last-child::before {
+  display: none;
+}
+.wsf-quick-event-words {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-top: 1px;
+}
+.wsf-quick-event-tools {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+.wsf-quick-add {
+  margin: 0 0 12px 47px;
+}
+.wsf-quick-name {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 14px;
+  align-items: end;
+  padding-top: 12px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.wsf-quick-publish {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  margin: 0;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+}
+.wsf-quick-error {
+  margin: 12px 0 0;
+}
 @media (max-width: 767.98px) {
   .dialog.wsf-quick {
     --bs-dialog-width: 100%;
@@ -22112,6 +22332,9 @@ html.ws-flow-layer-on body {
   .wsf-quick-rail-line {
     display: none;
   }
+  .wsf-quick-recipes,
+  .wsf-quick-group,
+  .wsf-quick-name,
   .wsf-quick-cards,
   .wsf-quick-when-row {
     grid-template-columns: minmax(0, 1fr);
@@ -22230,6 +22453,19 @@ html.ws-flow-layer-on body {
   stroke: var(--pg-bg-1);
   stroke-width: 3px;
 }
+/* The outcome an arrow leaves by, on a pill at its middle. */
+.pgc-edge-pill {
+  fill: var(--pg-bg-1);
+  stroke: var(--pg-border-color);
+  stroke-width: 1;
+}
+.pgc-edge-pill + .pgc-edge-label {
+  font-weight: var(--pg-weight-strong);
+  stroke: none;
+}
+.pgc-edge.pgc-selected .pgc-edge-pill {
+  stroke: var(--pgc-accent, var(--pg-primary));
+}
 .pgc-edge-temp {
   fill: none;
   stroke: var(--pgc-accent, var(--pg-primary));
@@ -22317,6 +22553,7 @@ html.ws-flow-layer-on body {
   --pgc-marker-on: url(#wsf-arrow-on);
 }
 .wsf-arrowhead-bad { fill: var(--pg-danger); }
+.pgc-edge.wsf-bad .pgc-edge-pill { stroke: var(--pg-danger); }
 .pgc-edge.wsf-bad .pgc-edge-line {
   stroke: var(--pg-danger);
   stroke-dasharray: 6 4;
@@ -24810,9 +25047,6 @@ select.pg-list-table-field option.private {
   flex: 1 1 auto;
   min-width: 0;
 }
-.pg-picker-browse {
-  flex: 0 0 auto;
-}
 .pg-picker-folder-row {
   flex-direction: row;
   gap: 0.75rem;
@@ -26465,8 +26699,8 @@ textarea.pg-input {
 
 /* ==========================================================================
    Look A: page widths.
-   An add or edit screen's content is centred and at most 1120 px (form
-   column 760, status column 336, 24 between); a list is as wide as its
+   An add or edit screen's content is centred and at most 1700 px (form
+   column 1300, status column 376, 24 between); a list is as wide as its
    columns need, at least 1700 px or the window, at most the window, and an
    open details panel adds its width to that. A screen
    takes them with a class on <body> ('extra classes'): pg-measure-edit, with
@@ -26476,9 +26710,9 @@ textarea.pg-input {
 @layer custom {
 
 :root {
-  --pg-measure-edit: 1120px;
-  --pg-measure-form: 760px;
-  --pg-measure-status: 336px;
+  --pg-measure-edit: 1700px;
+  --pg-measure-form: 1300px;
+  --pg-measure-status: 376px;
   --pg-measure-gap: 24px;
   --pg-measure-list-min: 1700px;
   /* A list's details panel beside its rows (from 1024 px). */
@@ -26501,7 +26735,7 @@ body.pg-measure-edit #content {
     max-width: calc(var(--pg-measure-edit) + var(--pg-measure-rail) + 2rem);
   }
 }
-/* From lg the two columns are a grid: the status column keeps its 336 px
+/* From lg the two columns are a grid: the status column keeps its 376 px
    while the form column gives way first; the save bar spans both. Below lg
    they stack in source order as before. */
 @media (min-width: 1024px) {
@@ -26560,30 +26794,31 @@ body.pg-measure-list .pg-toolbar-search {
 /* ==========================================================================
    Look A: add and edit screens.
    The family of add and edit screens (the body class pg-measure-edit): the
-   form column 760 and the status column 336 out of the shared column
+   form column 1300 and the status column 376 out of the shared column
    classes, cards with the look's card and titles, and the save bar floating
    at the window's bottom, as wide as the content, its buttons at the right.
    ========================================================================== */
 @layer custom {
 
 /* Every add or edit screen prints its columns with the same classes
-   (lg:col-8 2xl:col-9 order-1, lg:col-4 2xl:col-3 order-2). From lg they
-   share the row in the measures' ratio, 760 to 336, so at the full measure
-   the form column is 760 px and the status column 336 px; the save bar's
-   col-12 wraps under both. min-width: 0 keeps them in the row: with no
-   width of their own a flex item's floor is its content's min-content
-   width, so a value that does not wrap (a combobox listing every chosen
-   state, a long address) would widen the column and the page past the
-   window. */
+   (lg:col-8 2xl:col-9 order-1, lg:col-4 2xl:col-3 order-2). From lg the
+   status column keeps its 376 px (the basis adds the two 12 px gutter
+   paddings) and the form column takes the rest, so at the full measure the
+   form column is 1300 px and on a narrower window it gives way first; the
+   save bar's col-12 wraps under both. min-width: 0 keeps them in the row:
+   with no width of their own a flex item's floor is its content's
+   min-content width, so a value that does not wrap (a combobox listing
+   every chosen state, a long address) would widen the column and the page
+   past the window. */
 @media (min-width: 1024px) {
   body.pg-measure-edit .row > .order-1.lg\:col-8 {
-    flex: 760 1 0%;
+    flex: 1 1 0%;
     width: auto;
     min-width: 0;
     max-width: none;
   }
   body.pg-measure-edit .row > .order-2.lg\:col-4 {
-    flex: 336 1 0%;
+    flex: 0 0 calc(var(--pg-measure-status) + var(--pg-measure-gap));
     width: auto;
     min-width: 0;
     max-width: none;

@@ -525,6 +525,7 @@
     "Leave it empty for a course or an evening without a boat.": "Teknesiz bir kurs ya da akşam için boş bırakın.",
     "Leave it empty for no limit. Paging happens within this ceiling.": "Boş bırakılırsa sınır yoktur. Sayfalama bu üst sınırın içinden yapılır.",
     "Leave it empty for one day.": "Tek günse boş bırakın.",
+    "Leave it empty for the contact of the run's record, or name one by its number or one value, such as {{trigger.contact_id}}.": "Çalışmanın kaydındaki kişi için boş bırakın ya da bir kişiyi numarasıyla veya {{trigger.contact_id}} gibi tek bir değerle belirtin.",
     "Leave it empty if any day suits you.": "Her gün size uyuyorsa boş bırakın.",
     "Leave it empty if the date is open.": "Tarih belli değilse boş bırakın.",
     "Leave it empty if the flowers are for you.": "Çiçekler sizin içinse boş bırakın.",

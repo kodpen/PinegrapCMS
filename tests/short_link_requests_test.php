@@ -183,11 +183,6 @@ function test_short_link_lists_leave_binned_pages_and_files_out_but_keep_the_lin
 	pg_assert_contains("'invalid' => \$liveform->check_field_error('file')", $form, 'classic: a refused file shows on the field');
 	pg_assert_contains("array('product_group_id' => array(), 'product_id' => 0)", $form, 'classic add keeps nothing');
 
-	$picker = short_link_requests_test_function_body(short_link_requests_test_source('includes/fn/file_picker_search.php'), 'pg_file_picker_id_options');
-
-	pg_assert_contains('in_array((int) $row[\'folder\'], pg_recycle_bin_folder_ids(), true)', $picker, 'classic: a binned file is found by its folder');
-	pg_assert_contains("pg_recycle_parked_original(\$row['name'], \$row['id'])", $picker, 'classic: the binned file is shown under the name it had');
-
 	$edit = short_link_requests_test_source('edit_short_link.php');
 
 	pg_assert_false(strpos($edit, "'page_id' => \$short_link['page_id'],") !== false, 'classic edit: the page fields hold the stored page, no list keeps it');

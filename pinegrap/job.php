@@ -685,6 +685,14 @@ if (is_file(PG_FUNCTIONS_DIR . '/data/temp/legacy_to_designer.json')) {
     pg_ltd_job_tick(pg_cron_time_left(20));
 }
 
+// Pages moving to a Legacy design's trial design or back
+// (includes/fn/legacy_bootstrap_move.php), worked the same way; with none it
+// is one missing file.
+if (is_file(PG_FUNCTIONS_DIR . '/data/temp/legacy_to_bootstrap.json')) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_move.php');
+    pg_lbs_move_job_tick(pg_cron_time_left(20));
+}
+
 // Page revisions (includes/fn/page_revisions.php): once a day the rows of
 // deleted pages go, and every page holding more revisions than the count rule
 // keeps is trimmed by the age rule. A tick with nothing due reads one small
@@ -996,6 +1004,15 @@ if (pg_sms_queue_ready()) {
 
     pg_sms_queue_run(10, 15);
 
+}
+
+// Queued WhatsApp messages (pg_whatsapp_queue_run() in includes/fn/whatsapp.php),
+// on the SMS pass's terms: a request only queues, this pass sends. The module
+// is loaded only when the table exists; an empty queue costs one read.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+
+if (pg_whatsapp_queue_ready()) {
+    pg_whatsapp_queue_run(10, 15);
 }
 
 // Workspace task reminders, and the notice that a task went overdue

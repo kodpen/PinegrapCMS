@@ -1,6 +1,6 @@
 ---
 name: main-menu-automation-flows-row
-description: Main menu row 26, Automation flows (AF4, AF5, #9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, icon A and its motion
+description: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, icon A and its motion
 ---
 
 ## Where does the row sit?
@@ -18,7 +18,7 @@ description: Main menu row 26, Automation flows (AF4, AF5, #9169): its place at 
 
 ## Which screen does it light?
 - `workspace_flows.php` marks row 26 (23 where the row is not built). There the Workspace list does not open by itself and the screen is no navigator screen (`$ws_side_screen` cleared while the row exists); a panel kept from the list's own Flows link still reopens.
-- The screen's title and heading, the list's label (`fl_nav`) and the Workspace tour's step say Automation flows; sentences keep "flow". The Dashboard's Flows card keeps its name and the Workspace's gate.
+- The screen's title and heading, the list's label (`fl_nav`) and the Workspace tour's step say Automation flows; sentences keep "flow". The Dashboard's card is titled Automation flows and asks the screen's gate (`dashboard-v2-flows-card.md`).
 
 ## How does icon A move?
 - `pg_menu_icon('flows')`: start circle, step box (`.pg-mi-step`) and end circle in `workspace-color`; the path and the dot (`.pg-mi-dot`) in the sky accent. The dot rests in the end by its `transform` attribute.
@@ -27,4 +27,4 @@ description: Main menu row 26, Automation flows (AF4, AF5, #9169): its place at 
 ## How was it checked?
 - `tests/automation_flows_menu_test.php`; the sandbox with the Workspace off and on: the row's place, a waiting run counted (1, as the list's Waiting), the row lit on the screen with the list shut, the rail's dot, the phone drawer, both themes, no movement under reduced motion.
 
-Related: docs/memory/ui/main-menu-categories.md, docs/memory/ui/main-menu-icons.md, docs/memory/workspace/automation-flows-screen.md
+Related: docs/memory/ui/main-menu-categories.md, docs/memory/ui/main-menu-icons.md, docs/memory/workspace/automation-flows-screen.md, docs/memory/workspace/automation-flows-decisions.md

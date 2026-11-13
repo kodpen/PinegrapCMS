@@ -55,6 +55,10 @@ if (!$message || !$channel || ((int) $message['deleted_at'] > 0) || !ws_can_read
 
 session_write_close();
 
+// The canvas's page part: the message's own page, or one added beside its
+// drawing (includes/workspace/canvas_parts.php).
+$message = ws_canvas_part_message($message, 'page') ?: $message;
+
 $file = ((int) $message['file_id'] > 0)
     ? db_item("SELECT name, size FROM files WHERE id = '" . (int) $message['file_id'] . "'")
     : null;

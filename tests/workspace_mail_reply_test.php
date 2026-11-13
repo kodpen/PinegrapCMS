@@ -207,7 +207,8 @@ function test_workspace_mail_reply_reaches_the_screen()
 	pg_assert_contains('window.PGWsMail.node(message, self, featureHelpers())', $screen, 'drawn under the card');
 	pg_assert_contains('(message.mail_reply || message.mail_resend) && window.PGWsMail', $screen, 'and under an answer that could not leave');
 	pg_assert_contains("h.api('ws_mail_reply_form', { conversation_id: message.mail_reply })", $script, 'whom it goes to, asked first');
-	pg_assert_contains("formPost(h, 'ws_mail_reply', { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: text.value }, files)", $script);
+	pg_assert_contains("var post = { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: text.value };", $script);
+	pg_assert_contains("formPost(h, 'ws_mail_reply', post, files)", $script);
 	pg_assert_contains("'ws_mail_reply_form',", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php'), 'the panel knows the action');
 	pg_assert_contains("} else if (keep) {\n                    pane.querySelector('h2').focus({ preventScroll: true });", str_replace("\r\n", "\n", $script), 'a redrawn pane keeps the keyboard in it after the answer');
 	pg_assert_true(in_array('assets/js/workspace_mail.js', pg_js_bundles()['assets/js/workspace.min.js'], true), 'in the bundle');

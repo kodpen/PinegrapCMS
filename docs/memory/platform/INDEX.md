@@ -178,7 +178,7 @@
 - short-link-names.md: Short link names (2026.11.0): the name and address rules, a pasted old address as a name, how a request finds its link, IIS name recovery, how two names compare.
 - short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md. [decision: here]
 - site-icon.md: The site icon (favicon sizes, apple-touch-icon, site.webmanifest): setting in config_text, sizes drawn by the image engine, router addresses, head links.
-- sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left [decision: decisions-made-customers.md, decisions-made-product-8.md]
+- sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left [decision: here]
 - sms-campaign-limit-and-labels.md: SMS campaign text limit and no maxlength, status labels, xref rows on group delete, save after the job claim, cancel confirm, read-only times, cut list name
 - sms-campaigns.md: SMS campaigns beside the e-mail campaigns (PR #3846, #3570, tables decided #3847): the two tables, the audience, the job's queueing through pg_sms_enqueue(), the screens [decision: decisions-made-customers.md, decisions-made-product-8.md, decisions-made-schema-7.md]
 - sms-codes.md: One-time codes by SMS (includes/fn/sms_codes.php): session hash bound to purpose, subject and number, ten minutes, five guesses, queue reference and expires_at per send
@@ -215,6 +215,7 @@
 - whatsapp-cloud-api-facts.md: Meta's WhatsApp Cloud API on 2026-11-12: Graph version, ids and permanent token, sending a template, the 24-hour window, template limits, categories, prices, media
 - whatsapp-cloud-api-webhooks.md: Meta's WhatsApp webhooks and error codes on 2026-11-12: verify call, X-Hub-Signature-256, retries, fields, delivery and template states, BSUIDs, which codes may be retried
 - whatsapp-connection.md: WhatsApp account (WA1, #9067): the Communication › WhatsApp card and its five steps, connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature
+- whatsapp-outbox-queue.md: WhatsApp queue (whatsapp_outbox, step 11.0.196, WA2): pg_whatsapp_enqueue() and its refusals, the general job's pass on the SMS queue's rules, consent asked again at the send, erasure [decision: decisions-made-product-48.md]
 - windows-folder-is-writable.md: Ask pg_dir_writable(), never is_writable(), about a folder: PHP on Windows reads its read-only attribute (OneDrive, Explorer), which stops nothing; where it bit, how each check asks now
 - x-rewrite-url-iis-only.md: The request's address is read by pg_request_uri_from_server(): X-Rewrite-URL counts on IIS only, else a client header could replace the routed address and slip past the firewall
 - zip-entry-declared-size.md: A zip entry is read no further than its archive declares: streams via pg_zip_entry_uri(), whole entries via pg_zip_entry_contents(), ZIP imports via pg_zip_import_open(), .ods checked

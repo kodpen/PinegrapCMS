@@ -12,7 +12,7 @@ description: Plan (owner 2026-11-12, #8961): one messages area in place of My Ca
 - İa: the area as drawn. It takes the place of the My Campaigns row under Marketing (Turkish "İletişim") and has five tabs: Campaigns, Automatic sends, Templates, Sends, Channels.
 - Sends is one list: a campaign's sending and history (a row that opens to its recipients) and every single message of the e-mail, SMS and WhatsApp queues with its source (order, form, flow, code), state and retry.
 - A campaign's e-mail body is designed as a page: edit the design, start from a ready design, paste HTML, preview on a phone, send a test.
-- Automatic sends are flows (`automation-flows-menu.md`), with ready recipes and the quick setup (`flows-quick-setup.md`).
+- Automatic sends are flows (`workspace/automation-flows-decisions.md`), with ready recipes and the quick setup (`flows-quick-setup.md`).
 - M2b: at the update every e-mail campaign profile is turned into a flow by itself and the profile screens go.
 
 ## What else is decided, and what waits?
@@ -25,5 +25,5 @@ description: Plan (owner 2026-11-12, #8961): one messages area in place of My Ca
 - Rights stay per screen as today; a tab shows only to who may open its screen.
 - Lists on the table driver, the look from look A (`panel-design-language-sheet.md`); the names in the drawing are examples.
 - Made anew means redrawn: a screen is built from the drawing, an old screen moved in is redrawn and never carried as it is, and each step shows its real screens to the owner before its PR goes ready. Owner (2026-11-13, #9295), on the area as first built: "kampanyalar ekranları olduğu gibi geçmiş ve yeni ekranlarda o sayfalar kadar eski olarak üretilmiş"; "ben modernleştirme turu da istemiştim birlikteliğinde".
-- A profile is turned into a flow only where flows run without the Workspace (step AF3 of `automation-flows-menu.md`). Across the update no send is lost or sent twice; a profile with a part no box covers keeps running and is listed, never dropped silently.
+- A profile is turned into a flow only where flows run without the Workspace (since #9154, `workspace/automation-flows-workspace-boxes.md`). Across the update no send is lost or sent twice; a profile with a part no box covers keeps running and is listed, never dropped silently.
 - The settings of a channel stay in the settings; the Channels tab shows each channel's state and leads there.

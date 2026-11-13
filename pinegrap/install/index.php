@@ -9188,6 +9188,7 @@ function get_tables() {
 		'visitor_reports',
 		'visitors',
 		'watchers',
+		'whatsapp_outbox',
 		'wishlist_items',
 		'zones',
 		'zones_countries_xref',

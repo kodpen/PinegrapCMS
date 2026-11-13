@@ -75,7 +75,7 @@
     function draw(message, h) {
         var file = message.file || {};
         var version = parseInt(file.canvas_pending, 10) || 0;
-        var key = message.id + ':' + version;
+        var key = message.id + ':' + (file.canvas_part || '') + ':' + version;
 
         if (!version || started[key] || !window.pgImageEditor || !window.fetch) {
             return Promise.resolve(null);
@@ -83,7 +83,10 @@
 
         started[key] = true;
 
-        var url = h.cfg.urls.file_save + '?message=' + encodeURIComponent(message.id);
+        // A drawing added beside a page is its canvas's part, not the
+        // message's own file (includes/workspace/canvas_parts.php).
+        var url = h.cfg.urls.file_save + '?message=' + encodeURIComponent(message.id)
+            + ((file.canvas_part === 'drawing') ? '&part=drawing' : '');
 
         return Promise.all([window.pgImageEditor.load(), fetchDoc(url, h.cfg.token)]).then(function (loaded) {
             return loaded[1] ? render(loaded[1]) : null;

@@ -983,3 +983,376 @@ function pg_whatsapp_webhook_receive()
 
     pg_whatsapp_webhook_answer(200, json_encode(array('ok' => true)));
 }
+
+
+/* ---------------------------------------------------------------------------
+   The queue (whatsapp_outbox)
+   --------------------------------------------------------------------------- */
+
+// Meta's template categories, as a queued message records the one it had.
+define('PG_WHATSAPP_CATEGORIES', 'MARKETING,UTILITY,AUTHENTICATION');
+
+// The largest payload stored: the filled components of one template.
+define('PG_WHATSAPP_PAYLOAD_MAX', 65535);
+
+/**
+ * Whether the 2026.11.0 upgrade has created whatsapp_outbox.
+ *
+ * @return bool
+ */
+function pg_whatsapp_queue_ready()
+{
+    return pg_schema_has('whatsapp_outbox');
+}
+
+/**
+ * The row pg_whatsapp_enqueue() writes, from the caller's template and
+ * options; no database.
+ *
+ * The number goes through the SMS layer's normalising (pg_sms_number()), so
+ * a national form reads as a Turkish mobile as it does for a text message.
+ * A reference is refused rather than dropped when it is not a name, since
+ * dropping it would lose the guard against queueing the same message twice.
+ *
+ * @param mixed $to
+ * @param array $template name, language, category (MARKETING, UTILITY or
+ *                        AUTHENTICATION, as Meta has it), components (the
+ *                        filled header, body and button parameters),
+ *                        id (the template's row, 0 for none)
+ * @param array $options  kind (what queued it: letters, digits and _, at most
+ *                        16), reference, send_after, expires_at, contact_id
+ * @param int   $now
+ * @return array the columns of the row; error alone when something is refused
+ */
+function pg_whatsapp_queue_row($to, $template, $options, $now)
+{
+    $now = (int) $now;
+    $template = is_array($template) ? $template : array();
+    $options = is_array($options) ? $options : array();
+
+    $text = function ($from, $name) {
+        return (isset($from[$name]) && is_scalar($from[$name])) ? trim((string) $from[$name]) : '';
+    };
+
+    $number = pg_sms_number(is_scalar($to) ? (string) $to : '');
+
+    if ($number === '') {
+        return array('error' => lang('This is not a mobile number a WhatsApp message can be sent to.'));
+    }
+
+    $name = $text($template, 'name');
+
+    if (!preg_match('/^[a-z0-9_]{1,512}$/D', $name)) {
+        return array('error' => lang('A template name has only lower-case letters, digits and _.'));
+    }
+
+    $language = $text($template, 'language');
+
+    if (!preg_match('/^[a-z]{2,3}(_[A-Za-z0-9]{2,4})?$/D', $language)) {
+        return array('error' => lang('The template language is not a code such as en_US or tr.'));
+    }
+
+    $category = strtoupper($text($template, 'category'));
+
+    if (!in_array($category, explode(',', PG_WHATSAPP_CATEGORIES), true)) {
+        return array('error' => lang('The template category is not marketing, utility or authentication.'));
+    }
+
+    $components = (isset($template['components']) && is_array($template['components'])) ? array_values($template['components']) : array();
+    $payload = json_encode($components, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+    if (!is_string($payload) || (strlen($payload) > PG_WHATSAPP_PAYLOAD_MAX)) {
+        return array('error' => lang('The template\'s variables could not be stored.'));
+    }
+
+    $kind = $text($options, 'kind');
+
+    if (!preg_match('/^[a-z0-9_]{1,16}$/D', $kind)) {
+        return array('error' => lang('The kind of a WhatsApp message has at most 16 lower-case letters, digits and _.'));
+    }
+
+    $reference = $text($options, 'reference');
+
+    if (($reference !== '') && !preg_match('#^[A-Za-z0-9:._/-]{1,64}$#D', $reference)) {
+        return array('error' => lang('The reference of a WhatsApp message has at most 64 letters, digits and the characters : . _ - /'));
+    }
+
+    $send_after = isset($options['send_after']) ? max($now, (int) $options['send_after']) : $now;
+    $expires_at = isset($options['expires_at']) ? max(0, (int) $options['expires_at']) : 0;
+
+    if (($expires_at > 0) && ($expires_at <= $send_after)) {
+        return array('error' => lang('The message would expire before it could be sent.'));
+    }
+
+    return array(
+        'created_at'        => $now,
+        'send_after'        => $send_after,
+        'expires_at'        => $expires_at,
+        'status'            => 'queued',
+        'kind'              => $kind,
+        'recipient'         => $number,
+        'reference'         => ($reference === '') ? null : $reference,
+        'contact_id'        => isset($options['contact_id']) ? max(0, (int) $options['contact_id']) : 0,
+        'template_id'       => isset($template['id']) ? max(0, (int) $template['id']) : 0,
+        'template_name'     => $name,
+        'template_language' => $language,
+        'category'          => $category,
+        'payload'           => $payload,
+    );
+}
+
+/**
+ * Puts one template message in the queue for the general job
+ * (pg_whatsapp_queue_run()). This is what a request calls: it makes no call
+ * to Meta. A marketing template goes only to a number with SMS marketing
+ * consent and no refusal (pg_sms_marketing_permission()), asked here and
+ * again when the message is sent. Nothing is queued while WhatsApp is not
+ * set up, so nothing collects on a site without it.
+ *
+ * db_q() rather than db(): a request that only wanted to send a message must
+ * not end because the queue refused a row.
+ *
+ * @param string $to
+ * @param array  $template pg_whatsapp_queue_row()
+ * @param array  $options  pg_whatsapp_queue_row()
+ * @return array ok, row (the queue's id), duplicate (a message with this
+ *               reference was already queued; row is that one), error
+ */
+function pg_whatsapp_enqueue($to, $template, $options = array())
+{
+    $refused = array('ok' => false, 'row' => 0, 'duplicate' => false, 'error' => '');
+
+    $row = pg_whatsapp_queue_row($to, $template, $options, time());
+
+    if (isset($row['error'])) {
+        $refused['error'] = $row['error'];
+        return $refused;
+    }
+
+    if ($row['category'] === 'MARKETING') {
+        $refusal = pg_sms_marketing_permission($row['recipient']);
+
+        if ($refusal !== '') {
+            $refused['error'] = $refusal;
+            return $refused;
+        }
+    }
+
+    if (function_exists('pg_demo') && pg_demo()) {
+        $refused['error'] = lang('No WhatsApp message is sent from a demonstration site.');
+        return $refused;
+    }
+
+    if (!pg_whatsapp_queue_ready()) {
+        $refused['error'] = lang('The WhatsApp queue is not available yet; run the upgrade.');
+        return $refused;
+    }
+
+    if (!pg_whatsapp_ready()) {
+        $refused['error'] = lang('WhatsApp is not set up.');
+        return $refused;
+    }
+
+    $columns = array('created_at', 'send_after', 'expires_at', 'status', 'kind', 'recipient', 'reference', 'contact_id',
+        'template_id', 'template_name', 'template_language', 'category', 'payload');
+    $values = array();
+
+    foreach ($columns as $column) {
+        $values[] = ($row[$column] === null) ? null : (string) $row[$column];
+    }
+
+    $result = db_q(
+        "INSERT INTO whatsapp_outbox (" . implode(', ', $columns) . ")
+        VALUES (" . implode(', ', array_fill(0, count($columns), '?')) . ")",
+        $values);
+
+    if ($result !== false) {
+        return array('ok' => true, 'row' => (int) mysqli_insert_id(db::$con), 'duplicate' => false, 'error' => '');
+    }
+
+    // ER_DUP_ENTRY on the reference: this message is already in the queue.
+    if (($row['reference'] !== null) && ((int) mysqli_errno(db::$con) === 1062)) {
+        $existing = (int) db_value("SELECT id FROM whatsapp_outbox WHERE reference = '" . e($row['reference']) . "'");
+
+        return array('ok' => true, 'row' => $existing, 'duplicate' => true, 'error' => '');
+    }
+
+    $refused['error'] = lang('The message could not be queued.');
+    return $refused;
+}
+
+/**
+ * The send a claimed row gets, or why it gets none; no database except the
+ * marketing consent, which is asked again here because it may have been
+ * withdrawn since the message was queued.
+ *
+ * @param array $row      kind, recipient, category, template_name,
+ *                        template_language, payload
+ * @param array $app      pg_whatsapp_app()
+ * @param bool  $consent  whether a marketing template may go to this number
+ * @return array|null null when the row should be sent; else a refusal in
+ *                    pg_whatsapp_cloud_send_parse()'s shape
+ */
+function pg_whatsapp_queue_refusal($row, $app, $consent)
+{
+    $refuse = function ($error) {
+        return array('ok' => false, 'id' => '', 'code' => '', 'error' => (string) $error, 'retry' => false, 'uncertain' => false);
+    };
+
+    if (!$app['enabled'] || !pg_whatsapp_app_complete($app)) {
+        return $refuse(lang('WhatsApp is not set up.'));
+    }
+
+    if (($row['category'] === 'MARKETING') && !$consent) {
+        return $refuse(lang('This number has no marketing consent for WhatsApp messages.'));
+    }
+
+    if (!is_array(json_decode((string) $row['payload'], true))) {
+        return $refuse(lang('The template\'s variables could not be read.'));
+    }
+
+    return null;
+}
+
+/**
+ * Sends what is due in the queue. Called by job.php on every run. Bounded by
+ * a row count and wall-clock time: Meta not answering costs its timeout per
+ * message, and this must not hold the general job past its next tick.
+ *
+ * The SMS queue's rules (pg_sms_queue_outcome()): a message is sent again
+ * only when nothing reached Meta or Meta's error code says a later try may
+ * work; one whose outcome is unknown is never sent again by itself.
+ *
+ * @param int $limit
+ * @param int $seconds
+ * @return array sent, failed (sends that did not get through in this run,
+ *               tried again later or not)
+ */
+function pg_whatsapp_queue_run($limit = 10, $seconds = 15)
+{
+    $result = array('sent' => 0, 'failed' => 0);
+
+    if (!pg_whatsapp_queue_ready()) {
+        return $result;
+    }
+
+    // An empty queue, the case of every site without WhatsApp, costs this
+    // one read.
+    if (!db_value("SELECT id FROM whatsapp_outbox LIMIT 1")) {
+        return $result;
+    }
+
+    // A run that stopped while sending leaves its row in 'sending'. Meta may
+    // have taken the message, so it is not queued again.
+    db(
+        "UPDATE whatsapp_outbox
+        SET
+            status = 'uncertain',
+            claimed_at = 0,
+            last_error = '" . e(pg_mail_clip(lang('The run that was sending this message stopped before Meta\'s answer was recorded, so it may have been sent.'), 500)) . "'
+        WHERE
+            (status = 'sending')
+            AND (claimed_at < " . (time() - 900) . ")");
+
+    $app = pg_whatsapp_app();
+    $driver = false;
+
+    $deadline = microtime(true) + $seconds;
+
+    for ($looked = 0; ($looked < (int) $limit) && (microtime(true) < $deadline); $looked++) {
+
+        $id = (int) db_value(
+            "SELECT id
+            FROM whatsapp_outbox
+            WHERE
+                (status = 'queued')
+                AND (send_after <= UNIX_TIMESTAMP())
+            ORDER BY send_after, id
+            LIMIT 1");
+
+        if (!$id) {
+            break;
+        }
+
+        // Claimed before it is sent; the condition on status lets exactly one
+        // of two overlapping runs change the row.
+        db(
+            "UPDATE whatsapp_outbox
+            SET status = 'sending', claimed_at = UNIX_TIMESTAMP()
+            WHERE
+                (id = '" . $id . "')
+                AND (status = 'queued')");
+
+        if (mysqli_affected_rows(db::$con) < 1) {
+            continue;
+        }
+
+        $row = db_item(
+            "SELECT id, attempts, send_after, expires_at, kind, recipient, category, template_name, template_language, payload
+            FROM whatsapp_outbox
+            WHERE id = '" . $id . "'");
+
+        if (!is_array($row)) {
+            continue;
+        }
+
+        $expired = ((int) $row['expires_at'] > 0) && ((int) $row['expires_at'] <= time());
+        $send = null;
+
+        if (!$expired) {
+            $consent = ($row['category'] !== 'MARKETING') || (pg_sms_marketing_permission($row['recipient']) === '');
+            $send = pg_whatsapp_queue_refusal($row, $app, $consent);
+
+            if ($send === null) {
+                if (!$driver) {
+                    pg_whatsapp_driver();
+                    $driver = true;
+                }
+
+                $send = pg_whatsapp_cloud_send($app, $row['recipient'], $row['template_name'], $row['template_language'],
+                    json_decode((string) $row['payload'], true));
+            }
+        }
+
+        $outcome = pg_sms_queue_outcome($row, $send, time());
+
+        db(
+            "UPDATE whatsapp_outbox
+            SET
+                status = '" . e($outcome['status']) . "',
+                attempts = '" . (int) $outcome['attempts'] . "',
+                send_after = '" . (int) $outcome['send_after'] . "',
+                sent_at = '" . (int) $outcome['sent_at'] . "',
+                last_error = '" . e(pg_mail_clip($outcome['last_error'], 500)) . "',
+                wamid = '" . e(pg_mail_clip($outcome['provider_id'], 128)) . "',
+                error_code = '" . e(pg_mail_clip(($send === null) ? '' : (string) $send['code'], 16)) . "',
+                claimed_at = 0
+            WHERE id = '" . $id . "'");
+
+        if ($outcome['status'] === 'sent') {
+            $result['sent']++;
+            continue;
+        }
+
+        $result['failed']++;
+
+        if ($outcome['status'] === 'uncertain') {
+            log_activity(lang(array(
+                'string' => 'Meta may have taken a WhatsApp message to +{var:1}; it is not sent again by itself: {var:2}',
+                'vars'   => array($row['recipient'], $outcome['last_error']),
+            )), 'UNKNOWN');
+        } elseif (($outcome['status'] === 'failed') && !$expired) {
+            log_activity(lang(array(
+                'string' => 'A WhatsApp message to +{var:1} was not sent: {var:2}',
+                'vars'   => array($row['recipient'], $outcome['last_error']),
+            )), 'UNKNOWN');
+        }
+    }
+
+    // Kept as the SMS queue keeps its rows: sent ones a week, so the
+    // webhook's delivery and read states still find them; the others a month.
+    db("DELETE FROM whatsapp_outbox WHERE (status = 'sent') AND (sent_at < " . (time() - 604800) . ")");
+    db("DELETE FROM whatsapp_outbox WHERE (status IN ('failed', 'uncertain')) AND (created_at < " . (time() - 2592000) . ")");
+
+    return $result;
+}

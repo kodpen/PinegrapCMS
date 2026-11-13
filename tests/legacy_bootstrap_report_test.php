@@ -319,7 +319,7 @@ function test_lbsr_screen_wiring()
 {
 	$screen = (string)file_get_contents(PG_FUNCTIONS_DIR . '/legacy_to_designer.php');
 	// The trial's module loads the report's.
-	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_trial.php');", $screen);
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_move.php');", $screen);
 	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_report.php');", (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_trial.php'));
 	pg_assert_contains("\$bootstrap_open = (int)(\$_GET['bootstrap'] ?? 0);", $screen);
 	pg_assert_contains('$bootstrap_designs = pg_lbs_designs();', $screen);

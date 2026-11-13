@@ -40,6 +40,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_report.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_twins.php');
 
 // The compatibility sheet every trial design loads, under the software
 // directory.
@@ -157,6 +158,47 @@ function pg_lbs_trial_framework_rows()
 }
 
 /**
+ * The rows of Fancybox, the lightbox the designer loads (assets/lib/fancybox/),
+ * for a trial design whose lightbox links became Fancybox links
+ * (pg_lbs_twins()): its sheet, its script and the one call that binds every
+ * [data-fancybox] link, as _pg_fancybox_assets_once() prints them.
+ *
+ * Pure: no query.
+ *
+ * @return array  'css', 'js', 'bind' (one row each)
+ */
+function pg_lbs_trial_fancybox_rows()
+{
+    $base = '{path}{software_directory}/assets/lib/fancybox/';
+    return array(
+        'css'  => array('id' => 'lbs-fancybox-css', 'name' => 'fancybox.css', 'type' => 'external-css', 'content' => $base . 'fancybox.css', 'enabled' => true, 'locked' => false),
+        'js'   => array('id' => 'lbs-fancybox-js', 'name' => 'fancybox.umd.js', 'type' => 'external-js', 'content' => $base . 'fancybox.umd.js', 'enabled' => true, 'locked' => false),
+        'bind' => array('id' => 'lbs-fancybox-bind', 'name' => 'Fancybox', 'type' => 'js', 'enabled' => true, 'locked' => false,
+                        'content' => '(function () { function bind() { if (!window.Fancybox) { setTimeout(bind, 80); return; } window.Fancybox.bind("[data-fancybox]", {Hash: false}); }'
+                            . ' if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", bind); } else { bind(); } })();'),
+    );
+}
+
+/**
+ * The theme script a twin replaces: 'slider' for flexslider, 'lightbox'
+ * for the lightbox script, '' for any other row. Read by the row's file
+ * name, a linked script only.
+ *
+ * Pure: no query.
+ *
+ * @param array $row  an asset row
+ * @return string
+ */
+function pg_lbs_trial_twin_script($row)
+{
+    if ((string)($row['type'] ?? '') !== 'external-js' || (string)($row['meta'] ?? '') !== '') return '';
+    $name = pg_lbs_asset_name($row);
+    if (preg_match('/flexslider[^\/]*\.js$/', $name)) return 'slider';
+    if (preg_match('/^lightbox(-plus-jquery)?(\.min)?\.js$/', $name)) return 'lightbox';
+    return '';
+}
+
+/**
  * A trial design's asset lists, from its Legacy design's.
  *
  * Stylesheets: the classic framework sheet rows (bootstrap.css,
@@ -174,12 +216,27 @@ function pg_lbs_trial_framework_rows()
  *
  * @param array|string $css_rows     the Legacy design's style_custom_css
  * @param array|string $js_rows      its style_custom_js
+ * Theme parts made twins ($twins, pg_lbs_twins() counts over the parts and
+ * pages): flexslider's or the lightbox script's row is kept switched off
+ * once that part has twins and none is left without one; Fancybox's rows
+ * come with the first lightbox twin. Inline sheets get the photo twin's
+ * selectors (pg_lbs_twin_selectors()).
+ *
  * @param array        $copies       site file name => its copy's name
  * @param string       $output_path  OUTPUT_PATH
+ * @param array|null   $twins        pg_lbs_twins() counts, null for none
  * @return array  'css', 'js' (lists of rows)
  */
-function pg_lbs_trial_assets($css_rows, $js_rows, $copies, $output_path)
+function pg_lbs_trial_assets($css_rows, $js_rows, $copies, $output_path, $twins = null)
 {
+    $made = (array)($twins['twins'] ?? array());
+    $kept = (array)($twins['kept'] ?? array());
+    $off = array();
+    foreach (array('slider', 'lightbox') as $part) {
+        $off[$part] = (int)($made[$part] ?? 0) > 0 && (int)($kept[$part] ?? 0) === 0;
+    }
+    $fancybox = (int)($made['lightbox'] ?? 0) > 0;
+    $fb = pg_lbs_trial_fancybox_rows();
     $fw = pg_lbs_trial_framework_rows();
     $lists = array('css' => $css_rows, 'js' => $js_rows);
     foreach ($lists as $kind => $rows) {
@@ -209,7 +266,7 @@ function pg_lbs_trial_assets($css_rows, $js_rows, $copies, $output_path)
             continue;
         }
         if ((string)($row['type'] ?? '') === 'css') {
-            $converted = pg_lbs_css((string)($row['content'] ?? ''));
+            $converted = pg_lbs_css((string)($row['content'] ?? ''), 'pg_lbs_twin_selectors');
             $row['content'] = $converted['css'];
         } else {
             $row = $copy_row($row);
@@ -217,6 +274,7 @@ function pg_lbs_trial_assets($css_rows, $js_rows, $copies, $output_path)
         $css[] = $row;
     }
     if (!$placed) array_unshift($css, $fw['css'], $fw['icons'], $fw['compat']);
+    if ($fancybox) $css[] = $fb['css'];
 
     $js = array();
     $placed = false;
@@ -230,6 +288,12 @@ function pg_lbs_trial_assets($css_rows, $js_rows, $copies, $output_path)
             $js[] = $row;
             continue;
         }
+        $twin = pg_lbs_trial_twin_script($row);
+        if ($twin !== '' && $off[$twin]) {
+            $row['enabled'] = false;
+            $js[] = $row;
+            continue;
+        }
         if ((string)($row['type'] ?? '') === 'js') {
             $converted = pg_lbs_trial_script((string)($row['content'] ?? ''));
             $row['content'] = $converted['js'];
@@ -239,6 +303,7 @@ function pg_lbs_trial_assets($css_rows, $js_rows, $copies, $output_path)
         $js[] = $row;
     }
     if (!$placed) array_unshift($js, $fw['js']);
+    if ($fancybox) array_push($js, $fb['js'], $fb['bind']);
 
     return array('css' => $css, 'js' => $js);
 }
@@ -268,6 +333,46 @@ function pg_lbs_trial_refs($tree, $map)
         }
     }
     return $tree;
+}
+
+/**
+ * A tree as a trial design draws it: its classes converted (pg_lbs_tree()),
+ * its theme parts made twins (pg_lbs_twins()) and, given a map, its parts'
+ * places pointed at the trial's copies.
+ *
+ * Pure apart from the labels' language.
+ *
+ * @param array      $tree
+ * @param array|null $map  shared part id => its copy's id; null leaves the places
+ * @return array  'tree', 'twins' (pg_lbs_twins()'s counts)
+ */
+function pg_lbs_trial_convert_tree($tree, $map = null)
+{
+    $twins = pg_lbs_twins(pg_lbs_tree($tree)['tree'], pg_lbs_twin_labels());
+    $out = ($map === null) ? $twins['tree'] : pg_lbs_trial_refs($twins['tree'], $map);
+    return array('tree' => $out, 'twins' => array('twins' => $twins['twins'], 'kept' => $twins['kept']));
+}
+
+/**
+ * The twin counts of a Legacy design's pages (the recycle bin's left out),
+ * as their move will convert them: which theme scripts the trial design
+ * still needs.
+ *
+ * @param int $legacy_id
+ * @return array  pg_lbs_twins()'s counts
+ */
+function pg_lbs_trial_page_twins($legacy_id)
+{
+    $sum = array();
+    $pages = db_values("SELECT page_id FROM page WHERE page_style = '" . (int)$legacy_id . "'" . pg_designer_not_binned_sql('page_folder'));
+    foreach (array_chunk(array_map('intval', is_array($pages) ? $pages : array()), 25) as $chunk) {
+        $rows = db_items("SELECT page_tree_json FROM page WHERE page_id IN (" . implode(',', $chunk) . ")");
+        foreach ((is_array($rows) ? $rows : array()) as $r) {
+            $tree = json_decode((string)$r['page_tree_json'], true);
+            if (is_array($tree)) $sum = pg_lbs_twins_add($sum, pg_lbs_trial_convert_tree($tree)['twins']);
+        }
+    }
+    return $sum;
 }
 
 /**
@@ -488,13 +593,14 @@ function pg_lbs_trial_take_back($trial_id, $map, $file_ids)
  * @param array $user  the operator: id
  * @return array  'ok', 'error', 'trial' (style id), 'name', 'parts' (copies
  *                made), 'files' (names of the files made), 'notes' (site
- *                files that could not be read, script calls left as written)
+ *                files that could not be read, script calls left as written),
+ *                'twins' (pg_lbs_twins() counts over the parts and pages)
  */
 function pg_lbs_trial_make($legacy_id, $user)
 {
     $legacy_id = (int)$legacy_id;
     $user_id = (int)($user['id'] ?? 0);
-    $out = array('ok' => false, 'error' => '', 'trial' => 0, 'name' => '', 'parts' => 0, 'files' => array(), 'notes' => array());
+    $out = array('ok' => false, 'error' => '', 'trial' => 0, 'name' => '', 'parts' => 0, 'files' => array(), 'notes' => array(), 'twins' => array());
 
     $design = null;
     foreach (pg_lbs_designs() as $d) {
@@ -565,7 +671,7 @@ function pg_lbs_trial_make($legacy_id, $user)
             continue;
         }
         if ($s['kind'] === 'css') {
-            $converted = pg_lbs_css($text);
+            $converted = pg_lbs_css($text, 'pg_lbs_twin_selectors');
             $new = $converted['css'];
         } else {
             $converted = pg_lbs_trial_script($text);
@@ -607,11 +713,13 @@ function pg_lbs_trial_make($legacy_id, $user)
     // pointed at the copies once every copy has its id.
     $now = time();
     $trees = array();
+    $twins = pg_lbs_trial_page_twins($legacy_id);
     foreach (array_chunk(pg_lbs_trial_part_ids($legacy_id, (string)$style['style_tree_json']), 25) as $chunk) {
         $rows = db_items("SELECT id, name, description, tree_json, system_region_config FROM shared_components WHERE id IN (" . implode(',', $chunk) . ")");
         foreach ((is_array($rows) ? $rows : array()) as $r) {
             $tree = json_decode((string)$r['tree_json'], true);
-            $converted = is_array($tree) ? pg_lbs_tree($tree) : null;
+            $converted = is_array($tree) ? pg_lbs_trial_convert_tree($tree) : null;
+            if ($converted) $twins = pg_lbs_twins_add($twins, $converted['twins']);
             $json = $converted ? pg_designer_tree_encode($converted['tree']) : (string)$r['tree_json'];
             $name = _sc_unique_name(mb_substr(pg_lbs_trial_name((string)$r['name']), 0, 255));
             $config = (string)$r['system_region_config'];
@@ -632,10 +740,25 @@ function pg_lbs_trial_make($legacy_id, $user)
     // that has none.
     $style_tree = json_decode((string)$style['style_tree_json'], true);
     if (is_array($style_tree)) {
-        $converted = pg_lbs_tree($style_tree);
-        $data['style_id'] = $trial_id;
-        $data['style_tree_json'] = pg_designer_tree_encode(pg_lbs_trial_refs($converted['tree'], $map));
-        save_system_style($data);
+        $converted = pg_lbs_trial_convert_tree($style_tree, $map);
+        $twins = pg_lbs_twins_add($twins, $converted['twins']);
+        $data['style_tree_json'] = pg_designer_tree_encode($converted['tree']);
+    }
+
+    // The asset rows again, now that the twins are counted: a theme script
+    // whose parts all have twins is switched off, Fancybox comes for the
+    // lightbox links.
+    $assets = pg_lbs_trial_assets((string)$style['style_custom_css'], (string)$style['style_custom_js'], $copies, $output_path, $twins);
+    $data['style_id'] = $trial_id;
+    $data['style_custom_css'] = json_encode($assets['css'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $data['style_custom_js'] = json_encode($assets['js'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    save_system_style($data);
+    $out['twins'] = $twins;
+    $made = $twins['twins'] ?? array();
+    $kept = $twins['kept'] ?? array();
+    if (array_sum((array)$made) + array_sum((array)$kept) > 0) {
+        $out['notes'][] = lang(array('string' => 'Theme parts made designer parts: {var:1} photo backgrounds, {var:2} sliders, {var:3} lightbox links. Left with their scripts: {var:4} photo backgrounds, {var:5} sliders, {var:6} lightboxes.',
+            'vars' => array((int)($made['photo'] ?? 0), (int)($made['slider'] ?? 0), (int)($made['lightbox'] ?? 0), (int)($kept['photo'] ?? 0), (int)($kept['slider'] ?? 0), (int)($kept['lightbox'] ?? 0))));
     }
 
     $trials = pg_lbs_trials_read();
@@ -721,9 +844,9 @@ function pg_lbs_trial_page_code($page_id, $record)
                     WHERE page.page_id = '" . (int)$page_id . "' LIMIT 1");
     $tree = $row ? json_decode((string)$row['tree_json'], true) : null;
     if (!is_array($tree)) return '';
-    $converted = pg_lbs_tree($tree);
+    $converted = pg_lbs_trial_convert_tree($tree, $record['map']);
     $abc = (string)db_value("SELECT additional_body_classes FROM style WHERE style_id = '" . (int)$record['trial'] . "' LIMIT 1");
-    return generate_style_code_from_tree(pg_lbs_trial_refs($converted['tree'], $record['map']), (string)$row['page_name'], $abc);
+    return generate_style_code_from_tree($converted['tree'], (string)$row['page_name'], $abc);
 }
 
 /**
@@ -759,6 +882,8 @@ function pg_lbs_trial_pages($legacy_id)
  *                              (a move runs), 'preview' (null, or 'pages'
  *                              (pg_lbs_trial_pages()) and 'page' (the page
  *                              shown, 0 for none))
+ *                              'move' (HTML of Move pages and Send back,
+ *                              pg_lbs_move_card_html())
  * @return array  'actions', 'below' (HTML)
  */
 function pg_lbs_trial_card_html($design_id, $trial, $info)
@@ -794,6 +919,7 @@ function pg_lbs_trial_card_html($design_id, $trial, $info)
         . h(lang('Trial design')) . ': <a href="edit_system_style.php?id=' . (int)$trial['trial'] . '">' . h($trial['name']) . '</a>'
         . '<div class="fg-secondary">' . h($state) . '</div></div>' . $actions . '</div>';
     if ($preview !== null) $below .= pg_lbs_trial_preview_html($id, $trial, $preview['pages'], (int)$preview['page']);
+    $below .= (string)($info['move'] ?? '');
     return array('actions' => '', 'below' => $below . '</div>');
 }
 
