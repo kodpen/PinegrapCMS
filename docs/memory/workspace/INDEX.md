@@ -65,6 +65,7 @@
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)
 - mail-compose.md: New e-mail in the Workspace (WM5, #8719): the form and its fields, where it opens, the panel actions, who may send, the unsent form kept in the browser, a mailbox's Signature and where it goes
 - mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified [decision: decisions-made-workspace-13.md, decisions-made-workspace-17.md, decisions-made-workspace-21.md]
+- mail-domain-warning.md: The warning before a Workspace e-mail goes to a domain that does not exist: Send anyway, Change the address, "Did you mean …?", the API's 409 unknown_domain [decision: decisions-made-workspace-23.md]
 - mail-email-fields.md: What email() gained for Workspace mail (G3a #2846, #8646): cc and bcc, the threading headers it lets through, a box's own SMTP server, and the site's mark every mail carries for the loop gate
 - mail-fetch.md: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records, the System status tile
 - mail-forward.md: Forward as e-mail in the Workspace (WM6): the buttons, the filled New e-mail form, what a forward quotes and carries, the line under a forwarded mail, the checks when it is sent

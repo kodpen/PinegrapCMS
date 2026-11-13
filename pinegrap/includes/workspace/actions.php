@@ -2694,10 +2694,11 @@ function ws_handle_action($action, $request)
 
             $mail = ws_mail_compose_mail($request, $files['files']);
             $result = ws_mail_send($viewer, array('conversation_id' => $conversation_id, 'cc' => $mail['cc'], 'bcc' => $mail['bcc'],
-                'text' => $mail['text'], 'files' => $mail['files']));
+                'text' => $mail['text'], 'files' => $mail['files'], 'send_anyway' => $mail['send_anyway']));
 
             if (!$result['ok']) {
-                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), in_array($result['error'], array('empty', 'too_long'), true) ? 'text' : '');
+                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), in_array($result['error'], array('empty', 'too_long'), true) ? 'text' : '')
+                    + array('code' => $result['error']);
             }
 
             return ws_action_ok(array('message_id' => $result['message_id'], 'state' => $result['state']));
@@ -2751,7 +2752,7 @@ function ws_handle_action($action, $request)
             $result = ws_mail_send($viewer, $mail);
 
             if (!$result['ok']) {
-                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']));
+                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail'])) + array('code' => $result['error']);
             }
 
             ws_mail_forward_line($viewer, $forward['source'], (int) $result['item_id']);

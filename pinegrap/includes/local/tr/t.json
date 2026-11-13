@@ -3421,6 +3421,7 @@
     "The document is waiting as a draft at {var:1}; hand it to GİB to make it official.": "Belge {var:1} sağlayıcısında taslak olarak bekliyor; resmileşmesi için GİB'e gönderin.",
     "The document names no supplier.": "Belgede tedarikçi adı yok.",
     "The domain as Mailgun lists it, for example mg.example.com.": "Alan adı, Mailgun'da listelendiği haliyle; örneğin mg.example.com.",
+    "The domain {var:1} does not exist, so an e-mail to it will not arrive.": "{var:1} alan adı yok; bu adrese giden e-posta ulaşmaz.",
     "The dome show is published.": "Kubbe gösterisi yayımlandı.",
     "The dough for the croissants is made the day before and rests in the cold overnight. At half past five it is shaped, left to rise and baked.": "Kruvasan hamuru bir gün önceden hazırlanır ve gece boyunca soğukta dinlenir. Beş buçukta şekil verilir, mayalanır ve pişer.",
     "The dough for tomorrow's bread was mixed the day before yesterday. It has rested in a cool room ever since, rising so slowly that you would not notice it moving unless you came back hours later.": "Yarının ekmeğinin hamuru evvelsi gün yoğruldu. O günden beri serin bir odada dinleniyor; öyle yavaş kabarıyor ki saatler sonra dönüp bakmasanız hareket ettiğini fark etmezsiniz.",
