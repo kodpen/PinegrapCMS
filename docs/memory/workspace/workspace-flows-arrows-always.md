@@ -15,4 +15,4 @@ description: Arrows on always in a flow (PR #2249): taken however the box ended,
 - A follow-up on skipped (the action's conditions did not hold) is a condition box's arrow on no. Flows have no cap of 5 arrows a box; their boxes are bounded by `WS_FLOW_MAX_NODES` (parity lines `WS_SCHEDULED_MAX_FOLLOW`).
 
 ## Canvas?
-- `arrowOutcomes()` adds always to the outcome picker of a box an arrow may lead into; the arrow carries its label like failed and cancelled ("However it ended"); a run marks it taken whatever the box ended on.
+- `arrowOutcomes()` adds always to the outcome picker of a box an arrow may lead into; the arrow carries its name on a pill like failed and cancelled ("However it ended", `workspace-flows-arrow-names.md`); a run marks it taken whatever the box ended on.

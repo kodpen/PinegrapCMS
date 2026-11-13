@@ -460,6 +460,29 @@ JS
 	pg_assert_same(array('task_3', 'task', 'Call', 480, 224, 1), $result['copy'], 'a copy: a free id, its title and settings (not shared), right of it, past the boxes in the way');
 }
 
+// An arrow carries its outcome's name when its box has more than one
+// outcome, and always on always, each, other, cancelled and failed; the only
+// outcome of a box (a post's done, a start's next) goes unnamed.
+function test_workspace_flows_canvas_arrow_names()
+{
+	$result = ws_flows_canvas_test_node(
+		array('edgeNamed', 'kindOf', 'aiClasses'),
+		<<<'JS'
+KINDS = { post: { name: 'p', group: 'message', into: true, out: ['done'] }, manual: { name: 'm', group: 'start', into: false, out: ['next'] }, condition: { name: 'c', group: 'logic', into: true, out: ['yes', 'no'] }, ai: { name: 'a', group: 'logic', into: true, out: ['done', 'failed'] } };
+var post = { kind: 'post', config: {} };
+var cond = { kind: 'condition', config: {} };
+var ai = { kind: 'ai', config: { mode: 'classify', classes: ['Sales', 'Help'] } };
+console.log(JSON.stringify([edgeNamed(post, 'done'), edgeNamed(post, 'always'), edgeNamed({ kind: 'manual', config: {} }, 'next'), edgeNamed(cond, 'yes'), edgeNamed(cond, 'no'), edgeNamed(ai, 'class_1'), edgeNamed({ kind: 'gone', config: {} }, 'failed'), edgeNamed({ kind: 'gone', config: {} }, 'done')]));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array(false, true, false, true, true, true, true, false), $result, 'named where the box has several outcomes and on always, each, other, cancelled, failed');
+}
+
 // The flow list says how each flow starts in a short sentence: a time box
 // by its time alone ("Every day 09:00", no "from" date), any other start in
 // the words the API's start_text gives; no start box, nothing.
