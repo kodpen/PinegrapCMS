@@ -1226,6 +1226,37 @@
         this.select(this.sel.filter(function (id) { return id !== l.id; }));
     };
 
+    // The single selected video clip, else null.
+    Editor.prototype.clipSelected = function () {
+        var l = (this.sel.length === 1) ? this.selected()[0] : null;
+
+        return (l && (l.type === 'video')) ? l : null;
+    };
+
+    // I and O in the Animate tool: trim the selected clip's start or end to
+    // the playhead (M.clipTrim, no snapping), one undo step. The playhead
+    // must sit inside the clip, so an edge keeps its 0.1 s of source.
+    Editor.prototype.clipMark = function (grip) {
+        var l = this.clipSelected(), now = this.motionNow(), sp;
+
+        if (!l || l.locked || (now === null)) {
+            return;
+        }
+
+        sp = M.clipSpan(l);
+
+        if ((now <= sp.from) || (now >= sp.to)) {
+            this.showMessage(t('clipMarkNote'), true);
+            return;
+        }
+
+        var r = M.clipTrim(M.clone(this.doc.layers), l.id, grip, now - ((grip === 'start') ? sp.from : sp.to), { targets: [], slack: 0, fine: true });
+
+        if (r) {
+            this.clipCommit(r.patches);
+        }
+    };
+
     // What the clip rows show: a drag keeps its bars till release.
     Editor.prototype.clipsKey = function () {
         var self = this;

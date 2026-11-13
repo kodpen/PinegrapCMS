@@ -256,6 +256,13 @@
             return false;
         }
 
+        // In the Animate tool J, K, L, I and O belong to the timeline
+        // transport (the motion part), not the Line, Image or Ellipse tool
+        // letters: leave them for the timeline handler (the motion part).
+        if ((this.tool === 'motion') && ('jklio'.indexOf(k.toLowerCase()) >= 0)) {
+            return false;
+        }
+
         var id = M.toolForKey(k, this.tools.list);
 
         if (!id) {

@@ -448,7 +448,7 @@
         var self = this, end = this.motionTotal(), from = this.motionStart(), now = (this.time === null) ? 0 : this.time;
         var playBtn = button('pgie-mplay', this.playing ? t('motionPause') : t('motionPlay'), this.playing ? 'pause' : 'play', function () { self.togglePlay(); });
 
-        playBtn.setAttribute('aria-keyshortcuts', 'K');
+        playBtn.setAttribute('aria-keyshortcuts', 'K J L');
         var scrub = el('input', { type: 'range', class: 'pgie-range pgie-mscrub', min: '0', max: String(end), step: '10', value: String(now), 'aria-label': t('motionScrub'), 'aria-valuetext': clockText(now) });
         var ticks = el('div', { class: 'pgie-mticks', 'aria-hidden': 'true' });
         var clock = el('span', { class: 'pgie-mclock' }, [el('strong', { text: clockText(now) }), ' / ' + clockText(end)]);
@@ -553,6 +553,7 @@
 
     Editor.prototype.togglePlay = function () {
         this.previewEnd = null;
+        this.playDir = 1;
 
         if (this.playing) {
             this.pause();
@@ -562,10 +563,16 @@
     };
 
     Editor.prototype.play = function () {
-        var self = this, end = this.motionTotal(), last = null;
+        var self = this, end = this.motionTotal(), last = null, dir = (this.playDir < 0) ? -1 : 1;
 
-        if ((this.time === null) || (this.time >= end)) {
-            this.time = 0;
+        this.playDir = dir;
+
+        if (dir > 0) {
+            if ((this.time === null) || (this.time >= end)) {
+                this.time = 0;
+            }
+        } else if ((this.time === null) || (this.time <= 0)) {
+            this.time = end;
         }
 
         this.playing = true;
@@ -578,7 +585,9 @@
             }
 
             if (last !== null) {
-                self.time += now - last;
+                // playDir may flip while playing (J and L): the tick reads it
+                // each frame, so a reverse press turns the preview around.
+                self.time += (now - last) * ((self.playDir < 0) ? -1 : 1);
             }
 
             last = now;
@@ -594,9 +603,18 @@
 
             if (self.time >= end) {
                 if (self.motionRepeat) {
-                    self.time = self.time % end;
+                    self.time = (end > 0) ? (self.time % end) : 0;
                 } else {
                     self.time = end;
+                    self.applyMotion();
+                    self.pause();
+                    return;
+                }
+            } else if (self.time <= 0) {
+                if (self.motionRepeat) {
+                    self.time = (end > 0) ? (((self.time % end) + end) % end) : 0;
+                } else {
+                    self.time = 0;
                     self.applyMotion();
                     self.pause();
                     return;
@@ -609,6 +627,22 @@
         };
 
         this.raf = window.requestAnimationFrame(tick);
+    };
+
+    // J and L play backward and forward (K pauses): the video players'
+    // transport keys. A press starts playback in that direction, or turns a
+    // running preview around; dir is -1 or 1.
+    Editor.prototype.shuttle = function (dir) {
+        if (this.recording || !this.dialog.open) {
+            return;
+        }
+
+        this.previewEnd = null;
+        this.playDir = (dir < 0) ? -1 : 1;
+
+        if (!this.playing) {
+            this.play();
+        }
     };
 
     Editor.prototype.pause = function () {
@@ -627,7 +661,7 @@
 
             if (this.motionEls) {
                 this.motionEls.play.replaceWith(this.motionEls.play = button('pgie-mplay', t('motionPlay'), 'play', this.togglePlay.bind(this)));
-                this.motionEls.play.setAttribute('aria-keyshortcuts', 'K');
+                this.motionEls.play.setAttribute('aria-keyshortcuts', 'K J L');
             }
         }
 
@@ -800,21 +834,40 @@
 
     // ---- keys and pointers ----
 
-    // The timeline's keys in the Animate tool: K plays and pauses, the video
-    // players' key; Left and Right step the playhead a frame (Shift: a
-    // second), Home and End go to the ends (M.timelineKey()), which pauses
-    // as a scrub does. Up and Down still nudge the selection; Space keeps
-    // moving the view as in every tool. A recording keeps its own clock.
+    // The timeline's keys in the Animate tool, the video players' transport:
+    // K plays and pauses, J and L play backward and forward; Left and Right
+    // step the playhead a frame (Shift: a second), Home and End go to the
+    // ends (M.timelineKey()), which pauses as a scrub does; I and O trim the
+    // selected clip's start and end to the playhead. In this tool J, K, L, I
+    // and O are the timeline's, not the Line, Image or Ellipse tool letters
+    // (the access part lets them through). Up and Down still nudge the
+    // selection; Space keeps moving the view. A recording keeps its own clock.
     Editor.prototype.motionKey = function (e, mod, k) {
-        var at;
+        var at, low = (typeof k === 'string') ? k.toLowerCase() : '';
 
         if ((this.tool !== 'motion') || mod || e.altKey || this.recording) {
             return false;
         }
 
-        if ((k === 'k') || (k === 'K')) {
+        if (low === 'k') {
             if (!e.repeat) {
                 this.togglePlay();
+            }
+
+            return true;
+        }
+
+        if ((low === 'j') || (low === 'l')) {
+            if (!e.repeat && !e.shiftKey) {
+                this.shuttle((low === 'j') ? -1 : 1);
+            }
+
+            return true;
+        }
+
+        if ((low === 'i') || (low === 'o')) {
+            if (!e.repeat && !e.shiftKey && this.clipMark) {
+                this.clipMark((low === 'i') ? 'start' : 'end');
             }
 
             return true;
@@ -852,6 +905,7 @@
     Editor.inits.push(function () {
         this.time = null;
         this.playing = false;
+        this.playDir = 1;
         this.previewEnd = null;
         this.raf = 0;
         this.motionTab = 'in';
