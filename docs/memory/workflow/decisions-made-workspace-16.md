@@ -18,7 +18,7 @@ description: Decisions list, workspace part 16 (2026-11-11): clearing a conversa
 ## Is a chart or a design made by a tool of its own, or by the canvas? (owner, 2026-11-11, #8762)
 - By the canvas, strengthened until a design comes out through the API; no second tool beside it; agents use it in every channel they are added to.
 - Owner (2026-11-11): "svg konusunu deniyelim, tuvale ekleme fikri aslında araç sayısını çoğaltmak yerine tuvali güçlendirmekten gelmişti. öyle yada böyle tuvali kanallarda ajanlar ajan kanalı dışında da olsa kullanabilsin istiyorum. tuvalin api ile tasarım çıkaracak seviyeye getirmek istiyorum".
-- Not built: the chart block of its own the architect had suggested. The plan: `plans/agent-canvas-design.md`.
+- Not built: the chart block of its own the architect had suggested. Built in #8799 to #9167: `workspace/agent-canvas-overview.md`.
 
 ## What does the canvas plan hold beside layers? (owner, 2026-11-11, #8762)
 - Templates; the server draws the picture too where the host's Imagick can; an agent may save a finished design into Files.

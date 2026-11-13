@@ -110,7 +110,7 @@ $script_texts = array(
 
 echo pg_page_shell(array(
         'title'               => lang('Search and audits'),
-        'extra classes'       => 'page',
+        'extra classes'       => 'page pg-measure-report',
         'icon'                => 'page',
         'heading'             => lang('Search and audits'),
         'heading_description' => lang('The background passes that read the whole site: what each one did last, how far it is now, what it could not read, and whether it runs on a schedule.'),

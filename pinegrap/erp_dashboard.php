@@ -433,7 +433,7 @@ if ($can_see_cash) {
 
 echo pg_page_shell(array(
     'title'               => lang('ERP'),
-    'extra classes'       => 'erp erp_dashboard',
+    'extra classes'       => 'erp erp_dashboard pg-measure-report',
     'icon'                => 'erp',
     'heading'             => lang('Enterprise resource planning (ERP)'),
     'heading_description' => erp_edoc_in_use()
