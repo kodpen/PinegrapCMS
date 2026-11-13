@@ -265,6 +265,23 @@ $pg_settings_cards[] = '
                             </div>
                         </div>';
 
+// ── WhatsApp messages ──
+// The order's own WhatsApp messages: a switch, an approved template and what
+// fills each of its variables per event (includes/fn/whatsapp_messages.php).
+$pg_settings_cards[] = '
+                        <div id="pgset-whatsapp-messages" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 pg-title-section">
+                                    ' . lang('WhatsApp Messages') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-5">' . pg_whatsapp_message_settings_fields() . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+$pg_settings_scripts[] = pg_whatsapp_message_settings_script();
+
 // ── İYS ──
 // The İYS account and the consent sync's switches (includes/iys/settings.php).
 $pg_settings_cards[] = '

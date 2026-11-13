@@ -222,6 +222,7 @@ function pg_settings_categories()
                 'pgset-sms'       => lang('SMS'),
                 'pgset-sms-messages' => lang('SMS Messages'),
                 'pgset-whatsapp'  => lang('WhatsApp'),
+                'pgset-whatsapp-messages' => lang('WhatsApp Messages'),
                 'pgset-iys'       => lang('İYS'),
             ),
             'keywords' => array(
@@ -231,6 +232,7 @@ function pg_settings_categories()
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
                 'pgset-sms-messages' => pg_settings_keywords(lang('sms, text message, order received, order shipped, order delivered, tracking number, template')),
                 'pgset-whatsapp'  => pg_settings_keywords(lang('whatsapp, meta, cloud api, business account, phone number id, access token, system user, webhook, verify token, template, test message')),
+                'pgset-whatsapp-messages' => pg_settings_keywords(lang('whatsapp, order received, order shipped, order delivered, back in stock, template, variable')),
                 'pgset-iys'       => pg_settings_keywords(lang('iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal')),
             ),
         ),

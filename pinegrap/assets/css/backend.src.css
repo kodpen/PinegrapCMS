@@ -14979,6 +14979,23 @@ a.ws-person-link:hover .avatar {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* An agent among them: its square face, its name with the badge and under
+   it what it did with the message. */
+.ws-seen-agent {
+  align-items: flex-start;
+}
+.ws-seen-agent-text {
+  min-width: 0;
+  line-height: 1.3;
+}
+.ws-seen-agent-name .ws-info-badge {
+  margin-left: .4rem;
+  vertical-align: .1em;
+}
+/* The agents the message did not wake, named apart. */
+.ws-seen-quiet {
+  overflow-wrap: anywhere;
+}
 /* Changed after it was sent. */
 .ws-msg-edited {
   display: inline-block;
@@ -27705,6 +27722,358 @@ body.pg-measure-report #content {
 }
 .pg-messages-row-pill {
   align-self: center;
+}
+
+}
+
+/* ==========================================================================
+   Look A: WhatsApp template designer.
+   whatsapp_template.php as drawn in the plan's template-designer.html: the
+   stages line, the cards of the form column, the message box with its
+   formatting tools, and in the status column a phone showing the template
+   as WhatsApp draws a chat (its own colours, light and dark, as tokens).
+   ========================================================================== */
+@layer custom {
+
+.pg-wa-designer {
+  --pg-wa-chat-bg: light-dark(#efeae2, #0b141a);
+  --pg-wa-bar-bg: light-dark(#ffffff, #1f2c33);
+  --pg-wa-bubble: light-dark(#ffffff, #202c33);
+  --pg-wa-fg: light-dark(#111b21, #e9edef);
+  --pg-wa-fg-2: light-dark(#667781, #8696a0);
+  --pg-wa-link: light-dark(#027eb5, #53bdeb);
+  --pg-wa-green: #25d366;
+  --pg-wa-frame: light-dark(#1b1e24, #05070a);
+  --pg-wa-on-green: #ffffff;
+  --pg-wa-avatar-1: #2f8f9b;
+  --pg-wa-avatar-2: #6fd0c0;
+  --pg-wa-media-1: #3d7bd9;
+  --pg-wa-media-2: #9ad2f5;
+}
+
+.pg-wa-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 14px;
+}
+.pg-wa-mono-title {
+  overflow-wrap: anywhere;
+}
+
+.pg-wa-stages {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 9px 14px;
+  list-style: none;
+  border-radius: 12px;
+  font-size: var(--pg-text-2);
+  color: var(--pg-fg-2);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.pg-wa-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.pg-wa-stage.is-active {
+  font-weight: var(--pg-weight-strong);
+  color: var(--pg-fg-emphasis);
+}
+.pg-wa-stage-number {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: var(--pg-text-count);
+  font-weight: var(--pg-weight-title);
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.pg-wa-stage.is-active .pg-wa-stage-number {
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  color: var(--pg-on-accent-fill);
+  box-shadow: none;
+}
+.pg-wa-stage-line {
+  flex: 1;
+  min-width: 12px;
+  height: 1px;
+  background: var(--pg-border-color-translucent);
+}
+@media (max-width: 575.98px) {
+  .pg-wa-stages {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .pg-wa-stage-line {
+    display: none;
+  }
+}
+
+.pg-wa-basics {
+  display: grid;
+  grid-template-columns: 1.1fr 1.4fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 991.98px) {
+  .pg-wa-basics {
+    grid-template-columns: 1fr;
+  }
+}
+.pg-wa-seg {
+  display: flex;
+}
+.pg-wa-seg > .pg-seg-item {
+  flex: 1;
+}
+.pg-wa-mono,
+.pg-wa-sample-key {
+  font-family: var(--pg-font-mono);
+}
+
+.pg-wa-editor {
+  border-radius: 12px;
+  background: var(--pg-field-bg);
+  box-shadow: inset 0 0 0 1px var(--pg-field-line);
+}
+.pg-wa-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.pg-wa-add {
+  width: auto;
+  margin-left: auto;
+}
+.pg-wa-editor > .pg-wa-body {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  line-height: 1.6;
+  resize: vertical;
+}
+.pg-wa-count {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+.pg-wa-count > :last-child {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.pg-wa-footer-field {
+  margin-top: 12px;
+}
+
+.pg-wa-side-cap {
+  margin: 0 2px 10px;
+}
+.pg-wa-side-cap > p {
+  margin: 0;
+}
+.pg-wa-phone + .pg-wa-samples {
+  margin-top: 16px;
+}
+.pg-wa-sample {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 10px;
+  align-items: start;
+  margin-top: 8px;
+}
+.pg-wa-sample:first-child {
+  margin-top: 0;
+}
+.pg-wa-sample-key {
+  padding-top: 7px;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-2);
+}
+.pg-wa-sample-fields {
+  display: grid;
+  gap: 6px;
+}
+
+/* The phone: a frame, the status bar, the chat head, one received message
+   and the typing bar, in WhatsApp's own colours. */
+.pg-wa-phone {
+  max-width: 360px;
+  margin-inline: auto;
+  padding: 9px;
+  border-radius: 34px;
+  background: var(--pg-wa-frame);
+  box-shadow: var(--pg-shadow-float);
+}
+.pg-wa-screen {
+  overflow: hidden;
+  border-radius: 26px;
+  background: var(--pg-wa-chat-bg);
+  color: var(--pg-wa-fg);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.pg-wa-bar {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 16px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--pg-wa-bar-bg);
+}
+.pg-wa-bar-icons,
+.pg-wa-head-icons {
+  display: inline-flex;
+  margin-left: auto;
+  gap: 5px;
+}
+.pg-wa-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 10px;
+  background: var(--pg-wa-bar-bg);
+  border-bottom: 1px solid color-mix(in srgb, var(--pg-wa-fg-2) 20%, transparent);
+}
+.pg-wa-head > i,
+.pg-wa-head-icons {
+  color: var(--pg-wa-fg-2);
+  font-size: 14px;
+}
+.pg-wa-head-icons {
+  gap: 14px;
+}
+.pg-wa-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 14px;
+  color: var(--pg-wa-on-green);
+  background: linear-gradient(135deg, var(--pg-wa-avatar-1), var(--pg-wa-avatar-2));
+}
+.pg-wa-head-name {
+  min-width: 0;
+}
+.pg-wa-head-name b {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.pg-wa-head-name b i {
+  font-size: 12px;
+  color: var(--pg-wa-green);
+}
+.pg-wa-head-name small {
+  display: block;
+  font-size: 10.5px;
+  color: var(--pg-wa-fg-2);
+}
+.pg-wa-chat {
+  min-height: 250px;
+  padding: 10px 9px 12px;
+}
+.pg-wa-day {
+  width: max-content;
+  margin: 0 auto 9px;
+  padding: 2px 9px;
+  border-radius: 7px;
+  font-size: 10.5px;
+  color: var(--pg-wa-fg-2);
+  background: var(--pg-wa-bubble);
+}
+.pg-wa-msg {
+  width: 88%;
+  overflow: hidden;
+  border-radius: 3px 12px 12px 12px;
+  background: var(--pg-wa-bubble);
+  box-shadow: 0 1px 1px color-mix(in srgb, var(--pg-wa-frame) 18%, transparent);
+}
+.pg-wa-msg-media {
+  display: grid;
+  place-items: center;
+  height: 104px;
+  margin: 4px 4px 0;
+  border-radius: 9px;
+  font-size: 30px;
+  color: var(--pg-wa-on-green);
+  background: linear-gradient(135deg, var(--pg-wa-media-1), var(--pg-wa-media-2));
+}
+.pg-wa-msg-head {
+  padding: 7px 9px 0;
+  font-weight: 600;
+}
+.pg-wa-msg-body {
+  padding: 7px 9px 2px;
+  overflow-wrap: anywhere;
+}
+.pg-wa-msg-body b {
+  font-weight: 600;
+}
+.pg-wa-msg mark {
+  padding: 0 2px;
+  border-radius: 3px;
+  color: inherit;
+  background: color-mix(in srgb, var(--pg-wa-link) 24%, transparent);
+}
+.pg-wa-msg-footer {
+  padding: 3px 9px 0;
+  font-size: 11px;
+  color: var(--pg-wa-fg-2);
+}
+.pg-wa-msg time {
+  display: block;
+  padding: 0 9px 5px;
+  text-align: right;
+  font-size: 10px;
+  color: var(--pg-wa-fg-2);
+}
+.pg-wa-msg-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  border-top: 1px solid color-mix(in srgb, var(--pg-wa-fg-2) 22%, transparent);
+  font-weight: 500;
+  color: var(--pg-wa-link);
+}
+.pg-wa-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px 10px;
+}
+.pg-wa-input span {
+  flex: 1;
+  height: 30px;
+  border-radius: 15px;
+  background: var(--pg-wa-bubble);
+}
+.pg-wa-input i {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 14px;
+  color: var(--pg-wa-on-green);
+  background: var(--pg-wa-green);
 }
 
 }

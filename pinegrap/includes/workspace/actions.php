@@ -2225,9 +2225,19 @@ function ws_handle_action($action, $request)
                 return ws_action_error($result['error']);
             }
 
-            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+            $edited = ws_message($message['id']);
 
-            return ws_action_ok(array('message' => $payload[0], 'notice' => ws_app_mention_unread_line($result['apps_unread'] ?? array())));
+            // A tag the edit adds asks as it would in a new message; the
+            // tags it kept asked already.
+            $asked = ws_message_ask_added($viewer, ws_channel($message['channel_id']), $message['id'], (string) $message['body'], (string) $edited['body']);
+
+            if (!empty($asked['claude']) && function_exists('ws_claude_dispatch')) {
+                ws_claude_dispatch();
+            }
+
+            $payload = ws_message_payloads($viewer, array($edited));
+
+            return ws_action_ok(array('message' => $payload[0], 'ai' => !empty($asked['ai']) || !empty($asked['models']), 'agent' => !empty($asked['agent']), 'notice' => ws_app_mention_unread_line($result['apps_unread'] ?? array())));
 
         // The writer's edit box of a message that asked an agent is open,
         // or they typed (beat), or they closed it unsaved (release): the
@@ -2403,7 +2413,8 @@ function ws_handle_action($action, $request)
 
             $result = ws_message_seen_by($viewer, $message);
 
-            return $result['ok'] ? ws_action_ok(array('seen' => $result['seen'], 'unseen' => $result['unseen'])) : ws_action_error($result['error']);
+            return $result['ok'] ? ws_action_ok(array('seen' => $result['seen'], 'unseen' => $result['unseen'],
+                'agents_seen' => $result['agents_seen'], 'agents_waiting' => $result['agents_waiting'], 'agents_quiet' => $result['agents_quiet'])) : ws_action_error($result['error']);
 
         case 'ws_mark':
             $message = ws_message((int) ($request['message_id'] ?? 0));
@@ -2979,7 +2990,17 @@ function ws_handle_action($action, $request)
                 return ws_action_error($result['error']);
             }
 
+            // Its words asked as a message's (ws_voice_posted()): Claude's
+            // run starts now, the screen carries the others on.
+            $asked = (array) ($result['asked'] ?? array());
+
+            if (!empty($asked['claude']) && function_exists('ws_claude_dispatch')) {
+                ws_claude_dispatch();
+            }
+
             return ws_action_ok(array(
+                'ai'         => !empty($asked['ai']) || !empty($asked['models']),
+                'agent'      => !empty($asked['agent']),
                 'message_id' => $result['message_id'],
                 'channel'    => array('id' => (int) $channel['id'], 'name' => (string) $channel['name']),
                 'url'        => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php?channel=' . (int) $channel['id'] . '&message=' . (int) $result['message_id'],

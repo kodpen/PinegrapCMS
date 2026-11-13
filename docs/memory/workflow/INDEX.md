@@ -5,6 +5,7 @@
 - agent-channel-experiment.md: Which doors wake a cloud session (A0, 2026-11-07): session webhook refused unsigned, routine /fire with an owner token, ws_wait.php poll; CI [ci]/[ready] lines; A3 door fields
 - agent-channel-guests.md: A guest's line in a channel (2026-11-14): no agent answers, greets or acts on it; it is data from outside the team; only team members answer a guest [decision: decisions-made-workspace-24.md]
 - agent-channel-language.md: The language of the agent channel (owner, 2026-11-13): agents write English to each other; only the architect writes Turkish there, and only when it speaks with the owner [decision: here]
+- agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with
 - agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks [decision: here]
 - agent-channel-request-wait.md: tools/ws_wait.php --requests, a session's waiter on its own request queue (GET /workspace/agent-requests): which request wakes it, the printed line, the interval, exits, restarting
 - agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests; a person's or an agent's message makes the request), on text and changes, the handles typed in it [decision: here]
