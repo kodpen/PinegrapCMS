@@ -195,30 +195,31 @@ class liveform {
         $output_aria_invalid = '';
         $output_inline_feedback = '';
         $output_feedback_id = '';
-        if (($type != 'hidden') && ($type != 'submit') && $field !== '' && $this->check_field_error($field)) {
+
+        // An option of a group (radio buttons, check boxes) whose caller
+        // prints the group's one message after its last option label
+        // (field_feedback()) names that message and prints none of its own:
+        // printed after the box, it came between the box and its label, and
+        // once for every radio button. Its error is read by the name without
+        // the [] of a check box group.
+        $group_feedback_id = (isset($attributes['feedback_id']) && is_scalar($attributes['feedback_id'])) ? (string) $attributes['feedback_id'] : '';
+        $error_field = (($group_feedback_id !== '') && (mb_substr((string) $field, -2) == '[]')) ? mb_substr((string) $field, 0, -2) : $field;
+
+        if (($type != 'hidden') && ($type != 'submit') && $error_field !== '' && $this->check_field_error($error_field)) {
             $output_aria_invalid = ' aria-invalid="true"';
 
             // render the per-field error message inline next to the input. Mirrors the
             // JS bridge (window.__pgFieldErrors + pgInjectAriaAndRequiredMarkers) so the message
             // is present in the initial HTML response — no FOUC.
-            $session_field = isset($_SESSION['software']['liveforms'][$this->form][$this->index][$field])
-                ? $_SESSION['software']['liveforms'][$this->form][$this->index][$field]
-                : null;
-            if (is_array($session_field)
-                && isset($session_field['error_message'])
-                && $session_field['error_message'] !== ''
-            ) {
-                // The message is alert HTML; this feedback is a text context,
-                // so reduce it to its text before escaping it for the div.
-                $feedback_text = function_exists('pg_liveform_message_text')
-                    ? pg_liveform_message_text($session_field['error_message'])
-                    : $session_field['error_message'];
-                // The text gets an id the control names in aria-describedby,
-                // so a screen reader reads it with the field.
-                $output_feedback_id = (((string) $id !== '') ? (string) $id : 'pg-field-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $field)) . '-feedback';
-                $output_inline_feedback = '<div id="' . h($output_feedback_id) . '" class="invalid-feedback d-block pg-inline-feedback" data-pg-source="liveform">'
-                    . htmlspecialchars($feedback_text, ENT_QUOTES, 'UTF-8')
-                    . '</div>';
+            if ($this->feedback_text($error_field) !== '') {
+                if ($group_feedback_id !== '') {
+                    $output_feedback_id = $group_feedback_id;
+                } else {
+                    // The text gets an id the control names in aria-describedby,
+                    // so a screen reader reads it with the field.
+                    $output_feedback_id = (((string) $id !== '') ? (string) $id : 'pg-field-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $field)) . '-feedback';
+                    $output_inline_feedback = $this->field_feedback($error_field, $output_feedback_id);
+                }
             }
         }
 
@@ -1000,6 +1001,44 @@ class liveform {
                 : (string) $field_data['error_message'];
         }
         return $out;
+    }
+
+    // The message of a field that failed validation, as plain text; '' when
+    // the field passed or has no message. The message is alert HTML; the
+    // feedback under a field is a text context.
+    private function feedback_text($field)
+    {
+        if (!$this->check_field_error($field)) {
+            return '';
+        }
+
+        $session_field = $_SESSION['software']['liveforms'][$this->form][$this->index][$field];
+
+        if (!isset($session_field['error_message']) || ((string) $session_field['error_message'] === '')) {
+            return '';
+        }
+
+        return (string) (function_exists('pg_liveform_message_text')
+            ? pg_liveform_message_text($session_field['error_message'])
+            : $session_field['error_message']);
+    }
+
+    // The message of a field that failed validation as the block printed
+    // under it, with the id its controls name in aria-describedby; '' when
+    // the field passed or has no message. output_field() prints it after the
+    // control; a group of radio buttons or check boxes prints it once after
+    // its last option label, its options given the id as feedback_id.
+    function field_feedback($field, $id)
+    {
+        $text = $this->feedback_text($field);
+
+        if ($text === '') {
+            return '';
+        }
+
+        return '<div id="' . h($id) . '" class="invalid-feedback d-block pg-inline-feedback" data-pg-source="liveform">'
+            . htmlspecialchars($text, ENT_QUOTES, 'UTF-8')
+            . '</div>';
     }
 
     function check_field_error($field)

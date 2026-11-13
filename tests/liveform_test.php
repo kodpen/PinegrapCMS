@@ -217,3 +217,53 @@ function test_liveform_output_field_autocapitalize()
 		}
 	});
 }
+
+// A refused radio button or check box group prints its message once, after
+// its last option label (field_feedback()); each option names it and prints
+// none: printed after the box, it stood between a lone consent box and its
+// label, and after every radio button. A field without feedback_id keeps
+// its message right after the control.
+function test_liveform_group_feedback_after_the_options()
+{
+	_test_liveform_with_session(function ($form) {
+		$form->mark_error('7', 'Check this box to continue.');
+		$form->mark_error('8', 'Size is required.');
+		$form->mark_error('9', 'Colours is required.');
+
+		$box = $form->output_field(array('type' => 'checkbox', 'name' => '7', 'id' => 'software_option_1', 'value' => 'Yes', 'feedback_id' => 'f7'));
+		pg_assert_false(strpos($box, 'invalid-feedback') !== false, 'a lone box prints no message of its own');
+		pg_assert_contains(' aria-invalid="true"', $box);
+		pg_assert_contains(' aria-describedby="f7"', $box, 'it names the group message');
+		pg_assert_same('<div id="f7" class="invalid-feedback d-block pg-inline-feedback" data-pg-source="liveform">Check this box to continue.</div>', $form->field_feedback('7', 'f7'), 'the message, printed once by the caller');
+
+		foreach (array('a', 'b', 'c') as $value) {
+			$radio = $form->output_field(array('type' => 'radio', 'name' => '8', 'id' => 'r_' . $value, 'value' => $value, 'feedback_id' => 'f8'));
+			pg_assert_false(strpos($radio, 'invalid-feedback') !== false, 'radio ' . $value . ' prints no message');
+			pg_assert_contains(' aria-describedby="f8"', $radio, 'radio ' . $value . ' names the one message');
+		}
+
+		$group = $form->output_field(array('type' => 'checkbox', 'name' => '9[]', 'id' => 'g1', 'value' => 'Red', 'feedback_id' => 'f9'));
+		pg_assert_contains(' aria-invalid="true"', $group, 'a check box group is read by its name without []');
+		pg_assert_contains(' aria-describedby="f9"', $group);
+		pg_assert_contains('Colours is required.', $form->field_feedback('9', 'f9'));
+
+		pg_assert_same('', $form->field_feedback('10', 'f10'), 'a field that passed has no message');
+
+		$plain = $form->output_field(array('type' => 'checkbox', 'name' => '7', 'id' => 'software_option_1', 'value' => 'Yes'));
+		pg_assert_contains('<div id="software_option_1-feedback" class="invalid-feedback d-block pg-inline-feedback" data-pg-source="liveform">Check this box to continue.</div>', $plain, 'without feedback_id the message follows the control as before');
+		pg_assert_contains(' aria-describedby="software_option_1-feedback"', $plain);
+	});
+}
+
+// The classic form rows (get_form_info(): custom forms, billing, shipping and
+// product forms) print a radio button or check box group's message once,
+// after the last option label.
+function test_liveform_form_info_groups_print_one_message()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/content.php');
+
+	pg_assert_same(2, substr_count($source, "'feedback_id' => \$feedback_id"), 'radio buttons and check boxes name it');
+	pg_assert_contains("\$output_options .= \$liveform->field_feedback(\$html_field_name, \$feedback_id);", $source, 'radio buttons print it after the options');
+	pg_assert_contains("\$output_feedback = \$liveform->field_feedback(\$html_field_name, \$feedback_id);", $source, 'check boxes read it before the name takes []');
+	pg_assert_contains("\$output_options .= \$output_feedback;", $source, 'and print it after the options');
+}

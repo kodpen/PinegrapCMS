@@ -17,6 +17,8 @@ module: custom_form
 
 ## And the classic `liveform::output_field()` path?
 - The inline text it prints for a failed field has id `<control id>-feedback` (or `pg-field-<name>-feedback`) and the control's `aria-describedby` names it, after any hint given in `aria-describedby`. The designed sign-up's CAPTCHA comes from this path (`get_captcha_fields()`).
+- A radio button or check box group gives each option `feedback_id`: the option names that id and prints no text; the caller prints `liveform::field_feedback($name, $id)` once after the last option label (a group's `name[]` is read without `[]`).
+- `get_form_info()` does so for classic custom, billing, shipping and product forms (id `<option id prefix>field_<field id>_feedback`). Before, the text came after the box, between a lone consent box and its label, and after every radio button (bug #9033). Custom layouts kept in the database still print it after the control.
 
 ## What does a required lone check box say?
 - `pg_cf_required_message()` (`includes/fn/custom_form.php`): a `check box` field with at most one option (a consent) says "Check this box to continue."; any other required field "<label> is required.". Before PR #4567 a consent repeated its whole sentence plus "is required." (#4544).

@@ -5,7 +5,8 @@ module: site_datetime
 ---
 
 ## When does a site page get the control?
-- When its HTML, after every shared component and system widget is drawn in, holds a date hook (`data-pg-date`, `-datetime`, `-time`, `-date-selects`), a bind marker `data-pg-date-bind` (`pg_site_datetime_pattern()`) or a native `<input type="date|datetime-local|time">` (`site-native-date-inputs.md`). `get_page_content.php` calls `pg_site_datetime_inject()` next to `pg_fx_inject()`; never in an e-mail. A page without one gets nothing.
+- When its HTML holds a date hook (`data-pg-date`, `-datetime`, `-time`, `-date-selects`), a bind marker `data-pg-date-bind` (`pg_site_datetime_pattern()`) or a native `<input type="date|datetime-local|time">` (`site-native-date-inputs.md`); never in an e-mail. A page without one gets nothing.
+- `get_page_content.php` asks after the page regions, so after widgets, `<system>` (classic custom form, checkout) and common regions, before the software's scripts. Asked before them, a classic form had hooks, no calendar (#9025).
 - Once a page: the stylesheet's id `pg-datetime-site-css` stops a second injection; a page that already printed the panel tags (`pg_fields_script()`, its `pg_datetime.js`) is left alone.
 
 ## What does it print?
@@ -15,7 +16,6 @@ module: site_datetime
 ## What does site mode change in the scripts?
 - `pgDateTime.site()` is true; the Done button takes the tag's `button` classes (`btn btn-sm btn-primary`, Bootstrap 5), else the panel's `btn-solid theme-primary`. `site_datetime.php` and `pg_datetime_site.css` are site files in `bs6_scope_kind()`.
 - `pg_fields.js` draws date kinds without `pgUI` or Bootstrap 6, as soon as the library has loaded; the popup stays under `<body>` (no overlay host). A site page without the site tags keeps plain fields.
-- Native date inputs are hooked by type (`site-native-date-inputs.md`).
 - The theme follows the nearest `data-bs-theme` (`themeAttrDetect`), else the system: Bootstrap 5.3.8 sites set it on `<html>` (theme switcher).
 
 ## Which site renderers are hooked?
@@ -24,6 +24,6 @@ module: site_datetime
 - A custom layout's markup (custom form screen, cart, express order, billing, shipping address, order form) carries no hook, so they bind by id: `pg_site_datetime_bind(array('date' => ids, 'datetime' => ids, 'time' => ids))` prints `<span hidden data-pg-date-bind="{json}">`; `pg_fields.js` gives each `<input>` with such an id the hook of its kind before drawing (once; a hooked field keeps its own). `prepare_custom_form()` names `time_fields` too.
 - Focus (comment publish, the arrival date's radio) goes through `software.focus_date_field()` (`frontend.src.js` and the hand-patched `frontend.min.js`: terser cannot rebuild it byte for byte): `pgFields.focus()` on the box.
 - The add-on is deleted (S3b, #4383); jQuery UI stays loaded on sites.
-- Tests: `tests/site_datetime_test.php` (patterns, inject, bind marker, renderer hooks, sha256), `tests/pg_fields_test.php` (`dp_site`, `dp_bind`).
+- Tests: `tests/site_datetime_test.php` (patterns, inject, its place, bind marker, renderer hooks, sha256), `tests/pg_fields_test.php` (`dp_site`, `dp_bind`).
 
-Related: docs/memory/ui/site-native-date-inputs.md, docs/memory/ui/pg-field-wrappers.md, docs/memory/ui/pg-datepicker.md, docs/memory/core/vanilla-calendar-library.md
+Related: docs/memory/ui/pg-field-wrappers.md, docs/memory/ui/pg-datepicker.md, docs/memory/core/vanilla-calendar-library.md
