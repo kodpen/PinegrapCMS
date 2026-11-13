@@ -391,13 +391,123 @@
         return q ? (items || []).filter(function (item) { return foldText(item.text).indexOf(q) !== -1; }) : [];
     }
 
+    // ── The list of everything (All) ──────────────────────────────────────
+
+    // What the dialog opens on: a typed text on its search results, a
+    // caller's own entry among them, else the list of everything. A stored
+    // value opens on All too; the footer shows it with its folder.
+    function openingMode(query, pickIsExtra) {
+        if (String(query || '').trim() !== '') {
+            return 'search';
+        }
+        return pickIsExtra ? 'extras' : 'all';
+    }
+
+    // The request for one page of All (picker.php list without a folder):
+    // the server sorts and pages, the cursor carries the last row's keys.
+    function allParams(kind, sort, dir, cursor, perPage) {
+        var params = { kind: kind, request: 'list', sort: sort, order: dir === 'asc' ? 'asc' : 'desc', per_page: perPage || 100 };
+        if (cursor) {
+            params.cursor = cursor;
+        }
+        return params;
+    }
+
+    // All's own sort, kept apart from a folder's: newest first unless the
+    // person chose another; a page has no size and no best match there.
+    function allSort(storedSort, storedDir, pages) {
+        var keys = pages ? ['modified', 'name', 'type'] : ['modified', 'name', 'size', 'type'];
+        // A stored direction belongs to its stored sort only.
+        if (keys.indexOf(storedSort) === -1) {
+            return { sort: 'modified', dir: 'desc' };
+        }
+        var sort = storedSort;
+        var dir = (storedDir === 'asc' || storedDir === 'desc') ? storedDir : defaultDir(sort);
+        return { sort: sort, dir: dir };
+    }
+
+    // The view a kind opens in: what the person chose for its sort of
+    // kind, else tiles for pictures and a list for pages and other files.
+    function viewFor(stored, pictures, pages) {
+        if (pages) {
+            return 'list';
+        }
+        if (stored === 'grid' || stored === 'list') {
+            return stored;
+        }
+        return pictures ? 'grid' : 'list';
+    }
+
+    // Rows of the next page added to those drawn: each value once.
+    function appendRows(rows, more) {
+        var seen = {};
+        (rows || []).forEach(function (row) { seen[String(row.value)] = true; });
+        return (rows || []).concat((more || []).filter(function (row) {
+            var key = String(row.value);
+            if (seen[key]) {
+                return false;
+            }
+            seen[key] = true;
+            return true;
+        }));
+    }
+
+    // Whether the list is scrolled close enough to its end to read the next
+    // page: within two screens.
+    function nearEnd(scrollTop, clientHeight, scrollHeight) {
+        return scrollHeight - (scrollTop + clientHeight) <= Math.max(200, clientHeight * 2);
+    }
+
+    // The folders an Upload on All is tried in, in order: the value's
+    // folder, the last one uploaded to, then the kind's top folders; each
+    // once. The first that takes an upload (picker.php list says so) is
+    // the target.
+    function uploadTargets(valueFolder, lastFolder, topFolders) {
+        var out = [];
+        [valueFolder, lastFolder].concat(topFolders || []).forEach(function (id) {
+            id = Number(id) || 0;
+            if (id > 0 && out.indexOf(id) === -1) {
+                out.push(id);
+            }
+        });
+        return out;
+    }
+
+    // The line under a name: the folder line in All, a search and Recently
+    // used; a page's address and type; a file's picture and file size.
+    function metaLine(item, mode, pages) {
+        item = item || {};
+        if (item.isFolder) {
+            return null;
+        }
+        if (item.extra) {
+            return item.note || '';
+        }
+        if (mode === 'all' || mode === 'search' || mode === 'recent') {
+            return pathText(item.path);
+        }
+        if (pages) {
+            return [item.address, item.type_label].filter(Boolean).join(' · ');
+        }
+        var parts = [];
+        if (item.width && item.height) {
+            parts.push(item.width + ' × ' + item.height);
+        }
+        if (item.size_label) {
+            parts.push(item.size_label);
+        }
+        return parts.join(' · ');
+    }
+
     var pure = {
         foldText: foldText, highlightParts: highlightParts, defaultDir: defaultDir, sortItems: sortItems,
         stepIndex: stepIndex, underFolder: underFolder, typeAheadIndex: typeAheadIndex, typesLabel: typesLabel,
         fill: fill, pathText: pathText, fileIcon: fileIcon, makeCollator: makeCollator,
         extensionOf: extensionOf, uploadRefusal: uploadRefusal, addRecent: addRecent, togglePick: togglePick,
         rangePick: rangePick, formatSize: formatSize, pickable: pickable, groupChips: groupChips, inGroup: inGroup,
-        extraItems: extraItems, extraMatches: extraMatches, fieldMeta: fieldMeta, resultsKey: resultsKey
+        extraItems: extraItems, extraMatches: extraMatches, fieldMeta: fieldMeta, resultsKey: resultsKey,
+        openingMode: openingMode, allParams: allParams, allSort: allSort, viewFor: viewFor, appendRows: appendRows,
+        nearEnd: nearEnd, uploadTargets: uploadTargets, metaLine: metaLine
     };
 
     var doc = root.document;

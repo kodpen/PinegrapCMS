@@ -283,3 +283,65 @@ function test_picker_js_field_helpers()
 	pg_assert_same('', $out['none']);
 	pg_assert_same(array('1 result · in every folder', '{n} results · in every folder', '{n}+ results · in every folder'), $out['keys']);
 }
+
+// The dialog opens on the list of everything: a typed text on its results,
+// a caller's own entry among them; All asks the server without a folder,
+// sorted and paged by the cursor, with a sort of its own.
+function test_picker_js_all_opening_and_sort()
+{
+	$out = picker_js_test_run('return {
+			open: [P.openingMode("", false), P.openingMode("  ", false), P.openingMode("logo", false), P.openingMode("", true), P.openingMode("x", true)],
+			first: P.allParams("image", "modified", "desc", "", 100),
+			next: P.allParams("page", "name", "asc", "abc_-1", 50),
+			sorts: [P.allSort(null, null, false), P.allSort("size", null, false), P.allSort("size", "asc", true), P.allSort("best", "asc", false), P.allSort("name", "sideways", false), P.allSort("type", "desc", true)],
+			views: [P.viewFor(null, true, false), P.viewFor(null, false, false), P.viewFor("list", true, false), P.viewFor("grid", false, false), P.viewFor("grid", false, true), P.viewFor("x", true, false)]
+		};');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('all', 'all', 'search', 'extras', 'search'), $out['open'], 'All unless a text is typed or the value is a caller entry');
+	pg_assert_same(array('kind' => 'image', 'request' => 'list', 'sort' => 'modified', 'order' => 'desc', 'per_page' => 100), $out['first'], 'no folder: the list of everything, no cursor on the first page');
+	pg_assert_same(array('kind' => 'page', 'request' => 'list', 'sort' => 'name', 'order' => 'asc', 'per_page' => 50, 'cursor' => 'abc_-1'), $out['next']);
+	pg_assert_same(array(
+		array('sort' => 'modified', 'dir' => 'desc'),
+		array('sort' => 'size', 'dir' => 'desc'),
+		array('sort' => 'modified', 'dir' => 'desc'),
+		array('sort' => 'modified', 'dir' => 'desc'),
+		array('sort' => 'name', 'dir' => 'asc'),
+		array('sort' => 'type', 'dir' => 'desc'),
+	), $out['sorts'], 'newest first by default; a page has no size; best match is a search sort');
+	pg_assert_same(array('grid', 'list', 'list', 'grid', 'list', 'grid'), $out['views'], 'pictures as tiles, files and pages as a list, the person\'s choice kept');
+}
+
+// Rows of the next page join without repeats, read near the end; each row
+// carries its folder line; Upload on All tries the value's folder, the last
+// one uploaded to, then the top folders.
+function test_picker_js_all_rows_line_and_upload_target()
+{
+	$out = picker_js_test_run('return {
+			rows: P.appendRows([{value: 1}, {value: 2}], [{value: 2}, {value: 3}, {value: 3}]).map(function (r) { return r.value; }),
+			fresh: P.appendRows(null, [{value: "a.jpg"}]).length,
+			near: [P.nearEnd(0, 500, 5000), P.nearEnd(4000, 500, 5000), P.nearEnd(3500, 500, 5000), P.nearEnd(0, 100, 250)],
+			lines: [
+				P.metaLine({path: [{name: "Files"}, {name: "Ürünler"}, {name: "2026"}], width: 10, height: 5, size_label: "1 KB"}, "all", false),
+				P.metaLine({path: [{name: "Files"}, {name: "Ürünler"}], width: 10, height: 5, size_label: "1 KB"}, "folder", false),
+				P.metaLine({path: [{name: "Pages"}, {name: "Kurumsal"}], address: "/hakkimizda", type_label: "Standard"}, "all", true),
+				P.metaLine({address: "/hakkimizda", type_label: "Standard"}, "folder", true),
+				P.metaLine({isFolder: true}, "all", false),
+				P.metaLine({extra: true, note: "Not saved yet", path: []}, "all", true)
+			],
+			targets: [P.uploadTargets(7, 9, [3, 7, 4]), P.uploadTargets(0, null, [3]), P.uploadTargets("12", "12", []), P.uploadTargets(0, 0, [])]
+		};');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(1, 2, 3), $out['rows'], 'a row the next page repeats is drawn once');
+	pg_assert_same(1, $out['fresh']);
+	pg_assert_same(array(false, true, true, true), $out['near'], 'the next page is read within two screens of the end');
+	pg_assert_same(array('Ürünler / 2026', '10 × 5 · 1 KB', 'Kurumsal', '/hakkimizda · Standard', null, 'Not saved yet'), $out['lines'], 'All draws the folder line, as a search result');
+	pg_assert_same(array(array(7, 9, 3, 4), array(3), array(12), array()), $out['targets']);
+}
