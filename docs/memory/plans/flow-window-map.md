@@ -4,7 +4,7 @@ description: Flow window plan, FW0 part 1: each control of today's bar and palet
 ---
 
 ## Where did each control of the bar go (FW1, done)?
-- "New flow" → the flow list's bar only. The page's back arrow → stays in the breadcrumb strip: the one way back of every screen (`ui/back-arrow-no-copies.md`); the drawing's arrow is that arrow.
+- "New flow" → the flow list's bar only. The page's back arrow → left in the breadcrumb strip, the one way back of every screen (`ui/back-arrow-no-copies.md`), where the drawing had it in the bar: open.
 - Name, status, "Changes not published yet", save state, Retry → the left of the bar; the reader's "only its owner changes it" → the save state's place.
 - Outline view → the List choice of the Canvas / List switch in the middle. Data threads → an icon toggle beside Redo, Canvas only.
 - Undo, Redo, Problems, Flow runs, Run, Publish, "Only the owner publishes…" → the right, in the drawing's order; Publish filled, Run quiet (filled where there is no Publish).
@@ -20,7 +20,7 @@ description: Flow window plan, FW0 part 1: each control of today's bar and palet
 - "Start from a template" (an empty flow only) → the first row under the head, as today: an empty flow starts there.
 - Search → the search field; it unfolds the groups that hold a match.
 - Section 1 Start: without a start box, the start kinds as rows; with one, a single row naming it with "Change". The line "This flow: …" and "remove that box first" go: the row says it.
-- "Change" (new, decided here): it unfolds the start kinds under the row; choosing one swaps the start box in place, its place and its arrows kept, its settings those of the new kind; one undo step; a start with settings asks first.
+- "Change" (a proposal, open: `flow-window-paths.md`): it unfolds the start kinds under the row; choosing one swaps the start box in place, its place and its arrows kept, its settings those of the new kind; one undo step; a start with settings asks first.
 - Section 2 Steps: the groups Message, People, Logic, Records and tables, System, each folding, a folded one showing its count. "Records and tables" takes `row_add`, `row_set`, `row_get`, `rows_get`, `record_get` and `change` out of System (six, as drawn); a kind's colour group (`KINDS[].group`) stays, only the palette's grouping changes.
 - Section 3 End; Values (constants, derived value) last, folded at first.
 - A box: a 32 px row, tile and name; its long description → the row's tooltip and description (`aria-describedby`); click adds it, drag drops it, as today. The sections' hints → their headings' tooltips.

@@ -5,12 +5,12 @@ description: Flow window plan, FW0 part 2: each control of today's side panel an
 
 ## Where does a chosen box's side panel go (FW3)?
 - The kind's title → the head: the box's tile, its kind (small caps), its title (its name on the canvas), then ⋯ and Close.
-- "Remove the box" → ⋯ › Remove. Duplicate (new) → ⋯ › Duplicate: the box and its settings, no arrows, placed right of it where there is room, selected; one undo step; a start box has none.
-- Close (new): nothing selected, the focus back on the box on the canvas.
+- "Remove the box" → ⋯ › Remove. Duplicate (drawn) → ⋯ › Duplicate: the box and its settings, no arrows, placed right of it where there is room, selected; one undo step; a start box has none.
+- Close (drawn): nothing selected, the focus back on the box on the canvas.
 - Settings tab: Title first, then the kind's own fields in today's order (retry, Tell me, the web address…); "Add a value" stays under the field it serves.
 - Connections tab, its count the arrows in and out: "Comes after" → "Before", each box a row with its tile; "Then" → "After", each arrow a row: tile, name, its outcome select (a box with more than one outcome), ×. "Connect to…" with Add → "Add an arrow": the same select and button under the list; C still opens it.
 - Try tab (the owner only, as today): the run to read values from, "Try this box", the answer; nothing moves.
-- The foot line (new): "Before <box>" and "After N boxes"; each name a button that selects that box; several after: the first in arrow order.
+- The foot line (drawn): "Before <box>" and "After N boxes"; each name a button that selects that box; several after: the first in arrow order.
 - Which tab opens: Settings, and the last one chosen while boxes are chosen one after another in the same flow; Enter on a canvas box focuses the Settings tab's first field.
 
 ## And an arrow or a data thread chosen?
