@@ -75,6 +75,7 @@ function workspace_mail_room_hidden_test_readers()
 		// Every channel's folder is one, the room's as well.
 		'includes/workspace/files.php::ws_root_folder_id'                  => array('key:folder_id'),
 		'includes/workspace/flow_mail_person.php::ws_flow_mail_person'     => array('id'),
+		'includes/workspace/flow_sms_box.php::ws_step_sms_person'          => array('id'),
 		'includes/workspace/flows.php::ws_flows_channel_names'             => array('id'),
 		'includes/workspace/flows.php::ws_flows_nav_visible'               => array('kinds', 'kinds'),
 		'includes/workspace/groups.php::ws_group_channel_ids'              => array('key:group_id'),
