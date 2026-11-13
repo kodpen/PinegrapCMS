@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-24
-description: Decisions list, workspace part 24 (2026-11-14 on): a guest sees the agents' messages and wakes none; guests listed in Channel info; the channel's agents' answers read aloud
+description: Decisions list, workspace part 24 (2026-11-14 on): a guest sees the agents' messages and wakes none; guests in Channel info; agents' answers read aloud; the shared-channel notice
 ---
 
 ## Where are the rules and the earlier parts?
@@ -23,3 +23,7 @@ description: Decisions list, workspace part 24 (2026-11-14 on): a guest sees the
 ## Are the channel's agents' answers read aloud? (owner, 2026-11-13, in the architect's window)
 - Yes, as an assistant's answers are. Owner, with "Read assistant answers to me aloud" on in the agent channel: "benim tarayıcım anıldığımda ses çalmıyor ve sesli okunmuyor." Read aloud covered only Claude, Pinegrap AI and MCP answers. Step GV3.
 - The sound was the hidden tab: it stays silent there (`decisions-made-workspace-18.md`, #8798); that decision is not changed.
+
+## How is the notice of a shared channel shown? (owner, 2026-11-14, in the architect's window)
+- Once no link is open ("This channel was shared outside the team; no link is open now.") it is a small button with an exclamation mark, not a row. Owner: "uyarısı daha portatif olarak farklı bir alanda ünnem işaretli bir düğme olarak dursun. bu şekilde gereksiz alan kaplattırıp head alanını büyütüyor."
+- While a share is open the row stays and may stand out more. Owner: "paylaşım devam ederken daha geniş ve dikkat edici olabilir". Step GV6.

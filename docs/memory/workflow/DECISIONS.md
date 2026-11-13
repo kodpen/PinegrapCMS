@@ -431,6 +431,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-24.md: Does a guest see the agents' messages? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-24.md: Is a guest listed in Channel info? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-24.md: Are the channel's agents' answers read aloud? (owner, 2026-11-13, in the architect's window)
+- decisions-made-workspace-24.md: How is the notice of a shared channel shown? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
