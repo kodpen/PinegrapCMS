@@ -12,7 +12,7 @@ description: Decisions list, product part 49 (2026-11-13 on): a customer's Whats
 - The architect's, not the owner's words: the work is steps WA12 to WA18 of `plans/whatsapp-channel-steps-2.md`. One way for the person (the e-mail conversation's card, drawer, list, rights and notices); WhatsApp free text only inside Meta's 24 hours and approved templates after it; SMS only where the provider delivers incoming messages; assistants draft and never send; any table or column is asked of the owner first.
 
 ## Are the image editor's rows on a phone approved? (owner, 2026-11-13, #8863)
-- Approved, no change asked (#8854, step V10 of `plans/image-editor-video-steps.md`; the screen is `ui/image-editor-phone-rows.md`): on an upright phone the Animate tool of a document with a video shows one list of rows after the play bar, the video row taller with finger-size trim handles, the sound rows folded into one line, and Split in the selection bar.
+- Approved, no change asked (#8854; the screen is `ui/image-editor-phone-rows.md`): on an upright phone the Animate tool of a document with a video shows one list of rows after the play bar, the video row taller with finger-size trim handles, the sound rows folded into one line, and Split in the selection bar.
 - The approval reached the issue through the merging session first. Asked in the architect's window whether it is his, the owner (2026-11-13): "Evet, ben onayladım".
 
 ## Can a layer go under the photo in the image editor? (owner, 2026-11-08, #9198)

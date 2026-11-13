@@ -18,4 +18,4 @@ module: image_editor
 - A tool that also selects and moves layers lists itself in `Editor.selectTools` (the handles show and the layer keys work) and gives a press on a handle or a layer to `this.startDrag(e)`. Every change goes through `this.change(mutate, key)` (`image-editor-modal.md`).
 
 ## Where do tools still meet?
-- A hook a tool needs in the core or the layers file is a small edit of its own, named in the PR body. The save path in `includes/fn/image_editor.php` and `includes/image_engine.php` is shared: steps that change it go one at a time (`plans/image-editor-workers.md` while the plan runs).
+- A hook a tool needs in the core or the layers file is a small edit of its own, named in the PR body. The save path in `includes/fn/image_editor.php` and `includes/image_engine.php` is shared: steps that change it go one at a time.

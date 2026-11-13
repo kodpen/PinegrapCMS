@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Where is it?
-- `renderFrame()` of the `render` part (`pg_image_editor_render.js`) asks `clipFramesAt(time)` of the `clip` part (`pg_image_editor_clip.js`, "the frames of an animation's export") beside `frameCutsAt()`; the model's `M.clipFramesAt(doc, t)` in the `CLIP` section; tests in `tests/image_editor_clip_test.php`. Added in V7b of `plans/image-editor-video-steps-2.md` (#8629).
+- `renderFrame()` of the `render` part (`pg_image_editor_render.js`) asks `clipFramesAt(time)` of the `clip` part (`pg_image_editor_clip.js`, "the frames of an animation's export") beside `frameCutsAt()`; the model's `M.clipFramesAt(doc, t)` in the `CLIP` section; tests in `tests/image_editor_clip_test.php`. Added in #8629.
 
 ## Which frame does an export frame take?
 - `M.clipFramesAt(doc, t)`: by layer id, each visible video layer's source time at document time t (`M.clipAt()`: the trim and the speed), rounded to whole ms; `null` while t is off the clip's span (before its start, from its end on), so the layer paints nothing there. Hidden clips and other layers are left out.

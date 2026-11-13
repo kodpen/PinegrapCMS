@@ -15,5 +15,9 @@ module: image_editor
 - `modeSwitch()` draws the switch (`.pgie-seg.pgie-modes`, role group, label `railMode`) at the top of the panel body; a mode's label is `mode_<tool>` when defined (`mode_vector` is Pen), else `tool_<tool>`. A switch goes through `pickTool()`, which keeps the selection.
 - The switch wraps (flex, each button at least its label's width): at 1280×800 the five photo modes in equal columns overflowed the 304 px panel ("Alan seç" on two lines, "Çerçeve" past its button); now four sit on the first row and Frame on the second, and the phone's wider sheet keeps one row. A longer language wraps the same way.
 
+## How does the rail fit its labels and buttons?
+- Labels are 10.5 px (`.pgie-tool span`). A one-word label (Turkish "Animasyon", "Katmanlar", "Fotoğraf") is kept on one line: `fitRailLabels()` shrinks it to fit the button, down to 8.5 px, rather than breaking inside the word; a multi-word label ("Dışa Aktar") wraps between words, and a word fitting neither breaks inside the button, never over it (#6613, #9234).
+- A rail too short for all its buttons (`fitRail()`, run on a new rail and a resize, then `fitRailLabels()`) draws them closer (`.pgie-rail-tight`), then shows icons only (`.pgie-rail-icons`; titles name the tools); the rest scrolls under the Layers button, sticky at the rail's foot and at the end of a phone's bar.
+
 ## Where is it tested?
 - `tests/image_editor_rail_test.php`: the profiles' items, the modes, the reopened mode, the letters. The DOM part was checked in a headless browser at 1280×800 and 390×780 (#6819).

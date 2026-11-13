@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Where is it?
-- In the `clip` part (`pg_image_editor_clip.js`, "the filmstrip and the waveform"), `M.clipStripTimes()` in the model's `CLIP` section, the rules after `.pgie-clipquiet` in `pg_image_editor.src.css`, tests in `tests/image_editor_clip_test.php`. Added in V3b of `plans/image-editor-video-steps.md` (screen 35, owner 2026-11-10 on #8521). The row and its drags: `image-editor-clip-timeline.md`.
+- In the `clip` part (`pg_image_editor_clip.js`, "the filmstrip and the waveform"), `M.clipStripTimes()` in the model's `CLIP` section, the rules after `.pgie-clipquiet` in `pg_image_editor.src.css`, tests in `tests/image_editor_clip_test.php`. Added with the clip bar (owner 2026-11-10, #8521). The row and its drags: `image-editor-clip-timeline.md`.
 
 ## What does a bar show?
 - The filmstrip: as many frames as fit the bar's width at the video's ratio (`clipStripFill()`, once the bar is laid out), each the source at the middle of its part of the cut (`M.clipStripTimes()`: 0.1 s grid, at most `M.CLIP_STRIP_MAX` 24). A frame not decoded yet shows the stage's last frame.

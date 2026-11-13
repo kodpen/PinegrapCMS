@@ -20,7 +20,7 @@ module: image_editor
 ## How does it look on a phone?
 - Below 768 px wide or 500 px tall the dialog fills the screen and the panel is a sheet the editor opens and closes (`.pgie-sheet-closed`): a tool opens it, pressing the active tool again toggles it, Select opens it only on that second press, the panel's close button shuts it.
 - Below 600 px wide: the rail is a scrolling bar along the bottom, the sheet sits above it (at most 42 %), the top bar keeps close, name, undo, redo and save, the mini bar moves down; safe areas kept. Between 600 and 767 px and below 500 px tall (sideways) the sheet covers the right of the stage; sideways the rail shows icons only. On touch a handle (`.pgie-h`) gets a 44 px target.
-- Rail labels are 10.5 px and break inside their button, never over it (#6613). A rail too short for its buttons (`fitRail()`, on a new rail and a resize) draws them closer (`.pgie-rail-tight`), then shows icons only (`.pgie-rail-icons`; titles name the tools); the rest scrolls under the Layers button, sticky at the rail's foot (and the end of a phone's bar).
+- The rail keeps a one-word label on one line and, too short for its buttons, draws them closer then icon-only, the rest scrolling under the sticky Layers button (`fitRail()`, `fitRailLabels()`): `image-editor-rail.md`.
 
 ## How is a change recorded?
 - `editor.change(mutate, key)`: the history keeps a clone of the document (100 steps), then `mutate(doc)` runs; same-key calls in a row are one undo step (a slider drag). Undo and redo swap the clones.
