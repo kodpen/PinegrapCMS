@@ -11,10 +11,11 @@ description: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's Java
 - `pgUI.show/hide/toggle(kind, el[, opts])` return a promise settled when the change is done (v6: Bootstrap's own; v5: the shown/hidden event, at most 1.5 s). `pgUI.get/find/dispose`, `pgUI.isOpen(kind, el)` (v6 dialog: `[open]` without `.hiding`, never `.show`), `pgUI.anyOpen('dialog')`. v6 `hide()` adds `.hiding` and closes after the animation; counted as open, `view_folders.php` `hideModal()` closed that dialog's next opening (#2578).
 - `pgUI.on(el, kind, 'hidden', fn, {once: true})`: native listeners for both names (`hidden.bs.dialog`, `hidden.bs.modal`), returns `off()`; jQuery `.on('hidden.bs.modal')` never fires.
 - `pgUI.options()` maps `floatingConfig`/`popperConfig` both ways, drops Collapse's `toggle` under 6.
-- `pgUI.dialog.build({id, title, size, scrollable, centered, backdrop, keyboard, className, closeLabel, footer})` returns `{root, header, title, body, footer, close}`: under 6 one `<dialog class="dialog">`. The caller passes a translated `closeLabel`, fills body and footer, appends root.
-- `pgUI.overlayHost(el)`: where a select2 dropdown, date picker or popover container goes: the open `<dialog>` holding `el` (or the top one not `.hiding`), else the body (the top layer hides the rest).
-- `pgUI.hostLayer(container)`: a body-level toast container (`pgToast()`, explorer `toast()`) moves into the top dialog and back to the body on its `hide` (native `close` as fallback; `hidden` is too late: Bootstrap hides each `.toast.show` inside right after `hide`). Under a backdrop it could not be dismissed (#2578).
+- `pgUI.dialog.build({id, title, size, scrollable, centered, backdrop, keyboard, className, closeLabel, footer})` returns `{root, header, title, body, footer, close}` (under 6 one `<dialog class="dialog">`); the caller gives a translated `closeLabel`, fills it, appends root.
+- `pgUI.overlayHost(el)`: where a select2 dropdown, date picker or popover goes: the open `<dialog>` holding `el` (or the top one not `.hiding`), else the body (the top layer hides the rest).
+- `pgUI.hostLayer(container)`: a body-level toast container (`pgToast()`, explorer `toast()`) moves into the top dialog and back to the body on its `hide` (native `close` as fallback; `hidden` is too late: Bootstrap hides each `.toast.show` inside right after `hide`). Under a backdrop it could not be closed (#2578).
 - `pgUI.ready(fn)` and `window.pgBootstrapReady`: settled when the bridge fires `pg:bootstrap-ready` (at once if `window.bootstrap` is already set).
+- Focus into a shown v6 dialog or drawer: `dialog-focus-on-open.md`.
 
 ## What is the Bootstrap 6 bridge?
 - `assets/js/pg_bs6_bridge.js`, a `type="module"` in the panel head: imports the v6 bundle, sets `window.bootstrap` (never the v5 names), fires `pg:bootstrap-ready`; it runs before the screens' defer bundles and jQuery's ready handlers.
@@ -25,7 +26,7 @@ description: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's Java
 
 ## How does code written for pgUI read?
 - `pgUI.dialog.show(el)` / `hide(el)`, cached `pgUI.dialog.get(el)`; `pgUI.tooltip.find(el)` (or `popover`, `menu`) to take an existing instance only; `pgUI.dialog.on(el, 'show', fn)`, whose handler gets the native event (`relatedTarget`, `preventDefault()` work).
-- A script run while the page is parsed guards on `window.pgUI`, not `window.bootstrap`, and reaches Bootstrap only in a handler or inside `pgUI.ready()`. A menu or popover option goes in as `floatingConfig`.
+- A script run during parsing guards on `window.pgUI`, not `window.bootstrap`, and reaches Bootstrap only in a handler or `pgUI.ready()`. A menu or popover option goes in as `floatingConfig`.
 
 ## How is it tested?
-- `tests/pg_ui_test.php`: Node, v5/v6 stand-ins, a fake document (v6 dialogs close a tick after `.hiding`); skipped without Node.
+- `tests/pg_ui_test.php`: Node, v5/v6 stand-ins, a fake document (v6 dialogs close a tick after `.hiding`).
