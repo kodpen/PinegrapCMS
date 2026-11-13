@@ -97,7 +97,8 @@ function ws_canvas_binding_agent_name($app_id, $tags, $app_name)
  */
 function ws_canvas_binding_line_text($agent, $table, $canvas, $access)
 {
-    $does = ((string) $access === 'write') ? lang('reads, writes') : lang('reads');
+    // The words the card's line of tables uses.
+    $does = ((string) $access === 'write') ? lang('reads, writes') : lang('reads only');
 
     if ((string) $table === '') {
         return lang(array('string' => '{var:1} bound a table to {var:2} · {var:3}', 'vars' => array($agent, $canvas, $does)));

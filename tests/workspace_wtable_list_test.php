@@ -332,4 +332,5 @@ function test_workspace_wtable_list_canvases_cell()
 	pg_assert_true(isset($cells['canvases']), 'the list has the column');
 	pg_assert_same('Sales board', ws_canvas_name(array('file_name' => 'Sales board.html')), 'a canvas is named by its page without .html');
 	pg_assert_same('Plan.HTM', ws_canvas_name(array('file_name' => 'Plan.HTM.html')));
+	pg_assert_same('Sales board', ws_canvas_name(array('file_name' => 'Sales board.png')), 'a canvas whose message carries its drawing, without .png');
 }

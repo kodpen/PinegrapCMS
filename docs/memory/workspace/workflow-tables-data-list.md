@@ -14,7 +14,7 @@ description: The Data list (CO6 #8978, CO6b #9192): workflow tables named Data, 
 
 ## Which canvases show beside a table? (#9192)
 - The Canvases column and, on an opened table, the line "Canvases that use it" under its title (above the description): the canvases whose live page binds the table (`ws_canvas_tables`, `workspace/canvas-tables.md`), read once for the list (`ws_canvas_tables_by_table()`).
-- Only canvases the person may see (`ws_canvas_uses()`: a live page, not deleted, in a channel they read, `ws_canvas_page_reach()`); others are left out, as in the channel. Each is a chip with its name (`ws_canvas_name()`: the page file without .html) linking to `workspace.php?channel=…&message=…`.
+- Only canvases the person may see (`ws_canvas_uses()`: a live page, not deleted, in a channel they read, `ws_canvas_page_reach()`); others are left out, as in the channel. Each is a chip with its name (`ws_canvas_name()`: the file name without .html, or .png for a canvas whose message carries its drawing) linking to `workspace.php?channel=…&message=…`.
 - The column names three and counts the rest ("+2"), sorting by how many; the line names ten (`ws_canvas_uses_html()`).
 
 ## Where did the deleted tables go?

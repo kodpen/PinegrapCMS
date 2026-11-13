@@ -31,7 +31,7 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 
 - CO7d (S) An agent's binding as a channel line with Undo. Done in #9323.
 
-- CO8 (M) The phone. The table screen and the canvas's screens from the approved `canvas-one/phone.html`, on look A's recipes as they stand (DL1, DL5b's lists); it does not wait for the Workspace family (DL5f, not drawn). No new recipe: what is missing is built from the nearest one and listed in the PR body for DL5f. After CO7c.
+- CO8 (M) The phone: the card, the first-write sheet and the Data list at 390 px. Done in #9361 (`workspace/canvas-phone.md`).
 
 - CO9 (S) Close-out: `workspace/canvas-overview.md`, the lasting rules in the topic files, the PR body names the `[NEW]` changelog line, both plan files and the folder deleted.
 
