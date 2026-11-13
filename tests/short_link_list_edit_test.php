@@ -203,3 +203,33 @@ function test_short_link_quick_column_of_each_field()
 		pg_assert_true(isset(pg_short_link_list_columns(true, true)[pg_short_link_quick_column($field)]), $field);
 	}
 }
+
+// The Page and Destination cells are names to read, and the list's search
+// reads the cell text: "pg-ğ#x" is shown as the Pages list shows it, never
+// its address form "pg-%C4%9F%23x", which no one types into the search.
+function test_short_link_list_cells_show_names_as_text()
+{
+	// A one-time link (no name) has no Visit address to build.
+	$link = array(
+		'id' => '7', 'name' => '', 'token_hint' => 'abc', 'page_id' => '12', 'page_type' => 'standard',
+		'product_group_id' => '0', 'product_id' => '0', 'url' => '', 'file_id' => '0', 'tracking_code' => '',
+		'product_group_address_name' => 'çay-ş', 'product_address_name' => 'kılıf 50%', 'file_name' => 'özet ğ#1.pdf',
+		'page_name' => 'pg-ğış#x', 'created_timestamp' => 0, 'created_username' => '',
+		'last_modified_timestamp' => 0, 'last_modified_username' => '',
+	);
+
+	$page = pg_short_link_list_cells($link + array('destination_type' => 'page'), array());
+	pg_assert_same('pg-ğış#x', $page['page']['html'] ?? '', 'the page name as it is');
+
+	$group = pg_short_link_list_cells($link + array('destination_type' => 'product_group'), array());
+	pg_assert_same('çay-ş', $group['destination']['html'] ?? '', 'a product group address name as it is');
+
+	$product = pg_short_link_list_cells($link + array('destination_type' => 'product'), array());
+	pg_assert_same('kılıf 50%', $product['destination']['html'] ?? '', 'a product address name as it is');
+
+	$file = pg_short_link_list_cells(array_merge($link, array('destination_type' => 'file', 'file_id' => '9')), array());
+	pg_assert_same('özet ğ#1.pdf', $file['destination']['html'] ?? '', 'a file name as it is');
+
+	$escaped = pg_short_link_list_cells(array_merge($link, array('destination_type' => 'page', 'page_name' => 'a<b>"c')), array());
+	pg_assert_same('a&lt;b&gt;&quot;c', $escaped['page']['html'] ?? '', 'still escaped for HTML');
+}
