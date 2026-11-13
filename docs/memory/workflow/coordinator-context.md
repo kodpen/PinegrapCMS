@@ -21,7 +21,7 @@ description: Keeping a coordinator's context small (2026-11-04): what its first 
   - the queue count;
   - the plan steps not done and held by no open PR, each with its "After";
   - then the low-priority ones apart: the design template plans' (`coordinator-no-plans.md`), printed as "paused" while they are paused;
-  - the open `architect` issues (no `bug` issue: they are not given out, `coordinator-no-plans.md`).
+  - the open `architect` issues. It does not list the open `bug` issues; the coordinator reads them with the command in `test-coordinator.md`, since they are work to give out.
   - Steps are read in every format the plans use: `- AP3 …`, `- **AP3** …`, `- E20 (S) …`, `2. TD14 …`, indented `  - V3 …` (an indented line with the same ID or no list mark is more of the step above), `- Done: N1 #n, …` lists, `D5 part 4` from "Next: part 4", the own-looks round's `<name>-1`/`-2` (four templates at a time), and under a steps heading the design templates' numbered ones (`- 4 Topic: …`, `- 4 (done, #n): …`). Not listed: steps of the owner ("(S, owner's machine)"), lines without `free` where the holder marks free lines `free`, and the steps after the first open one of a plan whose steps wait for the one before. Until #8204 these were listed wrongly or missed. A new step format needs a case in `tests/free_work_test.php`; `--worktree` shows what an unpushed plan edit lists.
   
   Then it opens only the plan file of the step it gives out, sliced to that step.
