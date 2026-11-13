@@ -155,6 +155,62 @@ function test_workspace_agent_answer_route_wakes()
 	pg_assert_contains('ws_agent_after_app_send($viewer, $channel, $row[\'id\'], (string) $params[\'text\'])', $api, 'an application\'s message wakes the agents it names');
 }
 
+function test_workspace_agent_knock_routine_form()
+{
+	$url = 'https://api.anthropic.com/v1/claude_code/routines/trig_01AbC/fire';
+	$knock = ws_agent_knock_request($url, 'https://site.example/integration.php', 'prmerge', 79, 'tok', 1700000000);
+
+	pg_assert_true($knock['routine'], 'a routine address is knocked in the routine form');
+	pg_assert_same(array('text' => 'site: https://site.example/integration.php · agent: @prmerge · request: 79'), json_decode($knock['body'], true));
+	pg_assert_same(array(
+		'Authorization: Bearer tok',
+		'anthropic-beta: ' . WS_CLAUDE_BETA,
+		'anthropic-version: 2023-06-01',
+		'Content-Type: application/json',
+	), $knock['headers']);
+
+	foreach ($knock['headers'] as $header) {
+		pg_assert_true(stripos($header, 'X-Pinegrap') === false, 'no webhook signature on a routine knock');
+	}
+
+	pg_assert_same(ws_agent_knock_routine_body('s', '@ci', 1), ws_agent_knock_routine_body('s', 'ci', 1), 'one @ before the handle');
+}
+
+function test_workspace_agent_knock_webhook_form_unchanged()
+{
+	foreach (array('https://hooks.example/knock', 'https://api.anthropic.com/v1/claude_code/routines/x/fire?y=1') as $url) {
+		$knock = ws_agent_knock_request($url, 'https://site.example/integration.php', 'ci', 12, 's3cret', 1700000000);
+		$body = ws_agent_knock_body('https://site.example/integration.php', 'ci', 12);
+
+		pg_assert_true(!$knock['routine'], $url);
+		pg_assert_same($body, $knock['body']);
+		pg_assert_same(ws_agent_knock_headers($body, 's3cret', 1700000000), $knock['headers']);
+	}
+}
+
+function test_workspace_agent_knock_reason()
+{
+	pg_assert_same('Missing field text', ws_agent_knock_reason('{"type":"error","error":{"type":"invalid_request_error","message":"Missing field text"}}'));
+	pg_assert_same('Bad request: no body', ws_agent_knock_reason("  Bad request:\n\tno body  "));
+	pg_assert_same('', ws_agent_knock_reason(''));
+	pg_assert_same('', ws_agent_knock_reason("\xC3\x28"), 'broken UTF-8 is left out');
+	pg_assert_same('{"error":"plain"}', ws_agent_knock_reason('{"error":"plain"}'), 'no error.message: the text itself');
+
+	$long = ws_agent_knock_reason(str_repeat('ab ', 100));
+	pg_assert_true(mb_strlen($long) <= 120, 'at most 120 characters');
+	pg_assert_same('…', mb_substr($long, -1));
+}
+
+function test_workspace_agent_knock_refusal()
+{
+	pg_assert_same(lang(array('string' => 'claude.ai refused the routine\'s address or token (HTTP {var:1}). Generate a new token for the routine and enter it again.', 'vars' => 401)), ws_agent_knock_refusal(401, '', true));
+	pg_assert_same(lang('The routine\'s daily run allowance is used up.'), ws_agent_knock_refusal(429, '{}', true));
+	pg_assert_same(lang(array('string' => 'The push door answered HTTP {var:1}.', 'vars' => 401)), ws_agent_knock_refusal(401, '', false), 'a webhook door keeps the plain sentence');
+	pg_assert_same(lang(array('string' => 'The push door answered HTTP {var:1}: {var:2}', 'vars' => array(400, 'Missing field text'))),
+		ws_agent_knock_refusal(400, '{"error":{"message":"Missing field text"}}', true));
+	pg_assert_true(strpos(workspace_agent_queue_test_source('ws_agent_knock'), 'ws_agent_knock_refusal(') !== false, 'the knock uses the refusal sentence');
+}
+
 function test_workspace_agent_knock_body_and_headers()
 {
 	$body = ws_agent_knock_body('https://site.example/integration.php', 'ci', 12);

@@ -122,9 +122,9 @@ function ws_agent_knock_body($site, $handle, $request_id)
 }
 
 /**
- * The headers of a knock: JSON, the door's secret as a bearer token (a
- * routine's fire address reads it so) and a signature of the body with the
- * secret, for a receiver that checks it. Pure.
+ * The headers of a webhook-form knock: JSON, the door's secret as a bearer
+ * token and a signature of the body with the secret, for a receiver that
+ * checks it. Pure.
  *
  * @param string $body   ws_agent_knock_body()
  * @param string $secret the door's secret, opened ('' for none)
@@ -143,6 +143,127 @@ function ws_agent_knock_headers($body, $secret, $time)
     }
 
     return $headers;
+}
+
+/**
+ * What a routine's fire address is sent for a knock: one line of text with
+ * the site's API address, the agent's handle and the request's id, the form
+ * ws_claude_fire() uses. Never the words of the message. Pure.
+ *
+ * @param string $site       the site's API address
+ * @param string $handle
+ * @param int    $request_id
+ * @return string JSON
+ */
+function ws_agent_knock_routine_body($site, $handle, $request_id)
+{
+    return (string) json_encode(array(
+        'text' => 'site: ' . (string) $site . ' · agent: @' . ltrim((string) $handle, '@') . ' · request: ' . (int) $request_id,
+    ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+}
+
+/**
+ * The headers a routine's fire address takes, as ws_claude_fire() sends
+ * them, with the door's secret as the routine's token. Pure.
+ *
+ * @param string $secret the door's secret, opened
+ * @return string[]
+ */
+function ws_agent_knock_routine_headers($secret)
+{
+    return array(
+        'Authorization: Bearer ' . (string) $secret,
+        'anthropic-beta: ' . WS_CLAUDE_BETA,
+        'anthropic-version: 2023-06-01',
+        'Content-Type: application/json',
+    );
+}
+
+/**
+ * The knock a door's address takes: a routine's fire address
+ * (ws_claude_url_valid()) gets the routine's form, every other address the
+ * signed webhook form. Pure.
+ *
+ * @param string $url        the door's address
+ * @param string $site       the site's API address
+ * @param string $handle
+ * @param int    $request_id
+ * @param string $secret     the door's secret, opened ('' for none)
+ * @param int    $time
+ * @return array routine (bool), body (string), headers (string[])
+ */
+function ws_agent_knock_request($url, $site, $handle, $request_id, $secret, $time)
+{
+    if (ws_claude_url_valid($url)) {
+        return array(
+            'routine' => true,
+            'body'    => ws_agent_knock_routine_body($site, $handle, $request_id),
+            'headers' => ws_agent_knock_routine_headers($secret),
+        );
+    }
+
+    $body = ws_agent_knock_body($site, $handle, $request_id);
+
+    return array('routine' => false, 'body' => $body, 'headers' => ws_agent_knock_headers($body, $secret, $time));
+}
+
+/**
+ * The reason a refusing door gave, for the agent's row: error.message of a
+ * JSON answer, else the start of the text, on one line and at most 120
+ * characters ('' for none). Shown escaped. Pure.
+ *
+ * @param string $body the answer's body
+ * @return string
+ */
+function ws_agent_knock_reason($body)
+{
+    $body = (string) $body;
+    $json = json_decode($body, true);
+    $text = $body;
+
+    if (is_array($json) && is_array($json['error'] ?? null) && is_string($json['error']['message'] ?? null)) {
+        $text = $json['error']['message'];
+    }
+
+    $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+
+    if ($text === '') {
+        // Not UTF-8: the reason is left out rather than shown broken.
+        return '';
+    }
+
+    return (mb_strlen($text) > 120) ? rtrim(mb_substr($text, 0, 119)) . '…' : $text;
+}
+
+/**
+ * The sentence for a door that answered outside 2xx: a routine's refusal in
+ * the words ws_claude_fire() uses, any other with the answer's own reason
+ * beside the status.
+ *
+ * @param int    $status
+ * @param string $body    the answer's body
+ * @param bool   $routine the door is a routine's fire address
+ * @return string
+ */
+function ws_agent_knock_refusal($status, $body, $routine)
+{
+    $status = (int) $status;
+
+    if ($routine && in_array($status, array(401, 403, 404), true)) {
+        return lang(array('string' => 'claude.ai refused the routine\'s address or token (HTTP {var:1}). Generate a new token for the routine and enter it again.', 'vars' => $status));
+    }
+
+    if ($routine && ($status === 429)) {
+        return lang('The routine\'s daily run allowance is used up.');
+    }
+
+    $reason = ws_agent_knock_reason($body);
+
+    if ($reason === '') {
+        return lang(array('string' => 'The push door answered HTTP {var:1}.', 'vars' => $status));
+    }
+
+    return lang(array('string' => 'The push door answered HTTP {var:1}: {var:2}', 'vars' => array($status, $reason)));
 }
 
 /* ---------------------------------------------------------------------------
@@ -549,7 +670,7 @@ function ws_agent_answer_text($text, $requested_by, $plain)
 
 /**
  * Knocks an agent's push door for a request: the ids and the site's address,
- * signed with the door's secret. The outcome goes on the agent's row; a
+ * in the form the door's address takes (ws_agent_knock_request()). The outcome goes on the agent's row; a
  * failure is tried again by ws_agent_knocks_retry().
  *
  * @param array $agent the raw ws_agents row
@@ -565,7 +686,8 @@ function ws_agent_knock($agent, $request_id)
     }
 
     $now = time();
-    $body = ws_agent_knock_body(ws_claude_api_base(), (string) $agent['handle'], (int) $request_id);
+    $knock = ws_agent_knock_request((string) $agent['door_url'], ws_claude_api_base(), (string) $agent['handle'], (int) $request_id,
+        ws_agent_unseal($agent['door_secret_sealed'] ?? ''), $now);
     $error = '';
 
     if (ws_agent_door_problem('push', (string) $agent['door_url']) !== '') {
@@ -574,8 +696,8 @@ function ws_agent_knock($agent, $request_id)
         $error = lang('This server cannot make outgoing HTTPS requests (cURL is missing).');
     } else {
         $answer = pg_curl_run('POST', (string) $agent['door_url'], array(
-            'body'            => $body,
-            'headers'         => ws_agent_knock_headers($body, ws_agent_unseal($agent['door_secret_sealed'] ?? ''), $now),
+            'body'            => $knock['body'],
+            'headers'         => $knock['headers'],
             'connect_timeout' => 5,
             'timeout'         => 10,
             'user_agent'      => 'Pinegrap/' . (defined('VERSION') ? VERSION : '') . ' (workspace-agent)',
@@ -584,7 +706,7 @@ function ws_agent_knock($agent, $request_id)
         if ((int) $answer['errno'] !== 0) {
             $error = lang(array('string' => 'The push door could not be reached: {var:1}', 'vars' => mb_substr((string) $answer['error'], 0, 150)));
         } elseif (((int) $answer['status'] < 200) || ((int) $answer['status'] >= 300)) {
-            $error = lang(array('string' => 'The push door answered HTTP {var:1}.', 'vars' => (int) $answer['status']));
+            $error = ws_agent_knock_refusal((int) $answer['status'], (string) ($answer['body'] ?? ''), $knock['routine']);
         }
     }
 

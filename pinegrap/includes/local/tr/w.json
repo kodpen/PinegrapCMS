@@ -853,6 +853,7 @@
     "WebP copy {var:1} ({var:2}% lighter)": "WebP kopyası {var:1} (%{var:2} daha hafif)",
     "WebP is sent; the CDN keeps no copy of pictures until confirmed. This site is reached through a CDN that is not confirmed to keep a copy per format, so pictures go out private and each first view reaches the server. A daily check confirms the CDN by itself once it keeps a copy per Accept value.": "WebP gönderiliyor; CDN onaylanana kadar resimlerin kopyasını tutmuyor. Bu siteye biçim başına kopya tuttuğu onaylanmamış bir CDN üzerinden ulaşılıyor, bu yüzden resimler özel olarak gidiyor ve her ilk görüntüleme sunucuya geliyor. Günlük bir denetim, CDN her Accept değeri için ayrı kopya tuttuğunda onu kendiliğinden onaylar.",
     "WebP is switched off in Site Settings › Features › Image Optimization.": "WebP, Site Ayarları › Özellikler › Görsel Optimizasyonu bölümünde kapalı.",
+    "WebP pictures": "WebP resimleri",
     "Webhook": "Webhook",
     "Webhook Address": "Webhook Adresi",
     "Webhook Delivery Jobs": "Webhook Gönderim Görevi",

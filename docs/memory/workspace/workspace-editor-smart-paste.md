@@ -1,6 +1,6 @@
 ---
 name: workspace-editor-smart-paste
-description: Pasting into a Workspace writing box (#2018): HTML mapped to the box's markup and why it is safe, sheet ranges to the table window, a URL over words, a note's picture
+description: Pasting into a Workspace writing box (#2018): HTML mapped to the box's markup and why it is safe, sheet ranges to the table window, a URL over words, pasted files elsewhere
 ---
 
 ## What happens on a paste?
@@ -21,7 +21,7 @@ description: Pasting into a Workspace writing box (#2018): HTML mapped to the bo
 ## Sheets, URLs, pictures?
 - `pasteSheet()`: two rows at least, every row the same number of tabs, 2–12 columns; a single row or column stays text.
 - A URL with nothing selected pastes as before (or as its HTML link).
-- Pictures: only a box made with `pasteFiles` takes them, and only when the clipboard holds no words (Word adds a picture of its text). The note passes `attach()` through `richField()` (workspace.js), so a pasted screenshot is attached like a dropped file. The composer's own paste handler still uploads files; other boxes are unchanged.
+- Pasted pictures and files: `workspace-editor-pasted-files.md`.
 
 ## How was it checked?
 - tests/workspace_editor_paste_test.php runs the pure walk under Node on trees PHP's DOM parses (marks, junk, dangerous attributes and links, Word and Google Docs shapes, lists, tables, sheets, URLs) and holds the wiring. Headless Chromium on the editor alone: HTML, list, table, URL-over-words and Ctrl+Shift+V pastes (PR #2018). Real Word, Google Docs, Excel/Sheets clipboards were not tried.
