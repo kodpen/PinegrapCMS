@@ -4,7 +4,7 @@ description: Look A's page widths (#8892): edit screens centred at 1120 px (760 
 ---
 
 ## Which measures are there, and where?
-- Owner decision #8860 (`workflow/decisions-made-panel-7.md`). Tokens in their own block at the end of `assets/css/backend.src.css` ("Look A: page widths"): `--pg-measure-edit` 1120px, `--pg-measure-form` 760px, `--pg-measure-status` 336px, `--pg-measure-gap` 24px, `--pg-measure-list-min` 1280px, `--pg-measure-rail` (the section rail and its gap).
+- The values of #8860. Owner decision #9070 (`workflow/decisions-made-panel-7.md`) moves lists and edit screens to 1700 px; `plans/look-widths-and-switch.md` (LW1, LW2) brings it in. Tokens in their own block at the end of `assets/css/backend.src.css` ("Look A: page widths"): `--pg-measure-edit` 1120px, `--pg-measure-form` 760px, `--pg-measure-status` 336px, `--pg-measure-gap` 24px, `--pg-measure-list-min` 1280px, `--pg-measure-rail` (the section rail and its gap).
 - `tests/look_page_widths_test.php` pins the values, the rules and the screens that take them.
 
 ## How does a screen take them?
