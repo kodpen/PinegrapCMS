@@ -6,18 +6,18 @@ module: legacy_bootstrap_report
 
 ## Where is it, and who sees it?
 - `legacy_to_designer.php`, the card "Towards Bootstrap 5" (`#ltd-bootstrap`) after Back to classic; designers (role 0-1) as the whole screen. Module `includes/fn/legacy_bootstrap_report.php`; the converter it runs is `legacy-bootstrap-map.md`.
-- One line per Legacy design (`style_framework = 'legacy'`, by name): its pages (binned left out) and its framework sheet. Report is a GET link `?bootstrap=<id>#ltd-bootstrap-<id>`; "Hide the report" goes back. Nothing is written, so no token and no refusal while a move runs.
+- One line per Legacy design (`style_framework = 'legacy'`, by name): its pages (binned left out) and its framework sheet. Report is a GET link `?bootstrap=<id>#ltd-bootstrap-<id>`; "Hide the report" goes back. The report writes nothing, so no token and no refusal while a move runs. Beside it the trial design's buttons (LB4, `legacy-bootstrap-trial-design.md`).
 
 ## How is Bootstrap 3 found?
 - `pg_lbs_design_assets()` (pure apart from a banner reader): an enabled linked stylesheet row, not an editor `meta` row, named `bootstrap.css` or `bootstrap.min.css`; never by class names (owner, #8967; Materialize shares six of them, `legacy-materialize-trial.md`).
 - A version in its address (`bootstrap/3.3.7/`, `bootstrap@5.3.8`) or else in the site file's banner (`Bootstrap v3.3.5`, 5.x writes two spaces) other than 3 is another Bootstrap; no version reads as 3.
-- Not Bootstrap 3: "This design does not use Bootstrap 3 …" (or "Its bootstrap.min.css is Bootstrap 4 …"), no Report button. LB4's trial design must keep the same test.
+- Not Bootstrap 3: "This design does not use Bootstrap 3 …" (or "Its bootstrap.min.css is Bootstrap 4 …"), no Report button. The trial design (LB4) keeps the same test.
 
 ## What does a report hold?
 - `pg_lbs_design_report($id)`: the pages' trees (`pg_page_tree_sql_expr()`) and every shared part they place, parts inside parts too, through `pg_lbs_trees_report()`: converted, by hand and kept names with their uses, by hand and kept with where (page name, or "name (shared part)").
 - Stylesheets: the design's kept CSS rows and its Theme file (its `theme_id`, else the activated theme `pg_legacy_design_classic_theme()` gives) through `pg_lbs_css()`. A site file is read (at most 4 MB); a CDN or `{software_directory}` file is listed "Not read". Inline CSS rows are read too.
 - Scripts: the kept site JS files and inline rows searched by `pg_lbs_script_calls()`: Bootstrap 3 jQuery plugin calls (`$(…).tooltip(`) and data names 5.3.8 renames; `//` lines and block comments skipped.
-- Files left out (`left_out`): the framework sheet rows and Bootstrap 3's script (`bootstrap.js`, `bootstrap.min.js`). The script is the worker's reading of the LB1 trial, which swapped both; LB4 decides what its asset rows drop.
+- Files left out (`left_out`): the framework sheet rows and Bootstrap 3's script (`bootstrap.js`, `bootstrap.min.js`). The script is the worker's reading of the LB1 trial, which swapped both; the trial design keeps that row switched off beside the 5.3.8 bundle (open question in the LB4 PR).
 
 ## What did the sandbox show (turkish_default, four sets moved)?
 - emailer-inline seti: no Bootstrap sheet, the line and no button. auto-dialog, home-1 and home-2 seti: Bootstrap 3 (bootstrap.css).

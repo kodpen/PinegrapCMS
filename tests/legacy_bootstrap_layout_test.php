@@ -649,7 +649,10 @@ function test_lbs_layout_get_page_content_runs_the_pass_once_on_the_page_type_s_
 		if (is_array($t) && ($t[0] === T_COMMENT || $t[0] === T_DOC_COMMENT)) continue;
 		$code .= is_array($t) ? $t[1] : $t;
 	}
-	pg_assert_same(2, preg_match_all('/pg_lbs_[a-z_]+\s*\(/', $code), 'get_page_content.php calls the converter in the gate and the pass only');
+	// The trial preview's override (legacy_bootstrap_trial.php) is not the
+	// converter: it only hands in a converted tree, read once.
+	pg_assert_same(1, preg_match_all('/pg_lbs_preview_override\s*\(/', $code), 'get_page_content.php reads the trial preview override once');
+	pg_assert_same(2, preg_match_all('/pg_lbs_(?!preview_override\b)[a-z_]+\s*\(/', $code), 'get_page_content.php calls the converter in the gate and the pass only');
 }
 
 function test_lbs_layout_code_tab_says_the_names_change_on_a_bootstrap_5_design()

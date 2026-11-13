@@ -37,7 +37,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //   class     more classes for the box
 //   fallback  HTML shown when the page cannot be drawn (trusted markup)
 //   width     the width the page is drawn at (1280)
-//   height    its height (800)
+//   height    its height (800); a size other than 1280x800 gives the box
+//             its own aspect ratio, so a phone's picture is tall
 function pg_design_live_picture($src, $opts = array())
 {
     $src = is_scalar($src) ? trim((string)$src) : '';
@@ -50,7 +51,9 @@ function pg_design_live_picture($src, $opts = array())
     $classes = 'pg-live-picture' . ($class !== '' ? ' ' . $class : '') . ($src === '' ? ' pg-failed' : '');
     $html = '<div class="' . h($classes) . '" data-pg-live-picture';
     if ($src !== '') $html .= ' data-src="' . h($src) . '"';
-    if ($width !== 1280 || $height !== 800) $html .= ' data-width="' . $width . '" data-height="' . $height . '"';
+    if ($width !== 1280 || $height !== 800) {
+        $html .= ' data-width="' . $width . '" data-height="' . $height . '" style="aspect-ratio: ' . $width . ' / ' . $height . '"';
+    }
     if ($label !== '') $html .= ' role="img" aria-label="' . h($label) . '"';
     $html .= '>';
     if ($src !== '') $html .= '<div class="pg-live-picture-wait" aria-hidden="true"></div>';
@@ -274,7 +277,9 @@ function _pg_design_tour_js()
 // What a request to design_preview.php asks for, from its query ($get:
 // $_GET). 'kind': 'page' (page_id), 'tour' (template and tour=1),
 // 'template' (template) or '' (nothing it can draw); 'still': a template
-// page asked for without its scripts (still=1). Look and palette are
+// page asked for without its scripts (still=1); 'trial': the Bootstrap 5
+// trial design a Legacy page is drawn in (bootstrap5=<style id>), 0 for
+// its own design. Look and palette are
 // kept only when pg_design_looks()/pg_design_palettes() know them; template
 // and page keys only when they match the patterns the addresses use.
 function pg_design_preview_request($get)
@@ -283,13 +288,14 @@ function pg_design_preview_request($get)
     $arg = function ($key) use ($get) {
         return (isset($get[$key]) && is_scalar($get[$key])) ? trim((string)$get[$key]) : '';
     };
-    $out = array('kind' => '', 'page_id' => 0, 'template' => '', 'page' => '', 'look' => '', 'palette' => '', 'still' => false);
+    $out = array('kind' => '', 'page_id' => 0, 'template' => '', 'page' => '', 'look' => '', 'palette' => '', 'still' => false, 'trial' => 0);
 
     $page_id = $arg('page_id');
     if ($page_id !== '') {
         if (preg_match('/^[1-9][0-9]{0,9}$/', $page_id)) {
             $out['kind'] = 'page';
             $out['page_id'] = (int)$page_id;
+            if (preg_match('/^[1-9][0-9]{0,9}$/', $arg('bootstrap5'))) $out['trial'] = (int)$arg('bootstrap5');
         }
         return $out;
     }

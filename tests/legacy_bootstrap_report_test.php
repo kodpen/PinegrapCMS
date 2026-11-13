@@ -289,10 +289,12 @@ function test_lbsr_names_html_limit()
 function test_lbsr_screen_wiring()
 {
 	$screen = (string)file_get_contents(PG_FUNCTIONS_DIR . '/legacy_to_designer.php');
-	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_report.php');", $screen);
+	// The trial's module loads the report's.
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_trial.php');", $screen);
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_report.php');", (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_trial.php'));
 	pg_assert_contains("\$bootstrap_open = (int)(\$_GET['bootstrap'] ?? 0);", $screen);
 	pg_assert_contains('$bootstrap_designs = pg_lbs_designs();', $screen);
-	pg_assert_contains('pg_lbs_card_html($bootstrap_designs, $bootstrap_open, $bootstrap_open > 0 ? pg_lbs_design_report($bootstrap_open, $bootstrap_designs) : null)', $screen);
+	pg_assert_contains('pg_lbs_card_html($bootstrap_designs, $bootstrap_open, $bootstrap_open > 0 ? pg_lbs_design_report($bootstrap_open, $bootstrap_designs) : null, $bootstrap_trials)', $screen);
 	pg_assert_contains('$output_back . $output_bootstrap . $output_classic', $screen);
 	// The report reads only: no write in the module.
 	$module = (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_report.php');

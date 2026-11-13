@@ -1901,6 +1901,7 @@
     "No page shows these records yet. Pick a page of this design and add a {var} widget to it; the links then open it.": "Bu kayıtları gösteren bir sayfa henüz yok. Bu tasarımdan bir sayfa seçip ona {var} widget'ı ekleyin; linkler o zaman o sayfayı açar.",
     "No page shows this yet.": "Henüz hiçbir sayfa bunu göstermiyor.",
     "No page speed was measured in this period. Visitors' browsers send it from public pages; signed-in staff, Preview and the designer are not measured.": "Bu dönemde sayfa hızı ölçülmedi. Ziyaretçilerin tarayıcıları bunu herkese açık sayfalardan gönderir; oturum açmış personel, Önizleme ve tasarımcı ölçülmez.",
+    "No page uses it yet: the Legacy design's pages are as they were.": "Henüz hiçbir sayfa onu kullanmıyor: Eski tasarımın sayfaları olduğu gibi duruyor.",
     "No page uses this style.": "Bu stili kullanan sayfa yok.",
     "No page was measured in this period.": "Bu dönemde hiçbir sayfa ölçülmedi.",
     "No page went back.": "Hiçbir sayfa geri dönmedi.",

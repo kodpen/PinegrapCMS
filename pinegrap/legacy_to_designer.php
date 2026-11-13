@@ -12,7 +12,8 @@
  * worked by this screen's short requests and the general job. Back to
  * classic sends a set's pages back; Towards Bootstrap 5 reports what a
  * Legacy design's move to Bootstrap 5.3.8 would convert
- * (includes/fn/legacy_bootstrap_report.php).
+ * (includes/fn/legacy_bootstrap_report.php), makes and deletes its trial
+ * design and previews a page in it (includes/fn/legacy_bootstrap_trial.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,7 +25,7 @@ include('init.php');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_classic.php');
-require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_report.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_trial.php');
 
 // The run's short requests (ajax=1) are read by the screen's script as JSON:
 // an ended session, a missing right or a stale token is answered in that
@@ -84,6 +85,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (!$back['moved'] && !$back['skipped']) {
                 $liveform->add_error(h(lang('No page went back.')));
+            }
+        }
+        header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-back-result');
+        exit;
+    }
+    // Towards Bootstrap 5: a Legacy design's trial design made or deleted.
+    // Not while a move runs.
+    if (isset($_POST['bootstrap_trial'])) {
+        $trial_design = (int)($_POST['design'] ?? 0);
+        if (pg_ltd_state_read() !== null) {
+            $liveform->add_error(h(lang('A move is running: make or delete a trial design when it has ended.')));
+        } elseif ($_POST['bootstrap_trial'] === 'delete') {
+            $trial_result = pg_lbs_trial_delete($trial_design, $user);
+            if ($trial_result['ok']) {
+                $liveform->add_notice(h(lang(array('string' => 'The trial design {var:1} was deleted, with {var:2} shared parts and {var:3} files made for it.',
+                    'vars' => array($trial_result['name'], $trial_result['parts'], $trial_result['files'])))));
+            } else {
+                $liveform->add_error(h($trial_result['error']));
+            }
+        } else {
+            $trial_result = pg_lbs_trial_make($trial_design, $user);
+            if ($trial_result['ok']) {
+                $liveform->add_notice(h(lang(array('string' => 'The trial design {var:1} was made: {var:2} shared parts copied, files copied: {var:3}. No page uses it.',
+                    'vars' => array($trial_result['name'], $trial_result['parts'], $trial_result['files'] ? implode(', ', $trial_result['files']) : lang('none'))))));
+            } else {
+                $liveform->add_error(h($trial_result['error']));
+            }
+            foreach ($trial_result['notes'] as $line) {
+                $liveform->add_warning(h($line));
             }
         }
         header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-back-result');
@@ -492,10 +522,30 @@ if ($output_back !== '') {
 }
 
 // Towards Bootstrap 5: each Legacy design, and the report of the one asked
-// for (?bootstrap=<id>), read and converted in memory only.
+// for (?bootstrap=<id>), read and converted in memory only; each one's
+// trial design, and the preview asked for (?preview=<id>&page=<page id>).
 $bootstrap_open = (int)($_GET['bootstrap'] ?? 0);
+$bootstrap_preview = (int)($_GET['preview'] ?? 0);
 $bootstrap_designs = pg_lbs_designs();
-$output_bootstrap = pg_lbs_card_html($bootstrap_designs, $bootstrap_open, $bootstrap_open > 0 ? pg_lbs_design_report($bootstrap_open, $bootstrap_designs) : null);
+$bootstrap_trials = array();
+$bootstrap_records = pg_lbs_trials_read();
+$bootstrap_pictures = false;
+foreach ($bootstrap_designs as $d) {
+    if (!$d['assets']['bootstrap3']) continue;
+    $trial = pg_lbs_trial_of($d['id'], $bootstrap_records);
+    $preview = null;
+    if ($trial !== null && $bootstrap_preview === $d['id']) {
+        $preview = array('pages' => pg_lbs_trial_pages($d['id']), 'page' => (int)($_GET['page'] ?? 0));
+        $bootstrap_pictures = true;
+    }
+    $bootstrap_trials[$d['id']] = pg_lbs_trial_card_html($d['id'], $trial, array(
+        'users' => $trial !== null ? pg_lbs_trial_users($trial['trial']) : 0,
+        'running' => $running !== null,
+        'preview' => $preview,
+    ));
+}
+$output_bootstrap = pg_lbs_card_html($bootstrap_designs, $bootstrap_open, $bootstrap_open > 0 ? pg_lbs_design_report($bootstrap_open, $bootstrap_designs) : null, $bootstrap_trials)
+    . ($bootstrap_pictures ? pg_js_bundle_tags('assets/js/pg_live_picture.min.js') : '');
 
 // Dry run is the toolbar's primary action; it submits this hidden form, which
 // carries the token and the ticked styles (their checkboxes name it in form=).

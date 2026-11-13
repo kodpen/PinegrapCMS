@@ -18,6 +18,12 @@
  *                                     no consent banner, chat bubble or staff
  *                                     bar, no visit counted, the page cache
  *                                     neither read nor written.
+ *   ?page_id=&bootstrap5=             a Legacy design's page drawn in that
+ *                                     Bootstrap 5 trial design (the
+ *                                     "Towards Bootstrap 5" card, designers
+ *                                     only): the trial's row and the page's
+ *                                     converted tree, nothing written, never
+ *                                     cached (includes/fn/legacy_bootstrap_trial.php).
  *
  * PG_ANONYMOUS_RENDER keeps initialize_user() from signing the request in,
  * as in audit_run.php: the operator is read from the session here, and the
@@ -135,14 +141,33 @@ if (!$page_row || (pg_designer_page_access($page_row, $user) === 'hidden')) {
     $pg_design_preview_end(404, lang('This page cannot be previewed.'));
 }
 
-$etag = pg_design_preview_etag($page_row['page_id'], $page_row['page_timestamp'], $page_row['style_timestamp'], defined('VERSION') ? VERSION : '');
+if ($request['trial'] > 0) {
+    // The trial belongs to the page's own Legacy design, and only a designer
+    // sees it. Its parts' copies change without the page, so it is never
+    // cached.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_trial.php');
+    $trial = pg_designer_is_full($user) ? pg_lbs_trial_of((int) $page_row['page_style']) : null;
 
-header('Cache-Control: private, max-age=300');
-header('ETag: ' . $etag);
+    if (!$trial || ($trial['trial'] !== $request['trial'])) {
+        $pg_design_preview_end(404, lang('This page cannot be previewed.'));
+    }
 
-if (pg_design_preview_etag_matches($_SERVER['HTTP_IF_NONE_MATCH'] ?? '', $etag)) {
-    http_response_code(304);
-    exit();
+    header('Cache-Control: no-store');
+    pg_lbs_preview_override(array(
+        'page_id' => (int) $page_row['page_id'],
+        'style_id' => $trial['trial'],
+        'code' => pg_lbs_trial_page_code((int) $page_row['page_id'], $trial),
+    ));
+} else {
+    $etag = pg_design_preview_etag($page_row['page_id'], $page_row['page_timestamp'], $page_row['style_timestamp'], defined('VERSION') ? VERSION : '');
+
+    header('Cache-Control: private, max-age=300');
+    header('ETag: ' . $etag);
+
+    if (pg_design_preview_etag_matches($_SERVER['HTTP_IF_NONE_MATCH'] ?? '', $etag)) {
+        http_response_code(304);
+        exit();
+    }
 }
 
 // Drawn as a first-time visitor: no session and no cookies. The background

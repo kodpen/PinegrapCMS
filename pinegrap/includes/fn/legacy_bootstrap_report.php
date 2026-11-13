@@ -554,14 +554,16 @@ function pg_lbs_report_html($r)
 /**
  * The "Towards Bootstrap 5" card: each Legacy design with its Report, or
  * the line that it does not use Bootstrap 3; the asked design's report
- * under its line. '' when the site has no Legacy design.
+ * under its line, and its trial design's actions and line
+ * (pg_lbs_trial_card_html()). '' when the site has no Legacy design.
  *
  * @param array      $designs  pg_lbs_designs()
  * @param int        $open     the design whose report was asked, 0 for none
  * @param array|null $report   pg_lbs_design_report() of it
+ * @param array      $trials   design id => 'actions', 'below' (HTML)
  * @return string  HTML
  */
-function pg_lbs_card_html($designs, $open, $report)
+function pg_lbs_card_html($designs, $open, $report, $trials = array())
 {
     if (!$designs) return '';
     $open = (int)$open;
@@ -577,7 +579,8 @@ function pg_lbs_card_html($designs, $open, $report)
                 ? '<a class="btn btn-sm btn-outline theme-secondary rounded-pill px-4" href="legacy_to_designer.php#ltd-bootstrap">' . h(lang('Hide the report')) . '</a>'
                 : '<a class="btn btn-sm btn-outline theme-secondary rounded-pill px-4" href="legacy_to_designer.php?bootstrap=' . $id . '#ltd-bootstrap-' . $id . '">'
                     . '<i class="bi bi-clipboard-data me-2" aria-hidden="true"></i>' . h(lang('Report')) . '</a>';
-            $more = $shown ? '<div class="mt-3">' . pg_lbs_report_html($report) . '</div>' : '';
+            $action .= (string)($trials[$id]['actions'] ?? '');
+            $more = (string)($trials[$id]['below'] ?? '') . ($shown ? '<div class="mt-3">' . pg_lbs_report_html($report) . '</div>' : '');
         } else {
             $action = '';
             $more = '<div class="small fg-secondary mt-1">' . h(($a['framework'] !== '' && $a['version'] > 0)
@@ -596,7 +599,7 @@ function pg_lbs_card_html($designs, $open, $report)
     return '
     <div class="card my-7" id="ltd-bootstrap">
         <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Towards Bootstrap 5')) . '</h2>
-            <div class="small fg-secondary">' . h(lang('A Legacy design\'s report: what turning it towards Bootstrap 5.3.8 would convert in its pages and parts, what it keeps, what a designer finishes by hand and which files it leaves out. Nothing is written.')) . '</div></div>
+            <div class="small fg-secondary">' . h(lang('A Legacy design\'s report: what turning it towards Bootstrap 5.3.8 would convert in its pages and parts, what it keeps, what a designer finishes by hand and which files it leaves out. A trial design is a converted copy on Bootstrap 5.3.8 that no page uses: its pages are previewed in it beside the Legacy design, which is never changed.')) . '</div></div>
         <div class="card-body">' . $body . '</div>
     </div>';
 }

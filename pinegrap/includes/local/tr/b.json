@@ -1098,6 +1098,7 @@
     "Bootstrap 3 names and data attributes renamed to their Bootstrap 5.3.8 names.": "Bootstrap 5.3.8'deki adlarıyla yeniden adlandırılan Bootstrap 3 adları ve data öznitelikleri.",
     "Bootstrap 3's script; the framework brings the Bootstrap 5.3.8 bundle.": "Bootstrap 3'ün betiği; çatı Bootstrap 5.3.8 paketini getirir.",
     "Bootstrap 3's sheet; the framework brings Bootstrap 5.3.8.": "Bootstrap 3'ün stil dosyası; çatı Bootstrap 5.3.8'i getirir.",
+    "Bootstrap 5 copy of {var:1} for the trial design of {var:2}": "{var:2} deneme tasarımı için {var:1} dosyasının Bootstrap 5 kopyası",
     "Bootstrap 5.3 is loaded on every page. The grid, the Bootstrap components and the ready-made blocks are in the palette.": "Her sayfada Bootstrap 5.3 yüklenir. Izgara, Bootstrap bileşenleri ve hazır bloklar palettedir.",
     "Bootstrap component": "Bootstrap bileşeni",
     "Bootstrap framework is not loaded.": "Bootstrap çatısı yüklenmedi.",
