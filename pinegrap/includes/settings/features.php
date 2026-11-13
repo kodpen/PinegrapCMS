@@ -33,7 +33,7 @@ $pg_settings_cards[] = '
                                             <input type="text" name="badge_label" id="setting_badge_label" maxlength="100" class="form-control" value="' . h($badge_label) . '" />
                                         </div>
                                         <div class="col-12 ">
-                                            <fieldset><legend class="form-label fs-md">'. lang('Site Search Type') . '</legend>
+                                            <fieldset><legend class="form-label pg-field-label">'. lang('Site Search Type') . '</legend>
                                             <div class="form-field">
                                                 <input value="simple" class="radio" type="radio" id="search_type_simple" name="search_type" ' . $search_type_simple_checked . '>
                                                 <label class="" for="search_type_simple">'. lang('Simple') . '</label>
@@ -74,7 +74,7 @@ $pg_settings_cards[] = '
                                                 <div class="popover-body">
                                                    <div class="row gy-5">
                                                         <div class="col-12 ">
-                                                            <fieldset><legend class="form-label fs-md">'. lang('Setup') . '</legend>
+                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Setup') . '</legend>
                                                             <div class="form-field d-inline-grid me-5">
                                                                 <input value="simple" class="radio collapse-switcher" type="radio" id="social_networking_type_simple" name="social_networking_type" ' . $social_networking_type_simple_checked . ' data-bs-target="#social_networking_services_row">
                                                                 <label class="" for="social_networking_type_simple">'. lang('Simple') . '</label>
@@ -235,7 +235,7 @@ $pg_settings_cards[] = '
         $output_image_library_note =
             ($image_library !== '')
                 ? '<div class="form-text">' . lang(array('string' => 'Image library in use: {var:1}', 'vars' => array($image_library))) . $output_upload_limits_note . '</div>'
-                : '<div class="alert theme-warning py-3 mb-0">' . lang('No image library (Imagick or GD) is installed on this server, so images cannot be optimized or resized.') . '</div>';
+                : '<div class="alert theme-warning py-3 mb-0 small">' . lang('No image library (Imagick or GD) is installed on this server, so images cannot be optimized or resized.') . '</div>';
 
         // How pictures reach visitors: the modern formats the responsive
         // markup offers and the quality each is written at

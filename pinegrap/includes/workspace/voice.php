@@ -786,7 +786,9 @@ function ws_voice_settings_card($self_url, $viewer, $form = null)
             </div>
             <div class="card-body">
                 <div class="row g-7">
-                    <div class="lg:col-7">' . $fields . ($admin ? '' : '<div class="form-text">' . h(lang('Only an administrator can connect a transcription service.')) . '</div>') . '</div>
+                    <div class="lg:col-7">
+                        <div class="ws-voice-connection">' . $fields . ($admin ? '' : '<div class="form-text">' . h(lang('Only an administrator can connect a transcription service.')) . '</div>') . '</div>
+                    </div>
                     <div class="lg:col-5">' . $status . '</div>
                 </div>
             </div>
@@ -857,7 +859,7 @@ function ws_voice_speech_settings_part($admin, $prefix = '')
     }
 
     return '
-                            <h3 class="h6 mt-7 mb-3"><i class="bi bi-volume-up me-1" aria-hidden="true"></i>' . h(lang('Spoken answers')) . '</h3>
+                            <h3 class="pg-group-label mt-7 mb-3"><i class="bi bi-volume-up me-1" aria-hidden="true"></i>' . h(lang('Spoken answers')) . '</h3>
                             <div class="form-field mb-5">
                                 <div class="switch"><input class="" type="checkbox" name="' . $prefix . 'voice_speech_enabled" value="1" id="ws_voice_speech_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
                                 <label class="" for="ws_voice_speech_enabled">' . h(lang('Assistants answer a voice message by voice')) . '</label>

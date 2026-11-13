@@ -152,7 +152,7 @@ $pg_settings_cards[] = '
                                                                 <div class="popover-body">
                                                                    <div class="row gy-5">
                                                                         <div class="col-12 ">
-                                                                            <fieldset><legend class="form-label fs-md">'. lang('Recipient Mode') . '</legend>
+                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Recipient Mode') . '</legend>
                                                                             <div class="form-field">
                                                                                 <input value="single recipient" class="radio" type="radio" id="ecommerce_recipient_mode_single_recipient" name="ecommerce_recipient_mode" ' . $ecommerce_recipient_mode_single_recipient . '>
                                                                                 <label class="" for="ecommerce_recipient_mode_single_recipient">'. lang('Single Recipient') . '</label>
@@ -175,9 +175,9 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(40px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-5">
-                                                                                        <div class="alert theme-primary">' . lang('Uses the USPS Addresses API with the consumer key and secret entered above.') . '</div>
+                                                                                        <div class="alert theme-primary py-3">' . lang('Uses the USPS Addresses API with the consumer key and secret entered above.') . '</div>
                                                                                         <div class="col-12 ">
-                                                                                            <fieldset><legend class="form-label fs-md">'. lang('Enforcement') . '</legend>
+                                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Enforcement') . '</legend>
                                                                                             <div class="form-field">
                                                                                                 <input value="warning" class="radio" type="radio" id="ecommerce_address_verification_enforcement_type_warning" name="ecommerce_address_verification_enforcement_type" ' . $ecommerce_address_verification_enforcement_type_warning_checked . '>
                                                                                                 <label class="" for="ecommerce_address_verification_enforcement_type_warning">'. lang('Warning') . '</label>
@@ -293,7 +293,7 @@ $pg_settings_cards[] = '
                     <input type="hidden" name="stock_location_card" value="1" />' . (($stock_card_rows !== '') ? '
                     <div class="col-12">
                         <div class="table-responsive">
-                            <table class="table table-sm align-middle mb-0">
+                            <table class="table table-sm align-middle small mb-0">
                                 <caption class="visually-hidden">' . lang('Stock locations') . '</caption>
                                 <thead>
                                     <tr>
@@ -310,7 +310,7 @@ $pg_settings_cards[] = '
                         </div>
                         <div class="form-text">' . lang('A location that is turned off takes no transfers; the units it holds still count in the product\'s stock.') . '</div>
                     </div>' : '') . '
-                    <div class="col-12 mb-0"><h6 class="fg-secondary text-uppercase">' . lang('New location') . '</h6></div>
+                    <div class="col-12 mb-0"><h6 class="fg-secondary">' . lang('New location') . '</h6></div>
                     <div class="pg-f-md">
                         <label for="stock_location_new_name" class="form-label">' . lang('Name') . '</label>
                         <input type="text" name="stock_location_new_name" id="stock_location_new_name" class="form-control" maxlength="' . PG_STOCK_NAME_LENGTH . '" value="" />
@@ -381,7 +381,7 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-5">
-                                                                                        <div class="alert theme-primary">' . lang('Requires Givex service') . '</div>
+                                                                                        <div class="alert theme-primary py-3">' . lang('Requires Givex service') . '</div>
                                                                                         <div class="pg-f-md">
                                                                                             <label for="ecommerce_givex_primary_hostname" class="form-label">' . lang('Primary Hostname') . '</label>
                                                                                             <input type="text" name="ecommerce_givex_primary_hostname" id="ecommerce_givex_primary_hostname" class="form-control" value="' . h($ecommerce_givex_primary_hostname) . '" maxlength="100"/>
@@ -412,7 +412,7 @@ $pg_settings_cards[] = '
                                                                 <span class="form-adorn-text" aria-hidden="true">%</span>
                                                                 <input value="' . h($credit_refund_bonus) . '" type="text" name="credit_refund_bonus" id="credit_refund_bonus" class="form-ghost" size="6" maxlength="6" inputmode="decimal" style="text-align: right;" />
                                                             </label>
-                                                            <div class="form-text text-end">(' . lang('leave blank for no bonus') . ')</div>
+                                                            <div class="form-text">(' . lang('leave blank for no bonus') . ')</div>
                                                         </div>
                                                         <div class="col-12 ">
                                                             <div class="form-field">
@@ -580,7 +580,7 @@ $pg_settings_cards[] = '
                                                                                 <div class="popover-body">
                                                                                    <div class="row gy-5">
                                                                                         <div class="col-12 " id="ecommerce_payment_gateway_transaction_type_row" style="' . $ecommerce_payment_gateway_transaction_type_row_style . '">
-                                                                                            <fieldset><legend class="form-label fs-md">'. lang('Transaction Type') . '</legend>
+                                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Transaction Type') . '</legend>
                                                                                             <div class="form-field">
                                                                                                 <input value="Authorize" class="radio" type="radio" id="ecommerce_payment_gateway_transaction_type_authorize" name="ecommerce_payment_gateway_transaction_type" ' . $ecommerce_payment_gateway_transaction_type_authorize . '>
                                                                                                 <label class="" for="ecommerce_payment_gateway_transaction_type_authorize">'. lang('Authorize') . '</label>
@@ -592,7 +592,7 @@ $pg_settings_cards[] = '
                                                                                             </fieldset>
                                                                                         </div>
                                                                                         <div class="col-12 " id="ecommerce_payment_gateway_mode_row" style="' . $ecommerce_payment_gateway_mode_row_style . '">
-                                                                                            <fieldset><legend class="form-label fs-md">'. lang('Mode') . '</legend>
+                                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Mode') . '</legend>
                                                                                             <div class="form-field">
                                                                                                 <input value="test" class="radio" type="radio" id="ecommerce_payment_gateway_mode_test" name="ecommerce_payment_gateway_mode" ' . $ecommerce_payment_gateway_mode_test . '>
                                                                                                 <label class="" for="ecommerce_payment_gateway_mode_test">'. lang('Test') . '</label>
@@ -604,7 +604,7 @@ $pg_settings_cards[] = '
                                                                                             </fieldset>
                                                                                         </div>
                                                                                         <div class="col-12 " id="ecommerce_paypal_payments_pro_gateway_mode_row" style="' . $ecommerce_paypal_payments_pro_gateway_mode_row_style . '">
-                                                                                            <fieldset><legend class="form-label fs-md">'. lang('Mode') . '</legend>
+                                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Mode') . '</legend>
                                                                                             <div class="form-field">
                                                                                                 <input value="test" class="radio" type="radio" id="ecommerce_paypal_payments_pro_gateway_mode_test" name="ecommerce_paypal_payments_pro_gateway_mode" ' . $ecommerce_payment_gateway_mode_test . '>
                                                                                                 <label class="" for="ecommerce_paypal_payments_pro_gateway_mode_test">'. lang('Sandbox') . '</label>
@@ -758,7 +758,7 @@ $pg_settings_cards[] = '
                                                                 <div class="popover-body">
                                                                    <div class="row gy-5">
                                                                         <div class="col-12 ">
-                                                                            <fieldset><legend class="form-label fs-md">'. lang('Transaction Type') . '</legend>
+                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Transaction Type') . '</legend>
                                                                             <div class="form-field">
                                                                                 <input value="Authorize" class="radio" type="radio" id="ecommerce_paypal_express_checkout_transaction_type_authorize" name="ecommerce_paypal_express_checkout_transaction_type" ' . $ecommerce_paypal_express_checkout_transaction_type_authorize . '>
                                                                                 <label class="" for="ecommerce_paypal_express_checkout_transaction_type_authorize">'. lang('Authorize') . '</label>
@@ -770,7 +770,7 @@ $pg_settings_cards[] = '
                                                                             </fieldset>
                                                                         </div>
                                                                         <div class="col-12 ">
-                                                                            <fieldset><legend class="form-label fs-md">'. lang('Mode') . '</legend>
+                                                                            <fieldset><legend class="form-label pg-field-label">'. lang('Mode') . '</legend>
                                                                             <div class="form-field">
                                                                                 <input value="sandbox" class="radio" type="radio" id="ecommerce_paypal_express_checkout_mode_sandbox" name="ecommerce_paypal_express_checkout_mode" ' . $ecommerce_paypal_express_checkout_mode_sandbox . '>
                                                                                 <label class="" for="ecommerce_paypal_express_checkout_mode_sandbox">'. lang('Sandbox') . '</label>
@@ -885,7 +885,7 @@ if ($reference_price_rule_ready) {
             <div class="card-body">
                 <div class="row gy-5">
                     <div class="col-12">
-                        <fieldset><legend class="form-label fs-md">' . lang('Price before the discount') . '</legend>' . $reference_price_rule_fields . '
+                        <fieldset><legend class="form-label pg-field-label">' . lang('Price before the discount') . '</legend>' . $reference_price_rule_fields . '
                         <div class="form-text">' . lang('Under a lowest-price rule, a product whose price history is shorter than the period shows its current price as the reference, never a lowest read from part of the period.') . '</div>
                         </fieldset>
                     </div>
@@ -1024,7 +1024,7 @@ $pg_settings_cards[] = '
                                             <div class="form-text fg-warning">' . h($product_feeds_notice) . '</div>' : '') . '
                                         </div>
                                         ' . $product_feeds_rows . '
-                                        <div class="col-12 mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Seller') . '</h6></div>
+                                        <div class="col-12 mb-0"><h6 class="fg-secondary">' . lang('Seller') . '</h6></div>
                                         <div class="pg-f-md">
                                             <label for="product_feed_seller_name" class="form-label">' . lang('Seller name') . '</label>
                                             <input type="text" name="product_feed_seller_name" id="product_feed_seller_name" class="form-control" maxlength="255" value="' . h(($product_feeds_settings['seller_name'] !== '') ? $product_feeds_settings['seller_name'] : (defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '')) . '"/>

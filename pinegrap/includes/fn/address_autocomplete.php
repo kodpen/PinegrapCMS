@@ -746,7 +746,8 @@ function pg_addr_settings_fields()
                                         <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input type="checkbox" name="addr_enabled" id="addr_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#addr_row"/></div>
-                                                <label class="" for="addr_enabled">' . lang('Suggest addresses as they are typed') . '<br/><span class="form-text">' . lang('The street box of checkout, the address book and the panel\'s address forms lists matching addresses; a pick fills the other boxes. The site asks the provider itself, so no key or provider script reaches the visitor, and what the visitor typed is never replaced unless they pick.') . '</span></label>
+                                                <label class="" for="addr_enabled">' . lang('Suggest addresses as they are typed') . '</label>
+                                                <div class="form-text">' . lang('The street box of checkout, the address book and the panel\'s address forms lists matching addresses; a pick fills the other boxes. The site asks the provider itself, so no key or provider script reaches the visitor, and what the visitor typed is never replaced unless they pick.') . '</div>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0" id="addr_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -755,7 +756,7 @@ function pg_addr_settings_fields()
 
     if ($warning !== '') {
         $html .= '
-                                                        <div class="col-12"><div class="alert theme-warning mb-0">' . h($warning) . '</div></div>';
+                                                        <div class="col-12"><div class="alert theme-warning mb-0 py-3">' . h($warning) . '</div></div>';
     }
 
     $html .= '

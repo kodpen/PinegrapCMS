@@ -68,7 +68,7 @@ $pg_settings_cards[] = '
                                                 <div class="popover-body">
                                                    <div class="row gy-5">
                                                         <div class="col-12 ">
-                                                            <fieldset><legend class="form-label fs-md">' . lang('Mode') . '</legend>
+                                                            <fieldset><legend class="form-label pg-field-label">' . lang('Mode') . '</legend>
                                                             <div class="form-field">
                                                                 <input class="radio" type="radio" name="waf_mode" id="waf_mode_monitor" value="monitor"' . $waf_mode_monitor_checked . '/>
                                                                 <label class="" for="waf_mode_monitor"><strong>' . lang('Monitor') . '</strong> &mdash; ' . lang('record only, block nothing new') . '</label>
@@ -254,7 +254,9 @@ $pg_settings_cards[] = '
             <div class="card-body">
                 <div class="row gy-5">
                     <div class="col-12">
-                                            <div class="form-text ">' . lang('Works only while the firewall above is enabled, and refuses bots only in Block mode; in Monitor mode it records the bots it would refuse. Search engines, social link previews, uptime monitors and payment gateway callbacks are recognised and never blocked.') . '</div>
+                        <div class="form-text">' . lang('Works only while the firewall above is enabled, and refuses bots only in Block mode; in Monitor mode it records the bots it would refuse. Search engines, social link previews, uptime monitors and payment gateway callbacks are recognised and never blocked.') . '</div>
+                    </div>
+                    <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . $block_unknown_bots_checked . ' class="collapse-switcher" type="checkbox" id="block_unknown_bots" name="block_unknown_bots" data-bs-target="#block_unknown_bots_row"/></div>
                                                 <label class="" for="block_unknown_bots">' . lang('Block Unknown Bots') . '</label>
@@ -339,8 +341,8 @@ if (!empty($waf_country_ready)) {
                                     <div class="form-field">
                                         <input class="radio" type="radio" name="waf_country_mode" id="waf_country_mode_' . $waf_country_mode_key . '" value="' . $waf_country_mode_key . '"' . (($waf_country_mode === $waf_country_mode_key) ? ' checked="checked"' : '') . '/>
                                         <label class="" for="waf_country_mode_' . $waf_country_mode_key . '"><strong>' . h($waf_country_mode_text[0]) . '</strong></label>
-                                        <div class="form-text">' . h($waf_country_mode_text[1]) . '</div>
-                                    </div>';
+                                    </div>
+                                    <div class="form-text mb-3">' . h($waf_country_mode_text[1]) . '</div>';
     }
 
     $waf_country_names = array();
@@ -357,11 +359,13 @@ if (!empty($waf_country_ready)) {
         'waf_country_exempt_bots'  => array($waf_country_exempt_bots, lang('Verified search engine crawlers'), lang('Googlebot, Bingbot and the other search engines, once their address proves the name (Verify Search Engine Crawlers has to be on). Without this a site open to one country drops out of search results.')),
     ) as $waf_country_field => $waf_country_exemption) {
         $output_waf_country_exemptions .= '
-                                    <div class="form-field">
-                                        <div class="switch"><input value="1"' . ($waf_country_exemption[0] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="' . $waf_country_field . '" name="' . $waf_country_field . '"/></div>
-                                        <label class="" for="' . $waf_country_field . '">' . h($waf_country_exemption[1]) . '</label>
-                                        <div class="form-text">' . h($waf_country_exemption[2]) . '</div>
-                                    </div>';
+                            <div class="col-12">
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . ($waf_country_exemption[0] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="' . $waf_country_field . '" name="' . $waf_country_field . '"/></div>
+                                    <label class="" for="' . $waf_country_field . '">' . h($waf_country_exemption[1]) . '</label>
+                                    <div class="form-text">' . h($waf_country_exemption[2]) . '</div>
+                                </div>
+                            </div>';
     }
 
     // What the saved settings do with the request that opened this screen.
@@ -394,7 +398,7 @@ if (!empty($waf_country_ready)) {
                         <div class="form-text">' . lang('Refuses requests by the country they come from. Applied while the firewall is enabled; in Monitor mode a request that would be refused is only recorded in the firewall log.') . '</div>
                     </div>
                     <div class="col-12">
-                        <fieldset><legend class="form-label fs-md">' . lang('Restriction') . '</legend>' . $output_waf_country_modes . '
+                        <fieldset><legend class="form-label pg-field-label">' . lang('Restriction') . '</legend>' . $output_waf_country_modes . '
                         </fieldset>
                     </div>
                     <div class="col-12">
@@ -410,9 +414,11 @@ if (!empty($waf_country_ready)) {
                             <div class="form-text">' . lang('Off: a request no source can place is let in, so a missing location database never shuts the site.') . '</div>
                         </div>
                     </div>
-                    <div class="col-12" role="group" aria-labelledby="waf_country_exempt_title">
-                        <div class="form-label" id="waf_country_exempt_title">' . lang('Always let in') . '</div>' . $output_waf_country_exemptions . '
+                    <div class="col-12 pb-0" role="group" aria-labelledby="waf_country_exempt_title">
+                        <h6 class="fg-secondary mb-0" id="waf_country_exempt_title">' . lang('Always let in') . '</h6>
                         <div class="form-text">' . lang('Allowed IP addresses, robots.txt, certificate renewal (.well-known) and the uptime check address (health.php) are always let in.') . '</div>
+                        <div class="row mt-5">' . $output_waf_country_exemptions . '
+                        </div>
                     </div>' . $output_waf_country_check . '
                     <div class="col-12">' . pg_geo_settings_note() . '
                     </div>';
@@ -511,7 +517,7 @@ if ($security_ready) {
                                                             </div>
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <fieldset><legend class="form-label fs-md">' . lang('Content Security Policy') . '</legend>
+                                                            <fieldset><legend class="form-label pg-field-label">' . lang('Content Security Policy') . '</legend>
                                                             <div class="form-field">
                                                                 <input class="radio" type="radio" name="security_csp_mode" id="security_csp_mode_off" value="off"' . $security_csp_off_checked . '/>
                                                                 <label class="" for="security_csp_mode_off"><strong>' . lang('Off') . '</strong></label>
@@ -519,13 +525,13 @@ if ($security_ready) {
                                                             <div class="form-field">
                                                                 <input class="radio" type="radio" name="security_csp_mode" id="security_csp_mode_report" value="report"' . $security_csp_report_checked . '/>
                                                                 <label class="" for="security_csp_mode_report"><strong>' . lang('Report Only') . '</strong> &mdash; ' . lang('record what the policy would refuse, refuse nothing') . '</label>
-                                                                <div class="form-text">' . lang('Start here. Browsers report every script, style, frame or connection the policy would have refused, and the Firewall Log screen lists them by source. When that list shows nothing the site needs, the policy is ready to enforce.') . '</div>
                                                             </div>
+                                                            <div class="form-text mb-3">' . lang('Start here. Browsers report every script, style, frame or connection the policy would have refused, and the Firewall Log screen lists them by source. When that list shows nothing the site needs, the policy is ready to enforce.') . '</div>
                                                             <div class="form-field">
                                                                 <input class="radio" type="radio" name="security_csp_mode" id="security_csp_mode_enforce" value="enforce"' . $security_csp_enforce_checked . '/>
                                                                 <label class="" for="security_csp_mode_enforce"><strong>' . lang('Enforce') . '</strong> &mdash; ' . lang('refuse what the policy does not allow') . '</label>
-                                                                <div class="form-text">' . lang('A source missing from the policy stops loading for every visitor. Enforce only after Report Only has run for a while on real traffic.') . '</div>
                                                             </div>
+                                                            <div class="form-text mb-3">' . lang('A source missing from the policy stops loading for every visitor. Enforce only after Report Only has run for a while on real traffic.') . '</div>
                                                             </fieldset>
                                                         </div>
                                                         <div class="col-12 ">
@@ -608,7 +614,7 @@ $pg_settings_cards[] = '
                                                 <label class="" for="secure_mode">' . lang('Secure Mode') . '</label>
                                                 <div class="form-text">' . lang('Every address the site writes starts with https:// and a plain http request is redirected. This is the switch the HSTS option below depends on.') . '</div>
                                             </div>' . $output_secure_mode_offer . '
-                                            <div class="alert theme-warning mt-3 mb-0">
+                                            <div class="alert theme-warning mt-3 mb-0 py-3 small">
                                                 <p>' . lang(array('string'=>'Warning: Do not enable Secure Mode until you have {var:1} that your site has a working SSL Certificate.','vars'=>array('<a class="alert-link" href="https://' . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/test_secure_mode.php" target="_blank">' . lang('verified') . '</a>') )) . '</p>
                                                 <p class="mb-0 small">' . lang('A padlock in your browser is not enough on its own. If SSL is terminated by a proxy or CDN before the request reaches this server (for example Cloudflare "Flexible" SSL), this server sees plain HTTP, and a proxy it does not trust would make Secure Mode redirect every request in an endless loop, making the site unreachable. The test page above reports what this server actually sees. When the request comes through a proxy that is not listed under Trusted Proxies yet, this card offers to list it as Secure Mode is turned on.') . '</p>
                                             </div>

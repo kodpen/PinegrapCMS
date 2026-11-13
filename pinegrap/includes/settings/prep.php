@@ -789,7 +789,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // picture whole rather than cropping it.
         if (waf_table_has_column('config', 'app_icon')) {
             $output_app_icon_picker = '
-                                        <div id="pgsub-app" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Installed Application') . '</h6></div>
+                                        <div id="pgsub-app" class="col-12  mb-0"><h6 class="fg-secondary">' . lang('Installed Application') . '</h6></div>
                                         <div class="pg-f-md">
                                             <label for="app_icon" class="form-label">' . lang('Application Icon') . '</label>
                                             ' . pg_picker_field('public_image', 'app_icon', $app_icon, array('title' => $picture_title, 'describedby' => 'app_icon_help')) . '
@@ -891,8 +891,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                     <input value="1"' . $strutured_data_switch_checked . ' class="' . (($output_structured_data_dependent != '') ? 'collapse-switcher' : '') . '" switch type="checkbox" id="strutured_data" name="strutured_data"' . (($output_structured_data_dependent != '') ? ' data-bs-target="#strutured_data_dependent_row"' : '') . '/>
                                                 </div>
                                                 <label class="" for="strutured_data">' . lang('Describe pages to search engines with structured data') . '</label>
+                                                <div class="form-text">' . lang('Products, product lists, blog posts, breadcrumbs and your organization are described in machine-readable form. The fields below only apply while this is on.') . '</div>
                                             </div>
-                                            <div class="form-text">' . lang('Products, product lists, blog posts, breadcrumbs and your organization are described in machine-readable form. The fields below only apply while this is on.') . '</div>
                                         </div>
                                         ' . $output_structured_data_dependent;
 

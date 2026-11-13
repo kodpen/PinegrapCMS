@@ -1435,7 +1435,7 @@ function ws_templates_settings_card($self_url, $viewer, $form = null)
             <div class="ws-tpl-row' . ($present['archived'] ? ' opacity-50' : '') . '">
                 <span class="ws-tpl-icon"' . ($present['hex'] !== '' ? ' style="background:' . h($present['hex']) . '"' : '') . '><i class="bi ' . h($icon) . '" aria-hidden="true"></i></span>
                 <div class="ws-grow">
-                    <div class="fw-semibold">' . h($present['name'])
+                    <div class="small fw-semibold">' . h($present['name'])
                         . ($present['builtin'] ? ' <span class="badge badge-subtle theme-secondary ms-1">' . h(lang('Built-in')) . '</span>' : '')
                         . ($present['archived'] ? ' <span class="badge theme-secondary ms-1">' . h(lang('In the archive')) . '</span>' : '') . '</div>
                     <div class="small fg-secondary">'
