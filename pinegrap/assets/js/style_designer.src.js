@@ -13154,12 +13154,8 @@ const StyleDesigner = (function () {
             { __step_kind: 'shipped', __step_label: _sdT('Shipped'), __step_date: '21.10.2026 09:30' },
             { __step_kind: 'delivered', __step_label: _sdT('Delivered'), __step_date: '23.10.2026', __step_is_estimate: '1' }
         ],
-        // The sample order (_sdOrderSample()): its second line, one product
-        // form block of four fields (the card is the first), one shipment.
-        'order.items': [_sdOrderSampleLineTwo()],
-        'cart.items': [_sdOrderSampleLineTwo()],
-        'order.item_forms': [],
-        'cart.item_forms': [],
+        // The sample order's product form (_sdOrderSample()): four fields,
+        // the card being the first.
         'order.item_form_fields': [
             { __field_label: _sdT('Thread colour'), __field_value_html: _sdT('Navy') },
             { __field_label: _sdT('Gift message'), __field_value_html: _sdT('Happy birthday!') },
@@ -13179,18 +13175,10 @@ const StyleDesigner = (function () {
         'cart.item_form_field_options': [
             { __option_label: _sdT('Cream'), __option_value: 'cream', __option_id: 'thread-cream', __option_checked: '' }
         ],
-        'order.shipments': [],
-        'checkout.recipients': [],
-        'order.item_gift_cards': [],
-        'cart.item_gift_cards': [],
-        'cart.item_schedule': [],
-        'order.returns': [],
-        'order.return_deliveries': [],
         'order.return_delivery_lines': [
             { __return_item_id: '2', __return_item_name: _sdT('Ceramic Mug'), __return_item_ordered: '1', __return_item_left: '1',
               __return_item_qty_label: _sdT('How many to return: {var:1}', _sdT('Ceramic Mug')) }
         ],
-        'order.return_lines': [],
         'calendar.weekdays': [
             { __weekday_name: _sdT('Tuesday'), __weekday_short: _sdT('Tue') },
             { __weekday_name: _sdT('Wednesday'), __weekday_short: _sdT('Wed') }
@@ -13220,6 +13208,16 @@ const StyleDesigner = (function () {
             { __pager_number: '9' }
         ]
     };
+
+    // The lists of the sample order that draw their card alone (one product
+    // form block, one shipment, one return …), and its item lists, whose
+    // sample row is the order's second line (_sdOrderSampleLineTwo()).
+    var _SD_ONE_ROW_LISTS = {
+        'order.item_forms': 1, 'cart.item_forms': 1, 'order.shipments': 1, 'checkout.recipients': 1,
+        'order.item_gift_cards': 1, 'cart.item_gift_cards': 1, 'cart.item_schedule': 1,
+        'order.returns': 1, 'order.return_lines': 1, 'order.return_deliveries': 1
+    };
+    var _SD_ORDER_LINE_LISTS = { 'order.items': 1, 'cart.items': 1 };
 
     // Whether a widget of `cfg` draws its main loop once: a single-record
     // kind, whose loop holds the layout but repeats nothing.
@@ -13255,7 +13253,9 @@ const StyleDesigner = (function () {
         }
         var src = SW_LIST_SOURCES[node.props.source];
         if (!src || _sdListBand(node).off) return [];
-        var rows = SD_LIST_SAMPLE_ROWS[node.props.source] || [{}, {}];
+        var name = node.props.source;
+        var rows = _SD_ORDER_LINE_LISTS[name] ? [_sdOrderSampleLineTwo()]
+            : (_SD_ONE_ROW_LISTS[name] ? [] : (SD_LIST_SAMPLE_ROWS[name] || [{}, {}]));
         var limit = parseInt(node.props.limit, 10);
         return (limit > 0) ? rows.slice(0, limit - 1) : rows;
     }
