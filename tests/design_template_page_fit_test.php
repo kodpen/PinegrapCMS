@@ -22,7 +22,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 // The templates and the prefix of their User Styles classes.
-function _test_tpl_fit_ids()
+function _test_tpl_pagefit_ids()
 {
 	return array(
 		'pinegrap-ferry' => 'pfy', 'pinegrap-filmstudio' => 'pfm', 'pinegrap-florist' => 'pfl',
@@ -34,7 +34,7 @@ function _test_tpl_fit_ids()
 	);
 }
 
-function _test_tpl_fit_tpl($id)
+function _test_tpl_pagefit_tpl($id)
 {
 	static $cache = array();
 	if (!isset($cache[$id])) $cache[$id] = _pg_tpl_include(PG_FUNCTIONS_DIR . '/includes/design_templates/' . $id . '.php');
@@ -42,14 +42,14 @@ function _test_tpl_fit_tpl($id)
 }
 
 // The template's User Styles.
-function _test_tpl_fit_css($tpl)
+function _test_tpl_pagefit_css($tpl)
 {
 	$styles = json_decode($tpl['assets']['css'], true);
 	return $styles[0]['content'];
 }
 
 // Calls $fn($node, $parent) for every node of the trees in $value.
-function _test_tpl_fit_walk($value, $fn, $parent = null)
+function _test_tpl_pagefit_walk($value, $fn, $parent = null)
 {
 	if (!is_array($value)) return;
 	if (isset($value['type']) && isset($value['props']) && is_array($value['props'])) {
@@ -57,30 +57,30 @@ function _test_tpl_fit_walk($value, $fn, $parent = null)
 		$parent = $value;
 	}
 	foreach ($value as $child) {
-		if (is_array($child)) _test_tpl_fit_walk($child, $fn, $parent);
+		if (is_array($child)) _test_tpl_pagefit_walk($child, $fn, $parent);
 	}
 }
 
 // The class list of a node, padded with spaces, or ''.
-function _test_tpl_fit_class($node)
+function _test_tpl_pagefit_class($node)
 {
 	return isset($node['props']['cssClass']) && is_string($node['props']['cssClass']) ? ' ' . $node['props']['cssClass'] . ' ' : '';
 }
 
 // Every page, widget and shared part tree of a template.
-function _test_tpl_fit_trees($tpl)
+function _test_tpl_pagefit_trees($tpl)
 {
 	return array($tpl['pages'], $tpl['widgets'], $tpl['shared']);
 }
 
-function test_design_template_fit_brand_ellipsis()
+function test_design_template_page_fit_brand_ellipsis()
 {
-	foreach (_test_tpl_fit_ids() as $id => $prefix) {
-		$tpl = _test_tpl_fit_tpl($id);
-		pg_assert_contains('.navbar-brand{min-width:0;max-width:calc(100% - 5rem)}', _test_tpl_fit_css($tpl), $id . ': the brand may shrink');
+	foreach (_test_tpl_pagefit_ids() as $id => $prefix) {
+		$tpl = _test_tpl_pagefit_tpl($id);
+		pg_assert_contains('.navbar-brand{min-width:0;max-width:calc(100% - 5rem)}', _test_tpl_pagefit_css($tpl), $id . ': the brand may shrink');
 		$truncated = 0;
-		_test_tpl_fit_walk($tpl['shared']['header']['tree'], function ($n) use (&$truncated) {
-			if (strpos(_test_tpl_fit_class($n), ' navbar-brand ') === false) return;
+		_test_tpl_pagefit_walk($tpl['shared']['header']['tree'], function ($n) use (&$truncated) {
+			if (strpos(_test_tpl_pagefit_class($n), ' navbar-brand ') === false) return;
 			if (strpos(json_encode($n), 'text-truncate') !== false) $truncated++;
 		});
 		pg_assert_true($truncated > 0, $id . ': the name in the header ends with an ellipsis');
@@ -89,19 +89,19 @@ function test_design_template_fit_brand_ellipsis()
 
 // From 992 px the brand, the links and the button ran past the container
 // in Turkish; these headers open out from 1200 px.
-function test_design_template_fit_open_bar()
+function test_design_template_page_fit_open_bar()
 {
 	$lg = array('pinegrap-filmstudio', 'pinegrap-music', 'pinegrap-photo');
-	foreach (_test_tpl_fit_ids() as $id => $prefix) {
+	foreach (_test_tpl_pagefit_ids() as $id => $prefix) {
 		$bars = array();
-		_test_tpl_fit_walk(_test_tpl_fit_tpl($id)['shared']['header']['tree'], function ($n) use (&$bars) {
-			if (preg_match('/ (navbar-expand-[a-z]+) /', _test_tpl_fit_class($n), $m)) $bars[] = $m[1];
+		_test_tpl_pagefit_walk(_test_tpl_pagefit_tpl($id)['shared']['header']['tree'], function ($n) use (&$bars) {
+			if (preg_match('/ (navbar-expand-[a-z]+) /', _test_tpl_pagefit_class($n), $m)) $bars[] = $m[1];
 		});
 		pg_assert_same(array(in_array($id, $lg, true) ? 'navbar-expand-lg' : 'navbar-expand-xl'), $bars, $id . ': the open bar');
 		if (in_array($id, $lg, true)) continue;
 		$early = array();
-		_test_tpl_fit_walk(_test_tpl_fit_tpl($id)['shared']['header']['tree'], function ($n) use (&$early) {
-			if (preg_match('/ [a-z-]+-lg-[a-z0-9]+ /', _test_tpl_fit_class($n))) $early[] = trim(_test_tpl_fit_class($n));
+		_test_tpl_pagefit_walk(_test_tpl_pagefit_tpl($id)['shared']['header']['tree'], function ($n) use (&$early) {
+			if (preg_match('/ [a-z-]+-lg-[a-z0-9]+ /', _test_tpl_pagefit_class($n))) $early[] = trim(_test_tpl_pagefit_class($n));
 		});
 		pg_assert_same(array(), $early, $id . ': the menu lays out at the same breakpoint as the bar');
 	}
@@ -110,12 +110,12 @@ function test_design_template_fit_open_bar()
 // A palette's text colour reads on the page background only; on a tertiary
 // band small coloured text is mixed 10% darker in the light theme and 15%
 // lighter in the dark one.
-function test_design_template_fit_band_colours()
+function test_design_template_page_fit_band_colours()
 {
 	$pf = 'var(--pg-primary-fg,var(--bs-primary))';
 	$sf = 'var(--pg-secondary-fg,var(--bs-secondary))';
-	foreach (_test_tpl_fit_ids() as $id => $p) {
-		$css = _test_tpl_fit_css(_test_tpl_fit_tpl($id));
+	foreach (_test_tpl_pagefit_ids() as $id => $p) {
+		$css = _test_tpl_pagefit_css(_test_tpl_pagefit_tpl($id));
 		$band = $id === 'pinegrap-library' ? ':is(.bg-body-tertiary,.plb-hero)' : '.bg-body-tertiary';
 		pg_assert_contains('--' . $p . '-band-primary:color-mix(in srgb,' . $pf . ' 90%,black);--' . $p . '-band-secondary:color-mix(in srgb,' . $sf . ' 90%,black)', $css, $id . ': darker in the light theme');
 		pg_assert_contains('--' . $p . '-band-primary:color-mix(in srgb,' . $pf . ' 85%,white);--' . $p . '-band-secondary:color-mix(in srgb,' . $sf . ' 85%,white)', $css, $id . ': lighter in the dark theme');
@@ -132,7 +132,7 @@ function test_design_template_fit_band_colours()
 // light theme (the account card's Log out with Graphite); the emphasis tint
 // reads with every palette in both themes. The rules come after the band's,
 // so a soft box on a grey band takes its own.
-function test_design_template_fit_soft_surface_colours()
+function test_design_template_page_fit_soft_surface_colours()
 {
 	$rules = array(
 		'.bg-primary-subtle :is(.text-primary,.link-primary:not(:hover,:focus)){color:var(--bs-primary-text-emphasis)!important}',
@@ -140,22 +140,22 @@ function test_design_template_fit_soft_surface_colours()
 		'.bg-primary-subtle .btn-outline-primary{--bs-btn-color:var(--bs-primary-text-emphasis)}',
 		'.bg-primary-subtle .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-text-emphasis)}',
 	);
-	foreach (_test_tpl_fit_ids() as $id => $p) {
-		$css = _test_tpl_fit_css(_test_tpl_fit_tpl($id));
+	foreach (_test_tpl_pagefit_ids() as $id => $p) {
+		$css = _test_tpl_pagefit_css(_test_tpl_pagefit_tpl($id));
 		foreach ($rules as $rule) pg_assert_contains($rule, $css, $id . ': ' . $rule);
 		pg_assert_true(strpos($css, $rules[0]) > strpos($css, '-band-primary,var(--bs-link-color))}'), $id . ': after the band rules');
 	}
 	pg_assert_contains('.bg-danger-subtle .btn-outline-danger{--bs-btn-color:var(--bs-danger-text-emphasis)}',
-		_test_tpl_fit_css(_test_tpl_fit_tpl('pinegrap-pharmacy')), 'the on-duty button in the red boxes');
+		_test_tpl_pagefit_css(_test_tpl_pagefit_tpl('pinegrap-pharmacy')), 'the on-duty button in the red boxes');
 }
 
 // The renderer leaves width and height out of an image's _attrs: a face
 // given 48 px showed at the file's 96 px.
-function test_design_template_fit_image_sizes()
+function test_design_template_page_fit_image_sizes()
 {
-	foreach (_test_tpl_fit_ids() as $id => $p) {
+	foreach (_test_tpl_pagefit_ids() as $id => $p) {
 		$bad = array();
-		_test_tpl_fit_walk(_test_tpl_fit_trees(_test_tpl_fit_tpl($id)), function ($n) use (&$bad) {
+		_test_tpl_pagefit_walk(_test_tpl_pagefit_trees(_test_tpl_pagefit_tpl($id)), function ($n) use (&$bad) {
 			if ($n['type'] !== 'content' || !isset($n['props']['contentType']) || $n['props']['contentType'] !== 'image') return;
 			foreach (isset($n['props']['_attrs']) ? (array)$n['props']['_attrs'] : array() as $a) {
 				if (in_array($a['name'], array('width', 'height'), true)) $bad[] = $n['props']['src'];
@@ -167,12 +167,12 @@ function test_design_template_fit_image_sizes()
 
 // A browser closes a <p> at the first block inside it, which leaves the rest
 // of the line outside the paragraph's spacing.
-function test_design_template_fit_paragraph_holds_text()
+function test_design_template_page_fit_paragraph_holds_text()
 {
 	$blocks = array('div', 'p', 'ul', 'ol', 'dl', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'table', 'figure', 'blockquote', 'form', 'header', 'footer', 'nav');
-	foreach (_test_tpl_fit_ids() as $id => $p) {
+	foreach (_test_tpl_pagefit_ids() as $id => $p) {
 		$bad = array();
-		_test_tpl_fit_walk(_test_tpl_fit_trees(_test_tpl_fit_tpl($id)), function ($n, $parent) use (&$bad, $blocks) {
+		_test_tpl_pagefit_walk(_test_tpl_pagefit_trees(_test_tpl_pagefit_tpl($id)), function ($n, $parent) use (&$bad, $blocks) {
 			if (!$parent || $parent['type'] !== 'semantic' || !isset($parent['props']['tag']) || $parent['props']['tag'] !== 'p') return;
 			$block = in_array($n['type'], array('container', 'row', 'col'), true)
 				|| ($n['type'] === 'semantic' && isset($n['props']['tag']) && in_array($n['props']['tag'], $blocks, true))
@@ -185,12 +185,12 @@ function test_design_template_fit_paragraph_holds_text()
 
 // A hidden caption or heading is absolutely positioned: in a scroll box
 // that is not positioned it escapes the box and widens the page.
-function test_design_template_fit_scroll_boxes_positioned()
+function test_design_template_page_fit_scroll_boxes_positioned()
 {
-	foreach (_test_tpl_fit_ids() as $id => $p) {
+	foreach (_test_tpl_pagefit_ids() as $id => $p) {
 		$bad = array();
-		_test_tpl_fit_walk(_test_tpl_fit_trees(_test_tpl_fit_tpl($id)), function ($n) use (&$bad) {
-			$class = _test_tpl_fit_class($n);
+		_test_tpl_pagefit_walk(_test_tpl_pagefit_trees(_test_tpl_pagefit_tpl($id)), function ($n) use (&$bad) {
+			$class = _test_tpl_pagefit_class($n);
 			if (strpos($class, ' table-responsive ') !== false && strpos($class, ' position-relative ') === false) $bad[] = trim($class);
 		});
 		pg_assert_same(array(), $bad, $id . ': every scroll box is positioned');
@@ -201,14 +201,14 @@ function test_design_template_fit_scroll_boxes_positioned()
 // row the link dropped under the text on a phone, alone on its line. The
 // pharmacy's notice is two parts (the on-duty link, the emergency number)
 // and wraps between them.
-function test_design_template_fit_notice_wraps_as_text()
+function test_design_template_page_fit_notice_wraps_as_text()
 {
-	foreach (_test_tpl_fit_ids() as $id => $p) {
-		$tpl = _test_tpl_fit_tpl($id);
+	foreach (_test_tpl_pagefit_ids() as $id => $p) {
+		$tpl = _test_tpl_pagefit_tpl($id);
 		if ($id === 'pinegrap-pharmacy' || !isset($tpl['shared']['notice'])) continue;
-		_test_tpl_fit_walk($tpl['shared']['notice']['tree'], function ($n) use ($id) {
+		_test_tpl_pagefit_walk($tpl['shared']['notice']['tree'], function ($n) use ($id) {
 			if ($n['type'] === 'semantic' && isset($n['props']['tag']) && $n['props']['tag'] === 'p') {
-				pg_assert_false(strpos(_test_tpl_fit_class($n), ' flex-wrap ') !== false, $id . ': the notice line wraps as text');
+				pg_assert_false(strpos(_test_tpl_pagefit_class($n), ' flex-wrap ') !== false, $id . ': the notice line wraps as text');
 			}
 		});
 	}
@@ -217,30 +217,30 @@ function test_design_template_fit_notice_wraps_as_text()
 // With a second site language the account bar's row (switcher, login
 // region, cart) ran past the page at 320 to 414 px (hotel by 126 px): it
 // wraps to the right, and no button breaks inside.
-function test_design_template_fit_account_bar_wraps()
+function test_design_template_page_fit_account_bar_wraps()
 {
-	foreach (_test_tpl_fit_ids() as $id => $p) {
-		$tpl = _test_tpl_fit_tpl($id);
+	foreach (_test_tpl_pagefit_ids() as $id => $p) {
+		$tpl = _test_tpl_pagefit_tpl($id);
 		$rows = array();
-		_test_tpl_fit_walk($tpl['shared']['account_bar']['tree'], function ($n) use (&$rows) {
+		_test_tpl_pagefit_walk($tpl['shared']['account_bar']['tree'], function ($n) use (&$rows) {
 			if (isset($n['props']['_label']) && $n['props']['_label'] === lang('Account Links')) $rows[] = $n;
 		});
 		pg_assert_same(1, count($rows), $id . ': one row of account links');
-		pg_assert_contains(' flex-wrap ', _test_tpl_fit_class($rows[0]), $id . ': the row wraps');
-		pg_assert_contains(' justify-content-end column-gap-1 column-gap-sm-2 row-gap-1 ', _test_tpl_fit_class($rows[0]), $id . ': to the right, closer on a phone');
+		pg_assert_contains(' flex-wrap ', _test_tpl_pagefit_class($rows[0]), $id . ': the row wraps');
+		pg_assert_contains(' justify-content-end column-gap-1 column-gap-sm-2 row-gap-1 ', _test_tpl_pagefit_class($rows[0]), $id . ': to the right, closer on a phone');
 		pg_assert_contains('"componentType":"language_switcher"', json_encode($rows[0]), $id . ': the switcher sits in the row');
 		$switcher = null;
-		_test_tpl_fit_walk($rows[0], function ($n) use (&$switcher) {
+		_test_tpl_pagefit_walk($rows[0], function ($n) use (&$switcher) {
 			if (isset($n['props']['componentType']) && $n['props']['componentType'] === 'language_switcher') $switcher = $n;
 		});
 		pg_assert_same('text-nowrap', $switcher['props']['cssClass'], $id . ': the switcher keeps one line');
 		pg_assert_true(isset($tpl['widgets']['login_region']), $id . ': the login region');
 		$region = $tpl['widgets']['login_region'];
 		$nowrap = array();
-		_test_tpl_fit_walk($region['tree'], function ($n) use (&$nowrap) {
+		_test_tpl_pagefit_walk($region['tree'], function ($n) use (&$nowrap) {
 			$label = isset($n['props']['_label']) ? $n['props']['_label'] : (isset($n['props']['text']) ? $n['props']['text'] : '');
-			if ($label === lang('Signed Out')) pg_assert_contains(' gap-1 gap-sm-2 ', _test_tpl_fit_class($n), 'Signed Out is closer on a phone');
-			if (in_array($label, array(lang('Log In'), lang('Sign Up'), lang('Account Button')), true)) $nowrap[$label] = strpos(_test_tpl_fit_class($n), ' text-nowrap ') !== false;
+			if ($label === lang('Signed Out')) pg_assert_contains(' gap-1 gap-sm-2 ', _test_tpl_pagefit_class($n), 'Signed Out is closer on a phone');
+			if (in_array($label, array(lang('Log In'), lang('Sign Up'), lang('Account Button')), true)) $nowrap[$label] = strpos(_test_tpl_pagefit_class($n), ' text-nowrap ') !== false;
 		});
 		pg_assert_same(array(lang('Log In') => true, lang('Sign Up') => true, lang('Account Button') => true), $nowrap, $id . ': no button breaks inside');
 	}
@@ -248,12 +248,12 @@ function test_design_template_fit_account_bar_wraps()
 
 // The ferry wake (a dashed line under a route) sat against the text above
 // and below it.
-function test_design_template_fit_ferry_wake_spacing()
+function test_design_template_page_fit_ferry_wake_spacing()
 {
-	$tpl = _test_tpl_fit_tpl('pinegrap-ferry');
+	$tpl = _test_tpl_pagefit_tpl('pinegrap-ferry');
 	$wakes = 0;
-	_test_tpl_fit_walk($tpl['pages'], function ($n) use (&$wakes) {
-		$class = _test_tpl_fit_class($n);
+	_test_tpl_pagefit_walk($tpl['pages'], function ($n) use (&$wakes) {
+		$class = _test_tpl_pagefit_class($n);
 		if (strpos($class, ' pg-ferry-wake ') === false) return;
 		$wakes++;
 		pg_assert_contains(' my-3 ', $class, 'the wake keeps clear of the text');

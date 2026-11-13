@@ -4,7 +4,7 @@ description: Ferry to photo templates in a browser: header at 1200 px, brand ell
 ---
 
 ## Which templates does it cover, and how is it tested?
-- The sixteen multi-file templates from ferry to photo. `tests/design_template_page_fit_test.php` walks their trees; `_test_tpl_fit_ids()` lists them with their User Styles prefix.
+- The sixteen multi-file templates from ferry to photo. `tests/design_template_page_fit_test.php` walks their trees; `_test_tpl_pagefit_ids()` lists them with their CSS prefix.
 
 ## Why do seven headers open out at 1200 px?
 - ferry, gallery, gym, hotel, marina, museum and pharmacy had `navbar-expand-lg`: from 992 px the brand, the Turkish links and the button ran past the container. They are `navbar-expand-xl`, with the menu's own `-lg-` classes moved to `-xl-`. filmstudio, music and photo fit at 992 px and stay `-lg`.
