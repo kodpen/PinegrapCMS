@@ -4988,11 +4988,12 @@ a.link-top-row {
   border: 0;
 }
 
-/* An absolutely placed <select> takes the nearest positioned box as its
-   containing block; when that box is outside a scrolling table, its
-   overflow does not clip the select and the page grows sideways on a
-   narrow screen. */
-.table-responsive:has(.pg-combobox-native) {
+/* A scrolling table is the containing block of its absolutely placed
+   content (a .visually-hidden heading or label, a combobox's posted
+   <select>). Static, it is not: that content is placed against the nearest
+   positioned box outside it, its overflow does not clip it, and the page
+   grows sideways on a narrow screen. */
+.table-responsive {
   position: relative;
 }
 

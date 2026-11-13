@@ -5,8 +5,9 @@
  * Tests that panel screens fit a 375 px phone: a toolbar filter form and its
  * input-group never grow past the bar, Edit Theme File draws its facts in
  * the toolbar's grow slot and Edit Page and Edit Comment in their status column
- * (no line above the bar and no second heading), and the Subscriptions date
- * range wraps.
+ * (no line above the bar and no second heading), the Subscriptions date
+ * range wraps, a scrolling table holds its hidden text and the Verified
+ * Shipping Addresses state filter shrinks to the bar.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -68,4 +69,29 @@ function test_panel_narrow_layout_subscription_dates_fit()
 	// one on a phone, #5746): it stays on one line and its boxes shrink.
 	pg_assert_true(preg_match('/<span class="[^"]*\bflex-nowrap\b[^"]*\bmax-w-100\b[^"]*">\s*<input type="date" data-pg-date name="next_from"/', $source) === 1, 'the date range stays on one line inside the bar');
 	pg_assert_same(2, substr_count($source, 'form-control-sm w-auto flex-fill min-w-0'), 'both date boxes shrink to fit a narrow screen');
+}
+
+function test_panel_narrow_layout_scrolling_table_holds_hidden_text()
+{
+	// A .visually-hidden heading or label is position: absolute. Its
+	// containing block has to be the scroll box itself, or the box's overflow
+	// does not clip it and the page scrolls sideways (#9079: Edit User's store
+	// credit cards, Visitors' landing pages).
+	foreach (array('assets/css/backend.src.css', 'assets/css/backend.min.css') as $file) {
+		$css = panel_narrow_layout_test_source($file);
+
+		pg_assert_true(preg_match('/(^|[{}\s])\.table-responsive\s*\{[^}]*position:\s*relative/', $css) === 1, $file . ': every scrolling table is positioned');
+		pg_assert_true(strpos($css, '.table-responsive:has(') === false, $file . ': not only the tables holding a combobox');
+	}
+}
+
+function test_panel_narrow_layout_verified_address_state_filter_fits()
+{
+	$source = panel_narrow_layout_test_source('view_verified_shipping_addresses.php');
+
+	// Without the toolbar filter cap the select keeps a flex item's automatic
+	// minimum, its longest state name, and ran 38 px off a 390 px screen
+	// (#9080, #5723 back).
+	pg_assert_true(preg_match('/<form id="state_filter"[^>]*class="[^"]*\bpg-toolbar-filter\b/', $source) === 1, 'the state filter is a toolbar filter form');
+	pg_assert_true(preg_match('/<label for="state_id" class="[^"]*\btext-nowrap\b/', $source) === 1, 'the label stays on one line beside the select');
 }
