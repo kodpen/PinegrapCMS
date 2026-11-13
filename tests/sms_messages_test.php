@@ -197,3 +197,21 @@ function test_sms_messages_erp_event_hidden_keeps_values()
 	pg_assert_contains('name="sms_msg_erp_overdue_text" value="Pay ^^total^^"', $html);
 	pg_assert_same('', pg_sms_message_event_hidden_fields('erp_overdue', array('on' => false, 'text' => '')));
 }
+
+// A text that differs only as another spelling of the same number ("0100"
+// and "100", "1e2") is a change: compared loosely, PHP read both as 100 and
+// the new text was never written.
+function test_sms_messages_decide_numeric_looking_text_is_a_change()
+{
+	$before = pg_sms_message_normalize(array('events' => array('order_delivered' => array('on' => true, 'text' => '100'))));
+
+	foreach (array('0100', '1e2', '100.0') as $typed) {
+		$decision = pg_sms_message_settings_decide(sms_messages_test_post(array(
+			'sms_msg_order_delivered_on'   => '1',
+			'sms_msg_order_delivered_text' => $typed,
+		)), $before);
+
+		pg_assert_true($decision['changed'], $typed);
+		pg_assert_same($typed, $decision['events']['order_delivered']['text']);
+	}
+}

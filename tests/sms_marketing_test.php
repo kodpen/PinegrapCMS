@@ -241,3 +241,21 @@ function test_sms_marketing_settings_decide()
 	$wrong = pg_sms_marketing_settings_decide(sms_marketing_test_post(array('sms_mkt_mersis' => '12345')), $before);
 	pg_assert_true(isset($wrong['marks']['sms_mkt_mersis']));
 }
+
+// A trade name that differs only as another spelling of the same number is a
+// change: compared loosely, PHP read "0100" and "100" as equal and the new
+// name was never written.
+function test_sms_marketing_settings_decide_numeric_looking_name_is_a_change()
+{
+	$before = pg_sms_marketing_normalize(array('trade_name' => '100'));
+
+	foreach (array('0100', '1e2', '100.0') as $typed) {
+		$decision = pg_sms_marketing_settings_decide(sms_marketing_test_post(array('sms_mkt_trade_name' => $typed)), $before);
+
+		pg_assert_true($decision['changed'], $typed);
+		pg_assert_same($typed, $decision['marketing']['trade_name']);
+	}
+
+	$same = pg_sms_marketing_settings_decide(sms_marketing_test_post(array('sms_mkt_trade_name' => '100')), $before);
+	pg_assert_false($same['changed']);
+}
