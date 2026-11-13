@@ -154,6 +154,7 @@ description: Generated from the module field of the memory files: each includes/
 - `messages_area`: [[messages-area-shell]]
 - `messages_campaigns`: [[messages-area-campaigns-tab]]
 - `messages_sends`: [[messages-area-sends]]
+- `messages_templates`: [[messages-area-templates-tab]]
 - `mfa`: [[two-step-sign-in-expiry]]
 - `not_found_log`: [[not-found-log-screen]]
 - `notify_channels`: [[notification-channels]], [[notification-channels-delivery]]

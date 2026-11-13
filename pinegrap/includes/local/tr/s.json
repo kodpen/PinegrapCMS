@@ -52,6 +52,7 @@
     "SMS queue": "SMS kuyruğu",
     "SMS queue worked: {var:1} sent, {var:2} not sent.": "SMS kuyruğu çalıştı: {var:1} gönderildi, {var:2} gönderilemedi.",
     "SMS settings": "SMS ayarları",
+    "SMS texts": "SMS metinleri",
     "SMTP Error: Could not authenticate.": "SMTP Hatası: Kimlik doğrulaması yapılamadı.",
     "SMTP Settings": "SMTP Ayarları",
     "SMTP Settings was modified": "SMTP Ayarları değiştirildi",
