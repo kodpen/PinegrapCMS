@@ -536,7 +536,7 @@ function pg_page_type_pane_request($user, $page_id)
         $pretty_urls_before = check_if_pretty_urls_are_enabled($page_id);
     }
 
-    $refused = pg_page_form_number_errors($page_type, $_POST);
+    $refused = pg_page_form_number_errors($page_type, $_POST) + pg_whatsapp_form_errors($page_type, $page_id, $_POST);
 
     if ($refused) {
         $reply(422, array('ok' => false, 'message' => implode(' ', $refused), 'fields' => $refused));
