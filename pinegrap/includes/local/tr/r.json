@@ -260,6 +260,7 @@
     "Read {var:1}": "Okundu: {var:1}",
     "Read, listen and learn wherever you are: your library card opens all of it.": "Nerede olursanız okuyun, dinleyin, öğrenin: kütüphane kartınız hepsini açar.",
     "Read-only": "Salt okunur",
+    "Read: {var:1} pages and {var:2} shared parts, {var:3} of them with a name to convert.": "Okunan: {var:1} sayfa ve {var:2} paylaşılan parça; {var:3} tanesinde dönüştürülecek bir ad var.",
     "Reader Details": "Okur Bilgileri",
     "Reader Quote": "Okur Yorumu",
     "Reader accounts with comments and an inbox, a newsroom desk, a tip line and the Morning Briefing newsletter.": "Yorum ve gelen kutusuyla okur hesapları, haber masası, ipucu hattı ve Sabah Bülteni.",
