@@ -498,8 +498,21 @@
 
     // ---- adding a sound from Files ----
 
+    // Add sound: the picker (kind canvas_sound; its Upload takes a sound from
+    // this computer) on a panel screen, else the box with From this
+    // computer and the Files list (action sound_files).
     Editor.prototype.openSoundFiles = function () {
         var self = this, timer = null, st = this.soundFiles;
+
+        if (this.sitePickerOk()) {
+            this.sitePick('canvas_sound', t('soundFiles'), document.activeElement).then(function (f) {
+                if (f) {
+                    self.addSound(f);
+                }
+            });
+
+            return;
+        }
         var find = el('input', { type: 'search', class: 'pgie-input pgie-stkfind', value: st.search, placeholder: t('soundFind'), 'aria-label': t('soundFind') });
 
         st.list = el('div', { class: 'pgie-sndfiles' });

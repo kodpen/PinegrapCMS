@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - files of the file manager brought into a conversation: sent to
- * a channel from the file manager's menu, or picked from the file manager
- * under the paperclip of the writing box.
+ * a channel from the file manager's menu, or picked under the paperclip of
+ * the writing box in the one picker (kind channel_file of pg_picker_kinds(),
+ * which asks ws_library_closed_tops() and ws_library_refusal() here).
  *
  * The channel gets a copy, kept in its own folder and checked the way an
  * upload is (ws_message_send_file_bytes()): what a channel refuses it refuses
@@ -32,21 +33,6 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
-
-/**
- * The most files one folder lists; a search narrows the rest.
- */
-define('WS_LIBRARY_FOLDER_FILES', 200);
-
-/**
- * The most files a search lists.
- */
-define('WS_LIBRARY_SEARCH_FILES', 50);
-
-/**
- * The most recently changed files shown where the picker opens.
- */
-define('WS_LIBRARY_RECENT_FILES', 12);
 
 /**
  * Every folder in a branch: the roots given and everything under them.
@@ -107,52 +93,6 @@ function ws_library_open_set($parents, $granted, $closed)
     }
 
     return $open;
-}
-
-/**
- * Where the picker starts: the open folders whose parent is not open. Staff
- * have one, the top folder; a user has the top of each branch granted to
- * them.
- *
- * @param array $parents folder id => parent folder id
- * @param array $open    folder id => true
- * @return int[]
- */
-function ws_library_tops($parents, $open)
-{
-    $tops = array();
-
-    foreach ($open as $folder_id => $yes) {
-        if (!isset($open[(int) $parents[$folder_id]])) {
-            $tops[] = (int) $folder_id;
-        }
-    }
-
-    return $tops;
-}
-
-/**
- * The way down to a folder from the highest folder above it the person may
- * open, that folder included.
- *
- * @param array $parents folder id => parent folder id
- * @param array $open    folder id => true
- * @param int   $folder_id
- * @return int[] the highest first
- */
-function ws_library_trail($parents, $open, $folder_id)
-{
-    $trail = array();
-    $seen = array();
-    $folder_id = (int) $folder_id;
-
-    while (isset($open[$folder_id]) && !isset($seen[$folder_id])) {
-        $seen[$folder_id] = true;
-        array_unshift($trail, $folder_id);
-        $folder_id = (int) ($parents[$folder_id] ?? 0);
-    }
-
-    return $trail;
 }
 
 /**
@@ -245,6 +185,18 @@ function ws_library_open($viewer)
         return $cache[$id];
     }
 
+    return $cache[$id] = ws_library_open_set(ws_library_parents(), ws_library_granted($viewer), ws_library_closed_tops());
+}
+
+/**
+ * The tops of the branches nobody picks a file from: the Workspace folder
+ * (its files belong to the channels and notes they were posted in), the
+ * recycle bin and every archived folder.
+ *
+ * @return int[]
+ */
+function ws_library_closed_tops()
+{
     $closed = array(ws_library_workspace_folder());
 
     if (function_exists('pg_recycle_bin_folder_id')) {
@@ -257,68 +209,7 @@ function ws_library_open($viewer)
         }
     }
 
-    return $cache[$id] = ws_library_open_set(ws_library_parents(), ws_library_granted($viewer), $closed);
-}
-
-/**
- * Folders as the picker lists them, in the file manager's order.
- *
- * @param int[] $folder_ids
- * @return array[] id, name
- */
-function ws_library_folder_list($folder_ids)
-{
-    $folders = ws_library_folders();
-    $list = array();
-
-    foreach ($folder_ids as $folder_id) {
-        if (isset($folders[$folder_id])) {
-            $list[] = array('id' => (int) $folder_id, 'name' => $folders[$folder_id]['name'], 'order' => $folders[$folder_id]['order']);
-        }
-    }
-
-    usort($list, function ($a, $b) {
-        return ($a['order'] !== $b['order']) ? ($a['order'] - $b['order']) : ws_library_folder_name_compare($a['name'], $b['name']);
-    });
-
-    return array_map(function ($folder) {
-        return array('id' => $folder['id'], 'name' => $folder['name']);
-    }, $list);
-}
-
-/**
- * Two folder names in the panel language's order, numbers by value
- * ("Klasör 2" before "Klasör 10"), as the file manager sorts them. Without
- * intl: strnatcasecmp().
- *
- * @param string $x
- * @param string $y
- * @return int
- */
-function ws_library_folder_name_compare($x, $y)
-{
-    static $collators = array();
-
-    $locale = function_exists('lang') ? (string) lang(array('info' => '')) : 'en';
-
-    if (!array_key_exists($locale, $collators)) {
-        $collator = null;
-
-        if (class_exists('Collator') && ($locale !== '')) {
-            $collator = new Collator($locale);
-            $collator->setAttribute(Collator::NUMERIC_COLLATION, Collator::ON);
-        }
-
-        $collators[$locale] = $collator;
-    }
-
-    if ($collators[$locale] !== null) {
-        $result = $collators[$locale]->compare((string) $x, (string) $y);
-
-        return ($result === false) ? 0 : (int) $result;
-    }
-
-    return strnatcasecmp((string) $x, (string) $y);
+    return $closed;
 }
 
 /**
@@ -332,142 +223,31 @@ function ws_library_withheld_message()
 }
 
 /**
- * A file as the picker shows it: what it is, where it is, and why a
- * channel would not take it, so it is shown but cannot be picked.
+ * Why a channel would not take a file, so the picker shows it marked and it
+ * cannot be chosen: the key that signs the site's mail, a kind of file a
+ * channel refuses (ws_upload_refused()), or one past the upload limit.
  *
- * @param array $row id, name, folder, size, timestamp
- * @return array
+ * @param string $name files.name
+ * @param int    $size bytes
+ * @return string '' when a channel takes it
  */
-function ws_library_file_payload($row)
+function ws_library_refusal($name, $size)
 {
-    $folders = ws_library_folders();
-    $name = (string) $row['name'];
-    $kind = ws_file_kind($name);
-    $size = (int) $row['size'];
-    $refused = '';
+    $name = (string) $name;
 
     if (pg_file_withheld($name)) {
-        $refused = ws_library_withheld_message();
-    } elseif (ws_upload_refused($name)) {
-        $refused = lang('Channels do not take this kind of file.');
-    } elseif ($size > ws_upload_max_bytes()) {
-        $refused = lang(array('string' => 'The file is larger than {var:1} MB.', 'vars' => (int) floor(ws_upload_max_bytes() / 1048576)));
+        return ws_library_withheld_message();
     }
 
-    return array(
-        'id'      => (int) $row['id'],
-        'name'    => $name,
-        'kind'    => $kind,
-        'ext'     => strtolower((string) pathinfo($name, PATHINFO_EXTENSION)),
-        'size'    => function_exists('convert_bytes_to_string') ? convert_bytes_to_string($size, ($size >= 1048576) ? 1 : 0) : (string) $size,
-        'time'    => ws_time_label((int) $row['timestamp']),
-        'where'   => (string) ($folders[(int) $row['folder']]['name'] ?? ''),
-        'thumb'   => (($kind === 'image') && ($refused === '')) ? PATH . encode_url_path($name) : '',
-        'refused' => $refused,
-    );
-}
-
-/**
- * What the picker shows: one folder (its folders and files), the place it
- * starts (the top, with the files changed last), or what a search found.
- *
- * @param array  $viewer
- * @param int    $folder_id 0 for where the picker starts
- * @param string $query     a part of a file name; searches every open folder
- * @return array folder (id, name or null at a top of several), trail, folders,
- *               files, recent, more (the list was cut), search, several (the
- *               person has more than one top), nothing (no folder is open to
- *               this person at all)
- */
-function ws_library_browse($viewer, $folder_id = 0, $query = '')
-{
-    $open = ws_library_open($viewer);
-    $query = trim(mb_substr((string) $query, 0, 100));
-    $answer = array(
-        'folder'  => null,
-        'trail'   => array(),
-        'folders' => array(),
-        'files'   => array(),
-        'recent'  => array(),
-        'more'    => false,
-        'search'  => ($query !== ''),
-        'several' => false,
-        'nothing' => empty($open),
-    );
-
-    if (empty($open)) {
-        return $answer;
+    if (ws_upload_refused($name)) {
+        return lang('Channels do not take this kind of file.');
     }
 
-    $in = implode(',', array_keys($open));
-    $columns = "SELECT id, name, folder, size, timestamp FROM files";
-
-    if ($query !== '') {
-        $rows = (array) db_items($columns . "
-            WHERE folder IN (" . $in . ") AND name LIKE '%" . e(escape_like($query)) . "%'
-            ORDER BY timestamp DESC, id DESC
-            LIMIT " . (WS_LIBRARY_SEARCH_FILES + 1));
-
-        $answer['more'] = (count($rows) > WS_LIBRARY_SEARCH_FILES);
-        $answer['files'] = array_map('ws_library_file_payload', array_slice($rows, 0, WS_LIBRARY_SEARCH_FILES));
-
-        return $answer;
+    if ((int) $size > ws_upload_max_bytes()) {
+        return lang(array('string' => 'The file is larger than {var:1} MB.', 'vars' => (int) floor(ws_upload_max_bytes() / 1048576)));
     }
 
-    $parents = ws_library_parents();
-    $tops = ws_library_tops($parents, $open);
-    $folder_id = (int) $folder_id;
-    $start = false;
-
-    // Several tops are listed side by side, and every folder below them
-    // leads back to that list.
-    $answer['several'] = (count($tops) > 1);
-
-    if (($folder_id <= 0) || !isset($open[$folder_id])) {
-        $start = true;
-        $folder_id = (count($tops) === 1) ? $tops[0] : 0;
-    }
-
-    if ($start) {
-        $answer['recent'] = array_map('ws_library_file_payload', (array) db_items($columns . "
-            WHERE folder IN (" . $in . ")
-            ORDER BY timestamp DESC, id DESC
-            LIMIT " . WS_LIBRARY_RECENT_FILES));
-    }
-
-    // A top of several: the branches granted to a user, side by side.
-    if ($folder_id === 0) {
-        $answer['folders'] = ws_library_folder_list($tops);
-
-        return $answer;
-    }
-
-    $folders = ws_library_folders();
-    $children = array();
-
-    foreach ($open as $child_id => $yes) {
-        if ($parents[$child_id] === $folder_id) {
-            $children[] = $child_id;
-        }
-    }
-
-    $answer['folder'] = array('id' => $folder_id, 'name' => $folders[$folder_id]['name']);
-
-    foreach (ws_library_trail($parents, $open, $folder_id) as $step_id) {
-        $answer['trail'][] = array('id' => $step_id, 'name' => $folders[$step_id]['name']);
-    }
-
-    $answer['folders'] = ws_library_folder_list($children);
-
-    $rows = (array) db_items($columns . "
-        WHERE folder = '" . $folder_id . "'
-        ORDER BY name
-        LIMIT " . (WS_LIBRARY_FOLDER_FILES + 1));
-
-    $answer['more'] = (count($rows) > WS_LIBRARY_FOLDER_FILES);
-    $answer['files'] = array_map('ws_library_file_payload', array_slice($rows, 0, WS_LIBRARY_FOLDER_FILES));
-
-    return $answer;
+    return '';
 }
 
 /**
@@ -578,7 +358,7 @@ function ws_library_channels($viewer)
 }
 
 /**
- * The words of the picker under the paperclip.
+ * The words of the paperclip's menu.
  *
  * @return array key => text
  */
@@ -587,13 +367,5 @@ function ws_library_js_strings()
     return array(
         'lib_from_device'  => lang('From this device'),
         'lib_from_manager' => lang('From the file manager'),
-        'lib_help'         => lang('The channel gets a copy of the file you pick; the original stays where it is.'),
-        'lib_search'       => lang('Search the file manager'),
-        'lib_top'          => lang('All folders'),
-        'lib_recent'       => lang('Changed last'),
-        'lib_empty'        => lang('There are no files in this folder.'),
-        'lib_no_match'     => lang('No file matches that.'),
-        'lib_nothing'      => lang('There is no folder in the file manager you can open.'),
-        'lib_more'         => lang('Only the first files are listed. Search to find the others.'),
     );
 }
