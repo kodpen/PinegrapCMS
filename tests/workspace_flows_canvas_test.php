@@ -168,7 +168,10 @@ function test_workspace_flows_canvas_brief_is_typed()
 }
 
 // A flow opened on the screen says how it starts, so the list keeps the kind
-// after a save: the draft of a flow never published, by its start box.
+// after a save: the draft of a flow never published, by its start box. The
+// answer carries the list's words too (ws_flow_list_words()), which read the
+// name of a home channel and the events catalog an event start names: no
+// home here, and the event start's kind from the graph the answer reads.
 function test_workspace_flows_canvas_detail_carries_the_start_kind()
 {
 	foreach (array('schedule' => 'time', 'manual' => 'manual', 'event' => 'event', 'join' => 'join') as $kind => $start) {
@@ -176,10 +179,10 @@ function test_workspace_flows_canvas_detail_carries_the_start_kind()
 			array('id' => 'start_1', 'kind' => $kind, 'x' => 0, 'y' => 0),
 			array('id' => 'end_1', 'kind' => 'end', 'x' => 288, 'y' => 0),
 		), 'edges' => array(array('from' => 'start_1', 'to' => 'end_1')));
-		$flow = array('id' => '12', 'name' => 'Onboarding', 'status' => 'draft', 'access' => 'view', 'owner_id' => '4', 'channel_id' => '9',
+		$flow = array('id' => '12', 'name' => 'Onboarding', 'status' => 'draft', 'access' => 'view', 'owner_id' => '4', 'channel_id' => '0',
 			'draft_rev' => '3', 'version_id' => '0', 'draft' => json_encode($draft));
 
-		pg_assert_same($start, ws_flow_detail(array('id' => 7), $flow)['start'], 'detail start of a ' . $kind . ' box');
+		pg_assert_same($start, ($kind === 'event') ? ws_flow_start_kind(ws_flow_start_graph($flow, null)) : ws_flow_detail(array('id' => 7), $flow)['start'], 'detail start of a ' . $kind . ' box');
 	}
 
 	$flow['draft'] = json_encode(array('v' => 1, 'nodes' => array(), 'edges' => array()));
@@ -197,9 +200,10 @@ function test_workspace_flows_canvas_list_filters_by_start_kind()
 	pg_assert_contains("\$start['kind']", $list, 'the list hands each flow its start');
 
 	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
-	$entry = substr($script, strpos($script, 'function listEntry(flow)'), 400);
+	$entry = substr($script, strpos($script, 'function keepEntry(flow)'), 1000);
 
 	pg_assert_contains('start: flow.start', $entry, 'a saved flow keeps its start kind');
+	pg_assert_contains('start_text: flow.start_text, channel_name: flow.channel_name', $entry, 'and the list\'s start words and home channel name');
 	pg_assert_false(strpos($script, 'function startFilter()') !== false, 'no start select');
 
 	foreach (array('time', 'manual', 'event', 'join', 'draft') as $chip) {

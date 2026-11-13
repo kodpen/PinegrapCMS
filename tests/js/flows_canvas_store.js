@@ -31,6 +31,9 @@
 const ME = 1;
 const TOKEN = 'harness-form-token';
 
+// ws_flow_start_sentence() for the start the store's flows have.
+const START_WORDS = { manual: 'By hand' };
+
 const TEAM = [
     { id: 1, name: 'Ayşe Demir', initials: 'AD', tone: 1 },
     { id: 2, name: 'Mehmet Kaya', initials: 'MK', tone: 2 },
@@ -272,13 +275,21 @@ async function createStore(name, check) {
         };
     }
 
+    // ws_flow_list_words(): how a flow starts in the list's words and the
+    // name of its home channel, in the list's answer and the flow's own.
+    function listWords(flow) {
+        const channel = boot().channels.filter((item) => item.id === flow.channel_id)[0];
+
+        return { start_text: START_WORDS[brief(flow).start] || '', channel_name: channel ? channel.name : '' };
+    }
+
     // ws_flow_detail(): the draft for whoever may change the flow (or for
     // anyone of a flow never published), the live graph for the others.
     function detail(flow) {
         const edit = flow.access === 'edit';
         const draft = (edit || !flow.version) ? flow.draft : null;
 
-        return Object.assign(brief(flow), {
+        return Object.assign(brief(flow), listWords(flow), {
             draft: clone(draft),
             graph: flow.version ? clone(flow.live) : null,
             problems: (edit && draft) ? clone(flow.problems) : [],
@@ -327,7 +338,7 @@ async function createStore(name, check) {
         // holds the Flows screen's (flows null keeps it), and its texts.
         ws_flow_editor_config: () => ({ flows: null, strings: {} }),
 
-        ws_flow_list: () => ({ flows: [...flows.values()].filter((flow) => !flow.binned).map((flow) => Object.assign(brief(flow), { last_run: lastRun(flow) })) }),
+        ws_flow_list: () => ({ flows: [...flows.values()].filter((flow) => !flow.binned).map((flow) => Object.assign(brief(flow), listWords(flow), { last_run: lastRun(flow) })) }),
 
         ws_flow_get: (request) => {
             const flow = flowOf(request, false);

@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-list
-description: The Flows screen's flow list (#3172, #3222): table, start words with the next run, converted flows for all staff, search, chips, the Not converted group at its end, "Flows ›" back
+description: The Flows screen's flow list (#3172, #3222): table, start words with the next run, kept in a row after opening (#9127), converted flows, search, chips, Not converted group, the way back
 ---
 
 ## What is it?
@@ -11,6 +11,10 @@ description: The Flows screen's flow list (#3172, #3222): table, start words wit
 
 ## What does `ws_flow_list` add?
 - `ws_flow_list` adds `start_text` (`ws_flow_start_sentence()`: a time box in short words, `ws_flow_start_short()`, "Every day 09:00"; other starts as the API's `start_text`) and `channel_name` (`ws_flows_channel_names()`, only channels the person reads), both read once for the list (`ws_flows_starts()`). A live flow that starts at a time gets its next run in `start_text` ("Every day 09:00 · Next: Tomorrow 09:00", `ws_flows_next_runs()`), and staff get the converted flows somebody else owns as rows (`ws_flows_with_converted()`): `workspace-flows-one-list.md`, PR #8573. The API's flow list is unchanged.
+
+## How does a flow's row keep them once the flow is opened?
+- The flow's own answer (`ws_flow_detail()`: open, publish, pause, resume, template setup, AI sketch) carries the same two fields, `ws_flow_list_words()` with the list's helpers; `keepEntry()` builds the row from it and keeps what an answer lacks. Before #9127 the row fell back to the kind's name, showed "—" and the search lost the flow.
+- Going back to the list (`showList()`) rebuilds the row from the open flow, so a name or home changed on the canvas shows; the home select sets `channel_name` from `BOOT.channels`. A never-published draft's start words edited on the canvas stay as at opening until the list is read again.
 
 ## What ends the list?
 - For staff, only "Not converted · N" under the table, outside the search and chips: the cards of the actions the conversion refused. Converted flows are rows of the table; their own group went in PR #8573. No Scheduled actions section or entry since V5 (#3222); `?view=scheduled` opens the list: `workspace-flows-not-converted.md`.
