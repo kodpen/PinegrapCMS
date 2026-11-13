@@ -10,7 +10,7 @@ description: Test coordinator (2026-10-31): starts no workers, tests and opens `
 - Tests the product and opens one issue per fault, labelled `bug`: the steps it took, what it expected, what it saw, the version and the screen or endpoint. It writes no code, opens no PR and merges nothing.
 - It runs on the owner's own computer and tests on `dev.pinegrap.com`.
 - Searches the open and closed `bug` issues first, so a fault is not reported twice.
-- A fault whose fix needs a product or schema decision goes to an `architect` issue instead (`architect-asking.md`).
+- A fault whose fix needs a product or schema decision goes to the architect as one agent-channel message instead (`architect-asking.md`); no `architect` issue is opened.
 
 ## What happens to a `bug` issue?
 - Since 2026-11-06 it waits for the owner: no coordinator gives it to a worker and no worker claims it (`coordinator-no-plans.md`). The open ones, the earlier hunts' included:
