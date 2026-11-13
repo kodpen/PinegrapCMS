@@ -20,7 +20,8 @@
  * too.
  *
  * assets/js/workspace.js calls card() from filePreview() with its own
- * helpers.
+ * helpers, and joined() for a canvas with a drawing and a page
+ * (file.joined, includes/workspace/canvas_card.php).
  *
  * Served minified inside assets/js/workspace.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -503,12 +504,17 @@
         var head = h.el('div', 'd-flex align-items-center gap-2');
 
         root.dataset.pageMessage = message.id;
-        head.appendChild(h.icon('bi-window-stack'));
-        head.appendChild(h.el('strong', 'text-truncate', file.name.replace(/\.html$/i, '')));
-        root.appendChild(head);
 
-        var maker = h.el('div', 'small fg-secondary mt-1', page.by ? h.t('page_by', page.by) : '');
-        root.appendChild(maker);
+        // Inside the joined card (joined()) the card's own name and maker
+        // line give way to the joined card's.
+        if (opts.bare) {
+            root.className = 'ws-page-card';
+        } else {
+            head.appendChild(h.icon('bi-window-stack'));
+            head.appendChild(h.el('strong', 'text-truncate', file.name.replace(/\.html$/i, '')));
+            root.appendChild(head);
+            root.appendChild(h.el('div', 'small fg-secondary mt-1', page.by ? h.t('page_by', page.by) : ''));
+        }
 
         if (page.edited_by) {
             var mark = h.el('div', 'small fg-secondary d-flex align-items-center gap-2 mt-1');
@@ -663,7 +669,11 @@
         tools.appendChild(openButton);
         tools.appendChild(fullButton);
         tools.appendChild(sourceButton);
-        tools.appendChild(download);
+
+        // A page added beside a drawing has no address of its own here.
+        if (!opts.bare) {
+            tools.appendChild(download);
+        }
         root.appendChild(tools);
         root.appendChild(stopped);
         root.appendChild(refused);
@@ -678,5 +688,240 @@
         return root;
     }
 
-    window.PGWsPageCard = { card: card, stopAll: stopAll };
+    // The tab each joined card shows, by message id, kept while the
+    // conversation draws the card again.
+    var tabs = {};
+
+    function partLabel(h, part) {
+        return (part === 'page') ? h.t('canvas_part_page') : h.t('canvas_part_drawing');
+    }
+
+    // The one list of versions over both parts (canvas_card.php): All, Page
+    // or Drawing; a page version shows its source, any older version is put
+    // back as the newest one (ws_canvas_restore).
+    function showVersions(message, pageMessage, h, opts, filter) {
+        var joinedCard = message.file.joined;
+        var drawer = h.offcanvas('ws-canvas-versions', h.t('page_versions'));
+        var body = drawer.querySelector('.drawer-body');
+        var versions = joinedCard.versions || [];
+        var counts = { all: versions.length, page: 0, drawing: 0 };
+
+        filter = filter || 'all';
+        drawer.querySelector('.drawer-title').textContent = h.t('page_versions');
+        h.clear(body);
+
+        versions.forEach(function (row) {
+            counts[row.part] = (counts[row.part] || 0) + 1;
+        });
+
+        var segment = h.el('div', 'btn-group btn-group-sm mb-3');
+
+        segment.setAttribute('role', 'group');
+        [['all', h.t('canvas_all')], ['page', h.t('canvas_part_page')], ['drawing', h.t('canvas_part_drawing')]].forEach(function (pair) {
+            var on = (pair[0] === filter);
+            var choice = h.button('btn btn-sm ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary'), pair[1] + ' ' + counts[pair[0]]);
+
+            choice.setAttribute('aria-pressed', on ? 'true' : 'false');
+            choice.addEventListener('click', function () {
+                showVersions(message, pageMessage, h, opts, pair[0]);
+            });
+            segment.appendChild(choice);
+        });
+        body.appendChild(segment);
+
+        var list = h.el('div', 'd-flex flex-column gap-2');
+
+        versions.forEach(function (row) {
+            if ((filter !== 'all') && (row.part !== filter)) {
+                return;
+            }
+
+            var item = h.el('div', 'd-flex align-items-start gap-2 border rounded px-3 py-2');
+            var text = h.el('div', 'flex-grow-1');
+            var top = h.el('div', 'd-flex align-items-center gap-2');
+            var who = (row.source === 'restore') ? h.t('page_restored') : (row.by ? '@' + row.by : '');
+
+            text.style.minWidth = '0';
+            item.appendChild(h.icon(row.part === 'page' ? 'bi-window' : 'bi-vector-pen'));
+            top.appendChild(h.el('strong', 'small', h.t('canvas_part_version', partLabel(h, row.part), row.version)));
+            top.appendChild(h.el('span', 'small fg-secondary ms-auto', formatTime(row.created_at)));
+            text.appendChild(top);
+
+            if (who) {
+                text.appendChild(h.el('div', 'small fg-secondary text-truncate', who));
+            }
+
+            var actions = h.el('div', 'd-flex flex-wrap gap-2 mt-1');
+
+            if (row.current) {
+                actions.appendChild(h.el('span', 'badge badge-subtle theme-success', h.t('canvas_now')));
+            }
+
+            if (row.part === 'page') {
+                var show = h.button('btn btn-sm btn-outline theme-secondary py-0', h.t('canvas_show'));
+
+                show.addEventListener('click', function () {
+                    h.hideOffcanvas(drawer);
+                    showSource(pageMessage, h, row.version);
+                });
+                actions.appendChild(show);
+            }
+
+            if (!row.current && joinedCard.can_restore) {
+                var restore = h.button('btn btn-sm btn-text theme-secondary py-0', h.t('canvas_restore'), 'bi-arrow-counterclockwise');
+
+                restore.addEventListener('click', function () {
+                    h.ask(h.t('canvas_restore_ask'), h.t('canvas_restore')).then(function (yes) {
+                        if (!yes) {
+                            return;
+                        }
+
+                        restore.disabled = true;
+                        h.api('ws_canvas_restore', { message_id: message.id, part: row.part, version: row.version }).then(function (data) {
+                            h.toast(h.t('canvas_restored'));
+                            opts.replace(data.message);
+                            showVersions(data.message, pageMessage, h, opts, filter);
+                        }).catch(function (error) {
+                            restore.disabled = false;
+                            h.fail(error);
+                        });
+                    });
+                });
+                actions.appendChild(restore);
+            }
+
+            if (actions.childNodes.length) {
+                text.appendChild(actions);
+            }
+
+            item.appendChild(text);
+            list.appendChild(item);
+        });
+        body.appendChild(list);
+        h.showOffcanvas(drawer);
+    }
+
+    // The joined card of a canvas with a drawing and a live page
+    // (file.joined, includes/workspace/canvas_card.php): its name, the
+    // parts as chips, the agent's line, a switch between Drawing and Page,
+    // and one Versions drawer. The page tab holds the page card itself, so
+    // its frame, bridge and first-write question stay as they are; leaving
+    // the tab stops the page.
+    function joined(message, h, opts) {
+        var joinedCard = message.file.joined;
+        var page = joinedCard.page;
+        var root = h.el('div', 'ws-page-card ws-canvas-card border rounded p-3');
+        var head = h.el('div', 'd-flex flex-wrap align-items-center gap-2');
+        var name = h.el('strong', 'text-truncate', joinedCard.name);
+        var chips = h.el('div', 'd-flex flex-wrap gap-1 ms-auto');
+        var pageMessage = { id: message.id, file: { name: joinedCard.name + '.html', url: '', page: page } };
+
+        root.dataset.pageMessage = message.id;
+        head.appendChild(h.icon('bi-easel2'));
+        name.style.minWidth = '0';
+        head.appendChild(name);
+
+        [['bi-vector-pen', h.t('canvas_part_drawing')], ['bi-window', h.t('canvas_part_page')]].concat(
+            (page.tables || []).length ? [['bi-table', h.t('canvas_part_data', page.tables.length)]] : []
+        ).forEach(function (pair) {
+            var chip = h.el('span', 'badge badge-subtle theme-secondary d-inline-flex align-items-center gap-1');
+
+            chip.appendChild(h.icon(pair[0]));
+            chip.appendChild(h.el('span', '', pair[1]));
+            chips.appendChild(chip);
+        });
+        head.appendChild(chips);
+        root.appendChild(head);
+
+        // The agent's line, outside any frame.
+        var maker = h.el('div', 'small fg-secondary d-flex align-items-center gap-1 mt-1');
+
+        maker.appendChild(h.icon('bi-robot'));
+        maker.appendChild(h.el('span', '', h.t('page_by', page.by || '?')));
+        root.appendChild(maker);
+
+        var segment = h.el('div', 'btn-group btn-group-sm mt-2');
+        var stage = h.el('div', 'mt-2');
+        var tab = tabs[message.id] || (open[message.id] ? 'page' : 'drawing');
+
+        segment.setAttribute('role', 'group');
+        segment.setAttribute('aria-label', joinedCard.name);
+
+        function show(which) {
+            tab = which;
+            tabs[message.id] = which;
+
+            // The page runs only while its tab is shown.
+            if (which !== 'page') {
+                close(message.id);
+            }
+
+            Array.prototype.forEach.call(segment.children, function (choice) {
+                var on = (choice.dataset.tab === which);
+
+                choice.className = 'btn btn-sm ' + (on ? 'btn-solid theme-primary' : 'btn-outline theme-secondary');
+                choice.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+
+            h.clear(stage);
+
+            if (which === 'page') {
+                stage.appendChild(card(pageMessage, h, { replace: opts.replace, bare: true }));
+                return;
+            }
+
+            var link = h.el('a', 'ws-image-link');
+            var img = h.el('img');
+
+            link.href = joinedCard.drawing.url;
+            link.target = '_blank';
+            link.rel = 'noopener';
+            img.src = joinedCard.drawing.url;
+            img.alt = joinedCard.name;
+            img.loading = 'lazy';
+            link.appendChild(img);
+            link.addEventListener('click', function (event) {
+                if (opts.showImage && !(event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1)) {
+                    event.preventDefault();
+                    opts.showImage(joinedCard.drawing.url);
+                }
+            });
+
+            // An agent's drawing still blank: this browser draws its picture
+            // (assets/js/workspace_canvas_picture.js) for the drawing part.
+            if (joinedCard.drawing.pending && window.PGWsCanvasPicture) {
+                window.PGWsCanvasPicture.mount({ id: message.id, file: { canvas_pending: joinedCard.drawing.pending, canvas_part: 'drawing', url: joinedCard.drawing.url } }, img, link, h);
+            }
+
+            stage.appendChild(link);
+        }
+
+        [['drawing', 'bi-vector-pen'], ['page', 'bi-window']].forEach(function (pair) {
+            var choice = h.button('btn btn-sm', partLabel(h, pair[0]), pair[1]);
+
+            choice.dataset.tab = pair[0];
+            choice.addEventListener('click', function () {
+                if (tab !== pair[0]) {
+                    show(pair[0]);
+                }
+            });
+            segment.appendChild(choice);
+        });
+        root.appendChild(segment);
+        root.appendChild(stage);
+
+        var foot = h.el('div', 'd-flex flex-wrap gap-2 mt-2');
+        var versionsButton = h.button('btn btn-sm btn-text theme-secondary', h.t('page_versions'), 'bi-clock-history');
+
+        versionsButton.addEventListener('click', function () {
+            showVersions(message, pageMessage, h, opts, 'all');
+        });
+        foot.appendChild(versionsButton);
+        root.appendChild(foot);
+        show(tab);
+
+        return root;
+    }
+
+    window.PGWsPageCard = { card: card, joined: joined, stopAll: stopAll };
 })();
