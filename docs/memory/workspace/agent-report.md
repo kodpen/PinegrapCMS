@@ -1,6 +1,6 @@
 ---
 name: agent-report
-description: An application agent's report of its model and plan usage (POST /workspace/agent-report, #PR): the rules that refuse it whole, the window names, the last report only, the card line and its age
+description: An application agent's report of its model and plan usage (POST /workspace/agent-report, #9322): the rules that refuse it whole, the window names, the last report only, the card line and its age
 ---
 
 ## What is the report?
