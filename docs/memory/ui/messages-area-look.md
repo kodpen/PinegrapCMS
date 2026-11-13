@@ -17,7 +17,7 @@ module: messages_area
 - States are look A pills (`pg_messages_sends_pill()`: info violet, success teal, danger rose, warning amber, else gray); a row's channel is its tile and name; Retry and Delete are small icon buttons; Run now is a quiet button at the toolbar's right. The status column and filter read "Status": `lang('State')` is the geographic state in Turkish.
 
 ## How do the Channels cards stay even?
-- `div.pg-messages-channels` is a grid, two columns from 768 px, `grid-auto-rows: 1fr`, inside a padded `pg-card pg-messages-card` (before, the heading sat on the card's border). Each card is an `a.pg-card-inner.pg-messages-channel`.
+- `div.pg-messages-channels` is a grid, two columns and `grid-auto-rows: 1fr` from 768 px (one column, rows as tall as their text, below), the pill on the title line, inside a padded `pg-card pg-messages-card` (before, the heading sat on the card's border). Each card is an `a.pg-card-inner.pg-messages-channel`.
 
 ## Which old screens are still inside the area?
 - Never carried over as they are; each is redrawn from `plans/messages-area/messages-area.html` by the step named.

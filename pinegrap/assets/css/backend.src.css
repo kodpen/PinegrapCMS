@@ -27745,7 +27745,14 @@ body.pg-measure-report #content {
 @media (max-width: 767.98px) {
   .pg-messages-channels {
     grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
   }
+}
+.pg-messages-channel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 /* Sends: the figures and the queue's state line above the list, a row's
    channel as its tile beside the name. */

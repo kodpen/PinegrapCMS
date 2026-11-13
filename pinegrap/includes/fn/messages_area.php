@@ -439,10 +439,10 @@ function pg_messages_channel_cards_html($cards)
         $html .= '<a class="pg-card-inner pg-messages-channel" href="' . h($card['url']) . '"><div class="pg-card-inner-row">'
             . '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-' . h($card['tone']) . '" aria-hidden="true"><span class="bi ' . h($card['icon']) . '"></span></span>'
             . '<div class="flex-grow-1 min-w-0">'
-            . '<div class="pg-list-row-title">' . h($card['title']) . '</div>'
+            . '<div class="pg-messages-channel-head"><span class="pg-list-row-title">' . h($card['title']) . '</span>'
+            . '<span class="pg-pill pg-tone-' . $tone . '">' . h($card['state_label']) . '</span></div>'
             . '<div class="pg-text-meta text-break">' . h($card['line']) . '</div>'
             . '</div>'
-            . '<span class="pg-pill pg-tone-' . $tone . '">' . h($card['state_label']) . '</span>'
             . '</div></a>';
     }
 
