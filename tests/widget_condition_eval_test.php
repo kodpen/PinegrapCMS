@@ -351,7 +351,7 @@ function test_widget_condition_eval_main_loop_sample_rows()
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$stubs = "var _sdGhostsOn = true, _sdListSample = null, _sdCommentSample = null, _sysWidgetRenderCfg = null, _sysWidgetRenderTreeRoot = null;\n"
-		. "var SW_LIST_SOURCES = {}, SD_LIST_SAMPLE_ROWS = {};\n"
+		. "var SW_LIST_SOURCES = {}, SD_LIST_SAMPLE_ROWS = {}, _SD_REGION_LOOP_ROWS = {};\n"
 		. "function _sdOrderSampleLineTwo() { return { __item_id: '2' }; }\n";
 	$script = "var loop = { type: 'loop_area', props: {}, children: [{ type: 'semantic', props: {} }] };\n"
 		. "var second = { type: 'loop_area', props: {}, children: [] };\n"
