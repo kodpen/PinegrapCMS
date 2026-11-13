@@ -79,7 +79,8 @@ function test_automation_flows_gate_workspace_kinds()
 		pg_assert_true(isset($kinds[$kind]), $kind . ' is a kind of box');
 	}
 
-	foreach (array('join', 'mention', 'post', 'checkin', 'approval', 'lead', 'task', 'task_open', 'task_digest', 'agent') as $kind) {
+	foreach (array('join', 'mention', 'post', 'checkin', 'approval', 'lead', 'task', 'task_open', 'task_digest', 'agent',
+		'row', 'row_add', 'row_set', 'row_get', 'rows_get', 'ai', 'mcp', 'start_action', 'notify') as $kind) {
 		pg_assert_true(in_array($kind, ws_flow_kinds_workspace(), true), $kind . ' needs the Workspace');
 	}
 
@@ -105,6 +106,59 @@ function test_automation_flows_gate_node_needs_workspace()
 	pg_assert_false(ws_flow_node_needs_workspace(automation_flows_gate_test_node('email', array('to' => 'a@example.com'))), 'an e-mail');
 	pg_assert_false(ws_flow_node_needs_workspace(automation_flows_gate_test_node('webhook')), 'a webhook');
 	pg_assert_false(ws_flow_node_needs_workspace(array('kind' => 'report', 'config' => 'broken')), 'settings that are no list');
+}
+
+// Change and Read a record are decided by the record, an event start by
+// its event.
+function test_automation_flows_gate_node_needs_workspace_by_record_and_event()
+{
+	foreach (array('channel', 'task', 'task_note', 'note') as $record) {
+		pg_assert_true(ws_flow_node_needs_workspace(automation_flows_gate_test_node('change', array('record' => $record, 'action' => 'update'))), 'a change of a ' . $record);
+		pg_assert_true(ws_flow_node_needs_workspace(automation_flows_gate_test_node('record_get', array('record' => $record, 'id' => '3'))), 'a read of a ' . $record);
+	}
+
+	foreach (array('order', 'product', 'contact', 'page', '') as $record) {
+		pg_assert_false(ws_flow_node_needs_workspace(automation_flows_gate_test_node('change', array('record' => $record))), 'a change of a site record ' . $record);
+		pg_assert_false(ws_flow_node_needs_workspace(automation_flows_gate_test_node('record_get', array('record' => $record))), 'a read of a site record ' . $record);
+	}
+
+	pg_assert_false(ws_flow_node_needs_workspace(automation_flows_gate_test_node('change', array('record' => array('task')))), 'a record that is no word');
+
+	foreach (ws_events_own() as $event) {
+		$expected = ($event !== 'workspace.flow.run.failed');
+		pg_assert_same($expected, ws_flow_node_needs_workspace(automation_flows_gate_test_node('event', array('event' => $event))), 'an event start on ' . $event);
+	}
+
+	pg_assert_true(in_array('workspace.task.completed', ws_flow_events_workspace(), true), 'a task completed needs it');
+	pg_assert_false(in_array('workspace.flow.run.failed', ws_flow_events_workspace(), true), 'a failed run does not');
+	pg_assert_false(ws_flow_node_needs_workspace(automation_flows_gate_test_node('event', array('event' => 'form.submitted'))), 'a site event');
+
+	$refusal = ws_flow_workspace_box_refusal(false, automation_flows_gate_test_node('record_get', array('record' => 'task', 'id' => '1')));
+	pg_assert_true($refusal !== '', 'Workspace off: a task is not read');
+	pg_assert_same('', ws_flow_workspace_box_refusal(false, automation_flows_gate_test_node('record_get', array('record' => 'order', 'id' => '1'))), 'Workspace off: an order is read');
+}
+
+// The editor's choices: with the Workspace off the Workspace records and
+// its own events are not offered; with it on all are.
+function test_automation_flows_gate_editor_choices()
+{
+	$steps = array(
+		'changes' => (object) array('order' => array('label' => 'Order'), 'task' => array('label' => 'Task'), 'channel' => array('label' => 'Channel')),
+		'reads'   => array(array('kind' => 'order', 'label' => 'Order'), array('kind' => 'task', 'label' => 'Task')),
+		'events'  => array('list' => array('order.created' => array('label' => 'x'), 'workspace.task.completed' => array('label' => 'y'), 'workspace.flow.run.failed' => array('label' => 'z'))),
+		'mcp'     => array(),
+	);
+
+	pg_assert_same($steps, ws_flow_steps_workspace_choices(true, $steps), 'Workspace on: all offered');
+
+	$off = ws_flow_steps_workspace_choices(false, $steps);
+
+	pg_assert_same(array('order'), array_keys((array) $off['changes']), 'Workspace off: site records to change');
+	pg_assert_same(array('order'), array_column($off['reads'], 'kind'), 'Workspace off: site records to read');
+	pg_assert_same(array('order.created', 'workspace.flow.run.failed'), array_keys($off['events']['list']), 'Workspace off: site events and a failed run');
+
+	$none = ws_flow_steps_workspace_choices(false, array('changes' => (object) array(), 'reads' => array(), 'events' => null));
+	pg_assert_same(null, $none['events'], 'no events to offer stays none');
 }
 
 // The run's refusal: none with the Workspace on, one for its boxes with it off.

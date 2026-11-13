@@ -33,5 +33,5 @@ description: Plan (owner 2026-11-12, #8961): Flows become "Automation flows", a 
 - AF6 (S) Close-out: the lasting rules into `workspace/` and `ui/`, this plan deleted.
 
 ## In which order?
-- AF0 to AF5 are done; then AF3b, AF3c, AF4b and AF4c in any order, then AF6. `messages-area-steps.md` turns campaign profiles into flows only after AF3 has landed.
+- AF0 to AF5 and AF3b (#9225) are done; then AF3c, AF4b and AF4c in any order, then AF6. `messages-area-steps.md` turns campaign profiles into flows only after AF3 has landed.
 - Claim as `[plan:automation-flows-menu] <step> — <topic>`.
