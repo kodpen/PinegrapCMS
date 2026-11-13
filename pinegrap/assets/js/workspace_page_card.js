@@ -322,10 +322,19 @@
         return entry;
     }
 
-    function formatTime(seconds) {
+    // In the panel's language and the site's time zone, as the rest of the
+    // Workspace writes times; a zone the browser does not know falls back
+    // to its own.
+    function formatTime(seconds, h) {
         var date = new Date((parseInt(seconds, 10) || 0) * 1000);
+        var cfg = (h && h.cfg) || {};
+        var shape = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
 
-        return date.toLocaleString();
+        try {
+            return date.toLocaleString(cfg.locale || undefined, Object.assign({ timeZone: cfg.timezone || undefined }, shape));
+        } catch (error) {
+            return date.toLocaleString(cfg.locale || undefined, shape);
+        }
     }
 
     // View source: one version's HTML as the agent wrote it, the versions
@@ -349,7 +358,7 @@
             pick.setAttribute('aria-label', h.t('page_versions'));
             (data.versions || []).slice().reverse().forEach(function (row) {
                 var option = h.el('option', '', h.t('page_version', row.version) + ' · '
-                    + (row.source === 'restore' ? h.t('page_restored') : '@' + (row.agent || '')) + ' · ' + formatTime(row.created_at));
+                    + (row.source === 'restore' ? h.t('page_restored') : '@' + (row.agent || '')) + ' · ' + formatTime(row.created_at, h));
 
                 option.value = row.version;
                 option.selected = (row.version === data.version);
@@ -744,7 +753,7 @@
             text.style.minWidth = '0';
             item.appendChild(h.icon(row.part === 'page' ? 'bi-window' : 'bi-vector-pen'));
             top.appendChild(h.el('strong', 'small', h.t('canvas_part_version', partLabel(h, row.part), row.version)));
-            top.appendChild(h.el('span', 'small fg-secondary ms-auto', formatTime(row.created_at)));
+            top.appendChild(h.el('span', 'small fg-secondary ms-auto', formatTime(row.created_at, h)));
             text.appendChild(top);
 
             if (who) {
