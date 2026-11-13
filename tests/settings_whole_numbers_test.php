@@ -100,13 +100,31 @@ function test_settings_whole_numbers_limits_are_refused_before_the_write()
 
 	$security = settings_whole_numbers_test_source('includes/settings/security.save.php');
 	$first_write = strpos($security, "post_value('ecommerce_reset_encryption_key') == 1");
-	foreach (array('login_throttle_attempts', 'login_throttle_minutes', 'login_throttle_lockout', 'membership_expiration_warning_email_page_id', 'membership_expiration_warning_email_days_before_expiration') as $name) {
+	foreach (array('login_throttle_attempts', 'login_throttle_minutes', 'login_throttle_lockout', 'login_throttle_captcha_after', 'form_limit_ip_hour', 'form_limit_recipient_day', 'form_limit_domain_hour', 'membership_expiration_warning_email_page_id', 'membership_expiration_warning_email_days_before_expiration') as $name) {
 		$at = strpos($security, "mark_error('" . $name . "'");
 		if ($at === false) {
 			$at = strpos($security, "'" . $name . "' ");
 		}
 		pg_assert_true(($at !== false) && ($at < $first_write), $name . ' checked before anything is written');
 	}
+
+	// A box where 0 switches a check off is refused when blank or not a
+	// figure, never read as 0: that turned a form limit off without a word.
+	foreach (array(
+		"'login_throttle_captcha_after' => array(lang('Ask a Question After'), 0, 100)",
+		"'form_limit_ip_hour'       => array(lang('Per visitor address'), 0, 10000)",
+		"'form_limit_recipient_day' => array(lang('Per e-mail address'), 0, 10000)",
+		"'form_limit_domain_hour'   => array(lang('Per e-mail domain'), 0, 10000)",
+	) as $rule) {
+		pg_assert_contains($rule, $security, 'range checked: ' . $rule);
+	}
+	pg_assert_contains('pg_whole_number_in_range(post_value($zero_off_field), $zero_off_rule[1], $zero_off_rule[2]) === null', $security, 'the zero-off boxes go through the range check');
+	$checked = strpos($security, 'foreach ($zero_off_boxes');
+	$stop = ($checked === false) ? false : strpos($security, '$liveform->check_form_errors()', $checked);
+	pg_assert_true(($stop !== false) && ($stop < strpos($security, 'db("UPDATE config')), 'the save stops on those errors before it writes');
+	pg_assert_same(null, pg_whole_number_in_range('', 0, 10000), 'a blank form limit is refused');
+	pg_assert_same(null, pg_whole_number_in_range('admin', 0, 10000), 'a saved user name is refused');
+	pg_assert_same(0, pg_whole_number_in_range('0', 0, 10000), 'a typed 0 still turns the limit off');
 
 	$seo = settings_whole_numbers_test_source('includes/settings/seo.save.php');
 	$indexnow_file = strpos($seo, 'If old key exists and changed');

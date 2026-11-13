@@ -7,7 +7,8 @@
  * preview the editor can draw, every palette has a current stylesheet, and
  * the generator keeps text readable on both colours in light and dark mode,
  * and a colour too pale to be seen on a white page still gives its controls
- * an outline, a focus ring and a mark that can be seen there.
+ * an outline, a focus ring and a mark that can be seen there, and a colour
+ * too dark to be seen on the dark surfaces draws its lines lifted there.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -126,6 +127,8 @@ function test_design_themes_catalog_palette_text_reads_in_light_and_dark()
 {
 	$white   = array(255, 255, 255);
 	$dark_bg = array(33, 37, 41);
+	// bg-body-tertiary in dark mode: the store's account bar, light bands.
+	$dark_tertiary = array(43, 48, 53);
 	foreach (pg_design_palettes() as $key => $p) {
 		$css = pg_design_palette_css($p['primary'], $p['secondary'], $p['name']);
 		foreach (array('primary', 'secondary') as $role) {
@@ -136,6 +139,7 @@ function test_design_themes_catalog_palette_text_reads_in_light_and_dark()
 			pg_assert_true(_pg_theme_contrast($fg, $white) >= 4.5, $key . ': ' . $role . ' as text reads at 4.5:1 on white');
 			$fg = design_themes_catalog_test_var($css, '[data-bs-theme=dark]', '--pg-' . $role . '-fg');
 			pg_assert_true(_pg_theme_contrast($fg, $dark_bg) >= 4.5, $key . ': ' . $role . ' as text reads at 4.5:1 on the dark body');
+			pg_assert_true(_pg_theme_contrast($fg, $dark_tertiary) >= 4.5, $key . ': ' . $role . ' as text reads at 4.5:1 on the dark tertiary surface');
 		}
 	}
 }
@@ -164,8 +168,9 @@ function test_design_themes_catalog_pale_colour_draws_its_lines_in_the_readable_
 			$c    = _pg_theme_rgb($p[$role]);
 			$line = design_themes_catalog_test_var($css, $light, '--pg-' . $role . '-line');
 			if (_pg_theme_contrast($c, $white) >= 3) {
-				// The colour is its own line: the palette says nothing more.
-				pg_assert_false(strpos($css, '--pg-' . $role . '-line') !== false, $key . ': ' . $role . ' is seen on white and sets no line colour');
+				// The colour is its own line on white; a dark line of its own,
+				// if any, is the dark-surface test's.
+				pg_assert_true(($line === null) || ($line === $c), $key . ': ' . $role . ' is seen on white and is its own line there');
 				continue;
 			}
 			$pale[] = $key . '/' . $role;
@@ -181,6 +186,42 @@ function test_design_themes_catalog_pale_colour_draws_its_lines_in_the_readable_
 		}
 	}
 	pg_assert_same(array('silver/primary', 'electric/secondary'), $pale, 'the pale colours of the built-in palettes');
+}
+
+// Most palette colours are too dark to be seen as a line on the dark
+// surfaces (Fuchsia's secondary #312e81 measured 1.17:1 on bg-body-tertiary):
+// the outline of an outline button vanished in dark mode. Such a colour
+// draws its lines lifted to 3:1 there, and keeps itself as the line of the
+// light block, so a light section inside a dark page does not inherit it.
+function test_design_themes_catalog_dark_colour_draws_its_lines_lifted_on_dark_surfaces()
+{
+	$dark_bg       = array(33, 37, 41);
+	$dark_tertiary = array(43, 48, 53);
+	$light         = ":root,\n[data-bs-theme=light]";
+	$lifted        = 0;
+	foreach (pg_design_palettes() as $key => $p) {
+		$css = pg_design_palette_css($p['primary'], $p['secondary'], $p['name']);
+		foreach (array('primary', 'secondary') as $role) {
+			$c    = _pg_theme_rgb($p[$role]);
+			$dark = design_themes_catalog_test_var($css, '[data-bs-theme=dark]', '--pg-' . $role . '-line');
+			$seen = ($dark !== null) ? $dark : $c;
+			pg_assert_true(_pg_theme_contrast($seen, $dark_tertiary) >= 3, $key . ': the line of ' . $role . ' is seen at 3:1 on the dark tertiary surface');
+			pg_assert_true(_pg_theme_contrast($seen, $dark_bg) >= 3, $key . ': and on the dark body');
+			if (_pg_theme_contrast($c, $dark_tertiary) >= 3) {
+				pg_assert_true(($dark === null) || ($dark === $c), $key . ': ' . $role . ' seen on the dark surfaces is its own line there');
+				continue;
+			}
+			$lifted++;
+			pg_assert_same(_pg_theme_rgb_list($dark), design_themes_catalog_test_raw($css, '[data-bs-theme=dark]', '--pg-' . $role . '-line-rgb'), $key . ': the lifted line of ' . $role . ' comes as an RGB list too');
+			pg_assert_same($c, design_themes_catalog_test_var($css, $light, '--pg-' . $role . '-line'), $key . ': the light block keeps ' . $role . ' itself as its line');
+			pg_assert_same(_pg_theme_rgb_list($c), design_themes_catalog_test_raw($css, $light, '--pg-' . $role . '-line-rgb'), $key . ': with its RGB list');
+		}
+	}
+	pg_assert_true($lifted > 30, 'most built-in colours are lifted on the dark surfaces');
+
+	// A palette whose colours are seen everywhere writes no line at all.
+	$css = pg_design_palette_css('#d97706', '#a1a6b0');
+	pg_assert_false(strpos($css, '--pg-primary-line') !== false, 'amber is its own line in both modes');
 }
 
 function test_design_themes_catalog_focus_is_seen_on_white()
