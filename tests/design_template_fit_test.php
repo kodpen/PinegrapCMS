@@ -7,7 +7,8 @@
  * links fit beside the name and wraps instead of running off the page, an
  * image's size is in the props the page writes (not in its attributes,
  * which the page drops), and the grey sections and primary-tinted cards give
- * their primary and second coloured text a readable tint in both themes.
+ * their primary and second coloured text a readable tint in both themes
+ * (Bookshop and Boutique too).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -139,7 +140,9 @@ function test_design_template_fit_image_size_in_props()
 // on bg-primary-subtle. The template's User Styles give them a tint there.
 function test_design_template_fit_tinted_surfaces()
 {
-	foreach (_test_tpl_fit_ids() as $id) {
+	// The two shop templates of the first third have another header, so only
+	// this check reads them.
+	foreach (array_merge(_test_tpl_fit_ids(), array('pinegrap-bookshop', 'pinegrap-boutique')) as $id) {
 		$tpl = _test_tpl_fit_template($id);
 		$css = isset($tpl['assets']['css']) ? (string)$tpl['assets']['css'] : '';
 		$css = str_replace('\\/', '/', $css);
