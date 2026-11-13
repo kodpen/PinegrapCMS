@@ -2689,7 +2689,7 @@ function pg_seo_load_issues($type, $id, $category = 'seo')
         ORDER BY FIELD(severity, 'error', 'warning', 'notice'), occurrences DESC");
 }
 
-// Detail panel for the edit screens and the list offcanvas: a score bar, the
+// Detail panel for the edit screens and a list's Details panel: a score bar, the
 // two group scores, the meta checks and the structure findings.
 //
 // Renders from the persisted analysis, so it shows the record as last saved.
@@ -2878,12 +2878,16 @@ function pg_seo_render_run_buttons($type, $id)
         </div>';
 }
 
-// Click handler for those buttons. Emitted once per page: the list screens get
-// it through the offcanvas shell, the edit screens ask for it directly.
+// Click handler for those buttons. Emitted once per page by the list screens
+// and the edit screens that show the checklist.
 //
 // The response replaces the wrapper the button sits in, so the same handler
-// works inside the offcanvas and inside a card on an edit screen without
-// either knowing about the other.
+// works inside a list's Details panel and inside a card on an edit screen
+// without either knowing about the other.
+//
+// A list's Details panel loads the checklist itself (pg_list_table.js) and
+// announces it with a pg-details-loaded event; the fresh score it carries is
+// then copied into the row the same way a run button's answer is.
 function pg_seo_render_run_script()
 {
     static $emitted = FALSE;
@@ -2944,17 +2948,7 @@ function pg_seo_render_run_script()
                     wrap.innerHTML = html;
                 }
 
-                // The other places that show the score of this record: the card
-                // heading badge, the bar and badge of the list row.
-                Array.prototype.forEach.call(holder.querySelectorAll("template[data-pg-seo-fresh]"), function (template) {
-                    var kind = template.getAttribute("data-pg-seo-fresh");
-                    var key = template.getAttribute("data-pg-seo-key");
-                    Array.prototype.forEach.call(document.querySelectorAll("[data-pg-seo-" + kind + "]"), function (target) {
-                        if (target.getAttribute("data-pg-seo-" + kind) === key) {
-                            target.innerHTML = template.innerHTML;
-                        }
-                    });
-                });
+                pg_seo_apply_fresh(holder);
             })
             .catch(function (error) {
                 Array.prototype.forEach.call(buttons, function (button) { button.disabled = false; });
@@ -2967,6 +2961,24 @@ function pg_seo_render_run_script()
                 trigger.parentNode.appendChild(alert);
             });
     });
+
+    document.addEventListener("pg-details-loaded", function (event) {
+        pg_seo_apply_fresh(event.target);
+    });
+
+    // The other places that show the score of this record: the card heading
+    // badge, the bar and badge of the list row.
+    function pg_seo_apply_fresh(holder) {
+        Array.prototype.forEach.call(holder.querySelectorAll("template[data-pg-seo-fresh]"), function (template) {
+            var kind = template.getAttribute("data-pg-seo-fresh");
+            var key = template.getAttribute("data-pg-seo-key");
+            Array.prototype.forEach.call(document.querySelectorAll("[data-pg-seo-" + kind + "]"), function (target) {
+                if (target.getAttribute("data-pg-seo-" + kind) === key) {
+                    target.innerHTML = template.innerHTML;
+                }
+            });
+        });
+    }
 
     // What to say when the panel could not be loaded: an ended session or a
     // stale token, or anything else (a network failure, a server error).
@@ -3010,55 +3022,6 @@ function pg_seo_render_group_row($label, $score, $weight)
             <span class="small fw-semibold" style="min-width:28px;text-align:right">' . (int) $score . '</span>
             <span class="small fg-secondary">' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $weight))) . '</span>
         </div>';
-}
-
-// Offcanvas shell and the delegated click handler for the SEO detail panel
-// on list screens. Any element with class pg-seo-open and a data-seo-url
-// attribute opens the panel; the URL returns the fragment rendered by
-// get_seo_analysis.php.
-function pg_seo_render_detail_offcanvas()
-{
-    return
-    '<dialog class="drawer drawer-end" id="pg_seo_offcanvas" aria-labelledby="pg_seo_offcanvas_title" style="width:420px;max-width:100%">
-        <div class="drawer-header border-bottom">
-            <h5 class="drawer-title" id="pg_seo_offcanvas_title"><span class="bi bi-graph-up-arrow me-3"></span>' . lang('SEO Detail') . '</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
-        </div>
-        <div class="drawer-body" id="pg_seo_offcanvas_body"></div>
-    </dialog>' . pg_seo_render_run_script() . '
-    <script>
-    document.addEventListener("click", function (event) {
-        var trigger = event.target.closest(".pg-seo-open");
-
-        if (!trigger) {
-            return;
-        }
-
-        event.preventDefault();
-
-        var offcanvas_element = document.getElementById("pg_seo_offcanvas");
-        var body = document.getElementById("pg_seo_offcanvas_body");
-
-        body.innerHTML = "<div class=\"text-center py-7\"><div class=\"spinner-border fg-primary\" style=\"font-size:2rem\" role=\"status\"></div></div>";
-        pgUI.drawer.show(offcanvas_element);
-
-        fetch(trigger.getAttribute("data-seo-url"), {credentials: "same-origin"})
-            .then(function (response) {
-                if (!response.ok || response.redirected) {
-                    throw response;
-                }
-                return response.text();
-            })
-            .then(function (html) { body.innerHTML = html; })
-            .catch(function (error) {
-                var alert = document.createElement("div");
-                alert.className = "alert theme-danger mb-0";
-                alert.setAttribute("role", "alert");
-                alert.textContent = pg_seo_load_failure_text(error);
-                body.replaceChildren(alert);
-            });
-    });
-    </script>';
 }
 
 // Compact badge for the SEO column of list screens: the score in the band

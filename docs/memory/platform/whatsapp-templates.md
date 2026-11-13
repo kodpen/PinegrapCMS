@@ -24,7 +24,7 @@ module: whatsapp
 - `pg_whatsapp_template_find($name, $language)` for senders (WA5-WA7: the category read at enqueue); `pg_whatsapp_templates_list()`, `pg_whatsapp_template_status_label()` and `_category_label()` for the list.
 
 ## Where is the list shown?
-- Not yet: WhatsApp templates join Communication › Templates (MA6, `plans/messages-area-steps.md`), built under #9295's rule (drawing, look A, screenshots approved by the owner): step WA3b.
+- Communication › Templates, card "WhatsApp templates" (WA3b, #9355; `ui/messages-area-templates-tab.md`): name, language and type, a rejection's reason, the state as a pill, the last read, Refresh for role <= 2 (at most 30 an hour per site, `waf_rate_exceeded('site', 'whatsapp-templates', 30, 3600)`).
 
 ## How was it verified?
 - `tests/whatsapp_templates_test.php` (request, parse, plan, due, labels, wiring). No database and no Meta account in the cloud session.
