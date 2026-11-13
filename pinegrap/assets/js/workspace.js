@@ -3243,6 +3243,7 @@
                 tone: agent.id,
                 name: agent.name || ('@' + agent.handle),
                 handle: agent.handle,
+                role: agent.role || '',
                 line: ['@' + agent.handle, agent.wake].filter(Boolean).join(' · '),
                 assistant: !!agent.assistant,
                 active: !!agent.active,
@@ -9811,6 +9812,11 @@
 
                 agents.forEach(function (agent) {
                     var name = el('div', 'ws-info-person-name', agent.name);
+
+                    // The role the agent's form gives it, a label only.
+                    if (agent.role) {
+                        name.appendChild(el('span', 'small fg-secondary fw-normal ms-2', agent.role));
+                    }
 
                     name.appendChild(el('span', 'badge badge-subtle theme-accent ws-info-badge', t(agent.assistant ? 'cm_assistant' : 'cm_agent')));
 
