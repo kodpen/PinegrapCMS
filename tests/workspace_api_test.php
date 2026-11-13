@@ -1288,13 +1288,15 @@ function test_ws_api_message_asks_assistants()
 {
 	pg_assert_true(ws_api_message_asks_assistants(0, 'message'), 'a message from the person\'s device asks');
 	pg_assert_false(ws_api_message_asks_assistants(7, 'message'), 'an application\'s message does not ask');
-	pg_assert_false(ws_api_message_asks_assistants(0, 'decision'), 'a decision does not ask');
-	pg_assert_false(ws_api_message_asks_assistants(0, 'note'), 'a note does not ask');
+	pg_assert_true(ws_api_message_asks_assistants(0, 'decision'), 'a decision asks as a message');
+	pg_assert_true(ws_api_message_asks_assistants(0, 'note'), 'so does a note');
+	pg_assert_false(ws_api_message_asks_assistants(0, 'poll'), 'no other kind');
 
 	pg_assert_true(ws_api_message_wakes_agents(7, 'message'), 'an application\'s message wakes the agents it names');
 	pg_assert_true(ws_api_message_wakes_agents(0, 'message', 3), 'so does one through an OAuth connection');
 	pg_assert_false(ws_api_message_wakes_agents(0, 'message'), 'a person\'s message asks through ws_message_ask_assistants()');
-	pg_assert_false(ws_api_message_wakes_agents(7, 'decision'), 'a decision wakes nobody');
+	pg_assert_true(ws_api_message_wakes_agents(7, 'decision'), 'an application\'s decision wakes the agents it names');
+	pg_assert_false(ws_api_message_wakes_agents(7, 'poll'), 'no other kind');
 }
 
 // Pinegrap AI and an MCP agent asked from a device: after the answer where

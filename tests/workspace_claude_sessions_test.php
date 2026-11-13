@@ -162,7 +162,7 @@ function test_workspace_connection_message_wakes_what_the_application_message_wo
 	pg_assert_true(!ws_api_message_asks_assistants(31, 'message'), 'the application\'s message');
 	pg_assert_true(!ws_api_message_asks_assistants(0, 'message', 4), 'the same message written through the connection');
 	pg_assert_true(ws_api_message_asks_assistants(0, 'message'), 'the person\'s own device asks as the panel does');
-	pg_assert_true(!ws_api_message_asks_assistants(0, 'note'));
+	pg_assert_true(ws_api_message_asks_assistants(0, 'note'), 'a note asks as a message');
 }
 
 function test_workspace_connection_message_wiring()
