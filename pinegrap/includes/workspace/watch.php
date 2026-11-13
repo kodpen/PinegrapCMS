@@ -314,6 +314,23 @@ function ws_events_own_failure($event, $payload, $flow_id)
 }
 
 /**
+ * Is the event a contact a flow's own contact group box put into a group,
+ * heard by that same flow? A flow started by contact_group.joined never
+ * starts again from its own add: it would add, start, add again. The flow
+ * that added is kept in the payload's _flow (pg_announce_contact_group_members()).
+ * Pure.
+ *
+ * @param string $event
+ * @param int    $added_by the flow whose run added the contact, 0 for none
+ * @param int    $flow_id  the flow the waiting rule starts, 0 for a plain scheduled action
+ * @return bool
+ */
+function ws_events_own_group_add($event, $added_by, $flow_id)
+{
+    return ((string) $event === 'contact_group.joined') && ((int) $flow_id > 0) && ((int) $added_by === (int) $flow_id);
+}
+
+/**
  * Is this event checked against what the creator of a scheduled action may
  * read before it starts their action? The workspace's own events, and the
  * staff agenda's, which every member may wait for while only some may see
@@ -925,7 +942,8 @@ function ws_events_start($event_id, $event, $payload)
 
     $payload = (array) $payload;
     $depth = max(0, (int) ($payload['_depth'] ?? 0));
-    unset($payload['_depth']);
+    $added_by = (int) ($payload['_flow'] ?? 0);
+    unset($payload['_depth'], $payload['_flow']);
 
     if ($depth >= WS_SCHEDULED_CHAIN_DEPTH) {
         return 0;
@@ -941,7 +959,7 @@ function ws_events_start($event_id, $event, $payload)
             continue;
         }
 
-        if (ws_events_own_failure($event, $payload, $item['flow_id'])) {
+        if (ws_events_own_failure($event, $payload, $item['flow_id']) || ws_events_own_group_add($event, $added_by, $item['flow_id'])) {
             continue;
         }
 

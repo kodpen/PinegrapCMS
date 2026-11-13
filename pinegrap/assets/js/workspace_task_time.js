@@ -272,16 +272,35 @@
         // check as the API's update route. Only one row is in a form at a time.
         var editing = null;
 
-        function closeEdit() {
+        // Puts the row back. With giveFocus (Cancel, Escape) the row's Edit
+        // button takes the focus again: the form held it, and once the form
+        // leaves the page the browser drops it on the body.
+        function closeEdit(giveFocus) {
+            var button = editing ? editing.button : null;
+
             if (editing && editing.form.parentNode) {
                 editing.form.parentNode.replaceChild(editing.row, editing.form);
             }
 
             editing = null;
+
+            if (giveFocus && button && button.isConnected) {
+                button.focus();
+            }
         }
 
-        function editForm(time, entry, row) {
-            closeEdit();
+        // After a save the list is drawn again: the new row's Edit button of
+        // the same entry takes the focus.
+        function focusEditButton(entryId) {
+            var button = wrap.querySelector('[data-ws-time-edit="' + String(entryId) + '"]');
+
+            if (button) {
+                button.focus();
+            }
+        }
+
+        function editForm(time, entry, row, button) {
+            closeEdit(false);
 
             var form = h.el('div', 'ws-task-time-add row g-3 align-items-end');
 
@@ -351,6 +370,7 @@
                     editing = null;
                     h.toast(h.t('tt_saved'), 'success');
                     changed(data.time);
+                    focusEditButton(entry.id);
                 }).catch(function (error) {
                     save.disabled = false;
                     h.fail(error);
@@ -363,7 +383,9 @@
                 });
             }
 
-            cancel.addEventListener('click', closeEdit);
+            cancel.addEventListener('click', function () {
+                closeEdit(true);
+            });
             save.addEventListener('click', submit);
             form.addEventListener('keydown', function (event) {
                 if (event.isComposing) {
@@ -373,7 +395,7 @@
                 if (event.key === 'Escape') {
                     event.preventDefault();
                     event.stopPropagation();
-                    closeEdit();
+                    closeEdit(true);
                 } else if ((event.key === 'Enter') && (event.target.tagName === 'INPUT') && (event.target.type !== 'checkbox')) {
                     event.preventDefault();
                     submit();
@@ -384,7 +406,7 @@
             form.appendChild(foot);
 
             row.parentNode.replaceChild(form, row);
-            editing = { row: row, form: form };
+            editing = { row: row, form: form, button: button || null };
             amount.focus();
             amount.select();
         }
@@ -428,8 +450,9 @@
 
                 if (entry.can_edit) {
                     var edit = h.button('btn btn-sm btn-text theme-secondary py-0 px-1', '', 'bi-pencil', h.t('edit'));
+                    edit.setAttribute('data-ws-time-edit', String(entry.id));
                     edit.addEventListener('click', function () {
-                        editForm(time, entry, row);
+                        editForm(time, entry, row, edit);
                     });
                     row.appendChild(edit);
                 }

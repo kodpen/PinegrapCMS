@@ -2,10 +2,11 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The quick setup dialog's first stage (assets/js/workspace_flow_quick.js):
- * the area it opens on, the starts of an area, the search over every area,
- * the "Only when" rows it sends and the choices in the shape
- * ws_flow_quick_setup takes; its place in the flow bundle and its texts.
+ * The quick setup dialog (assets/js/workspace_flow_quick.js): the area it
+ * opens on, the starts of an area, the search over every area, the "Only
+ * when" rows it sends and the choices in the shape ws_flow_quick_setup
+ * takes; the second stage's recipes, step ids, recipe copies and the graph a
+ * step's setting reads; its place in the flow bundle and its texts.
  * The JavaScript runs in Node; skipped where Node cannot run.
  *
  * @author      Erdal Güral (Kodpen)
@@ -186,6 +187,102 @@ function test_workspace_flow_quick_js_choices()
 	pg_assert_same(array('start' => 'manual', 'config' => array(), 'only_when' => array()), $out[1]);
 	pg_assert_same(null, $out[2]);
 	pg_assert_same(null, $out[3]);
+}
+
+// The recipes of a start: those naming it, and those for any start about
+// a record; none without a start.
+function test_workspace_flow_quick_js_recipes()
+{
+	$out = workspace_flow_quick_js_test_run('C.recipes = [
+			{ key: "thank", fits: ["event:order.created"], steps: [] },
+			{ key: "task", fits: ["record"], steps: [] },
+			{ key: "back", fits: ["no_order"], steps: [] }
+		];
+		var keys = function (list) { return list.map(function (r) { return r.key; }); };
+		return [keys(Q.recipesFor(C, "event:order.created")), keys(Q.recipesFor(C, "manual")), keys(Q.recipesFor(C, "nothing"))];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('thank', 'task'), $out[0]);
+	pg_assert_same(array(), $out[1], 'a start about no record');
+	pg_assert_same(array(), $out[2]);
+}
+
+// A new step takes the first free id, never the start's or its read box's;
+// a recipe's steps are copies after those chosen, held ones after their box;
+// a loop counts its End box; the steps are sent with their title.
+function test_workspace_flow_quick_js_steps()
+{
+	$out = workspace_flow_quick_js_test_run('var chosen = [{ id: "step1", kind: "post", config: {}, steps: [] }, { id: "step3", kind: "condition", config: {}, steps: [{ id: "step2", kind: "post", config: {}, steps: [] }] }];
+		var recipe = { steps: [{ kind: "email", config: { subject: "Hi" } }, { kind: "for_each", config: {}, steps: [{ kind: "notify", config: {} }] }] };
+		var made = Q.fromRecipe(recipe, chosen);
+		made[2].config.subject = "Changed";
+		return [
+			Q.freeId([]),
+			Q.freeId(chosen),
+			made.map(function (s) { return s.id + ":" + s.kind; }),
+			made[3].steps.map(function (s) { return s.id; }),
+			recipe.steps[0].config.subject,
+			Q.boxCount(made),
+			Q.sentSteps([{ id: "step1", kind: "post", label: "Tell", config: { body: "x" }, steps: [], extra: 1 }])
+		];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same('step1', $out[0]);
+	pg_assert_same('step4', $out[1], 'a held step\'s id is taken too');
+	pg_assert_same(array('step1:post', 'step3:condition', 'step4:email', 'step5:for_each'), $out[2]);
+	pg_assert_same(array('step6'), $out[3]);
+	pg_assert_same('Hi', $out[4], 'the recipe is copied, not shared');
+	pg_assert_same(7, $out[5]);
+	pg_assert_same(array(array('id' => 'step1', 'kind' => 'post', 'label' => 'Tell', 'config' => array('body' => 'x'), 'steps' => array())), $out[6]);
+}
+
+// The graph a step's setting reads: the start (an event start naming its
+// event), the start's Read a record box, the steps chained on their first
+// outcome, a condition's held steps on yes and the rest on its no, a loop's
+// on each up to its End box; a box's settings are the step's own object.
+function test_workspace_flow_quick_js_graph()
+{
+	$out = workspace_flow_quick_js_test_run('C.starts["event:order.created"].read = { record: "order", id: "{{trigger.record_id}}" };
+		var out = function (kind) { return { email: "done", approval: "approved", record_get: "done" }[kind] || ""; };
+		var steps = [
+			{ id: "step1", kind: "approval", config: {}, steps: [] },
+			{ id: "step2", kind: "condition", config: {}, steps: [{ id: "step3", kind: "email", config: {}, steps: [] }] },
+			{ id: "step4", kind: "for_each", config: {}, steps: [{ id: "step5", kind: "email", config: {}, steps: [] }] },
+			{ id: "step6", kind: "delay", config: null, steps: [] }
+		];
+		var chosen = { start: "event:order.created", config: {}, only_when: [], steps: steps };
+		var graph = Q.graphOf(C, chosen, out);
+		var plain = Q.graphOf(C, { start: "manual", config: {}, only_when: [], steps: [] }, out);
+		return [
+			graph.nodes.map(function (n) { return n.id + ":" + n.kind; }),
+			graph.edges.map(function (e) { return e.from + ">" + e.to + ":" + e.on; }),
+			graph.nodes[0].config,
+			graph.nodes[1].config,
+			graph.nodes[2].config === steps[0].config,
+			graph.nodes[7].config,
+			plain.nodes.map(function (n) { return n.id; }),
+			Q.graphOf(C, { start: "", steps: [] }, out)
+		];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('start:event', 'read:record_get', 'step1:approval', 'step2:condition', 'step3:email', 'step4:for_each', 'step5:email', 'loop_end1:for_each_end', 'step6:delay'), $out[0]);
+	pg_assert_same(array('start>read:next', 'read>step1:done', 'step1>step2:approved', 'step2>step3:yes', 'step3>step4:done', 'step2>step4:no',
+		'step4>step5:each', 'step5>loop_end1:done', 'loop_end1>step6:done'), $out[1]);
+	pg_assert_same(array('event' => 'order.created'), $out[2]);
+	pg_assert_same(array('record' => 'order', 'id' => '{{trigger.record_id}}'), $out[3]);
+	pg_assert_true($out[4], 'the setting writes into the step');
+	pg_assert_same(array('for_each' => 'step4', 'collect' => ''), $out[5]);
+	pg_assert_same(array('start'), $out[6]);
+	pg_assert_same(null, $out[7]);
 }
 
 // The dialog is served in the flow bundle after the canvas, and every text

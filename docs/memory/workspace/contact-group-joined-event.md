@@ -14,6 +14,7 @@ description: Flow event contact_group.joined: one ws_events_in row per contact a
 ## What does it carry?
 - Payload `id` (the contact, as every contact event names it), `contact_id`, `group_id`, `group_name`. `ws_events_record_of()` maps it to `contact`; `ws_events_watched()` leaves it out (no line in a watching channel).
 - Flow outputs (`ws_flow_event_outputs()`): `contact_id`, `group_id`, `group_name`, beside `event` and `record_id`.
+- A join made by a flow's contact group box carries `_flow`, its flow's id; `ws_events_start()` takes it out and does not start that flow again (`workspace-flows-contact-group-box.md`).
 - Webhooks never see it: it goes through `pg_event_record()` only, not `pg_announce()`; `contact_group.members_changed` stays the webhook event, unchanged.
 
 ## How is it narrowed to one group?

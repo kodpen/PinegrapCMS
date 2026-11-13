@@ -258,6 +258,8 @@ function pg_sms_kinds()
         'reminder'  => false,
         'stock'     => false,
         'booking'   => false,
+        // A flow's Send an SMS box with the purpose info.
+        'flow'      => false,
         'marketing' => true,
     );
 }
