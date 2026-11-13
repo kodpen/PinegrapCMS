@@ -1,6 +1,6 @@
 ---
 name: calendar-event-exception-endpoint
-description: update_calendar_event_exception.php (Remove / Unremove a repeating event's instance): parameter check, instance range, no second row
+description: update_calendar_event_exception.php (Remove / Unremove a repeating event's instance): parameter check, instance range, no second row; the panel month box that holds the hidden "Removed:" label
 module: calendar
 ---
 
@@ -10,5 +10,9 @@ module: calendar
 
 ## Can the same instance be removed twice?
 - No: `create` looks for the pair first and only redirects when it exists. The table has no unique key on it (a schema change would be an owner decision), so a reload or a double click wrote a second row.
+
+## Why is the panel's month box positioned?
+- A removed instance is drawn struck through after a `.visually-hidden` "Removed: " (`get_calendar()`, monthly and weekly). That label is `position: absolute`, and the month scrolls sideways inside `div.monthly` (overflow auto) on a phone.
+- With the box static the label's containing block was the outer card, so it stood at its place in the wide grid outside the box: on a 390 px screen the page was 826 px wide (#9035). The panel's box now has `position-relative`; the site's markup is unchanged (`tests/calendar_panel_view_test.php`).
 
 Tests: `tests/calendar_event_exception_test.php`.

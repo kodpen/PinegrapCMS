@@ -1,6 +1,6 @@
 ---
 name: list-quick-edit-keyboard
-description: List quick edit keys (backend.src.js cells, the list table driver): Enter, Escape, Tab to the next row, the textarea and multiselect types, focus past the last row
+description: List quick edit keys (backend.src.js cells, the list table driver): Enter, Escape, Tab to the next row, textarea and multiselect, focus past the last row, the old editor's style scope
 ---
 
 ## Which keys does a quick edit take?
@@ -16,6 +16,9 @@ description: List quick edit keys (backend.src.js cells, the list table driver):
 
 ## Where does focus go on Tab past the last row?
 - On the edited cell (`td[data-pg-edit]` has `tabindex="0"`). `step()` returns false when no row is left and `commit()` then calls `state.cell.focus()`. Before, the input had already left the page (`send()` or the restored `innerHTML`) and focus fell to `<body>` with nothing announced (`tests/list_edit_focus_test.php`).
+
+## Which cells does the old editor's look reach?
+- Only `table[data-pg-edit-url] td`, the cells `open()` edits (`#pg_list_edit_style`: pointer, pencil `::after`, focus ring, saved and failed flashes); the list table driver prints `data-pg-edit-url` on its root `div`, never a table. Before (#9019) the pencil, an inline box after the block-level quick edit field, stood on a line of its own: the driver's fields sat at the top of 56 px rows while text cells stayed centred (`tests/list_edit_style_scope_test.php`).
 
 ## When does a choice list save?
 - On a pointer pick or a pick in its opened list at once; after an arrow key on the closed list only on Enter, Tab, Ctrl+S or blur (`select-commit-on-pick.md`, #3477).

@@ -60,3 +60,15 @@ function test_calendar_panel_has_no_upcoming_view()
 	// The panel never fills the events' calendars the upcoming list reads.
 	pg_assert_contains("array('', 'monthly', 'weekly'), true)", $source);
 }
+
+// On a phone the month scrolls sideways inside .monthly. Positioned, the box
+// is the containing block of the visually hidden "Removed: " label before a
+// removed occurrence, which the outer card was: the label stood at its place
+// in the wide grid outside the box and the whole page scrolled sideways. The
+// site keeps its markup.
+function test_calendar_panel_month_box_holds_its_hidden_labels()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/calendar.php');
+
+	pg_assert_contains("\$output_calendar = '<div class=\"monthly' . (\$user ? ' position-relative' : '') . '\">", $source);
+}
