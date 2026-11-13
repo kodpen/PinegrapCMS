@@ -17,7 +17,7 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 
 - CO4 (M) Tables of a channel. A table that belongs to a channel or a canvas, not to one person: the members read and write by the channel's rights; what becomes of it when the canvas is deleted. After CO0; its schema asked first. Done in #9038 (`workspace/workflow-table-channel.md`: a table of the tables cluster, not a canvas part).
 
-- CO5 (S) Measures. Rows and time of a page's read on a table of 5000 rows with formulas and lookups; the bounds set from it. Done in #CO5PR (`workspace/canvas-measures.md`): no limit moved, nothing asked.
+- CO5 (S) Measures. Rows and time of a page's read on a table of 5000 rows with formulas and lookups; the bounds set from it. Done in #9207 (`workspace/canvas-measures.md`): no limit moved, nothing asked.
 
 - CO6 (M) Data as the name and place. Workflow tables are called Data in the menu and on the screens; a canvas shows its tables under Data; addresses, API names and MCP tools keep their names. Done in #8978 (`workspace/workflow-tables-data-list.md`); the canvases that use a table moved to CO6b, since CO2 had not landed.
 

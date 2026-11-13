@@ -1,6 +1,6 @@
 ---
 name: canvas-measures
-description: What a live page's read of a bound table costs at the 5000-row limit (CO5): time, memory and answer size of the bridge's rows call, and the bounds kept from it
+description: What a live page's read of a bound table costs at the 5000-row limit (CO5, #9207): time, memory and answer size of the bridge's rows call, and the bounds kept from it
 module: guarded_frame
 ---
 
