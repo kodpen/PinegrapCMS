@@ -12060,9 +12060,22 @@
 
         // ── Claude ──
 
+        // Every agent the message woke has its own line, in the order they
+        // were asked; a message that woke one looks as it did before. They
+        // stack on a phone and nothing scrolls sideways.
         claudeStateNode: function (message) {
             var self = this;
-            var state = message.claude;
+            var box = el('div', 'ws-claude-states');
+
+            self.claudeStates(message).forEach(function (state) {
+                box.appendChild(self.claudeStateLine(state));
+            });
+
+            return box;
+        },
+
+        claudeStateLine: function (state) {
+            var self = this;
             var line = el('div', 'ws-claude-state ws-claude-' + state.status);
 
             line.appendChild(icon(state.icon));
@@ -12092,6 +12105,26 @@
             }
 
             return line;
+        },
+
+        // The agent states carried under a message, as a list. A single
+        // state (older payloads) reads as a list of one.
+        claudeStates: function (message) {
+            var state = message && message.claude;
+
+            if (!state) {
+                return [];
+            }
+
+            return Array.isArray(state) ? state : [state];
+        },
+
+        // Whether any agent the message woke is still working, of a kind
+        // (any, 'ai' or 'mcp') the caller cares about.
+        claudeWaiting: function (message, agent) {
+            return this.claudeStates(message).some(function (state) {
+                return (!agent || state.agent === agent) && /^(queued|sent|running)$/.test(state.status);
+            });
         },
 
         // Pinegrap AI answers one model call at a time, carried on by the
@@ -15455,11 +15488,11 @@
         // typing (the site holds it two minutes from the last). Closing the
         // box unsaved tells the site at once; a save ends the wait there.
         editHoldStart: function (message) {
-            var claude = message && message.claude;
-
             this.editHoldEnd(false);
 
-            if (!claude || ['queued', 'sent', 'running'].indexOf(claude.status) < 0) {
+            // The hold is by message: it waits every agent the message woke
+            // that is still open, so a later request closed does not free it.
+            if (!message || !this.claudeWaiting(message)) {
                 return;
             }
 
@@ -17794,12 +17827,12 @@
             // An answer from Claude is on its way: look twice as often, so it
             // shows up soon after it is written.
             var waiting = (self.tab === 'messages') && (self.messages || []).some(function (message) {
-                return message.claude && /^(queued|sent|running)$/.test(message.claude.status);
+                return self.claudeWaiting(message);
             });
 
             // Pinegrap AI works only while somebody carries it on.
             if (waiting && (self.messages || []).some(function (message) {
-                return message.claude && message.claude.agent === 'ai' && /^(queued|sent|running)$/.test(message.claude.status);
+                return self.claudeWaiting(message, 'ai');
             })) {
                 self.kickAi();
             }
@@ -17808,7 +17841,7 @@
             // and an agent working in the background until a screen asks
             // about its task.
             if (waiting && (self.messages || []).some(function (message) {
-                return message.claude && message.claude.agent === 'mcp' && /^(queued|sent|running)$/.test(message.claude.status);
+                return self.claudeWaiting(message, 'mcp');
             })) {
                 self.kickAgent();
             }
