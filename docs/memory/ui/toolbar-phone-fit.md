@@ -6,7 +6,7 @@ description: Toolbar filter forms capped to the bar (.pg-toolbar-filter), Edit C
 ## Why does a toolbar filter no longer push the page sideways?
 - A flex item's automatic minimum width is its content, and a select is as wide as its longest option. In the Accessibility report ("1.3.1 …" rule) the filter ran to 494 px at 375.
 - `backend.src.css` (block *Admin screen toolbar*) gives `.pg-toolbar-filter`, its `> .input-group` and its `select` `min-width: 0; max-width: 100%`, the select `text-overflow: ellipsis`. It applies at every width: wrapping uses the content width, so a desktop bar is unchanged; the cap only bites when the filter is alone on a line wider than the bar.
-- The markup keeps `w-auto flex-nowrap` (icon beside the select). Every filter form in a bar carries `pg-toolbar-filter` (`pg_filter_select()` adds it).
+- The markup keeps `w-auto flex-nowrap` (icon beside the select). Every filter form in a bar carries `pg-toolbar-filter` (`pg_filter_select()` adds it); a form written by hand adds it itself, as Verified Shipping Addresses' state filter (#9080, `commerce/verified-shipping-address-screens.md`).
 
 ## Where do a screen's facts go?
 - Into `pg_screen_toolbar()`'s `grow` slot, never a block above the bar (owner rule, `admin-screen-toolbar.md`).

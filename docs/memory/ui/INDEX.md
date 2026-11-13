@@ -515,6 +515,7 @@
 - screen-focus-rings.md: Focus rings drawn by a screen's own styles use the 2px --pg-primary-ink outline, inset inside clipping boxes; which screens were moved and which still wait
 - script-built-field-names.md: Dialogs and fields drawn by script after load name themselves: unique title ids, label for, aria-label from the screen's label map, Escape kept (#3029)
 - scroll-regions-keyboard.md: Text-only boxes that scroll on their own are named keyboard regions: Audit Trail JSON values, Workspace MCP answer, API documentation tables and Try it answer, Write with AI draft
+- scrolling-table-hidden-text.md: Every panel .table-responsive is position: relative, so a .visually-hidden heading or label and a combobox's posted select stay inside the scroll box instead of widening the page on a phone (#9079)
 - select-commit-on-pick.md: Selects that save, ask or move focus on change (Translations engine, AI tone, list quick edit, Edit Comment Publish) wait for a keyboard pick; the AI panel gives focus back after a request
 - send-once-screens.md: The panel screens that send once for longer than the window guard's 3 s (stock scans, refunds, exports, imports, SVG copies, ERP e-mails), and the symptom each one fixed.
 - seo-default-share-image-warning.md: The SEO card's Default Share Image warning names each form once, told apart, without binned forms, five names then a count

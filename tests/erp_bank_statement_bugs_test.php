@@ -62,5 +62,5 @@ function test_erp_bank_statement_unmatch()
 function test_erp_bank_statement_combobox_in_scrolling_table()
 {
 	$css = erp_bank_statement_bugs_source('assets/css/backend.src.css');
-	pg_assert_contains(".table-responsive:has(.pg-combobox-native) {\n  position: relative;\n}", $css, 'scroll box holds the hidden select');
+	pg_assert_contains(".table-responsive {\n  position: relative;\n}", $css, 'scroll box holds the hidden select');
 }
