@@ -4,7 +4,7 @@ description: The designer Assistant panel (designer_ai.js) when an answer cannot
 ---
 
 ## What does the panel say when an answer cannot be read?
-- The editor's post (`_pgApiPost()`, `r.json()`) rejects with the browser's own words: `Unexpected token '<'…` for an answer that is not JSON (a PHP message printed in front of it, a server's error page, an empty body), `Failed to fetch` when no answer comes. Before #8970's fix the panel showed those words in a toast.
+- The editor's post (`_pgApiPost()`, `r.json()`) rejects with the browser's own words: `Unexpected token '<'…` for an answer that is not JSON (a PHP message printed in front of it, a server's error page, an empty body), `Failed to fetch` when no answer comes. Until #9112 the panel showed those words in a toast (#8970).
 - `post()` in `assets/js/designer_ai.js` turns every failure into an `Error` with `pgKind`: `server` (a JSON error's own `message`), `unreadable` (a parse failure, or JSON without `status: success` and without a `message`) or `unreached` (any other rejection).
 - Words (from `pg_design_ai_editor_config()`, `includes/designer_ai.php`): `unreadable` "The server answered with an error, so this was not done. Try again.", `unreached` "The site did not answer, so this was not done. Check the connection and try again."
 - The browser's text goes to the console (`console.warn`, "Assistant: <sub> answer could not be read"), for whoever looks for the cause.
