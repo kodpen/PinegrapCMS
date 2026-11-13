@@ -51,6 +51,18 @@ function test_shipping_carrier_from_ups_number_shape()
 	pg_assert_same('ups', pg_shipping_carrier('1Z999AA10123456784', ''));
 }
 
+// The shape is read the way the format warning reads it: a number typed in
+// lower case, or in the groups the label prints, is the same number.
+function test_shipping_carrier_number_shape_any_case_and_spacing()
+{
+	pg_assert_same('ups', pg_shipping_carrier('1z999aa10123456784', ''), 'UPS in lower case');
+	pg_assert_same('ups', pg_shipping_carrier(' 1z 999 aa1 01 2345 6784 ', ''), 'UPS in lower case, grouped');
+	pg_assert_same('usps', pg_shipping_carrier('9400 1118 9922 3333 4444 55', ''), 'USPS in the label groups');
+	pg_assert_same('usps', pg_shipping_carrier('ea123456789us', ''), 'USPS international in lower case');
+	pg_assert_same('yurtici', pg_shipping_carrier('1z999aa10123456784', '', 'yurtici'), 'the default still comes first');
+	pg_assert_same('', pg_shipping_carrier('abc defgh', ''), 'still no shape');
+}
+
 // Current behaviour, pinned as it is today: an 11-digit plain number with no
 // method code and no default carrier matches the second UPS pattern, so it is
 // read as UPS even though the Turkish carriers also issue plain-digit
