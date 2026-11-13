@@ -408,7 +408,7 @@ function pg_commission_list_row($commission)
     return array('id' => (int) $commission['id'], 'class' => '', 'cells' => pg_commission_list_edit_cells('edit_commission.php?id=' . (int) $commission['id'], $commission['affiliate_name']) + array(
         'affiliate_code' => pg_list_cell(h($commission['affiliate_code'])),
         'reference_code' => pg_list_cell(h($commission['reference_code'])),
-        'status' => pg_list_cell('<span class="badge ' . ($badges[$status] ?? 'theme-secondary fg-white fw-light') . '">' . h(lang(ucwords($status))) . '</span>' . pg_commission_list_cancelled_badge($commission['order_status'] ?? null)),
+        'status' => pg_list_cell('<span class="badge ' . ($badges[$status] ?? 'theme-secondary fw-light') . '">' . h(lang(ucwords($status))) . '</span>' . pg_commission_list_cancelled_badge($commission['order_status'] ?? null)),
         'amount' => pg_list_cell(pg_format_money($commission['amount'] / 100, BASE_CURRENCY_SYMBOL), 'align-middle text-end'),
         'frequency' => pg_list_cell(h(pg_commission_list_periods()[(string) $commission['period']] ?? lang(ucwords((string) $commission['period'])))),
         'order_number' => pg_list_cell(h($commission['order_number'])),

@@ -8,17 +8,19 @@ description: Translated site search plan, steps TS1-TS5: the words and ı/i for 
 - Every step: pure functions for the words and the ranking, tested in `tests/translate_search_test.php`; no schema; no new user-facing text is expected.
 
 ## TS1 (M) Pages: the words and ı/i — done (#9245)
-- Done: `includes/translate/search.php` holds `pg_tr_search_words()`, `pg_tr_search_like_sql()`, `pg_tr_search_rank_pages()` and `pg_tr_search_fold()` (`_pg_search_fold()` plus `pg_transliterate_to_ascii()`, as the collation also reads ş as s and ğ as g, else a row the LIKE read is dropped in PHP). TS2-TS4 reuse the words, the condition and the fold.
+- Done: `pg_tr_search_words()`, `pg_tr_search_like_sql()`, `pg_tr_search_rank()`, `pg_tr_search_fold()` (also drops Latin marks, as the collation does).
 - `pg_tr_search_words($query)` (pure): the typed text cut into words, a quoted phrase kept whole, at most eight; each word in its readings of `pg_search_i_variants()` (`includes/fn/site_search.php`).
 - The query takes the rows where any reading of any word matches; PHP groups them by page and compares folded (`_pg_search_fold()`). A page is a result when every word is found in its title, description and body taken together. Rank: the whole phrase first, then by hits; title and description count three times, as today.
 - Today's limits stay (2,000 rows, 100 pages). The fences are untouched.
 
-## TS2 (M) Products and product groups
+## TS2 (M) Products and product groups — done (#9266)
+- Done: `get_catalog_search_results_translated()` runs the found ids through the source loop (`get_catalog_search_results_for_condition()`).
 - `pg_tr_search_catalog_find($query)`: the products and product groups whose translated texts match, by TS1's words. It reads the uses of `product` and `product_group`, in the fields the catalog extraction stores (`includes/translate/content.php`: short_description, full_description, details, keywords, title, meta_description).
 - `get_catalog_search_results()` itself puts them first on a page in another language, then its own results, each item once, so every caller gets it. Only items its own rules allow (enabled, inside the searched group) are listed.
 - A test proves the source language's answer is unchanged.
 
-## TS3 (M) Form records in the site search
+## TS3 (M) Form records in the site search — done (#9285)
+- Done: `pg_tr_search_record_items()` lists only the record's own `search_items` row, behind the caller's fences; TS4 can reuse `pg_tr_search_record_id()`.
 - The advanced search only; the simple search lists no record in the source either.
 - `pg_tr_search_records_find($query)`: the records whose translated texts match (`form_records` uses; the record is read from `field`). A record is listed only when the search index holds an item for it (`search_items`, written for the records a public list reaches), at that item's address and behind its folder fence, before the source's results.
 

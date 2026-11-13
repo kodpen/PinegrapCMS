@@ -23,6 +23,6 @@ description: Steps LB1-LB7 of the Legacy to Bootstrap 5.3.8 helper: the census, 
 
 ## What is not in this plan?
 - The two open faults of a Legacy design itself, a style moved alone without asset rows and the photos in `.background-image-holder`: `designer/legacy-overview.md`. LB6 only gives the trial design its own photo backgrounds.
-- The page types' custom layouts: `legacy-layouts-bootstrap.md`.
+- The page types' custom layouts: done, `designer/legacy-layouts-output-map.md`.
 - Bootstrap 6 on sites: a later key of the registry (`designer/design-framework.md`).
 - Joining the designs moved one by one to their set's design: never proposed (#8671).

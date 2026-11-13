@@ -41,6 +41,7 @@
 - agent-words-wake.md: An application's API message and an agent's answer wake the agents they name or answer: only a mention or a reply counts, the asking application named, the braked line once an hour [decision: here]
 - approval-guest-frozen-channel.md: An approval link sent outside the team opens as closed while the channel is gone or archived, or the request is in an earlier version of a cleared conversation
 - automation-flows-api.md: Automation flows in the external API and MCP with the Workspace off (AF3c): the flows module of api_modules(), what it merges, the scopes and their ceiling, how it is tested
+- automation-flows-bell.md: The panel's bell with the Workspace off (AF4c): it shows the inbox lines flows write (a run of one's flow ended or failed, Let people know) and no other Workspace line; Let people know runs again [decision: here]
 - automation-flows-gate.md: The one gate of automation flows, pg_flows_enabled() (AF1): flows run with the Workspace off; what the general job, the site events and the scheduled run do then, and what waits for the Workspace [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - automation-flows-screen.md: The Flows screen with the Workspace off (AF2): its gate, the panel actions the switch lets through, what the screen leaves out that lives in a channel, how it was checked
 - automation-flows-workspace-boxes.md: Which flow boxes and starts need the Workspace (ws_flow_kinds_workspace()): the list, offered only with it, the problem on the canvas, the refusal at run time and in Try [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
@@ -218,7 +219,8 @@
 - workspace-editor-find-replace.md: Find and replace in the Workspace writing boxes (Ctrl+F, openFind()): where the shortcut works, how matches are found and painted, how a replacement keeps marks and undo, its labels and tests
 - workspace-editor-link-keys.md: The link tip's Text field (linkText()), the Ctrl+/ shortcut sheet (openKeys(), shortcutRows(), keyLabel()) of the Workspace writing boxes since #2101, and the selection bar acting on click
 - workspace-editor-lists.md: Lists and quotes in the Workspace writing box (#1897): twins of the server's rules, lines written back as stored, keys, the three tools, a pick inside a mark, select all and delete
-- workspace-editor-smart-paste.md: Pasting into a Workspace writing box (#2018): HTML mapped to the box's markup and why it is safe, sheet ranges to the table window, a URL over words, a note's picture
+- workspace-editor-pasted-files.md: A picture or file pasted into a Workspace writing box (#9250): which box takes it, words beside it, why the box takes it itself [decision: decisions-made-panel-8.md]
+- workspace-editor-smart-paste.md: Pasting into a Workspace writing box (#2018): HTML mapped to the box's markup and why it is safe, sheet ranges to the table window, a URL over words, pasted files elsewhere
 - workspace-editor-toolbar.md: One row of tools for every Workspace writing box (PGWsEditor.toolbar()); marks made on the nodes by format(), never execCommand; waiting marks, IME, pressed state, undo, labels
 - workspace-empty-states.md: Workspace empty lists with a small theme-coloured drawing (emptyState(), the shared ART kit / window.PGWsArt) and skeleton rows instead of "Loading…" (U4, PR #2027)
 - workspace-field-names.md: How Workspace drawer and dialog fields get their screen-reader names: formRow(), saLabelled(), ask(), labelTarget()/hasName(), the pickers

@@ -30,7 +30,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 
 ## Clusters
 
-- `canvas-sample-*`: 11 files; start at `canvas-sample-overview.md`.
+- `canvas-sample-*`: 12 files; start at `canvas-sample-overview.md`.
 - `comments-widget-*`: 24 files; start at `comments-widget.md`.
 - `custom-form-*`: 18 files; start at `custom-form-overview.md`.
 - `design-template-*`: 118 files; start at `design-template-overview.md`.
@@ -41,7 +41,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - `designer-interactions-*`: 6 files; start at `designer-interactions.md`.
 - `form-list-*`: 7 files.
 - `legacy-bootstrap-*`: 6 files.
-- `legacy-layouts-*`: 6 files.
+- `legacy-layouts-*`: 8 files.
 - `system-widget-*`: 9 files.
 - `widget-default-*`: 13 files; start at `widget-default-overview.md`.
 - `widget-lists-*`: 11 files; start at `widget-lists.md`.

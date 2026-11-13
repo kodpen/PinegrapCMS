@@ -1,6 +1,6 @@
 ---
 name: decisions-made-schema-17
-description: Decisions list, schema part 17 (2026-11-12 on): the canvas-one tables ws_canvas_parts, ws_canvas_tables, ws_canvas_consents, via_message_id on table rows, ws_wtables.channel_id, WhatsApp's tables
+description: Decisions list, schema part 17 (2026-11-12 on): canvas-one's ws_canvas_parts, ws_canvas_tables, ws_canvas_consents, via_message_id, ws_wtables.channel_id; WhatsApp's tables; ws_agents' role and report
 ---
 
 ## Where are the rules and the earlier parts?
@@ -22,3 +22,5 @@ description: Decisions list, schema part 17 (2026-11-12 on): the canvas-one tabl
   - Read by whoever reads the channel, edited by whoever may post in it, deleted and shared by its admins. A canvas's delete removes its bindings and leaves the table.
 - WhatsApp's own tables (owner, 2026-11-13, #9085), as WA0 proposed (#9067): `whatsapp_outbox` (the SMS queue's columns and rules, plus contact, template, payload, wamid, delivery state), `whatsapp_templates` (drafts and the account's templates, a row per name and language), `whatsapp_inbox` (incoming messages by wamid, kept two years, removed with the contact's erasure). `sms_outbox` is not touched.
   - Owner (2026-11-13): "Üç yeni tablo (Önerilen)". Not chosen: a channel column on `sms_outbox`, templates in `connect_apps`, incoming messages as contact notes.
+- An agent's role and report (owner, 2026-11-13, #9260): `ws_agents` gains four columns by a 2026.11.0 step with the idempotent helpers: the role, the reported model, the reported usage, the time of the report. Empty by default; the last report only (`plans/agent-profile.md`).
+  - Owner (2026-11-13): "Evet, dört sütun (Önerilen)". Not chosen: kept with a history of the usage.

@@ -148,7 +148,7 @@
 - dashboard-widget-files.md: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.php and its function contract, the welcome.php registry entry, retired ids never reused, the refresh and solo lists, charts. [decision: decisions-made-product-5.md]
 - datetime-control-history.md: The one date-and-time control across panel and sites (#2693): which change landed where (P1-P11, F1, S1-S4b), the rules kept from its plan, the risks still open [decision: decisions-made-panel.md]
 - deleted-picture-fallback.md: A contact or product picture whose file was deleted in the File Manager falls back to the letters or icon (pg_contact_picture_name(), is_file() on product thumbs)
-- design-canvas-icon.md: The Design Canvas's own icon (drawing B, #8903): pg_design_canvas_icon(), its colours outside the main menu, the places that show it (File Manager, Workspace's New canvas, the editor's top bar) [decision: decisions-made-panel-7.md]
+- design-canvas-icon.md: The Design Canvas's own icon (drawing B, #8903): pg_design_canvas_icon() in two colours, pg_design_canvas_icon_one_colour() (#9250), and where each form is shown [decision: decisions-made-panel-7.md, decisions-made-panel-8.md]
 - design-file-missing-on-disk.md: What the theme, file, design file, comment and quote signature screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
 - design-file-shared-form.md: add_design_file.php and edit_design_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps
 - design-files-modify-dialog.md: Design files list Modify Selected is an in-page pgUI dialog (no popup); its fields belong to the list form, edit_files.php only takes the post
@@ -331,6 +331,7 @@
 - list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
+- list-table-branches.md: A list table driver source read as branches (MA2b, #9275): the branches and branch_id keys, the wrapper each batch puts round a branch, the count per branch, the measured times
 - list-table-campaign-system-lists.md: E-mail campaigns and campaign profiles, SMS campaigns, visitor reports, the 404 log, backups, DNS records and database tables on the list table driver; gift card redemptions a plain ledger
 - list-table-commerce-lists.md: Orders, gift cards, key codes, shipping methods (TD8a) and the ERP account prices, minimum stock and stock lists (TD8b) on the list table driver: printed whole, quick edit, bulk actions as ids
 - list-table-details-narrow.md: List table driver below 1024 px: the details sheet follows only the switch pressed on the page and opens once a row is picked; the kept switch is the wide window's
@@ -479,7 +480,7 @@
 - panel-old-browser-notice.md: The "update your browser" bar (pg_old_browser_notice()): its three CSS.supports tests, where it is printed (panel head, four standalone screens), the session close, why ES5 and fixed colours [decision: decisions-made-panel-3.md]
 - panel-picture-viewer-focus.md: Panel picture viewer (pg_lightbox.js): focus moves in, Tab wraps, focus returns to the opener, the closed overlay is inert and hidden, named dialog and thumbnails, closes only on a background tap
 - panel-picture-viewer-zoom.md: Panel picture viewer (pg_lightbox.js): zoom measured from the fitted size, a zoomed picture pans by drag and by the arrow keys, Left/Right change the picture only at the fit
-- panel-pill-contrast.md: Panel pills and badges at 4.5:1 in both themes: the badge weight floor against fw-lighter/fw-light, subtle-fill badge inks mixed 80% toward the text colour, .pg-pill text 70%, the sweep and its test
+- panel-pill-contrast.md: Panel pills, badges and tone text at 4.5:1 in both themes: badge weight floor, subtle-fill inks 80%, .pg-pill 70%, rose text token, dark --pg-fg-3, the sweep and its test
 - panel-radius-tokens.md: B10 radius (#4867): fields and buttons on Bootstrap 6's control radii, cards, dialogs and menus on --pg-radius-surface (radius-7), inner card corners from the card radius
 - panel-save-shortcut-dialogs.md: Dialogs and editors that save on Ctrl+S themselves (Site Settings, code dialog, visual designer) and how the panel shortcut leaves their key alone
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, buttons on their own form

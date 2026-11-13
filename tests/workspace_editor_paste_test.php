@@ -90,7 +90,7 @@ function workspace_editor_paste_test_run($steps)
 
 	foreach (array('fenceOpen', 'fenceInfo', 'fenceClose', 'tableRow', 'tableAlignments', 'tableCells', 'startsBlock', 'headingLine', 'ruleLine', 'listLine', 'textBlocks', 'parseBlocks', 'wrapLines',
 		'pasteStyle', 'pasteMarks', 'pasteWords', 'pasteRunsMarkup', 'pasteRunMarkup', 'pasteLink', 'pasteFlush', 'pasteOut', 'pasteLine', 'pasteHeading', 'pasteWalk', 'pasteItems',
-		'pasteItem', 'pasteCheck', 'pasteRows', 'pasteTableRows', 'pasteMarkup', 'pasteSheet', 'pastedUrl') as $name) {
+		'pasteItem', 'pasteCheck', 'pasteRows', 'pasteTableRows', 'pasteMarkup', 'pasteSheet', 'pastedUrl', 'pastedFiles') as $name) {
 		$part = workspace_editor_lists_test_function($name);
 		pg_assert_true($part !== '', $name . ' is found');
 		$script .= $part;
@@ -113,6 +113,7 @@ function workspace_editor_paste_test_run($steps)
 		. "  if (step[0] === 'note') { var m = pasteMarkup(shim(step[1]), true); return [m, parseBlocks(m, true).map(function (b) { return b.kind + (b.level ? b.level : ''); })]; }\n"
 		. "  if (step[0] === 'sheet') { return pasteSheet(step[1]); }\n"
 		. "  if (step[0] === 'url') { return pastedUrl(step[1]); }\n"
+		. "  if (step[0] === 'files') { return pastedFiles(step[1].map(function (type) { return { type: type }; }), step[2], step[3]).map(function (file) { return file.type; }); }\n"
 		. "  if (step[0] === 'blocks') { return parseBlocks(step[1]).map(function (b) { return b.kind; }); }\n"
 		. "  return null;\n"
 		. "})));\n";
@@ -394,6 +395,8 @@ function test_workspace_editor_paste_wiring()
 	pg_assert_true(strpos($paste, 'singleLine ? null') !== false, 'a one-line surface keeps plain paste');
 	pg_assert_true(strpos($paste, '!plain && editor.pasteSmart(') !== false, 'Ctrl+Shift+V keeps plain paste');
 	pg_assert_true(strpos($paste, 'editor.options.pasteFiles') !== false, 'pictures only where the box takes them');
+	pg_assert_true(strpos($paste, "event.preventDefault();\n\n        if (files.length && (text.trim() === ''))") !== false, 'the browser never pastes a file itself');
+	pg_assert_true(strpos($paste, 'pastedFiles(files, text, !!editor.options.pasteAnyFile)') !== false, 'the box picks the files it takes');
 	pg_assert_true(strpos($source, "surface.addEventListener('paste', function (event) {\n            paste(surface, event, singleLine);") !== false, 'surfaces paste through paste()');
 	pg_assert_true(strpos(workspace_editor_lists_test_method('setMarkup'), 'markupNodes(blocks, labels, this.options.removeLabel)') !== false, 'a stored text and a paste are read alike');
 
@@ -401,5 +404,38 @@ function test_workspace_editor_paste_wiring()
 
 	pg_assert_true(strpos($workspace, 'pasteFiles: options.pasteFiles') !== false, 'richField() passes pasteFiles on');
 	pg_assert_true(strpos($workspace, 'pasteFiles: function (files) { attach(files); }') !== false, 'a note attaches a pasted picture');
-	pg_assert_same(1, substr_count($workspace, 'pasteFiles: function'), 'only the note takes pasted pictures');
+	pg_assert_true(strpos($workspace, "pasteFiles: function (files) { self.uploadFiles(files); },\n                pasteAnyFile: true") !== false, 'the conversation\'s box posts a pasted file');
+	pg_assert_same(2, substr_count($workspace, 'pasteFiles: function'), 'only the note and the conversation\'s box take pasted files');
+	pg_assert_true(strpos($workspace, "center.addEventListener('paste'") === false, 'no paste handler outside the box (a discussion\'s panel is outside the centre)');
+}
+
+// The files a writing box takes from a paste: none beside words, pictures
+// only unless the box takes any file.
+function test_workspace_editor_paste_files()
+{
+	$cases = array(
+		array(array('image/png'), '', false, array('image/png')),
+		array(array('image/png'), "  \n", false, array('image/png')),
+		array(array('image/png'), 'Words from Word', false, array()),
+		array(array('image/png'), 'Words', true, array()),
+		array(array('application/pdf', 'image/jpeg'), '', false, array('image/jpeg')),
+		array(array('application/pdf', 'image/jpeg'), '', true, array('application/pdf', 'image/jpeg')),
+		array(array('application/pdf'), '', false, array()),
+		array(array(''), '', false, array()),
+	);
+	$steps = array();
+
+	foreach ($cases as $case) {
+		$steps[] = array('files', $case[0], $case[1], $case[2]);
+	}
+
+	$answer = workspace_editor_paste_test_run($steps);
+
+	if ($answer === null) {
+		return;
+	}
+
+	foreach ($cases as $index => $case) {
+		pg_assert_same($case[3], $answer[$index], 'pasted files: ' . implode(',', $case[0]) . ' / ' . json_encode($case[1]) . ($case[2] ? ' / any file' : ''));
+	}
 }

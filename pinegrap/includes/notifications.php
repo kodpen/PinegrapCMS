@@ -62,6 +62,39 @@ function pg_notification_targets_available()
 	return $available;
 }
 
+// The kinds of Workspace inbox line a flow writes: a run of one's flow
+// ended or failed (flow_finished), a Let people know box told one
+// (scheduled_notice). With the Workspace switched off the bell shows these
+// lines alone. Pure.
+function pg_notification_flow_kinds()
+{
+	return array('flow_finished', 'scheduled_notice');
+}
+
+// Is this Workspace inbox line one a flow wrote, for the bell of a site
+// whose Workspace is switched off? One read per person per request: the ids
+// of their inbox lines of pg_notification_flow_kinds().
+function pg_notification_flow_line($user_id, $inbox_id)
+{
+	static $lines = array();
+
+	$user_id = (int) $user_id;
+	$inbox_id = (int) $inbox_id;
+
+	if (($user_id <= 0) || ($inbox_id <= 0) || !function_exists('pg_flows_enabled') || !pg_flows_enabled()) {
+		return false;
+	}
+
+	if (!isset($lines[$user_id])) {
+		$ids = db_values("SELECT id FROM ws_inbox
+			WHERE user_id = '" . $user_id . "' AND kind IN ('" . implode("', '", pg_notification_flow_kinds()) . "')");
+
+		$lines[$user_id] = array_fill_keys(array_map('intval', (array) $ids), true);
+	}
+
+	return isset($lines[$user_id][$inbox_id]);
+}
+
 // Can this person see this notification?
 //
 // The rights are passed in rather than read from the session, because the
@@ -86,9 +119,19 @@ function pg_notification_visible($notification, $rights)
 	}
 
 	// A mention, a task handed over, an invitation to a channel: always
-	// addressed, and only while the workspace is switched on.
+	// addressed, and only while the workspace is switched on. With it off,
+	// flows still run (pg_flows_enabled()), so the lines they write stay:
+	// a run of one's flow that ended or failed, Let people know.
 	if ($action == 'workspace') {
-		return (($target > 0) && defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED);
+		if ($target <= 0) {
+			return false;
+		}
+
+		if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+			return true;
+		}
+
+		return pg_notification_flow_line($target, (int) ($notification['reference_id'] ?? 0));
 	}
 
 	// A customer's return request, or their word that the goods are on their
@@ -321,7 +364,7 @@ function pg_notification_unread_rows($user_id, $full_row = false)
 // row addressed to somebody else passes it.
 function pg_notification_ladder_columns()
 {
-	return 'id, action, comment_id, form_id' . (pg_notification_targets_available() ? ', target_user_id' : '');
+	return 'id, action, comment_id, form_id' . (pg_notification_targets_available() ? ', target_user_id, reference_id' : '');
 }
 
 // What a notification says and where it points.
@@ -478,7 +521,11 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['icon']   = 'assets/images/notification-chat.png';
 		$display['badge']  = 'assets/images/notification-chat-badge.png';
 
-		if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && ((int) ($notification['reference_id'] ?? 0) > 0)) {
+		// With the Workspace off the ladder let through only a flow's lines
+		// (pg_notification_flow_line()), which flows still write.
+		$workspace_on = defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED;
+
+		if (($workspace_on || (function_exists('pg_flows_enabled') && pg_flows_enabled())) && ((int) ($notification['reference_id'] ?? 0) > 0)) {
 
 			require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 
@@ -716,8 +763,11 @@ function pg_notification_mark_read($notification_ids, $user_id)
 	db("INSERT IGNORE INTO notification_reads (notification_id, user_id, timestamp)
 		VALUES " . implode(',', $values));
 
-	// A workspace row read in the bell is read in the workspace's inbox too.
-	if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && pg_notification_targets_available()) {
+	// A workspace row read in the bell is read in the workspace's inbox too;
+	// with the Workspace off the ladder lets through only a flow's lines,
+	// which flows still write.
+	if (((defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) || (function_exists('pg_flows_enabled') && pg_flows_enabled()))
+		&& pg_notification_targets_available()) {
 
 		$references = db_values("SELECT reference_id FROM notifications
 			WHERE action = 'workspace' AND target_user_id = '" . $user_id . "'

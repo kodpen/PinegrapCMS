@@ -845,6 +845,41 @@ function pg_tr_search_pages($query)
 }
 
 /**
+ * The products and product groups whose translated texts match a search made
+ * on a page in another language, best first; empty in the source language.
+ *
+ * @return string[] "product:<id>" and "product_group:<id>" keys
+ */
+function pg_tr_search_catalog($query)
+{
+    if (!pg_tr_active()) {
+        return array();
+    }
+
+    pg_tr_load();
+
+    return pg_tr_search_catalog_find($query);
+}
+
+/**
+ * The search index items of the form records whose translated texts match a
+ * search made on a page in another language, best first; empty in the source
+ * language. $fence and $live are the caller's search_items conditions.
+ *
+ * @return array search_items rows
+ */
+function pg_tr_search_records($query, $fence, $live)
+{
+    if (!pg_tr_active()) {
+        return array();
+    }
+
+    pg_tr_load();
+
+    return pg_tr_search_record_items(pg_tr_search_records_find($query), $fence, $live);
+}
+
+/**
  * The query string an address of the software gets on a translated page, so
  * a request made from it is answered in the same language; '' otherwise.
  */

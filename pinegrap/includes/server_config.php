@@ -350,6 +350,23 @@ function pg_server_config_blocks($server = '')
         </staticContent>',
             ),
 
+            // Inside the <staticContent> of the charset block, like the cache
+            // block below. IIS on many servers maps no .webp, so the
+            // panel logo's poster and fallback picture answer 404.3. The
+            // <remove> comes first because a duplicate mimeMap on a server
+            // that already maps it is a 500.
+            array(
+                'key'    => 'webp',
+                'label'  => 'WebP pictures',
+                'why'    => 'IIS without a .webp type answers every WebP picture with a 404, the panel logo included.',
+                'level'  => 'recommended',
+                'detect' => '/<mimeMap\s+fileExtension="\.webp"/i',
+                'anchor' => 'static-content',
+                'snippet' =>
+'            <remove fileExtension=".webp" />
+            <mimeMap fileExtension=".webp" mimeType="image/webp" />',
+            ),
+
             // Inside the <staticContent> of the charset block, which comes
             // first so that a repair has written the element by the time this
             // one is placed. A second <staticContent> is a 500.19 for the
@@ -715,7 +732,7 @@ add_header X-Content-Type-Options "nosniff" always;
                 <add value="index.html" />
             </files>
         </defaultDocument>
-' . str_replace('        </staticContent>', $blocks['cache'] . "\n        </staticContent>", $blocks['charset']) . '
+' . str_replace('        </staticContent>', $blocks['webp'] . "\n" . $blocks['cache'] . "\n        </staticContent>", $blocks['charset']) . '
 ' . $blocks['headers'] . '
 ' . $blocks['compression'] . '
 ' . $blocks['errors'] . '

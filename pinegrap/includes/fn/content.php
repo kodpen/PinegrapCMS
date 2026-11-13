@@ -2781,6 +2781,11 @@ function get_catalog_search_results($search_query, $product_group_id)
     $added_items['products'] = array();
     // initialize array for storing items
     $items = array();
+    // on a page served in another language, the items whose translated texts
+    // match come first
+    $search_results = get_catalog_search_results_translated($search_query, $items_that_can_appear_in_search_results, $added_items);
+    $items = array_merge($items, $search_results['items']);
+    $added_items = array_merge($added_items, $search_results['added_items']);
     // get search results for keywords matches
     $search_results = get_catalog_search_results_for_field('keywords', 'contains', $search_query, $items_that_can_appear_in_search_results, $added_items);
     $items = array_merge($items, $search_results['items']);
@@ -2894,13 +2899,73 @@ function pg_catalog_search_condition($column, $operator, $search_query, $charset
 // we have created a function for this so that we don't have to duplicate this large amount of code for every field that needs to be searched
 function get_catalog_search_results_for_field($field, $operator, $search_query, $items_that_can_appear_in_search_results, $added_items)
 {
+    $charset = pg_list_search_connection_charset();
+    $group_condition = pg_catalog_search_condition($field, $operator, $search_query, $charset);
+    $product_condition = pg_catalog_search_condition('products.' . $field, $operator, $search_query, $charset);
+
+    return get_catalog_search_results_for_condition($group_condition, $product_condition, $items_that_can_appear_in_search_results, $added_items);
+}
+
+/**
+ * The catalog items a search finds in the translated texts of a page served
+ * in another language (pg_tr_search_catalog()), in its order, under the same
+ * rules as the source search; none in the source language.
+ *
+ * @return array array('items' => …, 'added_items' => …)
+ */
+function get_catalog_search_results_translated($search_query, $items_that_can_appear_in_search_results, $added_items)
+{
+    $keys = function_exists('pg_tr_search_catalog') ? pg_tr_search_catalog($search_query) : array();
+
+    if (!$keys) {
+        return array('items' => array(), 'added_items' => $added_items);
+    }
+
+    $ids = array('product' => array(0), 'product_group' => array(0));
+
+    foreach ($keys as $key) {
+        list($type, $id) = explode(':', $key);
+        $ids[$type][] = (int) $id;
+    }
+
+    return get_catalog_search_results_for_condition(
+        array('sql' => '(id IN (' . implode(',', $ids['product_group']) . '))', 'params' => array()),
+        array('sql' => '(products.id IN (' . implode(',', $ids['product']) . '))', 'params' => array()),
+        $items_that_can_appear_in_search_results,
+        $added_items,
+        array_flip($keys)
+    );
+}
+
+/**
+ * The sort key of a catalog search item: its lower-cased name, or, for a
+ * ranked (translated) search, the position of the row that found it. Pure.
+ *
+ * @param array|null $rank key => position
+ * @param string     $key  "product:<id>" or "product_group:<id>"
+ * @param string     $name
+ * @return string|int
+ */
+function _catalog_search_sort_key($rank, $key, $name)
+{
+    if ($rank === null) {
+        return mb_strtolower((string) $name);
+    }
+
+    return isset($rank[$key]) ? (int) $rank[$key] : PHP_INT_MAX;
+}
+
+/**
+ * The select product groups and the products (or their select groups) that
+ * meet a condition and may appear in the search, each once; sorted by name,
+ * or by $rank ("product:<id>" / "product_group:<id>" => position) when given.
+ */
+function get_catalog_search_results_for_condition($group_condition, $product_condition, $items_that_can_appear_in_search_results, $added_items, $rank = null)
+{
     // initialize array that will store items
     $items = array();
     // initialize array that will store data for sorting
     $item_names = array();
-    $charset = pg_list_search_connection_charset();
-    $group_condition = pg_catalog_search_condition($field, $operator, $search_query, $charset);
-    $product_condition = pg_catalog_search_condition('products.' . $field, $operator, $search_query, $charset);
     // get all select product groups where the field matches the comparison
     $query = "SELECT
 
@@ -2934,7 +2999,7 @@ function get_catalog_search_results_for_field($field, $operator, $search_query, 
                 'display_type' => 'select',
                 'type' => 'product group'
             );
-            $item_names[] = mb_strtolower($row['name']);
+            $item_names[] = _catalog_search_sort_key($rank, 'product_group:' . $row['id'], $row['name']);
             // remember that this product group has been added
             $added_items['product_groups'][] = $row['id'];
         }
@@ -2999,7 +3064,7 @@ function get_catalog_search_results_for_field($field, $operator, $search_query, 
                     'selection_type' => $row['product_selection_type'],
                     'type' => 'product'
                 );
-                $item_names[] = mb_strtolower($row['product_name']);
+                $item_names[] = _catalog_search_sort_key($rank, 'product:' . $row['product_id'], $row['product_name']);
                 // remember that this product has been added
                 $added_items['products'][] = $row['product_id'];
             }
@@ -3016,13 +3081,13 @@ function get_catalog_search_results_for_field($field, $operator, $search_query, 
                     'display_type' => 'select',
                     'type' => 'product group'
                 );
-                $item_names[] = mb_strtolower($row['product_group_name']);
+                $item_names[] = _catalog_search_sort_key($rank, 'product:' . $row['product_id'], $row['product_group_name']);
                 // remember that this product group has been added
                 $added_items['product_groups'][] = $row['product_group_id'];
             }
         }
     }
-    // sort the items by name
+    // sort the items by name, or by their translated rank
     array_multisort($item_names, $items);
     return array(
         'items' => $items,

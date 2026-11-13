@@ -327,6 +327,16 @@ function pg_designer_screen_render($ctx)
             // to show; the site leaves the tab out otherwise.
             'payment_methods'      => function_exists('pg_civ_payment_method_rows') && pg_civ_payment_method_rows(_pg_civ_payment_settings(false)) !== array(),
         ),
+        // The site's words the member widgets print, so the canvas draws
+        // them as the page does: the site's name, the consent and member
+        // number labels and the strong password rules block.
+        'siteWords'     => array(
+            'site_name'       => defined('ORGANIZATION_NAME') ? (string)ORGANIZATION_NAME : '',
+            'opt_in_label'    => defined('OPT_IN_LABEL') ? (string)OPT_IN_LABEL : '',
+            'member_id_label' => defined('MEMBER_ID_LABEL') ? (string)MEMBER_ID_LABEL : '',
+            'password_rules'  => function_exists('get_strong_password_requirements')
+                ? '<div class="pg-password-rules small text-muted">' . get_strong_password_requirements() . '</div>' : '',
+        ),
         // The editor's UI text, resolved through lang() for the site's
         // language. Empty when the language is English: the JS keys ARE the
         // English text and _sdT() falls back to the key.

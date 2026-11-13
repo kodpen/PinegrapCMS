@@ -118,11 +118,13 @@ function test_automation_flows_menu_row_is_built_under_the_screen_gate()
 
 	// The gate is the screen's: the Workspace's tables, flows on the site,
 	// a member of the team; the switch is not asked.
-	$gate = automation_flows_menu_test_php('includes/fn/automation_flows.php', 'pg_flows_menu_row');
+	$row = automation_flows_menu_test_php('includes/fn/automation_flows.php', 'pg_flows_menu_row');
+	$gate = automation_flows_menu_test_php('includes/fn/automation_flows.php', 'pg_flows_user_may');
 	$screen = automation_flows_menu_test_php('includes/workspace/screen.php', 'ws_screen_gate');
 
 	pg_assert_contains('pg_flows_enabled()', $gate, 'flows on the site');
-	pg_assert_contains("!ws_ready() || empty(ws_rights(\$user)['member'])", $gate, 'the Workspace\'s tables and a member');
+	pg_assert_contains("ws_ready() && !empty(ws_rights(\$user)['member'])", $gate, 'the Workspace\'s tables and a member');
+	pg_assert_contains('if (!pg_flows_user_may($user)) {', $row, 'the row asks the gate');
 	pg_assert_contains("USER_MANAGE_WORKSPACE", $gate, 'role 3 with the Workspace right only');
 	pg_assert_false(strpos($gate, 'WORKSPACE_ENABLED') !== false, 'the switch is not asked');
 	pg_assert_false((bool) preg_match('/(?<![a-z_])ws_enabled\(/', $gate), 'nor the module\'s gate');
@@ -131,12 +133,13 @@ function test_automation_flows_menu_row_is_built_under_the_screen_gate()
 	pg_assert_contains("\$viewer['member']", $screen, 'and a member');
 
 	// The whole module only while a run is open; the gate needs one file.
-	$access = strpos($gate, "require_once(PG_FUNCTIONS_DIR . '/includes/workspace/access.php');");
-	$open = strpos($gate, 'if (pg_flows_runs_open()) {');
-	$module = strpos($gate, "require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');");
+	$open = strpos($row, 'if (pg_flows_runs_open()) {');
+	$module = strpos($row, "require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');");
 
-	pg_assert_true(($access !== false) && ($open !== false) && ($module !== false) && ($access < $open) && ($open < $module), 'the access file for the gate, the module behind an open run');
-	pg_assert_contains('ws_flows_running_count(ws_viewer($user))', $gate, 'counted as the screen\'s viewer');
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/workspace/access.php');", $gate, 'the access file for the gate');
+	pg_assert_false(strpos($gate, 'bootstrap.php') !== false, 'not the whole module');
+	pg_assert_true(($open !== false) && ($module !== false) && ($open < $module), 'the module behind an open run');
+	pg_assert_contains('ws_flows_running_count(ws_viewer($user))', $row, 'counted as the screen\'s viewer');
 	pg_assert_same(null, pg_flows_menu_row('nobody'), 'no user, no row');
 }
 

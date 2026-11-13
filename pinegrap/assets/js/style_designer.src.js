@@ -6430,8 +6430,10 @@ const StyleDesigner = (function () {
             '.d-sm-flex > .sd-wrap:not(.sd-shared-wrap), .d-md-flex > .sd-wrap:not(.sd-shared-wrap), ' +
             '.d-lg-flex > .sd-wrap:not(.sd-shared-wrap), .d-xl-flex > .sd-wrap:not(.sd-shared-wrap), .d-xxl-flex > .sd-wrap:not(.sd-shared-wrap) ' +
             '{ display:contents !important; }',
-        _SD_BX + '.d-flex > .sd-wrap > .sd-tb, .d-inline-flex > .sd-wrap > .sd-tb, .d-sm-flex > .sd-wrap > .sd-tb, .d-md-flex > .sd-wrap > .sd-tb, ' +
-            '.d-lg-flex > .sd-wrap > .sd-tb, .d-xl-flex > .sd-wrap > .sd-tb, .d-xxl-flex > .sd-wrap > .sd-tb { display:none !important; }',
+        // A see-through wrapper's toolbar shows only for the selection,
+        // placed at the element by _sdPlaceChromeOf().
+        _SD_BX + '.d-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-inline-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-sm-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-md-flex > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.d-lg-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-xl-flex > .sd-wrap:not(.sd-selected) > .sd-tb, .d-xxl-flex > .sd-wrap:not(.sd-selected) > .sd-tb { display:none !important; }',
         _SD_BX + '.d-flex > .sd-wrap.sd-selected > *, .d-inline-flex > .sd-wrap.sd-selected > *, .d-sm-flex > .sd-wrap.sd-selected > *, .d-md-flex > .sd-wrap.sd-selected > *, ' +
             '.d-lg-flex > .sd-wrap.sd-selected > *, .d-xl-flex > .sd-wrap.sd-selected > *, .d-xxl-flex > .sd-wrap.sd-selected > * ' +
             '{ outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
@@ -6541,22 +6543,24 @@ const StyleDesigner = (function () {
             '.form-floating > .sd-wrap, .form-check > .sd-wrap, ' +
             '.input-group > .sd-wrap, ' +
             '.figure > .sd-wrap { display:contents !important; }',
-        // Hide toolbars and transfer outline for the sweep above
-        _SD_BX + '.accordion-item > .sd-wrap > .sd-tb, .accordion-header > .sd-wrap > .sd-tb, ' +
-            'h1.accordion-header > .sd-wrap > .sd-tb, h2.accordion-header > .sd-wrap > .sd-tb, h3.accordion-header > .sd-wrap > .sd-tb, ' +
-            'h4.accordion-header > .sd-wrap > .sd-tb, h5.accordion-header > .sd-wrap > .sd-tb, h6.accordion-header > .sd-wrap > .sd-tb, ' +
-            '.accordion-collapse > .sd-wrap > .sd-tb, .accordion-body > .sd-wrap > .sd-tb, ' +
-            '.card > .sd-wrap > .sd-tb, .card-body > .sd-wrap > .sd-tb, .card-header > .sd-wrap > .sd-tb, .card-footer > .sd-wrap > .sd-tb, ' +
-            '.modal-content > .sd-wrap > .sd-tb, .modal-header > .sd-wrap > .sd-tb, .modal-body > .sd-wrap > .sd-tb, .modal-footer > .sd-wrap > .sd-tb, ' +
-            '.modal-dialog > .sd-wrap > .sd-tb, ' +
-            '.offcanvas-header > .sd-wrap > .sd-tb, .offcanvas-body > .sd-wrap > .sd-tb, ' +
-            '.toast-header > .sd-wrap > .sd-tb, .toast-body > .sd-wrap > .sd-tb, ' +
-            '.alert > .sd-wrap > .sd-tb, ' +
-            '.breadcrumb > .sd-wrap > .sd-tb, .pagination > .sd-wrap > .sd-tb, ' +
-            '.dropdown-menu > .sd-wrap > .sd-tb, ' +
-            '.navbar > .sd-wrap > .sd-tb, .navbar-nav > .sd-wrap > .sd-tb, .nav-item > .sd-wrap > .sd-tb, ' +
-            '.form-floating > .sd-wrap > .sd-tb, .form-check > .sd-wrap > .sd-tb, ' +
-            '.figure > .sd-wrap > .sd-tb { display:none !important; }',
+        // Hide toolbars and transfer outline for the sweep above. The
+        // selection's toolbar stays: _sdPlaceChromeOf() puts it at the
+        // element, so a picked card body or title is never left without one.
+        _SD_BX + '.accordion-item > .sd-wrap:not(.sd-selected) > .sd-tb, .accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            'h1.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, h2.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, h3.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            'h4.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, h5.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, h6.accordion-header > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.accordion-collapse > .sd-wrap:not(.sd-selected) > .sd-tb, .accordion-body > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.card > .sd-wrap:not(.sd-selected) > .sd-tb, .card-body > .sd-wrap:not(.sd-selected) > .sd-tb, .card-header > .sd-wrap:not(.sd-selected) > .sd-tb, .card-footer > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.modal-content > .sd-wrap:not(.sd-selected) > .sd-tb, .modal-header > .sd-wrap:not(.sd-selected) > .sd-tb, .modal-body > .sd-wrap:not(.sd-selected) > .sd-tb, .modal-footer > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.modal-dialog > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.offcanvas-header > .sd-wrap:not(.sd-selected) > .sd-tb, .offcanvas-body > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.toast-header > .sd-wrap:not(.sd-selected) > .sd-tb, .toast-body > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.alert > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.breadcrumb > .sd-wrap:not(.sd-selected) > .sd-tb, .pagination > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.dropdown-menu > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.navbar > .sd-wrap:not(.sd-selected) > .sd-tb, .navbar-nav > .sd-wrap:not(.sd-selected) > .sd-tb, .nav-item > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.form-floating > .sd-wrap:not(.sd-selected) > .sd-tb, .form-check > .sd-wrap:not(.sd-selected) > .sd-tb, ' +
+            '.figure > .sd-wrap:not(.sd-selected) > .sd-tb { display:none !important; }',
         _SD_BX + '.accordion-item > .sd-wrap.sd-selected > *, .accordion-header > .sd-wrap.sd-selected > *, ' +
             '.card-body > .sd-wrap.sd-selected > *, .card-header > .sd-wrap.sd-selected > *, .card-footer > .sd-wrap.sd-selected > *, ' +
             '.modal-content > .sd-wrap.sd-selected > *, .modal-header > .sd-wrap.sd-selected > *, .modal-body > .sd-wrap.sd-selected > *, .modal-footer > .sd-wrap.sd-selected > *, ' +
@@ -10101,6 +10105,10 @@ const StyleDesigner = (function () {
     // _sdFxSoon()), the pass that adds and drops sd-fx-unpos and sd-fx-abs.
     function _sdPlaceSelectedChrome() {
         if (!canvasDoc || !canvasDoc.body) return;
+        // The selection's toolbar spot is measured again once the pass has
+        // laid the page out: taken before it (a card's cover with no height
+        // yet), it stayed 'inside', over the picture, with room below it.
+        _sdTbFlipAll(Array.prototype.slice.call(canvasDoc.querySelectorAll('div.sd-wrap.sd-selected')));
         _sdPlaceChromeOf(Array.prototype.slice.call(
             canvasDoc.querySelectorAll('.sd-wrap.sd-selected, .sd-wrap:has(> .sd-persistent-note), .sd-wrap:has(> .sd-issue-badge), .sd-wrap:has(> .sd-chip-row)')));
         // The size badge sits at the selection's corner: placed again once
@@ -15443,6 +15451,19 @@ const StyleDesigner = (function () {
             return '<div class="pg-civ-variant-picker mb-3"><label class="form-label">' + esc(_sdT('Size')) + '</label>' +
                    '<select class="form-select" disabled><option>M</option></select></div>';
         },
+        // The strong password rules as the member widgets print them
+        // (get_strong_password_requirements()), the site's own text when
+        // the editor has it. Drawn while the site setting is off too, so
+        // the block can be placed; the page leaves it empty then.
+        '__password_rules': function () {
+            var html = _sdSiteWord('password_rules');
+            if (html) return html;
+            return '<div class="pg-password-rules small text-muted"><div>' + esc(_sdT('Your password must contain at least')) + ':</div><ul>' +
+                   '<li>' + esc(_sdT('{var:1} characters', ['10'])) + '</li>' +
+                   '<li>' + esc(_sdT('{var:1} capital letter', ['1'])) + '</li>' +
+                   '<li>' + esc(_sdT('{var:1} numbers', ['2'])) + '</li>' +
+                   '<li>' + esc(_sdT('{var:1} non-alphanumeric character (e.g. !, $)', ['1'])) + '</li></ul></div>';
+        },
         // The sample order's addresses as <br> lines, as the page writes them.
         '__recipient_address_html': function () {
             var a = _sdOrderAddress('shipping');
@@ -15738,11 +15759,11 @@ const StyleDesigner = (function () {
 
     // A person's picture previews as the server draws one who has no photo
     // (pg_initials_avatar_url()): the sample name's initials on a coloured
-    // circle, sized by the <img> — not the grey 300×200 "Image" card, which
+    // circle (the sample account's Alex Morgan), sized by the <img> — not the grey 300×200 "Image" card, which
     // looked nothing like the round avatar the page shows.
     var _SD_AVATAR_TOKENS = { '__user_avatar_url': 1, 'avatar_url': 1 };
     function _sdAvatarSample() {
-        var name = String(_sdT('Jane Cooper')).trim().split(/\s+/);
+        var name = String(_sdT('Alex Morgan')).trim().split(/\s+/);
         var initials = ((name[0] || '').charAt(0) + (name.length > 1 ? name[name.length - 1].charAt(0) : '')).toLocaleUpperCase();
         var svg = "<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'>" +
                   "<circle cx='32' cy='32' r='32' fill='#4f6bed'/>" +
@@ -15974,13 +15995,102 @@ const StyleDesigner = (function () {
         return _sdProductSampleMap;
     }
 
-    // The sample record a node's widget draws (the order or the product),
-    // or null outside those families.
+    // ── The sample account ───────────────────────────────────────────────
+    // The account family (my account, sign-in, registration, membership,
+    // the password screens, profile, e-mail preferences, address book,
+    // security, invoices, the login region and the account e-mails) draws
+    // one member: Alex Morgan (alex), the sample order's billing person,
+    // whose saved recipient is the order's shipping address. The site's own
+    // name, consent and member number labels and password rules come from
+    // the site settings (sdDesign.siteWords). Canvas only: never in a tree,
+    // never on the site or in an e-mail.
+    var _SD_ACCOUNT_SAMPLE_REGIONS = {
+        my_account: 1, login_form: 1, forgot_password: 1, registration: 1, membership: 1, logout: 1,
+        change_password: 1, set_password: 1, account_profile: 1, email_preferences: 1, address_book: 1,
+        account_security: 1, account_invoices: 1, account_email: 1, login_region: 1, error_page: 1,
+        affiliate_sign_up_form: 1
+    };
+    // The site's words the member widgets print (designer_screen.php).
+    function _sdSiteWord(key) {
+        var w = (typeof sdDesign !== 'undefined' && sdDesign && sdDesign.siteWords) ? sdDesign.siteWords : null;
+        return (w && typeof w[key] === 'string') ? w[key] : '';
+    }
+    // The amounts of the sample account's statement: one invoice (the
+    // sample order's total) still owed and overdue, one paid.
+    function _sdAccountAmounts() {
+        return { open: 1183.9, paid: 450, overdue_days: 12 };
+    }
+    var _sdAccountSampleMap = null;
+    function _sdAccountSample() {
+        if (_sdAccountSampleMap) return _sdAccountSampleMap;
+        var day = _sdDateSample(false), stamp = _sdDateSample(true);
+        var bill = _sdOrderAddress('billing'), ship = _sdOrderAddress('shipping');
+        var full = bill[0] + ' ' + bill[1];
+        var initials = (bill[0].charAt(0) + bill[1].charAt(0)).toLocaleUpperCase();
+        var email = 'alex@example.com';
+        var m = _sdAccountAmounts();
+        _sdAccountSampleMap = {
+            // The site.
+            __site_name: _sdSiteWord('site_name') || _sdT('Sample Store'),
+            __opt_in_label: _sdSiteWord('opt_in_label') || _sdT('Send me news and offers by e-mail'),
+            __member_id_label: _sdSiteWord('member_id_label') || _sdT('Member ID'),
+            // The member.
+            __username: 'alex', username: 'alex', account_id: '3',
+            __email: email, __email_address: email, email_address: email, __user_email: email,
+            __user_name: full, __user_first_name: bill[0], __user_initials: initials, __display_name: full,
+            full_name: full, first_name: bill[0], last_name: bill[1],
+            __user_badge: _sdT('Gold member'), member_id: 'M-1042', member: '1',
+            form_item_view: 'contact-form-abc123xyz',
+            // More account details (SW_MEMBER_ENTITY_TOKENS).
+            __member_reward_points: '120', __member_expiry_date: day, __member_salutation: _sdT('Ms.'),
+            __member_nickname: bill[0], __member_company: bill[2], __member_job_title: _sdT('Interior designer'),
+            __member_website: 'https://example.com', __member_mobile_phone: bill[9],
+            __member_business_phone: '+90 212 000 00 00', __member_home_phone: '+90 216 000 00 00',
+            __member_business_city: bill[5], __member_business_country: bill[8], __member_time_zone: 'Europe/Istanbul',
+            __member_tax_number: '1234567890', __member_tax_office: _sdT('Springfield'), __member_affiliate_code: 'AFF-0042',
+            // E-mail preferences: a list of the loop.
+            __group_id: '3',
+            // Address book: two saved recipients, the card the order's
+            // shipping address.
+            __recipient_count: '2', __recipient_id: '1', __recipient_name: _sdT('Studio'),
+            __recipient_full_name: ship[0] + ' ' + ship[1], __recipient_company: ship[2],
+            __recipient_address: _sdOrderAddressLine(ship), __recipient_phone: ship[9],
+            __recipient_salutation: _sdT('Mr.'), __recipient_first_name: ship[0], __recipient_last_name: ship[1],
+            __recipient_address_1: ship[3], __recipient_address_2: ship[4], __recipient_city: ship[5],
+            __recipient_state: ship[6], __recipient_zip: ship[7], __recipient_country: ship[8],
+            __recipient_address_type: _sdT('Business address'),
+            // Account security: two devices, two-step verification on.
+            __device_count: '2', __device_label: _sdT('Chrome on Windows'),
+            __device_user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
+            __device_ip: '203.0.113.24', __device_last_used: _sdT('2 hours ago'), __device_first_seen: stamp,
+            __device_selector: 'a1b2c3d4e5f6', __device_passkey: _sdT('Work laptop'),
+            __mfa_status_text: _sdT('Two-step verification is on since {var:1}. {var:2} recovery codes left.', [day, '8']),
+            __mfa_enabled_since: day, __mfa_recovery_remaining: '8',
+            __mfa_recovery_left_text: _sdT('{var:1} recovery codes left. New codes replace them.', ['8']),
+            __mfa_key: 'JBSW Y3DP EHPK 3PXP', __mfa_key_uri: 'otpauth://totp/' + encodeURIComponent(email) + '?secret=JBSWY3DPEHPK3PXP',
+            __recovery_codes: 'K7QX-2M9P\nR4TB-8WNC\nH3ZD-6JLV\nP9FE-1YKS',
+            // The page writes the notice only when no passkey can be added;
+            // drawn here so it can be placed and styled.
+            __passkey_count: '1', __passkey_notice: _sdT('Passkeys work at {var:1} only. Open the site there and try again.', ['www.example.com']),
+            // Account invoices: the open invoice is the loop's card.
+            __account_title: bill[2], __document_count: '2',
+            __balance: _sdMoney(m.open), __overdue_total: _sdMoney(m.open),
+            __invoice_number: 'INV-2026-0042', __invoice_kind: _sdT('Invoice'), __invoice_date: day, __invoice_due_date: day,
+            __invoice_total: _sdMoney(m.open), __invoice_open: _sdMoney(m.open),
+            __invoice_status: _sdT('{var:1} days overdue', [String(m.overdue_days)]),
+            __invoice_overdue_days: String(m.overdue_days), __invoice_order_number: '12345'
+        };
+        return _sdAccountSampleMap;
+    }
+
+    // The sample record a node's widget draws (the order, the product or
+    // the account), or null outside those families.
     function _sdSampleRecord(node) {
         var cfg = node ? _sdSystemWidgetCfgOf(node) : null;
         if (!cfg) return null;
         if (_SD_ORDER_SAMPLE_REGIONS[cfg.regionType]) return _sdOrderSample();
         if (_SD_PRODUCT_SAMPLE_REGIONS[cfg.regionType]) return _sdProductSample();
+        if (_SD_ACCOUNT_SAMPLE_REGIONS[cfg.regionType]) return _sdAccountSample();
         return null;
     }
     var _sdLabelFieldsAsked = {};

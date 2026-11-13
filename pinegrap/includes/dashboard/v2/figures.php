@@ -23,14 +23,14 @@ if (!defined('PG_DASHBOARD_V2')) {
 }
 
 /**
- * The gates a figure, chip or shortcut may name: every card gate and four of
+ * The gates a figure, chip or shortcut may name: every card gate and three of
  * the figures' own.
  *
  * @return string[]
  */
 function pg_dashboard_v2_figure_gates()
 {
-    return array_merge(pg_dashboard_v2_gates(), array('forms', 'waf', 'flows', 'manager_area'));
+    return array_merge(pg_dashboard_v2_gates(), array('forms', 'waf', 'flow_runs', 'manager_area'));
 }
 
 /**
@@ -39,7 +39,9 @@ function pg_dashboard_v2_figure_gates()
  * forms:        Forms switched on and a staff role, as the brief counts them
  *               (a User sees only their own folders' forms on the list).
  * waf:          a staff role and the firewall not off.
- * flows:        a workspace member with a staff role.
+ * flow_runs:    a staff role who may open the Flows screen (the figure counts
+ *               every run of the site); the card gate flows is that screen's
+ *               own gate alone.
  * manager_area: the screens validate_area_access($user, 'manager') lets in.
  *
  * @param string $gate
@@ -55,8 +57,8 @@ function pg_dashboard_v2_figure_gate($gate, $user)
             return defined('FORMS') && (FORMS === true) && ($role < 3);
         case 'waf':
             return ($role < 3) && function_exists('waf_mode') && (waf_mode() !== 'off');
-        case 'flows':
-            return ($role < 3) && pg_dashboard_v2_gate('workspace', $user);
+        case 'flow_runs':
+            return ($role < 3) && pg_dashboard_v2_gate('flows', $user);
         case 'manager_area':
             return $role < 3;
     }
@@ -82,7 +84,7 @@ function pg_dashboard_v2_figures()
         'inbox'       => array('label' => lang('Inbox'), 'gate' => 'workspace', 'url' => 'workspace.php'),
         'blocks'      => array('label' => lang('Blocked requests (24 h)'), 'gate' => 'waf', 'url' => 'view_waf_log.php'),
         'subscribers' => array('label' => lang('New subscribers (week)'), 'gate' => 'staff', 'url' => 'view_contacts.php?filter=my_subscribers'),
-        'flows'       => array('label' => lang('Flow runs (today)'), 'gate' => 'flows', 'url' => 'workspace_flows.php'),
+        'flows'       => array('label' => lang('Flow runs (today)'), 'gate' => 'flow_runs', 'url' => 'workspace_flows.php'),
     );
 }
 
