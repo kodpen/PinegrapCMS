@@ -1578,7 +1578,7 @@ if (!$table) {
                             <input type="text" class="form-control form-control-sm" name="name" id="ws_wt_new_column_name" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>
                         <div class="mb-3"><label class="form-label small mb-1" for="ws_wt_new_column_type">' . h(lang('Type')) . '</label>
                             <select class="form-control form-control-sm" name="type" id="ws_wt_new_column_type">' . $type_options . '</select>
-                            <div class="form-text">' . h(lang('The type cannot change once the column is made.')) . '</div></div>
+                            <div class="form-text">' . h(lang('Text, number, money, date, list and checkbox columns can change type later; the other types cannot.')) . '</div></div>
                         ' . $type_fields . '
                         <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Add column')) . '</button>
                     </form>';

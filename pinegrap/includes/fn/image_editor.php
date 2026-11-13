@@ -4023,7 +4023,10 @@ function pg_image_editor_sound_where($search, $folders, $bin, $erp_ready = null,
     $ids = function ($list) {
         return implode(', ', array_map(function ($id) { return "'" . (int) $id . "'"; }, $list));
     };
-    $where = "(type IN ('" . implode("', '", array_map('e', $types)) . "')) AND (name != '')" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
+    // files.type is varchar(4): a .webmanifest is stored as "webm", so the
+    // name's own extension must be one of the types as well.
+    $names = implode(' OR ', array_map(function ($type) { return "(LOWER(name) LIKE '%." . e($type) . "')"; }, $types));
+    $where = "(type IN ('" . implode("', '", array_map('e', $types)) . "')) AND ($names)" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
 
     if ($folders !== null) {
         $folders = array_values(array_diff(array_map('intval', $folders), array_map('intval', $bin)));
@@ -4045,7 +4048,9 @@ function pg_image_editor_sound_where($search, $folders, $bin, $erp_ready = null,
 }
 
 /**
- * The sound files of files rows the user may reach, for the editor. Pure.
+ * The sound files of files rows the user may reach, for the editor: the type
+ * and the name's extension both in the list (files.type is cut to four
+ * characters). Pure.
  *
  * @param array      $rows    files rows (id, name, type, folder, size)
  * @param array|null $folders the folder ids a role-3 user may reach; null for every folder
@@ -4058,7 +4063,8 @@ function pg_image_editor_sound_rows($rows, $folders, $types = null)
     $list = array();
 
     foreach ($rows as $row) {
-        if (!in_array(strtolower((string) $row['type']), $types, true)) {
+        if (!in_array(strtolower((string) $row['type']), $types, true)
+            || !in_array(strtolower((string) pathinfo((string) $row['name'], PATHINFO_EXTENSION)), $types, true)) {
             continue;
         }
 

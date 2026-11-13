@@ -20,4 +20,4 @@ description: The sample product the designer canvas draws in the catalog listing
 - The tag cloud's values are in `_SD_SHORT_LABEL_TOKENS` (search page name, tag name, keyword, count, size, weight, total).
 
 ## What is left?
-- `canvas-sample-gaps-catalog.md`.
+- The listing's cards after the first are the site's real records (`designer-widget-ghosts-and-edit-chips.md`): a shop with no products shows one card.

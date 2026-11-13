@@ -189,7 +189,7 @@ function test_picker_files_where()
 	$kinds = pg_picker_kinds();
 
 	pg_assert_same(
-		"(name != '') AND (attachment = 0) AND (type IN ('png', 'svg')) AND ((attachment = 0) AND (folder IN (1, 4))) AND (folder NOT IN (9, 10)) AND (folder = '4')",
+		"(name != '') AND (attachment = 0) AND (type IN ('png', 'svg')) AND ((LOWER(name) LIKE '%.png') OR (LOWER(name) LIKE '%.svg')) AND ((attachment = 0) AND (folder IN (1, 4))) AND (folder NOT IN (9, 10)) AND (folder = '4')",
 		pg_picker_files_where($kinds['site_icon'], '(attachment = 0) AND (folder IN (1, 4))', array(9, '10', 9), null, '4'),
 		'one folder of the site icon kind');
 
@@ -200,10 +200,11 @@ function test_picker_files_where()
 
 	pg_assert_contains("(type IN ('gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'svg', 'webp', 'avif'))", pg_picker_files_where($kinds['image'], '', array(), null));
 	pg_assert_same(
-		"(name != '') AND (attachment = 0) AND (design = 0) AND (type IN ('jpg'))",
+		"(name != '') AND (attachment = 0) AND (design = 0) AND (type IN ('jpg')) AND ((LOWER(name) LIKE '%.jpg'))",
 		pg_picker_files_where(array('types' => array('JPG', "png') OR (1=1"), 'design' => false), '', array(), null),
 		'only plain types; design files left out when the kind says so');
 	pg_assert_contains('(folder IN (-1))', pg_picker_files_where($kinds['public_image'], '', array(), null), 'a public kind without its condition lists nothing');
+	pg_assert_contains("(LOWER(name) LIKE '%.webm')", pg_picker_files_where($kinds['canvas_video'], '', array(), null), 'files.type is cut to four characters: a .webmanifest is no video');
 }
 
 function test_picker_pages_where()

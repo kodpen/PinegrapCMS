@@ -82,7 +82,7 @@ function test_ws_api_mail_routes()
 		$send[$param['name']] = $param;
 	}
 
-	pg_assert_same(array('box_id', 'channel_id', 'to', 'cc', 'bcc', 'subject', 'text'), array_keys($send), 'the New e-mail form\'s fields, no files');
+	pg_assert_same(array('box_id', 'channel_id', 'to', 'cc', 'bcc', 'subject', 'text', 'send_anyway'), array_keys($send), 'the New e-mail form\'s fields and Send anyway, no files');
 	pg_assert_same(WS_MAIL_REPLY_MAX, $send['text']['max_length'], 'the panel\'s limit');
 	pg_assert_true(!empty($send['box_id']['required']) && !empty($send['to']['required']) && empty($send['channel_id']['required']), 'a box and To; the channel may be left out');
 

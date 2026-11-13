@@ -43,7 +43,7 @@
 - db-q-overview.md: Start file for the db-q-* files: db_q() and pg_db_bind() (? placeholders, false on failure), the rule for new code, the converted areas grouped, what stays raw, how a file is converted
 - db-q-placeholder-helper.md: db_q($sql, $params) and its binder pg_db_bind(): how each ? is filled, what is refused, why it returns false like mysqli_query() instead of ending the request, the new-code rule.
 - designer-page-queries.md: Queries per designer-built page (2026-11-01 sandbox measure, four design templates): what repeated, the request-scope reads that removed it (PR #4403), what is left, why no fragment cache yet
-- files-type-column-width.md: files.type is four characters wide, so long extensions are stored cut (webmanifest as webm); the file manager reads the kind from the name instead; which views still read the column
+- files-type-column-width.md: files.type is four characters wide, so long extensions are stored cut (webmanifest as webm); the file manager, picker and image editor lists check the name; which views still read the column
 - filter-on-form-data-rows.md: A filter on a submitted form's answers is an EXISTS condition, never a join: a check box group keeps one form_data row per ticked box.
 - innodb-conversion-marker.md: How pg_innodb_convert_table() remembers a MyISAM-to-InnoDB conversion that died, and why an aborted table survives the next table's conversion
 - menu-tree-queries.md: Classic menus (get_menu_content(), get_menu_sequence()) read a menu once per request through pg_menu_tree(): two queries, printing order, children counted across menus, what the output must keep

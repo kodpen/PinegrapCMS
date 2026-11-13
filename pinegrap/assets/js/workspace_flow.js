@@ -14361,5 +14361,22 @@
         });
     }
 
-    window.PGWsFlow = { start: start, mount: mount, showAction: showAction, runFlag: runFlag, embed: embed, boxForm: boxForm, boxKind: boxKind, boxConfig: boxConfig, boxOffered: boxOffered };
+    // What a box does in a few words, as the canvas writes it under its
+    // name (metaOf()); boot as boxForm()'s.
+    function boxMeta(node, boot) {
+        if (!node || !KINDS[node.kind] || !window.PGWsKit) {
+            return '';
+        }
+
+        var scope = formBoot(boot);
+
+        scope.ui = {};
+        scope.state = { graph: { nodes: [node], edges: [] }, edit: false, flow: null, flows: state.flows || [], form: null };
+
+        return formScope(scope, function () {
+            return String(metaOf({ id: node.id, kind: node.kind, label: node.label || '', config: node.config || {} }) || '');
+        });
+    }
+
+    window.PGWsFlow = { start: start, mount: mount, showAction: showAction, runFlag: runFlag, embed: embed, boxForm: boxForm, boxKind: boxKind, boxConfig: boxConfig, boxOffered: boxOffered, boxMeta: boxMeta };
 })();

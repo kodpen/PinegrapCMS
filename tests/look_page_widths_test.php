@@ -35,7 +35,7 @@ function test_page_width_tokens_hold_the_decided_measures()
 {
 	$block = look_page_widths_test_block();
 
-	foreach (array('--pg-measure-edit: 1120px;', '--pg-measure-form: 760px;', '--pg-measure-status: 336px;', '--pg-measure-gap: 24px;', '--pg-measure-list-min: 1700px;', '--pg-measure-details: 20rem;') as $token) {
+	foreach (array('--pg-measure-edit: 1700px;', '--pg-measure-form: 1300px;', '--pg-measure-status: 376px;', '--pg-measure-gap: 24px;', '--pg-measure-list-min: 1700px;', '--pg-measure-details: 20rem;') as $token) {
 		pg_assert_contains($token, $block, $token);
 	}
 }

@@ -2031,37 +2031,6 @@ function pg_public_image_choice_ok($input, $stored, $types)
     return pg_public_image_choice_verdict($input, trim((string) $stored), $types, pg_public_image_row($input));
 }
 
-/**
- * The option a public picture picker appends for a stored value its list
- * lacks: marked "(file not found)" when no file carries it, "(visitors
- * cannot open it)" when its file is private, in the Recycle Bin, an
- * attachment or an ERP document. The value is never rewritten; the save
- * refuses it until another is chosen.
- *
- * @param string $value
- * @return string
- */
-function pg_public_image_stored_option($value)
-{
-    $value = (string) $value;
-
-    if (!pg_stored_file_needs_check($value)) {
-        return pg_stored_file_option($value, true);
-    }
-
-    $row = pg_public_image_row($value);
-
-    if ($row === null) {
-        return pg_stored_file_option($value, false);
-    }
-
-    $hidden = ((int) ($row['attachment'] ?? 0) !== 0) || ((string) ($row['erp_doc_type'] ?? '') !== '') || empty($row['public']);
-
-    return $hidden
-        ? '<option value="' . h($value) . '" selected="selected">' . h($value) . ' ' . lang('(visitors cannot open it)') . '</option>'
-        : pg_stored_file_option($value, true);
-}
-
 // The width of the name columns the File and Catalog Manager and the folder
 // screens write: folder.folder_name, page.page_name, products.name,
 // product_groups.name and product_groups.short_description are varchar(100).

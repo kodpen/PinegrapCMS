@@ -5,7 +5,7 @@ module: picker
 ---
 
 ## What is the field?
-- `pg_picker_field($kind, $name, $value, $options)` (`includes/fn/picker.php`), the dialog's other face (`picker-dialog.md`). PK5 of `plans/one-picker.md`, PR #8751; it delivers F3 of the search plan.
+- `pg_picker_field($kind, $name, $value, $options)` (`includes/fn/picker.php`), the dialog's other face (`picker-dialog.md`). PR #8751 (`picker-overview.md`); it took the place of a "Choose from File Manager" button.
 - A row: a box with the chosen value's picture (2.25rem), its name and a meta line (folder path, W × H, size), clear (×) and a caret; Browse… beside it opens the dialog on the value, or on the typed text.
 - The value is posted from a hidden input with the field's name (`data-pg-picker-value`); the text input carries the id the label names (`role="combobox"`). A pick fires `change` on the hidden input.
 

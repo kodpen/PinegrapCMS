@@ -4,9 +4,9 @@ description: The LB1b hand trial: a Legacy design whose theme loads Materialize,
 ---
 
 ## What was tried?
-- A sandbox fixture only, nothing added to the product (`plans/legacy-bootstrap-helper-rules.md`): two classic styles on english_default with one head (Materialize 1.0.0 from npm, `livesite.src.css`, a small theme file as the styles' own Theme file) and a Materialize landing page in the body. They formed a set and moved by the normal run into "material-about set" (framework `legacy`, 2 pages, 6 parts, asset rows `materialize.min.css`, `materialize.min.js`, the `M.AutoInit()` line).
+- A sandbox fixture only, nothing added to the product (`legacy-bootstrap-rules.md`): two classic styles on english_default with one head (Materialize 1.0.0 from npm, `livesite.src.css`, a small theme file as the styles' own Theme file) and a Materialize landing page in the body. They formed a set and moved by the normal run into "material-about set" (framework `legacy`, 2 pages, 6 parts, asset rows `materialize.min.css`, `materialize.min.js`, the `M.AutoInit()` line).
 - The page "material-home" in Playwright, 1280×800 and 390×844, deviceScaleFactor 1. Trial column: 5.3.8's sheet printed before the design's rows (where a `bootstrap5` design prints its framework), its bundle at the end, the body through `pg_lbs_html()` (LB2). Nothing saved.
-- Pictures, Legacy left: `plans/legacy-bootstrap/lb1b-materialize-wide.png` (half size), `lb1b-materialize-phone.png`. The Material Icons font is offline in the sandbox: both columns show the icon names as text.
+- Pictures, Legacy left: `legacy-bootstrap/lb1b-materialize-wide.png` (half size), `lb1b-materialize-phone.png`. The Material Icons font is offline in the sandbox: both columns show the icon names as text.
 
 ## Which names do both frameworks own?
 - Materialize 1.0.0 and 5.3.8 both define 22 names: `active`, `badge`, `breadcrumb`, `btn`, `card`, `card-title`, `carousel`, `carousel-item`, `clearfix`, `col`, `container`, `disabled`, `modal`, `modal-content`, `modal-footer`, `pagination`, `progress`, `rounded`, `row`, `small`, `text-primary`, `toast`.
@@ -25,4 +25,4 @@ description: The LB1b hand trial: a Legacy design whose theme loads Materialize,
 
 ## What does it mean for the helper?
 - On a Materialize design the helper changes nothing useful and breaks two things: 5.3.8's grid rules under Materialize's markup, and the sidenav's data attribute. The rule until the owner answers holds: run only where the classic framework sheet is Bootstrap 3, found by the asset row, not by class names.
-- Asked of the owner with the pictures: what the helper does on such a design (`plans/legacy-bootstrap-helper-rules.md`).
+- Asked of the owner with the pictures: what the helper does on such a design (`legacy-bootstrap-rules.md`).

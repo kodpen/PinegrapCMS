@@ -10,8 +10,7 @@
  * its order, a line between its parts), the starts of the chosen area as
  * cards to choose one from, a search over every area's starts, and the
  * optional "Only when" row, whose conditions become condition boxes after
- * the start (ws_flow_quick_graph()). A later stage hangs itself on
- * window.PGWsFlowQuick.stages under its key; Next leads to it.
+ * the start (ws_flow_quick_graph()).
  *
  * The second stage: the steps chosen so far in a row, the recipes that fit
  * the start (while no step is chosen) and every step kind the person may
@@ -20,9 +19,19 @@
  * and the steps before it, so it writes in their values; "One more step"
  * returns to the kinds.
  *
+ * The third stage, the summary: the start and the steps in order, a
+ * condition's or loop's steps indented under it, each moved, put into the
+ * condition or loop above it or taken out, or opened in its setting; the
+ * flow's name and "Start working when saved". It sends the choices to
+ * ws_flow_quick_setup, which makes a normal draft, and hands what it made
+ * to the opener once the dialog has closed.
+ *
  * window.PGWsFlowQuick.open(kit, quick, options) opens the dialog: kit is
  * window.PGWsKit, quick the catalogue ws_flow_js_config() serves as
- * flows.quick, options.operators the comparisons' labels (key => label).
+ * flows.quick, options.operators the comparisons' labels (key => label),
+ * options.home the channel a new flow is made in, options.onDone called
+ * with { flow, published, publish_error, open } once the flow is made (else
+ * the Flows screen opens on it).
  * window.PGWsFlowQuick.pure holds the functions that read the catalogue and
  * the choices without the page (tests/workspace_flow_quick_js_test.php).
  *
@@ -46,8 +55,7 @@
     // The comparisons that take no value.
     var BARE = ['empty', 'not_empty'];
 
-    // The stages in their order, each with its label; the first is drawn
-    // here.
+    // The stages in their order, each with its label.
     var STAGES = ['start', 'steps', 'summary'];
     var STAGE_LABELS = { start: 'fl_quick_stage_start', steps: 'fl_quick_stage_steps', summary: 'fl_quick_stage_summary' };
 
@@ -228,6 +236,131 @@
         return out.concat(recipe ? copy(recipe.steps) : []);
     }
 
+    // Where a step is: the list that holds it, its place there, the steps
+    // holding it (outermost first); null for none.
+    function placeOf(steps, id, parents) {
+        var list = Array.isArray(steps) ? steps : [];
+
+        parents = parents || [];
+
+        for (var index = 0; index < list.length; index++) {
+            if (list[index].id === id) {
+                return { list: list, index: index, step: list[index], parents: parents };
+            }
+
+            var inner = placeOf(list[index].steps, id, parents.concat([list[index]]));
+
+            if (inner) {
+                return inner;
+            }
+        }
+
+        return null;
+    }
+
+    // How deep a step's own held steps go, 1 for none.
+    function depthOf(step) {
+        return 1 + (step.steps || []).reduce(function (most, inner) {
+            return Math.max(most, depthOf(inner));
+        }, 0);
+    }
+
+    function holdsLoop(step) {
+        return (step.kind === 'for_each') || (step.steps || []).some(holdsLoop);
+    }
+
+    // What a step may do in the Summary: move up or down among its
+    // siblings, go into the condition or loop just above it (as
+    // ws_flow_quick_steps_read() takes it: within the depth, no loop in a
+    // loop), or come out of the one holding it.
+    function moves(steps, id, depth) {
+        var at = placeOf(steps, id);
+        var into = at && (at.index > 0) ? at.list[at.index - 1] : null;
+        var held = at ? at.parents.concat(into ? [into] : []) : [];
+
+        return {
+            up: !!at && (at.index > 0),
+            down: !!at && (at.index < at.list.length - 1),
+            into: !!into && ((into.kind === 'condition') || (into.kind === 'for_each'))
+                && (at.parents.length + 1 + depthOf(at.step) <= (depth || 3))
+                && !(holdsLoop(at.step) && held.some(function (step) { return step.kind === 'for_each'; })),
+            out: !!at && (at.parents.length > 0)
+        };
+    }
+
+    // Moves a step (up, down, into, out) when moves() allows it.
+    function move(steps, id, how, depth) {
+        var at = placeOf(steps, id);
+
+        if (!at || !moves(steps, id, depth)[how]) {
+            return false;
+        }
+
+        at.list.splice(at.index, 1);
+
+        if ((how === 'up') || (how === 'down')) {
+            at.list.splice(at.index + ((how === 'up') ? -1 : 1), 0, at.step);
+        } else if (how === 'into') {
+            var holder = at.list[at.index - 1];
+
+            holder.steps = Array.isArray(holder.steps) ? holder.steps : [];
+            holder.steps.push(at.step);
+        } else {
+            var parent = at.parents[at.parents.length - 1];
+            var outer = placeOf(steps, parent.id);
+
+            outer.list.splice(outer.index + 1, 0, at.step);
+        }
+
+        return true;
+    }
+
+    // Takes a step out; the steps it held take its place.
+    function remove(steps, id) {
+        var at = placeOf(steps, id);
+
+        if (!at) {
+            return false;
+        }
+
+        Array.prototype.splice.apply(at.list, [at.index, 1].concat(at.step.steps || []));
+
+        return true;
+    }
+
+    // The steps in their order with their depth, held ones after their box.
+    function rows(steps, depth) {
+        depth = depth || 0;
+
+        return (Array.isArray(steps) ? steps : []).reduce(function (out, step) {
+            return out.concat([{ step: step, depth: depth }], rows(step.steps, depth + 1));
+        }, []);
+    }
+
+    // A loop with no step inside, which the server refuses.
+    function emptyLoop(steps) {
+        return flat(steps).filter(function (step) {
+            return (step.kind === 'for_each') && !(step.steps || []).length;
+        })[0] || null;
+    }
+
+    // What the dialog sends to ws_flow_quick_setup.
+    function sent(quick, chosen, options) {
+        var picked = choices(quick, chosen);
+
+        if (!picked) {
+            return null;
+        }
+
+        options = options || {};
+        picked.steps = sentSteps(chosen.steps);
+        picked.name = String(chosen.name || '').trim().slice(0, 160);
+        picked.channel_id = parseInt(options.home, 10) || 0;
+        picked.publish = options.publish ? 1 : 0;
+
+        return picked;
+    }
+
     // How many boxes the steps place: a loop's End box is one more.
     function boxCount(steps) {
         return flat(steps).reduce(function (count, step) {
@@ -311,6 +444,13 @@
         boxCount: boxCount,
         sentSteps: sentSteps,
         graphOf: graphOf,
+        placeOf: placeOf,
+        moves: moves,
+        move: move,
+        remove: remove,
+        rows: rows,
+        emptyLoop: emptyLoop,
+        sent: sent,
         fold: fold,
         firstArea: firstArea,
         areaOfStart: areaOfStart,
@@ -343,6 +483,8 @@
         var cancel = K.button('pg-button pg-button-quiet', t('fl_quick_cancel'));
         var next = K.button('pg-button pg-button-fill', t('fl_quick_next'));
         var more = K.button('pg-button pg-button-quiet d-none', t('fl_quick_more'), 'bi-plus-lg');
+        var canvas = K.button('pg-button pg-button-quiet d-none', t('fl_quick_open_canvas'), 'bi-diagram-3');
+        var save = K.button('pg-button pg-button-fill d-none', t('fl_quick_start_flow'), 'bi-play-fill');
 
         modal.id = 'wsf-quick';
         modal.tabIndex = -1;
@@ -374,7 +516,9 @@
         foot.appendChild(hint);
         foot.appendChild(cancel);
         foot.appendChild(more);
+        foot.appendChild(canvas);
         foot.appendChild(next);
+        foot.appendChild(save);
         modal.appendChild(head);
         modal.appendChild(stages);
         modal.appendChild(body);
@@ -384,6 +528,8 @@
         back.addEventListener('click', function () { go(-1); });
         next.addEventListener('click', function () { go(1); });
         more.addEventListener('click', function () { oneMore(); });
+        canvas.addEventListener('click', function () { finish(true); });
+        save.addEventListener('click', function () { finish(false); });
 
         pgUI.dialog.on(modal, 'hidden', function () {
             var done = ui.state && ui.state.onClose;
@@ -396,12 +542,10 @@
             }
         });
 
-        return { modal: modal, body: body, stages: stages, back: back, next: next, more: more, hint: hint, form: null, state: null };
+        return { modal: modal, body: body, stages: stages, back: back, next: next, more: more, canvas: canvas, save: save, hint: hint, form: null, state: null };
     }
 
-    // The stage the dialog shows, and the next one when it is drawn here
-    // or its script is there: a stage a later script draws is skipped
-    // until then.
+    // The stage the dialog shows, and the next one.
     function stageIndex() {
         return STAGES.indexOf(ui.state.stage);
     }
@@ -409,7 +553,7 @@
     function nextStage() {
         var at = stageIndex() + 1;
 
-        return ((at < STAGES.length) && ((STAGES[at] === 'steps') || window.PGWsFlowQuick.stages[STAGES[at]])) ? STAGES[at] : '';
+        return (at < STAGES.length) ? STAGES[at] : '';
     }
 
     // May the dialog go on from the stage it is on: a start chosen, and on
@@ -423,9 +567,11 @@
     function go(step) {
         var state = ui.state;
 
-        if (!state) {
+        if (!state || state.busy) {
             return;
         }
+
+        state.error = '';
 
         if (step > 0) {
             var to = nextStage();
@@ -435,10 +581,10 @@
             }
 
             state.stage = to;
-            state.at = (to === 'steps') ? (state.chosen.steps.length ? 0 : -1) : state.at;
-        } else if ((state.stage === 'steps') && (state.at === -1) && state.chosen.steps.length) {
+            state.at = (to === 'steps') ? (state.chosen.steps.length ? state.chosen.steps[0].id : '') : state.at;
+        } else if ((state.stage === 'steps') && (state.at === '') && state.chosen.steps.length) {
             // Back from the kinds shows the last step chosen.
-            state.at = state.chosen.steps.length - 1;
+            state.at = flat(state.chosen.steps).slice(-1)[0].id;
         } else if (stageIndex() > 0) {
             state.stage = STAGES[stageIndex() - 1];
         }
@@ -453,7 +599,7 @@
 
         Array.prototype.forEach.call(ui.stages.children, function (item, index) {
             var key = STAGES[index];
-            var number = (state.at === -1) ? state.chosen.steps.length + 1 : state.at + 1;
+            var number = numberOf(state.at);
 
             item.lastChild.textContent = t(STAGE_LABELS[key]) + (((key === 'steps') && (index === at)) ? ' · ' + t('fl_quick_step_n', number) : '');
             item.classList.toggle('is-done', index < at);
@@ -476,7 +622,7 @@
         } else if (state.stage === 'steps') {
             drawSteps();
         } else {
-            window.PGWsFlowQuick.stages[state.stage].draw(ui.body, state, K);
+            drawSummary();
         }
 
         updateNext();
@@ -487,9 +633,15 @@
 
         ui.next.classList.toggle('d-none', nextStage() === '');
         ui.next.disabled = !ready();
-        ui.more.classList.toggle('d-none', (state.stage !== 'steps') || (state.at === -1));
+        ui.more.classList.toggle('d-none', (state.stage !== 'steps') || (state.at === ''));
         ui.more.disabled = !roomFor('');
         ui.more.title = ui.more.disabled ? t('fl_quick_too_many', limitOf('boxes', 60)) : '';
+        ui.canvas.classList.toggle('d-none', state.stage !== 'summary');
+        ui.save.classList.toggle('d-none', state.stage !== 'summary');
+        ui.canvas.disabled = state.busy;
+        ui.save.disabled = state.busy || !state.chosen.steps.length;
+        ui.save.lastChild.textContent = state.chosen.publish ? t('fl_quick_start_flow') : t('fl_quick_save_flow');
+        ui.back.disabled = state.busy;
     }
 
     // Whether one more box of the kind fits: the start, the steps and it, a
@@ -618,7 +770,7 @@
 
                 // Another start reads other values: the conditions go.
                 if (state.chosen.start !== start.key) {
-                    state.chosen = { start: start.key, config: {}, only_when: [], steps: [] };
+                    state.chosen = { start: start.key, config: {}, only_when: [], steps: [], name: '', publish: true };
                 }
 
                 Array.prototype.forEach.call(group.querySelectorAll('.wsf-quick-card'), function (item) {
@@ -780,35 +932,47 @@
         });
     }
 
+    // The place of a step among all of them, 1 first; the place after the
+    // last while a kind is chosen.
+    function numberOf(id) {
+        var all = flat(ui.state.chosen.steps);
+        var at = all.map(function (step) { return step.id; }).indexOf(id);
+
+        return (at === -1) ? all.length + 1 : at + 1;
+    }
+
     function drawSteps() {
         var state = ui.state;
         var pane = el('div', 'wsf-quick-steps');
+        var at = placeOf(state.chosen.steps, state.at);
+
+        state.at = at ? state.at : '';
 
         if (state.chosen.steps.length) {
             pane.appendChild(drawTrail());
         }
 
-        if (state.at === -1) {
+        if (!at) {
             drawKinds(pane);
         } else {
-            drawStep(pane, state.chosen.steps[state.at]);
+            drawStep(pane, at.step);
         }
 
         ui.body.appendChild(pane);
     }
 
-    // The steps chosen so far, one after the other: each opens its setting;
-    // the last place is the step being chosen.
+    // The steps chosen so far, in their order (held ones after their box):
+    // each opens its setting; the last place is the step being chosen.
     function drawTrail() {
         var state = ui.state;
         var trail = el('ol', 'wsf-quick-trail');
 
         trail.setAttribute('aria-label', t('fl_quick_steps_chosen'));
 
-        state.chosen.steps.forEach(function (step, index) {
+        flat(state.chosen.steps).forEach(function (step, index) {
             var item = el('li', '');
             var go = K.button('wsf-quick-trail-step', '');
-            var on = index === state.at;
+            var on = step.id === state.at;
 
             go.appendChild(el('span', 'wsf-quick-trail-n', String(index + 1)));
             go.appendChild(kindTile(step.kind));
@@ -820,7 +984,7 @@
             }
 
             go.addEventListener('click', function () {
-                state.at = index;
+                state.at = step.id;
                 draw();
                 focusIn('.wsf-quick-trail-step.is-active');
             });
@@ -828,12 +992,12 @@
             trail.appendChild(item);
         });
 
-        if (state.at === -1) {
+        if (state.at === '') {
             var next = el('li', 'wsf-quick-trail-new');
 
             next.setAttribute('aria-current', 'step');
             next.appendChild(K.icon('bi-plus-lg'));
-            next.appendChild(document.createTextNode(' ' + t('fl_quick_step_n', state.chosen.steps.length + 1)));
+            next.appendChild(document.createTextNode(' ' + t('fl_quick_step_n', numberOf(''))));
             trail.appendChild(next);
         }
 
@@ -873,7 +1037,7 @@
                 card.appendChild(chain);
                 card.addEventListener('click', function () {
                     state.chosen.steps = fromRecipe(recipe, state.chosen.steps);
-                    state.at = 0;
+                    state.at = state.chosen.steps.length ? state.chosen.steps[0].id : '';
                     draw();
                     focusIn('.wsf-quick-trail-step.is-active');
                 });
@@ -924,7 +1088,7 @@
 
         state.chosen.steps.push(step);
         step.config = (flow && flow.boxConfig) ? flow.boxConfig(kind, graphOf(state.quick, state.chosen, firstOut)) : {};
-        state.at = state.chosen.steps.length - 1;
+        state.at = step.id;
         draw();
         focusIn('.wsf-quick-step-head h3');
     }
@@ -939,22 +1103,26 @@
         var state = ui.state;
         var head = el('div', 'wsf-quick-step-head');
         var title = el('h3', 'pg-title-status', kindOf(step.kind).name);
-        var remove = K.button('pg-button pg-button-quiet pg-button-sm', t('fl_quick_remove_step'), 'bi-trash');
+        var drop = K.button('pg-button pg-button-quiet pg-button-sm', t('fl_quick_remove_step'), 'bi-trash');
         var host = el('div', 'wsf-quick-form');
         var flow = window.PGWsFlow;
 
         title.tabIndex = -1;
         head.appendChild(kindTile(step.kind));
         head.appendChild(title);
-        head.appendChild(remove);
+        head.appendChild(drop);
         pane.appendChild(head);
         pane.appendChild(host);
 
-        remove.addEventListener('click', function () {
-            state.chosen.steps.splice(state.at, 1);
-            state.at = state.chosen.steps.length ? Math.min(state.at, state.chosen.steps.length - 1) : -1;
+        drop.addEventListener('click', function () {
+            var all = flat(state.chosen.steps);
+            var place = all.indexOf(step);
+
+            remove(state.chosen.steps, step.id);
+            all = flat(state.chosen.steps);
+            state.at = all.length ? all[Math.min(place, all.length - 1)].id : '';
             draw();
-            focusIn(state.at === -1 ? '.wsf-quick-act' : '.wsf-quick-trail-step.is-active');
+            focusIn(state.at === '' ? '.wsf-quick-act' : '.wsf-quick-trail-step.is-active');
         });
 
         ui.form = (flow && flow.boxForm) ? flow.boxForm(host, {
@@ -973,6 +1141,266 @@
         }) : null;
     }
 
+    // ── The third stage: the summary ────────────────────────────────────
+
+    // The flow as it will be made: the start with its "Only when" lines,
+    // the steps in order (a condition's or a loop's indented under it), each
+    // moved, put into the condition or loop above it, taken out, or changed
+    // with its own setting; the flow's name and whether it starts working.
+    function drawSummary() {
+        var state = ui.state;
+        var start = startOf(state.quick, state.chosen.start);
+        var pane = el('div', 'wsf-quick-steps');
+        var heading = el('h3', 'pg-title-status wsf-quick-lead', t('fl_quick_ready'));
+        var line = el('ol', 'wsf-quick-line');
+        var depth = limitOf('depth', 3);
+
+        heading.tabIndex = -1;
+        pane.appendChild(heading);
+        pane.appendChild(el('p', 'pg-text-2 wsf-quick-lead-sub', t('fl_quick_ready_help')));
+        line.setAttribute('aria-label', t('fl_quick_stage_steps'));
+
+        var area = areas(state.quick).filter(function (item) { return item.key === areaOfStart(state.quick, start.key); })[0];
+        var startTile = el('span', 'pg-icon-tile pg-icon-tile-lg');
+
+        startTile.appendChild(K.icon(area ? area.icon : 'bi-lightning'));
+        line.appendChild(summaryLine(startTile, start.label, whenLines(start), 0, [
+            tool('bi-pencil', t('fl_quick_change_start'), 'start', function () {
+                state.stage = 'start';
+                draw();
+            })
+        ]));
+
+        rows(state.chosen.steps).forEach(function (row) {
+            var step = row.step;
+            var can = moves(state.chosen.steps, step.id, depth);
+            var name = step.label || kindOf(step.kind).name;
+            var shift = function (how) {
+                return function () {
+                    move(state.chosen.steps, step.id, how, depth);
+                    drawAgain(step.id, how);
+                };
+            };
+            var tools = [];
+
+            if (can.up) {
+                tools.push(tool('bi-arrow-up', t('fl_quick_move_up', name), 'up', shift('up')));
+            }
+
+            if (can.down) {
+                tools.push(tool('bi-arrow-down', t('fl_quick_move_down', name), 'down', shift('down')));
+            }
+
+            if (can.into) {
+                tools.push(tool('bi-arrow-return-right', t('fl_quick_move_into', name), 'into', shift('into')));
+            }
+
+            if (can.out) {
+                tools.push(tool('bi-arrow-return-left', t('fl_quick_move_out', name), 'out', shift('out')));
+            }
+
+            tools.push(tool('bi-pencil', t('fl_quick_change_step', name), 'edit', function () {
+                state.stage = 'steps';
+                state.at = step.id;
+                draw();
+                focusIn('.wsf-quick-step-head h3');
+            }));
+
+            var item = summaryLine(kindTile(step.kind, 'pg-icon-tile-lg'), name, [boxMeta(step)].filter(Boolean), row.depth, tools);
+
+            item.setAttribute('data-step', step.id);
+            line.appendChild(item);
+        });
+
+        pane.appendChild(line);
+
+        var add = K.button('pg-button pg-button-ghost pg-button-sm wsf-quick-add', t('fl_quick_add_step'), 'bi-plus-lg');
+
+        add.disabled = !roomFor('');
+        add.addEventListener('click', function () {
+            state.stage = 'steps';
+            state.at = '';
+            draw();
+            focusIn('.wsf-quick-lead');
+        });
+        pane.appendChild(add);
+        pane.appendChild(nameRow(start));
+
+        if (state.error) {
+            var error = el('div', 'alert theme-danger wsf-quick-error', state.error);
+
+            error.setAttribute('role', 'alert');
+            pane.appendChild(error);
+        }
+
+        ui.body.appendChild(pane);
+    }
+
+    // One line of the summary: its tile, title, the lines under it, its
+    // depth and its buttons.
+    function summaryLine(tile, title, lines, depth, tools) {
+        var item = el('li', 'wsf-quick-event');
+        var words = el('div', 'wsf-quick-event-words');
+        var bar = el('div', 'wsf-quick-event-tools');
+
+        item.style.setProperty('--wsf-quick-depth', String(depth));
+        words.appendChild(el('span', 'wsf-quick-card-title', title));
+        lines.forEach(function (text) {
+            words.appendChild(el('span', 'pg-text-meta wsf-quick-card-line', text));
+        });
+        tools.forEach(function (button) {
+            bar.appendChild(button);
+        });
+        item.appendChild(tile);
+        item.appendChild(words);
+        item.appendChild(bar);
+
+        return item;
+    }
+
+    function tool(iconName, label, how, onClick) {
+        var button = K.button('pg-icon-button pg-icon-button-sm', '', iconName, label);
+
+        button.setAttribute('data-how', how);
+        button.addEventListener('click', onClick);
+
+        return button;
+    }
+
+    // Drawn again after a move, the focus on the same button of the step
+    // moved, or its pencil when that button is gone.
+    function drawAgain(id, how) {
+        draw();
+
+        var item = ui.body.querySelector('[data-step="' + id + '"]');
+        var target = item ? (item.querySelector('[data-how="' + how + '"]') || item.querySelector('[data-how="edit"]')) : null;
+
+        if (target) {
+            target.focus();
+        }
+    }
+
+    // The "Only when" conditions in words.
+    function whenLines(start) {
+        var state = ui.state;
+        var operators = state.operators || {};
+
+        return onlyWhen(state.quick, start, state.chosen.only_when).map(function (row) {
+            var field = fieldOf(start, row.field);
+
+            return t('fl_quick_only_when_line', [field ? field.label : row.field, operators[row.op] || row.op, row.value].join(' ').trim());
+        });
+    }
+
+    // What a step does in a few words, as the canvas's box says it.
+    function boxMeta(step) {
+        var flow = window.PGWsFlow;
+
+        return (flow && flow.boxMeta) ? flow.boxMeta({ id: step.id, kind: step.kind, label: step.label, config: step.config }) : '';
+    }
+
+    // The flow's name and whether it starts working once made.
+    function nameRow(start) {
+        var state = ui.state;
+        var row = el('div', 'wsf-quick-name');
+        var named = el('div', '');
+        var label = el('label', 'pg-field-label', t('fl_quick_name'));
+        var input = el('input', 'pg-input');
+        var tick = el('label', 'wsf-quick-publish');
+        var knob = el('span', 'switch');
+        var box = el('input', '');
+
+        input.id = 'wsf-quick-name';
+        input.type = 'text';
+        input.maxLength = 160;
+        input.value = state.chosen.name;
+        input.placeholder = start.label;
+        label.htmlFor = input.id;
+        input.addEventListener('input', function () {
+            state.chosen.name = input.value;
+        });
+        box.type = 'checkbox';
+        box.setAttribute('role', 'switch');
+        box.checked = state.chosen.publish;
+        box.addEventListener('change', function () {
+            state.chosen.publish = box.checked;
+            updateNext();
+        });
+        knob.appendChild(box);
+        tick.appendChild(knob);
+        tick.appendChild(document.createTextNode(' ' + t('fl_quick_publish')));
+        named.appendChild(label);
+        named.appendChild(input);
+        row.appendChild(named);
+        row.appendChild(tick);
+
+        return row;
+    }
+
+    // Makes the flow (ws_flow_quick_setup): to open it on the canvas as a
+    // draft, or to save it, started when chosen. The dialog closes first;
+    // the opener then gets { flow, published, publish_error, open }.
+    function finish(open) {
+        var state = ui.state;
+
+        if (!state || state.busy || (state.stage !== 'summary')) {
+            return;
+        }
+
+        var loop = emptyLoop(state.chosen.steps);
+
+        if (loop) {
+            state.error = t('fl_quick_loop_empty', loop.label || kindOf(loop.kind).name);
+            drawSummary.again();
+            return;
+        }
+
+        var data = sent(state.quick, state.chosen, { home: state.home, publish: !open && state.chosen.publish });
+
+        state.busy = true;
+        state.error = '';
+        updateNext();
+
+        K.api('ws_flow_quick_setup', data).then(function (answer) {
+            var done = state.onDone;
+            var result = { flow: answer.flow, published: !!answer.published, publish_error: answer.publish_error || '', open: open };
+
+            state.busy = false;
+
+            return Promise.resolve(pgUI.dialog.hide(ui.modal)).then(function () {
+                if (done) {
+                    done(result);
+                } else if (result.flow && result.flow.id) {
+                    window.location.href = 'workspace_flows.php?flow=' + encodeURIComponent(result.flow.id);
+                }
+            });
+        }).catch(function (error) {
+            if (ui.state !== state) {
+                return;
+            }
+
+            state.busy = false;
+            state.error = (error && error.message) || t('fl_quick_failed');
+            drawSummary.again();
+        });
+    }
+
+    // The summary drawn again with its error, the focus on it.
+    drawSummary.again = function () {
+        if (!ui.state || (ui.state.stage !== 'summary')) {
+            return;
+        }
+
+        draw();
+
+        var error = ui.body.querySelector('.wsf-quick-error');
+
+        if (error) {
+            error.tabIndex = -1;
+            error.focus();
+        }
+    };
+
     function closeForm() {
         if (ui && ui.form) {
             ui.form.destroy();
@@ -988,7 +1416,7 @@
             return;
         }
 
-        state.at = -1;
+        state.at = '';
         draw();
         focusIn('.wsf-quick-lead');
     }
@@ -1002,7 +1430,7 @@
     }
 
     // Opens the dialog on its first stage. options: operators (key =>
-    // label), start (a start's key to begin on), onClose.
+    // label), start (a start's key to begin on), home, onDone, onClose.
     function open(kit, quick, options) {
         if (!kit || !quick || !areas(quick).length) {
             return false;
@@ -1023,9 +1451,14 @@
             stage: 'start',
             area: chosen ? areaOfStart(quick, chosen) : firstArea(quick),
             query: '',
-            // The step whose setting is shown, -1 while a kind is chosen.
-            at: -1,
-            chosen: { start: chosen, config: {}, only_when: [], steps: [] }
+            // The id of the step whose setting is shown, '' while a kind is
+            // chosen.
+            at: '',
+            home: parseInt(options.home, 10) || 0,
+            onDone: (typeof options.onDone === 'function') ? options.onDone : null,
+            busy: false,
+            error: '',
+            chosen: { start: chosen, config: {}, only_when: [], steps: [], name: '', publish: true }
         };
 
         draw();
@@ -1037,11 +1470,9 @@
     window.PGWsFlowQuick = {
         open: open,
         pure: pure,
-        // A later stage's script: { draw(body, state, kit) }.
-        stages: {},
-        // The choices made so far, for a later stage.
+        // The choices made so far, as the dialog would send them.
         choices: function () {
-            return ui && ui.state ? choices(ui.state.quick, ui.state.chosen) : null;
+            return ui && ui.state ? sent(ui.state.quick, ui.state.chosen, { home: ui.state.home, publish: ui.state.chosen.publish }) : null;
         }
     };
 }());

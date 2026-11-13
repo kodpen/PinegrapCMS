@@ -336,7 +336,7 @@ function ws_channel_member_seen($can_manage, $user_ids, $now)
  *
  * @param array $row ws_channel_agent_shape()
  * @param int   $now
- * @return array id, handle, name, kind, assistant, active, wake, seen, seen_state ('on', 'off', 'late', 'ready')
+ * @return array id, handle, name, role (its label, '' for none), kind, assistant, active, wake, seen, seen_state ('on', 'off', 'late', 'ready')
  */
 function ws_channel_member_agent($row, $now)
 {
@@ -375,6 +375,7 @@ function ws_channel_member_agent($row, $now)
         'id'         => (int) ($agent['id'] ?? 0),
         'handle'     => (string) ($agent['handle'] ?? ''),
         'name'       => (string) ($agent['name'] ?? ''),
+        'role'       => ws_agent_role_label($agent['role'] ?? ''),
         'kind'       => $kind,
         'assistant'  => ($kind === 'model'),
         'active'     => ((string) ($agent['status'] ?? '') === 'active'),
