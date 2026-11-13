@@ -44,6 +44,7 @@ if (!$_POST) {
         'business_address_1', 'business_address_2', 'business_city', 'business_state',
         'business_zip_code', 'business_phone', 'business_fax', 'business_country',
         'home_phone', 'mobile_phone', 'tax_number', 'tax_office'));
+    pg_liveform_salutation_values($liveform, array('salutation'));
 
     // A designed page (the account_profile widget) names itself in
     // return_to and lists the controls it drew in pg_controls: only those

@@ -106,3 +106,21 @@ function test_order_quick_edit_cell_carries_the_status_to_open_with()
 	pg_assert_contains(' data-pg-edit="status" data-pg-edit-id="12"', $cell, 'field and order');
 	pg_assert_contains(' data-pg-edit-value="exported"', $cell, 'the stored status');
 }
+
+// The list's status change leaves an Audit trail line as the exports do,
+// written only once the guarded UPDATE has landed: from the status the order
+// had to the one it has now (#9138). The write needs a database, so the
+// shape is pinned in the source.
+function test_order_quick_edit_status_change_is_audited()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/ecommerce.php');
+	$start = strpos($source, 'function pg_order_quick_update(');
+	pg_assert_true($start !== false, 'pg_order_quick_update() is there');
+	$end = strpos($source, "\n}\n", $start);
+	$body = substr($source, $start, $end - $start);
+
+	$audit = strpos($body, "pg_audit('update', 'order', \$order_id, array('status' => \$previous), array('status' => (string) \$value), pg_audit_label_of('orders', \$order))");
+	pg_assert_true($audit !== false, 'an update line from the previous status to the new one');
+	pg_assert_true(strpos($body, 'if (!$written ||') < $audit, 'written after the guarded UPDATE landed');
+	pg_assert_same(1, substr_count($body, 'pg_audit('), 'one line per change');
+}

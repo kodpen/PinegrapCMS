@@ -3183,6 +3183,28 @@ function get_salutation_options()
         lang('Rev.') => 'Rev.'
     );
 }
+// A posted salutation as it is stored: one of the get_salutation_options()
+// values, trimmed, else ''. The forms draw a pick list, but a post can carry
+// any text, which would reach the order, the address book, the greetings and
+// the order exports.
+function pg_salutation_value($value)
+{
+    $value = is_string($value) ? trim($value) : '';
+
+    return in_array($value, get_salutation_options(), true) ? $value : '';
+}
+// pg_salutation_value() on a liveform's salutation fields, for a handler
+// that saves them; a field the post did not carry is left as it is.
+function pg_liveform_salutation_values($liveform, $fields)
+{
+    foreach ($fields as $field) {
+        $stored = $liveform->get_field($field);
+
+        if (is_array($stored) && array_key_exists('value', $stored)) {
+            $liveform->assign_field_value($field, pg_salutation_value($stored['value']));
+        }
+    }
+}
 function get_suffix_options()
 {
     return array(

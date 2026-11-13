@@ -143,3 +143,19 @@ function pg_order_export_mark_sql($order_id)
     return "UPDATE orders SET status = 'exported', " . pg_order_touch_sql()
         . " WHERE id = '" . (int) $order_id . "' AND status = 'complete'";
 }
+
+/**
+ * The WHERE condition of the orders a warehouse ships: complete and exported.
+ * A cancelled order, one whose status was lost ('', the old single-L
+ * cancellation) and a cart (incomplete) are left out. The ShipWorks feed
+ * counts and downloads by it, so a cancelled order never reaches ShipWorks as
+ * an order to ship; the shipping report and the sales reports take the same
+ * two statuses.
+ *
+ * @param string $column the status column, qualified as the query needs it
+ * @return string
+ */
+function pg_order_to_ship_sql($column = 'orders.status')
+{
+    return '(' . $column . " IN ('complete', 'exported'))";
+}
