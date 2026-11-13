@@ -167,5 +167,5 @@ function test_menu_items_screen_fits_a_phone()
 	pg_assert_contains('<th scope="col" class="d-none md:d-table-cell">\' . lang(\'Created\') . \'</th>', $source, 'Created header hidden below md');
 	pg_assert_contains('<th scope="col" class="d-none md:d-table-cell">\' . lang(\'Last Modified\') . \'</th>', $source, 'Last Modified header hidden below md');
 	pg_assert_same(4, substr_count($source, 'd-none md:d-table-cell'), 'both date headers and both date cells');
-	pg_assert_contains('<td class="align-middle text-break pg-cell-wrap">\' . h($link_to_value) . \'</td>', $source, 'a long address breaks inside its cell');
+	pg_assert_contains('<td class="align-middle text-break">\' . h($link_to_value) . \'</td>', $source, 'a long address breaks inside its cell');
 }

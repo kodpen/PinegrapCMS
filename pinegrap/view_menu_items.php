@@ -198,12 +198,12 @@ foreach ($menu_items as $menu_item) {
     // is the menu's order, so the table is plain: no sorting, no search.
     // Below md the two date columns step aside so the name and link keep the
     // width; an address has no spaces to wrap at, so it breaks inside its cell
-    // (kept at least .pg-cell-wrap wide) instead of widening the table. What
-    // still does not fit scrolls inside the card, never the whole page.
+    // (never narrower than the Link heading) instead of widening the table.
+    // What still does not fit scrolls inside the card, never the whole page.
     $output_rows .=
         '<tr>
             <td class="align-middle" style="padding-left: ' . (8 + $indentation_padding) . 'px"><a href="' . $output_link_url . '">' . h($menu_item['name']) . '</a></td>
-            <td class="align-middle text-break pg-cell-wrap">' . h($link_to_value) . '</td>
+            <td class="align-middle text-break">' . h($link_to_value) . '</td>
             <td class="align-middle">' . $output_security_check_mark . '</td>
             <td class="align-middle d-none md:d-table-cell">' . get_relative_time(array('timestamp' => $menu_item['created_timestamp'])) . $output_created_user . '</td>
             <td class="align-middle d-none md:d-table-cell">' . get_relative_time(array('timestamp' => $menu_item['last_modified_timestamp'])) . $output_last_modifier_user . '</td>
