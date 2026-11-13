@@ -6,7 +6,7 @@ description: Steps A10 and A11 of plans/agent-channel.md: an agent waits while t
 ## Which steps are there?
 - S under 400 product lines, M about 1,000; each step its tests and its memory topic in `workspace/`. The earlier steps: `agent-channel-steps-2.md`.
 
-- A10 (M) An agent waits while the message that asked it is being edited. `free`. Owner 2026-11-11, #8723 (`workflow/decisions-made-workspace-14.md`).
+- A10 (M) An agent waits while the message that asked it is being edited. Claimed; waits for the architect on its column (`ws_ai_requests.held_until`). Owner 2026-11-11, #8723 (`workflow/decisions-made-workspace-14.md`).
   - Today the request is made at once on send (`ws_message_ask_assistants()`) and the brief takes the words from the message when it is fetched (`agent_queue.php`): a saved edit reaches an agent that fetches after it, nothing holds an agent while the edit box is open, and one that already read keeps the words of before.
   - While the writer has the edit box of a message with an open request open, the browser tells the site and repeats it while they type. The mark ends on save, on cancel, or two minutes after its last beat. A message with no open request makes no call.
   - A held request is handed to nobody: left out of `GET /workspace/agent-requests`, `claim` 409, no knock, skipped by the site's own runners (`ws_ai_kick()`, Claude's queue). The line under the message: "Being edited, `@agent` is waiting".
