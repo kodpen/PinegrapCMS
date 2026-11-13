@@ -531,6 +531,7 @@
 - style-suggest.md: assets/js/pg_style_suggest.js: the lazy loader of the predictor and vocabulary, the element context, the light dropdown, the Attributes class field and the code view's class list on it
 - submitted-form-system-fields.md: Single record of submitted-form system fields (get_standard_fields_for_view), pg_sw_* helper functions, date format suffix and order_by_field for system widgets.
 - submitted-form-token-pitfalls.md: Pitfalls of submitted-form tokens in system widgets: single escape, single-pass replace, truncate before escape, submitted_form_info counters per page and who refreshes them on designed pages.
+- system-region-fill-once.md: A system widget placed twice on a classic page (side column and footer): each <system> tag is filled by its own render, so both copies get their own inline editing ids in the site's Edit mode
 - system-widget-bindings.md: System widget data flow via _bindings.* (text, src, href, action, eo_field, value, section, eo_visible_if, show_if) and _bindFormats, action bindings, href-bound UI rule, HTML token previews.
 - system-widget-change-checklist.md: Checklist when changing system widgets (legacy comparison, subgroup test, PHP/JS twins, three places for defaults, node --check, logged-out live check) plus the escape-$ rule in heredocs.
 - system-widget-fixes-2026-11.md: Row id suffix skips data-id/data-for, form list search cut by characters, custom form pattern slashes on the server, Check all tables counts a check that could not run
