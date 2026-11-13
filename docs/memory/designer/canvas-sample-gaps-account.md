@@ -8,4 +8,4 @@ description: CS0 census, account: what my account, the member forms, address boo
 
 ## What is left?
 - Links (`__set_password_url`, `__login_url` …) are addresses, drawn as `#`; nothing to see.
-- Bound pictures other than the avatar are the grey `[token]` box (CF4 of `plans/designer-canvas-faults.md`).
+- Bound pictures other than the avatar draw a sample photo at the node's box (`canvas-loop-as-published.md`, #9233).
