@@ -54,8 +54,9 @@
 - cart-default-quantity.md: A product added without a quantity box enters the cart with pg_product_default_quantity(), at least 1; new products store default_quantity 1.
 - cart-express-order-warnings.md: Why the cart and express order pages (built-in and custom layouts) and the plain-text receipt e-mail write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
 - cart-line-removal.md: How a line leaves or joins the cart: remove_order_item(), pg_cart_remove_line(), gift refusals, the emptied recipient, shipping, required products, a refused add making no recipient
+- cart-offer-code-refused.md: Special Offer Code box of the classic Shopping Cart and Express Order: a mistyped or not running code is refused and the order keeps the code already applied, with its discount (#9069)
 - cart-order-creation.md: When the visitor's order row is created (first real cart write, never a page view), why the designer cart and express order widgets create none on view, and which page they record as the cart page.
-- cart-posted-quantity.md: How the designer cart widget (cart_action.php) reads a posted quantity, on cart rows and in quick add: pg_cart_posted_quantity(), whole numbers only (#6803)
+- cart-posted-quantity.md: How storefront forms (cart, checkout, order form, product page, cart widget) read a typed quantity: pg_cart_posted_quantity(), site separators, "2,5" refused (#6803, #9068)
 - cart-product-form-file-field.md: Why the cart's product form has no file upload path: product forms cannot hold a file upload field and the cart form posts urlencoded; the file branch of the cart form renderer is unreachable
 - cart-quotes-api.md: Cart quotes in the external API (PR #3298): the five routes, orders scopes, dry run, the shared *_check() functions with the screens, the link answered once, the cart_quote.* webhook events
 - cart-quotes-screens.md: Cart quote list and new-quote form details: the products cell, New link confirmation, a deleted contact, quantity checks and redraw
@@ -92,7 +93,7 @@
 - eu-vat-checkout.md: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
 - exchange-rates-update.md: Update Exchange Rates (button and scheduled job) writes one Site Log line with the count, and a success notice only when a rate was written
 - express-order-field-labels.md: Express order widget's accessible names: labels follow the walker's shipping_<rid>_ renames, fallback aria-labels for the quantity, offer code and custom arrival date boxes (#4799)
-- express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
+- express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the checkout cart table's stacked layout below lg, its header row and the three places to update.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
 - express-order-recipient-tokens.md: Binding tokens available inside an Express Order recipient_loop_area (^^__recipient_*^^ text/href tokens) and how form inputs bind via eo_field.
 - express-order-script-language.md: The express order page's fetch() calls to api.php carry pg_lang on a translated page, built by one helper.
