@@ -593,15 +593,40 @@ div.edit_mode {
         -ms-user-select: auto;
         user-select: auto;
     }
-/* normalize input fields in pop up editor dialogs since some custom themes apply global styling to all imput fields that cke doesn't reset */
+/* The fields of CKEditor's dialogs on a site page (the inline editors of
+   Edit mode). A theme's rules for every input[type="text"] and select (a
+   width, a height, padding, a background, appearance: none) outrank the
+   editor's skin, so the skin's own values (moono-lisa dialog.css) are set
+   again here. An inherited width left a text field at the browser's default
+   157 px in a 450 px column and cut the Protocol select to "http:/". */
 input.cke_dialog_ui_input_text,
 select.cke_dialog_ui_input_select {
-    width: inherit !important;
-    height: inherit !important;
+    min-height: 28px !important;
     font-weight: inherit !important;
     margin: 0 !important;
-    padding: 0 !important;
     text-transform: none !important;
     letter-spacing: 0 !important;
+    background-color: #fff !important;
+    box-sizing: border-box !important;
+}
+
+input.cke_dialog_ui_input_text {
+    width: 100% !important;
+    height: auto !important;
+    padding: 4px 6px !important;
+}
+
+input.cke_dialog_ui_input_text:focus {
+    padding-left: 5px !important;
+}
+
+select.cke_dialog_ui_input_select {
+    width: calc(100% - 2px) !important;
+    height: 28px !important;
+    padding: 3px 3px 3px 6px !important;
+    background-image: none !important;
+    -webkit-appearance: menulist !important;
+    -moz-appearance: menulist !important;
+    appearance: auto !important;
 }
 .cke_editable.cke_editable_inline{outline:none !important}
