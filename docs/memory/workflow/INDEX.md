@@ -76,7 +76,7 @@
 - decisions-made-product-45.md: Decisions list, product part 45 (2026-11-11 on): the Kodpen API client goes on before its release keys exist; the api2 client branches leave in the next open version; the api2 server stays open
 - decisions-made-product-46.md: Decisions list, product part 46 (2026-11-12 on): a picture saved again from the Design Canvas shows at once; the Legacy helper after its census (#8942); a plan for the custom layouts
 - decisions-made-product-47.md: Decisions list, product part 47 (2026-11-12 on): WhatsApp as a channel, templates, offer codes (#8950); one messages area, campaign profiles turned into flows (#8961)
-- decisions-made-product-48.md: Decisions list, product part 48 (2026-11-12 on): no Legacy to Bootstrap help without Bootstrap 3 (#8967); the picker opens on a list of everything (#9070); real samples on the designer canvas (#9076)
+- decisions-made-product-48.md: Decisions list, product part 48 (2026-11-12 on): Legacy to Bootstrap helper (#8967), the picker's list of everything (#9070), designer canvas samples (#9076), WhatsApp marketing consent (#9087)
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
@@ -90,7 +90,7 @@
 - decisions-made-schema-14.md: Decisions list, schema part 14 (2026-11-09 on): a bundle's own back order choice (bundle_backorder); the workflow table bin and row numbers; the team replies right; agent token counts and limit
 - decisions-made-schema-15.md: Decisions list, schema part 15 (2026-11-10 on): ws_messages.via_client_id, ws_ai_requests.claimed_device_id, the Workspace mail screen's columns and ws_mail_reads, the image editor's largest upload
 - decisions-made-schema-16.md: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_html, kind mailbox on ws_channels, ws_agents.seen_at, ws_checks.app_id, ws_ai_requests.held_until for the edit hold
-- decisions-made-schema-17.md: Decisions list, schema part 17 (2026-11-12 on): the canvas-one tables ws_canvas_parts, ws_canvas_tables, ws_canvas_consents, via_message_id on table rows, ws_wtables.channel_id
+- decisions-made-schema-17.md: Decisions list, schema part 17 (2026-11-12 on): the canvas-one tables ws_canvas_parts, ws_canvas_tables, ws_canvas_consents, via_message_id on table rows, ws_wtables.channel_id, WhatsApp's tables
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1

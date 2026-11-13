@@ -22,6 +22,7 @@
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-assistant-apply-error.md: Plan (owner 2026-11-12, #8970): the designer Assistant's Apply answered with a PHP message instead of JSON; reproduce, fix the cause, JSON answers under errors, a readable message; steps DA1-DA3
+- designer-canvas-faults.md: Plan (owner 2026-11-13, #9104): round pictures drawn oval on the designer canvas, a picture that does not show, the card inside a loop (toolbar block, sample cards, editing); steps CF1-CF5
 - designer-canvas-real-samples.md: Plan (owner 2026-11-13, #9076): the designer canvas draws every bound value with a realistic sample instead of its label or an empty box; bands and chips stay on, tidy; steps CS0-CS5
 - designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): the components the designer canvas still draws as one closed block are listed, then opened into editable element trees; steps CB0-CB2
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
@@ -45,6 +46,7 @@
 - legacy-layouts-output-map.md: After LL1 (#8969, architect): a bootstrap5 design's page types get 5.3.8 names by mapping the system region's output per request, no converted copies; the rules LL2 and LL3 keep
 - look-widths-and-switch.md: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the details panel added beside, add and edit screens up to 1700 px, the switch with its thumb again; steps LW1-LW4
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- messages-area-decided.md: The architect's decisions on the proposals of MA0 and MA4 (#9081, #9083): the shell, the Sends list as a union with its measure, e-mail source, rights, the e-mail design page
 - messages-area-steps.md: Steps MA0-MA11 of the messages area plan (#8961): census, shell and tabs, one sends list, campaigns, e-mail bodies as pages, templates, channels, automatic sends, profiles into flows, incoming e-mail
 - messages-area.md: Plan (owner 2026-11-12, #8961): one messages area in place of My Campaigns: campaigns, automatic sends as flows, templates, one sends list, channels; e-mail bodies as pages; profiles become flows
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive

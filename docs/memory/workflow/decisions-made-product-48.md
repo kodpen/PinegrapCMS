@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-48
-description: Decisions list, product part 48 (2026-11-12 on): no Legacy to Bootstrap help without Bootstrap 3 (#8967); the picker opens on a list of everything (#9070); real samples on the designer canvas (#9076)
+description: Decisions list, product part 48 (2026-11-12 on): Legacy to Bootstrap helper (#8967), the picker's list of everything (#9070), designer canvas samples (#9076), WhatsApp marketing consent (#9087)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -22,3 +22,8 @@ description: Decisions list, product part 48 (2026-11-12 on): no Legacy to Boots
 
 ## Do loop bands and condition chips stay on the canvas? (owner, 2026-11-13, #9076)
 - Yes, always on as today; only their overlap and overflow are fixed. Asked between "only on the selected element", "always on, tidy" and "a toolbar switch", he chose "Hep açık, düzgün".
+
+## Which consent lets a marketing WhatsApp template go? (owner, 2026-11-13, #9087)
+- The number's stored SMS marketing consent (granted, no refusal there or in İYS), read again at the send. From WA10 the SMS consent box reads "SMS and WhatsApp" while WhatsApp is set up. Consents taken as "SMS" cover WhatsApp too: the option he chose said so.
+- Owner (2026-11-13): "SMS pazarlama izni sayılsın (Önerilen)". Not chosen: only consents given after WhatsApp is set up; a WhatsApp consent of its own.
+- Architect: a key for one recipient is a single-use `key_codes` row made at enqueue and kept in the queue row's payload; no schema.
