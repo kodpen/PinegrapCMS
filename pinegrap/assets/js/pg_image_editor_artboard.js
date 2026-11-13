@@ -654,11 +654,62 @@
         items[0].focus();
     };
 
-    // "From the site": the Files list of the sticker part (pictures and SVG
-    // files, the newest or by name) over the editor; a press imports one,
-    // or, given pick(file), hands that picture (no SVG) to it.
+    // The site's picker (pg_picker.js, kind of picker.php) over the editor,
+    // where the screen prints it with the panel's dialogs: a promise of the
+    // chosen file as M.pickedFile() gives it, or of null; the focus goes
+    // back to ret. null (no promise) where the picker is not on the screen
+    // (a site page in Edit mode), and the caller opens its own list.
+    Editor.prototype.sitePicker = function (kind, title, ret) {
+        var P = window.pgPicker;
+
+        if (!P || (typeof P.open !== 'function') || !window.pgUI || !document.getElementById('pg_picker_config')) {
+            return null;
+        }
+
+        return P.open({ kind: kind, title: title }).then(function (item) {
+            if (ret && ret.isConnected && (typeof ret.focus === 'function')) {
+                ret.focus();
+            }
+
+            return M.pickedFile(item);
+        }, function () {
+            return null;
+        });
+    };
+
+    // A file from Files imported: a picture as a picture layer, an SVG as
+    // an svg layer; or, given pick(file), handed to it.
+    Editor.prototype.importPicked = function (f, pick) {
+        if (pick) {
+            pick(f);
+            return;
+        }
+
+        this.toSelect();
+
+        if (f.svg) {
+            this.importSvgRequest({ file_id: f.id }, f.name);
+        } else {
+            this.addFilePicture(f);
+        }
+    };
+
+    // "From the site": the site's picker (pictures and SVG files, or only
+    // pictures given pick(file)); without it the Files list of the sticker
+    // part over the editor, the newest or by name. A choice is imported
+    // (importPicked()).
     Editor.prototype.openImportFiles = function (pick) {
         var self = this, st = this.importFiles, timer = null;
+        var picked = this.sitePicker((typeof pick === 'function') ? 'canvas_picture' : 'canvas_import', t('importSite'), (typeof pick === 'function') ? document.activeElement : this.importBtn);
+
+        if (picked) {
+            picked.then(function (f) {
+                if (f) {
+                    self.importPicked(f, (typeof pick === 'function') ? pick : null);
+                }
+            });
+            return;
+        }
 
         st.pick = (typeof pick === 'function') ? pick : null;
         var find = el('input', { type: 'search', class: 'pgie-input pgie-stkfind', value: st.search, placeholder: t('stickerFilesFind'), 'aria-label': t('stickerFilesFind') });
@@ -717,19 +768,7 @@
                 var pick = self.importFiles.pick;
 
                 self.closeConfirm();
-
-                if (pick) {
-                    pick(f);
-                    return;
-                }
-
-                self.toSelect();
-
-                if (f.svg) {
-                    self.importSvgRequest({ file_id: f.id }, f.name);
-                } else {
-                    self.addFilePicture(f);
-                }
+                self.importPicked(f, pick);
             } }, [
                 el('img', { src: f.url, alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' })
             ]));

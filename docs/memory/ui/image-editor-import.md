@@ -5,7 +5,8 @@ module: image_editor
 ---
 
 ## Where is Import?
-- A button before Save in the top bar (`topItems` of `pg_image_editor_artboard.js`) wherever the tools include Select (not on the mini bar or Optimise). Its menu: From this computer (a file picker, pictures and `.svg`) and, with the editor's API and not a callback save (`importApi()`), From the site: the Files list of the Sticker part in a box over the editor (`openImportFiles()`, `this.confirmBox`, so Escape closes it and gives the focus back to the button), searchable, SVG files included (`sticker_files` with `svg: true`).
+- A button before Save in the top bar (`topItems` of `pg_image_editor_artboard.js`) wherever the tools include Select (not on the mini bar or Optimise). Its menu: From this computer (a file picker, pictures and `.svg`) and, with the editor's API and not a callback save (`importApi()`), From the site.
+- From the site opens the site's picker, kind `canvas_import` (`picker-canvas-workspace.md`); without it (a site page in Edit mode) the Files list of the Sticker part in a box over the editor (`openImportFiles()`, `this.confirmBox`, so Escape closes it and gives the focus back to the button), searchable, SVG files included (`sticker_files` with `svg: true`).
 - A drop on the stage goes through the same `importFile()`; a paste stays as it was (pictures only).
 - The Image item left the canvas rail (owner, 2026-11-04); a caller's tool list may still name `image` and gets its panel.
 

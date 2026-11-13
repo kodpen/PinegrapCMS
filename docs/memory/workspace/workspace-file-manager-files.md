@@ -4,7 +4,9 @@ description: A file of the file manager posted into a Workspace channel as a cop
 ---
 
 ## How does a file of the file manager reach a channel?
-- Two doors, one path (PR #564): the file manager's item menu "Send to a channel" (`view_folders.php`, window `#ws_send_modal`, channels from `ws_library_channels`) and the writing box's paperclip, which now opens "From this device" / "From the file manager" (`libraryPicker()` in `workspace.js`, offcanvas `#ws-library`). Both post through `ws_library_attach` → `ws_library_send()` → `ws_message_send_file_bytes()`, the upload's own path: same refusals (`ws_upload_inspect()`), same ceiling (`ws_upload_max_bytes()`, measured with `filesize()` before the file is read), the message checked before the file is kept, the copy taken back when the message fails.
+- Two doors, one path (PR #564): the file manager's item menu "Send to a channel" (`view_folders.php`, window `#ws_send_modal`, channels from `ws_library_channels`) and the writing box's paperclip.
+- The paperclip opens "From this device" / "From the file manager" (`libraryPicker()` in `workspace.js`: the site's picker, kind `channel_file`, `ui/picker-canvas-workspace.md`; the offcanvas `#ws-library` only where the picker is missing).
+- Both doors post through `ws_library_attach` → `ws_library_send()` → `ws_message_send_file_bytes()`, the upload's own path: same refusals (`ws_upload_inspect()`), same ceiling (`ws_upload_max_bytes()`, measured with `filesize()` before the file is read), the message checked before the file is kept, the copy taken back when the message fails.
 - The channel gets a copy in its own folder (a discussion's in its channel's), named like an upload; the message carries the original's name. The original is not tagged in the message: a chip with the same name beside the file card read as a second file, and the copy is what the channel's readers may open.
 
 ## Who may pick which file?
@@ -14,7 +16,8 @@ description: A file of the file manager posted into a Workspace channel as a cop
 - Channels offered: `ws_channels_for()` kept to `ws_can_post_channel()`; the send checks again.
 
 ## What does the picker list?
-- `ws_library_browse()`: a folder's subfolders (file manager order) and its first 200 files by name; a search (name contains, newest first, 50); at the start the top folder (staff) or each grant's top side by side (`several`), plus the 12 files changed last. A file a channel would refuse (`workspace-upload-refusals.md`) stays listed, greyed, with the reason. Pictures show their own address as a lazy thumbnail.
+- The site's picker lists the same folders (kind `channel_file`, its `shut` folders); a file a channel refuses is refused at the send with its reason, not greyed out ahead.
+- The old drawer, `ws_library_browse()`: a folder's subfolders (file manager order) and its first 200 files by name; a search (name contains, newest first, 50); at the start the top folder (staff) or each grant's top side by side (`several`), plus the 12 files changed last. A file a channel would refuse (`workspace-upload-refusals.md`) stays listed, greyed, with the reason. Pictures show their own address as a lazy thumbnail.
 - Pure helpers, tested in `tests/workspace_library_test.php`: `ws_library_branch()`, `ws_library_open_set()`, `ws_library_tops()`, `ws_library_trail()`.
 
 ## What is not there?

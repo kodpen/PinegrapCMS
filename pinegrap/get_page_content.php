@@ -1159,8 +1159,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // if the mode is edit, then output the includes and css that is needed for the edit region dialog
         if ($mode == 'edit') {
             // The image editor's loader, for the edit buttons on the pictures
-            // (includes/fn/content.php, frontend.src.js).
-            $output_edit_region_code .= pg_image_editor_includes();
+            // (includes/fn/content.php, frontend.src.js); the panel's picker
+            // has no dialogs on a site page.
+            $output_edit_region_code .= pg_image_editor_includes(false);
             $output_edit_region_code .=
                 '<link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/ui/jquery-ui.theme.' . ENVIRONMENT_SUFFIX . '.css" />
                 ' . get_wysiwyg_editor_code(array('software_edit_region_textarea'), $activate_editors = false, $page_folder, $edit_region_dialog = TRUE, $style_theme_name) . '

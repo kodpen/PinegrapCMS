@@ -3913,11 +3913,22 @@
     }
 
     // A file of the file manager, picked to go into a channel as a copy
-    // (includes/workspace/library.php): its folders to walk, a search over
-    // every folder the person may open, and the files changed last where it
-    // starts. A file a channel would refuse is listed with the reason and
-    // cannot be picked.
+    // (includes/workspace/library.php). The site's picker (pg_picker.js,
+    // kind channel_file) where the screen prints it; the send refuses what
+    // a channel would not take, and says why. Without it the drawer: its
+    // folders to walk, a search over every folder the person may open, and
+    // the files changed last where it starts; a file a channel would refuse
+    // is listed with the reason and cannot be picked.
     function libraryPicker(onPick) {
+        if (window.pgPicker && (typeof window.pgPicker.open === 'function') && window.pgUI && document.getElementById('pg_picker_config')) {
+            window.pgPicker.open({ kind: 'channel_file', title: t('lib_from_manager') }).then(function (item) {
+                if (item && (Number(item.id) > 0)) {
+                    onPick({ id: Number(item.id), name: String(item.text || '') });
+                }
+            });
+            return;
+        }
+
         var node = offcanvas('ws-library', t('lib_from_manager'));
         var body = clear(node.querySelector('.drawer-body'));
         // The drawer body is a scrolling flex column: without flex-shrink-0 a

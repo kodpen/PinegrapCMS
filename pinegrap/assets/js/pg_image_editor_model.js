@@ -9396,10 +9396,32 @@
         return (SOUND_TYPES.indexOf(ext) >= 0) ? ext : '';
     }
 
+    // A file chosen in the site's picker (pg_picker.js) as the editor's own
+    // lists hand one on: { id, name, url, width, height, size, svg }. The
+    // picker's address is the site path and the bare name; the name is
+    // encoded as encode_url_path() writes it. null for nothing chosen.
+    function pickedFile(item) {
+        if (!item || (typeof item !== 'object') || !(Number(item.id) > 0)) {
+            return null;
+        }
+
+        var name = String(item.text || ''), url = String(item.url || '');
+        var base = (name && (url.slice(-name.length) === name)) ? url.slice(0, url.length - name.length) : '/';
+        var path = encodeURIComponent(name).replace(/[!'()*]/g, function (c) {
+            return '%' + c.charCodeAt(0).toString(16).toUpperCase();
+        }).replace(/%2F/g, '/');
+
+        return {
+            id: Number(item.id), name: name, url: (base || '/') + path,
+            width: Number(item.width) || 0, height: Number(item.height) || 0,
+            size: String(item.size_label || ''), svg: String(item.type || '').toLowerCase() === 'svg'
+        };
+    }
+
     var SOUND = {
         SOUND_TYPES: SOUND_TYPES, SOUND_MAX: SOUND_MAX, SOUND_MIN: SOUND_MIN, soundSrcOk: soundSrcOk, soundList: soundList, soundNew: soundNew,
         soundSpan: soundSpan, soundGain: soundGain, soundPlan: soundPlan, soundEdit: soundEdit, soundSplit: soundSplit, soundId: soundId,
-        soundPeaks: soundPeaks, soundType: soundType
+        soundPeaks: soundPeaks, soundType: soundType, pickedFile: pickedFile
     };
 
     // ---- CLIP (pg_image_editor_clip.js) ----

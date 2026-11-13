@@ -151,3 +151,60 @@ function test_image_editor_import_files()
 	pg_assert_contains("'svg'", pg_image_editor_sticker_where('', null, array(), false, true), 'the query asks for SVG files');
 	pg_assert_false(strpos(pg_image_editor_sticker_where('', null, array(), false), "'svg'") !== false, 'the sticker query does not');
 }
+
+// From the site opens the site's picker where the screen prints it: a pick
+// becomes the file the editor's own lists hand on, its name encoded as
+// encode_url_path() writes it; nothing chosen is null.
+function test_image_editor_import_picked_file()
+{
+	$r = image_editor_import_node(
+		'console.log(JSON.stringify({'
+		. ' a: M.pickedFile({ id: 7, text: "Işık plan (1).svg", url: "/Işık plan (1).svg", type: "SVG", width: "40", height: 20, size_label: "2 KB" }),'
+		. ' b: M.pickedFile({ id: 3, text: "a.mp3", url: "/site/a.mp3", type: "mp3" }),'
+		. ' c: M.pickedFile(null), d: M.pickedFile({ id: 0, text: "x.png" }) }));'
+	);
+
+	if ($r === null) {
+		pg_assert_true(true, 'Node is not installed');
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('id' => 7, 'name' => 'Işık plan (1).svg', 'url' => '/' . rawurlencode('Işık plan (1).svg'), 'width' => 40, 'height' => 20, 'size' => '2 KB', 'svg' => true), $r['a']);
+	pg_assert_same('/site/a.mp3', $r['b']['url'], 'the site path kept');
+	pg_assert_false($r['b']['svg']);
+	pg_assert_same(null, $r['c']);
+	pg_assert_same(null, $r['d'], 'no file without an id');
+}
+
+// Import, Video from the site, Replace, Add sound and an erased area's
+// picture open the picker's canvas kinds first and keep their own lists for
+// a site page; the panel screens print the picker with the loader.
+function test_image_editor_import_site_picker_wired()
+{
+	$js = function ($part) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_' . $part . '.js');
+	};
+
+	pg_assert_contains("Editor.prototype.sitePicker = function (kind, title, ret)", $js('artboard'));
+	pg_assert_contains("document.getElementById('pg_picker_config')", $js('artboard'));
+	pg_assert_contains("this.sitePicker((typeof pick === 'function') ? 'canvas_picture' : 'canvas_import'", $js('artboard'));
+	pg_assert_contains("this.sitePicker('canvas_video'", $js('clip'));
+	pg_assert_contains("this.sitePicker('canvas_sound'", $js('sound'));
+
+	foreach (array('canvas_picture', 'canvas_import', 'canvas_video', 'canvas_sound') as $kind) {
+		pg_assert_true(isset(pg_picker_kinds()[$kind]), $kind . ' is a picker kind');
+	}
+
+	pg_assert_same(array('mp4', 'm4v', 'webm'), pg_picker_canvas_types('video'), 'the clip types');
+	pg_assert_same(pg_image_editor_clip_types(), pg_picker_canvas_types('video'));
+	pg_assert_same(pg_image_editor_sound_types(), pg_picker_canvas_types('sound'));
+	pg_assert_contains("'svg'", "'" . implode("', '", pg_picker_canvas_types('import')) . "'");
+
+	$fn = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/image_editor.php');
+	pg_assert_contains("(\$picker && function_exists('pg_picker_script')) ? pg_picker_script() : ''", $fn);
+	pg_assert_contains('pg_image_editor_includes(false)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php'), 'a site page keeps the editor\'s lists');
+
+	$bundle = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor.min.js');
+	pg_assert_contains('canvas_sound', $bundle, 'the bundle is built');
+}

@@ -75,6 +75,18 @@ function pg_picker_kinds()
         'page' => array('source' => 'pages', 'types' => array(), 'public' => false, 'design' => false, 'archived' => true, 'forms' => false, 'access' => 'edit', 'value' => 'id', 'role' => 3, 'tree' => true, 'pictures' => false, 'upload' => false),
     );
 
+    // The Design Canvas's From the site: a picture the browser draws, the
+    // same with SVG drawings for Import, a video for a clip, a sound for the
+    // Animate tool. Each stores the file id.
+    $kinds['canvas_picture'] = array_merge($file, array('types' => pg_picker_canvas_types('picture'), 'pictures' => true));
+    $kinds['canvas_import'] = array_merge($file, array('types' => pg_picker_canvas_types('import'), 'pictures' => true));
+    $kinds['canvas_video'] = array_merge($file, array('types' => pg_picker_canvas_types('video')));
+    $kinds['canvas_sound'] = array_merge($file, array('types' => pg_picker_canvas_types('sound')));
+    // A file posted into a Workspace channel as a copy: no Upload (the
+    // paperclip has From this device), and the folders the Workspace
+    // library closes left out (pg_picker_closed_folder_ids()).
+    $kinds['channel_file'] = array_merge($file, array('upload' => false, 'shut' => array('workspace', 'archived')));
+
     // An e-mail campaign's body page: any page the sender may view.
     $kinds['page_view'] = array_merge($kinds['page'], array('access' => 'view'));
     // A form a campaign follows: custom form pages and designer form pages.
@@ -142,6 +154,123 @@ function pg_picker_page_kind_for($types)
 function pg_picker_image_types()
 {
     return array('gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'svg', 'webp', 'avif');
+}
+
+/**
+ * The file types of the Design Canvas's kinds, as its own lists took them
+ * (pg_image_editor_sticker_where(), pg_image_editor_clip_types(),
+ * pg_image_editor_sound_types()). Pure.
+ *
+ * @param string $part picture, import, video or sound
+ * @return string[]
+ */
+function pg_picker_canvas_types($part)
+{
+    $pictures = array('jpg', 'jpeg', 'png', 'gif', 'webp');
+    $types = array(
+        'picture' => $pictures,
+        'import'  => array_merge($pictures, array('svg')),
+        'video'   => array('mp4', 'm4v', 'webm'),
+        'sound'   => array('mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'opus'),
+    );
+
+    return $types[$part] ?? array();
+}
+
+/**
+ * The folders a kind never lists, each with every folder under it: the
+ * Recycle Bin always; for a kind with `shut`, the Workspace folder (its
+ * files belong to the conversation they were posted in) and archived
+ * folders. Pure.
+ *
+ * @param array $kind    one of pg_picker_kinds()
+ * @param array $parents folder id => parent folder id
+ * @param int[] $bin     the Recycle Bin and its sub-folders
+ * @param int   $ws      the Workspace folder, 0 for none
+ * @param int[] $archived the archived folders
+ * @return int[]
+ */
+function pg_picker_shut_folder_ids($kind, $parents, $bin, $ws, $archived)
+{
+    $roots = array();
+    $shut = (array) ($kind['shut'] ?? array());
+
+    if (in_array('workspace', $shut, true) && ((int) $ws > 0)) {
+        $roots[] = (int) $ws;
+    }
+
+    if (in_array('archived', $shut, true)) {
+        $roots = array_merge($roots, array_map('intval', (array) $archived));
+    }
+
+    $children = array();
+
+    foreach ((array) $parents as $id => $parent) {
+        $children[(int) $parent][] = (int) $id;
+    }
+
+    $ids = array_fill_keys(pg_picker_ids($bin), true);
+    $seen = array();
+    $stack = $roots;
+
+    while ($stack) {
+        $id = (int) array_pop($stack);
+
+        if (isset($seen[$id])) {
+            continue;
+        }
+
+        $seen[$id] = true;
+        $ids[$id] = true;
+
+        foreach ($children[$id] ?? array() as $child) {
+            $stack[] = $child;
+        }
+    }
+
+    return array_keys($ids);
+}
+
+/**
+ * The folders a kind never lists, read for this request: the Recycle Bin
+ * and, for a kind with `shut`, the Workspace folder and archived folders,
+ * each with its sub-folders (pg_picker_shut_folder_ids()).
+ *
+ * @param array $kind
+ * @return int[]
+ */
+function pg_picker_closed_folder_ids($kind)
+{
+    $bin = pg_recycle_bin_folder_ids();
+
+    if (empty($kind['shut'])) {
+        return $bin;
+    }
+
+    static $read = array();
+    $key = implode(',', (array) $kind['shut']);
+
+    if (isset($read[$key])) {
+        return $read[$key];
+    }
+
+    $parents = array();
+    $archived = array();
+
+    foreach ((array) db_items("SELECT folder_id, folder_parent, folder_archived FROM folder") as $row) {
+        $parents[(int) $row['folder_id']] = (int) $row['folder_parent'];
+
+        if ((string) $row['folder_archived'] !== '0') {
+            $archived[] = (int) $row['folder_id'];
+        }
+    }
+
+    // The column comes with the Workspace's schema; before it nothing is
+    // shut for it.
+    $result = @mysqli_query(db::$con, "SELECT ws_folder_id FROM config LIMIT 1");
+    $row = $result ? mysqli_fetch_row($result) : null;
+
+    return $read[$key] = pg_picker_shut_folder_ids($kind, $parents, $bin, $row ? (int) $row[0] : 0, $archived);
 }
 
 /** The requests the endpoint answers; upload is the one sent by POST. */
@@ -421,7 +550,8 @@ function pg_picker_kind_types($kind)
  */
 function pg_picker_files_where($kind, $public_where, $bin_ids, $folders, $folder = null)
 {
-    $where = array("(name != '')", '(attachment = 0)');
+    // A file without a folder (an ERP document) is never listed.
+    $where = array("(name != '')", '(attachment = 0)', '(folder > 0)');
 
     if (empty($kind['design'])) {
         $where[] = '(design = 0)';
@@ -1104,7 +1234,7 @@ function pg_picker_where_for($kind, $user, $folder = null)
     return pg_picker_files_where(
         $kind,
         !empty($kind['public']) ? pg_public_image_files_where() : '',
-        pg_recycle_bin_folder_ids(),
+        pg_picker_closed_folder_ids($kind),
         pg_picker_granted_folders($user, $kind),
         $folder);
 }
@@ -1184,7 +1314,7 @@ function pg_picker_list_answer($request, $user)
     $kind = $kinds[$request['kind']];
     $answer = array('folder' => $request['folder'], 'crumbs' => array(), 'items' => array(), 'page' => $request['page'], 'per_page' => $request['per_page'], 'more' => false);
 
-    if (!pg_picker_folder_allowed($request['folder'], pg_recycle_bin_folder_ids(), pg_picker_granted_folders($user, $kind))) {
+    if (!pg_picker_folder_allowed($request['folder'], pg_picker_closed_folder_ids($kind), pg_picker_granted_folders($user, $kind))) {
         return $answer;
     }
 
@@ -1250,7 +1380,7 @@ function pg_picker_tree_answer($request, $user)
     $kinds = pg_picker_kinds();
     $granted = pg_picker_granted_folders($user, $kinds[$request['kind']]);
     $folders_that_user_has_access_to = ($granted !== null) ? $granted : array();
-    $bin_ids = pg_recycle_bin_folder_ids();
+    $bin_ids = pg_picker_closed_folder_ids($kinds[$request['kind']]);
 
     // Which folders hold a folder this person may use.
     $under = array();

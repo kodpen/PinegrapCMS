@@ -26,7 +26,7 @@ function test_picker_kinds()
 {
 	$kinds = pg_picker_kinds();
 
-	pg_assert_same(array_merge(array('file', 'image', 'public_image', 'site_icon', 'page', 'page_view', 'page_form'), array_keys(pg_picker_page_type_kinds())), array_keys($kinds));
+	pg_assert_same(array_merge(array('file', 'image', 'public_image', 'site_icon', 'page', 'canvas_picture', 'canvas_import', 'canvas_video', 'canvas_sound', 'channel_file', 'page_view', 'page_form'), array_keys(pg_picker_page_type_kinds())), array_keys($kinds));
 
 	foreach ($kinds as $name => $kind) {
 		foreach (array('source', 'types', 'public', 'design', 'archived', 'value', 'role', 'tree', 'pictures', 'upload') as $field) {
@@ -148,18 +148,18 @@ function test_picker_files_where()
 	$kinds = pg_picker_kinds();
 
 	pg_assert_same(
-		"(name != '') AND (attachment = 0) AND (type IN ('png', 'svg')) AND ((attachment = 0) AND (folder IN (1, 4))) AND (folder NOT IN (9, 10)) AND (folder = '4')",
+		"(name != '') AND (attachment = 0) AND (folder > 0) AND (type IN ('png', 'svg')) AND ((attachment = 0) AND (folder IN (1, 4))) AND (folder NOT IN (9, 10)) AND (folder = '4')",
 		pg_picker_files_where($kinds['site_icon'], '(attachment = 0) AND (folder IN (1, 4))', array(9, '10', 9), null, '4'),
 		'one folder of the site icon kind');
 
 	pg_assert_same(
-		"(name != '') AND (attachment = 0) AND (folder NOT IN (9)) AND (folder IN (3, 5))",
+		"(name != '') AND (attachment = 0) AND (folder > 0) AND (folder NOT IN (9)) AND (folder IN (3, 5))",
 		pg_picker_files_where($kinds['file'], '', array(9), array('3', 5, 3)),
 		'a User kept to their folders');
 
 	pg_assert_contains("(type IN ('gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'svg', 'webp', 'avif'))", pg_picker_files_where($kinds['image'], '', array(), null));
 	pg_assert_same(
-		"(name != '') AND (attachment = 0) AND (design = 0) AND (type IN ('jpg'))",
+		"(name != '') AND (attachment = 0) AND (folder > 0) AND (design = 0) AND (type IN ('jpg'))",
 		pg_picker_files_where(array('types' => array('JPG', "png') OR (1=1"), 'design' => false), '', array(), null),
 		'only plain types; design files left out when the kind says so');
 	pg_assert_contains('(folder IN (-1))', pg_picker_files_where($kinds['public_image'], '', array(), null), 'a public kind without its condition lists nothing');
@@ -542,3 +542,40 @@ function test_picker_short_link_entries_role()
 {
 	pg_assert_same(array(), pg_picker_short_link_entries(array('id' => 5, 'role' => 3)));
 }
+
+// The Workspace's kind leaves out the Workspace folder and archived folders
+// with everything under them, beside the Recycle Bin; another kind only the
+// bin.
+function test_picker_shut_folder_ids()
+{
+	$kinds = pg_picker_kinds();
+	// 1 top; 2 Workspace with 3 under it; 4 archived with 5 under it; 6 open; 9 bin.
+	$parents = array(1 => 0, 2 => 1, 3 => 2, 4 => 1, 5 => 4, 6 => 1, 9 => 1);
+
+	$shut = pg_picker_shut_folder_ids($kinds['channel_file'], $parents, array(9), 2, array(4));
+	sort($shut);
+	pg_assert_same(array(2, 3, 4, 5, 9), $shut);
+	pg_assert_same(array(9), pg_picker_shut_folder_ids($kinds['file'], $parents, array(9), 2, array(4)), 'another kind: the bin only');
+	$none = pg_picker_shut_folder_ids($kinds['channel_file'], $parents, array(), 0, array());
+	pg_assert_same(array(), $none, 'no Workspace folder, nothing archived');
+	pg_assert_same(array(2, 3), pg_picker_shut_folder_ids($kinds['channel_file'], array(2 => 3, 3 => 2), array(), 2, array()), 'a loop ends');
+
+	pg_assert_false($kinds['channel_file']['upload'], 'the paperclip has From this device');
+	pg_assert_same('id', $kinds['channel_file']['value']);
+	pg_assert_true($kinds['canvas_picture']['pictures'] && $kinds['canvas_import']['pictures'] && !$kinds['canvas_sound']['pictures']);
+	pg_assert_same('id', $kinds['canvas_sound']['value'], 'the editor reads the file by id');
+	pg_assert_false(in_array('svg', $kinds['canvas_picture']['types'], true), 'a picture the browser draws as a picture');
+}
+
+// The composer's From the file manager opens the picker's channel_file kind;
+// the send keeps its own checks, the chat attachment refusal among them.
+function test_picker_workspace_library_wired()
+{
+	$js = picker_test_source('assets/js/workspace.js');
+
+	pg_assert_contains("window.pgPicker.open({ kind: 'channel_file', title: t('lib_from_manager') })", $js);
+	pg_assert_contains('pg_picker_script()', picker_test_source('includes/workspace/screen.php'));
+	pg_assert_contains('channel_file', picker_test_source('assets/js/workspace.min.js'), 'the bundle is built');
+	pg_assert_contains('pg_chat_attachment_refused($row[\'id\'], $viewer)', picker_test_source('includes/workspace/library.php'), 'ws_library_file() still refuses a chat attachment');
+}
+

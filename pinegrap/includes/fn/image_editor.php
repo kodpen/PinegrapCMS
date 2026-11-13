@@ -215,10 +215,14 @@ function pg_design_canvas_icon($space = '')
  * loads the stylesheet and the scripts in order the first time, then opens
  * the editor and answers with its promise; pgImageEditor.load() only loads.
  * A plain inline script, so it also works in markup inserted later.
+ * On a panel screen the site's picker comes with it (pg_picker_script()),
+ * which the editor's From the site lists open; a site page in Edit mode has
+ * no panel dialogs, so the editor keeps its own lists there.
  *
+ * @param bool $picker print the picker too (false on a site page)
  * @return string HTML
  */
-function pg_image_editor_includes()
+function pg_image_editor_includes($picker = true)
 {
     static $printed = false;
 
@@ -228,7 +232,7 @@ function pg_image_editor_includes()
 
     $printed = true;
 
-    return '<script>window.pgImageEditorConfig = ' . pg_code_editor_json(pg_image_editor_config()) . ';
+    return (($picker && function_exists('pg_picker_script')) ? pg_picker_script() : '') . '<script>window.pgImageEditorConfig = ' . pg_code_editor_json(pg_image_editor_config()) . ';
 (function () {
     var loading = null;
     function load() {

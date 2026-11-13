@@ -1014,6 +1014,12 @@ function ws_screen_assets($viewer, $mode, $extra = array())
         $lightbox .= pg_image_editor_includes();
     }
 
+    // The site's picker: the composer's From the file manager (kind
+    // channel_file) and the editor's From the site lists.
+    if (function_exists('pg_picker_script')) {
+        $lightbox .= pg_picker_script();
+    }
+
     $output = $lightbox . '
 <script type="application/json" id="ws-config">' . $json . '</script>';
 
