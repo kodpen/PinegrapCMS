@@ -196,13 +196,17 @@ foreach ($menu_items as $menu_item) {
 
     // The name opens the item; its indent shows the level. The tree's order
     // is the menu's order, so the table is plain: no sorting, no search.
+    // Below md the two date columns step aside so the name and link keep the
+    // width; an address has no spaces to wrap at, so it breaks inside its cell
+    // (never narrower than the Link heading) instead of widening the table.
+    // What still does not fit scrolls inside the card, never the whole page.
     $output_rows .=
         '<tr>
             <td class="align-middle" style="padding-left: ' . (8 + $indentation_padding) . 'px"><a href="' . $output_link_url . '">' . h($menu_item['name']) . '</a></td>
-            <td class="align-middle">' . h($link_to_value) . '</td>
+            <td class="align-middle text-break">' . h($link_to_value) . '</td>
             <td class="align-middle">' . $output_security_check_mark . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $menu_item['created_timestamp'])) . $output_created_user . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $menu_item['last_modified_timestamp'])) . $output_last_modifier_user . '</td>
+            <td class="align-middle d-none md:d-table-cell">' . get_relative_time(array('timestamp' => $menu_item['created_timestamp'])) . $output_created_user . '</td>
+            <td class="align-middle d-none md:d-table-cell">' . get_relative_time(array('timestamp' => $menu_item['last_modified_timestamp'])) . $output_last_modifier_user . '</td>
         </tr>';
 }
 
@@ -246,15 +250,15 @@ pg_page_shell( array(
             ' . $liveform->output_notices() . '
             <div id="menu_items_table_card" class="card my-7">
                 <input type="hidden" name="menu_id" value="' . h($_GET['id']) . '" />
-                <div class="card-body p-0 position-relative">
+                <div class="card-body p-0 position-relative table-responsive">
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
                                 <th scope="col">' . lang('Name') . '</th>
                                 <th scope="col">' . lang('Link') . '</th>
                                 <th scope="col">' . lang('Security') . '</th>
-                                <th scope="col">' . lang('Created') . '</th>
-                                <th scope="col">' . lang('Last Modified') . '</th>
+                                <th scope="col" class="d-none md:d-table-cell">' . lang('Created') . '</th>
+                                <th scope="col" class="d-none md:d-table-cell">' . lang('Last Modified') . '</th>
                             </tr>
                         </thead>
                         <tbody>' . $output_rows . '</tbody>

@@ -10,7 +10,8 @@ description: The dashboard and the Users list follow the Site Settings module sw
 ## Which places follow which gate?
 - `welcome.php` widget 20 (Calendars): `CALENDARS === true` and `validate_calendars_access($user, true)`.
 - `includes/dashboard/widgets/widget_7.php` Forms kind and the greeting's forms signal (`brief.php`): `FORMS === true` beside their role checks.
-- Greeting feature lines (`pg_dashboard_brief()`): product, offer and product groups under `ECOMMERCE === true` and `validate_ecommerce_access()` (role < 3 or `manage_ecommerce`); file manager, pages and comments under `validate_area_access($user, 'user')` (role < 3 or `no_acl_check()`); the device-limit and settings lines under role <= 2 (`includes/settings/screen.php`). The deep database check line has no link and no gate, so the pool is never empty.
+- Greeting feature lines (`pg_dashboard_brief()`): product, offer and product groups under `ECOMMERCE === true` and `validate_ecommerce_access()` (role < 3 or `manage_ecommerce`); file manager, pages and comments under `validate_area_access($user, 'user')` (role < 3 or `no_acl_check()`); the device-limit and settings lines under role <= 2 (`includes/settings/screen.php`).
+- The deep database check line has no link; it is offered on the old dashboard to role < 3 only, the System Status widget's own `'show'` gate in `welcome.php` (#8995, PR #9071: a User was told to start the check from a widget it does not have). A reader left with no feature line gets a closing word.
 - Users list (`includes/fn/user_list.php`): the default view's Calendar Manager column needs `CALENDARS`, like Forms and Commerce beside it. `pg_user_list_filters($role, $modules = null)` drops My Calendar / Submitted Forms / Commerce Managers for a switched-off module; `null` reads the constants with `defined()` (undefined counts as on, for CLI tests). `pg_user_list_filter()` still accepts those names from the address.
 
 ## How is it tested?

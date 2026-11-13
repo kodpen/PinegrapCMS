@@ -61,6 +61,13 @@ function test_dashboard_brief_tips_per_dashboard()
 	pg_assert_true(in_array($grip, $old, true), 'old: the widget grip');
 	pg_assert_true(in_array($theme, $old, true), 'old: the widget theme, for a designer');
 	pg_assert_same(false, in_array($theme, pg_dashboard_brief_tips(2, false, array()), true), 'old: no theme tip for a manager');
+
+	// The grip is drawn only where welcome.php's $widget_movable is true
+	// (role < 2), so a Manager or a User is not told to drag by it (#8995).
+	pg_assert_true(in_array($grip, pg_dashboard_brief_tips(0, false, array()), true), 'old: the widget grip for an administrator');
+	pg_assert_same(false, in_array($grip, pg_dashboard_brief_tips(2, false, array()), true), 'old: no grip tip for a manager');
+	pg_assert_same(false, in_array($grip, pg_dashboard_brief_tips(3, false, array()), true), 'old: no grip tip for a user');
+	pg_assert_same(2, count(pg_dashboard_brief_tips(3, false, array())), 'old, user: only the two general tips');
 	pg_assert_same(false, in_array($look, $old, true), 'old: nothing about Edit dashboard');
 
 	$new = pg_dashboard_brief_tips(2, false, array('dashboard' => 'v2', 'edit' => true));

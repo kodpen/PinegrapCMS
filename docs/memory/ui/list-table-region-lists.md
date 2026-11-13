@@ -21,4 +21,8 @@ module: region_list, field_list
 ## Why is the menu items list plain?
 - `view_menu_items.php` is the menu's tree; its order is the menu's order (changed by Sort Items). It is a plain `table table-hover` without sorting or search, the name links to the item.
 
+## How does the menu items list fit a phone?
+- Below md, Created and Last Modified are hidden (`d-none md:d-table-cell` on both header and row cells), the Link cell is `text-break` (no `.pg-cell-wrap`: its 8rem minimum pushed a three-level tree of long Turkish words past 375 px; the Link heading keeps the column about 80 px), and the card body is `.table-responsive`, so what still does not fit (320 px) scrolls inside the card, never the page.
+- Before, the document was 500 to 1,800 px wide at 375 px and the header and toolbar scrolled sideways (#8994, PR #9071). Pinned by `tests/menu_tree_test.php`.
+
 Related: docs/memory/ui/list-table-printed.md, docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/list-table-driver-lists.md

@@ -2385,8 +2385,13 @@ $(document).ready(function () {
             e.preventDefault();
         });
 
+        // The box keeps the last query and its results when it closes, so
+        // reopening repeats a search at once. The query comes back selected:
+        // the first key typed replaces it instead of being added to its end,
+        // which searched for the old and the new words run together.
         pgUI.dialog.on($modal, 'shown', function () {
             $input.focus();
+            $input.trigger('select');
             // Pre-fetch actions silently to cache them — nothing rendered until user types
             prefetchActions();
         });
