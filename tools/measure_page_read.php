@@ -154,7 +154,7 @@ foreach ($cases as $name => $args) {
     for ($run = 0; $run < $runs; $run++) {
         // The read's own peak above what the script holds (PHP 8.2+).
         if (function_exists('memory_reset_peak_usage')) {
-            memory_reset_peak_usage(); // phpcs:ignore PHPCompatibility.FunctionUse.NewFunctions -- guarded by function_exists()
+            memory_reset_peak_usage(); // phpcs:ignore PHPCompatibility.FunctionUse.NewFunctions.memory_reset_peak_usageFound -- guarded by function_exists()
         }
 
         $start = microtime(true);
