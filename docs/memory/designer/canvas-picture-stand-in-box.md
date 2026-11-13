@@ -1,7 +1,10 @@
 ---
 name: canvas-picture-stand-in-box
-description: A bound picture's canvas stand-in (the grey "Image [token]" SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
+description: A bound picture's canvas stand-in (a sample photo SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
 ---
+
+## What does the stand-in draw?
+- A sample photo since CF4, not the grey "Image [token]" card (`canvas-loop-as-published.md`); its size rules below are unchanged.
 
 ## What size does a bound picture's stand-in have on the canvas?
 - The node's own: its width and height attributes, a ratio class or box (`ratio ratio-1x1`, `pg-ratio-*`), a size class (`pg-circle-40`, `pg-thumb-100`). The SVG (`_sdImgPlaceholderForToken()`, `_sdImgPlaceholderSized()`) only fills that box; it brings no shape of its own.

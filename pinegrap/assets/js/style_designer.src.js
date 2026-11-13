@@ -14022,8 +14022,11 @@ const StyleDesigner = (function () {
                 var _bImg = (innerEl.tagName === 'IMG') ? innerEl : innerEl.querySelector('img');
                 if (_bImg) {
                     _bImg.setAttribute('data-sd-bind-src', String(node.props._bindings.src));
-                    // The sample photo names the field it stands for.
-                    if (!_bImg.hasAttribute('title')) _bImg.setAttribute('title', _sdBoundPictureTitle(String(node.props._bindings.src)));
+                    // The sample photo names the field it stands for, in
+                    // place of the image renderer's double-click hint; a
+                    // title the element is given (_attrs) stays.
+                    var _ownTitle = (node.props._attrs || []).some(function (a) { return a && String(a.name || '').trim().toLowerCase() === 'title'; });
+                    if (!_ownTitle) _bImg.setAttribute('title', _sdBoundPictureTitle(String(node.props._bindings.src), node));
                 }
             }
             if (innerEl !== wrapper) wrapper.appendChild(innerEl);
@@ -14906,11 +14909,12 @@ const StyleDesigner = (function () {
         return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
     }
 
-    // The title of a bound picture's sample photo: the Bind Data option of
-    // its field, as the widget being drawn names it.
-    function _sdBoundPictureTitle(token) {
+    // The title of a bound picture's sample photo: the label of its form
+    // field, else the Bind Data option as the widget being drawn names it.
+    function _sdBoundPictureTitle(token, node) {
+        var ff = _sdFormFieldOf(token, node);
         var cfg = _sysWidgetRenderCfg;
-        var label = cfg ? _swBindLabel(_swKindOf(cfg), token) : '';
+        var label = (ff && (ff.label || ff.name)) || (cfg ? _swBindLabel(_swKindOf(cfg), token) : '');
         return _sdT('Sample picture: {var}', label || token);
     }
 
@@ -16163,7 +16167,9 @@ const StyleDesigner = (function () {
                 });
             });
             // Only set designer hint if user hasn't defined their own tooltip/title (avoid clobbering).
-            if (!(node.props.tooltipEnabled && node.props.tooltipTitle) && !node.props.title) {
+            // A bound picture's title names its field (_sdBoundPictureTitle()).
+            var _boundPic = !!(node.props._bindings && node.props._bindings.src);
+            if (!(node.props.tooltipEnabled && node.props.tooltipTitle) && !node.props.title && !_boundPic) {
                 innerEl.title = _sdT('Double-click to select an image');
             }
             innerEl.style.cursor = 'pointer';

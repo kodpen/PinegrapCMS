@@ -20,8 +20,8 @@ description: Plan (owner 2026-11-13, #9104): round pictures drawn oval on the de
 ## Which steps?
 - CF1 (S) Round stays round. Done (#9184): `designer/canvas-picture-stand-in-box.md`. Open: the design templates' staff directory photos have no equal sides; they wait for template work to reopen.
 - CF2 (S) The picture that does not show. Done (#9199): a failed load on the canvas takes the page's no-image picture (`designer/no-image-placeholder.md`); the strip was picsum.photos not answering.
-- CF3 (S) The toolbar block. Done (#9217): the ratio rule reached the toolbar; room for it counts inside a clipping card (`designer/designer-canvas-toolbar-in-cards.md`). Next free: CF4 after CS1, then CF5.
-- CF4 (M) The loop as published. A loop area draws as many cards as one row of its grid holds on the published page (three at desktop in picture 3): the first editable, the others as the hatched copies of the Google reviews loop; in every loop kind, also those `designer/widget-condition-canvas.md` leaves without sample rows. A bound picture draws a sample picture of the product's own at the node's ratio, the token's label in its title, not a grey box with the token name.
+- CF3 (S) The toolbar block. Done (#9217): the ratio rule reached the toolbar; room for it counts inside a clipping card (`designer/designer-canvas-toolbar-in-cards.md`). Next free: CF5.
+- CF4 (M) The loop as published. Done (#9233): `designer/canvas-loop-as-published.md`. A loop draws one line of its grid (card and hatched copies) in every loop kind, a listing with no record too; a bound picture is a sample photo at the node's ratio, its field's label in the title.
 - CF5 (M) Editing a card in a loop. First a walk on the blog, team and reviews cards: pick each element, move one, change the card's layout, with a picture of every place where frames, the band, the size badge or selection boxes lie over each other or the selection is unclear; then those are fixed. The pictures after go to the owner through the architect before the step lands (an `architect` approval issue).
 
 ## In which order?
