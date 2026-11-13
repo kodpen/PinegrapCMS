@@ -27,6 +27,9 @@
  *   pgUI.hostLayer(el)                a body-level layer into the top dialog, back on its hide
  *   pgUI.dialog.show(el), pgUI.menu.hide(el), ...   the same per kind
  *
+ * A Bootstrap 6 modal dialog or drawer shown without focus inside gets it
+ * here, for every screen (focusShown()).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -437,6 +440,79 @@
             return inst;
         });
     }
+
+    // Bootstrap 6 opens a dialog or drawer with showModal() while it is still
+    // visibility: hidden (the start of its opening transition), so the
+    // browser's own dialog focusing finds nothing to focus and leaves focus
+    // on <body>: a screen reader is not taken into the dialog, and the first
+    // Tab lands on its Close button. Once it is shown, a modal one without
+    // focus inside gets it: its [autofocus] element, else its first field
+    // (an input, select or textarea, never a button, so Enter cannot answer
+    // a confirmation), else the dialog itself. A screen's own code that
+    // focuses a control on shown runs first (its listener sits on the
+    // dialog) and is left alone. On a touch screen the dialog itself takes
+    // it, so the on-screen keyboard does not cover the dialog as it opens.
+    var FOCUS_FIRST = 'input:not([type=hidden]), select, textarea';
+
+    function canFocus(el) {
+        if (!el || el.disabled || el.tabIndex < 0 || (el.closest && el.closest('[inert]'))) {
+            return false;
+        }
+        if (el.getClientRects && !el.getClientRects().length) {
+            return false;
+        }
+        var style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+        return !style || style.visibility !== 'hidden';
+    }
+
+    function firstOf(root, selector) {
+        var list = root.querySelectorAll ? root.querySelectorAll(selector) : [];
+        for (var i = 0; i < list.length; i++) {
+            if (canFocus(list[i])) {
+                return list[i];
+            }
+        }
+        return null;
+    }
+
+    function isModal(el) {
+        try {
+            return el.matches(':modal');
+        } catch (e) {
+            // A browser without :modal: Bootstrap opens a dialog modal unless
+            // asked not to, and marks the other kind.
+            return !el.classList.contains('dialog-nonmodal');
+        }
+    }
+
+    function touchOnly() {
+        return !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+    }
+
+    function focusShown(event) {
+        var el = event && event.target, active = document.activeElement;
+        if (version() !== 6 || !el || el.tagName !== 'DIALOG' || !el.open || !isModal(el)) {
+            return;
+        }
+        if (active && active !== document.body && el.contains(active)) {
+            return;
+        }
+        var to = touchOnly() ? null : (firstOf(el, '[autofocus]') || firstOf(el, FOCUS_FIRST));
+        if (!to) {
+            if (!el.hasAttribute('tabindex')) {
+                el.setAttribute('tabindex', '-1');
+            }
+            to = el;
+        }
+        try {
+            to.focus({ preventScroll: true });
+        } catch (e) {
+            to.focus();
+        }
+    }
+
+    document.addEventListener('shown.bs.dialog', focusShown);
+    document.addEventListener('shown.bs.drawer', focusShown);
 
     var pgUI = {
         version: version,

@@ -421,6 +421,161 @@
         };
     }
 
+    // The elements of `root` Tab stops on, in document order: focusable, in
+    // the tab order, enabled, drawn and not inert.
+    var TAB_STOPS = 'a[href], area[href], button, input, select, textarea, summary, iframe, [tabindex], [contenteditable]';
+
+    function tabStops(root) {
+        var list = root && root.querySelectorAll ? root.querySelectorAll(TAB_STOPS) : [];
+        return Array.prototype.filter.call(list, function (el) {
+            if (el.tabIndex < 0 || el.disabled || el.type === 'hidden' || (el.closest && el.closest('[inert]'))) {
+                return false;
+            }
+            if (el.getClientRects && !el.getClientRects().length) {
+                return false;
+            }
+            var style = window.getComputedStyle ? window.getComputedStyle(el) : null;
+            return !style || style.visibility !== 'hidden';
+        });
+    }
+
+    // The control Tab reaches after `box`, leaving out the calendar `skip`:
+    // inside the open dialog holding the box (the page behind a modal one is
+    // inert), else on the page; null when the box is the last one.
+    function stopAfter(box, skip) {
+        var scope = (box.closest && box.closest('dialog[open]')) || document.body, all = tabStops(scope);
+        for (var i = 0; i < all.length; i++) {
+            // 4: Node.DOCUMENT_POSITION_FOLLOWING
+            if (all[i] !== box && !within(skip, all[i]) && (box.compareDocumentPosition(all[i]) & 4)) {
+                return all[i];
+            }
+        }
+        return null;
+    }
+
+    // A popup calendar hangs off <body>, or the dialog holding the box,
+    // after everything else there, and the library takes Tab on the box into
+    // it: from its last stop Tab ran off the end of the page, past the rest
+    // of the form, and nothing closed it while focus was elsewhere. It is
+    // kept between the box and the control after it:
+    // - Tab on the box closes it and moves on; Shift+Tab leaves backwards
+    //   and closes it too (focus leaving);
+    // - ArrowDown (Alt+ArrowDown too) on the box opens it when shut; when it
+    //   is open, the library's Up and Down go into it;
+    // - Shift+Tab from its first stop goes back to the box; Tab from its last
+    //   stop closes it and goes on to the control after the box;
+    // - Escape closes it, focus back on the box, and goes no further: a
+    //   dialog holding the box stays open;
+    // - focus leaving both the box and the calendar for another element
+    //   closes it, as does an opening that comes after focus moved on (the
+    //   library opens on a timer after focus).
+    // Left and Right on the box keep moving the text cursor. `state()` gives
+    // { calendar, shown }. Returns { drawn(main), opened(), off() }: drawn()
+    // binds the calendar once the library has made it, opened() is its show.
+    function popupKeys(box, state) {
+        var main = null, bound = [];
+        var stays = function (node) {
+            return node === box || (!!main && within(main, node));
+        };
+        // Focus on <body> stays: a press on a blank spot of the calendar, a
+        // day the library drew again, the window losing focus. A press on
+        // the page is the library's own click outside.
+        var movedOn = function () {
+            var now = document.activeElement;
+            return !!now && now !== document.body && !stays(now);
+        };
+        var hide = function () {
+            var s = state();
+            if (s.shown && s.calendar) {
+                s.calendar.hide();
+            }
+        };
+        var boxKeys = function (event) {
+            var s = state(), bare = !event.altKey && !event.ctrlKey && !event.metaKey;
+            if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && bare) {
+                event.stopImmediatePropagation();
+            } else if (event.key === 'Tab' && !event.shiftKey && bare && s.shown) {
+                event.stopImmediatePropagation();
+                hide();
+            } else if (event.key === 'ArrowDown' && !event.ctrlKey && !event.metaKey && !s.shown && s.calendar) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                s.calendar.show();
+            } else if (event.key === 'Escape' && s.shown) {
+                event.preventDefault();
+                event.stopPropagation();
+                hide();
+            }
+        };
+        var calendarKeys = function (event) {
+            if (event.key === 'Escape') {
+                if (state().shown) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    // The library puts focus back on the box.
+                    hide();
+                }
+                return;
+            }
+            if (event.key !== 'Tab' || event.altKey || event.ctrlKey || event.metaKey) {
+                return;
+            }
+            var all = tabStops(main), at = all.indexOf(event.target);
+            if (event.shiftKey && at <= 0) {
+                event.preventDefault();
+                box.focus();
+            } else if (!event.shiftKey && at === all.length - 1) {
+                event.preventDefault();
+                var after = stopAfter(box, main);
+                hide();
+                (after || box).focus();
+            }
+        };
+        var left = function (event) {
+            var to = event.relatedTarget || null;
+            if (!state().shown || stays(to)) {
+                return;
+            }
+            if (to) {
+                hide();
+                return;
+            }
+            // Focus to nothing: read where it went once the library is done.
+            window.setTimeout(function () {
+                if (movedOn()) {
+                    hide();
+                }
+            }, 0);
+        };
+        var bind = function (el, type, fn) {
+            el.addEventListener(type, fn);
+            bound.push([el, type, fn]);
+        };
+        bind(box, 'keydown', boxKeys);
+        bind(box, 'focusout', left);
+        return {
+            drawn: function (el) {
+                if (main) {
+                    return;
+                }
+                main = el;
+                bind(main, 'keydown', calendarKeys);
+                bind(main, 'focusout', left);
+            },
+            opened: function () {
+                window.setTimeout(function () {
+                    if (movedOn()) {
+                        hide();
+                    }
+                }, 0);
+            },
+            off: function () {
+                bound.forEach(function (b) { b[0].removeEventListener(b[1], b[2]); });
+                bound = [];
+            }
+        };
+    }
+
     // A calendar for the typed box `box`, as a popup under it, or in a
     // drawer drawn after it and opened on demand (options.inline, onDemand()).
     //   options.mode           'date' (the default), 'datetime' (the time row
@@ -438,7 +593,7 @@
     // { calendar, set(iso, hhmm), destroy() }; set() moves the calendar to a
     // date and time without drawing it again.
     function attach(box, options) {
-        var o = options || {}, mode = o.mode || 'date', inline = !!o.inline, target = box, wrap = null, offs = [], demand = null;
+        var o = options || {}, mode = o.mode || 'date', inline = !!o.inline, target = box, wrap = null, offs = [], demand = null, popup = null;
         // The calendar takes over the element it is drawn in, classes
         // included, so it gets a box of its own inside ours.
         if (inline) {
@@ -485,6 +640,9 @@
             onInit: function (self) {
                 var main = self.context.mainElement;
                 dressed(main);
+                if (popup && main && main !== box) {
+                    popup.drawn(main);
+                }
                 // Done is ours: the library has no such button.
                 if (mode !== 'date' && main && main !== box) {
                     main.addEventListener('click', function (event) {
@@ -503,6 +661,9 @@
                 dressed(self.context.mainElement);
                 placeInHost(box, self.context.mainElement, o.host);
                 window.addEventListener('resize', place);
+                if (popup) {
+                    popup.opened();
+                }
             },
             onHide: function () {
                 shown = false;
@@ -540,17 +701,11 @@
             };
         }
         assign(calendarOptions, monthOf(o.iso));
-        // The library moves focus into the open calendar on every arrow key
-        // in the box; Left and Right keep moving the text cursor. This
-        // listener comes first, so it runs before the library's own.
-        var keys = function (event) {
-            if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !event.altKey && !event.ctrlKey && !event.metaKey) {
-                event.stopImmediatePropagation();
-            }
-        };
+        // Bound before the library's own listeners on the box, so its keys
+        // run first (popupKeys()).
         if (!inline) {
-            box.addEventListener('keydown', keys);
-            offs.push(function () { box.removeEventListener('keydown', keys); });
+            popup = popupKeys(box, function () { return { calendar: calendar, shown: shown }; });
+            offs.push(popup.off);
         }
         calendar = new window.VanillaCalendarPro.Calendar(target, calendarOptions);
         calendar.init();
