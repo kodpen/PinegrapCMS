@@ -20,4 +20,4 @@ description: Decisions list, workspace part 21 (2026-11-12 on): incoming e-mail 
 ## What does the line under a message show when the message woke more than one agent? (owner, 2026-11-13, #9188)
 - The state of every agent the message woke, not only the last one asked.
 - Owner (2026-11-13), with a picture of his message naming two agents and one line under it, "Bekliyor: `@prmerge`": "bakarmısın 2 kişiden bahsettim biri bekleniyor yazıyor". Asked what the line should show, he chose "Satır her ajanı göstersin".
-- The architect's, not the owner's words: one state per agent in the order asked, each with its own Stop link; a message that woke one agent looks as before; no table or column. Plan `plans/agent-request-lines.md` (RL1).
+- The architect's, not the owner's words: one state per agent in the order asked, each with its own Stop link; a message that woke one agent looks as before; no table or column. Done in #9237; the behaviour: `workspace/agent-shown.md`.
