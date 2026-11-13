@@ -1881,11 +1881,11 @@ function ws_voice_queue($channel, $message_id, $file_id, $name, $measure = array
 }
 
 /**
- * After a recording was posted: the assistants its words ask (a tag typed
- * beside it, an answer to one of their answers) are asked once it is
- * written out, so that they hear what was said (ws_voice_ask()); at once
- * when it will not be (transcripts off, the channel closed to them). Any
- * other file asks nobody, as before.
+ * After a file was posted: the assistants and agents its words ask (a tag
+ * typed beside it, an answer to one of their answers) are asked at once,
+ * as a text message's are. A recording waits until it is written out, so
+ * that they hear what was said (ws_voice_ask()); at once when it will not
+ * be (transcripts off, the channel closed to them).
  *
  * @param array  $viewer     who posted it
  * @param array  $channel
@@ -1897,7 +1897,7 @@ function ws_voice_queue($channel, $message_id, $file_id, $name, $measure = array
  */
 function ws_voice_posted($viewer, $channel, $message_id, $body, $name, $queued)
 {
-    if ($queued || !ws_voice_is_recording($name) || !function_exists('ws_message_ask_assistants')) {
+    if ($queued || !function_exists('ws_message_ask_assistants')) {
         return array('claude' => false, 'agent' => false, 'ai' => false);
     }
 

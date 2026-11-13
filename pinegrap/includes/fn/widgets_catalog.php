@@ -5058,7 +5058,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             'wishlist_preview'       => (bool)pg_sw_preview_overrides(),
             // The back-in-stock form the field and the button belong to.
             'stock_notify_form'      => $_civ_notify_form,
-            'stock_notify_sms'       => ($_civ_notify_form !== '') && pg_stock_notify_sms_on(),
+            'stock_notify_sms'       => ($_civ_notify_form !== '') && pg_stock_notify_phone_asked(),
             'stock_notify_email'     => (defined('USER_LOGGED_IN') && USER_LOGGED_IN && defined('USER_EMAIL_ADDRESS')) ? (string)USER_EMAIL_ADDRESS : '',
         ));
         $_civ_remuxed = json_encode($_civ_pre_tree, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

@@ -115,7 +115,7 @@ function test_ws_voice_heard()
 }
 
 // A recording that will be written out waits for its transcript before it
-// asks; any other file never asks. Neither needs the database.
+// asks, with no database; any other file asks at once (test below).
 function test_ws_voice_posted_waits()
 {
 	$none = array('claude' => false, 'agent' => false, 'ai' => false);
@@ -123,7 +123,7 @@ function test_ws_voice_posted_waits()
 	$channel = array('id' => 9, 'kind' => 'public');
 
 	pg_assert_same($none, ws_voice_posted($viewer, $channel, 12, '@ai', 'voice-1.weba', true), 'waits for its transcript');
-	pg_assert_same($none, ws_voice_posted($viewer, $channel, 12, '@ai', 'report.pdf', false), 'another file asks nobody');
+	pg_assert_contains("if (\$queued || !function_exists('ws_message_ask_assistants')) {", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/voice.php'), 'any other file asks at once');
 }
 
 // The asks once written out or given up, the uploads, and the recorder that

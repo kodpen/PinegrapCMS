@@ -415,6 +415,7 @@ function ws_meeting_note_transfer($viewer, $note, $channel, $decisions, $actions
         $sent = ws_message_send($viewer, $channel, $row['text'], array('kind' => 'decision'));
 
         if ($sent['ok']) {
+            ws_message_ask_noted($viewer, $channel, $sent['message_id'], $row['text']);
             $out['decisions']++;
         } else {
             $out['failed'][] = $row['plain'] . ': ' . $sent['error'];

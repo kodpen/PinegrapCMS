@@ -6,8 +6,14 @@
 <link rel="stylesheet" href="../../../../pinegrap/assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
 <link rel="stylesheet" href="sheet.css">
 <style>
-.wrap { width: 1120px; }
-.cols { display: grid; grid-template-columns: 760px 336px; gap: 24px; align-items: start; }
+/* The main menu as the panel shows it at 1920 px: the mini rail; the content box keeps the panel's 16 px sides. */
+.screen { grid-template-columns: 60px 1fr; }
+.menu { padding: 16px 12px; }
+.menu .sk, .menu .mh { display: none; }
+.menu .logo { margin: 2px 5px 26px; }
+.content { padding: 24px 16px 0; }
+.wrap { width: 1700px; }
+.cols { display: grid; grid-template-columns: 1300px 376px; gap: 24px; align-items: start; }
 .pcard { padding: 20px 22px 22px; margin-bottom: 16px; }
 .pcard h2 { margin: 0; font: 650 17px/1.3 "Inter Display", Inter, sans-serif; letter-spacing: -.015em; }
 .pcard p.d { margin: 2px 0 16px; font-size: 13px; color: var(--fg2); }
@@ -47,7 +53,7 @@
 
 /* save bar: sticks to the bottom of the window, as wide as the page */
 .main::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 120px; background: linear-gradient(transparent, var(--page) 78%); pointer-events: none; }
-.savebar { position: absolute; z-index: 2; left: 50%; bottom: 16px; transform: translateX(-50%); width: 1120px; height: 56px; padding: 0 12px 0 18px; display: flex; align-items: center; gap: 8px;
+.savebar { position: absolute; z-index: 2; left: 50%; bottom: 16px; transform: translateX(-50%); width: 1700px; height: 56px; padding: 0 12px 0 18px; display: flex; align-items: center; gap: 8px;
   border-radius: 16px; background: var(--float); backdrop-filter: blur(16px); border: 1px solid var(--line); box-shadow: var(--shadow-float); }
 .savebar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 4px color-mix(in srgb, var(--amber) 18%, transparent); margin-right: 4px; }
 .savebar b { font-weight: 550; }
@@ -56,7 +62,7 @@
 </head>
 <body>
 <div class="stage">
-<div class="cap"><b>Ekleme sayfası</b>İçerik ortada, en çok 1120 px: form sütunu 760, durum sütunu 336. Alan genişliği içeriğine göre. Kaydet çubuğu altta sabit.</div>
+<div class="cap"><b>Ekleme sayfası</b>İçerik ortada, en çok 1700 px: form sütunu 1300, durum sütunu 376, arada 24. Alanlar 12 sütunluk ızgarada form sütunuyla genişler. Alan genişliği içeriğine göre. Kaydet çubuğu altta sabit.</div>
 <div class="screen">
   <aside class="menu">
     <div class="logo"><i></i><span class="sk" style="width:92px"></span></div>
@@ -152,7 +158,7 @@
     <div class="savebar"><span class="dot"></span><b>Kaydedilmemiş değişiklikler</b><small>Taslak henüz kaydedilmedi.</small><span class="sp"></span><button class="btn ghost">Vazgeç</button><button class="btn quiet">Kaydet ve yeni ekle</button><button class="btn fill">Kaydet</button></div>
   </div>
 </div>
-<div class="ruler"><span style="width:250px">menü 250</span><span style="flex:1">boş</span><span class="on" style="width:756px">form sütunu 760</span><span class="on" style="width:356px">durum sütunu 336</span><span style="flex:1">boş</span></div>
+<div class="ruler"><span style="width:56px">menü 60</span><span style="flex:1">boş</span><span class="on" style="width:1296px">form sütunu 1300</span><span class="on" style="width:396px">durum sütunu 376 + 24</span><span style="flex:1">boş</span></div>
 </div>
 </body>
 </html>

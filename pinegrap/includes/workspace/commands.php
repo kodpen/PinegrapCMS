@@ -1539,6 +1539,11 @@ function ws_command_run($viewer, $channel, $body, $options = array())
 
             $result = ws_message_send($viewer, $channel, $rest, array('kind' => $split['command']));
 
+            // A tag in a note or a decision asks as in a message.
+            if ($result['ok']) {
+                ws_message_ask_noted($viewer, $channel, $result['message_id'], $rest);
+            }
+
             return $result['ok']
                 ? array('type' => 'done', 'message_id' => $result['message_id'])
                 : array('type' => 'error', 'error' => $result['error']);

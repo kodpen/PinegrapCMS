@@ -14,7 +14,7 @@ description: Which doors wake a cloud session (A0, 2026-11-07): session webhook 
 
 ## Does the poll door work?
 - `tools/ws_wait.php` waits on `GET /workspace/sync?channel_id=` with the cursor and `If-None-Match`, ignores the newest 50 of the first answer, prints the first message matching `--prefix`/`--contains`/`--regex` as JSON (exit 0; 3 timeout). Run with Bash `run_in_background` (up to 2 h): the session wakes when it exits. Checked against a local stand-in of the two routes (304 path included); not against a real site.
-- `tools/ws_post.php` writes a line (`POST /workspace/channels/{id}/messages`, `Idempotency-Key` optional). Both read `PG_WS_SITE` (ending `/integration.php`), `PG_WS_KEY`, `PG_WS_SECRET`, `PG_WS_CHANNEL`; the key goes as Basic auth, https only (localhost excepted).
+- `tools/ws_post.php` writes a line (`POST /workspace/channels/{id}/messages`, `Idempotency-Key` always). Both read `PG_WS_SITE` (ending `/integration.php`), `PG_WS_KEY`, `PG_WS_SECRET`, `PG_WS_CHANNEL`; the key goes as Basic auth, https only (localhost excepted).
 - Reached from the cloud only with full network access (the owner's `FULL` environment): CONNECT passes and `/pinegrap/integration.php` answers; a restricted policy gave CONNECT 403. The keys reach a session as environment variables.
 
 ## What does CI write?

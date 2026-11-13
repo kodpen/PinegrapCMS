@@ -20,3 +20,6 @@ description: The channel a flow run opens its tasks in: the flow's home as the r
 - As every run: by its channel (`ws_flow_run_access_from()`), so the starter reads it there; the flow's editors read all runs.
 
 Tests: `tests/workspace_flow_runs_test.php` (`test_workspace_flow_runs_start_names_its_channel`).
+
+## Which channel does a new message, check-in or approval box start at?
+The flow's home channel, when it is a public or private channel of the person's that is not archived (`homeChannelId()` in `newConfig()`, workspace_flow.js, #9218); else none ("Bir kanal seçin"). Before, all three started at none, so a flow made from a channel showed a problem until the channel was picked by hand. Other boxes with a channel (open a task, digest, report) still start at none.

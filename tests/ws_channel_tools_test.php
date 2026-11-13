@@ -5,7 +5,8 @@
  * Tests for the agent channel tools (tools/ws_client.php, tools/ws_post.php,
  * tools/ws_wait.php, tools/ws_poll.php): options, settings and their refusals,
  * the request queue waiter (which row wakes, the printed line, the interval),
- * the Basic header, the ETag read, the message rule, the post body, and
+ * the Basic header, the ETag read, the message rule, the post body and its
+ * key and repeat after a call without an answer, and
  * tools/ws_poll.php's ask body and close id. No network.
  *
  * @author      Erdal Güral (Kodpen)
@@ -277,4 +278,84 @@ function test_ws_channel_tools_requests_line()
 
 	// Nothing of the key leaves the line: it holds only the row's fields.
 	pg_assert_false(strpos(json_encode($line), 'Authorization') !== false);
+}
+
+function test_ws_channel_tools_post_own_key()
+{
+	$key = ws_post_own_key(str_repeat("\xab", 12));
+
+	pg_assert_same('ws-post-' . str_repeat('ab', 12), $key);
+	// The header keeps the key as it is, so the repeat sends the same one.
+	pg_assert_same(array('Idempotency-Key: ' . $key), ws_client_idempotency_headers(array('idempotency-key' => $key)));
+}
+
+function test_ws_channel_tools_post_no_answer_and_in_progress()
+{
+	$answer = function ($status, $body = '') {
+		return array('status' => $status, 'headers' => '', 'body' => $body, 'error' => $status === 0 ? 'timeout' : '');
+	};
+
+	pg_assert_same(true, ws_post_no_answer($answer(0)));
+	pg_assert_same(true, ws_post_no_answer($answer(504)));
+	pg_assert_same(false, ws_post_no_answer($answer(500)));
+	pg_assert_same(false, ws_post_no_answer($answer(201)));
+	pg_assert_same(true, ws_post_in_progress($answer(409, '{"error":{"code":"idempotency_in_progress"}}')));
+	pg_assert_same(false, ws_post_in_progress($answer(409, '{"error":{"code":"idempotency_key_reused"}}')));
+	pg_assert_same(3, ws_post_retry_after("HTTP/1.1 409 Conflict\r\nRetry-After: 3\r\n\r\n"));
+	pg_assert_same(10, ws_post_retry_after("Retry-After: 120\r\n"));
+	pg_assert_same(1, ws_post_retry_after(''));
+}
+
+/**
+ * Runs ws_post_send() on a list of answers; returns the result and the
+ * waits it asked for.
+ */
+function ws_channel_tools_send_run($statuses)
+{
+	$queue = array();
+
+	foreach ($statuses as $status) {
+		$queue[] = array(
+			'status'  => $status,
+			'headers' => $status === 409 ? "Retry-After: 2\r\n" : '',
+			'body'    => $status === 409 ? '{"error":{"code":"idempotency_in_progress"}}' : ($status === 201 ? '{"id":5}' : ''),
+			'error'   => $status === 0 ? 'Operation timed out' : '',
+		);
+	}
+
+	$waits = array();
+	$result = ws_post_send(function () use (&$queue) {
+		return array_shift($queue);
+	}, function ($seconds) use (&$waits) {
+		$waits[] = $seconds;
+	});
+
+	return array($result, $waits, count($queue));
+}
+
+function test_ws_channel_tools_post_send_repeat()
+{
+	// Answered at once: one call.
+	list($r, $waits) = ws_channel_tools_send_run(array(201));
+	pg_assert_same(array(1, false, 201, array()), array($r['calls'], $r['no_answer'], $r['answer']['status'], $waits));
+
+	// No answer, then answered: one repeat.
+	list($r) = ws_channel_tools_send_run(array(0, 201));
+	pg_assert_same(array(2, false, 201), array($r['calls'], $r['no_answer'], $r['answer']['status']));
+
+	// No answer twice: the outcome stays unknown, no third call.
+	list($r, $waits, $left) = ws_channel_tools_send_run(array(0, 0, 201));
+	pg_assert_same(array(2, true, 1), array($r['calls'], $r['no_answer'], $left));
+
+	// The repeat meets the first call still running: wait, ask once more.
+	list($r, $waits) = ws_channel_tools_send_run(array(0, 409, 201));
+	pg_assert_same(array(3, false, 201, array(2)), array($r['calls'], $r['no_answer'], $r['answer']['status'], $waits));
+
+	// Still running after the wait: unknown, never a fourth call.
+	list($r, $waits, $left) = ws_channel_tools_send_run(array(409, 409, 201));
+	pg_assert_same(array(2, true, 1), array($r['calls'], $r['no_answer'], $left));
+
+	// A refusal is final and not repeated.
+	list($r) = ws_channel_tools_send_run(array(403, 201));
+	pg_assert_same(array(1, false, 403), array($r['calls'], $r['no_answer'], $r['answer']['status']));
 }
