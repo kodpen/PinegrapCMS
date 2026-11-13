@@ -85,6 +85,7 @@
     "A Twilio trial account sends only to verified numbers: verify the number in the Twilio Console or upgrade the account.": "Twilio deneme hesabı yalnızca doğrulanmış numaralara gönderir: numarayı Twilio Console'da doğrulayın ya da hesabı yükseltin.",
     "A VKN has 10 digits and a TCKN 11.": "VKN 10, TCKN 11 hanelidir.",
     "A VKN is ten digits and a TCKN is eleven.": "VKN on hane, TCKN on bir hanedir.",
+    "A WhatsApp message arrived": "Bir WhatsApp mesajı geldi",
     "A WhatsApp message to +{var:1} was not sent: {var:2}": "+{var:1} numarasına giden bir WhatsApp mesajı gönderilmedi: {var:2}",
     "A WordPress export (Tools, Export), a WooCommerce products CSV or a Shopify products or customers CSV. The file is read first and nothing is written until you start.": "Bir WordPress dışa aktarımı (Araçlar, Dışa aktar), bir WooCommerce ürün CSV'si ya da bir Shopify ürün veya müşteri CSV'si. Dosya önce okunur; siz başlatana kadar hiçbir şey yazılmaz.",
     "A Year in the Kitchen Garden": "Mutfak Bahçesinde Bir Yıl",

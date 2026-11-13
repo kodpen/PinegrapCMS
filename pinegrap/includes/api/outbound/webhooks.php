@@ -83,6 +83,10 @@ function api_webhook_events() {
 		// the address is now stopped), message_id and campaign_id. A manual
 		// block from the panel is not announced.
 		'mail.bounced'     => 'A message to an address bounced; suppressed says whether mail to it is now stopped',
+		// A customer's message to the site's WhatsApp number, as the webhook
+		// receiver kept it (pg_whatsapp_received_event()): id, from, profile_name,
+		// type, body and contact_id; never the media.
+		'whatsapp.received' => 'A customer wrote to the site\'s WhatsApp number; contact_id names the contact of the number, 0 for none',
 		'mail.complained'  => 'A recipient marked a message as spam: mail to the address is stopped and its e-mail marketing consent withdrawn',
 		// A booking (includes/fn/booking_messages.php, pg_booking_changed()).
 		// id is the booking's; service_id, staff_id, user_id, name, email,

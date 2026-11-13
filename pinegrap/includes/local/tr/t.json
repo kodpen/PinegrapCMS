@@ -1853,6 +1853,7 @@
     "The Weekly Record": "Haftalık Plak",
     "The WhatsApp Business account and number.": "WhatsApp Business hesabı ve numarası.",
     "The WhatsApp Business account has a payment problem. Check its payment method in Meta Business Suite.": "WhatsApp Business hesabında bir ödeme sorunu var. Ödeme yöntemini Meta Business Suite'te denetleyin.",
+    "The WhatsApp account has no approved template the box can fill yet.": "WhatsApp hesabında kutunun doldurabileceği onaylanmış bir şablon henüz yok.",
     "The WhatsApp account was not saved: {var:1}": "WhatsApp hesabı kaydedilmedi: {var:1}",
     "The WhatsApp account was saved without being checked: {var:1}": "WhatsApp hesabı denetlenmeden kaydedildi: {var:1}",
     "The WhatsApp message was not queued: {var:1}": "WhatsApp mesajı kuyruğa eklenmedi: {var:1}",

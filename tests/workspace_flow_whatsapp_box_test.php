@@ -89,3 +89,18 @@ function test_workspace_flow_whatsapp_box_fallback_to()
 	pg_assert_same(array(array('b@example.com'), false, ''), array($typed['to'], $typed['marketing'], $typed['error']), 'a typed address is the owner\'s choice');
 	pg_assert_true(ws_step_whatsapp_fallback_to(array('recipient' => 'typed', 'fallback_to' => 'not an address'), '', $never)['error'] !== '');
 }
+
+function test_workspace_flow_whatsapp_received_event()
+{
+	$event = pg_whatsapp_received_event('7', array('from' => '+90 532 111 22 33', 'profile_name' => ' Ayşe ', 'type' => 'text', 'body' => str_repeat('a', 1200), 'media_id' => 'm1', 'wamid' => 'w1'), 5);
+
+	pg_assert_same(array('id', 'from', 'profile_name', 'type', 'body', 'contact_id'), array_keys($event), 'single values, never the media or the wamid');
+	pg_assert_same(array(7, '905321112233', 'Ayşe', 5), array($event['id'], $event['from'], $event['profile_name'], $event['contact_id']));
+	pg_assert_same(1000, mb_strlen($event['body']), 'the text is cut');
+	pg_assert_same(0, pg_whatsapp_received_event(1, 'nothing', -3)['contact_id']);
+
+	pg_assert_true(in_array('whatsapp.received', pg_event_workspace_events(), true), 'the workspace keeps it');
+	pg_assert_same(array('contact', 5), ws_events_record_of('whatsapp.received', $event), 'about the contact of the number');
+	pg_assert_same(array('', 0), ws_events_record_of('whatsapp.received', array('contact_id' => 0)), 'a number no contact has');
+	pg_assert_same(array('from', 'profile_name', 'type', 'body', 'contact_id'), array_column(ws_flow_event_outputs()['whatsapp.received'], 'key'), 'what a start box reads');
+}

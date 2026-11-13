@@ -266,6 +266,15 @@ function ws_step_whatsapp_check($viewer, $config)
         return $refuse($problems[0]);
     }
 
+    // With the e-mail in its place, WhatsApp switched off or a template no
+    // longer approved does not stop the box: it sends that e-mail
+    // (ws_step_whatsapp_do()).
+    $ok = array('ok' => true, 'error' => '', 'paused' => false);
+
+    if (!empty($config['fallback']) && (!function_exists('pg_whatsapp_ready') || !pg_whatsapp_ready())) {
+        return $ok + array('action' => array('type' => 'whatsapp', 'category' => '') + $config);
+    }
+
     if (!function_exists('pg_whatsapp_ready') || !pg_whatsapp_ready()) {
         return $refuse(lang('WhatsApp is not set up on this site.'));
     }
@@ -274,11 +283,11 @@ function ws_step_whatsapp_check($viewer, $config)
     $template = pg_whatsapp_template_find($key['name'], $key['language']);
     $problem = ws_step_whatsapp_template_problem($config, $template, $name);
 
-    if ($problem !== '') {
+    if (($problem !== '') && empty($config['fallback'])) {
         return $refuse($problem);
     }
 
-    return array('ok' => true, 'error' => '', 'paused' => false, 'action' => array('type' => 'whatsapp', 'category' => strtoupper((string) $template['category'])) + $config);
+    return $ok + array('action' => array('type' => 'whatsapp', 'category' => is_array($template) ? strtoupper((string) $template['category']) : '') + $config);
 }
 
 /**
@@ -397,8 +406,8 @@ function ws_step_whatsapp_fallback($action, $context, $email, $why)
  * @param array  $action    ws_step_whatsapp_check(), its texts filled
  * @param array  $context   what the placeholders read (ws_scheduled_fill())
  * @param string $reference ws_step_whatsapp_reference()
- * @param array  $person    email: the record's person's address (empty
- *                          for a typed number)
+ * @param array  $person    ws_step_whatsapp_person() for the record's
+ *                          person: email, error (why they have no number)
  * @return array ok, text, data (sent, emailed)
  */
 function ws_step_whatsapp_do($action, $context, $reference, $person = array())
@@ -407,11 +416,26 @@ function ws_step_whatsapp_do($action, $context, $reference, $person = array())
     $number = pg_sms_number((string) $action['to']);
 
     if ($number === '') {
-        return ws_step_whatsapp_fallback($action, $context, $email, lang('This is not a mobile number a WhatsApp message can be sent to.'));
+        $why = ((string) ($person['error'] ?? '') !== '') ? (string) $person['error'] : lang('This is not a mobile number a WhatsApp message can be sent to.');
+
+        return ws_step_whatsapp_fallback($action, $context, $email, $why);
+    }
+
+    // The scheduled actions' words ({{customer}}, {{date}} …) in each variable.
+    foreach (ws_step_whatsapp_var_keys() as $var) {
+        if (function_exists('ws_scheduled_fill') && ((string) ($action[$var] ?? '') !== '')) {
+            $action[$var] = ws_scheduled_fill((string) $action[$var], $context);
+        }
     }
 
     $key = ws_step_whatsapp_template_split($action['template']);
     $template = pg_whatsapp_template_find($key['name'], $key['language']);
+
+    // The category as Meta has it now decides the e-mail's consent too.
+    if (is_array($template)) {
+        $action['category'] = strtoupper((string) $template['category']);
+    }
+
     $problem = ws_step_whatsapp_template_problem($action, $template, lang('Send a WhatsApp message'));
     $filled = ($problem === '') ? ws_step_whatsapp_components($template, $action) : array('ok' => false, 'error' => $problem);
 
@@ -419,7 +443,7 @@ function ws_step_whatsapp_do($action, $context, $reference, $person = array())
         return ws_step_whatsapp_fallback($action, $context, $email, lang(array('string' => 'The WhatsApp message was not queued: {var:1}', 'vars' => (string) $filled['error'])));
     }
 
-    $category = strtoupper((string) $template['category']);
+    $category = $action['category'];
     $queued = pg_whatsapp_enqueue($number, array(
         'id'         => (int) $template['id'],
         'name'       => $key['name'],
@@ -429,7 +453,7 @@ function ws_step_whatsapp_do($action, $context, $reference, $person = array())
     ), ws_step_whatsapp_queue_options($category, $reference, time()));
 
     if (!$queued['ok']) {
-        return ws_step_whatsapp_fallback($action + array('category' => $category), $context, $email,
+        return ws_step_whatsapp_fallback($action, $context, $email,
             lang(array('string' => 'The WhatsApp message was not queued: {var:1}', 'vars' => (string) $queued['error'])));
     }
 
