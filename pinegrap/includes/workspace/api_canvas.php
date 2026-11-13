@@ -650,6 +650,35 @@ function ws_api_canvas_edit($params)
 }
 
 /**
+ * The canvas document a call's SVG makes, signed by the agent, or the
+ * refusal. Never returns on a refusal.
+ *
+ * @param array $params  svg, background, layers
+ * @param array $channel
+ * @param array $agent   id, kind, handle
+ * @return object decoded as objects
+ */
+function ws_api_canvas_svg_doc($params, $channel, $agent)
+{
+    $public = api_has_scope(api_current_scopes(), 'files:read');
+    $mode = ws_canvas_split_mode($params['layers'] ?? null);
+    $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg($params['svg'] ?? '', (string) ($params['background'] ?? ''), $mode === 'split', ws_canvas_split_resolver((int) $channel['id'], $public));
+
+    if ($made['error'] !== '') {
+        api_fail_validation(ws_canvas_from_svg_error_text($made['error']), in_array($made['error'], array('background', 'layers'), true) ? $made['error'] : 'svg');
+    }
+
+    $doc = $made['doc'];
+    $doc->by = (object) $agent;
+
+    if (ws_canvas_doc_json($doc) === '') {
+        api_fail_validation(ws_canvas_from_svg_error_text('not_kept'), 'svg');
+    }
+
+    return $doc;
+}
+
+/**
  * Draws the canvas of a message anew from SVG, as the agent of its
  * channel: the version the call was made against is checked, then the
  * document is kept as the next version and its picture drawn. The
@@ -672,20 +701,7 @@ function ws_api_canvas_new_version($viewer, $message, $channel, $params)
         api_fail(409, 'conflict', lang(array('string' => 'The canvas changed since: its newest version is {var:1}. Read it again.', 'vars' => $version)));
     }
 
-    $public = api_has_scope(api_current_scopes(), 'files:read');
-    $mode = ws_canvas_split_mode($params['layers'] ?? null);
-    $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg($params['svg'] ?? '', (string) ($params['background'] ?? ''), $mode === 'split', ws_canvas_split_resolver((int) $channel['id'], $public));
-
-    if ($made['error'] !== '') {
-        api_fail_validation(ws_canvas_from_svg_error_text($made['error']), in_array($made['error'], array('background', 'layers'), true) ? $made['error'] : 'svg');
-    }
-
-    $doc = $made['doc'];
-    $doc->by = (object) $agent;
-
-    if (ws_canvas_doc_json($doc) === '') {
-        api_fail_validation(ws_canvas_from_svg_error_text('not_kept'), 'svg');
-    }
+    $doc = ws_api_canvas_svg_doc($params, $channel, $agent);
 
     api_dry_run_stop('updated', 'workspace_canvas', array(
         'message_id' => (int) $message['id'],

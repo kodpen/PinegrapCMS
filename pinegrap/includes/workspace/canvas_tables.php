@@ -153,13 +153,15 @@ function ws_canvas_table_binding($message_id, $table_id)
  */
 function ws_canvas_page_reach($viewer, $message)
 {
-    if (!is_array($message) || ((int) ($message['deleted_at'] ?? 0) > 0) || ((int) ($message['file_id'] ?? 0) <= 0) || empty($viewer['member'])) {
+    if (!is_array($message) || ((int) ($message['deleted_at'] ?? 0) > 0) || empty($viewer['member'])) {
         return null;
     }
 
     $channel = ws_channel($message['channel_id']);
 
-    if (!$channel || !ws_can_read_channel($viewer, $channel) || !ws_page_is_page((int) $message['file_id'])) {
+    // The page part: the message's own file, or a page added beside its
+    // drawing (canvas_parts.php).
+    if (!$channel || !ws_can_read_channel($viewer, $channel) || (ws_canvas_part_file($message, 'page') <= 0)) {
         return null;
     }
 

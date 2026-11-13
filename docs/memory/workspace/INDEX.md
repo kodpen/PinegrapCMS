@@ -46,6 +46,7 @@
 - canvas-bridge.md: A live page's data bridge (#8947): page to shell to panel to site and back, the message shape, the canvas named by the card and never the page, the bounds and the stop, the who call, the proofs
 - canvas-consents.md: A live page's writes with consent (11.0.193, #9180): add and change through the bridge, the first-write question per page version, "Last written through <canvas>" on a row
 - canvas-measures.md: What a live page's read of a bound table costs at the 5000-row limit (CO5, #9207): time, memory and answer size of the bridge's rows call, and the bounds kept from it
+- canvas-parts.md: A canvas's second part (ws_canvas_parts, 11.0.194, #9258): the message's own file is the first part, a row names the other; who reads it as the part, adding one over the API, what the card shows yet [decision: here]
 - canvas-tables.md: The tables bound to a canvas (ws_canvas_tables, 11.0.190, #8960): who binds, read or write, 20 a canvas, the card's line of tables, cleanup, a page's read
 - channel-agent-rights.md: Who adds, changes or removes a channel's agents ("Agents in this channel" in Channel settings, workspace.channels.agents.*): who may post; the tier and a private channel's new agent only its manager [decision: decisions-made-workspace-11.md, decisions-made-workspace-9.md]
 - channel-members-agents.md: A channel's agents among its members (#8936): agents as squares in the head's faces, People here and Agents here in Channel info, last seen; a person's time only for a manager [decision: decisions-made-workspace-19.md]

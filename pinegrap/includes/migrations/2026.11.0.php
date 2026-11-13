@@ -184,6 +184,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_wtable_channel();       // 11.0.191
 	upgrade_2026_11_0_ws_edit_hold();            // 11.0.192
 	upgrade_2026_11_0_ws_canvas_consents();      // 11.0.193
+	upgrade_2026_11_0_ws_canvas_parts();         // 11.0.194
 
 }
 
@@ -6134,6 +6135,31 @@ function upgrade_2026_11_0_ws_canvas_tables() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a canvas can name the tables its live page reads or writes; the page reaches no other table.');
+
+}
+
+// The second part of a canvas (2026.11.0, 11.0.194; includes/workspace/
+// canvas_parts.php). A canvas is the message that carries it, and the
+// message's own file is its first part: a drawing or a live page. The other
+// one, added later, is a file of the channel named here, one row a canvas
+// and part, with who made it. No foreign keys: a thread's purge removes the
+// rows; the files stay in the channel's folder as its other files do.
+function upgrade_2026_11_0_ws_canvas_parts() {
+
+	install_create_table('ws_canvas_parts', "CREATE TABLE ws_canvas_parts (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		message_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		part         VARCHAR(8) NOT NULL DEFAULT 'page',
+		file_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		made_by_kind VARCHAR(8) NOT NULL DEFAULT 'user',
+		made_by_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_canvas_part (message_id, part),
+		KEY idx_file (file_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a canvas can hold a drawing and a live page together; an agent adds the second through the API.');
 
 }
 
