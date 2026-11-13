@@ -560,7 +560,8 @@
 - site-search-index-text.md: What text the site search index stores for a drawn page: main content only, no cookie window, shared header/menu/footer or link addresses (#4096)
 - site-search-query-and-freshness.md: Site search: the query text in MATCH, the binned and archived page filter (advanced and simple), record and file labels, the index made due after a template install (#3550, #3551, #3552)
 - site-search-skipped-pages.md: Visual-editor pages site search never lists as items (bare product, record, error, checkout and order pages): pg_search_index_skipped_widget_types() (#9053)
-- site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search does not fold yet [decision: decisions-made-product-10.md]
+- site-search-translated.md: What the site search reads on a page served in another language (pages, products and groups, form records, a list's own search box), the words and ı/i, the order, the fences, and what it leaves out [decision: decisions-made-product-50.md]
+- site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search in the source language does not fold yet [decision: decisions-made-product-10.md]
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - store-template-front-end.md: Store template front-end fixes (#3621): footer contact column, no card hint at checkout, product tabs on one line, the product page's edit pencil on the widget and clear of headings.
 - style-complete.md: pg_style_complete.js: smart completion in the designer code editors (attributes, CSS values, var(--…) tokens, Bootstrap JS API), no duplicate options, tests
