@@ -90,5 +90,7 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Appstudio: `-1`+`-2` #8642.
 
+- Events: `-1`+`-2` #9163 (Conference blocks).
+
 ## Who claims what?
 - Any worker, in the order above, one step per PR; a step whose template still has an open PR on its files waits.
