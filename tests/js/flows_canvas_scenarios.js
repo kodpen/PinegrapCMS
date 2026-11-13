@@ -473,15 +473,16 @@ module.exports = [
         run: async (h) => {
             await h.open();
             await pick(h, 'task_1');
+            await h.click({ css: '#wsf-side-tab-links' });
 
             const connect = SIDE + ' select.wsf-connect';
 
             h.same('Connect to... offers the boxes an arrow may go to', await h.page((harness, css) => Array.prototype.map.call(document.querySelector(css).options, (option) => option.value), connect), ['', 'task_2']);
             h.need('task_2 chosen', await h.probe('pick', connect, 'task_2'));
-            await h.click({ text: h.t('fl_connect_add'), within: SIDE });
+            await h.click({ text: h.t('fl_side_add_arrow'), within: SIDE });
             await h.waitFor('the arrow drawn', (harness) => harness.edges().length === 3, 3000);
             await h.waitFor('the list has the focus again', (harness) => harness.focused() && (harness.focused().refocus === 'connect-task_1'), 3000);
-            h.same('the side panel lists both arrows', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#wsf-side .wsf-link [data-name-of]'), (node) => node.getAttribute('data-name-of'))), ['end_1', 'task_2']);
+            h.same('the side panel lists both arrows', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#wsf-side .wsf-link-row:has(.wsf-link-on, .pg-icon-button) .wsf-link-go [data-name-of]'), (node) => node.getAttribute('data-name-of'))), ['end_1', 'task_2']);
             await h.click({ label: h.t('fl_remove_arrow_to', h.t('fl_kind_end')), within: SIDE });
             await h.waitFor('the arrow to the end goes', (harness) => harness.edges().length === 2, 3000);
             await h.waitFor('Connect to... has the focus', (harness) => harness.focused() && (harness.focused().refocus === 'connect-task_1'), 3000);
@@ -490,6 +491,75 @@ module.exports = [
 
             h.same('saved', arrows(save.data.graph), ['manual_1>task_1:next', 'task_1>task_2:done']);
             h.same('one save for both', h.saves().length, 1);
+        }
+    },
+
+    {
+        name: 'the chosen box\'s panel: its head, the tabs and their keys, the foot line, Duplicate, Close and Esc give the focus back, F6 goes round the areas',
+        run: async (h) => {
+            await h.open();
+            await pick(h, 'task_1');
+
+            const head = await h.page(() => {
+                const side = document.querySelector('#wsf-side');
+
+                return [side.querySelector('.wsf-side-kind').textContent, side.querySelector('.wsf-side-name').textContent, Array.prototype.map.call(side.querySelectorAll('[role="tab"]'), (tab) => tab.id.replace('wsf-side-tab-', '') + ':' + tab.getAttribute('aria-selected')), side.querySelector('#wsf-side-tab-links .pg-seg-count').textContent];
+            });
+
+            h.same('the kind, the name, three tabs with Settings open, the arrows counted', head, [h.t('fl_kind_task'), 'Call the customer', ['settings:true', 'links:false', 'try:false'], '2']);
+            await h.click({ css: '#wsf-side-tab-settings' });
+            await h.key('ArrowRight');
+            h.ok('Right shows Connections, the tab keeps the focus', await h.page(() => (document.activeElement.id === 'wsf-side-tab-links') && (document.activeElement.getAttribute('aria-selected') === 'true') && !!document.querySelector('#wsf-side .wsf-link-row')));
+            await h.key('End');
+            h.ok('End shows Try', await h.page(() => document.activeElement.id === 'wsf-side-tab-try'));
+            await h.key('Home');
+            h.same('the foot line names the box before and the one after', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#wsf-side .wsf-side-foot [data-name-of]'), (node) => node.getAttribute('data-name-of'))), ['manual_1', 'end_1']);
+            await h.click({ css: '#wsf-side-tab-links' });
+            await pick(h, 'end_1');
+            h.ok('the next box opens on the tab last chosen', await h.page(() => document.querySelector('#wsf-side-tab-links').getAttribute('aria-selected') === 'true'));
+            await pick(h, 'task_1');
+            await h.click({ css: '#wsf-side [data-refocus="side-more"]' });
+            await h.click({ text: h.t('fl_duplicate'), within: SIDE });
+            await h.waitFor('a copy, chosen', (harness) => harness.state().selected && (harness.state().selected.id === 'task_3'), 3000);
+
+            const save = await saveNumber(h, 1);
+            const copy = nodeIn(save.data.graph, 'task_3');
+
+            h.same('the copy keeps the title and settings, no arrow', [copy && copy.config.title, arrows(save.data.graph).filter((arrow) => arrow.indexOf('task_3') !== -1)], ['Call the customer', []]);
+            await h.click({ css: '#wsf-side-tab-settings' });
+            await h.key('Escape');
+            h.ok('Esc in the panel: the focus on the box, still chosen', await h.page(() => (document.activeElement.getAttribute('data-node') === 'task_3') && !!document.querySelector('#wsf-side .wsf-side-head')));
+            await h.key('F6');
+            h.ok('F6 from the canvas: the right panel', await h.page(() => document.querySelector('#wsf-side').contains(document.activeElement)));
+            await h.key('F6');
+            h.ok('F6 again: the bar', await h.page(() => document.querySelector('#ws-root .wsf-bar').contains(document.activeElement)));
+            await h.key('F6', 'Shift');
+            h.ok('Shift+F6: back to the right panel', await h.page(() => document.querySelector('#wsf-side').contains(document.activeElement)));
+            await h.click({ css: '#wsf-side .wsf-side-close' });
+            h.ok('Close: nothing chosen, the focus on the box', await h.page(() => (document.activeElement.getAttribute('data-node') === 'task_3') && !document.querySelector('#wsf-side .wsf-side-head')));
+            h.same('nothing chosen', (await h.state()).selected, null);
+        }
+    },
+
+    {
+        name: 'on a phone a box chosen on the canvas opens its panel as a sheet from the bottom; a tap on the scrim closes it',
+        width: 390,
+        run: async (h) => {
+            await h.open();
+            await h.click({ text: h.t('fl_canvas'), within: BAR });
+            await h.page(() => document.querySelector('#ws-root [data-node="task_1"]').focus());
+            await h.waitFor('task_1 chosen', (harness) => harness.state().selected && (harness.state().selected.id === 'task_1'), 3000);
+
+            const sheet = await h.page(() => {
+                const side = document.querySelector('#wsf-side').getBoundingClientRect();
+
+                return [getComputedStyle(document.querySelector('#wsf-side')).position, Math.round(side.bottom) === window.innerHeight, side.height <= window.innerHeight * 0.85 + 1, getComputedStyle(document.querySelector('#ws-root .wsf-scrim')).display];
+            });
+
+            h.same('a fixed sheet at the bottom, at most 85 % high, over the scrim', sheet, ['fixed', true, true, 'block']);
+            await h.page(() => document.querySelector('#ws-root .wsf-scrim').click());
+            h.same('the scrim closes it: nothing chosen', (await h.state()).selected, null);
+            h.ok('nothing scrolls sideways', await h.page(() => document.documentElement.scrollWidth <= window.innerWidth));
         }
     },
 
@@ -995,6 +1065,10 @@ module.exports = [
             await h.click({ css: '#ws-root [data-refocus="palette-add-task"]' });
             await h.waitFor('the box added', (harness) => harness.state().selected && (harness.state().selected.id === 'task_3'), 3000);
             h.ok('a box added folds the panel', await h.page(() => getComputedStyle(document.querySelector('#ws-root .wsf-palette-panel')).display === 'none'));
+            h.same('the right panel is 300 px wide', await h.page(() => Math.round(document.querySelector('#wsf-side').getBoundingClientRect().width)), 300);
+            await h.page(() => document.querySelector('#ws-root [data-node="task_3"]').focus());
+            await h.key('F6', 'Shift');
+            h.ok('Shift+F6 from the canvas passes over the folded rail to the bar', await h.page(() => document.querySelector('#ws-root .wsf-bar').contains(document.activeElement)));
             h.ok('nothing scrolls sideways', await h.page(() => document.documentElement.scrollWidth <= window.innerWidth));
         }
     },
@@ -1035,8 +1109,9 @@ module.exports = [
             await h.open();
             h.ok('Publish waits while there is a problem', (await h.state()).publish.disabled);
             await pick(h, 'task_1');
+            await h.click({ css: '#wsf-side-tab-links' });
             h.need('task_2 chosen', await h.probe('pick', SIDE + ' select.wsf-connect', 'task_2'));
-            await h.click({ text: h.t('fl_connect_add'), within: SIDE });
+            await h.click({ text: h.t('fl_side_add_arrow'), within: SIDE });
             await saveNumber(h, 1);
             h.ok('Publish may be pressed once none is left', !(await h.state()).publish.disabled);
             await h.click({ text: h.t('fl_publish'), within: BAR });

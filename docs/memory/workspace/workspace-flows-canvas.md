@@ -18,10 +18,10 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 
 ## How is the editor built?
 - Bar: name, status, save state; Canvas / List; the tools, Run, Publish, ⋯ (`workspace-flows-window-bar.md`). Below: palette | stage | side.
-- Palette (`drawPalette()`, left column, edit access only; else `wsf-no-palette`): Start from a template while empty, a search, the boxes in numbered sections of folding groups, start row with Change, a rail: `workspace-flows-palette.md`. Click or drag; phones: the outline's buttons.
+- Palette (`drawPalette()`, left column, edit access only; else `wsf-no-palette`): Start from a template while empty, a search, the boxes in folding groups: `workspace-flows-palette.md`. Click or drag; phones: the outline's buttons.
 - Stage: a layer moved by translate+scale; SVG arrows under 208×80 HTML boxes, grid 16. Pan: empty canvas, Space+drag, middle button, wheel. Zoom: Ctrl+wheel, pinch, − % + fit (0.25-2).
 - Run/view access: the live graph read-only, no palette, drag, Publish. Share dialog (⋯): `workspace-flows-shares.md`.
-- Box look, kind icons: `workspace-flows-box-look.md`; titles with values, live-flow hint: `workspace-flows-run-notice.md`.
+- Side: `workspace-flows-side-panel.md`. Box look: `workspace-flows-box-look.md`; titles with values, live-flow hint: `workspace-flows-run-notice.md`.
 
 ## How is it saved?
 - 1.5 s after the last change, on blur, Ctrl+S; Publish, Pause, another flow, the way back to the list save first.
@@ -30,7 +30,7 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 
 ## Focus and keys?
 - `state.refocus`: `data-refocus` keys, space-separated fallbacks. `keepFocus()` redraws, then focuses the control redrawn in place, else its box (`box-<id>`), outline heading, the run's title or the run bar's Close.
-- Tab in arrow order; arrows move 16 (Shift 64); C "Connect to…"; Delete; Enter: first field; + − 0; Esc. Undo: `workspace-flows-undo.md`.
+- Tab in arrow order; arrows move 16 (Shift 64); C "Connect to…"; Delete; Enter: Settings' first field; + − 0; Esc; F6 between the areas. Undo: `workspace-flows-undo.md`.
 
 ## What is the outline view?
 - The bar's List choice, default under 768 px: boxes in arrow order; a box's heading opens its settings and "Connect to…" (the selected box, `outlineOpen()`), one at a time; the hidden canvas redraws when shown. All forms at once was 686 controls at 97 boxes (#3497).
