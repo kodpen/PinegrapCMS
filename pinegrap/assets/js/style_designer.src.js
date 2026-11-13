@@ -6337,10 +6337,13 @@ const StyleDesigner = (function () {
         // Bootstrap's `.ratio > *` still matches the wrapper and its absolute
         // positioning evaporates; the real child then flows BELOW the padded
         // box (the picture sat under the empty 16:9 area). Re-apply the rule
-        // to the real child and carry the outline over.
-        _SD_BX + '.ratio > .sd-wrap > * { position:absolute; top:0; left:0; width:100%; height:100%; }',
-        _SD_BX + '.ratio > .sd-wrap.sd-selected > * { outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
-        _SD_BX + '.ratio > .sd-wrap:hover:not(.sd-selected) > * { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
+        // to the real child and carry the outline over. Only to the real
+        // child (_SD_FX_EL): given to the wrapper's toolbar too, a selected
+        // picture in a ratio box (a card's cover in a loop) drew its toolbar
+        // as a filled block the picture's full height over the picture.
+        _SD_BX + '.ratio > .sd-wrap > ' + _SD_FX_EL + ' { position:absolute; top:0; left:0; width:100%; height:100%; }',
+        _SD_BX + '.ratio > .sd-wrap.sd-selected > ' + _SD_FX_EL + ' { outline:1px solid rgba(13,110,253,.7) !important; outline-offset:-1px !important; }',
+        _SD_BX + '.ratio > .sd-wrap:hover:not(.sd-selected) > ' + _SD_FX_EL + ' { outline:1px solid rgba(13,110,253,.35) !important; outline-offset:-1px !important; }',
         // An image told to fill its parent (h-100) fills the WRAPPER in the
         // canvas; let the wrapper fill the parent so the picture does too.
         _SD_BX + '.sd-wrap[data-content-type="image"]:has(> img.h-100) { display:block !important; height:100% !important; margin:0 !important; }',
@@ -10049,7 +10052,8 @@ const StyleDesigner = (function () {
                 if (p.classList.contains('sd-tb')) {
                     // Above the element; below it when there is no room
                     // above, inside it with no room below either.
-                    var spot = _sdTbSpot(er.top, er.bottom, win.innerHeight);
+                    var clip = _sdTbClip(w);
+                    var spot = _sdTbSpot(er.top, er.bottom, win.innerHeight, clip ? clip[0] : 0, clip ? clip[1] : Infinity);
                     top = (spot === 'below' ? er.bottom + 2 : er.top + (spot === 'inside' ? 2 : -20)) - by;
                     left = er.left - bx;
                 } else if (p.classList.contains('sd-persistent-note')) {
@@ -10114,10 +10118,40 @@ const StyleDesigner = (function () {
     // a navbar brand or the first breadcrumb at the top of the page could not
     // be double-clicked for editing, the second click hit a toolbar button
     // (Duplicate) instead.
-    function _sdTbSpot(top, bottom, viewH) {
-        if (top >= 22) return 'above';
-        if (bottom + 22 <= viewH) return 'below';
+    // clipTop / clipBottom: the box of the nearest ancestor that clips its
+    // content (_sdTbClip()), when there is one. Room above or below counts
+    // only inside it: a card's cover picture at the top of an
+    // overflow-hidden card had its toolbar above the picture, cut away by
+    // the card, so it showed nowhere.
+    function _sdTbSpot(top, bottom, viewH, clipTop, clipBottom) {
+        var lo = (typeof clipTop === 'number' && clipTop > 0) ? clipTop : 0;
+        var hi = (typeof clipBottom === 'number' && clipBottom < viewH) ? clipBottom : viewH;
+        if (top - lo >= 22) return 'above';
+        if (bottom + 22 <= hi) return 'below';
         return 'inside';
+    }
+
+    // The viewport box ([top, bottom]) of the nearest ancestor of wrapper
+    // `w` whose overflow clips (anything but visible), or null. `memo`
+    // (a Map, optional) keeps each element's answer for one pass, so a
+    // pass over every wrapper reads each ancestor's style once.
+    function _sdTbClip(w, memo) {
+        var doc = w.ownerDocument, win = doc && doc.defaultView;
+        if (!win) return null;
+        var chain = [], el = w.parentElement, found = null;
+        while (el && el !== doc.body && el !== doc.documentElement) {
+            if (memo && memo.has(el)) { found = memo.get(el); break; }
+            chain.push(el);
+            var cs = win.getComputedStyle(el);
+            if (cs.display !== 'contents' && (cs.overflowY !== 'visible' || cs.overflowX !== 'visible')) {
+                var r = el.getBoundingClientRect();
+                found = [r.top, r.bottom];
+                break;
+            }
+            el = el.parentElement;
+        }
+        if (memo) chain.forEach(function (c) { memo.set(c, found); });
+        return found;
     }
 
     // Writes a spot as the wrapper's classes; only what changes is written.
@@ -10136,15 +10170,20 @@ const StyleDesigner = (function () {
     // Places one wrapper's toolbar (the hovered one).
     function _sdTbFlip(w) {
         if (!w || w.tagName !== 'DIV') return;
-        var r = _sdBoxRect(w);
-        _sdTbSpotWrite(w, _sdTbSpot(r.top, r.bottom, _sdCanvasViewH()));
+        var r = _sdBoxRect(w), c = _sdTbClip(w);
+        _sdTbSpotWrite(w, _sdTbSpot(r.top, r.bottom, _sdCanvasViewH(), c ? c[0] : 0, c ? c[1] : Infinity));
     }
 
     // The same for several wrappers: all measured, then all written.
     function _sdTbFlipAll(ws) {
         var vh = _sdCanvasViewH();
+        var memo = (typeof Map === 'function') ? new Map() : null;
         var rs = ws.map(function (w) { return _sdBoxRect(w); });
-        ws.forEach(function (w, i) { _sdTbSpotWrite(w, _sdTbSpot(rs[i].top, rs[i].bottom, vh)); });
+        var cs = ws.map(function (w) { return _sdTbClip(w, memo); });
+        ws.forEach(function (w, i) {
+            var c = cs[i];
+            _sdTbSpotWrite(w, _sdTbSpot(rs[i].top, rs[i].bottom, vh, c ? c[0] : 0, c ? c[1] : Infinity));
+        });
     }
 
     // What a scroll changes: nothing in the page, only where the viewport

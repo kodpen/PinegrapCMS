@@ -363,7 +363,7 @@
             readOnly: !!document.querySelector('#ws-root .wsf-app.wsf-readonly'),
             conflict: shown(conflict) ? words(conflict) : '',
             runBar: shown(document.querySelector('#ws-root .wsf-run-bar')) ? words(document.querySelector('#ws-root .wsf-run-bar')) : '',
-            side: words(document.querySelector('#ws-root .wsf-side .wsf-side-title')),
+            side: words(document.querySelector('#ws-root .wsf-side .wsf-side-kind, #ws-root .wsf-side .wsf-side-title')),
             selected: selected ? (selected.hasAttribute('data-node') ? { type: 'node', id: selected.getAttribute('data-node') } : { type: 'edge', id: Number(selected.getAttribute('data-edge')) }) : null,
             name: name ? ((typeof name.value === 'string') ? name.value : words(name)) : '',
             status: words(document.querySelector('#ws-root .wsf-bar [data-refocus="status"]')),
