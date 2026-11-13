@@ -2864,6 +2864,11 @@ function ws_flow_graph_present($graph, $edit = false)
                 $node['config']['id'] = '';
             }
 
+            // So may the contact a contact group box names.
+            if (!$edit && ((string) $node['kind'] === 'contact_group')) {
+                $node['config']['contact'] = '';
+            }
+
             $node['config'] = (object) $node['config'];
 
             return $node;
@@ -3526,6 +3531,7 @@ function ws_flow_js_strings()
         'fl_kind_rows_get'    => lang('Read rows of a table'),
         'fl_rows_read_help'   => lang('The tables the flow\'s owner may read; the box reads with their rights.'),
         'fl_kind_record_get'  => lang('Read a record'),
+        'fl_kind_contact_group' => lang('Add to or take out of a contact group'),
         'fl_record_kind'      => lang('Kind of record'),
         'fl_record_kind_pick' => lang('Choose a kind of record'),
         'fl_record_kind_help' => lang('The kinds of record the flow\'s owner may read; the box reads with their rights.'),
@@ -3631,6 +3637,17 @@ function ws_flow_js_strings()
         'fl_rows_meta_last'   => ws_js_template('{var:1} · last row', 1),
         'fl_record_meta'      => ws_js_template('{var:1} · {var:2}', 2),
         'fl_record_none'      => lang('No kind of record chosen'),
+        'fl_group'            => lang('Contact group'),
+        'fl_group_pick'       => lang('Choose a contact group'),
+        'fl_group_help'       => lang('Only groups filled by hand. Adding a contact never changes its marketing consent.'),
+        'fl_group_way'        => lang('What it does'),
+        'fl_group_add'        => lang('Add the contact'),
+        'fl_group_remove'     => lang('Take the contact out'),
+        'fl_group_contact'    => lang('Contact'),
+        'fl_group_contact_help' => lang('Leave it empty for the contact of the run\'s record, or name one by its number or one value, such as {{trigger.contact_id}}.'),
+        'fl_group_none'       => lang('No contact group chosen'),
+        'fl_group_meta_add'   => ws_js_template('Add to {var:1}', 1),
+        'fl_group_meta_remove' => ws_js_template('Take out of {var:1}', 1),
         'fl_day_mon'         => lang('Monday'),
         'fl_day_tue'         => lang('Tuesday'),
         'fl_day_wed'         => lang('Wednesday'),
@@ -4169,6 +4186,9 @@ function ws_flow_js_config($viewer, $mode)
 
         // The kinds of record a read box may read, with the values each gives.
         $steps['reads'] = function_exists('ws_flow_record_get_kinds') ? ws_flow_record_get_kinds($viewer) : array();
+        // The groups filled by hand a contact group box may change; none,
+        // and the palette has no such box.
+        $steps['groups'] = function_exists('ws_step_contact_group_choices') ? ws_step_contact_group_choices($viewer) : array();
         // The Pinegrap AI box is offered while the site has it set up
         // (ws_step_ai_check()).
         $steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();

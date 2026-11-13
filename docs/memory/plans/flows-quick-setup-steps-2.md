@@ -13,7 +13,7 @@ description: Steps QS1b, QS6, QS7 of the flows-quick-setup plan, the architect's
 ## Which steps?
 - QS1b (S) done #9223. The change box on the run's record: `change.id` takes one value such as `{{trigger.record_id}}`, as Read a record's `id` does; no new kind. With it the drawn "Change the order's status" and the drawn approval recipe.
 - QS6 (M) Send an SMS, a new step kind: to the mobile of the record's person (as the e-mail box's `record_person`) or a typed number; a text with values; info or marketing, marketing under the consent rule the SMS campaigns keep; sent through `pg_sms_send()` (`includes/fn/sms.php`); output `sent`. Offered where the site can send an SMS.
-- QS7 (S) Add to or take out of a contact group, a new step kind: the run's contact or a value's, the group chosen. Adding never sets a contact's marketing consent. A flow started by `contact_group.joined` on a group does not start again from its own add to that group (a test).
+- QS7 (S) done #9291. Add to or take out of a contact group, a new step kind: the run's contact or a value's, the group chosen. Adding never sets a contact's marketing consent. A flow started by `contact_group.joined` on a group does not start again from its own add to that group (a test).
 
 ## In which order?
 - QS1b before QS3. QS6 and QS7 any time after QS1, each alone; they do not hold QS2 to QS5. Claim as `[plan:flows-quick-setup] <step> — <topic>`.

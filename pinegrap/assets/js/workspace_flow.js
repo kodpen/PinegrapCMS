@@ -157,6 +157,7 @@
         row_get: { name: 'fl_kind_row_get', group: 'system', into: true, out: ['done', 'failed'] },
         rows_get: { name: 'fl_kind_rows_get', group: 'system', into: true, out: ['done', 'failed'] },
         record_get: { name: 'fl_kind_record_get', group: 'system', into: true, out: ['done', 'failed'] },
+        contact_group: { name: 'fl_kind_contact_group', group: 'system', into: true, out: ['done', 'failed'] },
         // A classifying Pinegrap AI box leaves on its named outcomes instead
         // (kindOf(), ws_step_ai_arrow_outcomes()).
         ai: { name: 'fl_kind_ai', group: 'system', into: true, out: ['done', 'failed'] },
@@ -233,6 +234,7 @@
         ['row_get', 'fl_kind_row_get'],
         ['rows_get', 'fl_kind_rows_get'],
         ['record_get', 'fl_kind_record_get'],
+        ['contact_group', 'fl_kind_contact_group'],
         ['ai', 'fl_kind_ai'],
         ['agent', 'fl_kind_agent'],
         ['approval', 'fl_kind_approval'],
@@ -279,7 +281,7 @@
 
     // The boxes listed under Records and tables in the palette; on the
     // canvas they keep the system group's colour (KINDS).
-    var PALETTE_RECORDS = ['change', 'record_get', 'row_add', 'row_get', 'row_set', 'rows_get'];
+    var PALETTE_RECORDS = ['change', 'contact_group', 'record_get', 'row_add', 'row_get', 'row_set', 'rows_get'];
 
     // The palette's groups folded at first: the steps used less often and
     // the values.
@@ -613,6 +615,7 @@
             tables: steps.tables || [],
             where: steps.where || { operators: {}, types: {}, most: 10, limit: 50 },
             reads: steps.reads || [],
+            groups: steps.groups || [],
             no_order: !!steps.no_order,
             ai: !!steps.ai,
             agents: steps.agents || [],
@@ -774,6 +777,10 @@
 
         if (node.kind === 'record_get') {
             return recordGetMeta(node);
+        }
+
+        if (node.kind === 'contact_group') {
+            return contactGroupMeta(node);
         }
 
         if (node.kind === 'ai') {
@@ -3454,6 +3461,7 @@
         row_set: [['row', 'fl_rows_row', 200]],
         row_get: [['row', 'fl_rows_row', 200]],
         record_get: [['id', 'fl_record_id', 200]],
+        contact_group: [['contact', 'fl_group_contact', 200]],
         change: [['id', 'fl_change_id', 200]],
         ai: [['prompt', 'fl_ai_prompt', 4000], ['text', 'fl_ai_text', 20000]],
         task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
@@ -4391,6 +4399,7 @@
             return memberKind(item[0]) && ((item[0] !== 'mcp') || mcp) && (((item[0] !== 'row') && (item[0] !== 'row_get') && (item[0] !== 'rows_get')) || tables)
                 && ((item[0] !== 'no_order') || stepLists().no_order)
                 && ((item[0] !== 'record_get') || (stepLists().reads.length > 0))
+                && ((item[0] !== 'contact_group') || (stepLists().groups.length > 0))
                 && ((item[0] !== 'ai') || stepLists().ai)
                 && ((item[0] !== 'agent') || (stepLists().agents.length > 0))
                 && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
@@ -7073,6 +7082,10 @@
             recordGetFields(box, node);
         }
 
+        if (node.kind === 'contact_group') {
+            contactGroupFields(box, node);
+        }
+
         if (node.kind === 'ai') {
             aiFields(box, node);
         }
@@ -9443,6 +9456,59 @@
         }, false, t('fl_record_id_help')));
     }
 
+    // A contact group box's group as the person may change it
+    // (ws_step_contact_group_choices()), or null.
+    function contactGroup(config) {
+        return stepLists().groups.filter(function (item) { return item.id === config.group_id; })[0] || null;
+    }
+
+    // What it does to which group.
+    function contactGroupMeta(node) {
+        var config = node.config;
+        var group = contactGroup(config);
+
+        if (!config.group_id) {
+            return t('fl_group_none');
+        }
+
+        return t((config.way === 'remove') ? 'fl_group_meta_remove' : 'fl_group_meta_add', group ? group.name : '#' + config.group_id);
+    }
+
+    // A box that adds a contact to a group or takes one out
+    // (ws_step_contact_group_check()): a group filled by hand, add or take
+    // out, and the contact by its number or one value; empty is the
+    // contact of the run's record.
+    function contactGroupFields(box, node) {
+        var config = node.config;
+        var options = [[0, t('fl_group_pick')]].concat(stepLists().groups.map(function (item) { return [item.id, item.name]; }));
+
+        if (config.group_id && !contactGroup(config)) {
+            options.push([config.group_id, '#' + config.group_id]);
+        }
+
+        var pick = K.select(options, config.group_id || 0);
+
+        pick.setAttribute('data-refocus', 'contact-group-' + node.id);
+        pick.addEventListener('change', function () {
+            config.group_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_group'), pick, t('fl_group_help')));
+
+        var way = K.select([['add', t('fl_group_add')], ['remove', t('fl_group_remove')]], (config.way === 'remove') ? 'remove' : 'add');
+
+        way.setAttribute('data-refocus', 'contact-group-way-' + node.id);
+        way.addEventListener('change', function () {
+            config.way = way.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_group_way'), way));
+        box.appendChild(valueField(node, t('fl_group_contact'), config.contact || '', 200, function (value) {
+            config.contact = value;
+            refreshNode(node);
+        }, false, t('fl_group_contact_help')));
+    }
+
     // The outcomes a Pinegrap AI box names, as the server keeps them.
     function aiClasses(config) {
         return ((config && Array.isArray(config.classes)) ? config.classes : []).filter(function (name) { return typeof name === 'string'; });
@@ -10930,6 +10996,11 @@
             config = { table_id: (listed.length === 1) ? listed[0].id : 0, match: 'all', where: '', sort: 0, dir: 'asc', limit: stepLists().where.limit || 50 };
         } else if (kind === 'record_get') {
             config = { record: '', id: '' };
+        } else if (kind === 'contact_group') {
+            var groups = stepLists().groups;
+
+            // The one group there is, and the contact of the run's record.
+            config = { group_id: (groups.length === 1) ? groups[0].id : 0, way: 'add', contact: '' };
         } else if (kind === 'ai') {
             config = { mode: 'write', prompt: '', text: '', classes: [], closes_in: 24 };
         } else if (kind === 'agent') {

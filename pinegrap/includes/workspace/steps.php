@@ -157,6 +157,9 @@ function ws_step_kinds()
         // Its fields follow from the kind of record it reads (ws_step_outputs()).
         'record_get' => array('label' => lang('Read a record'), 'type' => 'record_get', 'texts' => array('id'), 'lines' => array('id'),
             'outputs' => array($number('record_id', lang('Record')), $number('found', lang('Record found (1 or 0)')))),
+        // A contact put into a group or taken out (flow_contact_group.php).
+        'contact_group' => array('label' => lang('Add to or take out of a contact group'), 'type' => 'contact_group', 'texts' => array('contact'), 'lines' => array('contact'),
+            'outputs' => array($number('contact_id', lang('Contact')), $number('changed', lang('Group changed (1 or 0)')))),
         // Pinegrap AI (flow_ai_box.php): it waits for the answer; a
         // classifying box leaves on the outcome it names, else on other.
         'ai'        => array('label' => lang('Ask Pinegrap AI'), 'type' => 'ai', 'texts' => array('prompt', 'text'), 'lines' => array(),
@@ -184,7 +187,7 @@ function ws_step_kinds()
 function ws_step_outputs_held()
 {
     return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'), 'mcp' => array('result'),
-        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'rows_get' => array('*'), 'record_get' => array('*'), 'ai' => array('*'), 'agent' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
+        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'rows_get' => array('*'), 'record_get' => array('*'), 'contact_group' => array('*'), 'ai' => array('*'), 'agent' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
 }
 
 /**
@@ -402,6 +405,7 @@ function ws_step_outcomes()
  * record_get: record (a kind of ws_flow_record_get_fields(), '' for
  *            another), id (the record's id, or one value such as
  *            {{trigger.record_id}})
+ * contact_group: ws_step_contact_group_normalize()
  *
  * @param string $kind
  * @param mixed  $config
@@ -642,6 +646,9 @@ function ws_step_config_normalize($kind, $config)
                 'id'     => ws_flow_line(is_int($id) ? (string) $id : $id, 200),
             );
 
+        case 'contact_group':
+            return ws_step_contact_group_normalize($config);
+
         case 'ai':
             return ws_step_ai_normalize($config);
 
@@ -867,6 +874,10 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
 
             break;
 
+        case 'contact_group':
+            $problems = ws_step_contact_group_problems($config, $name);
+            break;
+
         case 'ai':
             $problems = ws_step_ai_problems($config, $name);
             break;
@@ -937,6 +948,10 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
 
     if ($kind === 'record_get') {
         return ws_step_record_get_check($viewer, ws_step_config_normalize('record_get', $config));
+    }
+
+    if ($kind === 'contact_group') {
+        return ws_step_contact_group_check($viewer, ws_step_config_normalize('contact_group', $config));
     }
 
     // Nor is a Pinegrap AI box: it asks the model itself (flow_ai_box.php).
@@ -1354,6 +1369,7 @@ function ws_step_fill_target($kind, $action)
         case 'row_get':
         case 'rows_get':
         case 'record_get':
+        case 'contact_group':
             return 'json';
     }
 
@@ -1768,7 +1784,7 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
  */
 function ws_step_result_shown($kind, $outcome, $text, $edit)
 {
-    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'ai', 'agent'), true) || ((string) $text === '')) {
+    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'contact_group', 'ai', 'agent'), true) || ((string) $text === '')) {
         return (string) $text;
     }
 
@@ -1787,6 +1803,11 @@ function ws_step_result_shown($kind, $outcome, $text, $edit)
     // stay back.
     if ((string) $kind === 'record_get') {
         return ((string) $outcome === 'done') ? lang('A record was read.') : lang('No record was read.');
+    }
+
+    // The contact may be one the reader does not reach.
+    if ((string) $kind === 'contact_group') {
+        return ((string) $outcome === 'done') ? lang('A contact group box ran.') : lang('The contact group box did not run.');
     }
 
     if ((string) $kind === 'row_get') {
@@ -2113,6 +2134,8 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $done = ws_step_rows_get_do($owner, $action);
     } elseif ($kind === 'record_get') {
         $done = ws_step_record_get_do($owner, $action);
+    } elseif ($kind === 'contact_group') {
+        $done = ws_step_contact_group_do($owner, $action, $run);
     } else {
         $done = ws_scheduled_do($owner, $row, $action, $step_context);
     }
@@ -2339,6 +2362,8 @@ function ws_flow_box_try($viewer, $flow, $data)
             $said = ws_step_rows_get_text($action);
         } elseif ($kind === 'record_get') {
             $said = ws_step_record_get_text($action);
+        } elseif ($kind === 'contact_group') {
+            $said = ws_step_contact_group_text($action);
         } elseif ($kind === 'ai') {
             $said = ws_step_ai_text($action);
         } elseif ($kind === 'agent') {
