@@ -1065,6 +1065,10 @@ module.exports = [
             await h.click({ css: '#ws-root [data-refocus="palette-add-task"]' });
             await h.waitFor('the box added', (harness) => harness.state().selected && (harness.state().selected.id === 'task_3'), 3000);
             h.ok('a box added folds the panel', await h.page(() => getComputedStyle(document.querySelector('#ws-root .wsf-palette-panel')).display === 'none'));
+            h.same('the right panel is 300 px wide', await h.page(() => Math.round(document.querySelector('#wsf-side').getBoundingClientRect().width)), 300);
+            await h.page(() => document.querySelector('#ws-root [data-node="task_3"]').focus());
+            await h.key('F6', 'Shift');
+            h.ok('Shift+F6 from the canvas passes over the folded rail to the bar', await h.page(() => document.querySelector('#ws-root .wsf-bar').contains(document.activeElement)));
             h.ok('nothing scrolls sideways', await h.page(() => document.documentElement.scrollWidth <= window.innerWidth));
         }
     },

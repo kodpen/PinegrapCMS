@@ -1162,6 +1162,10 @@
         ui.palette = el('aside', 'wsf-palette');
         ui.palette.setAttribute('aria-label', t('fl_palette'));
         ui.main = el('div', 'wsf-main');
+        // The four areas F6 goes round are named regions: the bar, the left
+        // panel, this one and the right panel.
+        ui.main.setAttribute('role', 'region');
+        ui.main.setAttribute('aria-label', t('fl_view'));
         // The panel opened over a narrow canvas folds on a click there.
         ui.main.addEventListener('pointerdown', function () {
             if (state.paletteOver) {
@@ -6333,7 +6337,6 @@
         }
 
         K.clear(ui.side);
-        ui.side.removeAttribute('aria-labelledby');
         ui.app.classList.toggle('wsf-side-chosen', !!(selected && !state.outline && !state.run));
 
         if (!state.flow) {
@@ -6451,8 +6454,6 @@
         close.setAttribute('data-refocus', 'side-close');
         close.addEventListener('click', closeSide);
         head.appendChild(close);
-        ui.side.setAttribute('aria-labelledby', title.id);
-
         return head;
     }
 
@@ -6486,7 +6487,9 @@
             return;
         }
 
-        var areas = [ui.bar, ui.palette, state.outline ? ui.outlineBox : ui.main, ui.side];
+        // A folded left panel (its rail) is passed over.
+        var panel = ui.palette.querySelector('.wsf-palette-panel');
+        var areas = [ui.bar, (panel && (panel.offsetParent !== null)) ? panel : null, state.outline ? ui.outlineBox : ui.main, ui.side].filter(Boolean);
         var at = areas.map(function (area) { return area.contains(document.activeElement); }).indexOf(true);
         var step = event.shiftKey ? -1 : 1;
 

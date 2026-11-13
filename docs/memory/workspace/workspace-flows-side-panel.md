@@ -23,9 +23,10 @@ description: The flow window's right panel for a chosen box, arrow or thread (FW
 - The same head with an arrow or thread icon: "Arrow" over "<from> › <to>", "Data thread" over its value; ⋯ › Remove; no tabs, the old form under it. Delete still works on the canvas.
 
 ## How do the keys move between the areas?
-- F6 / Shift+F6 (`areaKey()`): the bar, the left panel, the canvas (the chosen box, else the canvas) and the right panel in turn; an area with nothing to focus is passed over. Listed in Keyboard (`fl_key_areas`).
+- F6 / Shift+F6 (`areaKey()`): the bar, the left panel, the canvas (the chosen box, else the canvas) and the right panel in turn; a folded left panel (its rail) and an area with nothing to focus are passed over. Listed in Keyboard (`fl_key_areas`). The four are named regions (the bar's `nav`, the two `aside`s, `.wsf-main` as "Flow view"). Architect (2026-11-13, agent channel): F6 as proposed in FW0.
 
 ## And on a phone?
+- 768-1279 px: the right panel is 300 px beside the 48 px rail (architect 2026-11-13: the narrow and phone drawing approved as drawn).
 - Under 768 px a box chosen on the canvas opens the panel as a sheet from the bottom, at most 85 % high, over a scrim (`wsf-side-chosen`, `.wsf-scrim`); Close, Esc or a tap on the scrim closes it. The List view is unchanged.
 
 ## Tests

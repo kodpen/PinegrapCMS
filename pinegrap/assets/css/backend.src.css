@@ -23187,8 +23187,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 @media (max-width: 1279.98px) {
   .wsf-app,
-  .wsf-app.wsf-palette-folded { grid-template-columns: 48px minmax(0, 1fr) 16rem; }
-  .wsf-app.wsf-no-palette { grid-template-columns: minmax(0, 1fr) 16rem; }
+  .wsf-app.wsf-palette-folded { grid-template-columns: 48px minmax(0, 1fr) 300px; }
+  .wsf-app.wsf-no-palette { grid-template-columns: minmax(0, 1fr) 300px; }
 }
 /* A narrow window: the left panel is its rail at rest; opened, it lies over
    the canvas's left edge (foldPalette()). */
