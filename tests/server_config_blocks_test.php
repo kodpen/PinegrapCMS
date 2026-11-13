@@ -236,3 +236,37 @@ function test_server_config_blocks_nginx_static_location()
 	pg_assert_true((bool) preg_match('/location ~\* \^\/\.\+[^{]*\{[^}]*gzip on;[^}]*expires 7d;[^}]*try_files \$uri \/pinegrap\/router\.php;[^}]*\}/', $sample), 'gzip, expires and the router fallback in the static location');
 	pg_assert_false((bool) preg_match('/^gzip on;/m', $sample), 'gzip not switched on for the whole server');
 }
+
+// IIS often maps no .webp: the panel logo's poster and
+// fallback picture answered 404.3. The block goes into the one
+// <staticContent>, with a <remove> before the mimeMap, and reaches an
+// existing site whose element came from an older default.
+function test_server_config_blocks_iis_webp_mime_map()
+{
+	$iis = pg_server_config_default('iis');
+	pg_assert_true((bool) preg_match('/<remove fileExtension="\.webp" \/>\s*<mimeMap fileExtension="\.webp" mimeType="image\/webp" \/>/', $iis), 'default: remove then mimeMap');
+	pg_assert_same(1, preg_match_all('/<staticContent\b/i', $iis), 'default: one staticContent');
+
+	$file = '<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <system.webServer>
+        <staticContent>
+            <remove fileExtension=".css" />
+            <mimeMap fileExtension=".css" mimeType="text/css; charset=utf-8" />
+            <clientCache cacheControlMode="UseMaxAge" cacheControlMaxAge="7.00:00:00" />
+        </staticContent>
+    </system.webServer>
+</configuration>
+';
+
+	$once = server_config_blocks_test_repair($file, 'iis');
+
+	pg_assert_same(1, preg_match_all('/<staticContent\b/i', $once), 'repair: still one staticContent');
+	pg_assert_true((bool) preg_match('/<staticContent>(?:(?!<\/staticContent>).)*<mimeMap fileExtension="\.webp"(?:(?!<\/staticContent>).)*<\/staticContent>/s', $once), 'repair: webp inside it');
+	pg_assert_true(server_config_blocks_test_xml_ok($once), 'repair: parses');
+	pg_assert_same($once, server_config_blocks_test_repair($once, 'iis'), 'second repair adds nothing');
+
+	// The shipped web-root web.config carries it too.
+	$shipped = (string) file_get_contents(dirname(__DIR__) . '/web.config');
+	pg_assert_true((bool) preg_match('/<mimeMap fileExtension="\.webp" mimeType="image\/webp" \/>/', $shipped), 'web-root web.config');
+}
