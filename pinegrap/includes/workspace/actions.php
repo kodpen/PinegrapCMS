@@ -2152,6 +2152,28 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0], 'notice' => ws_app_mention_unread_line($result['apps_unread'] ?? array())));
 
+        // The writer's edit box of a message that asked an agent is open,
+        // or they typed (beat), or they closed it unsaved (release): the
+        // agents wait meanwhile (edit_hold.php).
+        case 'ws_edit_hold':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            // Only the writer, while they may still read the channel.
+            $channel = $message ? ws_channel((int) $message['channel_id']) : null;
+
+            if (!$channel || !ws_can_read_channel($viewer, $channel) || !function_exists('ws_edit_hold_beat')
+                || ((string) $message['sender_kind'] !== 'user') || ((int) $message['sender_id'] !== (int) $viewer['id'])) {
+                return ws_action_ok(array('held' => 0));
+            }
+
+            if (!empty($request['release'])) {
+                ws_edit_hold_release((int) $message['id'], false);
+
+                return ws_action_ok(array('held' => 0));
+            }
+
+            return ws_action_ok(array('held' => ws_edit_hold_beat($viewer, $message)));
+
         // Undo of an agent's edit on a person's canvas (canvas.php): the
         // version before comes back as the newest one.
         case 'ws_canvas_undo':

@@ -2029,7 +2029,8 @@ function ws_mcp_agent_kick($budget = 1, $timeout = WS_MCP_AGENT_TIMEOUT)
     }
 
     for ($guard = 0; $guard < 20; $guard++) {
-        $row = db_item("SELECT * FROM ws_ai_requests WHERE agent = 'mcp' AND status = 'queued' ORDER BY id LIMIT 1");
+        // A request whose message is being edited waits (edit_hold.php).
+        $row = db_item("SELECT * FROM ws_ai_requests WHERE agent = 'mcp' AND status = 'queued'" . (function_exists('ws_edit_hold_free_sql') ? ws_edit_hold_free_sql() : '') . " ORDER BY id LIMIT 1");
 
         if (!is_array($row)) {
             break;

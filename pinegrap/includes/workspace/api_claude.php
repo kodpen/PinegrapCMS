@@ -101,7 +101,7 @@ function ws_claude_api_routes()
             'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Take a request',
-            'description' => 'Marks the request as being worked on and leaves an eye on it in the channel; claimed through an OAuth connection, the request stays with that connection. 409 when another run has taken it or it is closed; 409 held when it is the other side\'s (waiting for the asker\'s session, or handed to the routine). 409 instructions_outdated when instructions is not the version of the instructions the site serves now (GET /workspace/claude/instructions): the run has not read them, or read them before they changed, and reads them again; a run that sends none is told so in the channel once and in the Workspace Settings.',
+            'description' => 'Marks the request as being worked on and leaves an eye on it in the channel; claimed through an OAuth connection, the request stays with that connection. 409 when another run has taken it or it is closed; 409 held when it is the other side\'s (waiting for the asker\'s session, or handed to the routine). 409 editing while the writer is editing the message that asked (try again in a minute). 409 instructions_outdated when instructions is not the version of the instructions the site serves now (GET /workspace/claude/instructions): the run has not read them, or read them before they changed, and reads them again; a run that sends none is told so in the channel once and in the Workspace Settings.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'instructions', 'in' => 'body', 'type' => 'string', 'max_length' => 40, 'description' => 'The version of the instructions the run follows, as their claim step writes it (instructions_version of GET /workspace/claude/instructions).'),
@@ -118,7 +118,7 @@ function ws_claude_api_routes()
             'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Answer a request',
-            'description' => 'Writes the answer under the request, as the application, with the person who asked mentioned (they are told), and swaps the eye for a tick. In a channel or a discussion the owner of the application is not in, it is posted as long as the person who asked may still write there. A request whose design block says from_editor came from the Visual Page Editor: it has no channel, takes text only, and its page change is proposed first with POST /design/pages/{id}/proposals and request_id; proposals made that way for a channel request are shown under this answer. A request whose task block has an id is a run on a task: the words are kept on the task, it takes no tasks, and its changes wait on the task until the person who asked applies or sets them aside. tasks are proposals, not tasks: they wait under the answer until somebody in the channel opens or sets them aside. changes are proposals too, for changing, adding and deleting records: a record is never written here; the person who asked applies the change with one click, with their own rights, and it is kept among the channel\'s decisions. The whole answer is refused (422, the change named) when a change cannot be made: a field that does not exist, a value of the wrong kind, a record that is not there, nothing that differs from what the record holds, an action the kind of record does not take, or a person who asked who may not change that kind of record. Tags such as <@user:12> and <#order:1045> are kept. no_answer true closes a request asked in a channel or a discussion, or the daily summary, when it needs no answer (a message that only thanks, a line in a discussion that asks nothing): nothing is written in the channel, the eye is swapped for a tick and the request reads answered with reply_message_id null; it takes no text, tasks or changes (422 on the one sent), and a request from the Visual Page Editor, a note or a task run, where somebody waits for words, refuses it with 422. Without no_answer, text is required.',
+            'description' => 'Writes the answer under the request, as the application, with the person who asked mentioned (they are told), and swaps the eye for a tick. In a channel or a discussion the owner of the application is not in, it is posted as long as the person who asked may still write there. A request whose design block says from_editor came from the Visual Page Editor: it has no channel, takes text only, and its page change is proposed first with POST /design/pages/{id}/proposals and request_id; proposals made that way for a channel request are shown under this answer. A request whose task block has an id is a run on a task: the words are kept on the task, it takes no tasks, and its changes wait on the task until the person who asked applies or sets them aside. tasks are proposals, not tasks: they wait under the answer until somebody in the channel opens or sets them aside. changes are proposals too, for changing, adding and deleting records: a record is never written here; the person who asked applies the change with one click, with their own rights, and it is kept among the channel\'s decisions. The whole answer is refused (422, the change named) when a change cannot be made: a field that does not exist, a value of the wrong kind, a record that is not there, nothing that differs from what the record holds, an action the kind of record does not take, or a person who asked who may not change that kind of record. Tags such as <@user:12> and <#order:1045> are kept. no_answer true closes a request asked in a channel or a discussion, or the daily summary, when it needs no answer (a message that only thanks, a line in a discussion that asks nothing): nothing is written in the channel, the eye is swapped for a tick and the request reads answered with reply_message_id null; it takes no text, tasks or changes (422 on the one sent), and a request from the Visual Page Editor, a note or a task run, where somebody waits for words, refuses it with 422. Without no_answer, text is required. 409 editing while the writer is editing the message that asked; 409 edited when it was edited after the claim: the request waits again, claim it and read the new words.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'description' => 'The answer; required unless no_answer is true.'),
@@ -851,7 +851,8 @@ function ws_api_claude_requests_list($params)
     if ($status === 'all') {
         $rows = (array) db_items("SELECT * FROM ws_ai_requests WHERE 1 = 1" . $mine . ws_claude_only() . " ORDER BY id DESC LIMIT 50");
     } else {
-        $where = ($status === 'open') ? "status IN ('queued', 'sent')" : "status = '" . e($status) . "'";
+        // A request whose message is being edited waits out of the list.
+        $where = ($status === 'open') ? "status IN ('queued', 'sent')" . (function_exists('ws_edit_hold_free_sql') ? ws_edit_hold_free_sql() : '') : "status = '" . e($status) . "'";
         $rows = (array) db_items("SELECT * FROM ws_ai_requests WHERE " . $where . $mine . ws_claude_only() . " ORDER BY id ASC LIMIT 50");
     }
 
@@ -884,6 +885,11 @@ function ws_api_claude_claim($params)
 
     $row = ws_api_claude_request_for_caller($viewer, $row['id']);
     $device = ws_api_is_claude() ? null : ws_api_claude_session_device();
+
+    if (function_exists('ws_edit_hold_is_held') && ws_edit_hold_is_held($row, time())) {
+        $said = ws_edit_hold_refusal_error('held');
+        api_fail(409, $said['code'], $said['error']);
+    }
 
     // The instructions are the routine's: the asker's own session follows
     // its own.
@@ -1110,6 +1116,15 @@ function ws_api_claude_answer($params)
     }
 
     $row = ws_api_claude_request_for_caller($viewer, $row['id']);
+
+    // Held while the message is edited; edited after the claim, the
+    // request waits again for a run that reads the new words.
+    if (function_exists('ws_edit_hold_answer_guard')) {
+        ws_edit_hold_answer_guard($row, function () use ($row) {
+            ws_claude_react((int) $row['message_id'], '👀', false);
+        });
+    }
+
     $origin = ws_api_claude_answer_origin($row);
     $refused = ws_api_claude_answer_input_refusal($origin, $params);
 

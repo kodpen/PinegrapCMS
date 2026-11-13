@@ -6984,6 +6984,7 @@
 
             this.reply = chosen[0];
             this.replyMore = chosen.slice(1);
+            this.editHoldEnd(false);
             this.editing = null;
             this.selecting = null;
             this.markSelectable();
@@ -8797,6 +8798,7 @@
             self.reply = null;
             self.replyMore = null;
             self.selecting = null;
+            self.editHoldEnd(false);
             self.editing = null;
             self.editingScheduled = null;
             self.labels = [];
@@ -14672,6 +14674,7 @@
                 return;
             }
 
+            self.editHoldEnd(false);
             self.editing = null;
             self.reply = null;
             self.editingScheduled = item;
@@ -15152,6 +15155,11 @@
             var self = this;
             var key = self.draftSlot();
 
+            // Typing in a message being changed keeps its agents waiting.
+            if (self.editing) {
+                self.editHoldBeat();
+            }
+
             if (!key || self.editing || self.editingScheduled) {
                 return;
             }
@@ -15375,6 +15383,7 @@
 
             this.reply = null;
             this.replyMore = null;
+            this.editHoldEnd(false);
             this.editing = null;
             this.editingScheduled = null;
             this.pending = null;
@@ -15413,6 +15422,7 @@
 
             self.editing = message;
             self.reply = null;
+            self.editHoldStart(message);
 
             // The rich box reads the stored text itself: tags back into chips,
             // tables and lists back into cards.
@@ -15427,6 +15437,44 @@
 
             self.drawReplyBar();
             self.autosize();
+        },
+
+        // While the writer changes a message that asked an agent, the agent
+        // waits: a beat when the box opens and at most every 20 seconds of
+        // typing (the site holds it two minutes from the last). Closing the
+        // box unsaved tells the site at once; a save ends the wait there.
+        editHoldStart: function (message) {
+            var claude = message && message.claude;
+
+            this.editHoldEnd(false);
+
+            if (!claude || ['queued', 'sent', 'running'].indexOf(claude.status) < 0) {
+                return;
+            }
+
+            this.editHold = { id: message.id, at: 0 };
+            this.editHoldBeat();
+        },
+
+        editHoldBeat: function () {
+            var hold = this.editHold;
+
+            if (!hold || ((Date.now() - hold.at) < 20000)) {
+                return;
+            }
+
+            hold.at = Date.now();
+            api('ws_edit_hold', { message_id: hold.id }).catch(function () {});
+        },
+
+        editHoldEnd: function (saved) {
+            var hold = this.editHold;
+
+            this.editHold = null;
+
+            if (hold && !saved) {
+                api('ws_edit_hold', { message_id: hold.id, release: 1 }).catch(function () {});
+            }
         },
 
         // What was typed, with every picked tag turned back into its token.
@@ -15491,6 +15539,7 @@
 
                 api('ws_edit', { message_id: editing.id, body: body }).then(function (data) {
                     self.busy = false;
+                    self.editHoldEnd(true);
                     self.replaceMessage(data.message);
                     self.clearInput();
                     self.editing = null;
@@ -18064,6 +18113,7 @@
             reply: null,
             replyMore: null,
             editing: null,
+            editHold: null,
             editingScheduled: null,
             labels: [],
             meter: null,
@@ -18254,6 +18304,7 @@
             self.stop();
             self.reply = null;
             self.replyMore = null;
+            self.editHoldEnd(false);
             self.editing = null;
             self.editingScheduled = null;
             self.selecting = null;

@@ -12,7 +12,6 @@ description: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace chann
 - Agents use the site's MCP server, the API's routes under their scopes, no second catalogue (`api/api-mcp-server.md`). The decisions behind it: `workflow/decisions-made-workspace-7.md` to `-10.md`, `-19.md`.
 
 ## What is left?
-- `agent-channel-steps-3.md`: A10 the wait during an edit (#8723); A11 (#8756) and A12 (#8767) are done.
 - `agent-channel-steps-7.md` (owner 2026-11-12): A22 is done (#8936). A19 to A21 are done (`workspace/agent-discussion-follow.md`, `agent-shown.md`, `agent-emoji.md`).
 - A8, the Claude Code channel plugin, waits for its repository, which the owner opens (`agent-channel-steps-2.md`). The rest of A8 is built.
 
@@ -23,6 +22,8 @@ description: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace chann
 
 - The live trial on dev (owner, 2026-11-09, `workflow/decisions-made-workspace-10.md`): the architect's application is registered as `@mimar` with a poll door and added to the agent channel (wake on a mention, tier 1). The mention and `/wake` were tried on 2026-11-10 (`workspace/agent-doors.md`, `agent-wakes.md`). The agent's side was tried the same day with the application's key (`workspace/agent-key-trial.md`).
   - The second day (2026-11-11): `workspace/agent-key-trial-2.md`. Left, each needing the owner's hand in the panel: `agent-channel-trial.md`.
+
+- Done: A10 the wait during an edit (#8869, `workspace/agent-edit-hold.md`), A11 the bounded brief (#8756), A12 a request waiter (#8767).
 
 - Beside it: step AC done (#8440: `workspace/agent-channel-flag.md`), step AQ done (#8438: `workspace/agent-checklist-questions.md`, `workflow/agent-channel-wake.md`).
 

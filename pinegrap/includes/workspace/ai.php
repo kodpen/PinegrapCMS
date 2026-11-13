@@ -1266,10 +1266,12 @@ function ws_ai_kick($budget = WS_AI_BUDGET)
     $guard = 0;
 
     do {
-        $row = db_item("SELECT * FROM ws_ai_requests WHERE agent = 'ai' AND status IN ('sent', 'running') ORDER BY id LIMIT 1");
+        // A request whose message is being edited waits (edit_hold.php).
+        $free = (function_exists('ws_edit_hold_free_sql') ? ws_edit_hold_free_sql() : '');
+        $row = db_item("SELECT * FROM ws_ai_requests WHERE agent = 'ai' AND status IN ('sent', 'running')" . $free . " ORDER BY id LIMIT 1");
 
         if (!is_array($row)) {
-            $row = db_item("SELECT * FROM ws_ai_requests WHERE agent = 'ai' AND status = 'queued' ORDER BY id LIMIT 1");
+            $row = db_item("SELECT * FROM ws_ai_requests WHERE agent = 'ai' AND status = 'queued'" . $free . " ORDER BY id LIMIT 1");
 
             if (!is_array($row)) {
                 $status = 'idle';
@@ -5260,6 +5262,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_queue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_wake.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_shown.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_activity.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/edit_hold.php');
 
 // Canvases the assistants draw and edit (tools of ws_ai_step()).
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_ai.php');
