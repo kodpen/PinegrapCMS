@@ -15957,6 +15957,7 @@ const StyleDesigner = (function () {
             __discount_amount: _sdMoney(50), __discount_amount_formatted: _sdMoney(50), __discount_percent: '10',
             __gallery_count: '5', __inventory_tracked: '1', __inventory_quantity: '12', __quantity_available: '12',
             __backorder: '0', __out_of_stock: '0', __preorder: '0',
+            __out_of_stock_message: _sdT('This product is out of stock right now.'),
             __mpn: 'LS-2026-M', __gtin: '8690000010019', __brand: _sdT('Cooper Studio'), __manufacturer: _sdT('Cooper Studio'),
             __weight: '0.35', __shippable: '1', __taxable: '1',
             __category_id: '12', __category_name: _sdT('Shirts'), __active_cat_id: '12', __active_cat_name: _sdT('Shirts'),
