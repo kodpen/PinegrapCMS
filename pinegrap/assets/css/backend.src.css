@@ -24930,6 +24930,35 @@ select.pg-list-table-field option.private {
   z-index: 1030;
 }
 
+/* Unlayered: a badge's text never drops below the regular weight. At a
+   badge's 12px, .fw-lighter (100) and .fw-light (300) draw hairline strokes
+   that blend into the fill, so a pill whose colours compute to 6.6:1 read
+   like 2:1 (the Gift Cards amounts). The weight utilities sit in a layer
+   above @layer custom, so the floor has to be unlayered. */
+.badge:is(.fw-lighter, .fw-light) {
+  font-weight: var(--pg-weight-regular);
+}
+
+/* A badge on a subtle fill (.badge-subtle, .bg-subtle-* with .fg-emphasis-*)
+   reads its tone's ink pulled 80% toward the strongest text colour:
+   Bootstrap's subtle fills are stronger than the panel's, and the plain
+   success and danger inks sat at 4.2-4.4:1 on them in the light theme.
+   The mix darkens in light and lightens in dark; at least 5.4:1 in both. */
+.badge {
+  --bs-primary-fg: color-mix(in srgb, var(--pg-primary-ink) 80%, var(--pg-fg-emphasis));
+  --bs-primary-fg-emphasis: var(--bs-primary-fg);
+  --bs-secondary-fg: color-mix(in srgb, var(--pg-secondary-ink) 80%, var(--pg-fg-emphasis));
+  --bs-secondary-fg-emphasis: var(--bs-secondary-fg);
+  --bs-success-fg: color-mix(in srgb, var(--pg-success-ink) 80%, var(--pg-fg-emphasis));
+  --bs-success-fg-emphasis: var(--bs-success-fg);
+  --bs-danger-fg: color-mix(in srgb, var(--pg-danger-ink) 80%, var(--pg-fg-emphasis));
+  --bs-danger-fg-emphasis: var(--bs-danger-fg);
+  --bs-warning-fg: color-mix(in srgb, var(--pg-warning-ink) 80%, var(--pg-fg-emphasis));
+  --bs-warning-fg-emphasis: var(--bs-warning-fg);
+  --bs-info-fg: color-mix(in srgb, var(--pg-info-ink) 80%, var(--pg-fg-emphasis));
+  --bs-info-fg-emphasis: var(--bs-info-fg);
+}
+
 /* Bootstrap 6 bridge: its theme variables read the panel's palette, its
    surfaces its gray scale. Text and line neutrals are Bootstrap 6's own.
    The panel's dark body (#101114) is lighter than Bootstrap's (gray-975),
@@ -25592,7 +25621,10 @@ textarea.pg-input {
   border-radius: 11px;
   background: color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-to), transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) var(--pg-tint-line), transparent);
-  color: var(--pg-tone, var(--pg-tone-gray));
+  /* The bare tone on its own tint read 3.0-4.4:1 in the light theme
+     (teal, amber, rose); pulled 70% toward the strongest text colour every
+     tone reaches at least 5.4:1 in both themes. The dot keeps the tone. */
+  color: color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) 70%, var(--pg-fg-emphasis));
   font-size: var(--pg-text-meta);
   font-weight: var(--pg-weight-strong);
   line-height: 1;
@@ -25604,7 +25636,7 @@ textarea.pg-input {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: currentColor;
+  background: var(--pg-tone, var(--pg-tone-gray));
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--pg-tone, var(--pg-tone-gray)) 18%, transparent);
 }
 
