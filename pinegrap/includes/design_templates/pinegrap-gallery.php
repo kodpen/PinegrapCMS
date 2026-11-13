@@ -214,7 +214,7 @@ $gallery_css = implode("\n", array(
 
 return array(
     'name'        => lang('Art Gallery'),
-    'version'     => '1.0.1',
+    'version'     => '1.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 133,
     'icon'        => 'bi-easel2',

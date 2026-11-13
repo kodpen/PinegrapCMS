@@ -196,7 +196,7 @@ $launch_css = implode("\n", array(
 
 return array(
     'name'        => lang('Phone Launch Site'),
-    'version'     => '2.0.1',
+    'version'     => '2.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 74,
     'icon'        => 'bi-phone',

@@ -208,7 +208,7 @@ $marina_css = implode("\n", array(
 
 return array(
     'name'        => lang('Marina'),
-    'version'     => '2.0.1',
+    'version'     => '2.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 105,
     'icon'        => 'bi-life-preserver',

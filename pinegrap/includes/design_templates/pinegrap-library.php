@@ -215,7 +215,7 @@ $library_css = implode("\n", array(
 
 return array(
     'name'        => lang('Public Library'),
-    'version'     => '2.0.1',
+    'version'     => '2.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 103,
     'icon'        => 'bi-book',
