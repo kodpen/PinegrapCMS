@@ -253,9 +253,26 @@ function test_lbst_compat_sheet()
 		++$glyphs;
 	}
 	pg_assert_true($glyphs >= 60);
-	foreach (array('form-group', 'text-right', 'input-group-btn', 'input-group-addon', 'visible-xs-inline', 'btn-default', 'checkbox', 'help-block', 'img-responsive', 'glyphicon') as $name) {
+	// What the layout pass leaves as it was: a bare checkbox, a theme widget's glyphicon.
+	foreach (array('checkbox', 'glyphicon') as $name) {
 		pg_assert_true((bool)preg_match('/(^|\})\s*\.' . preg_quote($name, '/') . '[\s{:]/m', $css), $name);
 	}
+	pg_assert_contains('glyphicon', pg_lbs_layout_html('<span class="select-option"><i class="glyphicon glyphicon-ok"></i></span>')['html']);
+	// What it renames on every page of a Bootstrap 5.3.8 design left the sheet.
+	$renamed = array(
+		'form-group'        => '<div class="form-group"><input class="form-control"></div>',
+		'text-right'        => '<td class="text-right">1</td>',
+		'help-block'        => '<p class="help-block">x</p>',
+		'img-responsive'    => '<img class="img-responsive" src="a.png">',
+		'btn-default'       => '<a class="btn btn-default">x</a>',
+		'input-group-addon' => '<div class="input-group"><span class="input-group-addon">@</span><input class="form-control"></div>',
+		'visible-xs-inline' => '<span class="visible-xs-inline">x</span>',
+	);
+	foreach ($renamed as $name => $html) {
+		pg_assert_false((bool)preg_match('/(^|\})\s*\.' . preg_quote($name, '/') . '[\s{:]/m', $css), $name);
+		pg_assert_false(strpos(pg_lbs_layout_html($html)['html'], $name) !== false, $name . ' is renamed');
+	}
+	pg_assert_false(strpos($css, '.input-group-btn') !== false, 'input-group-btn: the pass rounds its buttons');
 	pg_assert_true(strpos($css, 'font-family: bootstrap-icons') !== false);
 	pg_assert_same(substr_count($css, '{'), substr_count($css, '}'));
 }

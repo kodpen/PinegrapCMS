@@ -17,6 +17,6 @@ description: Decisions list, product part 46 (2026-11-12 on): a picture saved ag
 - The architect's, not the owner's words: the Materialize trial is step LB1b, and the map rules, the trial's own `scripts.js` and the compatibility sheet are in `plans/legacy-bootstrap-helper-rules.md`.
 
 ## Is a plan written for the custom layouts' move to Bootstrap 5.3.8? (owner, 2026-11-12, #8942)
-- Yes: `plans/legacy-layouts-bootstrap.md`.
+- Yes; done (LL1-LL6, #8968 to #9259), the rules in `designer/legacy-layouts-output-map.md`.
 - Owner (2026-11-12), offered three ways to fill a week (1 the remaining pages of the panel's reference sheet, 2 the storefront API before the release, 3 a new plan for the custom layouts): "1 ve 3, rapor ekranlarını çiz".
 - The architect's, not the owner's words: way 2 was not chosen, so the storefront API still starts after the release.

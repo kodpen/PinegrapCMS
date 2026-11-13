@@ -42,8 +42,6 @@
 - legacy-bootstrap-helper-rules.md: Legacy to Bootstrap helper after LB1 (#8942): the owner's answers, the map rules beyond renames, the trial's own scripts.js and compatibility sheet, a design that is not Bootstrap
 - legacy-bootstrap-helper-steps.md: Steps LB1-LB7 of the Legacy to Bootstrap 5.3.8 helper: the census, the map and converter, the report, the trial design and its preview, moving pages and back, theme parts, palette and look
 - legacy-bootstrap-helper.md: Plan: the helper that turns a Legacy design towards Bootstrap 5.3.8 and a design theme (#8856): a trial design beside it, what it changes, how it is seen and kept, what stays reversible
-- legacy-layouts-bootstrap.md: Plan (owner 2026-11-12, #8942): the page types' custom layouts and built-in templates print Bootstrap 5.3.8 names on a design of that framework; census first, steps LL1-LL6
-- legacy-layouts-output-map.md: After LL1 (#8969, architect): a bootstrap5 design's page types get 5.3.8 names by mapping the system region's output per request, no converted copies; the rules LL2 and LL3 keep
 - look-widths-and-switch.md: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the details panel added beside, add and edit screens up to 1700 px, the switch with its thumb again; steps LW1-LW7
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - messages-area-decided-2.md: The architect's decisions on the proposals of MA9a and MA10a (#9077): campaign profiles into flows (boxes first, what stays, one flow per chain, the switch, the owner), incoming e-mail in the area
