@@ -3209,7 +3209,7 @@ function pg_form_mark_invalid_controls(&$tree, $errors)
                 $input_group = (bool)preg_match('/(^|\s)input-group(\s|$)/', $pcls);
                 if (($check_row || $input_group) && !empty($parent['children'])) {
                     if ($input_group && !preg_match('/(^|\s)has-validation(\s|$)/', $pcls)) {
-                        $parent['props']['cssClass'] = trim($pcls . ' has-validation');
+                        $parent['props']['cssClass'] = trim($pcls . ' has-validation'); /* @pg-site-output */
                     }
                     $keys = array_keys($parent['children']);
                     $parent_path[] = end($keys);
