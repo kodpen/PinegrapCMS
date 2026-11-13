@@ -21,7 +21,7 @@ description: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the det
 ## Which steps?
 - LW1 (S) Lists as the Pages list. Done #9185 (`ui/look-page-widths.md`).
 - LW2 (M) Add and edit screens up to 1700 px: `--pg-measure-edit` 1700px, status column 376, gap 24, the form column the rest. A field is as wide as its content asks, never the column's width only because there is room. The section rail group is centred as today.
-  - First a proposal of how the cards use a form column of up to 1300 px (two cards abreast, or fields side by side) on Edit Product, Edit Page and the longest Site Settings card: the architect shows it to the owner before the rule reaches every screen.
+  - First a proposal of how the cards use a form column of up to 1300 px (two cards abreast, or fields side by side) on Edit Product, Edit Page and the longest Site Settings card: the architect shows it to the owner before the rule reaches every screen. Proposed on #9269 (the measure is in it; A, B or C with pictures), asked on #9271; the step goes on with the answer.
 - LW3 (S) The switch. Done #9197 (`ui/look-switch.md`).
 - LW4 (S, no product code) The screens at another width. Done #9211: `ui/look-screen-widths.md` names each screen and its step.
 - LW5 (M) Lists and views off the table driver take `pg-measure-list` (list: `ui/look-screen-widths.md`); a table that is not a list table keeps its own frame. Pictures of each. Done #9230.
