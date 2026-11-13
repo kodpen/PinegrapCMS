@@ -25,6 +25,9 @@ module: whatsapp_design
 - Only for an APPROVED template, read-only otherwise. Sent at once with `pg_whatsapp_cloud_send()` to the signed-in person's mobile (`pg_whatsapp_design_own_number()`), filled with the samples (`pg_whatsapp_design_send_components()`, header text and named parameters too), in the card test's bucket of ten an hour. Disabled without a mobile number.
 - Refused for now: a picture, video or document header, and buttons that take a value (copy code, URL with a variable, OTP): WA9 adds them.
 
+## What did the owner decide about variables?
+- Owner (2026-11-13): `{{1}}` in the message box confuses a user; each variable is a draggable Bootstrap chip naming what it stands for (customer name, order number …), dragged into the message, moved or removed, in the most usable way; Meta's `{{n}}` stays in the stored body (channel 25 #2222). Built in WA8b.
+
 ## What is left to WA9?
 - Header media from Files, buttons, Send for approval, editing a rejected template. The type Authentication has no own form yet. The message box is a plain textarea with `{{n}}`, not the drawing's chips.
 
