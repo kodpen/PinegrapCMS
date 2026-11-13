@@ -252,7 +252,7 @@ function designer_image_size_test_js($body, $more = array())
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$code_js = '';
 
-	foreach (array_merge(array('function _sdCssLen(', 'function _sdImgDim(', 'function _sdImgSizeCss(', 'function _sdImgInRatio(', 'function _sdImgRatioClass(', 'function _sdSizingValue(', 'function getNodeExtraStyle(', 'function getNodeExtraClasses(', 'var _SD_CONTENT_GLOBAL_ATTRS', 'function _sdContentSizingNode(', 'function _sdContentProps(', 'function _sdUniqueClasses(', 'function _sdDecodeAttr(', 'function _sdUserAttrValue(', 'function _sdFontFamilyCss(', 'function _sdNodeStyle(', 'function _sdNodeTitleAttrs(', 'function _sdFxSpec(', 'function _sdFxNormalize(', 'function _sdFxAttrs(', 'function _sdNodeExtraAttrs(', 'function addGlobalAttrs('), $more) as $start) {
+	foreach (array_merge(array('function _sdCssLen(', 'function _sdImgDim(', 'function _sdNoImageUrl(', 'function _sdImgFallback(', 'function _sdImgSizeCss(', 'function _sdImgInRatio(', 'function _sdImgRatioClass(', 'function _sdSizingValue(', 'function getNodeExtraStyle(', 'function getNodeExtraClasses(', 'var _SD_CONTENT_GLOBAL_ATTRS', 'function _sdContentSizingNode(', 'function _sdContentProps(', 'function _sdUniqueClasses(', 'function _sdDecodeAttr(', 'function _sdUserAttrValue(', 'function _sdFontFamilyCss(', 'function _sdNodeStyle(', 'function _sdNodeTitleAttrs(', 'function _sdFxSpec(', 'function _sdFxNormalize(', 'function _sdFxAttrs(', 'function _sdNodeExtraAttrs(', 'function addGlobalAttrs('), $more) as $start) {
 		$found = designer_image_size_test_cut($source, $start);
 		pg_assert_true($found !== '', $start . ' is in the designer');
 		$code_js .= $found . "\n";
@@ -494,6 +494,7 @@ function designer_image_size_test_dom_stub()
 		. '  this.attrs = this.attrs.filter(function (a) { return a[0] !== n; }); this.attrs.push([n, String(v)]);'
 		. '};'
 		. 'StubEl.prototype.appendChild = function (c) { this.children.push(c); return c; };'
+		. 'StubEl.prototype.addEventListener = function () {};'
 		. 'Object.defineProperty(StubEl.prototype, "firstElementChild", { get: function () { return this.children[0] || null; } });'
 		. 'var stubDoc = { createElement: function (t) { return new StubEl(t); } };'
 		. 'var serialize = function (el) {'

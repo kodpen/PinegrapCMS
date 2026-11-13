@@ -1349,6 +1349,7 @@
     "Drag fields to canvas": "Alanları tuvale sürükleyin",
     "Drag files here": "Dosyaları buraya sürükleyin",
     "Drag files here or choose them from your computer. An uploaded file is saved in this folder and chosen.": "Dosyaları buraya sürükleyin ya da bilgisayarınızdan seçin. Yüklenen dosya bu klasöre kaydedilir ve seçilir.",
+    "Drag files here or choose them from your computer. An uploaded file is saved in “{folder}” and chosen.": "Dosyaları buraya sürükleyin ya da bilgisayarınızdan seçin. Yüklenen dosya “{folder}” klasörüne kaydedilir ve seçilir.",
     "Drag files or folders here": "Dosyaları veya klasörleri buraya sürükleyin",
     "Drag items to reorder or move to a different level.": "Öğeleri sıralamak veya farklı bir düzeye taşımak için sürükleyin.",
     "Drag items to reorder within the same level.": "Aynı seviyedeki ögeleri yeniden sıralamak için sürükleyin.",

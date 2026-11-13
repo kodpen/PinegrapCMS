@@ -435,6 +435,7 @@
 - legacy-bootstrap-census.md: Census of the starting sites' Legacy designs for the Bootstrap 5.3.8 helper (LB1, #8940): sets, Bootstrap 3 and theme classes, scripts, theme parts, map coverage and gaps
 - legacy-bootstrap-map.md: The Bootstrap 3 to 5.3.8 map and converter of a Legacy design (LB2, #8949): pg_lbs_* functions, the map's rules beyond renames, what a tree, a sheet and the report do, what is left for a designer [decision: decisions-made-product-46.md]
 - legacy-bootstrap-trial-design.md: The Bootstrap 5 trial design of a Legacy design (LB4): what Make a trial design copies and converts, the asset rows, the record file, Delete while unused, the side-by-side preview
+- legacy-bootstrap-trial-why.md: Why a Bootstrap 5 trial design keeps Bootstrap 3's script row switched off, and why only a design the card's test calls Bootstrap 3 gets a trial (architect, 2026-11-13, asked in #9159) [decision: here]
 - legacy-bootstrap-trial.md: The LB1 hand trial (#8940): a Legacy page with Bootstrap 5.3.8 in place of the classic sheet, how it was made, what broke, how near it came; pictures beside the plan
 - legacy-design-framework.md: The legacy framework key of a classic style moved into the editor (LG3): registry entry and flags, who writes it, the 11.0.187 data step, the Legacy / Eski badge on Visual Designs
 - legacy-design-theme.md: The theme file of a design moved from a classic style: the activated theme the classic head printed, on the site, the canvas and the Theme file hint; the dry run's warning (LG1, #8694)
@@ -468,7 +469,7 @@
 - multi-page-design-model.md: Data model of multi-page visual designer designs (style + page_style, page_tree_json), tree-reading helpers, design-page detection, start screen, recycle bin rules.
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, the dirty check and unchanged pages, tab switching/menu/rename DOM rules, toolbar overflow, palette order and designer texts.
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
-- no-image-placeholder.md: assets/images/no-image.svg, the fallback for a missing or failed image: an icon without words (PR #4472); its address sits in data-pg-fallback, never inside the onerror code (#6676)
+- no-image-placeholder.md: assets/images/no-image.svg, the fallback for a missing or failed image on the page and the canvas (#9199): an icon without words; its address in data-pg-fallback, never in the onerror code
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
 - options-panel-style-labels.md: Labels of the options panel selects built from utility classes (selStyleGroup) and of the colour pickers: how options and placeholders are translated, the Text/Background Color row keys (#2046)
 - order-form-widget.md: The Order Form widget (classic "order form" page type): handler and page row, list and drop-down layouts, row controls by name, flags, schedule section, what is left out.

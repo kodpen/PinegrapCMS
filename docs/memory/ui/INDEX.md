@@ -392,6 +392,7 @@
 - look-edit-screens.md: Add and edit screens in look A (DL5c, #8934): the edit width on every add/edit screen, columns 760 and 336 from the shared classes, look cards and titles, the floating save bar; what is not done yet
 - look-page-widths.md: Look A's page widths (#8892): edit screens centred at 1120 px (760 + 24 + 336), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, classes, rail [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
 - look-report-screens.md: Report screens in look A (DL5e, #8981): order, visitor, shipping and ERP tax reports; head, strip, tools row, table frame, drawer, the choices made and what is not done
+- look-screen-widths.md: Root panel screens outside the look's widths (no pg-measure-edit, -list or -report, or a container of their own) on 2026-11-13, and the step that takes each, LW5-LW7 for the rest [decision: decisions-made-panel-7.md]
 - look-settings-screens.md: Settings screens in look A (DL5d, #8952): dialog size, rail, head and foot; cards as a title over an inner card of rows, page and dialog; 32 px fields, switch; what is not done
 - look-switch.md: The look's switch (#9197): .pg-switch and the settings card and report drawer .switch, one drawing: white 18 px thumb, accent gradient, focus ring, disabled; the missing thumb [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
 - look-type-and-recipes.md: Look A's typeface (self-hosted Inter 4.1), the type scale and tone tokens, and the recipe classes in backend.src.css (#8879): which class draws which part, the block's place, the unlayered body family
@@ -507,6 +508,7 @@
 - pg-fields-speech.md: Screen readers and panel combobox/chip fields (pg_fields.js v6): toggle name and value, listbox options, no-match line, hidden select out of Tab, focused chip deleted, named remove buttons
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
 - phone-width-rows.md: Phone-width fixes: v6 .input-group and .btn do not wrap (rate tiers, documents card, sign-in rows, product group default option), Login Region fields, inner clusters wrap, marketplace grid
+- picker-all-list-dialog.md: The picker dialog's All (PA2, #9201): opens on every item of the kind, paged on scroll, the All row and total, its own sort, Upload into, Show in its folder, the phone [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
 - picker-all-list-server.md: picker.php list without a folder (PA1, #9186): every item of a kind sorted by modified, name, size or type, paged by a keyset cursor, items with path; the tree's total; measured times on 50,000 files
 - picker-designer-bridge.md: The visual designer's bridge to the picker (PK8): link, file and picture fields through pgEditorPicker, the source choice, Browse under widget page selects, the page type pane's picker fields
 - picker-dialog.md: The picker dialog pgPicker.open() (assets/js/pg_picker.js, PK2): what it shows, how a pick is handed back, the keyboard, the phone sheet, the Browse button, what picker.php added for it
@@ -538,7 +540,7 @@
 - rich-text-editor-files.md: Who the rich text editor (CKEditor 4) offers file browsing and uploading to; the upload addresses carry the session token
 - rich-text-editor-names.md: The rich text editor (CKEditor 4) named by its field's caption through pgCkeditorReplace(); label click focuses it; Source view names the code editor, says how Tab leaves, passes Alt+F10/Alt+0 on
 - rich-text-editor-turkish.md: CKEditor 4's own Turkish texts (lang/tr.js): the Media Embed dialog, the Anchor (Çapa) button, shortcut tips; the stamp that makes browsers fetch it again
-- rich-text-path-placeholder.md: How rich text is stored with the {path} placeholder (prepare_rich_text_editor_content_for_input()): which addresses fold, why a //host address (Media Embed's YouTube player) keeps its two slashes
+- rich-text-path-placeholder.md: How rich text is stored with the {path} placeholder (prepare_rich_text_editor_content_for_input()): which addresses fold, why a //host address (Media Embed's YouTube player) keeps its two slashes [decision: here]
 - rich-text-source-dialog.md: The rich text editor's Source dialog with the code editor: isolated in a shadow root (the dialog resets every element), sized like its textarea, Enter, Tab and used keys kept from the dialog
 - screen-focus-rings.md: Focus rings drawn by a screen's own styles use the 2px --pg-primary-ink outline, inset inside clipping boxes; which screens were moved and which still wait
 - script-built-field-names.md: Dialogs and fields drawn by script after load name themselves: unique title ids, label for, aria-label from the screen's label map, Escape kept (#3029)
@@ -595,6 +597,7 @@
 - site-button-box.md: Editing buttons over a site page (get_page.php) as a top-right corner box in the site page's colours (#3316): place, collapse arrow, narrow default, SEO panel and save/cancel pair under it [decision: decisions-made-panel.md]
 - site-datetime-loader.md: The date-and-time control on site pages, loaded on demand (pg_site_datetime_inject()): the hooks that bring it, what it prints, site mode in pg_datetime.js and pg_fields.js, the library's own CSS
 - site-editor-dialog-fields.md: CKEditor's Link and Image dialogs on a site page in Edit mode: livesite.src.css sets the skin's field width, padding and select arrow again over a theme's input and select rules
+- site-editor-picker-frame.md: Decided, not built (#9117): on a site page in Edit mode the editor's Link and Image dialogs open the picker in a same-origin frame inside a dialog; the conditions and what was refused [decision: here]
 - site-log-action-lines.md: Which panel actions write a Site Log line on success: order exports, Cloudflare Tools, the Site Log's own Delete buttons
 - site-log-paging.md: The Site Log (view_log.php) on the list table driver: database view in batches, the error_log view printed whole with a type filter, who a row without a user is, the language log lines are written in
 - site-native-date-inputs.md: Native date, datetime-local and time inputs on site pages get the date-and-time control by type, ISO kept; the server reads the ISO they post (S4a)

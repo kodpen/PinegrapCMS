@@ -411,6 +411,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-21.md: Where does the incoming e-mail sit? (owner, 2026-11-12, #8961)
 - decisions-made-workspace-21.md: Is the canvas card's line of tables and Bind a table approved? (owner, 2026-11-12, #8964)
 - decisions-made-workspace-21.md: What does the line under a message show when the message woke more than one agent? (owner, 2026-11-13, #9188)
+- decisions-made-workspace-22.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-22.md: Is incoming e-mail read and answered where the Workspace is off? (owner, 2026-11-13, #9203)
+- decisions-made-workspace-22.md: Who approves the flow window's narrow window and phone drawing? (owner, 2026-11-13, #9209)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
@@ -529,6 +532,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - designer/form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - designer/form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
 - designer/layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
+- designer/legacy-bootstrap-trial-why.md: Why a Bootstrap 5 trial design keeps Bootstrap 3's script row switched off, and why only a design the card's test calls Bootstrap 3 gets a trial (architect, 2026-11-13, asked in #9159)
 - designer/legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move
 - designer/legacy-overview.md: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7), the rules kept, what is open
 - designer/legacy-to-classic.md: Back to classic (LG7): a set's Legacy design sends its pages, all or one, back to the classic styles they came from; how the origin is found, why the tree leaves the page, the refusals, the card
@@ -567,6 +571,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/activitypub-decisions.md: Why the Fediverse (ActivityPub) feature is shaped as it is: off by default, one actor, no library, what is published, remote replies as comments, WAF rules, the decided tables; where each part lives
 - platform/backup-age-rule.md: When a backup's age is a problem - pg_backup_age_state() (none fail, over a month warn, else pass) and its readers: System Status tile, ops alert, greeting, API, agents
 - platform/ca-store-choice.md: pg_ca_bundle_effective() chooses the CA store: the CURL_CA_BUNDLE override, the shipped data/cacert.pem when PHP has no store or the probe failed, else the server's store; the probe record.
+- platform/image-editor-jpeg-start-quality.md: Decided, not built (#9118): a JPEG saved by the image editor or Optimize starts at the lower of 92 and the source's own quality, so a save is not heavier than its original
 - platform/import-decisions.md: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out
 - platform/iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter
 - platform/notification-channels.md: Chat notification channels (includes/fn/notify_channels.php): Slack, Teams and Telegram targets, the pure builders, the settings card and the Test button
@@ -622,7 +627,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - ui/panel-top-bar-phone.md: Panel top bar (#header) on a phone: below 768px the mascot alone (no wordmark or page heading), below 390px no logo, why, the test that keeps it
 - ui/picker-pages.md: Pages in the picker dialog (kind page, PK4): rows with address and type, the page type chips, archived and binned marks that cannot be chosen, a caller's own entries (extra)
+- ui/rich-text-path-placeholder.md: How rich text is stored with the {path} placeholder (prepare_rich_text_editor_content_for_input()): which addresses fold, why a //host address (Media Embed's YouTube player) keeps its two slashes
 - ui/settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()
+- ui/site-editor-picker-frame.md: Decided, not built (#9117): on a site page in Edit mode the editor's Link and Image dialogs open the picker in a same-origin frame inside a dialog; the conditions and what was refused
 - ui/visitors-screen-look.md: How the Visitors overview is drawn: reference pictures, frames and blocks, one change column, folding lists, quiet dashes, anchors, calm charts, the menu's section links, the traps
 - visitors/translation-index-verdict.md: The "reviewed" policy's one rule for a translated page's robots meta, alternates and sitemap.xml: only the page's own words count; no kept answer means not offered; what drops or keeps it
 - visitors/web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go
@@ -631,6 +638,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-bot-rate-exemption.md: Only a crawler waf_bot_verified() proved skips the global, sensitive, api.php and in-flight limits (waf_bot_rate_exempt()); IS_BOT buys no rate relief (#2731).
 - waf/waf-country-panel-exemption.md: Country restriction's panel exemption: the panel sign-in screens for anyone, every other software-directory script only with staff signed in; site sign-in pages not exempt, staff kept to the panel.
 - waf/waf-inflight-request-cap.md: waf_inflight_* concurrent request cap on sensitive scripts: limit, 429 rule concurrent (no offence), file slots under data/temp, 120 s dead slot, fail-open, monitor mode.
+- waf/waf-kill-switch-and-monitor-mode.md: waf_enabled=0 stops everything (absolute kill switch), monitor mode guarantee in waf_deny(), hand-written bans apply in every mode, automatic bans not in Monitor mode.
 - waf/waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
@@ -661,6 +669,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/channel-members-agents.md: A channel's agents among its members (#8936): agents as squares in the head's faces, People here and Agents here in Channel info, last seen; a person's time only for a manager
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
 - workspace/claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable
+- workspace/mail-area-proposals.md: Incoming e-mail in the messages area as decided after MA10a (#9077, #9203): mail with the Workspace off, the tab's gate, who reads, what the mail card keeps beside its link, the steps
 - workspace/mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified
 - workspace/mail-list.md: The Workspace E-mails list (workspace_mail.php, mail_list.php): which conversations, the views Incoming, Sent and Not sent, the filters, mailbox, search, Load more, the row, the menu entry
 - workspace/mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it

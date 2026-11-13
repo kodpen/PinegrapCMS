@@ -1245,6 +1245,7 @@
     "Money stays local": "Para yerelde kalır",
     "Monitor": "İzle",
     "Monitor mode: these requests were recorded but allowed through, except addresses on the ban list, which are refused in every mode. Review the rest, and when nothing legitimate appears here, switch the firewall to Block.": "İzleme modu: bu istekler kaydedildi ama geçirildi; yasak listesindeki adresler bunun dışındadır, onlar her modda reddedilir. Geri kalanları gözden geçirin ve burada meşru bir şey kalmadığında güvenlik duvarını Engelleme moduna alın.",
+    "Monitor mode: these requests were recorded but allowed through, except addresses you banned by hand, which are refused in every mode. Review the rest, and when nothing legitimate appears here, switch the firewall to Block.": "İzle modu: bu istekler kaydedildi ama geçirildi; elle yasakladığınız adresler bunun dışındadır, onlar her modda reddedilir. Geri kalanları inceleyin; burada meşru bir istek görünmüyorsa güvenlik duvarını Engelle moduna alın.",
     "Monitor mode: these requests were recorded but allowed through. Review them, and when nothing legitimate appears here, switch the firewall to Block.": "İzle modu: bu istekler kaydedildi ama geçmelerine izin verildi. İnceleyin; burada meşru bir istek görünmüyorsa güvenlik duvarını Engelle moduna alın.",
     "Monitoring": "İzleme",
     "Monogram": "Monogram",

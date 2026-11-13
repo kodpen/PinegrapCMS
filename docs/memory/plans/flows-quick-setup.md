@@ -22,7 +22,7 @@ description: Plan (owner 2026-11-12, #8950): a quick setup that builds a flow by
 - The names in the drawing are examples; the labels are the boxes' own.
 
 ## Which steps?
-- QS0 (S, no product code) done #9082. The map: each drawn start and action against today's kinds and events; what has no box (an SMS step, "Add to a group", "Give an offer code") as proposals to the architect; the shape of the areas list, of a recipe and of the choices the dialog sends.
+- QS0 (S, no product code) done #9082. The map: each drawn start and action against today's kinds and events; what has no box (an SMS step, "Add to a group", "Give an offer code"), decided in `flows-quick-setup-steps-2.md`; the shape of the areas list, of a recipe and of the choices the dialog sends.
 - QS1 (M) done #9082. Server: the catalogue (areas, starts, action groups, recipes filtered by start) and the function that turns the choices into a draft through the store; tests on the graph it makes.
 - QS2 (M) The dialog's first stage: rail, search, start cards, "Only when".
 - QS3 (M) The second stage: recipes, actions, a step's setting, "One more step".
@@ -30,4 +30,4 @@ description: Plan (owner 2026-11-12, #8950): a quick setup that builds a flow by
 - QS5 (S) Ways in: "Quick setup" beside "New flow" on the Flows list, in its empty state and in the messages area (`messages-area-steps.md`); close-out: the lasting rules into `workspace/`, this plan deleted.
 
 ## When does it start?
-- QS0 may start now. QS2 to QS4 follow QS1 one after the other (one dialog script). Claim as `[plan:flows-quick-setup] <step> — <topic>`.
+- QS2 to QS4 follow QS1 one after the other (one dialog script); QS1b, QS6 and QS7: `flows-quick-setup-steps-2.md`. Claim as `[plan:flows-quick-setup] <step> — <topic>`.

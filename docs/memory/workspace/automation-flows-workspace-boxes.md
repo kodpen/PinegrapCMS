@@ -14,7 +14,7 @@ description: Which flow boxes and starts need the Workspace (ws_flow_kinds_works
 - Send a summary of counts `report` when it posts into a channel (`channel_id` > 0); one sent only by e-mail runs.
 
 ## What is not on it yet?
-- The census found more that acts in the Workspace (Let people know, the table boxes and the row start, Pinegrap AI, MCP, Workspace records in Change or Read a record, starts on the Workspace's own events). They run with the Workspace off until the architect answers the proposal in `plans/automation-flows-menu-proposals.md`.
+- The census found more that acts in the Workspace (Let people know, the table boxes and the row start, Pinegrap AI, MCP, Workspace records in Change or Read a record, starts on the Workspace's own events). They run with the Workspace off until step AF3b of `plans/automation-flows-menu-steps-2.md` puts them on the list; Let people know leaves it again with the bell (AF4c).
 
 ## What runs without the Workspace?
 - Started by hand `manual`, At a time `schedule`, a site event, When a customer stops ordering `no_order`, When a web address is called `web`; Send an e-mail, Call a webhook, Check a web address, Start a flow, Change or Read a site record, Condition, Wait, For each, End, Constants, Derived value.

@@ -12,7 +12,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - Never reorder the bot classification: attack tools first, the operator's Blocked Bots after the built-in lists, residual signal last (`waf-score-calibration-and-bot-order.md`).
 - Exempt by path (robots.txt, `.well-known/`) or by running script (`health.php`), never by query string; they skip the bot policy, never the IP list or rate limits (`waf-path-exemption-and-robots.md`).
 - Take the visitor's address only from `waf_client_ip()` and count per `waf_ip_subject()` (the /64 for IPv6); never copy the proxy logic (`waf-ip-subject-ipv6-64.md`).
-- Refuse only through `waf_deny()`, whose mode check keeps Monitor mode's promise; only the operator's IP list blocks in every mode (`waf-kill-switch-and-monitor-mode.md`).
+- Refuse only through `waf_deny()`, whose mode check keeps Monitor mode's promise; only the operator's hand-written IP list blocks in every mode, automatic bans wait in Monitor mode (`waf-kill-switch-and-monitor-mode.md`).
 - Give every endpoint that accepts a password `pg_login_throttle_guard()` and `pg_login_record_failure()`; the throttle works with the firewall off (`waf-login-throttle.md`).
 - Log every new limit or gate with `waf_log_event()` and every new deny path in `data/firewall.log`; a protection that refuses silently is half a protection (`waf-fail2ban-log.md`).
 - Write a new IP column as `VARCHAR(45)` and a ban as one atomic `INSERT ... ON DUPLICATE KEY UPDATE` (`waf-ipv6-ban-column-width.md`).

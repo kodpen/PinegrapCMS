@@ -44,6 +44,7 @@
 - automation-flows-workspace-boxes.md: Which flow boxes and starts need the Workspace (ws_flow_kinds_workspace()): the list, offered only with it, the problem on the canvas, the refusal at run time and in Try [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - canvas-bridge.md: A live page's data bridge (#8947): page to shell to panel to site and back, the message shape, the canvas named by the card and never the page, the bounds and the stop, the who call, the proofs
 - canvas-consents.md: A live page's writes with consent (11.0.193, #9180): add and change through the bridge, the first-write question per page version, "Last written through <canvas>" on a row
+- canvas-measures.md: What a live page's read of a bound table costs at the 5000-row limit (CO5, #9207): time, memory and answer size of the bridge's rows call, and the bounds kept from it
 - canvas-tables.md: The tables bound to a canvas (ws_canvas_tables, 11.0.190, #8960): who binds, read or write, 20 a canvas, the card's line of tables, cleanup, a page's read
 - channel-agent-rights.md: Who adds, changes or removes a channel's agents ("Agents in this channel" in Channel settings, workspace.channels.agents.*): who may post; the tier and a private channel's new agent only its manager [decision: decisions-made-workspace-11.md, decisions-made-workspace-9.md]
 - channel-members-agents.md: A channel's agents among its members (#8936): agents as squares in the head's faces, People here and Agents here in Channel info, last seen; a person's time only for a manager [decision: decisions-made-workspace-19.md]
@@ -53,7 +54,7 @@
 - claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable [decision: here]
 - contact-group-joined-event.md: Flow event contact_group.joined: one ws_events_in row per contact added to a group, from pg_announce_contact_group_members(); payload, group filter kept as status, outputs [decision: decisions-made-product-27.md]
 - mail-api.md: Workspace e-mail in the external API and MCP (api_mail.php, G7, WM8 #8737): routes, list filters, unread, send_state, which are tools, who may answer or send, errors, the webhook
-- mail-area-proposals.md: Proposals for incoming e-mail in the messages area (MA10a, #9077): mail with the Workspace off, the tab's gate, who reads, what the mail card keeps beside its link, the steps
+- mail-area-proposals.md: Incoming e-mail in the messages area as decided after MA10a (#9077, #9203): mail with the Workspace off, the tab's gate, who reads, what the mail card keeps beside its link, the steps [decision: decisions-made-workspace-22.md]
 - mail-area-shell.md: What incoming e-mail takes from the Workspace today (MA10a, #9077): the E-mails list, the conversation, New e-mail and the card against the Workspace's gate, shell, script bundle, menu and job passes
 - mail-card-quote.md: What a reply's quote line says of a mail card in a channel (plain() and quoteText() in workspace.js): the head, Show all and refused files left out, blocks read apart (#9011)
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)

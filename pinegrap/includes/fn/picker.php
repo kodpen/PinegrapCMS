@@ -1732,6 +1732,8 @@ function pg_picker_texts()
         'Pages you choose appear here.', 'Archived pages and pages in the Recycle Bin cannot be chosen.',
         'Type to search…', '1 result · in every folder', '{n} results · in every folder', '{n}+ results · in every folder',
         'All results for “{q}” in Browse', 'Browse…',
+        'All folders', 'Show in its folder', 'Upload into', 'There is nothing to choose yet',
+        'Drag files here or choose them from your computer. An uploaded file is saved in “{folder}” and chosen.',
     ) as $text) {
         $texts[$text] = lang($text);
     }
@@ -1771,10 +1773,16 @@ function pg_picker_script()
     // is refused before it is sent. The page kinds and the type chips' groups
     // let the dialog draw pages as pages.
     $page_kinds = array();
+    $picture_kinds = array();
 
     foreach (pg_picker_kinds() as $name => $kind) {
         if ($kind['source'] === 'pages') {
             $page_kinds[] = $name;
+        }
+
+        // A picture kind opens as tiles, the others as a list.
+        if (!empty($kind['pictures'])) {
+            $picture_kinds[] = $name;
         }
     }
 
@@ -1792,6 +1800,7 @@ function pg_picker_script()
         'file_max' => $file_max,
         'file_max_label' => ($file_max > 0) ? convert_bytes_to_string($file_max, 1) : '',
         'page_kinds' => $page_kinds,
+        'picture_kinds' => $picture_kinds,
         'page_groups' => $groups);
 
     return '<script type="application/json" id="pg_picker_config">' . json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . '</script>'

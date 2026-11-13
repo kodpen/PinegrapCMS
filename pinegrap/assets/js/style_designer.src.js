@@ -5578,6 +5578,7 @@ const StyleDesigner = (function () {
                 var inner;
                 if (p.src && p.src.trim() !== '') {
                     inner = doc.createElement('img');
+                    _sdImgFallback(inner, _sdNoImageUrl());
                     inner.src = p.src;
                     inner.alt = p.alt || '';
                     // A whole number is the width / height attribute; a value
@@ -27991,6 +27992,29 @@ const StyleDesigner = (function () {
         if (s === '') return { attr: '', css: '' };
         if (/^\d+$/.test(s)) return { attr: s, css: '' };
         return { attr: '', css: _sdCssLen(s) };
+    }
+    // The page's "no image" picture (assets/images/no-image.svg), the one
+    // _render_content_html() swaps in when a picture fails to load.
+    function _sdNoImageUrl() {
+        return (typeof path !== 'undefined' ? path : '/') +
+               (typeof software_directory !== 'undefined' ? software_directory : 'software') +
+               '/assets/images/no-image.svg';
+    }
+    // A canvas picture that fails to load (an outside address that does not
+    // answer, a deleted file) takes the no-image picture, as on the page
+    // (data-pg-fallback, pg_img_fallback_handler()): the browser's broken
+    // glyph with the alt text drew it as an empty strip one line high. Once:
+    // a failing fallback is not retried. Set before src, so an error that
+    // comes at once is caught too.
+    function _sdImgFallback(img, url) {
+        var tried = false;
+        img.addEventListener('error', function () {
+            if (tried || !url) return;
+            tried = true;
+            img.removeAttribute('srcset');
+            img.setAttribute('data-sd-img-failed', '');
+            img.setAttribute('src', url);
+        });
     }
     // The CSS an image's width or height ('width' | 'height') is drawn with.
     // In its ratio box the box takes the size, a whole number in pixels, and
