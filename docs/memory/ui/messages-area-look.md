@@ -25,6 +25,6 @@ module: messages_area
 - SMS campaign (`edit_sms_campaign.php`): MA5 beside the e-mail one; DL5 of `panel-design-language-steps.md` if MA5 leaves it.
 - Profiles (`view_email_campaign_profiles.php`, `add_`/`edit_`/`duplicate_`/`import_email_campaign_profiles.php`): turned into flows by MA9 and removed by MA9f; not redrawn.
 - Automatic sends' body (place rows): MA8. Campaigns stays on the table driver; the drawing's progress meter per campaign row is not drawn yet.
-- On a 390 px window the list driver's card view clips a Sends row's card (seen before and after MA12): a list driver matter, not this area's.
+- The phone list (owner, #2255): one surface with rows split by lines, fixed in the shared driver for every list (`list-table-layout.md`). A campaign with no send time shows "—" (`pg_messages_campaign_start_time()` reads the zero date and the API's 1000-01-01 marker as none; before, "1 Jan 1000").
 
 Related: docs/memory/ui/messages-area-shell.md, docs/memory/ui/messages-area-campaigns-tab.md

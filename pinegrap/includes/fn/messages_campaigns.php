@@ -80,6 +80,37 @@ function pg_messages_campaign_channels($channel, $sms)
 }
 
 /**
+ * An e-mail campaign's send time as a timestamp, 0 when it has none: an
+ * empty value, the zero date, the API's "no time" marker (1000-01-01) or
+ * anything strtotime() cannot read or reads before 1970.
+ *
+ * @param mixed $value the start_time column
+ * @return int
+ */
+function pg_messages_campaign_start_time($value)
+{
+    $value = trim((string) $value);
+
+    if (($value === '') || (strpos($value, '0000-00-00') === 0) || (strpos($value, '1000-01-01') === 0)) {
+        return 0;
+    }
+
+    $time = strtotime($value);
+
+    return (($time === false) || ($time <= 0)) ? 0 : (int) $time;
+}
+
+/**
+ * The list's mark for a campaign without a send time.
+ *
+ * @return string
+ */
+function pg_messages_campaign_no_time()
+{
+    return '<span class="pg-text-meta" title="' . h(lang('Not scheduled')) . '">—</span>';
+}
+
+/**
  * One list id for a campaign of either table: even for e-mail, odd for SMS,
  * so a selection names both without a clash.
  *
@@ -234,7 +265,7 @@ function pg_messages_campaign_email_rows(array $statuses, array $user)
         $to = h(lang(array('string' => '{var:1} Contact{suffix:1}', 'vars' => pg_format_number($total, 0), 'suffix' => ($total == 1) ? '' : 's')));
 
         $subject = ((string) $campaign['subject'] !== '') ? h($campaign['subject']) : '[' . h(lang('No name')) . ']';
-        $start = ($campaign['start_time'] == '0000-00-00 00:00:00') ? 0 : (int) strtotime($campaign['start_time']);
+        $start = pg_messages_campaign_start_time($campaign['start_time']);
         $percentage = ($total > 0) ? $done / $total * 100 : 100;
         $result = lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($percentage, 0))))
             . ' (' . lang(array('string' => '{var:1} of {var:2}', 'vars' => array(pg_format_number($done, 0), pg_format_number($total, 0)))) . ')'
@@ -248,7 +279,7 @@ function pg_messages_campaign_email_rows(array $statuses, array $user)
                 'channel' => pg_list_cell(h(lang('E-mail'))),
                 'to' => pg_list_cell($to, 'align-middle', array('data-pg-sort-value' => $total)),
                 'status' => pg_list_cell(get_email_campaign_status_name($campaign['status'])),
-                'send_time' => pg_list_cell($start ? get_relative_time(array('timestamp' => $start)) : '', 'align-middle', array('data-pg-sort-value' => $start)),
+                'send_time' => pg_list_cell($start ? get_relative_time(array('timestamp' => $start)) : pg_messages_campaign_no_time(), 'align-middle', array('data-pg-sort-value' => $start)),
                 'result' => pg_list_cell($result, 'align-middle', array('data-pg-sort-value' => round($percentage, 2))),
                 'last_modified' => pg_list_table_when_cell($campaign['last_modified_timestamp'], (string) $campaign['last_modified_username']),
             ),
@@ -326,7 +357,7 @@ function pg_messages_campaign_sms_rows(array $statuses, array $user)
                 'channel' => pg_list_cell(h(lang('SMS'))),
                 'to' => pg_list_cell(''),
                 'status' => pg_list_cell(h($names[$campaign['status']] ?? $campaign['status'])),
-                'send_time' => pg_list_cell($start_at > 0 ? get_relative_time(array('timestamp' => $start_at)) : '', 'align-middle', array('data-pg-sort-value' => $start_at)),
+                'send_time' => pg_list_cell($start_at > 0 ? get_relative_time(array('timestamp' => $start_at)) : pg_messages_campaign_no_time(), 'align-middle', array('data-pg-sort-value' => $start_at)),
                 'result' => pg_list_cell($result, 'align-middle', array('data-pg-sort-value' => (int) $campaign['queued_count'])),
                 'last_modified' => pg_list_table_when_cell($campaign['updated_at'], (string) $campaign['updated_username']),
             ),

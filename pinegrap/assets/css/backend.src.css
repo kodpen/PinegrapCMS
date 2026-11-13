@@ -24312,7 +24312,10 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     box-shadow: var(--pg-shadow-float);
   }
 }
-/* Below 768 px a row is a card: every shown cell under its column's name. */
+/* Below 768 px a row is a block of the frame's one surface, rows split by
+   a line (no rounded card inside the rounded frame): every shown cell is a
+   line with its column's name at the left and its value in one column at
+   the right, however many pieces the value is made of. */
 @media (max-width: 767.98px) {
   .pg-list-table-grid > thead {
     position: absolute;
@@ -24329,28 +24332,39 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     width: 100%;
   }
   .pg-list-table-grid > tbody > tr {
-    margin: 0.5rem 0;
-    border: 1px solid var(--pg-list-table-line);
-    border-radius: var(--pg-radius-card);
-    overflow: hidden;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--pg-list-table-line);
+    background: linear-gradient(var(--pg-list-table-row-tint), var(--pg-list-table-row-tint));
+  }
+  .pg-list-table-grid > tbody > tr:last-child {
+    border-bottom: 0;
   }
   .pg-list-table-grid > tbody > tr > td {
-    display: flex;
-    gap: 0.75rem;
+    position: relative;
     height: auto;
+    min-height: 32px;
     max-width: none;
-    padding: 6px 14px;
+    padding: 6px 14px 6px calc(14px + var(--pg-list-table-label) + 0.75rem);
     text-align: start;
     white-space: normal;
     overflow-wrap: anywhere;
     border: 0;
+    background: none;
   }
   .pg-list-table-grid > tbody > tr > td[hidden] {
     display: none;
   }
+  /* A number or a row's buttons start in the value column too; the
+     unlayered .text-end utility is beaten only by an important rule. */
+  .pg-list-table-grid > tbody > tr > td:is(.text-end, [data-pg-col]) {
+    text-align: start !important;
+  }
   .pg-list-table-grid > tbody > tr > td::before {
     content: attr(data-pg-label);
-    flex: 0 0 var(--pg-list-table-label);
+    position: absolute;
+    top: 8px;
+    left: 14px;
+    width: var(--pg-list-table-label);
     font-size: var(--pg-text-meta);
     text-align: start;
     font-weight: var(--pg-weight-strong);

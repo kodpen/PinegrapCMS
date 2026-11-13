@@ -6,7 +6,7 @@ module: list_table
 
 ## What do the details panel and the phone card show?
 - Details panel (`aside.pg-list-table-details`): every column of the current row (last clicked, or the keyboard's), hidden ones too, in the user's order, from the cells' markup. Beside the rows (20rem) from 1024 px, a fixed side sheet below.
-- Below 768 px each row is a card: the heading is visually hidden, each shown cell led by its `data-pg-label` (set on every cell); a cell's `text-center`/`text-end` still aligns it.
+- Below 768 px each row is a block of the frame's one surface, rows split by a line, never a rounded card inside the rounded frame (owner, #2255 in the agent channel; MA12 #9363). The heading is visually hidden; each shown cell is a line with its `data-pg-label` in a fixed column at the left and its whole value in one column at the right (block cell, absolute label: a value of several pieces, like the when cell's time and author, no longer splits into columns). Every value starts at the left there, `text-end` cells and buttons included.
 
 ## What layout rule does the details panel follow?
 - `ui/details-panel-rule.md`: name first, pictures, label/value lines with a fixed label column, buttons last, empty values left out. The phone card uses the same label width.
