@@ -405,6 +405,7 @@
 - dynamic-region-in-designer.md: A dynamic region placed in the visual designer: the region node's attribute ($dregion_attribute), its PHP code as a code-view tab for administrators, the dynamic_region_code endpoint
 - editor-a11y-measurements.md: Contrast and target size measured on the editor's canvas are kept with the accessibility report: seo_issue rows with source editor:<time>, replaced on each save, left alone by the nightly pass
 - editor-audit-panel.md: Editor audit panel Accessibility section: rows per registry concept, the rendered draft's a11y findings, canvas checks under them, badges via data-pg-node
+- editor-chrome-contrast.md: Visual editor dark chrome text and icon contrast: --sd-* mixes for tabs, Publish, tree ids, lock icons, left panel small texts (#9099), no opacity
 - editor-turkish-terms.md: The names Page Design Studio, Design Canvas, Designs and their Turkish; English terms the editor's Turkish labels may not keep (legacy, checkbox, alert, Breadcrumb); _sdT() test [decision: decisions-made-panel-6.md]
 - error-page-widget.md: The error page system widget: when it is shown, which block shows for 404, maintenance and other errors, its tokens, and the maintenance screen's title.
 - express-order-legal-documents.md: Checkout document boxes and KVKK lines in the designer's express order tree: legal_* field bindings, has_legal_documents / has_legal_kvkk* flags, __legal_* tokens, sentence split of the label

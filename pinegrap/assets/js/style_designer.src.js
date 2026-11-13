@@ -24470,7 +24470,7 @@ const StyleDesigner = (function () {
             '<div class="sd-panel-tabs" id="sd-panel-tabs">' +
                 '<button type="button" class="sd-panel-tab active" data-tab="components">' + esc(_sdT('Components')) + '</button>' +
                 '<button type="button" class="sd-panel-tab" data-tab="shared" style="color:#22c55e"><span class="bi bi-puzzle-fill me-1"></span>' + esc(_sdT('Shared')) + '</button>' +
-                '<button type="button" class="sd-panel-tab" data-tab="system" style="color:#6366f1"><span class="bi bi-cpu me-1"></span>' + esc(_sdT('System')) + '</button>' +
+                '<button type="button" class="sd-panel-tab" data-tab="system"><span class="bi bi-cpu me-1"></span>' + esc(_sdT('System')) + '</button>' +
             '</div>' +
             // One tab, two lists: the building blocks and the ready sections,
             // chosen with the switch at its top (_sdPalSwitchWire()).
