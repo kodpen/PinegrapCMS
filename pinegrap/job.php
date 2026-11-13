@@ -1034,14 +1034,19 @@ if (is_file(dirname(__FILE__) . '/includes/workspace/reminders.php')) {
 // indexed reads. Each action is claimed before it runs, so two ticks that
 // overlap cannot carry out the same one twice; a backlog is worked off a few
 // actions per tick (WS_SCHEDULED_BATCH).
+//
+// Automation flows run at every site, the Workspace on or off
+// (includes/fn/automation_flows.php). With it off the module is loaded only
+// while a live flow or an open run gives the pass something to look at, and
+// the pass is the flows' alone (ws_scheduled_run()).
 if (
-    defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED
+    ((defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) || pg_flows_in_use())
     && is_file(dirname(__FILE__) . '/includes/workspace/bootstrap.php')
 ) {
 
     require_once(dirname(__FILE__) . '/includes/workspace/bootstrap.php');
 
-    if (ws_enabled() && function_exists('ws_scheduled_due') && ws_scheduled_due()) {
+    if ((ws_enabled() || pg_flows_enabled()) && function_exists('ws_scheduled_due') && ws_scheduled_due()) {
         ws_scheduled_run(WS_SCHEDULED_BATCH, WS_FLOW_BUDGET_JOB);
     }
 

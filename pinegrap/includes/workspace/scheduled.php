@@ -187,6 +187,65 @@ function ws_scheduled_actions_only($alias = '')
 }
 
 /**
+ * The condition that keeps a run to the rows of ws_scheduled_actions it may
+ * carry out: every one while the Workspace is on; with it off only the
+ * anchors of flows, which run at every site (pg_flows_enabled()), while the
+ * Workspace's own scheduled actions and messages wait for it to be switched
+ * on again. Pure.
+ *
+ * @param bool   $workspace_on ws_enabled()
+ * @param bool   $flows_ready  ws_flows_ready(): the flow_id column is there
+ * @param string $alias        the table's alias in the query
+ * @return string " AND ..." or ""
+ */
+function ws_scheduled_running_where($workspace_on, $flows_ready, $alias = '')
+{
+    if ($workspace_on) {
+        return '';
+    }
+
+    return $flows_ready ? " AND " . (($alias !== '') ? $alias . '.' : '') . "flow_id > 0" : ' AND 1 = 0';
+}
+
+/**
+ * ws_scheduled_running_where() for this site.
+ *
+ * @param string $alias
+ * @return string
+ */
+function ws_scheduled_running_only($alias = '')
+{
+    return ws_scheduled_running_where(ws_enabled(), function_exists('ws_flows_ready') && ws_flows_ready(), $alias);
+}
+
+/**
+ * The same for a start waiting in ws_scheduled_queue: with the Workspace
+ * off, only a start of a flow's anchor is taken. Pure.
+ *
+ * @param bool $workspace_on
+ * @param bool $flows_ready
+ * @return string " AND ..." or ""
+ */
+function ws_scheduled_queue_running_where($workspace_on, $flows_ready)
+{
+    if ($workspace_on) {
+        return '';
+    }
+
+    return $flows_ready ? " AND action_id IN (SELECT id FROM ws_scheduled_actions WHERE flow_id > 0)" : ' AND 1 = 0';
+}
+
+/**
+ * ws_scheduled_queue_running_where() for this site.
+ *
+ * @return string
+ */
+function ws_scheduled_queue_running_only()
+{
+    return ws_scheduled_queue_running_where(ws_enabled(), function_exists('ws_flows_ready') && ws_flows_ready());
+}
+
+/**
  * Do scheduled actions say which of them are a flow's anchor (2026.11.0,
  * 11.0.88)? Before the step every row with a flow is a hidden anchor.
  *
@@ -3309,12 +3368,15 @@ function ws_scheduled_set_status($viewer, $row, $to)
 
 /**
  * Is something due? Indexed reads, for ws_sync to tell an open screen to
- * start a run.
+ * start a run, and for the general job. With the Workspace off only what
+ * flows run is asked about (ws_scheduled_running_only()).
  *
  * @return bool
  */
 function ws_scheduled_due()
 {
+    $workspace = ws_enabled();
+
     // Events from the site waiting to be taken (watch.php): the channels
     // that watch a record hear about them even where nothing is scheduled.
     if (function_exists('ws_events_due') && ws_events_due()) {
@@ -3323,7 +3385,7 @@ function ws_scheduled_due()
 
     // A deadline of an approval request, a read receipt to remind about
     // (approvals.php, acks.php): one indexed row each, run below.
-    if ((function_exists('ws_approvals_due') && ws_approvals_due()) || (function_exists('ws_acks_due') && ws_acks_due())) {
+    if ($workspace && ((function_exists('ws_approvals_due') && ws_approvals_due()) || (function_exists('ws_acks_due') && ws_acks_due()))) {
         return true;
     }
 
@@ -3341,12 +3403,12 @@ function ws_scheduled_due()
 
     if (db_value("SELECT id FROM ws_scheduled_actions
         WHERE status = 'active' AND next_run_at > 0 AND next_run_at <= '" . $now . "'
-        AND running_at < '" . ($now - WS_SCHEDULED_LOCK) . "' LIMIT 1")) {
+        AND running_at < '" . ($now - WS_SCHEDULED_LOCK) . "'" . ws_scheduled_running_only() . " LIMIT 1")) {
         return true;
     }
 
     return ws_scheduled_chains_ready()
-        && (bool) db_value("SELECT id FROM ws_scheduled_queue WHERE status = 'waiting' AND due_at <= '" . $now . "' LIMIT 1");
+        && (bool) db_value("SELECT id FROM ws_scheduled_queue WHERE status = 'waiting' AND due_at <= '" . $now . "'" . ws_scheduled_queue_running_only() . " LIMIT 1");
 }
 
 /**
@@ -3355,6 +3417,13 @@ function ws_scheduled_due()
  * runs, so a chain whose next step waits for nothing goes on in the same
  * run. The runs of the flows are carried on first (flow_runs.php), within
  * the time the caller gives them.
+ *
+ * Flows run at every site, the Workspace on or off (pg_flows_enabled()).
+ * With it off the run is theirs alone: their anchors' times and starts, the
+ * events they wait for and their boxes. The Workspace's own parts wait for
+ * it to be switched on again: converting the scheduled actions, the lines
+ * in watching channels, approval deadlines, read receipts, the scheduled
+ * actions and messages that are no flow.
  *
  * @param int $limit
  * @param int $flow_budget seconds after which no box of a flow starts: 0 for
@@ -3365,10 +3434,11 @@ function ws_scheduled_due()
 function ws_scheduled_run($limit = WS_SCHEDULED_BATCH, $flow_budget = 0)
 {
     $result = array('ran' => 0, 'skipped' => 0, 'failed' => 0);
+    $workspace = ws_enabled();
 
     // Scheduled actions not yet converted into flows become flows first
     // (scheduled_convert.php), so they run below as converted anchors.
-    if (function_exists('ws_scheduled_convert_due')) {
+    if ($workspace && function_exists('ws_scheduled_convert_due')) {
         ws_scheduled_convert_due();
     }
 
@@ -3381,11 +3451,11 @@ function ws_scheduled_run($limit = WS_SCHEDULED_BATCH, $flow_budget = 0)
 
     // Approval requests whose deadline passed or is a day away, and read
     // receipts a day old (approvals.php, acks.php).
-    if (function_exists('ws_approvals_run')) {
+    if ($workspace && function_exists('ws_approvals_run')) {
         ws_approvals_run();
     }
 
-    if (function_exists('ws_acks_run')) {
+    if ($workspace && function_exists('ws_acks_run')) {
         ws_acks_run();
     }
 
@@ -3404,7 +3474,7 @@ function ws_scheduled_run($limit = WS_SCHEDULED_BATCH, $flow_budget = 0)
 
     foreach ((array) db_values("SELECT id FROM ws_scheduled_actions
         WHERE status = 'active' AND next_run_at > 0 AND next_run_at <= '" . $now . "'
-        AND running_at < '" . ($now - WS_SCHEDULED_LOCK) . "'
+        AND running_at < '" . ($now - WS_SCHEDULED_LOCK) . "'" . ws_scheduled_running_only() . "
         ORDER BY next_run_at LIMIT " . $left) as $id) {
 
         $status = ws_scheduled_execute((int) $id, false);
@@ -3425,7 +3495,7 @@ function ws_scheduled_run($limit = WS_SCHEDULED_BATCH, $flow_budget = 0)
     // Round by round: a start written by this run with no wait is read in
     // the next round, as long as the batch has room.
     for ($round = 0; ($round < WS_SCHEDULED_CHAIN_DEPTH) && ($left > 0); $round++) {
-        $queue = (array) db_items("SELECT * FROM ws_scheduled_queue WHERE status = 'waiting' AND due_at <= '" . time() . "' ORDER BY due_at, id LIMIT " . max(1, $left));
+        $queue = (array) db_items("SELECT * FROM ws_scheduled_queue WHERE status = 'waiting' AND due_at <= '" . time() . "'" . ws_scheduled_queue_running_only() . " ORDER BY due_at, id LIMIT " . max(1, $left));
 
         if (empty($queue)) {
             break;

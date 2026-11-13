@@ -8165,6 +8165,7 @@
     "This box has no arrows: each value reaches the boxes that read it by a data thread, the same in every run.": "Bu kutunun oku yoktur: her değer, onu okuyan kutulara bir veri ipiyle, her koşuda aynı olarak ulaşır.",
     "This box has no arrows: its value is worked out from the values it reads each time a box reads it. A comparison gives 1 when it holds, else 0; a value the rule cannot read gives an empty value.": "Bu kutunun oku yoktur: değeri, bir kutu onu her okuduğunda okuduğu değerlerden hesaplanır. Karşılaştırma doğruysa 1, değilse 0 verir; kuralın okuyamadığı bir değer boş değer verir.",
     "This box is not in the version of the flow the run follows.": "Bu kutu, çalıştırmanın izlediği akış sürümünde yok.",
+    "This box needs the Workspace, which is switched off on this site, so it did not run.": "Bu kutu Çalışma Alanı'nı gerektiriyor; bu sitede Çalışma Alanı kapalı olduğu için kutu çalışmadı.",
     "This box stands on its own. Add options and it becomes a group.": "Bu kutu tek başına duruyor. Seçenek eklerseniz bir grup olur.",
     "This brief could not be found, or it is not yours to see.": "Bu talep bulunamadı ya da onu görme izniniz yok.",
     "This browser cannot create passkeys.": "Bu tarayıcı geçiş anahtarı oluşturamıyor.",

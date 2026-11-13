@@ -875,7 +875,9 @@ function ws_events_process($limit = WS_EVENTS_BATCH)
             ws_flow_wake((string) $row['event'], $payload);
         }
 
-        if (ws_watch_ready()) {
+        // A line in the channels watching its record: the Workspace's, so
+        // not while it is switched off and only flows hear the site.
+        if (ws_enabled() && ws_watch_ready()) {
             ws_watch_write((string) $row['event'], $payload);
         }
     }
@@ -885,7 +887,8 @@ function ws_events_process($limit = WS_EVENTS_BATCH)
 
 /**
  * Queues the scheduled actions an event starts: one start for each action
- * whose event rule matches, the event carried with it. Like a start from a
+ * whose event rule matches, the event carried with it; with the Workspace
+ * off only the anchors of flows (ws_scheduled_running_only()). Like a start from a
  * chain, an action is not started more than WS_SCHEDULED_CHAIN_HOURLY times
  * an hour; the starts stand at the head of a chain (no source action), at
  * depth 0 - or, for a workspace event a scheduled action's run caused, one
@@ -911,7 +914,7 @@ function ws_events_start($event_id, $event, $payload)
 
         $flow_column = (function_exists('ws_flows_ready') && ws_flows_ready()) ? ', flow_id' : '';
 
-        foreach ((array) db_items("SELECT id, rules, created_by" . $flow_column . " FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%\"event\"%'") as $row) {
+        foreach ((array) db_items("SELECT id, rules, created_by" . $flow_column . " FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . ws_scheduled_running_only() . " AND rules LIKE '%\"event\"%'") as $row) {
             foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
                 if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row', 'mention'), true)) {
                     $waiting[(int) $row['id']] = array('rule' => $rule, 'created_by' => (int) $row['created_by'], 'flow_id' => (int) ($row['flow_id'] ?? 0));

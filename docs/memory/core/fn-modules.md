@@ -26,6 +26,7 @@ description: Generated from the module field of the memory files: each includes/
 - `audit_view`: [[audit-trail-screen]], [[audit-trail-settings-name]]
 - `auth`: [[cross-site-json-requests]], [[device-limit-and-session-sign-out]], [[erp-link-rights]], [[filtered-folder-picker-path]], [[link-rights]], [[list-row-names]], [[settings-folder-pickers]], [[sign-in-one-message]], [[user-disabled]]
 - `auto_dialogs`: [[api-design-dialogs-regions]]
+- `automation_flows`: [[automation-flows-gate]]
 - `aws_sign`: [[aws-sigv4-signing]]
 - `background_render`: [[background-render]]
 - `backup`: [[auto-backup-week-name]], [[backup-age-rule]], [[backup-folder-download-zip]], [[backup-manager-names-and-list]], [[backup-object-storage]], [[backup-remote-stored-secret]], [[fn-module-errors-mail-backup-consent]]

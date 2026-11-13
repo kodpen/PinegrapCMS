@@ -78,14 +78,16 @@ if (ws_enabled() && function_exists('ws_mcp_agent_job')) {
 
 // Scheduled actions whose time has come (includes/workspace/scheduled.php),
 // and the boxes of the flows' runs. The general job runs them on every tick
-// as well; this covers a site that schedules this script on its own.
-if (ws_enabled() && function_exists('ws_scheduled_run')) {
+// as well; this covers a site that schedules this script on its own. Flows
+// run with the Workspace off too (pg_flows_enabled()); the run is then
+// theirs alone.
+if ((ws_enabled() || pg_flows_enabled()) && function_exists('ws_scheduled_run')) {
     ws_scheduled_run(20, WS_FLOW_BUDGET_JOB);
 }
 
 // Runs of flows that ended more than 30 days ago, with their boxes
 // (includes/workspace/flow_runs.php).
-if (ws_enabled() && function_exists('ws_flow_runs_sweep')) {
+if ((ws_enabled() || pg_flows_enabled()) && function_exists('ws_flow_runs_sweep')) {
     ws_flow_runs_sweep();
 }
 

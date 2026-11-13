@@ -19,8 +19,8 @@ description: Workspace Flows ("Akışlar") as a whole: what it is, the decisions
 - Kept but never offered: Start a scheduled action `start_action` (`ws_flow_kinds_not_offered()`).
 
 ## What drives a run, and how late can it be?
-- Nothing runs by itself. `ws_scheduled_run()` calls `ws_flow_advance()` (10 s budget on a screen, 25 s in a job, 3 boxes a run a round): from the open workspace's `ws_tick` (when `ws_sync` reports `scheduled_due`), from `job.php` on every general job tick and from `workspace_recurring_job.php`. A start by hand or by the API advances its run at once.
-- So a due box (a Wait's `wake_at`, a ready box) is late by at most the time until the next general job tick or an open workspace screen asks: a minute on a site that runs the job every minute. A task box is looked at hourly besides its event (`WS_FLOW_RECHECK`); events wake waiting boxes in the same call (`ws_events_process()`).
+- Nothing runs by itself. `ws_scheduled_run()` calls `ws_flow_advance()` (10 s budget on a screen, 25 s in a job, 3 boxes a run a round): from the open workspace's `ws_tick` (when `ws_sync` reports `scheduled_due`), from `job.php` on every general job tick and from `workspace_recurring_job.php`, Workspace on or off (`automation-flows-gate.md`). A start by hand or by the API advances its run at once.
+- So a due box (a Wait's `wake_at`, a ready box) is late by at most the time until the next job tick or an open workspace screen asks: a minute with the job every minute. A task box is looked at hourly besides its event (`WS_FLOW_RECHECK`); events wake waiting boxes in the same call (`ws_events_process()`).
 
 ## Where is each part?
 - Store, graph check, problems: `workspace-flows-store.md`; canvas, palette, look: `-canvas.md`, `-palette.md`, `-box-look.md`, `-visual-spec.md`; runner: `-runner.md`, `-runner-rounds.md`, retry and skip `-retry-skip.md`.
