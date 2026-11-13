@@ -1843,7 +1843,7 @@ function get_system_status_checks()
     //   patch     → CA certificate bundle  bell     → operations alerts
     //   cone      → maintenance mode       rss      → product feeds
     //   bug       → PHP security fixes
-    //   globe     → CORS preflight
+    //   globe     → CORS preflight         hdd-network → unlisted proxy
     //
     // Where the family offers a natural negative form (unlock, shield-slash,
     // database-x) use it for the failing state: it reinforces the colour instead
@@ -1901,6 +1901,7 @@ function get_system_status_checks()
         'WebP At Own Address'      => 'WebP',
         'Object Storage'           => 'Storage',
         'Canvas Drawing'           => 'Canvas',
+        'Unlisted Proxy'           => 'Proxy',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -1939,6 +1940,7 @@ function get_system_status_checks()
         'Incoming E-mail',
         'e-Fatura Threshold',
         'Object Storage',
+        'Unlisted Proxy',
     );
 
     // Records one check. Named $makeIcon still, and still called as
@@ -2399,6 +2401,36 @@ function get_system_status_checks()
             'Unknown bots are not being blocked.'
         );
         $score -= $weights['bot_filter'] * 0.5;
+    }
+
+    // 🖧 Unlisted proxy (waf_unlisted_proxy_record()): signed-in staff came
+    // through a proxy on a public address that Trusted Proxies does not list.
+    // A job, not a reading: the fix is one box on the Trusted Proxies card.
+    // Not scored, and no tile while nothing is recorded.
+    if (function_exists('waf_unlisted_proxies')) {
+        $unlisted_proxies = waf_unlisted_proxies();
+
+        if ($unlisted_proxies) {
+            $unlisted_detail = array();
+
+            foreach ($unlisted_proxies as $unlisted_peer => $unlisted_row) {
+                $unlisted_detail[] = array(
+                    'label' => $unlisted_peer . ' (' . $unlisted_row['header'] . ')',
+                    'state' => 'warn',
+                    'when'  => get_relative_time(array('timestamp' => $unlisted_row['last'], 'format' => 'plain_text')),
+                );
+            }
+
+            $output .= $makeIcon(
+                'bi-hdd-network',
+                'fg-warning',
+                'Unlisted Proxy',
+                'Requests from signed-in staff came through a proxy on a public address that is not listed under Trusted Proxies. Every visitor behind it looks like that one address, so the address limits and automatic bans leave it alone until it is listed.',
+                implode(', ', array_keys($unlisted_proxies)),
+                pg_settings_link('firewall', 'pgset-proxies'),
+                $unlisted_detail
+            );
+        }
     }
 
     // Security checks end here. The groups still exist -- they are what lets

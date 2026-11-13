@@ -23,6 +23,28 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 // notice beside Trusted Proxies.
 $waf_own_address = function_exists('waf_client_ip') ? (string) waf_client_ip() : '';
 
+// A proxy on a public address that is not listed: this request's own peer
+// when it names another public client in a forwarding header, and the ones
+// signed-in staff requests have come through (waf_unlisted_proxy_record()).
+// firewall.save.php computes the same entries again when the box is ticked.
+$output_waf_unlisted_proxy = '';
+
+if (!empty($waf_schema_ready) && function_exists('waf_unlisted_proxy_offer')) {
+    $waf_proxy_offer = waf_unlisted_proxy_offer(
+        waf_unlisted_proxy_finding($_SERVER, waf_proxy_ranges($waf_trusted_proxies), waf_cloudflare_ranges()),
+        waf_unlisted_proxies());
+
+    if ($waf_proxy_offer) {
+        $output_waf_unlisted_proxy = '
+                        <div class="form-text fg-warning">' . lang(array('string' => 'Requests from signed-in staff reach the site through {var:1}, a proxy on a public address that is not listed here. Every visitor behind it looks like that one address, so the address limits and automatic bans leave it alone for now. If it is your own load balancer or CDN, list it; a CDN moves between addresses, so list all of its published ranges as well.', 'vars' => h(implode(', ', array_keys($waf_proxy_offer))))) . '</div>
+                        <div class="form-field mt-3">
+                            <input value="1" class="check" type="checkbox" id="waf_trust_unlisted_proxy" name="waf_trust_unlisted_proxy"/>
+                            <label class="" for="waf_trust_unlisted_proxy">' . lang('Add this proxy to Trusted Proxies') . '</label>
+                            <div class="form-text">' . lang(array('string' => 'With this box ticked, saving lists {var:1}.', 'vars' => h(implode(', ', $waf_proxy_offer)))) . '</div>
+                        </div>';
+    }
+}
+
 // ── Firewall ──
 // The AI bot switches live on SEO › AI Crawlers, next to what robots.txt
 // tells the same bots; this card only says how they stand.
@@ -238,6 +260,7 @@ $pg_settings_cards[] = '
                         <input type="text" value="' . h(waf_list_to_string($waf_trusted_proxies)) . '" name="waf_trusted_proxies" id="waf_trusted_proxies" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add Address') . '"/>
                         <div class="form-text">' . lang('Addresses of your own load balancer or CDN. Only these are allowed to declare a visitor address through forwarding headers, since those headers are trivially forged. A proxy is read through X-Forwarded-For unless the header it sets follows its address, for example 203.0.113.5 true-client-ip; the others are cf-connecting-ip, x-real-ip, x-sucuri-clientip, fastly-client-ip and incap-client-ip. An address saved before this choice existed keeps reading all of them until it is edited. Cloudflare is recognised automatically.') . '</div>
                         ' . (($waf_own_address !== '' && waf_ip_is_private_or_reserved($waf_own_address) && !waf_ip_in_any($waf_own_address, array('127.0.0.0/8', '::1/128'))) ? '<div class="form-text fg-warning">' . lang(array('string' => 'The firewall sees this request as coming from {var:1}, a private address: a proxy in front of the site that is not listed here, or a local network. Visitors behind it cannot be told apart by address, so the address limits do not apply to them.', 'vars' => h($waf_own_address))) . '</div>' : '') . '
+                        ' . $output_waf_unlisted_proxy . '
                     </div>
                 </div>
             </div>

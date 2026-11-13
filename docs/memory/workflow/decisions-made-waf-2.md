@@ -10,7 +10,7 @@ description: Decisions list, firewall part 2 (2026-11-13 on): the false-positive
 - With the open version: "2026.11.0 ile gelsin (Önerilen)". Not chosen: "Ara sürüm çıkar", a version in between carrying only the firewall fixes.
 - Reason: a site on 2026.4.10 kept refusing its own administrator (the ban mirror enforced a ban past its end, the allowed list did not reach it, the sensitivity moved nothing); `development` had already fixed most of it after that release.
 - Until then, on a site whose firewall shuts its operator out, "Automatic Temporary Bans" is switched off instead of the whole firewall (the option's text said so).
-- The architect's, not the owner's words: the work is the plan `plans/firewall-false-positives.md`.
+- The architect's, not the owner's words: the work was steps FP1 to FP7 (#9183, #9238, #9193, #9227, #9312, #9326, #9206), recorded in `waf/` (`waf-beacon-bucket.md`, `waf-signature-honest-corpus.md`, `waf-inapp-browsers.md`, `waf-settings-save-and-release.md`, `waf-block-page-wording.md`, `waf-unlisted-public-proxy.md`, `waf-kill-switch-and-monitor-mode.md`).
 
 ## Does Monitor mode enforce automatic bans? (owner, 2026-11-13, #9125)
 - No: "Otomatik engel dursun (Önerilen)". Not chosen: "Bugünkü gibi kalsın" (automatic bans enforced in Monitor mode until they end).

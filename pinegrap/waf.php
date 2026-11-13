@@ -689,14 +689,321 @@ function waf_ip_is_infrastructure($ip)
  * apply to it, being the operator's own data, and so does the signature
  * scan, which judges the request; the maintenance card keeps asking
  * waf_ip_is_infrastructure(), since on a local network such an address is a
- * person's own.
+ * person's own. A public address joins them while a staff request has found
+ * it to be a proxy that is not listed (waf_ip_is_unlisted_proxy()).
  *
  * @param string $ip the visitor's address (waf_client_ip())
  * @return bool
  */
 function waf_ip_is_counted($ip)
 {
-    return (!waf_ip_is_infrastructure($ip) && !waf_ip_is_private_or_reserved($ip));
+    return (!waf_ip_is_infrastructure($ip) && !waf_ip_is_private_or_reserved($ip) && !waf_ip_is_unlisted_proxy($ip));
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   UNLISTED PUBLIC PROXY
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The finding "this request came through a proxy on a public address that
+ * is not listed under Trusted Proxies", read from a request's server array.
+ *
+ * A reverse proxy or load balancer on a public address that the operator has
+ * not listed is the peer of every request: the firewall cannot read the
+ * visitor behind it, so the whole site is counted as one visitor and the
+ * first ban shuts everybody out. A private peer is already left uncounted;
+ * a public one cannot be, unless it is known to be a proxy.
+ *
+ * Found when the peer is a valid public address, not a listed proxy and not
+ * a Cloudflare edge, and the request names a client through X-Forwarded-For
+ * (its last entry) or, without it, a vendor header (waf_proxy_headers()),
+ * and that client is another public address. A private client (an office's
+ * own forward proxy naming the desk behind it) is not a reverse proxy in
+ * front of the site, and finds nothing.
+ *
+ * Any client can send these headers, so the finding is believed only from a
+ * request the operator makes: the settings screen reads it for the request
+ * that opens it, and waf_unlisted_proxy_record() keeps it from a signed-in
+ * staff request.
+ *
+ * Pure: reads only what it is given.
+ *
+ * @param array $server $_SERVER, or an array shaped like it
+ * @param array $trusted the listed proxy ranges (waf_proxy_ranges())
+ * @param array $edges the Cloudflare edge ranges (waf_cloudflare_ranges())
+ * @return array|null peer, header (the entry's header name), client
+ */
+function waf_unlisted_proxy_finding($server, $trusted, $edges)
+{
+    $peer = waf_ip_normalize(trim(isset($server['REMOTE_ADDR']) ? (string) $server['REMOTE_ADDR'] : ''));
+
+    if (!waf_is_ip($peer) || waf_ip_is_private_or_reserved($peer)
+        || ($trusted && waf_ip_in_any($peer, $trusted))
+        || ($edges && waf_ip_in_any($peer, $edges))) {
+        return null;
+    }
+
+    $header = '';
+    $client = '';
+
+    if (isset($server['HTTP_X_FORWARDED_FOR']) && (trim((string) $server['HTTP_X_FORWARDED_FOR']) !== '')) {
+        $header = 'x-forwarded-for';
+        $client = waf_forwarded_for_client((string) $server['HTTP_X_FORWARDED_FOR'], array());
+    } else {
+        foreach (waf_proxy_headers() as $name => $key) {
+            if (isset($server[$key]) && (trim((string) $server[$key]) !== '')) {
+                $header = $name;
+                $client = trim((string) $server[$key]);
+                break;
+            }
+        }
+    }
+
+    if (($header === '') || !waf_is_ip($client)) {
+        return null;
+    }
+
+    $client = waf_ip_normalize($client);
+
+    if (($client === $peer) || waf_ip_is_private_or_reserved($client)) {
+        return null;
+    }
+
+    return array('peer' => $peer, 'header' => $header, 'client' => $client);
+}
+
+/**
+ * The Trusted Proxies entry that lists a found proxy: its address, then the
+ * header it names the visitor with.
+ *
+ * @param array $finding waf_unlisted_proxy_finding(), or a recorded peer
+ * @return string
+ */
+function waf_unlisted_proxy_entry($finding)
+{
+    $header = isset($finding['header']) ? (string) $finding['header'] : '';
+
+    if (!isset(waf_proxy_headers()[$header])) {
+        $header = 'x-forwarded-for';
+    }
+
+    return $finding['peer'] . ' ' . $header;
+}
+
+/**
+ * The Trusted Proxies entries the settings screen offers: this request's own
+ * finding first, then the proxies recorded from staff requests, one entry
+ * per peer. Computed on the server for the screen and again for the save,
+ * so a posted address is never listed.
+ *
+ * Pure: reads only what it is given.
+ *
+ * @param array|null $finding waf_unlisted_proxy_finding() for this request
+ * @param array $standing waf_unlisted_proxies()
+ * @return array peer => entry (waf_unlisted_proxy_entry())
+ */
+function waf_unlisted_proxy_offer($finding, $standing)
+{
+    $offer = array();
+
+    if ($finding !== null) {
+        $offer[$finding['peer']] = waf_unlisted_proxy_entry($finding);
+    }
+
+    foreach ((array) $standing as $peer => $row) {
+        if (!isset($offer[$peer])) {
+            $offer[$peer] = waf_unlisted_proxy_entry(array('peer' => $peer, 'header' => $row['header']));
+        }
+    }
+
+    return $offer;
+}
+
+/**
+ * How long a recorded proxy stands without a staff request seeing it again.
+ *
+ * @return int seconds
+ */
+function waf_unlisted_proxy_ttl()
+{
+    return 30 * 86400;
+}
+
+/**
+ * The state file that keeps the proxies found from staff requests.
+ *
+ * @return string
+ */
+function waf_unlisted_proxy_path()
+{
+    return dirname(__FILE__) . '/data/temp/waf_unlisted_proxy.json';
+}
+
+/**
+ * The recorded proxies that still stand: seen within the TTL and not listed
+ * under Trusted Proxies since.
+ *
+ * Pure: reads only what it is given.
+ *
+ * @param array $state peer => array(header, first, last)
+ * @param array $trusted the listed proxy ranges (waf_proxy_ranges())
+ * @param int $now
+ * @return array the same shape, the stale and listed peers left out
+ */
+function waf_unlisted_proxy_standing($state, $trusted, $now)
+{
+    $out = array();
+
+    if (!is_array($state)) {
+        return $out;
+    }
+
+    foreach ($state as $peer => $row) {
+        $peer = (string) $peer;
+
+        if (!is_array($row) || !waf_is_ip($peer) || !isset($row['last'])
+            || (((int) $now - (int) $row['last']) > waf_unlisted_proxy_ttl())
+            || ($trusted && waf_ip_in_any($peer, $trusted))) {
+            continue;
+        }
+
+        $out[$peer] = array(
+            'header' => isset($row['header']) ? (string) $row['header'] : 'x-forwarded-for',
+            'first'  => isset($row['first']) ? (int) $row['first'] : (int) $row['last'],
+            'last'   => (int) $row['last'],
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * The state after one signed-in staff request.
+ *
+ * A finding records its peer, or refreshes it once an hour (a staff session
+ * makes a request every few seconds, and the file is written only when the
+ * answer changes). A staff request from a recorded peer WITHOUT a finding
+ * means that address is a person, not a proxy (every request through a
+ * proxy carries its header), and the peer is forgotten. At most eight peers
+ * are kept, the most recently seen.
+ *
+ * Pure: reads only what it is given.
+ *
+ * @param array $state waf_unlisted_proxy_standing()
+ * @param string $peer this request's peer (REMOTE_ADDR, normalised)
+ * @param array|null $finding waf_unlisted_proxy_finding() for this request
+ * @param int $now
+ * @return array|null the state to write, or null when nothing changes
+ */
+function waf_unlisted_proxy_next($state, $peer, $finding, $now)
+{
+    if ($finding === null) {
+        if (!isset($state[$peer])) {
+            return null;
+        }
+
+        unset($state[$peer]);
+
+        return $state;
+    }
+
+    $peer = $finding['peer'];
+
+    if (isset($state[$peer]) && ($state[$peer]['header'] === $finding['header'])
+        && (((int) $now - (int) $state[$peer]['last']) < 3600)) {
+        return null;
+    }
+
+    $state[$peer] = array(
+        'header' => $finding['header'],
+        'first'  => isset($state[$peer]['first']) ? (int) $state[$peer]['first'] : (int) $now,
+        'last'   => (int) $now,
+    );
+
+    uasort($state, function ($a, $b) {
+        return $b['last'] - $a['last'];
+    });
+
+    return array_slice($state, 0, 8, true);
+}
+
+/**
+ * The proxies recorded from staff requests that still stand, read once per
+ * request. See waf_unlisted_proxy_standing().
+ *
+ * @param bool $fresh read the file again (after this request wrote it)
+ * @return array peer => array(header, first, last)
+ */
+function waf_unlisted_proxies($fresh = false)
+{
+    static $standing = null;
+
+    if (($standing !== null) && !$fresh) {
+        return $standing;
+    }
+
+    $standing = array();
+    $file = waf_unlisted_proxy_path();
+
+    if (!is_file($file)) {
+        return $standing;
+    }
+
+    $state = json_decode((string) @file_get_contents($file), true);
+    $standing = waf_unlisted_proxy_standing($state, waf_proxy_ranges(waf_setting('waf_trusted_proxies', '')), time());
+
+    return $standing;
+}
+
+/**
+ * Whether this address is a proxy recorded from a staff request: not counted
+ * or auto-banned while the finding stands (waf_ip_is_counted()).
+ *
+ * @param string $ip
+ * @return bool
+ */
+function waf_ip_is_unlisted_proxy($ip)
+{
+    $standing = waf_unlisted_proxies();
+
+    return $standing && isset($standing[waf_ip_normalize((string) $ip)]);
+}
+
+/**
+ * Keep or forget this request's finding, for a signed-in staff request only:
+ * a visitor can send any forwarding header, and a finding taken from one
+ * would let anybody exempt their own address from the limits.
+ *
+ * Asks for staff only when there is something to change, so an ordinary
+ * request costs a header check and, at most, one small file read.
+ *
+ * @return void
+ */
+function waf_unlisted_proxy_record()
+{
+    $finding = waf_unlisted_proxy_finding($_SERVER, waf_proxy_ranges(waf_setting('waf_trusted_proxies', '')), waf_cloudflare_ranges());
+    $peer = waf_ip_normalize(isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '');
+    $state = ($finding !== null || is_file(waf_unlisted_proxy_path())) ? waf_unlisted_proxies() : array();
+    $next = waf_unlisted_proxy_next($state, $peer, $finding, time());
+
+    if (($next === null) || !waf_user_is_staff()) {
+        return;
+    }
+
+    $file = waf_unlisted_proxy_path();
+
+    if ($next) {
+        @file_put_contents($file, json_encode($next), LOCK_EX);
+    } else {
+        @unlink($file);
+    }
+
+    // The dashboard's System Status card reads this file through a cache of
+    // its own (get_system_status_checks()); the tile follows at once.
+    @unlink(dirname(__FILE__) . '/data/temp/system_status_cache.json');
+
+    waf_unlisted_proxies(true);
 }
 
 
@@ -5333,6 +5640,16 @@ function waf_run($stage = 'init')
         // Written before the mode check for the same reason the outage record
         // is: they are facts about what happened, not decisions to be made.
         waf_shield_drain();
+
+        // A proxy in front of the site that is not listed, seen by a signed-in
+        // staff request: kept for the settings screen and the dashboard, and
+        // not counted while it stands. Before the off switch, because the
+        // finding is a fact about the installation, and only at init, where
+        // the session tells staff apart.
+        if ($stage === 'init' && empty($done['unlisted_proxy'])) {
+            $done['unlisted_proxy'] = true;
+            waf_unlisted_proxy_record();
+        }
 
         // The Enable Firewall checkbox is an absolute off switch. Nothing
         // below this line runs when it is unticked — no bot filtering, no

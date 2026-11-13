@@ -5855,6 +5855,7 @@
     "The provider refused the delivery note.": "Sağlayıcı irsaliyeyi reddetti.",
     "The provider returned a different document than the one asked for.": "Sağlayıcı istenenden farklı bir belge döndürdü.",
     "The provider still holds the document (id {var:1}); sending it again would create a second one there. Ask after its status: a record that is still a draft there is handed to GİB from here.": "Belge sağlayıcıda hâlâ duruyor (id {var:1}); yeniden göndermek orada ikinci bir belge oluşturur. Durumunu sorun: orada hâlâ taslak olan kayıt buradan GİB'e gönderilir.",
+    "The proxy {var:1} was added to Trusted Proxies from the unlisted proxy warning": "{var:1} vekil sunucusu, listelenmemiş vekil sunucu uyarısından Güvenilen Vekil Sunuculara eklendi",
     "The public address answered with something other than WebFinger: a server rule sends the request elsewhere.": "Herkese açık adres WebFinger dışında bir yanıt verdi: bir sunucu kuralı isteği başka yere gönderiyor.",
     "The public address answered {var:1}: a server rule or a proxy keeps the request from the site.": "Herkese açık adres {var:1} yanıtını verdi: bir sunucu kuralı veya vekil sunucu isteğin siteye ulaşmasını engelliyor.",
     "The public address of invoice {var:1} is sent, unless you untick it and type another address.": "İşareti kaldırıp başka bir adres yazmazsanız {var:1} faturasının herkese açık adresi gönderilir.",
