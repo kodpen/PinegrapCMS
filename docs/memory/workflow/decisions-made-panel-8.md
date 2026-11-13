@@ -19,4 +19,4 @@ description: Decisions list, panel part 8 (2026-11-12 on): look A's report page 
 - Owner (2026-11-13), on a channel's "+" menu, where New canvas was the only coloured icon: "yeni tuval ikonu sırıttlı açıkçası. siyah beyaz çevirelim tekrar." Asked where, he chose "Tek renkli listelerde".
 - Where the icon stands among one-colour icons it is drawn in one colour, its neighbours': Workspace's two New canvas entries, the File Manager's context menu and file tools.
 - The main menu and the editor's top bar keep drawing B's two colours (#8903, `decisions-made-panel-7.md`): that decision is narrowed, not withdrawn.
-- Plan: `plans/design-canvas-icon-one-colour.md`.
+- Built in DI1 (`ui/design-canvas-icon.md`): `pg_design_canvas_icon_one_colour()`.
