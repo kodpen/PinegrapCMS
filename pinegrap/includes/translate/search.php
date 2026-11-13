@@ -93,17 +93,18 @@ function pg_tr_search_like_sql($column, array $words)
 }
 
 /**
- * The pages a search finds among the translated texts read for it, best
- * first. A page is found when every word is in its title, description and
- * body taken together. The pages holding the whole typed phrase come first;
- * then the most hits, a hit in the title or the description counting three
- * times; then the lower page id. Compared folded (pg_tr_search_fold()). Pure.
+ * The items (pages, products) a search finds among the translated texts read
+ * for it, best first. An item is found when every word is in its texts taken
+ * together. The items holding the whole typed phrase come first; then the
+ * most hits, a hit in the 'seo' part (a page's title and description, a
+ * product's name line, title and keywords) counting three times; then the
+ * key in natural order. Compared folded (pg_tr_search_fold()). Pure.
  *
- * @param array $texts page_id => array('seo' => string, 'body' => string), plain text
+ * @param array $texts key => array('seo' => string, 'body' => string), plain text
  * @param array $words pg_tr_search_words()
- * @return int[] page ids
+ * @return array the keys
  */
-function pg_tr_search_rank_pages(array $texts, array $words)
+function pg_tr_search_rank(array $texts, array $words)
 {
     if (!$words) {
         return array();
@@ -118,7 +119,7 @@ function pg_tr_search_rank_pages(array $texts, array $words)
     $phrase = implode(' ', $folded_words);
     $rows = array();
 
-    foreach ($texts as $pid => $text) {
+    foreach ($texts as $key => $text) {
         $seo = pg_tr_search_fold(isset($text['seo']) ? $text['seo'] : '');
         $body = pg_tr_search_fold(isset($text['body']) ? $text['body'] : '');
         $hits = 0;
@@ -134,7 +135,7 @@ function pg_tr_search_rank_pages(array $texts, array $words)
         }
 
         $whole = (count($folded_words) < 2) || (mb_strpos($seo . "\n" . $body, $phrase) !== false);
-        $rows[] = array((int) $pid, $whole ? 1 : 0, $hits);
+        $rows[] = array($key, $whole ? 1 : 0, $hits);
     }
 
     usort($rows, function ($a, $b) {
@@ -146,7 +147,7 @@ function pg_tr_search_rank_pages(array $texts, array $words)
             return $b[2] - $a[2];
         }
 
-        return $a[0] - $b[0];
+        return strnatcmp((string) $a[0], (string) $b[0]);
     });
 
     $out = array();
@@ -230,7 +231,7 @@ function pg_tr_search_pages_find($query, $limit = 100)
         $texts[$pid][$part] .= ($texts[$pid][$part] === '' ? '' : "\n") . $plain;
     }
 
-    $ranked = pg_tr_search_rank_pages($texts, $words);
+    $ranked = pg_tr_search_rank($texts, $words);
 
     if (!$ranked) {
         return array();
@@ -273,4 +274,77 @@ function pg_tr_search_pages_find($query, $limit = 100)
     }
 
     return $out;
+}
+
+/**
+ * The part of a product's or product group's text a translated field belongs
+ * to for the ranking: the line read as its name (short_description), its
+ * title and keywords count as 'seo', the rest as 'body'. A field stored in
+ * several texts ("full_description#2", "details@3#0") is read by its base.
+ * Pure.
+ *
+ * @param string $field translation_uses.field
+ * @return string 'seo' or 'body'
+ */
+function pg_tr_search_catalog_part($field)
+{
+    $base = preg_replace('~[@#].*$~', '', (string) $field);
+
+    return in_array($base, array('short_description', 'title', 'keywords'), true) ? 'seo' : 'body';
+}
+
+/**
+ * The translated texts of the catalog, as pg_tr_search_rank() reads them:
+ * keyed "product:<id>" or "product_group:<id>", HTML dropped. Pure.
+ *
+ * @param array $rows array(owner_type, owner_id, field, text)
+ * @return array key => array('seo' => string, 'body' => string)
+ */
+function pg_tr_search_catalog_texts(array $rows)
+{
+    $texts = array();
+
+    foreach ($rows as $row) {
+        $key = $row['owner_type'] . ':' . (int) $row['owner_id'];
+        $plain = html_entity_decode(strip_tags((string) $row['text']), ENT_QUOTES, 'UTF-8');
+        $part = pg_tr_search_catalog_part($row['field']);
+
+        if (!isset($texts[$key])) {
+            $texts[$key] = array('seo' => '', 'body' => '');
+        }
+
+        $texts[$key][$part] .= ($texts[$key][$part] === '' ? '' : "\n") . $plain;
+    }
+
+    return $texts;
+}
+
+/**
+ * The site and catalog search on a page served in another language: the
+ * products and product groups whose translated texts hold every word, best
+ * first. Which of them may be listed (enabled, inside the searched group) is
+ * the caller's to check.
+ *
+ * @param string $query
+ * @param int    $limit
+ * @return string[] "product:<id>" and "product_group:<id>" keys
+ */
+function pg_tr_search_catalog_find($query, $limit = 100)
+{
+    $language = pg_tr_language();
+    $words = pg_tr_search_words($query);
+
+    if (($language === '') || !$words) {
+        return array();
+    }
+
+    $rows = db_items("SELECT u.owner_type, u.owner_id, u.field, t.text
+                      FROM translations t
+                      INNER JOIN translation_uses u ON u.string_id = t.string_id
+                      WHERE t.language = '" . e($language) . "'
+                        AND u.owner_type IN ('product', 'product_group')
+                        AND " . pg_tr_search_like_sql('t.text', $words) . "
+                      LIMIT 2000");
+
+    return array_slice(pg_tr_search_rank(pg_tr_search_catalog_texts((array) $rows), $words), 0, (int) $limit);
 }
