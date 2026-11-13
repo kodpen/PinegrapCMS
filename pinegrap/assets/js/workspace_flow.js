@@ -334,6 +334,7 @@
         paletteOver: false, // the panel opened over the canvas from its rail on a narrow window
         sideTab: 'settings', // the chosen box's tab: settings, links or try
         sideTabFlow: null,  // the flow sideTab was chosen in
+        closing: false,     // Close giving its box the focus, not choosing it
         tap: null,
         panel: '',          // 'runs' while the side panel lists the runs
         section: '',        // 'action' while a scheduled action is drawn read-only, 'templates' in the gallery
@@ -6527,7 +6528,9 @@
 
         var box = (was && (was.type === 'node')) ? ui.boxes.querySelector('[data-node="' + was.id + '"]') : null;
 
+        state.closing = !!box && (document.activeElement !== box);
         (box || ui.viewport).focus({ preventScroll: true });
+        state.closing = false;
     }
 
     function sideTile(kind, icon) {
@@ -6711,7 +6714,7 @@
             var back = el('button', 'wsf-side-foot-go');
 
             back.type = 'button';
-            back.appendChild(el('span', 'fg-secondary', t('fl_side_before') + ' '));
+            back.appendChild(el('span', 'fg-secondary', t('fl_side_before')));
             back.appendChild(nameText(before));
             back.addEventListener('click', function () { chooseBox(before.id); });
             foot.appendChild(back);
@@ -6722,7 +6725,7 @@
             var on = el('button', 'wsf-side-foot-go wsf-side-foot-after');
 
             on.type = 'button';
-            on.appendChild(el('span', 'fg-secondary', t('fl_side_after') + ' '));
+            on.appendChild(el('span', 'fg-secondary', t('fl_side_after')));
 
             if (links.after.length > 1) {
                 on.appendChild(el('span', '', t('fl_side_boxes', links.after.length)));
@@ -6730,7 +6733,7 @@
                 on.appendChild(nameText(next));
             }
 
-            on.appendChild(K.icon('bi-chevron-right', 'ms-1'));
+            on.appendChild(K.icon('bi-chevron-right'));
             on.addEventListener('click', function () { chooseBox(next.id); });
             foot.appendChild(on);
         }
@@ -13349,6 +13352,13 @@
 
         viewport.addEventListener('focusin', function (event) {
             var box = event.target.closest('[data-node]');
+
+            // Close in the right panel gives the box the focus without
+            // choosing it again.
+            if (state.closing) {
+                state.closing = false;
+                return;
+            }
 
             if (box && !canvas.dragging()) {
                 var selected = { type: 'node', id: box.getAttribute('data-node') };

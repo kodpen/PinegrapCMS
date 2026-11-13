@@ -22,9 +22,9 @@ description: Plan (owner 2026-11-12, #8950): the flow window rearranged: the lef
 ## Which steps?
 - FW0 (S, no product code) The list of every control of today's toolbar, palette and side panel with its place in the drawing; the keyboard path through the three areas; how the two panels behave on a narrow window and a phone (drawn, shown to the owner by the architect). Done #9102: `flow-window-map.md`, `flow-window-map-2.md`, `flow-window-paths.md` (its proposals open for the architect), `flow-window/flow-window-narrow.html`.
 - FW1 (M) The top bar. Done #9102 (`workspace/workspace-flows-window-bar.md`).
-- FW2 (M) The left panel. Done #9178 (`workspace/workspace-flows-palette.md`); the phone's "Add a box" sheet went to FW3.
-- FW3 (M) The right panel's head and tabs; the foot line; the phone's two sheets (the box, "Add a box"). Being built on `plan/flow-window-fw3`.
-- FW4 (S) The right panel with no box chosen.
+- FW2 (M) The left panel. Done #9178 (`workspace/workspace-flows-palette.md`).
+- FW3 (M) The right panel's head and tabs; the foot line; the phone's sheet. Done #9196 (`workspace/workspace-flows-side-panel.md`).
+- FW4 (S) The right panel with no box chosen; the phone's "Add a box" sheet.
 - FW5 (S) Outcome names on arrows and the warning mark, where the canvas does not draw them yet; close-out: the lasting rules into `workspace/`, this plan deleted.
 
 ## When does it start?

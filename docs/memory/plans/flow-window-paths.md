@@ -8,7 +8,7 @@ description: Flow window plan, FW0 part 3: the keyboard path through the bar, th
 - The DOM keeps that order: no positive `tabindex`, no CSS `order` (`ui/admin-screen-toolbar-rules.md`).
 
 ## Which keys move between the areas, and inside them?
-- F6 / Shift+F6 (a proposal, open) go to the next / previous area: bar, left panel, canvas (the selected box, else the viewport), right panel; a folded left panel is skipped. Listed in the keyboard help (`fl_keys`).
+- F6 / Shift+F6 (built in FW3, #9196) go to the next / previous area: bar, left panel, canvas (the selected box, else the viewport), right panel; a folded left panel is skipped. Listed in the keyboard help (`fl_keys`).
 - Left panel: a group heading is a button with `aria-expanded`; Enter on a box row adds it as a click does (selected, its Settings' first field focused, as today's palette).
 - Canvas: today's keys stay (Tab, arrows, C, V, Delete, Enter, + − 0, Esc, Ctrl+Z/Y/S).
 - Right panel: the tabs are a `tablist`; Left / Right / Home / End move and show a tab; Tab enters the panel. Esc in the panel gives the focus back to its box on the canvas; Close unselects and does the same.
@@ -26,9 +26,9 @@ description: Flow window plan, FW0 part 3: the keyboard path through the bar, th
 - Nothing scrolls sideways at 375 px (the harness's phone scenarios).
 
 ## What is open for the architect?
-- F6 between the four areas. "Change" swapping the start box in place and the narrow window's rail were built as proposed in FW2 (#9178).
+- "Change" swapping the start box in place and the narrow window's rail were built as proposed in FW2 (#9178).
 - The narrow window (rail, 300 px right panel) and the phone (List rows opening in place, bottom sheets, one "Add a box" button), as drawn in `flow-window-narrow.html`.
 - Two places where FW1 follows the panel's rules over the drawing: the back arrow stays in the breadcrumb strip; a draft's pill is gray (look A), not amber.
 
 ## Which step builds what?
-- FW2 (#9178): the left panel, the rail. FW3: the right panel, its tabs and keys, the bottom sheet and the "Add a box" sheet, F6. FW4: no box chosen. FW5: the canvas marks and the close-out.
+- FW2 (#9178): the left panel, the rail. FW3 (#9196): the right panel, its tabs and keys, the bottom sheet, F6 (built as proposed). FW4: no box chosen, the "Add a box" sheet. FW5: the canvas marks and the close-out.

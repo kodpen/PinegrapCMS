@@ -21765,6 +21765,7 @@ html.ws-flow-layer-on body {
 .wsf-side-foot-go {
   display: inline-flex;
   align-items: center;
+  gap: 4px;
   min-width: 0;
   padding: 2px 4px;
   border: 0;

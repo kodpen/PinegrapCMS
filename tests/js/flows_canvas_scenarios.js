@@ -482,7 +482,7 @@ module.exports = [
             await h.click({ text: h.t('fl_side_add_arrow'), within: SIDE });
             await h.waitFor('the arrow drawn', (harness) => harness.edges().length === 3, 3000);
             await h.waitFor('the list has the focus again', (harness) => harness.focused() && (harness.focused().refocus === 'connect-task_1'), 3000);
-            h.same('the side panel lists both arrows', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#wsf-side .wsf-link-row .wsf-link-go [data-name-of]'), (node) => node.getAttribute('data-name-of'))), ['end_1', 'task_2']);
+            h.same('the side panel lists both arrows', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#wsf-side .wsf-link-row:has(.wsf-link-on, .pg-icon-button) .wsf-link-go [data-name-of]'), (node) => node.getAttribute('data-name-of'))), ['end_1', 'task_2']);
             await h.click({ label: h.t('fl_remove_arrow_to', h.t('fl_kind_end')), within: SIDE });
             await h.waitFor('the arrow to the end goes', (harness) => harness.edges().length === 2, 3000);
             await h.waitFor('Connect to... has the focus', (harness) => harness.focused() && (harness.focused().refocus === 'connect-task_1'), 3000);
@@ -538,6 +538,28 @@ module.exports = [
             await h.click({ css: '#wsf-side .wsf-side-close' });
             h.ok('Close: nothing chosen, the focus on the box', await h.page(() => (document.activeElement.getAttribute('data-node') === 'task_3') && !document.querySelector('#wsf-side .wsf-side-head')));
             h.same('nothing chosen', (await h.state()).selected, null);
+        }
+    },
+
+    {
+        name: 'on a phone a box chosen on the canvas opens its panel as a sheet from the bottom; a tap on the scrim closes it',
+        width: 390,
+        run: async (h) => {
+            await h.open();
+            await h.click({ text: h.t('fl_canvas'), within: BAR });
+            await h.page(() => document.querySelector('#ws-root [data-node="task_1"]').focus());
+            await h.waitFor('task_1 chosen', (harness) => harness.state().selected && (harness.state().selected.id === 'task_1'), 3000);
+
+            const sheet = await h.page(() => {
+                const side = document.querySelector('#wsf-side').getBoundingClientRect();
+
+                return [getComputedStyle(document.querySelector('#wsf-side')).position, Math.round(side.bottom) === window.innerHeight, side.height <= window.innerHeight * 0.85 + 1, getComputedStyle(document.querySelector('#ws-root .wsf-scrim')).display];
+            });
+
+            h.same('a fixed sheet at the bottom, at most 85 % high, over the scrim', sheet, ['fixed', true, true, 'block']);
+            await h.page(() => document.querySelector('#ws-root .wsf-scrim').click());
+            h.same('the scrim closes it: nothing chosen', (await h.state()).selected, null);
+            h.ok('nothing scrolls sideways', await h.page(() => document.documentElement.scrollWidth <= window.innerWidth));
         }
     },
 
