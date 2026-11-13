@@ -19,7 +19,11 @@
 - campaign-email-body-mail-programs.md: MA4 (2026-11-13): what an HTML e-mail body must be for Gmail, Outlook and Apple Mail: width, tables, inline styles, head style, pictures, the 102 KB clip, the parts it keeps
 - campaign-email-body-today.md: MA4 census (2026-11-13): how a campaign's HTML body and the designed e-mails (account, form, comment, receipt) are made today, what the e-mail render leaves in, and who may design one
 - campaign-email-body-way.md: MA4 proposal (2026-11-13, open on #9083): a campaign's e-mail body as an e-mail design page (600 px canvas, mail blocks), the mail pass, ready designs, pasted HTML, test send
-- canvas-closed-blocks.md: The list of what the designer canvas draws as one closed block (palette components, system widget types, page types, e-mails), what each prints and what opening it takes
+- canvas-closed-blocks-content.md: CB0 list, content nodes the server draws (Messages, Breadcrumb, Variant Attribute, Applied Offers, Carousel, own code, Language Switcher): output, settings, use, opening
+- canvas-closed-blocks-emails.md: CB0 list, the designed e-mail pages and what in them is closed: the comment e-mail's System region with its fixed markup, the other e-mails' widgets, and what opening takes
+- canvas-closed-blocks-regions.md: CB0 list, region nodes and classic page types the canvas draws closed: the System region of a classic page, the page types with no widget, the legacy regions of a classic style, what opens each
+- canvas-closed-blocks-widgets.md: CB0 list, the closed slots inside system widgets: section bindings and HTML values per widget kind, what each prints, template use, and what opening it takes
+- canvas-closed-blocks.md: CB0 list (2026-11-13): what the designer canvas draws as one closed block, in four families, the counts, and the proposed order of opening them (for CB1, the owner's answer)
 - canvas-loop-as-published.md: A loop on the designer canvas draws one line of its grid (the card and hatched copies), a listing with no record too; a bound picture is a sample photo with its field in the title (#9104, CF4)
 - canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (a sample photo SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
 - canvas-sample-form-record.md: What a form record draws on the designer canvas (CS3, #9239): an answer of each field kind, fields fetched by the first value, fixed record samples
