@@ -20,6 +20,6 @@ description: Assistant Apply's "Unexpected token '<'" (class names sent as lists
 - Left out: a memory-exhausted fatal. PHP throws the buffers away itself and prints its line straight out, so that answer still starts with PHP's text.
 
 ## How is it tested?
-- `tests/designer_ai_op_fields_test.php` (red first on line 2528 of `designer_ai.php`) and `tests/error_json_action_test.php`.
+- `tests/designer_ai_op_fields_test.php` (red first on line 2528 of `designer_ai.php`) and `tests/error_json_action_test.php` (#9093).
 
 Related: docs/memory/designer/designer-ai-known-class.md, docs/memory/core/json-endpoint-rules.md
