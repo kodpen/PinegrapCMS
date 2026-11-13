@@ -300,6 +300,7 @@
 - shipping-today.md: How shipping works today (checked 2026-10-20): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers [decision: decisions-made-product-12.md, decisions-made-product-7.md]
 - short-link-binned-destination.md: A short link whose page or file is in the Recycle Bin (list, CSV, redirect), and a name held by a short link in the bin (the form's message)
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
+- staff-store-credit-card.md: Store Credit card on Edit User: the answer printed on the card, typed values kept, Void asked after the reason check, the Voided state and its reason (#9008)
 - stock-locations-completion.md: Stock per location at sales, scans and the inventory API: the order's location, the checkout check, completion, barcode screens, the API location parameter, location keys on stock events [decision: decisions-made-product-19.md]
 - stock-locations-decisions.md: Stock per location as a whole: why it exists, the sum contract, what stays on the total, and where each part is written down [decision: decisions-made-product-19.md]
 - stock-locations-model.md: Stock per location: the three tables and two columns (11.0.162), the sum rule, the writer pg_stock_change()/pg_stock_set(), the no-locations path, seeding on the first location [decision: decisions-made-product-19.md]

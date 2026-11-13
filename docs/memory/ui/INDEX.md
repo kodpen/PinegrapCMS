@@ -328,6 +328,7 @@
 - list-table-driver.md: List table driver server core (includes/fn/list_table.php): source and column model, first rows printed, keyset batches, the list_table_rows action, the selection resolver
 - list-table-erp-lists.md: ERP accounts, invoices, delivery notes, tills, incoming e-invoices and account sync on the list table driver (TD13a): the drawer's Quick look button, bulk ids, the aging report a plain table
 - list-table-layout.md: How a list on the table driver looks (backend.src.css): the frame, one-line rows, sticky name and actions columns, the selection bar, the details panel's layout rule, the SEO score column [decision: here]
+- list-table-module-loaded.md: A screen that calls the list table driver (pg_list_table_printed(), its cell helpers) must require includes/fn/list_table.php: My Campaign Profiles and Bookings answered HTTP 500 without it (#9091)
 - list-table-order-side-lists.md: Product attributes, cart quotes, returns, subscriptions and a contact's orders on the list table driver (TD10a): printed whole, what changes in place and what stays on the record's screen
 - list-table-overview.md: The panel list table driver as a whole: the decision behind it, its parts by label, which file holds what, the recipe for a new list, its filter, where a new screen is registered [decision: here]
 - list-table-own-code-screens.md: Screens with their own DataTables code moved off it (TD13b): All Offers on the driver with multi-value chip filters, the link picker printed, product group and File Manager tables plain
@@ -600,6 +601,7 @@
 - upload-folder-kept.md: Edit Field keeps a deleted or unlisted upload folder selected and marked; the File Manager's folder delete names the upload fields using the folder [decision: decisions-made-files.md, decisions-made-workspace-6.md]
 - upload-keyboard.md: Files and Design Files upload screens from the keyboard: the Choose files button beside the Dropzone area, why outside it, the remove link shown on focus
 - uppercase-heading-brand-names.md: English brand and product names inside text-uppercase titles carry lang="en", or the Turkish panel prints WİNDOWS, MAİLCHİMP, MİCROSOFT (#3613) [decision: decisions-made-product-8.md]
+- user-fields-autofill.md: Password managers writing "admin" into Username (Create User, Edit User, Users quick edit): opt-out attributes, data-pg-own-value, quick edit saves typed text only (#9005)
 - user-list-folder-filters.md: Users list filters My Private Users and My Content Managers: one row per user, managers listed without folder rights, the fault the PR fixed
 - user-permission-rows.md: Permission rows in add_user/edit_user/import_users (includes/user_permissions.php): value rules, gate_field/gate_scope, drawer panels, top layer, multiselect pitfalls.
 - user-picker-search.md: Searchable user pickers: staff and team lists as local data-pg-combobox, every-user fields on user_search_action.php (users list right, role scope, Turkish fold, 30 results), stored user kept

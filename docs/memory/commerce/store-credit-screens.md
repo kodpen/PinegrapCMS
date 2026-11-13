@@ -5,7 +5,7 @@ module: store_credit_staff, store_credit_account
 ---
 
 ## Where do staff see a customer's store credit?
-- `edit_user.php`, the Store Credit card (`#store_credit`) under the main form (it is its own form; forms cannot nest): the balance (`pg_credit_balance()`), the last 50 cards bound to the user newest first (`pg_credit_staff_cards()`: kind, reason, amount, balance, last day, Open / Used / Expired by `pg_credit_staff_card_state()`, a link to `edit_gift_card.php`), and the issue form. Drawn only when `pg_credit_ready()`.
+- `edit_user.php`, the Store Credit card (`#store_credit`) under the main form (it is its own form; forms cannot nest): the balance (`pg_credit_balance()`), the last 50 cards bound to the user newest first (`pg_credit_staff_cards()`: kind, reason, amount, balance, last day, Open / Voided / Used / Expired by `pg_credit_staff_card_state()`, a link to `edit_gift_card.php`), and the issue form. Drawn only when `pg_credit_ready()`.
 - Money on it: `pg_credit_staff_money()` (`pg_money_text()`, then `h()`); until #8391 it read `&#8378;0,00` (`core/currency-symbol-as-text.md`).
 - Who: the person who may open this user (the screen's role check) and has commerce rights, `pg_credit_staff_allowed()` (role < 3 or `manage_ecommerce`, as the gift card screens). Without them the card is not drawn and a post is refused.
 
@@ -14,7 +14,7 @@ module: store_credit_staff, store_credit_account
 
 ## How is a card voided?
 - Each open card has a reason box and Void: post `pg_credit_action=void` with `credit_card_id`; the card must be this user's (the id comes from the page) and a reason is required; `pg_credit_void()` writes the balance 0 over the one read (an order spending it meanwhile makes the void fail with "may have been used meanwhile"), a note line and the audit `revoke`; one activity line.
-- The answer is a notice or an error of the `edit_user` liveform, back at `#store_credit`.
+- The answer, the kept values, when Void asks and the Voided state: `staff-store-credit-card.md`.
 
 ## What does the customer see on My Account?
 - `pg_credit_account_view($user_id, $view_order_url, $now)` (`includes/fn/store_credit_account.php`): the balance, the cards bound to them (`pg_credit_staff_cards()`, newest first, 50) with source (`pg_credit_kinds()`), reason, amount, balance, last day (the earlier of `expires_at` and a staff `expiration_date`), Open / Used / Expired, and the orders that spent each card (`applied_gift_cards` with an amount, the customer's own complete, exported or cancelled orders, linked to the view order page); and the points conversion form (`pg_credit_account_convert()`, `store-credit-points.md`). Money and dates are plain text: escape them.
