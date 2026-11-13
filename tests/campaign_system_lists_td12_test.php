@@ -23,9 +23,7 @@ function campaign_system_lists_td12_files()
 {
 	return array(
 		'view_email_campaigns' => 'view_email_campaigns.php',
-		'view_email_campaign_history' => 'view_email_campaign_history.php',
 		'view_email_campaign_profiles' => 'view_email_campaign_profiles.php',
-		'view_sms_campaigns' => 'view_sms_campaigns.php',
 		'view_visitor_reports' => 'view_visitor_reports.php',
 		'view_not_found_log' => 'view_not_found_log.php',
 		'backups' => 'backups.php',
@@ -56,42 +54,28 @@ function test_campaign_system_lists_td12_printed()
 
 function test_campaign_system_lists_td12_email_campaigns_share_module()
 {
-	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_list.php');
+	// The Campaigns tab lists e-mail and SMS campaigns together and deletes
+	// both through the shared delete functions; delete_email_campaigns.php
+	// keeps its address and calls the same e-mail one.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_email_campaigns.php');
+	$merged = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/messages_campaigns.php');
 
-	foreach (array('view_email_campaigns.php', 'view_email_campaign_history.php') as $file) {
-		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
-
-		pg_assert_contains("includes/fn/email_campaign_list.php", $source, $file);
-		pg_assert_contains('pg_email_campaign_list_delete_button()', $source, $file . ': Delete Selected in the bar');
-		pg_assert_contains('delete_email_campaigns.php', $source, $file . ': same bulk endpoint');
-	}
-
-	pg_assert_contains("'ids_field' => 'email_campaigns[]'", $module, 'the endpoint reads the same ids');
-	pg_assert_contains('data-pg-open', $module, 'the subject opens the campaign');
+	pg_assert_contains('pg_email_campaign_list_delete_button()', $source, 'Delete Selected in the bar');
+	pg_assert_contains('pg_email_campaigns_delete(', $source, 'e-mail campaigns deleted by the shared function');
+	pg_assert_contains('pg_sms_campaigns_delete(', $source, 'SMS campaigns deleted by the shared function');
+	pg_assert_contains('pg_email_campaigns_delete(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/delete_email_campaigns.php'), 'the old endpoint deletes the same way');
+	pg_assert_contains("'ids_field' => 'campaigns[]'", $merged, 'the screen reads the merged ids');
+	pg_assert_contains('data-pg-open', $merged, 'the name opens the campaign');
 }
 
 function test_campaign_system_lists_td12_sort_codes_are_columns()
 {
-	require_once PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_list.php';
+	require_once PG_FUNCTIONS_DIR . '/includes/fn/messages_campaigns.php';
 
-	foreach (array(true, false) as $job) {
-		$columns = pg_email_campaign_list_columns($job);
-
-		foreach (array_keys(pg_email_campaign_list_sort_columns($job)) as $code) {
-			pg_assert_true(isset($columns[$code]), 'sort code ' . $code . ' is a column');
-		}
-
-		pg_assert_same($job, isset($columns['scheduled_time']), 'Scheduled Time only with the job on');
-		pg_assert_same('subject', array_keys($columns)[0], 'the subject is the name column');
-
-		foreach (array('to', 'progress', 'delivery') as $key) {
-			pg_assert_false(isset(pg_email_campaign_list_sort_columns($job)[$key]), $key . ' has no sort code');
-			pg_assert_true(($columns[$key]['sortable'] ?? true) === false, $key . ' does not sort');
-		}
-	}
-
-	pg_assert_same(array('sort' => 'scheduled_time', 'order' => 'asc'), pg_email_campaign_list_sort_default(true));
-	pg_assert_same(array('sort' => 'last_modified', 'order' => 'desc'), pg_email_campaign_list_sort_default(false));
+	$columns = pg_messages_campaign_columns();
+	pg_assert_same('name', array_keys($columns)[0], 'the name is the first column');
+	pg_assert_false(isset(pg_list_table_printed_sort_columns($columns)['result']), 'Result does not sort');
+	pg_assert_true(isset(pg_list_table_printed_sort_columns($columns)['last_modified']), 'the default sort is a column');
 }
 
 function test_campaign_system_lists_td12_no_form_in_rows()

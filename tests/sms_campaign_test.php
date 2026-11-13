@@ -263,11 +263,11 @@ function test_sms_campaign_cancel_and_read_only_view()
 	pg_assert_contains("\$campaign['queued_at']", $edit, 'the queued time is shown');
 	pg_assert_contains("lang('Send Time')", $edit, 'the send time is shown');
 
-	$list = file_get_contents(PG_FUNCTIONS_DIR . '/view_sms_campaigns.php');
+	$list = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/messages_campaigns.php');
 
-	// The name opens the campaign; the list table driver keeps a long name
-	// on one line and shows it whole in the details panel.
-	pg_assert_contains('<a href="edit_sms_campaign.php?id=\' . (int) $campaign[\'id\'] . \'" data-pg-open>\' . h($name) . \'</a>', $list, 'the name opens the campaign');
+	// The name opens the campaign in the Campaigns tab's list; the list
+	// table driver shows a long name whole in the details panel.
+	pg_assert_contains('<a href="edit_sms_campaign.php?id=\' . $id . \'" data-pg-open>\' . h($name) . \'</a>', $list, 'the name opens the campaign');
 }
 
 // A scheduled campaign and a queued one read as two states in Turkish.
@@ -347,7 +347,7 @@ function sms_campaign_test_dropped_writes($source)
 // and Cancel logs only the campaign its UPDATE really cancelled.
 function test_sms_campaign_screen_writes_are_checked()
 {
-	foreach (array('/view_sms_campaigns.php', '/edit_sms_campaign.php') as $file) {
+	foreach (array('/includes/fn/messages_campaigns.php', '/edit_sms_campaign.php') as $file) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . $file);
 		pg_assert_same(array(), sms_campaign_test_dropped_writes($source), $file . ' drops no write result');
 	}
@@ -361,8 +361,9 @@ function test_sms_campaign_screen_writes_are_checked()
 	// a nested delete id cast to int deleted campaign 1.
 	pg_assert_true(strpos($source, "pg_request_single_values(array('id', 'name', 'body', 'send', 'start_at'))") !== false, 'edit fields are single values');
 
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/view_sms_campaigns.php');
-	$skip = strpos($source, 'if (!is_scalar($id))');
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
+	$source = substr($source, (int) strpos($source, 'function pg_sms_campaigns_delete('));
+	$skip = strpos($source, 'if (!is_scalar($id)');
 	$cast = strpos($source, '$id = (int) $id;');
 	pg_assert_true(($skip !== false) && ($cast !== false) && ($skip < $cast), 'a non-scalar delete id is skipped before the cast');
 }

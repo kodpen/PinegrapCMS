@@ -5,7 +5,8 @@ module: email_campaign_list
 ---
 
 ## Which screens and how are they drawn?
-- `view_email_campaigns.php`, `view_email_campaign_history.php`, `view_sms_campaigns.php`, `view_visitor_reports.php`, `view_not_found_log.php`, `backups.php`, `cloudflare.php` (DNS records, list `cloudflare_dns`), `database_engine.php` (All tables): printed whole in browser mode (`ui/list-table-printed.md`), each in `pg_list_table_printed_lists()` under its `pg_list_state()` name. Column keys are the sort codes, so a heading click and the toolbar sort menu agree.
+- `view_email_campaigns.php` lists e-mail and SMS campaigns together since MA3 (`messages-area-campaigns-tab.md`); the history and SMS list addresses are doors.
+- `view_visitor_reports.php`, `view_not_found_log.php`, `backups.php`, `cloudflare.php` (DNS records, list `cloudflare_dns`), `database_engine.php` (All tables): printed whole in browser mode (`ui/list-table-printed.md`), each in `pg_list_table_printed_lists()` under its `pg_list_state()` name. Column keys are the sort codes, so a heading click and the toolbar sort menu agree.
 - The SMS campaigns, backups, DNS records and database tables had no kept sort before; they now have one (`pg_list_state()`), defaults: last change newest first, newest backup first, type, largest table first.
 
 ## How do the two e-mail campaign lists share their code?

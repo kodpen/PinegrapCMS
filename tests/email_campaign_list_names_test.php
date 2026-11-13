@@ -25,14 +25,14 @@ function email_campaign_list_names_source($path)
 
 function email_campaign_list_names_screens()
 {
-	return array('view_email_campaigns.php', 'view_email_campaign_history.php', 'view_email_campaign_profiles.php');
+	return array('view_email_campaigns.php', 'view_email_campaign_profiles.php');
 }
 
 function test_email_campaign_list_row_checkboxes_named()
 {
 	// The list table driver draws the row checkboxes, each named by the
-	// row's record; the selection reaches the bulk endpoint as email_campaigns[].
-	pg_assert_contains("'ids_field' => 'email_campaigns[]'", email_campaign_list_names_source('includes/fn/email_campaign_list.php'));
+	// row's record; the selection posts back to the Campaigns tab as campaigns[].
+	pg_assert_contains("'ids_field' => 'campaigns[]'", email_campaign_list_names_source('includes/fn/messages_campaigns.php'));
 	// The profiles list has no bulk endpoint, so it has no selection.
 	$source = email_campaign_list_names_source('view_email_campaign_profiles.php');
 	pg_assert_false(strpos($source, 'fake_checkbox') !== false, 'no disabled select boxes');
@@ -41,7 +41,7 @@ function test_email_campaign_list_row_checkboxes_named()
 
 function test_email_campaign_list_progress_percent_translated()
 {
-	$source = email_campaign_list_names_source('includes/fn/email_campaign_list.php');
+	$source = email_campaign_list_names_source('includes/fn/messages_campaigns.php');
 	pg_assert_false(strpos($source, "\$percentage . '%") !== false, 'percent sign glued in English order');
 	pg_assert_contains("lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number(\$percentage, 0))))", $source);
 }
