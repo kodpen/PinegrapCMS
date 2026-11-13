@@ -131,7 +131,7 @@ if (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) {
 echo
 pg_page_shell([
     'title' => lang('Reconciliation Letter'),
-    'extra classes' => 'erp erp_accounts',
+    'extra classes' => 'erp erp_accounts pg-measure-edit',
     'icon' => 'erp',
     'heading' => lang('Reconciliation Letter'),
     'heading_description' => lang('What the books say this account owes or is owed as of a date, for the counterparty to confirm.'),

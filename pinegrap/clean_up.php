@@ -339,7 +339,7 @@ if (!$_POST) {
     print
     pg_page_shell([
         'title'=> lang('Clean Up'),
-        'extra classes'=>'setting',
+        'extra classes'=>'setting pg-measure-edit',
         'icon'=>'setting',
         'heading'=>lang('Clean Up'),
         'heading_description' => lang('Tool to remove obsolete files and folders inside the software folder.'),

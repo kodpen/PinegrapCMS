@@ -1168,7 +1168,7 @@ foreach ($fact_rows as $fact_label => $fact_value) {
 
 echo pg_page_shell(array(
     'title' => lang('Database Engine'),
-    'extra classes' => 'setting',
+    'extra classes' => 'setting pg-measure-edit',
     'icon' => 'setting',
     'heading' => lang('Database Engine'),
 ));

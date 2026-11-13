@@ -1688,7 +1688,7 @@ $liveform->remove_form();
 
 echo pg_page_shell(array(
 	'title'                => lang('Application Access'),
-	'extra classes'        => 'api-access',
+	'extra classes'        => 'api-access pg-measure-edit',
 	'icon'                 => 'settings',
 	'heading'              => lang('Application Access'),
 	'heading_description'  => lang('Give an outside system a key, choose what it may see, and watch what it asks for.'),

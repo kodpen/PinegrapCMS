@@ -52,7 +52,7 @@ if (!$_POST) {
     print 
     pg_page_shell(array(
         'title'=> lang('Developer Lock'),
-        'extra classes'=>'setting',
+        'extra classes'=>'setting pg-measure-edit pg-measure-single',
         'icon'=>'setting',
         'heading'=> lang('Developer Lock'),
         'heading_description' => lang('This warning page indicates that the page has been locked by a developer. Enter the correct pin code or contact your developer to access the locked page.'),

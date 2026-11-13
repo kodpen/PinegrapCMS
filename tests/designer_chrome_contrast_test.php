@@ -114,3 +114,38 @@ function test_designer_chrome_markup_without_fades()
 	pg_assert_contains('<span class="sd-breadcrumb-empty">', $js, '"No selection" carries its class, not an opacity');
 	pg_assert_contains('<span class="sd-legacy-badge">', $js, 'the Legacy badge is styled by its class');
 }
+
+// Left panel small texts (#9099): the active palette tab and sub-tab, the
+// System tab, the EXT badge, the empty Fonts note and the rule search
+// placeholder reach 4.5:1 on their grounds.
+function test_designer_chrome_left_panel_small_texts()
+{
+	$css = designer_chrome_source('assets/css/style_designer.css');
+	$js = designer_chrome_source('assets/js/style_designer.src.js');
+	$t = designer_chrome_tokens();
+	$panel = designer_chrome_rgb($t['panel-bg']);
+	$text = designer_chrome_rgb($t['text']);
+	$accent = designer_chrome_rgb($t['accent']);
+	$muted = designer_chrome_rgb($t['text-muted']);
+	$subtab_ground = designer_chrome_rgb('#1a1f27');
+	$assets_ground = designer_chrome_rgb('#1c2128');
+
+	pg_assert_contains("color: color-mix(in srgb, var(--sd-accent) 55%, var(--sd-text));\n    border-bottom-color: var(--sd-accent", $css, 'an active tab mixes its label and keeps the accent underline');
+	$active = designer_chrome_mix($accent, $text, 0.55);
+	pg_assert_true(designer_chrome_ratio($active, $panel) >= 4.5, 'an active palette tab reads 4.5:1');
+	pg_assert_true(designer_chrome_ratio($active, $subtab_ground) >= 4.5, 'an active Tree or Design sub-tab reads 4.5:1');
+
+	pg_assert_true(strpos($js, 'data-tab="system" style="color:#6366f1"') === false, 'the System tab has no inline indigo');
+	pg_assert_contains('#sd-panel-tabs .sd-panel-tab[data-tab="system"] { color: #818cf8; }', $css, 'the System tab takes the light indigo');
+	pg_assert_true(designer_chrome_ratio(designer_chrome_rgb('#818cf8'), $panel) >= 4.5, 'the System tab reads 4.5:1');
+
+	pg_assert_contains('background: rgba(77,142,240,.2); color: #79b8ff;', $css, 'the EXT badge takes the light blue');
+	$ext_fill = designer_chrome_mix(designer_chrome_rgb('#4d8ef0'), $assets_ground, 0.2);
+	pg_assert_true(designer_chrome_ratio(designer_chrome_rgb('#79b8ff'), $ext_fill) >= 4.5, 'the EXT badge reads 4.5:1 on its tint');
+
+	pg_assert_true(preg_match('/^\.sd-as-empty \{[^}]*color: var\(--sd-text-muted\);/m', $css) === 1, 'the empty Fonts note uses the muted text colour');
+	pg_assert_true(designer_chrome_ratio($muted, $assets_ground) >= 4.5, 'the empty Fonts note reads 4.5:1');
+
+	pg_assert_contains('.sd-styles-find::placeholder { color: var(--sd-text-muted); }', $css, 'the rule search placeholder uses the muted text colour');
+	pg_assert_true(designer_chrome_ratio($muted, designer_chrome_rgb('#0d1117')) >= 4.5, 'the rule search placeholder reads 4.5:1');
+}

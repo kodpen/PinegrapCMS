@@ -175,6 +175,7 @@ if ($refusal !== '') {
 
 echo pg_page_shell(array(
 	'title'               => lang('Pair a device'),
+	'extra classes'       => 'pg-measure-edit pg-measure-single',
 	'icon'                => 'account',
 	'heading'             => lang('Pair a device'),
 	'heading_description' => lang('Sign the team app in on your phone by scanning a code.'),

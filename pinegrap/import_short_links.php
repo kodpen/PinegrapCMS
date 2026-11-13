@@ -134,7 +134,7 @@ print
 pg_page_shell(
     array(
         'title' => lang('Import Short Links'),
-        'extra classes' => 'page',
+        'extra classes' => 'page pg-measure-edit',
         'icon' => 'page',
         'heading' => lang('Import Short Links'),
         'heading_description' => lang('Add many short links at once from a CSV file, for example the addresses of an old site and where each one lives now.'),

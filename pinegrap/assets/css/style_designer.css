@@ -1452,7 +1452,9 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 }
 .sd-panel-tab:hover { color: var(--sd-text-primary, #e0e6ee); }
 .sd-panel-tab.active {
-    color: var(--sd-accent, #58a6ff);
+    /* The plain accent was 3.8:1 on the panel: the label mixes it with the
+       text colour (5.0:1), the underline keeps the accent itself. */
+    color: color-mix(in srgb, var(--sd-accent) 55%, var(--sd-text));
     border-bottom-color: var(--sd-accent, #58a6ff);
 }
 /* Four tabs share this strip, 62px each in a 249px panel. The strip-wide
@@ -1469,6 +1471,8 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     overflow: hidden;
     text-overflow: ellipsis;
 }
+/* Light indigo keeps the System tab apart and reads 5.1:1 on the panel. */
+#sd-panel-tabs .sd-panel-tab[data-tab="system"] { color: #818cf8; }
 /* System tab contents */
 .sd-system-regions-wrap { padding: .5rem .25rem; }
 .sd-system-header {
@@ -1972,6 +1976,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     outline: none;
 }
 .sd-styles-find:focus { border-color: #4d8ef0; }
+.sd-styles-find::placeholder { color: var(--sd-text-muted); }
 
 /* Attrs scrollable content */
 .sd-bp-attrs-scroll {
@@ -5063,7 +5068,7 @@ body.sd-resizing-v { cursor: ns-resize !important; -webkit-user-select: none; us
 .sd-as-item-wts { font-size: .62rem; color: #6e7681; flex-shrink: 0; }
 .sd-as-badge-ext {
     font-size: .58rem; padding: 0 3px; border-radius: 2px;
-    background: rgba(77,142,240,.2); color: #4d8ef0; flex-shrink: 0;
+    background: rgba(77,142,240,.2); color: #79b8ff; flex-shrink: 0;
     text-transform: uppercase; letter-spacing: .3px;
 }
 .sd-as-badge-off {
@@ -5160,7 +5165,7 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 .sd-as-empty {
     padding: .25rem .5rem .25rem 1.4rem;
     font-size: .68rem;
-    color: #6e7681;
+    color: var(--sd-text-muted);
     font-style: italic;
 }
 

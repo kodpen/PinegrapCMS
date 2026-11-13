@@ -174,7 +174,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Import Users'),
-            'extra classes'=>'users',
+            'extra classes'=>'users pg-measure-edit pg-measure-single',
             'icon'=>'account', 
             'heading'=>lang('Import Users'),
             'heading_description' => lang('Import new users and their contacts, give them a role and rights, and optionally e-mail each one a link to set a password.'),
