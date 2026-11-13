@@ -62,6 +62,20 @@ function api_modules() {
 			'prefix'  => 'ws_'
 		),
 
+		// Automation flows run at every site once their tables are there
+		// (pg_flows_enabled()). With the Workspace on its own file carries
+		// them; with it off this one merges the flow routes, their objects and
+		// run events alone, under the same ids, paths and scopes, so a key
+		// keeps working whichever way the switch is set.
+		'flows' => array(
+			'enabled' => api_modules_flows_alone(
+				(defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED == true),
+				(function_exists('pg_flows_enabled') && pg_flows_enabled())
+			),
+			'file'    => dirname(__FILE__) . '/../workspace/api_flows_alone.php',
+			'prefix'  => 'ws_flows_alone_'
+		),
+
 		// The front-end translation: on once the 2026.4.6 upgrade has made its
 		// tables, whether or not a target language has been added yet.
 		'translations' => array(
@@ -71,6 +85,14 @@ function api_modules() {
 		)
 
 	);
+
+}
+
+// Are the flows merged on their own (pure)? Only with the Workspace off, which
+// would otherwise carry them, and once flows run on the site.
+function api_modules_flows_alone($workspace_on, $flows_ready) {
+
+	return !$workspace_on && $flows_ready;
 
 }
 
