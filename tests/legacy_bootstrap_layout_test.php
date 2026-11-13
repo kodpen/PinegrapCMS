@@ -61,6 +61,21 @@ function _test_lbs_layout_php($code)
 	return $php;
 }
 
+// Every name the pass writes into a piece of markup is one Bootstrap 5.3.8
+// defines.
+function _test_lbs_layout_writes_5_3_8_names($in, $out)
+{
+	static $bs5 = null;
+	if ($bs5 === null) $bs5 = _test_lbs_layout_sheet_classes(PG_FUNCTIONS_DIR . '/assets/lib/bootstrap-5.3.8/css/bootstrap.min.css');
+	$names = function ($html) {
+		preg_match_all('~\sclass\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s>]+))~', $html, $m);
+		return array_flip(preg_split('/\s+/', implode(' ', array_merge($m[1], $m[2], $m[3])), -1, PREG_SPLIT_NO_EMPTY));
+	};
+	foreach (array_keys(array_diff_key($names($out), $names($in))) as $name) {
+		pg_assert_true(isset($bs5[$name]), $in . ' writes ' . $name);
+	}
+}
+
 function test_lbs_layout_rules_of_a_class_list()
 {
 	// Without a Legacy theme the names 5.3.8 owns are its own utilities.
@@ -255,10 +270,10 @@ function test_lbs_layout_ambiguous_names_need_bootstrap_3_s_shape()
 		'<div class="panel"><div class="media"><a class="thumbnail"><b class="caret"></b></a></div></div>' => '<div class="panel"><div class="media"><a class="thumbnail"><b class="caret"></b></a></div></div>',
 		'<div class="well pull-right">x</div>' => '<div class="well float-end">x</div>',
 		// Bootstrap 3's checkbox and radio blocks: an input of the type, or
-		// a label that opens with one.
-		'<div class="checkbox"><label><input type="checkbox" name="a"> A</label></div>' => '<div class="form-check"><label><input type="checkbox" name="a"> A</label></div>',
-		"<div class=\"radio mb24\">\n\t<label class=\"x\">\n\t\t<input\n\t\t\tname=\"a\"\n\t\t\ttype=\"radio\"> A</label></div>" => "<div class=\"form-check mb24\">\n\t<label class=\"x\">\n\t\t<input\n\t\t\tname=\"a\"\n\t\t\ttype=\"radio\"> A</label></div>",
-		'<div class="radio"><input type=radio id=a><label for=a>A</label></div>' => '<div class="form-check"><input type=radio id=a><label for=a>A</label></div>',
+		// a label that opens with one. The input is 5.3.8's form-check-input.
+		'<div class="checkbox"><label><input type="checkbox" name="a"> A</label></div>' => '<div class="form-check"><label><input type="checkbox" name="a" class="form-check-input"> A</label></div>',
+		"<div class=\"radio mb24\">\n\t<label class=\"x\">\n\t\t<input\n\t\t\tname=\"a\"\n\t\t\ttype=\"radio\"> A</label></div>" => "<div class=\"form-check mb24\">\n\t<label class=\"x\">\n\t\t<input\n\t\t\tname=\"a\"\n\t\t\ttype=\"radio\" class=\"form-check-input\"> A</label></div>",
+		'<div class="radio"><input type=radio id=a><label for=a>A</label></div>' => '<div class="form-check"><input type=radio id=a class="form-check-input"><label for=a>A</label></div>',
 		// An input's own class, a wrapper around other markup, the other
 		// type's input.
 		'<input type="checkbox" class="checkbox check">' => '<input type="checkbox" class="checkbox check">',
@@ -266,7 +281,7 @@ function test_lbs_layout_ambiguous_names_need_bootstrap_3_s_shape()
 		'<div class="checkbox"><label>A <input type="checkbox"></label></div>' => '<div class="checkbox"><label>A <input type="checkbox"></label></div>',
 		'<div class="checkbox"><label><input type="radio"> A</label></div>' => '<div class="checkbox"><label><input type="radio"> A</label></div>',
 		// The inline ones are nobody else's name.
-		'<label class="checkbox-inline"><input type="checkbox"> A</label>' => '<label class="form-check form-check-inline"><input type="checkbox"> A</label>',
+		'<label class="checkbox-inline"><input type="checkbox"> A</label>' => '<label class="form-check form-check-inline"><input type="checkbox" class="form-check-input"> A</label>',
 	);
 	foreach ($cases as $html => $want) {
 		pg_assert_same($want, pg_lbs_layout_html($html)['html']);
@@ -365,7 +380,12 @@ function test_lbs_layout_5_3_8_markup_passes_untouched()
 		. '<div class="card text-bg-primary border-0 d-none d-md-block float-end"><div class="card-body"><span class="badge text-bg-success visually-hidden">n</span></div></div>'
 		. '<button class="btn btn-outline-secondary btn-sm w-100 collapsed" data-bs-toggle="collapse" data-bs-target="#x">b</button>'
 		. '<div class="collapse show bg-secondary bg-dark overflow-hidden align-top" id="x"><i class="bi bi-check-lg"></i><img class="img-fluid rounded-circle d-block mx-auto"></div>'
-		. '<div class="alert alert-danger alert-dismissible fade show"><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div></form>';
+		. '<div class="alert alert-danger alert-dismissible fade show"><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div></form>'
+		. '<ul class="nav nav-pills flex-column"><li class="nav-item"><a class="nav-link active" href="#">a</a></li></ul>'
+		. '<nav><ol class="breadcrumb"><li class="breadcrumb-item active">b</li></ol></nav><ul class="pagination"><li class="page-item"><a class="page-link">1</a></li></ul>'
+		. '<ul class="list-inline"><li class="list-inline-item">c</li></ul><dl class="row"><dt class="col-sm-3">d</dt><dd class="col-sm-9">e</dd></dl>'
+		. '<div class="input-group"><select class="form-select"></select><button class="btn btn-outline-secondary">f</button></div>'
+		. '<div class="row"><div class="col-sm-9 order-sm-1">g</div><div class="col-sm-3 order-sm-0">h</div></div>';
 	$r = pg_lbs_layout_html($html);
 	pg_assert_same($html, $r['html']);
 	pg_assert_same(array(), $r['converted']);
@@ -469,10 +489,13 @@ function test_lbs_layout_starting_site_layouts_and_templates()
 	pg_assert_true($report['kept']['radio'] < $report['converted']['radio'] && $report['kept']['checkbox'] < 5, 'the blocks are converted');
 	pg_assert_true($report['kept']['ti-angle-down'] > 250 && $report['kept']['glyphicon-ok'] > 80, 'the theme widgets keep their icons');
 	pg_assert_true(isset($report['converted']['ti-close'], $report['converted']['glyphicon-remove']), 'an icon of the layout\'s own is converted');
-	// What a designer finishes by hand until the names with no twin are done.
-	foreach (array('input-group-btn', 'dl-horizontal', 'pager', 'form-inline') as $name) {
-		pg_assert_true(isset($report['by_hand'][$name]), $name . ' is left by hand');
+	// The names Bootstrap 3 gave through a tag or a parent. What a designer
+	// finishes by hand is the inline form, whose parts are laid out in more
+	// than one way.
+	foreach (array('input-group-btn', 'dl-horizontal', 'pager', 'form-control', 'col-sm-push-3', 'col-sm-pull-9', 'nav') as $name) {
+		pg_assert_true(isset($report['converted'][$name]), $name . ' is converted');
 	}
+	pg_assert_same(array('form-inline'), array_keys($report['by_hand']));
 }
 
 // The count behind the pass: no script and no sheet of the site side names a
@@ -639,4 +662,181 @@ function test_lbs_layout_code_tab_says_the_names_change_on_a_bootstrap_5_design(
 	pg_assert_true(strpos($min, 'sd-code-note') !== false, 'the served bundle carries the line');
 	$css = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
 	pg_assert_true(strpos($css, '.sd-code-pane-noted > .cm-editor') !== false, 'the editor gives the line its room');
+}
+
+// The elements of a piece of markup nest as a browser nests them: an li, dt
+// or cell closes the one still open, a void element holds nothing, an end
+// tag with no open element of its name is passed over.
+function test_lbs_layout_elements_nest_as_a_browser_does()
+{
+	$els = pg_lbs_layout_elements('<ul class="a"><li>1<li><a href="#">2</a></ul><p>x<div>y</div><dl><dt>t<dd>d<dd>e</dl>');
+	$tags = array_column($els, 'tag');
+	pg_assert_same(array('ul', 'li', 'li', 'a', 'p', 'div', 'dl', 'dt', 'dd', 'dd'), $tags);
+	pg_assert_same(array(1, 2), $els[0]['kids'], 'the second li closes the first');
+	pg_assert_same(array(3), $els[2]['kids']);
+	pg_assert_same(-1, $els[5]['parent'], 'a div closes the open p');
+	pg_assert_same(array(7, 8, 9), $els[6]['kids'], 'dt and dd close each other');
+	pg_assert_same('a', $els[0]['class']);
+
+	$els = pg_lbs_layout_elements('<div><input type=checkbox class><img src=x></span><span>a</div><b>');
+	pg_assert_same(array(1, 2, 3), $els[0]['kids'], 'void elements and a stray end tag');
+	pg_assert_same(false, $els[1]['class'], 'a class attribute with no value');
+	pg_assert_same('checkbox', $els[1]['type']);
+	pg_assert_same(null, $els[2]['class']);
+	pg_assert_same(-1, $els[4]['parent'], 'the div closes the span inside it');
+
+	// The inside of script, textarea and pre is no markup; inside svg, "/>"
+	// closes a tag.
+	$els = pg_lbs_layout_elements('<div><script>var a = "<li class=x>";</script><pre><b>x</b></pre><svg><path d="M0"/><circle/></svg><i></i></div>');
+	pg_assert_same(array('div', 'script', 'pre', 'svg', 'path', 'circle', 'i'), array_column($els, 'tag'));
+	pg_assert_same(array(1, 2, 3, 6), $els[0]['kids']);
+	pg_assert_same(array(4, 5), $els[3]['kids']);
+	pg_assert_same(null, pg_lbs_layout_elements('<div class="a><p>'));
+}
+
+// A select styled as a field is 5.3.8's form-select, but in a theme's
+// .select-option, whose sheet draws the arrow; the input a checkbox or radio
+// block opens with is a form-check-input.
+function test_lbs_layout_selects_and_the_inputs_of_choice_blocks()
+{
+	$cases = array(
+		'<select class="form-control" name="a"></select>' => '<select class="form-select" name="a"></select>',
+		'<select class="form-control input-sm"></select><input class="form-control input-lg">' => '<select class="form-select form-select-sm"></select><input class="form-control form-control-lg">',
+		'<select class="form-control-lg"></select>' => '<select class="form-select-lg"></select>',
+		'<div class="select-option"><i class="ti-angle-down"></i><select class="form-control"></select></div>' => '<div class="select-option"><i class="ti-angle-down"></i><select class="form-control"></select></div>',
+		'<select class="form-select"></select><select></select>' => '<select class="form-select"></select><select></select>',
+		// The input gets the name beside its own, a bare one a class attribute.
+		'<div class="checkbox"><label><input type="checkbox" class="opt"> A</label></div>' => '<div class="form-check"><label><input type="checkbox" class="opt form-check-input"> A</label></div>',
+		'<div class="checkbox"><label class="check-box"><input type="checkbox" name="r" value="1" /> <span class="unchecked"></span>A</label></div>' => '<div class="form-check"><label class="check-box"><input type="checkbox" name="r" value="1" class="form-check-input" /> <span class="unchecked"></span>A</label></div>',
+		'<label class="radio-inline"><input type=radio name=a value=1>A</label>' => '<label class="form-check form-check-inline"><input type=radio name=a value=1 class="form-check-input">A</label>',
+		// Not a block, not its input, or no value to add to.
+		'<div class="checkbox"><label>A <input type="checkbox"></label></div>' => '<div class="checkbox"><label>A <input type="checkbox"></label></div>',
+		'<label class="checkbox-inline"><input type="text"> A</label>' => '<label class="form-check form-check-inline"><input type="text"> A</label>',
+		'<div class="checkbox"><input type="checkbox" class> A</div>' => '<div class="form-check"><input type="checkbox" class> A</div>',
+	);
+	foreach ($cases as $in => $want) {
+		$r = pg_lbs_layout_html($in);
+		pg_assert_same($want, $r['html'], $in);
+		_test_lbs_layout_writes_5_3_8_names($in, $r['html']);
+		$again = pg_lbs_layout_html($r['html']);
+		pg_assert_same($r['html'], $again['html'], $in . ': a second pass');
+		pg_assert_same(array(), $again['converted'], $in . ': a second pass converts nothing');
+	}
+	pg_assert_same(array('form-control' => 1), pg_lbs_layout_html('<select class="form-control"></select>')['converted']);
+	pg_assert_same(array('input-sm' => 1), pg_lbs_layout_html('<select class="input-sm"></select>')['converted']);
+
+	// A select a script finds by form-control keeps the name beside.
+	$r = pg_lbs_layout_html('<select class="form-control"></select><script>$(".form-control").val("");</script>');
+	pg_assert_same('<select class="form-select form-control"></select><script>$(".form-control").val("");</script>', $r['html']);
+
+	// In a layout file's text, a tag PHP writes part of gets no class
+	// attribute of its own, but for PHP inside a quoted value.
+	$r = pg_lbs_layout_source('<div class="checkbox"><label><input type="checkbox" <?=$checked?>> A</label></div>');
+	pg_assert_same('<div class="form-check"><label><input type="checkbox" <?=$checked?>> A</label></div>', $r['code']);
+	$r = pg_lbs_layout_source('<div class="checkbox"><label><input type="checkbox" name="<?=$name?>"> A</label></div>');
+	pg_assert_same('<div class="form-check"><label><input type="checkbox" name="<?=$name?>" class="form-check-input"> A</label></div>', $r['code']);
+}
+
+// The lists and definitions Bootstrap 3 styled through the parent: the
+// items, links and terms get the names 5.3.8 needs on them.
+function test_lbs_layout_lists_and_definitions_bootstrap_3_styled_through_the_parent()
+{
+	$cases = array(
+		// dl-horizontal: a row; a second definition of one term keeps its column.
+		'<dl class="dl-horizontal"><dt>Name</dt><dd>A</dd><dd>B</dd><dt class="x">Mail</dt><dd>c</dd></dl>'
+			=> '<dl class="dl-horizontal row"><dt class="col-sm-3 text-sm-end">Name</dt><dd class="col-sm-9">A</dd><dd class="col-sm-9 offset-sm-3">B</dd><dt class="x col-sm-3 text-sm-end">Mail</dt><dd class="col-sm-9">c</dd></dl>',
+		'<dl class="dl-horizontal"><dt class="col-sm-2">a</dt><dd class="col-sm-10">b</dd></dl>'
+			=> '<dl class="dl-horizontal row"><dt class="col-sm-2">a</dt><dd class="col-sm-10">b</dd></dl>',
+		// pager: the slightly customized buttons it was.
+		'<ul class="pager"><li class="previous"><a href="?p=1">&laquo; Previous</a></li><li>Page 2 of 3</li><li class="next disabled"><span>Next &raquo;</span></li></ul>'
+			=> '<ul class="pager list-inline text-center"><li class="previous list-inline-item float-start"><a href="?p=1" class="btn btn-outline-secondary rounded-pill">&laquo; Previous</a></li><li class="list-inline-item">Page 2 of 3</li><li class="next disabled list-inline-item float-end"><span class="btn btn-outline-secondary rounded-pill disabled">Next &raquo;</span></li></ul>',
+		// nav: the item, its link, the link of the active and the disabled item.
+		'<ul class="nav nav-pills nav-stacked"><li class="active"><a href="#a">A</a></li><li><a href="#b" style="padding-left: 2em">B</a></li><li class="disabled"><a>C</a></li></ul>'
+			=> '<ul class="nav nav-pills flex-column"><li class="active nav-item"><a href="#a" class="nav-link active">A</a></li><li class="nav-item"><a href="#b" style="padding-left: 2em" class="nav-link">B</a></li><li class="disabled nav-item"><a class="nav-link disabled">C</a></li></ul>',
+		'<ol class="breadcrumb"><li><a href="/">Home</a></li><li class="active">Cart</li></ol>'
+			=> '<ol class="breadcrumb"><li class="breadcrumb-item"><a href="/">Home</a></li><li class="active breadcrumb-item">Cart</li></ol>',
+		'<ul class="pagination"><li class="disabled"><span>&laquo;</span></li><li class="active"><a href="?p=1">1</a></li></ul>'
+			=> '<ul class="pagination"><li class="disabled page-item"><span class="page-link">&laquo;</span></li><li class="active page-item"><a href="?p=1" class="page-link">1</a></li></ul>',
+		'<ul class="list-inline"><li>a</li><li><ul><li>b</li></ul></li></ul>'
+			=> '<ul class="list-inline"><li class="list-inline-item">a</li><li class="list-inline-item"><ul><li>b</li></ul></li></ul>',
+	);
+	foreach ($cases as $in => $want) {
+		$r = pg_lbs_layout_html($in);
+		pg_assert_same($want, $r['html'], $in);
+		_test_lbs_layout_writes_5_3_8_names($in, $r['html']);
+		$again = pg_lbs_layout_html($r['html']);
+		pg_assert_same($r['html'], $again['html'], $in . ': a second pass');
+		pg_assert_same(array(), $again['converted'], $in . ': a second pass converts nothing');
+	}
+	$r = pg_lbs_layout_html('<dl class="dl-horizontal"><dt>a</dt><dd>b</dd></dl><ul class="pager"><li><a href="#">x</a></li></ul>');
+	pg_assert_same(array('dl-horizontal' => 1, 'pager' => 1), $r['converted']);
+	pg_assert_same(array(), $r['by_hand']);
+	// Where nothing was missing, the parent's name is neither by hand nor converted.
+	$r = pg_lbs_layout_html('<dl class="dl-horizontal row"><dt class="col-sm-3">a</dt></dl>');
+	pg_assert_same(array(), $r['converted']);
+	pg_assert_same(array(), $r['by_hand']);
+}
+
+// The buttons of an input-group-btn are squared where they meet the field,
+// and a wrapper that the group's table filled grows; a 5.3.8 group is not
+// touched.
+function test_lbs_layout_input_group_buttons_meet_the_field()
+{
+	$cases = array(
+		'<div class="input-group"><input class="form-control"><span class="input-group-btn"><button class="btn btn-default">Go</button></span></div>'
+			=> '<div class="input-group"><input class="form-control"><span class="input-group-btn"><button class="btn btn-light rounded-start-0">Go</button></span></div>',
+		'<div class="input-group"><span class="input-group-btn" style="display:none"><a class="btn">-</a></span><input class="form-control"><span class="input-group-btn"><button class="btn">s</button> <button class="btn">x</button></span></div>'
+			=> '<div class="input-group"><span class="input-group-btn" style="display:none"><a class="btn rounded-end-0">-</a></span><input class="form-control"><span class="input-group-btn"><button class="btn rounded-start-0">s</button> <button class="btn">x</button></span></div>',
+		'<div class="input-group"><span class="input-group-addon">@</span><span class="input-group-btn"><button class="btn">a</button></span><input type="hidden" name="h"><input class="form-control"></div>'
+			=> '<div class="input-group"><span class="input-group-text">@</span><span class="input-group-btn"><button class="btn rounded-0">a</button></span><input type="hidden" name="h"><input class="form-control"></div>',
+		'<div class="form-group input-group"><div class="select-option"><i class="ti-angle-down"></i><select></select></div><span class="input-group-btn"><button class="btn btn-thin rounded">x</button></span></div>'
+			=> '<div class="mb-3 input-group"><div class="select-option flex-grow-1"><i class="ti-angle-down"></i><select></select></div><span class="input-group-btn"><button class="btn btn-thin rounded">x</button></span></div>',
+		// 5.3.8's own group: nothing.
+		'<div class="input-group has-validation"><div class="form-floating"><input class="form-control"></div><button class="btn btn-outline-secondary">Go</button><div class="invalid-feedback">x</div></div>'
+			=> '<div class="input-group has-validation"><div class="form-floating"><input class="form-control"></div><button class="btn btn-outline-secondary">Go</button><div class="invalid-feedback">x</div></div>',
+		// Outside a group the span is left by hand.
+		'<div><span class="input-group-btn"><button class="btn">x</button></span></div>' => '<div><span class="input-group-btn"><button class="btn">x</button></span></div>',
+	);
+	foreach ($cases as $in => $want) {
+		$r = pg_lbs_layout_html($in);
+		pg_assert_same($want, $r['html'], $in);
+		_test_lbs_layout_writes_5_3_8_names($in, $r['html']);
+		$again = pg_lbs_layout_html($r['html']);
+		pg_assert_same($r['html'], $again['html'], $in . ': a second pass');
+		pg_assert_same(array(), $again['converted'], $in . ': a second pass converts nothing');
+	}
+	$r = pg_lbs_layout_html('<div class="input-group"><input class="form-control"><span class="input-group-btn"><button class="btn">Go</button></span></div>');
+	pg_assert_same(array('input-group-btn' => 1), $r['converted']);
+	pg_assert_same(array('input-group-btn' => 1), pg_lbs_layout_html('<div><span class="input-group-btn"></span></div>')['by_hand']);
+}
+
+// Push and pull become the order of a row's columns where they reorder
+// whole columns; any other move stays by hand.
+function test_lbs_layout_push_and_pull_become_the_order_of_the_columns()
+{
+	$cols = function ($lists) {
+		return array_map(function ($l) { return array_flip(explode(' ', $l)); }, $lists);
+	};
+	pg_assert_same(array(array('sm' => 1), array('sm' => 0)), pg_lbs_layout_column_orders($cols(array('col-sm-9 col-sm-push-3', 'col-sm-3 col-sm-pull-9'))));
+	pg_assert_same(array(array('md' => 1), array('md' => 0), array('md' => 2)), pg_lbs_layout_column_orders($cols(array('col-md-4 col-md-push-4', 'col-md-4 col-md-pull-4', 'col-md-4'))));
+	// A move that holds from xs, and one taken back at a wider breakpoint.
+	pg_assert_same(array(array('xs' => 1, 'lg' => 0), array('xs' => 0, 'lg' => 1)), pg_lbs_layout_column_orders($cols(array('col-xs-6 col-xs-push-6 col-lg-push-0', 'col-xs-6 col-xs-pull-6 col-lg-pull-0'))));
+	// No move; a lone push that leaves a gap; an overlap; an offset; a
+	// wrapped row; an order of the author's.
+	pg_assert_same(null, pg_lbs_layout_column_orders($cols(array('col-sm-6', 'col-sm-6'))));
+	pg_assert_same(null, pg_lbs_layout_column_orders($cols(array('col-sm-6 col-sm-push-3', 'col-sm-3'))));
+	pg_assert_same(null, pg_lbs_layout_column_orders($cols(array('col-sm-6 col-sm-push-6', 'col-sm-6'))));
+	pg_assert_same(null, pg_lbs_layout_column_orders($cols(array('col-sm-6 col-sm-push-3', 'col-sm-3 col-sm-pull-6 col-sm-offset-3'))));
+	pg_assert_same(null, pg_lbs_layout_column_orders($cols(array('col-sm-9 col-sm-push-3', 'col-sm-6 col-sm-pull-9'))));
+	pg_assert_same(null, pg_lbs_layout_column_orders($cols(array('col-sm-9 col-sm-push-3', 'col-sm-3 col-sm-pull-9 order-2'))));
+
+	$in = '<div class="row"><div class="col-sm-9 col-sm-push-3">Products</div><div class="col-sm-3 col-sm-pull-9">Categories</div></div>';
+	$r = pg_lbs_layout_html($in);
+	pg_assert_same('<div class="row"><div class="col-sm-9 order-sm-1">Products</div><div class="col-sm-3 order-sm-0">Categories</div></div>', $r['html']);
+	pg_assert_same(array('col-sm-push-3' => 1, 'col-sm-pull-9' => 1), $r['converted']);
+	pg_assert_same(array(), $r['by_hand']);
+	pg_assert_same($r['html'], pg_lbs_layout_html($r['html'])['html'], 'a second pass');
+	$r = pg_lbs_layout_html('<div class="row"><div class="col-sm-6 col-sm-push-3">a</div><div class="col-sm-3">b</div></div>');
+	pg_assert_same('<div class="row"><div class="col-sm-6 col-sm-push-3">a</div><div class="col-sm-3">b</div></div>', $r['html']);
+	pg_assert_same(array('col-sm-push-3' => 1), $r['by_hand']);
 }
