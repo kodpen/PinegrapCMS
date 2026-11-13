@@ -19,4 +19,4 @@ description: An application's binding of a table to a canvas shows in the channe
 - A new binding is taken off (`ws_canvas_table_unbind_check()` decides who); a changed one is bound again with its earlier access in the person's name (`ws_canvas_table_bind_check()`). Then the canvas and the line are touched so open conversations redraw both.
 
 ## Tests?
-- `tests/workspace_canvas_binding_lines_test.php`: the codes, the names, the words, the refs read back, when Undo applies, the hooks. Not run on a database or in a browser (#9333).
+- `tests/workspace_canvas_binding_lines_test.php`: the codes, the names, the words, the refs read back, when Undo applies, the hooks. Not run on a database or in a browser (#9323).
