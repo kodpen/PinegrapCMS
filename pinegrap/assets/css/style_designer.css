@@ -1930,6 +1930,11 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     outline: 0;
     border-color: var(--sd-accent, #6ea8fe);
 }
+/* A value the Themes panel refused to write: the box keeps what was typed. */
+.sd-theme-row-text.is-invalid,
+.sd-theme-row-text.is-invalid:focus {
+    border-color: #f85149;
+}
 
 /* Styles toolbar — Create button + find input */
 .sd-styles-tool {
