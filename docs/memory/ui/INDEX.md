@@ -233,6 +233,7 @@
 - graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its pgc- CSS and tokens, its first user the Flows canvas [decision: here]
 - graph-canvas-core-sizes-ports.md: Graph canvas core slice 4 for the Prototype view: size per box, lower zoom, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
 - greeting-counts.md: Counts in the dashboard greeting, the Workspace channel greeting and the Ecommerce card: a key for one, nominative vs accusative link phrases, counts inside one key
+- grid-column-min-width.md: CSS pitfall - a .row column taken off Bootstrap's width (width auto, max-width none) needs min-width 0, or a value that does not wrap widens the whole page past the window
 - guided-tour.md: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who uses it, how steps are counted, Back at the start, how a step is read out, where focus goes at the end, the bubble's size
 - icon-ligature-button-names.md: Buttons whose content is a Material Icons ligature (north, south, delete, living) are named by that word; how the product attribute and product group screens name them (#2893)
 - image-editor-access.md: The image editor's access part: tool letters, the keyboard help sheet with its per-tool groups, shortcut names on the controls, Tab kept inside, reduced motion

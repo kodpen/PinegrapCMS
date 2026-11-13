@@ -25789,16 +25789,22 @@ body.pg-measure-list .pg-toolbar-search {
    (lg:col-8 2xl:col-9 order-1, lg:col-4 2xl:col-3 order-2). From lg they
    share the row in the measures' ratio, 760 to 336, so at the full measure
    the form column is 760 px and the status column 336 px; the save bar's
-   col-12 wraps under both. */
+   col-12 wraps under both. min-width: 0 keeps them in the row: with no
+   width of their own a flex item's floor is its content's min-content
+   width, so a value that does not wrap (a combobox listing every chosen
+   state, a long address) would widen the column and the page past the
+   window. */
 @media (min-width: 1024px) {
   body.pg-measure-edit .row > .order-1.lg\:col-8 {
     flex: 760 1 0%;
     width: auto;
+    min-width: 0;
     max-width: none;
   }
   body.pg-measure-edit .row > .order-2.lg\:col-4 {
     flex: 336 1 0%;
     width: auto;
+    min-width: 0;
     max-width: none;
   }
 }
