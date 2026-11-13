@@ -76,6 +76,33 @@ function test_fic_leaves_other_controls()
 	pg_assert_same($before, $tree);
 }
 
+// A box in an input group (the newsletter's e-mail box and its button): the
+// text goes last in the group, which Bootstrap wraps onto a line of its own
+// (has-validation), not between the box and the button.
+function test_fic_input_group_feedback_last()
+{
+	$group = _test_fic_node('div', array(), '', array(
+		_test_fic_node('label', array('for' => 'nl-email')),
+		_test_fic_node('input', array('type' => 'email', 'name' => 'email'), 'nl-email'),
+		_test_fic_node('button', array('type' => 'submit')),
+	));
+	$group['props']['cssClass'] = 'input-group input-group-lg mb-3';
+	$tree = _test_fic_node('form', array(), '', array($group));
+
+	pg_assert_same(1, pg_form_mark_invalid_controls($tree, array('email' => 'Please enter a valid e-mail address for Email')));
+
+	$group = $tree['children'][0];
+	pg_assert_same('input-group input-group-lg mb-3 has-validation', $group['props']['cssClass']);
+	pg_assert_same(4, count($group['children']));
+	pg_assert_same('button', $group['children'][2]['props']['tag'], 'the button stays beside the box');
+	pg_assert_same('nl-email-feedback', $group['children'][3]['props']['id'], 'the text last');
+
+	// Marked again (a second refusal): has-validation once.
+	$tree['children'][0]['children'] = array_slice($tree['children'][0]['children'], 0, 3);
+	pg_form_mark_invalid_controls($tree, array('email' => 'x'));
+	pg_assert_same('input-group input-group-lg mb-3 has-validation', $tree['children'][0]['props']['cssClass']);
+}
+
 // A check box group: every box is marked, one text after the last box's label.
 function test_fic_checkbox_group_one_feedback()
 {

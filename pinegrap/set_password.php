@@ -80,16 +80,13 @@ if (($token_timestamp + $time_24hrs) < time()) {
 // validate required fields
 $form->validate_required_field('new_password', lang('Password is required.'));
 
-// if there is not already an error for the new password field,
-// and strong password is enabled,
-// and the new password is not strong,
-// then mark error for new password fields
-if (
-    ($form->check_field_error('new_password') == false)
-    && (STRONG_PASSWORD == true)
-    && (validate_password_strength($form->get('new_password')) == false)
-) {
-    $form->mark_error('new_password', lang('The password you entered does not meet the requirements. Please enter a different password.'));
+// A new password is strong while Require Strong Password is on, and at
+// least pg_password_min_length() characters long while it is off.
+$password_refusal = ($form->check_field_error('new_password') == false)
+    ? pg_password_refusal($form->get('new_password'), (STRONG_PASSWORD == true), lang('The password you entered does not meet the requirements. Please enter a different password.'))
+    : '';
+if ($password_refusal !== '') {
+    $form->mark_error('new_password', $password_refusal);
     $form->set('new_password', '');
 }
 

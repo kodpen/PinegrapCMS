@@ -2470,27 +2470,95 @@ function pg_cf_reference_choice_unit($template, $wrapped, $code, $label, $field_
  * this widget renders.
  *
  * Emitted once even when a page carries two forms: it binds by class.
+ *
+ * A refused field also says what is wrong in text (WCAG 3.3.1, #9054): the
+ * form carries `novalidate`, so the browser shows none of its own messages,
+ * and Bootstrap's :invalid styles only draw a red border. The text is the
+ * one the server gives (pg_form_mark_invalid_controls(), liveform), in the
+ * markup it uses: an `invalid-feedback` element after the field with an id
+ * every control of the field names in aria-describedby, and
+ * aria-invalid="true". The wording is pg_cf_validation_messages(), in the
+ * page's language, with the field's label read from the page; a check the
+ * wording does not cover (a pattern, a range, a length) takes the browser's
+ * own message. A field the server refused keeps its text until this script
+ * finds the field wrong itself; once it has, the text follows the field
+ * after every change and goes when the field is right. A stepped form's
+ * Next asks for the same text (form.pgFieldErrors(step)).
  */
 function pg_cf_validation_script()
 {
     static $emitted = false;
     if ($emitted) return '';
     $emitted = true;
+    $messages = json_encode(pg_cf_validation_messages(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
     // Emitted once, inside the first form on the page; the forms below it are
     // not in the document yet at that point, so the binding waits for
     // DOMContentLoaded and then takes every .pg-cf-form on the page (custom
     // forms and the member widgets' forms alike).
     return '<script>(function(){'
+         . 'var M=' . $messages . ';'
          . 'var bind=function(){var f=document.querySelectorAll(".pg-cf-form");'
          . 'Array.prototype.forEach.call(f,function(form){'
          . 'if(form.getAttribute("data-pg-validated"))return;form.setAttribute("data-pg-validated","1");'
+         // The fields of the form (or of one step, root): its controls
+         // grouped by name, a check box group's "[]" left off.
+         . 'var fields=function(root){var g={},list=[];Array.prototype.forEach.call(form.elements,function(c){'
+         . 'var t=(c.type||"").toLowerCase();'
+         . 'if(!c.name||!/^(INPUT|SELECT|TEXTAREA)$/.test(c.tagName)||["hidden","submit","button","reset","image"].indexOf(t)!==-1)return;'
+         . 'if(root&&!root.contains(c))return;var n=c.name.replace(/\[\]$/,"");'
+         . 'if(!g[n]){g[n]=[];list.push(g[n]);}g[n].push(c);});return list;};'
+         . 'var wrong=function(cs){for(var i=0;i<cs.length;i++){if(cs[i].willValidate&&!cs[i].validity.valid)return cs[i];}return null;};'
+         // The field's label as the page shows it: a group's own legend
+         // (not a step's), else the control's label or aria-label; a
+         // closing "*" or ":" left off, a sentence-long one not used.
+         . 'var tidy=function(s){return String(s||"").replace(/\s+/g," ").replace(/[\s*:]+$/,"").trim();};'
+         . 'var label=function(cs){var c=cs[0],s="";'
+         . 'if(c.type==="radio"||cs.length>1){var fs=c.closest("fieldset");'
+         . 'if(fs&&!fs.hasAttribute("data-pg-step")&&cs.every(function(o){return fs.contains(o);})){'
+         . 'for(var k=0;k<fs.children.length;k++){if(fs.children[k].tagName==="LEGEND"){s=fs.children[k].textContent;break;}}}}'
+         . 'else{if(c.labels&&c.labels.length)s=c.labels[0].textContent;if(!tidy(s))s=c.getAttribute("aria-label");}'
+         . 's=tidy(s);return(s.length>80)?"":s;};'
+         . 'var put=function(t,l){return t.split("{label}").join(l);};'
+         . 'var say=function(cs,c){var v=c.validity,t=(c.type||"").toLowerCase(),l=label(cs);'
+         . 'if(v.valueMissing){if(t==="checkbox"&&cs.length===1)return M.box;if(l)return put(M.required,l);'
+         . 'return(t==="radio"||t==="checkbox")?M.choose:M.fill;}'
+         . 'if(v.typeMismatch&&t==="email")return l?put(M.email,l):M.emailBare;'
+         . 'return c.validationMessage||M.fill;};'
+         // The text a control names in aria-describedby, the server's
+         // included; a new one goes where the server puts it: after the
+         // last control (and a label right behind it), last in a
+         // form-check row, last in an input group.
+         . 'var textOf=function(cs){for(var i=0;i<cs.length;i++){var ids=(cs[i].getAttribute("aria-describedby")||"").split(/\s+/);'
+         . 'for(var j=0;j<ids.length;j++){var e=ids[j]?document.getElementById(ids[j]):null;if(e&&e.classList.contains("invalid-feedback"))return e;}}return null;};'
+         . 'var place=function(cs,fb){var c=cs[cs.length-1],t=(c.type||"").toLowerCase(),p=c.parentElement,n=c.nextElementSibling;'
+         . 'if(p&&(t==="checkbox"||t==="radio")&&p.classList.contains("form-check")){p.appendChild(fb);return;}'
+         . 'if(p&&p.classList.contains("input-group")){p.classList.add("has-validation");p.appendChild(fb);return;}'
+         . '((n&&n.tagName==="LABEL")?n:c).insertAdjacentElement("afterend",fb);};'
+         . 'var describe=function(c,id,on){var ids=(c.getAttribute("aria-describedby")||"").split(/\s+/).filter(function(x){return x&&x!==id;});'
+         . 'if(on)ids.push(id);if(ids.length){c.setAttribute("aria-describedby",ids.join(" "));}else{c.removeAttribute("aria-describedby");}};'
+         // live: after a change, a field this script has not reported on
+         // gets its text only once the form (or its step) shows the
+         // checks; a field it reported on that is right again loses the
+         // text, its marks and the server's is-invalid.
+         . 'var mark=function(cs,live){var c=wrong(cs),own=cs[0].hasAttribute("data-pg-checked"),fb=textOf(cs);'
+         . 'if(!c){if(!own)return;cs.forEach(function(o){o.removeAttribute("data-pg-checked");o.removeAttribute("aria-invalid");'
+         . 'o.classList.remove("is-invalid");if(fb)describe(o,fb.id,false);});if(fb&&fb.parentNode)fb.parentNode.removeChild(fb);return;}'
+         . 'if(live&&!own&&!c.closest(".was-validated"))return;'
+         . 'if(!fb){var base=(cs[0].id||("pg-field-"+cs[0].name.replace(/\[\]$/,"").replace(/[^A-Za-z0-9_-]+/g,"-")))+"-feedback",id=base,k=1;'
+         . 'while(document.getElementById(id))id=base+"-"+(++k);'
+         . 'fb=document.createElement("div");fb.id=id;fb.className="invalid-feedback d-block pg-inline-feedback";fb.setAttribute("data-pg-source","check");place(cs,fb);}'
+         . 'fb.textContent=say(cs,c);'
+         . 'cs.forEach(function(o){o.setAttribute("data-pg-checked","");o.setAttribute("aria-invalid","true");describe(o,fb.id,true);});};'
+         . 'var check=function(root,live){fields(root).forEach(function(cs){mark(cs,live);});};'
+         . 'form.pgFieldErrors=function(root){check(root||null,false);};'
          // A button carrying formnovalidate (a Cancel beside a required
          // field) submits without the check, as the browser itself would.
          . 'form.addEventListener("submit",function(e){'
          . 'if(e.submitter&&e.submitter.hasAttribute("formnovalidate"))return;'
-         . 'if(!form.checkValidity()){e.preventDefault();e.stopPropagation();'
+         . 'if(!form.checkValidity()){e.preventDefault();e.stopPropagation();check(null,false);'
          // Controls only: a <fieldset> holding an invalid control (a step,
-         // a box group) matches :invalid too and takes no focus.
+         // a box group) matches :invalid too and takes no focus. The text
+         // is in place first, so a screen reader reads it with the field.
          . 'var bad=form.querySelector("input:invalid,select:invalid,textarea:invalid");if(bad&&bad.focus)bad.focus();}'
          . 'form.classList.add("was-validated");},false);'
          // An image field (data-pg-image-preview) shows the chosen picture
@@ -2548,9 +2616,32 @@ function pg_cf_validation_script()
          . 'if((o.name!==id&&o.name!==id+"[]")||o.disabled)return;if((o.type==="radio"||o.type==="checkbox")&&!o.checked)return;'
          . 'var vals=(o.tagName==="SELECT")?Array.prototype.filter.call(o.options,function(p){return p.selected;}).map(function(p){return p.value;}):[o.value];'
          . 'vals.forEach(function(v){if(answers.indexOf(norm(v))!==-1)on=true;});});c.required=on;};'
-         . 'form.addEventListener("change",sync);form.addEventListener("input",sync);sync();});});};'
+         . 'form.addEventListener("change",sync);form.addEventListener("input",sync);sync();});'
+         // After the rules above, so a field shown or required by this
+         // change is read as it now is.
+         . 'var again=function(){check(null,true);};form.addEventListener("input",again);form.addEventListener("change",again);});};'
          . 'if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",bind);}else{bind();}'
          . '})();</script>';
+}
+
+/**
+ * The wording pg_cf_validation_script() gives a field the browser refuses,
+ * in the page's language; {label} stands for the field's label. The same
+ * sentences as the server's: pg_cf_required_message() for a missing answer,
+ * the e-mail check of a custom form for a malformed address.
+ *
+ * @return array<string, string>
+ */
+function pg_cf_validation_messages()
+{
+    return array(
+        'required'  => lang(array('string' => '{var:1} is required.', 'vars' => '{label}')),
+        'box'       => lang('Check this box to continue.'),
+        'email'     => lang(array('string' => 'Please enter a valid e-mail address for {var:1}', 'vars' => '{label}')),
+        'emailBare' => lang('Enter a valid e-mail address.'),
+        'fill'      => lang('Fill in this field.'),
+        'choose'    => lang('Choose one of the options.'),
+    );
 }
 
 /**
@@ -3103,14 +3194,23 @@ function pg_form_mark_invalid_controls(&$tree, $errors)
             $last = $controls[count($controls) - 1]['path'];
             // A check box or radio in a `form-check` row: the text goes last
             // in that row, after the label and anything after it (a privacy
-            // link), so the sentence and its link stay together.
+            // link), so the sentence and its link stay together. A control in
+            // an `input-group` (an e-mail box with its button): last in the
+            // group, which wraps it onto a line of its own (Bootstrap's
+            // has-validation) instead of putting it between box and button.
             $row_end = false;
-            if (count($last) > 0 && in_array($controls[count($controls) - 1]['type'], array('checkbox', 'radio'), true)) {
+            if (count($last) > 0) {
                 $parent_path = $last;
                 array_pop($parent_path);
-                $parent = _pg_form_node_at($tree, $parent_path);
+                $parent = &_pg_form_node_at($tree, $parent_path);
                 $pcls = isset($parent['props']['cssClass']) ? (string)$parent['props']['cssClass'] : '';
-                if (preg_match('/(^|\s)form-check(\s|$)/', $pcls) && !empty($parent['children'])) {
+                $check_row = in_array($controls[count($controls) - 1]['type'], array('checkbox', 'radio'), true)
+                    && preg_match('/(^|\s)form-check(\s|$)/', $pcls);
+                $input_group = (bool)preg_match('/(^|\s)input-group(\s|$)/', $pcls);
+                if (($check_row || $input_group) && !empty($parent['children'])) {
+                    if ($input_group && !preg_match('/(^|\s)has-validation(\s|$)/', $pcls)) {
+                        $parent['props']['cssClass'] = trim($pcls . ' has-validation'); /* @pg-site-output */
+                    }
                     $keys = array_keys($parent['children']);
                     $parent_path[] = end($keys);
                     $last = $parent_path;

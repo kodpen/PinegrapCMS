@@ -137,6 +137,7 @@
 - passkey-second-factor.md: A passkey alone is a second factor (PR #1862): pg_mfa_has_passkey/has_factor/gate_mode, the passkey-only verify screen, what still looks at TOTP only
 - passkey-sessions.md: Sessions opened with a passkey (PR #2250): auth_tokens.passkey_id (11.0.46), the sign-in mark, the session row on the account page, removing a passkey ends its sessions [decision: here]
 - passkey-without-totp.md: An account without TOTP (PR #2226): the e-mailed code (passkey.php email_code) and its purposes, recovery codes from the first passkey and new ones later, removing the last one [decision: here]
+- password-min-length.md: A chosen password needs 8 characters while Require Strong Password is off: pg_password_refusal() on sign-up, Set/Change Password, the installer
 - permission-columns.md: Adding a user right: column type and naming, the role-3 ladder files that must learn it, column probes, drawing it on the user screens, exact stored values, separate gates for a card and its links.
 - personal-data-erasure.md: privacy_erase.php (PR #1706): erasing one person after a dry run; whose records are taken, what is deleted and what is kept with personal fields replaced, the checks, the audit lines [decision: decisions-made-product.md]
 - personal-data-export.md: privacy_export.php (PR #938): one person's data as JSON and a PDF summary, how the person is found, what each section reads and masks, the role rule, the audit line
@@ -174,6 +175,7 @@
 - submitter-email-access.md: How a member gets a submitted form's rights by e-mail address (submitter or watcher) and why a blank address never matches
 - translation-attribute-texts.md: Translating worded attributes (alt, title, placeholder, aria-label, aria-description, tooltips): one list, every path that extracts them, the pass that draws them
 - translation-rules.md: Every visible string uses lang() (designer: _sdT()), English source as the key; keys added only with tools/tr_add.php; exact keys, placeholders, duplicates, misleading keys, check_lang
+- translation-sign-in-redirects.md: Sign-in redirects and Log Out keep the language of a page in /en/: pg_tr_script_url() adds pg_lang, _pg_sw_page_base() gives LANGUAGE_PATH (#9052)
 - translation-source-lang-mark.md: A node drawn untranslated on a page in another language carries lang="<source>" so the browser applies the source language's letter rules
 - translation-translatable-text.md: What pg_tr_translatable() counts as text to translate and what it leaves out as data (tokens, codes, Lorem ipsum, data: URIs, JSON, whole-value code); lone addresses stay
 - two-step-sign-in-expiry.md: Second step (mfa.php) and device-limit question that waited past 10 minutes: the reason on the origin sign-in screen, account name and send_to kept (PR #3309)

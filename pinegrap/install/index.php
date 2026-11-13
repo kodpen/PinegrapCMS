@@ -4331,6 +4331,10 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				if ($("#admin_password").val() && ($("#admin_password").val() !== $("#admin_confirm_password").val())) {
 					$("#admin_password, #admin_confirm_password").addClass("is-invalid").attr("aria-invalid", "true");
 					problems.push("' . escape_javascript(lang('The two administrator passwords you entered did not match.')) . '");
+				} else if ($("#admin_password").val() && (Array.from($("#admin_password").val()).length < ' . (int) pg_password_min_length() . ')) {
+					// The server counts characters (mb_strlen()), so an emoji is one.
+					$("#admin_password, #admin_confirm_password").addClass("is-invalid").attr("aria-invalid", "true");
+					problems.push("' . escape_javascript(pg_password_refusal('', false, '')) . '");
 				}
 			}
 
@@ -5474,6 +5478,26 @@ else {
 			if ($liveform->get_field_value('admin_password') != $liveform->get_field_value('admin_confirm_password')) {
 
 				$liveform->mark_error('admin_password', lang('The two administrator passwords you entered did not match.'));
+
+				$liveform->mark_error('admin_confirm_password');
+
+				$liveform->assign_field_value('admin_password', '');
+
+				$liveform->assign_field_value('admin_confirm_password', '');
+
+			}
+
+		}
+
+		// The administrator's password has the site's minimum length: a new
+		// site starts with Require Strong Password off (pg_password_refusal()).
+		if (($liveform->check_field_error('admin_password') == false) && ($liveform->check_field_error('admin_confirm_password') == false)) {
+
+			$admin_password_refusal = pg_password_refusal($liveform->get_field_value('admin_password'), false, '');
+
+			if ($admin_password_refusal !== '') {
+
+				$liveform->mark_error('admin_password', $admin_password_refusal);
 
 				$liveform->mark_error('admin_confirm_password');
 

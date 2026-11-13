@@ -383,6 +383,7 @@
 - express-order-legal-documents.md: Checkout document boxes and KVKK lines in the designer's express order tree: legal_* field bindings, has_legal_documents / has_legal_kvkk* flags, __legal_* tokens, sentence split of the label
 - folder-view-widget.md: The Folder View widget (classic "folder view" page type): settings and their fallback, the folder tree as a main loop plus nested folder_view.children lists, row tokens, flags, what is left out.
 - form-feed-item-guid-enclosure.md: A form feed item's guid is unique per record (permalink with a detail page, page#code without one); a typed media address gets length 0 and a type from its extension, or no enclosure
+- form-field-errors-before-sending.md: A designed form field the browser refuses says what is wrong in text beside it, linked by aria-describedby: pg_cf_validation_script() (#9054)
 - form-field-errors.md: Which controls a refused server submission marks (is-invalid, aria-invalid, linked invalid-feedback) on designed forms, member widgets and classic liveform fields (#4458).
 - form-item-ai-summary.md: AI on a designed form item view (2026.4.8): four assistant links and when they fill, the prompt setting, the in-browser summary wired by bindings, why the box is an aside, the translator bridge.
 - form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1 [decision: here]
@@ -514,6 +515,7 @@
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.
 - site-search-index-text.md: What text the site search index stores for a drawn page: main content only, no cookie window, shared header/menu/footer or link addresses (#4096)
 - site-search-query-and-freshness.md: Site search: the query text in MATCH, the binned and archived page filter (advanced and simple), record and file labels, the index made due after a template install (#3550, #3551, #3552)
+- site-search-skipped-pages.md: Visual-editor pages site search never lists as items (bare product, record, error, checkout and order pages): pg_search_index_skipped_widget_types() (#9053)
 - site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search does not fold yet [decision: decisions-made-product-10.md]
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - store-template-front-end.md: Store template front-end fixes (#3621): footer contact column, no card hint at checkout, product tabs on one line, the product page's edit pencil on the widget and clear of headings.
