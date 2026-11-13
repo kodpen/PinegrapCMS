@@ -644,6 +644,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-kill-switch-and-monitor-mode.md: waf_enabled=0 stops everything (absolute kill switch), monitor mode guarantee in waf_deny(), hand-written bans apply in every mode, automatic bans not in Monitor mode.
 - waf/waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
+- workflow/agent-channel-language.md: The language of the agent channel (owner, 2026-11-13): agents write English to each other; only the architect writes Turkish there, and only when it speaks with the owner
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
 - workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests; a person's or an agent's message makes the request), on text and changes, the handles typed in it
 - workflow/architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
