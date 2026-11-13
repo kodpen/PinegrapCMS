@@ -3645,6 +3645,27 @@ function pg_menu_icon($name, $color_class = '', $space = 'me-3')
                 '</g>';
             break;
 
+        case 'flows':
+            // Automation flows: a start, a step and an end on a path (accent),
+            // and a dot that follows it. At rest the dot sits in the end; it
+            // runs the path once on hover, and slowly round while a flow runs
+            // (the row's data-pg-flows-running, output_menu()). Its place is
+            // a transform, which the movements in backend.src.css replace.
+            $body =
+                '<circle' . $d . ' cx="5.2" cy="6" r="2.7"/>' .
+                '<circle cx="5.2" cy="6" r="2.7"/>' .
+                '<g class="pg-mi-step">' .
+                '<rect' . $d . ' x="9.2" y="9.2" width="5.6" height="5.6" rx="1.7"/>' .
+                '<rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1.7"/>' .
+                '</g>' .
+                '<circle' . $d . ' cx="18.8" cy="18" r="2.7"/>' .
+                '<circle cx="18.8" cy="18" r="2.7"/>' .
+                '<g class="pg-mi-a">' .
+                '<path d="M7.9 6H10a2 2 0 0 1 2 2v1.2M12 14.8V16a2 2 0 0 0 2 2h2.1"/>' .
+                '<circle class="pg-mi-dot"' . $f . ' r="1.5" transform="translate(18.8 18)"/>' .
+                '</g>';
+            break;
+
         case 'workspace':
             $bubble = 'M6.5 4h11A2.5 2.5 0 0 1 20 6.5V14a2.5 2.5 0 0 1-2.5 2.5h-7l-4 3.3v-3.3A2.5 2.5 0 0 1 4 14V6.5A2.5 2.5 0 0 1 6.5 4z';
             $body =
@@ -4566,9 +4587,14 @@ function output_menu($properties = false)
 
     }
 
+    // The Automation flows row (slot 26, built below in id order), asked
+    // here because the Workspace list leaves the Flows screen to it.
+    $menu_flows = pg_flows_menu_row($user);
+
     // WORKSPACE. Slot 23, under the same never-reused rule as the ERP's 22. The
     // module file is loaded only here and only when the module is on, so a
-    // site that never switches it on pays nothing on every panel page.
+    // site that never switches it on pays nothing on every panel page (but
+    // for the flows row's gate, pg_flows_menu_row()).
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && (($user['role'] < 3) || (defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE))) {
 
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
@@ -4593,6 +4619,12 @@ function output_menu($properties = false)
             // by counting its links.
             $menu_items[23]['panel'] = true;
             $ws_side_screen = ($toolbar == true) ? '' : ws_side_screen($_SERVER['SCRIPT_NAME'] ?? '');
+
+            // The Flows screen lights its own row and leaves the list shut;
+            // the list keeps its link to it.
+            if (($ws_side_screen === 'flows') && ($menu_flows !== null)) {
+                $ws_side_screen = '';
+            }
 
             if ($ws_side_screen !== '') {
                 pg_menu_navigator(true);
@@ -4673,6 +4705,28 @@ function output_menu($properties = false)
         $menu_items[25]['context'] = true;
         $menu_items[25]['data-bs-content'] = $menu_tools['entries'];
         $menu_panels_nested .= $menu_tools['panels'];
+    }
+
+    // AUTOMATION FLOWS. Slot 26, the next free one (22 to 25 are taken, the
+    // retired slots are never reused), drawn at the top between the Dashboard
+    // and the Workspace (pg_menu_categories()). One screen, so no panel; the
+    // Workspace list keeps its Flows link to the same screen. Flows run with
+    // the Workspace on or off, and the row follows the screen's gate
+    // (pg_flows_menu_row()). Beside it the flows running now, as a quiet
+    // count rather than the red pill: nothing there asks to be acted on; the
+    // icon moves slowly while there are some (backend.src.css).
+    if ($menu_flows !== null) {
+        $menu_items[26]['id'] = 26;
+        $menu_items[26]['href'] = 'workspace_flows.php';
+        $menu_items[26]['menu_icon'] = 'flows';
+        $menu_items[26]['color_class'] = 'workspace-color';
+        $menu_items[26]['title'] = 'Automation flows';
+        $menu_items[26]['live'] = $menu_flows['running'];
+        $menu_items[26]['live_title'] = lang(array('string' => '{var:1} flow(s) running now', 'vars' => $menu_flows['running']));
+
+        if ($menu_flows['running'] > 0) {
+            $menu_items[26]['row_attributes'] = ' data-pg-flows-running';
+        }
     }
 
     // get the name of the PHP script that was just accessed in order to determine which tab should be highlighted
@@ -4835,7 +4889,6 @@ function output_menu($properties = false)
         case 'workspace_board.php':
         case 'workspace_calendar.php':
         case 'workspace_timeline.php':
-        case 'workspace_flows.php':
         case 'workspace_mcp.php':
         case 'workspace_settings.php':
         case 'settings_workspace_team.php':
@@ -4850,6 +4903,11 @@ function output_menu($properties = false)
         case 'workspace_notes.php':
             // Pinned to the menu, My Notes lights its own row.
             $active_menu = isset($menu_items[24]) ? 24 : 23;
+            break;
+        case 'workspace_flows.php':
+            // Its own row; the Workspace's on a site whose database has no
+            // flows yet, where the screen opens with the Workspace alone.
+            $active_menu = isset($menu_items[26]) ? 26 : 23;
             break;
         case 'view_orders.php':
         case 'view_order.php':
@@ -5141,7 +5199,8 @@ function output_menu($properties = false)
         // draws nothing: an empty pill would read as "something".
         // The panel's entry that the count is about carries the same pill, so
         // an opened row says where the number comes from.
-        $output_menu_item_badge = pg_menu_count_badge($options['badge'] ?? 0, $options['badge_title'] ?? '');
+        $output_menu_item_badge = pg_menu_count_badge($options['badge'] ?? 0, $options['badge_title'] ?? '')
+            . pg_menu_live_count($options['live'] ?? 0, $options['live_title'] ?? '');
 
         // A row with a panel keeps its address, so a middle click or "open in
         // a new tab" still reaches its screen; a plain click opens the panel
@@ -5260,7 +5319,9 @@ function pg_menu_explorer_side($area, $user, $toolbar, &$menu_tail)
 function pg_menu_categories()
 {
     return array(
-        ''           => array('label' => '', 'slots' => array(0, 23, 24)),
+        // Automation flows (26) between the Dashboard and the Workspace: they
+        // reach every part of the site, so they sit under no heading.
+        ''           => array('label' => '', 'slots' => array(0, 26, 23, 24)),
         'content'    => array('label' => 'Content', 'slots' => array(2, 1, 4, 5)),
         'design'     => array('label' => 'Design', 'slots' => array(21)),
         'ecommerce'  => array('label' => 'Ecommerce', 'slots' => array(10, 11, 12, 14, 15)),
@@ -5579,6 +5640,36 @@ function pg_menu_count_badge($count, $title = '')
     $title = (string) $title;
 
     return '<span class="pg-menu-badge badge rounded-pill theme-danger"' . (($title !== '') ? ' title="' . h($title) . '"' : '') . '>' . (($count > 99) ? '99+' : (string) $count) . '</span>';
+}
+
+/**
+ * The quiet count of a menu row: how many of something are going on now
+ * (the Automation flows row's flows running), which asks nothing of the
+ * person, so a small dot and the number in the label's second shade, never
+ * the red pill. On the rail only the dot shows, on the icon's corner
+ * (backend.src.css); the words are there for a screen reader.
+ *
+ * Zero or less draws nothing, like pg_menu_count_badge().
+ *
+ * @param mixed  $count
+ * @param string $title the words for the count, its hover text
+ * @return string
+ */
+function pg_menu_live_count($count, $title = '')
+{
+    $count = is_numeric($count) ? (int) $count : 0;
+
+    if ($count <= 0) {
+        return '';
+    }
+
+    $title = (string) $title;
+    $shown = ($count > 99) ? '99+' : (string) $count;
+
+    return '<span class="pg-menu-live"' . (($title !== '') ? ' title="' . h($title) . '"' : '') . '>'
+        . '<span class="pg-menu-live-n"' . (($title !== '') ? ' aria-hidden="true"' : '') . '>' . $shown . '</span>'
+        . (($title !== '') ? '<span class="visually-hidden">' . h($title) . '</span>' : '')
+        . '</span>';
 }
 
 /**

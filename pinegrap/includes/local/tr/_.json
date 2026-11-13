@@ -1001,6 +1001,7 @@
     "{var:1} finished a task you created": "{var:1}, oluşturduğunuz bir görevi bitirdi",
     "{var:1} finished earlier": "Daha önce biten {var:1} görev",
     "{var:1} finished this week": "bu hafta {var:1} biten",
+    "{var:1} flow(s) running now": "Şu an çalışan akış: {var:1}",
     "{var:1} folder(s)": "{var:1} klasör",
     "{var:1} folder(s) and file(s) are writable now.": "{var:1} klasör ve dosya artık yazılabilir.",
     "{var:1} folder(s) and their contents will be moved to the Recycle Bin.": "{var:1} klasör, içerikleriyle birlikte Geri Dönüşüm Kutusuna taşınacak.",

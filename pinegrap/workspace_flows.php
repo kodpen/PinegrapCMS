@@ -2,14 +2,14 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - flows: the list of the person's flows and of the live ones
- * their channels may run, and the canvas a flow is drawn on (boxes and the
- * arrows between them), saved as a draft and published. Staff build
- * flows; somebody who may only run one sees it without editing. Drawn by
- * assets/js/workspace_flow.js; what it may do is decided by
- * includes/workspace/flows.php. It opens with the Workspace switched off
- * too, once flows run on the site (ws_screen_gate()), without what lives in
- * a channel.
+ * Automation flows, the main menu's row of that name: the list of the
+ * person's flows and of the live ones their channels may run, and the
+ * canvas a flow is drawn on (boxes and the arrows between them), saved as a
+ * draft and published. Staff build flows; somebody who may only run one
+ * sees it without editing. Drawn by assets/js/workspace_flow.js; what it
+ * may do is decided by includes/workspace/flows.php. It opens with the
+ * Workspace switched off too, once flows run on the site
+ * (ws_screen_gate()), without what lives in a channel.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -26,10 +26,10 @@ $viewer = ws_screen_gate($user, true);
 
 echo
 pg_page_shell([
-        'title' => lang('Flows'),
+        'title' => lang('Automation flows'),
         'extra classes' => 'workspace workspace_flows',
         'icon' => 'workspace',
-        'heading' => lang('Flows'),
+        'heading' => lang('Automation flows'),
         'heading_description' => lang('A process drawn as boxes and arrows: what starts it and the tasks that follow one another.'),
         'cancel' => false,
     ]) . '

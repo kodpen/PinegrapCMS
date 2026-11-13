@@ -5,7 +5,7 @@ description: Tools tiles and More in the Workspace list (#3817, #6281): places (
 
 ## Which places are tiles, which wait behind More?
 - `ws_nav_groups()`: `tools` = My Tasks (a place over the channels until #6281), My Notes, Tables, Flows, Work Calendar, Planning Board, Decision Timeline, E-mails, each under its gate, in that order; `more` = Scheduled actions or messages, My MCP connections, Calendar subscription, Archived channels, Private channels (staff). `work` and `records` are gone; `ws_nav_group_titles()` names Tools and More (`tests/workspace_nav_tools_test.php`).
-- A tile shows `short` (Calendar, Board, Decisions) or else the label; the full label is its title and `data-pg-menu-label`. `ws_side_nav()` passes `short` on. Short names keep a tile's name whole in the 250px menu with a scrollbar.
+- A tile shows `short` (Flows for Automation flows, Calendar, Board, Decisions) or else the label; the full label is its title and `data-pg-menu-label`. `ws_side_nav()` passes `short` on. Short names keep a tile's name whole in the 250px menu with a scrollbar.
 
 ## How is it drawn?
 - `.ws-side-tiles`: a two-column grid of `.ws-side-tile` links (`data-ws-nav`), the icon in the colour its row had (the `:is(.ws-channel-link, .ws-side-tile)[data-ws-nav]` rules, a lighter tone in the dark theme; Tables and E-mails got theirs; `tests/panel_contrast_test.php` reads them), else `--pg-fg-2`.
