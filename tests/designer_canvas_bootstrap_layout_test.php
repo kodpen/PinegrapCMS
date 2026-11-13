@@ -208,7 +208,7 @@ function test_designer_canvas_row_cols_widths_follow_bootstrap()
 	if ($text === null) {
 		return;
 	}
-	$el = ':not([class*="col-"]):not(.sd-tb):not(.sd-persistent-note):not(.sd-issue-badge)';
+	$el = ':not([class*="col-"]):not(.sd-tb):not(.sd-persistent-note):not(.sd-issue-badge):not(.sd-chip-row)';
 	$breakpoints = array('' => 0, '-sm' => 576, '-md' => 768, '-lg' => 992, '-xl' => 1200, '-xxl' => 1400);
 	foreach ($breakpoints as $infix => $min) {
 		foreach (array('auto', '1', '2', '3', '4', '5', '6') as $n) {
@@ -234,7 +234,7 @@ function test_designer_canvas_row_child_full_width_with_zero_specificity()
 	if ($text === null) {
 		return;
 	}
-	$decls = _test_canvas_bs_decls($text, ':where(.row > .sd-wrap:not([data-sd-type="col"]) > :not(.sd-tb):not(.sd-persistent-note):not(.sd-issue-badge))');
+	$decls = _test_canvas_bs_decls($text, ':where(.row > .sd-wrap:not([data-sd-type="col"]) > :not(.sd-tb):not(.sd-persistent-note):not(.sd-issue-badge):not(.sd-chip-row))');
 	pg_assert_true($decls !== null, 'the canvas sizes a row child across its wrapper');
 	pg_assert_contains('flex-shrink:0', $decls);
 	pg_assert_contains('width:100%', $decls);
