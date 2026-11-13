@@ -9,8 +9,7 @@ description: Steps CV1-CV8 of plans/agent-canvas-design.md: an SVG taken apart, 
 - CV1 (M) One SVG taken apart. Done in #8799: `workspace/agent-canvas-layers.md`.
 - CV2 (M) Text and pictures as their own layers. Done in #8823: `workspace/agent-canvas-split-parts.md`.
 - CV3 (M) Layer writes. Done in #8834: `workspace/agent-canvas-layer-writes.md`.
-- CV4 (S) Sizes and scenes. `free` once #8834 lands.
-  - `size` by name from the New image dialog's presets (`M.BOARD_PRESETS`), `background`. Scenes: add, choose, remove, a transition (`ui/image-editor-scenes.md`); at most 30.
+- CV4 (S) Sizes and scenes. Done in #9167: `workspace/agent-canvas-scenes.md`, the cluster's start file `workspace/agent-canvas-overview.md`.
 - CV5 (M) Templates. Done in #8959: `workspace/agent-canvas-templates.md`.
 - CV6 (M) The server draws where it can. Done in #9049: `platform/image-server-draw.md`, `platform/image-server-draw-fidelity.md`, `workspace/agent-canvas-picture.md`.
 - CV7 (M) Saving into Files. Done in #8948: `workspace/agent-canvas-save.md`.

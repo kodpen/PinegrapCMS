@@ -21,6 +21,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_svg.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_layer_write.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_board.php');
 
 /**
  * The operations an edit takes.
@@ -29,7 +30,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_layer_write.php');
  */
 function ws_canvas_edit_ops()
 {
-    return array('add', 'replace', 'remove', 'text', 'box', 'svg', 'style', 'order', 'name', 'lock');
+    return array('add', 'replace', 'remove', 'text', 'box', 'svg', 'style', 'order', 'name', 'lock', 'size', 'background', 'scene');
 }
 
 /**
@@ -211,6 +212,12 @@ function ws_canvas_edit_split_mode($op)
  *   name     layer, name
  *   lock     layer, locked (true or false; also on a locked layer)
  *
+ *   size       preset, or width and height: the board, around its middle
+ *   background background: the open scene's, #rrggbb or transparent
+ *   scene      action add, choose, remove, transition or duration
+ *              (canvas_board.php); the layer operations work on the open
+ *              scene
+ *
  * add takes type: svg (the default), text, picture, shape or icon
  * (canvas_layer_write.php), and name and lock for any of them.
  * add and svg take layers: split for a layer per top-level element
@@ -261,6 +268,17 @@ function ws_canvas_edit_apply($doc, $operations, $resolve = null, $file = null)
             }
 
             $doc = json_decode(json_encode($made['doc']), true);
+            continue;
+        }
+
+        if (in_array($kind, array('size', 'background', 'scene'), true)) {
+            $changed = ($kind === 'size') ? ws_canvas_board_size($doc, $op) : (($kind === 'background') ? ws_canvas_board_background($doc, $op) : ws_canvas_board_scene($doc, $op));
+
+            if (!is_array($changed)) {
+                return $fail($changed, $i);
+            }
+
+            $doc = $changed;
             continue;
         }
 
@@ -535,7 +553,7 @@ function ws_canvas_edit_error_text($error)
         case 'too_many':
             return lang(array('string' => 'At most {var:1} operations at once.', 'vars' => ws_canvas_edit_max_ops()));
         case 'op':
-            return lang('An operation is one of add, replace, remove, text, box, svg, style, order, name or lock.');
+            return lang('An operation is one of add, replace, remove, text, box, svg, style, order, name, lock, size, background or scene.');
         case 'layer':
             return lang('That layer is not on the canvas.');
         case 'locked':
@@ -568,6 +586,14 @@ function ws_canvas_edit_error_text($error)
             return lang('A name is 1 to 80 letters that no other layer has as its name or id.');
         case 'lock':
             return lang('locked is true or false.');
+        case 'size':
+            return lang('A size is a preset (square, portrait, story, share or banner), or a width and a height of 16 to 8000 pixels.');
+        case 'background':
+            return lang('A background is #rrggbb or transparent.');
+        case 'scene':
+            return lang('A scene operation is add, choose, remove, transition or duration, its scene named by its id or its name; a canvas of one scene has none to choose or remove.');
+        case 'scenes':
+            return lang(array('string' => 'A canvas holds at most {var:1} scenes.', 'vars' => ws_canvas_board_scene_max()));
         case 'layers':
             return ws_canvas_from_svg_error_text('layers');
         default:

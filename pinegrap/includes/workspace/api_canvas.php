@@ -72,7 +72,7 @@ function ws_canvas_api_routes()
             'handler'     => 'ws_api_canvas_get',
             'returns'     => ws_api_canvas_returns(),
             'summary'     => 'Read the canvas of a message',
-            'description' => 'The canvas a message carries, drawn by an agent or by a person in the image editor: its artboard, the address of its picture (an agent that sees pictures looks at it too; pending until the server or a member\'s browser has drawn it), the number of its newest version and who made each version kept, and its layers from the bottom up - each with its id, kind, box on the artboard and name (null when it has none); a text layer\'s text and colour; an svg layer\'s markup. A message whose picture is no canvas, or was changed outside the editor since, answers 404 not_found.',
+            'description' => 'The canvas a message carries, drawn by an agent or by a person in the image editor: its artboard, the address of its picture (an agent that sees pictures looks at it too; pending until the server or a member\'s browser has drawn it), the number of its newest version and who made each version kept, and its layers from the bottom up - each with its id, kind, box on the artboard and name (null when it has none); a text layer\'s text and colour; an svg layer\'s markup. A canvas of two scenes or more (a presentation) lists them in scenes in playing order - id, name, whether it is open, its number of layers, background, duration in ms and the transition into the next one - and its layers are the open scene\'s; scenes is empty for a canvas of one scene. A message whose picture is no canvas, or was changed outside the editor since, answers 404 not_found.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -88,14 +88,15 @@ function ws_canvas_api_routes()
             'dry_run'      => true,
             'returns'      => ws_api_canvas_returns(),
             'summary'      => 'Edit a canvas in place',
-            'description'  => 'Changes a canvas of the channel - an agent\'s or a person\'s - with operations applied in order to its newest version, all or none: add (svg; x, y, w, h, rot optional: a new layer on top, its own size made to fit and centred when no box is given; layers split: a layer per top-level element, placed where that one layer would have been), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional: a text layer\'s words), box (layer; any of x, y, w, h, rot: move, resize or turn a layer), svg (svg; background and layers optional: the whole canvas anew), style (layer and the look to change: a text\'s font, size, weight, italic, align, color, bg, lineHeight, spacing; a shape\'s color, fill none, solid or soft, stroke, dash solid, dashed or dotted, radius; an icon\'s color; any layer\'s opacity 0 to 1), order (layer, to front, back, above or below, target for above and below), name (layer, name: 1 to 80 letters no other layer has) and lock (layer, locked true or false; the only change a locked layer takes besides its name). add also takes type: text (text; font from GET /workspace/canvas/fonts, size, weight, italic, align, color, bg, lineHeight, spacing), picture (file_id or file, the address of a file of this channel, or with files:read of a public file), shape (shape rectangle or ellipse with x, y, w, h, or line with x1, y1, x2, y2; color, fill, stroke, dash, radius) or icon (icon, a Bootstrap Icons name such as bar-chart; color); the look\'s defaults are the image editor\'s, a layer without x and y is centred; and name and lock for any type. A layer is named by its id, or by its name when one layer alone has it. Layer ids and the version come from GET /workspace/messages/{id}/canvas. version is the newest version you read: when somebody saved since, the call answers 409 conflict; read again and redo. The edit is a new version made by the agent, kept with the original and the last ten; its picture is pending again until a member\'s browser draws it, or drawn at once where the server draws it. The message counts as changed, so changed_since on GET /workspace/channels/{id}/messages and changed in GET /workspace/sync bring it again with file.canvas at the new version, and once more each time its picture is drawn. A person whose canvas an agent edited is told. Only an agent of the channel edits, as for POST /workspace/channels/{id}/canvases (403 forbidden). A refused operation answers 422 validation_failed on operations, its message naming the operation by its place (from 0); a locked layer is not changed. PATCH is accepted as well.',
+            'description'  => 'Changes a canvas of the channel - an agent\'s or a person\'s - with operations applied in order to its newest version, all or none: add (svg; x, y, w, h, rot optional: a new layer on top, its own size made to fit and centred when no box is given; layers split: a layer per top-level element, placed where that one layer would have been), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional: a text layer\'s words), box (layer; any of x, y, w, h, rot: move, resize or turn a layer), svg (svg; background and layers optional: the whole canvas anew), style (layer and the look to change: a text\'s font, size, weight, italic, align, color, bg, lineHeight, spacing; a shape\'s color, fill none, solid or soft, stroke, dash solid, dashed or dotted, radius; an icon\'s color; any layer\'s opacity 0 to 1), order (layer, to front, back, above or below, target for above and below), name (layer, name: 1 to 80 letters no other layer has) and lock (layer, locked true or false; the only change a locked layer takes besides its name); size (preset square 1080 x 1080, portrait 1080 x 1350, story 1080 x 1920, share 1200 x 630 or banner 1920 x 600, or width and height of 16 to 8000: the board keeps its middle, every layer of every scene stays where it is on it), background (background #rrggbb or transparent: the open scene\'s) and scene (action add with copy, name and duration optional: a new scene after the open one, empty or a copy of it, opened; choose (scene): open it; remove (scene), never the only one; transition (scene optional, the open one; kind none, fade, slide, zoom or wipe; ms 100 to 2000): the move into the next scene; duration (scene optional; duration 1000 to 60000 ms)). A canvas holds at most 30 scenes; a scene is named by its id or its name; the layer operations work on the open scene. add also takes type: text (text; font from GET /workspace/canvas/fonts, size, weight, italic, align, color, bg, lineHeight, spacing), picture (file_id or file, the address of a file of this channel, or with files:read of a public file), shape (shape rectangle or ellipse with x, y, w, h, or line with x1, y1, x2, y2; color, fill, stroke, dash, radius) or icon (icon, a Bootstrap Icons name such as bar-chart; color); the look\'s defaults are the image editor\'s, a layer without x and y is centred; and name and lock for any type. A layer is named by its id, or by its name when one layer alone has it. Layer ids and the version come from GET /workspace/messages/{id}/canvas. version is the newest version you read: when somebody saved since, the call answers 409 conflict; read again and redo. The edit is a new version made by the agent, kept with the original and the last ten; its picture is pending again until a member\'s browser draws it, or drawn at once where the server draws it. The message counts as changed, so changed_since on GET /workspace/channels/{id}/messages and changed in GET /workspace/sync bring it again with file.canvas at the new version, and once more each time its picture is drawn. A person whose canvas an agent edited is told. Only an agent of the channel edits, as for POST /workspace/channels/{id}/canvases (403 forbidden). A refused operation answers 422 validation_failed on operations, its message naming the operation by its place (from 0); a locked layer is not changed. PATCH is accepted as well.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'version', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The newest version you read.'),
                 array('name' => 'operations', 'in' => 'body', 'type' => 'list', 'of' => array('op' => 'string', 'layer' => 'string', 'type' => 'string', 'svg' => 'string', 'text' => 'string', 'color' => 'string', 'background' => 'string', 'layers' => 'string', 'x' => 'number', 'y' => 'number', 'w' => 'number', 'h' => 'number', 'rot' => 'number',
                     'font' => 'string', 'size' => 'number', 'weight' => 'integer', 'italic' => 'boolean', 'align' => 'string', 'bg' => 'string', 'lineHeight' => 'number', 'spacing' => 'number', 'opacity' => 'number',
                     'shape' => 'string', 'fill' => 'string', 'stroke' => 'number', 'dash' => 'string', 'radius' => 'number', 'x1' => 'number', 'y1' => 'number', 'x2' => 'number', 'y2' => 'number',
-                    'icon' => 'string', 'file' => 'string', 'file_id' => 'integer', 'name' => 'string', 'lock' => 'boolean', 'locked' => 'boolean', 'to' => 'string', 'target' => 'string'), 'max_items' => 20, 'required' => true, 'description' => 'Objects of {op, ...}, applied in order; see the description.'),
+                    'icon' => 'string', 'file' => 'string', 'file_id' => 'integer', 'name' => 'string', 'lock' => 'boolean', 'locked' => 'boolean', 'to' => 'string', 'target' => 'string',
+                    'preset' => 'string', 'width' => 'integer', 'height' => 'integer', 'action' => 'string', 'scene' => 'string', 'copy' => 'boolean', 'kind' => 'string', 'ms' => 'integer', 'duration' => 'integer'), 'max_items' => 20, 'required' => true, 'description' => 'Objects of {op, ...}, applied in order; see the description.'),
             ),
         ),
 
@@ -177,6 +178,15 @@ function ws_api_canvas_returns()
             'color'  => 'string?',
             'markup' => 'string?',
         )),
+        'scenes'     => array(array(
+            'id'         => 'string',
+            'name'       => 'string?',
+            'open'       => 'boolean',
+            'layers'     => 'integer',
+            'background' => 'string',
+            'duration'   => 'integer',
+            'transition' => array('kind' => 'string', 'ms' => 'integer'),
+        )),
         'versions'   => array(array(
             'version'    => 'integer',
             'source'     => 'string',
@@ -250,7 +260,7 @@ function ws_canvas_layer_read($layer)
  * @param mixed   $doc      the newest version's document, decoded as arrays
  * @param array[] $versions file_versions rows, oldest first, each with an
  *                          agent's document decoded as doc when it is one
- * @return array artboard, picture, version, layers, versions
+ * @return array artboard, picture, version, layers (the open scene's), scenes, versions
  */
 function ws_canvas_read($doc, $versions)
 {
@@ -292,6 +302,7 @@ function ws_canvas_read($doc, $versions)
         'picture'  => ws_canvas_doc_pending($doc, $last ? (string) $last['source'] : 'agent') ? 'pending' : 'drawn',
         'version'  => $last ? (int) $last['version_no'] : 0,
         'layers'   => $layers,
+        'scenes'   => ws_canvas_board_scenes_read($doc),
         'versions' => $made,
     );
 }
