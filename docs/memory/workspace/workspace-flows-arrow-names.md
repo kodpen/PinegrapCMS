@@ -10,7 +10,7 @@ description: Flow canvas: an arrow's outcome name on a pill at its middle (edgeN
 
 ## How is the name drawn?
 - `edgePill()`: an SVG `rect.pgc-edge-pill` (18 px high, `rx` 9, its width the text's measured length + 14, else 6.2 px a letter when the canvas is hidden) under `text.pgc-edge-label` at the arrow's middle (`path.mx`, `path.my` of `canvas.edge()`), both inside the arrow's group, so a click on the pill chooses the arrow.
-- The pill is the canvas's background with the arrow's line colour as its border; a chosen arrow's pill takes the accent, an arrow the server names in a problem (`wsf-bad`) the danger colour (backend.src.css, beside `.pgc-edge-label`).
+- The pill is the canvas's background with the panel's border colour; a chosen arrow's pill takes the accent, an arrow the server names in a problem (`wsf-bad`) the danger colour (backend.src.css, beside `.pgc-edge-label`).
 - The scheduled-action window's small drawing (`.pgc-edge-label` beside the box it leads to) is not a pill and stays as it was.
 
 ## And the warning mark?
