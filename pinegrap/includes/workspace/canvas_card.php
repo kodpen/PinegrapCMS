@@ -207,7 +207,8 @@ function ws_canvas_part_restore($viewer, $message, $part, $version)
     }
 
     // Written in the file directory, as the picture's take writes it.
-    $path = FILE_DIRECTORY_PATH . '/' . basename((string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'"));
+    $name = basename((string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'"));
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
 
     if (!pg_image_editor_put($path, $data) || !pg_file_versions_add($file_id, $path, (string) $row['doc_json'], 'restore', (int) $viewer['id'], (int) $row['redacted'] === 1)) {
         return $refuse(lang('The file could not be saved.'));
