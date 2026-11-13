@@ -152,6 +152,16 @@ function test_a11y_link_name_and_generic_text()
 	pg_assert_same('devamını oku', $findings['a11y_link_generic']['detail']);
 }
 
+function test_a11y_link_generic_text_in_turkish_capitals()
+{
+	// mb_strtolower() folds I to i and İ to i plus a combining dot, so the
+	// capitals of tıkla, incele and devamını oku never met the word list.
+	$html = a11y_test_page('<a href="/a">TIKLAYIN</a><a href="/b">İNCELE</a><a href="/c">DEVAMINI OKU</a><a href="/d">CLICK HERE</a>');
+	$findings = pg_a11y_check_html($html);
+
+	pg_assert_same(4, isset($findings['a11y_link_generic']) ? $findings['a11y_link_generic']['occurrences'] : 0);
+}
+
 function test_a11y_button_name()
 {
 	$html = a11y_test_page('<button class="btn btn-close"></button><button aria-label="Kapat"><i class="bi bi-x"></i></button>'
