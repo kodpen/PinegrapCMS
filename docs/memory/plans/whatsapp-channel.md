@@ -1,15 +1,15 @@
 ---
 name: whatsapp-channel
-description: Plan (owner 2026-11-12, #8950): WhatsApp as a message channel beside e-mail for orders, forms and flows; the site's own Meta app, templates designed in the panel, offer codes; what binds every step
+description: Plan (owner 2026-11-12, #8950; 2026-11-13, #9151): WhatsApp beside e-mail for orders, forms and flows, own Meta app, templates, offer codes; customers' WhatsApp and SMS answered in a channel
 ---
 
 ## What is asked?
-- Owner (2026-11-12): "sms türkiye için zorlayıcı oldu artık ilerişim eposta + whatsapp oldu o yüzden whatsapp entegrasyonunu geliştirelim sipariş ve formlar için olanak açalım". Record: `workflow/decisions-made-product-47.md`. Steps: `whatsapp-channel-steps.md`.
+- Owner (2026-11-12): "sms türkiye için zorlayıcı oldu artık ilerişim eposta + whatsapp oldu o yüzden whatsapp entegrasyonunu geliştirelim sipariş ve formlar için olanak açalım". Record: `workflow/decisions-made-product-47.md`. Steps: `whatsapp-channel-steps.md`, `whatsapp-channel-steps-2.md`.
 - Today WhatsApp is only a share button. This plan replaces the WhatsApp line of `reverse-oauth-leftovers.md`.
 
 ## What did the owner decide?
 - W1a: a site connects with its own Meta app and a permanent token; the settings card walks through the steps. No Kodpen app in between.
-- W2a: a customer's reply shows as a bell notice and in the contact's history. Answering from the panel comes later; so does a shared inbox (`workspace/mail-decisions.md` keeps WhatsApp out of the mailbox).
+- W2a: a customer's reply shows as a bell notice and in the contact's history. Since 2026-11-13 (#9151) it also lands in a channel and is answered there as an e-mail is, and an SMS too: steps WA12 on, `whatsapp-channel-steps-2.md`.
 - W3a: the first scope is one message to one person: order moments, a form's message to its sender, a flow's step. A campaign to many at once comes later, with its own consent decision.
 - Şa: templates are designed in the panel as drawn (`plans/whatsapp-channel/template-designer.html`, pictures beside it; the phone part is `plans/whatsapp-channel/wa-phone.css`): a preview as on a phone, a header (text, image, video, document), the message with variables, a footer, up to three buttons (link, copy code, quick reply), then sent to WhatsApp for approval.
 - Ka: an offer code can go in a message, as the offer's shared code or as a key for each recipient. A marketing-type template goes only to a contact who gave marketing consent, and only one by one.
@@ -25,4 +25,4 @@ description: Plan (owner 2026-11-12, #8950): WhatsApp as a message channel besid
 - Seen on a sandbox with a test number of Meta's; what could not be reached is named in the PR.
 
 ## What is not in this plan?
-- Campaigns to many, answering from the panel, a shared inbox, a chat button's widget, the catalog and Meta's other products, Kodpen's own verified app.
+- Campaigns to many, a chat button's widget, the catalog and Meta's other products, Kodpen's own verified app.

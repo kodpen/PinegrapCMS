@@ -11,7 +11,7 @@ description: Decisions list, product part 47 (2026-11-12 on): WhatsApp as a chan
 - Owner (2026-11-12): "sms türkiye için zorlayıcı oldu artık ilerişim eposta + whatsapp oldu o yüzden whatsapp entegrasyonunu geliştirelim sipariş ve formlar için olanak açalım".
 - Asked three questions by letters, the owner answered "W1a, W2a, W3a":
 - W1a: a site connects with its own Meta app and a permanent token, the card showing the steps. Not chosen: Kodpen's verified app in between; both.
-- W2a: a customer's reply shows as a bell notice and in the contact's history; answering from the panel comes later. Not chosen: answering from the panel now; replies not read.
+- W2a: a customer's reply shows as a bell notice and in the contact's history; answering from the panel was left for later (asked on 2026-11-13: `decisions-made-product-49.md`). Not chosen: answering from the panel now; replies not read.
 - W3a: first the messages that go to one person (orders, forms, a flow's step); campaigns later with a consent decision of their own. Not chosen: campaigns in the first scope.
 
 ## Are WhatsApp templates designed in the panel, and can a message carry an offer code? (owner, 2026-11-12, #8950)

@@ -262,6 +262,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-48.md: What does the designer canvas draw for a bound value, and what of closed blocks? (owner, 2026-11-13, #9076)
 - decisions-made-product-48.md: Do loop bands and condition chips stay on the canvas? (owner, 2026-11-13, #9076)
 - decisions-made-product-48.md: Which consent lets a marketing WhatsApp template go? (owner, 2026-11-13, #9087)
+- decisions-made-product-49.md: Where are the rules and the earlier parts?
+- decisions-made-product-49.md: Do a customer's WhatsApp message and SMS land in a channel, and are they answered there? (owner, 2026-11-13, #9151)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)

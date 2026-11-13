@@ -31,7 +31,7 @@ Each (a) (architect, under the owner's delegation, #2444):
 - No licence; holders of the Workspace settings right add boxes (`mail-card.md`); the support channel is private.
 
 ## What is out of scope?
-- An own mail server or piping, POP3, IMAP IDLE (it holds a PHP worker), a customer portal, a knowledge base, WhatsApp.
+- An own mail server or piping, POP3, IMAP IDLE (it holds a PHP worker), a customer portal, a knowledge base. WhatsApp and SMS: `plans/whatsapp-channel-steps-2.md`.
 
 ## What is the E-mails screen? (plan closed, WM1-WM14)
 - Owner (2026-11-10, #8604): one list of every e-mail, writing and forwarding from the Workspace through the mail queue, for the mailboxes, not the site's own. Architect (2026-11-10): the screen grows, no second screen; first view "Incoming".
