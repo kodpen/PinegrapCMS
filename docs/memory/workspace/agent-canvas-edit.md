@@ -11,7 +11,7 @@ description: An agent edits any canvas of its channel in place (POST|PATCH messa
 
 ## How is it kept?
 - The route (`workspace.messages.canvas.edit`, `api_canvas.php`): POST with `also_accepts` PATCH (IIS). `version` must be the newest `version_no` (`GET …/canvas` gives it), else 409 `conflict`. Who: as for create (`ws_api_canvas_agent()`), on any canvas of a channel the owner may post in, an agent's or a person's.
-- The edited document, `picture: pending` and `by` the agent, is a new `file_versions` row with source `agent` over the same pixels (the file keeps its last drawn picture until a browser draws the new one), then `pg_file_versions_prune()` keeps the original and the last ten.
+- The edited document, `picture: pending` and `by` the agent, is a new `file_versions` row with source `agent` over the same pixels (the file keeps its last drawn picture until a browser draws the new one), then `pg_file_versions_prune()` keeps the original and the last ten, and `ws_message_touch()` (#8649, PR #9161).
 - A canvas whose message a person wrote: its author gets the inbox line `canvas_edited` ("@handle edited your canvas in #channel", `ws_canvas_inbox_describe()`, actor 0), unless the owner of the application is that author.
 
 ## How does the person see and undo it?
