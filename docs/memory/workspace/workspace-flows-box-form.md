@@ -5,7 +5,7 @@ description: PGWsFlow.boxForm() and its siblings in workspace_flow.js: a box's c
 
 ## What is it?
 - `window.PGWsFlow.boxForm(host, { graph, node, flows?, boot?, onChange })` draws one box's settings (`nodeForm(node, true)`) into host; `onChange(node)` after each change. Returns `{ node, redraw(), destroy() }`. Added for the quick setup's step setting (QS3 #9278), so a field is described once.
-- Siblings: `boxKind(kind)` (name, group, first outcome), `boxConfig(kind, graph)` (a new box's settings as the palette gives them, `newConfig()`), `boxOffered(kind)` (the palette offers it: `paletteItems()`).
+- Siblings: `boxKind(kind)` (name, group, first outcome), `boxConfig(kind, graph)` (a new box's settings as the palette gives them, `newConfig()`), `boxOffered(kind)` (the palette offers it: `paletteItems()`), `boxMeta(node)` (the box's short line, `metaOf()`, QS4 #9315).
 
 ## Why is it safe beside a canvas?
 - The field code reads the file's module variables `state`, `ui`, `K`, `CFG`, `FL`, `BOOT`, `t`, `el`. A form has its own of each; `formScope()` swaps them in while the form is drawn and restores them in `finally`.

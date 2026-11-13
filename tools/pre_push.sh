@@ -293,6 +293,7 @@ check_commit() {
 
 		run_tool 'translation keys' check_lang.php
 		run_tool 'designer bindings' check_bindings.php
+		run_tool 'designer canvas samples' check_canvas_samples.php
 		run_tool 'external API schema' check_api_schema.php
 		run_tool 'audit rule registry' check_audit_rules.php
 		run_tool 'get_file.php copies' check_copies.php

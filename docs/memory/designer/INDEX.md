@@ -28,16 +28,9 @@
 - canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (a sample photo SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
 - canvas-sample-account.md: The sample account (Alex Morgan) the designer canvas draws in every account and member widget, and the site words it reads (CS4b, #9280)
 - canvas-sample-form-record.md: What a form record draws on the designer canvas (CS3, #9239): an answer of each field kind, fields fetched by the first value, fixed record samples
-- canvas-sample-gaps-account.md: CS0 census, account: what my account, the member forms, address book, security, invoices and the account e-mail card still draw without a sample after CS4b
-- canvas-sample-gaps-catalog.md: CS0 census, catalog: what the catalog listing, product page, wishlist, order form, search, gallery, tag cloud and folder view still draw without a sample after CS4a (#9253)
-- canvas-sample-gaps-checkout.md: CS0 census, orders part two: what the cart, express order checkout, order preview and the shipping and billing steps still draw without a sample after CS2 (#9214)
-- canvas-sample-gaps-forms.md: CS0 census, forms: what custom forms, the form list and item views and the form e-mail cards still draw without a sample after CS3 (#9239)
-- canvas-sample-gaps-orders.md: CS0 census, orders: what the order view and order receipt e-mail card still draw without a sample after CS2 (#9214)
-- canvas-sample-gaps-other.md: CS0 census, the rest: what comments, calendar, reviews, booking, accessibility, ads, menus, language and loop values still draw without a sample after CS4c
-- canvas-sample-gaps.md: CS0 census (#9179): what the designer canvas draws for each bound value (sample, ‹label›, empty, grey box, wrong sample); shared causes; false warning frames [decision: decisions-made-product-48.md]
 - canvas-sample-order.md: The sample order the designer canvas draws in the order view, its receipt e-mail, cart, checkout and its steps: one record whose lines add up to its totals (CS2, #9214) [decision: decisions-made-product-48.md]
 - canvas-sample-other.md: What the designer canvas draws in comments, calendar, Google reviews, booking, accessibility statement, ads, menus and the language switcher, and a loop row's place (CS4c, #9299)
-- canvas-sample-overview.md: Start file for the canvas-sample-* files: how the designer canvas draws a bound value with a realistic sample instead of its label, which file holds which family, what is still open [decision: decisions-made-product-48.md]
+- canvas-sample-overview.md: Start file for the canvas-sample-* files: how the designer canvas draws a bound value with a realistic sample instead of its label, which file holds which family, the CI guard, what is still open [decision: decisions-made-product-48.md]
 - canvas-sample-product.md: The sample product the designer canvas draws in the catalog listing, product page, wishlist, order form and search results (CS4a, #9253); the tag cloud's samples; catalog block previews
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
@@ -561,7 +554,8 @@
 - site-search-index-text.md: What text the site search index stores for a drawn page: main content only, no cookie window, shared header/menu/footer or link addresses (#4096)
 - site-search-query-and-freshness.md: Site search: the query text in MATCH, the binned and archived page filter (advanced and simple), record and file labels, the index made due after a template install (#3550, #3551, #3552)
 - site-search-skipped-pages.md: Visual-editor pages site search never lists as items (bare product, record, error, checkout and order pages): pg_search_index_skipped_widget_types() (#9053)
-- site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search does not fold yet [decision: decisions-made-product-10.md]
+- site-search-translated.md: What the site search reads on a page served in another language (pages, products and groups, form records, a list's own search box), the words and ı/i, the order, the fences, and what it leaves out [decision: decisions-made-product-50.md]
+- site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search in the source language does not fold yet [decision: decisions-made-product-10.md]
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - store-template-front-end.md: Store template front-end fixes (#3621): footer contact column, no card hint at checkout, product tabs on one line, the product page's edit pencil on the widget and clear of headings.
 - style-complete.md: pg_style_complete.js: smart completion in the designer code editors (attributes, CSS values, var(--…) tokens, Bootstrap JS API), no duplicate options, tests

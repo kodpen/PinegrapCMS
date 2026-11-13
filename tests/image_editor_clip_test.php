@@ -165,12 +165,14 @@ function test_image_editor_clip_server()
 	$rows = array(
 		array('id' => 1, 'name' => 'a.mp4', 'type' => 'mp4', 'folder' => 2, 'size' => 10),
 		array('id' => 2, 'name' => 'b.mp3', 'type' => 'mp3', 'folder' => 2, 'size' => 10),
-		array('id' => 3, 'name' => 'c.webm', 'type' => 'WEBM', 'folder' => 5, 'size' => 10));
+		array('id' => 3, 'name' => 'c.webm', 'type' => 'WEBM', 'folder' => 5, 'size' => 10),
+		array('id' => 4, 'name' => 'site.webmanifest', 'type' => 'webm', 'folder' => 2, 'size' => 117));
 
 	pg_assert_same(array(1, 3), array_map(function ($f) { return $f['id']; }, pg_image_editor_sound_rows($rows, null, pg_image_editor_clip_types())), 'videos only');
 	pg_assert_same(array(2), array_map(function ($f) { return $f['id']; }, pg_image_editor_sound_rows($rows, null)), 'sounds by default');
 	pg_assert_contains("type IN ('mp4', 'm4v', 'webm')", pg_image_editor_sound_where('', null, array(), true, pg_image_editor_clip_types()), 'the video types');
 	pg_assert_contains("'mp3'", pg_image_editor_sound_where('', null, array(), true), 'the sound types by default');
+	pg_assert_contains("(LOWER(name) LIKE '%.webm')", pg_image_editor_sound_where('', null, array(), true, pg_image_editor_clip_types()), 'the name ends in a video extension too');
 }
 
 // Timeline editing (V3): the ends trimmed inside the source and to at least

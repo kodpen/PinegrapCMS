@@ -18,7 +18,6 @@ description: Steps QS1b, QS6, QS7 of the flows-quick-setup plan, the architect's
 ## In which order?
 - QS1b before QS3. QS6 and QS7 any time after QS1, each alone; they do not hold QS2 to QS5. Claim as `[plan:flows-quick-setup] <step> — <topic>`.
 
-## What does QS4 need first? (found 2026-11-13, #9278)
-- The stage hangs on `PGWsFlowQuick.stages.summary` (`workspace/workspace-flows-quick-setup-dialog.md`); Next shows once it is there.
-- QS3 adds steps one after the other; only a recipe brings held steps. Placing a step inside a condition or a loop is the Summary's: a loop with no step inside is refused by the server.
-- It sends `choices()` with `steps: pure.sentSteps(state.chosen.steps)`, a name, home and publish to `ws_flow_quick_setup`; a step's setting opens again with the same `PGWsFlow.boxForm()`.
+## What does QS5 need first? (found 2026-11-13, #9315)
+- The dialog is whole: `PGWsFlowQuick.open(PGWsKit, flows.quick, { operators: flows.steps.operators, home, onDone, onClose })` (`workspace/workspace-flows-quick-setup-dialog.md`).
+- onDone gets `{ flow, published, publish_error, open }` after the dialog closed (`workspace/workspace-flows-quick-setup-summary.md`): the Flows list opens the flow on its canvas (and says publish_error when the draft was not published); without onDone the page goes to `workspace_flows.php?flow=<id>`.

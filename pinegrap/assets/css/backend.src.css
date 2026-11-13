@@ -15076,6 +15076,8 @@ a.ws-chip:hover {
 .ws-task-card {
   margin-top: .35rem;
   max-width: 36rem;
+  /* A long word or link in the title wraps inside the card. */
+  overflow-wrap: anywhere;
   border: 1px solid var(--pg-border-color-translucent);
   border-left: 4px solid var(--ws-accent);
   border-radius: var(--ws-radius-sm);
@@ -21088,6 +21090,7 @@ a.ws-tag-card-head:hover span {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    overflow-wrap: anywhere;
 }
 .ws-tpl-card-name {
     font-weight: 600;
@@ -22245,6 +22248,70 @@ html.ws-flow-layer-on body {
 .wsf-quick-form {
   max-width: 560px;
 }
+/* The summary: the start and the steps on a line, a held step indented
+   (--wsf-quick-depth), the name and "Start working when saved". */
+.wsf-quick-line {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.wsf-quick-event {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 13px;
+  margin-left: calc(var(--wsf-quick-depth, 0) * 30px);
+  padding-bottom: 14px;
+}
+.wsf-quick-event::before {
+  content: "";
+  position: absolute;
+  top: 38px;
+  bottom: 2px;
+  left: 16px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--pg-border-color-translucent);
+}
+.wsf-quick-event:last-child::before {
+  display: none;
+}
+.wsf-quick-event-words {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-top: 1px;
+}
+.wsf-quick-event-tools {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+.wsf-quick-add {
+  margin: 0 0 12px 47px;
+}
+.wsf-quick-name {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 250px;
+  gap: 14px;
+  align-items: end;
+  padding-top: 12px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.wsf-quick-publish {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 36px;
+  margin: 0;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+}
+.wsf-quick-error {
+  margin: 12px 0 0;
+}
 @media (max-width: 767.98px) {
   .dialog.wsf-quick {
     --bs-dialog-width: 100%;
@@ -22267,6 +22334,7 @@ html.ws-flow-layer-on body {
   }
   .wsf-quick-recipes,
   .wsf-quick-group,
+  .wsf-quick-name,
   .wsf-quick-cards,
   .wsf-quick-when-row {
     grid-template-columns: minmax(0, 1fr);
@@ -24978,9 +25046,6 @@ select.pg-list-table-field option.private {
 .pg-picker-field-input {
   flex: 1 1 auto;
   min-width: 0;
-}
-.pg-picker-browse {
-  flex: 0 0 auto;
 }
 .pg-picker-folder-row {
   flex-direction: row;

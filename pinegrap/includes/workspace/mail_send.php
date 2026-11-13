@@ -41,6 +41,9 @@ define('WS_MAIL_SEND_HANDLER', 'workspace_mail');
  */
 define('WS_MAIL_SEND_ORPHAN_DAYS', 6);
 
+/** The most recipient domains looked up in DNS before one mail leaves. */
+define('WS_MAIL_DOMAIN_LOOKUPS', 5);
+
 /**
  * Whether the send state is kept: the columns of 11.0.185. Before that
  * step has run nothing is sent or changed from here.
@@ -329,8 +332,127 @@ function ws_mail_send_check($viewer, $mail)
         return array_merge($out, array('error' => $limits['error'], 'detail' => $limits['detail']));
     }
 
+    // A domain that does not exist is a warning, not a refusal: the same
+    // send with send_anyway goes out. An answer's To is the customer's own
+    // address, so only the Cc and Bcc a person added are looked up.
+    if (empty($mail['send_anyway'])) {
+        $typed = $conversation ? array_merge($input['cc'], $input['bcc']) : array_merge($input['to'], $input['cc'], $input['bcc']);
+        $own = (string) substr((string) strrchr((string) $found['box']['address'], '@'), 1);
+        $unknown = ws_mail_domain_warning($typed, $own, 'ws_mail_domain_exists');
+
+        if ($unknown) {
+            return array_merge($out, array('error' => 'unknown_domain', 'detail' => ws_mail_domain_warning_text($unknown), 'domains' => $unknown));
+        }
+    }
+
     return array('ok' => true, 'error' => '', 'detail' => '', 'box' => $found['box'], 'route' => $found['route'], 'channel' => $channel, 'input' => $input,
         'conversation' => $conversation, 'answered' => $answered);
+}
+
+/**
+ * The recipient domains that do not exist, each with a near spelling of
+ * the sending mailbox's own domain when one is within two letters. Pure:
+ * the DNS lookup is given. Each domain is looked up once, at most
+ * WS_MAIL_DOMAIN_LOOKUPS of them in their first order; the rest go
+ * unchecked. Only an answered "nothing" counts: a lookup that cannot tell
+ * (null) warns of nothing.
+ *
+ * @param string[] $addresses  the addresses a person typed
+ * @param string   $own_domain the domain of the mailbox it is sent from
+ * @param callable $lookup     domain => true (exists), false (does not), null (cannot tell)
+ * @return array[] each domain and suggest ('' without a near spelling)
+ */
+function ws_mail_domain_warning($addresses, $own_domain, $lookup)
+{
+    $domains = array();
+
+    foreach ((array) $addresses as $address) {
+        $at = strrpos((string) $address, '@');
+        $domain = ($at === false) ? '' : strtolower(rtrim(substr((string) $address, $at + 1), '.'));
+
+        // An address literal ([192.0.2.1]) or a dotless host is not a domain to look up.
+        if (($domain === '') || ($domain[0] === '[') || (strpos($domain, '.') === false) || in_array($domain, $domains, true)) {
+            continue;
+        }
+
+        $domains[] = $domain;
+
+        if (count($domains) >= WS_MAIL_DOMAIN_LOOKUPS) {
+            break;
+        }
+    }
+
+    $own = strtolower(trim((string) $own_domain));
+    $out = array();
+
+    foreach ($domains as $domain) {
+        if (call_user_func($lookup, $domain) !== false) {
+            continue;
+        }
+
+        $near = ($own !== '') && ($own !== $domain) && (levenshtein($domain, $own) <= 2);
+        $out[] = array('domain' => $domain, 'suggest' => $near ? $own : '');
+    }
+
+    return $out;
+}
+
+/**
+ * Whether a domain exists for mail: true when it has an MX, A or AAAA
+ * record; false when the resolver answers and it has none; null when the
+ * lookup cannot tell (no dns_get_record(), a failed query, or a resolver
+ * that does not know the domain's top level, as some hosts answer every
+ * query with an empty list).
+ *
+ * @param string $domain
+ * @return bool|null
+ */
+function ws_mail_domain_exists($domain)
+{
+    if (!function_exists('dns_get_record')) {
+        return null;
+    }
+
+    foreach (array(DNS_MX, DNS_A, DNS_AAAA) as $type) {
+        $answer = @dns_get_record($domain, $type);
+
+        if ($answer === false) {
+            return null;
+        }
+
+        if (is_array($answer) && $answer) {
+            return true;
+        }
+    }
+
+    $top = substr((string) strrchr($domain, '.'), 1);
+    $known = ($top !== '') ? @dns_get_record($top, DNS_NS) : false;
+
+    return (is_array($known) && $known) ? false : null;
+}
+
+/**
+ * The words of the unknown-domain warning: one sentence a domain, "Did you
+ * mean …?" where a near spelling is known.
+ *
+ * @param array[] $found ws_mail_domain_warning()
+ * @return string
+ */
+function ws_mail_domain_warning_text($found)
+{
+    $lines = array();
+
+    foreach ((array) $found as $entry) {
+        $line = lang(array('string' => 'The domain {var:1} does not exist, so an e-mail to it will not arrive.', 'vars' => (string) $entry['domain']));
+
+        if ((string) $entry['suggest'] !== '') {
+            $line .= ' ' . lang(array('string' => 'Did you mean {var:1}?', 'vars' => (string) $entry['suggest']));
+        }
+
+        $lines[] = $line;
+    }
+
+    return implode(' ', $lines);
 }
 
 /**
@@ -357,6 +479,7 @@ function ws_mail_send_error_text($error, $detail = '')
         'too_many_files'  => lang(array('string' => 'An e-mail carries at most {var:1} files.', 'vars' => WS_MAIL_SEND_FILES)),
         'files_too_large' => lang(array('string' => 'The files of an e-mail are at most {var:1} MB together.', 'vars' => (int) (WS_MAIL_SEND_FILES_BYTES / 1048576))),
         'file_refused'    => $detail,
+        'unknown_domain'  => $detail,
         'hourly'          => lang(array('string' => 'You have sent {var:1} e-mails in the last hour; try again later.', 'vars' => WS_MAIL_SEND_HOURLY)),
         'not_failed'      => lang('This e-mail is not waiting to be sent again.'),
         'not_sent'        => lang('The e-mail could not be sent.'),
@@ -1046,5 +1169,7 @@ function ws_mail_send_js_strings()
     return array(
         'mail_send_again'      => lang('Send again'),
         'mail_send_again_done' => lang('The e-mail is on its way again.'),
+        'mail_send_anyway'     => lang('Send anyway'),
+        'mail_change_address'  => lang('Change the address'),
     );
 }

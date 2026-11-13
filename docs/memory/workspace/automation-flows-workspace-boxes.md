@@ -5,13 +5,13 @@ description: Which flow boxes and starts need the Workspace (ws_flow_kinds_works
 
 ## Where is the list?
 - `ws_flow_kinds_workspace()` beside `ws_flow_kinds()` (`includes/workspace/flows.php`), with the pure `ws_flow_node_needs_workspace($node)` for a box whose settings decide. One place: the runner's refusal, Try, the palette, the problem line, templates, the quick setup and Pinegrap AI's catalogue read it.
-- The plan's rule (`plans/automation-flows-menu.md`, after the owner's M1a, #8961): a box or start that needs the Workspace is offered only while it is on; on a site without it a flow holding one shows a problem and that box does not run.
+- The rule (`automation-flows-decisions.md`, after the owner's M1a, #8961): a box or start that needs the Workspace is offered only while it is on; on a site without it a flow holding one shows a problem and that box does not run.
 
 ## Which kinds are on it?
 - Starts `join`, `mention`, and When a table row changes `row`.
 - A message in a channel: `post`, `checkin`, `approval` (its request is a channel message, and approval deadlines are not run with the Workspace off). Counting approval as a channel message is the implementing session's reading.
 - `lead`; the task boxes `task`, `task_open`, `task_digest`; `agent`.
-- The table boxes `row_add`, `row_set`, `row_get`, `rows_get` (tables open only on a Workspace screen); Ask Pinegrap AI `ai` (its settings are the Workspace's); `mcp`; `start_action` (AF3b).
+- The table boxes `row_add`, `row_set`, `row_get`, `rows_get` (tables open only on a Workspace screen); Ask Pinegrap AI `ai` (its settings are the Workspace's); `mcp`; `start_action` (#9225).
 
 ## Which boxes do their settings decide?
 - `report` when it posts into a channel (`channel_id` > 0); one sent only by e-mail runs.
@@ -19,7 +19,7 @@ description: Which flow boxes and starts need the Workspace (ws_flow_kinds_works
 - An event start `event` on one of the Workspace's own events (`ws_flow_events_workspace()`: `ws_events_own()` but `workspace.flow.run.failed`, which flows cause with it off too).
 
 ## What runs without the Workspace?
-- `manual`, `schedule`, a site event or a failed run, `no_order`, `web`; Send an e-mail, Call a webhook, Check a web address, Start a flow, Change or Read a site record, Condition, Wait, For each, End, Constants, Derived value; Let people know `notify` (off the list since AF4c: its lines reach the bell, `automation-flows-bell.md`).
+- `manual`, `schedule`, a site event or a failed run, `no_order`, `web`; Send an e-mail, Call a webhook, Check a web address, Start a flow, Change or Read a site record, Condition, Wait, For each, End, Constants, Derived value; Let people know `notify` (off the list since #9288: its lines reach the bell, `automation-flows-bell.md`).
 - A run still writes its owner's flow_finished line in the Workspace inbox; with the Workspace off the bell shows it (`automation-flows-bell.md`).
 
 ## Where is such a box not offered with the Workspace off?

@@ -60,7 +60,7 @@ function test_public_image_pickers_and_saves_wired()
 	pg_assert_true($kinds['site_icon']['public'] && $kinds['public_image']['public'], 'both kinds keep to the public folders');
 	pg_assert_same(array('png', 'svg'), $kinds['site_icon']['types']);
 	pg_assert_same(pg_public_image_file_types(), $kinds['public_image']['types']);
-	pg_assert_contains('pg_public_image_files_where()', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/file_picker_search.php'), 'the search applies the shared filter');
+	pg_assert_contains('pg_public_image_files_where()', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/picker.php'), 'the search applies the shared filter');
 
 	$seo = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/seo.save.php');
 	pg_assert_contains("pg_public_image_choice_ok(\$site_icon_input", $seo);

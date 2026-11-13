@@ -285,6 +285,65 @@ function test_workspace_flow_quick_js_graph()
 	pg_assert_same(null, $out[7]);
 }
 
+// The summary's moves: up and down among siblings, into the condition or
+// loop just above (within the depth, no loop in a loop), out after the step
+// holding it; a step taken out leaves its held steps in its place.
+function test_workspace_flow_quick_js_moves()
+{
+	$out = workspace_flow_quick_js_test_run('var s = function (id, kind, steps) { return { id: id, kind: kind, config: {}, steps: steps || [] }; };
+		var steps = [s("a", "post"), s("c", "condition"), s("b", "email"), s("l", "for_each", [s("x", "post")]), s("m", "for_each")];
+		var ids = function (list) { return Q.rows(list).map(function (r) { return r.step.id + "@" + r.depth; }).join(" "); };
+		var out = [];
+		out.push(Q.moves(steps, "a", 3), Q.moves(steps, "b", 3), Q.moves(steps, "m", 3), Q.moves(steps, "x", 3), Q.moves(steps, "nothing", 3));
+		out.push(Q.move(steps, "b", "into", 3), ids(steps));
+		out.push(Q.move(steps, "b", "up", 3), Q.move(steps, "a", "down", 3), ids(steps));
+		out.push(Q.move(steps, "x", "out", 3), ids(steps));
+		out.push(Q.moves([s("c1", "condition"), s("z", "condition", [s("y", "post")])], "z", 2).into);
+		out.push(Q.emptyLoop(steps) && Q.emptyLoop(steps).id);
+		out.push(Q.remove(steps, "c"), ids(steps), Q.remove(steps, "gone"));
+		return out;');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('up' => false, 'down' => true, 'into' => false, 'out' => false), $out[0]);
+	pg_assert_same(array('up' => true, 'down' => true, 'into' => true, 'out' => false), $out[1], 'into the condition above');
+	pg_assert_same(array('up' => true, 'down' => false, 'into' => false, 'out' => false), $out[2], 'no loop in a loop');
+	pg_assert_same(array('up' => false, 'down' => false, 'into' => false, 'out' => true), $out[3]);
+	pg_assert_same(array('up' => false, 'down' => false, 'into' => false, 'out' => false), $out[4]);
+	pg_assert_true($out[5]);
+	pg_assert_same('a@0 c@0 b@1 l@0 x@1 m@0', $out[6]);
+	pg_assert_false($out[7], 'the first held step has none above it');
+	pg_assert_true($out[8]);
+	pg_assert_same('c@0 b@1 a@0 l@0 x@1 m@0', $out[9]);
+	pg_assert_true($out[10]);
+	pg_assert_same('c@0 b@1 a@0 l@0 x@0 m@0', $out[11], 'out comes right after its box');
+	pg_assert_false($out[12], 'deeper than the limit');
+	pg_assert_same('l', $out[13], 'the first loop with nothing inside');
+	pg_assert_true($out[14]);
+	pg_assert_same('b@0 a@0 l@0 x@0 m@0', $out[15]);
+	pg_assert_false($out[16]);
+}
+
+// What the dialog sends: the first stage's choices, the steps with their
+// titles, the name trimmed to 160, the home channel, publish as 0 or 1.
+function test_workspace_flow_quick_js_sent()
+{
+	$out = workspace_flow_quick_js_test_run('var chosen = { start: "manual", config: {}, only_when: [], name: "  " + new Array(200).join("n") + " ",
+			steps: [{ id: "step1", kind: "post", label: "Tell", config: { body: "x" }, steps: [] }] };
+		return [Q.sent(C, chosen, { home: "7", publish: true }), Q.sent(C, { start: "" }, {})];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('start' => 'manual', 'config' => array(), 'only_when' => array(),
+		'steps' => array(array('id' => 'step1', 'kind' => 'post', 'label' => 'Tell', 'config' => array('body' => 'x'), 'steps' => array())),
+		'name' => str_repeat('n', 160), 'channel_id' => 7, 'publish' => 1), $out[0]);
+	pg_assert_same(null, $out[1]);
+}
+
 // The dialog is served in the flow bundle after the canvas, and every text
 // it asks for is one of the flow strings.
 function test_workspace_flow_quick_js_wiring()
