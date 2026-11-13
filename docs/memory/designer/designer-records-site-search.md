@@ -30,7 +30,10 @@ A page with a `form_item_view` is skipped in the page loop (without `?r=` it is 
 - Nothing re-indexes on save (it would render as the editor); a retracted record leaves with the next full sweep.
 
 ## What else is out of scope?
-Simple mode (starter dumps are Advanced; the settings help says so); translated items; result image; record views in a shared component; catalog/calendar detail pages; a designer list over a legacy detail page.
+Simple mode (starter dumps are Advanced; the settings help says so); result image; record views in a shared component; catalog/calendar detail pages; a designer list over a legacy detail page.
+
+## What does a page in another language add?
+The records whose translated texts (`form_records` uses) hold every word come first, but only through their own item: `pg_tr_search_record_items()` lists an item whose address is the record's (reference code or address name, on the item's page), behind the same folder fence and live check.
 
 ## What should templates do?
 Article page `search` on, form RSS `title`/`description` roles, publication filters on record view and lists.
