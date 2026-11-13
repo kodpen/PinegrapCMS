@@ -45,7 +45,7 @@ function ws_channels_for($viewer, $archived = false)
         FROM ws_channels c
         LEFT JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . $me . "'
         WHERE c.archived_at " . ($archived ? '> 0' : '= 0') . "
-        AND (c.kind = 'public' OR m.user_id IS NOT NULL) AND c.kind <> 'thread'
+        AND (c.kind = 'public' OR m.user_id IS NOT NULL) AND c.kind NOT IN ('thread', 'mailbox')
         ORDER BY " . ($ordered ? "(m.pinned = 1) DESC, (COALESCE(m.sort, 0) = 0), m.sort, " : '') . "c.name");
 
     // Unread messages and unread mentions for every joined channel, two
@@ -334,9 +334,11 @@ function ws_channel_clean_name($name)
  */
 function ws_channel_name_taken($name, $except_id = 0)
 {
-    // A discussion is named after what it talks over, not as a place to look.
+    // A discussion is named after what it talks over, and the room of a
+    // mailbox kept in no channel after its mailbox: neither is a place to
+    // look among the channels.
     return (int) db_value("SELECT COUNT(*) FROM ws_channels
-        WHERE archived_at = 0 AND kind <> 'thread' AND LOWER(name) = LOWER('" . e($name) . "') AND id <> '" . (int) $except_id . "'") > 0;
+        WHERE archived_at = 0 AND kind NOT IN ('thread', 'mailbox') AND LOWER(name) = LOWER('" . e($name) . "') AND id <> '" . (int) $except_id . "'") > 0;
 }
 
 /**
@@ -780,6 +782,11 @@ function ws_channel_join($viewer, $channel)
  */
 function ws_channel_leave($viewer, $channel, $user_id = 0)
 {
+    // Who reads a mailbox kept in no channel is chosen on the mailbox.
+    if (ws_channel_is_mailbox($channel)) {
+        return array('ok' => false, 'error' => lang('The people of a mailbox are chosen in its settings.'));
+    }
+
     $user_id = ((int) $user_id > 0) ? (int) $user_id : (int) $viewer['id'];
 
     if (($user_id !== (int) $viewer['id']) && !ws_can_manage_channel($viewer, $channel)) {
@@ -989,7 +996,8 @@ function ws_channel_mark_read($channel_id, $user_id, $message_id)
  */
 function ws_ensure_first_channel($viewer)
 {
-    if (!$viewer['member'] || ((int) db_value("SELECT COUNT(*) FROM ws_channels") > 0)) {
+    // The room of a mailbox kept in no channel is no channel to find.
+    if (!$viewer['member'] || ((int) db_value("SELECT COUNT(*) FROM ws_channels WHERE kind <> 'mailbox'") > 0)) {
         return;
     }
 
@@ -1136,7 +1144,7 @@ function ws_channel_place($viewer, $channel, $place = 0)
     $rows = (array) db_items("SELECT c.id, m.pinned
         FROM ws_channels c
         INNER JOIN ws_channel_members m ON m.channel_id = c.id AND m.user_id = '" . (int) $viewer['id'] . "'
-        WHERE c.archived_at " . (((int) $channel['archived_at'] > 0) ? '> 0' : '= 0') . " AND c.kind <> 'thread'
+        WHERE c.archived_at " . (((int) $channel['archived_at'] > 0) ? '> 0' : '= 0') . " AND c.kind NOT IN ('thread', 'mailbox')
         ORDER BY (m.pinned = 1) DESC, (m.sort = 0), m.sort, c.name");
 
     $ids = array();

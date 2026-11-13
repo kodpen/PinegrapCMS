@@ -663,7 +663,7 @@ $store_buttons = function ($sample_key = 'tally', $size = '') use ($el, $icon, $
     $button = function ($field, $icon_name, $small, $big, $sample) use ($el, $icon, $span, $attr, $size) {
         return $el('div', 'pg-hide-if-empty', lang('Store Button'), array(
             $span($sample, 'pg-field-value d-none', lang('Value'), array('_bindings' => array('text' => $field))),
-            $el('a', trim('btn btn-dark rounded-3 d-inline-flex align-items-center gap-2 px-3 text-start ' . $size), lang('Store Link'), array(
+            $el('a', trim('btn btn-primary rounded-3 d-inline-flex align-items-center gap-2 px-3 text-start ' . $size), lang('Store Link'), array(
                 $icon($icon_name, 'fs-4'),
                 $el('span', 'd-flex flex-column lh-sm', lang('Link Text'), array(
                     $span($small, 'small', lang('Text')),

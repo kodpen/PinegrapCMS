@@ -143,7 +143,9 @@ function ws_palette_message_rows($viewer, $where, $channel_id, $limit)
             $channels[$id] = ws_channel($id);
         }
 
-        if (ws_can_read_channel($viewer, $channels[$id])) {
+        // Not the mail of a mailbox kept in no channel: the E-mails screen
+        // searches it, and no channel opens it.
+        if (ws_can_read_channel($viewer, $channels[$id]) && !ws_channel_is_mailbox($channels[$id])) {
             $row['_channel'] = $channels[$id];
             $visible[] = $row;
         }

@@ -192,7 +192,7 @@ $filmstudio_css = implode("\n", array(
 
 return array(
     'name'        => lang('Film Studio'),
-    'version'     => '2.0.0',
+    'version'     => '2.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 127,
     'icon'        => 'bi-film',

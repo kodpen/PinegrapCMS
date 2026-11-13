@@ -333,7 +333,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-bold', lang('Brand'), array(
-                    $el('span', 'd-inline-flex p-2 rounded-3 bg-primary text-white lh-1', lang('Icon Box'), array($icon('bi-mortarboard', 'fs-5'))),
+                    $el('span', 'd-inline-flex p-2 rounded-3 text-bg-primary lh-1', lang('Icon Box'), array($icon('bi-mortarboard', 'fs-5'))),
                     $span('{{site_name}}', 'fs-4 pco-brand', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
@@ -430,8 +430,8 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $attr) {
 
 // The enrol band: a full-width band in the palette's colour with the way to
 // start. Shared, so every page that ends with it carries the same offer.
-$enrol_band = function () use ($el, $heading, $para, $link, $container, $row, $col, $attr) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+$enrol_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -440,13 +440,13 @@ $enrol_band = function () use ($el, $heading, $para, $link, $container, $row, $c
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Browse courses'), '{{page:courses}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('See the membership'), '{{page:pricing}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Browse courses'), '{{page:courses}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('See the membership'), '{{page:pricing}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
         )),
-    ), array('_attrs' => array($attr('data-bs-theme', 'dark'))));
+    ));
 };
 
 // A page of the site: the account bar, the shared header, the page's own
@@ -511,7 +511,7 @@ $subject_badge = function ($key) use ($span, $subjects) {
 };
 // A course's level badge.
 $level_badge = function ($key) use ($span, $levels) {
-    return $span($levels[$key], 'badge rounded-pill text-bg-light border', lang('Level'));
+    return $span($levels[$key], 'badge rounded-pill bg-body text-body-emphasis border', lang('Level'));
 };
 
 

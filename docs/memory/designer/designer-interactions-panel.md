@@ -19,6 +19,7 @@ description: Interactions section of the properties panel and on the canvas: nod
 
 ## What does the code view do with the attributes?
 - The code view hands `data-pg-fx*` edits back to `_fx` (`_sdCodeSetFxAttr()`, beside `_sdCodeSetTitleAttr()`); a `data-pg-fx-*` typed on a node with no interaction stays in `_attrs`.
+- The editor's HTML (code view, Preview, revision compare) writes a content node's interaction even when it is the node's only attribute: `addGlobalAttrs()` counts `_sdFxAttrs()` among the attributes that make it write. Before #9018 a heading or picture with nothing but an effect lost it, so the Preview did not play it; the page was right.
 - Tests: `test_designer_fx_panel` in `tests/designer_fx_test.php`, `test_designer_code_view_interaction` in `tests/designer_code_view_attrs_test.php`.
 
 Related: docs/memory/designer/designer-interactions.md

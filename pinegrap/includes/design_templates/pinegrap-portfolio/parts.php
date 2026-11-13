@@ -473,7 +473,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-bold', lang('Brand'), array(
-                    $el('span', 'd-inline-flex p-2 rounded-circle bg-primary text-white lh-1', lang('Icon Box'), array($icon('bi-vector-pen', 'fs-5'))),
+                    $el('span', 'd-inline-flex p-2 rounded-circle text-bg-primary lh-1', lang('Icon Box'), array($icon('bi-vector-pen', 'fs-5'))),
                     $span('{{site_name}}', 'pdp-brand fs-4', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
@@ -579,7 +579,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $categorie
 // to start a project. Shared, so every page that ends with it carries the
 // same offer.
 $brief_band = function () use ($el, $heading, $para, $link, $container, $row, $col, $designer) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -588,8 +588,8 @@ $brief_band = function () use ($el, $heading, $para, $link, $container, $row, $c
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Start a Project'), '{{page:brief}}', 'btn btn-light btn-lg rounded-pill px-4'),
-                        $link(lang('E-mail me'), 'mailto:' . $designer['email'], 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Start a Project'), '{{page:brief}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                        $link(lang('E-mail me'), 'mailto:' . $designer['email'], 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -610,7 +610,7 @@ $project_card = function ($sample_key = 'harbour') use ($el, $para, $span, $link
                     array('_bindings' => array('src' => 'cover', 'alt' => 'title'))),
             )),
             $el('div', 'd-flex flex-wrap align-items-center gap-2 small mb-2', lang('Meta'), array(
-                $span($categories[$s['category']]['title'], 'badge rounded-pill text-bg-light border', lang('Category'), $bind('category')),
+                $span($categories[$s['category']]['title'], 'badge rounded-pill bg-body text-body-emphasis border', lang('Category'), $bind('category')),
                 $span((string)$s['year'], 'text-body-secondary', lang('Year'), $bind('year')),
             )),
             $el('h3', 'h5 fw-bold position-static mb-1', lang('Project Title'), array(

@@ -666,7 +666,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $room_type
 // to ask for a room and the phone for those who would rather call. Shared,
 // so every page that ends with it carries the same offer.
 $booking_band = function () use ($el, $heading, $para, $link, $container, $row, $col, $hotel) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -675,8 +675,8 @@ $booking_band = function () use ($el, $heading, $para, $link, $container, $row, 
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Ask for a Room'), '{{page:book}}', 'btn btn-light btn-lg rounded-pill px-4'),
-                        $link(lang('Call Us'), 'tel:' . preg_replace('/[^0-9+]/', '', $hotel['phone']), 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Ask for a Room'), '{{page:book}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                        $link(lang('Call Us'), 'tel:' . preg_replace('/[^0-9+]/', '', $hotel['phone']), 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

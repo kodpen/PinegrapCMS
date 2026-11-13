@@ -162,7 +162,7 @@ function ws_mail_conversation_check($viewer, $conversation_id, $changes)
     $conversation = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . (int) $conversation_id . "'");
     $channel = is_array($conversation) && $conversation ? ws_channel((int) $conversation['channel_id']) : null;
 
-    if (!$channel || !ws_can_post_channel($viewer, $channel)) {
+    if (!$channel || !ws_mail_can_answer($viewer, $channel)) {
         return $out;
     }
 
@@ -172,7 +172,7 @@ function ws_mail_conversation_check($viewer, $conversation_id, $changes)
     if (ctype_digit($assign) && ((int) $assign > 0) && ((int) $assign !== (int) $viewer['id'])) {
         $person = ws_change_viewer_for_id((int) $assign);
 
-        if (!is_array($person) || empty($person['member']) || !ws_can_post_channel($person, $channel)) {
+        if (!is_array($person) || empty($person['member']) || !ws_mail_can_answer($person, $channel)) {
             return array_merge($out, array('error' => 'assignee'));
         }
     }
@@ -281,15 +281,18 @@ function ws_mail_status_js_strings()
 /**
  * An inbox line about a conversation: given to the person (mail_assigned),
  * or its customer wrote again on one they hold (mail_customer). The line's
- * message is the card or the new mail; its subject is the body.
+ * message is the card or the new mail; its subject is the body. It opens
+ * the card in its channel, or the conversation on the E-mails screen when
+ * its mailbox is kept in no channel (ws_mail_notice_url()).
  *
- * @param array  $row     ws_inbox row
- * @param string $actor   the name of who gave it
- * @param string $channel_name
- * @param string $base    the panel's address
+ * @param array      $row     ws_inbox row
+ * @param string     $actor   the name of who gave it
+ * @param string     $channel_name ws_inbox_place()'s: '#name', or a mailbox's name
+ * @param string     $base    the panel's address
+ * @param array|null $channel the row's channel
  * @return array title, body, url, icon
  */
-function ws_mail_inbox_describe($row, $actor, $channel_name, $base)
+function ws_mail_inbox_describe($row, $actor, $channel_name, $base, $channel = null)
 {
     $conversation = ((int) $row['message_id'] > 0) ? db_item("SELECT c.subject, c.customer_name, c.customer_email
         FROM ws_mail_items i
@@ -304,7 +307,7 @@ function ws_mail_inbox_describe($row, $actor, $channel_name, $base)
     return array(
         'title' => $title,
         'body'  => is_array($conversation) ? (string) $conversation['subject'] : '',
-        'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
+        'url'   => ws_mail_notice_url($base, (int) $row['channel_id'], (int) $row['message_id'], $channel),
         'icon'  => 'bi-envelope',
     );
 }

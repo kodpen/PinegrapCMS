@@ -225,7 +225,7 @@ $story_widgets['story_detail'] = array(
                     $col(array(
                         $el('div', 'd-flex flex-wrap gap-2 mb-3', lang('Badges'), array(
                             $span($licences[$story_sample['licence']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Licence Class'), $bind('licence')),
-                            $span($try_choices[$story_sample['try']], 'pdr-badge badge rounded-pill text-bg-dark', lang('Passed At'), $bind('try')),
+                            $span($try_choices[$story_sample['try']], 'pdr-badge badge rounded-pill text-bg-secondary', lang('Passed At'), $bind('try')),
                         )),
                         $heading('h1', $story_sample['name'], 'pdr-display display-6 mb-3', $bind('name')),
                         $el('blockquote', 'mb-4', lang('Quote'), array(

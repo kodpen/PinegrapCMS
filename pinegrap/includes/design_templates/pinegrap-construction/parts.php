@@ -860,7 +860,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $services,
 // ask for a quote and the phone number. Shared, so every page that ends
 // with it carries the same call.
 $quote_band = function () use ($el, $heading, $para, $link, $container, $row, $col, $firm) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -869,8 +869,8 @@ $quote_band = function () use ($el, $heading, $para, $link, $container, $row, $c
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Request a Quote'), '{{page:quote}}', 'btn btn-light btn-lg px-4'),
-                        $link($firm['phone'], 'tel:' . preg_replace('/[^0-9+]/', '', $firm['phone']), 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Request a Quote'), '{{page:quote}}', 'btn btn-secondary btn-lg px-4'),
+                        $link($firm['phone'], 'tel:' . preg_replace('/[^0-9+]/', '', $firm['phone']), 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -922,7 +922,7 @@ $project_card = function ($sample_key = 'harbour_view') use ($el, $para, $span, 
                     $span($p['location'], '', lang('Location'), $bind('location')),
                 )),
                 $para($p['summary'], 'small text-body-secondary mb-3', $bind('summary')),
-                $span($project_statuses[$p['status']], 'badge text-bg-dark align-self-start mt-auto', lang('Status'), $bind('status')),
+                $span($project_statuses[$p['status']], 'badge text-bg-secondary align-self-start mt-auto', lang('Status'), $bind('status')),
             )),
         )),
     ), '6', '4');

@@ -1812,6 +1812,12 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
+            // The room of a mailbox kept in no channel never opens as a
+            // channel (mail_room.php): its mail is on the E-mails screen.
+            if (ws_channel_is_mailbox($channel)) {
+                return ws_action_error(lang('This mailbox is read and answered on the E-mails screen.'));
+            }
+
             // A discussion opens beside its channel (threads.php): asked for
             // as a channel - a link, a search, a mention - it says where.
             if (ws_channel_is_thread($channel) && empty($request['as_thread'])) {

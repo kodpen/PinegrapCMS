@@ -123,7 +123,7 @@ $filmstrip_hero = function () use ($el, $heading, $para, $link, $image, $span, $
                 $image($photo('strip-' . $key, 600, 400), $alt, 'rounded-1', $extra),
                 $el('figcaption', 'd-flex justify-content-between gap-2 small mt-2', lang('Caption'), array(
                     $span(sprintf('%02d', $n), 'font-monospace', lang('Frame Number')),
-                    $link($c['title'], '{{page:galleries}}?' . $query(array('category' => $c['title'])), 'fw-semibold text-uppercase link-light text-decoration-none'),
+                    $link($c['title'], '{{page:galleries}}?' . $query(array('category' => $c['title'])), 'fw-semibold text-uppercase text-reset text-decoration-none'),
                 )),
             )),
         ));
@@ -167,7 +167,7 @@ $contact_sheet = function ($id, $eyebrow, $title, $intro, $topics, $more = array
             $span($number, 'position-absolute top-0 start-0 m-1 badge bg-body text-body font-monospace', lang('Frame Number')),
         );
         if ($picked) {
-            $kids[] = $el('div', 'position-absolute top-0 end-0 m-1 badge bg-primary', lang('Picked'), array(
+            $kids[] = $el('div', 'position-absolute top-0 end-0 m-1 badge text-bg-primary', lang('Picked'), array(
                 $icon('bi-heart-fill'),
                 $span(lang('Selected'), 'visually-hidden', lang('Text')),
             ));

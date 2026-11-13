@@ -749,7 +749,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $museum, $
 // to plan a visit and to book a timed entry. Shared, so every page that
 // ends with it carries the same call.
 $visit_band = function () use ($el, $heading, $para, $link, $container, $row, $col, $museum) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -758,8 +758,8 @@ $visit_band = function () use ($el, $heading, $para, $link, $container, $row, $c
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Book Timed Entry'), '{{page:book_online}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('Plan Your Visit'), '{{page:visit}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Book Timed Entry'), '{{page:book_online}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('Plan Your Visit'), '{{page:visit}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

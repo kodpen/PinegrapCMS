@@ -78,9 +78,9 @@ $ai_filter_bar = function ($groups) use ($el, $link, $span, $query) {
     $navs = array();
     foreach ($groups as $g) {
         $children = array($span($g['label'], 'pai-eyebrow small text-uppercase fw-semibold text-body-secondary me-2', lang('Label')));
-        $children[] = $link(lang('All'), '{{page:projects}}', 'btn btn-sm btn-outline-dark rounded-0');
+        $children[] = $link(lang('All'), '{{page:projects}}', 'btn btn-sm btn-outline-primary rounded-0');
         foreach ($g['values'] as $v) {
-            $children[] = $link($v, '{{page:projects}}?' . $query(array($g['param'] => $v)), 'btn btn-sm btn-outline-dark rounded-0');
+            $children[] = $link($v, '{{page:projects}}?' . $query(array($g['param'] => $v)), 'btn btn-sm btn-outline-primary rounded-0');
         }
         $navs[] = $el('div', 'd-flex flex-wrap align-items-center gap-2 mb-2', $g['label'], $children);
     }
@@ -100,8 +100,8 @@ $project_pages[] = array(
         // The list opens on a plate of the work: the second plate of the
         // studio's book, the project it shows one click away.
         $plate_hero(lang('Our work'), lang('Projects'), lang('Buildings, interiors and places we have designed, completed or under way. Choose a type or a place to narrow the list.'), array(
-            $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-dark rounded-0 px-4'),
-            $link(lang('How We Work'), '{{page:process}}', 'btn btn-outline-dark rounded-0 px-4'),
+            $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-primary rounded-0 px-4'),
+            $link(lang('How We Work'), '{{page:process}}', 'btn btn-outline-primary rounded-0 px-4'),
         ), $photo('project-print_works', 1800, 770), $projects['print_works']['name'], array(
             'no'    => '02',
             'name'  => $projects['print_works']['name'],
@@ -291,11 +291,11 @@ $project_widgets['project_detail'] = array(
                 $icon('bi-building', 'display-5 text-body-secondary'),
                 $heading('h2', lang('Project not found'), 'h3 fw-semibold mt-3'),
                 $para($project_not_found, 'text-body-secondary mb-4', $bind('not_found')),
-                $link(lang('See Our Projects'), '{{page:projects}}', 'btn btn-dark rounded-0 px-4'),
+                $link(lang('See Our Projects'), '{{page:projects}}', 'btn btn-primary rounded-0 px-4'),
             ), $show_when('record_not_found')),
             $el('article', '', lang('Project'), array(
                 $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-4', lang('Toolbar'), array(
-                    $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-dark text-decoration-none', lang('Link'), array(
+                    $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-body-emphasis text-decoration-none', lang('Link'), array(
                         $icon('bi-arrow-left'),
                         $span(lang('All Projects'), '', lang('Link Text')),
                     ), array('href' => '{{page:projects}}')),
@@ -346,11 +346,11 @@ $project_widgets['project_detail'] = array(
                             $para(lang('Tell us about your site and your plans. The first consultation is free.'), 'small text-body-secondary mb-3'),
                             // Opens the enquiry with this project's
                             // service chosen (?service=).
-                            $link(lang('Start a Project'), '#', 'btn btn-dark rounded-0 w-100 mb-2', array(),
+                            $link(lang('Start a Project'), '#', 'btn btn-primary rounded-0 w-100 mb-2', array(),
                                 $ai_page_link('enquiry', array('service' => 'service'))),
                             // Opens the list on this project's type
                             // (?type=).
-                            $link(lang('More projects of this type'), '#', 'btn btn-outline-dark rounded-0 w-100', array(),
+                            $link(lang('More projects of this type'), '#', 'btn btn-outline-primary rounded-0 w-100', array(),
                                 $ai_page_link('projects', array('type' => 'type'))),
                         )),
                     ), '', '4'),

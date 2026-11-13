@@ -39,7 +39,8 @@ function ws_nav_groups($viewer, $flags = null)
     if ($flags === null) {
         $flags = array(
             'notes'         => function_exists('ws_notes_ready') && ws_notes_ready(),
-            // Every member keeps tables of their own (wtables.php).
+            // Every member keeps tables of their own (wtables.php); the
+            // place that lists them is named Data.
             'wtables'       => function_exists('ws_wtables_ready') && ws_wtables_ready(),
             'calendar_feed' => function_exists('ws_calendar_feed_ready') && ws_calendar_feed_ready(),
             // Staff's scheduled actions, until Flows lists them
@@ -83,7 +84,7 @@ function ws_nav_groups($viewer, $flags = null)
     }
 
     if (!empty($flags['wtables'])) {
-        $groups['tools'][] = array('key' => 'wtables', 'label' => lang('Tables'), 'icon' => 'bi-table', 'url' => $base . 'workspace_wtables.php');
+        $groups['tools'][] = array('key' => 'wtables', 'label' => lang('Data'), 'icon' => 'bi-table', 'url' => $base . 'workspace_wtables.php');
     }
 
     if (!empty($flags['flows'])) {

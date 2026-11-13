@@ -437,11 +437,11 @@ $account_widgets = array(
             $container(array(
                 $row(array(
                     $col(array(
-                        $el('div', 'psk-hero p-4 rounded-4 bg-primary text-white mb-3', lang('Account Card'), array(
+                        $el('div', 'psk-hero p-4 rounded-4 text-bg-primary mb-3', lang('Account Card'), array(
                             $para(lang('Welcome back'), 'psk-eyebrow small text-uppercase fw-semibold mb-1'),
                             $heading('h1', lang('Jane Cooper'), 'psk-display h4 mb-1', $bind('__display_name')),
                             $para(lang('jane.cooper@example.com'), 'small mb-3', $bind('email_address')),
-                            $link(lang('Log out'), '#', 'btn btn-sm btn-light', array(), array('_bindings' => array('href' => '__logout_url'))),
+                            $link(lang('Log out'), '#', 'btn btn-sm btn-secondary', array(), array('_bindings' => array('href' => '__logout_url'))),
                         )),
                         $el('nav', 'list-group', lang('Account Menu'), $account_links, array('_attrs' => array($attr('aria-label', lang('My Account'))))),
                     ), '', '4'),

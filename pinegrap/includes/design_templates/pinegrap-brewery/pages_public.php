@@ -189,7 +189,7 @@ $bw_hero = $el('section', 'pbw-hero py-5 bg-body text-body overflow-hidden', lan
                     $para($brewery['tagline'] . '.', 'lead text-body-secondary mb-4'),
                     $el('div', 'd-flex flex-wrap gap-3', lang('Hero Buttons'), array(
                         $link(lang('See what is on tap'), '{{page:taproom}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                        $link(lang('Book a tour'), '{{page:tours}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Book a tour'), '{{page:tours}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
                     )),
                 )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 900)),
                 $fx($el('ul', 'list-unstyled d-flex flex-wrap gap-3 gap-lg-4 small mt-5 mb-0', lang('Facts'), array(

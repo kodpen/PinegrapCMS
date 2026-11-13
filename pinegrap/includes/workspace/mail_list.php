@@ -309,7 +309,8 @@ function ws_mail_list($viewer, $filters, $now)
 
         $out[] = $row + array(
             'box_name'          => $box['name'],
-            'channel_name'      => $channel ? (string) $channel['name'] : '',
+            // The room of a mailbox kept in no channel is no channel to name.
+            'channel_name'      => ($channel && !ws_channel_is_mailbox($channel)) ? (string) $channel['name'] : '',
             'assignee_name'     => ((int) $row['assignee_id'] > 0) ? ws_person_name((int) $row['assignee_id']) : '',
             'first_reply_hours' => $box['hours'],
             'overdue'           => $overdue,
@@ -438,7 +439,7 @@ function ws_mail_list_rows_html($rows, $filters, $now, $open = 0)
             . (($unsent === 'failed') ? '<span class="badge theme-danger">' . h(lang('Not sent')) . '</span>' : '')
             . (($unsent === 'waiting') ? '<span class="badge theme-secondary">' . h(lang('Waiting to be sent')) . '</span>' : '')
             . (((string) $row['box_name'] !== '') ? '<span>' . h((string) $row['box_name']) . '</span>' : '')
-            . '<span>' . h('#' . (string) $row['channel_name']) . '</span>'
+            . (((string) $row['channel_name'] !== '') ? '<span>' . h('#' . (string) $row['channel_name']) . '</span>' : '')
             . '<span>' . ws_mail_status_html($row, (string) $row['assignee_name'], (int) $row['first_reply_hours'], $now) . '</span>'
             . '</span></a>';
     }

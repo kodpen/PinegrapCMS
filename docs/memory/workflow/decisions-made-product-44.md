@@ -21,4 +21,4 @@ description: Decisions list, product part 44 (2026-11-11 on): a muted, looping h
   - The mode is kept in a new `style` column beside the look and the palette, added by a migration step: `decisions-made-schema-15.md`.
 - Why: without it a design that is dark from top to bottom (a showroom, a product page) is made by hand, band by band; today only a visitor's theme switcher turns a whole page dark (`designer/design-theme-look-and-palette.md`).
 - The other answer, not taken: "Hayır, gerek yok" (no mode).
-- Not built yet: step B11 of `plans/designer-bold-pages-steps-2.md`.
+- Built: step B11 (#8711), [[design-colour-mode]].

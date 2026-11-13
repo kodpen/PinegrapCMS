@@ -19,7 +19,9 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 
 - CO5 (S) Measures. Rows and time of a page's read on a table of 5000 rows with formulas and lookups; the bounds set from it; a question to the owner only if a limit must move. After CO2.
 
-- CO6 (M) Data as the name and place. Workflow tables are called Data in the menu and on the screens; a canvas shows its tables under Data; addresses, API names and MCP tools keep their names. After DL2.
+- CO6 (M) Data as the name and place. Workflow tables are called Data in the menu and on the screens; a canvas shows its tables under Data; addresses, API names and MCP tools keep their names. Done in #8978 (`workspace/workflow-tables-data-list.md`); the canvases that use a table moved to CO6b, since CO2 had not landed.
+
+- CO6b (S) The canvases that use a table: a column of the Data list and a line under an opened table's title, read from `ws_canvas_tables`. After CO2 and CO6.
 
 - CO7 (M) One flow over the API and MCP. Make a canvas with a page, bind a table, read and write, list versions: the routes and the tools, described in `api/`; the assistants' tools follow (`workspace/agent-canvas-assistants.md`). After CO3.
 

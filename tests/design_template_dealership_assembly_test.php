@@ -225,7 +225,7 @@ function test_dealership_assembly_google_reviews()
 function test_dealership_assembly_home_on_dealership_blocks()
 {
 	$tpl = _test_dl_asm_tpl();
-	pg_assert_same('2.0.0', $tpl['version'], 'version raised');
+	pg_assert_true(version_compare($tpl['version'], '2.0.0', '>='), 'version raised');
 	$styles = json_decode($tpl['assets']['css'], true);
 	$css = $styles[0]['content'];
 	$home = null;

@@ -725,7 +725,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $kinds, $p
 // to ask for a stay and to see the prices. Shared, so every page that
 // ends with it carries the same call.
 $stay_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -734,8 +734,8 @@ $stay_band = function () use ($el, $heading, $para, $link, $container, $row, $co
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Request a Stay'), '{{page:book}}', 'btn btn-light btn-lg rounded-pill px-4'),
-                        $link(lang('See the Prices'), '{{page:prices}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
+                        $link(lang('Request a Stay'), '{{page:book}}', 'btn btn-secondary btn-lg rounded-pill px-4'),
+                        $link(lang('See the Prices'), '{{page:prices}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
