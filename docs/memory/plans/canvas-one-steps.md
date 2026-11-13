@@ -6,16 +6,16 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 ## Which steps are there?
 - Owner (2026-11-12, #8850): DL1 and DL2 of the design language (`panel-design-language-steps.md`) and the bridge first; tables as Data and the phone on top. S under 400 product lines, M about 1,000; each with its tests and its topic file `workspace/canvas-<part>.md`.
 
-- CO0 (S, no product code) The model and the screens. What one canvas is in the store and the API (names, parts, versions), and its screens drawn in look A, on a phone too: the card with its parts, the line of tables it uses, the first-write question, the Data list; in `plans/canvas-one/`. The owner approves the drawings. It names the schema changes the later steps need. Done in #8922.
+- CO0 (S, no product code) The model and the screens: what one canvas is in the store and the API, its screens drawn in look A (`plans/canvas-one/`) and approved by the owner, the schema changes the later steps need. Done in #8922.
   - Its files: `canvas-one-model.md`, `canvas-one-schema.md` (S1-S5, #8923-#8927), `canvas-one-screens.md`.
 
-- CO1 (M) The bridge, with no data. The shell's message door for a page (`platform/guarded-frame.md`): a request with an id, an answer, an error, the bounds; one harmless call (the display name of who is looking). Proven in a browser as the guarded frame was (#8802). Done in #8947 (`workspace/canvas-bridge.md`).
+- CO1 (M) The bridge, with no data: the shell's message door for a page (`platform/guarded-frame.md`), proven in a browser. Done in #8947 (`workspace/canvas-bridge.md`).
 
-- CO2 (M) Bound tables, read. A canvas names its tables; the page reads rows in the reader's rights (`workspace/workflow-tables-query.md`); the card's line of tables. Done in #8960 (`workspace/canvas-tables.md`).
+- CO2 (M) Bound tables, read in the reader's rights; the card's line of tables. Done in #8960 (`workspace/canvas-tables.md`).
 
-- CO3 (M) Writes with consent. Add and change a row through the table's own functions; the first-write question, asked again for a new version; "through <canvas>" in the row's history. Done in #9180 (`workspace/canvas-consents.md`).
+- CO3 (M) Writes with consent: the first-write question, asked again for a new version; "through <canvas>" on a row. Done in #9180 (`workspace/canvas-consents.md`).
 
-- CO4 (M) Tables of a channel. A table that belongs to a channel or a canvas, not to one person: the members read and write by the channel's rights; what becomes of it when the canvas is deleted. After CO0; its schema asked first. Done in #9038 (`workspace/workflow-table-channel.md`: a table of the tables cluster, not a canvas part).
+- CO4 (M) Tables of a channel: a table that belongs to a channel, read and written by the channel's rights. Done in #9038 (`workspace/workflow-table-channel.md`: a table of the tables cluster, not a canvas part).
 
 - CO5 (S) Measures. Rows and time of a page's read on a table of 5000 rows with formulas and lookups; the bounds set from it. Done in #9207 (`workspace/canvas-measures.md`): no limit moved, nothing asked.
 
@@ -25,9 +25,13 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 
 - CO7 (M) One flow over the API and MCP. Make a canvas with a page, bind a table, read and write, list versions: the routes and the tools. After CO3. Done in #9231 (`api/workspace-canvas-api.md`), with the five tools of `canvas-one-model.md`.
 
-- CO7b (S) What CO7 left: a part added beside the first (S1's `ws_canvas_parts`, answered, not built; until then 409 `part_missing`) and an agent's binding as a channel line with Undo.
+- CO7b (S) The second part in the store and the API. S1's `ws_canvas_parts` by a 2026.11.0 migration step; `PUT …/drawing` and `…/page` add a part beside the first (409 `part_missing` ends); the versions list tells each version's part. No screen: until CO7c the card of a canvas with two parts shows the first.
 
-- CO8 (M) The phone. The table screen and the canvas's screens on the recipes of look A (the design language's Workspace family, DL5e): rows as cards, the editor from the bottom. After DL1 and CO6.
+- CO7c (M) The joined card (`canvas-card` in `canvas-one-screens.md`): the part chips, the segmented control between Drawing and Page, the one Versions drawer. After CO7b.
+
+- CO7d (S) An agent's binding as a channel line with Undo.
+
+- CO8 (M) The phone. The table screen and the canvas's screens from the approved `canvas-one/phone.html`, on look A's recipes as they stand (DL1, DL5b's lists); it does not wait for the Workspace family (DL5f, not drawn). No new recipe: what is missing is built from the nearest one and listed in the PR body for DL5f. After CO7c.
 
 - CO9 (S) Close-out: `workspace/canvas-overview.md`, the lasting rules in the topic files, the PR body names the `[NEW]` changelog line, both plan files and the folder deleted.
 
@@ -38,3 +42,4 @@ description: Steps CO0-CO9 of plans/canvas-one.md: model and screens drawn, the 
 
 ## Open questions
 - None now: the schema ones of CO0, S1-S5 (#8923-#8927), are answered (`canvas-one-schema.md`).
+- Architect (2026-11-13): the cut of CO7b to CO7d, and CO8 not waiting for DL5f.
