@@ -57,10 +57,12 @@ function test_canvas_form_field_samples_by_kind()
 		array('type' => 'file upload', 'label' => 'Attachment'),
 		array('type' => 'information', 'label' => 'Note', 'information' => '<p>We answer <b>within a day</b>.</p>'),
 		array('type' => 'text area', 'label' => 'Message'),
+		array('type' => 'text area', 'label' => 'About your work'),
 	));
 	if ($got === null) return;
 	pg_assert_same(array('DATE', '14:30', 'sample@example.com', 'Orders', 'First choice', 'Yes', 'document.pdf', 'We answer within a day.',
-		'Hello, I would like to know when the order can be delivered. I am at home on weekdays after five, and the parcel can be left with the neighbour.'), $got);
+		'Hello, I would like to know when the order can be delivered. I am at home on weekdays after five, and the parcel can be left with the neighbour.',
+		'Two or three sentences in my own words: what I need, by when, and anything else that helps.'), $got);
 }
 
 // A text box: its default first, then its label's words (Turkish too), its
@@ -75,7 +77,7 @@ function test_canvas_form_field_samples_text_box()
 		array('type' => 'text box', 'label' => 'Adres'),
 		array('type' => 'text box', 'label' => 'Company'),
 		array('type' => 'text box', 'label' => 'Headline', 'rss_field' => 'title'),
-		array('type' => 'text box', 'label' => 'Country', 'value' => 'Türkiye'),
+		array('type' => 'text box', 'label' => 'Country', 'default_value' => 'Türkiye'),
 		array('type' => 'text box', 'label' => 'Favourite colour:'),
 	));
 	if ($got === null) return;

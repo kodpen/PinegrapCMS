@@ -15367,6 +15367,13 @@ const StyleDesigner = (function () {
     // account fields beside them. Without these a reference code would fall
     // through to lorem ipsum and a card would preview nothing like the page it
     // becomes. A function entry is called; everything else is used as written.
+    // The first name (0) or the last name (1) of the sample person, so a
+    // name written as its two halves reads as full_name does.
+    function _sdNameHalf(part) {
+        var words = String(_sdT('Alex Morgan')).trim().split(/\s+/);
+        var last = words.length > 1 ? words.pop() : '';
+        return part ? last : words.join(' ');
+    }
     var _SD_STANDARD_FIELD_PREVIEWS = {
         reference_code:                'ABC123XYZ',
         complete:                      _sdT('Complete'),
@@ -15396,8 +15403,8 @@ const StyleDesigner = (function () {
         username:                      'alex',
         email_address:                 _sdT('sample@example.com'),
         full_name:                     _sdT('Alex Morgan'),
-        first_name:                    _sdT('First Name'),
-        last_name:                     _sdT('Last Name'),
+        first_name:                    function () { return _sdNameHalf(0); },
+        last_name:                     function () { return _sdNameHalf(1); },
         member_id:                     'M-1042',
         member:                        '1',
         not_logged_in:                 _sdT('You must be logged in to view this page.'),
@@ -15839,6 +15846,16 @@ const StyleDesigner = (function () {
             // One of the widget form's own fields: preview by its type, so a
             // date field reads as a date and a pick list as a short value
             // instead of lorem ipsum.
+            // The form's fields come with the first panel or label that asks
+            // for them; a field's value asks once too, and paints again
+            // when they arrive, so it draws its answer from the start.
+            if (fieldName && node && String(fieldName).indexOf('__') !== 0) {
+                var _ffForm = _getSystemWidgetCustomFormPageId(node);
+                if (_ffForm && !_formFieldsCache[_ffForm] && !_sdLabelFieldsAsked[_ffForm]) {
+                    _sdLabelFieldsAsked[_ffForm] = true;
+                    _fetchFormFields(_ffForm, function () { renderCanvas(); });
+                }
+            }
             var _ffPrev = (fieldName && node) ? _sdFormFieldOf(fieldName, node) : null;
             // A field's label ("Field labels" in a detail view) reads as itself.
             if (!_ffPrev && node && /^[^_].*__label$/.test(String(fieldName || ''))) {
@@ -38311,10 +38328,14 @@ const StyleDesigner = (function () {
         }
         if (ff.rss_field === 'title') return _sdT('How we restored a 1920s bookshelf');
         if (ff.rss_field === 'description' || type === 'text area') {
-            return _sdT('Hello, I would like to know when the order can be delivered.') + ' ' +
-                   _sdT('I am at home on weekdays after five, and the parcel can be left with the neighbour.');
+            // A message reads as one; any other long text as a few
+            // sentences in the visitor's own words.
+            return /(message|comment|note|question|mesaj|yorum|not\b|soru|ne oldu)/i.test(label)
+                ? _sdT('Hello, I would like to know when the order can be delivered.') + ' ' +
+                  _sdT('I am at home on weekdays after five, and the parcel can be left with the neighbour.')
+                : _sdT('Two or three sentences in my own words: what I need, by when, and anything else that helps.');
         }
-        var dflt = String(ff.value || '').trim();
+        var dflt = String(ff.default_value || '').trim();
         if (dflt !== '' && dflt.indexOf('^^') === -1) return dflt;
         for (var i = 0; i < _SD_FIELD_WORD_SAMPLES.length; i++) {
             if (_SD_FIELD_WORD_SAMPLES[i][0].test(label) || _SD_FIELD_WORD_SAMPLES[i][0].test(String(ff.name || ''))) {
