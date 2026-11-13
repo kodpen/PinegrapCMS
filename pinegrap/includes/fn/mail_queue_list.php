@@ -48,10 +48,17 @@ function pg_mail_queue_list_statuses()
  */
 function pg_mail_queue_list_types()
 {
+    // One for every pg_mail_source_kinds() key: a caller's 'source' is
+    // copied into mail_type.
     return array(
         'system'    => lang('System'),
         'campaign'  => lang('Campaign'),
         'workspace' => lang('Workspace'),
+        'order'     => lang('Order'),
+        'form'      => lang('Form'),
+        'account'   => lang('Account'),
+        'comment'   => lang('Comment'),
+        'flow'      => lang('Flow'),
     );
 }
 

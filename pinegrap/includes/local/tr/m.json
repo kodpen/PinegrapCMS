@@ -386,6 +386,7 @@
     "Marked as not sold in this shop.": "Bu mağazada satılmıyor olarak işaretlendi.",
     "Marked as refunded: the money went back from the order screen.": "Ücreti iade edildi olarak işaretlendi: para sipariş ekranından geri ödendi.",
     "Marked by {var:1}": "{var:1} işaretledi",
+    "Marked files cannot be chosen.": "İşaretli dosyalar seçilemez.",
     "Marked for site map but not publicly accessible": "Site haritası için işaretli ama herkese açık değil",
     "Marked for site map but the folder is archived": "Site haritası için işaretli ama klasör arşivli",
     "Marked for site map but the folder is not public": "Site haritası için işaretli ama klasör herkese açık değil",

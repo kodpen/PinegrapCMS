@@ -2926,11 +2926,9 @@ function ws_handle_action($action, $request)
             return ws_action_ok(array('message_id' => $result['message_id'], 'ai' => !empty($asked['ai']) || !empty($asked['models']), 'agent' => !empty($asked['agent'])));
 
         // A file of the file manager in a conversation (library.php): the
-        // picker under the paperclip, the channels the file manager's "Send
-        // to a channel" offers, and the copy posted from either.
-        case 'ws_library_browse':
-            return ws_action_ok(ws_library_browse($viewer, (int) ($request['folder_id'] ?? 0), (string) ($request['q'] ?? '')));
-
+        // channels the file manager's "Send to a channel" offers, and the
+        // copy posted from it or from the picker under the paperclip
+        // (picker.php, kind channel_file).
         case 'ws_library_channels':
             return ws_action_ok(array('channels' => ws_library_channels($viewer)));
 

@@ -15,7 +15,6 @@ module: list_paging
 ## Which other lists sorted in PHP use the panel language's order?
 - Edit Product Group and Featured & New Items: `pg_list_sort_by_order_and_name()` (`list_paging`), (int) sort order (an empty box counts as 0), then `pg_geo_label_compare()` on the name. Ties are the normal case, and DataTables' ordering is off, so the server order is what shows.
 - Site Log with the error log merged in (`view_log.php`): the merge `usort` compares text with `pg_geo_label_compare()`; time and `log_id` ties as before.
-- Workspace folder picker (`ws_library_folder_list()`): `ws_library_folder_name_compare()`, a Collator with numeric collation ("Klasör 2" before "Klasör 10"), else `strnatcasecmp()`, matching the File Manager.
 - OneNote import notebooks and sections (`ws_note_onenote_notebooks()`): `pg_geo_label_compare()`.
 - Before, these used `array_multisort()` on lowercased names, `strcasecmp()` or `strnatcasecmp()`: Ç, İ, Ö, Ş, Ü came after Z. Pinned by `tests/panel_list_locale_order_test.php`.
 

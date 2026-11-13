@@ -111,9 +111,10 @@ function ws_page_bridge_request($call, $args_json)
  */
 function ws_page_bridge_answer($viewer, $message, $call, $args_json)
 {
-    if (!is_array($message) || ((int) ($message['deleted_at'] ?? 0) > 0) || ((int) ($message['file_id'] ?? 0) <= 0)
-        || !$viewer['member'] || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))
-        || !ws_page_is_page((int) $message['file_id'])) {
+    // The canvas's page part: the message's own file, or a page added
+    // beside its drawing (canvas_parts.php).
+    if (!is_array($message) || ((int) ($message['deleted_at'] ?? 0) > 0) || (ws_canvas_part_file($message, 'page') <= 0)
+        || !$viewer['member'] || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
         return ws_page_bridge_error('not_found', lang('That message could not be found.'));
     }
 

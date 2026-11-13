@@ -151,6 +151,34 @@ function test_image_editor_access_key_map()
 	pg_assert_same(array('undo', 'redo', 'save', 'keyEscape', 'keyHelp'), $r['canvasEdit'], 'no crop row without Crop');
 }
 
+// The timeline group of the help sheet, shown with the Animate tool: K
+// plays, J and L shuttle, the arrows step, Home and End jump, I and O trim
+// the selected clip's ends.
+function test_image_editor_access_timeline_group()
+{
+	$r = image_editor_access_node(
+		'function rows(g, t) { var o = []; g.forEach(function (x) { if (x.title === t) { x.rows.forEach(function (r) { o.push([r.keys.join(" "), r.label]); }); } }); return o; }' . "\n"
+		. 'console.log(JSON.stringify({ tl: rows(M.keyMap(["motion"]), "keysTimeline"), none: rows(M.keyMap(["crop"]), "keysTimeline") }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(
+		array('K', 'keyPlay'),
+		array('J / L', 'keyShuttle'),
+		array('LeftRight', 'keyFrame'),
+		array('Shift LeftRight', 'keySecond'),
+		array('Home', 'keyStart'),
+		array('End', 'keyEnd'),
+		array('I', 'keyMarkIn'),
+		array('O', 'keyMarkOut')
+	), $r['tl'], 'the timeline group: play, shuttle, frame, second, ends and mark in and out');
+	pg_assert_same(array(), $r['none'], 'no timeline group without the Animate tool');
+}
+
 // The arrows step the playhead by a frame (Shift: a second) on the frame or
 // second grid, never past either end; Home and End jump to the ends.
 function test_image_editor_access_timeline_keys()

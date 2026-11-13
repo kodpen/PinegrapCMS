@@ -1055,6 +1055,46 @@
                 rail.classList.add(cls);
             }
         });
+
+        this.fitRailLabels();
+    };
+
+    // A rail label of one word (Turkish "Animasyon", "Katmanlar",
+    // "Fotoğraf") is kept on one line: it is shrunk a little until it fits
+    // the button's width, down to a floor, instead of breaking inside the
+    // word. A label of several words ("Dışa Aktar") still wraps between
+    // them; a single word that does not fit even at the floor falls back to
+    // breaking, never running over the button (#6613).
+    Editor.prototype.fitRailLabels = function () {
+        var rail = this.rail, min = 8.5;
+
+        if (!rail || this.tools.mini || rail.classList.contains('pgie-rail-icons')) {
+            return;
+        }
+
+        Array.prototype.forEach.call(rail.querySelectorAll('.pgie-tool > span'), function (span) {
+            var size;
+
+            span.style.whiteSpace = '';
+            span.style.fontSize = '';
+
+            if (/\s/.test(span.textContent) || !span.clientWidth) {
+                return;
+            }
+
+            span.style.whiteSpace = 'nowrap';
+            size = parseFloat(window.getComputedStyle(span).fontSize) || 10.5;
+
+            while ((span.scrollWidth > span.clientWidth) && (size > min)) {
+                size -= 0.5;
+                span.style.fontSize = size + 'px';
+            }
+
+            if (span.scrollWidth > span.clientWidth) {
+                span.style.whiteSpace = '';
+                span.style.fontSize = '';
+            }
+        });
     };
 
     // A rail item: the tool it shows again (its sheet toggles), else the

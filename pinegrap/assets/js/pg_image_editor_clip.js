@@ -617,10 +617,31 @@
         return this.uploadSend(file, 'video', head, { error: t('clipUploadError') });
     };
 
-    // Videos from Files (action video_files) over the editor; a press adds
-    // one, or hands it to pick(file) (Replace).
+    // A video picked from the site: added, or handed to pick(file).
+    Editor.prototype.clipPicked = function (f, pick) {
+        if (pick) {
+            pick(f);
+        } else if (M.soundSrcOk(f.url, origin())) {
+            this.clipAdd(f);
+        }
+    };
+
+    // Videos from the site: the picker (kind canvas_video) on a panel
+    // screen, else the Files list (action video_files) over the editor; a
+    // press adds one, or hands it to pick(file) (Replace).
     Editor.prototype.openClipFiles = function (pick) {
         var self = this, timer = null, st = this.clipFiles;
+
+        if (this.sitePickerOk()) {
+            pick = (typeof pick === 'function') ? pick : null;
+            this.sitePick('canvas_video', t('clipFiles'), document.activeElement).then(function (f) {
+                if (f) {
+                    self.clipPicked(f, pick);
+                }
+            });
+
+            return;
+        }
         var find = el('input', { type: 'search', class: 'pgie-input pgie-stkfind', value: st.search, placeholder: t('clipFind'), 'aria-label': t('clipFind') });
 
         st.pick = (typeof pick === 'function') ? pick : null;
@@ -677,12 +698,7 @@
                 var pick = self.clipFiles.pick;
 
                 self.closeConfirm();
-
-                if (pick) {
-                    pick(f);
-                } else if (M.soundSrcOk(f.url, origin())) {
-                    self.clipAdd(f);
-                }
+                self.clipPicked(f, pick);
             } }, [icon('video'), el('span', { text: f.name }), el('em', { text: f.size || '' })]));
         });
     };
@@ -1224,6 +1240,37 @@
             M.clipApply(doc, []);
         });
         this.select(this.sel.filter(function (id) { return id !== l.id; }));
+    };
+
+    // The single selected video clip, else null.
+    Editor.prototype.clipSelected = function () {
+        var l = (this.sel.length === 1) ? this.selected()[0] : null;
+
+        return (l && (l.type === 'video')) ? l : null;
+    };
+
+    // I and O in the Animate tool: trim the selected clip's start or end to
+    // the playhead (M.clipTrim, no snapping), one undo step. The playhead
+    // must sit inside the clip, so an edge keeps its 0.1 s of source.
+    Editor.prototype.clipMark = function (grip) {
+        var l = this.clipSelected(), now = this.motionNow(), sp;
+
+        if (!l || l.locked || (now === null)) {
+            return;
+        }
+
+        sp = M.clipSpan(l);
+
+        if ((now <= sp.from) || (now >= sp.to)) {
+            this.showMessage(t('clipMarkNote'), true);
+            return;
+        }
+
+        var r = M.clipTrim(M.clone(this.doc.layers), l.id, grip, now - ((grip === 'start') ? sp.from : sp.to), { targets: [], slack: 0, fine: true });
+
+        if (r) {
+            this.clipCommit(r.patches);
+        }
     };
 
     // What the clip rows show: a drag keeps its bars till release.

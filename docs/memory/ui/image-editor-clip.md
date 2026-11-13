@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Where is it?
-- Part `clip`: `assets/js/pg_image_editor_clip.js` (bundled after `video`), the model's `CLIP` section, labels `pg_image_editor_strings_clip()`, actions `video_files` and `video_upload`, its stylesheet section, `tests/image_editor_clip_test.php`. Added in V2 of `plans/image-editor-video-steps.md` (#8483). Decoding is the `video` part's (`image-editor-video-decode.md`).
+- Part `clip`: `assets/js/pg_image_editor_clip.js` (bundled after `video`), the model's `CLIP` section, labels `pg_image_editor_strings_clip()`, actions `video_files` and `video_upload`, its stylesheet section, `tests/image_editor_clip_test.php`. Added in #8483. Decoding is the `video` part's (`image-editor-video-decode.md`).
 
 ## What does a layer hold?
 - `{ type: 'video', fileId, name, src, length, width, height, sound, from, to, start, speed, volume, muted, x, y, w, h, rot, opacity }`, times in ms. `from`/`to` cut the source, `start` places the cut on the open document's own timeline (`motionNow()`, not the whole scenes' timeline as a sound), `speed` is one of `M.CLIP_SPEEDS` (0.25-4×), so the clip lasts `(to - from) / speed` (`M.clipSpan()`). `sound` says whether the file has a sound track.
@@ -23,7 +23,7 @@ module: image_editor
 
 ## How is a video added?
 - Import (`image-editor-import.md`): From this computer takes `.mp4`, `.m4v`, `.webm` too (and a drop on the stage): the file is opened in the browser first (a codec it cannot decode is said before any upload), then sent to `video_upload` and lands beside the open file or in the unsaved canvas's folder (edit right, not the bin; type by its bytes, `pg_image_editor_clip_format()`; over one request in parts, `image-editor-upload.md`). A callback save (Workspace) has no Files: a message says so.
-- Video from the site: `Editor.importItems` adds the item; `video_files` lists mp4, m4v and webm files as `sound_files` lists sounds (`pg_image_editor_sound_where()` and `_rows()` take the types).
+- Video from the site: `Editor.importItems` adds the item; on a panel screen it and Replace open the picker, kind `canvas_video` (`picker-site-lists.md`); elsewhere `video_files` lists mp4, m4v and webm files as `sound_files` lists sounds (`pg_image_editor_sound_where()` and `_rows()` take the types).
 - The clip goes to the bottom, fills the canvas (ratio kept), starts at the playhead and is selected; the document's length grows to its end (at most 60 s).
 
 ## What does the panel show?

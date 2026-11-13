@@ -15025,6 +15025,21 @@ const StyleDesigner = (function () {
     // (10–30 chars typical for product names, SKUs, labels).
     var _SD_SHORT_LABEL_TOKENS = {
         // Search results
+        // A form record's entity values, the address filter's value and
+        // the custom form's own words.
+        '__quiz_score': '80%',
+        '__post_title': _sdT('How we restored a 1920s bookshelf'),
+        '__post_date': _sdDateSample(false),
+        '__post_summary': _sdT('A weekend, a tin of oil and some patience: the steps, the tools and what we would do again.'),
+        '__post_author': _sdT('Alex Morgan'),
+        '__filter_value': _sdT('design'),
+        '__form_title': _sdT('Contact Form'),
+        '__submit_label': _sdT('Submit'),
+        '__success_message': _sdT('Thank you. Your message has been sent.'),
+        // The tag cloud's values.
+        '__search_page_name': _sdT('Search'),
+        '__tag_total': '12', '__tag_name': _sdT('linen'), '__tag_keyword': 'linen',
+        '__tag_count': '8', '__tag_size': '150', '__tag_weight': '3',
         '__search_query': _sdT('design'),
         '__results_heading': _sdT('Found 12 result(s) for: design'),
         '__result_title': _sdT('Sample Page'),
@@ -15404,6 +15419,38 @@ const StyleDesigner = (function () {
                    esc(_sdT('Your {var:1} is saved. To return to this {var:1} later, please use this link:', _sdT('cart'))) + '</div>' +
                    '<a href="#" class="small text-break">' + esc(url) + '</a></div>';
         },
+        // The catalog's blocks, in the markup widgets_catalog.php gives them;
+        // controls disabled.
+        '__group_tree_html': function () {
+            return '<nav class="pg-sw-cl-group-tree"><ul class="list-unstyled mb-0">' +
+                   '<li class="pg-sw-cl-tree-item active"><a href="#" class="text-decoration-none fw-bold">' + esc(_sdT('Shirts')) + '</a></li>' +
+                   '<li class="pg-sw-cl-tree-item"><a href="#" class="text-decoration-none">' + esc(_sdT('Trousers')) + '</a></li>' +
+                   '<li class="pg-sw-cl-tree-item"><a href="#" class="text-decoration-none">' + esc(_sdT('Accessories')) + '</a></li></ul></nav>';
+        },
+        '__filters_button': function () {
+            return '<button type="button" class="btn btn-outline-secondary" disabled><i class="bi bi-funnel me-1"></i>' +
+                   esc(_sdT('Filters')) + '</button>';
+        },
+        '__clear_filters_button': function () {
+            return '<a href="#" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle me-1"></i>' + esc(_sdT('Clear Filters')) + '</a>';
+        },
+        '__attribute_filters_html': function () {
+            var box = function (label, on) {
+                return '<div class="form-check"><input class="form-check-input" type="checkbox" disabled' + (on ? ' checked' : '') + '>' +
+                       '<label class="form-check-label">' + esc(label) + '</label></div>';
+            };
+            return '<div class="pg-sw-cl-attr-filters"><div class="fw-semibold small mb-1">' + esc(_sdT('Colour')) + '</div>' +
+                   box(_sdT('Natural'), true) + box(_sdT('Navy'), false) + '</div>';
+        },
+        // The filters panel opens from the Filters button; drawn open here.
+        '__filters_offcanvas': function () {
+            return '<div class="border rounded p-3"><div class="fw-semibold mb-2">' + esc(_sdT('Filters')) + '</div>' +
+                   _SD_HTML_PREVIEW_TOKENS.__attribute_filters_html() + '</div>';
+        },
+        '__variant_picker': function () {
+            return '<div class="pg-civ-variant-picker mb-3"><label class="form-label">' + esc(_sdT('Size')) + '</label>' +
+                   '<select class="form-select" disabled><option>M</option></select></div>';
+        },
         // The sample order's addresses as <br> lines, as the page writes them.
         '__recipient_address_html': function () {
             var a = _sdOrderAddress('shipping');
@@ -15461,6 +15508,13 @@ const StyleDesigner = (function () {
     // account fields beside them. Without these a reference code would fall
     // through to lorem ipsum and a card would preview nothing like the page it
     // becomes. A function entry is called; everything else is used as written.
+    // The first name (0) or the last name (1) of the sample person, so a
+    // name written as its two halves reads as full_name does.
+    function _sdNameHalf(part) {
+        var words = String(_sdT('Alex Morgan')).trim().split(/\s+/);
+        var last = words.length > 1 ? words.pop() : '';
+        return part ? last : words.join(' ');
+    }
     var _SD_STANDARD_FIELD_PREVIEWS = {
         reference_code:                'ABC123XYZ',
         complete:                      _sdT('Complete'),
@@ -15490,8 +15544,8 @@ const StyleDesigner = (function () {
         username:                      'alex',
         email_address:                 _sdT('sample@example.com'),
         full_name:                     _sdT('Alex Morgan'),
-        first_name:                    _sdT('First Name'),
-        last_name:                     _sdT('Last Name'),
+        first_name:                    function () { return _sdNameHalf(0); },
+        last_name:                     function () { return _sdNameHalf(1); },
         member_id:                     'M-1042',
         member:                        '1',
         not_logged_in:                 _sdT('You must be logged in to view this page.'),
@@ -15729,12 +15783,6 @@ const StyleDesigner = (function () {
     }
     var _sdOrderSampleMap = null;
 
-    // Whether `node` draws in a widget of the order family.
-    function _sdOrderSampleOn(node) {
-        var cfg = node ? _sdSystemWidgetCfgOf(node) : null;
-        return !!(cfg && _SD_ORDER_SAMPLE_REGIONS[cfg.regionType]);
-    }
-
     // The two addresses, as lines: [first, last, company, line 1, line 2,
     // city, state, zip, country, phone].
     function _sdOrderAddress(which) {
@@ -15890,6 +15938,59 @@ const StyleDesigner = (function () {
         _sdOrderSampleMap = out;
         return out;
     }
+
+    // ── The sample product ───────────────────────────────────────────────
+    // The catalog family (listing, product page, wishlist, order form,
+    // search results) draws one product, the sample order's first line:
+    // its prices, stock, codes and flags agree, flags written as the page
+    // writes them ('1' / '0'). The flags of _SD_FLAG_TOKENS stay out, so a
+    // discount or related block keeps the canvas state's choice.
+    var _SD_PRODUCT_SAMPLE_REGIONS = {
+        catalog_listing: 1, catalog_item_view: 1, wishlist: 1, order_form: 1, search_results: 1
+    };
+    var _sdProductSampleMap = null;
+    function _sdProductSample() {
+        if (_sdProductSampleMap) return _sdProductSampleMap;
+        var day = _sdDateSample(false);
+        var name = _sdT('Linen Shirt');
+        _sdProductSampleMap = {
+            __id: '1001', __name: 'PRD-1001', __sku: 'PRD-1001', __short_description: name, __image_alt: name,
+            __description: _sdT('Washed linen with a relaxed fit and mother-of-pearl buttons, sewn in small batches.'),
+            __details: _sdT('Care: wash at 30 °C and hang to dry.'),
+            __address_name: 'linen-shirt', __sort_order: '10', __created_at: day, __row_type: 'product',
+            __not_found_message: _sdT('This product could not be found.'),
+            __price: _sdMoney(450), __price_formatted: _sdMoney(450), __price_min: _sdMoney(450), __price_max: _sdMoney(520),
+            __price_range: _sdMoney(450) + ' – ' + _sdMoney(520), __reference_price: _sdMoney(480),
+            __original_price: _sdMoney(500), __original_price_formatted: _sdMoney(500),
+            __discount_amount: _sdMoney(50), __discount_amount_formatted: _sdMoney(50), __discount_percent: '10',
+            __gallery_count: '5', __inventory_tracked: '1', __inventory_quantity: '12', __quantity_available: '12',
+            __backorder: '0', __out_of_stock: '0', __preorder: '0',
+            __out_of_stock_message: _sdT('This product is out of stock right now.'),
+            __mpn: 'LS-2026-M', __gtin: '8690000010019', __brand: _sdT('Cooper Studio'), __manufacturer: _sdT('Cooper Studio'),
+            __weight: '0.35', __shippable: '1', __taxable: '1',
+            __category_id: '12', __category_name: _sdT('Shirts'), __active_cat_id: '12', __active_cat_name: _sdT('Shirts'),
+            __featured: '1', __is_new: '1', __has_variants: '1', __variant_count: '3', __has_children: '0', __has_breadcrumb: '1',
+            __custom_field_1: _sdT('Linen'), __custom_field_2: _sdT('Relaxed fit'), __custom_field_3: 'M', __custom_field_4: _sdT('Natural'),
+            __reward_points: '45', __seo_score: '82', __is_bundle: '0', __ai_generated: '',
+            __is_select_group: '1', __select_group_id: '7', __select_group_name: name,
+            __keywords: _sdT('linen, shirt, summer'), __length: '30', __width: '25', __height: '3',
+            __minimum_quantity: '1', __maximum_quantity: '10', __preparation_days: '2', __extra_shipping_cost: _sdMoney(0),
+            __vat_rate: '20', __payment_period: _sdT('Monthly'), __number_of_payments: '12',
+            __is_free_shipping: '0', __is_gift_card: '0', __is_donation: '0',
+            __empty_message: _sdT('No results found.'), __result_is_featured: '1'
+        };
+        return _sdProductSampleMap;
+    }
+
+    // The sample record a node's widget draws (the order or the product),
+    // or null outside those families.
+    function _sdSampleRecord(node) {
+        var cfg = node ? _sdSystemWidgetCfgOf(node) : null;
+        if (!cfg) return null;
+        if (_SD_ORDER_SAMPLE_REGIONS[cfg.regionType]) return _sdOrderSample();
+        if (_SD_PRODUCT_SAMPLE_REGIONS[cfg.regionType]) return _sdProductSample();
+        return null;
+    }
     var _sdLabelFieldsAsked = {};
     function _displayValueForBinding(prop, fieldName, node) {
         // A sample comment after a comments widget's card draws its own
@@ -15931,11 +16032,9 @@ const StyleDesigner = (function () {
             if (fieldName && _sdIsHtmlPreviewToken(fieldName)) {
                 return _SD_HTML_PREVIEW_TOKENS[fieldName]();
             }
-            // A value of the sample order, in the order family's widgets.
-            if (fieldName && _sdOrderSampleOn(node)) {
-                var _ord = _sdOrderSample();
-                if (Object.prototype.hasOwnProperty.call(_ord, fieldName)) return _ord[fieldName];
-            }
+            // A value of the sample order or product, in those families' widgets.
+            var _rec = fieldName ? _sdSampleRecord(node) : null;
+            if (_rec && Object.prototype.hasOwnProperty.call(_rec, fieldName)) return _rec[fieldName];
             // Type-aware placeholder dispatch — order matters: currency
             // FIRST so __cart_total_formatted doesn't fall through to the
             // short-label map by accident.
@@ -15953,6 +16052,16 @@ const StyleDesigner = (function () {
             // One of the widget form's own fields: preview by its type, so a
             // date field reads as a date and a pick list as a short value
             // instead of lorem ipsum.
+            // The form's fields come with the first panel or label that asks
+            // for them; a field's value asks once too, and paints again
+            // when they arrive, so it draws its answer from the start.
+            if (fieldName && node && String(fieldName).indexOf('__') !== 0) {
+                var _ffForm = _getSystemWidgetCustomFormPageId(node);
+                if (_ffForm && !_formFieldsCache[_ffForm] && !_sdLabelFieldsAsked[_ffForm]) {
+                    _sdLabelFieldsAsked[_ffForm] = true;
+                    _fetchFormFields(_ffForm, function () { renderCanvas(); });
+                }
+            }
             var _ffPrev = (fieldName && node) ? _sdFormFieldOf(fieldName, node) : null;
             // A field's label ("Field labels" in a detail view) reads as itself.
             if (!_ffPrev && node && /^[^_].*__label$/.test(String(fieldName || ''))) {
@@ -15970,13 +16079,7 @@ const StyleDesigner = (function () {
                     }
                 }
             }
-            if (_ffPrev) {
-                if (_ffPrev.type === 'date' || _ffPrev.type === 'date and time') return _sdDatePlaceholder();
-                if (_ffPrev.type === 'time')          return '14:30';
-                if (_ffPrev.type === 'email address') return _sdT('sample@example.com');
-                if (_ffPrev.type === 'text area')     return _sdTokenPlaceholder(fieldName, node);
-                return _sdT('Example');
-            }
+            if (_ffPrev) return _sdFormFieldSample(_ffPrev);
             if (fieldName && _SD_CURRENCY_TOKENS[fieldName]) {
                 return _sdGetCurrencyPlaceholder();
             }
@@ -16259,12 +16362,12 @@ const StyleDesigner = (function () {
     // into e.g. a title="" would be noise at best.
     function _sdResolveAttrTokens(val, allowHtml, node) {
         if (!val || typeof val !== 'string' || val.indexOf('^^') === -1) return val;
-        var order = (node && _sdOrderSampleOn(node)) ? _sdOrderSample() : null;
+        var order = _sdSampleRecord(node);
         return val.replace(/\^\^([a-zA-Z_][a-zA-Z0-9_]*)\^\^/g, function(_, tok) {
             // Reuse the same maps that drive bound text/src previews so the
             // canvas stays internally consistent.
             if (_sdIsHtmlPreviewToken(tok))   return allowHtml ? _SD_HTML_PREVIEW_TOKENS[tok]() : '';
-            // A list sample row's value, then the sample order's: plain
+            // A list sample row's value, then the sample record's: plain
             // text, escaped where the result is markup.
             var own = (_sdListSample && Object.prototype.hasOwnProperty.call(_sdListSample, tok)) ? _sdListSample[tok]
                 : ((order && Object.prototype.hasOwnProperty.call(order, tok)) ? order[tok] : null);
@@ -38396,6 +38499,58 @@ const StyleDesigner = (function () {
             if (_swFormFieldToken(fields[i]) === fieldName) return fields[i];
         }
         return null;
+    }
+
+    // A record's answer to form field `ff` on the canvas, of the field's
+    // kind: a date, a time, an e-mail address, one of its own choices, a
+    // file name, a few sentences for long text, its information text; a
+    // text box by its default, its role or the words of its label (a name,
+    // a phone, a company …), else its label as a sample. Canvas only.
+    var _SD_FIELD_WORD_SAMPLES = [
+        [/(e-?mail|e-posta)/i, function () { return _sdT('sample@example.com'); }],
+        [/(phone|mobile|telefon|gsm)/i, function () { return '+90 555 000 00 00'; }],
+        [/(company|organi[sz]ation|şirket|firma|kurum)/i, function () { return _sdT('Example Ltd.'); }],
+        [/(city|town|şehir|ilçe)/i, function () { return _sdT('Springfield'); }],
+        [/(web|site|url|link)/i, function () { return 'https://example.com'; }],
+        [/(address|adres)/i, function () { return _sdT('Sample Street 1') + ', ' + _sdT('Springfield'); }],
+        [/(subject|title|topic|konu|başlık)/i, function () { return _sdT('Question about my order'); }],
+        [/(name|isim|^ad\b|ad soyad|adınız)/i, function () { return _sdT('Alex Morgan'); }],
+        [/(message|comment|note|question|mesaj|yorum|not\b|soru|açıklama)/i, function () { return _sdT('Hello, I would like to know when the order can be delivered.'); }],
+        [/(number|no\b|code|kod|numara)/i, function () { return 'A-1042'; }]
+    ];
+    function _sdFormFieldSample(ff) {
+        var type = String(ff.type || '');
+        var label = String(ff.label || ff.name || '').replace(/<[^>]*>/g, '').replace(/\s*[:：*]\s*$/, '').trim();
+        var opts = Array.isArray(ff.options) ? ff.options : [];
+        var first = opts.length ? String(opts[0].label || opts[0].value || '') : '';
+        if (type === 'date' || type === 'date and time') return _sdDatePlaceholder();
+        if (type === 'time') return '14:30';
+        if (type === 'email address') return _sdT('sample@example.com');
+        if (type === 'pick list' || type === 'radio button') return first || _sdT('First choice');
+        if (type === 'check box') return first || _sdT('Yes');
+        if (type === 'file upload') return 'document.pdf';
+        if (type === 'signature') return _sdT('Signed');
+        if (type === 'information') {
+            var info = String(ff.information || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').replace(/\s+([.,;:!?])/g, '$1').trim();
+            return info || label || _sdT('Information');
+        }
+        if (ff.rss_field === 'title') return _sdT('How we restored a 1920s bookshelf');
+        if (ff.rss_field === 'description' || type === 'text area') {
+            // A message reads as one; any other long text as a few
+            // sentences in the visitor's own words.
+            return /(message|comment|note|question|mesaj|yorum|not\b|soru|ne oldu)/i.test(label)
+                ? _sdT('Hello, I would like to know when the order can be delivered.') + ' ' +
+                  _sdT('I am at home on weekdays after five, and the parcel can be left with the neighbour.')
+                : _sdT('Two or three sentences in my own words: what I need, by when, and anything else that helps.');
+        }
+        var dflt = String(ff.default_value || '').trim();
+        if (dflt !== '' && dflt.indexOf('^^') === -1) return dflt;
+        for (var i = 0; i < _SD_FIELD_WORD_SAMPLES.length; i++) {
+            if (_SD_FIELD_WORD_SAMPLES[i][0].test(label) || _SD_FIELD_WORD_SAMPLES[i][0].test(String(ff.name || ''))) {
+                return _SD_FIELD_WORD_SAMPLES[i][1]();
+            }
+        }
+        return label ? _sdT('{var:1} sample', label) : _sdT('Example');
     }
 
     // Identifiers whose value is a date, so the panel knows when to offer a

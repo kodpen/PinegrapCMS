@@ -221,6 +221,7 @@ if (
             $reset_link . "\n" .
             "\n" .
             lang('If you did not make this request, then you may safely ignore this email, and your password will remain the same.'),
+        'source' => 'account',
         'queue' => true,
         'secret' => true));
 }

@@ -26,7 +26,7 @@ function test_picker_kinds()
 {
 	$kinds = pg_picker_kinds();
 
-	pg_assert_same(array_merge(array('file', 'image', 'public_image', 'site_icon', 'page', 'page_view', 'page_form'), array_keys(pg_picker_page_type_kinds())), array_keys($kinds));
+	pg_assert_same(array_merge(array('file', 'image', 'public_image', 'site_icon', 'channel_file', 'canvas_picture', 'canvas_photo', 'canvas_video', 'canvas_sound', 'page', 'page_view', 'page_form'), array_keys(pg_picker_page_type_kinds())), array_keys($kinds));
 
 	foreach ($kinds as $name => $kind) {
 		foreach (array('source', 'types', 'public', 'design', 'archived', 'value', 'role', 'tree', 'pictures', 'upload') as $field) {
@@ -57,6 +57,47 @@ function test_picker_kinds()
 	}
 
 	pg_assert_same(array('list', 'search', 'tree', 'resolve', 'upload', 'short_links'), pg_picker_requests());
+}
+
+// The Workspace's "From the file manager" and the Design Canvas's From the
+// site lists (PK9b).
+function test_picker_channel_and_canvas_kinds()
+{
+	$kinds = pg_picker_kinds();
+
+	pg_assert_true(!empty($kinds['channel_file']['channel']) && !$kinds['channel_file']['upload'], 'the paperclip picks a file; From this device uploads');
+	pg_assert_same('id', $kinds['channel_file']['value'], 'ws_library_attach takes the file id');
+	pg_assert_same(array(), $kinds['channel_file']['types'], 'any type, a refused one marked');
+	pg_assert_contains('(folder > 0)', pg_picker_files_where($kinds['channel_file'], '', array(9), null), 'files without a folder are other modules\'');
+	pg_assert_false(strpos(pg_picker_files_where($kinds['file'], '', array(9), null), '(folder > 0)') !== false, 'other kinds as before');
+	pg_assert_contains('(folder NOT IN (9, 12))', pg_picker_files_where($kinds['channel_file'], '', array(9, 12), null), 'the closed folders are left out');
+
+	pg_assert_same(array('jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'), $kinds['canvas_picture']['types'], 'Import: what the editor draws, SVG as a layer');
+	pg_assert_same(array('jpg', 'jpeg', 'png', 'gif', 'webp'), $kinds['canvas_photo']['types'], 'a picture handed on: no SVG');
+	pg_assert_same(pg_image_editor_clip_types(), $kinds['canvas_video']['types']);
+	pg_assert_same(pg_image_editor_sound_types(), $kinds['canvas_sound']['types']);
+
+	foreach (array('canvas_picture', 'canvas_photo', 'canvas_video', 'canvas_sound') as $name) {
+		pg_assert_same('id', $kinds[$name]['value'], $name . ' hands the editor the file id');
+		pg_assert_true(empty($kinds[$name]['channel']), $name . ' is not a channel kind');
+		pg_assert_true(pg_picker_kind_open($name, array('id' => 1, 'role' => 3)), $name . ' needs no more than its role');
+	}
+
+	pg_assert_true($kinds['canvas_picture']['pictures'] && !$kinds['canvas_video']['pictures'], 'pictures as tiles, the rest as a list');
+
+	// The endpoint asks the kind's own gate; the closed folders reach every
+	// files request of the kind; a channel kind's refused file is marked.
+	$endpoint = picker_test_source('picker.php');
+	$fn = picker_test_source('includes/fn/picker.php');
+
+	pg_assert_true(strpos($endpoint, 'pg_picker_kind_open($request[\'kind\'], $user)') < strpos($endpoint, 'pg_picker_answer($request, $user)'), 'the gate before any answer');
+	pg_assert_contains('pg_picker_closed_folder_ids($kind),', $fn, 'the files condition');
+	pg_assert_contains('pg_picker_folder_allowed($request[\'folder\'], pg_picker_closed_folder_ids($kind)', $fn, 'a folder list');
+	pg_assert_contains('$bin_ids = pg_picker_closed_folder_ids($kinds[$request[\'kind\']]);', $fn, 'the tree');
+	pg_assert_contains('ws_library_branch(ws_library_parents(), ws_library_closed_tops())', $fn, 'the Workspace\'s own closed branches');
+	pg_assert_contains("\$item['mark'] = 'refused';", $fn, 'a refused file is marked');
+	pg_assert_contains('ws_library_refusal($item[\'text\'], $item[\'size\'])', $fn, 'by the Workspace\'s reason');
+	pg_assert_contains("'Marked files cannot be chosen.'", $fn, 'the dialog\'s note is translated');
 }
 
 function test_picker_access_verdict()

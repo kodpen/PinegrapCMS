@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Where is it?
-- In the `clip` part (`pg_image_editor_clip.js`, "the clip rows on the tracks"), the model's `CLIP` section (`clipRow()` … `clipJoins()`), labels in `pg_image_editor_strings_clip()`, rules after the clip's in `pg_image_editor.src.css`, tests in `tests/image_editor_clip_test.php`. Added in V3 of `plans/image-editor-video-steps.md` (#8510); the length rule, filmstrip and waveform in V3b. The layer itself: `image-editor-clip.md`.
+- In the `clip` part (`pg_image_editor_clip.js`, "the clip rows on the tracks"), the model's `CLIP` section (`clipRow()` … `clipJoins()`), labels in `pg_image_editor_strings_clip()`, rules after the clip's in `pg_image_editor.src.css`, tests in `tests/image_editor_clip_test.php`. Added in #8510; the length rule, filmstrip and waveform in #8559. The layer itself: `image-editor-clip.md`.
 - The tracks part draws a row through `Editor.trackRowMakers` (fn(l, end): a node, false for none, undefined for the usual row): a clip gives its row, drawn where the topmost clip of the row is in the stack.
 
 ## Which clips share a row?
@@ -25,5 +25,6 @@ module: image_editor
 ## What does the panel add?
 - "From the source" and "On the timeline" (in → out and the length), "Same source" beside the size when another layer plays the same file, Split clip (`M.clipSplit()` at the playhead, 0.1 s of source on both sides, else a message; the second part right above the first, selected; the first keeps the entrance, the second the exit), and in Animate a note on dragging.
 
-## What is left?
-- Keys and captions (V11). The phone's rows and touch-sized grips: `image-editor-phone-rows.md`.
+## Which keys mark a clip?
+- In the Animate tool I and O trim the selected clip's start and end to the playhead (`Editor.clipMark()`, `M.clipTrim` with no snapping, one undo step), the playhead inside the clip so the edge keeps 0.1 s of source, else the message `clipMarkNote`. J, K and L are the play transport (`image-editor-animation.md`). These five letters override the Line, Image and Ellipse tool letters while Animate is on (`image-editor-access.md`). #9234.
+- The phone's rows and touch-sized grips: `image-editor-phone-rows.md`.

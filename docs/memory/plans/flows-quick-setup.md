@@ -24,7 +24,7 @@ description: Plan (owner 2026-11-12, #8950): a quick setup that builds a flow by
 ## Which steps?
 - QS0 (S, no product code) done #9082. The map: each drawn start and action against today's kinds and events; what has no box (an SMS step, "Add to a group", "Give an offer code"), decided in `flows-quick-setup-steps-2.md`; the shape of the areas list, of a recipe and of the choices the dialog sends.
 - QS1 (M) done #9082. Server: the catalogue (areas, starts, action groups, recipes filtered by start) and the function that turns the choices into a draft through the store; tests on the graph it makes.
-- QS2 (M) The dialog's first stage: rail, search, start cards, "Only when".
+- QS2 (M) done #9244. The dialog's first stage: rail, search, start cards, "Only when" (`workspace/workspace-flows-quick-setup-dialog.md`).
 - QS3 (M) The second stage: recipes, actions, a step's setting, "One more step".
 - QS4 (M) The summary: order, edit, insert, a condition's indented steps, the name, start or open on the canvas.
 - QS5 (S) Ways in: "Quick setup" beside "New flow" on the Flows list, in its empty state and in the messages area (`messages-area-steps.md`); close-out: the lasting rules into `workspace/`, this plan deleted.

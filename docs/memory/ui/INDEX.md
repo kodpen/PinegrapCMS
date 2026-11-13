@@ -295,7 +295,7 @@
 - image-editor-scenes.md: A canvas's scenes (AN7a): doc.scenes and the open scene, the strip, the scene panel, transitions, frames across scenes, the save's cap, a canvas animation tied to its canvas
 - image-editor-scissors.md: The Design Canvas's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
 - image-editor-select.md: How the Design Canvas's Select tool picks layers: a click, Shift, a press inside an unfilled shape, the selection box, Select all, touch
-- image-editor-sound.md: Music and sounds on an animation (V4): doc.sounds on the whole timeline, sounds from Files, the rows under the tracks, the Sound panel, Web Audio in step with the play bar, the sound_files action
+- image-editor-sound.md: Music and sounds on an animation (V4): doc.sounds on the whole timeline, sounds from Files, the rows under the tracks, the Sound panel, Web Audio in step with the play bar, the sound_files action [decision: decisions-made-product-31.md]
 - image-editor-sticker.md: The Design Canvas's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
 - image-editor-subject-brushes.md: The Design Canvas's Keep and Remove brushes on a selected subject (E28b, #6889): strokes as hard labels of a new cut, and the guided-filter soft edge of the layers made from it
 - image-editor-subject.md: The Design Canvas's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection [decision: here]
@@ -519,6 +519,7 @@
 - picker-pages.md: Pages in the picker dialog (kind page, PK4): rows with address and type, the page type chips, archived and binned marks that cannot be chosen, a caller's own entries (extra) [decision: here]
 - picker-registry.md: The picker's registry pg_picker_kinds() and endpoint picker.php (list, search, tree, resolve, upload): kinds, request checks, paging, access rule, value states
 - picker-remaining-screens.md: The product builder's pictures, the contact photo and the theme designer's background file on the picker (PK9, #8904); the image window editor_select_image.php deleted with its add_file.php return
+- picker-site-lists.md: Design Canvas From the site (Import, Video, Add sound) and the Workspace paperclip's "From the file manager" on the one picker (PK9b, #9256): kinds, site page fallback, refused mark
 - picker-upload.md: The picker dialog's Upload (picker.php request upload), its Recently used list kept in the browser, and several picks (multiple): rules, keys, where each is checked
 - print-order-product-links.md: The order print view's product name and image are real links to edit_product.php, reachable from the keyboard
 - print-views-light-paper.md: The order print view and packing slip force the light theme, carry their own title and the store icon; the packing slip's address lines; the campaign popups' title and icon
