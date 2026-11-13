@@ -1,6 +1,6 @@
 ---
 name: messages-area-shell
-description: The Communication area's shell (MA1, #9182): menu row 9 renamed, the five tabs with their files and gates, the shared tab strip, the old lists inside it, what each new tab shows until its step lands
+description: The Communication area (MA1 #9182, MA7 #9200): menu row 9, the five tabs and their gates, the shared tab strip, the old lists inside it, the interim tabs, the Channels cards
 module: messages_area
 ---
 
@@ -19,7 +19,13 @@ module: messages_area
 - No door yet: an old address becomes one in the step that moves its job (history and SMS list MA3, mail queue MA2, profiles MA9d).
 
 ## What do the new tabs show before their step?
-- Rows (`pg_messages_place_rows()`) leading to where the job is done today. Sends: E-mail queue, SMS queue (`pg_sms_queue_shown()`), both role <= 2, and My Campaign History. Templates: SMS Messages and WhatsApp settings cards (role <= 2). Automatic sends: My Campaign Profiles, Automation flows when `pg_flows_menu_row()` admits. Channels: SMTP Settings, SMS, WhatsApp, İYS cards.
-- MA2, MA6, MA7, MA8 replace each body; MA8 also moves Automatic sends to the flows' gate.
+- Rows (`pg_messages_place_rows()`) leading to where the job is done today. Sends: E-mail queue, SMS queue (`pg_sms_queue_shown()`), both role <= 2, and My Campaign History. Templates: SMS Messages and WhatsApp settings cards (role <= 2). Automatic sends: My Campaign Profiles, Automation flows when `pg_flows_menu_row()` admits. Channels has its cards since MA7 (below).
+- MA2, MA6, MA8 replace each body; MA8 also moves Automatic sends to the flows' gate.
+
+## What does the Channels tab show? (MA7, #9200)
+- Four cards, two to a row: E-mail, SMS, WhatsApp, İYS; each a link to its settings (SMTP Settings, the Communication cards) with a state pill and one line.
+- E-mail always sends, so its pill is the sending domain's health: the worst of SPF, DKIM and DMARC (`pg_messages_health_worst()`), looked up in DNS on each visit as SMTP Settings does. Line: sender address, transport or SMTP host, sending domain.
+- SMS, WhatsApp, İYS: Connected (complete and on), Incomplete (switched on, a field missing), Off. Lines: provider and sender; number and verified name; brand code and the test environment.
+- `pg_messages_channel_cards($facts, $urls)` is pure and tested; `pg_messages_channel_facts()` reads the accounts.
 
 Test: `tests/messages_area_test.php`.

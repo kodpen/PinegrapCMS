@@ -40,6 +40,7 @@
         duplicate: ['duplicate', 'duplicate', function () { this.addLayers(this.selected(), 10); }],
         remove: ['trash', 'delete', function () { this.removeLayers(); }, true],
         lockPicture: ['lock', 'lock', function () { this.lockPicture(true); }],
+        pictureLayer: ['layers', 'pictureLayer', function () { this.pictureToLayer(); }],
         removePicture: ['trash', 'delete', function () { this.deletePicture(); }, true],
         erase: ['eraser', 'areaErase', function () { this.areaErase(); }, true],
         keep: ['crop', 'areaKeep', function () { this.areaKeep(); }],
@@ -58,7 +59,8 @@
     });
 
     // What is selected now, as M.actionList() reads it. The area's pixel
-    // commands count only where the area part offers them.
+    // commands count only where the area part offers them, Convert to a
+    // layer where the server can draw the picture (pictureLayerOn()).
     Editor.prototype.actionState = function () {
         var picking = Editor.selectTools.indexOf(this.tool) >= 0, picked = picking ? this.selected() : [];
 
@@ -73,7 +75,7 @@
             split: (this.tool === 'motion') && (picked.length === 1) && (picked[0].type === 'video') && !!this.clipSplitAt,
             can: {
                 erase: !!this.areaErase, keep: !!this.areaKeep, copy: !!this.areaCopy, cutToLayer: !!this.areaCut, adjust: !!this.areaAdjust,
-                redact: !!this.newRedaction
+                redact: !!this.newRedaction, pictureLayer: !!this.pictureLayerOn && this.pictureLayerOn()
             }
         };
     };

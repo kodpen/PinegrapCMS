@@ -281,13 +281,29 @@
     // The picture without its layers from the server (colour, crop,
     // redaction), once per dialog; an artboard has none.
     Editor.prototype.loadBase = function () {
-        var self = this, cfg = config();
+        var self = this;
 
         if (this.doc.artboard || this.animBase) {
             return Promise.resolve();
         }
 
+        return this.fetchBase(false, t('animError')).then(function (img) {
+            self.animBase = img;
+        });
+    };
+
+    // The picture without its layers as the server draws it (action base:
+    // crop, turns, colour, redaction, the selection's areas) as a loaded
+    // image. png: as a PNG whatever the file's format, so what is
+    // see-through stays clear (Convert to a layer). A refusal rejects with
+    // the server's message, else with fail.
+    Editor.prototype.fetchBase = function (png, fail) {
+        var cfg = config();
         var body = { action: 'base', file_id: this.opts.fileId, doc: Object.assign({}, this.doc, { layers: [] }), base: this.versionBase || 0, token: cfg.token || '' };
+
+        if (png) {
+            body.png = true;
+        }
 
         if (!cfg.serverColor && M.colorMatrix(M.colorValues(this.doc))) {
             body.colour = this.drawColour();
@@ -318,7 +334,7 @@
         }).then(function (res) {
             if (!res.ok || !/^image\//.test(res.headers.get('Content-Type') || '')) {
                 return res.json().catch(function () { return null; }).then(function (r) {
-                    throw new Error((r && r.message) || t('animError'));
+                    throw new Error((r && r.message) || fail);
                 });
             }
 
@@ -329,12 +345,11 @@
 
                 img.onload = function () {
                     URL.revokeObjectURL(url);
-                    self.animBase = img;
-                    resolve();
+                    resolve(img);
                 };
                 img.onerror = function () {
                     URL.revokeObjectURL(url);
-                    reject(new Error(t('animError')));
+                    reject(new Error(fail));
                 };
                 img.src = url;
             });

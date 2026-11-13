@@ -162,7 +162,7 @@ function ws_canvas_consent_question($viewer, $message)
     $tables = ws_canvas_consent_tables($viewer, $message);
 
     return array(
-        'name'    => preg_replace('/\.html?$/i', '', (string) ($message['file_name'] ?? '')),
+        'name'    => ws_canvas_name($message),
         'version' => $version,
         'tables'  => $tables,
         'state'   => ws_canvas_consent_state(ws_canvas_consent((int) $message['id'], (int) $viewer['id'], $version), ws_canvas_consent_write_ids($tables)),
@@ -222,7 +222,7 @@ function ws_canvas_via_label($viewer, $message_id)
     }
 
     $message = ws_message((int) $message_id);
-    $name = ws_canvas_page_reach($viewer, $message) ? preg_replace('/\.html?$/i', '', (string) ($message['file_name'] ?? '')) : '';
+    $name = ws_canvas_page_reach($viewer, $message) ? ws_canvas_name($message) : '';
 
     return ($name !== '')
         ? lang(array('string' => 'Last written through {var:1}', 'vars' => $name))

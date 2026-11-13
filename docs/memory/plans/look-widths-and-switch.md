@@ -1,6 +1,6 @@
 ---
 name: look-widths-and-switch
-description: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the details panel added beside, add and edit screens up to 1700 px, the switch with its thumb again; steps LW1-LW4
+description: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the details panel added beside, add and edit screens up to 1700 px, the switch with its thumb again; steps LW1-LW7
 ---
 
 ## What is asked?
@@ -19,14 +19,15 @@ description: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the det
 - Each PR shows real panel pictures, light and dark, at 1920, 1366 and a phone.
 
 ## Which steps?
-- LW1 (S) Lists as the Pages list. #9185. `--pg-measure-list-min` 1700px: a list is as wide as its columns need, at least 1700 px (the window when narrower), at most the window, centred; only the name column takes the slack.
-  - With the details panel open its width is added to the box, up to the whole window: the table keeps its closed width while the window has room. Pictures: Pages, products, a short list, panel open and closed.
+- LW1 (S) Lists as the Pages list. Done #9185 (`ui/look-page-widths.md`).
 - LW2 (M) Add and edit screens up to 1700 px: `--pg-measure-edit` 1700px, status column 376, gap 24, the form column the rest. A field is as wide as its content asks, never the column's width only because there is room. The section rail group is centred as today.
   - First a proposal of how the cards use a form column of up to 1300 px (two cards abreast, or fields side by side) on Edit Product, Edit Page and the longest Site Settings card: the architect shows it to the owner before the rule reaches every screen.
-- LW3 (S) The switch. Every look switch (`.pg-switch`, and Bootstrap's `.switch` in a settings card) has the sheet's thumb: a white 18 px circle with its shadow, left when off, right when on, on the grey track and on the accent gradient, in both themes; focus ring and disabled state drawn.
-  - The dark `--pg-on-accent` thumb rule no longer reaches a look switch. Pictures: a settings card with switches on and off, light and dark.
-- LW4 (S, no product code) The screens that sit at another width: every root screen with neither `pg-measure-edit` nor `pg-measure-list` or with a container width of its own, by the step of `plans/panel-design-language-steps.md` that takes it; a screen no step takes gets one. The list goes into `ui/`.
+- LW3 (S) The switch. Done #9197 (`ui/look-switch.md`).
+- LW4 (S, no product code) The screens at another width. Done #9211: `ui/look-screen-widths.md` names each screen and its step.
+- LW5 (M) Lists and views off the table driver take `pg-measure-list` (list: `ui/look-screen-widths.md`); a table that is not a list table keeps its own frame. Pictures of each.
+- LW6 (M) Settings, tool and import pages (the list there) take `pg-measure-edit`, a form in a single card at the form column; `clean_up` drops its own `.container`. After LW2, at its numbers.
+- LW7 (S) The ERP reports and the Search Console and audit screens (the list there) take `pg-measure-report`.
 - Close-out: `ui/look-page-widths.md`, `ui/look-settings-screens.md` and the sheet's list and edit pages (`plans/panel-design-language-sheet.md`) are brought to the new numbers; this plan is deleted.
 
 ## In which order?
-- LW1 and LW3 first, side by side; then LW2's proposal; LW4 any time. Claim as `[plan:look-widths-and-switch] <step> — <topic>`.
+- LW1 and LW3 first, side by side; then LW2's proposal; LW4 any time; LW5 and LW7 any time, LW6 after LW2. Claim as `[plan:look-widths-and-switch] <step> — <topic>`.

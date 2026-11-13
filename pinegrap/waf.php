@@ -1077,7 +1077,7 @@ function waf_ip_lists($recheck = false)
         return $lists;
     }
 
-    $lists = array('allow' => array(), 'block' => array());
+    $lists = waf_ip_lists_from_rows(array());
 
     if (!isset(db::$con) || !db::$con) {
         return $lists;
@@ -1086,7 +1086,8 @@ function waf_ip_lists($recheck = false)
     $has_columns = waf_table_has_column('banned_ip_addresses', 'list_type');
 
     if ($has_columns) {
-        $query = "SELECT ip_address, list_type
+        $query = "SELECT ip_address, list_type"
+               . (waf_table_has_column('banned_ip_addresses', 'source') ? ", source" : "") . "
                   FROM banned_ip_addresses
                   WHERE (expires_at = 0 OR expires_at > " . time() . ")";
     } else {
@@ -1099,12 +1100,66 @@ function waf_ip_lists($recheck = false)
         return $lists;
     }
 
+    $rows = array();
+
     while ($row = @mysqli_fetch_assoc($result)) {
-        $type = ($row['list_type'] === 'allow') ? 'allow' : 'block';
-        $lists[$type][] = $row['ip_address'];
+        $rows[] = $row;
+    }
+
+    $lists = waf_ip_lists_from_rows($rows);
+
+    return $lists;
+}
+
+/**
+ * The IP lists from banned_ip_addresses rows: 'allow', 'block' (every block
+ * entry) and 'block_manual' (the block entries the operator wrote, without
+ * the firewall's automatic bans). A row without a source column predates
+ * automatic bans and is hand-written.
+ *
+ * @param array $rows rows with ip_address, list_type and optionally source
+ * @return array
+ */
+function waf_ip_lists_from_rows($rows)
+{
+    $lists = array('allow' => array(), 'block' => array(), 'block_manual' => array());
+
+    foreach ($rows as $row) {
+        if (isset($row['list_type']) && $row['list_type'] === 'allow') {
+            $lists['allow'][] = $row['ip_address'];
+            continue;
+        }
+
+        $lists['block'][] = $row['ip_address'];
+
+        if (!isset($row['source']) || $row['source'] !== 'auto') {
+            $lists['block_manual'][] = $row['ip_address'];
+        }
     }
 
     return $lists;
+}
+
+/**
+ * The block entries a firewall mode enforces.
+ *
+ * Monitor mode enforces the hand-written entries only (owner, 2026-11-13):
+ * an operator who switches to Monitor to find out what refused them must not
+ * stay shut out by the firewall's own automatic ban until it ends. The ban's
+ * row stays and applies again in Block mode. Block mode, and the callers
+ * that ask with the firewall off, get every entry.
+ *
+ * @param array  $lists waf_ip_lists()
+ * @param string $mode  waf_mode(): block, monitor or off
+ * @return string[]
+ */
+function waf_ip_block_entries($lists, $mode)
+{
+    if ($mode === 'monitor') {
+        return isset($lists['block_manual']) ? $lists['block_manual'] : $lists['block'];
+    }
+
+    return $lists['block'];
 }
 
 /**
@@ -1161,9 +1216,7 @@ function waf_ip_is_allowed($ip)
 
 function waf_ip_is_blocked($ip)
 {
-    $lists = waf_ip_lists();
-
-    return waf_ip_in_any($ip, $lists['block']);
+    return waf_ip_in_any($ip, waf_ip_block_entries(waf_ip_lists(), waf_mode()));
 }
 
 /**
@@ -1397,7 +1450,10 @@ function waf_good_bots()
         'sogou'                => array('name' => 'Sogou',            'verify' => array()),
         'exabot'               => array('name' => 'Exabot',           'verify' => array()),
         'seznambot'            => array('name' => 'SeznamBot',        'verify' => array('.seznam.cz')),
-        'naver'                => array('name' => 'Naver',            'verify' => array()),
+        // Naver's crawler is Yeti; a bare 'naver' matched the Naver app's
+        // own browser, "NAVER(inapp; ...)", a person reading a link.
+        'yeti/'                => array('name' => 'Naver',            'verify' => array()),
+        'naverbot'             => array('name' => 'Naver',            'verify' => array()),
         'qwantbot'             => array('name' => 'Qwant',            'verify' => array()),
 
         // Social preview fetchers. Blocking these silently breaks every link
@@ -1411,7 +1467,10 @@ function waf_good_bots()
         'telegrambot'          => array('name' => 'TelegramBot','verify' => array()),
         'slackbot'             => array('name' => 'Slackbot',   'verify' => array()),
         'discordbot'           => array('name' => 'Discordbot', 'verify' => array()),
-        'pinterest'            => array('name' => 'Pinterest',  'verify' => array()),
+        // The crawler and the link preview fetcher; the Pinterest app's own
+        // browser ends in "[Pinterest/iOS]" or "[Pinterest/Android]".
+        'pinterestbot'         => array('name' => 'Pinterest',  'verify' => array()),
+        'pinterest/0.'         => array('name' => 'Pinterest',  'verify' => array()),
         'redditbot'            => array('name' => 'Redditbot',  'verify' => array()),
         'embedly'              => array('name' => 'Embedly',    'verify' => array()),
 
@@ -1436,7 +1495,9 @@ function waf_good_bots()
         'pingdom'              => array('name' => 'Pingdom',      'verify' => array()),
         'statuscake'           => array('name' => 'StatusCake',   'verify' => array()),
         'site24x7'             => array('name' => 'Site24x7',     'verify' => array()),
-        'betteruptime'         => array('name' => 'Better Uptime','verify' => array()),
+        // "Better Uptime Bot Mozilla/5.0 ..."; without this entry the
+        // residual "bot" signal classed it as a bad bot.
+        'better uptime bot'    => array('name' => 'Better Uptime','verify' => array()),
         'newrelicpinger'       => array('name' => 'New Relic',    'verify' => array()),
         'gtmetrix'             => array('name' => 'GTmetrix',     'verify' => array()),
         'chrome-lighthouse'    => array('name' => 'Lighthouse',   'verify' => array()),
@@ -1640,6 +1701,10 @@ function waf_ai_fixed_ranges($token)
 /**
  * Aggressive commercial crawlers and AI scrapers. Not attackers - they are
  * simply expensive, and most storefront operators want them gone.
+ *
+ * Crawler tokens only, never a company's name: 'bytedance' matched TikTok's
+ * in-app browser ("BytedanceWebview/..."), so every visitor who opened a
+ * shared link inside TikTok was refused; ByteDance's crawler is Bytespider.
  */
 function waf_bad_bots()
 {
@@ -1651,7 +1716,7 @@ function waf_bad_bots()
         'domaincrawler', 'netestate', 'trendictionbot', 'ltx71',
         'gptbot', 'ccbot', 'claudebot', 'anthropic-ai', 'claude-web',
         'perplexitybot', 'youbot', 'imagesiftbot', 'omgili', 'diffbot',
-        'amazonbot', 'meta-externalagent', 'bytedance', 'timpibot',
+        'amazonbot', 'meta-externalagent', 'timpibot',
     );
 }
 
@@ -3600,16 +3665,20 @@ function waf_ban_shield_refresh($force = false)
     }
 
     // Block lines are written only while the firewall is on. Monitor mode
-    // still writes them - the list is the operator's data and outlives the
-    // firewall's own judgement, see the IP list branch of waf_run() - but the
-    // off switch has to reach this file as well, or disabling the firewall
-    // would leave the guard rejecting people from a mirror for another six
-    // hours with no screen anywhere saying why.
-    if (waf_mode() !== 'off') {
+    // still writes the hand-written ones - the list is the operator's data
+    // and outlives the firewall's own judgement, see the IP list branch of
+    // waf_run() - but not the automatic bans, which Monitor mode does not
+    // enforce (waf_ip_block_entries()). The off switch has to reach this file
+    // as well, or disabling the firewall would leave the guard rejecting
+    // people from a mirror for another six hours with no screen anywhere
+    // saying why.
+    $mode = waf_mode();
 
-        $expiries = waf_ip_block_expiries();
+    if ($mode !== 'off') {
 
-        foreach ($lists['block'] as $entry) {
+        $expiries = waf_ip_block_expiries($mode === 'monitor');
+
+        foreach (waf_ip_block_entries($lists, $mode) as $entry) {
             $entry = trim($entry);
 
             if ($entry !== '') {
@@ -3658,9 +3727,10 @@ function waf_ban_shield_block_line($entry, $expires)
  * end across its rows, 0 when one of them has none (a manual ban). Empty
  * before the list columns exist, which writes every line without an end.
  *
+ * @param bool $manual_only the hand-written rows only (Monitor mode)
  * @return array
  */
-function waf_ip_block_expiries()
+function waf_ip_block_expiries($manual_only = false)
 {
     $expiries = array();
 
@@ -3668,11 +3738,17 @@ function waf_ip_block_expiries()
         return $expiries;
     }
 
+    // In Monitor mode an entry's end is that of its hand-written rows: an
+    // automatic ban on the same entry is not enforced and must not lengthen it.
+    $manual = ($manual_only && waf_table_has_column('banned_ip_addresses', 'source'))
+        ? " AND source <> 'auto'"
+        : '';
+
     $result = @mysqli_query(
         db::$con,
         "SELECT ip_address, expires_at
          FROM banned_ip_addresses
-         WHERE list_type = 'block' AND (expires_at = 0 OR expires_at > " . time() . ")"
+         WHERE list_type = 'block'" . $manual . " AND (expires_at = 0 OR expires_at > " . time() . ")"
     );
 
     if (!$result) {
@@ -5026,16 +5102,20 @@ function waf_run($stage = 'init')
 
         // ── Block list ───────────────────────────────────────────────────
         //
-        // Enforced in Monitor mode too, and this is the one rule here that is.
-        // Monitor mode means "do not let the firewall start rejecting people
-        // on its own judgement while I watch"; it does not mean "release the
-        // addresses I banned". The list is the operator's data - they typed
-        // those entries, or they kept an automatic ban the screen showed them
-        // - and an address that earned a place on it does not become
-        // acceptable because the operator switched the mode to look at
-        // something else. Two real uses depend on it: banning a specific
-        // address by hand WHILE observing, and switching to Monitor during an
-        // attack without opening the door to everyone already banned.
+        // The hand-written entries are enforced in Monitor mode too, and this
+        // is the one rule here that is. Monitor mode means "do not let the
+        // firewall start rejecting people on its own judgement while I
+        // watch"; it does not mean "release the addresses I banned". The
+        // entries the operator typed are their data, and an address that
+        // earned a place on it does not become acceptable because the
+        // operator switched the mode to look at something else: banning an
+        // address by hand WHILE observing depends on it.
+        //
+        // The firewall's own automatic bans are its judgement, so Monitor
+        // mode does not enforce them (waf_ip_is_blocked() through
+        // waf_ip_block_entries()): an operator who switched to Monitor to
+        // find out what refused them stayed shut out until the ban ended.
+        // Their rows stay and apply again in Block mode.
         //
         // The off switch still switches it off: with the firewall disabled
         // this function returns above, and waf_ban_shield_refresh() writes a
