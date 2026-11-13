@@ -7,10 +7,14 @@
  *
  *   GET ?kind=<name>&request=list&folder=<id>[&page=N&per_page=N]
  *       {kind, request, folder, items, page, per_page, more, upload: {ok, reason}}
+ *   GET ?kind=<name>&request=list[&sort=modified|name|size|type&order=asc|desc
+ *       &cursor=<next>&per_page=N]   (no folder: every item, picker_all.php)
+ *       {kind, request, folder: 0, all: true, items (with path), sort, order,
+ *        per_page, more, next}
  *   GET ?kind=<name>&request=search&q=<text>[&page=N&per_page=N]
  *       {kind, request, items, page, per_page, more}
  *   GET ?kind=<name>&request=tree[&node_ids[]=<id>...]   (0 is the top)
- *       {kind, request, nodes: [{id, rows}]}
+ *       {kind, request, types, nodes: [{id, rows}], total}
  *   GET ?kind=<name>&request=resolve&values[]=<stored value>...
  *       {kind, request, items: [{value, text, state, ...}]}
  *   POST ?kind=<name>&request=upload&folder=<id>   (token, file)
