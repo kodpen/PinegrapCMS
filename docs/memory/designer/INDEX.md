@@ -431,6 +431,7 @@
 - legacy-layouts-map-cost.md: Mapping a page type's output per request against converted layout copies (LL1 census, #8968): measured cost, what each reaches, the proposal sent to the architect
 - legacy-layouts-output-join.md: Where a page type's layout output joins the page, the names built outside a written class attribute, and the gate a map at output needs (LL1 census, #8968)
 - legacy-layouts-output-pass.md: Where a Bootstrap 5.3.8 design's page prints its page type's 5.3.8 names (LL3, #9143): the gate, the part mapped, the code tab's line, the sandbox pictures
+- legacy-layouts-shapes.md: The names a page type's markup took from its tag or parent in Bootstrap 3 and the layout pass writes on a bootstrap5 design (LL4, #9170): rules, what stays by hand
 - legacy-materialize-trial.md: The LB1b hand trial: a Legacy design whose theme loads Materialize, Bootstrap 5.3.8 beside it as a trial design loads it; names both own, what each sheet does to the other [decision: decisions-made-product-48.md]
 - legacy-overview.md: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7), the rules kept, what is open [decision: decisions-made-product-21.md, decisions-made-product-23.md, decisions-made-product-43.md]
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
