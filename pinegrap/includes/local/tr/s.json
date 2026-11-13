@@ -1825,6 +1825,7 @@
     "Send another order request; your details are filled in for you.": "Yeni bir sipariş talebi gönderin; bilgileriniz sizin için doldurulur.",
     "Send another request; your details are filled in for you.": "Yeni bir talep gönderin; bilgileriniz sizin için doldurulur.",
     "Send another support request; your details are filled in for you.": "Yeni bir destek talebi gönderin; bilgileriniz sizin için doldurulur.",
+    "Send anyway": "Yine de gönder",
     "Send at a specific time": "Belirli bir saatte gönder",
     "Send at least one of name, color, parent_id or before_id.": "name, color, parent_id ya da before_id alanlarından en az birini gönderin.",
     "Send at least one of name, description, email_subscription or subscription_type.": "name, description, email_subscription ya da subscription_type alanlarından en az birini gönderin.",

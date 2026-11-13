@@ -33,7 +33,6 @@
 - legacy-bootstrap-helper-steps.md: Steps LB1-LB7 of the Legacy to Bootstrap 5.3.8 helper: the census, the map and converter, the report, the trial design and its preview, moving pages and back, theme parts, palette and look
 - legacy-bootstrap-helper.md: Plan: the helper that turns a Legacy design towards Bootstrap 5.3.8 and a design theme (#8856): a trial design beside it, what it changes, how it is seen and kept, what stays reversible
 - look-widths-and-switch.md: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the details panel added beside, add and edit screens up to 1700 px, the switch with its thumb again; steps LW1-LW7
-- mail-domain-warning.md: Plan: a warning before a Workspace e-mail is sent to an address whose domain does not exist, naming a near domain when one is known; one step MW1 (owner 2026-11-13, #9267)
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - messages-area-decided-2.md: The architect's decisions on the proposals of MA9a and MA10a (#9077): campaign profiles into flows (boxes first, what stays, one flow per chain, the switch, the owner), incoming e-mail in the area
 - messages-area-decided.md: The architect's decisions on the proposals of MA0 and MA4 (#9081, #9083): the shell, the Sends list as a union with its measure, e-mail source, rights, the e-mail design page

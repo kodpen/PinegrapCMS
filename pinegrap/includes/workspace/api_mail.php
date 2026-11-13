@@ -138,7 +138,7 @@ function ws_mail_api_routes()
             'returns'     => 'WorkspaceMailConversation',
             'status'      => 201,
             'summary'     => 'Send a new e-mail from a mailbox',
-            'description' => 'Writes a new e-mail as New e-mail on the E-mails screen does: from a mailbox the person may send from (one that can send, whose channel, or a channel one of its routes writes to, the person may write in), kept as a new conversation whose card is in channel_id (the mailbox\'s own channel when left out), its customer the first To address, waiting for an answer and held by the person. The text gets the person\'s name and the mailbox\'s Signature under it. The mail goes through the mail queue: the answer is the conversation with the mail, send_state queued while it waits, sent once it left, failed with send_error when it could not; the E-mails screen offers Send again. Only the person\'s own team devices session (POST /auth/login) may: an application key or an OAuth connection is refused with 403, and it is no MCP tool, since an assistant never sends mail. No files yet. To, Cc and Bcc together hold at most ' . WS_MAIL_SEND_ADDRESSES . ' addresses, separated by commas; one that bounced before is refused by name (422 to). 403 when the person may not send from the mailbox or keep the mail in the channel; 429 after ' . WS_MAIL_SEND_HOURLY . ' mails in an hour. Send an Idempotency-Key: a retry after a timeout must not send the mail twice.',
+            'description' => 'Writes a new e-mail as New e-mail on the E-mails screen does: from a mailbox the person may send from (one that can send, whose channel, or a channel one of its routes writes to, the person may write in), kept as a new conversation whose card is in channel_id (the mailbox\'s own channel when left out), its customer the first To address, waiting for an answer and held by the person. The text gets the person\'s name and the mailbox\'s Signature under it. The mail goes through the mail queue: the answer is the conversation with the mail, send_state queued while it waits, sent once it left, failed with send_error when it could not; the E-mails screen offers Send again. Only the person\'s own team devices session (POST /auth/login) may: an application key or an OAuth connection is refused with 403, and it is no MCP tool, since an assistant never sends mail. No files yet. To, Cc and Bcc together hold at most ' . WS_MAIL_SEND_ADDRESSES . ' addresses, separated by commas; one that bounced before is refused by name (422 to). 403 when the person may not send from the mailbox or keep the mail in the channel; 429 after ' . WS_MAIL_SEND_HOURLY . ' mails in an hour. An address whose domain has no mail or web record in DNS is warned of with 409 unknown_domain, which names the domain and a near spelling of the mailbox\'s own domain when there is one: correct it, or send the same call with send_anyway true. Send an Idempotency-Key: a retry after a timeout must not send the mail twice.',
             'params'      => array(
                 array('name' => 'box_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The mailbox it is sent from.'),
                 array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The channel its card is kept in: the mailbox\'s own or one its routes write to. Left out: the mailbox\'s own.'),
@@ -147,6 +147,7 @@ function ws_mail_api_routes()
                 array('name' => 'bcc', 'in' => 'body', 'type' => 'string', 'max_length' => 6000, 'description' => 'Addresses, separated by commas; not shown to the other recipients.'),
                 array('name' => 'subject', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'required' => true, 'description' => 'The subject; the conversation\'s tag is added to it.'),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_REPLY_MAX, 'required' => true, 'description' => 'The mail as plain text.'),
+                array('name' => 'send_anyway', 'in' => 'body', 'type' => 'bool', 'description' => 'true sends the mail after a 409 unknown_domain warning; the domains are not looked up again.'),
             ),
         ),
     );
@@ -480,6 +481,9 @@ function ws_api_mail_send_refusal($error)
 
         case 'hourly':
             return array('status' => 429, 'code' => 'rate_limited', 'field' => null);
+
+        case 'unknown_domain':
+            return array('status' => 409, 'code' => 'unknown_domain', 'field' => 'to');
 
         case 'not_ready':
             return array('status' => 503, 'code' => 'service_unavailable', 'field' => null);
