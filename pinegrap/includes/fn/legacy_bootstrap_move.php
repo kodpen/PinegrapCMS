@@ -566,3 +566,84 @@ function pg_lbs_move_back_page($state, $page_id, $user)
     $state['origins'][(string)(int)$page_id] = $legacy;
     return pg_lbs_move_state_line($state, 'moved', $name);
 }
+
+// ── The card ────────────────────────────────────────────────────────────
+
+/**
+ * Under a trial design on the "Towards Bootstrap 5" card: Move pages (all,
+ * or the chosen ones) while the Legacy design has pages, the trial's pages
+ * that came from it with "Send back to Legacy" (one or all, or the reason a
+ * page stays), and the last runs. Buttons are switched off while a move of
+ * either kind runs.
+ *
+ * @param int   $legacy_id
+ * @param array $trial    pg_lbs_trial_of()
+ * @param array $pages    the Legacy design's pages (pg_lbs_trial_pages())
+ * @param array $moved    pg_lbs_moved_pages()
+ * @param array $reports  pg_lbs_move_reports()
+ * @param bool  $busy
+ * @return string  HTML
+ */
+function pg_lbs_move_card_html($legacy_id, $trial, $pages, $moved, $reports, $busy)
+{
+    $id = (int)$legacy_id;
+    $off = $busy ? ' disabled' : '';
+    $outline = 'btn btn-sm btn-outline theme-secondary rounded-pill px-4';
+    $solid = 'btn btn-sm btn-solid theme-primary rounded-pill px-4';
+    $form = function ($direction, $inner) use ($id) {
+        return '<form method="post" action="legacy_to_designer.php" class="d-inline">' . get_token_field()
+            . '<input type="hidden" name="bootstrap_move" value="' . $direction . '"><input type="hidden" name="design" value="' . $id . '">' . $inner . '</form>';
+    };
+
+    $out = '<div class="mt-5" id="ltd-moves-' . $id . '"><h4 class="h6 mb-2">' . h(lang('Pages')) . '</h4>';
+    if ($pages) {
+        $boxes = '';
+        foreach ($pages as $p) {
+            $boxes .= '<label class="d-block small"><input class="check me-2" type="checkbox" name="pages[]" value="' . (int)$p['id'] . '">' . h($p['name']) . '</label>';
+        }
+        $out .= '<div class="d-flex flex-wrap align-items-start gap-3">'
+            . $form('move', '<button type="submit" name="all" value="1" class="' . $solid . '"' . $off . '><i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i>'
+                . h(lang(array('string' => 'Move all {var:1} pages to the trial design', 'vars' => array(pg_format_number(count($pages), 0))))) . '</button>')
+            . '<details class="flex-grow-1"><summary class="' . $outline . '">' . h(lang('Choose pages')) . '</summary>'
+            . $form('move', '<div class="my-2">' . $boxes . '</div>'
+                . '<button type="submit" class="' . $solid . '"' . $off . '>' . h(lang('Move the chosen pages')) . '</button>')
+            . '</details></div>'
+            . '<p class="small fg-secondary mt-2 mb-0">' . h(lang('Each page gets its tree converted and the trial design. Its Legacy tree is kept and written as its newest revision: Send back to Legacy gives it back. A page held in the Page Design Studio or used by an experiment is skipped.')) . '</p>';
+    } else {
+        $out .= '<p class="small fg-secondary mb-0">' . h(lang('No page is left on the Legacy design.')) . '</p>';
+    }
+
+    if ($moved) {
+        $rows = '';
+        $free = 0;
+        foreach ($moved as $p) {
+            if ($p['refusal'] === '') {
+                $free++;
+                $cell = $form('back', '<input type="hidden" name="page" value="' . (int)$p['id'] . '"><button type="submit" class="' . $outline . '"' . $off . '>' . h(lang('Send back')) . '</button>');
+            } else {
+                $cell = '<span class="small fg-secondary">' . h(pg_lbs_move_refusal_text($p['refusal'])) . '</span>';
+            }
+            $rows .= '<li class="d-flex flex-wrap align-items-center gap-3 py-1"><span class="flex-grow-1">' . h($p['name']) . '</span>' . $cell . '</li>';
+        }
+        $out .= '<div class="d-flex flex-wrap align-items-center gap-3 mt-4"><div class="flex-grow-1 small">'
+            . h(lang(array('string' => '{var:1} pages of the trial design came from this design.', 'vars' => array(pg_format_number(count($moved), 0))))) . '</div>'
+            . ($free > 0 ? $form('back', '<button type="submit" class="' . $outline . '"' . $off . '><i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>'
+                . h(lang(array('string' => 'Send {var:1} pages back to Legacy', 'vars' => array(pg_format_number($free, 0))))) . '</button>') : '')
+            . '</div><details class="small mt-2"><summary>' . h(lang('Pages on the trial design')) . '</summary><ul class="list-unstyled mb-0 mt-1">' . $rows . '</ul></details>';
+    }
+
+    foreach ($reports as $r) {
+        $c = $r['counts'];
+        $lines = '';
+        foreach ((array)$r['lines'] as $l) {
+            $tone = ($l['kind'] === 'failed') ? ' class="fg-danger"' : (($l['kind'] === 'skipped' || $l['kind'] === 'note') ? ' class="fg-warning"' : '');
+            $lines .= '<li' . $tone . '>' . h($l['text']) . '</li>';
+        }
+        if (!empty($r['more'])) $lines .= '<li class="fg-secondary">' . h(lang(array('string' => '{var:1} more lines', 'vars' => array(pg_format_number($r['more'], 0))))) . '</li>';
+        $what = ($r['direction'] === 'back') ? lang('Sent back to Legacy') : lang('Moved to the trial design');
+        $out .= '<details class="small mt-2"><summary>' . h(get_absolute_time(array('timestamp' => (int)($r['finished'] ?? $r['started']), 'format' => 'plain_text'))) . ' · ' . h($what) . ' · '
+            . h(lang(array('string' => '{var:1} pages, {var:2} skipped, {var:3} failed', 'vars' => array($c['moved'], $c['skipped'], $c['failed'])))) . ' · ' . h((string)$r['username']) . '</summary>'
+            . '<ul class="mb-0 mt-1 ps-12">' . $lines . '</ul></details>';
+    }
+    return $out . '</div>';
+}

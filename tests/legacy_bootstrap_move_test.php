@@ -84,3 +84,30 @@ function test_lbs_move_unmapped_parts()
 	$map = json_decode(json_encode((object)array(4 => 40, 9 => 90)), true);
 	pg_assert_same(array(), pg_lbs_move_unmapped_parts($tree, $map), 'the map as trials.json gives it back');
 }
+function test_lbs_move_wiring()
+{
+	$module = (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_move.php');
+	pg_assert_same(true, strpos($module, "(int)\$user['role'] > 1") !== false, 'only a designer starts a move');
+	pg_assert_same(true, strpos($module, "GET_LOCK('pg_lbs_move', 0)") !== false, 'one request at a time');
+	$write = strpos($module, 'function pg_lbs_move_write_page');
+	pg_assert_same(true, strpos($module, 'pg_page_revision_record(', $write) < strpos($module, 'UPDATE page SET', $write), 'the tree it had is a revision before the page is written');
+	$move = strpos($module, 'function pg_lbs_move_page(');
+	pg_assert_same(true, strpos($module, 'pg_lbs_move_kept_write(', $move) < strpos($module, 'pg_lbs_move_write_page(', $move), 'the Legacy tree is kept before the page moves');
+	pg_assert_same(true, strpos($module, "pg_lbs_move_page_states(array((int)\$page_id))", $move) !== false, 'held and experiment checked per page');
+	$back = strpos($module, 'function pg_lbs_move_back_page(');
+	pg_assert_same(true, strpos($module, 'pg_lbs_move_write_page(', $back) < strpos($module, '@unlink(pg_lbs_move_kept_path(', $back), 'the kept tree goes only once the page is back');
+
+	$screen = (string)file_get_contents(PG_FUNCTIONS_DIR . '/legacy_to_designer.php');
+	$post = strpos($screen, "if (isset(\$_POST['bootstrap_move']))");
+	pg_assert_same(true, $post !== false, 'the screen has the move branch');
+	pg_assert_same(true, strpos($screen, 'validate_token_field()') < $post, 'the token is checked first');
+	pg_assert_same(true, strpos($screen, 'pg_lbs_move_start(', $post) < strpos($screen, 'pg_ltd_plan(', $post), 'the branch redirects before the dry run');
+	pg_assert_same(true, strpos($screen, 'pg_lbs_move_run(8)') !== false, 'the screen works the move');
+	pg_assert_same(3, substr_count($screen, 'pg_lbs_moves_running()'), 'back, trial and the screen state wait for either move');
+
+	$run = (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
+	pg_assert_same(true, strpos($run, 'legacy_to_bootstrap.json') !== false, 'a move to the Page Design Studio waits for a page move');
+	$job = (string)file_get_contents(PG_FUNCTIONS_DIR . '/job.php');
+	pg_assert_same(true, strpos($job, "is_file(PG_FUNCTIONS_DIR . '/data/temp/legacy_to_bootstrap.json')") !== false, 'the job loads the module only for a running move');
+	pg_assert_same(true, strpos($job, 'pg_lbs_move_job_tick(') !== false);
+}
