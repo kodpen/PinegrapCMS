@@ -76,7 +76,7 @@
 - decisions-made-product-45.md: Decisions list, product part 45 (2026-11-11 on): the Kodpen API client goes on before its release keys exist; the api2 client branches leave in the next open version; the api2 server stays open
 - decisions-made-product-46.md: Decisions list, product part 46 (2026-11-12 on): a picture saved again from the Design Canvas shows at once; the Legacy helper after its census (#8942); a plan for the custom layouts
 - decisions-made-product-47.md: Decisions list, product part 47 (2026-11-12 on): WhatsApp as a channel, templates, offer codes (#8950); one messages area, campaign profiles turned into flows (#8961)
-- decisions-made-product-48.md: Decisions list, product part 48 (2026-11-12 on): the Legacy to Bootstrap helper does nothing on a design that does not use Bootstrap 3 (#8967); the picker opens on a list of everything (#9070)
+- decisions-made-product-48.md: Decisions list, product part 48 (2026-11-12 on): no Legacy to Bootstrap help without Bootstrap 3 (#8967); the picker opens on a list of everything (#9070); real samples on the designer canvas (#9076)
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path

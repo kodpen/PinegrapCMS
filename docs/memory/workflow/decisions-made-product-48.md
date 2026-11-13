@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-48
-description: Decisions list, product part 48 (2026-11-12 on): the Legacy to Bootstrap helper does nothing on a design that does not use Bootstrap 3 (#8967); the picker opens on a list of everything (#9070)
+description: Decisions list, product part 48 (2026-11-12 on): no Legacy to Bootstrap help without Bootstrap 3 (#8967); the picker opens on a list of everything (#9070); real samples on the designer canvas (#9076)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -15,3 +15,10 @@ description: Decisions list, product part 48 (2026-11-12 on): the Legacy to Boot
 - A list of everything of its kind: the files, pictures or pages of every folder in one list, newest first, search and sort above; the folder tree stays at the side as a filter. Plan `plans/picker-all-list.md`.
 - Owner (2026-11-12): "her seferinde klasör klasör açtığı için […] aranan dosya bulmak zorluyor. dosya klasör sistemi ek olarak olmalıydı."; asked what it opens on, he chose "Tümü listesi".
 - It replaces the opening on a folder of the screens approved on 2026-11-10 (`decisions-made-product-42.md`, #8514); the rest of those screens stays.
+
+## What does the designer canvas draw for a bound value, and what of closed blocks? (owner, 2026-11-13, #9076)
+- A realistic sample for every bound value, never its label in ‹…› or an empty box, so the canvas looks like the published page; and the components still drawn as one closed block are listed and opened into editable elements. Plans `plans/designer-canvas-real-samples.md`, `plans/designer-closed-blocks.md`.
+- Owner (2026-11-13), with a picture of an order e-mail card: "şu anda birçok bileşen yer tutucudan ibaret. bunu bir an önce değiştirmeliyiz. kullanıcılar gerçek sayfa bileşenleri tasarlamayı bekliyor olacak."; asked which of the two, he chose "İkisi de".
+
+## Do loop bands and condition chips stay on the canvas? (owner, 2026-11-13, #9076)
+- Yes, always on as today; only their overlap and overflow are fixed. Asked between "only on the selected element", "always on, tidy" and "a toolbar switch", he chose "Hep açık, düzgün".
