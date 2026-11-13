@@ -1,0 +1,204 @@
+/*!
+ * Pinegrap Bootstrap 3 compatibility sheet.
+ *
+ * Loaded on a Legacy design's Bootstrap 5.3.8 trial design only, right after
+ * Bootstrap 5.3.8 and Bootstrap Icons and before the design's own sheets,
+ * so the theme still wins (includes/fn/legacy_bootstrap_trial.php).
+ *
+ * The page types' layouts (data/layouts, includes/templates) print Bootstrap
+ * 3 form names that 5.3.8 no longer defines; this sheet draws them close to
+ * how Bootstrap 3 did. The pages' own trees are converted instead
+ * (includes/fn/legacy_bootstrap.php), so nothing here is needed by them.
+ * Rules leave this file as the layouts are converted.
+ *
+ * Glyphicons are drawn with the Bootstrap Icons font: each icon with a twin
+ * in pg_lbs_icon_map() gets that icon's code point, the rest draw nothing.
+ * visible-xs-inline follows the converter's breakpoints (xs is below sm).
+ */
+
+.form-group {
+  margin-bottom: 1rem;
+}
+.help-block {
+  display: block;
+  margin-top: .25rem;
+  margin-bottom: .5rem;
+  color: var(--bs-secondary-color);
+}
+.text-right {
+  text-align: right !important;
+}
+.img-responsive {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.btn-default {
+  --bs-btn-color: var(--bs-body-color);
+  --bs-btn-bg: var(--bs-body-bg);
+  --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-hover-color: var(--bs-body-color);
+  --bs-btn-hover-bg: var(--bs-tertiary-bg);
+  --bs-btn-hover-border-color: var(--bs-border-color);
+  --bs-btn-active-color: var(--bs-body-color);
+  --bs-btn-active-bg: var(--bs-secondary-bg);
+  --bs-btn-active-border-color: var(--bs-border-color);
+  --bs-btn-disabled-color: var(--bs-body-color);
+  --bs-btn-disabled-bg: var(--bs-body-bg);
+  --bs-btn-disabled-border-color: var(--bs-border-color);
+}
+
+.checkbox {
+  position: relative;
+  display: block;
+  margin-top: .5rem;
+  margin-bottom: .5rem;
+}
+.checkbox label {
+  min-height: 1.5rem;
+  padding-left: 1.25rem;
+  margin-bottom: 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+.checkbox input[type="checkbox"] {
+  position: absolute;
+  margin-top: .3rem;
+  margin-left: -1.25rem;
+}
+
+/* Bootstrap 5.3.8 joins an input group's direct children; a Bootstrap 3
+   button sits one level down, in .input-group-btn. */
+.input-group-addon {
+  display: flex;
+  align-items: center;
+  padding: .375rem .75rem;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--bs-body-color);
+  text-align: center;
+  white-space: nowrap;
+  background-color: var(--bs-tertiary-bg);
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+}
+.input-group-btn {
+  position: relative;
+  display: flex;
+}
+.input-group > .input-group-btn > .btn {
+  position: relative;
+  z-index: 2;
+}
+.input-group > .input-group-btn:not(:last-child) > .btn {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.input-group > .input-group-btn:not(:first-child) > .btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.visible-xs-inline {
+  display: none !important;
+}
+@media (max-width: 575.98px) {
+  .visible-xs-inline {
+    display: inline !important;
+  }
+}
+
+.glyphicon {
+  position: relative;
+  top: 1px;
+  display: inline-block;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+}
+.glyphicon::before {
+  display: inline-block;
+  font-family: bootstrap-icons !important;
+  font-style: normal;
+  font-weight: normal !important;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+  vertical-align: -.125em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.glyphicon-ok::before { content: "\f633"; }
+.glyphicon-remove::before { content: "\f659"; }
+.glyphicon-search::before { content: "\f52a"; }
+.glyphicon-user::before { content: "\f4e1"; }
+.glyphicon-shopping-cart::before { content: "\f242"; }
+.glyphicon-envelope::before { content: "\f32f"; }
+.glyphicon-home::before { content: "\f425"; }
+.glyphicon-star::before { content: "\f586"; }
+.glyphicon-star-empty::before { content: "\f588"; }
+.glyphicon-heart::before { content: "\f415"; }
+.glyphicon-heart-empty::before { content: "\f417"; }
+.glyphicon-trash::before { content: "\f5de"; }
+.glyphicon-pencil::before { content: "\f4cb"; }
+.glyphicon-plus::before { content: "\f64d"; }
+.glyphicon-minus::before { content: "\f63b"; }
+.glyphicon-chevron-left::before { content: "\f284"; }
+.glyphicon-chevron-right::before { content: "\f285"; }
+.glyphicon-chevron-up::before { content: "\f286"; }
+.glyphicon-chevron-down::before { content: "\f282"; }
+.glyphicon-arrow-left::before { content: "\f12f"; }
+.glyphicon-arrow-right::before { content: "\f138"; }
+.glyphicon-arrow-up::before { content: "\f148"; }
+.glyphicon-arrow-down::before { content: "\f128"; }
+.glyphicon-calendar::before { content: "\f1f6"; }
+.glyphicon-time::before { content: "\f293"; }
+.glyphicon-lock::before { content: "\f47a"; }
+.glyphicon-info-sign::before { content: "\f430"; }
+.glyphicon-question-sign::before { content: "\f504"; }
+.glyphicon-exclamation-sign::before { content: "\f332"; }
+.glyphicon-warning-sign::before { content: "\f33a"; }
+.glyphicon-ok-sign::before { content: "\f26a"; }
+.glyphicon-remove-sign::before { content: "\f622"; }
+.glyphicon-ok-circle::before { content: "\f26b"; }
+.glyphicon-remove-circle::before { content: "\f623"; }
+.glyphicon-menu-hamburger::before { content: "\f479"; }
+.glyphicon-map-marker::before { content: "\f3e7"; }
+.glyphicon-phone::before { content: "\f4e7"; }
+.glyphicon-earphone::before { content: "\f5b4"; }
+.glyphicon-download-alt::before { content: "\f30a"; }
+.glyphicon-upload::before { content: "\f603"; }
+.glyphicon-refresh::before { content: "\f116"; }
+.glyphicon-cog::before { content: "\f3e2"; }
+.glyphicon-print::before { content: "\f501"; }
+.glyphicon-camera::before { content: "\f219"; }
+.glyphicon-picture::before { content: "\f42a"; }
+.glyphicon-film::before { content: "\f3c3"; }
+.glyphicon-tag::before { content: "\f5af"; }
+.glyphicon-tags::before { content: "\f5b1"; }
+.glyphicon-comment::before { content: "\f24b"; }
+.glyphicon-log-in::before { content: "\f1be"; }
+.glyphicon-log-out::before { content: "\f1c3"; }
+.glyphicon-th::before { content: "\f3f8"; }
+.glyphicon-th-list::before { content: "\f478"; }
+.glyphicon-list::before { content: "\f479"; }
+.glyphicon-globe::before { content: "\f3ee"; }
+.glyphicon-link::before { content: "\f470"; }
+.glyphicon-eye-open::before { content: "\f341"; }
+.glyphicon-eye-close::before { content: "\f340"; }
+.glyphicon-thumbs-up::before { content: "\f407"; }
+.glyphicon-thumbs-down::before { content: "\f405"; }
+.glyphicon-file::before { content: "\f392"; }
+.glyphicon-folder-open::before { content: "\f3d8"; }
+.glyphicon-folder-close::before { content: "\f3d1"; }
+.glyphicon-flag::before { content: "\f3cb"; }
+.glyphicon-bell::before { content: "\f189"; }
+.glyphicon-gift::before { content: "\f3eb"; }
+.glyphicon-credit-card::before { content: "\f2dc"; }
+.glyphicon-share::before { content: "\f52e"; }
+.glyphicon-share-alt::before { content: "\f52d"; }
+.glyphicon-play::before { content: "\f4f4"; }
+.glyphicon-pause::before { content: "\f4c3"; }
+.glyphicon-stop::before { content: "\f592"; }

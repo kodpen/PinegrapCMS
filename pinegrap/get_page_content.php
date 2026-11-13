@@ -125,6 +125,16 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
     }
 
+    // A Legacy design's page previewed in its Bootstrap 5 trial design
+    // (design_preview.php): the page's converted tree here and the trial's
+    // row below, nothing written (includes/fn/legacy_bootstrap_trial.php).
+    $pg_lbs_preview = function_exists('pg_lbs_preview_override') ? pg_lbs_preview_override() : null;
+    if (is_array($pg_lbs_preview) && ((int) $pg_lbs_preview['page_id'] === (int) $page_id)) {
+        $page_tree_code = (string) $pg_lbs_preview['code'];
+    } else {
+        $pg_lbs_preview = null;
+    }
+
     // Remember the requested device type, because we might change this below
     // if a mobile style does not exist.  We want to remember the requested device type,
     // because we still want to output the appropriate mobile switch.
@@ -139,6 +149,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
     $style_id = $preview_style['id'];
     $device_type = $preview_style['device_type'];
+    if ($pg_lbs_preview !== null) {
+        $style_id = (int) $pg_lbs_preview['style_id'];
+    }
 
 
 	$edit_label = '<i class="bi bi-pencil"></i>';

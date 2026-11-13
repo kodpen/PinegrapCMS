@@ -6,7 +6,7 @@ module: design_previews
 
 ## What is a live picture?
 - The real page, not a stored image: a 1280×800 frame scaled into a 16:10 box (`.pg-live-picture`, backend.src.css). A screenshot would need a browser on the server, which shared hosting lacks (owner 2026-11-05, `workflow/decisions-made-product-35.md`). The drawings stay as the fallback; stored thumbnails only as a new plan if the frames prove too heavy on a real site.
-- PHP prints only the box: `pg_design_live_picture($src, $opts)` (`includes/fn/design_previews.php`) with `data-src`, an optional `label` (the box gets `role="img"`), `class`, `fallback` HTML (trusted, e.g. `pg_design_thumb_svg()`), `width`/`height`. No address: `.pg-failed` and the fallback at once.
+- PHP prints only the box: `pg_design_live_picture($src, $opts)` (`includes/fn/design_previews.php`) with `data-src`, an optional `label` (the box gets `role="img"`), `class`, `fallback` HTML (trusted, e.g. `pg_design_thumb_svg()`), `width`/`height` (another size than 1280×800 also sets the box's `aspect-ratio`, so a 390×844 phone picture is tall). No address: `.pg-failed` and the fallback at once.
 
 ## What does the browser side do?
 - `assets/js/pg_live_picture.js`, bundle `pg_live_picture.min.js` (`window.PGLivePicture`); the screen prints `pg_js_bundle_tags('assets/js/pg_live_picture.min.js')`. On load it scans `[data-pg-live-picture]`.

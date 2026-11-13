@@ -9,6 +9,7 @@ module: design_previews
 - `&still=1`: the same page without scripts (`pg_design_preview_strip_scripts()`), for a live picture; not for a tour, whose frame runs the page's scripts. `pg_design_preview_address(..., 'still' => true)`.
 - `&tour=1`: `pg_design_tour_html()` with "Use This Template" leading to `add_system_style.php?start=template&template=&look=&palette=` (`pg_design_preview_use_href()`).
 - `?page_id=`: a visual design page (`pg_page_visual_design_sql()`, not in the recycle bin; drafts too) through `pg_seo_render_page()` → `pg_background_render()`.
+- `&bootstrap5=<style id>`: a Legacy page drawn in its Bootstrap 5 trial design, full designers only, `no-store`, no ETag (`legacy-bootstrap-trial-design.md`).
 - Look and palette are taken literally: absent means none (plain Bootstrap), not the template's own. A caller that wants the template's theme passes `pg_design_template_theme()`'s keys.
 - The query is read by `pg_design_preview_request()` (pure): a page id wins over a template; unknown looks, palettes and bad keys are dropped. Nothing to draw: a plain page (`pg_design_preview_placeholder_html()`) with 404.
 
