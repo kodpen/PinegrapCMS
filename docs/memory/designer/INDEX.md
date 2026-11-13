@@ -413,6 +413,7 @@
 - form-field-errors-before-sending.md: A designed form field the browser refuses says what is wrong in text beside it, linked by aria-describedby: pg_cf_validation_script() (#9054)
 - form-field-errors.md: Which controls a refused server submission marks (is-invalid, aria-invalid, linked invalid-feedback) on designed forms, member widgets and classic liveform fields (#4458).
 - form-item-ai-summary.md: AI on a designed form item view (2026.4.8): four assistant links and when they fill, the prompt setting, the in-browser summary wired by bindings, why the box is an aside, the translator bridge.
+- form-list-browse-search-markup.md: The form list view template's Browse select and Search box: markup read by Bootstrap 3 and 5.3.8 alike, inline SVG icons, no Glyphicons (#9034)
 - form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1 [decision: here]
 - form-list-one-per-submitter.md: The form list's one_per_submitter option: each signed-in submitter's newest record only; used by the Social template's People and staff lists [decision: decisions-made-product-36.md]
 - form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview [decision: here]
