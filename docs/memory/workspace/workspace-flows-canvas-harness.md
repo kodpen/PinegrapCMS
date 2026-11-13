@@ -16,10 +16,10 @@ description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #316
 
 ## What do the scenarios cover?
 - 36 scenarios (`flows_canvas_scenarios.js`; the last three: `workspace-flow-layer.md`): boxes at their places and sizes, arrows port to port, zoom, fit, pinch, pan (drag, wheel, Space, middle button), select, Tab order, arrow keys, drag on the grid, Esc.
-- Then connect by port, C and the side panel, outcomes, Delete, undo, data threads (drag to bind, toggle kept), outline, phone, autosave after 1.5 s, 409, keepalive on hide and leave, the 60 000-byte limit, Ctrl+S, blur, Retry, back to the list for another flow, the row's start words and home kept (#9127); palette and drop, Change on the start row, the narrow rail (1024 px), problems, Publish, Pause, read-only, ⋯ Share and Delete, no flow, New flow, Run and its token, runs list, polling.
+- Then connect by port, C and the side panel, outcomes, Delete, undo, data threads (drag to bind, toggle kept), outline, phone, autosave after 1.5 s, 409, keepalive on hide and leave, the 60 000-byte limit, Ctrl+S, blur, Retry, back to the list for another flow, the row's start words and home kept (#9127); palette and drop, Change, the narrow rail, problems, Publish, Pause, read-only, ⋯ Share and Delete, no flow, New flow, Run and its token, runs list, polling.
 
 ## What does it give?
-- 2026-11-13: 36 of 36 after FW2 (#9178), Chromium 153. The zoom checks allow 1e-5: the scale is read from the computed matrix, which keeps about six digits. 2026-11-01: 30 of 30, from sources and with `--min` (Chromium 153, Linux; Chrome 156, Windows 11 after #4418).
+- 2026-11-13: 36 of 36 (#9178, Chromium 153); zoom checks allow 1e-5, the computed matrix keeps six digits. 2026-11-01: 30 of 30 also on Chrome 156, Windows 11.
 - Seen: after Fit the first boxes sit under the palette (`fit()` ignores it); the no-flow screen shows an empty palette frame.
 
 ## Why does a scenario switch touch emulation itself?
