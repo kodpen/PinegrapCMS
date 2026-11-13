@@ -4,11 +4,11 @@ description: Steps MA0-MA11 of the messages area plan (#8961): census, shell and
 ---
 
 ## Which steps? (rules: `messages-area.md`)
-- MA0 (S, done #9074) The census: today's screens and their rights, the addresses that keep leading somewhere, one Sends list without a new table (`platform/messages-area-census-*.md`). Chosen by the step under the owner's rule of 2026-11-12; MA1 and MA2 follow its `-tabs`, `-addresses` and `-sends` answers.
+- MA0 (S, done #9074) The census: today's screens and their rights, the addresses that keep leading somewhere, one Sends list without a new table (`platform/messages-area-census-*.md`). Its proposals (`-tabs`, `-addresses`, `-sends`) wait for the architect on #9081; MA1 and MA2 start from the answer.
 - MA1 (M) The shell: the menu row, the five tabs with their gates, old addresses leading in.
 - MA2 (M) Sends: the tiles, the channel, source, state and date filters, single messages and campaign rows that open, retry and delete under the queues' own rules.
 - MA3 (M) Campaigns: one list for e-mail and SMS campaigns; "New campaign" asks the channel first, then recipients, content, time.
-- MA4 (S, done #9074) E-mail body as a page: how e-mail pages are made today, what mail programs need, the way MA5 builds (`designer/campaign-email-body-*.md`).
+- MA4 (S, done #9074) E-mail body as a page: how e-mail pages are made today, what mail programs need, a proposed way for MA5 (`designer/campaign-email-body-*.md`), waiting for the architect on #9083.
 - MA5 (M to L, shaped after MA4) The campaign's content step: edit the design, ready designs, paste HTML, phone preview, a test to oneself.
 - MA6 (M) Templates: e-mail designs, SMS texts and, once `whatsapp-channel-steps.md` reaches WA3, WhatsApp templates in one tab.
 - MA7 (S) Channels: e-mail sender, SMS, WhatsApp and İYS as cards with their state, each leading to its settings.

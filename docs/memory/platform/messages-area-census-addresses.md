@@ -9,7 +9,7 @@ description: MA0 census (2026-11-13): addresses never moved (web version, prefer
 - `email_campaign_job.php` and `mail_job.php`: cron lines on servers (`includes/settings/prep.php` prints them, `includes/fn/cron.php` lists them). Never renamed.
 - The external API routes (`/campaigns`, `/campaigns/sms`, `/campaigns/profiles`, `api/api-campaign-*.md`) and the `campaign.sent` event: not screens, unchanged.
 
-## Which panel addresses lead where, and in which step?
+## Where would each panel address lead, and in which step (proposed, #9081)?
 - `view_email_campaigns.php`: stays, it is the Campaigns tab (MA1, MA3).
 - `view_email_campaign_history.php`: the Campaigns tab with the finished filter (complete, cancelled), MA3.
 - `view_sms_campaigns.php`: the Campaigns tab with the SMS channel filter, MA3. `edit_sms_campaign.php` stays the SMS campaign's screen inside the shell.
@@ -17,7 +17,7 @@ description: MA0 census (2026-11-13): addresses never moved (web version, prefer
 - `mail_queue.php` and `mail_queue.php?tab=sms`: the Sends tab with the e-mail or SMS channel filter, MA2. Its Run now, cards and Queue active line move with it.
 - `view_email_campaign_profiles.php` and the profile screens: stay until MA9d, then lead to Automatic sends.
 
-## How does an old address lead?
+## How would an old address lead (proposed, #9081)?
 - A screen whose job moved keeps its file as a door: `validate_user()`, then `go()` to the new address. The door carries only known keys across (`tab=sms` becomes the channel filter, `id`), never the whole query string, and asks no right of its own: the new screen's gate answers.
 - No file is deleted: bookmarks, help pages, staff e-mails and the bell's old notices carry them.
 
