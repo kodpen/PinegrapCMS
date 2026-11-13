@@ -2219,3 +2219,155 @@ function pg_optimize_failure_message($reason, $name)
         'string' => 'Sorry, {var:1} could not be optimized, so it was left alone.',
         'vars'   => $name));
 }
+
+/**
+ * The quality a JPEG was saved at, on the 1-100 scale of the IJG encoder
+ * (libjpeg, GD, Imagick, most cameras' and browsers' encoders), read from
+ * its luminance quantisation table. Pure.
+ *
+ * Each candidate quality scales the standard luminance table as libjpeg
+ * does; the one whose sum is closest to the file's table wins. The sum is
+ * the same in natural and zigzag order, so the order a table is stored in
+ * does not matter. A table another encoder wrote gets the nearest IJG
+ * quality.
+ *
+ * @param string $data the file's bytes (the first segments are enough)
+ * @return int 1-100, or 0 when the bytes are not a JPEG or hold no table
+ */
+function pg_image_jpeg_quality($data)
+{
+    $data = (string) $data;
+    $length = strlen($data);
+
+    if (($length < 4) || (substr($data, 0, 2) !== "\xFF\xD8")) {
+        return 0;
+    }
+
+    $table = null;
+    $at = 2;
+
+    // Walk the segments up to the start of the scan for a DQT (0xDB) that
+    // holds table 0, the luminance one.
+    while (($table === null) && ($at + 4 <= $length)) {
+        if (ord($data[$at]) !== 0xFF) {
+            return 0;
+        }
+
+        $marker = ord($data[$at + 1]);
+
+        // Fill bytes before a marker.
+        if ($marker === 0xFF) {
+            $at++;
+            continue;
+        }
+
+        // Markers with no length: TEM and the restart markers.
+        if (($marker === 0x01) || (($marker >= 0xD0) && ($marker <= 0xD7))) {
+            $at += 2;
+            continue;
+        }
+
+        if (($marker === 0xDA) || ($marker === 0xD9)) {
+            break;
+        }
+
+        $size = (ord($data[$at + 2]) << 8) | ord($data[$at + 3]);
+
+        if (($size < 2) || ($at + 2 + $size > $length)) {
+            return 0;
+        }
+
+        if ($marker === 0xDB) {
+            $pos = $at + 4;
+            $end = $at + 2 + $size;
+
+            while ($pos < $end) {
+                $precision = ord($data[$pos]) >> 4;
+                $id = ord($data[$pos]) & 0x0F;
+                $bytes = $precision ? 128 : 64;
+
+                if ($pos + 1 + $bytes > $end) {
+                    return 0;
+                }
+
+                if ($id === 0) {
+                    $table = array();
+
+                    for ($i = 0; $i < 64; $i++) {
+                        $table[] = $precision
+                            ? ((ord($data[$pos + 1 + 2 * $i]) << 8) | ord($data[$pos + 2 + 2 * $i]))
+                            : ord($data[$pos + 1 + $i]);
+                    }
+
+                    break;
+                }
+
+                $pos += 1 + $bytes;
+            }
+        }
+
+        $at += 2 + $size;
+    }
+
+    if ($table === null) {
+        return 0;
+    }
+
+    // The standard luminance table (ITU-T T.81, Annex K.1).
+    $standard = array(
+        16, 11, 10, 16, 24, 40, 51, 61, 12, 12, 14, 19, 26, 58, 60, 55,
+        14, 13, 16, 24, 40, 57, 69, 56, 14, 17, 22, 29, 51, 87, 80, 62,
+        18, 22, 37, 56, 68, 109, 103, 77, 24, 35, 55, 64, 81, 104, 113, 92,
+        49, 64, 78, 87, 103, 121, 120, 101, 72, 92, 95, 98, 112, 100, 103, 99,
+    );
+    $sum = array_sum($table);
+    $best = 0;
+    $distance = PHP_INT_MAX;
+
+    for ($quality = 1; $quality <= 100; $quality++) {
+        $scale = ($quality < 50) ? intdiv(5000, $quality) : (200 - 2 * $quality);
+        $scaled = 0;
+
+        foreach ($standard as $value) {
+            $scaled += max(1, min(255, intdiv($value * $scale + 50, 100)));
+        }
+
+        if (abs($scaled - $sum) <= $distance) {
+            // On a tie the higher quality wins: the tables of 98-100 are
+            // all ones, and a file saved at 100 reads as 100.
+            $distance = abs($scaled - $sum);
+            $best = $quality;
+        }
+    }
+
+    return $best;
+}
+
+/**
+ * The quality a save of a picture starts at: the lower of $ceiling and the
+ * quality the JPEG at $path was saved at, so a turn, a flip or a crop is not
+ * heavier than its original unless the user raises it. $ceiling for a file
+ * that is not a JPEG or whose quality cannot be read; never below 40, the
+ * export panel's lowest.
+ *
+ * @param string $path
+ * @param int    $ceiling
+ * @return int
+ */
+function pg_image_jpeg_start_quality($path, $ceiling = 92)
+{
+    $handle = @fopen((string) $path, 'rb');
+
+    if (!$handle) {
+        return (int) $ceiling;
+    }
+
+    // The tables come before the scan; Exif and colour profiles before them
+    // rarely pass 256 KB.
+    $head = (string) @fread($handle, 262144);
+    fclose($handle);
+
+    $quality = pg_image_jpeg_quality($head);
+
+    return ($quality > 0) ? max(40, min((int) $ceiling, $quality)) : (int) $ceiling;
+}

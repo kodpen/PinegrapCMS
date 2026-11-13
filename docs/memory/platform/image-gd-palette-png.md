@@ -14,7 +14,7 @@ module: image
 - Under GD a flip and Save on a 214 KB PNG-8 gave 440 KB (colour type 6), and Optimize opened on "+%128" for a 56 KB PNG-8. The estimate action and the save go through the same engine, so both show the palette size now.
 - Imagick keeps its own path (`colors`, 256 colours, `ui/image-editor-export.md`).
 
-## What is left of #9118?
-- JPEG: the Design Canvas encodes at quality 92 by design (`pg_image_editor_export_options()`, the comment above `pg_image_editor_export_edit()`), so a turn of a JPEG saved at about 70 grows 1.5 to 2.6 times; Optimize opens on 92 too. Decided, not built: the start quality follows the source (`image-editor-jpeg-start-quality.md`).
+## And the JPEG half of #9118?
+- A JPEG starts at the lower of 92 and its own saved quality: `image-editor-jpeg-start-quality.md`.
 
 Tests: `tests/image_gd_palette_png_test.php`.

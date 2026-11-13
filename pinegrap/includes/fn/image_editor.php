@@ -1139,8 +1139,10 @@ function pg_image_editor_save($request, $user)
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
-    // The picture as it was opened, for its camera details.
+    // The picture as it was opened, for its camera details and the quality
+    // a JPEG was saved at.
     $picture = $source;
+    $export = pg_image_editor_export_start($export, $request, $picture);
 
     // A server without Imagick has no colour matrix: the browser sends the
     // picture it loaded with the colour step done (the colour layer), of its
@@ -1168,10 +1170,11 @@ function pg_image_editor_save($request, $user)
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
-    // Encoded for quality (92) in the file's own format and size, as the
-    // file manager's rotate button does: the operator asked for a changed
-    // picture, not a lighter file, and a replace is the next edit's
-    // original. The export panel's settings change these.
+    // Encoded in the file's own format and size at the quality the panel
+    // opens on: 92, or a JPEG's own quality when lower, so a turn, a flip or
+    // a crop is not heavier than its original
+    // (pg_image_editor_export_start()). The export panel's settings change
+    // these.
     list($edit, $engine) = pg_image_editor_export_edit($edit, $export);
     $report = pg_image_edit_apply($source, $edit, $engine);
 
@@ -3333,6 +3336,27 @@ function pg_image_editor_export_options($value, $own, $formats)
     return $options;
 }
 
+/**
+ * The export settings with the quality a save starts at when the request
+ * chose none: the lower of 92 and the quality the JPEG the editor opened
+ * was saved at (pg_image_jpeg_start_quality()), so a turn, a flip or a crop
+ * is not heavier than its original unless the user raises the quality. A
+ * quality the request chose stays.
+ *
+ * @param array  $export  pg_image_editor_export_options()
+ * @param array  $request the save or estimate request
+ * @param string $picture the picture as it was opened
+ * @return array
+ */
+function pg_image_editor_export_start($export, $request, $picture)
+{
+    if (!(isset($request['export']) && is_array($request['export']) && isset($request['export']['quality']))) {
+        $export['quality'] = pg_image_jpeg_start_quality($picture, $export['quality']);
+    }
+
+    return $export;
+}
+
 // A file name with the extension of another format: photo.png as jpeg is
 // photo.jpg. Pure.
 function pg_image_editor_export_name($name, $format)
@@ -3412,7 +3436,7 @@ function pg_image_editor_export_edit($edit, $options)
  *
  *   { file_id, doc, base?, export? }
  *     -> { before: { size, width, height }, after: { size, width, height },
- *          formats, colors }
+ *          formats, colors, srgb, start_quality }
  *
  * @return array array(payload, HTTP status)
  */
@@ -3462,6 +3486,8 @@ function pg_image_editor_action_estimate($request, $user)
         $source = pg_file_versions_path($base);
     }
 
+    $export = pg_image_editor_export_start($export, $request, $source);
+
     @set_time_limit(60);
 
     list($edit, $engine) = pg_image_editor_export_edit($edit, $export);
@@ -3475,7 +3501,9 @@ function pg_image_editor_action_estimate($request, $user)
         // Colour reduction is Imagick's; GD's palette loses the alpha.
         'colors'  => class_exists('Imagick'),
         // sRGB needs Imagick converting through lcms and the sRGB profile.
-        'srgb'    => pg_image_imagick_converts() && (pg_image_srgb_icc() !== ''));
+        'srgb'    => pg_image_imagick_converts() && (pg_image_srgb_icc() !== ''),
+        // The quality the panel opens on (pg_image_editor_export_start()).
+        'start_quality' => pg_image_jpeg_start_quality($source));
 
     if (($report['status'] === 'success') && is_string($report['data'])) {
         $result['after'] = array('size' => strlen(pg_image_editor_export_camera($report['data'], $export, $source)), 'width' => (int) $report['width'], 'height' => (int) $report['height']);
