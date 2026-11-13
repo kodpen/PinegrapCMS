@@ -19,8 +19,8 @@ description: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the det
 - Each PR shows real panel pictures, light and dark, at 1920, 1366 and a phone.
 
 ## Which steps?
-- LW1 (S) Lists as the Pages list. `--pg-measure-list-min` 1700px: a list is as wide as its columns need, at least 1700 px (the window when narrower), at most the window, centred; only the name column takes the slack.
-  - With the details panel open its width is added to the box, up to the whole window: the table keeps its closed width while the window has room. Pictures: Pages, a wide list (products) and a short one (three columns), with and without the panel.
+- LW1 (S) Lists as the Pages list. #9185. `--pg-measure-list-min` 1700px: a list is as wide as its columns need, at least 1700 px (the window when narrower), at most the window, centred; only the name column takes the slack.
+  - With the details panel open its width is added to the box, up to the whole window: the table keeps its closed width while the window has room. Pictures: Pages, products, a short list, panel open and closed.
 - LW2 (M) Add and edit screens up to 1700 px: `--pg-measure-edit` 1700px, status column 376, gap 24, the form column the rest. A field is as wide as its content asks, never the column's width only because there is room. The section rail group is centred as today.
   - First a proposal of how the cards use a form column of up to 1300 px (two cards abreast, or fields side by side) on Edit Product, Edit Page and the longest Site Settings card: the architect shows it to the owner before the rule reaches every screen.
 - LW3 (S) The switch. Every look switch (`.pg-switch`, and Bootstrap's `.switch` in a settings card) has the sheet's thumb: a white 18 px circle with its shadow, left when off, right when on, on the grey track and on the accent gradient, in both themes; focus ring and disabled state drawn.
