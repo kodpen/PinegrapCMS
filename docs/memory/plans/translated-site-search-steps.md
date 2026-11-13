@@ -24,7 +24,8 @@ description: Translated site search plan, steps TS1-TS5: the words and ı/i for 
 - The advanced search only; the simple search lists no record in the source either.
 - `pg_tr_search_records_find($query)`: the records whose translated texts match (`form_records` uses; the record is read from `field`). A record is listed only when the search index holds an item for it (`search_items`, written for the records a public list reaches), at that item's address and behind its folder fence, before the source's results.
 
-## TS4 (S) A list's own search box
+## TS4 (S) A list's own search box — done (#9301)
+- Done: `pg_tr_search_list_records()` gives the ids, joined as `OR forms.id IN (…)` to the list's `$search_where`.
 - The form data list search of the system widgets: on a page in another language a record also matches when its translated text does, for a list whose records are in the translation. The count and the paging read the same condition.
 
 ## TS5 (S) Close-out

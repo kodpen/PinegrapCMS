@@ -12,5 +12,5 @@ module: widgets
 - `tests/widgets_search_like_test.php` keeps `escape_like(` out of the module and checks both searches use `pg_list_like_pattern()`.
 
 ## What does the form data list search read on a page in another language?
-- A list with `translate_records` on also finds a record whose translated texts, in the fields the box searches, hold every typed word (TS1's words, ı and i as one letter): `pg_tr_search_list_records()` gives the ids, joined to the source `EXISTS` as `OR forms.id IN (…)` in `$search_where`, so the count and the paging read the same condition (#TS4PR).
+- A list with `translate_records` on also finds a record whose translated texts, in the fields the box searches, hold every typed word (TS1's words, ı and i as one letter): `pg_tr_search_list_records()` gives the ids, joined to the source `EXISTS` as `OR forms.id IN (…)` in `$search_where`, so the count and the paging read the same condition (#9301).
 - In the source language, and for a list that does not translate its records, nothing changes.
