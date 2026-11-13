@@ -379,7 +379,7 @@ function test_ws_flow_ai_node_refusals()
 	pg_assert_true($ok['ok'], 'a known kind and setting');
 	pg_assert_same(array('title' => 'Call back'), $ok['node']['config'], 'settings kept as config');
 
-	$kind = ws_flow_ai_node(array('id' => 'x', 'kind' => 'sms'), $keys, 'boxes[0]: ');
+	$kind = ws_flow_ai_node(array('id' => 'x', 'kind' => 'fax'), $keys, 'boxes[0]: ');
 	pg_assert_false($kind['ok'], 'unknown kind');
 	pg_assert_contains('boxes[0]: ', $kind['error'], 'says where');
 
@@ -1042,7 +1042,7 @@ function test_ws_flow_ai_sketch_parse_and_read()
 
 	pg_assert_same('fallback', ws_flow_ai_sketch_read(workspace_flow_sketch_answer(array('name' => ' ')), $keys, 'fallback', 'workspace_flow_sketch_problems')['name'], 'name from the sentence');
 	pg_assert_false(ws_flow_ai_sketch_read(workspace_flow_sketch_answer(array('flow_id' => 4)), $keys, '', 'workspace_flow_sketch_problems')['ok'], 'no patch');
-	pg_assert_false(ws_flow_ai_sketch_read('{"boxes":[{"id":"a","kind":"sms"}]}', $keys, '', 'workspace_flow_sketch_problems')['ok'], 'invented kind');
+	pg_assert_false(ws_flow_ai_sketch_read('{"boxes":[{"id":"a","kind":"fax"}]}', $keys, '', 'workspace_flow_sketch_problems')['ok'], 'invented kind');
 }
 
 // One good answer is one call.

@@ -200,7 +200,7 @@ function test_workspace_flow_steps_types()
 	$steps = array_keys(ws_scheduled_outcomes()) ? ws_step_kinds() : array();
 
 	foreach ($steps as $kind => $info) {
-		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead', 'approval', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'ai', 'agent'), true), $kind);
+		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead', 'approval', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'ai', 'agent', 'sms'), true), $kind);
 		pg_assert_same(array(), array_diff($info['lines'], $info['texts']), $kind . ': one-line texts are texts');
 	}
 
@@ -676,7 +676,9 @@ function test_workspace_flow_steps_scheduled_texts()
 {
 	$map = ws_step_scheduled_texts();
 	$kinds = ws_step_kinds();
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
+	// An SMS box fills its text where it queues it (flow_sms_box.php).
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flow_sms_box.php');
 
 	foreach ($map as $kind => $keys) {
 		pg_assert_true(isset($kinds[$kind]), $kind);

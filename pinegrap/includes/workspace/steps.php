@@ -118,6 +118,9 @@ function ws_step_kinds()
         'post'      => array('label' => lang('Post a message'), 'type' => 'post', 'texts' => array('body'), 'lines' => array(), 'outputs' => $message),
         'email'     => array('label' => lang('Send an e-mail'), 'type' => 'email', 'texts' => array('subject', 'body'), 'lines' => array('subject'),
             'outputs' => array($number('sent', lang('E-mails sent')))),
+        // A text message queued through the SMS layer (flow_sms_box.php).
+        'sms'       => array('label' => lang('Send an SMS'), 'type' => 'sms', 'texts' => array('text'), 'lines' => array(),
+            'outputs' => array($number('sent', lang('SMS messages queued')))),
         'notify'    => array('label' => lang('Let people know'), 'type' => 'notify', 'texts' => array('text'), 'lines' => array('text'),
             'outputs' => array($number('told', lang('People told')))),
         'task_open' => array('label' => lang('Open a task without waiting'), 'type' => 'task', 'texts' => array('title', 'description'), 'lines' => array('title'),
@@ -447,6 +450,9 @@ function ws_step_config_normalize($kind, $config)
                 'recipient' => ($recipient === 'record_person') ? 'record_person' : 'typed',
                 'purpose'   => ($purpose === 'marketing') ? 'marketing' : 'info',
             );
+
+        case 'sms':
+            return ws_step_sms_normalize($config);
 
         case 'notify':
             return array(
@@ -867,6 +873,10 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
 
             break;
 
+        case 'sms':
+            $problems = ws_step_sms_problems($config, $name);
+            break;
+
         case 'ai':
             $problems = ws_step_ai_problems($config, $name);
             break;
@@ -937,6 +947,11 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
 
     if ($kind === 'record_get') {
         return ws_step_record_get_check($viewer, ws_step_config_normalize('record_get', $config));
+    }
+
+    // Nor is an SMS box: it queues its message itself (flow_sms_box.php).
+    if ($kind === 'sms') {
+        return ws_step_sms_check($viewer, $config);
     }
 
     // Nor is a Pinegrap AI box: it asks the model itself (flow_ai_box.php).
@@ -1686,6 +1701,7 @@ function ws_step_scheduled_texts()
     return array(
         'post'        => array('body'),
         'email'       => array('subject', 'body'),
+        'sms'         => array('text'),
         'notify'      => array('text'),
         'task_open'   => array('title', 'description'),
         'webhook'     => array('text'),
@@ -1984,6 +2000,20 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $config['to'] = $person['email'];
     }
 
+    // An SMS to the person of the run's record: their mobile number read
+    // now with the owner's rights; one with none leaves the box done with
+    // nothing sent. Marketing consent is asked as the message is queued.
+    if (($kind === 'sms') && (($config['recipient'] ?? '') === 'record_person')) {
+        $person = ws_step_sms_person($owner, $run);
+
+        if ($person['error'] !== '') {
+            ws_flow_step_settle($step, 'running', 'done', 'done', $person['error'], array('sent' => 0));
+            return;
+        }
+
+        $config['to'] = pg_sms_dial($person['number']);
+    }
+
     // A change box's record named by a value of the run is read now; the
     // change is then checked on that record as on one named by its number.
     if (($kind === 'change') && is_string($config['id'] ?? null)) {
@@ -2113,6 +2143,8 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $done = ws_step_rows_get_do($owner, $action);
     } elseif ($kind === 'record_get') {
         $done = ws_step_record_get_do($owner, $action);
+    } elseif ($kind === 'sms') {
+        $done = ws_step_sms_do($action, $step_context + array('viewer' => $owner, 'row' => $row), ws_step_sms_reference($run['id'], $step['node_id'], $step['pass'] ?? 0));
     } else {
         $done = ws_scheduled_do($owner, $row, $action, $step_context);
     }
@@ -2280,6 +2312,23 @@ function ws_flow_box_try($viewer, $flow, $data)
             $config['to'] = $person['email'];
         }
 
+        // An SMS to the person of the run's record, as the run reads them;
+        // a marketing one only to a number whose person agreed to it.
+        if (($kind === 'sms') && (($config['recipient'] ?? '') === 'record_person')) {
+            if ($run_id <= 0) {
+                return array('outcome' => 'done', 'said' => lang('Writes to the person of the record the run is about: choose a run to see who.')) + $answer;
+            }
+
+            $person = ws_step_sms_person($owner, $run);
+            $refusal = ($person['error'] === '') && (($config['purpose'] ?? '') === 'marketing') ? ws_step_sms_marketing_refusal($person['number']) : '';
+
+            if (($person['error'] !== '') || ($refusal !== '')) {
+                return array('outcome' => 'done', 'said' => ($person['error'] !== '') ? $person['error'] : $refusal) + $answer;
+            }
+
+            $config['to'] = pg_sms_dial($person['number']);
+        }
+
         // A change box's record named by a value: a chosen run gives it, as
         // the run reads it; without one only the rest of the change is
         // checked.
@@ -2339,6 +2388,8 @@ function ws_flow_box_try($viewer, $flow, $data)
             $said = ws_step_rows_get_text($action);
         } elseif ($kind === 'record_get') {
             $said = ws_step_record_get_text($action);
+        } elseif ($kind === 'sms') {
+            $said = ws_step_sms_text($action);
         } elseif ($kind === 'ai') {
             $said = ws_step_ai_text($action);
         } elseif ($kind === 'agent') {

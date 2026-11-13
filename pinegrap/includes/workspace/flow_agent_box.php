@@ -519,7 +519,7 @@ function ws_flow_box_tiers()
         $tiers[$kind] = WS_TIER_REVERSIBLE;
     }
 
-    foreach (array('email', 'task_digest', 'webhook', 'mcp', 'start_action', 'start_flow') as $kind) {
+    foreach (array('email', 'sms', 'task_digest', 'webhook', 'mcp', 'start_action', 'start_flow') as $kind) {
         $tiers[$kind] = WS_TIER_IRREVERSIBLE;
     }
 

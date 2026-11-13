@@ -605,6 +605,7 @@
     "{var:1} Month{suffix:1} ago": "{var:1} Ay önce",
     "{var:1} MyISAM tables are healthy (checked {var:2})": "{var:1} MyISAM tablosu sağlıklı (denetim: {var:2})",
     "{var:1} Name": "{var:1} Adı",
+    "{var:1} No SMS was sent.": "{var:1} SMS gönderilmedi.",
     "{var:1} Not tried again: the message expires before the next attempt.": "{var:1} Yeniden denenmedi: mesajın süresi bir sonraki denemeden önce doluyor.",
     "{var:1} Order(s)": "{var:1} Sipariş",
     "{var:1} Orders were synced with MailChimp.": "{var:1} Sipariş MailChimp ile senkronize edildi.",

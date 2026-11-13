@@ -8,7 +8,7 @@ description: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #6
 
 ## What holds for every SMS?
 - Drivers under `includes/sms/<provider>.php`, credentials in `connect_apps`, no schema per provider (`sms-provider-layer.md`): Netgsm, İleti Merkezi, Twilio. Netgsm abroad is unverified (Turkish mobiles only); sites abroad use Twilio.
-- Kinds: order received, shipped, delivered, COD code, member code, ERP overdue reminder, stock: transactional, exempt from İYS, no promotion text. `marketing` is the only commercial kind (`sms-marketing-kind.md`).
+- Kinds: order received, shipped, delivered, COD code, member code, ERP overdue reminder, stock, a flow's info message (`flow`, `workspace/workspace-flows-sms-box.md`): transactional, exempt from İYS, no promotion text. `marketing` is the only commercial kind (`sms-marketing-kind.md`).
 - Requests only queue (`sms-outbox-queue.md`); the general job sends.
 
 ## What holds for consent and İYS?
@@ -21,6 +21,6 @@ description: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #6
 - Orders and shipping `sms-order-messages.md`, codes `sms-codes.md`, ERP reminder `sms-erp-overdue.md`, e-mail consent writers `core/consent-log-writers.md`, consents API `api/api-customer-consents.md`, identity and label `sms-marketing-kind.md`, campaigns `sms-campaigns.md`.
 
 ## What is left?
-- The first İYS live run with the owner's test credentials (`iys-settings-card.md`). A Flows action that sends a marketing SMS (#3570, later).
+- The first İYS live run with the owner's test credentials (`iys-settings-card.md`).
 
 Related: docs/memory/platform/sms-campaigns.md, docs/memory/platform/iys-settings-card.md

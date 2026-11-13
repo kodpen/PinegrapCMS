@@ -140,6 +140,7 @@
         task: { name: 'fl_kind_task', group: 'people', into: true, out: ['done', 'cancelled', 'timeout'] },
         post: { name: 'fl_kind_post', group: 'message', into: true, out: ['done', 'failed'] },
         email: { name: 'fl_kind_email', group: 'message', into: true, out: ['done', 'failed'] },
+        sms: { name: 'fl_kind_sms', group: 'message', into: true, out: ['done', 'failed'] },
         notify: { name: 'fl_kind_notify', group: 'message', into: true, out: ['done', 'failed'] },
         task_open: { name: 'fl_kind_task_open', group: 'people', into: true, out: ['done', 'failed'] },
         webhook: { name: 'fl_kind_webhook', group: 'system', into: true, out: ['done', 'failed'] },
@@ -217,6 +218,7 @@
         ['for_each_end', 'fl_kind_for_each_end'],
         ['post', 'fl_add_post'],
         ['email', 'fl_add_email'],
+        ['sms', 'fl_kind_sms'],
         ['notify', 'fl_kind_notify'],
         ['task_open', 'fl_kind_task_open'],
         ['webhook', 'fl_kind_webhook'],
@@ -615,6 +617,7 @@
             reads: steps.reads || [],
             no_order: !!steps.no_order,
             ai: !!steps.ai,
+            sms: !!steps.sms,
             agents: steps.agents || [],
             mcp: steps.mcp || []
         };
@@ -671,6 +674,14 @@
             }
 
             return config.to ? t('fl_email_meta', config.to) : t('fl_email_no_to');
+        }
+
+        if (node.kind === 'sms') {
+            if (config.recipient === 'record_person') {
+                return t((config.purpose === 'marketing') ? 'fl_email_person_marketing' : 'fl_email_person_info');
+            }
+
+            return config.to ? t('fl_email_meta', config.to) : t('fl_sms_no_to');
         }
 
         if (node.kind === 'notify') {
@@ -3447,6 +3458,7 @@
         task: [['title', 'fl_title', 200], ['description', 'fl_description', 8000]],
         post: [['body', 'fl_post_body', 4000]],
         email: [['subject', 'fl_email_subject', 250], ['body', 'fl_email_body', 20000]],
+        sms: [['text', 'fl_sms_text', 900]],
         notify: [['text', 'fl_notify_text', 500]],
         task_open: [['title', 'fl_title', 200], ['description', 'fl_description', 8000]],
         webhook: [['text', 'fl_post_body', 4000], ['url', 'fl_url', 2000]],
@@ -4392,6 +4404,7 @@
                 && ((item[0] !== 'no_order') || stepLists().no_order)
                 && ((item[0] !== 'record_get') || (stepLists().reads.length > 0))
                 && ((item[0] !== 'ai') || stepLists().ai)
+                && ((item[0] !== 'sms') || stepLists().sms)
                 && ((item[0] !== 'agent') || (stepLists().agents.length > 0))
                 && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
@@ -6168,7 +6181,7 @@
     // ws_flow_task_texts()). A derived value fills only {{date}}, {{time}}
     // and {{weekday}} (ws_flow_derived_words()). In any other box such a
     // word stays as typed: a table cell, MCP arguments, a check-in's question.
-    var WORD_KINDS = ['post', 'email', 'notify', 'task', 'task_open', 'webhook', 'task_digest', 'report', 'approval'];
+    var WORD_KINDS = ['post', 'email', 'sms', 'notify', 'task', 'task_open', 'webhook', 'task_digest', 'report', 'approval'];
 
     // The help under a value field: the words named only where they work.
     function valuesHint(node) {
@@ -7017,6 +7030,10 @@
             emailFields(box, node);
         }
 
+        if (node.kind === 'sms') {
+            smsFields(box, node);
+        }
+
         if (node.kind === 'notify') {
             notifyFields(box, node);
         }
@@ -7424,6 +7441,41 @@
         }, false));
         box.appendChild(valueField(node, t('fl_email_body'), config.body, 20000, function (value) {
             config.body = value;
+            refreshNode(node);
+        }, true));
+    }
+
+    // An SMS box: a typed mobile number, or the person of the run's record
+    // (their mobile number read when the box runs) with why it writes to
+    // them; the text, queued through the site's SMS settings.
+    function smsFields(box, node) {
+        var config = node.config;
+        var person = config.recipient === 'record_person';
+        var recipient = K.select([['typed', t('fl_sms_typed')], ['record_person', t('fl_email_person')]], person ? 'record_person' : 'typed');
+
+        recipient.addEventListener('change', function () {
+            config.recipient = recipient.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_email_recipient'), recipient));
+
+        if (!person) {
+            box.appendChild(field(t('fl_sms_to'), textInput(config.to, 200, function (value) {
+                config.to = value;
+                refreshNode(node);
+            }), t('fl_sms_to_help')));
+        }
+
+        var purpose = K.select([['info', t('fl_email_purpose_info')], ['marketing', t('fl_email_purpose_marketing')]], (config.purpose === 'marketing') ? 'marketing' : 'info');
+
+        purpose.addEventListener('change', function () {
+            config.purpose = purpose.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_email_purpose'), purpose, t('fl_sms_purpose_help')));
+        box.appendChild(valueField(node, t('fl_sms_text'), config.text, 900, function (value) {
+            config.text = value;
             refreshNode(node);
         }, true));
     }
@@ -10847,6 +10899,8 @@
             config = { channel_id: 0, body: '' };
         } else if (kind === 'email') {
             config = { to: '', subject: '', body: '', page_id: 0, recipient: 'typed', purpose: 'info' };
+        } else if (kind === 'sms') {
+            config = { to: '', recipient: 'typed', purpose: 'info', text: '' };
         } else if (kind === 'notify') {
             config = { user_ids: [], text: '' };
         } else if (kind === 'task_open') {
