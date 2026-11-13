@@ -7,6 +7,7 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
+- agent-conclude-discussion.md: Plan (owner 2026-11-14): an agent concludes a discussion when a person in it asks, and unasked only offers a Conclude button a person presses
 - agent-drawing-guides.md: Plan (owner 2026-11-14): what the canvas side gives an agent's drawing: a guide it reads, charts as an operation, ready layouts, a chart preset for live pages
 - agent-knock-routine-form.md: Plan (architect 2026-11-13, #9241): a push door on a routine's fire address is knocked in the routine's form (it answered HTTP 400 to the webhook form); one step, RK1, then a live check
 - architect-channel-approvals.md: Plan (2026-11-13): no architect issues any more; the merge tool's approval gate reads a decision comment on the PR itself, and the memory files that still say "open an architect issue" are corrected
