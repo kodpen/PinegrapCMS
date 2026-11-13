@@ -19,7 +19,13 @@
 - campaign-email-body-mail-programs.md: MA4 (2026-11-13): what an HTML e-mail body must be for Gmail, Outlook and Apple Mail: width, tables, inline styles, head style, pictures, the 102 KB clip, the parts it keeps
 - campaign-email-body-today.md: MA4 census (2026-11-13): how a campaign's HTML body and the designed e-mails (account, form, comment, receipt) are made today, what the e-mail render leaves in, and who may design one
 - campaign-email-body-way.md: MA4 proposal (2026-11-13, open on #9083): a campaign's e-mail body as an e-mail design page (600 px canvas, mail blocks), the mail pass, ready designs, pasted HTML, test send
-- canvas-sample-gaps.md: Census for the designer canvas real samples plan (CS0): per system component and e-mail card, which bound values the canvas draws as a sample, a ‹label›, an empty box or a wrong sample
+- canvas-sample-gaps-account.md: CS0 census, account (CS4): my account, login, registration, password forms, preferences, address book, security, invoices, account e-mail card: canvas faults
+- canvas-sample-gaps-catalog.md: CS0 census, catalog (CS4): catalog listing, product page and values, wishlist, order form, search, photo gallery, tag cloud, folder view: canvas faults
+- canvas-sample-gaps-checkout.md: CS0 census, orders (CS2) part two: shopping cart, express order checkout, order preview, shipping and billing steps and their lists: canvas drawing and faults
+- canvas-sample-gaps-forms.md: CS0 census, forms (CS3): custom form, form list and item views, form e-mail cards; what a field of each kind and the record values draw on the canvas
+- canvas-sample-gaps-orders.md: CS0 census, orders (CS2): order view and order receipt e-mail card, its lists (items, product forms, gift cards, shipments, returns): canvas drawing and faults
+- canvas-sample-gaps-other.md: CS0 census, the rest (CS4): comments and comment e-mail card, calendar, Google reviews, booking, accessibility statement, ads, menus, language, loop values
+- canvas-sample-gaps.md: CS0 census (#9179): what the designer canvas draws for each bound value (sample, ‹label›, empty, grey box, wrong sample); shared causes; false warning frames [decision: decisions-made-product-48.md]
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
 - catalog-listing-subtree-sort.md: Catalog listing widget's catalog-order sort while a search or filter spans the group subtree: the product's lowest sort order, not an arbitrary group row.
