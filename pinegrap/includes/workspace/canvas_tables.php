@@ -307,6 +307,104 @@ function ws_canvas_tables_choices($viewer, $message)
 }
 
 /**
+ * The canvases that bind each of these tables, by table: their message ids,
+ * oldest binding first. One read for the whole list.
+ *
+ * @param int[] $table_ids
+ * @return array table id => int[] message ids
+ */
+function ws_canvas_tables_by_table(array $table_ids)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', $table_ids))));
+
+    if (!ws_canvas_tables_ready() || empty($ids)) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT table_id, message_id FROM ws_canvas_tables WHERE table_id IN (" . implode(',', $ids) . ") ORDER BY id") as $row) {
+        $out[(int) $row['table_id']][] = (int) $row['message_id'];
+    }
+
+    return $out;
+}
+
+/**
+ * The canvases that use each table, as the person looking may see them:
+ * only a live page in a channel they read, by its name and its place in
+ * the channel. A canvas they do not reach is left out, as in the channel.
+ *
+ * @param array $viewer
+ * @param int[] $table_ids
+ * @return array table id => [{id, name, url}]
+ */
+function ws_canvas_uses($viewer, array $table_ids)
+{
+    $reached = array();
+    $out = array();
+
+    foreach (ws_canvas_tables_by_table($table_ids) as $table_id => $message_ids) {
+        foreach ($message_ids as $message_id) {
+            if (!array_key_exists($message_id, $reached)) {
+                $message = ws_message($message_id);
+                $reached[$message_id] = ws_canvas_page_reach($viewer, $message)
+                    ? array('id' => $message_id, 'name' => ws_canvas_name($message),
+                        'url' => 'workspace.php?channel=' . (int) $message['channel_id'] . '&message=' . $message_id)
+                    : null;
+            }
+
+            if ($reached[$message_id] !== null) {
+                $out[$table_id][] = $reached[$message_id];
+            }
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * A canvas's name: its page file's name without .html. Pure.
+ *
+ * @param array $message file_name
+ * @return string
+ */
+function ws_canvas_name($message)
+{
+    return (string) preg_replace('/\.html?$/i', '', (string) ($message['file_name'] ?? ''));
+}
+
+/**
+ * The canvases as chips linking to each in its channel, at most $most
+ * named and the rest counted ("+2"); '' for none. Pure but for the words.
+ *
+ * @param array[] $canvases ws_canvas_uses() of one table
+ * @param int     $most
+ * @return string HTML
+ */
+function ws_canvas_uses_html(array $canvases, $most = 3)
+{
+    if (empty($canvases)) {
+        return '';
+    }
+
+    $chips = array();
+
+    foreach (array_slice($canvases, 0, max(1, (int) $most)) as $canvas) {
+        $chips[] = '<a class="badge badge-subtle theme-secondary text-decoration-none d-inline-flex align-items-center gap-1" href="' . h((string) $canvas['url']) . '">'
+            . '<i class="bi bi-window-stack" aria-hidden="true"></i><span>' . h((string) $canvas['name']) . '</span></a>';
+    }
+
+    $more = count($canvases) - count($chips);
+
+    if ($more > 0) {
+        $chips[] = '<span class="pg-text-2 fg-secondary">' . '+' . (int) $more . '</span>';
+    }
+
+    return '<span class="d-inline-flex flex-wrap align-items-center gap-1">' . implode(' ', $chips) . '</span>';
+}
+
+/**
  * The texts of the card's tables.
  *
  * @return array key => text

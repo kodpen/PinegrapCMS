@@ -21,6 +21,7 @@ if (!defined('PG_TEST_RUNNER')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_tables.php');
 
 foreach (array('PATH' => '/', 'OUTPUT_PATH' => '/', 'OUTPUT_SOFTWARE_DIRECTORY' => 'pinegrap', 'DATE_FORMAT' => 'day_month', 'TIME_FORMAT' => 'twenty_four_hours') as $ws_wtable_list_test_name => $ws_wtable_list_test_value) {
 	if (!defined($ws_wtable_list_test_name)) {
@@ -138,7 +139,7 @@ function test_ws_wtable_list_columns()
 
 	pg_assert_same('name', key($columns), 'the name leads the row');
 	pg_assert_same('link', $columns['name']['kind'], 'the name opens the table');
-	pg_assert_same(array('name', 'rows', 'columns', 'place', 'updated'), array_keys(pg_list_table_printed_sort_columns($columns)), 'the row\'s buttons do not sort');
+	pg_assert_same(array('name', 'rows', 'columns', 'canvases', 'place', 'updated'), array_keys(pg_list_table_printed_sort_columns($columns)), 'the row\'s buttons do not sort');
 	pg_assert_true(in_array(WS_WTABLE_LIST, pg_list_table_printed_lists(), true), 'the list keeps a heading sort');
 	pg_assert_true(!in_array(WS_WTABLE_LIST_DELETED, pg_list_table_printed_lists(), true), 'the deleted tables stay in the order the bin gives them');
 
@@ -307,4 +308,28 @@ function test_ws_wtable_list_place_is_named_data_elsewhere()
 	// Addresses, API names and scopes keep their names.
 	pg_assert_contains("'workspace_wtables.php'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/nav.php'), 'the address stays');
 	pg_assert_contains("'summary'     => 'List workflow tables'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_wtables.php'), 'the API keeps its wording');
+}
+
+function test_workspace_wtable_list_canvases_cell()
+{
+	pg_assert_same('', ws_canvas_uses_html(array()), 'no canvas, an empty cell');
+
+	$canvases = array(
+		array('id' => 11, 'name' => 'Sales <board>', 'url' => 'workspace.php?channel=2&message=11'),
+		array('id' => 12, 'name' => 'Stock', 'url' => 'workspace.php?channel=2&message=12'),
+		array('id' => 13, 'name' => 'Orders', 'url' => 'workspace.php?channel=3&message=13'),
+	);
+	$html = ws_canvas_uses_html($canvases, 2);
+	pg_assert_contains('Sales &lt;board&gt;', $html, 'the name is text');
+	pg_assert_contains('href="workspace.php?channel=2&amp;message=11"', $html, 'a chip opens the canvas in its channel');
+	pg_assert_contains('Stock', $html);
+	pg_assert_true(strpos($html, 'Orders') === false, 'past the most, counted, not named');
+	pg_assert_contains('+1', $html);
+	pg_assert_true(strpos(ws_canvas_uses_html($canvases), '+') === false, 'three of three are all named');
+
+	$cells = ws_wtable_list_cells(array('id' => 4, 'name' => 'T', 'description' => '', 'row_count' => 0, 'updated_at' => 0, 'access' => 'view', 'user_id' => 1),
+		array('url' => 'workspace_wtables.php', 'canvases' => $canvases));
+	pg_assert_true(isset($cells['canvases']), 'the list has the column');
+	pg_assert_same('Sales board', ws_canvas_name(array('file_name' => 'Sales board.html')), 'a canvas is named by its page without .html');
+	pg_assert_same('Plan.HTM', ws_canvas_name(array('file_name' => 'Plan.HTM.html')));
 }
