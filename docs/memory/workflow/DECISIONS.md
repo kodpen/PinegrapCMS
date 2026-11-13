@@ -730,6 +730,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-flow-layer.md: flowLayer() in workspace.js: the whole Flows editor in a full-screen layer over a channel; ways in, Add › New flow, bar, inert page, Escape, Close with flush
 - workspace/workspace-flows-adding.md: Recipe for a new flow box or start event, never one example: is it there already, then every place it is named (server, canvas, Pinegrap AI, bundle, tests)
 - workspace/workspace-flows-channel-run-card.md: Add › Start a flow in a channel's composer and the run's card there (C2, #3048): which flows are listed, the start, the system line tied by ws_refs, the card following the run
+- workspace/workspace-flows-contact-group-box.md: Flow box Add to or take out of a contact group (contact_group, #9291): settings, whose contact, hand groups only, no consent written, a flow not started again by its own add
 - workspace/workspace-flows-decisions.md: Lasting decisions behind Workspace Flows ("Akışlar"): the three uses, the owner's answers 1-8 (editor, builders, record writes, AI drafts only), rights, data-passing rules (#2414)
 - workspace/workspace-flows-failure-reason.md: Why a flow box failed (FR1, PR #8425): data.empty_values, the added sentence on card, bell and run view, the canvas buttons and the card link to the failed box
 - workspace/workspace-flows-quick-setup-map.md: Flows quick setup drawing against today's boxes and events: drawn starts, steps and recipes by kind; general boxes proposed for what has none (SMS, contact group, offer code)

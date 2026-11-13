@@ -397,7 +397,7 @@ JS
 	}
 
 	pg_assert_same(array('start', 'message', 'people', 'logic', 'records', 'system', 'end', 'values'), $result['order'], 'groups in the order a flow is built');
-	pg_assert_same(array('records:change,row_add,row_set,row_get,rows_get,record_get', 'system:webhook,web_check,start_flow,mcp,ai,agent'), $result['records'], 'the boxes on records and table rows have a group of their own, out of System');
+	pg_assert_same(array('records:change,row_add,row_set,row_get,rows_get,record_get,contact_group', 'system:webhook,web_check,start_flow,mcp,ai,agent'), $result['records'], 'the boxes on records and table rows have a group of their own, out of System');
 	pg_assert_same(array(true, true, true, false, false, false, true, false), $result['open'], 'at first Message and People are open, Logic, Records and tables, System and Values folded');
 	pg_assert_same(true, $result['openSearched'], 'a search unfolds the groups');
 	pg_assert_same(array(false, true, false), $result['openChosen'], 'a group stays as the person folded it');
@@ -406,7 +406,7 @@ JS
 	pg_assert_same(array('schedule', true, false), $result['rowsChange'], 'Change lists the other start kinds');
 	pg_assert_same(true, $result['rowsSearched'], 'a search lists them too');
 	pg_assert_same(array(false, false, false, false, true, true, true), $result['filled'], 'Change asks first only for a start whose settings were filled in');
-	pg_assert_same(array('start:manual,schedule,event,join,row,no_order,web,mention', 'message:post,email,notify,report'), $result['firstItems'], 'each group keeps the palette\'s order');
+	pg_assert_same(array('start:manual,schedule,event,join,row,no_order,web,mention', 'message:post,email,sms,notify,report'), $result['firstItems'], 'each group keeps the palette\'s order');
 	pg_assert_same(array('end:end', 'values:constants,value'), $result['endItems'], 'the End box has its own group, the value boxes come last');
 	pg_assert_same(array('start:schedule'), $result['search'], 'a search keeps the boxes whose name holds it, any case');
 	pg_assert_same(array('start:manual'), $result['words'], 'every word searched for');
@@ -458,6 +458,29 @@ JS
 	pg_assert_same(array('links', 'settings', 'try', 'settings', 'try', ''), $result['keys'], 'Left and Right step round, Home and End go to the ends, other keys do nothing');
 	pg_assert_same(array(array('manual_1'), array('task_2@1', 'end_1@2')), $result['links'], 'the arrows in and out in the graph\'s order, an arrow to a missing box left out');
 	pg_assert_same(array('task_3', 'task', 'Call', 480, 224, 1), $result['copy'], 'a copy: a free id, its title and settings (not shared), right of it, past the boxes in the way');
+}
+
+// An arrow carries its outcome's name when its box has more than one
+// outcome, and always on always, each, other, cancelled and failed; the only
+// outcome of a box (a post's done, a start's next) goes unnamed.
+function test_workspace_flows_canvas_arrow_names()
+{
+	$result = ws_flows_canvas_test_node(
+		array('edgeNamed', 'kindOf', 'aiClasses'),
+		<<<'JS'
+KINDS = { post: { name: 'p', group: 'message', into: true, out: ['done'] }, manual: { name: 'm', group: 'start', into: false, out: ['next'] }, condition: { name: 'c', group: 'logic', into: true, out: ['yes', 'no'] }, ai: { name: 'a', group: 'logic', into: true, out: ['done', 'failed'] } };
+var post = { kind: 'post', config: {} };
+var cond = { kind: 'condition', config: {} };
+var ai = { kind: 'ai', config: { mode: 'classify', classes: ['Sales', 'Help'] } };
+console.log(JSON.stringify([edgeNamed(post, 'done'), edgeNamed(post, 'always'), edgeNamed({ kind: 'manual', config: {} }, 'next'), edgeNamed(cond, 'yes'), edgeNamed(cond, 'no'), edgeNamed(ai, 'class_1'), edgeNamed({ kind: 'gone', config: {} }, 'failed'), edgeNamed({ kind: 'gone', config: {} }, 'done')]));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array(false, true, false, true, true, true, true, false), $result, 'named where the box has several outcomes and on always, each, other, cancelled, failed');
 }
 
 // The flow list says how each flow starts in a short sentence: a time box
@@ -2205,8 +2228,8 @@ function ws_flows_canvas_test_groups()
 		'values' => array('#e58fd0', array('constants', 'value')),
 		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
-		'message' => array('#6ea8ff', array('post', 'email', 'notify', 'report')),
-		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'ai', 'agent'))
+		'message' => array('#6ea8ff', array('post', 'email', 'sms', 'notify', 'report')),
+		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'contact_group', 'ai', 'agent'))
 	);
 }
 

@@ -341,7 +341,9 @@ function pg_ltd_reports($limit = 10)
 function pg_ltd_run_start($style_ids, $user, $set_keys = array())
 {
     if ((int)$user['role'] > 1) return lang('Only a designer can open a classic style in the Page Design Studio.');
-    if (pg_ltd_state_read() !== null) return lang('A move is already under way.');
+    // Pages moving to or from a trial design (legacy_bootstrap_move.php) hold
+    // it too: only one move runs at a time.
+    if (pg_ltd_state_read() !== null || is_file(PG_FUNCTIONS_DIR . '/data/temp/legacy_to_bootstrap.json')) return lang('A move is already under way.');
     $want = array();
     foreach ((array)$set_keys as $key) {
         if (is_string($key) && preg_match('/^[0-9a-f]{16}$/', $key)) $want[$key] = true;

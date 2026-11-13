@@ -5,7 +5,7 @@ module: legacy_bootstrap_trial
 ---
 
 ## Where is it?
-- The "Towards Bootstrap 5" card (`legacy-bootstrap-card.md`): beside Report, "Make a trial design" (POST, token, designers; refused while a move runs). Then "Trial design: <name>" (editor link), Preview, "Delete the trial design" (a second button confirms; none while used). Module `includes/fn/legacy_bootstrap_trial.php`.
+- The "Towards Bootstrap 5" card (`legacy-bootstrap-card.md`): beside Report, "Make a trial design" (POST, token, designers; refused while a move runs). Then "Trial design: <name>" (editor link), Preview, "Delete the trial design" (a second button confirms; none while used), Move pages (`legacy-bootstrap-move.md`). Module `includes/fn/legacy_bootstrap_trial.php`.
 - Only for a Legacy design on Bootstrap 3 by the card's test (`pg_lbs_design_assets()`); one trial per design.
 
 ## What does Make a trial design write?

@@ -22230,6 +22230,19 @@ html.ws-flow-layer-on body {
   stroke: var(--pg-bg-1);
   stroke-width: 3px;
 }
+/* The outcome an arrow leaves by, on a pill at its middle. */
+.pgc-edge-pill {
+  fill: var(--pg-bg-1);
+  stroke: var(--pg-border-color);
+  stroke-width: 1;
+}
+.pgc-edge-pill + .pgc-edge-label {
+  font-weight: var(--pg-weight-strong);
+  stroke: none;
+}
+.pgc-edge.pgc-selected .pgc-edge-pill {
+  stroke: var(--pgc-accent, var(--pg-primary));
+}
 .pgc-edge-temp {
   fill: none;
   stroke: var(--pgc-accent, var(--pg-primary));
@@ -22317,6 +22330,7 @@ html.ws-flow-layer-on body {
   --pgc-marker-on: url(#wsf-arrow-on);
 }
 .wsf-arrowhead-bad { fill: var(--pg-danger); }
+.pgc-edge.wsf-bad .pgc-edge-pill { stroke: var(--pg-danger); }
 .pgc-edge.wsf-bad .pgc-edge-line {
   stroke: var(--pg-danger);
   stroke-dasharray: 6 4;

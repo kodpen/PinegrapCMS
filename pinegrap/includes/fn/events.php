@@ -196,7 +196,9 @@ function pg_contact_group_members_event($contact_group_id, $name, $added, $remov
 // change, not one per contact, so ticking a group for two hundred selected
 // contacts queues one row per subscriber. The group's name is read back when
 // the caller does not have it; a group that is not there is not announced.
-function pg_announce_contact_group_members($contact_group_id, $added = array(), $removed = array(), $name = null)
+// A flow's contact group box gives its flow's id, so the joins it caused do
+// not start that flow again.
+function pg_announce_contact_group_members($contact_group_id, $added = array(), $removed = array(), $name = null, $flow_id = 0)
 {
     $contact_group_id = (int) $contact_group_id;
 
@@ -220,7 +222,7 @@ function pg_announce_contact_group_members($contact_group_id, $added = array(), 
     // a run is about one contact, so a change of two hundred keeps two
     // hundred rows, worked off by the workspace's event run. The webhooks
     // keep the one members_changed event above.
-    foreach (pg_contact_group_joined_events($event) as $joined) {
+    foreach (pg_contact_group_joined_events($event, $flow_id) as $joined) {
         pg_event_record('contact_group.joined', $joined);
     }
 }
@@ -228,8 +230,11 @@ function pg_announce_contact_group_members($contact_group_id, $added = array(), 
 // What contact_group.joined carries for each contact a members_changed event
 // put into the group: the contact (id, as every contact event names it, and
 // contact_id for a flow's {{trigger.contact_id}}), the group and its name.
+// A flow's contact group box that made the change names its flow in _flow,
+// so that flow does not start again on its own add (ws_events_start());
+// the workspace's event run takes it out before a run reads the payload.
 // Nobody added, or no event, gives an empty list.
-function pg_contact_group_joined_events($event)
+function pg_contact_group_joined_events($event, $flow_id = 0)
 {
     $out = array();
 
@@ -243,7 +248,7 @@ function pg_contact_group_joined_events($event)
             'contact_id' => (int) $contact_id,
             'group_id'   => (int) $event['id'],
             'group_name' => (string) ($event['name'] ?? ''),
-        );
+        ) + (((int) $flow_id > 0) ? array('_flow' => (int) $flow_id) : array());
     }
 
     return $out;

@@ -140,6 +140,7 @@
         task: { name: 'fl_kind_task', group: 'people', into: true, out: ['done', 'cancelled', 'timeout'] },
         post: { name: 'fl_kind_post', group: 'message', into: true, out: ['done', 'failed'] },
         email: { name: 'fl_kind_email', group: 'message', into: true, out: ['done', 'failed'] },
+        sms: { name: 'fl_kind_sms', group: 'message', into: true, out: ['done', 'failed'] },
         notify: { name: 'fl_kind_notify', group: 'message', into: true, out: ['done', 'failed'] },
         task_open: { name: 'fl_kind_task_open', group: 'people', into: true, out: ['done', 'failed'] },
         webhook: { name: 'fl_kind_webhook', group: 'system', into: true, out: ['done', 'failed'] },
@@ -157,6 +158,7 @@
         row_get: { name: 'fl_kind_row_get', group: 'system', into: true, out: ['done', 'failed'] },
         rows_get: { name: 'fl_kind_rows_get', group: 'system', into: true, out: ['done', 'failed'] },
         record_get: { name: 'fl_kind_record_get', group: 'system', into: true, out: ['done', 'failed'] },
+        contact_group: { name: 'fl_kind_contact_group', group: 'system', into: true, out: ['done', 'failed'] },
         // A classifying Pinegrap AI box leaves on its named outcomes instead
         // (kindOf(), ws_step_ai_arrow_outcomes()).
         ai: { name: 'fl_kind_ai', group: 'system', into: true, out: ['done', 'failed'] },
@@ -217,6 +219,7 @@
         ['for_each_end', 'fl_kind_for_each_end'],
         ['post', 'fl_add_post'],
         ['email', 'fl_add_email'],
+        ['sms', 'fl_kind_sms'],
         ['notify', 'fl_kind_notify'],
         ['task_open', 'fl_kind_task_open'],
         ['webhook', 'fl_kind_webhook'],
@@ -233,6 +236,7 @@
         ['row_get', 'fl_kind_row_get'],
         ['rows_get', 'fl_kind_rows_get'],
         ['record_get', 'fl_kind_record_get'],
+        ['contact_group', 'fl_kind_contact_group'],
         ['ai', 'fl_kind_ai'],
         ['agent', 'fl_kind_agent'],
         ['approval', 'fl_kind_approval'],
@@ -279,7 +283,7 @@
 
     // The boxes listed under Records and tables in the palette; on the
     // canvas they keep the system group's colour (KINDS).
-    var PALETTE_RECORDS = ['change', 'record_get', 'row_add', 'row_get', 'row_set', 'rows_get'];
+    var PALETTE_RECORDS = ['change', 'contact_group', 'record_get', 'row_add', 'row_get', 'row_set', 'rows_get'];
 
     // The palette's groups folded at first: the steps used less often and
     // the values.
@@ -613,8 +617,10 @@
             tables: steps.tables || [],
             where: steps.where || { operators: {}, types: {}, most: 10, limit: 50 },
             reads: steps.reads || [],
+            groups: steps.groups || [],
             no_order: !!steps.no_order,
             ai: !!steps.ai,
+            sms: !!steps.sms,
             agents: steps.agents || [],
             mcp: steps.mcp || []
         };
@@ -671,6 +677,14 @@
             }
 
             return config.to ? t('fl_email_meta', config.to) : t('fl_email_no_to');
+        }
+
+        if (node.kind === 'sms') {
+            if (config.recipient === 'record_person') {
+                return t((config.purpose === 'marketing') ? 'fl_email_person_marketing' : 'fl_email_person_info');
+            }
+
+            return config.to ? t('fl_email_meta', config.to) : t('fl_sms_no_to');
         }
 
         if (node.kind === 'notify') {
@@ -774,6 +788,10 @@
 
         if (node.kind === 'record_get') {
             return recordGetMeta(node);
+        }
+
+        if (node.kind === 'contact_group') {
+            return contactGroupMeta(node);
         }
 
         if (node.kind === 'ai') {
@@ -3419,21 +3437,50 @@
                 group.classList.add('wsf-edge-taken');
             }
 
-            // An arrow taken when a task is cancelled, or a step failed, says
-            // so on itself.
-            if ((edge.on === 'cancelled') || (edge.on === 'failed') || (edge.on === 'always') || (edge.on === 'each') || (edge.on === 'other') || /^class_/.test(edge.on)) {
-                var label = svgEl('text', 'pgc-edge-label');
-
-                label.setAttribute('x', String(path.mx));
-                label.setAttribute('y', String(path.my - 6));
-                label.setAttribute('text-anchor', 'middle');
-                label.textContent = outcomeText(nodeById(edge.from), edge.on);
-                group.appendChild(label);
+            if (edgeNamed(from, edge.on)) {
+                edgePill(group, path, outcomeText(from, edge.on));
             }
         });
 
         markSelected();
         markProblems();
+    }
+
+    // An arrow names its outcome when its box has more than one (done or
+    // failed, yes or no, a class of the AI box), and on always, each and
+    // other, which say how it is taken; the only outcome of a box goes
+    // unnamed.
+    function edgeNamed(from, on) {
+        return (kindOf(from).out.length > 1) || (on === 'cancelled') || (on === 'failed') || (on === 'always') || (on === 'each') || (on === 'other') || /^class_/.test(on || '');
+    }
+
+    // The outcome's name on a pill at the middle of its arrow, measured
+    // when the canvas is shown, else told by its length (the List view
+    // draws the hidden canvas too).
+    function edgePill(group, path, text) {
+        var pill = svgEl('rect', 'pgc-edge-pill');
+        var label = svgEl('text', 'pgc-edge-label');
+        var width = 0;
+
+        label.setAttribute('x', String(path.mx));
+        label.setAttribute('y', String(path.my + 4));
+        label.setAttribute('text-anchor', 'middle');
+        label.textContent = text;
+        group.appendChild(pill);
+        group.appendChild(label);
+
+        try {
+            width = label.getComputedTextLength();
+        } catch (e) {
+            width = 0;
+        }
+
+        width = Math.ceil(width || (text.length * 6.2)) + 14;
+        pill.setAttribute('x', String(path.mx - width / 2));
+        pill.setAttribute('y', String(path.my - 9));
+        pill.setAttribute('width', String(width));
+        pill.setAttribute('height', '18');
+        pill.setAttribute('rx', '9');
     }
 
     // ── Data threads ───────────────────────────────────────────────────
@@ -3447,6 +3494,7 @@
         task: [['title', 'fl_title', 200], ['description', 'fl_description', 8000]],
         post: [['body', 'fl_post_body', 4000]],
         email: [['subject', 'fl_email_subject', 250], ['body', 'fl_email_body', 20000]],
+        sms: [['text', 'fl_sms_text', 900]],
         notify: [['text', 'fl_notify_text', 500]],
         task_open: [['title', 'fl_title', 200], ['description', 'fl_description', 8000]],
         webhook: [['text', 'fl_post_body', 4000], ['url', 'fl_url', 2000]],
@@ -3454,6 +3502,7 @@
         row_set: [['row', 'fl_rows_row', 200]],
         row_get: [['row', 'fl_rows_row', 200]],
         record_get: [['id', 'fl_record_id', 200]],
+        contact_group: [['contact', 'fl_group_contact', 200]],
         change: [['id', 'fl_change_id', 200]],
         ai: [['prompt', 'fl_ai_prompt', 4000], ['text', 'fl_ai_text', 20000]],
         task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
@@ -4391,7 +4440,9 @@
             return memberKind(item[0]) && ((item[0] !== 'mcp') || mcp) && (((item[0] !== 'row') && (item[0] !== 'row_get') && (item[0] !== 'rows_get')) || tables)
                 && ((item[0] !== 'no_order') || stepLists().no_order)
                 && ((item[0] !== 'record_get') || (stepLists().reads.length > 0))
+                && ((item[0] !== 'contact_group') || (stepLists().groups.length > 0))
                 && ((item[0] !== 'ai') || stepLists().ai)
+                && ((item[0] !== 'sms') || stepLists().sms)
                 && ((item[0] !== 'agent') || (stepLists().agents.length > 0))
                 && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
@@ -6168,7 +6219,7 @@
     // ws_flow_task_texts()). A derived value fills only {{date}}, {{time}}
     // and {{weekday}} (ws_flow_derived_words()). In any other box such a
     // word stays as typed: a table cell, MCP arguments, a check-in's question.
-    var WORD_KINDS = ['post', 'email', 'notify', 'task', 'task_open', 'webhook', 'task_digest', 'report', 'approval'];
+    var WORD_KINDS = ['post', 'email', 'sms', 'notify', 'task', 'task_open', 'webhook', 'task_digest', 'report', 'approval'];
 
     // The help under a value field: the words named only where they work.
     function valuesHint(node) {
@@ -7017,6 +7068,10 @@
             emailFields(box, node);
         }
 
+        if (node.kind === 'sms') {
+            smsFields(box, node);
+        }
+
         if (node.kind === 'notify') {
             notifyFields(box, node);
         }
@@ -7071,6 +7126,10 @@
 
         if (node.kind === 'record_get') {
             recordGetFields(box, node);
+        }
+
+        if (node.kind === 'contact_group') {
+            contactGroupFields(box, node);
         }
 
         if (node.kind === 'ai') {
@@ -7424,6 +7483,41 @@
         }, false));
         box.appendChild(valueField(node, t('fl_email_body'), config.body, 20000, function (value) {
             config.body = value;
+            refreshNode(node);
+        }, true));
+    }
+
+    // An SMS box: a typed mobile number, or the person of the run's record
+    // (their mobile number read when the box runs) with why it writes to
+    // them; the text, queued through the site's SMS settings.
+    function smsFields(box, node) {
+        var config = node.config;
+        var person = config.recipient === 'record_person';
+        var recipient = K.select([['typed', t('fl_sms_typed')], ['record_person', t('fl_email_person')]], person ? 'record_person' : 'typed');
+
+        recipient.addEventListener('change', function () {
+            config.recipient = recipient.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_email_recipient'), recipient));
+
+        if (!person) {
+            box.appendChild(field(t('fl_sms_to'), textInput(config.to, 200, function (value) {
+                config.to = value;
+                refreshNode(node);
+            }), t('fl_sms_to_help')));
+        }
+
+        var purpose = K.select([['info', t('fl_email_purpose_info')], ['marketing', t('fl_email_purpose_marketing')]], (config.purpose === 'marketing') ? 'marketing' : 'info');
+
+        purpose.addEventListener('change', function () {
+            config.purpose = purpose.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_email_purpose'), purpose, t('fl_sms_purpose_help')));
+        box.appendChild(valueField(node, t('fl_sms_text'), config.text, 900, function (value) {
+            config.text = value;
             refreshNode(node);
         }, true));
     }
@@ -9443,6 +9537,59 @@
         }, false, t('fl_record_id_help')));
     }
 
+    // A contact group box's group as the person may change it
+    // (ws_step_contact_group_choices()), or null.
+    function contactGroup(config) {
+        return stepLists().groups.filter(function (item) { return item.id === config.group_id; })[0] || null;
+    }
+
+    // What it does to which group.
+    function contactGroupMeta(node) {
+        var config = node.config;
+        var group = contactGroup(config);
+
+        if (!config.group_id) {
+            return t('fl_group_none');
+        }
+
+        return t((config.way === 'remove') ? 'fl_group_meta_remove' : 'fl_group_meta_add', group ? group.name : '#' + config.group_id);
+    }
+
+    // A box that adds a contact to a group or takes one out
+    // (ws_step_contact_group_check()): a group filled by hand, add or take
+    // out, and the contact by its number or one value; empty is the
+    // contact of the run's record.
+    function contactGroupFields(box, node) {
+        var config = node.config;
+        var options = [[0, t('fl_group_pick')]].concat(stepLists().groups.map(function (item) { return [item.id, item.name]; }));
+
+        if (config.group_id && !contactGroup(config)) {
+            options.push([config.group_id, '#' + config.group_id]);
+        }
+
+        var pick = K.select(options, config.group_id || 0);
+
+        pick.setAttribute('data-refocus', 'contact-group-' + node.id);
+        pick.addEventListener('change', function () {
+            config.group_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_group'), pick, t('fl_group_help')));
+
+        var way = K.select([['add', t('fl_group_add')], ['remove', t('fl_group_remove')]], (config.way === 'remove') ? 'remove' : 'add');
+
+        way.setAttribute('data-refocus', 'contact-group-way-' + node.id);
+        way.addEventListener('change', function () {
+            config.way = way.value;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_group_way'), way));
+        box.appendChild(valueField(node, t('fl_group_contact'), config.contact || '', 200, function (value) {
+            config.contact = value;
+            refreshNode(node);
+        }, false, t('fl_group_contact_help')));
+    }
+
     // The outcomes a Pinegrap AI box names, as the server keeps them.
     function aiClasses(config) {
         return ((config && Array.isArray(config.classes)) ? config.classes : []).filter(function (name) { return typeof name === 'string'; });
@@ -10847,6 +10994,8 @@
             config = { channel_id: 0, body: '' };
         } else if (kind === 'email') {
             config = { to: '', subject: '', body: '', page_id: 0, recipient: 'typed', purpose: 'info' };
+        } else if (kind === 'sms') {
+            config = { to: '', recipient: 'typed', purpose: 'info', text: '' };
         } else if (kind === 'notify') {
             config = { user_ids: [], text: '' };
         } else if (kind === 'task_open') {
@@ -10930,6 +11079,11 @@
             config = { table_id: (listed.length === 1) ? listed[0].id : 0, match: 'all', where: '', sort: 0, dir: 'asc', limit: stepLists().where.limit || 50 };
         } else if (kind === 'record_get') {
             config = { record: '', id: '' };
+        } else if (kind === 'contact_group') {
+            var groups = stepLists().groups;
+
+            // The one group there is, and the contact of the run's record.
+            config = { group_id: (groups.length === 1) ? groups[0].id : 0, way: 'add', contact: '' };
         } else if (kind === 'ai') {
             config = { mode: 'write', prompt: '', text: '', classes: [], closes_in: 24 };
         } else if (kind === 'agent') {
