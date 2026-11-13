@@ -11,7 +11,7 @@ description: Where sessions reach the owner (2026-11-13): no coordinator writes 
 
 ## Where do visuals go?
 - Drawings and screenshots that wait for his eye are posted straight into the agent channel, with the PR and the step named; he looks and answers there.
-- How: `php tools/ws_post.php --file=<path> [--parent=<id>] "<PR, step, what to look at>"` (`POST /workspace/channels/{id}/files`, form part `file`; prints the message id). One file a call: the first screenshot carries the text, the rest answer it with `--parent=<its id>`. A refusal (size, kind) prints the API's message and exits 1; the key rule of [[agent-channel-post-repeat]] holds (#CPNUM).
+- How: `php tools/ws_post.php --file=<path> [--parent=<id>] "<PR, step, what to look at>"` (`POST /workspace/channels/{id}/files`, form part `file`; prints the message id). One file a call: the first screenshot carries the text, the rest answer it with `--parent=<its id>`. A refusal (size, kind) prints the API's message and exits 1; the key rule of [[agent-channel-post-repeat]] holds (#9377).
 - A link only the making account opens does not count: on 2026-11-13 the artifact links of three questions opened for neither him nor the architect (#9271, #9274).
 
 ## Who carries his answer?
