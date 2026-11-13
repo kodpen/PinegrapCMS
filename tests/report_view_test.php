@@ -81,8 +81,8 @@ function test_report_view_line_keeps_the_time_order()
 
 	pg_assert_same('line', $chart['kind']);
 	pg_assert_same(array(50.0, 200.0, 10.0), $chart['values']);
-	pg_assert_same('September', $chart['first']);
-	pg_assert_same('November', $chart['last']);
+	pg_assert_same(array('September', 'October', 'November'), $chart['names'], 'each point names its group');
+	pg_assert_same(array(pg_format_money(50, '$'), pg_format_money(200, '$'), pg_format_money(10, '$')), $chart['notes'], 'the figure each tip shows');
 	pg_assert_same(3, count($chart['tips']));
 	pg_assert_contains('October: ' . pg_format_money(200, '$'), $chart['tips'][1]);
 	pg_assert_same(lang(array('string' => 'Total by {var:1}', 'vars' => 'Month')), $chart['label']);
@@ -229,7 +229,7 @@ function test_report_view_visitor_chart_counts_visitors()
 	}
 	$chart = pg_report_view_visitor_chart('bars', $bars, $bar_names, 'Referring Host');
 	pg_assert_same(PG_REPORT_VIEW_ROWS, count($chart['rows']));
-	pg_assert_same(array('text' => 'Source 12', 'value' => 12, 'note' => pg_format_number(12, 0)), $chart['rows'][0]);
+	pg_assert_same(array('text' => 'Source 12', 'value' => 12, 'note' => pg_format_number(12, 0), 'share' => lang(array('string' => '{var:1}%', 'vars' => pg_format_number(12 / 78 * 100, 2)))), $chart['rows'][0], 'the share of all groups, not only of those drawn');
 
 	$countries = array(0 => pg_test_report_view_visitor_group('TR', 4), 1 => pg_test_report_view_visitor_group('Turkey', 1), 2 => pg_test_report_view_visitor_group('US', 2));
 	$map = pg_report_view_visitor_chart('map', $countries, array(0 => 'TR', 1 => 'Turkey', 2 => 'US'), 'Country', array(0 => 'TR', 1 => 'TR', 2 => 'US'));

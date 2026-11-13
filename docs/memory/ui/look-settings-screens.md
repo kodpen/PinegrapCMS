@@ -19,7 +19,7 @@ description: Settings screens in look A (DL5d, #8952): dialog size, rail, head a
 - Titles are `pg-title-section` in the markup (the header div, or the span inside a header with buttons); the upper-case `text-uppercase h5 fg-primary fw-bold` left every card (Bootstrap 6's utilities beat any panel rule). The search index still reads the `card-header` div.
 - In the dialog the title is a group name (12 / 550, third text colour) 8 px over the inner card, corners 14; on the page each card is the look card (`.pg-card`) with 22 px inside it and the title at 17 / 650, corners 16.
 - Rows: name 14 / 550, description 13 px in the second text colour, the line between rows as before (`settings-card-row-layout.md`); cards 16 px apart.
-- Fields in a card (`.form-control`) are 32 px, corners 9, 13 px, on the field colours; Bootstrap's `.switch` is 38 × 22 with the accent gradient when on. Only Bootstrap's `--bs-control-*` and `--bs-switch-*` variables are set.
+- Fields in a card (`.form-control`) are 32 px, corners 9, 13 px, on the field colours; Bootstrap's `.switch` is 38 × 22 with the accent gradient when on, a white knob. `--bs-switch-border-width` is `0px`: a bare 0 made the knob's size invalid and the knob vanished (#8981).
 
 ## What about the settings page (settings_<key>.php)?
 - Body class `pg-measure-edit`: the content centred at 1120 px. Its save bar is the floating bar from 576 px, "Save" filled.

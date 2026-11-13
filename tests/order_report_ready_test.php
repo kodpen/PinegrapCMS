@@ -291,8 +291,8 @@ function test_order_report_screen_strip_days_and_save()
 	pg_assert_contains("\$ready_days = (\$ready_report === null) ? 0 : pg_ready_report_days(\$_GET['days'] ?? null);", $source);
 	pg_assert_contains('$default_filters = pg_ready_report_filters($ready_report, $ready_days);', $source);
 	pg_assert_contains("\$ready_strip = pg_ready_report_strip('order_report', array_values(array_filter(\$summarize_by_options, function (\$value) {", $source);
-	pg_assert_contains('btn-solid theme-primary" aria-current="page"', $source, 'the open one is marked');
-	pg_assert_contains('<nav class="pg-ready-strip mb-3" aria-label="\' . h(lang(\'Ready reports\')) . \'"><ul class="list-unstyled d-flex flex-wrap gap-2 mb-0">', $source, 'a named list that wraps on a phone');
+	pg_assert_contains('class="pg-seg-item\' . ($ready_item[\'current\'] ? \' is-active" aria-current="page"\'', $source, 'the open one is marked');
+	pg_assert_contains('<nav class="pg-report-strip" aria-label="\' . h(lang(\'Ready reports\')) . \'"><span class="pg-report-label" aria-hidden="true">\' . h(lang(\'Ready reports\')) . \'</span><div class="pg-seg">', $source, 'a named segmented row that wraps on a phone');
 
 	$toolbar = strpos($source, "    ' . \$output_edit_button . '\n    ' . \$output_ready_strip . '\n");
 	pg_assert_true($toolbar !== false, 'the strip sits under the toolbar');

@@ -45,6 +45,6 @@ function test_visitor_report_date_range_reads_as_dates()
 
 	pg_assert_contains('<time datetime="2026-10-15">', get_absolute_time(array('timestamp' => mktime(12, 0, 0, 10, 15, 2026), 'type' => 'date')), 'the date is a time element');
 	pg_assert_contains("\$start_date = get_absolute_time(array('timestamp' => \$start_timestamp, 'type' => 'date'));", $source, 'the start date as HTML');
-	pg_assert_contains('<span class="badge fg-body fw-light border-2">\' . $output_date_range . \'</span>', $source, 'the range printed as markup');
+	pg_assert_contains('<span class="pg-report-range"><i class="bi bi-calendar3" aria-hidden="true"></i>\' . $output_date_range . \'</span>', $source, 'the range printed as markup');
 	pg_assert_false(strpos($source, 'h($output_date_range)') !== false, 'the markup is not escaped into text');
 }

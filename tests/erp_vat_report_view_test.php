@@ -71,8 +71,10 @@ function test_erp_vat_report_view_chart_by_month()
 	pg_assert_same(array(100.0, 0.0), $chart['values'], 'a month below zero is drawn at zero');
 	pg_assert_same(array(50.0, 30.0), $chart['compare'], 'purchases and expenses');
 	pg_assert_same('October 2026: Calculated VAT -20.00 TL · Deductible VAT 30.00 TL · Difference -50.00 TL', $chart['tips'][1], 'the tip says the real figures');
-	pg_assert_same('September 2026', $chart['first']);
-	pg_assert_same('October 2026', $chart['last']);
+	pg_assert_same(array('September 2026', 'October 2026'), $chart['names'], 'each point names its month');
+	pg_assert_same(array('100.00 TL', '-20.00 TL'), $chart['notes'], 'the real figures of the line');
+	pg_assert_same(array('50.00 TL', '30.00 TL'), $chart['compare_notes'], 'the real figures of the dashed line');
+	pg_assert_same(array('label' => 'Difference', 'text' => '-50.00 TL'), $chart['extras'][1], 'the tip adds the difference');
 
 	$quiet = array('months' => array('2026-09' => array('calculated' => 0, 'deductible_purchases' => 0, 'deductible_expenses' => 0, 'difference' => 0), '2026-10' => array('calculated' => 0, 'deductible_purchases' => 0, 'deductible_expenses' => 0, 'difference' => 0)));
 	pg_assert_same(null, pg_report_view_vat_chart($quiet, pg_test_vat_view_names(), 'pg_test_vat_view_money'), 'nothing to draw');
@@ -105,8 +107,10 @@ function test_erp_vat_report_screen_draws_the_view()
 
 	pg_assert_contains("'figures' => pg_report_view_vat_figures(\$totals, \$has_withholding, \$report_view_names, \$report_view_money),", $source);
 	pg_assert_contains("'chart' => pg_report_view_vat_chart(\$report, \$report_view_names, \$report_view_money),", $source);
-	pg_assert_contains('<section class="pg-dash pg-report-view" id="pg_report_view"', $source);
-	pg_assert_contains("pg_js_bundle_tags('assets/js/pg_dash.min.js') . pg_js_bundle_tags('assets/js/pg_report_view.min.js')", $source);
+	pg_assert_contains('<section class="pg-report-view" id="pg_report_view"', $source);
+	pg_assert_contains("pg_js_bundle_tags('assets/js/pg_report_view.min.js')", $source);
+	pg_assert_false(strpos($source, 'pg_dash.min.js') !== false, 'no map here, so not the dashboard bundle');
+	pg_assert_false(strpos($source, 'pg_dashboard_v2_style_url') !== false, 'nor the dashboard sheet');
 	pg_assert_contains('JSON_HEX_TAG', $source);
 	pg_assert_same(0, substr_count($source, '$difference_hint'), 'the cards are gone');
 	pg_assert_true(strpos($source, 'id="erp_vat_period"') < strpos($source, 'id="pg_report_view"'), 'the period form stays on top');
@@ -115,6 +119,7 @@ function test_erp_vat_report_screen_draws_the_view()
 	pg_assert_contains('id="erp_vat_months"', $source, 'the By month table stays');
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_report_view.js');
-	pg_assert_contains('chart.compare || null, chart.label, chart.compare_label || ""', $js, 'a dashed second line');
-	pg_assert_contains('note: figure.note || ""', $js, 'a figure keeps its note');
+	pg_assert_contains('var compare = (chart.compare && chart.compare.length) ? chart.compare : null;', $js, 'a dashed second line');
+	pg_assert_contains('legend(chart.compare_label || "", true)', $js, 'named in the legend');
+	pg_assert_contains('el("dd", "pg-report-fig-note"', $js, 'a figure keeps its note');
 }

@@ -1,6 +1,6 @@
 ---
 name: report-view
-description: The report screens' shared view (report_view.php, pg_report_view.js): figures and a chart over the table drawn with pg_dash.js, the chart per level; order (#8709) and visitor (#8764) reports
+description: The report screens' shared view (report_view.php, pg_report_view.js): figures and a chart over the table, the chart per level, its data keys and bundles; order (#8709) and visitor (#8764) reports
 module: report_view
 ---
 
@@ -16,14 +16,14 @@ module: report_view
 - The line runs over the finest date level the report starts with (`pg_report_view_time_groups()`): year, month, day draws days named "2026 Ekim 11"; year alone draws years. A single year was a line of one point.
 - The order report measures money (`pg_report_view_chart()`, "Total by …"); the visitor report counts visitors (`pg_report_view_visitor_chart()`, "Visitors by …", its country level the map). Both go through `pg_report_view_chart_by()` with a measure: what is ranked, drawn, written in a row and said on hover.
 - Bars and the map's rows list the ten largest totals (`PG_REPORT_VIEW_ROWS`); map shading is four steps by rank (`pg_report_view_steps()`), a lone place the darkest.
-- Every point, bar and country says its figure on hover and keyboard focus (`pgDash.chartTips`, `dashboard-v2-chart-tips.md`).
+- A point says its figures on hover and keyboard focus (the plot's tip), a bar prints them, a country says them through `pgDash.chartTips` (`dashboard-v2-chart-tips.md`).
 
 ## How is it drawn?
-- The server prints the data as `<script type="application/json" id="pg_report_view_data">` (JSON_HEX_TAG) inside `<section class="pg-dash pg-report-view">`; `assets/js/pg_report_view.js` draws it with `pgDash.tiles`, `line`, `rows`, `chartTips`, `mapShapes`.
-- Bundles: the screen loads `pg_dash.min.js` (the dashboard's whole bundle; its grid, edit and panel starts return without `#pg_dash_grid`) and then its own `pg_report_view.min.js`. A source sits in one bundle only (`core/js-bundles.md`); splitting the drawing core out of `pg_dash.min.js` was left for when a screen needs it without the cards.
-- Styles: the dashboard's sheet (`pg_dashboard_v2_style_url()`) through the shell's `head`, plus a small `@layer custom` block in the screen for the view's grid, the line's height and its end labels.
+- The server prints the data as `<script type="application/json" id="pg_report_view_data">` (JSON_HEX_TAG) inside `<section class="pg-report-view">`. `assets/js/pg_report_view.js` draws the figures, the line (SVG: grid, fill, dashed compare, crosshair, tip) and the bars itself; the map comes from `pgDash.mapShapes` and `chartTips`.
+- A line carries `series`, `values`, `names`, `notes`, `tips`, `extras` (plus `compare`, `compare_label`, `compare_notes`); bar and map rows a `share` of all groups.
+- Bundles: order and visitor load `pg_dash.min.js` (the map) then `pg_report_view.min.js`, with the dashboard sheet; shipping and ERP tax only `pg_report_view.min.js`. Styles: the look's block (`look-report-screens.md`).
 
 ## Where are the report's settings?
 - In a drawer from the right behind Report settings: `report-settings-drawer.md`.
 
-Tests: `tests/report_view_test.php`, `tests/shipping_report_view_test.php`, `tests/erp_vat_report_view_test.php`, `tests/order_report_screen_layout_test.php`, `tests/visitor_report_screen_layout_test.php`.
+Tests: `tests/report_view_test.php`, `tests/look_report_screens_test.php`, `tests/shipping_report_view_test.php`, `tests/erp_vat_report_view_test.php`, `tests/order_report_screen_layout_test.php`, `tests/visitor_report_screen_layout_test.php`.

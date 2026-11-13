@@ -18,7 +18,7 @@ description: ERP VAT report: the one place tax totals are added up (vat_report.p
 ## What does the screen draw over its tables?
 - The report screens' shared view (`ui/report-view.md`, #8827) where the four figure cards stood: `pg_report_view_vat_figures()` gives Calculated, Deductible, Difference and, with withholding, Withholding, each with the card's note; a negative difference's note is marked `bad`. Money is `erp_money_out()` text, from the same `erp_vat_report()` totals.
 - The chart, `pg_report_view_vat_chart()`: over two months or more a line of the calculated tax by month with the deductible tax (purchases + expenses) dashed beside it, read from the By month figures; a month below zero is drawn at zero (the line starts at zero), its tip says the real figures. Over one month "Tax by document type": the tax of sales, sales returns, purchases, returns to suppliers and the expenses' deductible tax, those above zero.
-- The period form, the statement, By rate, withholding, By month, the documents and the Excel export are unchanged; the report has no saved settings, so no settings drawer and no ready report.
+- The period form, the statement, By rate, withholding, By month, the documents and the Excel export work as before; the report has no saved settings, so no settings drawer and no ready report. Their look (frames, report tables): `ui/look-report-screens.md` (#8981).
 
 ## What is the report called?
 - In the menu `pg_erp_tax_report_label()` (`includes/fn/ecommerce.php`): the menu is built before the ERP loads. Inside the ERP `erp_tax_label('report')`. "VAT report", or "<name> report" when `config.erp_tax_name` is set.

@@ -12,7 +12,8 @@ description: Shipping report (view_shipping_report.php): which orders it counts,
 
 ## What does the screen draw over the table?
 - The shared view (`ui/report-view.md`, #8811): figures from the Grand Total row by `pg_report_view_shipping_figures()` (Products, Before, In this period: the days summed, After, Total; units of the status chosen), then "Units by ship date", a line of one point per day of the period as the day columns count them (`pg_report_view_shipping_chart()`; none for a one-day period or with no unit in it).
-- The status select and the period arrows stay in the toolbar: the screen has no saved settings, so no settings drawer and no ready report. Query, period rule and the heading links are untouched.
+- The toolbar keeps the status and the period arrows: the screen has no saved settings, so no settings drawer and no ready report. Query, period rule and the heading links are untouched.
+- Since #8981 (look A, `ui/look-report-screens.md`) the status is a segmented row of links (`?status=any|unshipped|shipped`, kept in the session as before) in place of the select that sent itself; "Ship Date Adjustments" stays in slot 2. Seen on a sandbox in both themes and on a phone.
 
-## What was not verified?
-- The screen ran on no sandbox; the period rule is pinned in `tests/shipping_report_period_test.php`, the status filter by a source check there.
+## Where are the rules pinned?
+- The period rule in `tests/shipping_report_period_test.php`, the status filter by a source check there.
