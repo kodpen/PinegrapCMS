@@ -1,5 +1,5 @@
 ---
-name: mail-domain-warning
+name: mail-domain-warning-mw2
 description: Plan: after MW1's warning (#9303), MW2 shows a Workspace answer's delivery failure on its Sends row (owner 2026-11-13, #9267; architect 2026-11-13)
 ---
 
