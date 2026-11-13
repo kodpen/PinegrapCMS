@@ -6336,6 +6336,12 @@
     function drawSettings() {
         var selected = state.selected;
 
+        // A box's settings drawn outside the canvas draw themselves again.
+        if (state.form) {
+            state.form.draw();
+            return;
+        }
+
         if (state.embed) {
             embedSelected();
             return;
@@ -10837,6 +10843,11 @@
     // graph is a step to undo; one neither structural nor its own step (a
     // box dropped) folds into a close one before it.
     function changed(structure, step) {
+        if (state.form) {
+            state.form.changed();
+            return;
+        }
+
         if (!state.edit) {
             return;
         }
@@ -14159,5 +14170,196 @@
         };
     }
 
-    window.PGWsFlow = { start: start, mount: mount, showAction: showAction, runFlag: runFlag, embed: embed };
+    // ── A box's settings outside the canvas ────────────────────────────
+
+    // boxForm() draws one box's settings (nodeForm()) in another screen,
+    // such as the quick setup dialog, so a field is described once. The
+    // field code reads this file's state, ui, K, FL and BOOT, so a form has
+    // its own of each, swapped in while it is drawn and while one of its
+    // listeners runs (formScope()): an editor mounted beside it keeps its
+    // own. Its state's form hands drawSettings() and changed() to the form.
+    // The try and web address fields, the only ones that answer later, are
+    // not drawn in it (settingsOnly, no start box).
+    var formScoped = null;
+
+    function formScope(scope, fn, self, args) {
+        if (formScoped === scope) {
+            return fn.apply(self, args);
+        }
+
+        var saved = { scoped: formScoped, state: state, ui: ui, K: K, CFG: CFG, FL: FL, BOOT: BOOT, t: t, el: el, add: EventTarget.prototype.addEventListener };
+        var add = saved.add;
+
+        formScoped = scope;
+        state = scope.state;
+        ui = scope.ui;
+        K = scope.K;
+        CFG = scope.CFG;
+        FL = scope.FL;
+        BOOT = scope.BOOT;
+        t = scope.t;
+        el = scope.el;
+        // A listener added while the form is drawn runs in its scope too.
+        EventTarget.prototype.addEventListener = function (type, listener, options) {
+            var own = (typeof listener === 'function') ? function () { return formScope(scope, listener, this, arguments); } : listener;
+
+            return add.call(this, type, own, options);
+        };
+
+        try {
+            return fn.apply(self, args);
+        } finally {
+            EventTarget.prototype.addEventListener = saved.add;
+            formScoped = saved.scoped;
+            state = saved.state;
+            ui = saved.ui;
+            K = saved.K;
+            CFG = saved.CFG;
+            FL = saved.FL;
+            BOOT = saved.BOOT;
+            t = saved.t;
+            el = saved.el;
+        }
+    }
+
+    // The kit and lists a form outside the canvas reads: the editor's when
+    // one is mounted, else the kit's and those given.
+    function formBoot(boot) {
+        var kit = window.PGWsKit;
+        var given = boot || {};
+        var cfg = kit.cfg || {};
+
+        return {
+            K: kit,
+            CFG: cfg,
+            FL: given.config || cfg.flows || {},
+            BOOT: { people: given.people || BOOT.people || [], channels: given.channels || BOOT.channels || [], departments: given.departments || BOOT.departments || [] },
+            t: kit.t,
+            el: kit.el
+        };
+    }
+
+    // One box's settings drawn into host. options:
+    //   graph     the graph the box is in ({ nodes, edges }), whose earlier
+    //             boxes give the values it may write in; changed in place
+    //   node      the box's id
+    //   flows     the flows a box may start (state.flows' shape), else the
+    //             editor's list
+    //   boot      people, channels, departments, config, else the editor's
+    //   onChange  called with the box after each change of its settings
+    // Returns { node, redraw(), destroy() }, null without the kit or the box.
+    function boxForm(host, options) {
+        options = options || {};
+
+        if (!host || !window.PGWsKit || !options.graph || !Array.isArray(options.graph.nodes)) {
+            return null;
+        }
+
+        var node = options.graph.nodes.filter(function (item) { return item.id === options.node; })[0];
+
+        if (!node) {
+            return null;
+        }
+
+        var scope = formBoot(options.boot);
+        var form = {
+            draw: function () { draw(); },
+            changed: function () {
+                if (typeof options.onChange === 'function') {
+                    options.onChange(node);
+                }
+            }
+        };
+
+        node.config = (node.config && (typeof node.config === 'object') && !Array.isArray(node.config)) ? node.config : {};
+        options.graph.edges = Array.isArray(options.graph.edges) ? options.graph.edges : [];
+        scope.ui = { root: host, side: host, outlineBox: document.createElement('div') };
+        scope.state = {
+            graph: options.graph,
+            edit: true,
+            flow: { id: 0, manage: true, channel_id: 0 },
+            flows: options.flows || (state.flows || []).slice(),
+            selected: { type: 'node', id: node.id },
+            outline: false,
+            refocus: '',
+            form: form
+        };
+
+        // The focus stays on the control it was on (by its data-refocus, or
+        // its place among the form's controls) when the form is drawn again.
+        function draw() {
+            var controls = function () { return Array.prototype.slice.call(host.querySelectorAll('input, select, textarea, button, [contenteditable="true"]')); };
+            var at = host.contains(document.activeElement) ? controls().indexOf(document.activeElement) : -1;
+
+            formScope(scope, function () {
+                K.clear(host);
+                host.appendChild(nodeForm(node, true));
+
+                if (state.refocus) {
+                    refocus();
+                } else if (at !== -1) {
+                    var same = controls()[at];
+
+                    if (same && !same.disabled) {
+                        same.focus();
+                    }
+                }
+            });
+        }
+
+        draw();
+
+        return {
+            node: node,
+            redraw: draw,
+            destroy: function () {
+                scope.state.form = null;
+                host.textContent = '';
+            }
+        };
+    }
+
+    // A kind as the canvas shows it: its name, group (its colour) and the
+    // outcome a new arrow leaves it on; null for none.
+    function boxKind(kind) {
+        var info = KINDS[kind];
+
+        return info ? { kind: kind, name: (t || window.PGWsKit.t)(info.name), group: info.group, out: info.out[0] || '' } : null;
+    }
+
+    // A new box's settings as the palette gives them, in a graph's context
+    // (the loop an End for each box closes); boot as boxForm()'s.
+    function boxConfig(kind, graph, boot) {
+        if (!KINDS[kind] || !window.PGWsKit) {
+            return {};
+        }
+
+        var scope = formBoot(boot);
+
+        scope.ui = {};
+        scope.state = { graph: graph || { nodes: [], edges: [] }, edit: true, flow: { id: 0, manage: true, channel_id: 0 }, flows: [], form: { draw: function () {}, changed: function () {} } };
+
+        return formScope(scope, function () {
+            return JSON.parse(JSON.stringify(newConfig(kind) || {}));
+        });
+    }
+
+    // Whether the palette offers a kind to this person on this site (an
+    // MCP box with a server, a row box with a table, Pinegrap AI set up).
+    function boxOffered(kind, boot) {
+        if (!window.PGWsKit) {
+            return false;
+        }
+
+        var scope = formBoot(boot);
+
+        scope.ui = {};
+        scope.state = { graph: { nodes: [], edges: [] }, edit: true, flow: null, flows: [], form: null };
+
+        return formScope(scope, function () {
+            return paletteItems().some(function (item) { return item[0] === kind; });
+        });
+    }
+
+    window.PGWsFlow = { start: start, mount: mount, showAction: showAction, runFlag: runFlag, embed: embed, boxForm: boxForm, boxKind: boxKind, boxConfig: boxConfig, boxOffered: boxOffered };
 })();

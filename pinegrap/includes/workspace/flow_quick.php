@@ -384,8 +384,8 @@ function ws_flow_quick_recipes_for($catalogue, $key)
 /**
  * The steps the dialog sent, checked and in order (pure): each a kind of
  * the catalogue's groups, its settings, its id (the one sent when it is a
- * box id nothing else holds, else '' for one to be given) and the steps it
- * holds, which only a condition (on yes) or a For each box (its loop) may.
+ * box id nothing else holds, else '' for one to be given), its title (the
+ * box's label, '' for none) and the steps it holds, which only a condition (on yes) or a For each box (its loop) may.
  *
  * @param mixed    $steps
  * @param string[] $kinds the kinds the catalogue offers as steps
@@ -393,7 +393,7 @@ function ws_flow_quick_recipes_for($catalogue, $key)
  * @param bool     $loop  inside a For each box
  * @param array    $seen  ids taken so far, id => true
  * @param int      $count boxes placed so far
- * @return array ok, error, steps
+ * @return array ok, error, steps (id, kind, label, config, steps)
  */
 function ws_flow_quick_steps_read($steps, $kinds, $depth, $loop, &$seen, &$count)
 {
@@ -457,7 +457,10 @@ function ws_flow_quick_steps_read($steps, $kinds, $depth, $loop, &$seen, &$count
             }
         }
 
-        $out[] = array('id' => $id, 'kind' => $kind, 'config' => is_array($step['config'] ?? null) ? $step['config'] : array(), 'steps' => $read['steps']);
+        // The box's title, as the step's setting names it (the box's label).
+        $label = is_string($step['label'] ?? null) ? ws_flow_line($step['label'], 160) : '';
+
+        $out[] = array('id' => $id, 'kind' => $kind, 'label' => $label, 'config' => is_array($step['config'] ?? null) ? $step['config'] : array(), 'steps' => $read['steps']);
     }
 
     return array('ok' => true, 'error' => '', 'steps' => $out);
@@ -499,7 +502,7 @@ function ws_flow_quick_on($kinds, $node)
 function ws_flow_quick_chain($steps, $into, $depth, &$build, $kinds)
 {
     foreach ($steps as $step) {
-        $build['nodes'][] = array('id' => $step['id'], 'kind' => $step['kind'], 'label' => '', 'x' => $build['column'] * 256, 'y' => ($depth - 1) * 112, 'config' => $step['config']);
+        $build['nodes'][] = array('id' => $step['id'], 'kind' => $step['kind'], 'label' => (string) ($step['label'] ?? ''), 'x' => $build['column'] * 256, 'y' => ($depth - 1) * 112, 'config' => $step['config']);
         $build['column']++;
 
         foreach ($into as $arrow) {

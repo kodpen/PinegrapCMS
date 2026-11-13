@@ -18,5 +18,8 @@ description: Workspace div rows act as buttons through pressKeys() (Enter and Sp
 ## How are planning board hours printed?
 - `hoursText(minutes)` rounds to one decimal and formats with `toLocaleString(CFG.locale || undefined, { maximumFractionDigits: 1 })`, so `day_capacity` and `cell_title` read 7,5 on a Turkish panel instead of 7.5.
 
+## Where does focus go when a task's time entry editor closes?
+- Task drawer > Time > an entry's Edit opens a form in place of the row (`editForm()` in `workspace_task_time.js`). Esc and Cancel call `closeEdit(true)`, which puts the row back and focuses its Edit button; without it the focus fell to the page body (#8624). After Save the list is drawn again and the new row's Edit button (`data-ws-time-edit="<entry id>"`) takes the focus. Opening another row's editor closes the first without moving focus.
+
 ## What pins it?
 - `tests/workspace_keyboard_rows_test.php` (source pins). Not checked in a browser.
