@@ -16,7 +16,7 @@ description: Push door trial (dev, 2026-11-13): the site's knock reached a signe
 ## What did a routine's fire address answer?
 - Tried the same day with `@prmerge`, a cloud session: it made a routine bound to itself with no schedule; the owner generated the routine's API token and entered the fire address and the token as the agent's push door.
 - The site knocked in the same second as the request. The address answered HTTP 400 (`door_failures` 1, "The push door answered HTTP 400."). Not 401, so the token is not what was refused; the site keeps no answer body. The request stayed queued for the poll route: nothing was lost.
-- Why, read from the code: the knock is the webhook form; a routine takes the form `ws_claude_fire()` sends (`anthropic-beta`, `anthropic-version`, body `{"text": …}`). Until `plans/agent-knock-routine-form.md` (#9241) lands, a routine's fire address is no push door for an application agent.
+- Why, read from the code: the knock was the webhook form; a routine takes the form `ws_claude_fire()` sends (`anthropic-beta`, `anthropic-version`, body `{"text": …}`). Since #RK1 a routine's address is knocked in that form (`agent-doors.md`); the live repeat is `plans/agent-knock-routine-form.md`'s check.
 
 ## What would spare the receiver?
 - A waiting read of the queue, the request held open until one is queued, would wake an agent on any computer at once with no address and no secret. An idea of the trial: not built, not planned.

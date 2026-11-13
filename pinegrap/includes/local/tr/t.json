@@ -5849,6 +5849,7 @@
     "The purchase order was cancelled.": "Satın alma siparişi iptal edildi.",
     "The purchase order was e-mailed to the supplier.": "Satın alma siparişi tedarikçiye e-postayla gönderildi.",
     "The push door answered HTTP {var:1}.": "Gönderim kapısı HTTP {var:1} yanıtı verdi.",
+    "The push door answered HTTP {var:1}: {var:2}": "Gönderim kapısı HTTP {var:1} yanıtı verdi: {var:2}",
     "The push door could not be reached: {var:1}": "Gönderim kapısına ulaşılamadı: {var:1}",
     "The push door did not answer.": "Gönderim kapısı yanıt vermedi.",
     "The push door has no valid https address.": "Gönderim kapısının geçerli bir https adresi yok.",
