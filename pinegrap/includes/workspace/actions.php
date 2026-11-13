@@ -2413,7 +2413,8 @@ function ws_handle_action($action, $request)
 
             $result = ws_message_seen_by($viewer, $message);
 
-            return $result['ok'] ? ws_action_ok(array('seen' => $result['seen'], 'unseen' => $result['unseen'])) : ws_action_error($result['error']);
+            return $result['ok'] ? ws_action_ok(array('seen' => $result['seen'], 'unseen' => $result['unseen'],
+                'agents_seen' => $result['agents_seen'], 'agents_waiting' => $result['agents_waiting'], 'agents_quiet' => $result['agents_quiet'])) : ws_action_error($result['error']);
 
         case 'ws_mark':
             $message = ws_message((int) ($request['message_id'] ?? 0));
