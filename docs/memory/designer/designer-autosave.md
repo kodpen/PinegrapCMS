@@ -13,7 +13,7 @@ description: Visual Page Editor autosave: one browser entry per design and page,
 
 ## When is an entry removed?
 - After the server answered a save with success: the entries of the pages it sent, under the keys they had when the save started, if no newer than the save (`_sdAutosaveForget()`). An edit made during the request keeps its entry; pages held back by the Publish sheet keep theirs.
-- Never before the reply. `prepareFormData()` used to remove the entry before sending, so a refused save ("Page name is required.", a session signed in as another user) lost the work on reload (#8999, fixed in #PRNUM).
+- Never before the reply. `prepareFormData()` used to remove the entry before sending, so a refused save ("Page name is required.", a session signed in as another user) lost the work on reload (#8999, fixed in #9106).
 - On editor start (`_sdAutosaveSweep()`): unreadable entries, entries older than 7 days, and after one day those of tabs no reload brings back (any tab key but `p<page id>`, `new1` and `p0`: new tabs `new<time>_<n>`, template tabs). Entries of other designs and deleted designs go with the 7 days.
 - When a write does not fit (`_sdAutosaveWrite()`): the oldest other entries one by one, retrying after each.
 
