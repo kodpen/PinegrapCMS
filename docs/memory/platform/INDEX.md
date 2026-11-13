@@ -19,7 +19,7 @@
 - aws-sigv4-signing.md: includes/fn/aws_sign.php: AWS Signature Version 4 without an SDK (header signing, presigned links), tested against the AWS test suite; used by Amazon SES, written for object storage too
 - background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages; what it catches, restores and lends; which pages each pass covers and as whom (audit_run.php)
 - backup-age-rule.md: When a backup's age is a problem - pg_backup_age_state() (none fail, over a month warn, else pass) and its readers: System Status tile, ops alert, greeting, API, agents [decision: decisions-made-product-39.md]
-- backup-folder-download-zip.md: Backup Manager Download of a folder backup: the archive kept inside the folder is rebuilt when the backup was updated after it.
+- backup-folder-download-zip.md: Backup Manager Download and File Manager Zip of a folder backup: one writer with "/" names; the archive inside the folder is rebuilt when the backup was updated after it.
 - backup-manager-names-and-list.md: Backup Manager: the folder name (no basename, 100 characters), reserved names, starter-dump delete, the overwrite question, step errors, list time and order, incomplete folders [decision: decisions-made-product-26.md]
 - backup-object-storage.md: The backup destination "S3-compatible storage" (remote type s3): its own card fields mapped onto the shared object storage client, multipart upload, the bucket's retention prune
 - backup-remote-stored-secret.md: Settings › Backups: an empty FTP password box keeps the stored password only for the same host, port and TLS; the S3 secret key is kept as is, since SigV4 never sends it

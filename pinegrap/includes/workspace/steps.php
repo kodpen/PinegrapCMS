@@ -2177,8 +2177,13 @@ function ws_flow_box_try($viewer, $flow, $data)
         return ws_flow_refusal(lang('The owner of the flow is no longer on the staff, so the box did not run.'));
     }
 
-    // A role-3 member tries only a box their own flow may hold.
+    // A role-3 member tries only a box their own flow may hold; with the
+    // Workspace off nobody tries a box that needs it.
     $refused = ws_flow_member_box_refusal(ws_flow_builder_kind($owner), $node);
+
+    if ($refused === '') {
+        $refused = ws_flow_workspace_box_refusal(ws_enabled(), $node);
+    }
 
     if ($refused !== '') {
         return ws_flow_refusal($refused);

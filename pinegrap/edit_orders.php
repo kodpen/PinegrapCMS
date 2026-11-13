@@ -130,6 +130,7 @@ if (!empty($_POST['orders'])) {
                     orders.custom_field_2,
                     orders.surcharge,
                     orders.shipping,
+                    orders.discount,
                     orders.payment_installment,
                     orders.installment_charges,
                     contacts.tax_number AS contact_tax_number
@@ -229,8 +230,7 @@ if (!empty($_POST['orders'])) {
                     order_items.product_id as product_id,
                     order_items.price as price,
                     order_items.product_name as product_name,
-                    order_items.quantity as quantity,
-                    order_items.offer_action_id as offer_action_id
+                    order_items.quantity as quantity
                 FROM order_items
                 WHERE order_id = ?";
 
@@ -239,15 +239,26 @@ if (!empty($_POST['orders'])) {
 
                 $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
                 if($result){
+                    $order_items = array();
+                    $line_totals = array();
                     while($order_item = mysqli_fetch_assoc($result)) {
+                        $order_items[] = $order_item;
+                        $line_totals[] = (int) $order_item['price'] * (int) $order_item['quantity'];
+                    }
+
+                    // The order discount (an order offer or code) sits only on the
+                    // order: each line carries its share in İNDİRİM TUTARI, so the
+                    // invoice Paraşüt builds comes to what the customer paid.
+                    $line_discounts = pg_order_parasut_line_discounts((int) $row['discount'], $line_totals);
+
+                    foreach ($order_items as $line_key => $order_item) {
                         $order_item_product_id = $order_item['product_id'];
                         $price = $order_item['price'];
                         $product_name = $order_item['product_name'];
                         $quantity = $order_item['quantity'];
-                        $offer_action_id = $order_item['offer_action_id'];
-                        
-                        $product_discount = 0;
-                        
+
+                        $product_discount = $line_discounts[$line_key];
+
                         //if product name is not empty use it
                         if(db("SELECT short_description FROM products WHERE id = '" . escape($order_item_product_id) . "'") != ''){
                             $product_name = db("SELECT short_description FROM products WHERE id = '" . escape($order_item_product_id) . "'");
@@ -261,6 +272,8 @@ if (!empty($_POST['orders'])) {
                             //Pinegrap calculates tax by customer tax zone and add it to order and order can contain taxed product or untaxed.
                             if($product_tax_rate > 0){
                                 $price = $price / (1+$product_tax_rate/100); //tax deducted product price  = price / (1+tax rate /100)
+                                // The discount came off the same VAT-inclusive prices.
+                                $product_discount = $product_discount / (1+$product_tax_rate/100);
                             }
                         }
 

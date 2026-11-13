@@ -331,34 +331,12 @@ if (!$_POST) {
 		            output_error(lang('Backup folder not found or inaccessible.'));
 		        }
 			
-		        $zip = new ZipArchive();
-		        $openResult = $zip->open($zip_file, ZipArchive::CREATE | ZipArchive::OVERWRITE);
-			
-		        if ($openResult !== true) {
-		            output_error(lang(array('string' => 'Failed to create ZIP archive. Error code: {var:1}', 'vars' => array((int) $openResult))));
+		        // The File Manager's Zip writes through the same function: names
+		        // with "/" on every server, and the previous archive, which sits
+		        // in the same folder, is never packed into the new one.
+		        if (pg_backup_folder_zip_write($rootPath, $zip_file) === false) {
+		            output_error(lang('ZIP creation failed or resulted in empty archive.'));
 		        }
-			
-		        $iterator = new RecursiveIteratorIterator(
-		            new RecursiveDirectoryIterator($rootPath),
-		            RecursiveIteratorIterator::LEAVES_ONLY
-		        );
-			
-		        // The previous archive sits in the same folder and is never
-		        // packed into the new one.
-		        $oldZipPath = realpath($zip_file);
-
-		        foreach ($iterator as $file) {
-		            if (!$file->isDir() && ($file->getRealPath() !== $oldZipPath)) {
-		                $filePath = $file->getRealPath();
-		                $relativePath = substr($filePath, strlen($rootPath) + 1);
-					
-		                if (is_readable($filePath)) {
-		                    $zip->addFile($filePath, $relativePath);
-		                }
-		            }
-		        }
-			
-		        $zip->close();
 			
 		        // Fallback: check if zip was created and has content
 		        if (!file_exists($zip_file) || filesize($zip_file) < 100) {

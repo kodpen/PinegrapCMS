@@ -269,16 +269,100 @@
        Talking to the site
        ------------------------------------------------------------------ */
 
+    // A failure the panel can put in words: `kind` is 'server' (the site's
+    // own sentence), 'unreadable' (an answer that is not the JSON asked for)
+    // or 'unreached' (no answer at all).
+    function failure(message, kind) {
+        var err = new Error(message);
+
+        err.pgKind = kind;
+
+        return err;
+    }
+
+    // The browser's own words stay for whoever opens the console.
+    function report(sub, what) {
+        var con = window.console;
+
+        if (con && typeof con.warn === 'function') {
+            con.warn('Assistant: ' + sub + ' answer could not be read', what);
+        }
+    }
+
+    // The editor's post rejects with the browser's parse text when the
+    // answer is not JSON (a PHP message printed in front of it, a server's
+    // error page, an empty body) and with a network error when none comes.
+    // Neither means anything to the person, so each carries the panel's own
+    // sentence instead; a JSON error keeps the site's.
     function post(sub, extra) {
         var b = bridge();
 
         return b.post(sub, extra || {}).then(function (resp) {
-            if (!resp || resp.status !== 'success') {
-                throw new Error((resp && resp.message) ? resp.message : 'error');
+            if (resp && resp.status === 'success') {
+                return resp;
             }
 
-            return resp;
+            if (resp && typeof resp.message === 'string' && resp.message !== '') {
+                throw failure(resp.message, 'server');
+            }
+
+            report(sub, resp);
+            throw failure(t('unreadable'), 'unreadable');
+        }, function (err) {
+            report(sub, err);
+
+            if (err && err.name === 'SyntaxError') {
+                throw failure(t('unreadable'), 'unreadable');
+            }
+
+            throw failure(t('unreached'), 'unreached');
         });
+    }
+
+    // What a failed call shows. An error thrown while the answer was being
+    // used means the answer was not what the panel reads.
+    function problem(err) {
+        if (err && err.pgKind) {
+            return err.message;
+        }
+
+        report('', err);
+
+        return t('unreadable');
+    }
+
+    // What a failed Apply shows: the site's sentence or the missing answer
+    // as they are; an answer that could not be read says that the change was
+    // not applied and the proposal stays to be tried again.
+    function applyProblem(err) {
+        if (err && (err.pgKind === 'server' || err.pgKind === 'unreached')) {
+            return err.message;
+        }
+
+        if (err && err.pgKind === 'unreadable') {
+            return t('apply_unreadable');
+        }
+
+        report('ai_apply', err);
+
+        return t('apply_failed');
+    }
+
+    // The tree in an Apply answer, which is JSON in a JSON string.
+    function answerTree(resp) {
+        var tree = null;
+
+        try {
+            tree = JSON.parse(resp.tree);
+        } catch (e) {
+            report('ai_apply', e);
+        }
+
+        if (!tree || typeof tree !== 'object') {
+            throw failure(t('unreadable'), 'unreadable');
+        }
+
+        return tree;
     }
 
     // Claude and Pinegrap AI were both taken out of the Workspace while the
@@ -341,7 +425,7 @@
             poll();
         }).catch(function (err) {
             state.loading = false;
-            state.problem = err.message;
+            state.problem = problem(err);
             draw();
         });
     }
@@ -412,7 +496,7 @@
         }).catch(function (err) {
             state.sending = false;
             drawSending();
-            toast(esc(err.message), 'error', 7000);
+            toast(esc(problem(err)), 'error', 7000);
         });
     }
 
@@ -507,7 +591,7 @@
         }
 
         return post('ai_apply', { proposal_id: proposal.id, tree_json: b.treeJSON() }).then(function (resp) {
-            var tree = JSON.parse(resp.tree);
+            var tree = answerTree(resp);
 
             b.apply(tree, proposal.node_id || null);
             proposal.status = 'applied';
@@ -530,7 +614,9 @@
 
             return true;
         }).catch(function (err) {
-            toast(esc(err.message), 'error', 8000);
+            // The proposal keeps its state, so its button offers the same
+            // Apply again.
+            toast(esc(applyProblem(err)), 'error', 8000);
             return false;
         });
     }
@@ -540,7 +626,7 @@
             proposal.status = resp.proposal ? resp.proposal.status : 'dismissed';
             draw();
         }).catch(function (err) {
-            toast(esc(err.message), 'error', 6000);
+            toast(esc(problem(err)), 'error', 6000);
         });
     }
 
@@ -551,7 +637,7 @@
             draw();
             setBusyDot();
         }).catch(function (err) {
-            toast(esc(err.message), 'warning', 6000);
+            toast(esc(problem(err)), 'warning', 6000);
         });
     }
 
@@ -885,6 +971,8 @@
                 }
 
                 draw();
+            }).catch(function (err) {
+                toast(esc(problem(err)), 'error', 8000);
             });
         }, 250);
     }

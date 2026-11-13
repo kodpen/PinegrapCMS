@@ -40,6 +40,7 @@ $liveform->add_fields_to_session();
 // The billing fields post one value each (the custom billing form's fields are checked by
 // submit_custom_form()).
 pg_liveform_single_values($liveform, array('billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company', 'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state', 'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number', 'billing_email_address', 'custom_field_1', 'custom_field_2', 'opt_in', 'opt_in_displayed', 'opt_in_sms', 'opt_in_sms_shown', 'tax_exempt', 'tax_number', 'tax_office', 'po_number', 'referral_source', 'update_contact'));
+pg_liveform_salutation_values($liveform, array('billing_salutation'));
 
 // The form names this page and the next one by id, each one string. One posted as an array
 // (page_id[]=) counts as empty, so every read of them below gets a string.

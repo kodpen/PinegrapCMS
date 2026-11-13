@@ -183,6 +183,7 @@
 - design-template-page-fit.md: Ferry to photo templates in a browser: header at 1200 px, brand ellipsis, notice line, image size props, tinted-band text colours for every palette, positioned scroll boxes
 - design-template-pharmacy-pages.md: Pharmacy template 2.0.0: home, on duty, health checks and three service pages on the Pharmacy blocks: the builders, each page's composition, what left, no motion, the test
 - design-template-pharmacy.md: Pharmacy template (pinegrap-pharmacy): services, health checks, on duty, pharmacists, prescription requests and questions, health products shop, Health Advice by topic, prx- look, tests.
+- design-template-phone-fit-appstudio-events.md: Templates App Studio to Events, Bookshop and Boutique on a phone: the account bar's links wrap as a whole and keep each label on one line; the test that holds it
 - design-template-phone-fit-planetarium-zoo.md: Templates Planetarium to Zoo on phones: the account bar row wraps (#9056), table wrappers hold hidden labels, lines that ran past 320 px; measuring overflow under mobile emulation
 - design-template-photo-pages.md: Photography Studio template 2.0.0: home, how it works, packages and about on the Photo blocks: the builders, each page's composition, motion, what left, the test
 - design-template-photo.md: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
@@ -226,6 +227,7 @@
 - designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values [decision: here]
 - designer-ai-known-class.md: How the designer AI decides a class is one the framework ships (pg_design_ai_known_class()): the Bootstrap 5 vocabulary, state/pg-*/Bootstrap Icons classes, custom designs, the class-family fallback
 - designer-assistant-apply-answers.md: Assistant Apply's "Unexpected token '<'" (class names sent as lists), what an operation's fields accept, how the Assistant actions keep their answer JSON
+- designer-assistant-unreadable-answer.md: The designer Assistant panel (designer_ai.js) when an answer cannot be read: its own translated sentence once per click, never the browser's parse text; a failed Apply keeps the proposal
 - designer-audit-contrast-opacity.md: How the designer audit's contrast check (PgContrast.check(), assets/js/pg_contrast.js) counts opacity on the text and its ancestors, and why
 - designer-audit-contrast.md: Designer audit's text contrast check (WCAG 1.4.3): measured on the canvas with PgContrast, what it leaves alone (pictures, hidden, disabled, editor chrome), findings on templates, cost
 - designer-audit-form-action.md: Designer audit hint form_no_action: a form outside every system widget with no action is sent nowhere; what counts as wired, why it is a hint and not a ban, and the test.
@@ -426,9 +428,10 @@
 - legacy-design-theme.md: The theme file of a design moved from a classic style: the activated theme the classic head printed, on the site, the canvas and the Theme file hint; the dry run's warning (LG1, #8694)
 - legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move [decision: decisions-made-product-43.md]
 - legacy-layouts-census.md: Census of the page types' custom layouts for their move to Bootstrap 5.3.8 (LL1, #8968): per type the widget twin, layouts that differ from the template, Bootstrap 3 names
-- legacy-layouts-converter.md: The layout pass of the Bootstrap 3 to 5.3.8 converter (LL2, #8986): pg_lbs_layout_html() over a page type's output, its rules beyond the map, what stays, the starting layouts' counts
+- legacy-layouts-converter.md: The layout pass of the Bootstrap 3 to 5.3.8 converter (LL2 #8986, #9143): pg_lbs_layout_html(), its rules beyond the map, what stays, the starting layouts' counts
 - legacy-layouts-map-cost.md: Mapping a page type's output per request against converted layout copies (LL1 census, #8968): measured cost, what each reaches, the proposal sent to the architect
 - legacy-layouts-output-join.md: Where a page type's layout output joins the page, the names built outside a written class attribute, and the gate a map at output needs (LL1 census, #8968)
+- legacy-layouts-output-pass.md: Where a Bootstrap 5.3.8 design's page prints its page type's 5.3.8 names (LL3, #9143): the gate, the part mapped, the code tab's line, the sandbox pictures
 - legacy-materialize-trial.md: The LB1b hand trial: a Legacy design whose theme loads Materialize, Bootstrap 5.3.8 beside it as a trial design loads it; names both own, what each sheet does to the other [decision: decisions-made-product-48.md]
 - legacy-overview.md: Start file for moving classic styles to the visual designer: owner decisions, the Legacy design of a set, which file holds each step (LD, LG1-LG7), the rules kept, what is open [decision: decisions-made-product-21.md, decisions-made-product-23.md, decisions-made-product-43.md]
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again

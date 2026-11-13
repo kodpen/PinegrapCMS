@@ -1044,9 +1044,14 @@ function ws_screen_assets($viewer, $mode, $extra = array())
     // player in workspace.min.js asks for.
     $output .= pg_js_bundle_tags('assets/js/pg_voice_text.min.js');
 
-    $output .= pg_js_bundle_tags('assets/js/workspace.min.js')
-        // The search box, on every workspace screen.
-        . pg_js_bundle_tags('assets/js/workspace_palette.min.js');
+    $output .= pg_js_bundle_tags('assets/js/workspace.min.js');
+
+    // The search box, on every workspace screen; it searches the
+    // Workspace's channels and records, so the Flows screen opened with the
+    // module off has none (Ctrl+K opens the panel's own search there).
+    if (ws_enabled()) {
+        $output .= pg_js_bundle_tags('assets/js/workspace_palette.min.js');
+    }
 
     if ($mode === 'channels') {
         $output .= pg_js_bundle_tags('assets/js/workspace_board_channel.min.js')
@@ -1159,12 +1164,15 @@ function ws_record_loader($urls, $fields = '')
 
 /**
  * Stops a workspace screen for somebody who is not in the team, or when the
- * module is off or not installed yet.
+ * module is off or not installed yet. The Flows screen ($flows) opens with
+ * the module off too, once flows run on the site (pg_flows_enabled()): the
+ * same team, the same rights.
  *
- * @param array $user validate_user()
+ * @param array $user  validate_user()
+ * @param bool  $flows the Flows screen (workspace_flows.php)
  * @return array the viewer
  */
-function ws_screen_gate($user)
+function ws_screen_gate($user, $flows = false)
 {
     $settings_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('features', 'pgset-features');
 
@@ -1172,7 +1180,7 @@ function ws_screen_gate($user)
         output_error(lang('The workspace is not installed yet: the database has to be updated first.'));
     }
 
-    if (!ws_enabled()) {
+    if (!ws_enabled() && !($flows && pg_flows_enabled())) {
         output_error(lang('The workspace is not switched on.') . ' <a href="' . h($settings_url) . '">' . lang('Settings') . '</a>');
     }
 
