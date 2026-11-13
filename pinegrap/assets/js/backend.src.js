@@ -8732,8 +8732,8 @@ function bindPageIndexingSwitches(ids) {
 
 // The box that keeps a renamed page's old address (edit_page.php): shown
 // while the name differs from the stored one, read the way the save writes
-// it (spaces and & become _). Hidden, it still posts its state, so the save
-// compares the names itself.
+// it (spaces, &, ?, % and + become _: pg_page_form_clean_name()). Hidden,
+// it still posts its state, so the save compares the names itself.
 function bindPageRenameRedirect(ids) {
     ids = ids || {};
 
@@ -8747,7 +8747,7 @@ function bindPageRenameRedirect(ids) {
     var current = row.getAttribute('data-current-name') || '';
 
     function applyPageRenameState() {
-        var name = nameField.value.trim().replace(/ /g, '_').replace(/&/g, '_');
+        var name = nameField.value.trim().replace(/[ &?%+]/g, '_');
 
         row.classList.toggle('d-none', (name === '') || (name === current));
     }
