@@ -88,7 +88,7 @@ function ws_nav_groups($viewer, $flags = null)
     }
 
     if (!empty($flags['flows'])) {
-        $groups['tools'][] = array('key' => 'flows', 'label' => lang('Flows'), 'icon' => 'bi-diagram-3', 'url' => $base . 'workspace_flows.php');
+        $groups['tools'][] = array('key' => 'flows', 'label' => lang('Automation flows'), 'short' => lang('Flows'), 'icon' => 'bi-diagram-3', 'url' => $base . 'workspace_flows.php');
     }
 
     $groups['tools'][] = array('key' => 'calendar', 'label' => lang('Work Calendar'), 'short' => lang('Calendar'), 'icon' => 'bi-calendar3', 'url' => $base . 'workspace_calendar.php');

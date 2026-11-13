@@ -38,7 +38,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - `email-campaign-*`: 7 files.
 - `image-editor-*`: 68 files; start at `image-editor-overview.md`.
 - `list-table-*`: 48 files; start at `list-table-overview.md`.
-- `main-menu-*`: 11 files; start at `main-menu-overview.md`.
+- `main-menu-*`: 12 files; start at `main-menu-overview.md`.
 - `settings-card-*`: 6 files.
 - `settings-modal-*`: 13 files; start at `settings-modal-overview.md`.
 - `submitted-form-*`: 6 files.

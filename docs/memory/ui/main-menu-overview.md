@@ -19,6 +19,7 @@ description: The panel's main menu as a whole: rows in categories, panels and se
 - Expanded, mini and hidden, the bar button, the cookie, Ctrl+D: `main-menu-states.md`; the phone drawer's focus: `main-menu-drawer-focus.md`.
 - Who gets an entry: `main-menu-entry-gates.md`. Row drawings and entry icons: `main-menu-icons.md`.
 - Row 21 Page Design Studio and its Other: `main-menu-design-studio-row.md`; the retired Site Settings row and where Translations went: `main-menu-settings-row.md`; System tools: `settings-system-tools.md`.
+- Row 26 Automation flows, its count of flows running and its moving icon: `main-menu-automation-flows-row.md`.
 
 ## How is a new part added?
 - A new screen: its entry goes into its row's `data-bs-content` under the screen's own gate, and its file name into `output_menu()`'s switch for the active row.

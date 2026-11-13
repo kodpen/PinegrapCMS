@@ -58,3 +58,66 @@ function pg_flows_in_use()
         UNION ALL (SELECT id FROM ws_flow_runs WHERE status IN ('running', 'waiting') LIMIT 1)
         LIMIT 1");
 }
+
+/**
+ * Is a flow's run still going anywhere on the site: running, or waiting for
+ * an answer, a time or an event (ws_flow_run_open())? One small read on the
+ * runs' status index, so the main menu loads the Workspace's files to count
+ * the flows running only while there are some.
+ *
+ * @return bool
+ */
+function pg_flows_runs_open()
+{
+    if (!pg_flows_enabled()) {
+        return false;
+    }
+
+    return (bool) db_value("SELECT id FROM ws_flow_runs WHERE status IN ('running', 'waiting') LIMIT 1");
+}
+
+/**
+ * The main menu's Automation flows row for the person signed in: null when
+ * it is not drawn, else the number of flows running now that they reach.
+ *
+ * The row is drawn for the people its screen admits (workspace_flows.php,
+ * ws_screen_gate($user, true)): the Workspace's tables in the database,
+ * flows on the site, and a member of the team (ws_rights(), which never asks
+ * the Workspace switch). Flows run with the Workspace on or off, and so does
+ * the row. Roles 0-2 are members unless their Workspace profile leaves them
+ * out; a role-3 user needs the Workspace right (USER_MANAGE_WORKSPACE).
+ *
+ * Every panel page draws the menu, so a site whose Workspace is off loads
+ * only the Workspace's access file for the gate, and its whole module only
+ * while a run is open, to count the flows of those runs the person may read
+ * (ws_flows_running_count()).
+ *
+ * @param array $user validate_user()
+ * @return array|null running (int)
+ */
+function pg_flows_menu_row($user)
+{
+    if (!is_array($user) || !pg_flows_enabled()) {
+        return null;
+    }
+
+    if (((int) ($user['role'] ?? 3) >= 3) && !(defined('USER_MANAGE_WORKSPACE') && USER_MANAGE_WORKSPACE)) {
+        return null;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/access.php');
+
+    if (!ws_ready() || empty(ws_rights($user)['member'])) {
+        return null;
+    }
+
+    $running = 0;
+
+    if (pg_flows_runs_open()) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+        $running = ws_flows_running_count(ws_viewer($user));
+    }
+
+    return array('running' => $running);
+}

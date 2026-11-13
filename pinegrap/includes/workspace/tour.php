@@ -157,7 +157,7 @@ function ws_tour_steps($viewer)
             'target'    => array('#ws-menu-side [data-ws-nav="flows"]'),
             'placement' => 'right',
             'optional'  => true,
-            'title'     => lang('Flows'),
+            'title'     => lang('Automation flows'),
             'text'      => lang('Processes drawn as boxes and arrows, started by hand, at the times you set or when something happens: a reminder, a summary, a task, a webhook, one after another if need be.'),
         );
     } elseif (function_exists('ws_can_schedule') && ws_can_schedule($viewer)) {

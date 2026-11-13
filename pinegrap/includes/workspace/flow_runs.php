@@ -1897,6 +1897,83 @@ function ws_flow_last_runs($viewer, $flows)
 }
 
 /**
+ * How many flows are running now for the person: flows with a run still
+ * going (running, or waiting for an answer, a time or an event:
+ * ws_flow_run_open()) that they may read (ws_flow_run_access()), each flow
+ * once. The main menu's Automation flows row shows it (pg_flows_menu_row()).
+ *
+ * Reads the newest WS_FLOW_LIST_SCAN open runs without their context; a
+ * run's context, which names the channel it is read through, is read only
+ * for the flows the person does not edit, and only for the runs that could
+ * reach them (they may run the flow, or they started the run).
+ *
+ * @param array $viewer ws_viewer()
+ * @return int
+ */
+function ws_flows_running_count($viewer)
+{
+    if (!ws_flows_ready() || empty($viewer['member'])) {
+        return 0;
+    }
+
+    $runs = array();
+
+    foreach ((array) db_items("SELECT id, flow_id, started_by FROM ws_flow_runs
+        WHERE status IN ('running', 'waiting') ORDER BY id DESC LIMIT " . WS_FLOW_LIST_SCAN) as $run) {
+        $runs[(int) $run['flow_id']][] = $run;
+    }
+
+    if (empty($runs)) {
+        return 0;
+    }
+
+    $flows = (array) db_items("SELECT id, owner_id, channel_id, status FROM ws_flows
+        WHERE id IN (" . implode(',', array_map('intval', array_keys($runs))) . ") AND status <> 'binned'");
+
+    ws_flow_share_rows_prime(array_map(function ($flow) {
+        return (int) $flow['id'];
+    }, $flows));
+
+    $count = 0;
+    // The flows to decide run by run, and the runs whose context is read.
+    $open = array();
+    $wanted = array();
+
+    foreach ($flows as $flow) {
+        $access = ws_flow_access($viewer, $flow);
+
+        if ($access === 'edit') {
+            $count++;
+            continue;
+        }
+
+        foreach ($runs[(int) $flow['id']] as $run) {
+            if (($access === 'run') || ((int) $run['started_by'] === (int) $viewer['id'])) {
+                $open[(int) $flow['id']] = $flow;
+                $wanted[] = (int) $run['id'];
+            }
+        }
+    }
+
+    if (empty($wanted)) {
+        return $count;
+    }
+
+    $read = array();
+
+    foreach ((array) db_items("SELECT id, flow_id, started_by, context FROM ws_flow_runs
+        WHERE id IN (" . implode(',', $wanted) . ")") as $run) {
+        $flow_id = (int) $run['flow_id'];
+
+        if (!isset($read[$flow_id]) && isset($open[$flow_id]) && (ws_flow_run_access($viewer, $open[$flow_id], $run) !== '')) {
+            $read[$flow_id] = true;
+        }
+    }
+
+    return $count + count($read);
+}
+
+/**
  * The run a start token named for a flow, as the person reaches it
  * (ws_flow_run_for()): null for no token, a token of the wrong shape, one
  * that started no run of the flow, or a run they may not read.
