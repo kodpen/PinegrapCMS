@@ -739,6 +739,8 @@ function test_workspace_flows_canvas_every_text_is_read()
 	$channels = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 	// The run's flag, shared by the canvas and the channel screen.
 	$channels .= (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow_flag.js');
+	// The quick setup's dialog.
+	$channels .= (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow_quick.js');
 
 	preg_match_all("/'(fl_[a-z_]+)'\\s*=>/", ws_flows_canvas_test_strings_source(), $handed);
 

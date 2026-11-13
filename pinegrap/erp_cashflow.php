@@ -143,7 +143,7 @@ if (($_GET['view'] ?? '') === 'forecast') {
     echo
     pg_page_shell(array(
             'title' => lang('Cash forecast'),
-            'extra classes' => 'erp erp_cash',
+            'extra classes' => 'erp erp_cash pg-measure-report',
             'icon' => 'erp',
             'heading' => lang('Cash forecast'),
             'heading_description' => lang('What the books say will come in and go out over the coming days: open invoices, unpaid expenses, repeating documents and cheques on their due dates, and where the tills would stand.'),
@@ -420,7 +420,7 @@ foreach ($notes as $note) {
 echo
 pg_page_shell(array(
         'title' => lang('Cash flow'),
-        'extra classes' => 'erp erp_cash',
+        'extra classes' => 'erp erp_cash pg-measure-report',
         'icon' => 'erp',
         'heading' => lang('Cash flow'),
         'heading_description' => lang('What came into the tills and what went out over a period, in the base currency, and where the position stood.'),

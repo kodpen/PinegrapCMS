@@ -180,3 +180,34 @@ function test_workspace_canvas_one_binder_is_the_application()
 	pg_assert_same(array('kind' => 'user', 'id' => 0), ws_api_canvas_table_binder(0), 'the person binds in their own name from their device');
 	pg_assert_same('user', ws_api_canvas_table_binder(-1)['kind']);
 }
+
+function test_workspace_canvas_one_part_file_pick()
+{
+	pg_assert_same(10, ws_canvas_part_file_pick('drawing', 10, 'drawing', array()), 'the message\'s own drawing');
+	pg_assert_same(0, ws_canvas_part_file_pick('page', 10, 'drawing', array()), 'a drawing with no page added');
+	pg_assert_same(22, ws_canvas_part_file_pick('page', 10, 'drawing', array('page' => 22)), 'a page added beside the drawing');
+	pg_assert_same(10, ws_canvas_part_file_pick('page', 10, 'page', array('page' => 22)), 'the message\'s own page wins over a row');
+	pg_assert_same(23, ws_canvas_part_file_pick('drawing', 10, 'page', array('drawing' => 23)), 'a drawing added beside the page');
+	pg_assert_same(0, ws_canvas_part_file_pick('page', 0, '', array()), 'no file, no part');
+	pg_assert_same(array('drawing', 'page'), ws_canvas_part_names());
+}
+
+function test_workspace_canvas_one_parts_step()
+{
+	$step = file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
+
+	pg_assert_true(strpos($step, "upgrade_2026_11_0_ws_canvas_parts();         // 11.0.194") !== false, 'the step is called under its label');
+	pg_assert_true(strpos($step, "UNIQUE KEY uniq_canvas_part (message_id, part)") !== false, 'one row a canvas and part');
+	pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php'), "'ws_canvas_parts',") !== false, 'a reinstall knows the table');
+}
+
+function test_workspace_canvas_one_version_zero_adds()
+{
+	foreach (array('workspace.canvases.page.put', 'workspace.canvases.drawing.put') as $id) {
+		$route = ws_test_canvas_one_routes()[$id];
+
+		pg_assert_same(0, $route['params'][1]['min'], $id . ': version 0 adds the part');
+		pg_assert_true(strpos($route['description'], 'version 0 adds') !== false, $id . ' says so');
+		pg_assert_true(strpos($route['description'], 'part_missing') === false, $id . ' no longer refuses a missing part');
+	}
+}

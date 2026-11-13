@@ -17,7 +17,8 @@ description: Plan (owner 2026-11-13, #9076): the components the designer canvas 
 - No schema change inside a step; a need comes back as an `architect` question.
 
 ## Which steps?
-- CB0 (S, no product code) The list: every palette component, system widget type, page type and e-mail the canvas draws as a closed block: what it prints on the site, what a user can change in it today, which design templates and page types use it, and what opening it takes (a tree, a converter, settings only). Into a new file of `designer/` named canvas-closed-blocks, with a proposed order by how often a user meets the block.
+- CB0 (S, no product code), done (#9254): `designer/canvas-closed-blocks.md` and its family files.
+- CB0 was the list: every palette component, system widget type, page type and e-mail the canvas draws as a closed block: what it prints on the site, what a user can change in it today, which design templates and page types use it, and what opening it takes (a tree, a converter, settings only). Into a new file of `designer/` named canvas-closed-blocks, with a proposed order by how often a user meets the block.
 - CB1 (architect) The list and the order go to the owner; the steps from CB2 on are written from his answer, one block family per step.
 - CB2 and on: one family per step, by the rules above.
 - Close-out: the lasting part of the list stays in `designer/`; this plan is deleted.

@@ -29,6 +29,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 
 ## Clusters
 
+- `messages-area-*`: 6 files.
 - `object-storage-*`: 6 files.
 
 ## Files

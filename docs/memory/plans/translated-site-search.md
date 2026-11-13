@@ -29,3 +29,9 @@ description: Plan (owner 2026-11-13, #9216): the site search on a page served in
 
 ## Where are the steps?
 - `translated-site-search-steps.md`. Claim as `[plan:translated-site-search] <step> — <topic>`.
+- TS1 (M) Pages: the words and ı/i
+- TS2 (M) Products and product groups
+- TS3 (M) Form records in the site search
+- TS4 (S) A list's own search box
+- TS5 (S) Close-out
+- Done: TS1 #9245, TS2 #9266

@@ -1046,7 +1046,9 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-fg-body: var(--bs-fg-body);
   --pg-fg-emphasis: light-dark(var(--bs-black), var(--bs-white));
   --pg-fg-2: var(--bs-fg-2);
-  --pg-fg-3: var(--bs-fg-3);
+  /* Bootstrap 6's dark third text (gray-500) reads 4.0:1 on the dark
+     dialog surfaces; gray-400 reads 5.5:1 or more. Light keeps gray-600. */
+  --pg-fg-3: light-dark(var(--bs-gray-600), var(--bs-gray-400));
   --pg-border-color: var(--bs-border-color);
   --pg-border-color-translucent: var(--bs-border-color-translucent);
   --pg-border-width: var(--bs-border-width);
@@ -13233,56 +13235,6 @@ html[data-bs-theme="dark"] .ws-group-icon {
   flex-direction: column;
   min-width: 0;
 }
-/* The file manager's files under the paperclip (workspace.js libraryPicker). */
-.ws-lib-trail {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ws-space-1);
-  margin-bottom: var(--ws-space-2);
-  font-size: .875rem;
-}
-.ws-lib-trail:empty {
-  display: none;
-}
-.ws-lib-sep {
-  font-size: .7rem;
-  color: var(--pg-fg-3);
-}
-.ws-lib-section {
-  margin-top: var(--ws-space-2);
-  font-size: .8rem;
-  font-weight: 600;
-  color: var(--pg-fg-2);
-}
-.ws-lib-row {
-  align-items: center;
-}
-.ws-lib-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-}
-.ws-lib-thumb {
-  flex: 0 0 auto;
-  width: var(--ws-avatar);
-  height: var(--ws-avatar);
-  object-fit: cover;
-  border-radius: var(--ws-radius-xs);
-  background: var(--pg-bg-1);
-}
-.ws-lib-row .ws-pull-icon {
-  flex: 0 0 auto;
-  width: var(--ws-avatar);
-  margin-top: 0;
-  font-size: 1.35rem;
-  text-align: center;
-}
-.ws-lib-refused {
-  opacity: .6;
-  cursor: not-allowed;
-}
 /* Versions of a conversation. */
 .ws-era-row {
   display: flex;
@@ -21876,6 +21828,283 @@ html.ws-flow-layer-on body {
 .wsf-sched-refused .ws-sa-filters {
   display: none;
 }
+/* The quick setup of a flow (workspace_flow_quick.js): a wide dialog with
+   its stages in a line under the head; the first stage is a rail of the
+   site's areas beside the starts of one as radio cards and "Only when". */
+.dialog.wsf-quick {
+  --bs-dialog-width: 820px;
+  height: min(700px, calc(100% - 3.5rem));
+}
+.wsf-quick-head {
+  align-items: flex-start;
+  border-bottom: 0;
+  padding: 18px 16px 0 24px;
+}
+.wsf-quick-sub {
+  margin: 3px 0 0;
+  color: var(--pg-fg-2);
+}
+.wsf-quick-stages {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 24px 13px;
+  list-style: none;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+  color: var(--pg-fg-3);
+  font-size: var(--pg-text-2);
+  white-space: nowrap;
+}
+.wsf-quick-stage {
+  display: inline-flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+}
+.wsf-quick-stage:last-child {
+  flex: 0 0 auto;
+}
+.wsf-quick-stage:not(:last-child)::after {
+  content: "";
+  flex: 1 1 auto;
+  min-width: 14px;
+  height: 1px;
+  background: var(--pg-border-color-translucent);
+}
+.wsf-quick-stage-n {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+}
+.wsf-quick-stage.is-done .wsf-quick-stage-n {
+  background: color-mix(in srgb, var(--pg-tone-teal) 16%, transparent);
+  box-shadow: none;
+  color: var(--pg-tone-teal);
+}
+.wsf-quick-stage.is-active {
+  color: var(--pg-fg-body);
+  font-weight: var(--pg-weight-strong);
+}
+.wsf-quick-stage.is-active .wsf-quick-stage-n {
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  box-shadow: none;
+  color: var(--pg-on-accent);
+}
+.wsf-quick-body {
+  min-height: 0;
+  padding: 16px 24px 0;
+  overflow: hidden;
+}
+.wsf-quick-foot {
+  border-top: 1px solid var(--pg-border-color-translucent);
+  padding: 13px 24px;
+}
+.wsf-quick-hint {
+  margin-right: auto;
+  color: var(--pg-fg-3);
+}
+.wsf-quick-split {
+  display: grid;
+  grid-template-columns: 196px minmax(0, 1fr);
+  gap: 18px;
+  height: 100%;
+}
+.wsf-quick-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 0;
+  padding: 0 14px 16px 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--pg-border-color-translucent);
+}
+.wsf-quick-rail-line {
+  margin: 7px 4px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+  opacity: 1;
+}
+.wsf-quick-area {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 9px;
+  height: 31px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  text-align: left;
+  white-space: nowrap;
+}
+.wsf-quick-area .bi {
+  color: var(--pg-fg-3);
+}
+.wsf-quick-area:hover {
+  background: var(--pg-hover);
+}
+.wsf-quick-area.is-active {
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+  color: var(--pg-fg-body);
+  font-weight: var(--pg-weight-strong);
+}
+.wsf-quick-area.is-active .bi {
+  color: var(--pg-accent);
+}
+.wsf-quick-area.is-quiet {
+  opacity: .6;
+}
+.wsf-quick-area.is-quiet.is-active {
+  background: none;
+  box-shadow: none;
+  font-weight: inherit;
+}
+.wsf-quick-area-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wsf-quick-area-count {
+  margin-left: auto;
+  color: var(--pg-fg-3);
+}
+.wsf-quick-pane {
+  min-height: 0;
+  padding-bottom: 16px;
+  overflow-y: auto;
+}
+.wsf-quick-find {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.wsf-quick-find input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  outline: 0;
+}
+.wsf-quick-find .bi {
+  color: var(--pg-fg-3);
+}
+.wsf-quick-found {
+  margin: 0 0 8px;
+}
+.wsf-quick-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+.wsf-quick-card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin: 0;
+  padding: 11px 36px 11px 12px;
+  border-radius: 13px;
+  background: var(--pg-card-bg);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+  cursor: pointer;
+}
+.wsf-quick-card:hover {
+  background: var(--pg-hover);
+}
+.wsf-quick-card.is-active {
+  background: color-mix(in srgb, var(--pg-accent) 9%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--pg-accent);
+}
+.wsf-quick-card:has(.wsf-quick-radio:focus-visible) {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+.wsf-quick-radio {
+  position: absolute;
+  top: 13px;
+  right: 12px;
+  margin: 0;
+  accent-color: var(--pg-accent);
+}
+.wsf-quick-card-words {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.wsf-quick-card-title {
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+}
+.wsf-quick-card-line {
+  color: var(--pg-fg-2);
+}
+.wsf-quick-when {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 13px;
+  background: var(--pg-card-bg);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.wsf-quick-when-label {
+  margin: 0 0 8px;
+}
+.wsf-quick-when-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wsf-quick-when-rows:not(:empty) {
+  margin-bottom: 8px;
+}
+.wsf-quick-when-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+.wsf-quick-when-row .wsf-quick-when-value.d-none + .pg-icon-button {
+  grid-column: 4;
+}
+@media (max-width: 767.98px) {
+  .dialog.wsf-quick {
+    --bs-dialog-width: 100%;
+    height: 100%;
+  }
+  .wsf-quick-split {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .wsf-quick-rail {
+    flex-direction: row;
+    padding: 0 0 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 0;
+    border-bottom: 1px solid var(--pg-border-color-translucent);
+  }
+  .wsf-quick-rail-line {
+    display: none;
+  }
+  .wsf-quick-cards,
+  .wsf-quick-when-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wsf-quick-hint {
+    display: none;
+  }
+}
 /* The Share dialog: one row per person or channel, the owner first. */
 .wsf-share-row {
   display: flex;
@@ -23974,7 +24203,7 @@ select.pg-list-table-field option.private {
 .pg-list-table-field-note {
   margin-top: 0.125rem;
   font-size: var(--pg-text-meta);
-  color: var(--pg-tone-rose);
+  color: var(--pg-tone-rose-text);
   white-space: normal;
   text-align: start;
 }
@@ -24537,6 +24766,12 @@ select.pg-list-table-field option.private {
 .pg-picker-mark.is-binned {
   background: var(--pg-danger-bg-subtle);
   color: var(--pg-danger-fg-emphasis);
+}
+/* A file a channel would refuse: the reason, which may run to a line. */
+.pg-picker-mark.is-refused {
+  background: var(--pg-bg-1);
+  color: var(--pg-fg-2);
+  white-space: normal;
 }
 .pg-picker-item.is-marked {
   cursor: default;
@@ -25480,6 +25715,10 @@ select.pg-list-table-field option.private {
   --pg-tone-teal: light-dark(#0e9a74, #3fd0a8);
   --pg-tone-rose: light-dark(#d43d6b, #f58aa0);
   --pg-tone-gray: light-dark(#6b7280, #9aa0a8);
+  /* Rose as text (an error, a danger button): the bare light rose reads
+     4.49:1 on white and 3.8:1 on its own tint; pulled 80% toward the
+     strongest text colour it reads 5.0:1 or more in both themes. */
+  --pg-tone-rose-text: color-mix(in srgb, var(--pg-tone-rose) 80%, var(--pg-fg-emphasis));
   --pg-tone-team: var(--pg-tone-blue);
   --pg-tone-shop: var(--pg-tone-teal);
   --pg-tone-content: var(--pg-tone-rose);
@@ -25704,7 +25943,7 @@ textarea.pg-input {
   color: var(--pg-fg-3);
 }
 .pg-field-help.pg-field-error {
-  color: var(--pg-tone-rose);
+  color: var(--pg-tone-rose-text);
 }
 /* Switch and checkbox, drawn on the native input. */
 .pg-switch,
@@ -25862,7 +26101,7 @@ textarea.pg-input {
   color: var(--pg-fg-body);
 }
 .pg-button-danger {
-  color: var(--pg-tone-rose);
+  color: var(--pg-tone-rose-text);
   background: color-mix(in srgb, var(--pg-tone-rose) 12%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone-rose) 22%, transparent);
 }
@@ -26637,7 +26876,7 @@ body.pg-measure-report #content {
   color: var(--pg-fg-3);
 }
 .pg-report-fig-note.is-bad {
-  color: var(--pg-tone-rose);
+  color: var(--pg-tone-rose-text);
 }
 @media (max-width: 991.98px) {
   .pg-report-figs {
@@ -27147,7 +27386,7 @@ body.pg-measure-report #content {
 }
 #report_settings #filter_table td:nth-child(5) > .btn:hover {
   background: var(--pg-quiet);
-  color: var(--pg-tone-rose);
+  color: var(--pg-tone-rose-text);
 }
 #report_settings #filter_table td:nth-child(5) .material-icons {
   font-size: 18px;

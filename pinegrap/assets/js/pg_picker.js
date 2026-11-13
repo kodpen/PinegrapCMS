@@ -662,6 +662,19 @@
         return mark === 'binned' ? t('In the Recycle Bin') : (mark === 'archived' ? t('Archived') : '');
     }
 
+    // An item's mark as words: a page's state, or the server's own reason
+    // for a file that cannot be chosen (mark 'refused', a channel kind).
+    function markText(item) {
+        return item.mark_text || markLabel(item.mark);
+    }
+
+    // Why the marked items of a list cannot be chosen.
+    function markNote(items) {
+        return items.some(function (item) { return item.mark === 'archived' || item.mark === 'binned'; })
+            ? t('Archived pages and pages in the Recycle Bin cannot be chosen.')
+            : t('Marked files cannot be chosen.');
+    }
+
     // The page type groups in chip order, and each one's label.
     function groupOrder() {
         return (conf().page_groups || []).map(function (group) { return group.key; });
@@ -1499,7 +1512,7 @@
         if (item.mark) {
             var line = el('span', 'pg-picker-name-line');
             line.appendChild(name);
-            line.appendChild(el('span', 'pg-picker-mark is-' + item.mark, markLabel(item.mark)));
+            line.appendChild(el('span', 'pg-picker-mark is-' + item.mark, markText(item)));
             body.appendChild(line);
         } else {
             body.appendChild(name);
@@ -1618,7 +1631,7 @@
             }
         }
         if (this.items.some(function (item) { return !!item.mark; })) {
-            this.status.appendChild(el('span', 'pg-picker-note', t('Archived pages and pages in the Recycle Bin cannot be chosen.')));
+            this.status.appendChild(el('span', 'pg-picker-note', markNote(this.items)));
         }
         this.hint.textContent = this.results ? t('Esc clears the search')
             : (this.multiple ? t('A click adds or removes, Shift+click adds a row')
@@ -2786,12 +2799,13 @@
             words.appendChild(highlighted(String(item.text), text));
             words.appendChild(el('span', 'pg-pfield-meta', fieldMeta(item)));
             row.appendChild(words);
-            // An archived or binned page is found, marked, and cannot be
-            // chosen (pickable()), as in the dialog.
+            // An archived or binned page, or a file the kind refuses, is
+            // found, marked, and cannot be chosen (pickable()), as in the
+            // dialog.
             if (item.mark) {
                 row.classList.add('is-marked');
                 row.setAttribute('aria-disabled', 'true');
-                row.appendChild(el('span', 'pg-picker-mark is-' + item.mark, markLabel(item.mark)));
+                row.appendChild(el('span', 'pg-picker-mark is-' + item.mark, markText(item)));
             }
             list.appendChild(row);
         });
@@ -2867,7 +2881,7 @@
             return null;
         }
         if (!pickable(item)) {
-            this.host.status.textContent = t('Archived pages and pages in the Recycle Bin cannot be chosen.');
+            this.host.status.textContent = markNote([item]);
             return null;
         }
         if (this.sheet) {

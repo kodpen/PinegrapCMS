@@ -4,7 +4,7 @@ description: MA0 proposal (2026-11-13, open on #9081): the one Sends list reads 
 ---
 
 ## Is this settled?
-- No: step MA0's proposal of 2026-11-13, waiting for the architect on #9081 (questions 2 to 5). MA2 builds what the answer keeps. What each table holds: [[messages-area-census-sources]].
+- The architect answered on #9081 (`plans/messages-area-decided.md`); what MA2 built is `messages-area-sends.md`. This file keeps MA0's proposal. What each table holds: [[messages-area-census-sources]].
 
 ## How would one list read them?
 - The list table driver concatenates a source's `from` into its SQL (`includes/fn/list_table.php`), so `from` is a derived table: `UNION ALL` of one SELECT per source with the same columns (sid, at, channel, row kind, to, what, source, state, done, total, owner, error). No driver change and no table.

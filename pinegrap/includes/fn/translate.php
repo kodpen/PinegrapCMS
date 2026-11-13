@@ -52,6 +52,7 @@ function pg_tr_load()
     require_once(PG_FUNCTIONS_DIR . '/includes/translate/engines.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/translate/jobs.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/translate/seo.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/translate/search.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/translate/content.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/translate/screen.php');
 }
@@ -841,6 +842,23 @@ function pg_tr_search_pages($query)
     pg_tr_load();
 
     return pg_tr_search_pages_find($query);
+}
+
+/**
+ * The products and product groups whose translated texts match a search made
+ * on a page in another language, best first; empty in the source language.
+ *
+ * @return string[] "product:<id>" and "product_group:<id>" keys
+ */
+function pg_tr_search_catalog($query)
+{
+    if (!pg_tr_active()) {
+        return array();
+    }
+
+    pg_tr_load();
+
+    return pg_tr_search_catalog_find($query);
 }
 
 /**

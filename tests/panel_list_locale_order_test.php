@@ -5,9 +5,8 @@
  * Panel lists sorted in PHP order names the way the panel language does
  * (pg_geo_label_compare()), not by bytes: Edit Product Group and Featured &
  * New Items (pg_list_sort_by_order_and_name()), the Site Log merged with
- * the error log (view_log.php), the Workspace folder picker
- * (ws_library_folder_name_compare()) and the OneNote import's notebooks
- * and sections (ws_note_onenote_notebooks()).
+ * the error log (view_log.php) and the OneNote import's notebooks and
+ * sections (ws_note_onenote_notebooks()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,7 +18,6 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-require_once(PG_FUNCTIONS_DIR . '/includes/workspace/library.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_io.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_import.php');
@@ -67,22 +65,6 @@ function test_panel_list_site_log_merge_uses_the_language_order()
 
 	pg_assert_contains('$result = pg_geo_label_compare((string) $a_value, (string) $b_value);', $source);
 	pg_assert_true(strpos($source, 'strcasecmp((string) $a_value') === false, 'no strcasecmp left in the merge sort');
-}
-
-// Numbers by value and Turkish letters in place; strnatcasecmp() without intl.
-function test_panel_list_workspace_folder_names_keep_number_order()
-{
-	$names = array('Klasör 10', 'Zeytin', 'Çalışma', 'klasör 2', 'Özel');
-	usort($names, 'ws_library_folder_name_compare');
-
-	if (class_exists('Collator')) {
-		pg_assert_same(array('Çalışma', 'klasör 2', 'Klasör 10', 'Özel', 'Zeytin'), $names);
-	} else {
-		pg_assert_same(array('klasör 2', 'Klasör 10'), array_slice($names, 0, 2), 'natural order, case aside');
-	}
-
-	pg_assert_true(ws_library_folder_name_compare('Klasör 2', 'Klasör 10') < 0, '2 before 10');
-	pg_assert_same(0, ws_library_folder_name_compare('Arşiv', 'Arşiv'));
 }
 
 // The OneNote import lists notebooks and their sections in the language's order.
