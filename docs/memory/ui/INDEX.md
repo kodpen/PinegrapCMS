@@ -414,7 +414,7 @@
 - menu-item-shared-form.md: The menu item create and edit screens share includes/forms/menu_item_form.php
 - menu-items-sort-order.md: The menu screen's Save Order (sort_menu_items): the posted tree is checked against the menu as it is now before any row is written; stale or looping trees are refused
 - menu-shared-form.md: The menu create and edit screens share includes/forms/menu_form.php: what it holds, the underscore name rule, what stays in the screens
-- messages-area-shell.md: The Communication area's shell (MA1, #9182): menu row 9 renamed, the five tabs with their files and gates, the shared tab strip, the old lists inside it, what each new tab shows until its step lands
+- messages-area-shell.md: The Communication area (MA1 #9182, MA7 #9200): menu row 9, the five tabs and their gates, the shared tab strip, the old lists inside it, the interim tabs, the Channels cards
 - migration-screen.md: The Migration screen (migration.php): source password handling, API URL check, error details, wording
 - money-box-focus.md: A money box that opens focused is focused on document ready after the Inputmask binding, never by an inline script while the page parses (gift card Amount, #9047)
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)

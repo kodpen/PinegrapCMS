@@ -1,6 +1,6 @@
 ---
 name: messages-area-shell
-description: The Communication area's shell (MA1, #9182): menu row 9 renamed, the five tabs with their files and gates, the shared tab strip, the old lists inside it, what each new tab shows until its step lands; the Channels cards (MA7)
+description: The Communication area (MA1 #9182, MA7 #9200): menu row 9, the five tabs and their gates, the shared tab strip, the old lists inside it, the interim tabs, the Channels cards
 module: messages_area
 ---
 
