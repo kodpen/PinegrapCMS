@@ -16,7 +16,7 @@ description: Steps WA0-WA11 of the WhatsApp channel plan (#8950): facts and stor
 - WA8 (M) Template designer, first half: the screen as drawn with the phone preview, name, type, language, the message with variables and sample values, footer; a draft saved; "Send myself a test" for an approved template.
 - WA9 (M) Template designer, second half: header image, video or document from Files, the buttons, "Send for approval", the state shown, editing a rejected template.
 - WA10 (M) Offer codes: the variable "Offer code" as the offer's shared code or a key made for the recipient at send time with the validity set on the template; the marketing consent gate of Ka on every path that sends.
-- WA11 (S) Close-out: the lasting rules into `platform/`, the overview file, this plan deleted.
+- WA11 (S) Close-out of WA1 to WA10: the lasting rules into `platform/`, the overview file. The plan is deleted by WA18 (`whatsapp-channel-steps-2.md`: a customer's WhatsApp message and SMS in a channel).
 
 ## In which order?
 - WA0 first; its questions (#9085) answered before WA2, WA3 and WA4 start, #9087 before WA10. WA1, then WA2, WA3 and WA4 one after the other (they share the module).
