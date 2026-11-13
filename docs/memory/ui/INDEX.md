@@ -539,7 +539,7 @@
 - rich-text-editor-files.md: Who the rich text editor (CKEditor 4) offers file browsing and uploading to; the upload addresses carry the session token
 - rich-text-editor-names.md: The rich text editor (CKEditor 4) named by its field's caption through pgCkeditorReplace(); label click focuses it; Source view names the code editor, says how Tab leaves, passes Alt+F10/Alt+0 on
 - rich-text-editor-turkish.md: CKEditor 4's own Turkish texts (lang/tr.js): the Media Embed dialog, the Anchor (Çapa) button, shortcut tips; the stamp that makes browsers fetch it again
-- rich-text-path-placeholder.md: How rich text is stored with the {path} placeholder (prepare_rich_text_editor_content_for_input()): which addresses fold, why a //host address (Media Embed's YouTube player) keeps its two slashes
+- rich-text-path-placeholder.md: How rich text is stored with the {path} placeholder (prepare_rich_text_editor_content_for_input()): which addresses fold, why a //host address (Media Embed's YouTube player) keeps its two slashes [decision: here]
 - rich-text-source-dialog.md: The rich text editor's Source dialog with the code editor: isolated in a shadow root (the dialog resets every element), sized like its textarea, Enter, Tab and used keys kept from the dialog
 - screen-focus-rings.md: Focus rings drawn by a screen's own styles use the 2px --pg-primary-ink outline, inset inside clipping boxes; which screens were moved and which still wait
 - script-built-field-names.md: Dialogs and fields drawn by script after load name themselves: unique title ids, label for, aria-label from the screen's label map, Escape kept (#3029)
@@ -596,6 +596,7 @@
 - site-button-box.md: Editing buttons over a site page (get_page.php) as a top-right corner box in the site page's colours (#3316): place, collapse arrow, narrow default, SEO panel and save/cancel pair under it [decision: decisions-made-panel.md]
 - site-datetime-loader.md: The date-and-time control on site pages, loaded on demand (pg_site_datetime_inject()): the hooks that bring it, what it prints, site mode in pg_datetime.js and pg_fields.js, the library's own CSS
 - site-editor-dialog-fields.md: CKEditor's Link and Image dialogs on a site page in Edit mode: livesite.src.css sets the skin's field width, padding and select arrow again over a theme's input and select rules
+- site-editor-picker-frame.md: Decided, not built (#9117): on a site page in Edit mode the editor's Link and Image dialogs open the picker in a same-origin frame inside a dialog; the conditions and what was refused [decision: here]
 - site-log-action-lines.md: Which panel actions write a Site Log line on success: order exports, Cloudflare Tools, the Site Log's own Delete buttons
 - site-log-paging.md: The Site Log (view_log.php) on the list table driver: database view in batches, the error_log view printed whole with a type filter, who a row without a user is, the language log lines are written in
 - site-native-date-inputs.md: Native date, datetime-local and time inputs on site pages get the date-and-time control by type, ISO kept; the server reads the ISO they post (S4a)

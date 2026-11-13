@@ -76,6 +76,7 @@
 - image-delivery-settings.md: Image delivery settings (2026.11.0 step 11.0.9): formats offered (bit set) and quality per format, where they are read, one clamp, what a change does to derivatives and pages
 - image-derivative-upkeep.md: Upkeep of the image derivative cache: the daily sweep and its cursor, the purge that sets the folder aside, the storage line, and the warm-up pass that makes own-address WebP copies ahead of visitors
 - image-derivatives.md: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed widths, WebP/AVIF tested once per server, data/cache/img name and signature, skip and lock files, encode slots, files that get none
+- image-editor-jpeg-start-quality.md: Decided, not built (#9118): a JPEG saved by the image editor or Optimize starts at the lower of 92 and the source's own quality, so a save is not heavier than its original [decision: here]
 - image-editor-recycle-bin.md: The image editor's server refuses the Recycle Bin: a binned file is not opened, replaced or copied, and a new picture is not written into the bin folder (#4297)
 - image-editor-save.md: The image editor's save: image_editor_api.php open and save, the document check, the engine's edit option (turn, flip, straighten, crop, size, overlay, shape), replace, copy and new
 - image-files-left-alone.md: Images the engine refuses to process: animated (PR #1234), unreadable Exif orientation (PR #1242), ICC profile GD cannot carry (PR #1267, #1345); how each is told and handled
