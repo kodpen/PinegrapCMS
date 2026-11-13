@@ -5,7 +5,7 @@ description: CB0 list, the closed slots inside system widgets: section bindings 
 
 ## What is closed inside a widget?
 - A node bound to `section` (`_bindings.section`, options in `_sdSectionOptions()`): the server puts its own HTML inside; the canvas draws a label box ("filled by the backend"). Two keep the user's children: Recipient Picker and watcher list (`_SD_SECTION_KEEPS_CHILDREN`).
-- A value of `pg_sw_raw_token_keys()` that is markup built by the renderer: the canvas draws a ‹label› or a preview (`canvas-sample-gaps.md`).
+- A value of `pg_sw_raw_token_keys()` that is markup built by the renderer: the canvas draws its preview (`_SD_HTML_PREVIEW_TOKENS`, `canvas-sample-overview.md`).
 - Change today: the node's place, classes and show conditions; never its inside.
 
 ## Which sections, per widget kind? (template use)

@@ -20,6 +20,3 @@ description: The sample account (Alex Morgan) the designer canvas draws in every
 
 ## Which value is drawn though the page leaves it empty?
 - `__password_rules` (setting off) and `__passkey_notice` (written only when no passkey can be added), as `__out_of_stock_message` on the product.
-
-## What is left?
-- `canvas-sample-gaps-account.md`.
