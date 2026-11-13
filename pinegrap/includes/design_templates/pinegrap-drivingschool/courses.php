@@ -279,7 +279,7 @@ $course_widgets['course_detail'] = array(
                 )),
                 $el('div', 'd-flex flex-wrap gap-2 mb-2', lang('Badges'), array(
                     $span($licences[$course_sample['licence']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Licence Class'), $bind('licence')),
-                    $span($formats[$course_sample['format']], 'pdr-badge badge rounded-pill text-bg-dark', lang('Format'), $bind('format')),
+                    $span($formats[$course_sample['format']], 'pdr-badge badge rounded-pill text-bg-secondary', lang('Format'), $bind('format')),
                 )),
                 $heading('h1', $course_sample['name'], 'pdr-display display-6 mb-2', $bind('name')),
                 $para($course_sample['summary'], 'lead text-body-secondary mb-3', $bind('summary')),

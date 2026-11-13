@@ -180,7 +180,7 @@ $ds_css = implode("\n", array(
 
 return array(
     'name'        => lang('Driving School'),
-    'version'     => '1.1.0',
+    'version'     => '1.1.1',
     'framework'   => 'bootstrap5',
     'order'       => 111,
     'icon'        => 'bi-car-front',

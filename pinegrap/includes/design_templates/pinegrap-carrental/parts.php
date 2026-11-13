@@ -594,7 +594,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-bold', lang('Brand'), array(
-                    $el('span', 'd-inline-flex p-2 rounded-2 bg-primary text-white lh-1', lang('Icon Box'), array($icon('bi-key-fill', 'fs-5'))),
+                    $el('span', 'd-inline-flex p-2 rounded-2 text-bg-primary lh-1', lang('Icon Box'), array($icon('bi-key-fill', 'fs-5'))),
                     $span('{{site_name}}', 'pcr-brand fs-4', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
@@ -717,7 +717,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $classes, 
 // way to book and the deals. Shared, so every page that ends with it
 // carries the same offer.
 $booking_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -726,8 +726,8 @@ $booking_band = function () use ($el, $heading, $para, $link, $container, $row, 
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Book a Car'), '{{page:book}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('See the Deals'), '{{page:deals}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Book a Car'), '{{page:book}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('See the Deals'), '{{page:deals}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),

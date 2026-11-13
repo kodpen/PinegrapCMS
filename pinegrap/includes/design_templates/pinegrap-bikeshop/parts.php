@@ -519,7 +519,7 @@ $icon_tile = function ($name, $class = '') use ($el, $icon) {
 
 // A pill of an icon and its words (a turnaround, a pace, a drop rule):
 // never a colour alone.
-$pill = function ($icon_name, $text, $class = 'text-bg-light border') use ($el, $icon, $span) {
+$pill = function ($icon_name, $text, $class = 'bg-body text-body-emphasis border') use ($el, $icon, $span) {
     return $el('span', 'badge rounded-pill d-inline-flex align-items-center gap-1 ' . $class, lang('Badge'), array(
         $icon($icon_name),
         $span($text, '', lang('Text')),
@@ -542,7 +542,7 @@ $facts = function ($pairs) use ($el) {
 // A numbered step of a short how-to: the square key of the block family.
 $step = function ($n, $title, $text) use ($el, $heading, $para, $span) {
     return $el('li', 'd-flex gap-3 mb-4', lang('Step'), array(
-        $span((string)$n, 'pg-bike-key bg-primary text-white fw-bold align-self-start', lang('Step Number')),
+        $span((string)$n, 'pg-bike-key text-bg-primary fw-bold align-self-start', lang('Step Number')),
         $el('div', '', lang('Text'), array(
             $heading('h3', $title, 'h6 fw-bold mb-1'),
             $para($text, 'text-body-secondary mb-0'),

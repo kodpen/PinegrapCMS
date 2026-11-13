@@ -5,7 +5,7 @@ module: designer_fx
 ---
 
 ## What is Colour chapter?
-- `_fx` effect `chapter` (B10, plan designer-bold-pages): while the section holds the window's middle, the page's `<body>` takes the section's background and text colour in a transition; once no chapter holds the middle the body takes its own back. Turns the hard cut between a light and a dark band into a change of the whole page.
+- `_fx` effect `chapter` (PR #8855): while the section holds the window's middle, the page's `<body>` takes the section's background and text colour in a transition; once no chapter holds the middle the body takes its own back. Turns the hard cut between a light and a dark band into a change of the whole page.
 - One field, `duration` (100–5000 ms, default 600, the shared `pg_fx_numbers()` range): the length of the colour change. No trigger, so the head style never hides the section; trigger, delay, easing, start and repeat drop out. `pg_fx_attrs()` writes the duration only when it is not 600.
 
 ## How does pg_fx.src.js play it?

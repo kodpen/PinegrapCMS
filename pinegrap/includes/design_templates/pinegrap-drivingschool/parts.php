@@ -1034,7 +1034,7 @@ $enrol_band = function () use ($el, $heading, $para, $link, $container, $row, $c
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
                         $link(lang('Enrol Now'), '{{page:enrol}}', 'btn btn-primary btn-lg px-4'),
-                        $link($school['phone'], 'tel:' . preg_replace('/[^0-9+]/', '', $school['phone']), 'btn btn-outline-light btn-lg px-4'),
+                        $link($school['phone'], 'tel:' . preg_replace('/[^0-9+]/', '', $school['phone']), 'btn btn-secondary btn-lg px-4'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -1104,7 +1104,7 @@ $course_card = function ($sample_key = 'car_standard') use ($el, $para, $span, $
                     )),
                 )),
                 $para($c['summary'], 'small text-body-secondary mb-3', $bind('summary')),
-                $span($licences[$c['licence']]['title'], 'pdr-badge badge text-bg-dark align-self-start mt-auto', lang('Licence Class'), $bind('licence')),
+                $span($licences[$c['licence']]['title'], 'pdr-badge badge text-bg-secondary align-self-start mt-auto', lang('Licence Class'), $bind('licence')),
             )),
         )),
     ), '6', '4');
@@ -1142,7 +1142,7 @@ $story_card = function ($sample_key = 'zeynep') use ($el, $para, $span, $link, $
             $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
                 $el('div', 'd-flex flex-wrap gap-2 mb-3', lang('Badges'), array(
                     $span($licences[$s['licence']]['title'], 'badge rounded-pill bg-primary-subtle text-primary-emphasis', lang('Licence Class'), $bind('licence')),
-                    $span($try_choices[$s['try']], 'pdr-badge badge rounded-pill text-bg-dark', lang('Passed At'), $bind('try')),
+                    $span($try_choices[$s['try']], 'pdr-badge badge rounded-pill text-bg-secondary', lang('Passed At'), $bind('try')),
                 )),
                 $el('blockquote', 'mb-3', lang('Quote'), array($para($s['quote'], 'pdr-quote mb-0', $bind('words')))),
                 $el('figcaption', 'mt-auto', lang('Learner'), array(

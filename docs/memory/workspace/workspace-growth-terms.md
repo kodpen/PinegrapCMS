@@ -4,7 +4,7 @@ description: Shared names and single owners of the Workspace growth work (2026-1
 ---
 
 ## Which names do the plans share?
-- Workflow tables: `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`; `ws_wtable_*` in includes/workspace/wtables.php; screen workspace_wtables.php; events `workspace.wtable.*`; `ws_refs` source `wtable_row`. UI "Workflow table" / "İş akışı tablosu". Never `ws_table_*`: Markdown note tables use it (`ws_calc_grid()`, `openTable()`).
+- Workflow tables: `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`; `ws_wtable_*` in includes/workspace/wtables.php; screen workspace_wtables.php; events `workspace.wtable.*`; `ws_refs` source `wtable_row`. UI "Data" / "Veri" (CO6), API "workflow table". Never `ws_table_*`: Markdown note tables use it (`ws_calc_grid()`, `openTable()`).
 - Workspace canvas: a flow drawn on workspace_flows.php; `ws_flows`, `ws_flow_versions`, `ws_flow_runs`, `ws_flow_run_steps`. UI "Flow" / "Akış", made of "boxes" and "arrows". A bare "canvas" in memory means the visual designer's.
 - "Board view (the channel Board tab component)", never "plan board" (`manage_workspace_board`, /workspace/plan).
 - Quotes, never mixed and never a bare "quote" (a quoted message: `ws_message_quotes`; tr.json "Quote" = "Alıntı"):

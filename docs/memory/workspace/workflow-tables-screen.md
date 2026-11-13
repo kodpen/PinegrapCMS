@@ -1,10 +1,10 @@
 ---
 name: workflow-tables-screen
-description: The workflow tables screen workspace_wtables.php (T1e, #2966): server-drawn forms over the store, list scopes, rows paged, the row form, column options from the form, shares, nav entry
+description: The workflow tables screen workspace_wtables.php (T1e, #2966): server-drawn forms over the store, one table opened, rows paged, the row form, column options from the form, shares
 ---
 
 ## Where is the screen, and how is it drawn?
-- `workspace_wtables.php` (root, URL-called): no `?id=` lists the tables reached (`ws_wtables_reached()`, `?scope=mine|shared`) with a New table card; `?id=N` opens one table through `ws_wtable_for()` (not reached → "That table could not be found."). Menu: `ws_nav_groups()` key `wtables` ("Tables", `bi-table`) while `ws_wtables_ready()`, every member; `ws_side_screen()` and `pg_active_menu` slot 23 know the file.
+- `workspace_wtables.php` (root, URL-called): no `?id=` is the Data list (`workflow-tables-data-list.md`); `?id=N` opens one table through `ws_wtable_for()` (not reached → "That table could not be found."). Menu: `ws_nav_groups()` key `wtables` ("Data", `bi-table`) while `ws_wtables_ready()`, every member; `ws_side_screen()` and `pg_active_menu` slot 23 know the file.
 - Server-drawn, no bundle: every change is a form posted with the token (`wt_action`), handled by the store's write function, then `go()` back (PRG) with a liveform notice or the store code worded by `ws_wtable_screen_error_text()`. The store decides who may do what; the screen only hides buttons a person may not use (`ws_wtable_may()`).
 - Deletes (table, column, row, share) post through one hidden form outside the cards via `.ws-wt-action` buttons with `data-confirm`, since no form may sit in a table row (ui/ key rule).
 

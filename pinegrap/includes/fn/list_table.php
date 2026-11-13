@@ -1082,6 +1082,7 @@ function pg_list_table_printed_lists()
         'erp_account_sync_same', 'erp_account_sync_ignored',
         'view_offers',
         'view_bookings', 'view_products_variant_sets',
+        'workspace_wtables',
     );
 }
 

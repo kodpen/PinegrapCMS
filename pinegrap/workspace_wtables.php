@@ -2,15 +2,17 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - the person's workflow tables: their own and those shared with
- * them or in a channel they read. Without ?id= the list and a new table;
- * with it one table: its rows a page at a time, the row form (?row= opens a
- * row in it), the columns, the name and description, the shares and the
- * rows in the table's bin; the list shows the person's deleted tables too
- * (includes/workspace/wtable_bin.php). Every
- * change is a form posted with the token and goes through the store
- * (includes/workspace/wtables.php, wtable_rows.php, wtable_shares.php),
- * which decides who may do what; wtable_screen.php turns fields into cells.
+ * Workspace - Data: the person's workflow tables, their own and those
+ * shared with them or in a channel they read. Without ?id= the Data list
+ * on the list table driver (includes/workspace/wtable_list.php), with a new
+ * table and a table from a file or a note as windows, and ?view=deleted the
+ * person's deleted tables (includes/workspace/wtable_bin.php); with ?id=
+ * one table: its rows a page at a time, the row form (?row= opens a row in
+ * it), the columns, the name and description, the shares and the rows in
+ * the table's bin. Every change is a form posted with the token and goes
+ * through the store (includes/workspace/wtables.php, wtable_rows.php,
+ * wtable_shares.php), which decides who may do what; wtable_screen.php
+ * turns fields into cells.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -26,6 +28,10 @@ pg_upload_refuse_discarded_body();
 $user = validate_user();
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+// The Data list is drawn by the list table driver.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_list.php');
 
 $viewer = ws_screen_gate($user);
 
@@ -107,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $liveform->add_notice(h(ws_wtable_bin_ready()
                     ? lang(array('string' => 'The table {var:1} was deleted. It is in Deleted tables, where you can restore it.', 'vars' => $table['name']))
                     : lang(array('string' => 'The table {var:1} was deleted.', 'vars' => $table['name']))));
-                $back = $self_url . (ws_wtable_bin_ready() ? '#ws-wt-deleted' : '');
+                $back = $self_url . (ws_wtable_bin_ready() ? '?view=deleted' : '');
             } else {
                 $refused($result);
             }
@@ -125,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $back = $self_url . '?id=' . (int) $binned['id'];
             } else {
                 $refused($result);
-                $back = $self_url . '#ws-wt-deleted';
+                $back = $self_url . '?view=deleted';
             }
 
             break;
@@ -559,6 +565,7 @@ if ($table && (($_GET['download'] ?? '') === 'xlsx')) {
 
 $types = ws_wtable_column_types();
 $board_script = '';
+$list_script = '';
 $levels = ws_wtable_share_levels();
 $access_labels = array('owner' => lang('Yours'), 'edit' => lang('Can edit'), 'view' => lang('Can view'));
 
@@ -730,70 +737,97 @@ if ($report) {
 if (!$table) {
 
     /* -----------------------------------------------------------------------
-       The list
+       The Data list
        ----------------------------------------------------------------------- */
 
-    $scope = in_array($_GET['scope'] ?? '', array('mine', 'shared'), true) ? (string) $_GET['scope'] : 'all';
-    $tables = ws_wtables_reached($viewer, $scope);
-
-    $tabs = '';
-
-    foreach (array('all' => lang('All'), 'mine' => lang('Mine'), 'shared' => lang('Shared with me')) as $key => $label) {
-        $tabs .= '<a class="btn btn-sm ' . (($key === $scope) ? 'btn-solid theme-secondary' : 'btn-text theme-secondary') . '" href="' . h($self_url . (($key === 'all') ? '' : '?scope=' . $key)) . '"'
-            . (($key === $scope) ? ' aria-current="page"' : '') . '>' . h($label) . '</a>';
-    }
-
-    $lines = '';
-
-    foreach ($tables as $item) {
-        $lines .= '
-            <tr>
-                <td><a class="fw-semibold" href="' . h($self_url . '?id=' . (int) $item['id']) . '"><i class="bi bi-table me-1" aria-hidden="true"></i>' . h($item['name']) . '</a>'
-                    . (((string) $item['description'] !== '') ? '<div class="small fg-secondary text-truncate" style="max-width: 32rem;">' . h($item['description']) . '</div>' : '') . '</td>
-                <td class="text-end">' . (int) $item['row_count'] . '</td>
-                <td><span class="badge ' . (($item['access'] === 'owner') ? 'theme-primary' : 'theme-secondary') . ' fw-normal">' . h($access_labels[$item['access']] ?? '') . '</span></td>
-                <td class="small fg-secondary text-nowrap">' . h(ws_time_label((int) $item['updated_at'])) . '</td>
-            </tr>';
-    }
-
-    $list = ($lines === '')
-        ? pg_empty_state('bi-table', ($scope === 'shared') ? lang('Nothing is shared with you yet') : lang('No table yet'), lang('A table keeps rows of your own columns: text, numbers, money, dates, people, statuses and formulas. Share it with a colleague or a channel.'))
-        : '<div class="table-responsive"><table class="table table-hover align-middle mb-0">
-            <thead><tr><th scope="col">' . h(lang('Name')) . '</th><th scope="col" class="text-end">' . h(lang('Rows')) . '</th><th scope="col">' . h(lang('Access')) . '</th><th scope="col">' . h(lang('Changed')) . '</th></tr></thead>
-            <tbody>' . $lines . '</tbody>
-        </table></div>';
+    // Tables that belong to a channel become a scope of their own when the
+    // store keeps them; $channels holds each such table's channel as the
+    // store resolved it (table id => id, name, kind).
+    $with_channels = false;
+    $channels = array();
+    $scope = ws_wtable_list_scope($_GET['scope'] ?? '', $with_channels);
+    $reached = ws_wtables_reached($viewer, 'all');
+    $counts = ws_wtable_list_counts($reached, $channels);
 
     // The person's own deleted tables, each restored whole until the bin
-    // lets it go.
-    $deleted_card = '';
-    $binned = ($scope === 'shared') ? array() : ws_wtables_binned($viewer);
+    // lets it go; they are a view of the list, beside the tables.
+    $binned = ws_wtables_binned($viewer);
+    $deleted_view = ws_wtable_bin_ready() && (($_GET['view'] ?? '') === 'deleted');
 
-    if (!empty($binned)) {
-        $deleted_lines = '';
+    if ($deleted_view) {
+        $list_name = WS_WTABLE_LIST_DELETED;
+        $list_rows = array();
 
         foreach ($binned as $item) {
-            $deleted_lines .= '
-            <tr>
-                <td><i class="bi bi-table me-1 fg-secondary" aria-hidden="true"></i>' . h($item['name']) . '</td>
-                <td class="text-end">' . (int) $item['row_count'] . '</td>
-                <td class="small fg-secondary text-nowrap">' . h(ws_time_label((int) $item['deleted_at'])) . '</td>
-                <td class="small fg-secondary text-nowrap">' . h(date('d.m.Y', (int) $item['expires_at'])) . '</td>
-                <td class="text-end"><button type="button" class="btn btn-sm btn-text theme-primary ws-wt-action" data-action="table_restore" data-table="' . (int) $item['id'] . '">'
-                    . '<i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Restore')) . '</button></td>
-            </tr>';
+            $list_rows[] = array('id' => (int) $item['id'], 'cells' => ws_wtable_list_deleted_cells($item));
         }
 
-        $deleted_card = '
-            <div class="card mb-5" id="ws-wt-deleted">
-                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Deleted tables')) . '</h2></div>
-                <div class="card-body">
-                    <p class="small fg-secondary">' . h(lang(array('string' => 'A deleted table stays here for {var:1} days, out of everybody\'s reach; then it is deleted for good.', 'vars' => ws_wtable_bin_days()))) . '</p>
-                    <div class="table-responsive"><table class="table table-sm align-middle mb-0">
-                        <thead><tr><th scope="col">' . h(lang('Name')) . '</th><th scope="col" class="text-end">' . h(lang('Rows')) . '</th><th scope="col">' . h(lang('Deleted')) . '</th><th scope="col">' . h(lang('Deleted for good on')) . '</th><th scope="col" aria-label="' . h(lang('Actions')) . '"></th></tr></thead>
-                        <tbody>' . $deleted_lines . '</tbody>
-                    </table></div>
-                </div>
-            </div>';
+        $list = pg_list_table_printed(array(
+            'list'    => $list_name,
+            'columns' => ws_wtable_list_deleted_columns(),
+            'rows'    => $list_rows,
+        ));
+
+        $list_html = '
+        <div id="ws-wt-deleted">
+            <p class="pg-text-2 fg-secondary mb-3">' . h(lang(array('string' => 'A deleted table stays here for {var:1} days, out of everybody\'s reach; then it is deleted for good.', 'vars' => ws_wtable_bin_days()))) . '</p>
+            ' . pg_list_table_html($list['source'], $list['page'], lang('Deleted tables')) . '
+        </div>';
+    } else {
+        $list_name = WS_WTABLE_LIST;
+        $list_columns = ws_wtable_list_columns();
+        $tables = ws_wtable_list_pick($reached, $scope, $channels);
+
+        // A heading's sort is kept as on every printed list; the store
+        // gives the tables the latest changed first, which is the default.
+        $list_state = pg_list_state($list_name, pg_list_table_printed_sort_columns($list_columns), array('sort' => 'updated', 'order' => 'desc'));
+
+        // What a delete asks, for the tables the person owns.
+        $bin_days = ws_wtable_bin_ready() ? ws_wtable_bin_days() : 0;
+        $confirms = array();
+
+        foreach ($tables as $item) {
+            if (ws_wtable_may($item['access'], 'manage')) {
+                $confirms[(int) $item['id']] = ws_wtable_screen_delete_confirm('table', (string) $item['name'], $bin_days);
+            }
+        }
+
+        $list = pg_list_table_printed(array(
+            'list'    => $list_name,
+            'columns' => $list_columns,
+            'levels'  => $list_state['sorts'],
+            'rows'    => ws_wtable_list_rows($tables, array(
+                'url'      => $self_url,
+                'counts'   => ws_wtable_list_column_counts(array_column($tables, 'id')),
+                'people'   => empty($tables) ? array() : ws_people(array_column($tables, 'user_id')),
+                'channels' => $channels,
+                'confirms' => $confirms,
+            )),
+        ));
+
+        // Before the first table the list says what a table is for; a
+        // search that finds nothing is the driver's own line.
+        $list_html = empty($tables)
+            ? '<div class="pg-card">' . pg_empty_state('bi-table', ($scope === 'shared') ? lang('Nothing is shared with you yet') : lang('No table yet'), lang('A table keeps rows of your own columns: text, numbers, money, dates, people, statuses and formulas. Share it with a colleague or a channel.')) . '</div>'
+            : pg_list_table_html($list['source'], $list['page'], lang('Data'));
+    }
+
+    // The scopes as a segmented control with their counts, and the tables
+    // beside the deleted ones; each segment is an address.
+    $scope_items = array();
+
+    foreach (ws_wtable_list_scopes($with_channels) as $key => $label) {
+        $scope_items[] = array('label' => $label, 'url' => $self_url . (($key === 'all') ? '' : '?scope=' . $key), 'count' => $counts[$key], 'current' => ($key === $scope));
+    }
+
+    $scopes = $deleted_view ? '' : ws_wtable_list_segments(lang('Show'), $scope_items);
+    $views = '';
+
+    if (ws_wtable_bin_ready()) {
+        $views = ws_wtable_list_segments(lang('View'), array(
+            array('label' => lang('Tables'), 'url' => $self_url, 'current' => !$deleted_view),
+            array('label' => lang('Deleted tables'), 'url' => $self_url . '?view=deleted', 'current' => $deleted_view) + (empty($binned) ? array() : array('count' => count($binned))),
+        ));
     }
 
     $starter_options = '<option value="">' . h(lang('An empty table')) . '</option>';
@@ -802,60 +836,71 @@ if (!$table) {
         $starter_options .= '<option value="' . h($key) . '">' . h($starter['name']) . '</option>';
     }
 
-    $body = $import_card . '
-    <div class="row g-5">
-        <div class="col-12 xl:col-8">
-            <div class="card mb-5">
-                <div class="card-header d-flex flex-wrap gap-3 align-items-center">' . $tabs . '</div>
-                <div class="card-body">' . $list . '</div>
-            </div>' . $deleted_card . '
-        </div>
-        <div class="col-12 xl:col-4">
-            <div class="card mb-5" id="ws-wt-new">
-                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New table')) . '</h2></div>
-                <div class="card-body">
-                    <form method="post" action="' . h($self_url) . '" class="disable_shortcut">
-                        ' . get_token_field() . '
-                        <input type="hidden" name="wt_action" value="table_create">
-                        <div class="mb-3">
-                            <label class="form-label small mb-1" for="ws_wt_new_name">' . h(lang('Name')) . '</label>
-                            <input type="text" class="form-control form-control-sm" name="name" id="ws_wt_new_name" maxlength="' . (int) ws_wtable_limits()['name'] . '">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small mb-1" for="ws_wt_new_description">' . h(lang('Description')) . '</label>
-                            <textarea class="form-control form-control-sm" name="description" id="ws_wt_new_description" rows="2" maxlength="' . (int) ws_wtable_limits()['description'] . '"></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label small mb-1" for="ws_wt_new_starter">' . h(lang('Start from')) . '</label>
-                            <select class="form-control form-control-sm" name="starter" id="ws_wt_new_starter">' . $starter_options . '</select>
-                            <div class="form-text">' . h(lang('A starter makes its columns; the name and description are its own when left empty.')) . '</div>
-                        </div>
-                        <div class="form-field mb-5">
-                            <input class="check" type="checkbox" name="samples" value="1" id="ws_wt_new_samples" checked>
-                            <label class="small" for="ws_wt_new_samples">' . h(lang('Add sample rows to a starter')) . '</label>
-                        </div>
-                        <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Create')) . '</button>
-                    </form>
+    // A new table and a table from a file or a note open as windows over
+    // the list.
+    $windows = '
+    <dialog class="dialog pg-dialog-centered" id="ws_wt_new" aria-labelledby="ws_wt_new_title">
+        <form method="post" action="' . h($self_url) . '" class="d-contents disable_shortcut">
+            ' . get_token_field() . '
+            <input type="hidden" name="wt_action" value="table_create">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="ws_wt_new_title">' . h(lang('New table')) . '</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="dialog-body">
+                <div class="mb-3">
+                    <label class="form-label small mb-1" for="ws_wt_new_name">' . h(lang('Name')) . '</label>
+                    <input type="text" class="form-control form-control-sm" name="name" id="ws_wt_new_name" maxlength="' . (int) ws_wtable_limits()['name'] . '" autofocus>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small mb-1" for="ws_wt_new_description">' . h(lang('Description')) . '</label>
+                    <textarea class="form-control form-control-sm" name="description" id="ws_wt_new_description" rows="2" maxlength="' . (int) ws_wtable_limits()['description'] . '"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small mb-1" for="ws_wt_new_starter">' . h(lang('Start from')) . '</label>
+                    <select class="form-control form-control-sm" name="starter" id="ws_wt_new_starter">' . $starter_options . '</select>
+                    <div class="form-text">' . h(lang('A starter makes its columns; the name and description are its own when left empty.')) . '</div>
+                </div>
+                <div class="form-field">
+                    <input class="check" type="checkbox" name="samples" value="1" id="ws_wt_new_samples" checked>
+                    <label class="small" for="ws_wt_new_samples">' . h(lang('Add sample rows to a starter')) . '</label>
                 </div>
             </div>
-            <div class="card mb-5" id="ws-wt-import-new">
-                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-file-earmark-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Table from a file')) . '</h2></div>
-                <div class="card-body">' . $import_upload(0, lang('A CSV, Excel or OpenDocument file: its first row names the columns.')) . '</div>
+            <div class="dialog-footer">
+                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>
+                <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Create')) . '</button>
             </div>
-            <div class="card mb-5" id="ws-wt-import-note">
-                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(lang('Table from a note')) . '</h2></div>
-                <div class="card-body">' . $import_note(0, lang('A table in one of your notes: its first row names the columns. The note stays as it is.')) . '</div>
-            </div>
+        </form>
+    </dialog>
+    <dialog class="dialog pg-dialog-centered" id="ws_wt_import_new" aria-labelledby="ws_wt_import_new_title">
+        <div class="dialog-header">
+            <h5 class="dialog-title" id="ws_wt_import_new_title">' . h(lang('Import from file')) . '</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
         </div>
-    </div>';
+        <div class="dialog-body">
+            <h6 class="pg-group-label">' . h(lang('Table from a file')) . '</h6>
+            ' . $import_upload(0, lang('A CSV, Excel or OpenDocument file: its first row names the columns.')) . '
+            <h6 class="pg-group-label mt-5" id="ws-wt-import-note">' . h(lang('Table from a note')) . '</h6>
+            ' . $import_note(0, lang('A table in one of your notes: its first row names the columns. The note stays as it is.')) . '
+        </div>
+    </dialog>';
 
-    $toolbar = '
-    <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
-        <a class="btn btn-sm btn-text theme-primary" href="#ws-wt-new" onclick="document.getElementById(\'ws_wt_new_name\').focus();"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New table')) . '</a>
-    </nav>';
+    $body = $import_card . $list_html . $windows;
 
-    $title = lang('Tables');
-    $description = lang('Your own tables and those shared with you.');
+    $toolbar = pg_screen_toolbar(array(
+        'primary'   => '<button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>',
+        'secondary' => '<button type="button" class="pg-button pg-button-quiet" data-bs-toggle="dialog" data-bs-target="#ws_wt_import_new"><i class="bi bi-upload" aria-hidden="true"></i>' . h(lang('Import from file')) . '</button>',
+        // Under the buttons, on a line of their own: the search, the
+        // scopes and, at the right, the tables beside the deleted ones.
+        'search'    => '<div class="d-flex flex-wrap align-items-center gap-3 w-100">' . pg_list_table_search_box($list_name) . $scopes
+            . (($views !== '') ? '<span class="ms-auto">' . $views . '</span>' : '') . '</div>',
+    ), array('class' => 'mb-5'));
+
+    // Workflow tables are the Workspace's Data: the place takes that name,
+    // one of them stays a table.
+    $title = lang('Data');
+    $description = ws_wtable_list_count_text($counts['all']) . ' · ' . lang('Your own tables and those shared with you.');
+    $list_script = pg_js_bundle_tags('assets/js/pg_list_table.min.js');
 
 } else {
 
@@ -1839,10 +1884,10 @@ if (!$table) {
     $title = (string) $table['name'];
     $cancel = array('enable' => 'true', 'url' => $self_url, 'title' => lang('All tables'));
     $breadcrumb = array(
-        array('label' => lang('Tables'), 'url' => $self_url),
+        array('label' => lang('Data'), 'url' => $self_url),
         array('label' => $title),
     );
-    $description = lang('A workflow table of the Workspace.');
+    $description = lang('A table in the Data of the Workspace.');
 }
 
 /* ---------------------------------------------------------------------------
@@ -1852,7 +1897,8 @@ if (!$table) {
 $shell = pg_page_shell(array(
     // The shell prints the title and heading as markup: a table's name is text.
     'title'               => h($title),
-    'extra classes'       => 'workspace workspace_wtables',
+    // The list takes the list page width; a table keeps the whole window.
+    'extra classes'       => 'workspace workspace_wtables' . ($table ? '' : ' pg-measure-list'),
     'icon'                => 'workspace',
     'heading'             => h($title),
     'heading_description' => $description,
@@ -1928,4 +1974,4 @@ $shell . '
     if (type) { type.addEventListener("change", showOptions); showOptions(); }
 
 })();
-</script>' . $board_script . output_footer();
+</script>' . $board_script . $list_script . output_footer();

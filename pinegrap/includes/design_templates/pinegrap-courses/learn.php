@@ -30,14 +30,14 @@ $learn_widgets = array();
 // A lesson's video: the school puts its own file (or replaces the player
 // with its video host's embed); until then the picture shows.
 $lesson_video = function ($seed, $title) use ($el, $attr, $photo, $para) {
-    return $el('div', 'ratio ratio-16x9 rounded-4 overflow-hidden bg-dark mb-4', lang('Video Frame'), array(
+    return $el('div', 'ratio ratio-16x9 rounded-4 overflow-hidden bg-body mb-4', lang('Video Frame'), array(
         $el('video', 'w-100 h-100 object-fit-cover', lang('Video'), array(
-            $para(lang('Your browser cannot play this video.'), 'text-white p-3'),
+            $para(lang('Your browser cannot play this video.'), 'text-body p-3'),
         ), array('_attrs' => array(
             $attr('controls', ''), $attr('preload', 'none'), $attr('playsinline', ''),
             $attr('poster', $photo($seed, 1280, 720)), $attr('title', $title),
         ))),
-    ));
+    ), array('_attrs' => array($attr('data-bs-theme', 'dark'))));
 };
 
 // The list of a course's lessons by module, the current one marked; each

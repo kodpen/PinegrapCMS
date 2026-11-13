@@ -133,10 +133,13 @@ $audit_view_select = function ($name, $kind, $column) use ($audit_view_filters) 
     return '<select class="form-control form-control-sm" id="audit_' . $name . '" name="' . $name . '">' . $options . '</select>';
 };
 
+// The loop has a name of its own: $audit_view_source holds the list source
+// that pg_list_table_html() draws below, and a string in its place is a fatal
+// TypeError (the whole screen answered HTTP 500).
 $audit_view_sources = '<option value="">' . h(lang('All')) . '</option>';
 
-foreach (pg_audit_sources() as $audit_view_source) {
-    $audit_view_sources .= '<option value="' . $audit_view_source . '"' . (($audit_view_filters['source'] === $audit_view_source) ? ' selected' : '') . '>' . h(pg_audit_view_label('source', $audit_view_source)) . '</option>';
+foreach (pg_audit_sources() as $audit_view_source_name) {
+    $audit_view_sources .= '<option value="' . h($audit_view_source_name) . '"' . (($audit_view_filters['source'] === $audit_view_source_name) ? ' selected' : '') . '>' . h(pg_audit_view_label('source', $audit_view_source_name)) . '</option>';
 }
 
 $audit_view_date_value = function ($key) use ($audit_view_filters, $audit_view_bad_dates) {

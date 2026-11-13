@@ -486,7 +486,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-bold', lang('Brand'), array(
-                    $el('span', 'd-inline-flex p-2 rounded-2 bg-primary text-white lh-1', lang('Icon Box'), array($icon('bi-car-front-fill', 'fs-5'))),
+                    $el('span', 'd-inline-flex p-2 rounded-2 text-bg-primary lh-1', lang('Icon Box'), array($icon('bi-car-front-fill', 'fs-5'))),
                     $span('{{site_name}}', 'pdl-brand fs-4', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
@@ -615,7 +615,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $hours, $b
 // ways to try a car and to value the one you drive now. Shared, so every
 // page that ends with it carries the same offer.
 $test_drive_band = function () use ($el, $heading, $para, $link, $container, $row, $col) {
-    return $el('section', 'py-5 bg-primary text-white', lang('Call to Action'), array(
+    return $el('section', 'py-5 text-bg-primary', lang('Call to Action'), array(
         $container(array(
             $row(array(
                 $col(array(
@@ -624,8 +624,8 @@ $test_drive_band = function () use ($el, $heading, $para, $link, $container, $ro
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Book a Test Drive'), '{{page:test_drive}}', 'btn btn-light btn-lg px-4'),
-                        $link(lang('Value My Car'), '{{page:tradein}}', 'btn btn-outline-light btn-lg px-4'),
+                        $link(lang('Book a Test Drive'), '{{page:test_drive}}', 'btn btn-secondary btn-lg px-4'),
+                        $link(lang('Value My Car'), '{{page:tradein}}', 'btn btn-link btn-lg text-reset'),
                     )),
                 ), '', '4'),
             ), '4', '', 'align-items-center'),
@@ -671,7 +671,7 @@ $vehicle_card = function ($sample_key = 'aster-city') use ($el, $para, $span, $l
                 )),
                 $el('div', 'position-absolute top-0 start-0 d-flex gap-2 p-3', lang('Badges'), array(
                     $span($conditions[$s['condition']], 'badge text-bg-primary', lang('Vehicle Condition'), $bind('condition')),
-                    $span($vehicle_statuses[$s['status']], 'badge text-bg-light', lang('Status'), $bind('status')),
+                    $span($vehicle_statuses[$s['status']], 'badge bg-body text-body-emphasis', lang('Status'), $bind('status')),
                 )),
             )),
             $el('div', 'card-body d-flex flex-column', lang('Card Body'), array(
