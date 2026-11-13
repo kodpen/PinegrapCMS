@@ -48,7 +48,7 @@ function test_file_picker_where()
 	$kinds = pg_file_picker_kinds();
 
 	pg_assert_same(
-		"(name != '') AND (attachment = 0) AND (type IN ('png', 'svg')) AND ((attachment = 0) AND (folder IN (1, 4))) AND (folder NOT IN (9, 10))",
+		"(name != '') AND (attachment = 0) AND (type IN ('png', 'svg')) AND ((LOWER(name) LIKE '%.png') OR (LOWER(name) LIKE '%.svg')) AND ((attachment = 0) AND (folder IN (1, 4))) AND (folder NOT IN (9, 10))",
 		pg_file_picker_where($kinds['site_icon'], '(attachment = 0) AND (folder IN (1, 4))', array(9, '10', 9), null),
 		'site icon: its types, the public condition, never the bin');
 
@@ -63,7 +63,7 @@ function test_file_picker_where()
 		'a User who may edit no folder finds nothing');
 
 	pg_assert_same(
-		"(name != '') AND (attachment = 0) AND (type IN ('jpg')) AND (folder IN (-1))",
+		"(name != '') AND (attachment = 0) AND (type IN ('jpg')) AND ((LOWER(name) LIKE '%.jpg')) AND (folder IN (-1))",
 		pg_file_picker_where(array('types' => array('JPG', "png') OR (1=1"), 'public' => true, 'design' => true), '', array(), null),
 		'a public kind without its condition lists nothing; only plain types are kept');
 

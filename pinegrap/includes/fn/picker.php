@@ -506,7 +506,10 @@ function pg_picker_files_where($kind, $public_where, $bin_ids, $folders, $folder
     }
 
     if ($types) {
+        // files.type is varchar(4): a .webmanifest is stored as "webm", so
+        // the name's own extension must be one of the types as well.
         $where[] = "(type IN ('" . implode("', '", $types) . "'))";
+        $where[] = '(' . implode(' OR ', array_map(function ($type) { return "(LOWER(name) LIKE '%." . $type . "')"; }, $types)) . ')';
     }
 
     // A public kind without its condition lists nothing.
