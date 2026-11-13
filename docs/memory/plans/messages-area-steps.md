@@ -17,7 +17,8 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - MA8 (M) Automatic sends: the flows that send a message, their recipes, the way into the quick setup; shown once AF2 of `automation-flows-menu.md` has landed.
 - MA9 Profiles into flows (M2b), MA9a to MA9f, and MA10 Incoming e-mail, MA10a to MA10c: `messages-area-steps-2.md`.
 - MA11 (S) Close-out: the lasting rules into `platform/` and `ui/`, an overview file, this plan deleted.
-- MA12 (M) The look of what is built (#9295): the tab strip (three lines at 390 px), Campaigns, Sends and Channels redone against the drawing. Seen on dev: a card heading on its card's border, the Campaigns toolbar's two filters stacked, the SMS warning above the strip, Channels cards of uneven height. It lists the old screens still inside the area (campaign add and edit, SMS campaign, profiles) for MA5 and step DL5 of `panel-design-language-steps.md`.
+- MA12 (M) The look of what is built (#9295): the tab strip as the pill switch the flow window has for Canvas and List (owner: "tablar boyle olsa ya"; today three lines at 390 px), Campaigns, Sends and Channels redone against the drawing. It lists the old screens still inside the area (campaign add and edit, SMS campaign, profiles) for MA5 and step DL5 of `panel-design-language-steps.md`.
+  - Seen on dev: a card heading on its card's border, the Campaigns toolbar's two filters stacked, the SMS warning above the strip, Channels cards of uneven height.
 
 ## In which order?
 - MA0 first, then MA1; MA2, MA3, MA6, MA7 after MA1 in any order; MA2b after MA2. MA4 may run beside MA1; MA5 after MA4, MA3 and MA12.
