@@ -25,6 +25,7 @@
 - flows-quick-setup-steps-2.md: Steps QS1b, QS6, QS7 of the flows-quick-setup plan, the architect's decisions on QS0's open questions (#9082): "Only when" on a record field, the drawn steps with no box, the rail, the approval recipe
 - flows-quick-setup.md: Plan (owner 2026-11-12, #8950): a quick setup that builds a flow by choices (start, steps one after the other, summary) over every area and action of the site; rules and steps QS0-QS5
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
+- guest-channel-view.md: Plan (owner 2026-11-14): a guest sees the agents' messages on the guest page and still wakes no agent; guests listed in Channel info; the channel's agents' answers read aloud
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
 - kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps

@@ -1,0 +1,28 @@
+---
+name: guest-channel-view
+description: Plan (owner 2026-11-14): a guest sees the agents' messages on the guest page and still wakes no agent; guests listed in Channel info; the channel's agents' answers read aloud
+---
+
+## What is asked?
+- Owner (2026-11-14), after sharing the agent channel with a guest whose tag was answered by an agent she could not see: "misafir ajan mesajlarını görebilsin ancak onları tetikleyemesin. kanalda sahip ile konuşabilsin. (ajan kanalı dışında da bu dikkat edilmeli)"; "ayrıca misafir kanalda bilgi alanında görünmesi iyi olurdu".
+- Owner (2026-11-13), with both switches of the channel menu on: "benim tarayıcım anıldığımda ses çalmıyor ve sesli okunmuyor."
+- Record: `workflow/decisions-made-workspace-24.md`. The agents' side: `workflow/agent-channel-guests.md`.
+
+## What is there today?
+- `ws_guest_messages()` (`includes/workspace/guests.php`) lists messages of `sender_kind` `user` and `guest` only, so a guest sees no agent line. A guest's message makes no request for an agent, and while a share is open Claude, Pinegrap AI and model agents are not asked in the channel (`ws_channel_share_open()`).
+- Channel info lists People and Agents (`workspace/channel-members-agents.md`); a guest with an open share is not named.
+- Read aloud covers an answer of Claude, Pinegrap AI or an MCP assistant to the viewer's own message (`workspace/workspace-voice-read-aloud.md`), not a registry agent's.
+
+## Which steps?
+- GV1 (M) The guest page lists the messages of the channel's agents and of the assistants beside people's, in a guest's room and in every channel shared with a guest, earlier ones included. Drawn by the guest page's engine with the sender's name and its badge; a tag is read as a name, never a link into the panel.
+  - Left out: change cards, buttons, tool and "Waiting for" lines, and lines of applications that are not agents (CI, integrations).
+  - Nothing a guest does makes a request: a tag, an answer to an agent's message (the "replies to its messages" rule too), an emoji, a vote, a tick. A unit test for each.
+- GV2 (S) Guests in Channel info: a "Guests · n" group under People and Agents for every guest with an open share: name, the Guest badge, read only or read and write, who shared and when. A guest's last seen only for a channel manager, as a person's.
+- GV3 (S) Read aloud covers the channel's agents: an answer of a registry agent of the channel to the viewer's own message, or one that names the viewer, is read as an assistant's is; the switch shows where the channel has an agent.
+- GV4 (S) Close-out: the rules into `workspace/` (guest page, Channel info, read aloud), this plan deleted.
+
+## What does every step keep?
+- No table or column; a step that needs one stops and asks the architect. What a guest may do stays as it is: text, an answer, an emoji, a vote, a tick; no files, tags or commands.
+- The sound stays silent in a hidden tab (`workflow/decisions-made-workspace-18.md`, #8798); the background's signal is "Notifications on this device".
+- Real screenshots of GV1 and GV2 (dark and light, wide and phone) are posted in the agent channel before the PR goes ready. New texts through `lang()` and `php tools/tr_add.php`.
+- GV1, GV2 and GV3 touch different screens and may run side by side. Claim as `[plan:guest-channel-view] <step> — <topic>`.
