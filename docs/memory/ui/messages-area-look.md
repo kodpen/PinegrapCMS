@@ -16,6 +16,9 @@ module: messages_area
 - Figures are the report screens' figure cards (`pg_messages_sends_figures_html()`, `.pg-report-figs`), each with its tone tile: Queued blue, Sending violet, Sent teal, Failed rose, Outcome unknown amber.
 - States are look A pills (`pg_messages_sends_pill()`: info violet, success teal, danger rose, warning amber, else gray); a row's channel is its tile and name; Retry and Delete are small icon buttons; Run now is a quiet button at the toolbar's right. The status column and filter read "Status": `lang('State')` is the geographic state in Turkish.
 
+## How is a campaign's result drawn?
+- Owner (2026-11-13, #2276 in the agent channel): "Sonuç kısmı biraz daha dolmalı bir bar gibi olabilir". `pg_messages_progress_html()`: a slim bar (120 px, shrinking on a phone) of the done share, the figure beside it ("1 / 2 · 50%"), the delivery note under them; teal when complete. Campaigns' Result, Sends' campaign rows and a queued SMS campaign (texts the provider took of those queued).
+
 ## How do the Channels cards stay even?
 - `div.pg-messages-channels` is a grid, two columns and `grid-auto-rows: 1fr` from 768 px (one column, rows as tall as their text, below), the pill on the title line, inside a padded `pg-card pg-messages-card` (before, the heading sat on the card's border). Each card is an `a.pg-card-inner.pg-messages-channel`.
 
@@ -24,7 +27,7 @@ module: messages_area
 - Campaign add and edit (`add_email_campaign.php`, `edit_email_campaign.php`, `view_email_campaign.php`, `send_email_campaign.php`): MA5, as the content step of New campaign.
 - SMS campaign (`edit_sms_campaign.php`): MA5 beside the e-mail one; DL5 of `panel-design-language-steps.md` if MA5 leaves it.
 - Profiles (`view_email_campaign_profiles.php`, `add_`/`edit_`/`duplicate_`/`import_email_campaign_profiles.php`): turned into flows by MA9 and removed by MA9f; not redrawn.
-- Automatic sends' body (place rows): MA8. Campaigns stays on the table driver; the drawing's progress meter per campaign row is not drawn yet.
+- Automatic sends' body (place rows): MA8. Campaigns stays on the table driver.
 - The phone list (owner, #2255): one surface with rows split by lines, fixed in the shared driver for every list (`list-table-layout.md`). A campaign with no send time shows "—" (`pg_messages_campaign_start_time()` reads the zero date and the API's 1000-01-01 marker as none; before, "1 Jan 1000").
 
 Related: docs/memory/ui/messages-area-shell.md, docs/memory/ui/messages-area-campaigns-tab.md
