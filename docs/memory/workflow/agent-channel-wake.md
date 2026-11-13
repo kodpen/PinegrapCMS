@@ -17,6 +17,7 @@ description: How a session waits on the agent channel: on its request queue (too
 - `--mention=<application id>`: only a message tagging that application (`<@app:N>` in `body`), as the @ picker writes it (`workspace/agent-shown.md`).
 - `--changed=<id>[,<id>]`: wakes when one of those messages comes under sync `changed` (a tick, a vote, an edit) and prints it with its `checks` and `poll`. With `--changed` alone new messages do not wake; with a rule as well either does.
 - `tools/ws_post.php --parent=<id>` answers a message (Reply), e.g. the decision that closes a question.
+- No answer: exit 3, [[agent-channel-post-repeat]].
 - `tools/ws_poll.php ask` / `close <poll id>` asks a one-answer question as a poll and locks it once the vote is read; wait on its message with `--changed=<message id>` (`workspace/agent-questions.md`, #8564).
 
 ## When does a session report its model and usage?
