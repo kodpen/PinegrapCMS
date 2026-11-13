@@ -8,6 +8,9 @@
  * is the ERP's: routes, events, objects and permissions, merged by
  * includes/api/modules.php into the API's own lists while WORKSPACE_ENABLED is
  * on. Nothing under includes/api/ is edited to add a workspace endpoint.
+ * With the Workspace off, api_flows_alone.php loads this file and merges only
+ * its flow routes, objects and run events (workspace.flows., workspace.flow_,
+ * WorkspaceFlow*, workspace.flow.run.*), so a flow route keeps its id prefix.
  *
  * An application acts with its owner's reach: it sees the channels the owner
  * may read and may hand tasks only where the owner may. What it writes into a
