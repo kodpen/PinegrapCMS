@@ -515,7 +515,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - core/sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
 - core/software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed.
 - designer/bound-media-src.md: audio, video and source take src (video also poster) from a record field binding under the bound address rule; an empty value prints none (#7654, PR #8211)
-- designer/canvas-sample-overview.md: Start file for the canvas-sample-* files: how the designer canvas draws a bound value with a realistic sample instead of its label, which file holds which family, what is still open
+- designer/canvas-sample-overview.md: Start file for the canvas-sample-* files: how the designer canvas draws a bound value with a realistic sample instead of its label, which file holds which family, the CI guard, what is still open
 - designer/classic-regions-in-designer.md: Where each classic region type goes in the visual designer (common, designer, dynamic, page, data-driven regions), the owner's decisions behind it, and what is still open
 - designer/classic-style-to-design.md: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as shared components, page trees placing them, what Save writes and what stays
 - designer/collections-decisions.md: Typed collections over designer forms: why a form with a flag, the approved schema (#2393, #3051), why items have no schedule columns (#3746), what C1–C7 built and where it is described
@@ -644,6 +644,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/notifications-one-inbox.md: The bell as the one inbox (#3817): module chips, Asked of me, Unread only, the search (BP3), the kept choice, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count
 - ui/panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - ui/panel-top-bar-phone.md: Panel top bar (#header) on a phone: below 768px the mascot alone (no wordmark or page heading), below 390px no logo, why, the test that keeps it
+- ui/picker-overview.md: The one picker for a file or a page as a whole: what it is, the decisions that bind it, its two faces and bridges, which file holds each part, what stays outside it, how a new kind is added
 - ui/picker-pages.md: Pages in the picker dialog (kind page, PK4): rows with address and type, the page type chips, archived and binned marks that cannot be chosen, a caller's own entries (extra)
 - ui/rich-text-path-placeholder.md: How rich text is stored with the {path} placeholder (prepare_rich_text_editor_content_for_input()): which addresses fold, why a //host address (Media Embed's YouTube player) keeps its two slashes
 - ui/settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()

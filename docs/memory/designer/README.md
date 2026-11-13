@@ -12,7 +12,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - Treat `pg_designer_merge_restricted_tree()` (in `pg_designer_save_page()`) as the content-role gate: it copies, never rejects; `_sdMayEdit` is courtesy (`designer-content-roles-save-gate.md`).
 - Check the page lock on the save path (`pg_collab_may_edit_page()`), not with a disabled button; claim it in one upsert with `session_key` set last (`designer-collab-locking.md`).
 - Name every widget's Messages node with `_pg_inject_messages_node($tree, '<liveform>')`, never `''`, or one widget prints and uses up another form's errors (`system-widget-render-rules.md`).
-- Escape token values once (`pg_sw_apply_tokens()`, raw keys in `pg_sw_raw_token_keys()`), never add a second name for a system field, run `php tools/check_bindings.php` (`token-dictionary.md`).
+- Escape token values once (`pg_sw_apply_tokens()`, raw keys in `pg_sw_raw_token_keys()`), never add a second name for a system field, run `php tools/check_bindings.php`; give a new token its canvas sample (`php tools/check_canvas_samples.php`, `token-dictionary.md`, `canvas-sample-overview.md`).
 - A switched-off feature emits nothing on the site and fades on the canvas (PHP and JS twins together); never ship a visible but dead element (`catalog-binding-disabled-no-output.md`).
 - Compare widget output with the legacy page doing the same job; change a default layout in all three places: PHP tree, JS starter tree, server fallback (`system-widget-change-checklist.md`).
 - Build a palette component as a tree of semantic nodes with Bootstrap classes: no script, stylesheet or fixed inline style, and `render()` equal to `toHTML()` (`palette-component-rules.md`).
@@ -30,7 +30,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 
 ## Clusters
 
-- `canvas-sample-*`: 13 files; start at `canvas-sample-overview.md`.
+- `canvas-sample-*`: 6 files; start at `canvas-sample-overview.md`.
 - `comments-widget-*`: 24 files; start at `comments-widget.md`.
 - `custom-form-*`: 18 files; start at `custom-form-overview.md`.
 - `design-template-*`: 118 files; start at `design-template-overview.md`.

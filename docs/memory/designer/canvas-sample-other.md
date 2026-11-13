@@ -20,4 +20,4 @@ description: What the designer canvas draws in comments, calendar, Google review
 - `tests/designer_canvas_other_samples_test.php`: the row places, the stars against the rating, the language rows, that only the all-day flag is empty.
 
 ## What is left?
-- `canvas-sample-gaps-other.md`.
+- Menu items after the first come from the site's menu; a site without the menu shows one.

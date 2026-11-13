@@ -15076,6 +15076,8 @@ a.ws-chip:hover {
 .ws-task-card {
   margin-top: .35rem;
   max-width: 36rem;
+  /* A long word or link in the title wraps inside the card. */
+  overflow-wrap: anywhere;
   border: 1px solid var(--pg-border-color-translucent);
   border-left: 4px solid var(--ws-accent);
   border-radius: var(--ws-radius-sm);
@@ -21088,6 +21090,7 @@ a.ws-tag-card-head:hover span {
     display: flex;
     flex-direction: column;
     min-width: 0;
+    overflow-wrap: anywhere;
 }
 .ws-tpl-card-name {
     font-weight: 600;
@@ -24978,9 +24981,6 @@ select.pg-list-table-field option.private {
 .pg-picker-field-input {
   flex: 1 1 auto;
   min-width: 0;
-}
-.pg-picker-browse {
-  flex: 0 0 auto;
 }
 .pg-picker-folder-row {
   flex-direction: row;

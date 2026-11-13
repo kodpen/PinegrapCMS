@@ -23,7 +23,7 @@ description: The canvas state preview of value conditions (W19, #1904): band chi
 
 ## What do a list's sample rows show? (#1914)
 - After a list's card (a `loop_area` with `props.source`) the canvas draws sample rows from the same nodes (`_sdListGhostEls()`, both the div and the table loop): ghost DOM as the sample comments, off with the sample switch, none when the band is amber, none inside a sample row, at most `props.limit` less one.
-- `SD_LIST_SAMPLE_ROWS` gives each source's rows the values that differ from the card (`order.steps`: paid, shipped, delivered as an estimate, so each timeline icon shows in its row); another source gets two rows of the card's values. `_sdListSample` is read first in `_displayValueForBinding()` after a comment sample; a test that cuts it declares it.
+- `SD_LIST_SAMPLE_ROWS` gives each source's rows the values that differ from the card (`order.steps`: paid, shipped, delivered as an estimate, so each timeline icon shows in its row); another source gets two rows of the card's values. Rows carry their place (`canvas-sample-other.md`). `_sdListSample` is read first in `_displayValueForBinding()` after a comment sample; a test that cuts it declares it.
 
 ## Which main loops get sample rows? (#1928)
 - The widget's first loop without a source (`_sdFirstLoopArea()`), as one line of its grid (`canvas-loop-as-published.md`); a server-ghost kind ([[designer-widget-ghosts-and-edit-chips]]) only while the server has no record. None with sample comments, in a single-record kind (`_sdLoopIsSingle()`, which also hides the band), inside a sample row or sample comment.
