@@ -24,6 +24,7 @@
 - waf-fail2ban-log.md: data/firewall.log fail2ban line format (path= on every line, the rule on BAN), which code paths write it, ip= is always the visitor address, rotation; a line for every new deny path.
 - waf-false-positives-and-reference.md: view_waf_log.php likely false positive evidence and Allow/Remove actions, and the stored waf_reference() number shown on block pages.
 - waf-geo-country-lookup.md: pg_geo_country() (includes/geo.php): edge header, server module or the site's DB-IP database, trust rules, no network call on a request; how data/geo is fetched, built and kept (includes/fn/geo.php).
+- waf-inapp-browsers.md: Social apps' in-app browsers classify human: bot lists hold crawler tokens only (bytespider not bytedance, pinterestbot, yeti/), Better Uptime matched by its real user agent [decision: decisions-made-waf-2.md]
 - waf-inflight-request-cap.md: waf_inflight_* concurrent request cap on sensitive scripts: limit, 429 rule concurrent (no offence), file slots under data/temp, 120 s dead slot, fail-open, monitor mode. [decision: here]
 - waf-ip-subject-ipv6-64.md: waf_ip_subject(): counters key on the address for IPv4 and on the /64 for IPv6; why IPv4 /24 is not aggregated; no /64 ban over an allowed address.
 - waf-ipv6-ban-column-width.md: IP columns must be VARCHAR(45) (IPv6); how a VARCHAR(15) ip_address silently truncated and defeated bans; atomic waf_auto_ban ODKU (2026.2.7).
