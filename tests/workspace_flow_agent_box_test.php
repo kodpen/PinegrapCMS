@@ -121,6 +121,13 @@ function test_workspace_flow_agent_box_wiring()
 
 	pg_assert_contains('ws_message_send($owner, $channel,', $ask);
 	pg_assert_contains("WHERE message_id = '\" . (int) \$sent['message_id']", $ask);
+	// ws_message_send() only writes the message: the box itself makes its
+	// agent's request (before, none was made and every run failed with
+	// "was not woken"), and only its own agent's, so a value filled into the
+	// prompt wakes no other assistant.
+	pg_assert_contains('ws_agent_after_send($owner, $channel, (int) $sent[\'message_id\'], $body, ws_agent_request_value($agent))', $ask, 'the box wakes its agent');
+	pg_assert_true(strpos($ask, 'ws_agent_after_send(') < strpos($ask, 'FROM ws_ai_requests'), 'the request is made before it is read');
+	pg_assert_false(strpos($ask, 'ws_message_ask_assistants(') !== false, 'no other assistant is asked');
 	pg_assert_contains("status = 'waiting'", $ask);
 	pg_assert_contains("AND status = 'running'", $ask, 'a conditional write');
 	pg_assert_contains('ws_step_agent_ask($step, $owner, $action, $routed)', workspace_flow_agent_box_test_source('ws_step_run'));

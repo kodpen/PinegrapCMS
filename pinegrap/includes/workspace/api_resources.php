@@ -1614,9 +1614,10 @@ function ws_api_messages_forward($params)
  * Does a message written now ask the assistants it names? Only a person's
  * own message, as the panel's composer writes it: an application's words
  * never ask one (an agent quoting an alias in its answer would ask itself
- * again), and a decision or a note is kept, not asked. A message written
- * through an OAuth connection asks what the application's message asked
- * before it was written as the person: none.
+ * again). A decision or a note asks as a message does: a tag is a tag
+ * whatever the kind. A message written through an OAuth connection asks
+ * what the application's message asked before it was written as the
+ * person: none.
  *
  * @param int    $app_id        ws_api_message_writer()['app_id']
  * @param string $kind          message | note | decision
@@ -1625,13 +1626,13 @@ function ws_api_messages_forward($params)
  */
 function ws_api_message_asks_assistants($app_id, $kind, $via_client_id = 0)
 {
-    return ((int) $app_id === 0) && ((int) $via_client_id === 0) && ((string) $kind === 'message');
+    return ((int) $app_id === 0) && ((int) $via_client_id === 0) && in_array((string) $kind, array('message', 'note', 'decision'), true);
 }
 
 /**
  * Does an application's message written now wake the registry's agents it
- * names or answers? A message written with an application's key or through
- * an OAuth connection, never a decision or a note; the assistants stay
+ * names or answers? A message, a note or a decision written with an
+ * application's key or through an OAuth connection; the assistants stay
  * unasked (ws_api_message_asks_assistants()).
  *
  * @param int    $app_id        ws_api_message_writer()['app_id']
@@ -1641,7 +1642,7 @@ function ws_api_message_asks_assistants($app_id, $kind, $via_client_id = 0)
  */
 function ws_api_message_wakes_agents($app_id, $kind, $via_client_id = 0)
 {
-    return (((int) $app_id > 0) || ((int) $via_client_id > 0)) && ((string) $kind === 'message');
+    return (((int) $app_id > 0) || ((int) $via_client_id > 0)) && in_array((string) $kind, array('message', 'note', 'decision'), true);
 }
 
 /**
@@ -1881,6 +1882,10 @@ function ws_api_files_create($params)
 
         if (ws_api_message_asks_assistants($app_id, 'message', $writer['via_client_id'])) {
             ws_api_assistants_carry_on(ws_voice_posted($viewer, $channel, $result['message_id'], (string) ($params['text'] ?? ''), $stored['name'], $queued));
+        } elseif (ws_api_message_wakes_agents($app_id, 'message', $writer['via_client_id'])) {
+            // An application's words beside its file wake the registry's
+            // agents they name or answer, as its text message's do.
+            ws_api_assistants_carry_on(ws_agent_after_app_send($viewer, $channel, $result['message_id'], (string) ($params['text'] ?? '')));
         }
     }
 
@@ -2271,6 +2276,10 @@ function ws_api_messages_update($params)
     }
 
     $row = ws_message($message['id']);
+
+    // A tag the edit adds asks as in a new message: an agent's own edit
+    // wakes only the registry's agents it names.
+    ws_api_assistants_carry_on(ws_message_ask_added($viewer, ws_channel($message['channel_id']), $message['id'], (string) $message['body'], (string) $row['body'], $as_app > 0));
 
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
 }

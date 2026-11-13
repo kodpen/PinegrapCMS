@@ -38,6 +38,7 @@
 		{"name": "view_email_campaigns", "path": "view_email_campaigns.php"},
 		{"name": "messages_automatic", "path": "messages_automatic.php"},
 		{"name": "messages_sends", "path": "messages_sends.php"},
-		{"name": "messages_channels", "path": "messages_channels.php"}
+		{"name": "messages_channels", "path": "messages_channels.php"},
+		{"name": "whatsapp_template", "path": "whatsapp_template.php"}
 	]
 }

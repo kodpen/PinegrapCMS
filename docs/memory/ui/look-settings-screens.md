@@ -22,7 +22,7 @@ description: Settings screens in look A (DL5d, #8952): dialog size, rail, head a
 - Fields in a card (`.form-control`) are 32 px, corners 9, 13 px, on the field colours; Bootstrap's `.switch` is the look's switch (`look-switch.md`).
 
 ## What about the settings page (settings_<key>.php)?
-- Body class `pg-measure-edit`: the content centred at 1700 px (since #9269; a single card at the form column waits for LW6, `plans/look-widths-and-switch.md`). Its save bar is the floating bar from 576 px, "Save" filled.
+- Body class `pg-measure-edit`: the content centred at 1700 px (since #9269); a page with no status column adds `pg-measure-single` and sits at the form column, 1300 px (#9330). Its save bar is the floating bar from 576 px, "Save" filled.
 
 ## What is not done yet?
 - The 34 px icon tile at a row's left, the segmented control and small quiet button as row controls: per-row markup, card by card.

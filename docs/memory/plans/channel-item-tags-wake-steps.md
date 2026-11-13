@@ -6,7 +6,7 @@ description: Steps TW1-TW5 of the channel-item-tags-wake plan: file caption, edi
 ## Which steps are there?
 - Each about 1,000 product lines at most, in this order; a step starts when the one before it has landed. Function and file names are the worker's call. Tests in `tests/` for the helper's pure parts (tags added, which path asks).
 
-- TW1 The helper; a message with a file; an edit; note and decision. Census: helper ~150 lines, sites ~200.
+- TW1 The helper; a message with a file; an edit; note and decision. Done: #9359 (`workspace/channel-item-tags.md`).
   - The helper above, with its pure tag-diff function.
   - A message with any file, not only a recording: the panel upload (`ws_message_send_file_bytes()` files.php, with `ws_voice_posted()` still holding a queued recording until transcribed), the file-manager attach (`ws_library_send()` library.php), the API's files.create (`ws_api_files_create()` api_resources.php).
   - An edit (`ws_message_edit()` messages.php, panel and API): only the tags it adds, beside `ws_message_notify_mentions()`'s diff of people.

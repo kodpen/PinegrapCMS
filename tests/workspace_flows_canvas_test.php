@@ -3742,3 +3742,37 @@ function test_workspace_flows_canvas_nothing_open_takes_the_whole_width()
 	// Three classes outweigh the two of the narrower media rules, wherever they sit.
 	pg_assert_false((bool) preg_match('/\.wsf-app\.wsf-nothing[^{]*\{[^}]*19rem/', $css), 'no side column kept');
 }
+
+// A new box that writes into a channel (message, check-in, approval) starts
+// at the flow's home channel when the person may post there (#9218): a
+// flow made from a channel writes back to it unless changed. No home, a
+// home the person does not read or an archived one leaves the choice open.
+function test_workspace_flows_canvas_new_box_starts_at_the_home_channel()
+{
+	$out = ws_flows_canvas_test_node(array('newConfig', 'homeChannelId'), <<<'JS'
+var BOOT = { channels: [
+    { id: 2, kind: 'public', name: 'autumn-catalog', archived: false },
+    { id: 3, kind: 'private', name: 'team', archived: false },
+    { id: 4, kind: 'public', name: 'old', archived: true },
+    { id: 5, kind: 'dm', name: 'ada', archived: false }
+] };
+function channels(home) {
+    state = { flow: home === null ? null : { id: 1, channel_id: home } };
+    return ['post', 'checkin', 'approval', 'task_open'].map(function (kind) { return newConfig(kind).channel_id; });
+}
+console.log(JSON.stringify({ home: channels(2), private: channels(3), none: channels(0), archived: channels(4), direct: channels(5), unread: channels(9), noflow: channels(null) }));
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array(2, 2, 2, 0), $out['home'], 'message, check-in and approval start at the home channel');
+	pg_assert_same(array(3, 3, 3, 0), $out['private'], 'a private home channel too');
+	pg_assert_same(array(0, 0, 0, 0), $out['none'], 'no home: none chosen');
+	pg_assert_same(array(0, 0, 0, 0), $out['archived'], 'an archived home: none chosen');
+	pg_assert_same(array(0, 0, 0, 0), $out['direct'], 'a direct conversation is no box channel');
+	pg_assert_same(array(0, 0, 0, 0), $out['unread'], 'a home the person does not read: none chosen');
+	pg_assert_same(array(0, 0, 0, 0), $out['noflow'], 'no flow: none chosen');
+}
