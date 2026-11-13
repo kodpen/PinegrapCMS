@@ -205,3 +205,20 @@ JS
 	pg_assert_same(array('', array('=', '9=b.pdf', '12=')), $result['empty'], 'the empty choice is never renamed');
 	pg_assert_same(array(true, true), $result['target'], 'focus goes to the drawn toggle, else the field');
 }
+
+function test_list_table_quick_edit_text_boxes_need_typing()
+{
+	$result = list_table_js_test_node(<<<'JS'
+console.log(JSON.stringify(['text', 'integer', 'money', 'textarea', 'select', 'search', 'multiselect', undefined].map(function (type) {
+	return T.quickTyped(type);
+})));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true, true, true, false, false, false, true), $result,
+		'a text box (and a field of no known type, drawn as one) is saved only when typed in; a choice is saved as it is picked');
+}

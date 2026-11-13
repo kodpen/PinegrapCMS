@@ -19,6 +19,9 @@
 
 include('init.php');
 
+// functions.php does not load the list table driver; the list view is drawn
+// with it (pg_list_table_printed() and its sort columns).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
 
 $user = validate_user();

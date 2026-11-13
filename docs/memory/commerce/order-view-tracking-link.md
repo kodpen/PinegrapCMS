@@ -23,7 +23,9 @@ description: How a parcel's carrier, name and tracking link are found (pg_shippi
 
 ## How do I add a carrier?
 - One entry in `pg_shipping_carriers()`, with a tracking address checked on the carrier's own site; `tests/shipping_test.php` requires `{code}` in it. Add the key to the accepted values in `data/config(default).php`.
-- Not yet added, no verified address (sites refuse cloud fetches); n11's `HLZ` (Horoz), `CEVA` and `BL` (Borusan) become aliases once their carriers exist. Candidates, all unchecked: HepsiJET `https://www.hepsijet.com/gonderi-takibi/{code}` (403 to a cloud fetch); CEVA `https://etracking.cevalogistics.com/eTrackResultsMulti.aspx?sv={code}` (CEVA Trak; Turkish parcels unknown); Trendyol Express `https://kargotakip.trendyol.com/?orderNumber=` takes Trendyol's order number, not a tracking number; Sendeo (`sendeo.com.tr/tracking`) and Horoz (API at developer.horoz.com.tr) show no link pattern.
+- Not yet added, no verified address (sites refuse cloud fetches); n11's `HLZ` (Horoz), `CEVA` and `BL` (Borusan) become aliases once their carriers exist.
+- Candidates, all unchecked: HepsiJET `https://www.hepsijet.com/gonderi-takibi/{code}` (403 to a cloud fetch); CEVA `https://etracking.cevalogistics.com/eTrackResultsMulti.aspx?sv={code}` (CEVA Trak; Turkish parcels unknown); Trendyol Express `https://kargotakip.trendyol.com/?orderNumber=` takes Trendyol's order number, not a tracking number.
+- Sendeo (`sendeo.com.tr/tracking`) and Horoz (API at developer.horoz.com.tr) show no link pattern.
 
 ## How was Kolay Gelsin checked?
 - `tracking?q={code}` fills the page's search box in the served HTML (2026-11-04); the lookup is behind a Turnstile captcha (the customer presses the button). No shape check (`pg_shipment_number_shapes()`): its number format is unconfirmed.

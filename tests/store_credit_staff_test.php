@@ -67,6 +67,34 @@ function test_store_credit_staff_card_state()
 	pg_assert_same('used', pg_credit_staff_card_state(array('balance' => 0, 'expires_at' => 0, 'expiration_date' => '0000-00-00'), $now), 'spent or voided');
 	pg_assert_same('expired', pg_credit_staff_card_state(array('balance' => 500, 'expires_at' => $now - 1, 'expiration_date' => '2026-11-03'), $now), 'past its end');
 	pg_assert_same('expired', pg_credit_staff_card_state(array('balance' => 0, 'expires_at' => $now - 1, 'expiration_date' => '2026-11-03'), $now), 'closed by the expiry pass');
+	pg_assert_same('voided', pg_credit_staff_card_state(array('balance' => 0, 'expires_at' => 0, 'expiration_date' => '0000-00-00', 'void_reason' => 'Duplicate'), $now), 'closed by staff');
+	pg_assert_same('voided', pg_credit_staff_card_state(array('balance' => 0, 'expires_at' => $now - 1, 'expiration_date' => '2026-11-03', 'void_reason' => ''), $now), 'voided, then its last day went by');
+	pg_assert_same('used', pg_credit_staff_card_state(array('balance' => 0, 'expires_at' => 0, 'expiration_date' => '0000-00-00', 'void_reason' => null), $now), 'spent: no void line');
+	pg_assert_same('open', pg_credit_staff_card_state(array('balance' => 500, 'expires_at' => 0, 'expiration_date' => '0000-00-00', 'void_reason' => 'x'), $now), 'a void line on a card with money left is not a void');
+}
+
+function test_store_credit_staff_void_reason_comes_from_the_notes()
+{
+	$lines = array('Store credit voided on {var:1}: {var:2}', 'Mağaza kredisi {var:1} tarihinde iptal edildi: {var:2}');
+
+	pg_assert_same(null, pg_credit_staff_void_reason('', $lines), 'no notes');
+	pg_assert_same(null, pg_credit_staff_void_reason("Points for order 1042\nSpent on order 1043", $lines), 'notes without a void line');
+	pg_assert_same('Duplicate card', pg_credit_staff_void_reason('Store credit voided on 2026-11-12: Duplicate card', $lines), 'the English line');
+	pg_assert_same('Yanlış müşteri', pg_credit_staff_void_reason("Kampanya\r\nMağaza kredisi 2026-11-12 tarihinde iptal edildi: Yanlış müşteri", $lines), 'the Turkish line, after another note');
+	pg_assert_same('Note: see ticket 7', pg_credit_staff_void_reason('Store credit voided on 2026-11-12: Note: see ticket 7', $lines), 'a colon in the reason');
+	pg_assert_same('', pg_credit_staff_void_reason('Store credit voided on 2026-11-12: ', $lines), 'an empty reason is still a void');
+	pg_assert_same('second', pg_credit_staff_void_reason("Store credit voided on 2026-11-10: first\nStore credit voided on 2026-11-12: second", $lines), 'the last line wins');
+	pg_assert_same(null, pg_credit_staff_void_reason('Store credit voided on yesterday: x', $lines), 'the date is the one pg_credit_void() writes');
+	pg_assert_same(null, pg_credit_staff_void_reason('Store credit voided on 2026-11-12: x', array('Voided')), 'a form without its placeholders matches nothing');
+}
+
+function test_store_credit_staff_issue_error_names_its_field()
+{
+	pg_assert_same('credit_amount', pg_credit_staff_issue_field('amount'));
+	pg_assert_same('credit_last_day', pg_credit_staff_issue_field('date'));
+	pg_assert_same('credit_reason', pg_credit_staff_issue_field('reason'));
+	pg_assert_same('', pg_credit_staff_issue_field(''), 'no error');
+	pg_assert_same('', pg_credit_staff_issue_field('other'));
 }
 
 function test_store_credit_staff_rights_are_the_commerce_ones()

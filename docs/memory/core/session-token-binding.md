@@ -19,7 +19,7 @@ description: How a signed-in session is bound to its auth_tokens row (selector k
 - Never write `sessionuserid` without going through `pg_session_sign_in()`, and never mint a token outside `pg_login_set_device_cookie()`: a session with a user but no binding is accepted, but then a revoke cannot end it.
 
 ## What does sign-out revoke after "log in as"?
-- Nothing: `logout()` (`includes/fn/forms.php`) revokes the `software[auth]` token and clears the cookie only when `logged_in_as_different_user` is not set. That cookie is the operator's own token, kept so the operator is signed back in as themselves (as `login_as_user.php` and the disabled-account branch of `initialize_user()` keep it); revoking it first had signed the operator out too.
+- Nothing: `logout()` (`includes/fn/forms.php`) revokes the `software[auth]` token and clears the cookie only when `logged_in_as_different_user` is not set. That cookie is the operator's own token, kept so the operator is signed back in as themselves (as `login_as_user.php` and the disabled-account branch of `initialize_user()` keep it); revoking it first had signed the operator out too. Where the operator lands then: `login-as-sign-out.md`.
 
 ## Was it checked on a running site?
 - Sandbox (`tools/setup_sandbox.sh`), 2026-10-19, a basic user signed in on several cookie jars: deleting one device's `auth_tokens` row, as every revoke path does, signed that session out on its next request (panel and a private file through `get_file.php`, log "session token was revoked") while the other devices stayed in; a client that had stopped sending `software[auth]` was signed out the same way and no fresh token was minted; with the table renamed away (an install mid-upgrade) every session kept working without errors.

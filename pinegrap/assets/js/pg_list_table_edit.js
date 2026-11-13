@@ -17,15 +17,17 @@
  * elsewhere since the list was drawn; the answer
  * draws the cell (and the other cells of the row it names) from what was
  * stored. A refused value stays in the field, marked, with the reason
- * under it; nothing is saved.
+ * under it; nothing is saved. A text box is saved only when the person
+ * wrote in it: a value a password manager or the browser filled in shows
+ * the stored value again when it is left.
  *
  * The last save can be undone from the bar. A value saved on a selected
  * row can be applied to the other selected rows on screen ("Apply to N
  * selected rows"): one request per row; that group is then the last save.
  * With the mode off, a click selects and a double-click opens, as always.
  *
- * QuickEdits, applyTargets(), quickValue(), quickChanged() and
- * rowNameText() are pure (no browser; tests/list_table_quick_edit_js_test.php
+ * QuickEdits, applyTargets(), quickValue(), quickChanged(), quickTyped()
+ * and rowNameText() are pure (no browser; tests/list_table_quick_edit_js_test.php
  * runs them in Node).
  *
  * Bundled after pg_list_table.js into pg_list_table.min.js (pg_js_bundles(),
@@ -152,6 +154,16 @@
         });
     }
 
+    /**
+     * Whether a field of this type is a text box, saved only when the
+     * person wrote in it: a password manager fills a box it takes for a
+     * sign-in name (a Username column) with the saved one, on every row it
+     * sees, and each would be saved as it is left.
+     */
+    function quickTyped(type) {
+        return ['select', 'search', 'multiselect'].indexOf(String(type)) === -1;
+    }
+
     /** Whether a field holds something else than the stored value. */
     function quickChanged(type, raw, stored) {
         if (type === 'multiselect') {
@@ -230,6 +242,20 @@
         }
 
         control.value = value;
+    }
+
+    /**
+     * A text box keeps the browser's autofill and the password managers
+     * out: "off" alone is ignored by Chrome on a field it is sure about, a
+     * token it does not know is respected, and each manager has its own
+     * opt-out.
+     */
+    function noAutofill(control) {
+        control.setAttribute('autocomplete', 'pg-no-autofill');
+        control.setAttribute('data-lpignore', 'true');
+        control.setAttribute('data-1p-ignore', '');
+        control.setAttribute('data-bwignore', '');
+        control.setAttribute('data-form-type', 'other');
     }
 
     /** What the keyboard reaches of a field: a drawn Combobox's toggle, else the field. */
@@ -517,7 +543,7 @@
             control.className = 'form-control form-control-sm pg-list-table-field pg-list-table-field-lines';
             control.rows = 2;
             control.value = quickValue('textarea', value);
-            control.autocomplete = 'off';
+            noAutofill(control);
 
             if (def.max) {
                 control.maxLength = def.max;
@@ -527,7 +553,7 @@
             control.type = 'text';
             control.className = 'form-control form-control-sm pg-list-table-field' + ((def.type === 'text') ? '' : ' text-end');
             control.value = value;
-            control.autocomplete = 'off';
+            noAutofill(control);
             control.setAttribute('enterkeyhint', 'next');
 
             if (def.type === 'integer') {
@@ -584,6 +610,17 @@
         control.addEventListener('keydown', function (event) {
             self.fieldKey(cell, event);
         });
+
+        // The browser announces the person's own edits (typing, paste, drop,
+        // undo, an input method) with a trusted beforeinput; a fill comes
+        // without one.
+        if (quickTyped(def.type)) {
+            control.addEventListener('beforeinput', function (event) {
+                if (event.isTrusted) {
+                    cell.pgQuickTyped = true;
+                }
+            });
+        }
 
         if (def.type === 'search') {
             this.openSearch(cell, control);
@@ -671,6 +708,7 @@
         cell.classList.remove('is-invalid');
         delete cell.pgQuick;
         delete cell.pgQuickHtml;
+        delete cell.pgQuickTyped;
     };
 
     /** The keys of a field; the rows' own keys (Space, arrows, Ctrl+A) stay out. */
@@ -692,13 +730,7 @@
             this.fieldNote(cell, '');
         } else if (event.key === 'Escape') {
             event.preventDefault();
-            quick.control.value = (quick.control.tagName === 'TEXTAREA') ? quickValue('textarea', cell.getAttribute('data-pg-edit-value') || '') : (cell.getAttribute('data-pg-edit-value') || '');
-
-            if (quick.control.tagName === 'SELECT') {
-                tintSelect(quick.control);
-            }
-
-            this.fieldNote(cell, '');
+            this.fieldStored(cell);
         } else if (event.key === 'F2') {
             event.preventDefault();
             this.setQuick(false);
@@ -706,6 +738,21 @@
             event.preventDefault();
             this.quickSave(cell);
         }
+    };
+
+    /** A field shows the stored value again, its note cleared. */
+    D.fieldStored = function (cell) {
+        var quick = cell.pgQuick;
+        var stored = cell.getAttribute('data-pg-edit-value') || '';
+
+        quick.control.value = (quick.control.tagName === 'TEXTAREA') ? quickValue('textarea', stored) : stored;
+        cell.pgQuickTyped = false;
+
+        if (quick.control.tagName === 'SELECT') {
+            tintSelect(quick.control);
+        }
+
+        this.fieldNote(cell, '');
     };
 
     /** The same column's field on the next (or the previous) row. */
@@ -940,16 +987,30 @@
             return;
         }
 
+        // A text box nobody wrote in was filled for the person: it shows the
+        // stored value again and nothing is sent.
+        if (quickTyped(quick.def.type) && !cell.pgQuickTyped) {
+            this.fieldStored(cell);
+            return;
+        }
+
         var field = cell.getAttribute('data-pg-edit');
         var id = cell.getAttribute('data-pg-edit-id') || '';
         var rowId = cell.closest('tr').getAttribute('data-pg-id');
 
+        // What is written from here on is a new edit; a refused value stays
+        // the person's own.
+        cell.pgQuickTyped = false;
         cell.pgQuickBusy = true;
         cell.setAttribute('aria-busy', 'true');
 
         this.post(field, id, value, stored).then(function (data) {
             cell.pgQuickBusy = false;
             cell.removeAttribute('aria-busy');
+
+            if (!data.ok) {
+                cell.pgQuickTyped = true;
+            }
 
             if (data.ok) {
                 self.fieldNote(cell, '');
@@ -1142,6 +1203,7 @@
     T.applyTargets = applyTargets;
     T.quickValue = quickValue;
     T.quickChanged = quickChanged;
+    T.quickTyped = quickTyped;
     T.quickChoices = quickChoices;
     T.rowNameText = rowNameText;
     T.tintSelect = tintSelect;

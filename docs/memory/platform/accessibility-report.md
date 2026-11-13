@@ -23,7 +23,9 @@ module: a11y
 - The state file also adds up the pass's checked and failed pages; a finished pass keeps them in `config_text` `a11y_last_pass` (JSON, no schema). The PDF and the statement read it through `pg_a11y_pass_record()`: "M of N published pages checked" when some could not be rendered, never the whole scope as checked (#5853). With no record yet the scope stands in.
 
 ## Where is the report shown?
-- `view_accessibility.php` (managers and up), linked from the main menu's Pages panel (beside the 404 Log), the Pages list's SEO buttons and the panel search. A checklist row per check in criterion number order (`pg_a11y_rules_by_criterion()`, the filter and the PDF too, #5857; the registry keeps its own order), the findings worst first (1,000 rows, filter by check; a cut list reads "first N of M" under the table and in the PDF, #5858), Check Pages Now (`audit_run.php`: the same pass, anonymous, `SEO_ANALYZE_BUTTON_BUDGET`, resumes at the job's place), and the PDF.
+- `view_accessibility.php` (managers and up), linked from the main menu's Pages panel (beside the 404 Log), the Pages list's SEO buttons and the panel search.
+- A checklist row per check in criterion number order (`pg_a11y_rules_by_criterion()`, the filter and the PDF too, #5857; the registry keeps its own order), the findings worst first (1,000 rows, filter by check; a cut list reads "first N of M" under the table and in the PDF, #5858).
+- Check Pages Now (`audit_run.php`: the same pass, anonymous, `SEO_ANALYZE_BUTTON_BUDGET`, resumes at the job's place), and the PDF.
 - Download PDF: `pg_a11y_report_html()` (checklist then up to 2,000 findings) rendered by `pg_privacy_export_pdf()` (dompdf). Screen and PDF say an automatic check covers only part of each criterion.
 - Until a full pass has finished (`pg_a11y_result_state()`), a check with no findings reads "Not checked yet" on the screen and in the PDF, never "No problem found" (#2041).
 - The checklist's check column and the filter say "Automatic check" ("Denetim"), not "Check", whose Turkish is the button verb "Denetle" (#5860).
