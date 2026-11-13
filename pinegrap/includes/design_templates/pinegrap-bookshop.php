@@ -3435,7 +3435,7 @@ $bookshop_css = implode("\n", array(
 
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.3.6',
+    'version'     => '1.3.7',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',

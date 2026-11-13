@@ -194,7 +194,7 @@ $appstudio_css = implode("\n", array(
 
 return array(
     'name'        => lang('Mobile App Developer'),
-    'version'     => '1.1.2',
+    'version'     => '1.1.3',
     'framework'   => 'bootstrap5',
     'order'       => 73,
     'icon'        => 'bi-phone',

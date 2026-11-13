@@ -175,7 +175,7 @@ $events_css = implode("\n", array(
 
 return array(
     'name'        => lang('Events and Conferences'),
-    'version'     => '1.1.2',
+    'version'     => '1.1.3',
     'framework'   => 'bootstrap5',
     'order'       => 65,
     'icon'        => 'bi-calendar2-event',

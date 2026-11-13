@@ -3193,7 +3193,7 @@ $boutique_css = implode("\n", array(
 
 return array(
     'name'        => lang('Boutique'),
-    'version'     => '1.2.6',
+    'version'     => '1.2.7',
     'framework'   => 'bootstrap5',
     'order'       => 30,
     'icon'        => 'bi-gem',
