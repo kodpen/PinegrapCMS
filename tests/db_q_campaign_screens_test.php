@@ -128,10 +128,8 @@ function db_q_campaign_screens_test_files()
 {
 	return array(
 		'delete_submitted_forms.php' => 1,
-		'delete_email_campaigns.php' => 4,
-		'view_email_campaigns.php' => 0,
-		'view_email_campaign_history.php' => 0,
 		'includes/fn/email_campaign_list.php' => 3,
+		'includes/fn/messages_campaigns.php' => 1,
 		'view_email_campaign.php' => 3,
 		'view_email_campaign_profiles.php' => 0,
 		'get_email_a_friend_screen_content.php' => 3,

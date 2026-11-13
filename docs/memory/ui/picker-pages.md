@@ -29,7 +29,7 @@ module: picker
 
 ## What does a page field do with marked pages?
 - The field's search list shows an archived or binned match greyed with its mark (`aria-disabled`); clicking or Enter on it only says why in the status line, and Enter with no row active takes the first choosable one (#8782).
-- Browse with a stored archived or binned page opens its folder, or the folder it was binned from (resolve gives that `folder`), where it is listed marked; before, the dialog opened at the top.
+- Browse with a stored archived or binned page opens on All; the footer names it with its mark and "Show in its folder" opens its folder, or the one it was binned from (resolve gives that `folder`), where it is listed marked (#9201).
 - A kind kept to some page types (`page_catalog_detail` …) names their labels on the dialog's title line, as a file kind names its extensions.
 
 Tests: `test_picker_page_marks_and_groups` in `tests/picker_test.php`, `test_picker_js_pages` in `tests/picker_js_test.php`. Related: picker-registry.md, picker-dialog.md

@@ -113,8 +113,8 @@ function test_mail_bounce_suppressed_contact_view()
 // lifts the block from the stored address, the export carries the status.
 function test_mail_bounce_screens_call_the_helpers()
 {
-	// Both campaign lists build their rows in includes/fn/email_campaign_list.php.
-	foreach (array('includes/fn/email_campaign_list.php') as $file) {
+	// The Campaigns tab builds its e-mail rows in includes/fn/messages_campaigns.php.
+	foreach (array('includes/fn/messages_campaigns.php') as $file) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		pg_assert_contains('pg_mail_bounce_campaign_counts(', $source, $file);
 		pg_assert_contains('pg_mail_bounce_campaign_cell(', $source, $file);

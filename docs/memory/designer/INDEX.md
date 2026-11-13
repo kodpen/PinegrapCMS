@@ -311,6 +311,7 @@
 - designer-canvas-selector-bridge.md: Canvas selector bridge for designs on their own framework: rules rewritten across .sd-wrap, only rules whose classes are on the page, flat selector lists instead of :is(), one place that rewrites.
 - designer-canvas-style-designer.md: style_designer.js canvas rules: widget tree root, lockstep cfg, table loop areas, the two wrapper models (IFRAME_CSS, measuring, chrome, column padding, margins), express order frame, cycle guard.
 - designer-canvas-theme-view.md: The editor's Dark/Light canvas view and the theme switchers on the canvas are one state on the canvas <html>, never stored: applyCanvasTheme(), pgThemeNoStore, why not <body>.
+- designer-canvas-toolbar-in-cards.md: A selected element's toolbar in a ratio box or a clipping card (a blog card's cover in a loop): the ratio rule skips chrome, room counts inside the clipping ancestor (#9217)
 - designer-class-dedupe.md: How the designer replaces a class of the same family when one is added (deduplicateCssClass, CLASS_MUTEX_PREFIXES): longest prefix, same breakpoint only, callers, test
 - designer-code-editor-decisions.md: The designer's code editor: owner rules (2026-10-19) and lasting decisions behind it (CodeMirror 6 facade, lazy load, half-locked code, one emitter), and which PRs built which part
 - designer-code-view-bindings.md: Data bindings in the designer's code view: a bound text, href, src or alt prints as {{token}}, typing a token binds, a literal unbinds, {{ offers the widget's tokens; where the rules live

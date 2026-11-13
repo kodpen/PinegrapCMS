@@ -417,7 +417,8 @@
 - menu-item-shared-form.md: The menu item create and edit screens share includes/forms/menu_item_form.php
 - menu-items-sort-order.md: The menu screen's Save Order (sort_menu_items): the posted tree is checked against the menu as it is now before any row is written; stale or looping trees are refused
 - menu-shared-form.md: The menu create and edit screens share includes/forms/menu_form.php: what it holds, the underscore name rule, what stays in the screens
-- messages-area-shell.md: The Communication area (MA1 #9182, MA7 #9200): menu row 9, the five tabs and their gates, the shared tab strip, the old lists inside it, the interim tabs, the Channels cards
+- messages-area-campaigns-tab.md: Communication › Campaigns (MA3, #9215): e-mail and SMS campaigns in one list, the channel and state filters, the merged row ids and Delete Selected, New campaign's channel menu
+- messages-area-shell.md: The Communication area (MA1 #9182, MA7 #9200): menu row 9, five tabs and gates, the tab strip, doors, the interim tabs, the Channels cards
 - migration-screen.md: The Migration screen (migration.php): source password handling, API URL check, error details, wording
 - money-box-focus.md: A money box that opens focused is focused on document ready after the Inputmask binding, never by an inline script while the page parses (gift card Amount, #9047)
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)
@@ -508,6 +509,7 @@
 - pg-fields-speech.md: Screen readers and panel combobox/chip fields (pg_fields.js v6): toggle name and value, listbox options, no-match line, hidden select out of Tab, focused chip deleted, named remove buttons
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
 - phone-width-rows.md: Phone-width fixes: v6 .input-group and .btn do not wrap (rate tiers, documents card, sign-in rows, product group default option), Login Region fields, inner clusters wrap, marketplace grid
+- picker-all-list-dialog.md: The picker dialog's All (PA2, #9201): opens on every item of the kind, paged on scroll, the All row and total, its own sort, Upload into, Show in its folder, the phone [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
 - picker-all-list-server.md: picker.php list without a folder (PA1, #9186): every item of a kind sorted by modified, name, size or type, paged by a keyset cursor, items with path; the tree's total; measured times on 50,000 files
 - picker-designer-bridge.md: The visual designer's bridge to the picker (PK8): link, file and picture fields through pgEditorPicker, the source choice, Browse under widget page selects, the page type pane's picker fields
 - picker-dialog.md: The picker dialog pgPicker.open() (assets/js/pg_picker.js, PK2): what it shows, how a pick is handed back, the keyboard, the phone sheet, the Browse button, what picker.php added for it

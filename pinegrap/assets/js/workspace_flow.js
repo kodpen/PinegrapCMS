@@ -332,6 +332,9 @@
         paletteFolded: null, // the palette's groups folded by the person (PALETTE_FOLDED at first)
         paletteChange: false, // the start kinds unfolded under the start's "Change"
         paletteOver: false, // the panel opened over the canvas from its rail on a narrow window
+        sideTab: 'settings', // the chosen box's tab: settings, links or try
+        sideTabFlow: null,  // the flow sideTab was chosen in
+        closing: false,     // Close giving its box the focus, not choosing it
         tap: null,
         panel: '',          // 'runs' while the side panel lists the runs
         section: '',        // 'action' while a scheduled action is drawn read-only, 'templates' in the gallery
@@ -1159,6 +1162,10 @@
         ui.palette = el('aside', 'wsf-palette');
         ui.palette.setAttribute('aria-label', t('fl_palette'));
         ui.main = el('div', 'wsf-main');
+        // The four areas F6 goes round are named regions: the bar, the left
+        // panel, this one and the right panel.
+        ui.main.setAttribute('role', 'region');
+        ui.main.setAttribute('aria-label', t('fl_view'));
         // The panel opened over a narrow canvas folds on a click there.
         ui.main.addEventListener('pointerdown', function () {
             if (state.paletteOver) {
@@ -1201,6 +1208,13 @@
         ui.app.appendChild(ui.palette);
         ui.app.appendChild(ui.main);
         ui.app.appendChild(ui.side);
+        // On a phone the chosen box's panel is a sheet over a scrim; a tap
+        // on the scrim closes it.
+        ui.scrim = el('div', 'wsf-scrim');
+        ui.scrim.addEventListener('click', closeSide);
+        ui.app.appendChild(ui.scrim);
+        ui.side.addEventListener('keydown', sideKey);
+        root.addEventListener('keydown', areaKey);
 
         root.appendChild(ui.bar);
         root.appendChild(ui.conflictBox);
@@ -6324,6 +6338,7 @@
         }
 
         K.clear(ui.side);
+        ui.app.classList.toggle('wsf-side-chosen', !!(selected && !state.outline && !state.run));
 
         if (!state.flow) {
             return;
@@ -6334,14 +6349,11 @@
         } else if ((state.panel === 'runs') && (!selected || state.outline)) {
             runsSide();
         } else if (selected && (selected.type === 'node') && nodeById(selected.id) && !state.outline) {
-            ui.side.appendChild(el('div', 'wsf-side-title', t(kindOf(nodeById(selected.id)).name)));
-            ui.side.appendChild(nodeForm(nodeById(selected.id)));
+            sideNode(nodeById(selected.id));
         } else if (selected && (selected.type === 'edge') && state.graph.edges[selected.id] && !state.outline) {
-            ui.side.appendChild(el('div', 'wsf-side-title', t('fl_arrow')));
-            ui.side.appendChild(edgeForm(selected.id));
+            sideEdge(selected.id);
         } else if (selected && (selected.type === 'thread') && threadByKey(selected.id) && !state.outline) {
-            ui.side.appendChild(el('div', 'wsf-side-title', t('fl_thread_one')));
-            ui.side.appendChild(threadForm(threadByKey(selected.id)));
+            sideThread(threadByKey(selected.id));
         } else {
             ui.side.appendChild(el('div', 'wsf-side-title', t('fl_flow_settings')));
             ui.side.appendChild(flowForm());
@@ -6349,6 +6361,450 @@
 
         markRunsButton();
         refocus();
+    }
+
+    // ── The right panel of a chosen box, arrow or thread ───────────────
+
+    // The tabs a chosen box's panel shows: Settings and Connections, and
+    // Try for the flow's owner editing it (ws_flow_box_try with their rights).
+    function sideTabs(canTry) {
+        return canTry ? ['settings', 'links', 'try'] : ['settings', 'links'];
+    }
+
+    // The tab a key moves to in the tab list: Left / Right step round,
+    // Home / End go to the ends; '' for any other key.
+    function sideTabKey(tabs, current, key) {
+        var at = tabs.indexOf(current);
+
+        if (key === 'ArrowRight') {
+            return tabs[(at + 1) % tabs.length];
+        }
+
+        if (key === 'ArrowLeft') {
+            return tabs[(at - 1 + tabs.length) % tabs.length];
+        }
+
+        if (key === 'Home') {
+            return tabs[0];
+        }
+
+        if (key === 'End') {
+            return tabs[tabs.length - 1];
+        }
+
+        return '';
+    }
+
+    // The arrows into a box and out of it, in the graph's order: the
+    // Connections tab's count, its lists and the foot line read them.
+    function sideLinks(node) {
+        var edges = state.graph.edges;
+
+        return {
+            before: edges.filter(function (edge) { return (edge.to === node.id) && nodeById(edge.from); }).map(function (edge) { return edge.from; }),
+            after: edges.map(function (edge, index) { return { edge: edge, index: index }; }).filter(function (item) { return (item.edge.from === node.id) && nodeById(item.edge.to); })
+        };
+    }
+
+    // The tab shown: the one last chosen while boxes are chosen one after
+    // another in the same flow, else Settings; Try only where it is offered.
+    function sideTabNow(tabs) {
+        if ((state.sideTabFlow !== (state.flow && state.flow.id)) || (tabs.indexOf(state.sideTab) === -1)) {
+            state.sideTab = 'settings';
+            state.sideTabFlow = state.flow && state.flow.id;
+        }
+
+        return state.sideTab;
+    }
+
+    // The head of the panel: the tile, the kind in small capitals, the name,
+    // then ⋯ (when it holds anything) and Close.
+    function sideHead(tile, kind, name, items) {
+        var head = el('div', 'wsf-side-head');
+        var words = el('div', 'wsf-side-words');
+        var title = el('h2', 'wsf-side-name pg-title-status');
+        var close = K.button('pg-icon-button pg-icon-button-sm wsf-side-close', '', 'bi-x-lg', t('close'));
+
+        head.appendChild(tile);
+        words.appendChild(el('div', 'wsf-side-kind', kind));
+        title.id = 'wsf-side-name';
+        title.appendChild(name);
+        words.appendChild(title);
+        head.appendChild(words);
+
+        if (items.length) {
+            var wrap = el('div', 'pg-menu-wrap');
+            var more = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-three-dots', t('fl_more'));
+            var menu = el('ul', 'menu pg-menu-end');
+
+            more.setAttribute('data-bs-toggle', 'menu');
+            more.setAttribute('data-bs-placement', 'bottom-end');
+            more.setAttribute('aria-expanded', 'false');
+            more.setAttribute('data-refocus', 'side-more');
+            items.forEach(function (item) {
+                var entry = K.button('menu-item pg-link-body-emphasis', item[0], item[1]);
+
+                entry.addEventListener('click', item[2]);
+                menu.appendChild(el('li')).appendChild(entry);
+            });
+            wrap.appendChild(more);
+            wrap.appendChild(menu);
+            head.appendChild(wrap);
+        }
+
+        close.setAttribute('data-refocus', 'side-close');
+        close.addEventListener('click', closeSide);
+        head.appendChild(close);
+        return head;
+    }
+
+    // Esc in the chosen box's panel: the focus back on its box on the
+    // canvas; on a phone the sheet closes. A menu or a list open in the
+    // panel takes its own Esc first.
+    function sideKey(event) {
+        if ((event.key !== 'Escape') || event.defaultPrevented || !state.selected || state.run || state.outline
+            || (event.target.closest && event.target.closest('.pg-menu-wrap'))) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches) {
+            closeSide();
+            return;
+        }
+
+        var box = (state.selected.type === 'node') ? ui.boxes.querySelector('[data-node="' + state.selected.id + '"]') : null;
+
+        (box || ui.viewport).focus({ preventScroll: true });
+    }
+
+    // F6 / Shift+F6: the next or previous area of the window, the bar, the
+    // left panel, the canvas (its chosen box) and the right panel; an area
+    // with nothing to focus is passed over.
+    function areaKey(event) {
+        if ((event.key !== 'F6') || !state.flow || state.embed || event.altKey || event.ctrlKey || event.metaKey) {
+            return;
+        }
+
+        // A folded left panel (its rail) is passed over.
+        var panel = ui.palette.querySelector('.wsf-palette-panel');
+        var areas = [ui.bar, (panel && (panel.offsetParent !== null)) ? panel : null, state.outline ? ui.outlineBox : ui.main, ui.side].filter(Boolean);
+        var at = areas.map(function (area) { return area.contains(document.activeElement); }).indexOf(true);
+        var step = event.shiftKey ? -1 : 1;
+
+        event.preventDefault();
+
+        var from = (at >= 0) ? at : ((step > 0) ? -1 : areas.length);
+
+        for (var tries = 1; tries <= areas.length; tries++) {
+            var area = areas[(((from + step * tries) % areas.length) + areas.length) % areas.length];
+            var target = areaTarget(area);
+
+            if (target) {
+                target.focus({ preventScroll: area === ui.main });
+                return;
+            }
+        }
+    }
+
+    // What an area gives the focus to: on the canvas the chosen box, else
+    // the canvas itself; elsewhere its first control that can be seen.
+    function areaTarget(area) {
+        if (area === ui.main) {
+            var box = (state.selected && (state.selected.type === 'node')) ? ui.boxes.querySelector('[data-node="' + state.selected.id + '"]') : null;
+
+            return box || ((ui.viewport && ui.viewport.offsetParent) ? ui.viewport : null);
+        }
+
+        return Array.prototype.filter.call(area.querySelectorAll('button, input, select, textarea, [tabindex="0"]'), function (item) {
+            return !item.disabled && (item.offsetParent !== null) && (item.tabIndex >= 0);
+        })[0] || null;
+    }
+
+    // Close: nothing chosen, the focus back on the box on the canvas (on
+    // the canvas itself for an arrow or a thread).
+    function closeSide() {
+        var was = state.selected;
+
+        select(null);
+
+        var box = (was && (was.type === 'node')) ? ui.boxes.querySelector('[data-node="' + was.id + '"]') : null;
+
+        state.closing = !!box && (document.activeElement !== box);
+        (box || ui.viewport).focus({ preventScroll: true });
+        state.closing = false;
+    }
+
+    function sideTile(kind, icon) {
+        var tile = el('span', 'pg-icon-tile pg-icon-tile-lg wsf-side-tile' + (kind ? ' wsf-group-' + ((kind === 'end') ? 'logic' : (KINDS[kind] ? KINDS[kind].group : '')) : ''));
+
+        tile.appendChild(kind ? K.flowIcon(kind) : K.icon(icon));
+
+        return tile;
+    }
+
+    // A chosen box: its head, the three tabs and the foot line.
+    function sideNode(node) {
+        var tabs = sideTabs(!!(state.edit && state.flow && state.flow.manage));
+        var shown = sideTabNow(tabs);
+        var links = sideLinks(node);
+        var items = [];
+
+        if (state.edit && kindOf(node).into) {
+            items.push([t('fl_duplicate'), 'bi-copy', function () { duplicateNode(node); }]);
+        }
+
+        if (state.edit) {
+            items.push([t('fl_remove_box'), 'bi-trash', function () { removeSelected({ type: 'node', id: node.id }); }]);
+        }
+
+        ui.side.appendChild(sideHead(sideTile(node.kind), t(kindOf(node).name), nameText(node), items));
+
+        var list = el('div', 'pg-seg wsf-side-tabs');
+        var panel = el('div', 'wsf-side-panel');
+
+        list.setAttribute('role', 'tablist');
+        list.setAttribute('aria-label', t('fl_settings'));
+        panel.id = 'wsf-side-panel';
+        panel.setAttribute('role', 'tabpanel');
+        panel.setAttribute('aria-labelledby', 'wsf-side-tab-' + shown);
+        tabs.forEach(function (tab) {
+            var button = el('button', 'pg-seg-item', t({ settings: 'fl_side_tab_settings', links: 'fl_side_tab_links', try: 'fl_side_tab_try' }[tab]));
+            var on = tab === shown;
+
+            button.type = 'button';
+            button.id = 'wsf-side-tab-' + tab;
+            button.setAttribute('role', 'tab');
+            button.setAttribute('aria-selected', on ? 'true' : 'false');
+            button.setAttribute('aria-controls', panel.id);
+            button.setAttribute('data-refocus', 'side-tab-' + tab);
+            button.tabIndex = on ? 0 : -1;
+
+            if (tab === 'links') {
+                button.appendChild(el('span', 'pg-seg-count', String(links.before.length + links.after.length)));
+            }
+
+            button.addEventListener('click', function () { showSideTab(tab); });
+            button.addEventListener('keydown', function (event) {
+                var next = sideTabKey(tabs, tab, event.key);
+
+                if (next) {
+                    event.preventDefault();
+                    showSideTab(next);
+                }
+            });
+            list.appendChild(button);
+        });
+        ui.side.appendChild(list);
+
+        if (shown === 'links') {
+            panel.appendChild(linksTab(node, links));
+        } else if (shown === 'try') {
+            tryField(panel, node);
+        } else {
+            panel.appendChild(nodeForm(node, true));
+        }
+
+        ui.side.appendChild(panel);
+        ui.side.appendChild(sideFoot(links));
+    }
+
+    function showSideTab(tab) {
+        state.sideTab = tab;
+        state.refocus = 'side-tab-' + tab;
+        drawSettings();
+    }
+
+    // Connections: the boxes before, each a row that chooses it; the arrows
+    // after with their outcome and ×; Add an arrow under them.
+    function linksTab(node, links) {
+        var box = el('div', 'wsf-links');
+
+        if (kindOf(node).into) {
+            box.appendChild(el('h3', 'wsf-side-sub', t('fl_side_before')));
+
+            if (!links.before.length) {
+                box.appendChild(el('p', 'pg-text-meta fg-secondary', t('fl_after_none')));
+            }
+
+            links.before.forEach(function (id) {
+                box.appendChild(linkRow(nodeById(id)));
+            });
+        }
+
+        if (!kindOf(node).out.length) {
+            return box;
+        }
+
+        box.appendChild(el('h3', 'wsf-side-sub', t('fl_side_after')));
+
+        if (!links.after.length) {
+            box.appendChild(el('p', 'pg-text-meta fg-secondary', t('fl_then_none')));
+        }
+
+        links.after.forEach(function (item) {
+            var row = linkRow(nodeById(item.edge.to));
+
+            if (kindOf(node).out.length > 1) {
+                row.appendChild(outcomeSelect(item.edge));
+            }
+
+            if (state.edit) {
+                var remove = K.button('pg-icon-button pg-icon-button-sm', '', 'bi-x-lg');
+
+                nameLabel(remove, 'fl_remove_arrow_to', nodeById(item.edge.to));
+                remove.title = remove.getAttribute('aria-label');
+                remove.addEventListener('click', function () {
+                    state.refocus = 'connect-' + node.id;
+                    removeSelected({ type: 'edge', id: item.index });
+                });
+                row.appendChild(remove);
+            }
+
+            box.appendChild(row);
+        });
+
+        if (!state.edit) {
+            return box;
+        }
+
+        var targets = candidates(node);
+        var group = el('div', 'wsf-link-add');
+        var pick = K.select([['', t('fl_connect_pick')]].concat(targets.map(function (target) { return [target.id, nameOf(target)]; })), '');
+        var add = K.button('pg-button pg-button-ghost pg-button-sm', t('fl_side_add_arrow'), 'bi-plus-lg');
+
+        pick.className = 'pg-input pg-input-sm wsf-connect';
+        nameLabel(pick, 'fl_connect_title', node);
+        pick.setAttribute('data-refocus', 'connect-' + node.id);
+        add.disabled = !targets.length;
+        add.addEventListener('click', function () {
+            if (pick.value) {
+                state.refocus = 'connect-' + node.id;
+                connect(node, nodeById(pick.value));
+            }
+        });
+        group.appendChild(pick);
+        group.appendChild(add);
+        box.appendChild(group);
+
+        return box;
+    }
+
+    // A row naming another box by its tile and name; a click chooses it.
+    function linkRow(other) {
+        var row = el('div', 'wsf-link-row');
+        var go = el('button', 'wsf-link-go');
+
+        go.type = 'button';
+        go.appendChild(paletteTile(other.kind));
+        go.lastChild.classList.add('wsf-group-' + ((other.kind === 'end') ? 'logic' : kindOf(other).group));
+        go.appendChild(nameText(other, 'wsf-palette-name'));
+        go.setAttribute('data-refocus', 'link-' + other.id);
+        go.addEventListener('click', function () { chooseBox(other.id); });
+        row.appendChild(go);
+
+        return row;
+    }
+
+    // The foot line: the box before (the first by arrow order) and how many
+    // come after, each choosing that box.
+    function sideFoot(links) {
+        var foot = el('div', 'wsf-side-foot pg-text-meta');
+
+        if (links.before.length) {
+            var before = nodeById(links.before[0]);
+            var back = el('button', 'wsf-side-foot-go');
+
+            back.type = 'button';
+            back.appendChild(el('span', 'fg-secondary', t('fl_side_before')));
+            back.appendChild(nameText(before));
+            back.addEventListener('click', function () { chooseBox(before.id); });
+            foot.appendChild(back);
+        }
+
+        if (links.after.length) {
+            var next = nodeById(links.after[0].edge.to);
+            var on = el('button', 'wsf-side-foot-go wsf-side-foot-after');
+
+            on.type = 'button';
+            on.appendChild(el('span', 'fg-secondary', t('fl_side_after')));
+
+            if (links.after.length > 1) {
+                on.appendChild(el('span', '', t('fl_side_boxes', links.after.length)));
+            } else {
+                on.appendChild(nameText(next));
+            }
+
+            on.appendChild(K.icon('bi-chevron-right'));
+            on.addEventListener('click', function () { chooseBox(next.id); });
+            foot.appendChild(on);
+        }
+
+        return foot;
+    }
+
+    // Another box chosen from the panel: selected, brought into sight, its
+    // panel open on the same tab.
+    function chooseBox(id) {
+        select({ type: 'node', id: id }, { reveal: true, focus: true });
+    }
+
+    // ⋯ › Duplicate: the box and its settings, no arrows, right of it where
+    // there is room, selected; one undo step. A start box has none.
+    function duplicateNode(node) {
+        if (!state.edit || !kindOf(node).into) {
+            return;
+        }
+
+        var limits = FL.limits || {};
+
+        if (state.graph.nodes.length >= (limits.nodes || 100)) {
+            K.toast(t('fl_too_many_boxes', limits.nodes || 100), 'warning');
+            return;
+        }
+
+        var copy = copiedNode(node, state.graph.nodes);
+
+        state.graph.nodes.push(copy);
+        state.selected = { type: 'node', id: copy.id };
+        changed(true);
+        focusSelected();
+        announce(t('fl_duplicated', nameOf(copy)));
+    }
+
+    // A copy of a box: a free id of its kind, its title and settings (a deep
+    // copy), placed right of it, moved down past any box in the way.
+    function copiedNode(node, nodes) {
+        var x = node.x + BOX_W + GRID * 2;
+        var y = node.y;
+        var taken = function () {
+            return nodes.some(function (other) { return (Math.abs(other.x - x) < BOX_W) && (Math.abs(other.y - y) < BOX_H); });
+        };
+
+        for (var tries = 0; taken() && (tries < 60); tries++) {
+            y += BOX_H + GRID * 2;
+        }
+
+        return { id: freeId(node.kind, nodes), kind: node.kind, label: node.label, x: x, y: y, config: JSON.parse(JSON.stringify(node.config || {})) };
+    }
+
+    // An arrow or a thread chosen: the same head, no tabs.
+    function sideEdge(index) {
+        var edge = state.graph.edges[index];
+        var name = el('span', '', nameOf(nodeById(edge.from)) + ' › ' + nameOf(nodeById(edge.to)));
+        var items = state.edit ? [[t('fl_remove_arrow'), 'bi-trash', function () { removeSelected({ type: 'edge', id: index }); }]] : [];
+
+        ui.side.appendChild(sideHead(sideTile('', 'bi-arrow-right'), t('fl_arrow'), name, items));
+        ui.side.appendChild(edgeForm(index));
+    }
+
+    function sideThread(thread) {
+        var items = (state.edit && !state.run) ? [[t('fl_thread_remove'), 'bi-trash', function () { removeSelected({ type: 'thread', id: threadKey(thread) }); }]] : [];
+
+        ui.side.appendChild(sideHead(sideTile('', 'bi-bezier2'), t('fl_thread_one'), el('span', '', thread.label), items));
+        ui.side.appendChild(threadForm(thread));
     }
 
     // A control drawn again takes the focus back: state.refocus names it by
@@ -6384,7 +6840,7 @@
         var list = el('ul', 'mb-0 ps-5 fg-secondary');
 
         keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
-        ['tab', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
+        ['tab', 'areas', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
             list.appendChild(el('li', '', t('fl_key_' + key)));
         });
         keys.appendChild(list);
@@ -6449,7 +6905,9 @@
         box.appendChild(field(t('fl_home'), home, (state.edit && !state.flow.manage) ? t('fl_home_owner_only') : t('fl_home_help')));
     }
 
-    function nodeForm(node) {
+    // A box's settings; the outline adds its connections, Try and Remove
+    // under them, the right panel has tabs and a menu for those (settingsOnly).
+    function nodeForm(node, settingsOnly) {
         var box = el('div', 'wsf-form');
         var config = node.config;
 
@@ -6619,7 +7077,7 @@
             tellField(box, node);
         }
 
-        if (state.edit) {
+        if (state.edit && !settingsOnly) {
             // Only the owner: the box is looked at with their rights.
             if (state.flow && state.flow.manage) {
                 tryField(box, node);
@@ -12901,6 +13359,13 @@
         viewport.addEventListener('focusin', function (event) {
             var box = event.target.closest('[data-node]');
 
+            // Close in the right panel gives the box the focus without
+            // choosing it again.
+            if (state.closing) {
+                state.closing = false;
+                return;
+            }
+
             if (box && !canvas.dragging()) {
                 var selected = { type: 'node', id: box.getAttribute('data-node') };
 
@@ -13071,7 +13536,13 @@
             return;
         }
 
-        var field = ui.side.querySelector('input, textarea, select');
+        // Enter on a box: its Settings tab's first field.
+        if (state.sideTab !== 'settings') {
+            state.sideTab = 'settings';
+            drawSettings();
+        }
+
+        var field = ui.side.querySelector('.wsf-side-panel input, .wsf-side-panel textarea, .wsf-side-panel select, input, textarea, select');
 
         if (field && !state.outline) {
             field.focus();

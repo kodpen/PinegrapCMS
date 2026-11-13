@@ -42,7 +42,7 @@ if ($id) {
     $campaign = mysqli_fetch_assoc($result);
 
     if (!$campaign) {
-        output_error(lang('The SMS campaign could not be found.') . ' <a href="view_sms_campaigns.php">' . lang('Go back') . '</a>.');
+        output_error(lang('The SMS campaign could not be found.') . ' <a href="view_email_campaigns.php?channel=sms">' . lang('Go back') . '</a>.');
     }
 
     if (($user['role'] == 3) && ((int) $campaign['created_by'] !== (int) $user['id'])) {
@@ -80,7 +80,7 @@ if ($_POST && !$readonly) {
 
         // No row changed when the job claimed the campaign after it was read:
         // it is no longer ready, so nothing was cancelled to log.
-        $liveform = new liveform('view_sms_campaigns');
+        $liveform = new liveform('view_email_campaigns');
 
         if (mysqli_affected_rows(db::$con) === 1) {
             log_activity(lang(array('string' => 'SMS campaign cancelled: {var:1}', 'vars' => array($campaign['name']))), $_SESSION['sessionusername']);
@@ -89,7 +89,7 @@ if ($_POST && !$readonly) {
             $liveform->add_error(lang('The SMS campaign was not cancelled: it was queued, cancelled or deleted before.'));
         }
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_sms_campaigns.php');
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_email_campaigns.php?channel=sms');
         exit;
     }
 
@@ -109,10 +109,10 @@ if ($_POST && !$readonly) {
         // Queued by the job, cancelled or deleted after this screen read it:
         // nothing was written, and the campaign is shown as it now stands.
         if ($saved === -1) {
-            $liveform = new liveform('view_sms_campaigns');
+            $liveform = new liveform('view_email_campaigns');
             $liveform->add_error(lang('The SMS campaign was queued, cancelled or deleted before your changes could be saved. They were not saved.'));
 
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_sms_campaigns.php');
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_email_campaigns.php?channel=sms');
             exit;
         }
 
@@ -122,12 +122,12 @@ if ($_POST && !$readonly) {
 
         log_activity(lang(array('string' => 'SMS campaign saved: {var:1}', 'vars' => array($decision['values']['name']))), $_SESSION['sessionusername']);
 
-        $liveform = new liveform('view_sms_campaigns');
+        $liveform = new liveform('view_email_campaigns');
         $liveform->add_notice(($decision['values']['status'] === 'ready')
             ? lang('The SMS campaign was scheduled. The scheduled job queues it at its time.')
             : lang('The SMS campaign was saved as a draft.'));
 
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_sms_campaigns.php');
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_email_campaigns.php?channel=sms');
         exit;
     }
 
@@ -303,9 +303,9 @@ pg_page_shell(
         'icon'                => 'campaign',
         'heading'             => $heading,
         'heading_description' => lang('A text message to the contacts of selected contact groups. Numbers without SMS consent, refused by İYS or without a sender identity are refused by the SMS checks.'),
-        'cancel'              => array('enable' => 'true', 'url' => 'view_sms_campaigns.php'),
+        'cancel'              => array('enable' => 'true', 'url' => 'view_email_campaigns.php?channel=sms'),
         'breadcrumb'          => array(
-            array('label' => lang('My SMS Campaigns'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_sms_campaigns.php'),
+            array('label' => lang('Campaigns'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaigns.php?channel=sms'),
             array('label' => $heading),
         ),
     )

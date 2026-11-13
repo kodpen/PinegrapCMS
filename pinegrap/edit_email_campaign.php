@@ -547,11 +547,8 @@ if (!$_POST) {
 
     include_once('liveform.class.php');
 
-    if (mb_strpos($_POST['send_to'], 'view_email_campaign_history.php') !== false) {
-        $liveform = new liveform('view_email_campaign_history');
-    } else {
-        $liveform = new liveform('view_email_campaigns');
-    }
+    // Both campaign states are one list now (view_email_campaigns.php).
+    $liveform = new liveform('view_email_campaigns');
 
     $liveform->add_notice(lang('The campaign has been saved.'));
 

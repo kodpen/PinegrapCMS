@@ -29,7 +29,7 @@ if ($user['role'] < 3) {
     }
 }
 
-$rows[] = array('title' => lang('My Campaign History'), 'text' => lang('Completed and cancelled e-mail campaigns.'), 'url' => 'view_email_campaign_history.php', 'icon' => 'bi-send-check', 'tone' => 'violet');
+$rows[] = array('title' => lang('Finished campaigns'), 'text' => lang('Completed and cancelled e-mail and SMS campaigns.'), 'url' => 'view_email_campaigns.php?state=finished', 'icon' => 'bi-send-check', 'tone' => 'violet');
 
 echo pg_messages_tab_page(
     'sends',

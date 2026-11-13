@@ -50,7 +50,7 @@ function designer_canvas_chrome_test_spots($cases)
 	}
 
 	$script = designer_canvas_chrome_test_function(designer_canvas_chrome_test_source(), '_sdTbSpot')
-		. 'console.log(JSON.stringify(' . json_encode($cases) . '.map(function (c) { return _sdTbSpot(c[0], c[1], c[2]); })));';
+		. 'console.log(JSON.stringify(' . json_encode($cases) . '.map(function (c) { return _sdTbSpot(c[0], c[1], c[2], c[3], c[4]); })));';
 	$file = tempnam(sys_get_temp_dir(), 'pgtbspot');
 	file_put_contents($file, $script);
 	$out = array();
@@ -77,13 +77,19 @@ function test_designer_canvas_toolbar_spot()
 		array(0, 601, 600),
 		array(-300, 40, 600),
 		array(-300, 900, 600),
+		// Inside a clipping card: a cover at its top goes below, as at the
+		// canvas top; with room in the card above, above; filling the card, inside.
+		array(218, 384, 600, 218, 700),
+		array(300, 384, 600, 218, 700),
+		array(218, 690, 600, 218, 700),
+		array(218, 384, 600, -50, 1000),
 	));
 
 	if ($answer === null) {
 		return;
 	}
 
-	pg_assert_same(array('above', 'above', 'below', 'below', 'below', 'below', 'inside', 'inside', 'below', 'inside'), $answer);
+	pg_assert_same(array('above', 'above', 'below', 'below', 'below', 'below', 'inside', 'inside', 'below', 'inside', 'below', 'above', 'inside', 'above'), $answer);
 }
 
 // Every place that writes the toolbar's spot uses _sdTbSpot(): the hover, the
@@ -95,12 +101,13 @@ function test_designer_canvas_toolbar_spot_is_used_everywhere()
 
 	pg_assert_false(strpos($source, "'sd-tb-inside', tops[") !== false, 'no toolbar flip decided from the top alone');
 	pg_assert_false(strpos($source, "'sd-tb-inside', _sdBoxRect(") !== false, 'no hover flip decided from the top alone');
-	pg_assert_contains('_sdTbSpot(r.top, r.bottom, _sdCanvasViewH())', designer_canvas_chrome_test_function($source, '_sdTbFlip'));
+	pg_assert_contains('_sdTbSpot(r.top, r.bottom, _sdCanvasViewH(), c ? c[0] : 0, c ? c[1] : Infinity)', designer_canvas_chrome_test_function($source, '_sdTbFlip'));
+	pg_assert_contains('_sdTbClip(w, memo)', designer_canvas_chrome_test_function($source, '_sdTbFlipAll'));
 	pg_assert_contains('_sdTbFlipAll(ws);', designer_canvas_chrome_test_function($source, '_sdOnCanvasScroll'));
 	pg_assert_contains("_sdTbFlipAll(Array.prototype.slice.call(canvasDoc.querySelectorAll('div.sd-wrap')));", designer_canvas_chrome_test_function($source, 'adjustCanvasToolbars'));
 
 	$place = designer_canvas_chrome_test_function($source, '_sdPlaceChromeOf');
-	pg_assert_contains('_sdTbSpot(er.top, er.bottom, win.innerHeight)', $place);
+	pg_assert_contains('_sdTbSpot(er.top, er.bottom, win.innerHeight, clip ? clip[0] : 0, clip ? clip[1] : Infinity)', $place);
 	pg_assert_contains("spot === 'below' ? er.bottom + 2", $place);
 
 	pg_assert_contains("'.sd-wrap.sd-tb-below > .sd-tb { top:calc(100% + 2px) !important;", $source);
@@ -136,4 +143,17 @@ function test_designer_context_bar_keeps_its_row()
 	pg_assert_contains('overflow-x: auto;', $rule);
 	pg_assert_contains('.sd-ctx-bar.sd-ctx-idle > * { visibility: hidden; }', $css);
 	pg_assert_contains('.sd-ctx-options  { display: flex; align-items: center; flex-wrap: nowrap;', $css);
+}
+
+// The canvas copy of Bootstrap's `.ratio > *` (absolute, the box's full size)
+// goes to the wrapper's element only, never to its toolbar: a selected
+// picture in a ratio box (a card's cover in a loop) drew its toolbar as a
+// filled block the picture's full height over the picture.
+function test_designer_canvas_ratio_rule_skips_the_toolbar()
+{
+	$source = designer_canvas_chrome_test_source();
+
+	pg_assert_false(strpos($source, "'.ratio > .sd-wrap > * {") !== false, 'no ratio rule reaches every child of the wrapper');
+	pg_assert_contains("_SD_BX + '.ratio > .sd-wrap > ' + _SD_FX_EL + ' { position:absolute; top:0; left:0; width:100%; height:100%; }'", $source);
+	pg_assert_contains("var _SD_FX_EL = ':not(.sd-tb)", $source);
 }

@@ -422,6 +422,44 @@ JS
 	pg_assert_same(array(true, true, false, false), $result['taken'], 'with a start: every other start box is refused, the steps are not');
 }
 
+// The right panel of a chosen box: Settings and Connections, Try for the
+// owner editing the flow; the tab list's keys step round and go to the
+// ends; the arrows in and out in the graph's order (the Connections count
+// and the foot line); Duplicate copies a box with its settings and no
+// arrows, right of it and past any box in the way.
+function test_workspace_flows_canvas_side_panel_helpers()
+{
+	$result = ws_flows_canvas_test_node(
+		array('sideTabs', 'sideTabKey', 'sideLinks', 'copiedNode', 'nodeById', 'freeId'),
+		<<<'JS'
+var GRID = 16, BOX_W = 208, BOX_H = 80;
+state.graph = {
+    nodes: [{ id: 'manual_1', kind: 'manual', x: 0, y: 0, label: '', config: {} }, { id: 'task_1', kind: 'task', x: 240, y: 0, label: 'Call', config: { title: 'Call', assignees: [4] } }, { id: 'end_1', kind: 'end', x: 480, y: 0, label: '', config: {} }, { id: 'task_2', kind: 'task', x: 480, y: 120, label: '', config: {} }],
+    edges: [{ from: 'manual_1', to: 'task_1', on: 'next' }, { from: 'task_1', to: 'task_2', on: 'cancelled' }, { from: 'task_1', to: 'end_1', on: 'done' }, { from: 'task_1', to: 'gone_1', on: 'timeout' }]
+};
+var out = {};
+out.tabs = [sideTabs(true), sideTabs(false)];
+var tabs = sideTabs(true);
+out.keys = [sideTabKey(tabs, 'settings', 'ArrowRight'), sideTabKey(tabs, 'try', 'ArrowRight'), sideTabKey(tabs, 'settings', 'ArrowLeft'), sideTabKey(tabs, 'links', 'Home'), sideTabKey(tabs, 'links', 'End'), sideTabKey(tabs, 'links', 'Enter')];
+var links = sideLinks(state.graph.nodes[1]);
+out.links = [links.before, links.after.map(function (item) { return item.edge.to + '@' + item.index; })];
+var copy = copiedNode(state.graph.nodes[1], state.graph.nodes);
+copy.config.assignees.push(9);
+out.copy = [copy.id, copy.kind, copy.label, copy.x, copy.y, state.graph.nodes[1].config.assignees.length];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array(array('settings', 'links', 'try'), array('settings', 'links')), $result['tabs'], 'Try only for the owner editing the flow');
+	pg_assert_same(array('links', 'settings', 'try', 'settings', 'try', ''), $result['keys'], 'Left and Right step round, Home and End go to the ends, other keys do nothing');
+	pg_assert_same(array(array('manual_1'), array('task_2@1', 'end_1@2')), $result['links'], 'the arrows in and out in the graph\'s order, an arrow to a missing box left out');
+	pg_assert_same(array('task_3', 'task', 'Call', 480, 224, 1), $result['copy'], 'a copy: a free id, its title and settings (not shared), right of it, past the boxes in the way');
+}
+
 // The flow list says how each flow starts in a short sentence: a time box
 // by its time alone ("Every day 09:00", no "from" date), any other start in
 // the words the API's start_text gives; no start box, nothing.
