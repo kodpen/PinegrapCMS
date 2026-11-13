@@ -4,7 +4,7 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 ---
 
 ## Which steps? (rules: `messages-area.md`)
-- Every step that builds or changes a screen here builds from the drawing (`messages-area/messages-area.html`) with look A's recipes and puts real screenshots on its PR for the owner's approval before it goes ready; an old screen is never moved in as it is (#9295, `workflow/architect-asking.md`).
+- Every step that builds or changes a screen here builds from the drawing (`messages-area/messages-area.html`) with look A's recipes and posts real screenshots in the agent channel for the owner's approval before it goes ready; an old screen is never moved in as it is (#9295, `workflow/architect-asking.md`).
 - MA0 (S, done #9074) The census (`platform/messages-area-census-*.md`); its proposals were answered on #9081.
 - MA1 (M, done #9182) The shell: the menu row, the five tabs with their gates, old addresses leading in.
 - MA2 (M, done #9252) Sends: the list, tiles, filters, row buttons and e-mail sources built behind `pg_messages_sends_list_open()` (`platform/messages-area-sends.md`); the measured batch was over 300 ms.
