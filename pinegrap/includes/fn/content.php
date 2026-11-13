@@ -19,6 +19,29 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * A page's content with its first <system>name</system> tag (any case) filled
+ * with a system region's output, the name matched as text, not as a pattern.
+ *
+ * get_page_content() renders each <system> tag of a layout in the order the
+ * tags stand, so a widget placed twice (a side column and a footer region)
+ * is rendered twice, each render with its own inline editing ids. Each render
+ * fills its own tag: when the first filled every tag of the name, both copies
+ * carried the first render's ids and the second could not be edited (#9129).
+ * Pure.
+ *
+ * @param string $content
+ * @param string $name   the system region's page name, '' for the page's own
+ * @param string $output
+ * @return string
+ */
+function pg_system_region_fill($content, $name, $output)
+{
+    $filled = preg_replace('/<system>' . preg_quote((string) $name, '/') . '<\/system>/i', pg_regex_replacement($output), (string) $content, 1);
+
+    return is_string($filled) ? $filled : (string) $content;
+}
+
+/**
  * A page's name for a link printed on the site, '' when the page is gone.
  *
  * Widgets link to pages they keep by id (the catalog detail page, a member

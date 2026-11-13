@@ -25,32 +25,23 @@ include('init.php');
 // when we tried to log it in the past.  Innocent activities (e.g. session expired, web crawlers, spammers)
 // and not CSRF attacks generate most of these errors, so it is not important to log them.
 // We are not using the validate_token_field function here because it does not
-// support returning an error like we need for this situation.
-if (
-    ($_SESSION['software']['token'] == '')
-    ||
-    (
-        ($_POST['token'] != $_SESSION['software']['token'])
-        && ($_GET['token'] != $_SESSION['software']['token'])
-    )
-) {
-    echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "", "' . lang('Sorry, the file could not be uploaded, because it appears that your session expired. We recommend that you refresh the page and try again.') . '")</script>';
-    exit();
+// support returning an error like we need for this situation. CKEditor sends
+// the token in the query string of its upload address, so the body has none.
+if (!pg_editor_upload_token_ok($_SESSION['software']['token'] ?? '', $_POST, $_GET)) {
+    editor_add_file_answer('', lang('Sorry, the file could not be uploaded, because it appears that your session expired. We recommend that you refresh the page and try again.'));
 }
 
 // If the user is not logged in, then log activity and output error.
 if (USER_LOGGED_IN == false) {
-    log_activity(lang('access denied to upload file in editor because user was not logged in'), $_SESSION['sessionusername']);
-    echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "", "' . lang('Sorry, the file could not be uploaded, because you are not logged in.') . '")</script>';
-    exit();
+    log_activity(lang('access denied to upload file in editor because user was not logged in'), $_SESSION['sessionusername'] ?? '');
+    editor_add_file_answer('', lang('Sorry, the file could not be uploaded, because you are not logged in.'));
 }
 
 // If the user has a user role and they do not have edit access to any folders,
 // then log activity and output error.
 if ((USER_ROLE == 3) && (no_acl_check(USER_ID) == false)) {
     log_activity(lang('access denied to upload file in editor because user did not have edit access to any folders'), $_SESSION['sessionusername']);
-    echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "", "' . lang('Sorry, the file could not be uploaded, because you do not have edit access to any folders.') . '")</script>';
-    exit();
+    editor_add_file_answer('', lang('Sorry, the file could not be uploaded, because you do not have edit access to any folders.'));
 }
 
 // The rest needs the file. A body over post_max_size arrives empty, yet its
@@ -77,22 +68,19 @@ if ($upload_refusal !== '') {
     editor_add_file_refuse($upload_refusal);
 }
 
-$folder_id = 0;
+// The upload address names a folder only on a screen that has one (a page's
+// regions); products, product groups, calendar events and the like leave it
+// out (_pg_wysiwyg_file_properties()).
+$folder_id = pg_editor_upload_folder_request($_GET);
 
 // If a folder id was passed then that means that user is using editor
 // on a page, so if user has edit access to that page's folder,
-// then allow file to be uploaded into that folder.
-if (
-    ($_GET['folder_id'])
-    && (check_edit_access($_GET['folder_id']) == true)
-) {
-    $folder_id = $_GET['folder_id'];
-
+// then the file is uploaded into that folder.
 // Otherwise a folder id was not passed or the user does not have edit access to the folder that was passed,
 // so find the first folder in the folder tree that the user has edit access to.
 // We will just use that folder as a default.  First we will look for a public folder,
 // and if we can't find one, then we will look for the first folder of any access control.
-} else {
+if (($folder_id === 0) || (check_edit_access($folder_id) == false)) {
     // First look for the first public folder in the folder tree that the user has edit access to.
     $folder_id = get_first_folder_id(0, array(), array(), 'public');
 
@@ -106,8 +94,7 @@ if (
         // then log activity and output error.
         if (!$folder_id) {
             log_activity(lang('access denied to upload file in editor because user did not have edit access to any folders'), $_SESSION['sessionusername']);
-            echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "", "' . lang('Sorry, the file could not be uploaded, because you do not have edit access to any folders.') . '")</script>';
-            exit();
+            editor_add_file_answer('', lang('Sorry, the file could not be uploaded, because you do not have edit access to any folders.'));
         }
     }
 }
@@ -117,8 +104,7 @@ if (
 // may not write to.
 if (pg_upload_name_blocked($_FILES['upload']['name'])) {
     log_activity(lang(array('string' => 'upload of {var:1} was refused because files of that type are not allowed', 'vars' => $_FILES['upload']['name'])), $_SESSION['sessionusername']);
-    echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "", "' . escape_javascript(pg_upload_blocked_message($_FILES['upload']['name'])) . '")</script>';
-    exit();
+    editor_add_file_answer('', pg_upload_blocked_message($_FILES['upload']['name']));
 }
 
 $file_name = prepare_file_name($_FILES['upload']['name']);
@@ -161,15 +147,24 @@ $file_id = mysqli_insert_id(db::$con);
 
 log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => array($file_name))), $_SESSION['sessionusername']);
 
-echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum']) . '", "' . escape_javascript(OUTPUT_PATH . encode_url_path($file_name)) . '", "")</script>';
-exit();
+editor_add_file_answer(OUTPUT_PATH . encode_url_path($file_name), '');
 
 // Logs a refused upload and gives the reason to the editor's dialog, which
 // reads an empty URL with a message as a failure.
 function editor_add_file_refuse($message)
 {
     log_activity($message, $_SESSION['sessionusername'] ?? '');
-    echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($_GET['CKEditorFuncNum'] ?? '') . '", "", "' . escape_javascript($message) . '")</script>';
+    editor_add_file_answer('', $message);
+}
+
+// The answer CKEditor's hidden upload frame runs: the address of the stored
+// file and no message on success, no address and the reason on a refusal.
+// Ends the script.
+function editor_add_file_answer($url, $message)
+{
+    $function_number = (isset($_GET['CKEditorFuncNum']) && is_scalar($_GET['CKEditorFuncNum'])) ? (string) $_GET['CKEditorFuncNum'] : '';
+
+    echo '<script>window.parent.CKEDITOR.tools.callFunction("' . escape_javascript($function_number) . '", "' . escape_javascript($url) . '", "' . escape_javascript($message) . '")</script>';
     exit();
 }
 

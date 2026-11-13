@@ -79,6 +79,7 @@
 - image-editor-recycle-bin.md: The image editor's server refuses the Recycle Bin: a binned file is not opened, replaced or copied, and a new picture is not written into the bin folder (#4297)
 - image-editor-save.md: The image editor's save: image_editor_api.php open and save, the document check, the engine's edit option (turn, flip, straighten, crop, size, overlay, shape), replace, copy and new
 - image-files-left-alone.md: Images the engine refuses to process: animated (PR #1234), unreadable Exif orientation (PR #1242), ICC profile GD cannot carry (PR #1267, #1345); how each is told and handled
+- image-gd-palette-png.md: A palette PNG (PNG-8) through the GD image engine: a turn, flip or crop in the Design Canvas, the rotate button or Optimize writes it back as a palette PNG, pixel for pixel, while it fits 256 colours
 - image-optimize-messages.md: What Optimize and Resize say when they leave a picture alone, per reason (pg_optimize_failure_message()); a .jpg that is no picture is unreadable, not a download
 - image-panel-thumbnails.md: Panel lists draw pictures from their 320 px WebP derivative (pg_image_panel_thumb_url(), thumbUrl()): which lists and files, 320 kept out of page srcset, warm-up pass, jpeg:size
 - image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the nine invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels, GIF transparency).

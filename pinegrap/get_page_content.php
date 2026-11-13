@@ -2432,7 +2432,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             // drawn nothing then; it is emptied here before the checks below
             // read the missing page's properties (a warning on every line).
             if (!$row) {
-                $content = preg_replace('/<system>' . $system_page_name . '<\/system>/i', '', $content);
+                $content = pg_system_region_fill($content, $system_page_name, '');
                 continue;
             }
 
@@ -5393,7 +5393,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             $system_output = '<!--pg-layout-region-start-->' . $system_output . '<!--pg-layout-region-end-->';
         }
 
-        $content = preg_replace('/<system>' . $system_page_name . '<\/system>/i', pg_regex_replacement($system_output), $content);
+        // This render fills its own tag: a widget placed twice is rendered
+        // once for each place, with its own inline editing ids.
+        $content = pg_system_region_fill($content, $system_page_name, $system_output);
     }
 
     // If a comments_block placeholder was used, replace it with the collected comments HTML.

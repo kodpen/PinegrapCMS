@@ -110,7 +110,7 @@ function test_legacy_region_render_marks_primary_region()
 		$source
 	);
 	$mark = strpos($source, "'<!--pg-layout-region-start-->' . \$system_output . '<!--pg-layout-region-end-->'");
-	$replace = strpos($source, "pg_regex_replacement(\$system_output), \$content);");
+	$replace = strpos($source, "pg_system_region_fill(\$content, \$system_page_name, \$system_output);");
 	pg_assert_true(($mark !== false) && ($replace !== false) && ($mark < $replace), 'marked before it is put in place');
 }
 

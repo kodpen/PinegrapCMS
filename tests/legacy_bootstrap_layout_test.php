@@ -618,7 +618,7 @@ function test_lbs_layout_get_page_content_runs_the_pass_once_on_the_page_type_s_
 	$footer = $at("\$system_output .= \$output_system_region_footer;");
 	$frame = $at("<div style=\"padding: 2em 0 0 0\">' . \$system_output . '</div>");
 	$marks = $at("'<!--pg-layout-region-start-->' . \$system_output");
-	$join = $at("pg_regex_replacement(\$system_output)");
+	$join = $at("pg_system_region_fill(\$content, \$system_page_name, \$system_output)");
 	pg_assert_true($gate < $reset && $reset < $header && $header < $extra && $extra < $pass, 'the pass follows the page type\'s markup');
 	pg_assert_true($pass < $footer && $footer < $frame && $frame < $marks && $marks < $join, 'the pass comes before the footer, the frame, the marks and the join');
 	$code = '';

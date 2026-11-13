@@ -85,7 +85,7 @@ function test_site_datetime_inject_after_classic_regions()
 	$inject = $at('pg_site_datetime_inject($content)');
 
 	pg_assert_same(1, substr_count($source, 'pg_site_datetime_inject($content)'), 'asked once');
-	pg_assert_true($inject > $at("preg_replace('/<system>' . \$system_page_name . '<\\/system>/i', pg_regex_replacement(\$system_output)"), 'after the system regions are drawn in');
+	pg_assert_true($inject > $at('pg_system_region_fill($content, $system_page_name, $system_output)'), 'after the system regions are drawn in');
 	pg_assert_true($inject > $at("preg_match_all('/<cregion>.*?<\\/cregion>/i', \$content, \$regions);", true), 'after the common regions');
 	pg_assert_true($inject > $at("preg_replace('/<pregion><\\/pregion>/i', pg_regex_replacement(\$pregion_content)"), 'after the page regions');
 	pg_assert_true($inject < $at('// If this page is not being prepared for an email, then add JS to bottom of page.'), 'before the software\'s own scripts');

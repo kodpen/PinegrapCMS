@@ -1303,6 +1303,11 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
     $source_width  = imagesx($source);
     $source_height = imagesy($source);
 
+    // A palette PNG (PNG-8, and a greyscale PNG, which GD reads as a
+    // palette) is written back as a palette when the result still fits one
+    // (the PNG case below); every step here works on a truecolor copy.
+    $palette_png = ($type == IMAGETYPE_PNG) && function_exists('imageistruecolor') && !imageistruecolor($source);
+
     // A GIF decodes as a palette with at most one transparent index. The
     // resize canvas and imagerotate() are truecolor, and the GIF writer only
     // gets that transparency back when told which truecolor value stands for
@@ -1446,6 +1451,19 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
             break;
 
         case IMAGETYPE_PNG:
+            // A palette source written as truecolor RGBA came back two to
+            // three times its size after a turn, a flip or a crop that added
+            // no colour (#9118); while the picture still holds 256 colours
+            // or fewer it is written as a palette again, pixel for pixel.
+            if ($palette_png) {
+                $palette = pg_image_gd_exact_palette($image, 256);
+
+                if ($palette) {
+                    pg_image_destroy($image);
+                    $image = $palette;
+                }
+            }
+
             // GD's png argument is a zlib level, 0-9, not a quality.
             $written = imagepng($image, null, 9);
             break;
@@ -1488,6 +1506,92 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
     }
 
     return $data;
+}
+
+
+/**
+ * A truecolor GD picture as a palette picture with exactly its pixels, when
+ * it holds at most $max colours (each red, green, blue and alpha value
+ * counted as its own colour): every colour gets a palette entry of its own,
+ * with its alpha, which the PNG writer puts in the tRNS chunk. GD's own
+ * imagetruecolortopalette() reduces the colours, so it is not used: a
+ * picture that fits the palette keeps every pixel. False when the picture
+ * holds more colours, is larger than 16,777,216 pixels (the scan reads each
+ * pixel twice) or is not truecolor; the picture given is left as it is.
+ *
+ * @param resource|GdImage $image
+ * @param int              $max   1-256
+ * @return resource|GdImage|false
+ */
+function pg_image_gd_exact_palette($image, $max = 256)
+{
+    $max = max(1, min(256, (int) $max));
+
+    if (!function_exists('imageistruecolor') || !imageistruecolor($image)) {
+        return false;
+    }
+
+    $width = imagesx($image);
+    $height = imagesy($image);
+
+    if (($width < 1) || ($height < 1) || (($width * $height) > 16777216)) {
+        return false;
+    }
+
+    // Packed alpha-red-green-blue value => palette index, in the order the
+    // colours are met.
+    $indexes = array();
+    $count = 0;
+
+    for ($y = 0; $y < $height; $y++) {
+        for ($x = 0; $x < $width; $x++) {
+            $color = imagecolorat($image, $x, $y);
+
+            if (!isset($indexes[$color])) {
+                if ($count === $max) {
+                    return false;
+                }
+
+                $indexes[$color] = $count;
+                $count++;
+            }
+        }
+    }
+
+    $palette = imagecreate($width, $height);
+
+    if (!$palette) {
+        return false;
+    }
+
+    foreach ($indexes as $color => $index) {
+        if (imagecolorallocatealpha($palette, ($color >> 16) & 0xFF, ($color >> 8) & 0xFF, $color & 0xFF, ($color >> 24) & 0x7F) !== $index) {
+            pg_image_destroy($palette);
+            return false;
+        }
+    }
+
+    // A new palette picture is all index 0 (the first colour met), so only
+    // the other runs of a row are drawn, each as one line.
+    for ($y = 0; $y < $height; $y++) {
+        $start = 0;
+        $run = $indexes[imagecolorat($image, 0, $y)];
+
+        for ($x = 1; $x <= $width; $x++) {
+            $index = ($x < $width) ? $indexes[imagecolorat($image, $x, $y)] : -1;
+
+            if ($index !== $run) {
+                if ($run !== 0) {
+                    imageline($palette, $start, $y, $x - 1, $y, $run);
+                }
+
+                $start = $x;
+                $run = $index;
+            }
+        }
+    }
+
+    return $palette;
 }
 
 
