@@ -5104,7 +5104,6 @@ function output_menu($properties = false)
         case 'view_performance_log.php':
         case 'clean_up.php':
         case 'database_engine.php':
-        case 'mail_queue.php':
         case 'backups.php':
         case 'cloudflare.php':
             $active_menu = 25;

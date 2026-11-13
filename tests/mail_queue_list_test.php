@@ -128,22 +128,23 @@ function test_sms_queue_list_kinds_cover_the_layer()
 // 100th can be found, retried and deleted.
 function test_mail_queue_screen_on_the_driver()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/mail_queue.php');
+	// The queues are listed in Communication › Sends; mail_queue.php leads
+	// there with its tab as the channel.
+	$door = (string) file_get_contents(PG_FUNCTIONS_DIR . '/mail_queue.php');
+	pg_assert_contains('pg_messages_sends_queue_door($_GET)', $door, 'the old address is a door');
 
-	pg_assert_contains('pg_list_table_html($mail_queue_list_source', $source);
-	pg_assert_contains('pg_list_table_html($sms_queue_list_source', $source);
-	pg_assert_contains('data-pg-list-search="mail_queue"', $source);
-	pg_assert_contains('data-pg-list-search="mail_queue_sms"', $source);
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/messages_sends.php');
+	pg_assert_contains('pg_list_table_html($sends_source', $source);
+	pg_assert_contains("pg_list_table_search_box('messages_sends')", $source);
 	pg_assert_false(strpos($source, 'LIMIT 100') !== false, 'no fixed 100-row window');
-	pg_assert_contains("is_string(\$_POST['mail_action'])", $source, 'a non-string mail_action is empty');
-	pg_assert_contains('pg_mail_queue_run(1, 20, $mail_queue_id)', $source, 'a retry while the queue is inactive sends the message');
+	pg_assert_contains("is_string(\$_POST['sends_action'])", $source, 'a non-string action is empty');
+	pg_assert_contains('pg_mail_queue_run(1, 20, $id)', pg_test_function_source('pg_mail_queue_retry'), 'a retry while the queue is inactive sends the message');
 
 	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
 	pg_assert_false(strpos($actions, "'mail_queue_list_rows'") !== false, 'the old paged action is gone');
 
 	require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
-	pg_assert_same('pg_mail_queue_list_source', pg_list_table_definition('mail_queue')['source']);
-	pg_assert_same('pg_sms_queue_list_source', pg_list_table_definition('mail_queue_sms')['source']);
+	pg_assert_same('pg_messages_sends_list_source', pg_list_table_definition('messages_sends')['source']);
 }
 
 function test_mail_queue_list_columns()

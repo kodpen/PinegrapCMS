@@ -505,3 +505,33 @@ function test_list_table_screens_keep_their_source_out_of_loops()
 	pg_assert_same(array('$audit_view_source', '$audit_view_page'), isset($screens['view_audit_log.php']) ? $screens['view_audit_log.php'] : array(), 'the audit trail is among them');
 	pg_assert_same(array(), array_values(array_unique($reused)), 'a list source or page reused as a loop variable before the call');
 }
+
+function test_list_table_source_reads_branches()
+{
+	$source = pg_list_table_source(array(
+		'list' => 'branched',
+		'columns' => array('name' => array('heading' => 'Name', 'sort' => 'name')),
+		'branches' => array(
+			array('sql' => 'SELECT 1 AS rid, 9 AS sid, ? AS name', 'params' => array('a')),
+			array('sql' => '   ', 'params' => array('dropped')),
+			'not a branch',
+			array('sql' => 'SELECT 2 AS rid, 18 AS sid, ? AS name', 'params' => array('b')),
+		),
+		'branch_id' => 'rid',
+		'where' => 'name <> ?',
+		'params' => array('c'),
+		'id' => 'sid',
+		'levels' => array(array('sort' => 'name', 'order' => 'asc')),
+	));
+
+	pg_assert_same(2, count($source['branches']), 'empty and malformed branches are dropped');
+	pg_assert_same('((SELECT 1 AS rid, 9 AS sid, ? AS name) UNION ALL (SELECT 2 AS rid, 18 AS sid, ? AS name)) AS pg_lt_u', $source['from'], 'read whole, the branches are one union');
+	pg_assert_same(array('a', 'b'), $source['from_params'], 'the branches bind their own values first');
+	pg_assert_same(array('c'), $source['params'], 'params bind the condition only');
+	pg_assert_same('name asc, rid desc', pg_list_table_order_sql($source, $source['branch_id']), 'a branch orders on its own id');
+	pg_assert_same('name asc, sid desc', pg_list_table_order_sql($source), 'the union orders on the list id');
+
+	$plain = pg_list_table_source(array('from' => 'page', 'params' => array(1), 'id' => 'page_id'));
+	pg_assert_same(array(), $plain['branches'], 'a plain source has no branches');
+	pg_assert_same(array(), $plain['from_params'], 'nor values ahead of its own');
+}
