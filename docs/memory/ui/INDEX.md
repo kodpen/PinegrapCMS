@@ -479,7 +479,7 @@
 - panel-old-browser-notice.md: The "update your browser" bar (pg_old_browser_notice()): its three CSS.supports tests, where it is printed (panel head, four standalone screens), the session close, why ES5 and fixed colours [decision: decisions-made-panel-3.md]
 - panel-picture-viewer-focus.md: Panel picture viewer (pg_lightbox.js): focus moves in, Tab wraps, focus returns to the opener, the closed overlay is inert and hidden, named dialog and thumbnails, closes only on a background tap
 - panel-picture-viewer-zoom.md: Panel picture viewer (pg_lightbox.js): zoom measured from the fitted size, a zoomed picture pans by drag and by the arrow keys, Left/Right change the picture only at the fit
-- panel-pill-contrast.md: Panel pills and badges at 4.5:1 in both themes: the badge weight floor against fw-lighter/fw-light, subtle-fill badge inks mixed 80% toward the text colour, .pg-pill text 70%, the sweep and its test
+- panel-pill-contrast.md: Panel pills, badges and tone text at 4.5:1 in both themes: badge weight floor, subtle-fill inks 80%, .pg-pill 70%, rose text token, dark --pg-fg-3, the sweep and its test
 - panel-radius-tokens.md: B10 radius (#4867): fields and buttons on Bootstrap 6's control radii, cards, dialogs and menus on --pg-radius-surface (radius-7), inner card corners from the card radius
 - panel-save-shortcut-dialogs.md: Dialogs and editors that save on Ctrl+S themselves (Site Settings, code dialog, visual designer) and how the panel shortcut leaves their key alone
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, buttons on their own form
@@ -519,6 +519,7 @@
 - picker-pages.md: Pages in the picker dialog (kind page, PK4): rows with address and type, the page type chips, archived and binned marks that cannot be chosen, a caller's own entries (extra) [decision: here]
 - picker-registry.md: The picker's registry pg_picker_kinds() and endpoint picker.php (list, search, tree, resolve, upload): kinds, request checks, paging, access rule, value states
 - picker-remaining-screens.md: The product builder's pictures, the contact photo and the theme designer's background file on the picker (PK9, #8904); the image window editor_select_image.php deleted with its add_file.php return
+- picker-site-lists.md: Design Canvas From the site (Import, Video, Add sound) and the Workspace paperclip's "From the file manager" on the one picker (PK9b, #9256): kinds, site page fallback, refused mark
 - picker-upload.md: The picker dialog's Upload (picker.php request upload), its Recently used list kept in the browser, and several picks (multiple): rules, keys, where each is checked
 - print-order-product-links.md: The order print view's product name and image are real links to edit_product.php, reachable from the keyboard
 - print-views-light-paper.md: The order print view and packing slip force the light theme, carry their own title and the store icon; the packing slip's address lines; the campaign popups' title and icon

@@ -617,10 +617,31 @@
         return this.uploadSend(file, 'video', head, { error: t('clipUploadError') });
     };
 
-    // Videos from Files (action video_files) over the editor; a press adds
-    // one, or hands it to pick(file) (Replace).
+    // A video picked from the site: added, or handed to pick(file).
+    Editor.prototype.clipPicked = function (f, pick) {
+        if (pick) {
+            pick(f);
+        } else if (M.soundSrcOk(f.url, origin())) {
+            this.clipAdd(f);
+        }
+    };
+
+    // Videos from the site: the picker (kind canvas_video) on a panel
+    // screen, else the Files list (action video_files) over the editor; a
+    // press adds one, or hands it to pick(file) (Replace).
     Editor.prototype.openClipFiles = function (pick) {
         var self = this, timer = null, st = this.clipFiles;
+
+        if (this.sitePickerOk()) {
+            pick = (typeof pick === 'function') ? pick : null;
+            this.sitePick('canvas_video', t('clipFiles'), document.activeElement).then(function (f) {
+                if (f) {
+                    self.clipPicked(f, pick);
+                }
+            });
+
+            return;
+        }
         var find = el('input', { type: 'search', class: 'pgie-input pgie-stkfind', value: st.search, placeholder: t('clipFind'), 'aria-label': t('clipFind') });
 
         st.pick = (typeof pick === 'function') ? pick : null;
@@ -677,12 +698,7 @@
                 var pick = self.clipFiles.pick;
 
                 self.closeConfirm();
-
-                if (pick) {
-                    pick(f);
-                } else if (M.soundSrcOk(f.url, origin())) {
-                    self.clipAdd(f);
-                }
+                self.clipPicked(f, pick);
             } }, [icon('video'), el('span', { text: f.name }), el('em', { text: f.size || '' })]));
         });
     };

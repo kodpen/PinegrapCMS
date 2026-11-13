@@ -10,6 +10,10 @@
  * whose selectors it would rename, the scripts that call Bootstrap 3's
  * plugins, and the files a design on Bootstrap 5.3.8 leaves out.
  *
+ * The report also names the pages whose page type has a system widget: on
+ * a Bootstrap 5.3.8 design the type's Bootstrap 3 markup is renamed as the
+ * page is printed, the widget is written for 5.3.8 in the first place.
+ *
  * Nothing is written: the rows and files are read, converted in memory and
  * counted.
  *
@@ -28,6 +32,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_design_theme.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
 
@@ -331,6 +336,35 @@ function pg_lbs_designs()
 }
 
 /**
+ * The pages that could draw their page type with its system widget: a
+ * page whose type has a widget twin (pg_layout_widget_kinds()) and that
+ * does not place a widget of that kind itself. The page tree's own refs
+ * are searched, not the parts inside parts, as the editor's offer does.
+ *
+ * Pure: no query.
+ *
+ * @param array $pages       list of: name, type, custom (bool, a custom
+ *                           layout), parts (the shared ids its tree places)
+ * @param array $part_kinds  shared id => widget kind ('' for a plain part)
+ * @return array  list of: page, type, kind, custom
+ */
+function pg_lbs_widget_offers($pages, $part_kinds)
+{
+    $kinds = pg_layout_widget_kinds();
+    $out = array();
+    foreach ((array)$pages as $p) {
+        $type = (string)($p['type'] ?? '');
+        $kind = (string)($kinds[$type] ?? '');
+        if ($kind === '') continue;
+        foreach ((array)($p['parts'] ?? array()) as $sid) {
+            if ((string)($part_kinds[(int)$sid] ?? '') === $kind) continue 2;
+        }
+        $out[] = array('page' => (string)($p['name'] ?? ''), 'type' => $type, 'kind' => $kind, 'custom' => !empty($p['custom']));
+    }
+    return $out;
+}
+
+/**
  * One Legacy design's report, null when it is not a Legacy design or does
  * not load Bootstrap 3. Its pages' trees and every shared part they place
  * (parts inside parts too) are converted in memory; its own stylesheets
@@ -342,7 +376,8 @@ function pg_lbs_designs()
  * @return array|null  'id', 'name', 'pages', 'parts', 'trees'
  *                     (pg_lbs_trees_report()), 'sheets' (pg_lbs_sheet_result()
  *                     each), 'scripts' (list of: label, calls), 'left_out'
- *                     (list of: kind, label)
+ *                     (list of: kind, label), 'widgets'
+ *                     (pg_lbs_widget_offers())
  */
 function pg_lbs_design_report($design_id, $designs = null)
 {
@@ -358,11 +393,12 @@ function pg_lbs_design_report($design_id, $designs = null)
     // decoded tree is held at a time.
     $trees = array();
     $part_ids = array();
-    $pages = db_items("SELECT page_id, page_name FROM page
+    $pages = db_items("SELECT page_id, page_name, page_type, layout_type FROM page
                        WHERE page_style = '$design_id'" . pg_designer_not_binned_sql('page_folder') . "
                        ORDER BY page_name ASC, page_id ASC");
     $pages = is_array($pages) ? $pages : array();
     $names = array_column($pages, 'page_name', 'page_id');
+    $page_parts = array();
     foreach (array_chunk(array_map('intval', array_column($pages, 'page_id')), 25) as $chunk) {
         $rows = db_items("SELECT page.page_id, " . pg_page_tree_sql_expr() . " AS tree_json
                           FROM page LEFT JOIN style ON page.page_style = style.style_id
@@ -370,17 +406,20 @@ function pg_lbs_design_report($design_id, $designs = null)
         foreach ((is_array($rows) ? $rows : array()) as $r) {
             $tree = json_decode((string)$r['tree_json'], true);
             if (!is_array($tree)) continue;
-            foreach (pg_ltd_shared_ids($tree) as $sid) $part_ids[$sid] = true;
+            $page_parts[(int)$r['page_id']] = pg_ltd_shared_ids($tree);
+            foreach ($page_parts[(int)$r['page_id']] as $sid) $part_ids[$sid] = true;
             $trees[] = array('label' => (string)($names[$r['page_id']] ?? ''), 'tree' => $tree);
         }
     }
     $page_count = count($trees);
     $seen = array();
+    $part_kinds = array();
     while ($want = array_diff(array_keys($part_ids), array_keys($seen))) {
         foreach (array_chunk(array_map('intval', $want), 25) as $chunk) {
             foreach ($chunk as $sid) $seen[$sid] = true;
-            $rows = db_items("SELECT id, name, tree_json FROM shared_components WHERE id IN (" . implode(',', $chunk) . ")");
+            $rows = db_items("SELECT id, name, tree_json, system_region_config FROM shared_components WHERE id IN (" . implode(',', $chunk) . ")");
             foreach ((is_array($rows) ? $rows : array()) as $r) {
+                $part_kinds[(int)$r['id']] = pg_sw_widget_kind(json_decode((string)$r['system_region_config'], true));
                 $tree = json_decode((string)$r['tree_json'], true);
                 if (!is_array($tree)) continue;
                 foreach (pg_ltd_shared_ids($tree) as $sid) $part_ids[$sid] = true;
@@ -390,6 +429,17 @@ function pg_lbs_design_report($design_id, $designs = null)
     }
     $tree_report = pg_lbs_trees_report($trees);
     unset($trees);
+
+    $offer_pages = array();
+    foreach ($pages as $p) {
+        $offer_pages[] = array(
+            'name'   => (string)$p['page_name'],
+            'type'   => (string)$p['page_type'],
+            'custom' => (string)$p['layout_type'] === 'custom',
+            'parts'  => $page_parts[(int)$p['page_id']] ?? array(),
+        );
+    }
+    $widgets = pg_lbs_widget_offers($offer_pages, $part_kinds);
 
     // The stylesheets the design keeps, then its Theme file when no row
     // links it: the one it names, else the activated theme it loads.
@@ -452,6 +502,7 @@ function pg_lbs_design_report($design_id, $designs = null)
         'sheets'   => $sheets,
         'scripts'  => $scripts,
         'left_out' => $left_out,
+        'widgets'  => $widgets,
     );
 }
 
@@ -486,6 +537,33 @@ function pg_lbs_names_html($names, $where = array(), $limit = 40)
 }
 
 /**
+ * The report's System widgets part: per widget kind the pages that could
+ * use it, a page with its own layout marked, as the editor's region panel
+ * offers the widget beside it there.
+ *
+ * @param array $widgets  pg_lbs_widget_offers()
+ * @return string  HTML
+ */
+function pg_lbs_widgets_html($widgets)
+{
+    $head = '<h4 class="h6 mt-5 mb-1">' . h(lang('System widgets')) . '</h4>';
+    if (!$widgets) {
+        return $head . '<p class="small mb-0">' . h(lang('No page of this design prints a page type that has a system widget.')) . '</p>';
+    }
+    $labels = pg_sw_type_labels();
+    $counts = array();
+    $where = array();
+    foreach ($widgets as $w) {
+        $label = (string)($labels[$w['kind']] ?? $w['kind']);
+        $counts[$label] = ($counts[$label] ?? 0) + 1;
+        $where[$label][] = $w['custom'] ? lang(array('string' => '{var:1} (own layout)', 'vars' => array($w['page']))) : $w['page'];
+    }
+    arsort($counts);
+    return $head . '<div class="small fg-secondary mb-1">' . h(lang('These pages print their page type\'s Bootstrap 3 markup, which a design on Bootstrap 5.3.8 renames as the page is printed. The page type\'s system widget is written for Bootstrap 5.3.8 and edited in the designer: the better move. For a page with its own layout, the region panel in the editor puts the widget beside the region.')) . '</div>'
+        . '<div class="small">' . pg_lbs_names_html($counts, $where) . '</div>';
+}
+
+/**
  * The report of one design, under its line on the card.
  *
  * @param array $r  pg_lbs_design_report()
@@ -513,6 +591,8 @@ function pg_lbs_report_html($r)
             . '<div class="fg-secondary mt-1">' . h($g[2]) . '</div>'
             . pg_lbs_names_html($t[$g[0]], (array)($t['where'][$g[0]] ?? array())) . '</details>';
     }
+
+    $out .= pg_lbs_widgets_html((array)($r['widgets'] ?? array()));
 
     $items = '';
     foreach ($r['sheets'] as $s) {

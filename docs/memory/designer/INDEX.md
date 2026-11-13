@@ -28,13 +28,15 @@
 - canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (a sample photo SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
 - canvas-sample-form-record.md: What a form record draws on the designer canvas (CS3, #9239): an answer of each field kind, fields fetched by the first value, fixed record samples
 - canvas-sample-gaps-account.md: CS0 census, account (CS4): my account, login, registration, password forms, preferences, address book, security, invoices, account e-mail card: canvas faults
-- canvas-sample-gaps-catalog.md: CS0 census, catalog (CS4): catalog listing, product page and values, wishlist, order form, search, photo gallery, tag cloud, folder view: canvas faults
+- canvas-sample-gaps-catalog.md: CS0 census, catalog: what the catalog listing, product page, wishlist, order form, search, gallery, tag cloud and folder view still draw without a sample after CS4a (#9253)
 - canvas-sample-gaps-checkout.md: CS0 census, orders part two: what the cart, express order checkout, order preview and the shipping and billing steps still draw without a sample after CS2 (#9214)
 - canvas-sample-gaps-forms.md: CS0 census, forms: what custom forms, the form list and item views and the form e-mail cards still draw without a sample after CS3 (#9239)
 - canvas-sample-gaps-orders.md: CS0 census, orders: what the order view and order receipt e-mail card still draw without a sample after CS2 (#9214)
 - canvas-sample-gaps-other.md: CS0 census, the rest (CS4): comments and comment e-mail card, calendar, Google reviews, booking, accessibility statement, ads, menus, language, loop values
 - canvas-sample-gaps.md: CS0 census (#9179): what the designer canvas draws for each bound value (sample, ‹label›, empty, grey box, wrong sample); shared causes; false warning frames [decision: decisions-made-product-48.md]
 - canvas-sample-order.md: The sample order the designer canvas draws in the order view, its receipt e-mail, cart, checkout and its steps: one record whose lines add up to its totals (CS2, #9214) [decision: decisions-made-product-48.md]
+- canvas-sample-overview.md: Start file for the canvas-sample-* files: how the designer canvas draws a bound value with a realistic sample instead of its label, which file holds which family, what is still open [decision: decisions-made-product-48.md]
+- canvas-sample-product.md: The sample product the designer canvas draws in the catalog listing, product page, wishlist, order form and search results (CS4a, #9253); the tag cloud's samples; catalog block previews
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
 - catalog-listing-subtree-sort.md: Catalog listing widget's catalog-order sort while a search or filter spans the group subtree: the product's lowest sort order, not an arbitrary group row.
@@ -439,7 +441,7 @@
 - layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing [decision: here]
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
-- legacy-bootstrap-card.md: The "Towards Bootstrap 5" card (LB3): Legacy designs, Bootstrap 3 found by the framework sheet row, a design's report (names, sheets, scripts, files left out), nothing written [decision: decisions-made-product-48.md]
+- legacy-bootstrap-card.md: The "Towards Bootstrap 5" card (LB3): Legacy designs, Bootstrap 3 found by the framework sheet row, a design's report (names, system widgets, sheets, scripts, files left out), nothing written [decision: decisions-made-product-48.md]
 - legacy-bootstrap-census.md: Census of the starting sites' Legacy designs for the Bootstrap 5.3.8 helper (LB1, #8940): sets, Bootstrap 3 and theme classes, scripts, theme parts, map coverage and gaps
 - legacy-bootstrap-map.md: The Bootstrap 3 to 5.3.8 map and converter of a Legacy design (LB2, #8949): pg_lbs_* functions, the map's rules beyond renames, what a tree, a sheet and the report do, what is left for a designer [decision: decisions-made-product-46.md]
 - legacy-bootstrap-trial-design.md: The Bootstrap 5 trial design of a Legacy design (LB4): what Make a trial design copies and converts, the asset rows, the record file, Delete while unused, the side-by-side preview

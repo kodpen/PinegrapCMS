@@ -193,6 +193,13 @@ function pg_image_editor_config()
         'uploadPart'     => pg_image_editor_upload_limits()['part'],
         // The Design Canvas's icon before the file name in the top bar.
         'brandIcon'      => pg_design_canvas_icon(),
+        // The one picker for From the site (assets/js/pg_picker.js): its
+        // settings and script, loaded the first time on a panel screen that
+        // did not print them (pickerLoad(), pg_image_editor_artboard.js).
+        'picker'         => function_exists('pg_picker_config') ? array(
+            'config'  => pg_picker_config(),
+            'scripts' => pg_js_bundle_urls('assets/js/pg_picker.min.js'),
+        ) : null,
     );
 }
 

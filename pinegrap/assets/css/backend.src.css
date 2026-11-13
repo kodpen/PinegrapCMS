@@ -1046,7 +1046,9 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-fg-body: var(--bs-fg-body);
   --pg-fg-emphasis: light-dark(var(--bs-black), var(--bs-white));
   --pg-fg-2: var(--bs-fg-2);
-  --pg-fg-3: var(--bs-fg-3);
+  /* Bootstrap 6's dark third text (gray-500) reads 4.0:1 on the dark
+     dialog surfaces; gray-400 reads 5.5:1 or more. Light keeps gray-600. */
+  --pg-fg-3: light-dark(var(--bs-gray-600), var(--bs-gray-400));
   --pg-border-color: var(--bs-border-color);
   --pg-border-color-translucent: var(--bs-border-color-translucent);
   --pg-border-width: var(--bs-border-width);
@@ -13247,56 +13249,6 @@ html[data-bs-theme="dark"] .ws-group-icon {
   flex-direction: column;
   min-width: 0;
 }
-/* The file manager's files under the paperclip (workspace.js libraryPicker). */
-.ws-lib-trail {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ws-space-1);
-  margin-bottom: var(--ws-space-2);
-  font-size: .875rem;
-}
-.ws-lib-trail:empty {
-  display: none;
-}
-.ws-lib-sep {
-  font-size: .7rem;
-  color: var(--pg-fg-3);
-}
-.ws-lib-section {
-  margin-top: var(--ws-space-2);
-  font-size: .8rem;
-  font-weight: 600;
-  color: var(--pg-fg-2);
-}
-.ws-lib-row {
-  align-items: center;
-}
-.ws-lib-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-}
-.ws-lib-thumb {
-  flex: 0 0 auto;
-  width: var(--ws-avatar);
-  height: var(--ws-avatar);
-  object-fit: cover;
-  border-radius: var(--ws-radius-xs);
-  background: var(--pg-bg-1);
-}
-.ws-lib-row .ws-pull-icon {
-  flex: 0 0 auto;
-  width: var(--ws-avatar);
-  margin-top: 0;
-  font-size: 1.35rem;
-  text-align: center;
-}
-.ws-lib-refused {
-  opacity: .6;
-  cursor: not-allowed;
-}
 /* Versions of a conversation. */
 .ws-era-row {
   display: flex;
@@ -24252,7 +24204,7 @@ select.pg-list-table-field option.private {
 .pg-list-table-field-note {
   margin-top: 0.125rem;
   font-size: var(--pg-text-meta);
-  color: var(--pg-tone-rose);
+  color: var(--pg-tone-rose-text);
   white-space: normal;
   text-align: start;
 }
@@ -24815,6 +24767,12 @@ select.pg-list-table-field option.private {
 .pg-picker-mark.is-binned {
   background: var(--pg-danger-bg-subtle);
   color: var(--pg-danger-fg-emphasis);
+}
+/* A file a channel would refuse: the reason, which may run to a line. */
+.pg-picker-mark.is-refused {
+  background: var(--pg-bg-1);
+  color: var(--pg-fg-2);
+  white-space: normal;
 }
 .pg-picker-item.is-marked {
   cursor: default;
@@ -25758,6 +25716,10 @@ select.pg-list-table-field option.private {
   --pg-tone-teal: light-dark(#0e9a74, #3fd0a8);
   --pg-tone-rose: light-dark(#d43d6b, #f58aa0);
   --pg-tone-gray: light-dark(#6b7280, #9aa0a8);
+  /* Rose as text (an error, a danger button): the bare light rose reads
+     4.49:1 on white and 3.8:1 on its own tint; pulled 80% toward the
+     strongest text colour it reads 5.0:1 or more in both themes. */
+  --pg-tone-rose-text: color-mix(in srgb, var(--pg-tone-rose) 80%, var(--pg-fg-emphasis));
   --pg-tone-team: var(--pg-tone-blue);
   --pg-tone-shop: var(--pg-tone-teal);
   --pg-tone-content: var(--pg-tone-rose);
@@ -25982,7 +25944,7 @@ textarea.pg-input {
   color: var(--pg-fg-3);
 }
 .pg-field-help.pg-field-error {
-  color: var(--pg-tone-rose);
+  color: var(--pg-tone-rose-text);
 }
 /* Switch and checkbox, drawn on the native input. */
 .pg-switch,
@@ -26140,7 +26102,7 @@ textarea.pg-input {
   color: var(--pg-fg-body);
 }
 .pg-button-danger {
-  color: var(--pg-tone-rose);
+  color: var(--pg-tone-rose-text);
   background: color-mix(in srgb, var(--pg-tone-rose) 12%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-tone-rose) 22%, transparent);
 }
@@ -26915,7 +26877,7 @@ body.pg-measure-report #content {
   color: var(--pg-fg-3);
 }
 .pg-report-fig-note.is-bad {
-  color: var(--pg-tone-rose);
+  color: var(--pg-tone-rose-text);
 }
 @media (max-width: 991.98px) {
   .pg-report-figs {
@@ -27425,7 +27387,7 @@ body.pg-measure-report #content {
 }
 #report_settings #filter_table td:nth-child(5) > .btn:hover {
   background: var(--pg-quiet);
-  color: var(--pg-tone-rose);
+  color: var(--pg-tone-rose-text);
 }
 #report_settings #filter_table td:nth-child(5) .material-icons {
   font-size: 18px;

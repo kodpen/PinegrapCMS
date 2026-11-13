@@ -421,7 +421,7 @@ function pg_mail_enqueue(array $properties)
         $recipient = (string) reset($recipient);
     }
 
-    $type = (isset($properties['type']) && ($properties['type'] !== '')) ? (string) $properties['type'] : 'system';
+    $type = pg_mail_source_kind($properties);
 
     $subject = isset($properties['subject']) ? (string) $properties['subject'] : '';
 
@@ -440,6 +440,56 @@ function pg_mail_enqueue(array $properties)
     }
 
     return (int) mysqli_insert_id(db::$con);
+}
+
+// The kinds a queued message's 'source' may name (Communication › Sends
+// filters and searches them through mail_type).
+function pg_mail_source_kinds()
+{
+    return array('order', 'form', 'account', 'comment', 'flow', 'workspace', 'campaign', 'system');
+}
+
+// What mail_type holds for a queued message: the kind its caller named in
+// 'source' ('order:1044' is an order's mail), else its 'type' (system or
+// campaign) as before. A copy for the screen: the SMTP connection is still
+// chosen from 'type' in the properties, never from this column.
+function pg_mail_source_kind(array $properties)
+{
+    if (isset($properties['source']) && is_string($properties['source'])) {
+        $kind = strtolower((string) strtok($properties['source'], ':'));
+
+        if (in_array($kind, pg_mail_source_kinds(), true)) {
+            return $kind;
+        }
+    }
+
+    return (isset($properties['type']) && is_string($properties['type']) && ($properties['type'] !== '')) ? (string) $properties['type'] : 'system';
+}
+
+// Sends a queued or failed message again (the Sends list's Retry). A message
+// being sent is left alone and a sent one is not sent again. While no
+// scheduled job works the queue, nothing would pick it up, so it is sent now
+// on its own. Returns 'queued', 'sent', 'unsent' or '' when no row changed.
+function pg_mail_queue_retry($id)
+{
+    $id = (int) $id;
+
+    db(
+        "UPDATE mail_outbox
+        SET status = 'queued', send_after = 0, attempts = 0
+        WHERE
+            (id = '" . $id . "')
+            AND (status IN ('queued', 'failed'))");
+
+    if (mysqli_affected_rows(db::$con) <= 0) {
+        return '';
+    }
+
+    if (pg_mail_job_alive()) {
+        return 'queued';
+    }
+
+    return (pg_mail_queue_run(1, 20, $id)['sent'] > 0) ? 'sent' : 'unsent';
 }
 
 // The handlers a queued message may name in 'on_outcome': name =>

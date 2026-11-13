@@ -107,7 +107,7 @@ function test_ws_upload_request_file_part_refused()
 function test_ws_upload_receivers_share_one_check()
 {
 	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
-	$attach = ws_attachment_upload_test_between($actions, "case 'ws_attach':", "case 'ws_library_browse':");
+	$attach = ws_attachment_upload_test_between($actions, "case 'ws_attach':", "case 'ws_library_channels':");
 	$note = ws_attachment_upload_test_between($actions, "case 'ws_note_file':", "case 'ws_note_claude':");
 
 	pg_assert_contains('ws_upload_request_file($request)', $attach, 'ws_attach reads the request through the shared reader');

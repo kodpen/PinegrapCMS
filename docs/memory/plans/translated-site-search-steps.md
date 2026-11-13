@@ -13,7 +13,8 @@ description: Translated site search plan, steps TS1-TS5: the words and ı/i for 
 - The query takes the rows where any reading of any word matches; PHP groups them by page and compares folded (`_pg_search_fold()`). A page is a result when every word is found in its title, description and body taken together. Rank: the whole phrase first, then by hits; title and description count three times, as today.
 - Today's limits stay (2,000 rows, 100 pages). The fences are untouched.
 
-## TS2 (M) Products and product groups
+## TS2 (M) Products and product groups — done (#9266)
+- Done: `pg_tr_search_catalog_find()` ranks with `pg_tr_search_rank()` (keyed `product:<id>` / `product_group:<id>`); `get_catalog_search_results()` asks `get_catalog_search_results_translated()` first, which runs the translated ids through `get_catalog_search_results_for_condition()`, the source search's own loop.
 - `pg_tr_search_catalog_find($query)`: the products and product groups whose translated texts match, by TS1's words. It reads the uses of `product` and `product_group`, in the fields the catalog extraction stores (`includes/translate/content.php`: short_description, full_description, details, keywords, title, meta_description).
 - `get_catalog_search_results()` itself puts them first on a page in another language, then its own results, each item once, so every caller gets it. Only items its own rules allow (enabled, inside the searched group) are listed.
 - A test proves the source language's answer is unchanged.

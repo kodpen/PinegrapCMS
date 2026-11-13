@@ -22,7 +22,7 @@ description: Plan (owner 2026-11-12, #8942): the page types' custom layouts and 
 - LL2 (M) Done #8986 (`designer/legacy-layouts-converter.md`). The layout variant of the map over a system region's output (`class` attributes, the `data-toggle` family), first the count of the names scripts use; pure functions with tests on the starting sites' layouts; a second pass changes nothing.
 - LL3 (M) Done #9143 (`designer/legacy-layouts-output-pass.md`). The pass in `get_page_content.php`: a page of a `bootstrap5` design gets 5.3.8 names from its page type; every other page is untouched.
 - LL4 (M) Done #9170 (`designer/legacy-layouts-shapes.md`). What the map cannot rename: `glyphicon` to Bootstrap Icons, `input-group-btn` and `input-group-addon`, `checkbox` and `radio` blocks, `help-block`, `panel` where met. Left by hand: `form-inline`; looks no rename reaches (bare inputs, `mobile_stacked`) are for LL6 to name.
-- LL5 (S) The widget offer: where a page type has a system widget, the helper's report names it as the better move.
+- LL5 (S) Done #9259 (`designer/legacy-bootstrap-card.md`, System widgets). The widget offer: where a page type has a system widget, the helper's report names it as the better move.
 - LL6 (S) Close-out: the compatibility sheet leaves the trial design where LL3 covers the page type; the lasting rules into `designer/`; this plan deleted.
 
 ## When does it start?

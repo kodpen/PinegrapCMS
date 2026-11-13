@@ -177,6 +177,44 @@ function test_panel_pill_status_pill()
 	}
 }
 
+// Rose as text (field error, danger button, list and report notes) reads
+// 4.5:1 on the page, on a card and on the danger button's own tint.
+function test_panel_pill_rose_text()
+{
+	$css = panel_pill_source('assets/css/backend.src.css');
+
+	pg_assert_true(preg_match('/--pg-tone-rose-text: color-mix\(in srgb, var\(--pg-tone-rose\) (\d+)%, var\(--pg-fg-emphasis\)\);/', $css, $mix) === 1, 'the rose text token mixes rose toward the text colour');
+	pg_assert_true(preg_match('/--pg-tone-rose: light-dark\((#[0-9a-f]{6}), (#[0-9a-f]{6})\);/', $css, $rose) === 1, 'the rose tone is found');
+	pg_assert_true(preg_match('/^\.pg-button-danger \{[^}]*color: var\(--pg-tone-rose-text\);[^}]*background: color-mix\(in srgb, var\(--pg-tone-rose\) (\d+)%, transparent\);/m', $css, $button) === 1, 'the danger button writes the rose text on its tint');
+
+	foreach (array('.pg-field-help.pg-field-error', '.pg-list-table-field-note', '.pg-report-fig-note.is-bad') as $selector) {
+		pg_assert_true(preg_match('/^' . preg_quote($selector, '/') . ' \{[^}]*color: var\(--pg-tone-rose-text\);/m', $css) === 1, $selector . ' reads the rose text token');
+	}
+
+	$grounds = array('light' => array('#ffffff', '#f5f5f5'), 'dark' => array('#101114', '#1c1e22', '#202327'));
+
+	foreach (array('light' => $rose[1], 'dark' => $rose[2]) as $theme => $hex) {
+		$text = panel_pill_mix(panel_pill_rgb($hex), panel_pill_emphasis($theme), $mix[1] / 100);
+
+		foreach ($grounds[$theme] as $ground) {
+			$plain = panel_pill_ratio($text, panel_pill_rgb($ground));
+			$tint = panel_pill_ratio($text, panel_pill_mix(panel_pill_rgb($hex), panel_pill_rgb($ground), $button[1] / 100));
+			pg_assert_true($plain >= 4.5, sprintf('rose text reads %.2f:1 in %s on %s', $plain, $theme, $ground));
+			pg_assert_true($tint >= 4.5, sprintf('the danger button reads %.2f:1 in %s on %s', $tint, $theme, $ground));
+		}
+	}
+}
+
+// The third text colour takes Bootstrap 6's gray-400 in dark: its own
+// gray-500 read 4.0-4.5:1 on the dark dialog surfaces (Settings group names).
+function test_panel_pill_dark_third_text()
+{
+	$css = panel_pill_source('assets/css/backend.src.css');
+
+	pg_assert_contains('--pg-fg-3: light-dark(var(--bs-gray-600), var(--bs-gray-400));', $css, 'the dark third text is gray-400');
+	pg_assert_true(strpos($css, '--pg-fg-3: var(--bs-fg-3);') === false, 'the third text no longer aliases Bootstrap 6\'s gray-500');
+}
+
 // A badge's state is never drawn with opacity (panel-content-contrast.md).
 function test_panel_pill_no_opacity_on_badges()
 {

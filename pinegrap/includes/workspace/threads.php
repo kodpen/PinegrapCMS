@@ -1420,6 +1420,12 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
             db("DELETE FROM ws_canvas_tables WHERE message_id IN (" . $messages . ")");
         }
 
+        // The second parts of its canvases (canvas_parts.php); their files
+        // stay in the channel's folder, as the thread's other files do.
+        if (function_exists('ws_canvas_parts_ready') && ws_canvas_parts_ready()) {
+            db("DELETE FROM ws_canvas_parts WHERE message_id IN (" . $messages . ")");
+        }
+
         // The readers' answers to a canvas's first write (canvas_consents.php).
         if (function_exists('ws_canvas_consents_ready') && ws_canvas_consents_ready()) {
             db("DELETE FROM ws_canvas_consents WHERE message_id IN (" . $messages . ")");

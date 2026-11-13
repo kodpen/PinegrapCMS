@@ -20,13 +20,14 @@ description: Plan (owner 2026-11-13, #9076): the designer canvas draws every bou
 - Each PR shows the component on the canvas beside the published page, light and dark.
 
 ## Which steps?
-- CS0 (S, no product code) The list: for every system component and e-mail card, each value it can bind and what the canvas draws for it today (sample, ‹label›, empty box, wrong sample), and each warning frame on an element with no fault. Into a new file of `designer/` named canvas-sample-gaps (one per family when over the size limit); the families of CS2-CS4 are cut from it. Done (#9179).
-- CS1 (S) Bands and chips, tidy. Always on (owner). A chip row wraps and never covers another chip, a band or the content; a band label that does not fit ends in "…" with its full text in the title; a nested band sits inside its parent's frame. A warning frame is drawn only on a fault and says in its title what is wrong. Done (#9195).
+- CS0 (S) The list of what the canvas draws per value: `designer/canvas-sample-gaps*.md`. Done (#9179).
+- CS1 (S) Bands and chips, tidy, always on (owner): `designer/loop-band-canvas.md`. Done (#9195).
 - CS2 (M) Orders: the order view, the order e-mail cards, cart and checkout from one sample order: number, dates, customer, two addresses, two lines (one with a product form of three fields and its info text), discount, shipping, tax, total. Done (#9214).
 - CS3 (M) Forms: custom forms, the form list and item views and their e-mails: one sample record per form, every field kind with a value of its kind (a file, a date, a choice, long text, info HTML). Done (#9239).
-- CS4 (M) The rest by CS0's list: catalog and product, account and members, comments, search and what else it names; a step per family when one is over the PR size.
+- CS4 (M) The rest by CS0's list, one step per family: CS4a catalog, product, wishlist, order form, search, tag cloud (`canvas-sample-gaps-catalog.md`), done (#9253); CS4b account and members (`-account.md`); CS4c comments, calendar, reviews, booking, ads, menus, language, loop values (`-other.md`).
+- Hand-over (#9253): CS2, CS3 and CS4a are done by one session; CS4b and CS4c are free, each from its gap file, the same way (`canvas-sample-order.md`, `-form-record.md`, `-product.md`); CS5 after them.
 - CS5 (S) The guard: a check under `tools/`, run in CI, that walks the token dictionary and the canvas sample tables and fails on a token with no sample, so a new token arrives with its sample.
 - Close-out: `designer/product-name-sku-and-canvas-placeholders.md` and `designer/widget-condition-canvas.md` say what the canvas draws now; CS0's list is deleted; this plan is deleted.
 
 ## In which order?
-- CS0 and CS1 first, side by side; then CS2, CS3 and CS4 in any order; CS5 last. Claim as `[plan:designer-canvas-real-samples] <step> — <topic>`.
+- CS0 and CS1 first, side by side; then CS2, CS3 and CS4a-c in any order; CS5 last. Claim as `[plan:designer-canvas-real-samples] <step> — <topic>`.

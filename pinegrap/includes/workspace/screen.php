@@ -938,8 +938,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
         // A From OneNote part: the site's Microsoft application is set up
         // (notes_onenote.php); the person connects their own account there.
         'notes_onenote' => function_exists('ws_note_onenote_offered') && ws_note_onenote_offered(),
-        // The paperclip also picks from the file manager (library.php).
-        'library'      => function_exists('ws_library_browse'),
+        // The paperclip also picks from the file manager: the picker's kind
+        // channel_file (library.php), for a member while the module is on.
+        'library'      => function_exists('ws_library_refusal') && function_exists('pg_picker_script'),
         // Word and Excel files of a conversation, drawn by a script fetched
         // on first use (includes/fn/office.php).
         'office'       => function_exists('pg_office_view_includes') ? array(
@@ -1012,6 +1013,12 @@ function ws_screen_assets($viewer, $mode, $extra = array())
     // picture is edited or a canvas drawn (assets/js/workspace.js).
     if (($mode === 'channels') || ($mode === 'notes')) {
         $lightbox .= pg_image_editor_includes();
+    }
+
+    // The picker (assets/js/pg_picker.js): the paperclip's "From the file
+    // manager" in a channel.
+    if (($mode === 'channels') && function_exists('pg_picker_script')) {
+        $lightbox .= pg_picker_script();
     }
 
     $output = $lightbox . '
