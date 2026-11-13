@@ -19,7 +19,8 @@
 - campaign-email-body-mail-programs.md: MA4 (2026-11-13): what an HTML e-mail body must be for Gmail, Outlook and Apple Mail: width, tables, inline styles, head style, pictures, the 102 KB clip, the parts it keeps
 - campaign-email-body-today.md: MA4 census (2026-11-13): how a campaign's HTML body and the designed e-mails (account, form, comment, receipt) are made today, what the e-mail render leaves in, and who may design one
 - campaign-email-body-way.md: MA4 proposal (2026-11-13, open on #9083): a campaign's e-mail body as an e-mail design page (600 px canvas, mail blocks), the mail pass, ready designs, pasted HTML, test send
-- canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (the grey "Image [token]" SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
+- canvas-loop-as-published.md: A loop on the designer canvas draws one line of its grid (the card and hatched copies), a listing with no record too; a bound picture is a sample photo with its field in the title (#9104, CF4)
+- canvas-picture-stand-in-box.md: A bound picture's canvas stand-in (a sample photo SVG) takes the node's own box: no minimum size, so a round 40x40 avatar stays a circle (#9184, CF1)
 - canvas-sample-gaps-account.md: CS0 census, account (CS4): my account, login, registration, password forms, preferences, address book, security, invoices, account e-mail card: canvas faults
 - canvas-sample-gaps-catalog.md: CS0 census, catalog (CS4): catalog listing, product page and values, wishlist, order form, search, photo gallery, tag cloud, folder view: canvas faults
 - canvas-sample-gaps-checkout.md: CS0 census, orders part two: what the cart, express order checkout, order preview and the shipping and billing steps still draw without a sample after CS2 (#9214)
