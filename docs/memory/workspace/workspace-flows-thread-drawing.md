@@ -19,7 +19,7 @@ description: Data threads on the Flows canvas (T1, V6): read from the fields, th
 
 ## Dimming, toggle, outline?
 - `markThreads()` (from `markSelected()`): a box selected, threads and row items whose `data-ends` lack it get `.wsf-dim` (opacity .25).
-- "Data threads" (`threadsButton()`, toolbar, not in the outline view) hides them with `.wsf-threads-off` on the stage; kept per browser in localStorage `pg_wsf_threads`.
+- "Data threads" (`threadsButton()`, an icon toggle of the bar, not in the List view) hides them with `.wsf-threads-off` on the stage; kept per browser in localStorage `pg_wsf_threads`.
 - Drawing one into a field (T2): `workspace-flows-thread-binding.md`.
 - Outline: `drawReads()` lists under each box's heading "<field> reads <box › value>", a missing one with `fl_values_missing`, a skippable one "(Empty if skipped)".
 

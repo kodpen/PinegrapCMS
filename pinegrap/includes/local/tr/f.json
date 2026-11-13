@@ -977,6 +977,7 @@
     "Flow to start": "Başlatılacak akış",
     "Flow tools": "Akış araçları",
     "Flow version": "Akış sürümü",
+    "Flow view": "Akış görünümü",
     "Flow “{var:1}” and one flow it started: done.": "“{var:1}” akışı ve başlattığı bir akış: bitti.",
     "Flow “{var:1}” and one flow it started: run {var:2} of “{var:3}” failed at the box {var:4}: {var:5}": "“{var:1}” akışı ve başlattığı bir akış: “{var:3}” akışının {var:2} numaralı çalıştırması {var:4} kutusunda başarısız oldu: {var:5}",
     "Flow “{var:1}” and {var:2} flows it started: done.": "“{var:1}” akışı ve başlattığı {var:2} akış: bitti.",

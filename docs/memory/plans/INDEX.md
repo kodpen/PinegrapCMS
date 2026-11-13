@@ -24,6 +24,9 @@
 - designer-assistant-apply-error.md: Plan (owner 2026-11-12, #8970): the designer Assistant's Apply answered with a PHP message instead of JSON; reproduce, fix the cause, JSON answers under errors, a readable message; steps DA1-DA3
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
+- flow-window-map-2.md: Flow window plan, FW0 part 2: each control of today's side panel and canvas with its place in the drawing (right panel head, Settings, Connections, Try, foot; no box chosen; arrows and threads)
+- flow-window-map.md: Flow window plan, FW0 part 1: each control of today's bar and palette with its place in the drawing (the bar done in FW1); the decisions taken for the left panel
+- flow-window-paths.md: Flow window plan, FW0 part 3: the keyboard path through the bar, the left panel, the canvas and the right panel; how the panels behave on a narrow window and a phone (drawn in flow-window-narrow.html)
 - flow-window.md: Plan (owner 2026-11-12, #8950): the flow window rearranged: the left panel only adds boxes, the right panel is only the chosen box in three tabs, the top bar is the flow itself; steps FW0-FW5
 - flows-quick-setup.md: Plan (owner 2026-11-12, #8950): a quick setup that builds a flow by choices (start, steps one after the other, summary) over every area and action of the site; rules and steps QS0-QS5
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel

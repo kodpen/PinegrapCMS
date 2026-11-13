@@ -200,7 +200,8 @@ function test_workspace_flow_shares_owner_publishes()
 	// The canvas draws Publish for the owner alone and tells the others why.
 	$script = ws_flow_shares_test_source('assets/js/workspace_flow.js');
 
-	pg_assert_contains("if (flow.manage) {\n            ui.publish = K.button(", $script, 'Publish for whoever manages the flow');
+	pg_assert_contains('var publishing = state.edit && flow.manage;', $script, 'Publish for whoever manages the flow');
+	pg_assert_contains("if (publishing) {\n            ui.publish = barButton(", $script, 'drawn only then');
 	pg_assert_contains("t('fl_publish_owner')", $script);
 }
 

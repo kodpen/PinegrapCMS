@@ -4,7 +4,7 @@ description: Undo and redo on the flow canvas (workspace_flow.js): the toolbar b
 ---
 
 ## Where are undo and redo?
-- Toolbar Undo and Redo icon buttons beside Problems, drawn only while the draft is edited (`drawBar()`); `drawState()` disables them with no step to go to. The result ("Change undone" / "Change redone") is announced for screen readers; a button that goes grey hands the focus to the other one.
+- Undo and Redo icon buttons at the right of the bar, before the data threads toggle, drawn only while the draft is edited (`drawBar()`); `drawState()` disables and dims them (`dimmed()`) with no step to go to. The result ("Change undone" / "Change redone") is announced for screen readers; a button that goes grey hands the focus to the other one.
 - Keys on the document (`bindWindow()`): Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes (Cmd on a Mac). Skipped while `typing()` (an input, textarea, select or contenteditable keeps the browser's own undo), outside the screen's root (a dialog), with the template gallery or the scheduled section shown. The keyboard help lists them (`fl_key_undo`).
 
 ## What is a step?
