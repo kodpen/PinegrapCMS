@@ -21,6 +21,6 @@ module: editor, picker
 - `editor_select_image.php`, its test, `add_file.php`'s `uploadreturn` redirect back to it, `filebrowserImageBrowseUrl` and the browse window size of `_pg_wysiwyg_file_properties()`; Cleanup lists the file for sites that still carry it. The tests that read its source lost those cases.
 
 ## What is left for PK9b?
-- The image editor's From the site lists (after V10, #8854, which holds the image editor's files) and the Workspace's "from the files" picker.
+- The Design Canvas's From the site lists (after V10, #8854, which holds the Design Canvas's files) and the Workspace's "from the files" picker.
 
 Tests: `tests/editor_bridge_js_test.php` (`test_editor_bridge_picture_items`, `test_editor_bridge_image_window_deleted`), `tests/theme_designer_entries_test.php`, `tests/editor_file_properties_test.php`. Related: picker-editor-bridge.md, picker-dialog.md

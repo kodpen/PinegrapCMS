@@ -4,7 +4,7 @@ description: Pinegrap AI and model assistants make, read and edit live pages as 
 ---
 
 ## Which tools, and when are they offered?
-- `includes/workspace/page_ai.php` (required at the end of `ai.php`): `make_live_page` (html, name, text, libraries), `read_live_page` (message_id, from), `edit_live_page` (message_id, version, html or replacements, libraries). `ws_ai_tools()` adds them, `ws_ai_tool_run()` sends them to `ws_page_ai_tool_run()` before the Visual Page Editor's `read_page`/`page_*` tools; their names are in `ws_ai_tool_names()`.
+- `includes/workspace/page_ai.php` (required at the end of `ai.php`): `make_live_page` (html, name, text, libraries), `read_live_page` (message_id, from), `edit_live_page` (message_id, version, html or replacements, libraries). `ws_ai_tools()` adds them, `ws_ai_tool_run()` sends them to `ws_page_ai_tool_run()` before the Page Design Studio's `read_page`/`page_*` tools; their names are in `ws_ai_tool_names()`.
 - The names never start with `page_` and are never `read_page`: those go to the designer's tools (`tests/workspace_page_ai_test.php` checks it).
 - Offered where the canvas tools are (`ws_page_ai_offered()` is `ws_canvas_ai_offered()`, `agent-canvas-assistants.md`): Pinegrap AI and model assistants alike. Where they are offered `ws_ai_start()` sets `$state['live_page_tools']`, which gives the model 8000 tokens as for the designer.
 - Claude has no tool of its own here: it makes and edits a page with the MCP tools of the routes (`agent-page.md`).

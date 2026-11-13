@@ -1,6 +1,6 @@
 ---
 name: image-editor-area-deselect
-description: How the image editor's selected area (marching ants) is dropped outside Select area: a click outside it with Select, Escape's order; the ants that stayed after Adjust inside (#7994)
+description: How the Design Canvas's selected area (marching ants) is dropped outside Select area: a click outside it with Select, Escape's order; the ants that stayed after Adjust inside (#7994)
 ---
 
 ## How is the selected area dropped?

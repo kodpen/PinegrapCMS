@@ -50,7 +50,7 @@
 - docker.md: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), MariaDB 10.11, cron gated on the database version, one-shot install service, data volume, nginx rules in step, CI check
 - editor-image-upload-refusals.md: The rich text editor's Image > Upload (editor_add_file.php): a discarded body, a missing file, an upload error code or a failed copy() is refused in the dialog, never inserted as a picture.
 - encryption-key-reseal-registry.md: Reset Encryption Key re-seals what pg_reseal_registry() lists, last in the same save; the entries, kinds and JSON fields, done/skipped/failed counts, the $key parameters of the sealing helpers [decision: decisions-made-product-25.md]
-- erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the image editor's save that used to write over it
+- erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the Design Canvas's save that used to write over it
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
 - file-copy-chat-attachments.md: File Manager paste, folder copy, zip archives and the Workspace file picker refuse a team chat attachment to anyone get_file.php refuses it to; an archive holding a form upload stays an attachment
 - file-manager-page-where-used.md: The File Manager's "Where used" for a page (explorer_page_usage): menu items, short links, links in content, page settings, products/offers/events and site settings that point at it
@@ -76,9 +76,9 @@
 - image-delivery-settings.md: Image delivery settings (2026.11.0 step 11.0.9): formats offered (bit set) and quality per format, where they are read, one clamp, what a change does to derivatives and pages
 - image-derivative-upkeep.md: Upkeep of the image derivative cache: the daily sweep and its cursor, the purge that sets the folder aside, the storage line, and the warm-up pass that makes own-address WebP copies ahead of visitors
 - image-derivatives.md: Image derivatives (PR #589) made by get_file.php for ?w=&f=: fixed widths, WebP/AVIF tested once per server, data/cache/img name and signature, skip and lock files, encode slots, files that get none
-- image-editor-jpeg-start-quality.md: Decided, not built (#9118): a JPEG saved by the image editor or Optimize starts at the lower of 92 and the source's own quality, so a save is not heavier than its original [decision: here]
-- image-editor-recycle-bin.md: The image editor's server refuses the Recycle Bin: a binned file is not opened, replaced or copied, and a new picture is not written into the bin folder (#4297)
-- image-editor-save.md: The image editor's save: image_editor_api.php open and save, the document check, the engine's edit option (turn, flip, straighten, crop, size, overlay, shape), replace, copy and new
+- image-editor-jpeg-start-quality.md: Decided, not built (#9118): a JPEG saved by the Design Canvas or Optimize starts at the lower of 92 and the source's own quality, so a save is not heavier than its original [decision: here]
+- image-editor-recycle-bin.md: The Design Canvas's server refuses the Recycle Bin: a binned file is not opened, replaced or copied, and a new picture is not written into the bin folder (#4297)
+- image-editor-save.md: The Design Canvas's save: image_editor_api.php open and save, the document check, the engine's edit option (turn, flip, straighten, crop, size, overlay, shape), replace, copy and new
 - image-files-left-alone.md: Images the engine refuses to process: animated (PR #1234), unreadable Exif orientation (PR #1242), ICC profile GD cannot carry (PR #1267, #1345); how each is told and handled
 - image-gd-palette-png.md: A palette PNG (PNG-8) through the GD image engine: a turn, flip or crop in the Design Canvas, the rotate button or Optimize writes it back as a palette PNG, pixel for pixel, while it fits 256 colours
 - image-optimize-messages.md: What Optimize and Resize say when they leave a picture alone, per reason (pg_optimize_failure_message()); a .jpg that is no picture is unreadable, not a download
@@ -88,7 +88,7 @@
 - image-same-address-why.md: Why a JPEG/PNG keeps its address and file and WebP is negotiated there: options weighed, outside facts, owner decisions, the bytes-match-extension rule [decision: decisions-made-product-17.md]
 - image-same-address.md: JPEG/PNG answered with its WebP derivative at its own address: switch bits, Vary, private caching behind an unconfirmed CDN, f=original in downloads and mails, no renames [decision: decisions-made-product-21.md]
 - image-server-draw-fidelity.md: How the server's canvas drawing matches the editor's Chromium renderer: ImageMagick rounding and antialiasing traps, text placed letter by letter, the measured difference per document kind
-- image-server-draw.md: The server draws an image editor document itself (Canvas Drawing on System Status): what it draws through Imagick, what it leaves to browsers, the probe, the guards and limits, no shell
+- image-server-draw.md: The server draws a Design Canvas document itself (Canvas Drawing on System Status): what it draws through Imagick, what it leaves to browsers, the probe, the guards and limits, no shell
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost. [decision: decisions-made-files.md, decisions-made-workspace-6.md]
 - image-upload-cap.md: Upload size cap (config.image_upload_max_dimension, 11.0.142, #4700): library uploads above N px shrunk in their own format; 0 off, 2560 on a new site; the doors
 - import-decisions.md: Why the content importers (WordPress, WooCommerce, Shopify) are built as they are: tables, nothing overwritten, readers on fixtures, reused writers, authors, what stays out [decision: decisions-made-product-19.md]

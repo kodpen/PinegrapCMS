@@ -19,7 +19,7 @@ module: legacy_to_classic
 ## Why does the tree leave the page, and where is it kept?
 - A page with a tree is drawn from `page_tree_code` whatever its style, counts as a visual page, and lists its style as a design. So `page_tree_json` and `page_tree_code` become NULL; the classic style's code and the page's regions (never deleted by the move) draw it again.
 - First the tree is written as the page's newest revision (`pg_page_revision_record()`, source `publish`; nothing is written when the newest one is the same). After a later move, History → Load brings it back.
-- The design row and its shared components stay. A later move of the set makes a new design under a new name (`get_unique_name()`); a design left with no page stays in Visual Designs until a designer deletes it.
+- The design row and its shared components stay. A later move of the set makes a new design under a new name (`get_unique_name()`); a design left with no page stays in Designs until a designer deletes it.
 - A page added to the design later, or one no run recorded and whose tree places no frame, has no origin and stays.
 
 ## When does a page stay in the design?

@@ -1,6 +1,6 @@
 ---
 name: image-editor-video-export
-description: The image editor's MP4 and WebM output (AN6): WebCodecs with own MP4 and WebM muxers, the MediaRecorder fallback, the limits, the estimate from the bit rate
+description: The Design Canvas's MP4 and WebM output (AN6): WebCodecs with own MP4 and WebM muxers, the MediaRecorder fallback, the limits, the estimate from the bit rate
 module: image_editor
 ---
 

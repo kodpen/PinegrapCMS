@@ -1,6 +1,6 @@
 ---
 name: image-editor-encode
-description: The image editor's APNG and animated WebP (AN5): the message session, the formats a browser can make, deflate, changed rectangles, WebP frame chunks, loop counts
+description: The Design Canvas's APNG and animated WebP (AN5): the message session, the formats a browser can make, deflate, changed rectangles, WebP frame chunks, loop counts
 module: image_editor
 ---
 

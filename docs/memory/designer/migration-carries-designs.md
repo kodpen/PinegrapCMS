@@ -1,11 +1,12 @@
 ---
 name: migration-carries-designs
-description: Migration screen Visual Designs switch (LD4): get_designs via the template export, managed files, install with target ids, skipped bin/drafts/Workspace folders, what stays behind
+description: Migration screen Designs switch (LD4): get_designs via the template export, managed files, install with target ids, skipped bin/drafts/Workspace folders, what stays behind
 module: site_migration
 ---
 
 ## How does a visual design move between sites?
-- `migration.php` has a "Visual Designs" switch. The target asks the source's `api.php` for `get_designs` (role 0-1, read-only, `includes/panel/actions.php`); the source answers every `style_layout = 'visual_designer'` style built by `pg_design_template_build()`, the same export behind "turn into a template" (`design-templates-from-design.md`): trees with `{{page:}}`, `{{tab:}}`, `{{folder:}}`, `{{contact_group:}}` placeholders, the shared components and widgets the pages place, folders, forms, comment settings, assets, look and palette. One serializer, no second one.
+- `migration.php` has a "Designs" switch. The target asks the source's `api.php` for `get_designs` (role 0-1, read-only, `includes/panel/actions.php`).
+- The source answers every `style_layout = 'visual_designer'` style built by `pg_design_template_build()`, the same export behind "turn into a template" (`design-templates-from-design.md`): trees with `{{page:}}`, `{{tab:}}`, `{{folder:}}`, `{{contact_group:}}` placeholders, the shared components and widgets the pages place, folders, forms, comment settings, assets, look and palette. One serializer, no second one.
 - The target checks each entry (`pg_migration_design_entry()`), writes it as a `design_template` row, runs `pg_design_template_install()` (no home page, look and palette as given) and deletes the row again. The install gives every id this site's value or takes back what it wrote; a failed design is named in a notice, the others go on.
 - `pg_design_template()` falls back to `pg_design_template_custom_get()`: the cached list (`pg_design_templates()` static) does not hold a row written in the same request, and the Migration writes one per design.
 - `explicit_trees`: a widget still holding the empty placeholder keeps it as its tree instead of `'starter'`, because the server cannot ask the editor for a starter layout.

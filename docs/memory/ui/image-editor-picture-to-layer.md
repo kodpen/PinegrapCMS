@@ -1,6 +1,6 @@
 ---
 name: image-editor-picture-to-layer
-description: Convert to a layer in the image editor (#9198): the photo as a picture layer at the bottom of a canvas, so layers can go under it; what goes into its pixels, where offered, saving
+description: Convert to a layer in the Design Canvas (#9198): the photo as a picture layer at the bottom of a canvas, so layers can go under it; what goes into its pixels, where offered, saving
 ---
 
 ## What does it do?

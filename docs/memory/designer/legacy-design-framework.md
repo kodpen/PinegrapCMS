@@ -1,6 +1,6 @@
 ---
 name: legacy-design-framework
-description: The legacy framework key of a classic style moved into the editor (LG3): registry entry and flags, who writes it, the 11.0.187 data step, the Legacy / Eski badge on Visual Designs
+description: The legacy framework key of a classic style moved into the editor (LG3): registry entry and flags, who writes it, the 11.0.187 data step, the Legacy / Eski badge on Designs
 ---
 
 ## What is the legacy key?
@@ -29,7 +29,7 @@ description: The legacy framework key of a classic style moved into the editor (
 - No query per page render, and a copy keeps the look of its source. The set's design (LG5, `legacy-set-run.md`) is a new style row holding the frames of several origin styles, none named after its own id, so a component check would miss it.
 
 ## Where is the badge?
-- The Visual Designs screen (`view_system_styles.php`): `pg_designer_list_designs()` sets `framework_legacy` per row; `pg_designer_home_design_card()` prints `<span class="badge theme-secondary sdh-legacy">Legacy</span>` inside `h3.sdh-name`, after the name link, on the tile and the featured card. The featured card also lists "Framework: Legacy".
+- The Designs screen (`view_system_styles.php`): `pg_designer_list_designs()` sets `framework_legacy` per row; `pg_designer_home_design_card()` prints `<span class="badge theme-secondary sdh-legacy">Legacy</span>` inside `h3.sdh-name`, after the name link, on the tile and the featured card. The featured card also lists "Framework: Legacy".
 - `.sdh-legacy` (`assets/css/designer_home.css`): .75rem, weight 500, `nowrap`, so it wraps with the name's last word at phone width.
 - Decision: badge text "Legacy" / "Eski" (`workflow/decisions-made-product-43.md`).
 

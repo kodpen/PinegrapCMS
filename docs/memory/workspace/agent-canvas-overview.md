@@ -4,7 +4,7 @@ description: Start file of the agent-canvas-* cluster: an agent designs on a Wor
 ---
 
 ## What is it?
-- An agent (an application of the channel, Claude, Pinegrap AI or a model assistant) makes a design as a canvas: a message whose picture opens in the image editor with its layers, as if a person had made it. A chart, a banner, a post picture or a slide is a canvas.
+- An agent (an application of the channel, Claude, Pinegrap AI or a model assistant) makes a design as a canvas: a message whose picture opens in the Design Canvas with its layers, as if a person had made it. A chart, a banner, a post picture or a slide is a canvas.
 - Owner (2026-11-11, #8762): no second tool beside the canvas; it is strengthened until a design comes out through the API, in every channel the agent is added to (`workflow/decisions-made-workspace-16.md`).
 
 ## What binds every part?

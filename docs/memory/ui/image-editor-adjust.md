@@ -1,6 +1,6 @@
 ---
 name: image-editor-adjust
-description: The image editor's Adjust tool: eight adjustments, nine filters as fixed values of them, one colour matrix shared by the preview and the server, the vignette and sharpening, the GD colour layer
+description: The Design Canvas's Adjust tool: eight adjustments, nine filters as fixed values of them, one colour matrix shared by the preview and the server, the vignette and sharpening, the GD colour layer
 module: image_editor
 ---
 

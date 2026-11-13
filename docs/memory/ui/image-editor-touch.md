@@ -1,6 +1,6 @@
 ---
 name: image-editor-touch
-description: The image editor on touch: the two-finger twist that turns a layer, 44 px handle targets and the finger's reach for points and edges (M.touchReach())
+description: The Design Canvas on touch: the two-finger twist that turns a layer, 44 px handle targets and the finger's reach for points and edges (M.touchReach())
 module: image_editor
 ---
 

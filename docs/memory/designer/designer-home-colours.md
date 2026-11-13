@@ -1,6 +1,6 @@
 ---
 name: designer-home-colours
-description: Visual Page Editor home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, token-class drawings, status as words and a shaped mark, tooltips
+description: Page Design Studio home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, token-class drawings, status as words and a shaped mark, tooltips
 ---
 
 ## Which colours may the screen use?

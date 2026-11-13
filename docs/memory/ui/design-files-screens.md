@@ -1,13 +1,13 @@
 ---
 name: design-files-screens
-description: All Design Files and Edit Design File: type read from the name, image editor script outside the table, Recycle Bin left out, POST branch, blocked rename, optimize way back
+description: All Design Files and Edit Design File: type read from the name, Design Canvas script outside the table, Recycle Bin left out, POST branch, blocked rename, optimize way back
 module: files
 ---
 
 ## Where does the Type column come from?
 - `pg_file_name_extension($name)` (`includes/fn/files.php`, pure): the lower-cased part after the last dot, `''` for a name without one. `files.type` is four characters wide (`data/files-type-column-width.md`), so a `.woff2` showed "woff". Sorting by Type orders by the same expression in SQL. Edit Design File takes the preview, image tools, edit buttons and the Theme switch from it, and its save writes it into `files.type` (a name with no dot stores an empty type, not its first four letters).
 
-## Why is the image editor configuration after the table?
+## Why is the Design Canvas configuration after the table?
 - `pg_image_editor_includes()` prints its ~19 KB `<script>` only once; called in a row, it landed in the first image's Action cell. DataTables sized the column by that text (3,341 px, a 4,688 px table) and the list search matched it ("css", "Kaydet"). The list sets `$has_image` and prints it once before `</main>` (#5821).
 
 ## Are Recycle Bin files listed?

@@ -5,7 +5,7 @@ description: An agent saves a canvas's picture into Files (POST messages/{id}/ca
 
 ## What does a save do?
 - `POST /workspace/messages/{id}/canvas/save` (`workspace.messages.canvas.save`, `api_canvas.php`): folder_id, name, format, description, text. The canvas's drawn picture becomes a new `files` row in the folder, in the name of the person the key acts for. Built in CV7.
-- Formats: the image editor's export formats on this server (`pg_image_editor_export_formats()`: jpeg and png, webp and avif where a library writes them); png when left out. A PNG is copied as drawn; another format goes through the engine at the save's quality (`pg_image_editor_canvas_export()` in `includes/fn/image_editor.php`).
+- Formats: the Design Canvas's export formats on this server (`pg_image_editor_export_formats()`: jpeg and png, webp and avif where a library writes them); png when left out. A PNG is copied as drawn; another format goes through the engine at the save's quality (`pg_image_editor_canvas_export()` in `includes/fn/image_editor.php`).
 - Name: the given one, else the canvas file's, with the format's extension (`ws_canvas_save_name()`), made unique by `get_unique_name()`; a blocked upload name is refused.
 
 ## How does it follow the risk tiers?

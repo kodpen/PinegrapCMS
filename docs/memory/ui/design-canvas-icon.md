@@ -6,7 +6,7 @@ module: image_editor
 
 ## Which drawing is it?
 - Drawing B of the owner's pick (#8903, `workflow/decisions-made-panel-7.md`): an artboard with crop marks, the pen curve and its two anchors in the second colour. It is `pg_menu_icon('design_canvas')` (`includes/fn/output.php`), on the main menu's 24-unit grid (`main-menu-icons.md`).
-- Not chosen: an easel (A), a canvas with a brush (C). The candidates' sheet: `plans/design-names-menu/nm2-icon-candidates.png` while the plan lasts.
+- Not chosen: an easel (A), a canvas with a brush (C). The candidates' sheet is in git history: `git show f62cf699:docs/memory/plans/design-names-menu/nm2-icon-candidates.png`.
 
 ## How is it shown outside the main menu?
 - `pg_design_canvas_icon($space)` (`includes/fn/image_editor.php`): the drawing with `design-color pg-dc-icon`; `$space` is the margin class (`pg_menu_icon()`'s third argument, the menu's `me-3` by default).

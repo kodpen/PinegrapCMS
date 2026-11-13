@@ -22,7 +22,7 @@ description: ERP documents kept as issued (4.65, includes/erp/archive.php): what
 
 ## How does the file manager show them?
 - `includes/erp/files.php` owns the virtual folders (`erp_files_folders()`), their scope, counts, lists and item payloads; `view_folders.php` only draws them (by `erp_kind` and `source`); a new folder or kind updates both.
-- A picture item (expense receipt) carries `picture: true` and keeps `is_image` false: `is_image` would offer the image editor, optimising and the picture filters on a document.
+- A picture item (expense receipt) carries `picture: true` and keeps `is_image` false: `is_image` would offer the Design Canvas, optimising and the picture filters on a document.
 - The e-document folders appear only when e-documents are in use or already hold something.
 
 ## Why is each document listed once, by its newest kept copy?

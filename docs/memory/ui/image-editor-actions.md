@@ -1,6 +1,6 @@
 ---
 name: image-editor-actions
-description: The image editor's selection bar on a small screen: which commands show (M.actionList()), where it sits, when it hides, why it exists, how it was checked
+description: The Design Canvas's selection bar on a small screen: which commands show (M.actionList()), where it sits, when it hides, why it exists, how it was checked
 module: image_editor
 ---
 

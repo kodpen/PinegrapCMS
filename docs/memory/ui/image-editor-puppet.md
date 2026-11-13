@@ -1,6 +1,6 @@
 ---
 name: image-editor-puppet
-description: The image editor's free deformation (puppet): pins on a path, shape or outlined text, rigid moving least squares, kept as l.puppet, drawn after the warp; Expand bakes it
+description: The Design Canvas's free deformation (puppet): pins on a path, shape or outlined text, rigid moving least squares, kept as l.puppet, drawn after the warp; Expand bakes it
 module: image_editor
 ---
 

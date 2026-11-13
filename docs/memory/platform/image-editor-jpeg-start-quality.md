@@ -1,6 +1,6 @@
 ---
 name: image-editor-jpeg-start-quality
-description: Decided, not built (#9118): a JPEG saved by the image editor or Optimize starts at the lower of 92 and the source's own quality, so a save is not heavier than its original
+description: Decided, not built (#9118): a JPEG saved by the Design Canvas or Optimize starts at the lower of 92 and the source's own quality, so a save is not heavier than its original
 ---
 
 ## What is decided?

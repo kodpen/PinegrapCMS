@@ -1,6 +1,6 @@
 ---
 name: image-editor-animation
-description: The image editor's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note
+description: The Design Canvas's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note
 module: image_editor
 ---
 
@@ -18,7 +18,7 @@ module: image_editor
 
 ## Which step id is in which topic file?
 - Other plans and PRs name the steps by id: AN1 motion and the play bar `image-editor-motion.md`, AN2 tracks `image-editor-tracks.md`, AN3 frames and GIF `image-editor-render.md`, AN4 save into Files `image-editor-animation-save.md`, AN5 APNG and WebP `image-editor-encode.md`, AN6 video `image-editor-video-export.md`, AN7a scenes `image-editor-scenes.md`, AN7b scenes played `image-editor-scenes-play.md`, AN8 Present and PDF `image-editor-present.md`, AN9 keyframes `image-editor-keyframes.md`, AN10 SVG motion `image-editor-svg-motion.md`, AN12 recording `image-editor-record.md`, AN11 this file.
-- The screens of 2026-11-01 and 2026-11-05 are `docs/memory/plans/image-editor/26-*.jpg` to `34-*.jpg` (motion, tracks, save, progress, scenes, Present, phone, recording), kept with the image editor plan's screens.
+- The screens of 2026-11-01 and 2026-11-05 are `docs/memory/plans/image-editor/26-*.jpg` to `34-*.jpg` (motion, tracks, save, progress, scenes, Present, phone, recording), kept with the Design Canvas plan's screens.
 
 ## Which keys does the timeline answer?
 - In the Animate tool (`motionKey()`): K plays and pauses; Left and Right step the playhead one frame of 30 fps, Shift one whole second, landing on that grid; Home goes to the start, End to the end; each pauses as a scrub does (`M.timelineKey()`, tested in `tests/image_editor_access_test.php`). Up and Down still nudge the selection; Space and drag pan the view as in every tool; a running recording takes none of them.
