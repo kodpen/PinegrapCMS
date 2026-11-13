@@ -1248,6 +1248,7 @@
     "Monitor mode: these requests were recorded but allowed through, except addresses you banned by hand, which are refused in every mode. Review the rest, and when nothing legitimate appears here, switch the firewall to Block.": "İzle modu: bu istekler kaydedildi ama geçirildi; elle yasakladığınız adresler bunun dışındadır, onlar her modda reddedilir. Geri kalanları inceleyin; burada meşru bir istek görünmüyorsa güvenlik duvarını Engelle moduna alın.",
     "Monitor mode: these requests were recorded but allowed through. Review them, and when nothing legitimate appears here, switch the firewall to Block.": "İzle modu: bu istekler kaydedildi ama geçmelerine izin verildi. İnceleyin; burada meşru bir istek görünmüyorsa güvenlik duvarını Engelle moduna alın.",
     "Monitoring": "İzleme",
+    "Monogram": "Monogram",
     "Monospace": "Eş Aralıklı",
     "Monospace headings, square corners, thin outlines, capitals on the buttons.": "Eş aralıklı başlıklar, keskin köşeler, ince çerçeveler, düğmelerde büyük harfler.",
     "Montenegro": "Karadağ",

@@ -11425,7 +11425,7 @@ const StyleDesigner = (function () {
         // Apply inline styles and custom _attrs
         if (node.props._attrs && node.props._attrs.length) {
             node.props._attrs.forEach(function(a) {
-                if (a.name && a.name.trim()) el.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || ''));
+                if (a.name && a.name.trim()) el.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || '', false, node));
             });
         }
         var inlineStyle = node.props.inlineStyle || '';
@@ -13194,6 +13194,31 @@ const StyleDesigner = (function () {
             { __step_kind: 'shipped', __step_label: _sdT('Shipped'), __step_date: '21.10.2026 09:30' },
             { __step_kind: 'delivered', __step_label: _sdT('Delivered'), __step_date: '23.10.2026', __step_is_estimate: '1' }
         ],
+        // The sample order's product form (_sdOrderSample()): four fields,
+        // the card being the first.
+        'order.item_form_fields': [
+            { __field_label: _sdT('Thread colour'), __field_value_html: _sdT('Navy') },
+            { __field_label: _sdT('Gift message'), __field_value_html: _sdT('Happy birthday!') },
+            { __field_label: _sdT('Care instructions'), __field_value_html: '', __field_is_info: '1',
+              __field_info_html: _sdT('Embroidered items cannot be returned.') }
+        ],
+        'cart.item_form_fields': [
+            { __field_key: 'thread', __field_name: 'thread', __field_id: 'thread', __field_label: _sdT('Thread colour'),
+              __field_control: 'choice', __field_type: 'radio buttons', __field_value: 'navy', __field_maxlength: '' },
+            { __field_key: 'message', __field_name: 'message', __field_id: 'message', __field_label: _sdT('Gift message'),
+              __field_control: 'textarea', __field_type: 'text area', __field_value: _sdT('Happy birthday!'),
+              __field_required: '', __field_maxlength: '', __field_rows: '3', __field_cols: '40' },
+            { __field_key: 'care', __field_name: 'care', __field_id: 'care', __field_label: _sdT('Care instructions'),
+              __field_control: 'info', __field_type: 'information', __field_value: '', __field_required: '',
+              __field_is_info: '1', __field_has_info: '1', __field_info_html: _sdT('Embroidered items cannot be returned.') }
+        ],
+        'cart.item_form_field_options': [
+            { __option_label: _sdT('Cream'), __option_value: 'cream', __option_id: 'thread-cream', __option_checked: '' }
+        ],
+        'order.return_delivery_lines': [
+            { __return_item_id: '2', __return_item_name: _sdT('Ceramic Mug'), __return_item_ordered: '1', __return_item_left: '1',
+              __return_item_qty_label: _sdT('How many to return: {var:1}', _sdT('Ceramic Mug')) }
+        ],
         'calendar.weekdays': [
             { __weekday_name: _sdT('Tuesday'), __weekday_short: _sdT('Tue') },
             { __weekday_name: _sdT('Wednesday'), __weekday_short: _sdT('Wed') }
@@ -13224,6 +13249,16 @@ const StyleDesigner = (function () {
         ]
     };
 
+    // The lists of the sample order that draw their card alone (one product
+    // form block, one shipment, one return …), and its item lists, whose
+    // sample row is the order's second line (_sdOrderSampleLineTwo()).
+    var _SD_ONE_ROW_LISTS = {
+        'order.item_forms': 1, 'cart.item_forms': 1, 'order.shipments': 1, 'checkout.recipients': 1,
+        'order.item_gift_cards': 1, 'cart.item_gift_cards': 1, 'cart.item_schedule': 1,
+        'order.returns': 1, 'order.return_lines': 1, 'order.return_deliveries': 1
+    };
+    var _SD_ORDER_LINE_LISTS = { 'order.items': 1, 'cart.items': 1 };
+
     // Whether a widget of `cfg` draws its main loop once: a single-record
     // kind, whose loop holds the layout but repeats nothing.
     function _sdLoopIsSingle(cfg) {
@@ -13253,11 +13288,14 @@ const StyleDesigner = (function () {
             if (!cfg || !_sysWidgetRenderTreeRoot || _sdFirstLoopArea(_sysWidgetRenderTreeRoot) !== node) return [];
             var kind = _swKindOf(cfg);
             if (_SD_GHOST_TYPES[kind] || _SD_GHOST_TYPES[cfg.regionType] || kind === 'comments' || kind === 'comments_recent' || _sdLoopIsSingle(cfg)) return [];
-            return [{}, {}];
+            // The order family's item loop: the sample order's second line.
+            return _SD_ORDER_SAMPLE_REGIONS[cfg.regionType] ? [_sdOrderSampleLineTwo()] : [{}, {}];
         }
         var src = SW_LIST_SOURCES[node.props.source];
         if (!src || _sdListBand(node).off) return [];
-        var rows = SD_LIST_SAMPLE_ROWS[node.props.source] || [{}, {}];
+        var name = node.props.source;
+        var rows = _SD_ORDER_LINE_LISTS[name] ? [_sdOrderSampleLineTwo()]
+            : (_SD_ONE_ROW_LISTS[name] ? [] : (SD_LIST_SAMPLE_ROWS[name] || [{}, {}]));
         var limit = parseInt(node.props.limit, 10);
         return (limit > 0) ? rows.slice(0, limit - 1) : rows;
     }
@@ -13415,7 +13453,7 @@ const StyleDesigner = (function () {
         if (node.props._attrs && node.props._attrs.length) {
             node.props._attrs.forEach(function(a) {
                 if (a.name === 'style') { _attrStyle = a.value || ''; }
-                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdSitePath(_sdResolveAttrTokens(a.value || ''))); }
+                else if (a.name && a.name.trim()) { _attrEl.setAttribute(a.name.trim(), _sdSitePath(_sdResolveAttrTokens(a.value || '', false, node))); }
             });
         }
         // Sizing props extra style (before _attrStyle so Attrs panel can override)
@@ -14039,7 +14077,7 @@ const StyleDesigner = (function () {
                     // pre-built HTML slots: ^^__cancel_form^^, ^^__order_status_badge^^).
                     // Server substitutes these at request time; canvas needs
                     // an in-place placeholder so designer doesn't see raw tokens.
-                    _semText = _sdResolveAttrTokens(_semText, true);
+                    _semText = _sdResolveAttrTokens(_semText, true, node);
                     _semIsHtml = /<[a-z]/i.test(_semText);
                 } else {
                     // An address form's city or state label in the words of
@@ -15006,8 +15044,6 @@ const StyleDesigner = (function () {
         '__installment_per_month': _sdMoney(207.77),
         // Order view widget — HTML-emit placeholders (server-side substitutes
         // full HTML; canvas shows a friendly hint so designer sees the slot).
-        '__billing_address_html': _sdT('Address line 1') + '\n' + _sdT('Address line 2') + '\n' + _sdT('10001 New York'),
-        '__shipping_address_html': _sdT('Address line 1') + '\n' + _sdT('Address line 2') + '\n' + _sdT('10001 New York'),
         '__order_notes': _sdT('Please deliver the order to the door.'),
         '__notes': _sdT('Please deliver the order to the door.'),
         '__cancel_status': '',
@@ -15195,6 +15231,84 @@ const StyleDesigner = (function () {
                    '<div class="mb-2"><div class="form-label mb-0 fw-semibold">' + esc(_sdT('Message')) + '</div>' +
                    '<div class="pg-ov-form-value">' + esc(_sdT('Happy birthday!')) + '</div></div>' +
                    '</fieldset></div>';
+        },
+        // The cart's controls, in the markup _render_system_widget_shopping_cart()
+        // gives them; disabled on the canvas.
+        '__special_offer_code_form': function () {
+            return '<form class="pg-cart-coupon-form"><div class="input-group input-group-sm">' +
+                   '<input type="text" class="form-control" value="WELCOME10" disabled>' +
+                   '<button type="button" class="btn btn-outline-primary" disabled>' + esc(_sdT('Special Offer Code')) + '</button>' +
+                   '</div></form>';
+        },
+        '__update_button': function () {
+            return '<button type="button" class="btn btn-outline-secondary w-100" disabled>' + esc(_sdT('Update')) + '</button>';
+        },
+        '__checkout_button': function () {
+            return '<button type="button" class="btn btn-primary w-100" disabled>' + esc(_sdT('Checkout')) + '</button>';
+        },
+        '__applied_offers': function () {
+            return '<div class="pg-cart-applied-offers alert alert-success py-2 px-3 mb-2">' +
+                   '<div class="fw-semibold small mb-1"><i class="bi bi-tag-fill me-1"></i>' + esc(_sdT('Applied Offer')) + '</div>' +
+                   '<ul class="mb-0 ps-3 small"><li>' + esc(_sdT('10% off your first order')) + '</li></ul></div>';
+        },
+        // _pg_render_quick_add(): a product picker and its button.
+        '__quick_add_form': function () {
+            return '<form class="pg-cart-quick-add row g-2 align-items-end">' +
+                   '<div class="col-12 col-sm-8"><label class="form-label small mb-1">' + esc(_sdT('Quick Add')) + '</label>' +
+                   '<select class="form-select form-select-sm" disabled><option>' + esc(_sdT('Ceramic Mug')) + '</option></select></div>' +
+                   '<div class="col-12 col-sm-4"><button type="button" class="btn btn-sm btn-outline-primary w-100" disabled>' +
+                   esc(_sdT('Add')) + '</button></div></form>';
+        },
+        // The quantity stepper of a cart line, with the line's quantity.
+        '__item_qty_input': function () {
+            var qty = (_sdListSample && _sdListSample.__item_qty) ? _sdListSample.__item_qty : '2';
+            return '<div class="input-group input-group-sm pg-qty-stepper" style="max-width:9rem;display:inline-flex">' +
+                   '<button type="button" class="btn btn-outline-secondary" disabled>&minus;</button>' +
+                   '<input type="number" value="' + esc(qty) + '" class="form-control form-control-sm text-center" disabled>' +
+                   '<button type="button" class="btn btn-outline-secondary" disabled>+</button></div>';
+        },
+        // The checkout's personal data consent sentence.
+        '__legal_kvkk_consent_html': function () {
+            return esc(_sdT('I have read the Personal Data Notice and agree to the processing of my data.'));
+        },
+        // A checkout line's product form answers (the extra rows the server adds).
+        '__item_form_html': function () {
+            return '<div class="small text-muted mt-1">' + esc(_sdT('Monogram')) + ': A.M. · ' +
+                   esc(_sdT('Thread colour')) + ': ' + esc(_sdT('Navy')) + '</div>';
+        },
+        // pg_return_actions_html(): the parcel's tracking number and the
+        // customer's two moves.
+        '__return_actions_html': function () {
+            return '<form class="mt-2"><label class="form-label small fw-semibold">' + esc(_sdT('Tracking number of the parcel (optional)')) + '</label>' +
+                   '<div class="input-group input-group-sm"><input type="text" class="form-control" disabled>' +
+                   '<button type="button" class="btn btn-primary" disabled>' + esc(_sdT('I have sent it')) + '</button></div></form>' +
+                   '<form class="mt-2"><button type="button" class="btn btn-sm btn-outline-secondary" disabled>' +
+                   esc(_sdT('Withdraw the request')) + '</button></form>';
+        },
+        '__return_reason_options_html': function () {
+            return '<option>' + esc(_sdT('Choose a reason')) + '</option><option>' + esc(_sdT('Wrong size')) + '</option>';
+        },
+        '__field_options_html': function () {
+            return '<option>' + esc(_sdT('Navy')) + '</option><option>' + esc(_sdT('Cream')) + '</option>';
+        },
+        // _eo_render_saved_cart_link(): the link back to the saved cart.
+        '__saved_cart_link': function () {
+            var url = 'https://example.com/cart?r=ABC123XYZ';
+            return '<div class="alert alert-secondary fade show small mb-0 pg-eo-saved-cart">' +
+                   '<div class="text-muted mb-1"><i class="bi bi-bookmark-check me-1"></i>' +
+                   esc(_sdT('Your {var:1} is saved. To return to this {var:1} later, please use this link:', _sdT('cart'))) + '</div>' +
+                   '<a href="#" class="small text-break">' + esc(url) + '</a></div>';
+        },
+        // The sample order's addresses as <br> lines, as the page writes them.
+        '__recipient_address_html': function () {
+            var a = _sdOrderAddress('shipping');
+            return esc(a[0] + ' ' + a[1]) + '<br>' + _sdOrderAddressBlock(a).split('\n').map(esc).join('<br>');
+        },
+        '__shipping_address_html': function () {
+            return _sdOrderAddressBlock(_sdOrderAddress('shipping')).split('\n').map(esc).join('<br>');
+        },
+        '__billing_address_html': function () {
+            return _sdOrderAddressBlock(_sdOrderAddress('billing')).split('\n').map(esc).join('<br>');
         }
     };
 
@@ -15468,6 +15582,189 @@ const StyleDesigner = (function () {
 
     var _SD_PRODUCT_REGIONS = { catalog_listing: 1, catalog_item_view: 1, shopping_cart: 1, express_order: 1, order_view: 1, wishlist: 1 };
 
+
+    // ── The sample order ─────────────────────────────────────────────────
+    // The order family (the order view and its receipt e-mail, the cart,
+    // the checkout and its steps) draws one sample order whose values agree
+    // with each other: two lines (2 × 450 and 1 × 150) make the subtotal,
+    // a 10% offer code, shipping and 20% tax on the discounted amount make
+    // the total. Line one is the card of the item loop, line two its sample
+    // row (_sdOrderSampleLineTwo()); line one carries a product form of
+    // three fields and an information text. Billing and shipping are two
+    // addresses. Canvas only: never in a tree, never on the site.
+    var _SD_ORDER_SAMPLE_REGIONS = {
+        order_view: 1, shopping_cart: 1, express_order: 1, order_preview: 1,
+        shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1
+    };
+    // The amounts (a function: SD_LIST_SAMPLE_ROWS reads them before this
+    // part of the file has run).
+    function _sdOrderAmounts() {
+        return { price1: 450, total1: 900, price2: 150, total2: 150,
+                 subtotal: 1050, discount: 105, shipping: 49.9, tax: 189, total: 1183.9 };
+    }
+    var _sdOrderSampleMap = null;
+
+    // Whether `node` draws in a widget of the order family.
+    function _sdOrderSampleOn(node) {
+        var cfg = node ? _sdSystemWidgetCfgOf(node) : null;
+        return !!(cfg && _SD_ORDER_SAMPLE_REGIONS[cfg.regionType]);
+    }
+
+    // The two addresses, as lines: [first, last, company, line 1, line 2,
+    // city, state, zip, country, phone].
+    function _sdOrderAddress(which) {
+        var name = String(which === 'billing' ? _sdT('Alex Morgan') : _sdT('Sam Carter')).trim().split(/\s+/);
+        var last = name.length > 1 ? name.pop() : '';
+        return which === 'billing'
+            ? [name.join(' '), last, _sdT('Example Ltd.'), _sdT('Sample Street 1'), _sdT('Flat 4'),
+               _sdT('Springfield'), _sdT('Illinois'), '62701', _sdT('United States'), '+90 555 000 00 00']
+            : [name.join(' '), last, _sdT('Cooper Studio'), _sdT('Harbour Road 12'), _sdT('Floor 2'),
+               _sdT('Portland'), _sdT('Oregon'), '97201', _sdT('United States'), '+90 555 111 22 33'];
+    }
+
+    // An address on one line, and as the <br> block's lines.
+    function _sdOrderAddressLine(a) {
+        return [a[3], a[4], a[7] + ' ' + a[5], a[6], a[8]].filter(Boolean).join(', ');
+    }
+    function _sdOrderAddressBlock(a) {
+        return [a[3], a[4], a[7] + ' ' + a[5] + ' / ' + a[6], a[8]].join('\n');
+    }
+
+    // The second line of the sample order: the sample row of the item loop.
+    function _sdOrderSampleLineTwo() {
+        var m = _sdOrderAmounts();
+        return {
+            __item_id: '2', __item_name: 'PRD-1002', __item_number: 'PRD-1002',
+            __item_short_description: _sdT('Ceramic Mug'), __item_image_alt: _sdT('Ceramic Mug'),
+            __item_qty: '1', __item_quantity: '1', __item_shipped_qty: '1',
+            __item_price: _sdMoney(m.price2), __item_total: _sdMoney(m.total2),
+            __item_original_price: _sdMoney(m.price2), __item_original_total: _sdMoney(m.total2),
+            __item_vat: _sdMoney(25), __item_has_form_data: '', __item_has_gift_card: ''
+        };
+    }
+
+    // Token → sample value of the sample order (built once).
+    function _sdOrderSample() {
+        if (_sdOrderSampleMap) return _sdOrderSampleMap;
+        var m = _sdOrderAmounts();
+        var bill = _sdOrderAddress('billing'), ship = _sdOrderAddress('shipping');
+        var day = _sdDateSample(false), stamp = _sdDateSample(true);
+        var out = {
+            // The order.
+            __order_id: '1042', __order_no: '12345', __order_number: '12345',
+            __order_date: day, __order_date_formatted: day,
+            __order_status: _sdT('Shipped'), __order_status_text: _sdT('Shipped'), __order_status_stage: 'shipped',
+            __order_item_count: '2', __order_unit_count: '3', __member_id: 'M-1042',
+            __special_offer_code: 'WELCOME10', __reference_code: 'ABC123XYZ',
+            __installment_count: '3', __installment_charges: _sdMoney(0), __installment_per_month: _sdMoney(394.63),
+            __tracking_codes: 'TRK-000123',
+            __withdrawal_text: _sdT('Last day of the right of withdrawal: {var:1}', day),
+            __order_po_number: 'PO-7781', __order_custom_field_1_label: _sdT('Tax office'), __order_custom_field_1: _sdT('Springfield'),
+            __order_custom_field_2_label: _sdT('Tax number'), __order_custom_field_2: '1234567890',
+            __order_gift_card_discount: _sdMoney(0), __order_currency: 'TRY', __order_paid_date: stamp,
+            __order_cancelled_date: stamp, __order_cancellation_reason: _sdT('Ordered by mistake'),
+            __order_refund_status: _sdT('Not refunded'), __order_refunded_amount: _sdMoney(0), __order_refunded_date: stamp,
+            __order_is_tax_exempt: '',
+            // The totals.
+            __order_subtotal: _sdMoney(m.subtotal), __order_discount: _sdMoney(m.discount), __order_tax: _sdMoney(m.tax),
+            __order_shipping: _sdMoney(m.shipping), __order_surcharge: _sdMoney(0), __order_total: _sdMoney(m.total),
+            __cart_subtotal: _sdMoney(m.subtotal), __cart_discount: _sdMoney(m.discount), __cart_tax: _sdMoney(m.tax),
+            __cart_shipping: _sdMoney(m.shipping), __cart_gift_card_discount: _sdMoney(0), __cart_surcharge: _sdMoney(0),
+            __cart_total: _sdMoney(m.total), __cart_total_with_surcharge: _sdMoney(m.total), __cart_total_charged: _sdMoney(m.total),
+            __cart_today_total: _sdMoney(m.total), __cart_recurring_total: _sdMoney(0),
+            __cart_subtotal_cents: String(Math.round(m.subtotal * 100)), __cart_total_cents: String(Math.round(m.total * 100)),
+            __cart_total_with_surcharge_cents: String(Math.round(m.total * 100)),
+            __cart_count: '3', __cart_count_label: _sdT('3 items'), __surcharge_percentage: '0%',
+            __applied_offers_count: '1', __special_offer_code_message: _sdT('10% off your first order'),
+            __empty_message: _sdT('Your cart is empty.'), __has_shippable_item: '1', __has_recurring_items: '',
+            __currency_disclaimer: _sdT('Your card is charged in Turkish Lira; the amounts in other currencies are estimates.'),
+            // Payment.
+            __po_number: 'PO-7781',
+            // The billing address.
+            __billing_name: bill[0] + ' ' + bill[1], __billing_first_name: bill[0], __billing_last_name: bill[1],
+            __billing_salutation: _sdT('Ms.'), __billing_company: bill[2], __billing_email: _sdT('sample@example.com'),
+            __billing_phone: bill[9], __billing_fax: '+90 555 000 00 01', __billing_address_1: bill[3], __billing_address_2: bill[4],
+            __billing_city: bill[5], __billing_state: bill[6], __billing_zip: bill[7], __billing_country: bill[8],
+            __billing_full_address: _sdOrderAddressLine(bill),
+            __custom_field_1_label: _sdT('Tax office'), __custom_field_1: _sdT('Springfield'),
+            __custom_field_2_label: _sdT('Tax number'), __custom_field_2: '1234567890',
+            __billing_form_title: _sdT('Billing Information'), __purchase_now_label: _sdT('Purchase Now'),
+            __offline_payment_label: _sdT('Pay by bank transfer'), __tax_exempt_label: _sdT('Tax exempt'),
+            __opt_in_label: _sdT('Send me news and offers by e-mail'),
+            // The shipping address (the one recipient).
+            __shipping_name: ship[0] + ' ' + ship[1], __shipping_first_name: ship[0], __shipping_last_name: ship[1],
+            __shipping_salutation: _sdT('Ms.'), __shipping_company: ship[2], __shipping_phone: ship[9],
+            __shipping_address_1: ship[3], __shipping_address_2: ship[4], __shipping_city: ship[5], __shipping_state: ship[6],
+            __shipping_zip: ship[7], __shipping_country: ship[8], __shipping_address_type: _sdT('Residential'),
+            __shipping_full_address: _sdOrderAddressLine(ship), __shipping_address: _sdOrderAddressLine(ship),
+            __shipping_ship_date: day, __shipping_delivered_date: day,
+            __ship_to_key: '1', __ship_to_name: _sdT('Myself'), __ship_to_item_count: '2',
+            __recipient_id: '1', __recipient_count: '1', __recipient_name: _sdT('Myself'),
+            __recipient_full_name: ship[0] + ' ' + ship[1], __recipient_salutation: _sdT('Ms.'),
+            __recipient_first_name: ship[0], __recipient_last_name: ship[1], __recipient_address_1: ship[3],
+            __recipient_address_2: ship[4], __recipient_city: ship[5], __recipient_state: ship[6], __recipient_zip: ship[7],
+            __recipient_country: ship[8], __recipient_address_type: _sdT('Residential'),
+            __recipient_address: _sdOrderAddressLine(ship), __recipient_phone: ship[9],
+            __recipient_address_first_name: ship[0], __recipient_address_last_name: ship[1], __recipient_address_company: ship[2],
+            __recipient_address_address_1: ship[3], __recipient_address_address_2: ship[4], __recipient_address_city: ship[5],
+            __recipient_address_state: ship[6], __recipient_address_zip_code: ship[7], __recipient_address_country: ship[8],
+            __recipient_address_phone_number: ship[9],
+            __custom_form_title: _sdT('Delivery Details'), __arrival_date_name: _sdT('Standard delivery'),
+            __arrival_date_description: _sdT('Arrives in 2-4 working days.'), __requested_arrival_date: day,
+            __shipping_method: _sdT('Standard Shipping'), __shipping_method_name: _sdT('Standard Shipping'),
+            __shipping_method_description: _sdT('Arrives in 2-4 working days.'), __shipping_method_cost: _sdMoney(m.shipping),
+            __no_shipping_methods_message: _sdT('No shipping method serves this address.'),
+            // Line one (the card of the item loop).
+            __item_id: '1', __item_name: 'PRD-1001', __item_number: 'PRD-1001',
+            __item_short_description: _sdT('Linen Shirt'), __item_image_alt: _sdT('Linen Shirt'),
+            __item_qty: '2', __item_quantity: '2', __item_shipped_qty: '2',
+            __item_price: _sdMoney(m.price1), __item_total: _sdMoney(m.total1),
+            __item_original_price: _sdMoney(m.price1), __item_original_total: _sdMoney(m.total1),
+            __item_vat: _sdMoney(150), __item_ship_to: _sdOrderAddressLine(ship),
+            __item_has_form_data: '1', __item_has_gift_card: '',
+            __item_out_of_stock: '', __item_is_donation: '', __item_added_by_offer: '', __item_discounted_by_offer: '',
+            __item_starts_recipient: '', __item_ship_to_name: ship[0] + ' ' + ship[1], __item_is_recurring: '', __item_starts_recurring: '',
+            __item_recurring_editable: '', __item_recurring_period: _sdT('Monthly'), __item_recurring_payments: '12',
+            __item_recurring_start_date: day, __item_payment_period: _sdT('Monthly'), __item_payment_count: '12',
+            __item_first_payment_date: day, __item_event_name: _sdT('Yoga Workshop'), __item_event_date: day,
+            __item_calendar_event_name: _sdT('Yoga Workshop'), __item_calendar_event_dates: _sdT('12 May 2026, 10:00 – 12:00'),
+            // Line one's product form: one block (order.item_forms,
+            // cart.item_forms); its first field is the card of the field
+            // list, the rest are SD_LIST_SAMPLE_ROWS'.
+            __form_key: 'personalisation', __form_name: _sdT('Personalisation'), __form_number: '1', __form_count: '1',
+            __form_has_legend: '1',
+            __field_key: 'monogram', __field_label: _sdT('Monogram'), __field_value_html: 'A.M.', __field_value: 'A.M.',
+            __field_is_info: '', __field_has_info: '', __field_info_html: '', __field_control: 'input', __field_required: '1',
+            __field_name: 'monogram', __field_id: 'monogram', __field_type: 'text box', __field_maxlength: '3',
+            __field_rows: '', __field_cols: '', __field_multiple: '', __field_file: '',
+            __option_label: _sdT('Navy'), __option_value: 'navy', __option_id: 'thread-navy', __option_name: 'thread',
+            __option_type: 'radio', __option_checked: '1', __option_required: '',
+            // A gift card of a line (order.item_gift_cards, cart.item_gift_cards).
+            __gift_card_number: '1', __gift_card_count: '1', __gift_card_amount: _sdMoney(100),
+            __gift_card_email: _sdT('recipient@example.com'), __gift_card_from_name: bill[0] + ' ' + bill[1],
+            __gift_card_message_html: _sdT('Happy birthday!'), __gift_card_message: _sdT('Happy birthday!'),
+            __gift_card_delivery: day, __gift_card_delivery_date: day, __gift_card_field: 'recipient_email_address',
+            // A recurring line's schedule (cart.item_schedule).
+            __schedule_item: '1', __schedule_period: _sdT('Monthly'), __schedule_payments: '12', __schedule_start: day,
+            __schedule_payments_required: '', __schedule_payments_help: _sdT('leave it empty for unlimited'),
+            __schedule_start_shown: '1', __schedule_period_invalid: '', __schedule_payments_invalid: '', __schedule_start_invalid: '',
+            // A return of the order and its lines (order.returns …).
+            __return_id: '7', __return_title: _sdT('Return request #{var:1}', '7'), __return_asked: _sdT('Asked on {var:1}', day),
+            __return_status: 'approved', __return_status_label: _sdT('Approved'), __return_has_lines: '1',
+            __return_reason: _sdT('Wrong size'), __return_customer_note: _sdT('The shirt is too small.'),
+            __return_customer_note_html: _sdT('The shirt is too small.'), __return_decision_note: _sdT('Please send it back within 14 days.'),
+            __return_decision_note_html: _sdT('Please send it back within 14 days.'), __return_how: _sdT('By cargo, with the code below'),
+            __return_code: 'RT-4821', __return_tracking_number: 'TRK-000456', __return_refund_deadline: day,
+            __return_can_mark_sent: '1', __return_can_withdraw: '1', __return_label_url: '#', __return_has_label: '1',
+            __return_line_name: _sdT('Linen Shirt'), __return_line_qty: '1',
+            __return_delivery_id: '1', __return_delivery_label: _sdT('Delivery 1'), __return_delivery_several: '',
+            __return_delivery_deadline: day, __return_item_id: '1', __return_item_name: _sdT('Linen Shirt'),
+            __return_item_ordered: '2', __return_item_left: '2',
+            __return_item_qty_label: _sdT('How many to return: {var:1}', _sdT('Linen Shirt'))
+        };
+        _sdOrderSampleMap = out;
+        return out;
+    }
     var _sdLabelFieldsAsked = {};
     function _displayValueForBinding(prop, fieldName, node) {
         // A sample comment after a comments widget's card draws its own
@@ -15508,6 +15805,11 @@ const StyleDesigner = (function () {
             // below would only ever return a plain string for them.
             if (fieldName && _sdIsHtmlPreviewToken(fieldName)) {
                 return _SD_HTML_PREVIEW_TOKENS[fieldName]();
+            }
+            // A value of the sample order, in the order family's widgets.
+            if (fieldName && _sdOrderSampleOn(node)) {
+                var _ord = _sdOrderSample();
+                if (Object.prototype.hasOwnProperty.call(_ord, fieldName)) return _ord[fieldName];
             }
             // Type-aware placeholder dispatch — order matters: currency
             // FIRST so __cart_total_formatted doesn't fall through to the
@@ -15760,7 +16062,7 @@ const StyleDesigner = (function () {
         // Apply token resolution to props.text AFTER bindings (bindings win
         // for the same prop; only kicks in for literal ^^…^^ in unbound text).
         if (textHasLiteralToken && !(hasBindings && node.props._bindings.text)) {
-            out.text = _sdResolveAttrTokens(out.text, true);
+            out.text = _sdResolveAttrTokens(out.text, true, node);
         }
         return _sdPathProps(out);
     }
@@ -15830,12 +16132,18 @@ const StyleDesigner = (function () {
     // `allowHtml` is opt-in and only passed from the TEXT paths. Attribute
     // values go through the same function, and dumping a <fieldset> preview
     // into e.g. a title="" would be noise at best.
-    function _sdResolveAttrTokens(val, allowHtml) {
+    function _sdResolveAttrTokens(val, allowHtml, node) {
         if (!val || typeof val !== 'string' || val.indexOf('^^') === -1) return val;
+        var order = (node && _sdOrderSampleOn(node)) ? _sdOrderSample() : null;
         return val.replace(/\^\^([a-zA-Z_][a-zA-Z0-9_]*)\^\^/g, function(_, tok) {
             // Reuse the same maps that drive bound text/src previews so the
             // canvas stays internally consistent.
             if (_sdIsHtmlPreviewToken(tok))   return allowHtml ? _SD_HTML_PREVIEW_TOKENS[tok]() : '';
+            // A list sample row's value, then the sample order's: plain
+            // text, escaped where the result is markup.
+            var own = (_sdListSample && Object.prototype.hasOwnProperty.call(_sdListSample, tok)) ? _sdListSample[tok]
+                : ((order && Object.prototype.hasOwnProperty.call(order, tok)) ? order[tok] : null);
+            if (own !== null) return allowHtml ? esc(String(own)) : String(own);
             if (_SD_NUMERIC_TOKENS[tok])      return _SD_NUMERIC_TOKENS[tok];
             if (_SD_SHORT_LABEL_TOKENS[tok])  return _SD_SHORT_LABEL_TOKENS[tok];
             if (_SD_CURRENCY_TOKENS[tok])     return _sdGetCurrencyPlaceholder();

@@ -330,7 +330,8 @@ function test_widget_condition_eval_timeline_sample_rows()
 }
 
 // The main loop's sample rows: two in a kind that repeats it without real
-// records or sample comments; none in a single-record kind, a kind with
+// records or sample comments, one (the sample order's second line) in the
+// order family; none in a single-record kind, a kind with
 // server ghosts, the comments widget, inside a sample, or on a second loop.
 function test_widget_condition_eval_main_loop_sample_rows()
 {
@@ -344,12 +345,14 @@ function test_widget_condition_eval_main_loop_sample_rows()
 	};
 	$src = $cut("\n    var _SD_GHOST_TYPES = ", ";\n")
 		. $cut("\n    var _SW_ACCOUNT_SINGLE = ", ";\n")
-		. $cut("\n    var _SW_ONE_SCREEN = ", ";\n");
+		. $cut("\n    var _SW_ONE_SCREEN = ", ";\n")
+		. $cut("\n    var _SD_ORDER_SAMPLE_REGIONS = ", ";\n");
 	foreach (array('_sdLoopIsSingle', '_sdListSampleRows', '_sdFirstLoopArea', '_sdListIsSourced', '_swKindOf') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$stubs = "var _sdGhostsOn = true, _sdListSample = null, _sdCommentSample = null, _sysWidgetRenderCfg = null, _sysWidgetRenderTreeRoot = null;\n"
-		. "var SW_LIST_SOURCES = {}, SD_LIST_SAMPLE_ROWS = {};\n";
+		. "var SW_LIST_SOURCES = {}, SD_LIST_SAMPLE_ROWS = {};\n"
+		. "function _sdOrderSampleLineTwo() { return { __item_id: '2' }; }\n";
 	$script = "var loop = { type: 'loop_area', props: {}, children: [{ type: 'semantic', props: {} }] };\n"
 		. "var second = { type: 'loop_area', props: {}, children: [] };\n"
 		. "var root = { type: 'root', props: {}, children: [loop, second] };\n"
@@ -370,7 +373,7 @@ function test_widget_condition_eval_main_loop_sample_rows()
 	@unlink($file);
 	$printed = implode("\n", $out);
 	pg_assert_same(0, $code, $printed);
-	pg_assert_same(array('cart' => 2, 'order' => 2, 'second' => 0, 'item' => 0, 'listing' => 0, 'forms' => 0, 'comments' => 0, 'recent' => 0,
+	pg_assert_same(array('cart' => 1, 'order' => 1, 'second' => 0, 'item' => 0, 'listing' => 0, 'forms' => 0, 'comments' => 0, 'recent' => 0,
 		'profile' => 0, 'account' => 0, 'accountList' => 2, 'inSample' => 0, 'off' => 0), json_decode($printed, true), $printed);
 }
 
@@ -427,4 +430,29 @@ function test_widget_condition_eval_hide_empty_canvas()
 	pg_assert_same('000000', $a['all']);
 	pg_assert_true($a['judged'], 'the value element judges the box');
 	pg_assert_same('all', $a['forEmptied'], 'a node no value fills is drawn in All elements');
+}
+
+// The sample order's amounts agree: the lines make the subtotal, and the
+// discount, shipping and 20% tax on the discounted amount make the total.
+function test_widget_condition_eval_sample_order_adds_up()
+{
+	if (!_cond_eval_node_ok()) return;
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$a = strpos($js, "\n    function _sdOrderAmounts(");
+	pg_assert_true($a !== false, '_sdOrderAmounts is found');
+	$src = substr($js, $a, strpos($js, "\n    }\n", $a) + 6 - $a);
+	$script = "var m = _sdOrderAmounts(), c = function (x) { return Math.round(x * 100); };\n"
+		. "console.log(JSON.stringify([c(m.price1 * 2) === c(m.total1), c(m.price2) === c(m.total2),\n"
+		. "  c(m.total1 + m.total2) === c(m.subtotal), c((m.subtotal - m.discount) * 0.2) === c(m.tax),\n"
+		. "  c(m.subtotal - m.discount + m.shipping + m.tax) === c(m.total)]));\n";
+	$file = @tempnam(sys_get_temp_dir(), 'pgcond');
+	if ($file === false) return;
+	file_put_contents($file, $src . $script);
+	$out = array();
+	$code = 1;
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+	pg_assert_same(array(true, true, true, true, true), json_decode($printed, true), $printed);
 }

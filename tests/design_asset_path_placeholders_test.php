@@ -208,7 +208,7 @@ function test_design_asset_path_canvas_wired()
 	$props = _dapp_js_fn($js, '_propsWithBindings');
 	pg_assert_true(substr_count($props, 'return _sdPathProps(') === 2, 'both answers of _propsWithBindings() are filled');
 	$attrs = _dapp_js_fn($js, '_sdApplyNodeAttrs');
-	pg_assert_contains("_attrEl.setAttribute(a.name.trim(), _sdSitePath(_sdResolveAttrTokens(a.value || '')));", $attrs);
+	pg_assert_contains("_attrEl.setAttribute(a.name.trim(), _sdSitePath(_sdResolveAttrTokens(a.value || '', false, node)));", $attrs);
 	pg_assert_contains("_attrEl.setAttribute('style', _sdSitePath(_combined));", $attrs);
 	$apply = _dapp_js_fn($js, 'applyAssetsToIframe');
 	pg_assert_contains("userStylesCss += _sdSitePath(f.content.trim()) + '\\n';", $apply);
