@@ -23437,7 +23437,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 .pg-list-table-details {
   display: flex;
   flex-direction: column;
-  flex: 0 0 20rem;
+  flex: 0 0 var(--pg-measure-details);
   min-height: 0;
   border-inline-start: 1px solid var(--pg-list-table-line);
   background: var(--pg-list-table-bg);
@@ -25838,7 +25838,8 @@ textarea.pg-input {
    Look A: page widths.
    An add or edit screen's content is centred and at most 1120 px (form
    column 760, status column 336, 24 between); a list is as wide as its
-   columns need, at least 1280 px or the window, at most the window. A screen
+   columns need, at least 1700 px or the window, at most the window, and an
+   open details panel adds its width to that. A screen
    takes them with a class on <body> ('extra classes'): pg-measure-edit, with
    pg-edit-columns on the row holding the form, status and save bar columns;
    pg-measure-list.
@@ -25850,7 +25851,9 @@ textarea.pg-input {
   --pg-measure-form: 760px;
   --pg-measure-status: 336px;
   --pg-measure-gap: 24px;
-  --pg-measure-list-min: 1280px;
+  --pg-measure-list-min: 1700px;
+  /* A list's details panel beside its rows (from 1024 px). */
+  --pg-measure-details: 20rem;
   /* The section rail beside a page from 1280 px: its width and the gap. */
   --pg-measure-rail: calc(13rem + 1.5rem);
 }
@@ -25892,12 +25895,23 @@ body.pg-measure-edit #content {
 
 /* A list: the content box is as wide as the list's columns need, at least
    the list measure (or the window when it is narrower), at most the window,
-   centred; the toolbar above takes the same width. */
+   centred; the toolbar above takes the same width. While search words or a
+   filter are set, the driver holds the width the box had before them in
+   --pg-list-held (pg_list_table.js holdWidth()). */
 body.pg-measure-list #content {
   width: fit-content;
-  min-width: min(100%, var(--pg-measure-list-min) + 2rem);
+  min-width: min(100%, max(var(--pg-list-held, 0px), var(--pg-measure-list-min) + 2rem));
   max-width: 100%;
   margin-inline: auto;
+}
+/* An open details panel beside the rows adds its width to the least width,
+   up to the whole window: the table keeps the width it has with the panel
+   closed and gives way only when the window has no room left. Below
+   1024 px the panel is a sheet over the list and takes no width. */
+@media (min-width: 1024px) {
+  body.pg-measure-list #content:has(.pg-list-table-details:not([hidden])) {
+    min-width: min(100%, max(var(--pg-list-held, 0px), var(--pg-measure-list-min) + 2rem) + var(--pg-measure-details));
+  }
 }
 /* Only the name column takes the slack: the table gives a wider box to its
    columns without a width first, so the name's own width (the driver's
