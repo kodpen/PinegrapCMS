@@ -16,6 +16,9 @@
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
 - bound-href-scheme.md: A form field bound to a link's, form's, picture's or player's address never prints a javascript:, vbscript: or data: address
 - bound-media-src.md: audio, video and source take src (video also poster) from a record field binding under the bound address rule; an empty value prints none (#7654, PR #8211) [decision: here]
+- campaign-email-body-mail-programs.md: MA4 (2026-11-13): what an HTML e-mail body must be for Gmail, Outlook and Apple Mail: width, tables, inline styles, head style, pictures, the 102 KB clip, the parts it keeps
+- campaign-email-body-today.md: MA4 census (2026-11-13): how a campaign's HTML body and the designed e-mails (account, form, comment, receipt) are made today, what the e-mail render leaves in, and who may design one
+- campaign-email-body-way.md: MA4 proposal (2026-11-13, open on #9083): a campaign's e-mail body as an e-mail design page (600 px canvas, mail blocks), the mail pass, ready designs, pasted HTML, test send
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
 - catalog-listing-subtree-sort.md: Catalog listing widget's catalog-order sort while a search or filter spans the group subtree: the product's lowest sort order, not an arbitrary group row.
@@ -133,6 +136,7 @@
 - design-template-filmstudio-pages.md: Film Studio template 2.0.0: home, services and project page on the Film Studio blocks, motion elsewhere, names in their own case; builders, pages, limits, test
 - design-template-filmstudio.md: Film Studio template (pinegrap-filmstudio): showreel, services, projects as a collection by industry and service, studio hire, crew, project enquiries, crew calls, no shop, pfm- look, tests.
 - design-template-fit-planetarium-zoo.md: Templates Planetarium to Zoo: header menu opens at 1200 px, smaller links to 1399 px, row wraps, image sizes in props, restaurant hours, social counts; the numbers
+- design-template-fit.md: Templates App Studio to Events (#8997): header menu opens at 1200 px and wraps, image sizes in props not _attrs, grey and primary-tinted surfaces tint primary and second text
 - design-template-florist-pages.md: Florist template 2.0.0: home, occasions, subscriptions and delivery on the Florist blocks and Locations: Zones, motion elsewhere: builders, each page, limits, the test
 - design-template-florist.md: Florist template (pinegrap-florist): bouquets, occasions, subscriptions, event flowers, delivery, Our Work collection, order requests from the account, consultations, shop catalog, pfl- look, tests.
 - design-template-form-fees.md: Fees and branches of the template forms (FL7): hidden fee products in the catalog, {{product:<key>}}, the Events optional fee, Cafe deposit, Courses enrolment fee, Cafe and Clinic shown_when
@@ -219,6 +223,7 @@
 - design-theme-product-looks.md: The looks and palettes for bold product pages (display, precision; onyx, silver, electric): values, why the names, the catalog test
 - designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values [decision: here]
 - designer-ai-known-class.md: How the designer AI decides a class is one the framework ships (pg_design_ai_known_class()): the Bootstrap 5 vocabulary, state/pg-*/Bootstrap Icons classes, custom designs, the class-family fallback
+- designer-assistant-apply-answers.md: Assistant Apply's "Unexpected token '<'" (class names sent as lists), what an operation's fields accept, how the Assistant actions keep their answer JSON
 - designer-audit-contrast-opacity.md: How the designer audit's contrast check (PgContrast.check(), assets/js/pg_contrast.js) counts opacity on the text and its ancestors, and why
 - designer-audit-contrast.md: Designer audit's text contrast check (WCAG 1.4.3): measured on the canvas with PgContrast, what it leaves alone (pictures, hidden, disabled, editor chrome), findings on templates, cost
 - designer-audit-form-action.md: Designer audit hint form_no_action: a form outside every system widget with no action is sent nowhere; what counts as wired, why it is a hint and not a ban, and the test.
@@ -383,6 +388,7 @@
 - express-order-legal-documents.md: Checkout document boxes and KVKK lines in the designer's express order tree: legal_* field bindings, has_legal_documents / has_legal_kvkk* flags, __legal_* tokens, sentence split of the label
 - folder-view-widget.md: The Folder View widget (classic "folder view" page type): settings and their fallback, the folder tree as a main loop plus nested folder_view.children lists, row tokens, flags, what is left out.
 - form-feed-item-guid-enclosure.md: A form feed item's guid is unique per record (permalink with a detail page, page#code without one); a typed media address gets length 0 and a type from its extension, or no enclosure
+- form-field-errors-before-sending.md: A designed form field the browser refuses says what is wrong in text beside it, linked by aria-describedby: pg_cf_validation_script() (#9054)
 - form-field-errors.md: Which controls a refused server submission marks (is-invalid, aria-invalid, linked invalid-feedback) on designed forms, member widgets and classic liveform fields (#4458).
 - form-item-ai-summary.md: AI on a designed form item view (2026.4.8): four assistant links and when they fill, the prompt setting, the in-browser summary wired by bindings, why the box is an aside, the translator bridge.
 - form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1 [decision: here]
@@ -415,6 +421,7 @@
 - legacy-design-theme.md: The theme file of a design moved from a classic style: the activated theme the classic head printed, on the site, the canvas and the Theme file hint; the dry run's warning (LG1, #8694)
 - legacy-frame-split.md: A classic style's frame split at its page regions (LG6, #8819): page content in each page's tree, the rest shared parts ("Main top"), their categories, the open and the bulk move [decision: decisions-made-product-43.md]
 - legacy-layouts-census.md: Census of the page types' custom layouts for their move to Bootstrap 5.3.8 (LL1, #8968): per type the widget twin, layouts that differ from the template, Bootstrap 3 names
+- legacy-layouts-converter.md: The layout pass of the Bootstrap 3 to 5.3.8 converter (LL2, #8986): pg_lbs_layout_html() over a page type's output, its rules beyond the map, what stays, the starting layouts' counts
 - legacy-layouts-map-cost.md: Mapping a page type's output per request against converted layout copies (LL1 census, #8968): measured cost, what each reaches, the proposal sent to the architect
 - legacy-layouts-output-join.md: Where a page type's layout output joins the page, the names built outside a written class attribute, and the gate a map at output needs (LL1 census, #8968)
 - legacy-materialize-trial.md: The LB1b hand trial: a Legacy design whose theme loads Materialize, Bootstrap 5.3.8 beside it as a trial design loads it; names both own, what each sheet does to the other [decision: decisions-made-product-48.md]
@@ -514,6 +521,7 @@
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.
 - site-search-index-text.md: What text the site search index stores for a drawn page: main content only, no cookie window, shared header/menu/footer or link addresses (#4096)
 - site-search-query-and-freshness.md: Site search: the query text in MATCH, the binned and archived page filter (advanced and simple), record and file labels, the index made due after a template install (#3550, #3551, #3552)
+- site-search-skipped-pages.md: Visual-editor pages site search never lists as items (bare product, record, error, checkout and order pages): pg_search_index_skipped_widget_types() (#9053)
 - site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search does not fold yet [decision: decisions-made-product-10.md]
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - store-template-front-end.md: Store template front-end fixes (#3621): footer contact column, no card hint at checkout, product tabs on one line, the product page's edit pencil on the widget and clear of headings.

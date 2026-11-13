@@ -55,13 +55,14 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-6.md: Where do the legacy designer's entries and Ads sit in the main menu? (owner, 2026-11-12, #8849)
 - decisions-made-panel-7.md: Where are the rules and the earlier parts?
 - decisions-made-panel-7.md: Is the second pass of look A the reference? (owner, 2026-11-12, #8860)
-- decisions-made-panel-7.md: How wide is an add or edit screen? (owner, 2026-11-12, #8860)
-- decisions-made-panel-7.md: How wide is a list, and how does it page? (owner, 2026-11-12, #8860)
+- decisions-made-panel-7.md: How wide is an add or edit screen? (owner, 2026-11-13, #9070)
+- decisions-made-panel-7.md: How wide is a list, and how does it page? (owner, 2026-11-13, #9070)
 - decisions-made-panel-7.md: Is the dialogs and drawers page the reference? (owner, 2026-11-12, #8860)
 - decisions-made-panel-7.md: Which drawing is the Design Canvas icon? (owner, 2026-11-12, #8903)
 - decisions-made-panel-7.md: Does the dashboard move to look A? (owner, 2026-11-12, #8938)
 - decisions-made-panel-8.md: Where are the rules and the earlier parts?
 - decisions-made-panel-8.md: Is the report screen page the reference for the report screens? (owner, 2026-11-12, #8955)
+- decisions-made-panel-8.md: Is a settings switch without a thumb approved? (owner, 2026-11-12, #9070)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -257,6 +258,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-47.md: What happens to the e-mail campaign profiles? (owner, 2026-11-12, #8961)
 - decisions-made-product-48.md: Where are the rules and the earlier parts?
 - decisions-made-product-48.md: What does the Legacy to Bootstrap helper do on a design that is not Bootstrap 3? (owner, 2026-11-12, #8967)
+- decisions-made-product-48.md: What does the picker open on? (owner, 2026-11-12, #9070)
+- decisions-made-product-48.md: What does the designer canvas draw for a bound value, and what of closed blocks? (owner, 2026-11-13, #9076)
+- decisions-made-product-48.md: Do loop bands and condition chips stay on the canvas? (owner, 2026-11-13, #9076)
+- decisions-made-product-48.md: Which consent lets a marketing WhatsApp template go? (owner, 2026-11-13, #9087)
 - decisions-made-product-5.md: Which outside-account leftovers start in 2026.11.0? (#3180)
 - decisions-made-product-5.md: Do subscriptions start, and who runs the renewals? (#3183)
 - decisions-made-product-5.md: Does a beta site without a build file get the beta build of its own version? (#3204)
@@ -601,6 +606,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/list-table-overview.md: The panel list table driver as a whole: the decision behind it, its parts by label, which file holds what, the recipe for a new list, its filter, where a new screen is registered
 - ui/list-table-quick-edit-values.md: Which values of each driver list change in quick edit, which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 - ui/list-table-rollout.md: How the panel lists moved from DataTables to the list table driver (TD1-TD14, done with #8253): the driver, the rules that still hold, where each batch is noted, what the removal took out
+- ui/main-menu-overview.md: The panel's main menu as a whole: rows in categories, panels and second-level panels, states and the drawer, gates, the decisions that bind it, and which main-menu file holds each part
 - ui/notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise
 - ui/notifications-one-inbox.md: The bell as the one inbox (#3817): module chips, Asked of me, Unread only, the search (BP3), the kept choice, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count
 - ui/panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
@@ -642,11 +648,14 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/channel-members-agents.md: A channel's agents among its members (#8936): agents as squares in the head's faces, People here and Agents here in Channel info, last seen; a person's time only for a manager
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
 - workspace/claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable
-- workspace/mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP chosen (#2444) and when a push endpoint (G9) would come, the eleven answers and their files, defaults, scope, PRs, what stays unverified
+- workspace/mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified
 - workspace/mail-list.md: The Workspace E-mails list (workspace_mail.php, mail_list.php): which conversations, the views Incoming, Sent and Not sent, the filters, mailbox, search, Load more, the row, the menu entry
+- workspace/mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it
 - workspace/mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test
+- workspace/mail-support-box.md: A mailbox's "Support box" switch (WM14, #9061): what a plain box leaves out (status, holder, first-answer time, automatic answer), how lists count its conversations, the default
 - workspace/model-assistant-channel-rule.md: Where a model assistant is asked (its own ws_channel_agents row; a channel closed to Pinegrap AI on purpose keeps it out too) and how the shared loop's failure sentences name it (PR #8413)
 - workspace/model-assistants-anthropic.md: Anthropic (Claude) as a provider of model assistants: why it was added, how the Messages API is translated to and from Pinegrap AI's chat completions loop, what its reference said (2026-11-12)
+- workspace/workflow-table-channel.md: A workflow table of a channel (ws_wtables.channel_id, 11.0.191): rights from the channel, made in or moved to a channel, lists, bin, screen card, API, webhooks
 - workspace/workflow-table-key-column.md: The key column of a workflow table (wtable_keys.php, PR #8509): text or number, filled in and unique, refusals, the lock, by: key, the API ?key=, the import matching by key
 - workspace/workflow-table-row-numbers.md: The stable # number of workflow table rows (11.0.183, PR #8461): counter in ws_wtables.next_number, the row's number, kept through the bin, shown in #, found by by: number
 - workspace/workflow-tables-bin.md: The bin of workflow tables (11.0.178, #8412): a deleted row goes to ws_wtable_row_bin, a deleted table gets ws_wtables.deleted_at; restore, purge, privacy and contact readers
@@ -679,6 +688,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-flows-channel-run-card.md: Add › Start a flow in a channel's composer and the run's card there (C2, #3048): which flows are listed, the start, the system line tied by ws_refs, the card following the run
 - workspace/workspace-flows-decisions.md: Lasting decisions behind Workspace Flows ("Akışlar"): the three uses, the owner's answers 1-8 (editor, builders, record writes, AI drafts only), rights, data-passing rules (#2414)
 - workspace/workspace-flows-failure-reason.md: Why a flow box failed (FR1, PR #8425): data.empty_values, the added sentence on card, bell and run view, the canvas buttons and the card link to the failed box
+- workspace/workspace-flows-quick-setup-map.md: Flows quick setup drawing against today's boxes and events: drawn starts, steps and recipes by kind; general boxes proposed for what has none (SMS, contact group, offer code)
+- workspace/workspace-flows-quick-setup.md: Flows quick setup server (flow_quick.php): catalogue of areas, starts, step groups, recipes; the choices the dialog sends; how they become a draft graph; the panel action
 - workspace/workspace-flows-scheduled-merge.md: Scheduled actions moved into Flows (owner, 2026-10-24): what was decided, the two anchors, what stays a scheduled action, and the PRs of each slice
 - workspace/workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, actions, API, Share dialog
 - workspace/workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own

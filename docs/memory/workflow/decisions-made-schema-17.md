@@ -1,6 +1,6 @@
 ---
 name: decisions-made-schema-17
-description: Decisions list, schema part 17 (2026-11-12 on): the canvas-one tables ws_canvas_parts, ws_canvas_tables, ws_canvas_consents, via_message_id on table rows, ws_wtables.channel_id
+description: Decisions list, schema part 17 (2026-11-12 on): the canvas-one tables ws_canvas_parts, ws_canvas_tables, ws_canvas_consents, via_message_id on table rows, ws_wtables.channel_id, WhatsApp's tables
 ---
 
 ## Where are the rules and the earlier parts?
@@ -20,3 +20,5 @@ description: Decisions list, schema part 17 (2026-11-12 on): the canvas-one tabl
 - A table of a channel (owner, 2026-11-12, #8927): `ws_wtables.channel_id` INT UNSIGNED NOT NULL DEFAULT 0, `idx_channel (channel_id, updated_at)`; `user_id` stays the maker.
   - Owner (2026-11-12): "Kanal tablosu (Önerilen)". Not chosen: a table owned by one canvas and binned with it; no schema (an edit level on a channel share).
   - Read by whoever reads the channel, edited by whoever may post in it, deleted and shared by its admins. A canvas's delete removes its bindings and leaves the table.
+- WhatsApp's own tables (owner, 2026-11-13, #9085), as WA0 proposed (#9067): `whatsapp_outbox` (the SMS queue's columns and rules, plus contact, template, payload, wamid, delivery state), `whatsapp_templates` (drafts and the account's templates, a row per name and language), `whatsapp_inbox` (incoming messages by wamid, kept two years, removed with the contact's erasure). `sms_outbox` is not touched.
+  - Owner (2026-11-13): "Üç yeni tablo (Önerilen)". Not chosen: a channel column on `sms_outbox`, templates in `connect_apps`, incoming messages as contact notes.

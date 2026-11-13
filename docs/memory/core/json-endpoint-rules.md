@@ -22,4 +22,9 @@ description: Endpoints that speak JSON: rejections and CSRF failures in JSON wit
 - No: `api.php` decodes `php://input` as JSON. A FormData or multipart post decodes to nothing, so it has no action: a designer gets "Invalid action.", a lower role is stopped at the role gate first. An endpoint carrying files (multipart) is therefore a separate script (e.g. `designer_import.php`).
 - New `api.php` actions: `panel-action-table.md`.
 
+## How does an action keep PHP's text out of its JSON?
+- `api.php` has no buffer: a warning shown with display_errors on lands in front of the JSON. Wrap the action: `respond(pg_error_json_action(function () { … }, $failed))` (`includes/fn/errors.php`). It buffers and drops what is printed, turns `output_error()` into an exception, and answers `$failed` on a reported warning or error (deprecations aside), an exception, an answer JSON cannot write, or a fatal error (from its shutdown handler); each is in the Site Log.
+- `$failed` for the panel: `status: error`, `code: server_error`, `message: pg_error_json_action_sentence()`. A memory-exhausted fatal is the one case it cannot clean: PHP drops the buffers and prints its line itself.
+- Used by the designer Assistant's actions (`designer/designer-assistant-apply-answers.md`).
+
 Related: docs/memory/designer/image-editor-tool.md

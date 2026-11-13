@@ -337,7 +337,7 @@ $app_widgets['app_detail'] = array(
                 $el('header', 'd-flex flex-column flex-md-row align-items-md-center gap-4 mb-5', lang('App Heading'), array(
                     $el('span', 'pg-field-value d-block flex-shrink-0 rounded-4 overflow-hidden shadow-sm pma-icon', lang('Icon Frame'), array(
                         $image($portrait($app_sample['name'], 256), $app_sample['name'], 'w-100 h-100 object-fit-cover',
-                            array('_bindings' => array('src' => 'icon', 'alt' => 'name'), '_attrs' => array($attr('width', '96'), $attr('height', '96')))),
+                            array('_bindings' => array('src' => 'icon', 'alt' => 'name'), 'width' => '96', 'height' => '96')),
                     )),
                     $el('div', 'flex-grow-1', lang('Name and Tagline'), array(
                         $heading('h1', $app_sample['name'], 'pma-display display-6 fw-bold mb-1', $bind('name')),

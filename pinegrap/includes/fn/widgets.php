@@ -4789,8 +4789,8 @@ function _pg_member_render_signed_in(&$tree, $form, $form_name, $send_to, $page_
 {
     $software   = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : '');
     // The token lets logout.php sign the member out at once instead of asking
-    // for confirmation first.
-    $logout_url = $software . '/logout.php?send_to=' . urlencode($page_url) . '&token=' . urlencode($_SESSION['software']['token'] ?? '');
+    // for confirmation first; pg_lang keeps a page in another language in it.
+    $logout_url = pg_tr_script_url($software . '/logout.php?send_to=' . urlencode($page_url) . '&token=' . urlencode($_SESSION['software']['token'] ?? ''));
 
     $notice = h(lang('You are already signed in.'));
     if ($send_to !== '') {

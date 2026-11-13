@@ -826,8 +826,10 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     //   • shipping       → sum(shipping_cost) from ship_tos for this order
     //                      (only meaningful after the visitor has gone through
     //                      the shipping step; usually 0 in cart phase)
-    //   • tax / surcharge → 0 in cart phase (computed at checkout). Tokens
-    //                      still surface so the designer can hide the rows.
+    //   • tax            → estimated, the order discount's share off
+    //                      (pg_cart_estimate_tax())
+    //   • surcharge      → 0 in cart phase (computed at checkout). The token
+    //                      still surfaces so the designer can hide the row.
     //   • total          → subtotal + tax + shipping + surcharge − discount
     //   • special_offer_code / reference_code → from orders row (string cols
     //                      are kept current by shopping_cart.php / our POST
@@ -888,21 +890,35 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
         // Tax — the stored line taxes (order_items.tax_total, written by the
         // checkout's tax pass on the buyer's address) while every taxable
         // line has one; else a PREVIEW over the whole cart on the site's
-        // default country rate, per product rate (pg_cart_estimate_tax()).
-        // A product added after the visitor once reached the checkout has
-        // tax_total 0, and the stored sum alone left it out of the tax.
+        // default country rate, per product rate. A product added after the
+        // visitor once reached the checkout has tax_total 0, and the stored
+        // sum alone left it out of the tax. The order discount then comes
+        // off the tax as the checkout takes it (pg_cart_estimate_tax()): the
+        // stored taxes are of the lines before the discount, and the cart
+        // used to show the discount's tax share on top of what is charged.
+        // The lines go in the order of their ids, as the checkout reads
+        // them, so a minor unit left over by the spread lands alike.
         $tax_cents = 0;
         $_pg_tax_lines = db_items(
-            "SELECT oi.price * oi.quantity AS amount, oi.tax_total, p.taxable, p.tax_rate"
+            "SELECT oi.price, oi.quantity, oi.tax_total, oi.recurring_start_date,
+                    p.taxable, p.tax_rate, p.recurring, p.start AS start_days"
              . (pg_schema_has('order_items', 'tax_rate') ? ", oi.tax_rate AS charged_rate" : "") . "
              FROM order_items oi
              LEFT JOIN products p ON oi.product_id = p.id
-             WHERE oi.order_id = '$oid_esc'" . pg_order_item_active_sql('oi')
+             WHERE oi.order_id = '$oid_esc'" . pg_order_item_active_sql('oi') . "
+             ORDER BY oi.id ASC"
         );
         if (is_array($_pg_tax_lines)) {
             $_pg_def_rate = ((!defined('ECOMMERCE_TAX') || ECOMMERCE_TAX == true) && function_exists('get_tax_rate_for_address'))
                 ? get_default_tax_rate() : false;
-            $tax_cents = pg_cart_estimate_tax($_pg_tax_lines, $_pg_def_rate);
+            $tax_cents = pg_cart_estimate_tax(
+                $_pg_tax_lines,
+                $_pg_def_rate,
+                $discount_cents,
+                date('Y-m-d'),
+                (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == true)
+                    && (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce')
+            );
         }
 
         // Surcharge — never computed in cart phase; checkout step adds it
@@ -2245,10 +2261,10 @@ function pg_express_order_live_tax_answer($totals)
 }
 
 /**
- * The tax the cart widget estimates before the checkout: the stored line
- * taxes (order_items.tax_total, written by the checkout's tax pass on the
- * buyer's address) while every taxable line has one, else the preview on the
- * site's default rate over the whole cart.
+ * The tax of each cart line before the checkout: the stored line taxes
+ * (order_items.tax_total, written by the checkout's tax pass on the buyer's
+ * address) with the rate each was charged at while every taxable line has
+ * one, else the preview on the site's default rate over the whole cart.
  *
  * A line counts as untaxed when its tax_total is 0 although the preview would
  * tax it (taxable product, rate above 0): a product added after the visitor
@@ -2264,54 +2280,169 @@ function pg_express_order_live_tax_answer($totals)
  * would otherwise have to clear tax_total. A line without the charged_rate
  * key (a schema before the column) is trusted as before.
  *
- * @param array       $lines         per active line: amount (price × quantity), tax_total,
+ * Each line's rate is the one its tax was taken at, so the order discount
+ * can take the tax again on what it leaves (pg_order_charged_tax()): the
+ * charged rate of a stored tax, the preview rate of a previewed one, 0 for a
+ * line that carries no tax, and null for a stored tax whose rate was not
+ * kept (the checkout then lowers the tax by the discount's share).
+ *
+ * @param array       $lines         per active line: price, quantity, tax_total,
  *                                   taxable, tax_rate (products.tax_rate, null for the zone's),
  *                                   charged_rate (order_items.tax_rate, when the column exists)
  * @param float|false $default_rate  get_default_tax_rate(): false when the default country is in no zone
- * @return int minor units
+ * @return array  key => ['tax' => int minor units, 'rate' => float|null], in the order given
  */
-function pg_cart_estimate_tax($lines, $default_rate)
+function pg_cart_estimate_line_taxes($lines, $default_rate)
 {
-    $stored = 0;
+    $estimate = array();
     $preview = array();
     $untaxed = false;
     $charged = array();
 
     foreach ((array) $lines as $key => $line) {
-        $stored += (int) ($line['tax_total'] ?? 0);
+        $tax_total = (int) ($line['tax_total'] ?? 0);
+        // The whole line, as the checkout's tax pass takes it.
+        $amount = (int) ($line['price'] ?? 0) * max(1, (int) ($line['quantity'] ?? 1));
+        $stored_rate = null;
         if (array_key_exists('charged_rate', (array) $line)) {
             $charged_rate = (float) ($line['charged_rate'] ?? 0);
             if ($charged_rate > 0) {
                 $group = sprintf('%.3F', $charged_rate);
-                $charged[$group]['lines'][$key] = array('amount' => (int) ($line['amount'] ?? 0), 'rate' => $charged_rate);
-                $charged[$group]['stored'] = ($charged[$group]['stored'] ?? 0) + (int) ($line['tax_total'] ?? 0);
-            } elseif ((int) ($line['tax_total'] ?? 0) !== 0) {
+                $charged[$group]['lines'][$key] = array('amount' => $amount, 'rate' => $charged_rate);
+                $charged[$group]['stored'] = ($charged[$group]['stored'] ?? 0) + $tax_total;
+                $stored_rate = $charged_rate;
+            } elseif ($tax_total !== 0) {
                 $untaxed = true;
             }
         }
+        $estimate[$key] = array('tax' => $tax_total, 'rate' => ($stored_rate === null && $tax_total === 0) ? 0.0 : $stored_rate);
         if (empty($line['taxable']) || $default_rate === false) continue;
         $rate = (float) get_effective_tax_rate($line['tax_rate'] ?? null, $default_rate);
         if ($rate <= 0) continue;
-        $preview[$key] = array('amount' => (int) ($line['amount'] ?? 0), 'rate' => $rate);
-        if ((int) ($line['tax_total'] ?? 0) === 0) $untaxed = true;
+        $preview[$key] = array('amount' => $amount, 'rate' => $rate);
+        if ($tax_total === 0) $untaxed = true;
     }
 
     foreach ($charged as $group) {
         if ((int) array_sum(pg_tax_by_rate($group['lines'])) !== $group['stored']) $untaxed = true;
     }
 
-    if (!$untaxed) return $stored;
+    if (!$untaxed) return $estimate;
 
-    return (int) array_sum(pg_tax_by_rate($preview));
+    $taxes = pg_tax_by_rate($preview);
+    foreach (array_keys($estimate) as $key) {
+        $estimate[$key] = isset($preview[$key])
+            ? array('tax' => (int) $taxes[$key], 'rate' => $preview[$key]['rate'])
+            : array('tax' => 0, 'rate' => 0.0);
+    }
+
+    return $estimate;
+}
+
+/**
+ * The tax the cart widget shows before the checkout: the estimated line
+ * taxes (pg_cart_estimate_line_taxes()) with the order discount taken off
+ * the way the checkout takes it. The lines go through
+ * pg_order_charged_today_totals(), the step the express order widget's
+ * totals start from, so the cart's tax is the one the checkout charges on
+ * the same line taxes: the discount, at most the subtotal charged today, is
+ * shared over the lines charged today and their tax taken again per rate on
+ * what it leaves. A recurring line that starts later takes no share and
+ * keeps its own tax, which the cart still shows.
+ *
+ * @param array       $lines           pg_cart_estimate_line_taxes()'s lines, in the order of their ids,
+ *                                     plus recurring, recurring_start_date and start_days (products.start)
+ * @param float|false $default_rate    get_default_tax_rate(): false when the default country is in no zone
+ * @param int         $order_discount  the cart's order discount ($_SESSION['ecommerce']['order_discount'])
+ * @param string|null $today           Y-m-d; null for today
+ * @param bool        $clearcommerce   the gateway charges recurring lines itself
+ * @return int minor units
+ */
+function pg_cart_estimate_tax($lines, $default_rate, $order_discount = 0, $today = null, $clearcommerce = false)
+{
+    $estimate = pg_cart_estimate_line_taxes($lines, $default_rate);
+    $order_lines = array();
+
+    foreach ((array) $lines as $key => $line) {
+        $order_lines[] = array(
+            'price'                => (int) ($line['price'] ?? 0),
+            'quantity'             => (int) ($line['quantity'] ?? 1),
+            'tax_total'            => $estimate[$key]['tax'],
+            'tax_rate'             => $estimate[$key]['rate'],
+            'recurring'            => !empty($line['recurring']),
+            'recurring_start_date' => (string) ($line['recurring_start_date'] ?? ''),
+            'start_days'           => (int) ($line['start_days'] ?? 0),
+        );
+    }
+
+    $charged = pg_order_charged_today_totals($order_lines, $order_discount, ($today === null) ? date('Y-m-d') : (string) $today, $clearcommerce);
+
+    return $charged['tax'] + $charged['later_tax'];
+}
+
+/**
+ * What an order's lines come to today, as submit_order() charges them: the
+ * lines charged when the order is placed (pg_order_line_charged_today(); a
+ * recurring line that starts later is not), their subtotal, the order
+ * discount at most that subtotal (pg_order_charged_discount()) and their tax,
+ * never below zero, taken again per rate on what the discount leaves of them
+ * (pg_order_charged_tax()). The express order widget's totals and the cart
+ * widget's tax both start here, so the two cannot come to different taxes on
+ * the same lines.
+ *
+ * @param array  $lines           per line, in the order of their ids: price, quantity, tax_total
+ *                                (the whole line), tax_rate (the line's, null when not kept),
+ *                                recurring, recurring_start_date, start_days (the product's start)
+ * @param int    $order_discount  the cart's order discount
+ * @param string $today           Y-m-d
+ * @param bool   $clearcommerce   the gateway charges recurring lines itself
+ * @return array subtotal, discount, tax (of the lines charged today), charged (those lines as
+ *               pg_order_charged_tax() reads them), later_tax (the lines charged later, as given)
+ */
+function pg_order_charged_today_totals($lines, $order_discount, $today, $clearcommerce)
+{
+    $subtotal = 0;
+    $tax = 0;
+    $later_tax = 0;
+    $charged = array();
+
+    foreach ((array) $lines as $line) {
+        if (!pg_order_line_charged_today(!empty($line['recurring']), isset($line['recurring_start_date']) ? $line['recurring_start_date'] : '',
+            isset($line['start_days']) ? $line['start_days'] : 0, $today, $clearcommerce)) {
+            $later_tax += (int) ($line['tax_total'] ?? 0);
+            continue;
+        }
+
+        $subtotal += (int) $line['price'] * (int) $line['quantity'];
+        $tax += (int) $line['tax_total'];
+        $charged[] = array(
+            'amount' => (int) $line['price'] * max(1, (int) $line['quantity']),
+            'rate' => isset($line['tax_rate']) ? $line['tax_rate'] : null,
+            'tax' => (int) $line['tax_total'],
+        );
+    }
+
+    $tax = max(0, $tax);
+    $discount = pg_order_charged_discount($order_discount, $subtotal);
+
+    if ($discount && ($subtotal > 0)) {
+        $tax = pg_order_charged_tax($charged, $discount);
+    }
+
+    return array(
+        'subtotal'  => $subtotal,
+        'discount'  => $discount,
+        'tax'       => $tax,
+        'charged'   => $charged,
+        'later_tax' => $later_tax,
+    );
 }
 
 /**
  * The totals of the cart as submit_order() charges them when the order is
- * placed, in minor units: the lines charged today
- * (pg_order_line_charged_today(); a recurring line that starts later is
- * not), their tax (never below zero), the cart's order discount at most
- * their subtotal (pg_order_charged_discount()) with the tax taken again per
- * rate on what it leaves of the lines (pg_order_charged_tax()), the
+ * placed, in minor units: the lines charged today, their tax and the cart's
+ * order discount as pg_order_charged_today_totals() takes them (the step
+ * the cart widget's tax goes through too), the
  * shipping, the applied gift cards at most the total (none on an order of
  * gift cards alone), and the card surcharge on what is left (pg_percent_of(),
  * the same figure on every PHP version). Where the shipping and the
@@ -2335,36 +2466,20 @@ function pg_cart_estimate_tax($lines, $default_rate)
  */
 function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gift_card_balance, $surcharge_percent, $today, $clearcommerce, $settle_rates = false)
 {
-    $subtotal = 0;
-    $tax = 0;
     $only_gift_cards = true;
-    $charged = array();
 
     foreach ((array) $lines as $line) {
         if (empty($line['gift_card'])) {
             $only_gift_cards = false;
+            break;
         }
-
-        if (!pg_order_line_charged_today(!empty($line['recurring']), isset($line['recurring_start_date']) ? $line['recurring_start_date'] : '',
-            isset($line['start_days']) ? $line['start_days'] : 0, $today, $clearcommerce)) {
-            continue;
-        }
-
-        $subtotal += (int) $line['price'] * (int) $line['quantity'];
-        $tax += (int) $line['tax_total'];
-        $charged[] = array(
-            'amount' => (int) $line['price'] * max(1, (int) $line['quantity']),
-            'rate' => isset($line['tax_rate']) ? $line['tax_rate'] : null,
-            'tax' => (int) $line['tax_total'],
-        );
     }
 
-    $tax = max(0, $tax);
-    $discount = pg_order_charged_discount($order_discount, $subtotal);
-
-    if ($discount && ($subtotal > 0)) {
-        $tax = pg_order_charged_tax($charged, $discount);
-    }
+    $today_totals = pg_order_charged_today_totals($lines, $order_discount, $today, $clearcommerce);
+    $subtotal = $today_totals['subtotal'];
+    $discount = $today_totals['discount'];
+    $tax = $today_totals['tax'];
+    $charged = $today_totals['charged'];
 
     $shipping = (int) $shipping;
 

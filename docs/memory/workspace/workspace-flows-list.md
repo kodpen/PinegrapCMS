@@ -16,4 +16,4 @@ description: The Flows screen's flow list (#3172, #3222): table, start words wit
 - For staff, only "Not converted · N" under the table, outside the search and chips: the cards of the actions the conversion refused. Converted flows are rows of the table; their own group went in PR #8573. No Scheduled actions section or entry since V5 (#3222); `?view=scheduled` opens the list: `workspace-flows-not-converted.md`.
 
 ## How does one get back to it?
-- "Flows ›" (`flowsButton()`) in the editor's and the gallery's toolbar goes back (`showList()`, saving first); the flow's row takes the focus. A scheduled action drawn read-only goes back with its Back.
+- The page's back arrow (`backToList()`, `K.viewBack()` in the breadcrumb strip) goes back from the editor and the gallery (`showList()`, saving first); the flow's row takes the focus. "New flow" is on the list's bar only. A scheduled action drawn read-only goes back with its Back.

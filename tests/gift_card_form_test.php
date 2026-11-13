@@ -73,6 +73,13 @@ function test_gift_card_form_card_add_mode()
 	pg_assert_contains('rows="5"', $card, 'the notes open five lines high');
 	pg_assert_false(strpos($card, 'cols=""') !== false, 'no empty cols');
 	pg_assert_false(strpos($card, 'id="gift_card_code"') !== false, 'a card being created has no code yet');
+
+	// The amount is focused on document ready, once its money mask is bound:
+	// focused while the page was parsed, digits typed without a click went
+	// into the decimals (50 became 0,50, #9047).
+	pg_assert_false(strpos($card, '<script>$("#amount").focus()</script>') !== false, 'not focused before the mask is bound');
+	pg_assert_contains('<script>$(function () { var box = document.getElementById("amount");', $card, 'focused on document ready');
+	pg_assert_contains('window.Inputmask().mask(box); } box.focus(); });</script>', $card, 'masked first when the binding has not masked it');
 }
 
 /**

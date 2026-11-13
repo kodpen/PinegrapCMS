@@ -19,7 +19,7 @@ description: Plan (owner 2026-11-12, #8942): the page types' custom layouts and 
 
 ## Which steps?
 - LL1 (S, no product code) The census. Done #8968 (`designer/legacy-layouts-*.md`); decided on #8969: map at output, `legacy-layouts-output-map.md`. Per page type: is there a system widget twin; how many layouts differ from their template; where the layout's output joins the page; which names are built in PHP rather than written in a `class` attribute; the cost of mapping the output per request against converting files.
-- LL2 (M) The layout variant of the map over a system region's output (`class` attributes, the `data-toggle` family), first the count of the names scripts use; pure functions with tests on the starting sites' layouts; a second pass changes nothing.
+- LL2 (M) Done #8986 (`designer/legacy-layouts-converter.md`). The layout variant of the map over a system region's output (`class` attributes, the `data-toggle` family), first the count of the names scripts use; pure functions with tests on the starting sites' layouts; a second pass changes nothing.
 - LL3 (M) The pass in `get_page_content.php`: a page of a `bootstrap5` design gets 5.3.8 names from its page type; every other page is untouched.
 - LL4 (M) What the map cannot rename: `glyphicon` to Bootstrap Icons, `input-group-btn` and `input-group-addon`, `checkbox` and `radio` blocks, `help-block`, `panel` where met.
 - LL5 (S) The widget offer: where a page type has a system widget, the helper's report names it as the better move.

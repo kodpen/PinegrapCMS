@@ -524,8 +524,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
         $items[] = $el('li', 'nav-item', lang('Nav Item'), array($link($n[1], '{{page:' . $n[0] . '}}', 'nav-link text-nowrap')));
     }
     return $el('header', 'bg-body border-bottom', lang('Site Header'), array(
-        $el('nav', 'navbar navbar-expand-lg py-3', lang('Navbar'), array(
-            $el('div', 'container', lang('Navbar Container'), array(
+        $el('nav', 'navbar navbar-expand-xl py-3', lang('Navbar'), array(
+            $el('div', 'container flex-xl-wrap', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-bold', lang('Brand'), array(
                     $el('span', 'd-inline-flex p-2 rounded-3 text-bg-primary lh-1', lang('Icon Box'), array($icon('bi-phone', 'fs-5'))),
                     $span('{{site_name}}', 'pma-brand fs-4', lang('Name')),
@@ -541,8 +541,8 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
                     $attr('aria-label', lang('Toggle navigation')),
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
-                    $el('ul', 'navbar-nav ms-lg-auto me-lg-3 column-gap-lg-2 py-3 py-lg-0', lang('Nav Menu'), $items, array('smartActive' => true)),
-                    $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center gap-2 pb-2 pb-lg-0', lang('Header Actions'), array(
+                    $el('ul', 'navbar-nav ms-xl-auto me-xl-3 column-gap-xl-2 py-3 py-xl-0', lang('Nav Menu'), $items, array('smartActive' => true)),
+                    $el('div', 'd-flex flex-column flex-xl-row align-items-xl-center gap-2 pb-2 pb-xl-0', lang('Header Actions'), array(
                         $el('a', 'btn btn-primary rounded-pill d-inline-flex align-items-center justify-content-center gap-2 px-4 text-nowrap', lang('Call to Action'), array(
                             $span(lang('Start a Project'), '', lang('Link Text')),
                             $icon('bi-arrow-up-right'),
@@ -692,7 +692,7 @@ $app_card = function ($sample_key = 'tally') use ($el, $para, $span, $link, $ima
                 $el('div', 'd-flex align-items-center gap-3 mb-3', lang('App Heading'), array(
                     $el('span', 'pg-field-value d-block flex-shrink-0 rounded-4 overflow-hidden pma-icon', lang('Icon Frame'), array(
                         $image($portrait($s['name'], 160), $s['name'], 'w-100 h-100 object-fit-cover',
-                            array('_bindings' => array('src' => 'icon', 'alt' => 'name'), '_attrs' => array($attr('width', '64'), $attr('height', '64')))),
+                            array('_bindings' => array('src' => 'icon', 'alt' => 'name'), 'width' => '64', 'height' => '64')),
                     )),
                     $el('div', '', lang('Name and Tagline'), array(
                         $el('h3', 'h5 fw-bold position-static mb-1', lang('App Name'), array(
@@ -764,7 +764,7 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
             $stars(),
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'mb-0'))),
             $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('User'), array(
-                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
+                $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('width' => '48', 'height' => '48', '_attrs' => array($attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
                     $span($t['role'], 'd-block small text-body-secondary', lang('Role')),

@@ -13,7 +13,7 @@ module: custom_form_steps
 - One step: a fieldset with its legend, no navigation, no script. No break: the tree is untouched (byte-for-byte as before, test guarded).
 
 ## What does the script do?
-- `pg_cf_steps_script()`, once per page, only for a stepped form: shows the progress and buttons, hides all steps but the first (or the one holding a control the server marked `aria-invalid`). Next checks the shown step's controls that are enabled, not hidden and `willValidate` (a control hidden by a Shown-when rule is disabled, so skipped), calls `reportValidity()` on the first failure; Back never checks. Focus goes to the new step's first control, else its legend.
+- `pg_cf_steps_script()`, once per page, only for a stepped form: shows the progress and buttons, hides all steps but the first (or the one holding a control the server marked `aria-invalid`). Next checks the shown step's controls that are enabled, not hidden and `willValidate` (a control hidden by a Shown-when rule is disabled, so skipped), writes the refused fields' text ([[form-field-errors-before-sending]]); Back never checks. Focus goes to the new step's first control, else its legend.
 - The history is never touched (no `pushState`): the browser's back key leaves the page as before.
 - On submit a failing control in another step brings that step forward (capture listener) before `pg_cf_validation_script()` focuses it. That script focuses `input/select/textarea:invalid` only: a fieldset holding an invalid control matches `:invalid` and takes no focus.
 

@@ -10,7 +10,7 @@ module: legacy_bootstrap
 - `pg_lbs_class_map()` is the one map (name => 5.3.8 classes, `''` drops); `pg_lbs_icon_map()` the Glyphicon and Themify twins in Bootstrap Icons; `pg_lbs_by_hand_names()` the Bootstrap 3 names left for a designer.
 
 ## What does a class list get?
-- `pg_lbs_classes($class)` returns `class` and the counts `converted`, `kept`, `by_hand` (name => n). A name the map does not know stays: theme classes untouched.
+- `pg_lbs_classes($class, $rules)` returns `class` and the counts `converted`, `kept`, `by_hand` (name => n); `$rules` is for a page type's markup ([[legacy-layouts-converter]]). A name the map does not know stays: theme classes untouched.
 - Breakpoints by name: xs is the base, sm/md/lg keep theirs, as the grid's `col-sm-*` keeps its name. `col-xs-N` → `col-N`, offsets → `offset-*` (no base `offset-0`, no `offset-12` in 5.3.8: dropped).
 - Visibility (`hidden-*`, `visible-*`, `hidden`, `hide`, print) of one element becomes one `d-*` set, put where the first stood. Renamed one by one, `visible-sm visible-xs` hid the phone menu button (LB1 trial). A breakpoint no class names gets `d-*-block` after a hidden one.
 - Push and pull: `-0` dropped; any other stays and counts as by hand (5.3.8 has no twin; `order-*` does nothing outside a `.row`, LB1 trial).

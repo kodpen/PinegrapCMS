@@ -378,17 +378,19 @@ function pg_short_link_list_cells(array $short_link, array $quick_edit)
     $output_page = '';
     $output_destination = '';
 
+    // Names are text to read and search here, as the Pages and Files lists
+    // show them: "pg-ğ" and "a#b", never their address form "pg-%C4%9F".
     if (in_array($type, array('page', 'product_group', 'product'), true)) {
-        $output_page = h(encode_url_path((string) $short_link['page_name'])) . $binned;
+        $output_page = h((string) $short_link['page_name']) . $binned;
     }
 
     switch ($type) {
         case 'product_group':
-            $output_destination = h(encode_url_path((string) $short_link['product_group_address_name']));
+            $output_destination = h((string) $short_link['product_group_address_name']);
             break;
 
         case 'product':
-            $output_destination = h(encode_url_path((string) $short_link['product_address_name']));
+            $output_destination = h((string) $short_link['product_address_name']);
             break;
 
         case 'url':
@@ -396,7 +398,7 @@ function pg_short_link_list_cells(array $short_link, array $quick_edit)
             break;
 
         case 'file':
-            $output_destination = h(encode_url_path((string) $short_link['file_name'])) . $binned;
+            $output_destination = h((string) $short_link['file_name']) . $binned;
             break;
     }
 

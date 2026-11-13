@@ -187,6 +187,7 @@
     "Each column of the note's table becomes a column of the new table, in the type its values suggest. Change a name or type, or leave a column out.": "Not tablosunun her sütunu, değerlerinin gösterdiği türde yeni tablonun bir sütunu olur. Bir adı ya da türü değiştirin veya bir sütunu dışarıda bırakın.",
     "Each column of the note's table fills the table column of its name; choose another, or leave it out. Rows the table refuses are listed afterwards.": "Not tablosunun her sütunu, tablodaki aynı adlı sütunu doldurur; başka birini seçin ya da dışarıda bırakın. Tablonun kabul etmediği satırlar sonra listelenir.",
     "Each comment follows the comment settings of its own page.": "Her yorum kendi sayfasının yorum ayarlarına uyar.",
+    "Each conversation gets a status and a holder, the first-answer time and the automatic answer. Off, its e-mails are only read and answered.": "Her yazışmaya bir durum ve bir sahip, ilk yanıt süresi ve otomatik yanıt verilir. Kapalıyken e-postaları yalnızca okunur ve yanıtlanır.",
     "Each copy opens on its due day.": "Her kopya bitiş gününde açılır.",
     "Each copy opens on its start day and runs {var:1} days, like this one.": "Her kopya başlangıç gününde açılır ve bu görev gibi {var:1} gün sürer.",
     "Each course's project is at the end of its classroom.": "Her kursun projesi sınıfının sonundadır.",

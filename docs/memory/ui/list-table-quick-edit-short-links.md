@@ -11,6 +11,7 @@ module: short_link_list_edit
 - A one-time link (no name) has no field: it is changed in the File Manager. A cell whose stored page, group or product is not offered (in the Recycle Bin, outside the user's folders) stays text (`pg_short_link_quick_attributes()`).
 - The file cell searches (`search`, kind `file`, #8424): it is a field for any file the link has, named in `data-pg-edit-text` (a binned file under its old name, marked `[IN RECYCLE BIN]`); a file row that is gone leaves it text. Before, it listed every file (`get_file_options(true)`) on each load.
 - Text: Created, Last Modified, Visit. `tests/short_link_list_edit_test.php` fails for a new column that is neither.
+- The Page and Destination cells print the page, product group, product and file names with `h()` alone, as the Pages list shows them; only the Visit link's address goes through `encode_url_path()`. Symptom before (#9015): `pg-test-%C4%9F…` and `diyez%23isareti`, and the list search (it reads the cell text) found no Turkish name. The CSV export already wrote the names readable.
 
 ## How is a change checked and written?
 - `view_short_links.php` answers `pg_list_edit_request()` (managers and up) before drawing the screen.

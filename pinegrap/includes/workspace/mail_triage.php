@@ -264,11 +264,12 @@ function ws_mail_triage_plain($text)
 
 /**
  * The suggestion's message: words only, the draft in a block of its own.
- * Pure.
+ * Pure. Without statuses (a plain box, ws_mail_box_is_support()) it names
+ * no status and nobody to give it to: such a box keeps neither.
  *
  * @param array $suggestion ws_mail_triage_parse()
  * @param array $members    id => name
- * @param array $statuses   ws_mail_statuses()
+ * @param array $statuses   ws_mail_statuses(), empty for a plain box
  * @return string
  */
 function ws_mail_triage_body($suggestion, $members, $statuses)
@@ -277,11 +278,14 @@ function ws_mail_triage_body($suggestion, $members, $statuses)
         '**' . lang('Pinegrap AI suggestion') . '** · ' . lang('Nothing was sent or changed.'),
         '',
         ws_mail_triage_plain($suggestion['summary']),
-        '',
-        '- ' . lang(array('string' => 'Status: {var:1}', 'vars' => (string) ($statuses[$suggestion['status']] ?? $suggestion['status']))),
     );
 
-    if (((int) $suggestion['member_id'] > 0) && isset($members[(int) $suggestion['member_id']])) {
+    if ($statuses) {
+        $lines[] = '';
+        $lines[] = '- ' . lang(array('string' => 'Status: {var:1}', 'vars' => (string) ($statuses[$suggestion['status']] ?? $suggestion['status'])));
+    }
+
+    if ($statuses && ((int) $suggestion['member_id'] > 0) && isset($members[(int) $suggestion['member_id']])) {
         $lines[] = '- ' . lang(array('string' => 'Give it to: {var:1}', 'vars' => ws_mail_triage_plain((string) $members[(int) $suggestion['member_id']])));
     }
 
@@ -395,7 +399,7 @@ function ws_mail_triage_run($conversation_id)
         return false;
     }
 
-    $sent = ws_message_send($writer, $channel, ws_mail_triage_body($suggestion, $members, ws_mail_statuses()), array(
+    $sent = ws_message_send($writer, $channel, ws_mail_triage_body($suggestion, $members, ws_mail_box_is_support($box) ? ws_mail_statuses() : array()), array(
         'parent_id' => (int) $card['id'],
         'app_id'    => (int) $app['id'],
     ));

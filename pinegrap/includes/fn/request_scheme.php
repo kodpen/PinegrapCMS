@@ -18,7 +18,9 @@
  * true claim from a peer not yet listed must still give a cookie that sticks.
  *
  * The request's address is read here too (pg_request_uri_from_server()):
- * which server headers name it is the same kind of trust question.
+ * which server headers name it is the same kind of trust question. It comes
+ * back in UTF-8 (pg_request_uri_utf8()): IIS hands the path over in the
+ * server's ANSI code page.
  *
  * Loaded by functions.php, and on its own by get_file.php, router.php, the
  * router's page cache module and prototype.php, which read the request
@@ -227,14 +229,65 @@ function pg_request_uri_from_server($server)
 {
     if (isset($server['HTTP_X_REWRITE_URL']) && ((string) $server['HTTP_X_REWRITE_URL'] !== '')
         && (stripos(isset($server['SERVER_SOFTWARE']) ? (string) $server['SERVER_SOFTWARE'] : '', 'IIS') !== false)) {
-        return (string) $server['HTTP_X_REWRITE_URL'];
+        return pg_request_uri_utf8((string) $server['HTTP_X_REWRITE_URL']);
     }
 
     if (isset($server['REQUEST_URI'])) {
-        return (string) $server['REQUEST_URI'];
+        return pg_request_uri_utf8((string) $server['REQUEST_URI']);
     }
 
     $self = isset($server['PHP_SELF']) ? (string) $server['PHP_SELF'] : '';
 
-    return (isset($server['QUERY_STRING']) && ((string) $server['QUERY_STRING'] !== '')) ? $self . '?' . $server['QUERY_STRING'] : $self;
+    return pg_request_uri_utf8((isset($server['QUERY_STRING']) && ((string) $server['QUERY_STRING'] !== '')) ? $self . '?' . $server['QUERY_STRING'] : $self);
+}
+
+/**
+ * A request address in UTF-8. IIS decodes the percent-encoded UTF-8 path and
+ * hands it to PHP re-encoded in the server's ANSI code page
+ * (docs/memory/ui/ascii-names-in-urls-iis.md), so /pg-ğ arrives with the byte
+ * F0 where the browser sent %C4%9F. A link built from that address
+ * (urlencode() of a send_to, a redirect, a hidden field) wrote the byte as
+ * %F0, which the browser reads as Latin-1 "ð" on the way back: another
+ * address, a 404. The path and the query string are read apart, as each may
+ * come in its own encoding; a part that is UTF-8 already comes back as it is.
+ *
+ * Pure.
+ *
+ * @param string $uri
+ * @return string
+ */
+function pg_request_uri_utf8($uri)
+{
+    $uri = (string) $uri;
+    $mark = strpos($uri, '?');
+
+    if ($mark === false) {
+        return pg_request_text_utf8($uri);
+    }
+
+    return pg_request_text_utf8((string) substr($uri, 0, $mark)) . '?' . pg_request_text_utf8((string) substr($uri, $mark + 1));
+}
+
+/**
+ * A piece of the request in UTF-8: as it came when it is UTF-8, else read
+ * from the Turkish Windows code page IIS re-encodes a path in (ISO-8859-9
+ * where mbstring does not know Windows-1254; the two differ only in
+ * 0x80-0x9F). Without mbstring the text comes back as it is.
+ *
+ * Pure.
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_request_text_utf8($text)
+{
+    $text = (string) $text;
+
+    if (($text === '') || !function_exists('mb_check_encoding') || mb_check_encoding($text, 'UTF-8')) {
+        return $text;
+    }
+
+    $from = in_array('windows-1254', array_map('strtolower', mb_list_encodings()), true) ? 'Windows-1254' : 'ISO-8859-9';
+
+    return (string) mb_convert_encoding($text, 'UTF-8', $from);
 }

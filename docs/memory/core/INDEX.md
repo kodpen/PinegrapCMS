@@ -28,6 +28,11 @@
 - auto-campaign-group-opt-out.md: A commercial "joined a contact group" campaign profile skips a contact whose opt_in row for that subscription group is 0, as a manual campaign to the group does (#7596)
 - auto-registration-set-password-link.md: Accounts a form auto-registers or an administrator creates (add user, import) get a single-use set password link, not the password; who sees it, what $auto_registration_password holds.
 - build-url-host-parts.md: build_url() keeps the port and user information of the URL it is given unless a hostname property replaces the host.
+- campaign-profile-flow-dry-run.md: The dry-run report of turning e-mail campaign profiles into flows (MA9a, #9077): what it lists per chain and per profile left, where it is shown, the starting sites' profiles by hand
+- campaign-profile-flow-email.md: An e-mail campaign profile's purpose, consent, recipient, fields, HTML page and sender laid against the flow's e-mail box (MA9a, #9077): what each does today and where they differ
+- campaign-profile-flow-gaps.md: What no flow box covers of an e-mail campaign profile (MA9a, #9077), and the proposal: the e-mail box, the Wait box and the events gain it first; the profiles that would keep running, listed
+- campaign-profile-flow-map.md: An e-mail campaign profile's action, delay and send time laid against the flow boxes that would do their work (MA9a, #9077): which action has a start box, what the Wait box covers
+- campaign-profile-flow-switch.md: How e-mail campaign profiles become flows with no mail lost or sent twice (MA9a, #9077): one flow per chain, the switch moment, campaigns already waiting, followers drained, the owner
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.
 - code-editor-completion.md: Code editor completion (pg_code_editor.js): css/js sources inside an HTML editor, addCompletionRanker, colour swatches, the slot sources and the lezer lookup-cache reset
 - code-editor-emmet.md: The code editor's Emmet: the MIT emmet core in the lazy bundle, ed.expandAbbreviation() on Mod+E (why not Tab), the context from the syntax tree, tab-stops, locks, the `emmet` option (PR #2909)
@@ -75,7 +80,7 @@
 - email-campaign-send-claims.md: Send now and the campaign job claim recipients with one conditional UPDATE, so overlapping runs never deliver twice; follow-ups only from the run that finished the campaign
 - email-campaign-send.md: Send now and the campaign job share includes/fn/email_campaign_send.php: mail properties with purpose, refused deliveries stored as attempts, finish counts only deliveries
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
-- error-screen-language-and-status.md: The error screen output_error() draws leaves through pg_tr_finalize() like a page, so <html lang> is the site's or the address's language; which "not found" screens answer 404; what is still left
+- error-screen-language-and-status.md: The error screen output_error() draws: a site error in the site's language (pg_tr_finalize()), a panel screen's error in the panel's own frame (#9024); which "not found" screens answer 404
 - explorer-handler-files.md: pg_explorer_handle() after the split: the prelude and the dispatch, one handler per sub-action in includes/explorer/handle_*.php, where a new one goes, the tests
 - explorer-restore-notes.md: What a File Manager restore says about items that came back changed (root folder, new name, page without its style) and what the bin badge names as the origin
 - explorer-subaction-registration.md: Adding an explorer_* sub-action: it must be registered in the file_explorer allowlist as well as pg_explorer_handle(); symptoms and the catalog gate.
@@ -132,6 +137,7 @@
 - passkey-second-factor.md: A passkey alone is a second factor (PR #1862): pg_mfa_has_passkey/has_factor/gate_mode, the passkey-only verify screen, what still looks at TOTP only
 - passkey-sessions.md: Sessions opened with a passkey (PR #2250): auth_tokens.passkey_id (11.0.46), the sign-in mark, the session row on the account page, removing a passkey ends its sessions [decision: here]
 - passkey-without-totp.md: An account without TOTP (PR #2226): the e-mailed code (passkey.php email_code) and its purposes, recovery codes from the first passkey and new ones later, removing the last one [decision: here]
+- password-min-length.md: A chosen password needs 8 characters while Require Strong Password is off: pg_password_refusal() on sign-up, Set/Change Password, the installer
 - permission-columns.md: Adding a user right: column type and naming, the role-3 ladder files that must learn it, column probes, drawing it on the user screens, exact stored values, separate gates for a card and its links.
 - personal-data-erasure.md: privacy_erase.php (PR #1706): erasing one person after a dry run; whose records are taken, what is deleted and what is kept with personal fields replaced, the checks, the audit lines [decision: decisions-made-product.md]
 - personal-data-export.md: privacy_export.php (PR #938): one person's data as JSON and a PDF summary, how the person is found, what each section reads and masks, the role rule, the audit line
@@ -169,6 +175,7 @@
 - submitter-email-access.md: How a member gets a submitted form's rights by e-mail address (submitter or watcher) and why a blank address never matches
 - translation-attribute-texts.md: Translating worded attributes (alt, title, placeholder, aria-label, aria-description, tooltips): one list, every path that extracts them, the pass that draws them
 - translation-rules.md: Every visible string uses lang() (designer: _sdT()), English source as the key; keys added only with tools/tr_add.php; exact keys, placeholders, duplicates, misleading keys, check_lang
+- translation-sign-in-redirects.md: Sign-in redirects and Log Out keep the language of a page in /en/: pg_tr_script_url() adds pg_lang, _pg_sw_page_base() gives LANGUAGE_PATH (#9052)
 - translation-source-lang-mark.md: A node drawn untranslated on a page in another language carries lang="<source>" so the browser applies the source language's letter rules
 - translation-translatable-text.md: What pg_tr_translatable() counts as text to translate and what it leaves out as data (tokens, codes, Lorem ipsum, data: URIs, JSON, whole-value code); lone addresses stay
 - two-step-sign-in-expiry.md: Second step (mfa.php) and device-limit question that waited past 10 minutes: the reason on the origin sign-in screen, account name and send_to kept (PR #3309)

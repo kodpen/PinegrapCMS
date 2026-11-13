@@ -70,7 +70,18 @@ function pg_gift_card_form_card($liveform, $mode, $options)
 
     if ($add) {
         $output_label = lang('Amount');
-        $output_help = '<script>$("#amount").focus()</script>';
+        // The box is focused on document ready, once it carries its money
+        // mask. Focused while the page was still being parsed, the mask was
+        // bound to a box that already had focus, with the caret after the
+        // decimals, so digits typed without a click went into the decimals
+        // (50 became 0,50). The binding's ready handler is registered in the
+        // head and runs first; a box it has not masked is masked here.
+        $output_help = '<script>$(function () {'
+            . ' var box = document.getElementById("amount");'
+            . ' if (!box) { return; }'
+            . ' if ((box.inputmask === undefined) && (typeof window.Inputmask === "function")) { window.Inputmask().mask(box); }'
+            . ' box.focus();'
+            . ' });</script>';
     } else {
         $output_label = lang('Balance');
         $output_help = '<div class="form-text">' . lang(array('string'=>'Original Amount: {var:1}','vars'=>array($options['original_amount'] ?? ''))) . '</div>';

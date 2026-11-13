@@ -41,7 +41,8 @@ if ((($session_token === '') || (!hash_equals($session_token, $request_token))) 
                             <p>' . lang('Do you want to log out?') . '</p>
                             <form method="post" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/logout.php">
                                 ' . get_token_field() . '
-                                <input type="hidden" name="send_to" value="' . h($send_to) . '">
+                                <input type="hidden" name="send_to" value="' . h($send_to) . '">' . (pg_tr_active() ? '
+                                <input type="hidden" name="pg_lang" value="' . h(pg_tr_language()) . '">' : '') . '
                                 <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-box-arrow-right me-1"></i>' . lang('Logout') . '</button>
                                 <a href="javascript:history.go(-1)" class="btn btn-outline theme-secondary">' . lang('Cancel') . '</a>
                             </form>
@@ -68,7 +69,9 @@ if (($_REQUEST['send_to'] ?? '') != '') {
 
 // else, print a default logout page
 } else {
-    // A site built with the page designer says goodbye on its own page.
+    // A site built with the page designer says goodbye on its own page. Sent
+    // here from a page in another language (pg_lang), the redirect gets that
+    // language's directory (pg_tr_redirect_hook(), set up by init.php).
     $pg_logout_page = function_exists('pg_sw_page_type_widget_url') ? pg_sw_page_type_widget_url('logout') : '';
     if ($pg_logout_page !== '') {
         header('Location: ' . URL_SCHEME . HOSTNAME . $pg_logout_page . '?logged_out=true');

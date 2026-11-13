@@ -109,7 +109,7 @@ $business_pages[] = array(
                         $el('div', 'card border-0 shadow-sm rounded-4 pcr-lift', lang('Contact Card'), array(
                             $el('div', 'card-body p-4 text-center', lang('Card Body'), array(
                                 $image($portrait($business_contact['name'], 192), $business_contact['name'], 'rounded-circle mb-3',
-                                    array('_attrs' => array($attr('width', '96'), $attr('height', '96'), $attr('loading', 'lazy')))),
+                                    array('width' => '96', 'height' => '96', '_attrs' => array($attr('loading', 'lazy')))),
                                 $heading('h3', $business_contact['name'], 'h5 fw-semibold mb-0'),
                                 $para($business_contact['role'], 'small text-primary fw-semibold mb-2'),
                                 $para($business_contact['bio'], 'small text-body-secondary mb-3'),

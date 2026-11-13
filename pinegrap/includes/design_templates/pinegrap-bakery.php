@@ -179,11 +179,33 @@ $bakery_css = implode("\n", array(
     '.pbk-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.pbk-lift:hover,.pbk-lift:focus-visible,.pbk-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
     '@media (prefers-reduced-motion:reduce){.pbk-lift{transition:none}.pbk-lift:hover,.pbk-lift:focus-visible,.pbk-lift:focus-within{transform:none}}',
+    // From 1200 to 1400 px the header's links and buttons share one row with
+    // the name: the links are set a size smaller and closer together.
+    '@media (min-width:1200px) and (max-width:1399.98px){.pbk-nav{--bs-nav-link-font-size:.875rem;--bs-navbar-nav-link-padding-x:.375rem}}',
+    // Grey sections (the account bar, page headers, grey bands) and cards
+    // tinted with the primary (the account card): the palette's primary and
+    // second colours are made readable on the page background only, and
+    // across all palettes they fell to 3.9:1 there in the dark theme and to
+    // 4.4:1 in the light one. Links, eyebrows, section menus and outline
+    // buttons there take a tint of the primary: on grey, the primary a
+    // little closer to the text colour (in the dark theme its emphasis tint,
+    // as some palettes' primary is too dark there); on the primary's own
+    // tint, and where the browser does not mix colours, the emphasis tint.
+    // The second colour gives way to the body's second text colour.
+    ':is(.bg-body-tertiary,.bg-primary-subtle){--tpl-tinted-fg:var(--bs-primary-text-emphasis)}',
+    '@supports (color:color-mix(in srgb,red 50%,blue)){'
+        . '.bg-body-tertiary{--tpl-tinted-fg:color-mix(in srgb,var(--pg-primary-fg,var(--bs-primary)) 85%,var(--bs-emphasis-color))}'
+        . '[data-bs-theme=dark] .bg-body-tertiary{--tpl-tinted-fg:color-mix(in srgb,var(--bs-primary-text-emphasis) 80%,var(--bs-emphasis-color))}}',
+    ':is(.bg-body-tertiary,.bg-primary-subtle) :is(.text-primary,.link-primary){color:var(--tpl-tinted-fg)!important}',
+    ':is(.bg-body-tertiary,.bg-primary-subtle) .btn-outline-primary{--bs-btn-color:var(--tpl-tinted-fg)}',
+    ':is(.bg-body-tertiary,.bg-primary-subtle) .nav{--bs-nav-link-color:var(--tpl-tinted-fg);--bs-nav-link-hover-color:var(--bs-emphasis-color)}',
+    ':is(.bg-body-tertiary,.bg-primary-subtle) :is(.text-secondary,.link-secondary){color:var(--bs-secondary-color)!important}',
+    ':is(.bg-body-tertiary,.bg-primary-subtle) .btn-outline-secondary{--bs-btn-color:var(--bs-secondary-color)}',
 ));
 
 return array(
     'name'        => lang('Bakery'),
-    'version'     => '1.1.1',
+    'version'     => '1.1.2',
     'framework'   => 'bootstrap5',
     'order'       => 139,
     'icon'        => 'bi-cake2',

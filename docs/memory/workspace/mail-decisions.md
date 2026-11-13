@@ -1,6 +1,6 @@
 ---
 name: mail-decisions
-description: Incoming e-mail decisions: the name rule, IMAP chosen (#2444) and when a push endpoint (G9) would come, the eleven answers and their files, defaults, scope, PRs, what stays unverified
+description: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified
 ---
 
 ## What is the feature called?
@@ -33,11 +33,10 @@ Each (a) (architect, under the owner's delegation, #2444):
 ## What is out of scope?
 - An own mail server or piping, POP3, IMAP IDLE (it holds a PHP worker), a customer portal, a knowledge base, WhatsApp.
 
-## Which PR built each slice?
-- G1 core (parser, tables, ingest, card, `.eml` upload): #2586, #2676 (tables approved in #2677), #2710, #2738.
-- G2 IMAP read: #2764, #2788, #2806, #2828. G3 answer: #2846, #2872, #2885.
-- G4 Microsoft 365: #2961. G5a status and automatic answer: #2923. G5b holder, notices, target, event, E-mails list: #2942.
-- G6 routing: #2904. G7 API and MCP: #2952. G8 AI triage (#3744): #3787, after #3769.
+## What is the E-mails screen? (plan closed, WM1-WM14)
+- Owner (2026-11-10, #8604): one list of every e-mail, writing and forwarding from the Workspace through the mail queue, for the mailboxes, not the site's own. Architect (2026-11-10): the screen grows, no second screen; first view "Incoming".
+- A channel decides who sends, not the box (`ws_mail_can_answer()`); team accounts only; every sent mail is a conversation with a card. Owner (2026-11-11, #8765): a row opens the mail, never a channel; HTML drawn; a box may be kept in no channel.
+- Later: recipient suggestions, drafts kept on the server, sending at a chosen time, reading a box's Sent folder, an assistant's draft for a new mail; writing in HTML is MA10b. The PRs: `mail-overview.md`.
 
 ## What stays unverified?
 - G4 against a Microsoft 365 tenant (`mail-microsoft.md`), G8 on a site with an AI key (`mail-triage.md`), and a run against the dedicated test box of answer 11, which is not set up. No IMAP or SMTP server was reached from the cloud sessions.
