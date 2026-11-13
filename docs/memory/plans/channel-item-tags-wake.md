@@ -9,14 +9,15 @@ description: Plan: a tag anywhere in a Workspace channel item (file caption, edi
 - Today only `ws_send`, scheduled messages, API messages and a registry agent's answer ask: `ws_message_ask_assistants()` (messages.php) for a person, `ws_agent_after_app_send()` (agent_queue.php) for an application (`workspace/agent-words-wake.md`).
 
 ## What is ruled?
-- Architect (2026-11-13): guest messages (guests.php), incoming and outgoing mail (mail.php) and the answers of Claude, Pinegrap AI or an MCP server that name a registry agent wake nobody, as today. A person outside the team never makes a request for an agent; a mail's text is outside text; a model assistant's answer is not an application's API message. Changing any of them is an owner question, not asked now.
-- Architect (2026-11-13): the brakes stay as they are (`ws_agent_brake()`); an edit asks only for the tags it newly adds; a note or a decision asks as a message does: a mention is a mention whatever the kind.
-- Step 2 (TW3, TW4: text outside `ws_messages.body`) widens product behaviour. It is not claimed until the architect has put the owner's own confirmation on record (issue and decisions line). TW1 and TW2 do not wait for it.
-- Not in this plan: the flow "Ask an agent" box (flow_agent_box.php) not waking its agent is a separate bug fix, another worker's.
+- Owner (2026-11-13, #9341): a guest's message, a mail's text (incoming or outgoing) and an answer of Claude, Pinegrap AI or an MCP assistant never wake an agent. Reason: a person outside the team never makes a request for an agent; mail is outside text.
+- Owner (2026-11-13, #9341): the channel's own agents (registry agents added to it, application and model alike) are exempt: one that names another agent in its answer wakes it, as today (mention or reply).
+- Owner (2026-11-13, #9341): a tag outside a message's body (TW3, TW4) wakes only in an agent channel (its agent switch on), only when the owner or a manager of that channel wrote it, never in a canvas.
+- A tag in a message's body (TW1, TW2) keeps today's rule: every team member, every channel. Brakes unchanged (`ws_agent_brake()`); an edit asks only for the tags it adds; a note or decision asks as a message does.
+- Not in this plan: the flow "Ask an agent" box (flow_agent_box.php), another worker's bug fix.
 
 ## How is a tag asked? (every step)
 - One shared helper, in TW1: given the old text ('' for a new item), the new text, the writer, the channel and the message the request hangs on, it asks only for the tags of the new text that the old one lacked.
-- A tag is `<@app:N>`, `<@user:N>` that names an agent's person, an `@handle` word, `@ai`, `@claude` and an MCP alias, as `ws_message_ask_assistants()` and `ws_agent_wake_matches()` read them.
+- A tag is `<@app:N>`, an `@handle` word, `@ai`, `@claude` and an MCP alias, as `ws_message_ask_assistants()` and `ws_agent_wake_matches()` read them.
 - A person's item goes through `ws_message_ask_assistants()`; an application's (`app_id`, or written through an OAuth connection) through `ws_agent_after_app_send()`, so Claude, Pinegrap AI and the aliases stay a person's only.
 - An edit, or any item asked again, wakes by its added tags alone: the "all", "prefix" and "replies" rules of `ws_agent_wake_matches()` do not fire again on it.
 - The caller carries Pinegrap AI and model agents on as after `ws_send` (`ws_api_assistants_carry_on()` over the API).

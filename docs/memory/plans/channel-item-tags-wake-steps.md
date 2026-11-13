@@ -1,6 +1,6 @@
 ---
 name: channel-item-tags-wake-steps
-description: Steps TW1-TW5 of the channel-item-tags-wake plan: file caption, edit, note and decision; other messages; polls, tasks; shared notes, table cells, canvas layers; close-out
+description: Steps TW1-TW5 of the channel-item-tags-wake plan: file caption, edit, note and decision; other messages; polls, tasks; shared notes, table cells (agent channels, managers); close-out
 ---
 
 ## Which steps are there?
@@ -16,12 +16,13 @@ description: Steps TW1-TW5 of the channel-item-tags-wake plan: file caption, edi
 - TW2 The other messages written for a person or an application. Census: ~10 sites, ~300 lines.
   - Forward with a comment (`ws_forward_to_channel()` forward.php), approval request (`ws_approval_create()` approvals.php), status update and check-in question (`ws_status_post()`, `ws_checkin_start()` status.php), template welcome and pinned text (`ws_template_apply()` templates.php), the scheduled action and flow "Post a message" box (`ws_scheduled_do()` scheduled.php).
   - After: each of them naming `@agent` makes one request; an application's approval or check-in wakes only by mention or reply.
-- TW3 (waits for the owner record) Polls, check-ins, forwards, tasks. Census: ~400 lines.
+- TW3 (agent channels, owner or channel manager only; #9341) Polls, check-ins, forwards, tasks. Census: ~400 lines.
   - Poll question and options (`ws_poll_create()`, `ws_poll_edit()` interact.php), check-in answers (`ws_checkin_answer()` status.php), forwarded text (`ws_message_forwards.body`), task title and description (`ws_tasks`), task notes (`ws_task_note_add()` task_work.php: registry agents too, beside Claude, AI and MCP through delegation.php).
   - The request hangs on the item's message (poll, check-in, forward, the task's card); an item with none is a question for the architect before the step starts.
-  - After: a poll option `@agent`, a task note `@agent` make one request; editing them asks only newly added tags.
-- TW4 (waits for the owner record) Shared notes, workflow table cells, canvas text layers. Census: ~500 lines.
-  - Shared note content (`ws_note_share_channel()` notes.php and its edits), table cells (`ws_wtable_row_create()`, `ws_wtable_row_update()` wtable_rows.php), canvas text layers (canvas_layer_write.php).
+  - The writer's check (agent switch on, owner or channel manager) is one function shared by TW3 and TW4.
+  - After: a poll option or task note naming `@agent`, written by the channel's manager in an agent channel, makes one request; a member's, or one elsewhere, makes none; an edit asks only added tags.
+- TW4 (agent channels, owner or channel manager only; #9341) Shared notes, workflow table cells; never a canvas. Census: ~500 lines.
+  - Shared note content (`ws_note_share_channel()` notes.php and its edits), table cells (`ws_wtable_row_create()`, `ws_wtable_row_update()` wtable_rows.php). Canvas text layers wake nobody (owner, #9341).
   - These have no message of their own: which message a request hangs on and what the brief tells the agent of where the tag is, is asked of the architect when TW3 lands.
-  - After: a cell or a layer naming `@agent` makes one request; a save that keeps it makes none.
+  - After: a cell naming `@agent` written by the channel's manager in an agent channel makes one request; a save that keeps it, or a member's cell, makes none.
 - TW5 (close-out, docs only) The rule written into `workspace/agent-words-wake.md` and `workspace-channel-overview.md`; the decisions line checked; both plan files deleted.
