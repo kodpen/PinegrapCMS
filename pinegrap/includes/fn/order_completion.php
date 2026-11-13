@@ -1360,6 +1360,7 @@ function pg_order_complete_receipt($order_id, $order_number, array $receipt, $cu
             // The checkout documents the customer accepted go with the
             // receipt as they were kept with the order.
             'attachments' => pg_legal_documents_attachments($order_id, $order_number),
+            'source' => 'order:' . (int) $order_id,
             'queue' => true));
     }
 }
@@ -3228,6 +3229,7 @@ function pg_order_complete_line_form_create(array $line, array $order, array $va
                 'body' => $body,
                 // A signed link stays out of the failure log and the delivery-failed notice.
                 'secret' => pg_cf_mail_links_in($subject . $body, $mail_link_values),
+                'source' => 'order:' . (int) $order['id'],
                 'queue' => true));
 
             pg_cf_mail_links_context(false);
@@ -3276,6 +3278,7 @@ function pg_order_complete_line_form_create(array $line, array $order, array $va
             'subject' => $subject,
             'format' => $administrator_email_format,
             'body' => $body,
+            'source' => 'order:' . (int) $order['id'],
             'queue' => true));
     }
 
@@ -3667,6 +3670,7 @@ function pg_order_complete_line_email_page(array $line, $billing_email_address, 
         'subject' => $subject,
         'format' => 'html',
         'body' => $body,
+        'source' => 'order',
         'queue' => true
     ));
 }
@@ -3900,6 +3904,7 @@ function pg_order_complete_rewards($user_id, $contact_id, $reward_points, $order
             'subject' => ECOMMERCE_REWARD_PROGRAM_EMAIL_SUBJECT,
             'format' => 'html',
             'body' => $body,
+            'source' => 'order',
             'queue' => true));
     }
 

@@ -1,12 +1,13 @@
 ---
 name: messages-area-steps
-description: Steps MA0-MA11 of the messages area plan (#8961): census, shell and tabs, one sends list, campaigns, e-mail bodies as pages, templates, channels, automatic sends, profiles into flows, incoming e-mail
+description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, shell, sends list, campaigns, e-mail bodies, templates, channels, automatic sends, profiles, incoming e-mail
 ---
 
 ## Which steps? (rules: `messages-area.md`)
 - MA0 (S, done #9074) The census: today's screens and their rights, the addresses that keep leading somewhere, one Sends list without a new table (`platform/messages-area-census-*.md`). Its proposals (`-tabs`, `-addresses`, `-sends`) wait for the architect on #9081; MA1 and MA2 start from the answer.
 - MA1 (M, done #9182) The shell: the menu row, the five tabs with their gates, old addresses leading in.
-- MA2 (M, in progress) Sends: the tiles, the channel, source, state and date filters, single messages and campaign rows that open, retry and delete under the queues' own rules.
+- MA2 (M, done #9252) Sends: the list, tiles, filters, row buttons and e-mail sources built behind `pg_messages_sends_list_open()` (`platform/messages-area-sends.md`); the measured batch was over 300 ms.
+- MA2b (M) The list table driver puts a source's keyset bound and batch limit into each branch and counts per branch (a source key the driver reads); then the Sends list opens, `mail_queue.php` becomes a door (`pg_messages_sends_queue_door()`) and automatic campaigns leave the Campaigns list.
 - MA3 (M, done #9215) Campaigns: one list for e-mail and SMS campaigns; "New campaign" asks the channel first, then recipients, content, time.
 - MA4 (S, done #9074) E-mail body as a page: how e-mail pages are made today, what mail programs need, a proposed way for MA5 (`designer/campaign-email-body-*.md`), waiting for the architect on #9083.
 - MA5 (M to L, shaped after MA4) The campaign's content step: edit the design, ready designs, paste HTML, phone preview, a test to oneself.
@@ -17,13 +18,13 @@ description: Steps MA0-MA11 of the messages area plan (#8961): census, shell and
 - MA11 (S) Close-out: the lasting rules into `platform/` and `ui/`, an overview file, this plan deleted.
 
 ## In which order?
-- MA0 first, then MA1; MA2, MA3, MA6, MA7 after MA1 in any order. MA4 may run beside MA1; MA5 after MA4 and MA3.
+- MA0 first, then MA1; MA2, MA3, MA6, MA7 after MA1 in any order; MA2b after MA2. MA4 may run beside MA1; MA5 after MA4 and MA3.
 - MA8 after AF2; MA10b after MA1, MA10c after MA10b; MA9b and MA9c side by side (AF3 has landed), MA9d after both, MA9e after MA9d and the owner's look at its report, MA9f after MA9e.
 - Where WhatsApp's card, template list and queue sit follows this area once MA1 has landed; before that they sit beside the SMS ones.
 - Claim as `[plan:messages-area] <step> — <topic>`.
 
 ## What is left for the next session? (2026-11-13)
-- Free now: MA2 (its 500,000-row measurement needs a dev database), MA5 (MA3 and MA4 done), MA6 (SMS texts now; e-mail designs come with MA5, WhatsApp templates with WA3). MA2 also takes the automatic e-mail campaigns out of the Campaigns list and makes `mail_queue.php` a door.
+- Free now: MA2b once #9252 lands (measure again with the same 500,000 rows per queue), MA5 (MA3 and MA4 done), MA6 (SMS texts now; e-mail designs come with MA5, WhatsApp templates with WA3).
 - The shell, the doors and the tabs so far: `ui/messages-area-shell.md`, `ui/messages-area-campaigns-tab.md`.
 
 ## What is asked of the owner along the way?
