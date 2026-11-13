@@ -3162,6 +3162,7 @@
     "Number or account": "Numara ya da cari",
     "Number or name": "Numara ya da ad",
     "Number or supplier": "Numara ya da tedarikçi",
+    "Number the variables in turn from {{1}}, with none left out.": "Değişkenleri {{1}}'den başlayarak, hiçbirini atlamadan sırayla numaralayın.",
     "Number them in order": "Sırayla numaralandır",
     "Number, GİB number, ETTN, account, tax number or order": "Belge no, GİB no, ETTN, cari, VKN/TCKN veya sipariş",
     "Number, name, user or IP": "Numara, ad, kullanıcı ya da IP",
