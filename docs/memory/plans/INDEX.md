@@ -22,6 +22,9 @@
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - designer-assistant-apply-error.md: Plan (owner 2026-11-12, #8970): the designer Assistant's Apply answered with a PHP message instead of JSON; reproduce, fix the cause, JSON answers under errors, a readable message; steps DA1-DA3
+- designer-canvas-faults.md: Plan (owner 2026-11-13, #9104): round pictures drawn oval on the designer canvas, a picture that does not show, the card inside a loop (toolbar block, sample cards, editing); steps CF1-CF5
+- designer-canvas-real-samples.md: Plan (owner 2026-11-13, #9076): the designer canvas draws every bound value with a realistic sample instead of its label or an empty box; bands and chips stay on, tidy; steps CS0-CS5
+- designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): the components the designer canvas still draws as one closed block are listed, then opened into editable element trees; steps CB0-CB2
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - flow-window.md: Plan (owner 2026-11-12, #8950): the flow window rearranged: the left panel only adds boxes, the right panel is only the chosen box in three tabs, the top bar is the flow itself; steps FW0-FW5
@@ -41,7 +44,9 @@
 - legacy-bootstrap-helper.md: Plan: the helper that turns a Legacy design towards Bootstrap 5.3.8 and a design theme (#8856): a trial design beside it, what it changes, how it is seen and kept, what stays reversible
 - legacy-layouts-bootstrap.md: Plan (owner 2026-11-12, #8942): the page types' custom layouts and built-in templates print Bootstrap 5.3.8 names on a design of that framework; census first, steps LL1-LL6
 - legacy-layouts-output-map.md: After LL1 (#8969, architect): a bootstrap5 design's page types get 5.3.8 names by mapping the system region's output per request, no converted copies; the rules LL2 and LL3 keep
+- look-widths-and-switch.md: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the details panel added beside, add and edit screens up to 1700 px, the switch with its thumb again; steps LW1-LW4
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- messages-area-decided.md: The architect's decisions on the proposals of MA0 and MA4 (#9081, #9083): the shell, the Sends list as a union with its measure, e-mail source, rights, the e-mail design page
 - messages-area-steps.md: Steps MA0-MA11 of the messages area plan (#8961): census, shell and tabs, one sends list, campaigns, e-mail bodies as pages, templates, channels, automatic sends, profiles into flows, incoming e-mail
 - messages-area.md: Plan (owner 2026-11-12, #8961): one messages area in place of My Campaigns: campaigns, automatic sends as flows, templates, one sends list, channels; e-mail bodies as pages; profiles become flows
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
@@ -54,6 +59,7 @@
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
 - panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860), the list rules, what is only a placeholder
 - panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
+- picker-all-list.md: Plan (owner 2026-11-12, #9070): the picker opens on a list of everything of its kind, newest first, the folder tree as a filter at the side; steps PA1-PA3
 - report-screens-steps.md: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out
 - report-screens.md: Plan (owner 2026-11-11, #8673): the order, visitor, shipping and ERP VAT report screens drawn as the dashboard: figures, a chart, the table, settings in a drawer, ready reports; steps RS1-RS8
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions

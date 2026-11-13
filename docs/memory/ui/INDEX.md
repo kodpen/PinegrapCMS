@@ -7,7 +7,7 @@
 - ad-shared-form.md: The ad create and edit screens share includes/forms/ad_form.php: what it holds, what stays in the screens
 - add-edit-forms-kept-apart.md: Create and edit screen pairs left without a shared includes/forms/ file on purpose (offer, product, system style, ERP documents, low-overlap pairs) and why each was left
 - admin-screen-toolbar-rules.md: Button recipes, menu colour rule, shared toolbar CSS classes, card header pattern and narrow-screen behaviour for admin screen toolbars.
-- admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper. [decision: decisions-made-panel-7.md, decisions-made-product-12.md, decisions-made-product-14.md]
+- admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper. [decision: decisions-made-product-12.md, decisions-made-product-14.md]
 - ai-write-alt-text.md: "Write with AI" for an image's alt text in the visual designer: the image_alt target, the browser's model only, the image read in the browser, where the button sits and when it shows
 - ai-write-browser.md: "Write with AI" on the browser's built-in AI (Prompt API) for a site without Pinegrap AI: when, the two server steps, languages and the translation bridge, gesture, long data
 - ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model [decision: here]
@@ -375,7 +375,7 @@
 - look-check.md: tools/check_look.php (#8905): panel CSS outside look A's recipes (sizes or weights off the scale, colour literals) may only fall against its baseline; what it skips, --update
 - look-design-examples.md: The Design examples screen (design_examples.php, DL2 #8907): every look A recipe live in a light and a dark pane, the classes under each, what is not a recipe yet; where a step copies markup from
 - look-edit-screens.md: Add and edit screens in look A (DL5c, #8934): the edit width on every add/edit screen, columns 760 and 336 from the shared classes, look cards and titles, the floating save bar; what is not done yet
-- look-page-widths.md: Look A's page widths (#8892): edit screens centred at 1120 px (760 + 24 + 336), lists as wide as their columns (1280 px to the window); tokens, body classes, rail, name column [decision: decisions-made-panel-7.md]
+- look-page-widths.md: Look A's page widths (#8892): edit screens centred at 1120 px (760 + 24 + 336), lists as wide as their columns (1280 px to the window); tokens, body classes, rail, name column [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
 - look-settings-screens.md: Settings screens in look A (DL5d, #8952): dialog size, rail, head and foot; cards as a title over an inner card of rows, page and dialog; 32 px fields, switch; what is not done
 - look-type-and-recipes.md: Look A's typeface (self-hosted Inter 4.1), the type scale and tone tokens, and the recipe classes in backend.src.css (#8879): which class draws which part, the block's place, the unlayered body family
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
