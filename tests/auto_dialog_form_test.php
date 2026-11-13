@@ -141,3 +141,104 @@ function test_auto_dialog_edit_loads_the_last_change()
 	pg_assert_contains('auto_dialogs.last_modified_timestamp', $source, 'the time of the last change');
 	pg_assert_contains("WHERE auto_dialogs.id = '", $source, 'the id is read from the auto dialog table');
 }
+
+// A liveform stand-in for pg_auto_dialog_form_validate(): the posted fields
+// and the errors it marks. The name is left blank, so the check that asks
+// the database whether the name is taken does not run.
+function auto_dialog_form_test_validate($url)
+{
+	$liveform = new class(array('name' => '', 'url' => $url)) {
+		public $fields;
+		public $errors = array();
+
+		public function __construct($fields)
+		{
+			$this->fields = $fields;
+		}
+
+		public function get_field_value($name)
+		{
+			return isset($this->fields[$name]) ? $this->fields[$name] : '';
+		}
+
+		public function validate_required_field($name, $message)
+		{
+			if (trim((string) $this->get_field_value($name)) === '') {
+				$this->mark_error($name, $message);
+			}
+		}
+
+		public function check_field_error($name)
+		{
+			return isset($this->errors[$name]);
+		}
+
+		public function mark_error($name, $message)
+		{
+			$this->errors[$name] = $message;
+		}
+	};
+
+	pg_auto_dialog_form_validate($liveform, null);
+
+	return isset($liveform->errors['url']) ? $liveform->errors['url'] : '';
+}
+
+function test_auto_dialog_form_url_must_be_a_web_address_or_a_site_path()
+{
+	foreach (array('https://example.com/newsletter', 'http://example.com', '/newsletter', 'newsletter?popup=1') as $url) {
+		pg_assert_same('', auto_dialog_form_test_validate($url), $url . ' is saved');
+		pg_assert_same('', pg_auto_dialog_url_problem($url), $url . ' is a web address or a path');
+	}
+
+	foreach (array('javascript:alert(1)', 'JavaScript:void(0)', "java\tscript:alert(1)", 'data:text/html,x', '//example.com/embed', '/\\example.com') as $url) {
+		pg_assert_true(auto_dialog_form_test_validate($url) !== '', json_encode($url) . ' is refused on the URL field');
+		pg_assert_same(pg_web_address_problem($url), pg_auto_dialog_url_problem($url), json_encode($url) . ': the short link destination\'s rule');
+	}
+
+	pg_assert_same(lang(array('string' => '{var:1} is required.', 'vars' => lang('URL'))), auto_dialog_form_test_validate(''), 'a blank URL keeps its own message');
+	pg_assert_same(lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array(lang('URL'), 255))), auto_dialog_form_test_validate('javascript:' . str_repeat('x', 300)), 'a URL over the column keeps the length message');
+}
+
+function test_auto_dialog_page_leaves_out_an_address_that_runs_script()
+{
+	$rows = array(
+		array('id' => '1', 'url' => '/newsletter'),
+		array('id' => '2', 'url' => 'javascript:alert(1)'),
+		array('id' => '3', 'url' => 'https://example.com/form'),
+		array('id' => '4', 'url' => " java\tscript:alert(1)"),
+		array('id' => '5', 'url' => 'data:text/html,x'),
+		array('id' => '6', 'url' => '//example.com/embed'),
+	);
+
+	pg_assert_same(array('1', '3', '6'), array_column(pg_auto_dialogs_for_page($rows), 'id'), 'web addresses and paths stay');
+	pg_assert_same(array(0, 1, 2), array_keys(pg_auto_dialogs_for_page($rows)), 'a JSON list, not an object');
+	pg_assert_same(array(), pg_auto_dialogs_for_page(array()), 'no dialogs');
+	pg_assert_same(array(), pg_auto_dialogs_for_page(false), 'a failed query');
+}
+
+function test_auto_dialog_page_and_api_use_the_address_checks()
+{
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
+	$start = strpos($page, 'if (AUTO_DIALOGS) {');
+	$block = substr($page, $start, strpos($page, '// If there is JS to output', $start) - $start);
+
+	pg_assert_same(2, substr_count($block, '$auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs);'), 'the preview and the enabled dialogs both pass the guard');
+	pg_assert_same(2, substr_count($block, 'software.init_auto_dialogs('), 'both lists reach the page');
+
+	foreach (array('$auto_dialogs = pg_auto_dialogs_for_page($auto_dialogs);' => 'software.init_auto_dialogs(') as $guard => $print) {
+		$at = 0;
+
+		while (($at = strpos($block, $print, $at + 1)) !== false) {
+			$before = substr($block, 0, $at);
+			pg_assert_true(strrpos($before, $guard) > strrpos($before, 'FROM auto_dialogs'), 'the rows are guarded between the query and the print');
+		}
+	}
+
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/design_dialogs_regions.php');
+	$prepare = substr($api, strpos($api, 'function api_design_auto_dialog_prepare('), 3000);
+
+	pg_assert_contains("pg_auto_dialog_url_problem(\$values['url'])", $prepare, 'the API asks the screen\'s address check');
+	pg_assert_contains("api_fail_validation(\$problem, 'url')", $prepare, 'a refused address is 422 on url');
+	pg_assert_contains("((\$row === null) || array_key_exists('url', \$params))", $prepare, 'on a create and whenever a URL is sent');
+}

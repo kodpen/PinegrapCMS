@@ -11,7 +11,7 @@ module: auto_dialogs, common_regions
 
 ## Which routes are there?
 - `/design/auto-dialogs` and `/design/common-regions`: list (oldest first, cursor paged by id; auto dialogs filter by `enabled`), GET one (`design:read`), create (201), update (POST, PATCH also accepted), DELETE and its `POST …/delete` twin (`design:write`, owner ceiling designer, narrower than the manager-gated auto dialog screens). Ids `design.auto_dialogs.*`, `design.common_regions.*`; handlers in `includes/api/resources/design_dialogs_regions.php`, which reuses the paging, `{path}` and log helpers of `design_ads.php`. No events.
-- Auto dialog: name and URL required (422), within their columns; numbers 0 to `pg_auto_dialog_form_number_limits()`, null or 0 is the screen's blank; page loses a leading slash; a create starts disabled as on the screen; name unique (409 `name_taken`).
+- Auto dialog: name and URL required (422), within their columns; the URL by `pg_auto_dialog_url_problem()` (422 on `url`) on a create and whenever `url` is sent, so an update without it can still disable a row stored before the rule (#9013); numbers 0 to `pg_auto_dialog_form_number_limits()`, null or 0 is the screen's blank; page loses a leading slash; a create starts disabled as on the screen; name unique (409 `name_taken`).
 - Common region: only `cregion_designer_type = 'no'` rows; a designer region is 404 (it is a designer's code and shares the table). Name by `pg_region_form_name_refusal()` (422) and `pg_cregion_name_taken()` across both kinds (409 `name_taken`). `content` in through `prepare_rich_text_editor_content_for_input()`, out with `{path}` expanded. `shared_component_id` names the component drawing it, null for none.
 
 ## What does a converted region refuse?

@@ -5578,7 +5578,7 @@ function api_schema() {
 			'description' => 'Adds an auto dialog, as the create auto dialog screen does. Like there it starts disabled unless enabled is sent: preview it on the site with ?preview_auto_dialog={id}, then enable it. Name and URL are required; no other auto dialog may have the name (409 name_taken).',
 			'params'  => array(
 				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The dialog\'s name, which no other auto dialog has.'),
-				array('name' => 'url',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'The address the dialog shows.'),
+				array('name' => 'url',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'The address the dialog shows: an http or https address or a path on this site, as a short link destination (no other scheme, no //host, no backslash or space; 422 otherwise).'),
 				array('name' => 'enabled',   'in' => 'body', 'type' => 'bool', 'description' => 'It opens for visitors. false when left out.'),
 				array('name' => 'width',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
 				array('name' => 'height',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
@@ -5602,7 +5602,7 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The dialog\'s name, which no other auto dialog has.'),
-				array('name' => 'url',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The address the dialog shows.'),
+				array('name' => 'url',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The address the dialog shows: an http or https address or a path on this site, as on create (422 otherwise). Left out, the stored address stays as it is.'),
 				array('name' => 'enabled',   'in' => 'body', 'type' => 'bool', 'description' => 'It opens for visitors.'),
 				array('name' => 'width',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
 				array('name' => 'height',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),

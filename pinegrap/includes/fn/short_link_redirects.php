@@ -371,8 +371,9 @@ function pg_short_link_numbered_name($wanted, $index, $max = null)
 /**
  * What is wrong with the address a link sends visitors to, or '' when it can
  * be used: a web address (http or https) or a path on this site, without
- * spaces or a backslash, not protocol-relative, within the column. The
- * external API and the CSV import ask this.
+ * spaces or a backslash, not protocol-relative (pg_web_address_problem(),
+ * the rule the auto dialog URL shares), within the column. The external API
+ * and the CSV import ask this.
  *
  * @param mixed $url
  * @return string
@@ -385,13 +386,10 @@ function pg_short_link_url_problem($url)
         return lang('Destination URL is required.');
     }
 
-    if (preg_match('/[\x00-\x20\x7f]/', $url) === 1) {
-        return lang('Sorry, you may not enter a space in the URL.');
-    }
+    $problem = pg_web_address_problem($url);
 
-    if (((preg_match('/^([A-Za-z][A-Za-z0-9+.-]*):/', $url, $found) === 1) && !in_array(strtolower($found[1]), array('http', 'https'), true))
-        || (strpos($url, '//') === 0) || (strpos($url, '\\') !== false)) {
-        return lang('The address must be a web address or a path on this site.');
+    if ($problem !== '') {
+        return $problem;
     }
 
     // The column takes 2048 characters since 11.0.12 (255 before); a longer
