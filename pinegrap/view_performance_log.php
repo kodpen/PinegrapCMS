@@ -357,9 +357,11 @@ function pmon_sort_header($key, $label, $sort_param, $dir_param, $current_sort, 
 
 // ---- Build filter form -----------------------------------------------------
 
+// The period keys are numeric, so PHP holds them as integers; $range is the
+// string from the address (or the '7' default), compared as a string.
 $range_select = '';
 foreach ($range_options as $value => $label) {
-    $selected = ($value === $range) ? ' selected' : '';
+    $selected = ((string) $value === $range) ? ' selected' : '';
     $range_select .= '<option value="' . h($value) . '"' . $selected . '>' . h($label) . '</option>';
 }
 

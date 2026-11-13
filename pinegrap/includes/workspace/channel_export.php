@@ -8,8 +8,9 @@
  * The export holds what the reader sees on the screen, oldest first: who
  * wrote, when, the text with names in place of tags, a discussion's messages
  * under the message it is about (when the reader is in it), a poll or an
- * approval request as one line with its outcome, a file as its name and
- * link. Deleted messages and the ones the reader hid stay out
+ * approval request as one line with its outcome, a task posted to the
+ * channel as one line with its number, title and status, a file as its name
+ * and link. Deleted messages and the ones the reader hid stay out
  * (ws_message_payloads()). It opens with the channel's name, the range, who
  * exported and when, then the channel's decisions, and ends with its files.
  *
@@ -198,8 +199,61 @@ function ws_channel_export_approval_line($approval)
 }
 
 /**
+ * A task's due date as the export writes it: the day, and the time when the
+ * task has one; '' for none. A fixed date, not the screen's "Today" or
+ * "Tomorrow", as the file is read later.
+ *
+ * @param array $task ws_tasks row (due_date, due_time)
+ * @return string
+ */
+function ws_channel_export_task_due($task)
+{
+    $due = (string) ($task['due_date'] ?? '');
+
+    if ((preg_match('/^\d{4}-\d{2}-\d{2}$/', $due) !== 1) || ($due === '0000-00-00')) {
+        return '';
+    }
+
+    $label = substr($due, 8, 2) . '.' . substr($due, 5, 2) . '.' . substr($due, 0, 4);
+    $time = (string) ($task['due_time'] ?? '');
+
+    return ($time !== '') ? $label . ' ' . substr($time, 0, 5) : $label;
+}
+
+/**
+ * A task posted to the channel as one line: its number, title and status,
+ * then its due date and people when it has them. A task the reader may not
+ * see is only its number, as its card on the screen.
+ *
+ * @param array $task number, title, status (its label), due ('' for none),
+ *                    people (names), hidden
+ * @return string
+ */
+function ws_channel_export_task_line($task)
+{
+    $number = (string) ($task['number'] ?? '');
+
+    if (!empty($task['hidden'])) {
+        return lang(array('string' => 'Task: {var:1}', 'vars' => $number));
+    }
+
+    $parts = array($number, trim((string) ($task['title'] ?? '')), (string) ($task['status'] ?? ''));
+
+    if ((string) ($task['due'] ?? '') !== '') {
+        $parts[] = lang(array('string' => 'Due: {var:1}', 'vars' => (string) $task['due']));
+    }
+
+    if (!empty($task['people'])) {
+        $parts[] = implode(', ', (array) $task['people']);
+    }
+
+    return lang(array('string' => 'Task: {var:1}', 'vars' => implode(' · ', array_filter($parts, 'strlen'))));
+}
+
+/**
  * One message's words as Markdown: the text with its tags written out, or
- * the line of its poll or approval request, and its file as a link.
+ * the line of its poll or approval request, its task's line, and its file
+ * as a link.
  *
  * @param array  $message payload with body (the stored text)
  * @param array  $refs    ws_refs_resolve() output for the export's tokens
@@ -215,6 +269,12 @@ function ws_channel_export_text($message, $refs, $base)
         $text = ws_channel_export_poll_line($text, $message['poll']);
     } elseif (!empty($message['approval'])) {
         $text = ws_channel_export_approval_line($message['approval']);
+    }
+
+    // A task message's text is empty: the task is what was posted.
+    if (!empty($message['task'])) {
+        $line = ws_channel_export_task_line($message['task']);
+        $text = ($text === '') ? $line : $text . "\n\n" . $line;
     }
 
     if (!empty($message['file']['name'])) {
@@ -447,6 +507,100 @@ function ws_channel_export_payloads($viewer, $rows)
 }
 
 /**
+ * The tasks posted in these messages (kind task), each given the parts of
+ * its line (ws_channel_export_task_line()) as task, for this reader: the
+ * same tasks the screen draws as cards (ws_message_payload()). A task the
+ * reader may not see is its number only. Three queries in all: the tasks,
+ * their people, the people's names.
+ *
+ * @param array   $viewer
+ * @param array[] $messages payloads; a discussion's messages included
+ * @return array[] the messages
+ */
+function ws_channel_export_tasks($viewer, $messages)
+{
+    $is_task = function ($message) {
+        return ((string) ($message['kind'] ?? '') === 'task') && ((int) ($message['task_id'] ?? 0) > 0);
+    };
+    $ids = array();
+
+    foreach ($messages as $message) {
+        foreach (array_merge(array($message), $message['discussion']['messages'] ?? array()) as $one) {
+            if ($is_task($one)) {
+                $ids[(int) $one['task_id']] = (int) $one['task_id'];
+            }
+        }
+    }
+
+    if (empty($ids)) {
+        return $messages;
+    }
+
+    $tasks = array();
+
+    foreach (array_chunk(array_values($ids), WS_CHANNEL_EXPORT_PAGE) as $chunk) {
+        foreach ((array) db_items("SELECT * FROM ws_tasks WHERE id IN (" . implode(',', $chunk) . ")") as $row) {
+            $tasks[(int) $row['id']] = $row;
+        }
+    }
+
+    $assignees = ws_task_assignees_map(array_keys($tasks));
+    $everyone = array();
+
+    foreach ($assignees as $user_ids) {
+        foreach ($user_ids as $user_id) {
+            $everyone[$user_id] = $user_id;
+        }
+    }
+
+    $people = ws_people(array_values($everyone));
+    $lines = array();
+
+    foreach ($tasks as $task_id => $task) {
+        $on = $assignees[$task_id] ?? array();
+
+        if (!ws_can_see_task($viewer, $task, $on)) {
+            $lines[$task_id] = array('number' => ws_task_number($task_id), 'hidden' => true);
+            continue;
+        }
+
+        $names = array();
+
+        foreach ($on as $user_id) {
+            if (isset($people[$user_id])) {
+                $names[] = (string) $people[$user_id]['name'];
+            }
+        }
+
+        $lines[$task_id] = array(
+            'number' => ws_task_number($task_id),
+            'title'  => (string) $task['title'],
+            'status' => ws_task_status_label((string) $task['status']),
+            'due'    => ws_channel_export_task_due($task),
+            'people' => $names,
+        );
+    }
+
+    $attach = function ($message) use ($is_task, $lines) {
+        if ($is_task($message) && isset($lines[(int) $message['task_id']])) {
+            $message['task'] = $lines[(int) $message['task_id']];
+        }
+
+        return $message;
+    };
+
+    foreach ($messages as $index => $message) {
+        $messages[$index] = $attach($message);
+
+        if (!empty($message['discussion']['messages'])) {
+            $messages[$index]['discussion']['messages'] = array_map($attach, $message['discussion']['messages']);
+        }
+    }
+
+    return $messages;
+}
+
+/**
  * Everything an export of a channel holds, for this reader.
  *
  * @param array $viewer
@@ -495,6 +649,8 @@ function ws_channel_export_collect($viewer, $channel, $range)
             $messages[$index]['discussion'] = array('title' => (string) $thread['name'], 'messages' => $replies);
         }
     }
+
+    $messages = ws_channel_export_tasks($viewer, $messages);
 
     // Oldest first, as the messages.
     $decisions = array_reverse(ws_channel_export_keep(ws_channel_decisions($viewer, (int) $channel['id']), $range['from'], $range['to']));

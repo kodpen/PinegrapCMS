@@ -565,6 +565,9 @@ if (!$_POST) {
         $start_date = get_absolute_time(array('timestamp' => $start_timestamp, 'type' => 'date'));
         $stop_date = get_absolute_time(array('timestamp' => $stop_timestamp, 'type' => 'date'));
 
+        // Two <time> elements (get_absolute_time() draws HTML), printed as
+        // they are under the period buttons: their text is date() output and
+        // the translated day and month names.
         $output_date_range = $start_date;
 
         // if the stop date is different from the start date, then add stop date to date range
@@ -604,7 +607,7 @@ if (!$_POST) {
             <div class="btn-group btn-group-sm flex-wrap my-1" role="group" aria-label="' . h(lang('Date Range')) . '">' . $output_presets . '</div>
         </div>
         <p class="text-center md:text-end p-0 m-0">
-            <span class="badge fg-body fw-light border-2">' . h($output_date_range) . '</span>
+            <span class="badge fg-body fw-light border-2">' . $output_date_range . '</span>
         </p>';
 
     }
