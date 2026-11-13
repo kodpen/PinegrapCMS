@@ -183,6 +183,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_canvas_tables();        // 11.0.190
 	upgrade_2026_11_0_ws_wtable_channel();       // 11.0.191
 	upgrade_2026_11_0_ws_edit_hold();            // 11.0.192
+	upgrade_2026_11_0_ws_canvas_consents();      // 11.0.193
 
 }
 
@@ -6154,5 +6155,51 @@ function upgrade_2026_11_0_ws_edit_hold() {
 	install_add_column('ws_ai_requests', 'held_until', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: an agent waits while the message that asked it is being edited, and reads the new words when it is saved.');
+
+}
+
+// A live page's writes with consent (11.0.193; includes/workspace/
+// canvas_consents.php). ws_canvas_consents keeps a reader's answer to the
+// first-write question of a canvas, for one version of its page: yes or no,
+// with the write tables it was asked about (JSON ids). A new page version
+// has no row, so the question is asked again. ws_wtable_rows.via_message_id
+// names the canvas a row was last written through, 0 for any other write;
+// the bin keeps it with the row. Existing rows get 0. No foreign keys: a
+// thread's purge removes the canvas's rows.
+function upgrade_2026_11_0_ws_canvas_consents() {
+
+	install_create_table('ws_canvas_consents', "CREATE TABLE ws_canvas_consents (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		message_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		page_version INT UNSIGNED NOT NULL DEFAULT 0,
+		answer       VARCHAR(4) NOT NULL DEFAULT 'no',
+		tables       TEXT NULL,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_canvas_person_version (message_id, user_id, page_version)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	foreach (array('ws_wtable_rows', 'ws_wtable_row_bin') as $table) {
+
+		if (!install_table_exists($table)) {
+
+			install_skipped($table . ' does not exist, skipped');
+
+			continue;
+
+		}
+
+		$columns = array('via_message_id' => "INT UNSIGNED NOT NULL DEFAULT 0");
+
+		if (!install_add_columns_instant($table, $columns)) {
+
+			install_add_column($table, 'via_message_id', $columns['via_message_id']);
+
+		}
+
+	}
+
+	install_note('Workspace: a live page asks each reader once before it writes to a table in their name, and again for a new version of the page; a row it writes shows the canvas it came through.');
 
 }
