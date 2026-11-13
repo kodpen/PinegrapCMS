@@ -24,4 +24,4 @@ description: Census of the automation-flows-menu plan (AF0): where flows asked t
 - With the Workspace off the user screens draw no Workspace rights row, so a role-3 right can be neither given nor taken there; one given earlier stays. Left as it is (the plan keeps who may make flows).
 
 ## Which boxes and starts need the Workspace?
-- On the list now: `workspace/automation-flows-workspace-boxes.md`; more found by the census: step AF3b of `automation-flows-menu-steps-2.md`.
+- On the list now: `workspace/automation-flows-workspace-boxes.md`; with what the census found more (AF3b).

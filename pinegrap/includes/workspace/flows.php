@@ -199,13 +199,45 @@ function ws_flow_kinds_workspace()
         'task', 'task_open', 'task_digest',
         // An agent of a channel.
         'agent',
+        // The workflow tables: they open only on a Workspace screen.
+        'row', 'row_add', 'row_set', 'row_get', 'rows_get',
+        // Pinegrap AI, whose settings are the Workspace's; an MCP server's
+        // tool; a scheduled action started.
+        'ai', 'mcp', 'start_action',
+        // Its lines go to the Workspace inbox.
+        'notify',
     );
 }
 
 /**
+ * The kinds of record a Change a record or a Read a record box acts on in
+ * the Workspace itself: with one of these the box needs it. Pure.
+ *
+ * @return string[]
+ */
+function ws_flow_records_workspace()
+{
+    return array('channel', 'task', 'task_note', 'note');
+}
+
+/**
+ * The Workspace's own events an event start may wait for only while it is
+ * on (ws_events_own()), but a flow's run that failed, which flows cause with
+ * the Workspace off too. Pure.
+ *
+ * @return string[]
+ */
+function ws_flow_events_workspace()
+{
+    return array_values(array_diff(ws_events_own(), array('workspace.flow.run.failed')));
+}
+
+/**
  * Does this box need the Workspace? Its kind (ws_flow_kinds_workspace()),
- * or a summary of counts posted into a channel: one sent only by e-mail
- * does not. Pure.
+ * or its settings: a summary of counts posted into a channel (one sent only
+ * by e-mail does not), Change or Read a record on a Workspace record
+ * (ws_flow_records_workspace()), an event start on one of its own events
+ * (ws_flow_events_workspace()). Pure.
  *
  * @param array $node a box of the graph (kind, config)
  * @return bool
@@ -219,7 +251,64 @@ function ws_flow_node_needs_workspace($node)
         return true;
     }
 
-    return ($kind === 'report') && ((int) ($config['channel_id'] ?? 0) > 0);
+    switch ($kind) {
+        case 'report':
+            return (int) ($config['channel_id'] ?? 0) > 0;
+
+        case 'change':
+        case 'record_get':
+            return in_array((string) (is_scalar($config['record'] ?? null) ? $config['record'] : ''), ws_flow_records_workspace(), true);
+
+        case 'event':
+            return in_array((string) (is_scalar($config['event'] ?? null) ? $config['event'] : ''), ws_flow_events_workspace(), true);
+    }
+
+    return false;
+}
+
+/**
+ * The editor's choices of the step boxes without those that need the
+ * Workspace, while it is off: Change and Read a record leave out the
+ * Workspace records (ws_flow_records_workspace()), an event start its own
+ * events (ws_flow_events_workspace()). With it on, as given. Pure.
+ *
+ * @param bool  $workspace_on ws_enabled()
+ * @param array $steps changes (type => info), reads (list of kind, label,
+ *                     outputs), events (list: event => info)
+ * @return array
+ */
+function ws_flow_steps_workspace_choices($workspace_on, $steps)
+{
+    if ($workspace_on) {
+        return $steps;
+    }
+
+    $records = ws_flow_records_workspace();
+    $changes = (array) ($steps['changes'] ?? array());
+
+    foreach ($records as $record) {
+        unset($changes[$record]);
+    }
+
+    $steps['changes'] = (object) $changes;
+
+    $reads = array();
+
+    foreach ((array) ($steps['reads'] ?? array()) as $read) {
+        if (!in_array((string) ($read['kind'] ?? ''), $records, true)) {
+            $reads[] = $read;
+        }
+    }
+
+    $steps['reads'] = $reads;
+
+    if (is_array($steps['events'] ?? null) && is_array($steps['events']['list'] ?? null)) {
+        foreach (ws_flow_events_workspace() as $event) {
+            unset($steps['events']['list'][$event]);
+        }
+    }
+
+    return $steps;
 }
 
 /**
@@ -4058,6 +4147,10 @@ function ws_flow_js_config($viewer, $mode)
             });
         }
     }
+
+    // With the Workspace off the record and event choices that need it are
+    // not offered (ws_flow_node_needs_workspace()).
+    $steps = ws_flow_steps_workspace_choices(ws_enabled(), $steps);
 
     // The values each kind of box gives the boxes after it (a report's
     // counts follow from the counts it is set to send: ws_step_outputs()).
