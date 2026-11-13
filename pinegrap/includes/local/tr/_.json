@@ -2186,6 +2186,7 @@
     "{{count:tasks_overdue}} tasks have gone past their due date. The list is under My Tasks.": "{{count:tasks_overdue}} görevin bitiş tarihi geçti. Liste Görevlerim altında.",
     "{{record_title}} is running low. Approve to order more, or reject to leave it as it is.": "{{record_title}} stoğu azalıyor. Yeniden sipariş için onaylayın ya da olduğu gibi bırakmak için reddedin.",
     "{{source}} finished: {{source_result}}": "{{source}} tamamlandı: {{source_result}}",
+    "{{trigger.name}} was asked back after {{trigger.days_since}} days without an order.": "{{trigger.name}}, {{trigger.days_since}} gün sipariş vermedikten sonra geri çağrıldı.",
     "| All Reports": "| Tüm Şikâyetler",
     "| Docs desk": "| Doküman masası",
     "| Editors' desk": "| Editör Masası",
