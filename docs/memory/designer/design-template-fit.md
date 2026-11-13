@@ -14,7 +14,8 @@ description: Templates App Studio to Events (#8997): header menu opens at 1200 p
 
 ## Which text is tinted on grey sections and primary-tinted cards?
 - A palette's primary and second text colours are made readable on the page background only. Across all 22 palettes they fell to 3.9:1 on `bg-body-tertiary` (account bar, page headers, grey bands) in the dark theme (Midnight, Ocean), to 4.4:1 there in the light one (Coral, Electric) and to 3.2:1 on `bg-primary-subtle` (the account card's Log out, Graphite).
-- The User Styles of the 14 templates and of Bookshop and Boutique (which had none before) set `--tpl-tinted-fg` on those surfaces: `--bs-primary-text-emphasis`; on grey, behind `@supports (color-mix)`, `--pg-primary-fg` 85% with `--bs-emphasis-color`, and in the dark theme the emphasis tint 80% with it. `text-primary`, `link-primary`, `btn-outline-primary` and `.nav` links there take it; `text-secondary`, `link-secondary`, `btn-outline-secondary` take `--bs-secondary-color`. Minimum after: 5.1:1 dark, 5.2:1 light.
+- The User Styles of the 14 templates and of Bookshop and Boutique (which had none before) set `--tpl-tinted-fg` on those surfaces: `--bs-primary-text-emphasis`; on grey, behind `@supports (color-mix)`, `--pg-primary-fg` 85% with `--bs-emphasis-color`, and in the dark theme the emphasis tint 80% with it.
+- `text-primary`, `link-primary`, `btn-outline-primary` and `.nav` links there take it; `text-secondary`, `link-secondary`, `btn-outline-secondary` take `--bs-secondary-color`. Minimum after: 5.1:1 dark, 5.2:1 light.
 - Blocks: `pg-campsite-marker` and the construction progress dot write `var(--pg-on-primary, var(--bs-body-bg))` on the primary (2.18:1 in dark before).
 - Charity's Our Work jump links on the page header are `nav-link link-primary`, so the rule reaches them.
 
