@@ -110,12 +110,20 @@ function waf_config_row()
  * treats false as "firewall disabled", so a legacy install that never ran
  * the upgrade behaves exactly as it did before this file existed.
  */
-function waf_config($preloaded = null, $peek = false)
+function waf_config($preloaded = null, $peek = false, $reload = false)
 {
     static $config = null;
 
     if ($peek) {
         return $config;
+    }
+
+    // A save that has just written the row asks for it again, so what the
+    // rest of its request derives (the ban mirror's mode, proxies and log
+    // switch) is the saved state rather than the one the request began with.
+    if ($reload) {
+        $config = null;
+        waf_config_reloaded(true);
     }
 
     if ($preloaded !== null && $config === null) {
@@ -156,6 +164,24 @@ function waf_config($preloaded = null, $peek = false)
 }
 
 /**
+ * Has waf_config() been read again in this request since init.php defined
+ * WAF_ENABLED from the row? Then the constant may be older than the row.
+ *
+ * @param bool|null $set true to record a reload
+ * @return bool
+ */
+function waf_config_reloaded($set = null)
+{
+    static $reloaded = false;
+
+    if ($set !== null) {
+        $reloaded = (bool) $set;
+    }
+
+    return $reloaded;
+}
+
+/**
  * Has the 2026.2.4 upgrade run?
  *
  * Kept separate from waf_config() because the config row is still needed on a
@@ -184,7 +210,7 @@ function waf_mode()
     // The constant wins when it exists: init.php defines it from the config
     // row, so every caller in the request gets the same answer without a
     // second read and without any chance of drift.
-    if (defined('WAF_ENABLED') && !WAF_ENABLED) {
+    if (defined('WAF_ENABLED') && !WAF_ENABLED && !waf_config_reloaded()) {
         return 'off';
     }
 

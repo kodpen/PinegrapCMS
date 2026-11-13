@@ -1405,6 +1405,7 @@
     "Placed": "İşe yerleşti",
     "Placed as a software developer": "Yazılım geliştirici olarak işe yerleşti",
     "Placed as an accountant": "Muhasebeci olarak işe yerleşti",
+    "Placed by the firewall and lifted when they expire, or now with Release. Saving this screen does not clear them.": "Güvenlik duvarı koyar; süreleri dolunca ya da hemen Kaldır ile kalkar. Bu ekranı kaydetmek onları silmez.",
     "Placed by the firewall and released automatically when they expire. Saving this screen does not clear them.": "Güvenlik duvarı tarafından konur ve süresi dolunca otomatik kalkar. Bu ekranı kaydetmek onları temizlemez.",
     "Placed in the period": "Dönem içinde verildi",
     "Placeholder": "Yer Tutucu",

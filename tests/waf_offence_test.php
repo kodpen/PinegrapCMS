@@ -142,12 +142,16 @@ function test_waf_offence_release_and_allow_clear_the_bucket()
 
 	$release = strpos($screen, "if (isset(\$_POST['submit_release'])) {");
 	$allow   = strpos($screen, "if (isset(\$_POST['submit_allow'])) {");
-	$first   = strpos($screen, 'waf_offence_clear($release_ip);');
+	$first   = strpos($screen, 'pg_waf_release_auto_ban($release_ip)');
 	$matched = strpos($screen, "waf_offence_clear(\$auto_row['ip_address']);");
 	$allowed = strpos($screen, 'waf_offence_clear($allow_ip);');
 
 	pg_assert_true($release !== false && $allow !== false && $first !== false && $matched !== false && $allowed !== false);
-	pg_assert_true($release < $first && $first < $allow, 'the release branch clears the released address');
+	pg_assert_true($release < $first && $first < $allow, 'the release branch releases the address');
+
+	// The release (also Settings › Firewall's Release) clears the address.
+	$rescue = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/waf_rescue.php');
+	pg_assert_contains('waf_offence_clear($ip);', waf_offence_test_function_source($rescue, 'pg_waf_release_auto_ban'), 'the release clears the released address');
 	pg_assert_true($allow < $matched && $matched < $allowed, 'the allow branch clears every ban it lifts and the address itself');
 
 	$waf = (string) file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');

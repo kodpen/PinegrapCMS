@@ -74,34 +74,17 @@ if (isset($_POST['submit_release'])) {
     validate_token_field();
 
     $release_ip = isset($_POST['release_ip']) ? trim((string) $_POST['release_ip']) : '';
+    $release_return = pg_waf_release_return($_POST, $list_url);
 
-    if ($release_ip !== '' && waf_table_has_column('banned_ip_addresses', 'source')) {
-        db_q(
-            "DELETE FROM banned_ip_addresses
-             WHERE ip_address = ? AND source = 'auto'",
-            array((string) $release_ip)
-        ) or output_error(lang('Query failed.'));
+    // Sent from Settings › Firewall, the message is shown there.
+    $release_form = ($release_return === $list_url) ? $liveform : new liveform('settings');
 
-        // Nothing deleted: the ban ran out while the screen was open, another
-        // admin released it, or the form was sent twice. Say so instead of
-        // reporting (and logging) a release that did not happen.
-        if (mysqli_affected_rows(db::$con) < 1) {
-            $liveform->mark_error('_error', h(lang(array('string' => 'No automatic ban on {var:1} was found. It may have expired or been released already.', 'vars' => $release_ip))));
-            go(PATH . SOFTWARE_DIRECTORY . '/' . $list_url);
-        }
-
-        // The pre-database mirror is rewritten at most every five minutes on
-        // its own; a release has to reach it now, or the address stays shut
-        // out at the door while this screen says it was let back in.
-        if (function_exists('waf_ban_shield_refresh')) {
-            waf_ip_lists(true);
-            waf_ban_shield_refresh(true);
-        }
-
-        // The offences that earned the ban are forgotten with it, or the next
-        // refusal would place it again before the ten-minute slot is over.
-        if (function_exists('waf_offence_clear')) {
-            waf_offence_clear($release_ip);
+    if ($release_ip !== '') {
+        if (!pg_waf_release_auto_ban($release_ip)) {
+            // Say so instead of reporting (and logging) a release that did
+            // not happen.
+            $release_form->mark_error('_error', h(lang(array('string' => 'No automatic ban on {var:1} was found. It may have expired or been released already.', 'vars' => $release_ip))));
+            go(PATH . SOFTWARE_DIRECTORY . '/' . $release_return);
         }
 
         log_activity(
@@ -109,10 +92,10 @@ if (isset($_POST['submit_release'])) {
             $_SESSION['sessionusername']
         );
 
-        $liveform->add_notice(lang(array('string' => 'The ban on {var:1} has been released.', 'vars' => h($release_ip))));
+        $release_form->add_notice(lang(array('string' => 'The ban on {var:1} has been released.', 'vars' => h($release_ip))));
     }
 
-    go(PATH . SOFTWARE_DIRECTORY . '/' . $list_url);
+    go(PATH . SOFTWARE_DIRECTORY . '/' . $release_return);
 }
 
 // Put a flagged address on the allowed list. Written as the same row the

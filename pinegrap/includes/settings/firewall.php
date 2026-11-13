@@ -84,7 +84,7 @@ $pg_settings_cards[] = '
                                                         <div class="pg-f-lg">
                                                             <label for="waf_sensitivity" class="form-label">' . lang('Sensitivity') . '</label>
                                                             <select name="waf_sensitivity" id="waf_sensitivity" class="form-control">' . $output_waf_sensitivity_options . '</select>
-                                                            <div class="form-text">' . lang('Each rule contributes a score. Sensitivity sets how much evidence is needed before a request counts as an attack.') . '</div>
+                                                            <div class="form-text">' . lang('Each rule contributes a score. Sensitivity sets how much evidence is needed before a request counts as an attack.') . ' ' . lang('It moves only this threshold of the signature scan: the rate limits and automatic bans keep their own settings.') . '</div>
                                                         </div>
                                                         <div class="pg-f-xs">
                                                             <label for="waf_log_retention_days" class="form-label">' . lang('Log Retention') . '</label>
@@ -314,17 +314,34 @@ $pg_settings_cards[] = '
                                                     <input type="text" value="' . h($output_banned_ip_addresses) . '" name="banned_ip_addresses" id="banned_ip_addresses" class="form-control tagin min-height-tagin border-subtle-danger" data-pg-chips data-placeholder="' . lang('Block an address') . '"/>
                                                     <div class="form-text">' . lang('Wildcards and CIDR ranges are supported. For example: 192.168.0.1, 192.168.1.*, 10.0.0.0/8, 2001:db8::/32') . ' ' . lang('Enforced whatever mode the firewall is in, including Monitor, and before the database is even opened. Allowed addresses above still win.') . '</div>
                                                 </div>
-                                                ' . ($output_auto_bans ? '<div class="col-12 ">
-                                                    <label class="form-label">' . lang('Automatic Temporary Bans') . '</label>
-                                                    <div>' . $output_auto_bans . '</div>
-                                                    <div class="form-text">' . lang('Placed by the firewall and released automatically when they expire. Saving this screen does not clear them.') . '</div>
-                                                </div>' : '') . '
+                                                <div class="col-12">
+                                                    <label class="form-label">' . lang('Active Automatic Bans') . '</label>
+                                                    ' . ($output_auto_bans
+                                                        ? '<div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                                                        <thead><tr>
+                                                            <th>' . lang('IP Address') . '</th>
+                                                            <th>' . lang('Reason') . '</th>
+                                                            <th>' . lang('Expires') . '</th>
+                                                            <th class="text-end">' . lang('Action') . '</th>
+                                                        </tr></thead><tbody>' . $output_auto_bans . '</tbody></table></div>'
+                                                        : '<div class="form-text">' . lang('No address is banned by the firewall right now.') . '</div>') . '
+                                                    <div class="form-text">' . lang('Placed by the firewall and lifted when they expire, or now with Release. Saving this screen does not clear them.') . '</div>
+                                                </div>
                                             </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>';
+
+// Forms cannot be nested, so each Release button above submits this one by
+// its form attribute, carrying the address as its own value.
+$pg_settings_modals[] = '
+            <form method="post" action="view_waf_log.php" id="pgset_waf_release" class="disable_shortcut d-none">
+                ' . get_token_field() . '
+                <input type="hidden" name="submit_release" value="1"/>
+                <input type="hidden" name="release_return" value="settings"/>
+            </form>';
 
 // ── Country Restriction ──
 

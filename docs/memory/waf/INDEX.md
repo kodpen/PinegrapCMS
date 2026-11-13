@@ -41,5 +41,6 @@
 - waf-secure-mode-query-param.md: The ?secure_mode=false query parameter in init.php and get_file.php: ignored on a Secure Mode site, a 302 to http only on a site without it (#5146).
 - waf-security-headers-hsts.md: Security headers are sent outside waf_run(), independent of the firewall switch; HSTS default off and its https gating; Permissions-Policy; nosniff and Referrer-Policy never doubled by server rules.
 - waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187) [decision: decisions-made-waf.md]
+- waf-settings-save-and-release.md: Settings › Firewall acts at once: the save rewrites the ban mirror from the saved row, IP Lists shows active automatic bans with Release, Sensitivity says it moves only the signature threshold
 - waf-subresource-sign-in-fetches.md: A sub-resource fetch (image, style, script, font, media) of a protected file answers 403, never the sign-in redirect; such a fetch of a sign-in screen is not counted as sensitive (#1989) [decision: decisions-made-files.md, decisions-made-waf.md]
 - waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750). [decision: here]

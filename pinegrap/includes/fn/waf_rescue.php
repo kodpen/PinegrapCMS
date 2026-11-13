@@ -211,3 +211,73 @@ function pg_waf_unban(array $parsed)
 
     return $removed;
 }
+
+/**
+ * Rewrite the ban mirror after a Settings › Firewall save, from the row and
+ * the lists as just saved. waf_config() is read again (the request began
+ * with the old row, and WAF_ENABLED with it), so the mirror's mode, proxies
+ * and log switch are the saved ones.
+ */
+function pg_waf_save_refresh_mirror()
+{
+    if (!function_exists('waf_ban_shield_refresh')) {
+        return;
+    }
+
+    waf_config(null, false, true);
+    waf_ip_lists(true);
+    waf_ban_shield_refresh(true);
+}
+
+/**
+ * Release one automatic ban: the row, the offences that earned it (or the
+ * next refusal puts it straight back) and the mirror's block line, rewritten
+ * now rather than within five minutes. Hand-written entries are not touched:
+ * they belong to the Banned IP Addresses field.
+ *
+ * @param string $ip the ban's stored entry
+ * @return bool false when no automatic ban on it was found
+ */
+function pg_waf_release_auto_ban($ip)
+{
+    $ip = trim((string) $ip);
+
+    if (($ip === '') || !waf_table_has_column('banned_ip_addresses', 'source')) {
+        return false;
+    }
+
+    db_q(
+        "DELETE FROM banned_ip_addresses
+         WHERE ip_address = ? AND source = 'auto'",
+        array($ip)
+    ) or output_error(lang('Query failed.'));
+
+    // Nothing deleted: the ban ran out while the screen was open, another
+    // admin released it, or the form was sent twice.
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return false;
+    }
+
+    waf_ip_lists(true);
+    waf_ban_shield_refresh(true);
+    waf_offence_clear($ip);
+
+    return true;
+}
+
+/**
+ * Where a Release form goes back to: Settings › Firewall when it was sent
+ * from there, otherwise the firewall log it came from.
+ *
+ * @param array  $post     the posted fields
+ * @param string $list_url the firewall log address the form was posted to
+ * @return string
+ */
+function pg_waf_release_return(array $post, $list_url)
+{
+    if (isset($post['release_return']) && ($post['release_return'] === 'settings')) {
+        return 'settings_firewall.php#pgset-iplists';
+    }
+
+    return (string) $list_url;
+}
