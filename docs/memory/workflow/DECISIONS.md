@@ -411,6 +411,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-21.md: Where does the incoming e-mail sit? (owner, 2026-11-12, #8961)
 - decisions-made-workspace-21.md: Is the canvas card's line of tables and Bind a table approved? (owner, 2026-11-12, #8964)
 - decisions-made-workspace-21.md: What does the line under a message show when the message woke more than one agent? (owner, 2026-11-13, #9188)
+- decisions-made-workspace-22.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-22.md: Is incoming e-mail read and answered where the Workspace is off? (owner, 2026-11-13, #9203)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
@@ -661,6 +663,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/channel-members-agents.md: A channel's agents among its members (#8936): agents as squares in the head's faces, People here and Agents here in Channel info, last seen; a person's time only for a manager
 - workspace/channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
 - workspace/claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable
+- workspace/mail-area-proposals.md: Incoming e-mail in the messages area as decided after MA10a (#9077, #9203): mail with the Workspace off, the tab's gate, who reads, what the mail card keeps beside its link, the steps
 - workspace/mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified
 - workspace/mail-list.md: The Workspace E-mails list (workspace_mail.php, mail_list.php): which conversations, the views Incoming, Sent and Not sent, the filters, mailbox, search, Load more, the row, the menu entry
 - workspace/mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it

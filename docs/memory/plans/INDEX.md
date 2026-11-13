@@ -11,7 +11,7 @@
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - agent-request-lines.md: Plan (owner 2026-11-13, #9188): the line under a Workspace message shows every agent the message woke, not only the last one asked; one step, RL1
 - automation-flows-menu-census.md: Census of the automation-flows-menu plan (AF0): where flows asked the Workspace switch, what the Flows screen takes from its shell, the API, the entries, who holds the right
-- automation-flows-menu-proposals.md: Open questions for the architect from the automation-flows-menu census (AF0): more boxes needing the Workspace, the API routes and dashboard entries with no step, the refusal's step
+- automation-flows-menu-steps-2.md: Steps AF3b, AF3c, AF4b, AF4c of the automation-flows-menu plan, decided after the census (AF0): more boxes that need the Workspace, the API routes, the dashboard entries, the bell
 - automation-flows-menu.md: Plan (owner 2026-11-12, #8961): Flows become "Automation flows", a main menu row with a moving icon, and run on a site whose Workspace is off; the in-channel view stays; steps AF0-AF6
 - canvas-one-model.md: CO0 model of plans/canvas-one.md: what one canvas is in the store and the API: the message as its id, the drawing, page and data parts, one list of versions, the routes and the bridge's calls
 - canvas-one-schema.md: CO0 of plans/canvas-one.md: the five schema changes the later CO steps need (parts, bindings, consent, "through" on a row, channel tables), their issues and answers
@@ -34,6 +34,7 @@
 - flow-window-map.md: Flow window plan, FW0 part 1: each control of today's bar and palette with its place in the drawing (the bar done in FW1); the decisions taken for the left panel
 - flow-window-paths.md: Flow window plan, FW0 part 3: the keyboard path through the bar, the left panel, the canvas and the right panel; how the panels behave on a narrow window and a phone (drawn in flow-window-narrow.html)
 - flow-window.md: Plan (owner 2026-11-12, #8950): the flow window rearranged: the left panel only adds boxes, the right panel is only the chosen box in three tabs, the top bar is the flow itself; steps FW0-FW5
+- flows-quick-setup-steps-2.md: Steps QS1b, QS6, QS7 of the flows-quick-setup plan, the architect's decisions on QS0's open questions (#9082): "Only when" on a record field, the drawn steps with no box, the rail, the approval recipe
 - flows-quick-setup.md: Plan (owner 2026-11-12, #8950): a quick setup that builds a flow by choices (start, steps one after the other, summary) over every area and action of the site; rules and steps QS0-QS5
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - image-editor-video-steps-2.md: More steps of plans/image-editor-video.md, beside image-editor-video-steps.md: V7b the clip's frames in the export, V8b the largest upload as a setting; claim as [plan:image-editor-video] V<n>
@@ -52,8 +53,9 @@
 - legacy-layouts-output-map.md: After LL1 (#8969, architect): a bootstrap5 design's page types get 5.3.8 names by mapping the system region's output per request, no converted copies; the rules LL2 and LL3 keep
 - look-widths-and-switch.md: Plan (owner 2026-11-13, #9070): lists at least 1700 px with the details panel added beside, add and edit screens up to 1700 px, the switch with its thumb again; steps LW1-LW4
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- messages-area-decided-2.md: The architect's decisions on the proposals of MA9a and MA10a (#9077): campaign profiles into flows (boxes first, what stays, one flow per chain, the switch, the owner), incoming e-mail in the area
 - messages-area-decided.md: The architect's decisions on the proposals of MA0 and MA4 (#9081, #9083): the shell, the Sends list as a union with its measure, e-mail source, rights, the e-mail design page
-- messages-area-steps-2.md: Steps MA9a-MA9d and MA10a-MA10b of the messages area plan (#8961): campaign profiles turned into flows, incoming e-mail in the area; their order in messages-area-steps.md
+- messages-area-steps-2.md: Steps MA9a-MA9f and MA10a-MA10c of the messages area plan (#8961): campaign profiles turned into flows, incoming e-mail in the area; decisions in messages-area-decided-2.md
 - messages-area-steps.md: Steps MA0-MA11 of the messages area plan (#8961): census, shell and tabs, one sends list, campaigns, e-mail bodies as pages, templates, channels, automatic sends, profiles into flows, incoming e-mail
 - messages-area.md: Plan (owner 2026-11-12, #8961): one messages area in place of My Campaigns: campaigns, automatic sends as flows, templates, one sends list, channels; e-mail bodies as pages; profiles become flows
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive

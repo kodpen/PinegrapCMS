@@ -25,7 +25,7 @@ description: Flows quick setup drawing against today's boxes and events: drawn s
 - Added beside them: `form_reply`, `booking_tell`, `welcome_contact`, `restock`, `win_back`.
 
 ## Which general boxes are proposed for what has none?
-- Each by `workspace-flows-adding.md`, never for the quick setup alone; none is built yet and the drawn step stays hidden until one lands.
+- Each by `workspace-flows-adding.md`, never for the quick setup alone; none is built yet and the drawn step stays hidden until one lands. Decided (architect, 2026-11-13, `plans/flows-quick-setup-steps-2.md`): the change box is QS1b, the SMS box QS6, the contact group box QS7; the offer code waits for a question to the owner.
 - Send an SMS (new step kind): to the record's person's mobile (as the e-mail box's `record_person`) or a typed number, text with values, info or marketing with the same consent rule; sent through `pg_sms_send()` (`includes/fn/sms.php`); outputs `sent`.
 - The change box on the run's record (a setting, no new kind): `change.id` takes one value such as `{{trigger.record_id}}`, as Read a record's `id` does; then "Change the order's status" is a change box on the order that started the run.
 - Add to or take out of a contact group (new step kind): the contact of the run or of a value, the group chosen; no change kind writes groups today.
