@@ -12,13 +12,13 @@ description: Steps QS1b, QS6, QS7 of the flows-quick-setup plan, the architect's
 
 ## Which steps?
 - QS1b (S) done #9223. The change box on the run's record: `change.id` takes one value such as `{{trigger.record_id}}`, as Read a record's `id` does; no new kind. With it the drawn "Change the order's status" and the drawn approval recipe.
-- QS6 (M) Send an SMS, a new step kind: to the mobile of the record's person (as the e-mail box's `record_person`) or a typed number; a text with values; info or marketing, marketing under the consent rule the SMS campaigns keep; sent through `pg_sms_send()` (`includes/fn/sms.php`); output `sent`. Offered where the site can send an SMS.
-- QS7 (S) Add to or take out of a contact group, a new step kind: the run's contact or a value's, the group chosen. Adding never sets a contact's marketing consent. A flow started by `contact_group.joined` on a group does not start again from its own add to that group (a test).
+- QS6 (M) done #9290. Send an SMS, a new step kind (`workspace/workspace-flows-sms-box.md`): to the mobile of the record's person (as the e-mail box's `record_person`) or a typed number; a text with values; info or marketing, marketing under the consent rule the SMS campaigns keep; sent through `pg_sms_send()` (`includes/fn/sms.php`); output `sent`. Offered where the site can send an SMS.
+- QS7 (S) done #9291. Add to or take out of a contact group, a new step kind: the run's contact or a value's, the group chosen. Adding never sets a contact's marketing consent. A flow started by `contact_group.joined` on a group does not start again from its own add to that group (a test).
 
 ## In which order?
 - QS1b before QS3. QS6 and QS7 any time after QS1, each alone; they do not hold QS2 to QS5. Claim as `[plan:flows-quick-setup] <step> — <topic>`.
 
-## What does QS3 need first? (found 2026-11-13)
-- The stage hangs on `PGWsFlowQuick.stages.steps` (`workspace/workspace-flows-quick-setup-dialog.md`).
-- The canvas's field forms (`changeFields()`, `emailFields()` and the rest, dispatched in `nodeForm()` of `workspace_flow.js`) read the mounted canvas: `state.graph`, `state.edit`, `refreshNode()` (`ui.root`, `ui.outlineBox`), `drawSettings()`, and `valueField()` with the values of earlier boxes.
-- So a step's setting in the dialog needs a bridge in `workspace_flow.js` first, such as `PGWsFlow.boxForm(host, graph, nodeId, onChange)` with its own state, safe while a canvas is mounted beside it.
+## What does QS4 need first? (found 2026-11-13, #9278)
+- The stage hangs on `PGWsFlowQuick.stages.summary` (`workspace/workspace-flows-quick-setup-dialog.md`); Next shows once it is there.
+- QS3 adds steps one after the other; only a recipe brings held steps. Placing a step inside a condition or a loop is the Summary's: a loop with no step inside is refused by the server.
+- It sends `choices()` with `steps: pure.sentSteps(state.chosen.steps)`, a name, home and publish to `ws_flow_quick_setup`; a step's setting opens again with the same `PGWsFlow.boxForm()`.

@@ -34,7 +34,7 @@ function ws_agents_settings_apps()
  * name.
  *
  * @param array $source field => value
- * @return array kind, handle, name, app_id, provider, model, status,
+ * @return array kind, handle, name, role, app_id, provider, model, status,
  *               door_kind, door_url, base, wake_every, wake_note, key,
  *               key_clear, door_secret, door_secret_clear, token_limit
  */
@@ -42,7 +42,7 @@ function ws_agents_settings_input($source)
 {
     $input = array();
 
-    foreach (array('kind', 'handle', 'name', 'app_id', 'provider', 'model', 'status', 'door_kind', 'door_url', 'base', 'wake_every', 'wake_note',
+    foreach (array('kind', 'handle', 'name', 'role', 'app_id', 'provider', 'model', 'status', 'door_kind', 'door_url', 'base', 'wake_every', 'wake_note',
         'key', 'key_clear', 'door_secret', 'door_secret_clear', 'token_limit') as $field) {
         $value = is_array($source) ? ($source[$field] ?? null) : null;
         $input[$field] = is_scalar($value) ? (string) $value : '';
@@ -333,6 +333,11 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
     $rows .= $field('handle', lang('Handle (@name)'), $input('handle', $value('handle'), ' maxlength="32" autocomplete="off"' . ($claude ? ' readonly' : '')), lang('Called with @ in the channels: 2 to 32 small letters, digits, - or _.'));
     $rows .= $field('name', lang('Name'), $input('name', $value('name'), ' maxlength="100"'));
 
+    // Shown once the upgrade has added the column; before, nothing would keep it.
+    if (pg_schema_has('ws_agents', 'role')) {
+        $rows .= $field('role', lang('Role'), $select('role', array('' => lang('No role')) + ws_agent_roles(), $agent ? $agent['role'] : ''), lang('A label: it gives no right and changes no wake rule.'));
+    }
+
     if (!$claude && ($kind === 'app')) {
         $push = $agent && ($agent['door_kind'] === 'push');
 
@@ -465,7 +470,7 @@ function ws_agents_settings_script()
 }
 
 /**
- * One agent's line on the card: handle, name, door, last knock, schedule,
+ * One agent's line on the card: handle, name and role, door, last knock, schedule,
  * status.
  *
  * @param array $agent ws_agent_shape()
@@ -480,11 +485,13 @@ function ws_agents_settings_line_html($agent)
     $schedule = ($agent['wake_every'] > 0) ? ' · ' . h(lang(array('string' => 'every {var:1} min', 'vars' => $agent['wake_every']))) : '';
     $seen = ws_agent_seen_words($agent, time());
     $seen_html = ($seen['label'] !== '') ? ' · ' . h($seen['label']) : '';
+    $role = ws_agent_role_label($agent['role'] ?? '');
+    $role_html = ($role !== '') ? ' <span class="badge badge-subtle theme-accent">' . h($role) . '</span>' : '';
     $not_seen = $seen['not_seen'] ? '<span class="badge badge-subtle theme-warning">' . h(lang('Not seen')) . '</span>' : '';
 
     return '
                     <span class="fw-semibold">@' . h($agent['handle']) . '</span>
-                    <span class="ws-grow">' . h($agent['name']) . '</span>
+                    <span class="ws-grow">' . h($agent['name']) . $role_html . '</span>
                     <span class="small fg-secondary">' . h($door) . (($knock !== '') ? ', ' . h($knock) : '') . $schedule . $seen_html . '</span>
                     ' . $not_seen . '
                     <span class="badge badge-subtle ' . (($agent['status'] === 'active') ? 'theme-success' : 'theme-secondary') . '">' . h($status[$agent['status']] ?? $agent['status']) . '</span>';

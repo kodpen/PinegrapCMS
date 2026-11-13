@@ -25,7 +25,7 @@ include('init.php');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_classic.php');
-require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_trial.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_move.php');
 
 // The run's short requests (ajax=1) are read by the screen's script as JSON:
 // an ended session, a missing right or a stale token is answered in that
@@ -52,7 +52,9 @@ if (($_SERVER['REQUEST_METHOD'] === 'POST') && (($_POST['ajax'] ?? '') === '1'))
     // Other panel tabs do not wait behind a step.
     session_write_close();
     if (function_exists('ignore_user_abort')) @ignore_user_abort(true);
-    $run = pg_ltd_run(8);
+    // A move to or from a trial design, else the move to the Page Design
+    // Studio: only one of them runs at a time.
+    $run = is_file(pg_lbs_move_state_path()) ? pg_lbs_move_run(8) : pg_ltd_run(8);
     $ltd_json(200, array('ok' => true, 'status' => $run['status'], 'progress' => $run['progress'], 'counts' => $run['counts']));
 }
 
@@ -72,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // classic styles its pages came from. Not while a move runs.
     if (!empty($_POST['back'])) {
         $back_page = (int)($_POST['page'] ?? 0);
-        if (pg_ltd_state_read() !== null) {
+        if (pg_lbs_moves_running()) {
             $liveform->add_error(h(lang('A move is running: send pages back when it has ended.')));
         } else {
             $back = pg_ltc_back((int)($_POST['design'] ?? 0), ($back_page > 0) ? array($back_page) : null, $user);
@@ -94,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Not while a move runs.
     if (isset($_POST['bootstrap_trial'])) {
         $trial_design = (int)($_POST['design'] ?? 0);
-        if (pg_ltd_state_read() !== null) {
+        if (pg_lbs_moves_running()) {
             $liveform->add_error(h(lang('A move is running: make or delete a trial design when it has ended.')));
         } elseif ($_POST['bootstrap_trial'] === 'delete') {
             $trial_result = pg_lbs_trial_delete($trial_design, $user);
@@ -119,6 +121,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-back-result');
         exit;
     }
+    // Towards Bootstrap 5: a Legacy design's pages, all or the chosen ones,
+    // moved to its trial design, or the trial's pages that came from it sent
+    // back, one or all. The run is worked as the move above (#ltd-run).
+    if (isset($_POST['bootstrap_move'])) {
+        $move_design = (int)($_POST['design'] ?? 0);
+        if ($_POST['bootstrap_move'] === 'back') {
+            $move_direction = 'back';
+            $move_pages = ((int)($_POST['page'] ?? 0) > 0) ? array((int)$_POST['page']) : null;
+        } else {
+            $move_direction = 'move';
+            $move_pages = !empty($_POST['all']) ? null : array_map('intval', (array)($_POST['pages'] ?? array()));
+        }
+        $move_error = pg_lbs_move_start($move_direction, $move_design, $move_pages, $user);
+        if ($move_error === '') {
+            header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-run');
+            exit;
+        }
+        $liveform->add_error(h($move_error));
+        header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-trial-' . $move_design);
+        exit;
+    }
     foreach ((array)($_POST['styles'] ?? array()) as $id) {
         if ((int)$id > 0) $chosen[(int)$id] = true;
     }
@@ -138,6 +161,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $running = pg_ltd_state_read();
+$moving = pg_lbs_move_state_read();
+// Buttons that write wait for either kind of move.
+$busy = pg_lbs_moves_running();
 $report = pg_ltd_report();
 $sets = pg_ltd_sets($report);
 
@@ -384,7 +410,7 @@ if ($plan !== null) {
         $output_plan .= pg_ltd_plan_html($p);
     }
     $output_convert = '';
-    if ($plan && $running === null) {
+    if ($plan && !$busy) {
         $hidden = '';
         foreach ($plan as $p) {
             if ($p['skip'] !== '') continue;
@@ -410,18 +436,29 @@ if ($plan !== null) {
 // The run under way, worked by this screen's requests while it is open and
 // by the general job when it is not.
 $output_run = '';
-if ($running !== null) {
-    $progress = pg_ltd_state_progress($running);
+if ($running !== null || $moving !== null) {
+    if ($moving !== null) {
+        // Pages moving to a trial design or back (legacy_bootstrap_move.php).
+        $progress = pg_lbs_move_state_progress($moving);
+        $run_title = ($moving['direction'] === 'back') ? lang('Sending pages back to the Legacy design') : lang('Moving pages to the trial design');
+        $run_text = lang('{var:1} of {var:2} pages done');
+        $run_done = 'legacy_to_designer.php?ended=1#ltd-moves-' . (int)$moving['legacy'];
+    } else {
+        $progress = pg_ltd_state_progress($running);
+        $run_title = lang('Moving to the Page Design Studio');
+        $run_text = lang('{var:1} of {var:2} styles done');
+        $run_done = 'legacy_to_designer.php?ended=1#ltd-runs';
+    }
     $output_run = '
     <div class="card my-7" id="ltd-run">
-        <div class="card-header"><h2 class="h5 mb-0">' . h(lang('Moving to the Page Design Studio')) . '</h2></div>
-        <div class="card-body"><div id="ltd_progress" aria-live="polite">' . h(lang(array('string' => '{var:1} of {var:2} styles done', 'vars' => array($progress['done'], $progress['total'])))) . '</div>
+        <div class="card-header"><h2 class="h5 mb-0">' . h($run_title) . '</h2></div>
+        <div class="card-body"><div id="ltd_progress" aria-live="polite">' . h(str_replace(array('{var:1}', '{var:2}'), array($progress['done'], $progress['total']), $run_text)) . '</div>
             <div class="small fg-secondary mt-1">' . h(lang('You can leave this screen: the general job carries the move on.')) . '</div></div>
     </div>
 <script>
 (function () {
     var token = ' . json_encode((string)($_SESSION['software']['token'] ?? '')) . ';
-    var texts = ' . json_encode(array('progress' => lang('{var:1} of {var:2} styles done'), 'error' => lang('The connection failed. Reload the page to carry on.'))) . ';
+    var texts = ' . json_encode(array('progress' => $run_text, 'done' => $run_done, 'error' => lang('The connection failed. Reload the page to carry on.'))) . ';
     var box = document.getElementById("ltd_progress");
     var step = function () {
         var body = new URLSearchParams();
@@ -434,7 +471,7 @@ if ($running !== null) {
                 if (a.progress) { box.textContent = texts.progress.replace("{var:1}", a.progress.done).replace("{var:2}", a.progress.total); }
                 setTimeout(step, a.status === "busy" ? 3000 : 200);
             } else {
-                window.location.href = "legacy_to_designer.php?ended=1#ltd-runs";
+                window.location.href = texts.done;
             }
         }, function () { box.textContent = texts.error; });
     };
@@ -483,7 +520,7 @@ foreach (pg_ltc_designs() as $d) {
                 . '<input type="hidden" name="page" value="' . (int)$p['page_id'] . '">'
                 . '<button type="submit" class="btn btn-sm btn-outline theme-secondary rounded-pill px-4"'
                 . ' aria-label="' . h(lang(array('string' => 'Send {var:1} back to {var:2}', 'vars' => array($p['page_name'], $p['origin_name'])))) . '"'
-                . ($running !== null ? ' disabled' : '') . '>' . h(lang('Send back')) . '</button></form>';
+                . ($busy ? ' disabled' : '') . '>' . h(lang('Send back')) . '</button></form>';
         } else {
             $action = '<span class="small fg-secondary">' . h(pg_ltc_refusal_text($p['refusal'])) . '</span>';
         }
@@ -498,7 +535,7 @@ foreach (pg_ltc_designs() as $d) {
     if ($ready > 0) {
         $all = '<form method="post" action="legacy_to_designer.php" class="mb-3">' . get_token_field()
             . '<input type="hidden" name="back" value="1"><input type="hidden" name="design" value="' . (int)$d['id'] . '">'
-            . '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"' . ($running !== null ? ' disabled' : '') . '>'
+            . '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"' . ($busy ? ' disabled' : '') . '>'
             . '<i class="bi bi-arrow-counterclockwise me-2" aria-hidden="true"></i>'
             . h(lang(array('string' => 'Send {var:1} pages back', 'vars' => array($ready)))) . '</button></form>';
     }
@@ -540,8 +577,9 @@ foreach ($bootstrap_designs as $d) {
     }
     $bootstrap_trials[$d['id']] = pg_lbs_trial_card_html($d['id'], $trial, array(
         'users' => $trial !== null ? pg_lbs_trial_users($trial['trial']) : 0,
-        'running' => $running !== null,
+        'running' => $busy,
         'preview' => $preview,
+        'move' => $trial !== null ? pg_lbs_move_card_html($d['id'], $trial, pg_lbs_trial_pages($d['id']), pg_lbs_moved_pages($d['id'], $trial['trial']), pg_lbs_move_reports($d['id'], 3), $busy) : '',
     ));
 }
 $output_bootstrap = pg_lbs_card_html($bootstrap_designs, $bootstrap_open, $bootstrap_open > 0 ? pg_lbs_design_report($bootstrap_open, $bootstrap_designs) : null, $bootstrap_trials)
@@ -553,7 +591,7 @@ $output_bootstrap = pg_lbs_card_html($bootstrap_designs, $bootstrap_open, $boots
 $output_form = '';
 $toolbar_primary = '';
 $toolbar_grow = '';
-if ($report && $running === null) {
+if ($report && !$busy) {
     $toolbar_primary = '<button type="submit" form="ltd_dry_run" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-clipboard-check me-2" aria-hidden="true"></i>' . h(lang('Dry run')) . '</button>';
     $toolbar_grow = '<span class="small fg-secondary">' . h(lang('Tick a set or the styles to move, then see what would be written for each.')) . '</span>';
     $output_form = '<form id="ltd_dry_run" method="post" action="legacy_to_designer.php#ltd-dry-run" hidden>' . get_token_field() . '</form>';

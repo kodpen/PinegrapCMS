@@ -153,7 +153,7 @@ function test_bell_row_endpoint_gives_module_day_and_button()
 
 	pg_assert_contains("'module' => pg_notification_module(", $list, 'module');
 	pg_assert_contains("'day' => pg_notification_day((int) \$notification['timestamp'], \$now)", $list, 'day, in the site zone the panel set');
-	pg_assert_contains("'button' => pg_notification_button(\$display['action'], \$display['kind'], \$display['join'])", $list, 'button');
+	pg_assert_contains(": pg_notification_button(\$display['action'], \$display['kind'], \$display['join']))", $list, 'button');
 }
 
 // A site row's short title says what happened and with what; the device

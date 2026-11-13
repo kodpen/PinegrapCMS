@@ -201,5 +201,17 @@ function ws_page_card_js_strings()
         'page_undo'        => lang('Undo'),
         'page_undo_ask'    => lang('Put back the page as it was before this edit? The edit stays among the versions.'),
         'page_undone'      => lang('The page is back as it was.'),
+        // The joined card of a canvas with a drawing and a page
+        // (canvas_card.php).
+        'canvas_part_drawing'  => lang('Drawing'),
+        'canvas_part_page'     => lang('Page'),
+        'canvas_part_data'     => ws_js_template('Data {var:1}', 1),
+        'canvas_part_version'  => ws_js_template('{var:1} · version {var:2}', 2),
+        'canvas_all'           => lang('All'),
+        'canvas_now'           => lang('Now'),
+        'canvas_show'          => lang('Show'),
+        'canvas_restore'       => lang('Put back this version'),
+        'canvas_restore_ask'   => lang('Put this version back as the newest one? Every version stays among the versions.'),
+        'canvas_restored'      => lang('The version is back.'),
     );
 }

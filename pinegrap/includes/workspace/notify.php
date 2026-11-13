@@ -509,7 +509,9 @@ function ws_inbox_describe($viewer, $row)
                 // flow).
                 'title' => $notice ? (($notice['name'] !== null) ? (string) $notice['name'] : lang('Flow')) : lang('Scheduled action'),
                 'body'  => $notice ? (string) $notice['text'] : '',
-                'url'   => $base . ($readable ? 'workspace.php?channel=' . (int) $notice['channel_id'] . '&message=' . (int) $notice['message_id'] : 'workspace.php'),
+                // With the Workspace off a flow's notice says all it has to
+                // say in the bell and opens nothing: workspace.php is shut.
+                'url'   => !ws_enabled() ? '' : $base . ($readable ? 'workspace.php?channel=' . (int) $notice['channel_id'] . '&message=' . (int) $notice['message_id'] : 'workspace.php'),
                 'icon'  => 'bi-alarm',
             );
 

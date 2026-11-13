@@ -1926,7 +1926,8 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 #menu .pg-mi-styles .pg-mi-c4 { color: var(--pg-mi-violet); }
 
 /* The Design Canvas's icon outside the main menu (pg_design_canvas_icon()):
-   the File Manager's action, Workspace's New canvas. body .design-color sets
+   the editor's top bar; its size also serves the one-colour form below.
+   body .design-color sets
    the outline; the tint and the pen curve take the menu's shades. */
 .pg-dc-icon {
   --pg-dc-accent: #0284c7;
@@ -1956,6 +1957,19 @@ html[data-bs-theme="dark"] .pg-dc-icon .pg-mi-2 {
 .pg-dc-icon .pg-mi-at {
   fill: currentColor;
   fill-opacity: var(--pg-dc-accent-opacity);
+}
+/* The one-colour form (pg_design_canvas_icon_one_colour()), among one-colour
+   icons: no design colour, no tint, no second hue; every line takes the
+   text colour around it, as the Bootstrap icons beside it do. A menu that
+   gives its .bi icons a box gives this one the same (.ws-ctx-item, the File
+   Manager's #explorer_menu). Four classes outweigh the dark tint rule above. */
+.pg-mi.pg-dc-icon.pg-dc-mono,
+.pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-a {
+  color: inherit;
+}
+.pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-2,
+.pg-mi.pg-dc-icon.pg-dc-mono .pg-mi-at {
+  fill: none;
 }
 #menu .pg-mi-design_canvas { --pg-mi-a: var(--pg-mi-sky); }
 
@@ -17721,7 +17735,8 @@ a.ws-chip:hover {
 .ws-ctx .ws-ctx-item:focus {
   background: rgba(var(--ws-accent-rgb, 94, 53, 177), .12);
 }
-.ws-ctx .ws-ctx-item .bi {
+.ws-ctx .ws-ctx-item .bi,
+.ws-ctx .ws-ctx-item .pg-dc-mono {
   width: 1.1rem;
   opacity: .8;
 }
@@ -22077,6 +22092,161 @@ html.ws-flow-layer-on body {
 .wsf-quick-when-row .wsf-quick-when-value.d-none + .pg-icon-button {
   grid-column: 4;
 }
+/* The second stage: the steps chosen in a row, the recipes and the kinds
+   by group, a step's own setting (the canvas's fields, nodeForm()). */
+.wsf-quick-steps {
+  height: 100%;
+  padding-bottom: 16px;
+  overflow-y: auto;
+}
+.wsf-quick-tile {
+  --pg-tone: var(--wsf-kind, var(--pg-tone-gray));
+}
+.wsf-quick-tile .ws-flow-icon {
+  width: 14px;
+  height: 14px;
+}
+.wsf-quick-tile-sm {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+.wsf-quick-tile-sm .ws-flow-icon {
+  width: 12px;
+  height: 12px;
+}
+.wsf-quick-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+.wsf-quick-trail-step,
+.wsf-quick-trail-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 11px 0 5px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  white-space: nowrap;
+}
+.wsf-quick-trail-step:hover {
+  background: var(--pg-hover);
+}
+.wsf-quick-trail-step.is-active {
+  background: color-mix(in srgb, var(--pg-accent) 9%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--pg-accent);
+  color: var(--pg-fg-body);
+  font-weight: var(--pg-weight-strong);
+}
+.wsf-quick-trail-new {
+  padding-left: 11px;
+  box-shadow: inset 0 0 0 1px var(--pg-accent);
+  color: var(--pg-accent);
+  font-weight: var(--pg-weight-strong);
+}
+.wsf-quick-trail-n {
+  padding-left: 4px;
+  color: var(--pg-fg-3);
+}
+.wsf-quick-trail-name {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wsf-quick-lead {
+  outline: 0;
+}
+.wsf-quick-lead-sub {
+  margin: 3px 0 14px;
+}
+.wsf-quick-recipes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.wsf-quick-recipe {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 11px 12px 10px;
+  border: 0;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--pg-accent) 6%, var(--pg-card-bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pg-accent) 22%, var(--pg-border-color-translucent));
+  color: inherit;
+  text-align: left;
+}
+.wsf-quick-recipe:hover {
+  background: color-mix(in srgb, var(--pg-accent) 11%, var(--pg-card-bg));
+}
+.wsf-quick-recipe-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  color: var(--pg-fg-3);
+}
+.wsf-quick-group {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 7px 0;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.wsf-quick-group-name {
+  padding-top: 8px;
+  color: var(--pg-fg-3);
+  font-weight: var(--pg-weight-strong);
+}
+.wsf-quick-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.wsf-quick-act {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 11px 0 5px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+  color: var(--pg-fg-2);
+  font-size: var(--pg-text-2);
+  white-space: nowrap;
+}
+.wsf-quick-act:hover {
+  background: var(--pg-hover);
+  color: var(--pg-fg-body);
+}
+.wsf-quick-step-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.wsf-quick-step-head h3 {
+  margin-right: auto;
+  outline: 0;
+}
+.wsf-quick-form {
+  max-width: 560px;
+}
 @media (max-width: 767.98px) {
   .dialog.wsf-quick {
     --bs-dialog-width: 100%;
@@ -22097,6 +22267,8 @@ html.ws-flow-layer-on body {
   .wsf-quick-rail-line {
     display: none;
   }
+  .wsf-quick-recipes,
+  .wsf-quick-group,
   .wsf-quick-cards,
   .wsf-quick-when-row {
     grid-template-columns: minmax(0, 1fr);
@@ -22215,6 +22387,19 @@ html.ws-flow-layer-on body {
   stroke: var(--pg-bg-1);
   stroke-width: 3px;
 }
+/* The outcome an arrow leaves by, on a pill at its middle. */
+.pgc-edge-pill {
+  fill: var(--pg-bg-1);
+  stroke: var(--pg-border-color);
+  stroke-width: 1;
+}
+.pgc-edge-pill + .pgc-edge-label {
+  font-weight: var(--pg-weight-strong);
+  stroke: none;
+}
+.pgc-edge.pgc-selected .pgc-edge-pill {
+  stroke: var(--pgc-accent, var(--pg-primary));
+}
 .pgc-edge-temp {
   fill: none;
   stroke: var(--pgc-accent, var(--pg-primary));
@@ -22302,6 +22487,7 @@ html.ws-flow-layer-on body {
   --pgc-marker-on: url(#wsf-arrow-on);
 }
 .wsf-arrowhead-bad { fill: var(--pg-danger); }
+.pgc-edge.wsf-bad .pgc-edge-pill { stroke: var(--pg-danger); }
 .pgc-edge.wsf-bad .pgc-edge-line {
   stroke: var(--pg-danger);
   stroke-dasharray: 6 4;

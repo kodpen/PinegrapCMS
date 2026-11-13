@@ -164,15 +164,29 @@ function ws_file_text_read($file_id, $text_only = false)
  * @param array  $viewer
  * @param int    $message_id
  * @param string $kind image | text | office (a Word document or an Excel workbook)
+ * @param string $part '' for the message's own file, drawing for a canvas's
+ *                     drawing added beside its page
  * @return array|string [message, channel], or the error
  */
-function ws_file_edit_target($viewer, $message_id, $kind)
+function ws_file_edit_target($viewer, $message_id, $kind, $part = '')
 {
     $message = ws_message($message_id);
     $channel = $message ? ws_channel($message['channel_id']) : null;
 
     if (!$message || !$channel || !ws_can_read_channel($viewer, $channel) || ((int) $message['deleted_at'] > 0)) {
         return lang('That message could not be found.');
+    }
+
+    // A canvas's drawing added beside its page (canvas_parts.php): the
+    // part's file stands for the message's, under its own name.
+    if ($part !== '') {
+        $message = ws_canvas_part_message($message, $part);
+
+        if (!$message) {
+            return lang('The file could not be found.');
+        }
+
+        $message['file_name'] = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'");
     }
 
     if (((int) $message['file_id'] <= 0) || ((string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'") === '')) {

@@ -204,8 +204,6 @@ function ws_flow_kinds_workspace()
         // Pinegrap AI, whose settings are the Workspace's; an MCP server's
         // tool; a scheduled action started.
         'ai', 'mcp', 'start_action',
-        // Its lines go to the Workspace inbox.
-        'notify',
     );
 }
 
@@ -2864,6 +2862,11 @@ function ws_flow_graph_present($graph, $edit = false)
                 $node['config']['id'] = '';
             }
 
+            // So may the contact a contact group box names.
+            if (!$edit && ((string) $node['kind'] === 'contact_group')) {
+                $node['config']['contact'] = '';
+            }
+
             $node['config'] = (object) $node['config'];
 
             return $node;
@@ -3526,6 +3529,8 @@ function ws_flow_js_strings()
         'fl_kind_rows_get'    => lang('Read rows of a table'),
         'fl_rows_read_help'   => lang('The tables the flow\'s owner may read; the box reads with their rights.'),
         'fl_kind_record_get'  => lang('Read a record'),
+        'fl_kind_sms'         => lang('Send an SMS'),
+        'fl_kind_contact_group' => lang('Add to or take out of a contact group'),
         'fl_record_kind'      => lang('Kind of record'),
         'fl_record_kind_pick' => lang('Choose a kind of record'),
         'fl_record_kind_help' => lang('The kinds of record the flow\'s owner may read; the box reads with their rights.'),
@@ -3631,6 +3636,17 @@ function ws_flow_js_strings()
         'fl_rows_meta_last'   => ws_js_template('{var:1} · last row', 1),
         'fl_record_meta'      => ws_js_template('{var:1} · {var:2}', 2),
         'fl_record_none'      => lang('No kind of record chosen'),
+        'fl_group'            => lang('Contact group'),
+        'fl_group_pick'       => lang('Choose a contact group'),
+        'fl_group_help'       => lang('Only groups filled by hand. Adding a contact never changes its marketing consent.'),
+        'fl_group_way'        => lang('What it does'),
+        'fl_group_add'        => lang('Add the contact'),
+        'fl_group_remove'     => lang('Take the contact out'),
+        'fl_group_contact'    => lang('Contact'),
+        'fl_group_contact_help' => lang('Leave it empty for the contact of the run\'s record, or name one by its number or one value, such as {{trigger.contact_id}}.'),
+        'fl_group_none'       => lang('No contact group chosen'),
+        'fl_group_meta_add'   => ws_js_template('Add to {var:1}', 1),
+        'fl_group_meta_remove' => ws_js_template('Take out of {var:1}', 1),
         'fl_day_mon'         => lang('Monday'),
         'fl_day_tue'         => lang('Tuesday'),
         'fl_day_wed'         => lang('Wednesday'),
@@ -3725,6 +3741,12 @@ function ws_flow_js_strings()
         'fl_email_person_marketing' => lang('Marketing to the record\'s person'),
         'fl_email_subject'    => lang('Subject'),
         'fl_email_body'       => lang('Text of the e-mail'),
+        'fl_sms_typed'        => lang('The number typed here'),
+        'fl_sms_to'           => lang('Mobile number'),
+        'fl_sms_to_help'      => lang('One mobile number, with its country code when it is not a Turkish one.'),
+        'fl_sms_no_to'        => lang('No number yet'),
+        'fl_sms_purpose_help' => lang('Marketing goes only to a number whose person agreed to marketing SMS, with the sender identity added; otherwise the box sends nothing and the run says why.'),
+        'fl_sms_text'         => lang('Text of the message'),
         'fl_values_hint'      => lang('Add value puts in what started the run or what an earlier box gave; {{date}} and the other words of scheduled actions work too.'),
         'fl_values_hint_plain' => lang('Add value puts in what started the run or what an earlier box gave.'),
         'fl_values_hint_value' => lang('Add value puts in what started the run or what an earlier box gave; {{date}}, {{time}} and {{weekday}} give today\'s date, the time and the day of the week.'),
@@ -4031,6 +4053,15 @@ function ws_flow_js_strings()
         'fl_quick_cancel'     => lang('Cancel'),
         'fl_quick_next'       => lang('Next'),
         'fl_quick_close'      => lang('Close'),
+        'fl_quick_step_n'     => ws_js_template('Step {var:1}', 1),
+        'fl_quick_steps_chosen' => lang('Steps chosen'),
+        'fl_quick_next_what'  => lang('What happens next?'),
+        'fl_quick_next_help'  => lang('Start with a ready recipe or choose the step yourself.'),
+        'fl_quick_next_help_kinds' => lang('Choose what the flow does next.'),
+        'fl_quick_recipes'    => lang('Ready recipes'),
+        'fl_quick_more'       => lang('One more step'),
+        'fl_quick_remove_step' => lang('Remove this step'),
+        'fl_quick_too_many'   => ws_js_template('A quick setup places at most {var:1} boxes; add more on the canvas.', 1),
         'fl_home_owner_only'  => lang('Only the owner of a flow can move it to another home channel.'),
         'fl_home_none_other'  => lang('No channel'),
         // A role-3 member's own flow (flow_member.php), in the save check's words.
@@ -4169,9 +4200,15 @@ function ws_flow_js_config($viewer, $mode)
 
         // The kinds of record a read box may read, with the values each gives.
         $steps['reads'] = function_exists('ws_flow_record_get_kinds') ? ws_flow_record_get_kinds($viewer) : array();
+        // The groups filled by hand a contact group box may change; none,
+        // and the palette has no such box.
+        $steps['groups'] = function_exists('ws_step_contact_group_choices') ? ws_step_contact_group_choices($viewer) : array();
         // The Pinegrap AI box is offered while the site has it set up
         // (ws_step_ai_check()).
         $steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();
+        // The SMS box is offered while the site can send SMS
+        // (ws_step_sms_check()).
+        $steps['sms'] = function_exists('pg_sms_ready') && pg_sms_ready();
         // The agents an agent box may ask, each with the channels the owner
         // may write in where it is allowed (flow_agent_box.php).
         $steps['agents'] = function_exists('ws_step_agent_form_list') ? ws_step_agent_form_list($viewer) : array();

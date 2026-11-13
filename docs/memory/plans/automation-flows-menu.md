@@ -11,7 +11,7 @@ description: Plan (owner 2026-11-12, #8961): Flows become "Automation flows", a 
 - The icon is drawing A: a start, a step and an end on a path, a dot following the path. It moves once on hover like the other rows and slowly while a flow runs; never on a device that asks for less motion (`ui/main-menu-icons.md`).
 - The name is "Otomasyon akışları" on the row and the screens' titles (English key "Automation flows"); inside a sentence "flow" stays.
 - M1a: flows are on at every site, behind the right only, also where the Workspace is off. No switch of their own.
-- The view of a flow that opens inside a channel stays in the channel and takes the new look (`flow-window.md`).
+- The view of a flow that opens inside a channel stays in the channel and takes the flow window's new look.
 
 ## What is there today?
 - `ws_enabled()` asks `WORKSPACE_ENABLED`. With it off the Flows screens refuse and `job.php` advances no flow (its flow pass asks `ws_enabled()`), so an order's message flow would not run. Store, runner and tables are the Workspace's (`workspace/workspace-flows-overview.md`).
@@ -33,5 +33,5 @@ description: Plan (owner 2026-11-12, #8961): Flows become "Automation flows", a 
 - AF6 (S) Close-out: the lasting rules into `workspace/` and `ui/`, this plan deleted.
 
 ## In which order?
-- AF0-AF5, AF3b (#9225), AF3c (#9257), AF4b (#9279) done; then AF4c, then AF6. `messages-area-steps.md` turns campaign profiles into flows only after AF3 has landed.
+- AF0-AF5, AF3b (#9225), AF3c (#9257), AF4b (#9279), AF4c (#9288) done; then AF6. `messages-area-steps.md` turns campaign profiles into flows only after AF3 has landed.
 - Claim as `[plan:automation-flows-menu] <step> — <topic>`.

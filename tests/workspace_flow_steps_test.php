@@ -200,7 +200,7 @@ function test_workspace_flow_steps_types()
 	$steps = array_keys(ws_scheduled_outcomes()) ? ws_step_kinds() : array();
 
 	foreach ($steps as $kind => $info) {
-		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead', 'approval', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'ai', 'agent'), true), $kind);
+		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead', 'approval', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'contact_group', 'ai', 'agent', 'sms'), true), $kind);
 		pg_assert_same(array(), array_diff($info['lines'], $info['texts']), $kind . ': one-line texts are texts');
 	}
 
@@ -676,7 +676,9 @@ function test_workspace_flow_steps_scheduled_texts()
 {
 	$map = ws_step_scheduled_texts();
 	$kinds = ws_step_kinds();
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
+	// An SMS box fills its text where it queues it (flow_sms_box.php).
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php')
+		. (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flow_sms_box.php');
 
 	foreach ($map as $kind => $keys) {
 		pg_assert_true(isset($kinds[$kind]), $kind);
@@ -695,8 +697,9 @@ function test_workspace_flow_steps_scheduled_texts()
 		// cells, row and conditions to the table's store, and a read box's
 		// record to its reader, a Pinegrap AI box's texts to the model and an
 		// agent box's prompt to the agent, in no scheduled action's step; a
-		// change box's record is read before its step (ws_step_change_id()).
-		if (($info['texts'] !== array()) && !in_array($kind, array('checkin', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'ai', 'agent', 'change'), true)) {
+		// change box's record is read before its step (ws_step_change_id()),
+		// and a contact group box's contact by the box itself.
+		if (($info['texts'] !== array()) && !in_array($kind, array('checkin', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'contact_group', 'ai', 'agent', 'change'), true)) {
 			pg_assert_true(isset($map[$kind]), $kind . ' has its line');
 		}
 	}

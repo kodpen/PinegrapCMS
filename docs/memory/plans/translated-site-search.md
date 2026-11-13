@@ -34,4 +34,4 @@ description: Plan (owner 2026-11-13, #9216): the site search on a page served in
 - TS3 (M) Form records in the site search
 - TS4 (S) A list's own search box
 - TS5 (S) Close-out
-- Done: TS1 #9245, TS2 #9266
+- Done: TS1 #9245, TS2 #9266, TS3 #9285, TS4 #9301. Next free: TS5.

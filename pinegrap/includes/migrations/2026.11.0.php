@@ -185,6 +185,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_edit_hold();            // 11.0.192
 	upgrade_2026_11_0_ws_canvas_consents();      // 11.0.193
 	upgrade_2026_11_0_ws_canvas_parts();         // 11.0.194
+	upgrade_2026_11_0_ws_agent_profile();        // 11.0.195
 
 }
 
@@ -6227,5 +6228,32 @@ function upgrade_2026_11_0_ws_canvas_consents() {
 	}
 
 	install_note('Workspace: a live page asks each reader once before it writes to a table in their name, and again for a new version of the page; a row it writes shows the canvas it came through.');
+
+}
+
+// An agent's role and its last report (2026.11.0, 11.0.195;
+// includes/workspace/agents.php).
+// ws_agents.role holds a key of ws_agent_roles(), '' for none; the list
+// lives in code, so a new role needs no schema change and an unknown key
+// reads as no role. report_model, report_usage (the usage windows as JSON)
+// and report_at hold the last report an application agent sends with its
+// own key: the last one only, no history. All empty by default, so a
+// running site changes nothing until a role is chosen or a report comes.
+function upgrade_2026_11_0_ws_agent_profile() {
+
+	if (!install_table_exists('ws_agents')) {
+
+		install_skipped('ws_agents does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_agents', 'role', "VARCHAR(32) NOT NULL DEFAULT ''");
+	install_add_column('ws_agents', 'report_model', "VARCHAR(100) NOT NULL DEFAULT ''");
+	install_add_column('ws_agents', 'report_usage', "VARCHAR(1000) NOT NULL DEFAULT ''");
+	install_add_column('ws_agents', 'report_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: an agent can be given a role from a fixed list on its form; the role shows beside its name on the Agents card and in a channel\'s members.');
 
 }

@@ -2238,11 +2238,19 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $sf_in   = implode(',', $search_field_ids);
         // A typed backslash, % or _ is a plain character, not a LIKE escape.
         $q_like  = e(pg_list_like_pattern($search_query));
+        // On a page in another language, a list that includes its records in
+        // the translation also finds a record by its translated text; the
+        // count and the rows read this one condition.
+        $tr_ids  = !empty($cfg['translate_records'])
+            ? pg_tr_search_list_records($custom_form_page_id, $search_field_ids, $search_query)
+            : array();
         $search_where =
-            " AND EXISTS (SELECT 1 FROM form_data fd_q
+            " AND (EXISTS (SELECT 1 FROM form_data fd_q
                           WHERE fd_q.form_id = forms.id
                             AND fd_q.form_field_id IN ($sf_in)
-                            AND fd_q.data LIKE '$q_like')";
+                            AND fd_q.data LIKE '$q_like')"
+            . ($tr_ids ? " OR forms.id IN (" . implode(',', array_map('intval', $tr_ids)) . ")" : '')
+            . ")";
     }
 
     // ── Build search box HTML (rendered above the loop output) ────────────
@@ -6551,6 +6559,13 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
         // Pages since binned, archived or removed stay out until the index
         // is rebuilt.
         $sql_live = pg_search_items_live_sql(pg_recycle_bin_folder_ids());
+        // The records whose translated texts match come first too, at the
+        // address and behind the folder fence of their search index item.
+        if (function_exists('pg_tr_search_records')) {
+            foreach (pg_tr_search_records($query, $sql_folders, $sql_live) as $item) {
+                $tr_pages[] = $page_row($item['title'], $item['url'], $item['description'], true, $item);
+            }
+        }
         if ($filter !== '') $featured = pg_search_fulltext_items(
             "SELECT search_items.id, url, title, description, search_items.page_id,
                     sp.page_name, sp.page_title,
