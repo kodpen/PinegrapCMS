@@ -266,7 +266,9 @@ function pg_messages_template_whatsapp_card(array $rows, array $state)
     }
 
     foreach ($rows as $row) {
-        $text = h($row['category']);
+        // The language leads the line under the name, beside the type, so
+        // it stays next to the name on a wide window and on a phone.
+        $text = h($row['language']) . ' · ' . h($row['category']);
 
         if ($row['reason'] !== '') {
             $text .= ' · <b>' . h(lang('Reason')) . ':</b> ' . h($row['reason']);
@@ -277,7 +279,7 @@ function pg_messages_template_whatsapp_card(array $rows, array $state)
             'tone' => 'teal',
             'title' => $row['name'],
             'url' => '',
-            'meta' => $row['language'],
+            'meta' => '',
             'text' => $text,
             'pill' => $row['pill'],
             'pill_tone' => $row['tone'],
