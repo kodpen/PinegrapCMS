@@ -8,7 +8,7 @@ description: Main menu row 26, Automation flows (AF4, AF5, #9169): its place at 
 - One screen, `workspace_flows.php`, so no panel. The Workspace list keeps its link to it, labelled Automation flows, the tile's short name Flows.
 
 ## Who gets it?
-- `pg_flows_menu_row($user)` (`includes/fn/automation_flows.php`) asks what the screen's `ws_screen_gate($user, true)` asks: `pg_flows_enabled()`, `ws_ready()`, a member of the team (`ws_rights()`: roles 0-2 unless their profile leaves them out, role 3 with the Workspace right). Not the Workspace switch: the row shows with it off.
+- `pg_flows_menu_row($user)` (`includes/fn/automation_flows.php`) asks `pg_flows_user_may($user)`, which the dashboard's flow entries ask too (`dashboard-v2-flows-card.md`), and asks what the screen's `ws_screen_gate($user, true)` asks: `pg_flows_enabled()`, `ws_ready()`, a member of the team (`ws_rights()`: roles 0-2 unless their profile leaves them out, role 3 with the Workspace right). Not the Workspace switch: the row shows with it off.
 - Every panel page draws it, so with the Workspace off only `includes/workspace/access.php` is loaded for the gate, and the whole module (about 7.7 MB of PHP, some 100 ms to compile without opcache) only while `pg_flows_runs_open()` finds an open run.
 
 ## What is the number beside it?

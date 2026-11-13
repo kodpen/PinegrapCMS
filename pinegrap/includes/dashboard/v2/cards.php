@@ -92,7 +92,7 @@ function pg_dashboard_v2_cards()
         'pipeline'   => $card(lang('Work line'), 'bi-funnel', 'general', 'L', 2, 'all'),
         'queue'      => $card(lang('Next up'), 'bi-list-ol', 'general', 'M', null, 'all'),
         'activity'   => $card(lang('Activity'), 'bi-activity', 'general', 'S', null, 'all'),
-        'flows'      => $card(lang('Flows'), 'bi-diagram-3', 'general', 'S', null, 'workspace'),
+        'flows'      => $card(lang('Automation flows'), 'bi-diagram-3', 'general', 'S', null, 'flows'),
         'pins'       => $card(lang('Pinned'), 'bi-pin-angle', 'general', 'S', null, 'all'),
         'notes'      => $card(lang('My notes'), 'bi-journal-text', 'general', 'S', null, 'notes'),
         // Content
@@ -154,7 +154,7 @@ function pg_dashboard_v2_card_timing()
  */
 function pg_dashboard_v2_gates()
 {
-    return array('all', 'staff', 'designer', 'files', 'visitors', 'gsearch', 'ga', 'workspace', 'team', 'notes', 'calendars', 'shop', 'shop_summary', 'shop_reports', 'perf');
+    return array('all', 'staff', 'designer', 'files', 'visitors', 'gsearch', 'ga', 'workspace', 'team', 'notes', 'calendars', 'shop', 'shop_summary', 'shop_reports', 'perf', 'flows');
 }
 
 /**
@@ -226,6 +226,9 @@ function pg_dashboard_v2_gate($gate, $user)
             return $shop && defined('USER_MANAGE_ECOMMERCE_REPORTS') && USER_MANAGE_ECOMMERCE_REPORTS;
         case 'perf':
             return ($role < 3) && ((!defined('PERF_MONITOR_ENABLED')) || PERF_MONITOR_ENABLED);
+        case 'flows':
+            // What the Flows screen asks, with the Workspace on or off.
+            return pg_flows_user_may($user);
     }
 
     return false;
