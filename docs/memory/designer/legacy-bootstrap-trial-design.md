@@ -17,7 +17,7 @@ module: legacy_bootstrap_trial
 
 ## Which asset rows (`pg_lbs_trial_assets()`, pure)?
 - CSS: every `bootstrap(.min).css` row goes; at the first one's place the editor's `bootstrap-css` and `bootstrap-icons` rows, then the compatibility sheet `{path}{software_directory}/assets/css/themes/legacy-bootstrap3.css`, so the theme still wins. Inline rows converted.
-- JS: the `bootstrap-js` bundle row where Bootstrap 3's script was (first when none), that script kept `enabled: false` (open question in the LB4 PR). Inline JS converted. Copies are managed `_file` rows; `pages` limits stay.
+- JS: the `bootstrap-js` bundle row where Bootstrap 3's script was (first when none), that script kept `enabled: false` (`legacy-bootstrap-trial-why.md`). Inline JS converted. Copies are managed `_file` rows; `pages` limits stay.
 
 ## What does the script conversion do?
 - A tooltip or popover call on `$('<quoted selector>')`/`jQuery(...)`, no option or a plain object, becomes `getOrCreateInstance()` per element found; `pg_lbs_data_names()` become `data-bs-*` (whole names). Other plugin calls stay, listed as warnings. Starting `scripts.js`: one line changes.

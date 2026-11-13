@@ -12,6 +12,6 @@ description: CKEditor's Link and Image dialogs on a site page in Edit mode: live
 - Checked in the sandbox (`/services`, Edit mode, Link and Image dialogs): the fields now match the panel's dialog on Edit Product Group, but for the panel's Picture… button.
 
 ## What is still open?
-- The Page…, File… and Picture… buttons on site pages (`picker-editor-bridge.md`).
+- The Page…, File… and Picture… buttons on site pages: decided, not built (`site-editor-picker-frame.md`).
 
 Tests: `tests/site_editor_dialog_fields_test.php`.

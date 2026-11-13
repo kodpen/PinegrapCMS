@@ -11,7 +11,7 @@ module: editor
 ## Which addresses are left alone?
 - One where another slash follows the path: on a site at the web root that is a protocol-relative address on another host. The Media Embed button writes YouTube and Vimeo players as `src="//www.youtube.com/embed/…"`, and links can be typed as `//example.com/…`.
 - Symptom before (#9131): the iframe was stored as `src="{path}/www.youtube.com/embed/…"`. The site rendered it right (`/` + `/www…`), but the API gave `https://<site>//www.youtube.com/…` (a 404 path on the site) and a site moved into a folder rendered `/shop//www.youtube.com/…`.
-- Rows saved before the fix keep `{path}/<host>` until they are saved again: the editor opens them as `//<host>` and the next save stores that. No migration step rewrites them.
+- Rows saved before the fix keep `{path}/<host>` until they are saved again: the editor opens them as `//<host>` and the next save stores that. No migration step rewrites them, and none is added (architect, 2026-11-13, asked in #9148): a row is put right by its next save.
 
 ## What else does it read?
 - A list item by item, null as '', a number as its text (what `str_replace()` read). `$` and `\` in the content stay text.

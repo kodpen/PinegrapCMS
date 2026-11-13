@@ -15,6 +15,6 @@ module: image
 - Imagick keeps its own path (`colors`, 256 colours, `ui/image-editor-export.md`).
 
 ## What is left of #9118?
-- JPEG: the image editor encodes at quality 92 by design (`pg_image_editor_export_options()`, the comment above `pg_image_editor_export_edit()`), so a turn of a JPEG saved at about 70 grows 1.5 to 2.6 times; Optimize opens on 92 too. Whether a save may be heavier than the original is open in the PR that took #9118.
+- JPEG: the image editor encodes at quality 92 by design (`pg_image_editor_export_options()`, the comment above `pg_image_editor_export_edit()`), so a turn of a JPEG saved at about 70 grows 1.5 to 2.6 times; Optimize opens on 92 too. Decided, not built: the start quality follows the source (`image-editor-jpeg-start-quality.md`).
 
 Tests: `tests/image_gd_palette_png_test.php`.
