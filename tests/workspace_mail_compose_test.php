@@ -106,7 +106,7 @@ function test_workspace_mail_compose_request()
 		'subject' => 'Offer', 'text' => 'Hello', 'other' => 'ignored'), array(array('name' => 'a.pdf', 'bytes' => '%PDF')));
 
 	pg_assert_same(array('box_id' => 3, 'channel_id' => 12, 'to' => 'a@x.test, b@x.test', 'cc' => '', 'bcc' => '', 'subject' => 'Offer', 'text' => 'Hello',
-		'files' => array(array('name' => 'a.pdf', 'bytes' => '%PDF'))), $mail, 'what ws_mail_send() takes; a list is no text');
+		'files' => array(array('name' => 'a.pdf', 'bytes' => '%PDF')), 'send_anyway' => false), $mail, 'what ws_mail_send() takes; a list is no text');
 	pg_assert_same(0, ws_mail_compose_mail(array(), array())['box_id'], 'nothing asked');
 
 	pg_assert_same(array('ok' => true, 'error' => '', 'files' => array()), ws_mail_compose_files(null), 'no files');

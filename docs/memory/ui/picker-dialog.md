@@ -1,14 +1,14 @@
 ---
 name: picker-dialog
-description: The picker dialog pgPicker.open() (assets/js/pg_picker.js, PK2): what it shows, how a pick is handed back, the keyboard, the phone sheet, the Browse button, what picker.php added for it
+description: The picker dialog pgPicker.open() (assets/js/pg_picker.js, PK2): what it shows, how a pick is handed back, the keyboard, the phone sheet, what picker.php added for it
 module: picker
 ---
 
 ## Where is it and how is it opened?
-- `assets/js/pg_picker.js`, served as `assets/js/pg_picker.min.js` (`pg_js_bundles()`); styles in `backend.src.css` under "The picker dialog". PK2 of `plans/one-picker.md`, PR #8562.
+- `assets/js/pg_picker.js`, served as `assets/js/pg_picker.min.js` (`pg_js_bundles()`); styles in `backend.src.css` under "The picker dialog". PR #8562; the whole picker: `picker-overview.md`.
 - A screen prints `pg_picker_script()` once (the `#pg_picker_config` JSON with the `picker.php` address and `pg_picker_texts()`, then the bundle); it works in markup injected with jQuery, as the Settings cards are.
 - `pgPicker.open({kind, value, title})` returns a promise of the picked item or null, settled once the dialog has closed (`dialog-result-after-close.md`).
-- It opens on All, a stored value too; a typed text (`query`) on its results (`picker-field.md`). `pg_picker_browse_button()` (Browse beside a select) has no caller since PK5; PK10 removes it.
+- It opens on All, a stored value too; a typed text (`query`) on its results (`picker-field.md`).
 
 ## What does it show?
 - All: `picker-all-list-dialog.md`.

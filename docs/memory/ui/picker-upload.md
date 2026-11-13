@@ -5,7 +5,7 @@ module: picker
 ---
 
 ## How does a file get uploaded from the picker?
-- Upload in the bar, Upload File in an empty folder, or files dropped on the pane. They go into the open folder, one POST per file in sequence: `picker.php?kind=&request=upload&folder=` with `token` and `file`. PK3 of `plans/one-picker.md`, PR #8630.
+- Upload in the bar, Upload File in an empty folder, or files dropped on the pane. They go into the open folder, one POST per file in sequence: `picker.php?kind=&request=upload&folder=` with `token` and `file`. PR #8630 (`picker-overview.md`).
 - The server stores it with `pg_file_store_upload()`, the path Upload File uses (image profile, file size limit, name rules), and answers `{item}` as a list item, or `{error}`.
 - The first stored file becomes the pick; with `multiple` every stored file is added. A progress panel names the folder and each file: percent, uploaded, or Not uploaded with the reason.
 

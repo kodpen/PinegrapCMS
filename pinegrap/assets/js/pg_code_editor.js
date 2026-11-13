@@ -160,7 +160,7 @@
             bg: '#181a1e', fg: '#c9d1d9', gutter: '#161b22', gutterFg: '#484f58', border: '#2e333a',
             line: 'rgba(255,255,255,.04)', sel: 'rgba(13,110,253,.28)', match: 'rgba(13,110,253,.18)',
             caret: '#ffffff', tag: '#79c0ff', bracket: '#89b4e8', attr: '#a5c8e1', value: '#a8c97d',
-            content: '#d4a574', comment: '#6a737d', keyword: '#ff7b72', number: '#79c0ff', prop: '#79c0ff',
+            content: '#d4a574', comment: '#8b949e', keyword: '#ff7b72', number: '#79c0ff', prop: '#79c0ff',
             fn: '#d2a8ff', punct: '#8b949e', invalid: '#ff7b72', panel: '#22262b', panelFg: '#c9d1d9'
         } : {
             bg: '#ffffff', fg: '#24292f', gutter: '#f6f8fa', gutterFg: '#8c959f', border: '#d0d7de',

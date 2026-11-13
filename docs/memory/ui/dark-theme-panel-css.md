@@ -23,6 +23,10 @@ description: backend.src.css swept for fixed light fills and dark text after Boo
 - `.ws-preview-frame` (white behind a previewed document: paper), `.ws-preview-video` (black), the toolbar shade, `.pg-preloader`'s `#fff` fallback, white text and lines on accent or dark fills.
 - No other rule reads an undefined v5 neutral; `--bs-secondary-bg*` there are v6 theme names of the secondary colour.
 
+## Why are the rich text editor's dialogs light in dark mode?
+- Only the CKEditor bar, path bar and frame are dark. The dialogs (Link, Image…) and the Format/Styles/Font/Size lists keep the light moono-lisa skin as one surface. The lists open in an iframe that does not load backend.src.css, so a dark title bar alone left a white body under a black bar; that title rule was dropped (#9100).
+- The code editor's dark comment colour is `#8b949e` (GitHub dark), 5.1:1 on the active line; `#6a737d` read 3.27:1 (`tests/editor_dark_contrast_test.php`).
+
 ## What is not covered?
 - Inline `<style>` blocks of panel screens and other stylesheets; the fixed fills and text colours of #2564 (`dark-theme-fixed-fills.md`, `dark-theme-text-colour.md`).
 

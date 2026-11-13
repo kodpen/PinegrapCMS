@@ -53,6 +53,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // and the entries, and nothing is written.
     $waf_secure_mode_entries = array();
 
+    // The unlisted public proxies listed from the Trusted Proxies card's box,
+    // for the log line once the save is written.
+    $waf_unlisted_entries = array();
+
     if (($url_scheme === 'https://') && (URL_SCHEME !== 'https://') && !check_if_request_is_secure()) {
 
         $secure_mode_test_link = '<a class="alert-link" href="https://' . h(HOSTNAME_SETTING) . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/test_secure_mode.php" target="_blank">' . lang('Secure Mode test page') . '</a>';
@@ -274,6 +278,20 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $waf_post_proxies = trim($waf_post_proxies . ',' . implode(',', $waf_secure_mode_entries), ',');
         }
 
+        // The unlisted public proxies the Trusted Proxies card offered, worked
+        // out again here from this request and the recorded findings: the
+        // posted form never names an address to trust.
+        if (post_value('waf_trust_unlisted_proxy') && function_exists('waf_unlisted_proxy_offer')) {
+            $waf_unlisted_offer = waf_unlisted_proxy_offer(
+                waf_unlisted_proxy_finding($_SERVER, waf_proxy_ranges((string) db_value("SELECT waf_trusted_proxies FROM config")), waf_cloudflare_ranges()),
+                waf_unlisted_proxies());
+
+            if ($waf_unlisted_offer) {
+                $waf_post_proxies = trim($waf_post_proxies . ',' . implode(',', $waf_unlisted_offer), ',');
+                $waf_unlisted_entries = array_values($waf_unlisted_offer);
+            }
+        }
+
         if (function_exists('waf_proxy_list_on_save')) {
             $waf_post_proxies = waf_proxy_list_on_save($waf_post_proxies, (string) db_value("SELECT waf_trusted_proxies FROM config"));
         }
@@ -356,6 +374,17 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         log_activity(lang(array(
             'string' => 'Secure Mode was turned on and the proxy at {var:1} was added to Trusted Proxies as {var:2}',
             'vars'   => array(h($secure_mode_peer), h(implode(', ', $waf_secure_mode_entries))))), $_SESSION['sessionusername']);
+    }
+
+    if ($waf_unlisted_entries) {
+        // The dashboard's Unlisted Proxy tile is cached for ten minutes.
+        if (function_exists('pg_system_status_forget')) {
+            pg_system_status_forget();
+        }
+
+        log_activity(lang(array(
+            'string' => 'The proxy {var:1} was added to Trusted Proxies from the unlisted proxy warning',
+            'vars'   => h(implode(', ', $waf_unlisted_entries)))), $_SESSION['sessionusername']);
     }
 
 

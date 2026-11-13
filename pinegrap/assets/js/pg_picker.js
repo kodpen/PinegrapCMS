@@ -28,9 +28,6 @@
  *   pgPicker.open({kind, value: [values], multiple: true}) -> Promise of the
  *   picked items in the order they were picked, or null.
  *
- * A button with data-pg-picker-browse and data-pg-picker-kind opens it for
- * the field named by data-pg-picker-for and writes the pick there.
- *
  * The field (pg_picker_field(), [data-pg-picker-field]) is the second face:
  * a combobox showing the chosen value with its picture, searching the kind
  * as one types (a list of up to eight with pictures, the last row opening
@@ -2632,45 +2629,6 @@
             root.pgUI.dialog.show(picker.root).then(function () { picker.start(); });
         });
     }
-
-    // A Browse button writes the pick into its field: a hooked select gets
-    // the option if it lacks it, then the value through pgCombobox, which
-    // fires the change the screen listens to.
-    function writeField(field, item) {
-        var value = String(item.value);
-        if (field.tagName === 'SELECT') {
-            var found = Array.prototype.some.call(field.options, function (option) { return option.value === value; });
-            if (!found) {
-                var option = el('option', '', item.text);
-                option.value = value;
-                field.appendChild(option);
-            }
-            if (root.pgCombobox) {
-                root.pgCombobox.set(field, value);
-                return;
-            }
-        }
-        field.value = value;
-        field.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-
-    doc.addEventListener('click', function (event) {
-        var trigger = event.target.closest && event.target.closest('[data-pg-picker-browse]');
-        if (!trigger || !root.pgUI) {
-            return;
-        }
-        event.preventDefault();
-        var field = doc.getElementById(trigger.getAttribute('data-pg-picker-for') || '');
-        open({
-            kind: trigger.getAttribute('data-pg-picker-kind'),
-            title: trigger.getAttribute('data-pg-picker-title') || undefined,
-            value: field ? field.value : ''
-        }).then(function (item) {
-            if (item && field) {
-                writeField(field, item);
-            }
-        });
-    });
 
     // ── The field ─────────────────────────────────────────────────────────
     // pg_picker_field() prints the whole field: the posted value in a

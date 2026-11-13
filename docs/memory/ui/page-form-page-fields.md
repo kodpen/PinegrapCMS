@@ -5,7 +5,7 @@ module: forms
 ---
 
 ## Why are they picker fields?
-- `pg_page_form_type_fields()` prints every page type's settings, hidden until the type is chosen: 35 page settings. As selects each listed every page; on a site with ~300 pages Create Page sent ~680 KB of HTML and ~10,000 DOM nodes (#6077). A `<template>` filled them when opened until PK6 of `plans/one-picker.md` (#8782) made them picker fields, which print only the stored page.
+- `pg_page_form_type_fields()` prints every page type's settings, hidden until the type is chosen: 35 page settings. As selects each listed every page; on a site with ~300 pages Create Page sent ~680 KB of HTML and ~10,000 DOM nodes (#6077). A `<template>` filled them when opened until #8782 made them picker fields, which print only the stored page.
 
 ## How is one drawn?
 - `pg_page_form_page_field($name, $value, $types, $label)` in `includes/forms/page_form.php`: with `pg_page_form_picker_fields()` on, `pg_picker_field(pg_picker_page_kind_for($types), $name, $value)`; else a select of `select_page($value, $types)` with "-$label-" first.

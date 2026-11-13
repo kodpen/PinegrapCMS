@@ -49,14 +49,20 @@ if (!defined('PG_INIT_LOADED')) {
 	<?php endif ?>
 	"
 	>
+	<?php
+	// Markup read by Bootstrap 3 and 5.3.8 alike: the input-group-btn
+	// spans lay out Bootstrap 3's table group, the names beside them
+	// (mb-3, form-select, h-100, rounded-*) are 5.3.8's and unknown to 3,
+	// and the icons are inline SVG, so no icon font has to be loaded.
+	?>
 	<div class="row">
 		<?php if ($browse): ?>
 		<div class="col-sm-6">
-			<div class="form-group input-group">
+			<div class="form-group mb-3 input-group">
 				<select
 					id="<?=$page_id?>_browse_field_id"
 					name="<?=$page_id?>_browse_field_id"
-					class="form-control"
+					class="form-control form-select"
 					></select>
 				<span
 					class="browse_toggle input-group-btn"
@@ -67,9 +73,10 @@ if (!defined('PG_INIT_LOADED')) {
 					>
 				<button
 					type="button"
-					class="btn btn-default btn-secondary"
+					class="btn btn-default btn-secondary h-100 rounded-start-0"
+					aria-label="<?=h(lang('Remove Browse'))?>"
 					>
-				<span class="glyphicon glyphicon-minus"></span>
+				<svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" style="vertical-align: -.125em" aria-hidden="true" focusable="false"><path d="M4 8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 4 8"/></svg>
 				</button>
 				</span>
 			</div>
@@ -77,7 +84,7 @@ if (!defined('PG_INIT_LOADED')) {
 		<?php endif ?>
 		<?php if ($search): ?>
 		<div class="col-sm-6">
-			<div class="form-group input-group">
+			<div class="form-group mb-3 input-group">
 				<?php if ($search_advanced): ?>
 				<span
 					class="advanced_toggle input-group-btn"
@@ -85,18 +92,19 @@ if (!defined('PG_INIT_LOADED')) {
 					>
 				<button
 					type="button"
-					class="btn btn-default btn-secondary"
+					class="btn btn-default btn-secondary h-100 rounded-end-0"
+					aria-label="<?=h($search_advanced_expanded ? lang('Remove Advanced Search') : lang('Add Advanced Search'))?>"
 					>
-				<span class="expand_label glyphicon glyphicon-plus"
+				<span class="expand_label"
 					<?php if ($search_advanced_expanded): ?>
 					style="display: none"
 					<?php endif ?>
-					></span>
-				<span class="collapse_label glyphicon glyphicon-minus"
+					><svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" style="vertical-align: -.125em" aria-hidden="true" focusable="false"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg></span>
+				<span class="collapse_label"
 					<?php if (!$search_advanced_expanded): ?>
 					style="display: none"
 					<?php endif ?>
-					></span>
+					><svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" style="vertical-align: -.125em" aria-hidden="true" focusable="false"><path d="M4 8a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7A.5.5 0 0 1 4 8"/></svg></span>
 				</button>
 				</span>
 				<?php endif ?>
@@ -109,25 +117,27 @@ if (!defined('PG_INIT_LOADED')) {
 					placeholder="<?=h($search_label)?>"
 					<?php endif ?>
 					>
-				<span class="input-group-btn">
+				<span class="input-group-btn d-flex">
 				<button
 					type="submit"
 					name="<?=$page_id?>_submit"
-					class="btn btn-default btn-secondary"
+					class="btn btn-default btn-secondary h-100 <?=($query != '') ? 'rounded-0' : 'rounded-start-0'?>"
 					<?php if ($search_label): ?>
 					title="<?=h($search_label)?>"
 					<?php endif ?>
+					aria-label="<?=h(($search_label != '') ? $search_label : lang('Search'))?>"
 					>
-				<span class="glyphicon glyphicon-search"></span>
+				<svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" style="vertical-align: -.125em" aria-hidden="true" focusable="false"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/></svg>
 				</button>
 				<?php if ($query != ''): ?>
 				<button
 					type="submit"
 					name="<?=$page_id?>_simple_clear"
-					class="btn btn-default btn-secondary"
+					class="btn btn-default btn-secondary h-100 rounded-start-0"
 					title="<?=h(lang('Clear'))?>"
+					aria-label="<?=h(lang('Clear'))?>"
 					>
-				<span class="glyphicon glyphicon-remove"></span>
+				<svg width="1em" height="1em" viewBox="0 0 16 16" fill="currentColor" style="vertical-align: -.125em" aria-hidden="true" focusable="false"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/></svg>
 				</button>
 				<?php endif ?>
 				</span>                

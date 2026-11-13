@@ -14,7 +14,7 @@ description: Decisions list, product part 46 (2026-11-12 on): a picture saved ag
 ## How does the Legacy to Bootstrap helper go on after its census? (owner, 2026-11-12, #8942)
 - The plan goes on as written; LB6's twins are the photo background, the slider and the lightbox, no navbar; the theme becomes a palette and a look after the pages are moved; the helper is also tried on a design that is not Bootstrap.
 - Owner (2026-11-12), shown the trial's two pictures and asked 1 (near enough to go on: a yes), 2 (twins: a those three, no navbar), 3 (palette and look: a yes, after the move): "1a, 2a, 3a" and "bazı sitelerde materialize bile olan var bir de bootstrap dışı bir tasarımla da test etmek gerekecek."
-- The architect's, not the owner's words: the Materialize trial is step LB1b, and the map rules, the trial's own `scripts.js` and the compatibility sheet are in `plans/legacy-bootstrap-helper-rules.md`.
+- The architect's, not the owner's words: the Materialize trial is step LB1b, and the map rules, the trial's own `scripts.js` and the compatibility sheet are in `designer/legacy-bootstrap-rules.md`.
 
 ## Is a plan written for the custom layouts' move to Bootstrap 5.3.8? (owner, 2026-11-12, #8942)
 - Yes; done (LL1-LL6, #8968 to #9259), the rules in `designer/legacy-layouts-output-map.md`.

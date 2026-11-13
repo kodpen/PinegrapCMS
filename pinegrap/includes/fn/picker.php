@@ -506,7 +506,10 @@ function pg_picker_files_where($kind, $public_where, $bin_ids, $folders, $folder
     }
 
     if ($types) {
+        // files.type is varchar(4): a .webmanifest is stored as "webm", so
+        // the name's own extension must be one of the types as well.
         $where[] = "(type IN ('" . implode("', '", $types) . "'))";
+        $where[] = '(' . implode(' OR ', array_map(function ($type) { return "(LOWER(name) LIKE '%." . $type . "')"; }, $types)) . ')';
     }
 
     // A public kind without its condition lists nothing.
@@ -1896,20 +1899,6 @@ function pg_picker_config()
         'page_kinds' => $page_kinds,
         'picture_kinds' => $picture_kinds,
         'page_groups' => $groups);
-}
-
-/**
- * The Browse button that opens the picker dialog for a field and writes the
- * pick into it.
- *
- * @param string $kind     a kind of pg_picker_kinds()
- * @param string $field_id the id of the field (a select or an input)
- * @param string $title    the dialog's title
- * @return string
- */
-function pg_picker_browse_button($kind, $field_id, $title)
-{
-    return '<button type="button" class="btn btn-outline theme-secondary pg-picker-browse" data-pg-picker-browse data-pg-picker-kind="' . h($kind) . '" data-pg-picker-for="' . h($field_id) . '" data-pg-picker-title="' . h($title) . '" aria-label="' . h(lang('Browse…') . ': ' . $title) . '"><span class="bi bi-folder2-open" aria-hidden="true"></span><span class="pg-btn-label">' . lang('Browse…') . '</span></button>';
 }
 
 /**

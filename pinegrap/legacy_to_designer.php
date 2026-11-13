@@ -26,6 +26,7 @@ include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_classic.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_move.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/legacy_bootstrap_theme.php');
 
 // The run's short requests (ajax=1) are read by the screen's script as JSON:
 // an ended session, a missing right or a stale token is answered in that
@@ -119,6 +120,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-back-result');
+        exit;
+    }
+    // Towards Bootstrap 5: a trial design's palette and look read from its
+    // Theme file and put on it.
+    if (isset($_POST['bootstrap_theme'])) {
+        $theme_design = (int)($_POST['design'] ?? 0);
+        $theme_result = pg_lbs_theme_make($theme_design, $user);
+        if ($theme_result['ok']) {
+            $liveform->add_notice(h(lang(array('string' => 'The trial design wears the palette {var:1} and the look {var:2}, read from its Theme file.',
+                'vars' => array($theme_result['palette'], $theme_result['look'])))));
+        } else {
+            $liveform->add_error(h($theme_result['error']));
+        }
+        header('Location: ' . PATH . SOFTWARE_DIRECTORY . '/legacy_to_designer.php#ltd-theme-' . $theme_design);
         exit;
     }
     // Towards Bootstrap 5: a Legacy design's pages, all or the chosen ones,
@@ -579,6 +594,7 @@ foreach ($bootstrap_designs as $d) {
         'users' => $trial !== null ? pg_lbs_trial_users($trial['trial']) : 0,
         'running' => $busy,
         'preview' => $preview,
+        'theme' => $trial !== null ? pg_lbs_theme_card_html($d['id'], $trial, pg_design_look_ready() ? db_item("SELECT style_palette AS palette, style_look AS look FROM style WHERE style_id = '" . (int)$trial['trial'] . "' LIMIT 1") : null) : '',
         'move' => $trial !== null ? pg_lbs_move_card_html($d['id'], $trial, pg_lbs_trial_pages($d['id']), pg_lbs_moved_pages($d['id'], $trial['trial']), pg_lbs_move_reports($d['id'], 3), $busy) : '',
     ));
 }

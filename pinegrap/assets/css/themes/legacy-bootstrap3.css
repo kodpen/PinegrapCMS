@@ -12,10 +12,28 @@
  * - a bare `checkbox` not in Bootstrap 3's block shape (an ambiguous name);
  * - the glyphicons right inside a theme widget (`.unchecked`'s tick), kept
  *   so the theme's sheet can lay them over the field.
+ * - the theme sliders made Bootstrap carousels (includes/fn/legacy_bootstrap_twins.php):
+ *   their ul.slides list loses its bullets and indent, and the arrows and
+ *   dots stay above the slide's content, which the theme lifts.
  *
  * Glyphicons are drawn with the Bootstrap Icons font: each icon with a twin
  * in pg_lbs_icon_map() gets that icon's code point, the rest draw nothing.
  */
+
+.carousel-inner.slides {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.carousel-inner.slides > .carousel-item {
+  margin-bottom: 0;
+}
+/* The theme lifts a slide's content (z-index 3) over Bootstrap's controls. */
+.carousel > .carousel-control-prev,
+.carousel > .carousel-control-next,
+.carousel > .carousel-indicators {
+  z-index: 10;
+}
 
 .checkbox {
   position: relative;

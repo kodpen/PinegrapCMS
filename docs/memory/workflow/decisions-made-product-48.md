@@ -7,7 +7,7 @@ description: Decisions list, product part 48 (2026-11-12 on): Legacy to Bootstra
 - `decisions-made.md`; the generated `DECISIONS.md` lists every part's entries.
 
 ## What does the Legacy to Bootstrap helper do on a design that is not Bootstrap 3? (owner, 2026-11-12, #8967)
-- Nothing: the card says that the design does not use Bootstrap 3 and offers no report and no trial design; such a site stays on its Legacy design. Rules `plans/legacy-bootstrap-helper-rules.md`.
+- Nothing: the card says that the design does not use Bootstrap 3 and offers no report and no trial design; such a site stays on its Legacy design. Rules `designer/legacy-bootstrap-rules.md`.
 - Asked with the pictures of the Materialize trial (`designer/legacy-materialize-trial.md`) and three options (nothing; a report only; a second helper with a Materialize map), the owner (2026-11-12): "Ta, Ma" (Ma: nothing).
 - The architect's, not the owner's words: Bootstrap 3 is found by the classic framework sheet's asset row, never by class names.
 
@@ -17,7 +17,7 @@ description: Decisions list, product part 48 (2026-11-12 on): Legacy to Bootstra
 - It replaces the opening on a folder of the screens approved on 2026-11-10 (`decisions-made-product-42.md`, #8514); the rest of those screens stays.
 
 ## What does the designer canvas draw for a bound value, and what of closed blocks? (owner, 2026-11-13, #9076)
-- A realistic sample for every bound value, never its label in ‹…› or an empty box, so the canvas looks like the published page; and the components still drawn as one closed block are listed and opened into editable elements. Plans `plans/designer-canvas-real-samples.md`, `plans/designer-closed-blocks.md`.
+- A realistic sample for every bound value, never its label in ‹…› or an empty box, so the canvas looks like the published page; and the components still drawn as one closed block are listed and opened into editable elements. Done by `designer/canvas-sample-overview.md` (#9179-#9299) and planned in `plans/designer-closed-blocks.md`.
 - Owner (2026-11-13), with a picture of an order e-mail card: "şu anda birçok bileşen yer tutucudan ibaret. bunu bir an önce değiştirmeliyiz. kullanıcılar gerçek sayfa bileşenleri tasarlamayı bekliyor olacak."; asked which of the two, he chose "İkisi de".
 
 ## Do loop bands and condition chips stay on the canvas? (owner, 2026-11-13, #9076)

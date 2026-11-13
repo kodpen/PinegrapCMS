@@ -15415,6 +15415,10 @@ const StyleDesigner = (function () {
         '__field_options_html': function () {
             return '<option>' + esc(_sdT('Navy')) + '</option><option>' + esc(_sdT('Cream')) + '</option>';
         },
+        // A recurring line's frequency choices, the sample's Monthly selected.
+        '__schedule_period_options_html': function () {
+            return '<option>' + esc(_sdT('Weekly')) + '</option><option selected>' + esc(_sdT('Monthly')) + '</option>';
+        },
         // _eo_render_saved_cart_link(): the link back to the saved cart.
         '__saved_cart_link': function () {
             var url = 'https://example.com/cart?r=ABC123XYZ';
@@ -15870,6 +15874,8 @@ const StyleDesigner = (function () {
             __currency_disclaimer: _sdT('Your card is charged in Turkish Lira; the amounts in other currencies are estimates.'),
             // Payment.
             __po_number: 'PO-7781',
+            // The express order form's id, for its hidden inputs.
+            __form_id: 'eo_form',
             // The billing address.
             __billing_name: bill[0] + ' ' + bill[1], __billing_first_name: bill[0], __billing_last_name: bill[1],
             __billing_salutation: _sdT('Ms.'), __billing_company: bill[2], __billing_email: _sdT('sample@example.com'),
@@ -15994,7 +16000,9 @@ const StyleDesigner = (function () {
             __minimum_quantity: '1', __maximum_quantity: '10', __preparation_days: '2', __extra_shipping_cost: _sdMoney(0),
             __vat_rate: '20', __payment_period: _sdT('Monthly'), __number_of_payments: '12',
             __is_free_shipping: '0', __is_gift_card: '0', __is_donation: '0',
-            __empty_message: _sdT('No results found.'), __result_is_featured: '1'
+            __empty_message: _sdT('No results found.'), __result_is_featured: '1',
+            // A product group's row kind in the listing (browse or select).
+            __display_type: 'browse'
         };
         return _sdProductSampleMap;
     }

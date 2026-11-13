@@ -6164,6 +6164,7 @@ function api_error_catalogue() {
 		'method_not_allowed'       => array(405, 'The address exists but not with that verb.'),
 
 		'idempotency_key_reused'   => array(409, 'The same Idempotency-Key was used for a different request.'),
+		'unknown_domain'           => array(409, 'An e-mail address names a domain that does not exist, so the mail would not arrive. Correct the address, or send the same call again with send_anyway true.'),
 		'idempotency_in_progress'  => array(409, 'A request with the same Idempotency-Key is still being carried out. Retry-After says when to send it again; the answer is then the first request\'s.'),
 
 		'file_too_large'           => array(413, 'The upload is over the limit reported by /meta.'),

@@ -13,13 +13,13 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - MA5 (M to L, shaped after MA4) The campaign's content step: edit the design, ready designs, paste HTML, phone preview, a test to oneself.
 - MA6 (M) Templates: e-mail designs, SMS texts and, once `whatsapp-channel-steps.md` reaches WA3, WhatsApp templates in one tab.
 - MA7 (S, done #9200) Channels: e-mail sender, SMS, WhatsApp and İYS as cards with their state, each leading to its settings.
-- MA8 (M) Automatic sends: the flows that send a message, their recipes, the way into the quick setup; shown once AF2 of `automation-flows-menu.md` has landed.
+- MA8 (M) Automatic sends: the flows that send a message, their recipes, the way into the quick setup; the Flows screen opens with the Workspace off since #9154.
 - MA9 Profiles into flows (M2b), MA9a to MA9f, and MA10 Incoming e-mail, MA10a to MA10c: `messages-area-steps-2.md`.
 - MA11 (S) Close-out: the lasting rules into `platform/` and `ui/`, an overview file, this plan deleted.
 
 ## In which order?
 - MA0 first, then MA1; MA2, MA3, MA6, MA7 after MA1 in any order; MA2b after MA2. MA4 may run beside MA1; MA5 after MA4 and MA3.
-- MA8 after AF2; MA10b after MA1, MA10c after MA10b; MA9b and MA9c side by side (AF3 has landed), MA9d after both, MA9e after MA9d and the owner's look at its report, MA9f after MA9e.
+- MA8 at any time; MA10b after MA1, MA10c after MA10b; MA9b and MA9c side by side, MA9d after both, MA9e after MA9d and the owner's look at its report, MA9f after MA9e.
 - Where WhatsApp's card, template list and queue sit follows this area once MA1 has landed; before that they sit beside the SMS ones.
 - Claim as `[plan:messages-area] <step> — <topic>`.
 
