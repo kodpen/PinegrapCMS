@@ -15,7 +15,7 @@ module: messages_area
 
 ## Which old screens sit inside the shell?
 - Campaigns tab: `view_email_campaigns.php` (below). Automatic sends open: My Campaign Profiles.
-- `view_sms_campaigns.php`, `edit_sms_campaign.php` and the four new screens mark row 9 in the active-row map; `mail_queue.php` is a door since MA2b (#9275), out of the active-row map.
+- `view_sms_campaigns.php`, `edit_sms_campaign.php` and the four new screens mark row 9 in the active-row map; `mail_queue.php` is a door since MA2b (#9275); its row 25 case in the map stays, unused.
 - Doors (`validate_user()`, then `go()`, no right of their own): `view_email_campaign_history.php` to `?state=finished`, `view_sms_campaigns.php` to `?channel=sms` (MA3). `mail_queue.php` to the Sends tab with its channel (MA2b). Still to come: profiles (MA9f).
 
 ## What do the new tabs show before their step?
