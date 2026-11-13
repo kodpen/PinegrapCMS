@@ -179,7 +179,7 @@ function ws_step_contact_group_run_contact($owner, $run)
 
         case 'mail':
             $row = db_item("SELECT contact_id, channel_id FROM ws_mail_conversations WHERE id = '" . (int) $id . "'");
-            $channel = is_array($row) ? db_item("SELECT * FROM ws_channels WHERE id = '" . (int) $row['channel_id'] . "'") : null;
+            $channel = is_array($row) ? ws_channel((int) $row['channel_id']) : null;
 
             return (is_array($channel) && ws_can_read_channel(ws_rights_for_id((int) $owner['id']), $channel)) ? (int) $row['contact_id'] : 0;
     }
