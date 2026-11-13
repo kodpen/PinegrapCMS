@@ -558,6 +558,12 @@ function ws_agent_answer_text($text, $requested_by, $plain)
  */
 function ws_agent_knock($agent, $request_id)
 {
+    // A request whose message is being edited is knocked when the hold ends
+    // (edit_hold.php).
+    if (function_exists('ws_edit_hold_request_held') && ws_edit_hold_request_held($request_id)) {
+        return true;
+    }
+
     $now = time();
     $body = ws_agent_knock_body(ws_claude_api_base(), (string) $agent['handle'], (int) $request_id);
     $error = '';
@@ -636,12 +642,17 @@ function ws_agent_knocks_retry()
     $done = true;
     ws_agent_queue_expire();
 
+    if (function_exists('ws_edit_hold_expire')) {
+        ws_edit_hold_expire();
+    }
+
     foreach ((array) db_items("SELECT * FROM ws_agents WHERE kind = 'app' AND status = 'active' AND door_kind = 'push' AND door_failures > 0 LIMIT 20") as $agent) {
         if (((int) $agent['door_last_knock'] + ws_model_hold_seconds((int) $agent['door_failures'])) > time()) {
             continue;
         }
 
-        $request_id = (int) db_value("SELECT id FROM ws_ai_requests WHERE agent = '" . e(ws_agent_request_value($agent)) . "' AND status = 'queued' ORDER BY id DESC LIMIT 1");
+        $request_id = (int) db_value("SELECT id FROM ws_ai_requests WHERE agent = '" . e(ws_agent_request_value($agent)) . "' AND status = 'queued'"
+            . (function_exists('ws_edit_hold_free_sql') ? ws_edit_hold_free_sql() : '') . " ORDER BY id DESC LIMIT 1");
 
         if ($request_id > 0) {
             ws_agent_knock($agent, $request_id);

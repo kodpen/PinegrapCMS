@@ -182,6 +182,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agent_seen();           // 11.0.189
 	upgrade_2026_11_0_ws_canvas_tables();        // 11.0.190
 	upgrade_2026_11_0_ws_wtable_channel();       // 11.0.191
+	upgrade_2026_11_0_ws_edit_hold();            // 11.0.192
 
 }
 
@@ -6132,5 +6133,26 @@ function upgrade_2026_11_0_ws_canvas_tables() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a canvas can name the tables its live page reads or writes; the page reaches no other table.');
+
+}
+
+// The edit hold of an agent's request (11.0.192; includes/workspace/edit_hold.php).
+// ws_ai_requests.held_until is the time until which a request waits because
+// the writer has the edit box of its message open: each beat sets now + 120,
+// save and cancel set 0, every picker reads held_until <= now. Existing rows
+// get 0, so nothing is held after the upgrade.
+function upgrade_2026_11_0_ws_edit_hold() {
+
+	if (!install_table_exists('ws_ai_requests')) {
+
+		install_skipped('ws_ai_requests does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_ai_requests', 'held_until', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: an agent waits while the message that asked it is being edited, and reads the new words when it is saved.');
 
 }

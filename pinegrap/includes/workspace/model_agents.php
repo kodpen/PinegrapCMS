@@ -1099,10 +1099,12 @@ function ws_model_agent_run($agent, $budget)
     ws_model_running($agent);
 
     do {
-        $row = db_item("SELECT * FROM ws_ai_requests WHERE agent = '" . $value . "' AND status IN ('sent', 'running') ORDER BY id LIMIT 1");
+        // A request whose message is being edited waits (edit_hold.php).
+        $free = (function_exists('ws_edit_hold_free_sql') ? ws_edit_hold_free_sql() : '');
+        $row = db_item("SELECT * FROM ws_ai_requests WHERE agent = '" . $value . "' AND status IN ('sent', 'running')" . $free . " ORDER BY id LIMIT 1");
 
         if (!is_array($row)) {
-            $row = db_item("SELECT * FROM ws_ai_requests WHERE agent = '" . $value . "' AND status = 'queued' ORDER BY id LIMIT 1");
+            $row = db_item("SELECT * FROM ws_ai_requests WHERE agent = '" . $value . "' AND status = 'queued'" . $free . " ORDER BY id LIMIT 1");
 
             if (!is_array($row)) {
                 $status = 'idle';

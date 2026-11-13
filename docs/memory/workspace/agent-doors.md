@@ -14,6 +14,7 @@ description: The agents' request queue: wake rules make one ws_ai_requests row p
 - At once for an `app` agent with door `push`: `ws_agent_knock()` POSTs `{"event":"workspace.agent_request","site":<integration.php address>,"agent":<handle>,"request_id":N}`, never the words. With a door secret: `Authorization: Bearer <secret>`, `X-Pinegrap-Timestamp`, `X-Pinegrap-Signature: sha256=hmac(timestamp + "." + body)`. 10 s timeout.
 - A 2xx clears `door_failures` and `door_error`; anything else counts a failure with its sentence, `door_last_knock` the time. `ws_agent_knocks_retry()` (top of `ws_ai_kick()`, so screens and the hourly job) knocks again for the newest queued request once `ws_model_hold_seconds(failures)` has passed (1 min doubling, 1 h at most). The request stays queued for a poll meanwhile.
 - A poll door gets no knock: the agent reads `GET /workspace/agent-requests`.
+- A request whose message is being edited is held (no knock, not listed, `409 editing`): [[agent-edit-hold]].
 
 ## Which routes does an app agent use?
 - `api_agent_requests.php`, `'mcp' => false` (the key used as itself, `ws_api_agent_caller()`: an active `app` row whose `app_id` is the caller, no device): `GET /workspace/agent-requests` (open, or a status, or all), `POST …/{id}/claim` (409 already_claimed / closed; 👀 by the agent's application), `…/answer` (text under the asking message with the asker mentioned, or `no_answer`; written through `ws_assistant_writer()`; 403 when the channel row no longer allows the agent or the asker cannot write there; ✅), `…/fail` (reason told under the message when it can be). Requests are shown as Claude's are (`WorkspaceClaudeRequest`). Everything else the agent does goes through the API's own routes and MCP tools.
@@ -21,5 +22,4 @@ description: The agents' request queue: wake rules make one ws_ai_requests row p
 
 ## What did the live trial show? (dev, 2026-11-10)
 - `@mimar` (application 13, registry id 2, poll door) in channel 25, row mention, tier 1. A mention picked from the @ list (stored `<@app:13>`) and `@mimar` typed as text each made one queued row at once (`agent` `app:2`). Under the message: "Waiting for @mimar". No knock (`door_last_knock` 0). The system line `/wake` writes names `@mimar` and woke nothing.
-- No watchdog closes a queued `app:` request (Claude's and a model assistant's are cancelled after a day): it waits until it is claimed.
 - The routes answered as written here with the agent's own key: `agent-key-trial.md`. Not tried: a knock against a real receiver. How an agent shows: `agent-shown.md`.

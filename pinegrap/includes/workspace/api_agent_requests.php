@@ -45,7 +45,7 @@ function ws_agent_request_api_routes()
             'mcp'         => false,
             'returns'     => array('list' => 'WorkspaceClaudeRequest'),
             'summary'     => 'The requests waiting for the calling agent',
-            'description' => 'A message that woke the agent in a channel (its handle, its wake rule) made one request for it. status open (the default) is what waits to be claimed, oldest first; all is the latest 50 of every state.' . $only,
+            'description' => 'A message that woke the agent in a channel (its handle, its wake rule) made one request for it. status open (the default) is what waits to be claimed, oldest first, leaving out a request whose message the writer is editing now; all is the latest 50 of every state.' . $only,
             'params'      => array(
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'running', 'answered', 'failed', 'cancelled', 'all'), 'default' => 'open'),
             ),
@@ -60,7 +60,7 @@ function ws_agent_request_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Take a request',
-            'description' => 'Marks the request as being worked on and leaves an eye on the message that asked. 409 already_claimed when another run has taken it, 409 closed when it is closed.' . $only,
+            'description' => 'Marks the request as being worked on and leaves an eye on the message that asked. 409 already_claimed when another run has taken it, 409 closed when it is closed, 409 editing while the writer is editing the message that asked (try again in a minute).' . $only,
             'params'      => array($id),
         ),
         array(
@@ -73,7 +73,7 @@ function ws_agent_request_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Answer a request',
-            'description' => 'Writes text under the message that asked, as the application, with the person who asked mentioned, and swaps the eye for a tick. no_answer true closes the request without writing anything (it takes no text). emoji leaves one emoji on the message that asked, with text or with no_answer. Other things the agent does (a task, a poll, a proposal) go through their own routes. 403 when the channel no longer lets the agent answer or the person who asked can no longer write there; 409 closed when the request is closed.' . $only,
+            'description' => 'Writes text under the message that asked, as the application, with the person who asked mentioned, and swaps the eye for a tick. no_answer true closes the request without writing anything (it takes no text). emoji leaves one emoji on the message that asked, with text or with no_answer. Other things the agent does (a task, a poll, a proposal) go through their own routes. 403 when the channel no longer lets the agent answer or the person who asked can no longer write there; 409 closed when the request is closed; 409 editing while the writer is editing the message that asked; 409 edited when it was edited after the claim: the request waits again, claim it and read the new words.' . $only,
             'params'      => array(
                 $id,
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'description' => 'The answer; required unless no_answer is true.'),
@@ -281,7 +281,8 @@ function ws_api_agent_requests_list($params)
     if ($status === 'all') {
         $rows = (array) db_items("SELECT * FROM ws_ai_requests WHERE agent = '" . $value . "' ORDER BY id DESC LIMIT 50");
     } else {
-        $where = ($status === 'open') ? "status IN ('queued', 'sent')" : "status = '" . e($status) . "'";
+        // A request whose message is being edited waits out of the list.
+        $where = ($status === 'open') ? "status IN ('queued', 'sent')" . (function_exists('ws_edit_hold_free_sql') ? ws_edit_hold_free_sql() : '') : "status = '" . e($status) . "'";
         $rows = (array) db_items("SELECT * FROM ws_ai_requests WHERE agent = '" . $value . "' AND " . $where . " ORDER BY id ASC LIMIT 50");
     }
 
@@ -302,6 +303,11 @@ function ws_api_agent_request_claim($params)
 
     if (!in_array($row['status'], array('queued', 'sent'), true)) {
         api_fail(409, 'closed', lang('This request is already closed.'));
+    }
+
+    if (function_exists('ws_edit_hold_is_held') && ws_edit_hold_is_held($row, time())) {
+        $said = ws_edit_hold_refusal_error('held');
+        api_fail(409, $said['code'], $said['error']);
     }
 
     api_dry_run_stop('claimed', 'workspace_agent_request', array('id' => (int) $row['id']));
@@ -326,6 +332,14 @@ function ws_api_agent_request_answer($params)
 
     if (!in_array($row['status'], array('queued', 'sent', 'running'), true)) {
         api_fail(409, 'closed', lang('This request is already closed.'));
+    }
+
+    // Held while the message is edited; edited after the claim, the
+    // request waits again for a claim that reads the new words.
+    if (function_exists('ws_edit_hold_answer_guard')) {
+        ws_edit_hold_answer_guard($row, function () use ($agent, $row) {
+            ws_agent_react((int) $agent['app_id'], (int) $row['message_id'], '👀', false);
+        });
     }
 
     $refused = ws_api_claude_answer_input_refusal('channel', $params);

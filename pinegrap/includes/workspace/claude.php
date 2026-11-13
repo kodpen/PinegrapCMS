@@ -784,7 +784,8 @@ function ws_claude_request_holders($rows, $now)
  */
 function ws_claude_routine_ids()
 {
-    $rows = (array) db_items("SELECT * FROM ws_ai_requests WHERE status = 'queued'" . ws_claude_only());
+    $rows = (array) db_items("SELECT * FROM ws_ai_requests WHERE status = 'queued'" . ws_claude_only()
+        . (function_exists('ws_edit_hold_free_sql') ? ws_edit_hold_free_sql() : ''));
     $ids = array();
 
     foreach (ws_claude_request_holders($rows, time()) as $id => $holder) {
@@ -1307,6 +1308,22 @@ function ws_claude_requests_map($message_ids)
  * @return array status, label, icon, session_url
  */
 function ws_claude_request_state($viewer, $row, $session = false)
+{
+    $state = ws_claude_request_state_own($viewer, $row, $session);
+
+    // While its message is being edited every agent's line says it waits.
+    return function_exists('ws_edit_hold_state') ? ws_edit_hold_state($state, $row, time()) : $state;
+}
+
+/**
+ * Where a request stands in its own agent's words (ws_claude_request_state()).
+ *
+ * @param array $viewer
+ * @param array $row
+ * @param bool  $session
+ * @return array status, label, icon, session_url
+ */
+function ws_claude_request_state_own($viewer, $row, $session = false)
 {
     // A request to Pinegrap AI says where it stands in its own words, and
     // so does one to an MCP server's own agent (mcp_agent.php).

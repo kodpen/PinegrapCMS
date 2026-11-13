@@ -17,7 +17,7 @@ description: Decisions list, workspace part 14 (2026-11-11 on): the channel soun
 - Owner (2026-11-11): "Düzenlerken beklesin, yeni metni okusun (Önerilen)", asked in the architect's window after he raised it there: "bir ajanı andım ama mesajı düzenlemeye başladım bu durumda mesajın düzenlendiğini ajan görse ve yanıt için acele etmese nasıl olur? bu hem ajan kanalı hem de normal kanallardaki ajanlar için".
 - It holds in every channel kind and for every agent kind.
 - Not chosen: only a saved edit counts, with no hold; a short wait on every mention.
-- Why: the request is made at once on send and the brief takes the words from the message when the agent fetches it, so an agent that read before the edit was saved answered the words of before, and nothing told it to wait. Plan step: A10 of `plans/agent-channel-steps-3.md`.
+- Why: the request is made at once on send and the brief takes the words from the message when the agent fetches it, so an agent that read before the edit was saved answered the words of before, and nothing told it to wait. Built in #8869: `workspace/agent-edit-hold.md`.
 
 ## When are the coordinators connected to the agent channel? (owner, 2026-11-11, #8726)
 - Not now. First step A10 (an agent waits during an edit), step A11 (the brief stays bounded) and the push door's knock against a real receiver. Until then the coordinators keep the chain of `coordinator.md` and none is registered as an agent.

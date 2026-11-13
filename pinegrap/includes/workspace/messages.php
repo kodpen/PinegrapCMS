@@ -1759,6 +1759,12 @@ function ws_message_edit($viewer, $message, $body, $as_app = 0)
     }
 
     ws_checks_remap($message['id'], $message['body'], $body);
+
+    // The agents that waited while it was edited read the new words.
+    if (function_exists('ws_edit_hold_release')) {
+        ws_edit_hold_release((int) $message['id'], true);
+    }
+
     ws_message_touch($message['id']);
     ws_checklist_tasks_refresh($message['id']);
 
