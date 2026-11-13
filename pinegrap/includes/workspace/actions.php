@@ -3537,7 +3537,11 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('Sorry, we could not accept your request.'));
             }
 
-            $result = pg_design_ai_ws_action($viewer, substr($action, strlen('ws_ai_design_')), (int) ($request['proposal_id'] ?? 0));
+            // Whatever PHP reports while the page is written stays out of
+            // the answer (pg_error_json_action()).
+            $result = pg_error_json_action(function () use ($viewer, $action, $request) {
+                return pg_design_ai_ws_action($viewer, substr($action, strlen('ws_ai_design_')), (int) ($request['proposal_id'] ?? 0));
+            }, array('ok' => false, 'error' => pg_error_json_action_sentence()));
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
