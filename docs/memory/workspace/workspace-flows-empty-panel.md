@@ -20,6 +20,9 @@ description: The flow window's right panel with no box chosen (FW4, #9228): the 
 ## And the phone's "Add a box"?
 - Both the canvas and the List view show one "Add a box" button (`ui.addBox`, `wsf-add-box`, `md:d-none`) in place of the outline's row of every kind; it opens the left panel as a full-height page (`foldPalette(true)`, `wsf-palette-over`). The List view's own add buttons stay but are hidden on a phone.
 
+## And with no flow open at all (the template gallery, the flow list)?
+There is no right panel: `.wsf-app.wsf-nothing` (clearScreen()) drops `.wsf-side` from the grid and the main column takes the whole width at every size (#9219; it used to keep an empty 19rem / 300px column with the gallery's scrollbar mid-screen).
+
 ## Tests
 - `test_workspace_flows_canvas_live_hint_and_cancel_dialog` pins the hint in `sideFlow()`.
 - Harness (`workspace-flows-canvas-harness.md`): the problems scenario (Problems opens the flow panel, the facts, the rows and "Go to the box"); the phone scenario (the "Add a box" page, List's one button).
