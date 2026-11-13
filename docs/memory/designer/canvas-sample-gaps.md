@@ -18,7 +18,7 @@ description: CS0 census (#9179): what the designer canvas draws for each bound v
 - The heuristic reads parts of a name: "shipping" and "tax" make an address line, a tax number or a yes/no money; "count" makes `__account_title` and `__watcher_count_text` "1"; "number" and "country" make phone numbers, PO numbers and countries "1"; "fee" makes `__a11y_feedback` money.
 - A yes/no value not in `_SD_FLAG_TOKENS` (`__is_new`, `__featured`, `__has_variants`, `__loop_is_first`, `__field_is_info` …) draws its ‹label›, which is not empty: a "Show only when … is empty" on it hides its node in the sample state, a "not empty" shows it.
 - HTML slots outside `_SD_HTML_PREVIEW_TOKENS` (forms, buttons, option lists, filter blocks, `…_html`) draw a ‹label› line where the page draws a control.
-- Every bound picture is the grey `[token]` box (CF4 of `plans/designer-canvas-faults.md` takes the product picture).
+- Every bound picture is a sample photo at the node's box (`canvas-loop-as-published.md`, #9233).
 - Dates outside the short label map draw ‹label›.
 
 ## Which warning frames sit on an element with no fault?

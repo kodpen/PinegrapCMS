@@ -19,4 +19,4 @@ description: Start file for the canvas-sample-* files: how the designer canvas d
 
 ## What is still open?
 - The census per family, cut to what is left: `canvas-sample-gaps.md` (shared causes), `-orders.md`, `-checkout.md`, `-forms.md`, `-catalog.md`, `-account.md`, `-other.md`; deleted at the plan's close-out.
-- Bound pictures are grey `[token]` boxes until CF4 of `plans/designer-canvas-faults.md`.
+- Bound pictures draw the sample photo at the node's box (`canvas-loop-as-published.md`, #9233).
