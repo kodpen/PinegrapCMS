@@ -10871,8 +10871,19 @@
 
             // A form's card under the text is drawn from the submission
             // (includes/workspace/watch.php); it is not part of what was written.
-            Array.prototype.forEach.call(box.querySelectorAll('.ws-form-card'), function (card) {
-                card.parentNode.removeChild(card);
+            // Neither are a mail card's head (sender check, address, status),
+            // its whole text again behind Show all, and the files not taken
+            // in (ws_mail_card_html() in includes/workspace/mail.php).
+            Array.prototype.forEach.call(box.querySelectorAll('.ws-form-card, .ws-mail-card-head, .ws-mail-card details, .ws-mail-card-refused'), function (part) {
+                if (part.parentNode) {
+                    part.parentNode.removeChild(part);
+                }
+            });
+
+            // Blocks read one after another, as they are seen: a mail's
+            // subject and its text are two blocks with nothing between them.
+            Array.prototype.forEach.call(box.querySelectorAll('div, p, li, h1, h2, h3, h4, h5, h6, blockquote, pre, tr, td, th'), function (block) {
+                block.appendChild(document.createTextNode(' '));
             });
 
             var text = (box.textContent || '').replace(/\s+/g, ' ').trim();

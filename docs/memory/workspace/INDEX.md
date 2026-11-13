@@ -45,6 +45,7 @@
 - claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable [decision: here]
 - contact-group-joined-event.md: Flow event contact_group.joined: one ws_events_in row per contact added to a group, from pg_announce_contact_group_members(); payload, group filter kept as status, outputs [decision: decisions-made-product-27.md]
 - mail-api.md: Workspace e-mail in the external API and MCP (api_mail.php, G7, WM8 #8737): routes, list filters, unread, send_state, which are tools, who may answer or send, errors, the webhook
+- mail-card-quote.md: What a reply's quote line says of a mail card in a channel (plain() and quoteText() in workspace.js): the head, Show all and refused files left out, blocks read apart (#9011)
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)
 - mail-compose.md: New e-mail in the Workspace (WM5, #8719): the form and its fields, where it opens, the panel actions, who may send, the unsent form kept in the browser, a mailbox's Signature and where it goes
 - mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP chosen (#2444) and when a push endpoint (G9) would come, the eleven answers and their files, defaults, scope, PRs, what stays unverified [decision: decisions-made-product-10.md, decisions-made-workspace-13.md, decisions-made-workspace-17.md, decisions-made-workspace-21.md]
@@ -62,6 +63,7 @@
 - mail-reply.md: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc, Bcc, files, Reply to all, the drawer, route, headers and subject, the API's answer sent at once
 - mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test [decision: decisions-made-workspace-17.md]
 - mail-routing.md: Routing incoming Workspace e-mail (G6, mail_route.php): box routes by address or +tag to a channel, recipients read, the known customer's line in their channels
+- mail-screen-pane-wrap.md: Long file names and addresses without spaces wrap inside a mail of the E-mails reading pane (text-break on each mail, #9009)
 - mail-screen-pane.md: The Workspace E-mails reading pane (mail_pane.php) and the per-person unread marks (mail_reads.php): the unread rule, the floor, where marks are written, the menu count
 - mail-send-outcome.md: How the queue's outcome reaches a Workspace mail (ws_mail_send_outcome(), #8646): sent is final, only the current attempt fails it, the unwritten row id race, a deleted queue row
 - mail-send.md: Sending Workspace mail through the mail queue (mail_send.php, WM3 #8646): functions, the flow, send states and the card, Send again, limits, mail_unsent, the outcome handler's rules [decision: decisions-made-workspace-13.md]
@@ -69,6 +71,7 @@
 - mail-status.md: State of a Workspace e-mail conversation (G5a, G5b, mail_status.php): open/waiting/closed, the holder, the first-response target, the card's controls, the automatic answer
 - mail-tables-sending.md: What step 11.0.185 (WM2, #8634) adds for sending and reading Workspace mail: ws_mail_items bcc_list, send_state, send_error, outbox_id and table ws_mail_reads; types and why [decision: decisions-made-workspace-13.md]
 - mail-tables.md: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why [decision: decisions-made-schema-2.md]
+- mail-threading.md: Which conversation an incoming mail joins (ws_mail_find_conversation()): threading headers, only for a sender who took part, then the subject tag; why a stranger's reply opens its own (#9012)
 - mail-triage.md: Pinegrap AI's one suggestion on a new e-mail conversation (G8, PR #3787, decision #3744 a): the per-box switch, when it runs, the prompt, the message and its draft, what it never does [decision: decisions-made-product-10.md]
 - model-assistant-channel-rule.md: Where a model assistant is asked (its own ws_channel_agents row; a channel closed to Pinegrap AI on purpose keeps it out too) and how the shared loop's failure sentences name it (PR #8413) [decision: decisions-made-workspace-9.md]
 - model-assistant-site-log.md: The Site Log line of a model assistant's answer: "@handle answered a request in #channel (its name)" through ws_ai_log_answered() and ws_ai_log_line(); Pinegrap AI's own lines unchanged (#8454)

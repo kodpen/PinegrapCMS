@@ -83,4 +83,16 @@ function test_settings_page_puts_typed_values_back()
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
 
 	pg_assert_contains('window.pgSettingsRestore = function (form, data)', $js);
+
+	// A card's drawer (a mailbox, a department) sits outside the form and
+	// joins its fields by their form attribute: they are marked through
+	// form.elements, and the shut drawer holding the first one opens.
+	$start = strpos($js, 'window.pgSettingsRestore = function (form, data)');
+	$restore = substr($js, $start, strpos($js, "\n};\n", $start) - $start);
+
+	pg_assert_contains('var controls = Array.prototype.filter.call(form.elements,', $restore, 'marks reach a drawer\'s fields');
+	pg_assert_true(strpos($restore, 'form.querySelectorAll(') === false, 'not only the form\'s descendants');
+	pg_assert_contains("control.closest('dialog.drawer')", $restore);
+	pg_assert_contains('window.pgUI.drawer.show(drawer).then(function () {', $restore, 'the drawer opens, then the field is focused');
+	pg_assert_contains("\$(document).on('change input', '[data-pg-set-marked]'", $restore, 'a drawer field loses its mark once edited');
 }

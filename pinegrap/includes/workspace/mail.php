@@ -727,8 +727,14 @@ function ws_mail_eml_sweep($limit = 500)
 
 /**
  * The conversation of a box that a mail answers: the one holding a mail it
- * names by Message-ID (ours or the customer's), else the one its subject tag
- * names when that conversation is with the same sender.
+ * names by Message-ID (ours or the customer's), the newest such mail first,
+ * when the sender took part in it (ws_mail_sender_took_part()); else the one
+ * its subject tag names when that conversation is with the same sender.
+ *
+ * A Message-ID is known to everyone the mail reached, and an answer from
+ * the conversation goes to its customer: a stranger's mail let in by its
+ * threading headers would have the team answer the wrong person. It opens a
+ * conversation of its own instead.
  *
  * @param array  $box
  * @param array  $parsed pg_mail_parse()
@@ -743,19 +749,31 @@ function ws_mail_find_conversation($box, $parsed, $from_email)
         $hashes[] = "'" . e(ws_mail_hash($id, '')) . "'";
     }
 
-    $conversation_id = 0;
+    $conversation_ids = array();
 
     if ($hashes) {
-        $conversation_id = (int) db_value("SELECT conversation_id FROM ws_mail_items
+        $conversation_ids = array_values(array_unique(array_map('intval', db_values("SELECT conversation_id FROM ws_mail_items
             WHERE box_id = '" . (int) $box['id'] . "' AND rfc_message_hash IN (" . implode(',', $hashes) . ") AND conversation_id > 0
             ORDER BY id DESC
-            LIMIT 1");
+            LIMIT 30"))));
     }
 
-    if ($conversation_id > 0) {
+    // Bcc came with the send state (11.0.185).
+    $columns = 'from_email, to_list, cc_list' . (pg_schema_has('ws_mail_items', 'bcc_list') ? ', bcc_list' : '');
+
+    foreach (array_slice($conversation_ids, 0, 5) as $conversation_id) {
         $row = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . $conversation_id . "' AND box_id = '" . (int) $box['id'] . "'");
 
-        if (is_array($row) && $row) {
+        if (!is_array($row) || !$row) {
+            continue;
+        }
+
+        // The customer is let in without reading the mails; anyone else by
+        // the newest 200 of them.
+        $mails = ws_mail_sender_took_part($from_email, (string) $row['customer_email'], array()) ? array()
+            : db_items("SELECT " . $columns . " FROM ws_mail_items WHERE conversation_id = '" . $conversation_id . "' ORDER BY id DESC LIMIT 200");
+
+        if (ws_mail_sender_took_part($from_email, (string) $row['customer_email'], (array) $mails)) {
             return $row;
         }
     }
@@ -772,6 +790,43 @@ function ws_mail_find_conversation($box, $parsed, $from_email)
     }
 
     return null;
+}
+
+/**
+ * Whether a sender took part in a conversation: its customer, or an address
+ * one of its mails came from or went to (From, To, Cc, Bcc), such as a
+ * colleague the customer copied or one an answer was copied to. Pure.
+ *
+ * @param string  $from_email
+ * @param string  $customer_email the conversation's
+ * @param array[] $mails          ws_mail_items rows of the conversation
+ *                                (from_email, to_list, cc_list, bcc_list)
+ * @return bool
+ */
+function ws_mail_sender_took_part($from_email, $customer_email, $mails)
+{
+    $from = strtolower(trim((string) $from_email));
+
+    if ($from === '') {
+        return false;
+    }
+
+    if ($from === strtolower(trim((string) $customer_email))) {
+        return true;
+    }
+
+    foreach ((array) $mails as $mail) {
+        foreach (array('from_email', 'to_list', 'cc_list', 'bcc_list') as $key) {
+            $list = is_array($mail) ? (string) ($mail[$key] ?? '') : '';
+
+            if (($list !== '') && preg_match_all('/[^\s,;<>"\']+@[^\s,;<>"\']+/', $list, $found)
+                && in_array($from, array_map('strtolower', $found[0]), true)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -1162,7 +1217,10 @@ function ws_mail_sender($item, $people = null)
  * the subject on the conversation's card, the text as plain text (never as
  * HTML or Workspace markup), the whole text behind "Show all" when the
  * message holds less, and the attachments that were not taken in. A message
- * that only carries an attachment shows nothing of its own.
+ * that only carries an attachment shows nothing of its own. A reply's quote
+ * of the card (plain() in workspace.js) leaves out the head
+ * (.ws-mail-card-head), Show all and the files not taken in
+ * (.ws-mail-card-refused).
  *
  * @param array      $row  ws_messages row
  * @param array|null $item ws_mail_items_map() entry
@@ -1187,7 +1245,7 @@ function ws_mail_card_html($row, $item)
     // receiving server's words.
     if (ws_mail_item_is_bounce($item)) {
         return '<div class="ws-mail-card">'
-            . '<div class="small fg-secondary mb-1"><span class="badge theme-danger"><i class="bi bi-envelope-x me-1" aria-hidden="true"></i>' . h(lang('Not delivered')) . '</span>'
+            . '<div class="ws-mail-card-head small fg-secondary mb-1"><span class="badge theme-danger"><i class="bi bi-envelope-x me-1" aria-hidden="true"></i>' . h(lang('Not delivered')) . '</span>'
             . ' <span class="ms-1">' . h(lang(array('string' => 'To {var:1}', 'vars' => (string) $item['to_list']))) . '</span></div>'
             . '<div>' . h(lang('The answer did not reach the customer; the receiving server said:')) . '</div>'
             . '<div class="small font-monospace mt-1">' . nl2br(h(((string) $item['body_text'] !== '') ? (string) $item['body_text'] : lang('No reason was given.')), false) . '</div>'
@@ -1207,7 +1265,7 @@ function ws_mail_card_html($row, $item)
 
     // An answer names whom it went to; a mail, who sent it.
     $html = '<div class="ws-mail-card">'
-        . '<div class="small fg-secondary mb-1">' . $badge . ' <span class="ms-1">'
+        . '<div class="ws-mail-card-head small fg-secondary mb-1">' . $badge . ' <span class="ms-1">'
         . h($out ? lang(array('string' => 'To {var:1}', 'vars' => (string) $item['to_list'])) : (string) $item['from_email']) . '</span>'
         . (($card && function_exists('ws_mail_status_html'))
             ? ws_mail_status_html($conversation, ((int) ($conversation['assignee_id'] ?? 0) > 0) ? ws_person_name((int) $conversation['assignee_id']) : '',
@@ -1231,7 +1289,7 @@ function ws_mail_card_html($row, $item)
     $refused = array_filter(explode("\n", (string) $item['refused_files']), 'strlen');
 
     if ($refused) {
-        $html .= '<div class="small fg-secondary mt-1"><i class="bi bi-paperclip me-1" aria-hidden="true"></i>'
+        $html .= '<div class="ws-mail-card-refused small fg-secondary mt-1"><i class="bi bi-paperclip me-1" aria-hidden="true"></i>'
             . h(lang(array('string' => 'Not taken in: {var:1}', 'vars' => implode(', ', $refused)))) . '</div>';
     }
 

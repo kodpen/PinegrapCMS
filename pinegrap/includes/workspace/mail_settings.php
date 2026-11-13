@@ -67,6 +67,31 @@ function ws_mail_providers()
 }
 
 /**
+ * The port a box's form shows: the stored one, else the chosen service's
+ * (993 for IMAP, 587 for SMTP without one). A box saved without a sending
+ * server stores port 0; drawn as 0 under the field's min="1", the browser
+ * refused every later save of the drawer, the field hidden or not.
+ *
+ * @param mixed  $stored   ws_mail_box_settings()' port or smtp_port
+ * @param string $provider ws_mail_providers() key, '' for none
+ * @param string $key      port | smtp_port
+ * @return int
+ */
+function ws_mail_box_port_shown($stored, $provider, $key)
+{
+    $stored = (int) $stored;
+
+    if (($stored >= 1) && ($stored <= 65535)) {
+        return $stored;
+    }
+
+    $providers = ws_mail_providers();
+    $key = ($key === 'smtp_port') ? 'smtp_port' : 'port';
+
+    return isset($providers[(string) $provider][$key]) ? (int) $providers[(string) $provider][$key] : (($key === 'smtp_port') ? 587 : 993);
+}
+
+/**
  * A mailbox form as posted, checked and cleaned. Pure: whether the channel
  * may be chosen, and who reads a box kept in no channel
  * (ws_mail_room_input()), is asked by the caller. A chosen provider fills an
@@ -969,7 +994,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 </div>
                 <div class="md:col-3">
                     <label class="form-label" for="' . $prefix . 'port">' . h(lang('Port')) . '</label>
-                    <input class="form-control form-control-sm" type="number" name="port" id="' . $prefix . 'port" min="1" max="65535" value="' . (int) ($settings['port'] ?? 993) . '">
+                    <input class="form-control form-control-sm" type="number" name="port" id="' . $prefix . 'port" min="1" max="65535" value="' . ws_mail_box_port_shown($settings['port'] ?? 0, $provider, 'port') . '">
                 </div>
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'user">' . h(lang('User name')) . '</label>
@@ -1016,7 +1041,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 </div>
                 <div class="md:col-3' . (($via === 'box') ? '' : ' d-none') . '" data-ws-mail-when="reply_via=box">
                     <label class="form-label" for="' . $prefix . 'smtp_port">' . h(lang('Port')) . '</label>
-                    <input class="form-control form-control-sm" type="number" name="smtp_port" id="' . $prefix . 'smtp_port" min="1" max="65535" value="' . (int) ($settings['smtp_port'] ?? 587) . '">
+                    <input class="form-control form-control-sm" type="number" name="smtp_port" id="' . $prefix . 'smtp_port" min="1" max="65535" value="' . ws_mail_box_port_shown($settings['smtp_port'] ?? 0, $provider, 'smtp_port') . '">
                 </div>
                 <div class="md:col-8">
                     <div class="form-field mt-2">

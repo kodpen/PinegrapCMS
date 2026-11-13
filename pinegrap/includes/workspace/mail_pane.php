@@ -207,7 +207,10 @@ function ws_mail_pane_item_html($item, $base = '')
     $lines = array('To' => lang('To'), 'Cc' => lang('Cc'));
     $lists = array('To' => (string) $item['to_list'], 'Cc' => (string) $item['cc_list']);
 
-    $html = '<article class="ws-mail-item ' . ($out ? 'ws-mail-out' : 'ws-mail-in') . '">'
+    // text-break: a name or address without spaces (an attachment's
+    // generated file name, a long address) wraps inside the mail instead of
+    // widening the pane, as the mail's text does (.ws-mail-text).
+    $html = '<article class="ws-mail-item ' . ($out ? 'ws-mail-out' : 'ws-mail-in') . ' text-break">'
         . '<div class="ws-mail-item-head"><span class="fw-semibold">' . h($name) . '</span>'
         . (($name !== (string) $item['from_email']) ? ' <span class="small fg-secondary">' . h('<' . (string) $item['from_email'] . '>') . '</span>' : '')
         . '<span class="ws-mail-time small fg-secondary">' . h(ws_time_label($time)) . '</span></div>';

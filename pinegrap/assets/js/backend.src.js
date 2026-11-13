@@ -13646,8 +13646,9 @@ window.pgConfirmTicked = function (form) {
 /**
  * A settings page after a save the server refused: what was typed is put back
  * over the cards, which were drawn from storage, and the refused fields are
- * marked with their sentence, the first one focused. The settings dialog never
- * redraws a refused pane, so only the page needs this.
+ * marked with their sentence, the first one focused, its drawer opened when
+ * it sits in one. The settings dialog never redraws a refused pane, so only
+ * the page needs this.
  *
  * @param {HTMLFormElement} form
  * @param {{values: ?Object<string, string[]>, fields: Object<string, string>}} data
@@ -13737,40 +13738,65 @@ window.pgSettingsRestore = function (form, data) {
     }
 
     var fields = data.fields || {};
-    var esc = (window.CSS && CSS.escape) ? CSS.escape : function (text) { return String(text).replace(/["\\]/g, '\\$&'); };
     var first = null;
+
+    // form.elements, not the form's descendants: a card's drawer (a mailbox,
+    // a department) sits outside the form and joins its fields to it by
+    // their form attribute, so a search inside the form never found them.
+    var controls = Array.prototype.filter.call(form.elements, function (control) {
+        return control.name && /^(INPUT|SELECT|TEXTAREA)$/.test(control.tagName) && (control.type !== 'hidden');
+    });
+
+    // The shut drawer a control sits in; null when it is in none or in an
+    // open one.
+    var shutDrawer = function (control) {
+        var drawer = control.closest ? control.closest('dialog.drawer') : null;
+
+        return (drawer && !drawer.open) ? drawer : null;
+    };
 
     Object.keys(fields).forEach(function (name) {
 
-        var found = form.querySelectorAll('[name="' + esc(name) + '"], [name="' + esc(name + '[]') + '"], [name^="' + esc(name + '[') + '"]');
+        for (var i = 0; i < controls.length; i++) {
 
-        for (var i = 0; i < found.length; i++) {
+            var own = controls[i].name;
 
-            if (found[i].type === 'hidden') {
+            if ((own !== name) && (own !== name + '[]') && (own.indexOf(name + '[') !== 0)) {
                 continue;
             }
 
-            found[i].setAttribute('data-pg-set-marked', '');
+            controls[i].setAttribute('data-pg-set-marked', '');
 
             if (typeof window.pgFieldInvalid === 'function') {
-                window.pgFieldInvalid(found[i], true, fields[name]);
+                window.pgFieldInvalid(controls[i], true, fields[name]);
             }
 
-            if (!first && !found[i].disabled && found[i].getClientRects().length) {
-                first = found[i];
+            if (!first && !controls[i].disabled && (controls[i].getClientRects().length || shutDrawer(controls[i]))) {
+                first = controls[i];
             }
 
             break;
         }
     });
 
-    // A marked field loses the mark once it is edited.
-    $(form).on('change input', '[data-pg-set-marked]', function () {
+    // A marked field loses the mark once it is edited; listened for on the
+    // document, as a drawer's field is outside the form.
+    $(document).on('change input', '[data-pg-set-marked]', function () {
         this.removeAttribute('data-pg-set-marked');
         window.pgFieldInvalid(this, false);
     });
 
-    if (first) {
+    // The page loads with every drawer shut: one holding the refused field
+    // opens again, so the mark and its sentence are seen where it was typed.
+    var drawer = first ? shutDrawer(first) : null;
+
+    if (drawer && window.pgUI && window.pgUI.drawer) {
+        window.pgUI.ready(function () {
+            window.pgUI.drawer.show(drawer).then(function () {
+                first.focus();
+            });
+        });
+    } else if (first) {
         first.focus();
     }
 };

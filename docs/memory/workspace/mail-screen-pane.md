@@ -10,6 +10,8 @@ description: The Workspace E-mails reading pane (mail_pane.php) and the per-pers
 - The open conversation stays in the address (`?conversation=`), so a reload or a shared link opens it again. Below 768 px the pane takes the list's place.
 - For that address the server draws the pane (WM10, #8796): `ws_mail_pane_open()` (read mark, Forward offers) before the list and the menu count, `ws_mail_pane_page_html()` with a Close link back to the list (`data-ws-mail-close`), or "This conversation cannot be opened.". The script reads it again for its tools without a loading line; the panel action `ws_mail_pane` opens it the same way.
 
+- Long names wrap: `mail-screen-pane-wrap.md`.
+
 ## What can be done in it?
 - Close, and for whoever may answer (`ws_mail_can_answer()`, `ws_mail_pane_tools()`): Reply, which opens the same drawer as the card's Reply by e-mail (`replyForm()`, `workspace/mail-reply.md`), Reply to all when the last mail named others (WM7), and the status and holder controls (`ws_mail_state_offer()`, `workspace/mail-status.md`). After a change the pane is drawn again; focus that was in it (or fell to the page) goes to its heading (#8779).
 - Forward under each mail (WM6, `mail-forward.md`). New e-mail is the toolbar's, not the pane's (`mail-compose.md`). Send again (#8646) is on the card only; no step brings it to the pane yet.

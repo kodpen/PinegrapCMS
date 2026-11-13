@@ -268,6 +268,44 @@ function test_workspace_mail_box_form_sending_fields()
 	pg_assert_contains('name="smtp_port" id="ws_mail_3_smtp_port" min="1" max="65535" value="465"', $html);
 }
 
+function test_workspace_mail_box_form_never_draws_port_0()
+{
+	// An .eml-only box: no sending server, so its SMTP port was stored as 0
+	// and min="1" refused every later save of the drawer.
+	$box = array('id' => 2, 'name' => 'pg-test', 'address' => 'pg-test@example.com', 'channel_id' => 4, 'folder' => 'INBOX', 'after_fetch' => 'seen', 'enabled' => 1, 'reply_via' => 'box',
+		'settings' => json_encode(array('host' => '', 'port' => 993, 'smtp_host' => '', 'smtp_port' => 0)));
+	$html = ws_mail_box_form('workspace_settings.php', $box, array());
+
+	pg_assert_contains('name="smtp_port" id="ws_mail_2_smtp_port" min="1" max="65535" value="587"', $html, 'the usual port in place of 0');
+	pg_assert_contains('name="port" id="ws_mail_2_port" min="1" max="65535" value="993"', $html);
+
+	pg_assert_same(465, ws_mail_box_port_shown(465, '', 'smtp_port'), 'a stored port stays');
+	pg_assert_same(465, ws_mail_box_port_shown(0, 'gmail', 'smtp_port'), 'the chosen service\'s');
+	pg_assert_same(587, ws_mail_box_port_shown(0, 'microsoft', 'smtp_port'), 'a service answering through its account');
+	pg_assert_same(587, ws_mail_box_port_shown('', 'nope', 'smtp_port'), 'an unknown service');
+	pg_assert_same(993, ws_mail_box_port_shown(0, '', 'port'), 'IMAP');
+	pg_assert_same(993, ws_mail_box_port_shown(70000, '', 'port'), 'out of range');
+
+	pg_assert_true(ws_mail_box_input(array('name' => 'pg-test', 'address' => 'pg-test@example.com', 'channel_id' => 4, 'smtp_port' => '587'))['ok'],
+		'the drawn port is posted and ignored without a sending server');
+}
+
+function test_workspace_mail_card_parts_a_quote_leaves_out()
+{
+	$item = workspace_mail_card_test_item(array('auth' => 'none', 'body_text' => 'full text here', 'refused_files' => 'setup.exe'));
+	$html = ws_mail_card_html(array('id' => 100, 'file_id' => 0, 'body' => 'full…'), $item);
+
+	pg_assert_contains('<div class="ws-mail-card-head small fg-secondary mb-1"><span class="badge theme-warning">', $html, 'the head: the sender check, the address, the status');
+	pg_assert_contains('<div class="ws-mail-card-refused small fg-secondary mt-1">', $html, 'the files not taken in');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$start = strpos($js, 'plain: function (markup) {');
+	$plain = substr($js, $start, strpos($js, 'quoteText: function', $start) - $start);
+
+	pg_assert_contains("'.ws-form-card, .ws-mail-card-head, .ws-mail-card details, .ws-mail-card-refused'", $plain, 'a reply\'s quote leaves them out');
+	pg_assert_contains("block.appendChild(document.createTextNode(' '));", $plain, 'the subject and the text are read apart');
+}
+
 function test_workspace_mail_sent_answer_is_drawn_as_sent()
 {
 	$item = workspace_mail_card_test_item(array('direction' => 'out', 'user_id' => 5, 'from_email' => 'support@shop.test', 'to_list' => 'ayse@example.com', 'auth' => 'pass'));
