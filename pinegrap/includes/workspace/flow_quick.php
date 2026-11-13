@@ -240,12 +240,15 @@ function ws_flow_quick_recipes($fill)
             $task(lang('Handle {{record_title}}'), 1, 'normal'),
             $tell('{{event}}: {{record}}'),
         )),
-        // The approval needs a channel to be asked in; the dialog asks it
-        // with the step's own settings.
-        $recipe('approve_first', lang('Ask for approval, then open a task'), 'bi-person-check', array('record'), array(
+        // The approval needs a channel to be asked in and the change the
+        // order's new status; the dialog asks both with the steps' own
+        // settings. The change box changes the order that started the run.
+        $recipe('approve_order', lang('Ask for approval on a big order'), 'bi-person-check', array('event:order.created'), array(
             array('kind' => 'approval', 'config' => array('channel_id' => 0, 'title' => lang('Go ahead with {{record_title}}?'), 'text' => '{{record}}',
                 'approvers' => array($me), 'rule' => 'any', 'closes_in' => 48)),
-            $task(lang('Go ahead with {{record_title}}'), 1, 'high'),
+            array('kind' => 'change', 'config' => array('record' => 'order', 'action' => 'update', 'id' => '{{trigger.record_id}}',
+                'fields' => array('status' => ''))),
+            $mail(lang('Your order is approved'), lang('Hello {{customer}},') . "\n\n" . lang('We have checked your order {{record_title}} and are preparing it now.')),
         )),
         $recipe('form_reply', lang('Confirm to the sender, open a task'), 'bi-ui-checks', array('event:form.submitted'), array(
             $mail(lang('We received your message'), lang('Hello,') . "\n\n" . lang('Thank you for writing to us. We received your message and will answer soon.')),

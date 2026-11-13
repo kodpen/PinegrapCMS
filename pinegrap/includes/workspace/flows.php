@@ -3572,7 +3572,7 @@ function ws_flow_js_strings()
         'fl_cond_value'       => lang('Value'),
         'fl_cond_value_pick'  => lang('Choose a value'),
         'fl_cond_within_help' => lang('A number of days.'),
-        'fl_cond_id_help'     => lang('The number of the record, as its page or the record drawer shows it. It is checked with your rights as you publish and again each time the box runs.'),
+        'fl_cond_id_help'     => lang('The record\'s number, or one value, such as {{trigger.record_id}} for the record that started the run. It is checked with your rights as you publish and again each time the box runs.'),
         'fl_cond_hidden'      => lang('Which record, and the value it is compared with, are shown only to whoever may change the flow.'),
         'fl_change_pick'      => lang('Choose a kind of record'),
         'fl_change_none'      => lang('No record chosen'),

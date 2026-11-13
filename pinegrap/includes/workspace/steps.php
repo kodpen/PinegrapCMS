@@ -132,7 +132,8 @@ function ws_step_kinds()
         'report'    => array('label' => lang('Send a summary of counts'), 'type' => 'report', 'texts' => array('title'), 'lines' => array('title'), 'outputs' => $message),
         'checkin'   => array('label' => lang('Ask for a check-in'), 'type' => 'checkin', 'texts' => array('question'), 'lines' => array('question'), 'outputs' => $message),
         'start_action' => array('label' => lang('Start a scheduled action'), 'type' => 'trigger', 'texts' => array(), 'lines' => array(), 'outputs' => array()),
-        'change'    => array('label' => lang('Change a record'), 'type' => 'change', 'texts' => array(), 'lines' => array(),
+        // Its record is a number or one value of the run (ws_step_change_id()).
+        'change'    => array('label' => lang('Change a record'), 'type' => 'change', 'texts' => array('id'), 'lines' => array('id'),
             'outputs' => array($number('record_id', lang('Record')))),
         'lead'      => array('label' => lang('Bring a customer into a channel'), 'type' => 'lead', 'texts' => array(), 'lines' => array(),
             'outputs' => array($number('channel_id', lang('Channel')))),
@@ -564,7 +565,7 @@ function ws_step_config_normalize($kind, $config)
             return array(
                 'record'     => (string) preg_replace('/[^a-z_]/', '', strtolower(ws_flow_token($config['record'] ?? '', 32))),
                 'action'     => $verb,
-                'id'         => $number($config['id'] ?? 0),
+                'id'         => ws_step_change_id_setting($config['id'] ?? 0),
                 'fields'     => $fields,
                 'channel_id' => $number($config['channel_id'] ?? 0),
                 'closes_in'  => (is_bool($closes_in) || !is_numeric($closes_in)) ? '' : max(1, min(WS_STEP_APPROVAL_CLOSES_MAX, (int) $closes_in)),
@@ -763,7 +764,11 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
                 $problems[] = lang(array('string' => 'The box {var:1} needs the kind of record it changes.', 'vars' => $name));
             }
 
-            if ((int) $config['id'] <= 0) {
+            if (is_string($config['id'])) {
+                if (!ws_step_row_names_row($config['id'])) {
+                    $problems[] = lang(array('string' => 'The box {var:1} names the record it changes by its number or by one value, such as {{trigger.record_id}}.', 'vars' => $name));
+                }
+            } elseif ((int) $config['id'] <= 0) {
                 $problems[] = lang(array('string' => 'The box {var:1} needs the record it changes.', 'vars' => $name));
             }
 
@@ -944,7 +949,11 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
         return ws_step_agent_check($viewer, $config);
     }
 
-    $check = ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined);
+    // A change box whose record is a value of its run names no record
+    // until it runs: the rest of the change is checked now, the record as
+    // the box runs (ws_step_change_id()).
+    $later = ($kind === 'change') && is_string($config['id'] ?? null);
+    $check = ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined, $later);
 
     // A role-3 member's change box proposes its change: the change is the
     // one they may make, and they must be able to ask in its channel.
@@ -1975,6 +1984,19 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $config['to'] = $person['email'];
     }
 
+    // A change box's record named by a value of the run is read now; the
+    // change is then checked on that record as on one named by its number.
+    if (($kind === 'change') && is_string($config['id'] ?? null)) {
+        $config['id'] = ws_step_change_id($config['id'], ws_step_run_values($run, $graph, $owner, ws_flow_run_context($run), $step));
+
+        if ($config['id'] <= 0) {
+            $end = ws_step_settlement(false, $routed);
+            ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], ws_step_change_id_refusal());
+
+            return;
+        }
+    }
+
     $check = ws_step_check($owner, $kind, $config, ws_flow_starts_on_join($graph));
 
     if (!$check['ok']) {
@@ -1988,7 +2010,7 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         return;
     }
 
-    $refusal = ws_step_starter_refusal($run, $kind, $node['config']);
+    $refusal = ws_step_starter_refusal($run, $kind, $config);
 
     if ($refusal !== '') {
         if (!ws_flow_retry_wait($step, $node, $refusal)) {
@@ -2258,10 +2280,28 @@ function ws_flow_box_try($viewer, $flow, $data)
             $config['to'] = $person['email'];
         }
 
+        // A change box's record named by a value: a chosen run gives it, as
+        // the run reads it; without one only the rest of the change is
+        // checked.
+        $later = ($kind === 'change') && is_string($config['id'] ?? null);
+
+        if ($later && ($run_id > 0)) {
+            $config['id'] = ws_step_change_id($config['id'], $values);
+            $later = false;
+
+            if ($config['id'] <= 0) {
+                return array('outcome' => 'failed', 'refusal' => ws_step_change_id_refusal()) + $answer;
+            }
+        }
+
         $check = ws_step_check($owner, $kind, $config, ws_flow_starts_on_join($graph));
 
         if (!$check['ok']) {
             return array('outcome' => 'failed', 'refusal' => (string) $check['error']) + $answer;
+        }
+
+        if ($later) {
+            return array('outcome' => 'done', 'said' => lang('Changes the record a value of the run names: choose a run to see which.')) + $answer;
         }
 
         // Without a run the address's values are only empty, as the texts'
@@ -2954,6 +2994,57 @@ function ws_step_change_reach_check($viewer, $kind, $config)
 }
 
 /**
+ * A change box's record as its setting keeps it: a whole number for a
+ * record named by its number (0 for none), else the text of one value of
+ * the run, such as {{trigger.record_id}}, read as the box runs
+ * (ws_step_change_id()), as a Read a record box's id. Pure.
+ *
+ * @param mixed $id
+ * @return int|string
+ */
+function ws_step_change_id_setting($id)
+{
+    if (is_string($id)) {
+        $id = trim($id);
+
+        if (!is_numeric($id)) {
+            return ws_flow_line($id, 200);
+        }
+    }
+
+    return (is_bool($id) || !is_numeric($id)) ? 0 : max(0, (int) $id);
+}
+
+/**
+ * The number of the record a change box changes: its setting's number, or
+ * the number the value it names gives in the run, 0 when that is no whole
+ * number from 1 (a value the run lacks, a text). Pure.
+ *
+ * @param int|string $id     ws_step_change_id_setting()
+ * @param array      $values ws_step_node_values(), the trigger's under WS_STEP_TRIGGER
+ * @return int
+ */
+function ws_step_change_id($id, $values)
+{
+    if (!is_string($id)) {
+        return max(0, (int) $id);
+    }
+
+    // A value filled in as JSON text keeps its quotes.
+    return ws_step_row_id(trim(ws_step_fill_nodes($id, $values, 'json'), " \""));
+}
+
+/**
+ * Why a change box whose record a value names changes nothing.
+ *
+ * @return string
+ */
+function ws_step_change_id_refusal()
+{
+    return lang('The value that names the record to change gave no record number, so nothing was changed.');
+}
+
+/**
  * The words of the request a change box asks its owner with: the flow, who
  * approves it, who started the run when somebody else did, and the change
  * as the box would make it. They are shown, not sent: a tag in them stays
@@ -3073,8 +3164,16 @@ function ws_step_change_approved_write($run, $step, $node, $graph, $owner, $appr
     }
 
     $routed = ws_flow_outcome_routed($graph, $node['id'], 'failed');
-    $check = ws_step_change_reach_check($owner, 'change', $node['config']);
-    $refusal = $check['ok'] ? ws_step_starter_refusal($run, 'change', $node['config']) : '';
+    $config = $node['config'];
+
+    // The record a value names is read again, as the box read it when it
+    // asked.
+    if (is_string($config['id'] ?? null)) {
+        $config['id'] = ws_step_change_id($config['id'], ws_step_run_values($run, $graph, $owner, ws_flow_run_context($run), $step));
+    }
+
+    $check = ((int) $config['id'] > 0) ? ws_step_change_reach_check($owner, 'change', $config) : array('ok' => false, 'error' => ws_step_change_id_refusal());
+    $refusal = $check['ok'] ? ws_step_starter_refusal($run, 'change', $config) : '';
 
     if (!$check['ok']) {
         $done = array('ok' => false, 'text' => (string) $check['error'], 'data' => array());
