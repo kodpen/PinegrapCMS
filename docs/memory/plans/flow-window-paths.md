@@ -14,7 +14,7 @@ description: Flow window plan, FW0 part 3: the keyboard path through the bar, th
 - Right panel: the tabs are a `tablist`; Left / Right / Home / End move and show a tab; Tab enters the panel. Esc in the panel gives the focus back to its box on the canvas; Close unselects and does the same.
 
 ## How do the panels behave on a narrow window (768-1279 px)?
-- Proposed, not yet decided (open below). Drawn: `plans/flow-window/flow-window-narrow.html` with its pictures in both themes.
+- Approved as drawn (`flow-window-decided.md`). Drawn: `plans/flow-window/flow-window-narrow.html` with its pictures in both themes.
 - The left panel is a 48 px rail: a "+" and the section numbers. Either opens the panel (264 px) over the canvas's left edge; Esc, a box added or a click on the canvas folds it. The fold button folds it at 1280 px and up too; the choice is kept per browser (`localStorage`, as the threads toggle).
 - The right panel is a 300 px column; the canvas takes the rest. The bar keeps one row: Flow runs as its icon (FW1).
 
@@ -25,10 +25,11 @@ description: Flow window plan, FW0 part 3: the keyboard path through the bar, th
 - "Add a box" (both views) opens the left panel as a sheet of the full height; choosing a box adds it, closes the sheet and opens the box (its Settings).
 - Nothing scrolls sideways at 375 px (the harness's phone scenarios).
 
-## What is open for the architect?
-- "Change" swapping the start box in place and the narrow window's rail were built as proposed in FW2 (#9178).
-- The narrow window (rail, 300 px right panel) and the phone (List rows opening in place, bottom sheets, one "Add a box" button), as drawn in `flow-window-narrow.html`.
-- Two places where FW1 follows the panel's rules over the drawing: the back arrow stays in the breadcrumb strip; a draft's pill is gray (look A), not amber.
+## What was open, and how was it decided?
+- Nothing is open any more: the architect decided every point on 2026-11-13 (`flow-window-decided.md`).
+- "Change" swapping the start box in place and the narrow window's rail stay as FW2 built them (#9178).
+- The narrow window (rail, 300 px right panel) and the phone (List rows opening in place, bottom sheets, one "Add a box" button) stand as drawn in `flow-window-narrow.html`.
+- The two places where FW1 follows the panel's rules over the drawing stay: the back arrow in the breadcrumb strip; a draft's pill gray (look A), not amber.
 
 ## Which step builds what?
 - FW2 (#9178): the left panel, the rail. FW3 (#9196): the right panel, its tabs and keys, the bottom sheet, F6 (built as proposed). FW4: no box chosen, the "Add a box" sheet. FW5: the canvas marks and the close-out.
