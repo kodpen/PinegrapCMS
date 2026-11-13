@@ -5728,6 +5728,7 @@
     "An e-mail page is a page of this design with a Form Item View widget of this form: it is drawn for the submission and sent as it looks.": "E-posta sayfası, bu tasarımda bu formun Form Öğesi Görünümü widget'ını taşıyan bir sayfadır: gönderilen kayıt için çizilir ve göründüğü gibi gönderilir.",
     "An e-mail to {var:1} was given up after {var:2} attempts: {var:3}": "{var:1} adresine giden e-posta {var:2} denemeden sonra bırakıldı: {var:3}",
     "An e-mail was not sent because this is a demonstration site.": "Bu bir tanıtım sitesi olduğu için e-posta gönderilmedi.",
+    "An e-mail went in its place to {var:1}.": "Yerine {var:1} adresine bir e-posta gitti.",
     "An earlier OPTIMIZE of {var:1} did not finish.": "{var:1} için daha önce başlatılan OPTIMIZE bitmedi.",
     "An earlier attempt to move {var:1} did not finish, so it was left on MyISAM; convert it from the Database Engine screen": "{var:1} tablosunu taşımaya yönelik önceki deneme tamamlanmadı, bu yüzden MyISAM'da bırakıldı; Veritabanı Motoru ekranından dönüştürün",
     "An earlier message": "Önceki bir mesaj",
