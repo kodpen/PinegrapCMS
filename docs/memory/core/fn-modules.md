@@ -238,7 +238,7 @@ description: Generated from the module field of the memory files: each includes/
 - `stock_notify`: [[back-in-stock-notices]]
 - `stock_pickup`: [[stock-locations-pickup]]
 - `stock_sales`: [[stock-locations-completion]]
-- `store_credit`: [[store-credit-checkout]], [[store-credit-model]]
+- `store_credit`: [[store-credit-checkout]], [[store-credit-model]], [[user-delete-store-credit]]
 - `store_credit_account`: [[store-credit-screens]]
 - `store_credit_events`: [[api-customer-credit]]
 - `store_credit_mails`: [[store-credit-mails]]
