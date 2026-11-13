@@ -1,6 +1,6 @@
 ---
 name: whatsapp-channel-incoming-sms
-description: WA12's census (2026-11-13) of incoming messages: SMS per provider (Netgsm, İleti Merkezi, Twilio), the WhatsApp message kinds shown, opt-out words, the proposed SMS kind and consent rule of an answer
+description: Incoming SMS per provider (Netgsm, İleti Merkezi, Twilio), the WhatsApp message kinds shown, stop words, the SMS kind and consent of an answer (WA12; decided #9286)
 ---
 
 ## Which SMS providers can receive? (read 2026-11-13, not tried live)
@@ -17,11 +17,11 @@ description: WA12's census (2026-11-13) of incoming messages: SMS per provider (
 - Every arrival still writes `whatsapp_inbox` (WA4, #9085).
 
 ## Which words stop messages?
-- WhatsApp: its own stop (`user_preferences`, error 131050) as WA0 has it. Proposed: the same words below written in WhatsApp count too.
+- WhatsApp: its own stop (`user_preferences`, error 131050) as WA0 has it. The same words below written in WhatsApp count too (#9286).
 - SMS and WhatsApp words, the whole message alone, any case, Turkish letters folded: STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT, IPTAL, İPTAL, RET, DUR.
 - Effect: an SMS marketing refusal row in `consent_log` (the source "incoming message"), pushed to İYS as any refusal; the conversation still opens, so the team sees it. Not a stop for transactional messages (orders, codes).
 
-## Which SMS kind and consent rule would an answer have? (proposal)
+## Which SMS kind and consent rule does an answer have? (owner, 2026-11-13, #9286)
 - A new kind `reply`: transactional, exempt from İYS like order messages, no promotion text, never `marketing`.
 - Allowed only to the number of the conversation it answers, and only within 7 days after that number's last incoming SMS; after that the drawer offers nothing. No consent asked, a marketing refusal does not stop it (it answers the customer's own question).
 - WhatsApp needs no such rule: Meta's 24 hours and approved templates decide; a marketing template after the window keeps WA10's consent gate.

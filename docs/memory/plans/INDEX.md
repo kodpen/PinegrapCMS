@@ -78,8 +78,8 @@
 - translated-site-search.md: Plan (owner 2026-11-13, #9216): the site search on a page served in another language closes its gaps: words and ı/i, products, form records, a list's search box; steps TS1-TS5
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - whatsapp-channel-census.md: WA12's census (2026-11-13): what a WhatsApp or SMS conversation shares with the e-mail one (card, state, holder, list, notices, event, AI draft, rights) and what stays mail-only
-- whatsapp-channel-conversation-storage.md: WA12's storage proposal (2026-11-13), open for the architect before WA13 and WA16: phone conversations in the mail conversation tables, a box per transport, where an incoming SMS is kept and how long
-- whatsapp-channel-incoming-sms.md: WA12's census (2026-11-13) of incoming messages: SMS per provider (Netgsm, İleti Merkezi, Twilio), the WhatsApp message kinds shown, opt-out words, the proposed SMS kind and consent rule of an answer
+- whatsapp-channel-conversation-storage.md: WhatsApp and SMS conversations in the mail tables with a transport, an incoming SMS kept as a mail item, the answer's SMS kind, stop words (owner 2026-11-13, #9286)
+- whatsapp-channel-incoming-sms.md: Incoming SMS per provider (Netgsm, İleti Merkezi, Twilio), the WhatsApp message kinds shown, stop words, the SMS kind and consent of an answer (WA12; decided #9286)
 - whatsapp-channel-steps-2.md: Steps WA12-WA18 of plans/whatsapp-channel.md (owner 2026-11-13, #9151): a customer's WhatsApp message and SMS land in a channel as an e-mail does and are answered the same way
 - whatsapp-channel-steps.md: Steps WA0-WA11 of the WhatsApp channel plan (#8950): facts and storage first, connection, queue, templates, webhook, orders, forms, the Flows box, the template designer, offer codes
 - whatsapp-channel-storage.md: WA0's proposals (2026-11-12), open for the architect before WA2: queue, templates and customer messages in tables of their own, SMS marketing consent as the gate, single-use key codes
