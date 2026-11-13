@@ -26,6 +26,6 @@ module: legacy_bootstrap
 - `pg_lbs_css()` leaves a comment inside a selector alone.
 
 ## What did the starting layouts give?
-- 177 layout files and 46 templates finish: 4027 uses converted, 482 kept (the widgets' `ti-angle-down` 276, `glyphicon glyphicon-ok` 92 each, that `.radio` 21, one input's own `checkbox`), 460 by hand for LL4 (`input-group-btn` 252, `dl-horizontal` 120, `pager` 53, `form-inline` 23, push/pull 12). 127 class lists are written in part by PHP.
+- 177 layout files and 46 templates finish: 4564 uses converted, 482 kept (the widgets' `ti-angle-down` 276, `glyphicon glyphicon-ok` 92 each, that `.radio` 21, one input's own `checkbox`), 23 by hand (`form-inline`). LL4 took `input-group-btn`, `dl-horizontal`, `pager`, push/pull, `select.form-control`: [[legacy-layouts-shapes]]. 127 class lists are written in part by PHP.
 - No site script (`frontend.src.js`, `add_to_cart`, `cross_sell`, `chat_site`, the scripts the `get_*.php` files load, the layouts' own) names a converted class or reads the data family, and no site sheet selects one; a test fails when one starts to.
-- About 1.5 ms per 100 KB of output (PHP 8.3, PCRE JIT).
+- About 2.5 ms per 100 KB of output with LL4's scan (PHP 8.3, PCRE JIT).

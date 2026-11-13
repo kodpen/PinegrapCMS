@@ -660,9 +660,13 @@ function pg_lbs_layout_theme_widgets()
  * @param string $display   the element's own display (pg_lbs_layout_display())
  * @param bool   $drawn     the element is the icon of a theme widget
  *                          (pg_lbs_layout_theme_widgets()): its icon names stay
- * @return array  as pg_lbs_classes()
+ * @param array  $shape     what the element's tag and parent ask
+ *                          (pg_lbs_layout_shapes()): 'rename' (name => 5.3.8
+ *                          names), 'add' (names), 'handled' and 'count'
+ *                          (Bootstrap 3 names of the shape)
+ * @return array  as pg_lbs_classes(), and 'shaped': the shape changed the list
  */
-function pg_lbs_layout_classes($class, $block = false, $scripted = array(), $display = 'block', $drawn = false)
+function pg_lbs_layout_classes($class, $block = false, $scripted = array(), $display = 'block', $drawn = false, $shape = array())
 {
     $tokens = preg_split('/\s+/', trim((string)$class), -1, PREG_SPLIT_NO_EMPTY);
     $map = pg_lbs_class_map();
@@ -694,7 +698,39 @@ function pg_lbs_layout_classes($class, $block = false, $scripted = array(), $dis
             if ($t === 'in' || pg_lbs_is_visibility($t)) $keep[] = $t; else $beside[] = $t;
         }
     }
-    return pg_lbs_classes($class, array('theme_names' => false, 'keep' => $keep, 'beside' => $beside, 'display' => $display));
+    $r = pg_lbs_classes($class, array('theme_names' => false, 'keep' => $keep, 'beside' => $beside, 'display' => $display));
+    $r['shaped'] = false;
+    if (!$shape) return $r;
+
+    // The names the tag or the parent decides, over the map's result. A name
+    // renamed here is converted where it was written (form-control on a
+    // select), or was counted already under the name the map took it from
+    // (input-sm, which the map wrote as form-control-sm).
+    $written = array_flip($tokens);
+    $rename = isset($shape['rename']) ? $shape['rename'] : array();
+    $before = preg_split('/\s+/', $r['class'], -1, PREG_SPLIT_NO_EMPTY);
+    $after = array();
+    foreach ($before as $t) {
+        if (!isset($rename[$t])) {
+            $after[] = $t;
+            continue;
+        }
+        foreach (preg_split('/\s+/', $rename[$t], -1, PREG_SPLIT_NO_EMPTY) as $new) $after[] = $new;
+        if (isset($scripted[$t])) $after[] = $t;
+        unset($r['by_hand'][$t]);
+        if (isset($written[$t])) $r['converted'][$t] = (isset($r['converted'][$t]) ? $r['converted'][$t] : 0) + 1;
+    }
+    foreach (isset($shape['add']) ? $shape['add'] : array() as $new) $after[] = $new;
+    $after = array_values(array_unique($after));
+    foreach (isset($shape['handled']) ? $shape['handled'] : array() as $name) unset($r['by_hand'][$name]);
+    foreach (isset($shape['count']) ? $shape['count'] : array() as $name) {
+        $r['converted'][$name] = (isset($r['converted'][$name]) ? $r['converted'][$name] : 0) + 1;
+    }
+    if ($after !== $before) {
+        $r['class'] = implode(' ', $after);
+        $r['shaped'] = true;
+    }
+    return $r;
 }
 
 /**
@@ -801,12 +837,14 @@ function pg_lbs_layout_choice_block($html, $after, $type)
  * @param bool   $drawn     the tag is the first inside a theme widget
  *                          (pg_lbs_layout_theme_widgets())
  * @param bool   $widget    set: the tag opens a theme widget
+ * @param array  $shape     what the tag and its parent ask (pg_lbs_layout_shapes())
+ * @param array  $found     the attributes as read already (pg_lbs_layout_elements())
  * @return string|null  the attribute text; null when it cannot be read
  */
-function pg_lbs_layout_attributes($tag, $attrs, $html, $after, $scripted, &$acc, &$memo, $drawn = false, &$widget = null)
+function pg_lbs_layout_attributes($tag, $attrs, $html, $after, $scripted, &$acc, &$memo, $drawn = false, &$widget = null, $shape = array(), $found = null)
 {
     $patterns = pg_lbs_layout_patterns();
-    if (preg_match_all($patterns['attribute'], $attrs, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) return null;
+    if ($found === null && preg_match_all($patterns['attribute'], $attrs, $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) return null;
 
     // A browser reads the first of a repeated attribute.
     $values = array();
@@ -838,16 +876,25 @@ function pg_lbs_layout_attributes($tag, $attrs, $html, $after, $scripted, &$acc,
         $block = $tag !== 'input' && preg_match('/(?:^|\s)(checkbox|radio)(?:\s|$)/', $value, $m)
             && pg_lbs_layout_choice_block($html, $after, $m[1]);
         $display = pg_lbs_layout_display($tag);
-        $key = ($block ? '1' : '0') . ($drawn ? '1' : '0') . $display . ' ' . $value;
-        if (!isset($memo[$key])) $memo[$key] = pg_lbs_layout_classes($value, $block, $scripted['classes'], $display, $drawn);
+        $key = ($block ? '1' : '0') . ($drawn ? '1' : '0') . $display . ' ' . $value . ($shape ? "\x02" . json_encode($shape) : '');
+        if (!isset($memo[$key])) $memo[$key] = pg_lbs_layout_classes($value, $block, $scripted['classes'], $display, $drawn, $shape);
         pg_lbs_add_counts($acc, $memo[$key]);
         // A list with nothing to convert keeps its bytes, white space too.
-        if ($memo[$key]['converted']) {
+        if ($memo[$key]['converted'] || $memo[$key]['shaped']) {
             $written = $found[$class][3][0];
             $new = $memo[$key]['class'];
             $quote = ($written[0] === '"' || $written[0] === "'") ? $written[0] : (($new === '' || strpos($new, ' ') !== false) ? '"' : '');
             $at = $found[$class][3][1];
             $edits[$at * 2 + 1] = array($at, strlen($written), $quote . $new . $quote);
+        }
+    } elseif (!empty($shape['add']) && pg_lbs_layout_class_writable($attrs, isset($values['class']) ? false : null)) {
+        // An element Bootstrap 3 styled through its parent alone gets the
+        // class attribute 5.3.8 needs, after its last attribute.
+        $last = $found ? $found[count($found) - 1][0] : array('', 0);
+        $at = $last[1] + strlen($last[0]);
+        $edits[$at * 2] = array($at, 0, ' class="' . implode(' ', $shape['add']) . '"');
+        foreach (isset($shape['count']) ? $shape['count'] : array() as $name) {
+            $acc['converted'][$name] = (isset($acc['converted'][$name]) ? $acc['converted'][$name] : 0) + 1;
         }
     }
 
@@ -866,7 +913,10 @@ function pg_lbs_layout_attributes($tag, $attrs, $html, $after, $scripted, &$acc,
             if (isset($scripted['attributes'][$old])) {
                 // A script reads the old name: the attribute is written twice.
                 $at = $found[$k][0][1] + strlen($found[$k][0][0]);
-                $edits[$at * 2] = array($at, 0, ' ' . $new . substr($found[$k][0][0], strlen($found[$k][1][0])));
+                $text = ' ' . $new . substr($found[$k][0][0], strlen($found[$k][1][0]));
+                // After the class attribute written at the same place.
+                if (isset($edits[$at * 2])) $text = $edits[$at * 2][2] . $text;
+                $edits[$at * 2] = array($at, 0, $text);
             } else {
                 $at = $found[$k][1][1];
                 $edits[$at * 2 + 1] = array($at, strlen($found[$k][1][0]), $new);
@@ -882,38 +932,106 @@ function pg_lbs_layout_attributes($tag, $attrs, $html, $after, $scripted, &$acc,
 }
 
 /**
- * The layout pass over a piece of markup: every start tag's attributes by
- * pg_lbs_layout_attributes(), the rest byte for byte.
+ * Whether a start tag can be given class names: it has a class attribute
+ * with a value, or none at all and no PHP block in a layout file's text
+ * that may write one (`<input <?=$attributes?>>`; a block inside a quoted
+ * value writes none).
+ *
+ * @param string            $attrs  the text between the tag's name and ">"
+ * @param string|false|null $class  the class attribute's value, false
+ *                                  when it has none, null without one
+ */
+function pg_lbs_layout_class_writable($attrs, $class)
+{
+    if (is_string($class)) return true;
+    if ($class === false) return false;
+    $bare = preg_replace('~"[^"]*+"|\'[^\']*+\'~', '', $attrs);
+    return $bare !== null && strpos($bare, "\x01") === false;
+}
+
+/**
+ * The start tags of a piece of markup with the element each opens in: as a
+ * browser nests them, but lighter. A void element and the inside of script,
+ * style, textarea and pre hold no element; an end tag closes the nearest
+ * open element of its name and every one opened inside it, and one with no
+ * open element of its name is passed over; an li, dt, dd, option, row or
+ * cell closes the one of its kind still open in the same list or table, and
+ * a block closes an open p.
  *
  * @param string $html
- * @param array  $acc   counts, added to
- * @return string|null  null when the pass cannot finish
+ * @return array|null  per start tag: 'lt' and 'end' (where it starts and
+ *                     ends), 'name' (as written), 'tag' (lower case),
+ *                     'attrs', 'found' (its attributes as
+ *                     pg_lbs_layout_patterns() reads them, where it has a
+ *                     class or is an input), 'class' (the first class attribute's value,
+ *                     false when it has none, null without one), 'type' (an
+ *                     input's), 'parent' (its index, -1 at the top), 'kids'
+ *                     (the indexes of the elements right inside it); null
+ *                     when a tag cannot be read
  */
-function pg_lbs_layout_pass($html, &$acc)
+function pg_lbs_layout_elements($html)
 {
     static $raw = array('script' => 1, 'style' => 1, 'textarea' => 1, 'pre' => 1, 'title' => 1, 'xmp' => 1,
                         'iframe' => 1, 'noembed' => 1, 'noframes' => 1);
-    $scripted = pg_lbs_layout_script_names($html);
-    if ($scripted === null) return null;
+    static $void = array('area' => 1, 'base' => 1, 'br' => 1, 'col' => 1, 'embed' => 1, 'hr' => 1, 'img' => 1,
+                         'input' => 1, 'link' => 1, 'meta' => 1, 'param' => 1, 'source' => 1, 'track' => 1, 'wbr' => 1);
+    // The elements a start tag closes (names) and where the search stops.
+    static $closes = array(
+        'li' => array(array('li'), array('ul', 'ol', 'menu')),
+        'dt' => array(array('dt', 'dd'), array('dl')),
+        'dd' => array(array('dt', 'dd'), array('dl')),
+        'option' => array(array('option'), array('select', 'datalist', 'optgroup')),
+        'optgroup' => array(array('optgroup', 'option'), array('select')),
+        'tr' => array(array('tr'), array('table', 'thead', 'tbody', 'tfoot')),
+        'td' => array(array('td', 'th'), array('tr', 'table')),
+        'th' => array(array('td', 'th'), array('tr', 'table')),
+        'thead' => array(array('thead', 'tbody', 'tfoot'), array('table')),
+        'tbody' => array(array('thead', 'tbody', 'tfoot'), array('table')),
+        'tfoot' => array(array('thead', 'tbody', 'tfoot'), array('table')),
+    );
+    static $blocks = null;
+    if ($blocks === null) {
+        $blocks = array_flip(array('address', 'article', 'aside', 'blockquote', 'center', 'details', 'dialog', 'dir', 'div',
+                                   'dl', 'dd', 'dt', 'fieldset', 'figcaption', 'figure', 'footer', 'form', 'h1', 'h2', 'h3',
+                                   'h4', 'h5', 'h6', 'header', 'hgroup', 'hr', 'li', 'main', 'menu', 'nav', 'ol', 'p', 'pre',
+                                   'section', 'summary', 'table', 'ul'));
+    }
     $patterns = pg_lbs_layout_patterns();
-    $memo = array();
-    $gap = '~\G(?:[ \t\n\f\r]|\x01\d+\x01)*+<~';
-    $widget_end = -1;   // where the last theme widget's start tag ends
+    $els = array();
+    $open = array();     // indexes of the open elements, innermost last
+    $opened = array();   // tag => how many of the open elements have it
     $n = strlen($html);
-    $out = '';
-    $from = 0;   // the start of what is not yet in $out
     $i = 0;
+    $close = function ($names, $stops) use (&$open, &$opened, &$els) {
+        for ($j = count($open) - 1; $j >= 0; $j--) {
+            $tag = $els[$open[$j]]['tag'];
+            if (in_array($tag, $names, true)) {
+                foreach (array_splice($open, $j) as $k) $opened[$els[$k]['tag']]--;
+                return;
+            }
+            if (in_array($tag, $stops, true)) return;
+        }
+    };
     while ($i < $n && ($lt = strpos($html, '<', $i)) !== false) {
         $c = ($lt + 1 < $n) ? $html[$lt + 1] : '';
         if ($c === '!' || $c === '?' || $c === '/') {
-            // A comment, a declaration or an end tag: nothing to convert. A
-            // comment that never closes runs to the end, as a browser reads
-            // it; an end tag that never closes is a broken tag.
+            // A comment, a declaration or an end tag. A comment that never
+            // closes runs to the end, as a browser reads it; an end tag that
+            // never closes is a broken tag.
             $comment = substr_compare($html, '<!--', $lt, 4) === 0;
             $end = strpos($html, $comment ? '-->' : '>', $lt + 2);
             if ($end === false) {
                 if ($c === '/' && $lt + 2 < $n && ctype_alpha($html[$lt + 2])) return null;
                 break;
+            }
+            if ($c === '/' && $lt + 2 < $n && ctype_alpha($html[$lt + 2])) {
+                $name = strtolower(substr($html, $lt + 2, strcspn($html, " \t\n\f\r/>", $lt + 2)));
+                if ($open && $els[$open[count($open) - 1]]['tag'] === $name) {
+                    array_pop($open);
+                    $opened[$name]--;
+                } elseif (!empty($opened[$name])) {
+                    $close(array($name), array());
+                }
             }
             $i = $end + ($comment ? 3 : 1);
             continue;
@@ -925,24 +1043,342 @@ function pg_lbs_layout_pass($html, &$acc)
         if (preg_match($patterns['tag'], $html, $m, 0, $lt) !== 1) return null;
         $i = $lt + strlen($m[0]);
         $tag = strtolower($m[1]);
-        // The first tag inside a theme widget, with only white space between.
-        $drawn = $widget_end >= 0 && ($widget_end === $lt || preg_match($gap, $html, $g, 0, $widget_end) && $widget_end + strlen($g[0]) - 1 === $lt);
-        $widget_end = -1;
-        if (stripos($m[2], 'class') !== false || stripos($m[2], 'data-') !== false) {
-            $attrs = pg_lbs_layout_attributes($tag, $m[2], $html, $i, $scripted, $acc, $memo, $drawn, $widget);
-            if ($attrs === null) return null;
-            if ($widget) $widget_end = $i;
-            if ($attrs !== $m[2]) {
-                $out .= substr($html, $from, $lt - $from) . '<' . $m[1] . $attrs . '>';
-                $from = $i;
+        if (isset($closes[$tag])) {
+            foreach ($closes[$tag][0] as $name) {
+                if (!empty($opened[$name])) {
+                    $close($closes[$tag][0], $closes[$tag][1]);
+                    break;
+                }
             }
         }
+        if (isset($blocks[$tag]) && !empty($opened['p'])) $close(array('p'), array('button', 'table', 'td', 'th', 'caption', 'object', 'template', 'svg', 'math'));
+
+        $class = null;
+        $type = '';
+        $found = null;
+        if (stripos($m[2], 'class') !== false || $tag === 'input') {
+            if (preg_match_all($patterns['attribute'], $m[2], $found, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) === false) return null;
+            foreach ($found as $a) {
+                $name = strtolower($a[1][0]);
+                if ($name !== 'class' && $name !== 'type') continue;
+                $value = isset($a[3]) ? $a[3][0] : '';
+                if ($value !== '' && ($value[0] === '"' || $value[0] === "'")) $value = substr($value, 1, -1);
+                if ($name === 'class' && $class === null) $class = isset($a[3]) ? $value : false;
+                if ($name === 'type' && $type === '') $type = strtolower(trim($value));
+            }
+        }
+        $k = count($els);
+        $parent = $open ? $open[count($open) - 1] : -1;
+        $els[$k] = array('lt' => $lt, 'end' => $i, 'name' => $m[1], 'tag' => $tag, 'attrs' => $m[2], 'found' => $found,
+                         'class' => $class, 'type' => $type, 'parent' => $parent, 'kids' => array());
+        if ($parent >= 0) $els[$parent]['kids'][] = $k;
+
         if (isset($raw[$tag])) {
             // What such an element holds is not markup: on to its end tag.
             $ends = preg_match('~</' . $tag . '(?=[ \t\n\f\r/>])~i', $html, $e, PREG_OFFSET_CAPTURE, $i);
             if ($ends === false) return null;
             if ($ends === 0) break;
             $i = $e[0][1];
+            continue;
+        }
+        // Inside svg and math, "/>" closes the tag.
+        if (isset($void[$tag]) || ((!empty($opened['svg']) || !empty($opened['math'])) && substr(rtrim($m[2]), -1) === '/')) continue;
+        $open[] = $k;
+        $opened[$tag] = isset($opened[$tag]) ? $opened[$tag] + 1 : 1;
+    }
+    return $els;
+}
+
+/**
+ * The order 5.3.8 gives a row's columns for Bootstrap 3's push and pull:
+ * where, at each width, a column is drawn once pushed or pulled. Only a
+ * move that reorders whole columns has one (the swap of a sidebar and its
+ * content); a move that leaves a gap or an overlap, a row with an offset or
+ * an order of its own, or more columns than 5.3.8 has orders for, has none.
+ *
+ * @param array $columns  each column's class names (name => true), in the
+ *                        order they are written
+ * @return array|null  per column: breakpoint (xs, sm, md, lg) => its place
+ *                     from 0, where it differs from the width below; null
+ *                     when nothing moves or the move is no reorder
+ */
+function pg_lbs_layout_column_orders($columns)
+{
+    $bps = array('xs', 'sm', 'md', 'lg');
+    $columns = array_values($columns);
+    $n = count($columns);
+    if ($n < 2 || $n > 6) return null;
+    $width = array();
+    $move = array();
+    $moved = false;
+    foreach ($columns as $i => $names) {
+        $w = 12;
+        $p = 0;
+        foreach (array_keys($names) as $name) {
+            if (preg_match('/^(?:col-[a-z]+-)?(?:offset|order)-/', $name)) return null;
+        }
+        // A width or a move holds from its breakpoint up.
+        foreach ($bps as $bp) {
+            foreach (array_keys($names) as $name) {
+                if (preg_match('/^col-' . $bp . '-(\d+)$/', $name, $m)) $w = (int)$m[1];
+                if (preg_match('/^col-' . $bp . '-(push|pull)-(\d+)$/', $name, $m)) $p = ($m[1] === 'push' ? 1 : -1) * (int)$m[2];
+            }
+            $width[$i][$bp] = $w;
+            $move[$i][$bp] = $p;
+            if ($p) $moved = true;
+        }
+    }
+    if (!$moved) return null;
+
+    $orders = array_fill(0, $n, array());
+    $previous = range(0, $n - 1);
+    foreach ($bps as $bp) {
+        $place = range(0, $n - 1);
+        $start = 0;
+        $at = array();
+        $moves = false;
+        foreach ($columns as $i => $names) {
+            $at[$i] = $start + $move[$i][$bp];
+            $start += $width[$i][$bp];
+            if ($move[$i][$bp]) $moves = true;
+        }
+        if ($moves) {
+            // The columns as drawn, left to right: one line, no gap, no overlap.
+            if ($start > 12) return null;
+            $drawn = range(0, $n - 1);
+            usort($drawn, function ($a, $b) use ($at) {
+                return ($at[$a] === $at[$b]) ? $a - $b : $at[$a] - $at[$b];
+            });
+            $edge = 0;
+            foreach ($drawn as $rank => $i) {
+                if ($at[$i] !== $edge) return null;
+                $edge += $width[$i][$bp];
+                $place[$i] = $rank;
+            }
+        }
+        if ($place !== $previous) {
+            foreach ($place as $i => $rank) $orders[$i][$bp] = $rank;
+        }
+        $previous = $place;
+    }
+    return $orders;
+}
+
+/**
+ * The 5.3.8 names that Bootstrap 3 gave an element through its tag or its
+ * parent, where the map alone cannot see them:
+ * - a select styled as a field: form-select for form-control (but in a
+ *   theme's .select-option, whose sheet draws the arrow);
+ * - the input of a checkbox or radio block: form-check-input;
+ * - dl-horizontal: a row of col-sm-3 terms and col-sm-9 definitions;
+ * - pager: the "slightly customized buttons" it was, in a centred inline list;
+ * - the items and links of nav, navbar-nav, pagination, breadcrumb and
+ *   list-inline lists, the link of an active or disabled item marked;
+ * - input-group-btn: its buttons squared where they meet the field, and a
+ *   wrapper the group's table filled (a theme's .select-option) grown;
+ * - push and pull: the order of a row's columns.
+ * A name 5.3.8 does not know stays on the element, as a theme's sheet may
+ * still select it (.fieldset .dl-horizontal dd). Names already there are
+ * not written again, so 5.3.8 markup and a second pass get nothing.
+ *
+ * @param array  $els   pg_lbs_layout_elements()
+ * @param string $html  the markup, for the shape of a checkbox block
+ * @return array  element index => shape (pg_lbs_layout_classes())
+ */
+function pg_lbs_layout_shapes($els, $html)
+{
+    $tokens = array();
+    foreach ($els as $k => $e) {
+        $tokens[$k] = is_string($e['class']) ? array_flip(preg_split('/\s+/', $e['class'], -1, PREG_SPLIT_NO_EMPTY)) : array();
+    }
+    $shapes = array();
+    // Adds the names an element lacks and can be given; true when it lacked any.
+    $add = function ($k, $names) use (&$shapes, $tokens, $els) {
+        if (!pg_lbs_layout_class_writable($els[$k]['attrs'], $els[$k]['class'])) return false;
+        $missing = array_values(array_diff($names, array_keys($tokens[$k])));
+        foreach ($missing as $name) $shapes[$k]['add'][] = $name;
+        return (bool)$missing;
+    };
+    // A Bootstrap 3 name the shape takes care of: no longer by hand, and
+    // converted where this pass changed something for it.
+    $note = function ($k, $name, $changed) use (&$shapes) {
+        $shapes[$k]['handled'][] = $name;
+        if ($changed) $shapes[$k]['count'][] = $name;
+    };
+    $first = function ($k) use ($els) {
+        return $els[$k]['kids'] ? $els[$k]['kids'][0] : -1;
+    };
+    // The elements right inside one that a page shows.
+    $shown = function ($k) use ($els) {
+        $kids = array();
+        foreach ($els[$k]['kids'] as $c) {
+            $tag = $els[$c]['tag'];
+            if ($tag === 'script' || $tag === 'style' || $tag === 'template' || ($tag === 'input' && $els[$c]['type'] === 'hidden')) continue;
+            $kids[] = $c;
+        }
+        return $kids;
+    };
+    $lists = array('nav' => array('nav-item', 'nav-link'), 'navbar-nav' => array('nav-item', 'nav-link'),
+                   'pagination' => array('page-item', 'page-link'), 'breadcrumb' => array('breadcrumb-item', null),
+                   'list-inline' => array('list-inline-item', null));
+    $wrappers = array_flip(array('form-control', 'form-select', 'form-floating', 'input-group-text', 'input-group-addon',
+                                 'input-group-btn', 'dropdown-menu', 'invalid-feedback', 'valid-feedback', 'invalid-tooltip',
+                                 'valid-tooltip'));
+
+    foreach ($els as $k => $e) {
+        $t = $tokens[$k];
+        if (!$t) continue;
+        $tag = $e['tag'];
+
+        if ($tag === 'select' && array_intersect_key($t, array_flip(array('form-control', 'form-control-sm', 'form-control-lg', 'input-sm', 'input-lg')))
+            && !($e['parent'] >= 0 && isset($tokens[$e['parent']]['select-option']))) {
+            $shapes[$k]['rename'] = array('form-control' => 'form-select', 'form-control-sm' => 'form-select-sm', 'form-control-lg' => 'form-select-lg');
+        }
+
+        // The input a checkbox or radio block opens with, right inside it or
+        // inside the label it opens with.
+        $input = -1;
+        if ($tag !== 'input' && preg_match('/(?:^|\s)(checkbox|radio)(?:\s|$)/', $e['class'], $m) && pg_lbs_layout_choice_block($html, $e['end'], $m[1])) {
+            $input = $first($k);
+            if ($input >= 0 && $els[$input]['tag'] === 'label') $input = $first($input);
+        } elseif (isset($t['checkbox-inline']) || isset($t['radio-inline'])) {
+            $input = $first($k);
+        }
+        if ($input >= 0 && $els[$input]['tag'] === 'input' && ($els[$input]['type'] === 'checkbox' || $els[$input]['type'] === 'radio')) {
+            $add($input, array('form-check-input'));
+        }
+
+        if ($tag === 'ul' || $tag === 'ol') {
+            foreach ($lists as $list => $names) {
+                if (!isset($t[$list])) continue;
+                $changed = false;
+                foreach ($e['kids'] as $li) {
+                    if ($els[$li]['tag'] !== 'li') continue;
+                    $changed = $add($li, array($names[0])) || $changed;
+                    $a = $first($li);
+                    if ($names[1] === null || $a < 0 || !in_array($els[$a]['tag'], ($list === 'pagination') ? array('a', 'span') : array('a'), true)) continue;
+                    $want = array($names[1]);
+                    if ($list !== 'pagination') {
+                        if (isset($tokens[$li]['active'])) $want[] = 'active';
+                        if (isset($tokens[$li]['disabled'])) $want[] = 'disabled';
+                    }
+                    $changed = $add($a, $want) || $changed;
+                }
+                if ($changed) $shapes[$k]['count'][] = $list;
+            }
+            if (isset($t['pager'])) {
+                $changed = $add($k, array('list-inline', 'text-center'));
+                foreach ($e['kids'] as $li) {
+                    if ($els[$li]['tag'] !== 'li') continue;
+                    $want = array('list-inline-item');
+                    if (isset($tokens[$li]['previous'])) $want[] = 'float-start';
+                    if (isset($tokens[$li]['next'])) $want[] = 'float-end';
+                    $changed = $add($li, $want) || $changed;
+                    $a = $first($li);
+                    if ($a >= 0 && ($els[$a]['tag'] === 'a' || $els[$a]['tag'] === 'span') && !isset($tokens[$a]['btn'])) {
+                        $want = array('btn', 'btn-outline-secondary', 'rounded-pill');
+                        if (isset($tokens[$li]['disabled'])) $want[] = 'disabled';
+                        $changed = $add($a, $want) || $changed;
+                    }
+                }
+                $note($k, 'pager', $changed);
+            }
+        }
+
+        if ($tag === 'dl' && isset($t['dl-horizontal'])) {
+            $changed = $add($k, array('row'));
+            $before = '';
+            foreach ($e['kids'] as $c) {
+                $ct = $els[$c]['tag'];
+                if (($ct === 'dt' || $ct === 'dd') && !preg_grep('/^col-/', array_keys($tokens[$c]))) {
+                    // A second definition of one term keeps the column of the first.
+                    $want = ($ct === 'dt') ? array('col-sm-3', 'text-sm-end') : (($before === 'dt') ? array('col-sm-9') : array('col-sm-9', 'offset-sm-3'));
+                    $changed = $add($c, $want) || $changed;
+                }
+                $before = $ct;
+            }
+            $note($k, 'dl-horizontal', $changed);
+        }
+
+        if (isset($t['input-group'])) {
+            $kids = $shown($k);
+            $bs3 = false;
+            foreach ($kids as $c) {
+                if (isset($tokens[$c]['input-group-btn']) || isset($tokens[$c]['input-group-addon'])) $bs3 = true;
+            }
+            foreach ($bs3 ? $kids : array() as $j => $c) {
+                if (isset($tokens[$c]['input-group-btn'])) {
+                    $buttons = array();
+                    foreach ($shown($c) as $b) {
+                        if (isset($tokens[$b]['btn'])) $buttons[] = $b;
+                    }
+                    $changed = false;
+                    foreach ($buttons as $x => $b) {
+                        // Squared where the button meets the group's next or previous part.
+                        $start = $j > 0 && $x === 0;
+                        $end = $j < count($kids) - 1 && $x === count($buttons) - 1;
+                        if ((!$start && !$end) || preg_grep('/^rounded/', array_keys($tokens[$b]))) continue;
+                        $changed = $add($b, array(($start && $end) ? 'rounded-0' : ($start ? 'rounded-start-0' : 'rounded-end-0'))) || $changed;
+                    }
+                    $note($c, 'input-group-btn', $changed);
+                } elseif ($els[$c]['tag'] === 'div' && !array_intersect_key($tokens[$c], $wrappers)) {
+                    $add($c, array('flex-grow-1'));
+                }
+            }
+        }
+
+        if (isset($t['row'])) {
+            $kids = $shown($k);
+            $columns = array();
+            foreach ($kids as $c) $columns[] = $tokens[$c];
+            $orders = pg_lbs_layout_column_orders($columns);
+            foreach ($orders ? $kids : array() as $x => $c) {
+                foreach (array_keys($tokens[$c]) as $name) {
+                    if (preg_match('/^col-(?:xs|sm|md|lg)-(?:push|pull)-\d+$/', $name)) $shapes[$c]['rename'][$name] = '';
+                }
+                $want = array();
+                foreach ($orders[$x] as $bp => $rank) $want[] = 'order-' . (($bp === 'xs') ? '' : $bp . '-') . $rank;
+                $add($c, $want);
+            }
+        }
+    }
+    return $shapes;
+}
+
+/**
+ * The layout pass over a piece of markup: every start tag's attributes by
+ * pg_lbs_layout_attributes(), with the names its tag and parent ask
+ * (pg_lbs_layout_shapes()); the rest byte for byte.
+ *
+ * @param string $html
+ * @param array  $acc   counts, added to
+ * @return string|null  null when the pass cannot finish
+ */
+function pg_lbs_layout_pass($html, &$acc)
+{
+    $scripted = pg_lbs_layout_script_names($html);
+    if ($scripted === null) return null;
+    $els = pg_lbs_layout_elements($html);
+    if ($els === null) return null;
+    $shapes = pg_lbs_layout_shapes($els, $html);
+    $memo = array();
+    $gap = '~\G(?:[ \t\n\f\r]|\x01\d+\x01)*+<~';
+    $widget_end = -1;   // where the last theme widget's start tag ends
+    $out = '';
+    $from = 0;   // the start of what is not yet in $out
+    foreach ($els as $k => $e) {
+        $lt = $e['lt'];
+        // The first tag inside a theme widget, with only white space between.
+        $drawn = $widget_end >= 0 && ($widget_end === $lt || preg_match($gap, $html, $g, 0, $widget_end) && $widget_end + strlen($g[0]) - 1 === $lt);
+        $widget_end = -1;
+        $shape = isset($shapes[$k]) ? $shapes[$k] : array();
+        if ($e['class'] === null && stripos($e['attrs'], 'data-') === false && !$shape) continue;
+        $attrs = pg_lbs_layout_attributes($e['tag'], $e['attrs'], $html, $e['end'], $scripted, $acc, $memo, $drawn, $widget, $shape, $e['found']);
+        if ($attrs === null) return null;
+        if ($widget) $widget_end = $e['end'];
+        if ($attrs !== $e['attrs']) {
+            $out .= substr($html, $from, $lt - $from) . '<' . $e['name'] . $attrs . '>';
+            $from = $e['end'];
         }
     }
     return $out . substr($html, $from);
@@ -951,7 +1387,10 @@ function pg_lbs_layout_pass($html, &$acc)
 /**
  * A page type's rendered markup with its Bootstrap 3 names printed as their
  * 5.3.8 names: the class attributes and the data-toggle family of its tags,
- * by the one map without the theme names. Text between tags, comments, the
+ * by the one map without the theme names, and the names 5.3.8 needs where
+ * Bootstrap 3 styled an element through its tag or parent
+ * (pg_lbs_layout_shapes()); such an element with no class attribute gets
+ * one. Text between tags, comments, the
  * inside of script, style, textarea and pre and every other attribute stay
  * byte for byte, so a visitor's escaped text never changes; 5.3.8 markup
  * passes untouched and a second pass changes nothing.

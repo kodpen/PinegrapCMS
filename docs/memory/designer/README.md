@@ -39,6 +39,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - `designer-content-*`: 6 files.
 - `designer-interactions-*`: 6 files; start at `designer-interactions.md`.
 - `form-list-*`: 7 files.
+- `legacy-layouts-*`: 6 files.
 - `system-widget-*`: 9 files.
 - `widget-default-*`: 13 files; start at `widget-default-overview.md`.
 - `widget-lists-*`: 11 files; start at `widget-lists.md`.
