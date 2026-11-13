@@ -1,6 +1,6 @@
 ---
 name: files-type-column-width
-description: files.type is four characters wide, so long extensions are stored cut (webmanifest as webm); the file manager reads the kind from the name instead; which views still read the column
+description: files.type is four characters wide, so long extensions are stored cut (webmanifest as webm); the file manager, picker and image editor lists check the name; which views still read the column
 ---
 
 ## What is wrong with files.type?
@@ -13,3 +13,7 @@ description: files.type is four characters wide, so long extensions are stored c
 
 ## Where is the column still read, and why is that fine?
 - The flat views Images, Media and Documents filter in SQL on `LOWER(files.type)` (`explorer_list`), the optimize and rotate checks and the zip check compare short extensions, and the search index reads it. All compare against extensions of at most four characters, except that a `.webmanifest` is listed under Media as a `webm`; widening the column is a schema step (owner's call) and was not done.
+
+## How do the picker and the image editor's lists keep a .webmanifest out?
+- A file kind of the picker (`pg_picker_files_where()`, so Import › Video from the site as kind `canvas_video`) and the image editor's own lists (`pg_image_editor_sound_where()`, `pg_image_editor_sound_rows()`: `video_files`, `sound_files`, reopened clips) require both `type IN (…)` and a name ending in one of those extensions (`LOWER(name) LIKE '%.webm'`).
+- Symptom fixed (#8628): Videos from Files listed `site.webmanifest  117 B`. Tests: `tests/picker_test.php`, `tests/image_editor_clip_test.php`.
