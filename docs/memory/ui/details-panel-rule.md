@@ -17,6 +17,7 @@ module: list_table
 - A column whose cell shows nothing (no text, image, icon, field or link) is left out; it is never shown as an empty line or a dash.
 - Spacing is the same everywhere: 0.75rem between sections, 0.5rem above and below each line; values wrap, never overflow.
 - A phone card (below 768 px) uses the same label width.
+- A fragment a cell's link loads into the panel (the SEO analysis, `data-pg-details-load`) is part of that column's line: right under it, the panel's width, no hairline of its own (`ui/list-seo-details.md`).
 
 ## Where is it built?
 - `detailsSections()` in `assets/js/pg_list_table.js` (Node test `test_list_table_js_details_sections`) sorts the columns into the sections; `showDetails()` draws them (`.pg-list-table-details-title`, `-pictures`, `dl`, `-actions`); the look is the `.pg-list-table-details` block of `backend.src.css`. A list needs nothing of its own to follow it.

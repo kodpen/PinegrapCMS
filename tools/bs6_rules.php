@@ -827,7 +827,7 @@ function bs6_shared_panel_functions()
 		'includes/fn/legal_documents.php' => array('pg_legal_documents_panel_card'),
 		'seo.php' => array(
 			'pg_seo_render_impact', 'pg_seo_render_bar', 'pg_seo_render_checklist', 'pg_seo_render_run_buttons',
-			'pg_seo_render_group_row', 'pg_seo_render_detail_offcanvas', 'pg_seo_render_badge',
+			'pg_seo_render_group_row', 'pg_seo_render_badge',
 		),
 	);
 }
