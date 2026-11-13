@@ -174,41 +174,37 @@
 }
 
 .pgie .pg-dc-icon {
+  --pg-dc-line: #a01551;
+  --pg-dc-tint: #ff4c87;
+  --pg-dc-accent: #0284c7;
+  --pg-dc-tint-opacity: 0.55;
+  --pg-dc-accent-opacity: 0.35;
   width: 20px;
   height: 20px;
   overflow: visible;
-  color: #a01551;
+  color: var(--pg-dc-line);
+}
+
+.pgie.pgie-dark .pg-dc-icon {
+  --pg-dc-line: #ff4c87;
+  --pg-dc-tint: #a01551;
+  --pg-dc-accent: #38bdf8;
+  --pg-dc-tint-opacity: 0.7;
+  --pg-dc-accent-opacity: 0.4;
 }
 
 .pgie .pg-dc-icon .pg-mi-2 {
-  fill: #ff4c87;
-  fill-opacity: 0.55;
+  fill: var(--pg-dc-tint);
+  fill-opacity: var(--pg-dc-tint-opacity);
 }
 
 .pgie .pg-dc-icon .pg-mi-a {
-  color: #0284c7;
+  color: var(--pg-dc-accent);
 }
 
 .pgie .pg-dc-icon .pg-mi-at {
   fill: currentColor;
-  fill-opacity: 0.35;
-}
-
-.pgie.pgie-dark .pg-dc-icon {
-  color: #ff4c87;
-}
-
-.pgie.pgie-dark .pg-dc-icon .pg-mi-2 {
-  fill: #a01551;
-  fill-opacity: 0.7;
-}
-
-.pgie.pgie-dark .pg-dc-icon .pg-mi-a {
-  color: #38bdf8;
-}
-
-.pgie.pgie-dark .pg-dc-icon .pg-mi-at {
-  fill-opacity: 0.4;
+  fill-opacity: var(--pg-dc-accent-opacity);
 }
 
 .pgie-ibtn {
