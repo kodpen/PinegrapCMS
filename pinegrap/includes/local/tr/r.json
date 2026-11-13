@@ -167,6 +167,8 @@
     "Read by a consultant, not only by a program": "Yalnızca bir program değil, bir danışman okur",
     "Read by the host in their own words": "Sunucu kendi sözleriyle okur",
     "Read each question to the end before you choose an answer": "Bir cevap seçmeden önce her soruyu sonuna kadar okuyun",
+    "Read from Meta every six hours, last {var:1}.": "Meta'dan altı saatte bir okunur, son okuma {var:1}.",
+    "Read from Meta every six hours; not read yet.": "Meta'dan altı saatte bir okunur; henüz okunmadı.",
     "Read from the <code>&lt;label&gt;</code> bound to the control; what you type here is written there.": "Kontrole bağlı <code>&lt;label&gt;</code>'dan okunur; burada yazdığınız oraya yazılır.",
     "Read from the account the invoice goes to, or from the contact while the order has no account. A VKN or a TCKN counts; the final consumer number 11111111111 does not. An order without one waits for Issue the Invoice on its screen.": "Numara faturanın kesileceği cariden, sipariş henüz bir cariye bağlı değilse kişi kaydından okunur. VKN de TCKN de sayılır; nihai tüketici numarası 11111111111 sayılmaz. Numarası olmayan sipariş kendi ekranında Faturayı Kes adımını bekler.",
     "Read from the account the invoice goes to, or from the contact while the order has no account. An order without one waits for Issue the Invoice on its screen.": "Numara faturanın kesileceği cariden, sipariş henüz bir cariye bağlı değilse kişi kaydından okunur. Numarası olmayan sipariş kendi ekranında Faturayı Kes adımını bekler.",
