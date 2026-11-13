@@ -19,7 +19,8 @@ description: Translated site search plan, steps TS1-TS5: the words and ı/i for 
 - `get_catalog_search_results()` itself puts them first on a page in another language, then its own results, each item once, so every caller gets it. Only items its own rules allow (enabled, inside the searched group) are listed.
 - A test proves the source language's answer is unchanged.
 
-## TS3 (M) Form records in the site search
+## TS3 (M) Form records in the site search — done (#9285)
+- Done: `pg_tr_search_records_find()` gives record ids (`pg_tr_search_record_id()` reads the use's field); `pg_tr_search_record_items()` lists only the record's own `search_items` row (`pg_tr_search_record_item_matches()`), behind the caller's `$sql_folders` and live SQL. TS4 can reuse `pg_tr_search_record_id()` and `pg_tr_search_like_sql()`.
 - The advanced search only; the simple search lists no record in the source either.
 - `pg_tr_search_records_find($query)`: the records whose translated texts match (`form_records` uses; the record is read from `field`). A record is listed only when the search index holds an item for it (`search_items`, written for the records a public list reaches), at that item's address and behind its folder fence, before the source's results.
 
