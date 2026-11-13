@@ -1,7 +1,6 @@
 ---
 name: workspace-flows-sms-box
 description: The Send an SMS box of flows (kind sms, QS6): to the record's person's mobile or a typed number, info or marketing under the SMS consent rule, queued through pg_sms_enqueue(), output sent
-module: flow_sms_box
 ---
 
 ## What is it?
