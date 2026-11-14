@@ -14,7 +14,7 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - MA5 The campaign's content step (`plans/messages-area-decided.md`), in five PRs:
   - MA5a (S, done #9413, `designer/campaign-email-body-mail-pass.md`) The mail pass and the outgoing mode of `mail_html.php`.
   - MA5b (M, done #9426, `ui/campaign-content-step.md`) The content step, drawn anew: design, pasted HTML or plain text; "Take the design again"; wide and phone preview.
-  - MA5c (M, done #9465, `designer/email-designs.md`) E-mail designs: folder, `props.pgEmail`, 600/375 px canvas, the first eight mail blocks, the mail pass on their body.
+  - MA5c (M, done #9465, `designer/email-designs.md`) E-mail designs: folder, `props.pgEmail`, 600/375 px canvas, six mail parts, the mail pass on their body.
   - MA5c2 (S) The other mail blocks (header, footer, product card, merge fields) and the check line: `designer/email-designs.md`.
   - MA5d (M) Five ready designs, the template's and earlier campaigns' as copies; e-mail designs in Templates.
   - MA5e (S) "Send a test to me": to oneself and up to five addresses, never counted, a limit per user.
