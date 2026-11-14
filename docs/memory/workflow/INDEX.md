@@ -130,6 +130,7 @@
 - decisions-made-workspace-24.md: Decisions list, workspace part 24 (2026-11-14 on): a guest sees the agents' messages and wakes none; guests in Channel info; agents' answers read aloud; the shared-channel notice
 - decisions-made-workspace-25.md: Decisions made, Workspace part 25: when an agent may conclude a discussion (asked by a person in it; unasked it only offers a button a person presses)
 - decisions-made-workspace-26.md: Decisions made, workspace part 26: a template is chosen with a preview; new parts inside a channel use look A's components; a person's connected chat may send Workspace e-mail
+- decisions-made-workspace-27.md: Decisions made, workspace part 27: Check e-mail, a person's own signature and a block list on the E-mails screen; "My calendar" beside e-mail and a person's private plans
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
