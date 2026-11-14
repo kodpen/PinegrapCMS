@@ -450,7 +450,7 @@ function ws_mail_blocks_html($blocks, $form)
         $kind = ((string) $block['kind'] === 'domain') ? lang('The whole domain') : lang('This address');
 
         $rows .= '<div class="pg-list-row"><span class="pg-icon-tile pg-tone-gray" aria-hidden="true"><span class="bi bi-slash-circle"></span></span>'
-            . '<div class="pg-list-row-main"><div class="pg-list-row-head"><span class="pg-list-row-title text-break">' . h($what) . '</span>'
+            . '<div class="pg-list-row-main"><div class="pg-list-row-head"><span class="pg-list-row-title">' . h($what) . '</span>'
             . '<span class="pg-list-row-time">' . h(date('d.m.Y', (int) $block['created_at'])) . '</span></div>'
             . '<div class="pg-list-row-text">' . h($kind) . ' · ' . h($where) . '</div>'
             . (($form !== '') ? '<div class="pg-list-row-actions"><button type="submit" name="ws_mail_allow" value="' . (int) $block['id'] . '" form="' . h($form) . '" class="pg-button pg-button-quiet pg-button-sm">'
@@ -458,7 +458,7 @@ function ws_mail_blocks_html($blocks, $form)
             . '</div></div>';
     }
 
-    return '<div class="mt-7" id="pgset-ws-mail-blocks"><div class="pg-title-section">' . h(lang('Blocked senders')) . '</div>'
+    return '<div class="ws-mail-blocks mt-7" id="pgset-ws-mail-blocks"><div class="pg-title-section">' . h(lang('Blocked senders')) . '</div>'
         . '<p class="pg-card-sub">' . h(lang('E-mail from these senders opens no conversation, tells nobody and is kept for 30 days.')) . '</p>'
         . '<div>' . $rows . '</div></div>';
 }
@@ -508,14 +508,13 @@ function ws_mail_block_item_html($item)
     $id = (int) $item['id'];
     $block = $item['block'];
     $seg = function ($name, $choices, $label) {
-        // On a phone the choices wrap, and a long address is cut short with
-        // an ellipsis inside its button rather than widening the pane.
+        // On a phone the choices stack and each one wraps inside its button
+        // (.ws-mail-block .pg-seg-item) rather than widening the pane.
         $html = '<span class="pg-seg flex-wrap max-w-100" role="group" aria-label="' . h($label) . '" data-ws-mail-block-choice="' . h($name) . '">';
         $first = true;
 
         foreach ($choices as $value => $text) {
-            $html .= '<button type="button" class="pg-seg-item max-w-100 min-w-0" aria-pressed="' . ($first ? 'true' : 'false') . '" data-value="' . h($value) . '" title="' . h($text) . '">'
-                . '<span class="text-truncate">' . h($text) . '</span></button>';
+            $html .= '<button type="button" class="pg-seg-item max-w-100 min-w-0" aria-pressed="' . ($first ? 'true' : 'false') . '" data-value="' . h($value) . '">' . h($text) . '</button>';
             $first = false;
         }
 

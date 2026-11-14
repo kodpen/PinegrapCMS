@@ -249,7 +249,7 @@ function test_workspace_mail_blocks_item_html()
 	$html = ws_mail_block_item_html(array('id' => 4, 'block' => array('address' => 'a@b.test', 'domain' => 'b.test', 'every' => false)));
 	pg_assert_contains('data-bs-target="#ws-mail-block-4"', $html, 'the button opens the form');
 	pg_assert_contains('data-ws-mail-block="4"', $html, 'the form names the mail');
-	pg_assert_contains('data-value="address" title="a@b.test"><span class="text-truncate">a@b.test</span></button>', $html, 'the address');
+	pg_assert_contains('data-value="address">a@b.test</button>', $html, 'the address, whole');
 	pg_assert_contains('Everyone at b.test', $html, 'the domain');
 	pg_assert_contains('data-value="box"', $html, 'this box');
 	pg_assert_true(strpos($html, 'data-value="all"') === false, 'every box only with the settings right');
@@ -277,6 +277,8 @@ function test_workspace_mail_blocks_list_html()
 	pg_assert_contains('A mailbox that was deleted', $html, 'a deleted box');
 	pg_assert_contains('name="ws_mail_allow" value="8" form="pg_settings_page_form"', $html, 'Allow again submits the pane form');
 	pg_assert_contains('class="pg-list-row"', $html, 'look A: rows');
+	pg_assert_contains('class="ws-mail-blocks mt-7"', $html, 'the list\'s own class');
+	pg_assert_true(strpos($html, 'text-truncate') === false && strpos($html, '…') === false, 'no ellipsis');
 }
 
 function test_workspace_mail_blocks_wiring()
@@ -297,7 +299,12 @@ function test_workspace_mail_blocks_wiring()
 
 	pg_assert_contains('ws_mail_block_pane($pane, $viewer)', workspace_mail_blocks_test_source('includes/workspace/mail_pane.php'), 'the pane offers it');
 	pg_assert_contains("post_value('ws_mail_allow')", workspace_mail_blocks_test_source('includes/settings/mailboxes.save.php'), 'Allow again is saved');
-	pg_assert_contains('ws_mail_blocks_html(ws_mail_blocks_list(), $form)', workspace_mail_blocks_test_source('includes/workspace/mail_settings.php'), 'the card lists them');
+	$card = workspace_mail_blocks_test_source('includes/workspace/mail_settings.php');
+	pg_assert_true(strpos($card, 'ws_mail_blocks_html(ws_mail_blocks_list(), $form)') > strpos($card, 'ws_mail_connect_form($viewer, $form)'), 'the list is the card\'s last block, after the Microsoft line');
+
+	$css = workspace_mail_blocks_test_source('assets/css/backend.src.css');
+	pg_assert_contains(".ws-mail-block .pg-seg-item {\n  height: auto;", $css, 'a choice wraps on a phone');
+	pg_assert_contains(".ws-mail-blocks .pg-list-row-title {\n  white-space: normal;", $css, 'a blocked value breaks onto a second line');
 	pg_assert_true(ws_mail_ingest_message(array('status' => 'blocked', 'reason' => ''))['notice'], 'an .eml of a blocked sender is told');
 }
 

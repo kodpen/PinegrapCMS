@@ -1283,8 +1283,8 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
             <div class="card-body">
                 ' . $rows . '
                 ' . $intro . '
-                ' . (function_exists('ws_mail_blocks_html') ? ws_mail_blocks_html(ws_mail_blocks_list(), $form) : '') . '
                 ' . ws_mail_connect_form($viewer, $form) . '
+                ' . (function_exists('ws_mail_blocks_html') ? ws_mail_blocks_html(ws_mail_blocks_list(), $form) : '') . '
             </div>
         </div>
     </div>' . ws_mail_settings_script();

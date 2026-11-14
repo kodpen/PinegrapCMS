@@ -16089,6 +16089,23 @@ a.ws-chip:hover {
 .ws-mail-item.ws-mail-out {
   background: var(--pg-bg-1);
 }
+/* Block sender's choices (mail_blocks.php): on a phone a choice wraps to a
+   second line rather than being cut, so the address and the domain stay
+   apart; a long address breaks anywhere. */
+.ws-mail-block .pg-seg-item {
+  height: auto;
+  min-height: 26px;
+  padding-block: 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+/* The blocked senders on the Mailboxes card: the value is the row, so it
+   breaks onto a second line instead of ending in an ellipsis. */
+.ws-mail-blocks .pg-list-row-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .ws-mail-item-head {
   display: flex;
   flex-wrap: wrap;
