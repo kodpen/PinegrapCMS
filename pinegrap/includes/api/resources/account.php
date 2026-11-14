@@ -737,6 +737,17 @@ function api_notification_present($row, $read) {
 
 	}
 
+	// A person's own plan is read by no application: the bell row of its
+	// reminder says only that one came (includes/workspace/personal_plans.php).
+	if (($action === 'workspace') && ((int)($row['reference_id'] ?? 0) > 0) && pg_schema_has('ws_inbox', 'plan_id')
+		&& ((string)db_value("SELECT kind FROM ws_inbox WHERE id = '" . (int)$row['reference_id'] . "'") === 'plan_reminder')) {
+
+		$display['title'] = lang('A reminder of your own plan');
+		$display['description'] = '';
+		$display['details'] = '';
+
+	}
+
 	return array(
 		'id'          => (int)$row['id'],
 		'action'      => ($display['action'] !== '') ? (string)$display['action'] : $action,

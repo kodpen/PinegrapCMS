@@ -346,6 +346,7 @@
     "Give the number of boxes as a whole number from 1 to {var:1}.": "Koli sayısını 1 ile {var:1} arasında bir tam sayı olarak girin.",
     "Give the number the count is compared with.": "Sayacın karşılaştırılacağı sayıyı yazın.",
     "Give the palette a name first.": "Önce palete bir ad verin.",
+    "Give the plan a title.": "Plana bir başlık verin.",
     "Give the prescription number or the medicines, and choose to collect them or have them delivered.": "Reçete numarasını ya da ilaçları yazın; gelip almayı ya da eve teslimi seçin.",
     "Give the revision the change was made on.": "Değişikliğin yapıldığı revizyonu verin.",
     "Give the task a title.": "Göreve bir başlık verin.",

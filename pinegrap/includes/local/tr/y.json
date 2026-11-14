@@ -444,6 +444,7 @@
     "You have selected a required product, so please select a required quantity.": "Gerekli bir ürünü seçtiniz, bu nedenle lütfen gerekli bir miktarı seçin.",
     "You have sent the maximum number of e-mails that you are allowed to send in one day. Please try again later.": "Bir günde gönderebileceğiniz maksimum e-posta sayısına ulaştınız. Lütfen daha sonra tekrar deneyin.",
     "You have sent {var:1} e-mails in the last hour; try again later.": "Son bir saatte {var:1} e-posta gönderdiniz; daha sonra yeniden deneyin.",
+    "You have too many plans. Delete some first.": "Çok fazla planınız var. Önce bazılarını silin.",
     "You have unsaved changes.": "Kaydedilmemiş değişiklikler var.",
     "You have {var:1} at {var:2} today: {var:3}.": "Bugün {var:1} var, saat {var:2}: {var:3}.",
     "You have {var:1} meetings on the calendar today, the first at {var:2}.": "Bugün takviminde {var:1} toplantı var, ilki saat {var:2}.",

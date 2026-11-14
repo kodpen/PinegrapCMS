@@ -4598,6 +4598,23 @@ function ws_handle_action($action, $request)
             // Always the reader's own: no person is taken from the request.
             return ws_action_ok(ws_my_calendar($viewer, $request['view'] ?? '', $request['date'] ?? ''));
 
+        // A person's own plans (personal_plans.php): theirs alone, so no
+        // other id than the plan's is taken from the request.
+        case 'ws_personal_plan_get':
+            $plan = ws_personal_plan((int) $viewer['id'], (int) ($request['plan_id'] ?? 0));
+
+            return $plan ? ws_action_ok(array('plan' => ws_personal_plan_present($plan))) : ws_action_error(lang('This plan cannot be found.'));
+
+        case 'ws_personal_plan_save':
+            $result = ws_personal_plan_save($viewer, $request, (int) ($request['plan_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('plan' => $result['plan']));
+
+        case 'ws_personal_plan_delete':
+            $result = ws_personal_plan_delete($viewer, (int) ($request['plan_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok();
+
         case 'ws_conflicts':
             $from = ws_date_or_null($request['from'] ?? '') ?: date('Y-m-d');
             $to = ws_date_or_null($request['to'] ?? '') ?: date('Y-m-d', strtotime('+13 days'));

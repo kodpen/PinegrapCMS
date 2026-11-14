@@ -46,7 +46,9 @@
         var query = new URLSearchParams(window.location.search);
         var state = {
             view: query.get('view') || readView() || 'month',
-            date: /^\d{4}-\d{2}-\d{2}$/.test(query.get('date') || '') ? query.get('date') : ''
+            date: /^\d{4}-\d{2}-\d{2}$/.test(query.get('date') || '') ? query.get('date') : '',
+            // A reminder line opens its plan (?plan=N) once the days are drawn.
+            plan: parseInt(query.get('plan') || 0, 10) || 0
         };
         var data = null;
 
@@ -111,11 +113,20 @@
 
         bar.appendChild(seg);
 
+        // New plan: only once the plan tables are there (data.plans).
+        var newPlan = el('button', 'pg-button pg-button-fill pg-button-sm d-none');
+        newPlan.type = 'button';
+        newPlan.setAttribute('data-ws-new-plan', '');
+        newPlan.appendChild(h.icon('bi-plus-lg'));
+        newPlan.appendChild(document.createTextNode(s('new_plan')));
+        newPlan.addEventListener('click', function () { planDrawer(null, { start: (data && data.today) || h.cfg.today }); });
+
         var work = el('a', 'pg-button pg-button-quiet pg-button-sm');
         work.href = h.cfg.urls.calendar;
         work.appendChild(h.icon('bi-calendar3'));
         work.appendChild(document.createTextNode(s('work_calendar')));
         bar.appendChild(work);
+        bar.appendChild(newPlan);
 
         var card = el('div', 'ws-cal card ws-mycal');
 
@@ -135,6 +146,12 @@
                 }
 
                 draw();
+                newPlan.classList.toggle('d-none', !result.plans);
+
+                if (state.plan) {
+                    openPlan(state.plan);
+                    state.plan = 0;
+                }
             }).catch(h.fail);
         }
 
@@ -168,7 +185,9 @@
         }
 
         function openEvent(event) {
-            if (event.url) {
+            if (event.plan_id) {
+                openPlan(event.plan_id);
+            } else if (event.url) {
                 window.location.href = event.url;
             } else if (!event.readonly) {
                 h.planItem(event.id, null, load);
@@ -176,7 +195,7 @@
         }
 
         function eventChip(event) {
-            var item = el(event.readonly && !event.url ? 'div' : 'button', 'ws-cal-event ws-kind-' + event.kind);
+            var item = el(event.readonly && !event.url && !event.plan_id ? 'div' : 'button', 'ws-cal-event ws-kind-' + event.kind);
 
             if (item.tagName === 'BUTTON') {
                 item.type = 'button';
@@ -201,11 +220,16 @@
         }
 
         function dayMenu(day) {
-            return [
-                { header: day.label },
+            var items = [{ header: day.label }];
+
+            if (data.plans) {
+                items.push({ icon: 'bi-journal-plus', label: s('new_plan'), action: function () { planDrawer(null, { start: day.date }); } });
+            }
+
+            return items.concat([
                 { icon: 'bi-check2-square', label: h.t('new_task_here'), action: function () { h.taskDrawer(0, { due_date: day.date, assignees: [h.cfg.me] }, load); } },
                 { icon: 'bi-calendar-plus', label: h.t('add_plan_item'), action: function () { h.planItem(0, { start: day.date, people: [h.cfg.me] }, load); } }
-            ];
+            ]);
         }
 
         // ── month and week: the grid ──
@@ -375,9 +399,9 @@
 
                 day.events.forEach(function (event) {
                     section.appendChild(listRow(el('span', 'ws-cal-event-dot ws-kind-' + event.kind), event.title,
-                        event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || ''),
+                        event.plan_id ? s('my_plan') : (event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || '')),
                         event.time || h.t('all_day'),
-                        (event.url || !event.readonly) ? function () { openEvent(event); } : null));
+                        (event.url || event.plan_id || !event.readonly) ? function () { openEvent(event); } : null));
                 });
 
                 spans.concat(day.tasks).forEach(function (task) {
@@ -396,6 +420,167 @@
             }
 
             box.appendChild(body);
+        }
+
+        // ── the person's own plan: the New plan drawer ──
+
+        function openPlan(planId) {
+            h.api('ws_personal_plan_get', { plan_id: planId }).then(function (result) {
+                planDrawer(result.plan, {});
+            }).catch(h.fail);
+        }
+
+        function field(label, control, help) {
+            var row = el('div', 'ws-plan-field');
+            var caption = el('label', 'pg-field-label', label);
+
+            control.id = control.id || h.nextId('ws-plan-');
+            caption.htmlFor = control.id;
+            row.appendChild(caption);
+            row.appendChild(control);
+
+            if (help) {
+                row.appendChild(el('div', 'pg-text-meta', help));
+            }
+
+            return row;
+        }
+
+        function input(type, value) {
+            var node = el('input', 'pg-input');
+
+            if (type === 'date' || type === 'time') {
+                h.dateField(node, type);
+            } else {
+                node.type = type;
+            }
+
+            node.value = value || '';
+
+            return node;
+        }
+
+        function planDrawer(plan, defaults) {
+            var node = h.offcanvas('ws-plan-drawer', '');
+            var body = h.clear(node.querySelector('.drawer-body'));
+            var footer = h.clear(node.querySelector('.drawer-footer'));
+
+            footer.classList.remove('d-none');
+            node.querySelector('.drawer-title').textContent = plan ? s('edit_plan') : s('new_plan');
+
+            var lock = el('p', 'ws-plan-private pg-text-meta');
+            lock.appendChild(h.icon('bi-lock', 'me-1'));
+            lock.appendChild(document.createTextNode(s('plan_private')));
+            body.appendChild(lock);
+
+            var name = input('text', plan ? plan.title : '');
+            name.maxLength = 255;
+            body.appendChild(field(s('plan_title'), name));
+
+            var days = el('div', 'ws-plan-pair');
+            var first = input('date', plan ? plan.start : (defaults.start || h.cfg.today));
+            var last = input('date', plan ? plan.end : (defaults.start || h.cfg.today));
+            days.appendChild(field(s('plan_first_day'), first));
+            days.appendChild(field(s('plan_last_day'), last));
+            body.appendChild(days);
+
+            first.addEventListener('change', function () {
+                if (!last.value || last.value < first.value) {
+                    last.value = first.value;
+                }
+            });
+
+            var wholeRow = el('label', 'ws-plan-switch');
+            var whole = el('input', 'pg-switch');
+            whole.type = 'checkbox';
+            whole.checked = plan ? !!plan.all_day : !!defaults.all_day;
+            wholeRow.appendChild(whole);
+            wholeRow.appendChild(document.createTextNode(h.t('all_day')));
+            body.appendChild(wholeRow);
+
+            var times = el('div', 'ws-plan-pair');
+            var from = input('time', plan && plan.start_time ? plan.start_time : '09:00');
+            var until = input('time', plan && plan.end_time ? plan.end_time : '10:00');
+            times.appendChild(field(s('plan_from'), from));
+            times.appendChild(field(s('plan_until'), until));
+            body.appendChild(times);
+
+            function timeView() {
+                times.classList.toggle('d-none', whole.checked);
+            }
+
+            whole.addEventListener('change', timeView);
+            timeView();
+
+            var remind = el('select', 'pg-input');
+            [['', s('plan_no_remind')]].concat(Object.keys(S.remind_options || {}).map(function (key) {
+                return [key, S.remind_options[key]];
+            })).forEach(function (option) {
+                var item = el('option', '', option[1]);
+                item.value = option[0];
+                remind.appendChild(item);
+            });
+            remind.value = plan ? plan.remind : '';
+
+            if (remind.value !== (plan ? plan.remind : '')) {
+                remind.value = '';
+            }
+
+            body.appendChild(field(s('plan_remind'), remind));
+
+            var note = el('textarea', 'pg-input');
+            note.rows = 4;
+            note.maxLength = 2000;
+            note.value = plan ? plan.note : '';
+            body.appendChild(field(s('plan_note'), note));
+
+            if (plan) {
+                var remove = el('button', 'pg-button pg-button-danger pg-button-sm me-auto', s('delete'));
+                remove.type = 'button';
+                remove.addEventListener('click', function () {
+                    h.ask(s('plan_delete_q'), s('delete'), true).then(function (yes) {
+                        if (!yes) {
+                            return;
+                        }
+
+                        h.api('ws_personal_plan_delete', { plan_id: plan.id }).then(function () {
+                            h.hideOffcanvas(node);
+                            h.toast(s('plan_deleted'), 'success');
+                            load();
+                        }).catch(h.fail);
+                    });
+                });
+                footer.appendChild(remove);
+            }
+
+            var save = el('button', 'pg-button pg-button-fill pg-button-sm', s('save'));
+            save.type = 'button';
+            save.addEventListener('click', function () {
+                save.disabled = true;
+                h.api('ws_personal_plan_save', {
+                    plan_id: plan ? plan.id : 0,
+                    title: name.value,
+                    start: first.value,
+                    end: last.value,
+                    all_day: whole.checked ? 1 : 0,
+                    start_time: from.value,
+                    end_time: until.value,
+                    remind: remind.value,
+                    note: note.value
+                }).then(function () {
+                    save.disabled = false;
+                    h.hideOffcanvas(node);
+                    h.toast(s('plan_saved'), 'success');
+                    load();
+                }).catch(function (error) {
+                    save.disabled = false;
+                    h.fail(error);
+                });
+            });
+            footer.appendChild(save);
+
+            h.showOffcanvas(node);
+            window.setTimeout(function () { name.focus(); }, 200);
         }
 
         function draw() {

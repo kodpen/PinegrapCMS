@@ -38,6 +38,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | approval_answered (somebody outside the team answered: approval_guests.php)
  *                         | task_note (a note on a task one is on: task_work.php)
  *                         | task_reminder | task_overdue | meeting_soon (reminders.php)
+ *                         | plan_reminder (personal_plans.php)
  *                         | calendar_refused (a task moved in one's own calendar could not
  *                           be moved and was written back: calendar_sync.php)
  *                         | flow_finished (a run of one's flow ended: flow_runs.php)
@@ -77,22 +78,26 @@ function ws_notify($user_id, $kind, $data)
     // A plan item, by its own id (2026.4.10, 10.86).
     $event_id = (function_exists('ws_meetings_ready') && ws_meetings_ready()) ? (int) ($data['event_id'] ?? 0) : 0;
 
+    // A person's own plan, by its id (2026.11.0, 11.0.200).
+    $plan_id = (function_exists('ws_personal_plans_ready') && ws_personal_plans_ready()) ? (int) ($data['plan_id'] ?? 0) : 0;
+
     // The same thing twice is one row: an edit that mentions somebody again,
     // a task given to somebody who already had it.
     $existing = empty($data['separate']) ? (int) db_value("SELECT id FROM ws_inbox
         WHERE user_id = '" . $user_id . "' AND kind = '" . e($kind) . "' AND read_at = 0
         AND channel_id = '" . $channel_id . "' AND message_id = '" . $message_id . "' AND task_id = '" . $task_id . "'"
         . (($note_id > 0) ? " AND note_id = '" . $note_id . "'" : '')
-        . (($event_id > 0) ? " AND event_id = '" . $event_id . "'" : '') . "
+        . (($event_id > 0) ? " AND event_id = '" . $event_id . "'" : '')
+        . (($plan_id > 0) ? " AND plan_id = '" . $plan_id . "'" : '') . "
         LIMIT 1") : 0;
 
     if ($existing > 0) {
         return $existing;
     }
 
-    db("INSERT INTO ws_inbox (user_id, kind, channel_id, message_id, task_id, " . (($note_id > 0) ? 'note_id, ' : '') . (($event_id > 0) ? 'event_id, ' : '') . "actor_id, created_at)
+    db("INSERT INTO ws_inbox (user_id, kind, channel_id, message_id, task_id, " . (($note_id > 0) ? 'note_id, ' : '') . (($event_id > 0) ? 'event_id, ' : '') . (($plan_id > 0) ? 'plan_id, ' : '') . "actor_id, created_at)
         VALUES ('" . $user_id . "', '" . e($kind) . "', '" . $channel_id . "', '" . $message_id . "', '" . $task_id . "',
-            " . (($note_id > 0) ? "'" . $note_id . "', " : '') . (($event_id > 0) ? "'" . $event_id . "', " : '') . "'" . (int) ($data['actor_id'] ?? 0) . "', '" . time() . "')");
+            " . (($note_id > 0) ? "'" . $note_id . "', " : '') . (($event_id > 0) ? "'" . $event_id . "', " : '') . (($plan_id > 0) ? "'" . $plan_id . "', " : '') . "'" . (int) ($data['actor_id'] ?? 0) . "', '" . time() . "')");
 
     $inbox_id = (int) mysqli_insert_id(db::$con);
 
@@ -813,6 +818,10 @@ function ws_inbox_describe($viewer, $row)
                 'icon'  => 'bi-camera-video',
                 'join'  => is_array($event) ? (string) $event['meeting_url'] : '',
             );
+
+        // The reminder of the person's own plan (personal_plans.php).
+        case 'plan_reminder':
+            return ws_personal_plan_inbox_describe($viewer, $row, $base);
     }
 
     return array('title' => lang('Workspace'), 'body' => '', 'url' => $base . 'workspace.php', 'icon' => 'bi-bell');
@@ -915,6 +924,11 @@ function ws_inbox_row_visible($viewer, $row)
 
     // A meeting's notice is there as long as the meeting is.
     if (($row['kind'] === 'meeting_soon') && !db_value("SELECT id FROM ws_events WHERE id = '" . (int) ($row['event_id'] ?? 0) . "'")) {
+        return false;
+    }
+
+    // A plan's reminder is there as long as the person may see the plan.
+    if (($row['kind'] === 'plan_reminder') && (!function_exists('ws_personal_plan') || !ws_personal_plan((int) $viewer['id'], (int) ($row['plan_id'] ?? 0)))) {
         return false;
     }
 

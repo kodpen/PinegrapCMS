@@ -203,8 +203,12 @@ function ws_task_reminders_ready()
  */
 function ws_task_reminders_waiting()
 {
-    // A meeting about to start goes with the same runs.
+    // A meeting about to start, and a person's own plan, go with the same runs.
     if (ws_meeting_reminders_waiting()) {
+        return true;
+    }
+
+    if (function_exists('ws_personal_plan_reminders_waiting') && ws_personal_plan_reminders_waiting()) {
         return true;
     }
 
@@ -632,6 +636,10 @@ function ws_task_reminders_run($limit = WS_TASK_REMIND_BATCH)
     $result = array('sent' => 0, 'skipped' => 0, 'failed' => 0);
 
     ws_meeting_reminders_run($limit);
+
+    if (function_exists('ws_personal_plan_reminders_run')) {
+        ws_personal_plan_reminders_run($limit);
+    }
 
     if (!ws_task_reminders_ready() || !ws_enabled()) {
         return $result;
