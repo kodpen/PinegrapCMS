@@ -22,6 +22,9 @@
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
 - kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
+- mail-chat-tools-census.md: MT1 census of plans/mail-chat-tools.md (2026-11-14): what a chat gets from each Workspace mail route today and what it lacks, the callers apart, the tools against the directory check
+- mail-chat-tools-drafts.md: MT3's exact scope (mail-chat-tools plan): where a draft lives in ws_mail_items, who reads and changes one, routes and tools, readers to guard, the Drafts view
+- mail-chat-tools-steps.md: Exact scope of MT2, MT4, MT5 (mail-chat-tools plan): a mail read whole with HTML and files, the workspace:mail_send scope, HTML and files out, the draft files question
 - mail-chat-tools.md: Plan (owner 2026-11-14): Workspace e-mail read, drafted and sent from a person's connected chat over the API and MCP, in plain text and HTML; steps MT1 to MT6
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - messages-area-decided-2.md: The architect's decisions on the proposals of MA9a and MA10a (#9077): campaign profiles into flows (boxes first, what stays, one flow per chain, the switch, the owner), incoming e-mail in the area
