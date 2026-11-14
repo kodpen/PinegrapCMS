@@ -193,6 +193,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_sent_folder();     // 11.0.200
 	upgrade_2026_11_0_ws_personal_plans();       // 11.0.201
 	upgrade_2026_11_0_ws_mail_blocks();          // 11.0.202
+	upgrade_2026_11_0_ws_mail_own_signature();   // 11.0.203
 
 }
 
@@ -6529,5 +6530,25 @@ function upgrade_2026_11_0_ws_mail_blocks() {
 	install_add_column('ws_mail_items', 'blocked_at', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: a mailbox can block a sender\'s address or domain; their e-mail waits 30 days outside the conversations.');
+
+}
+
+// A person's own e-mail signature (My e-mail settings on the E-mails screen):
+// plain text that stands in place of the writer's name under every mail they
+// send from a mailbox, the box's Signature under it. NULL is "none", so the
+// mail keeps the writer's name as before.
+function upgrade_2026_11_0_ws_mail_own_signature() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'mail_signature', "TEXT NULL");
+
+	install_note('Workspace: a person can set their own e-mail signature under My e-mail settings.');
 
 }

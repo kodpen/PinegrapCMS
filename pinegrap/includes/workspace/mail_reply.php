@@ -635,7 +635,7 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
     $message_id = ws_mail_reply_message_id($conversation_id, bin2hex(random_bytes(8)), $host);
     $headers = ws_mail_reply_headers($answered, $message_id);
     $subject = ws_mail_reply_subject($answered ? (string) $answered['subject'] : (string) $conversation['subject'], $conversation_id);
-    $body = ws_mail_answer_body(trim((string) $text), $writer, $box, $answered);
+    $body = ws_mail_answer_body(trim((string) $text), ws_mail_writer_lines($writer, ws_mail_own_signature((int) $viewer['id'])), $box, $answered);
 
     $properties = array(
         'to'                 => (string) $conversation['customer_email'],
@@ -717,14 +717,15 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
  *
  * @param array $viewer
  * @param int   $conversation_id
- * @return array ok, error (ws_mail_reply_target()'s), to (the customer's address), name (theirs), others (ws_mail_answer_others())
+ * @return array ok, error (ws_mail_reply_target()'s), to (the customer's address), name (theirs), others (ws_mail_answer_others()),
+ *               box (name, signature: what the answer's preview puts under the writer)
  */
 function ws_mail_answer_form($viewer, $conversation_id)
 {
     $target = ws_mail_reply_target($viewer, $conversation_id);
 
     if (!$target['ok']) {
-        return array('ok' => false, 'error' => $target['error'], 'to' => '', 'name' => '', 'others' => array());
+        return array('ok' => false, 'error' => $target['error'], 'to' => '', 'name' => '', 'others' => array(), 'box' => array());
     }
 
     $conversation = $target['conversation'];
@@ -737,5 +738,6 @@ function ws_mail_answer_form($viewer, $conversation_id)
         'name'   => (string) $conversation['customer_name'],
         'others' => ws_mail_answer_others(ws_mail_reply_answered((int) $conversation['id']), (string) $conversation['customer_email'],
             (string) $box['address'], ws_mail_answer_aliases($box)),
+        'box'    => array('name' => (string) $box['name'], 'signature' => ws_mail_box_signature($box)),
     );
 }
