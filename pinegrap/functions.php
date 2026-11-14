@@ -159,6 +159,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_pass.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_designs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_designs_ready.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_design_copies.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_test_send.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/errors.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/backup.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/backup_cloud.php');

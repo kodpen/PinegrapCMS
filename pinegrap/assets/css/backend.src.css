@@ -28280,6 +28280,32 @@ textarea.pg-campaign-text {
   font-size: var(--pg-text-meta);
   color: var(--pg-fg-3);
 }
+/* "Send a test to me" at the end of the content card's side: the other
+   addresses, a line saying where it goes, the button; the sample photo
+   warning above them. */
+.pg-campaign-test {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.pg-campaign-test > .pg-input {
+  width: 100%;
+}
+.pg-campaign-test > .pg-campaign-hint {
+  margin: 0;
+}
+.pg-campaign-samples {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pg-tone-amber) 10%, transparent);
+}
 .pg-campaign-changed {
   display: flex;
   flex-direction: column;
