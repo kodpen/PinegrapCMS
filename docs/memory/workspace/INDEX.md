@@ -450,6 +450,7 @@
 - workspace-personal-plan-mail.md: Add to my calendar on a mail (PC7): the button, the filled New plan drawer, one plan a person, the invitation column 11.0.204 and its card states [decision: here]
 - workspace-personal-plan-roadmap.md: The roadmap of a person's own plan (PC5): dated steps in ws_personal_plan_steps, the bar and its progress, "Make a task" and a step that follows its task
 - workspace-personal-plan-sharing.md: Who can see a person's plan (PC4): Only me, chosen team members, the whole team; what the others see and may not do
+- workspace-personal-plans-api.md: A person's own plans in the external API and MCP (PC8): /workspace/personal-plans, scope workspace:personal_plans, only the person's own device or OAuth connection, own plans only
 - workspace-personal-plans.md: A person's private plans on My calendar (PC3): step 11.0.201, the gate ws_personal_plan_can_see() and its guard test, the drawer, Today, the plan_reminder line
 - workspace-plan-day-state.md: How a plan grid day reads (ws_plan_day_state(): away, holiday, off, over, full, ok), why load 999 is an internal marker, and where a day off with work is named instead of "%999" (PR #4326, #4233)
 - workspace-polls-api.md: A poll over the Workspace API: closed_at, can_vote false past closes_at and in an earlier version (ws_poll_vote_state()), and the field a vote, change or close refusal names
