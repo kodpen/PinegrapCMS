@@ -146,7 +146,117 @@ function test_dashboard_v2_ai_chat_box()
 	$box = pg_dashboard_v2_ai_chat(array(array('key' => 'claude', 'name' => 'Claude', 'channel_id' => 1, 'channel' => 'general', 'prefix' => '<@app:6> ', 'max' => 2000)));
 	pg_assert_same('', $box['none'], 'a box');
 	pg_assert_same(1, count($box['options']), 'its option');
-	foreach (array('title', 'label', 'pick', 'placeholder', 'send', 'open', 'failed', 'you') as $text) {
+	foreach (array('title', 'label', 'pick', 'placeholder', 'send', 'open', 'failed', 'you', 'new') as $text) {
 		pg_assert_true(($box[$text] ?? '') !== '', 'text ' . $text);
 	}
+}
+
+function test_dashboard_v2_ai_chat_store()
+{
+	$key = pg_dashboard_v2_ai_chat_store('/', 7);
+	pg_assert_true((bool) preg_match('/^pg_dash_ai_chat_[0-9a-f]{16}$/', $key), 'a storage key');
+	pg_assert_same($key, pg_dashboard_v2_ai_chat_store('/', '7'), 'the same site and person keep one key');
+	pg_assert_true($key !== pg_dashboard_v2_ai_chat_store('/', 8), 'another person, another key');
+	pg_assert_true($key !== pg_dashboard_v2_ai_chat_store('/shop/', 7), 'another site on the host, another key');
+
+	$box = pg_dashboard_v2_ai_chat(array(array('key' => 'claude', 'name' => 'Claude', 'channel_id' => 1, 'channel' => 'general', 'prefix' => '<@app:6> ', 'max' => 2000)), $key);
+	pg_assert_same($key, $box['store'], 'the box names its key');
+}
+
+function test_dashboard_v2_ai_links_read_as_a_verb()
+{
+	// lang('Open') is the state ("Açık"); a link says what it does.
+	foreach (array('ai.php', 'queue.php', 'waiting.php') as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/' . $file);
+		pg_assert_same(0, preg_match("/lang\\('Open'\\)/", $source), $file . ' labels no link with the state word');
+	}
+}
+
+/**
+ * Runs the chat's pure helpers (pgDash.aiTalk) in Node and returns what the
+ * script prints, or null without Node.
+ */
+function dashboard_v2_ai_talk_node($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgdashai');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, "var window = {};\n"
+		. file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_dash_cards_assistant.js')
+		. "\nvar T = window.pgDash.aiTalk;\n" . $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	pg_assert_same(0, $code, 'the Node script runs: ' . implode("\n", array_slice($out, 0, 8)));
+
+	return json_decode(implode("\n", $out), true);
+}
+
+function test_dashboard_v2_ai_chat_kept_talk()
+{
+	$result = dashboard_v2_ai_talk_node(<<<'JS'
+var options = [{key: 'claude', channel_id: 3, prefix: '<@app:6> '}, {key: 'ai', channel_id: 3, prefix: '@ai '}];
+var now = 1800000000000;
+var talk = {key: 'ai', channel_id: 3, root: 40, ids: [40, 44], at: now - 1000, sent: now - 1000, ai: true, last: 50, until: 1, waiting: true};
+var packed = T.pack(talk);
+var back = T.unpack(JSON.parse(JSON.stringify(packed)), now, options);
+var rows = [
+  {id: 40, parent_id: 0, mine: true, raw: '@ai first'},
+  {id: 41, parent_id: 0, mine: false},
+  {id: 42, parent_id: 40, mine: false},
+  {id: 43, parent_id: 42, mine: false, deleted: true},
+  {id: 44, parent_id: 40, mine: true},
+  {id: 45, parent_id: 40, mine: true},
+  {id: 46, parent_id: 44, mine: false}
+];
+var chain = T.chain(rows, back.talk.ids);
+process.stdout.write(JSON.stringify({
+  keys: Object.keys(packed).sort(),
+  index: back.index,
+  last: back.talk.last,
+  stale: T.unpack(packed, now + T.keep + 1000, options),
+  gone: T.unpack(packed, now, [options[0]]),
+  moved: T.unpack(packed, now, [{key: 'ai', channel_id: 9}]),
+  junk: [T.unpack(null, now, options), T.unpack({root: 'x'}, now, options), T.unpack({key: 'ai', channel_id: 3, root: 40, ids: 'x', at: now}, now, options)],
+  rootless: T.unpack({key: 'ai', channel_id: 3, root: 40, ids: [44], at: now}, now, options).talk.ids,
+  chain: chain.messages.map(function (m) { return m.id; }),
+  ids: chain.ids,
+  own: [T.ownText('@ai  first\n line', '@ai '), T.ownText('plain', '@ai '), T.ownText(null, '')],
+  lines: T.lines
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('agent', 'ai', 'at', 'channel_id', 'ids', 'key', 'root', 'sent'), $result['keys'], 'ids and times are kept, never a text or a timer');
+	pg_assert_same(1, $result['index'], 'the talk goes back to its assistant');
+	pg_assert_same(39, $result['last'], 'the reading starts at the root');
+	pg_assert_same(null, $result['stale'], 'a day after its last line the talk is gone');
+	pg_assert_same(null, $result['gone'], 'an assistant no longer askable drops the talk');
+	pg_assert_same(null, $result['moved'], 'another channel drops the talk');
+	pg_assert_same(array(null, null, null), $result['junk'], 'unreadable storage is no talk');
+	pg_assert_same(array(40, 44), $result['rootless'], 'the root is always in the chain');
+	pg_assert_same(array(40, 42, 44, 46), $result['chain'], 'the chain: own lines of it and the answers, nothing else of the channel, no deleted line');
+	pg_assert_same(array(40, 44, 42, 46), $result['ids'], 'answers join the chain');
+	pg_assert_same(array('first line', 'plain', ''), $result['own'], 'the tag comes off the person\'s line');
+	pg_assert_same(5, $result['lines'], 'five lines after a reload');
 }

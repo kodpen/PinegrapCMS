@@ -255,6 +255,139 @@
     var CHAT_WAIT = 10 * 60 * 1000;
     var CHAT_EVERY = 8000;
 
+    // A talk is kept this long after its last line, and a reload shows its
+    // last lines; the browser holds no more ids than this of it.
+    var CHAT_KEEP = 24 * 60 * 60 * 1000;
+    var CHAT_LINES = 5;
+    var CHAT_IDS = 100;
+
+    function positive(value) {
+        return (typeof value === "number") && (value > 0) && (Math.floor(value) === value);
+    }
+
+    // What the browser keeps of a talk: the assistant, its channel and the
+    // chain's ids and times, never a message's text. Pure.
+    function talkPack(talk) {
+        return {
+            key: talk.key,
+            channel_id: talk.channel_id,
+            root: talk.root,
+            ids: talk.ids.slice(-CHAT_IDS),
+            at: talk.at,
+            sent: talk.sent,
+            ai: !!talk.ai,
+            agent: !!talk.agent
+        };
+    }
+
+    // A kept talk back with the index of its assistant among the options, or
+    // null: unreadable, a day past its last line, or its assistant no longer
+    // askable in that channel. Pure.
+    function talkUnpack(kept, now, options) {
+        if (!kept || (typeof kept !== "object") || !positive(kept.channel_id) || !positive(kept.root)
+            || !Array.isArray(kept.ids) || !positive(kept.at) || (now - kept.at > CHAT_KEEP)) {
+            return null;
+        }
+
+        var index = -1;
+        (options || []).forEach(function (option, at) {
+            if ((index < 0) && (option.key === kept.key) && (option.channel_id === kept.channel_id)) {
+                index = at;
+            }
+        });
+
+        if (index < 0) {
+            return null;
+        }
+
+        var ids = kept.ids.filter(positive).slice(-CHAT_IDS);
+
+        if (ids.indexOf(kept.root) < 0) {
+            ids.unshift(kept.root);
+        }
+
+        return {
+            index: index,
+            talk: {
+                key: kept.key,
+                channel_id: kept.channel_id,
+                root: kept.root,
+                ids: ids,
+                last: kept.root - 1,
+                at: kept.at,
+                sent: positive(kept.sent) ? kept.sent : 0,
+                ai: !!kept.ai,
+                agent: !!kept.agent
+            }
+        };
+    }
+
+    // The chain's messages among a channel's (oldest first): the person's
+    // own lines of it, and every other message answering one of the chain's,
+    // which joins it. A deleted one shows nothing. Pure.
+    function talkChain(rows, ids) {
+        var known = ids.slice();
+        var chain = [];
+
+        (rows || []).forEach(function (message) {
+            if (!message || message.deleted) {
+                return;
+            }
+
+            var member = known.indexOf(message.id) >= 0;
+
+            if (!member && (message.mine || (known.indexOf(message.parent_id) < 0))) {
+                return;
+            }
+
+            if (!member) {
+                known.push(message.id);
+            }
+            chain.push(message);
+        });
+
+        return {messages: chain, ids: known};
+    }
+
+    // The person's own line as they wrote it: the tag that asked the
+    // assistant comes off. Pure.
+    function talkOwnText(raw, prefix) {
+        raw = String(raw || "");
+
+        if (prefix && (raw.indexOf(prefix) === 0)) {
+            raw = raw.slice(prefix.length);
+        }
+
+        return raw.replace(/\s+/g, " ").trim();
+    }
+
+    pgDash.aiTalk = {pack: talkPack, unpack: talkUnpack, chain: talkChain, ownText: talkOwnText, keep: CHAT_KEEP, lines: CHAT_LINES, wait: CHAT_WAIT};
+
+    // The browser storage may be missing or refuse a write (a private
+    // window, a full quota): the chat then lives as long as the page.
+    function storeRead(key) {
+        try {
+            return key ? JSON.parse(window.localStorage.getItem(key) || "null") : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function storeWrite(key, value) {
+        try {
+            if (!key) {
+                return;
+            }
+            if (value) {
+                window.localStorage.setItem(key, JSON.stringify(value));
+            } else {
+                window.localStorage.removeItem(key);
+            }
+        } catch (e) {
+            // Nothing kept; the talk goes on in the page.
+        }
+    }
+
     // The chat box: a reply chain in the chosen assistant's channel. The
     // first line is a new message, the next ones answer it; every message
     // answering one of the chain's joins it and shows here.
@@ -273,9 +406,15 @@
 
         var section = el("section", "pg-dash-ai-talk");
         section.setAttribute("aria-labelledby", "pg_dash_ai_chat_title");
+        var head = el("div", "pg-dash-ai-talk-head");
         var title = el("h3", "pg-dash-rows-title", part.title);
         title.id = "pg_dash_ai_chat_title";
-        section.appendChild(title);
+        head.appendChild(title);
+        var fresh = el("button", "btn btn-link btn-sm pg-dash-ai-new", part["new"] || "");
+        fresh.type = "button";
+        fresh.hidden = true;
+        head.appendChild(fresh);
+        section.appendChild(head);
 
         var picker = null;
 
@@ -323,6 +462,11 @@
             });
         }
 
+        function keep() {
+            storeWrite(part.store, talk ? talkPack(talk) : null);
+            fresh.hidden = !talk;
+        }
+
         function line(who, text, mine, url) {
             var item = el("li", "pg-dash-ai-line");
             item.setAttribute("data-mine", mine ? "1" : "0");
@@ -348,7 +492,14 @@
                 return;
             }
 
+            var asked = talk;
+
             send({action: "ws_sync", channel_id: talk.channel_id, since_id: talk.last, panel: 1}).done(function (answer) {
+                // "New chat" was pressed while the reading ran.
+                if (talk !== asked) {
+                    return;
+                }
+
                 var rows = (answer && answer.status === "success" && answer.data) ? (answer.data.messages || []) : [];
 
                 rows.forEach(function (message) {
@@ -363,9 +514,17 @@
 
                     if (text) {
                         talk.waiting = false;
+                        talk.at = Math.max(talk.at, (message.timestamp * 1000) || Date.now());
                         line((message.sender && message.sender.name) || "", text, false, messageUrl(talk.channel_id, message.id));
                     }
                 });
+
+                // The channel is no longer the person's to read.
+                if (answer && answer.data && answer.data.gone) {
+                    forget();
+                    return;
+                }
+                keep();
 
                 // Pinegrap AI, a model assistant and an MCP agent go on a step
                 // at a time, carried on by a screen that waits for them.
@@ -376,16 +535,132 @@
                     send({action: "ws_mcp_agent_kick"});
                 }
             }).always(function () {
-                timer = window.setTimeout(poll, CHAT_EVERY);
+                if ((talk === asked) && !timer) {
+                    timer = window.setTimeout(poll, CHAT_EVERY);
+                }
             });
         }
+
+        // The box empties: no lines, no kept talk, no polling.
+        function forget() {
+            talk = null;
+            if (timer) {
+                window.clearTimeout(timer);
+                timer = 0;
+            }
+            while (log.firstChild) {
+                log.removeChild(log.firstChild);
+            }
+            log.hidden = true;
+            keep();
+        }
+
+        fresh.addEventListener("click", function () {
+            forget();
+            ui.say(chosen().note, "");
+            ui.input.focus();
+        });
+
+        // After a reload: the kept talk's last lines, read again through the
+        // Workspace, which shows only what the person may still read. A page
+        // of the channel is 200 messages; a busy channel takes a few.
+        function restore() {
+            var found = talkUnpack(storeRead(part.store), Date.now(), part.options);
+
+            if (!found) {
+                storeWrite(part.store, null);
+                return;
+            }
+
+            var kept = found.talk;
+            var option = part.options[found.index];
+            var seen = [];
+            var pages = 0;
+
+            if (picker) {
+                picker.value = String(found.index);
+                ui.input.maxLength = option.max;
+                ui.say(option.note, "");
+            }
+
+            function show() {
+                var chain = talkChain(seen, kept.ids);
+
+                // A line sent before the reading came back began a talk of
+                // its own.
+                if (talk) {
+                    return;
+                }
+
+                if (!chain.messages.length) {
+                    storeWrite(part.store, null);
+                    return;
+                }
+
+                kept.ids = chain.ids;
+                talk = kept;
+
+                chain.messages.slice(-CHAT_LINES).forEach(function (message) {
+                    var text = message.mine ? (talkOwnText(message.raw, option.prefix) || plain(message.html)) : plain(message.html);
+
+                    if (text) {
+                        line(message.mine ? part.you : ((message.sender && message.sender.name) || ""), text, message.mine, message.mine ? "" : messageUrl(talk.channel_id, message.id));
+                    }
+                    talk.at = Math.max(talk.at, (message.timestamp || 0) * 1000);
+                });
+
+                // The person's line still waits for its answer: polling goes
+                // on to the end of its ten minutes.
+                var tail = chain.messages[chain.messages.length - 1];
+
+                if (tail.mine && talk.sent && (Date.now() < talk.sent + CHAT_WAIT)) {
+                    talk.until = talk.sent + CHAT_WAIT;
+                    talk.waiting = true;
+                    ui.say(option.sent + " " + part.wait, "good", messageUrl(talk.channel_id, tail.id));
+                    if (!timer) {
+                        timer = window.setTimeout(poll, CHAT_EVERY);
+                    }
+                }
+                keep();
+            }
+
+            function read(since) {
+                send({action: "ws_sync", channel_id: kept.channel_id, since_id: since, panel: 1}).done(function (answer) {
+                    var data = (answer && answer.status === "success") ? answer.data : null;
+
+                    if (!data || data.gone) {
+                        storeWrite(part.store, null);
+                        return;
+                    }
+
+                    var rows = data.messages || [];
+                    seen = seen.concat(rows);
+                    pages += 1;
+
+                    if (rows.length) {
+                        kept.last = Math.max(kept.last, rows[rows.length - 1].id);
+                    }
+
+                    if ((rows.length >= 200) && (pages < 10)) {
+                        read(kept.last);
+                        return;
+                    }
+                    show();
+                });
+            }
+
+            read(kept.root - 1);
+        }
+
+        restore();
 
         ui.onSend(function (text, done) {
             var option = chosen();
 
-            // Another assistant's channel starts a conversation of its own.
-            if (talk && (talk.channel_id !== option.channel_id)) {
-                talk = null;
+            // Another assistant, or another channel, starts a conversation of
+            // its own; so does a talk a day past its last line.
+            if (talk && ((talk.channel_id !== option.channel_id) || (talk.key !== option.key) || (Date.now() - talk.at > CHAT_KEEP))) {
+                forget();
             }
 
             var request = {action: "ws_send", channel_id: option.channel_id, body: option.prefix + text};
@@ -404,17 +679,19 @@
                 }
 
                 if (!talk) {
-                    talk = {channel_id: option.channel_id, root: sent.message_id, ids: [], last: sent.message_id - 1};
+                    talk = {key: option.key, channel_id: option.channel_id, root: sent.message_id, ids: [], last: sent.message_id - 1};
                 }
 
                 talk.ids.push(sent.message_id);
-                talk.until = Date.now() + CHAT_WAIT;
+                talk.at = talk.sent = Date.now();
+                talk.until = talk.sent + CHAT_WAIT;
                 talk.waiting = true;
                 talk.ai = talk.ai || !!sent.ai;
                 talk.agent = talk.agent || !!sent.agent;
                 ui.input.value = "";
                 line(part.you, text, true, "");
                 ui.say(option.sent + " " + part.wait, "good", messageUrl(option.channel_id, sent.message_id));
+                keep();
 
                 if (sent.claude) {
                     send({action: "ws_claude_kick"});

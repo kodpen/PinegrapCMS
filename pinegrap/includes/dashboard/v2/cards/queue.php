@@ -94,7 +94,7 @@ function pg_dashboard_v2_queue_rows($counts, $limit = PG_DASHBOARD_V2_QUEUE_ROWS
         $rows[] = $row('team',
             lang(array('string' => '{var:1} overdue task{suffix:1}', 'vars' => $number($count), 'suffix' => $suffix($count))),
             lang(array('string' => '{var:1} open in all', 'vars' => $number(max($count, $n('overdue', 'open'))))),
-            'bad', lang('Open'), 'workspace_tasks.php');
+            'bad', lang('Open it'), 'workspace_tasks.php');
     }
 
     if ($n('seo', 'critical') > 0) {

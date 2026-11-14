@@ -81,7 +81,7 @@ function pg_dashboard_v2_card_waiting($user, $period, $compare)
     return array('status' => 'success', 'data' => array(
         'rows'     => array_slice($rows, 0, 5),
         'empty'    => empty($rows) ? lang('Nothing is waiting on you.') : '',
-        'open'     => lang('Open'),
+        'open'     => lang('Open it'),
         'url'      => 'workspace.php',
         'url_text' => lang('Open the Workspace'),
     ));
