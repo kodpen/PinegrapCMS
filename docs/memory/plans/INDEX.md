@@ -25,6 +25,8 @@
 - kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
 - mail-chat-tools.md: Plan (owner 2026-11-14): Workspace e-mail read, drafted and sent from a person's connected chat over the API and MCP, in plain text and HTML; steps MT1 to MT6
+- mail-inbox-features-census.md: IB1 census (2026-11-14) of plans/mail-inbox-features.md: a read on request, a person's own setting, a blocked mail, a later send, a box's Sent folder, phone numbers; the questions asked
+- mail-inbox-features-scopes.md: Exact scope of IB3-IB7 of plans/mail-inbox-features.md after the IB1 census: the functions each step changes, what waits on a schema answer, what stays out
 - mail-inbox-features.md: Plan (owner 2026-11-14): the E-mails screen gains Check e-mail, a person's own signature, a block list, recipient suggestions, Send later and the Sent folder; steps IB1 to IB8
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - messages-area-decided-2.md: The architect's decisions on the proposals of MA9a and MA10a (#9077): campaign profiles into flows (boxes first, what stays, one flow per chain, the switch, the owner), incoming e-mail in the area
