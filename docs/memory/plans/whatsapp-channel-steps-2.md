@@ -29,4 +29,4 @@ description: Steps WA12-WA18 of plans/whatsapp-channel.md (owner 2026-11-13, #91
 - WA16 after WA13 has landed (they share the conversation code), WA17 after WA16 and after WA14's drawer has landed (#9405): WA17 answers in that drawer, through the same `workspace/mail_send.php`, `mail_phone.php` and `workspace_mail.js`. Claim as `[plan:whatsapp-channel] <step> — <topic>`.
 
 ## What is asked of the owner along the way?
-- WA12's storage: decided (#9286). WA14's drawer on a real panel, shown by the architect before the step lands.
+- WA12's storage: decided (#9286). WA14's drawer on a real panel: its pictures in the agent channel and `Approval: channel` on the PR (`workflow/owner-contact-channel.md`); nothing passes through the architect.

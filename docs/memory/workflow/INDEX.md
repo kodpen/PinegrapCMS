@@ -84,6 +84,7 @@
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-50.md: Decisions list, product part 50 (2026-11-13 on): the site search on a page in another language is developed further, its gaps closed by a plan (#9216)
 - decisions-made-product-51.md: Decisions list, product part 51 (2026-11-14 on): a Pinegrap plugin bundle for Claude's directory, so a site's owner connects Claude to the site quickly
+- decisions-made-product-52.md: Decisions made, product part 52: deleting a user ends the account's open store credit (void, the row kept); a Void button for a card whose account is already gone
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
