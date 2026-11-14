@@ -4,7 +4,7 @@ description: Add to my calendar on a mail (PC7): where the button is, what fills
 ---
 
 ## Where is "Add to my calendar"?
-- Channel screen: in the menu of a mail's own text (message field `mail_calendar`, `ws_personal_plan_mail_offer()`), and as the button of an invitation card. E-mails screen: under each mail of the reading pane, beside Forward (`data-ws-mail-calendar`, `ws_personal_plan_mail_pane()`).
+- Channel screen: in the menu of a mail's own text (message field `mail_calendar`, `ws_personal_plan_mail_offer()`), and as the button of an invitation card. E-mails screen: under each mail of the reading pane, beside Forward (`data-ws-mail-calendar`, `ws_personal_plan_mail_pane()`); a mail with an invitation card carries it on the card only. `ws_mail_pane_columns()` reads `invitation` once the column is there.
 - Offered to a team member once the plan tables are there; never on a delivery failure, a phone message, a file or a guest. The channel card's button is taken away by the script for a reader without `mail_calendar`.
 
 ## What does it open?
@@ -23,6 +23,6 @@ description: Add to my calendar on a mail (PC7): where the button is, what fills
 - Pressing it when the person already has a plan from that conversation (`ws_personal_plan_of_mail()`) opens that plan with the mail's new event filled in; on a cancelled one the button reads "Open my plan" and opens it to be deleted. Nothing changes until they save.
 
 ## What about a contact's erasure?
-- Nothing scrubs `ws_mail_items` on erasure today (`pg_privacy_erase_tables()` lists no mail table): `from_email` and `body_text` stay, and so does the organiser's address in `invitation`. Reported to the coordinator with PR #9527; not decided here.
+- Nothing scrubs `ws_mail_items` on erasure today (`pg_privacy_erase_tables()` lists no mail table): `from_email` and `body_text` stay, and so does the organiser's address in `invitation`. Reported to the coordinator with PR #9528; not decided here.
 
 Test: `tests/workspace_personal_plan_mail_test.php`.

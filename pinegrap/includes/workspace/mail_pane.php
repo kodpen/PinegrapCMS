@@ -39,7 +39,9 @@ function ws_mail_pane_columns($html)
         . ($html
             ? "(body_html IS NOT NULL AND body_html <> '') AS has_html,"
                 . " (LOCATE(' data-pg-src=\"http', body_html) > 0 OR LOCATE(' data-pg-background=\"http', body_html) > 0) AS outside_pictures"
-            : '0 AS has_html, 0 AS outside_pictures');
+            : '0 AS has_html, 0 AS outside_pictures')
+        // An invitation's event for its card (personal_plan_mail.php), once the column is there.
+        . ((function_exists('ws_mail_invitation_ready') && ws_mail_invitation_ready()) ? ', invitation' : '');
 }
 
 /**
@@ -263,7 +265,8 @@ function ws_mail_pane_item_html($item, $base = '')
             . '<i class="bi bi-envelope-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Forward')) . '</button>';
     }
 
-    if (!empty($item['calendar'])) {
+    // A mail whose invitation has its card carries the button there.
+    if (!empty($item['calendar']) && !(function_exists('ws_mail_invitation_of') && ws_mail_invitation_of($item))) {
         $tools .= '<button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-calendar="' . (int) $item['id'] . '">'
             . '<i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>' . h(lang('Add to my calendar')) . '</button>';
     }
