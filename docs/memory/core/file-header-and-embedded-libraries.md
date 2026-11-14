@@ -29,7 +29,7 @@ description: The Pinegrap file header every new PHP/JS file must carry, which fi
 - The exception: `includes/iyzipay-php` (2.0.59) asks for PHP 7.4 and is patched to load on 7.1 instead; an update re-applies the patch (commerce/iyzipay-sdk-php71-patch.md).
 
 ## Which embedded libraries carry a local change?
-- `includes/iyzipay-php`, to load on PHP 7.1 (above).
+- `includes/iyzipay-php`, to load on PHP 7.1 (above) and to stay quiet on 8.4/8.5 (commerce/iyzipay-sdk-php85-patch.md).
 - `mysqldump.php` (ifsnop/mysqldump-php at the software root; the backup, `includes/fn/backup.php`): its constructor sets the buffered-query option through `Pdo\Mysql::ATTR_USE_BUFFERED_QUERY` when that class exists (PHP 8.4 and later; the same value, 1000), because `PDO::MYSQL_ATTR_USE_BUFFERED_QUERY` is deprecated from 8.5 (#1451). On 8.5 the unit tests stopped with an ERROR there. An update re-applies it.
 
 Related: docs/memory/core/dompdf-embedding.md

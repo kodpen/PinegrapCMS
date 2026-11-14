@@ -78,7 +78,7 @@ function test_workspace_side_nav_keeps_every_place_under_its_gate()
 	$staff = ws_nav_groups(array('role' => 1, 'settings' => true), workspace_side_test_flags());
 
 	pg_assert_same(array('home'), workspace_side_test_keys($staff, 'top'), 'Today alone at the top');
-	pg_assert_same(array('tasks', 'notes', 'wtables', 'flows', 'calendar', 'board', 'timeline'), workspace_side_test_keys($staff, 'tools'), 'the tiles, My Tasks first');
+	pg_assert_same(array('tasks', 'notes', 'wtables', 'flows', 'calendar', 'my_calendar', 'board', 'timeline'), workspace_side_test_keys($staff, 'tools'), 'the tiles, My Tasks first');
 	pg_assert_same(array('scheduled', 'mcp', 'calendar_feed', 'archived', 'audit'), workspace_side_test_keys($staff, 'more'), 'behind More');
 	pg_assert_same(array('settings'), workspace_side_test_keys($staff, 'head'), 'the settings gear sits in the head');
 
@@ -98,7 +98,7 @@ function test_workspace_side_nav_keeps_every_place_under_its_gate()
 	)));
 
 	pg_assert_same(array('home'), workspace_side_test_keys($none, 'top'), 'every member has Today');
-	pg_assert_same(array('tasks', 'calendar', 'board', 'timeline'), workspace_side_test_keys($none, 'tools'), 'only the screens every member has');
+	pg_assert_same(array('tasks', 'calendar', 'my_calendar', 'board', 'timeline'), workspace_side_test_keys($none, 'tools'), 'only the screens every member has');
 	pg_assert_same(array('archived'), workspace_side_test_keys($none, 'more'));
 }
 

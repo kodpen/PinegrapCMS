@@ -327,7 +327,7 @@ function pg_panel_actions()
         'ws_record_create',
         'ws_task_get', 'ws_task_check', 'ws_task_save',
         'ws_task_status', 'ws_task_move', 'ws_tasks', 'ws_board',
-        'ws_conflicts', 'ws_calendar', 'ws_event_save', 'ws_event_get',
+        'ws_conflicts', 'ws_calendar', 'ws_my_calendar', 'ws_event_save', 'ws_event_get',
         'ws_event_delete', 'ws_meeting_note', 'ws_meeting_transfer', 'ws_inbox', 'ws_inbox_read', 'ws_react',
         'ws_check', 'ws_check_task', 'ws_poll_create', 'ws_poll_vote', 'ws_poll_close',
         'ws_poll_edit', 'ws_approval_create', 'ws_approval_decide',
@@ -365,7 +365,7 @@ function pg_panel_actions()
         'ws_channel_customer_followup',
         'ws_mail_reply', 'ws_mail_resend', 'ws_mail_conversation', 'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_check',
         'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_reply_form',
-        'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
+        'ws_whatsapp_reply_form', 'ws_whatsapp_reply', 'ws_sms_reply_form', 'ws_sms_reply',
     ) as $ws_action) {
         $actions[$ws_action] = array('file' => 'workspace.php', 'handler' => 'pg_panel_ws', 'exempt' => true, 'token' => true, 'write' => true);
     }

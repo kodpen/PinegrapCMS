@@ -2750,36 +2750,41 @@ function ws_handle_action($action, $request)
         // Send again: an outgoing mail that could not leave (mail_send.php).
         // Reply by WhatsApp inside the customer's 24 hours (mail_phone.php):
         // whom it goes to and the time left first, then the answer, queued.
+        // Reply by SMS within 7 days of the number's last SMS, in the same
+        // drawer and the same way, queued in sms_outbox as the kind reply.
         case 'ws_whatsapp_reply_form':
         case 'ws_whatsapp_reply':
+        case 'ws_sms_reply_form':
+        case 'ws_sms_reply':
             if (!function_exists('ws_mail_phone_reply_send') || !ws_mail_phone_ready()) {
                 return ws_action_error(lang('The database has not been upgraded yet.'));
             }
 
             $conversation_id = (int) ($request['conversation_id'] ?? 0);
+            $transport = (strpos($action, 'ws_sms_') === 0) ? 'sms' : 'whatsapp';
 
-            if ($action === 'ws_whatsapp_reply_form') {
-                $form = ws_mail_phone_reply_form($viewer, $conversation_id);
+            if (($action === 'ws_whatsapp_reply_form') || ($action === 'ws_sms_reply_form')) {
+                $form = ws_mail_phone_reply_form($viewer, $conversation_id, $transport);
 
                 return $form['ok']
                     ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'seconds' => $form['seconds'], 'window' => $form['window'],
-                        'templates' => $form['templates'], 'file_field' => $form['file_field']))
+                        'templates' => $form['templates'], 'file_field' => $form['file_field'], 'max' => $form['max']))
                     : ws_action_error(ws_mail_phone_reply_error_text($form['error']));
             }
 
             // One file at most, as New e-mail's files are read; a template
-            // with its values (JSON) after the 24 hours.
-            $files = ws_mail_compose_files($_FILES['files'] ?? null);
+            // with its values (JSON) after the 24 hours. An SMS takes no file.
+            $files = ($transport === 'sms') ? array('ok' => true, 'files' => array()) : ws_mail_compose_files($_FILES['files'] ?? null);
 
             if (!$files['ok']) {
                 return ws_action_error($files['error'], 'files');
             }
 
-            $result = ws_mail_phone_reply_send($viewer, $conversation_id, $request, $files['files']);
+            $result = ws_mail_phone_reply_send($viewer, $conversation_id, $request, $files['files'], $transport);
 
             if (!$result['ok']) {
                 $fields = array('empty' => 'text', 'too_long' => 'text', 'caption_long' => 'text', 'one_file' => 'files', 'file_type' => 'files',
-                    'file_size' => 'files', 'file_refused' => 'files', 'file_not_kept' => 'files', 'no_template' => 'template');
+                    'file_size' => 'files', 'file_refused' => 'files', 'file_not_kept' => 'files', 'no_template' => 'template', 'sms_too_long' => 'text');
 
                 return ws_action_error(ws_mail_phone_reply_error_text($result['error'], $result['detail']), $fields[$result['error']] ?? '');
             }
@@ -4618,6 +4623,10 @@ function ws_handle_action($action, $request)
 
         case 'ws_calendar':
             return ws_action_ok(ws_calendar($viewer, (string) ($request['month'] ?? ''), (int) ($request['person_id'] ?? 0), (int) ($request['department_id'] ?? 0)));
+
+        case 'ws_my_calendar':
+            // Always the reader's own: no person is taken from the request.
+            return ws_action_ok(ws_my_calendar($viewer, $request['view'] ?? '', $request['date'] ?? ''));
 
         case 'ws_conflicts':
             $from = ws_date_or_null($request['from'] ?? '') ?: date('Y-m-d');
