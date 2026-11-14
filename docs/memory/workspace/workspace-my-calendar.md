@@ -4,7 +4,7 @@ description: My calendar (workspace_my_calendar.php, PC2): the Work Calendar ope
 ---
 
 ## What does My calendar show?
-- `workspace_my_calendar.php`: the reader's own tasks (those they are assigned to, with coming copies of their repeating tasks), the plan items that apply to them (`ws_event_applies()`: company, their departments, items naming them), their confirmed bookings and their own iCal layer (`workspace-personal-ical.md`). No conversations, no month figures, nobody else's work.
+- `workspace_my_calendar.php`: the reader's own tasks (those they are assigned to, with coming copies of their repeating tasks), the plan items that apply to them (`ws_event_applies()`: company, their departments, items naming them), their confirmed bookings, their own iCal layer (`workspace-personal-ical.md`) and the plans they may see (`workspace-personal-plans.md`). No conversations, no month figures, nobody else's work.
 - Views: Month (whole weeks, Monday first, like the Work Calendar), Week (Monday to Sunday, tall cells, nothing cut), List (`WS_MY_CALENDAR_LIST_DAYS` = 30 days, only days that hold something). Choosing List opens it on today, under a day heading with a "Today" pill; earlier days are one step back with the arrow. A line whose kind repeats its title (a leave day) is written once. The view is kept per browser (localStorage `pg.ws.myCalendar.view`); the address carries `?view=&date=`.
 - A task opens the task drawer, a plan item its form, a booking the agenda; an own-iCal event is read-only. A day's right-click (long press) offers New task and Add plan item for the reader. A click on a day (or its "+N more") opens the list from that day; in the list a task over several days is listed once, on its first day in the range.
 
@@ -15,7 +15,7 @@ description: My calendar (workspace_my_calendar.php, PC2): the Work Calendar ope
 
 ## Who may open it?
 - Team members only: `ws_screen_gate()`; a channel guest is no member. The action never takes a person from the request: it is always the reader's own, so no administrator reads another person's calendar here.
-- The Work Calendar, the planning board and capacity are unchanged (`plans/personal-calendar-plans.md`).
+- The Work Calendar, the planning board and capacity are unchanged (`workspace-personal-calendar-rules.md`).
 
 ## Where are its ways in?
 - The E-mails toolbar, on Communication › Incoming e-mail (`messages_mail.php`): `ws_mail_list_my_calendar_html()` in the `secondary` slot of `ws_mail_list_filters_html()` (`mail_list.php`), after Mark all as read. "Check e-mail" (IB2, `plans/mail-inbox-features.md`) goes beside it in the same slot.

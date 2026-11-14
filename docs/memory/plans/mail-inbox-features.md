@@ -4,7 +4,7 @@ description: Plan (owner 2026-11-14): the E-mails screen gains Check e-mail, a p
 ---
 
 ## What is asked?
-- Owner (2026-11-14, in the architect's window): a button that checks for new e-mail and downloads it, then a signature per person, a block list and the other features of a mailbox. His words: `workflow/decisions-made-workspace-27.md`. The calendar half: `plans/personal-calendar-plans.md`.
+- Owner (2026-11-14, in the architect's window): a button that checks for new e-mail and downloads it, then a signature per person, a block list and the other features of a mailbox. His words: `workflow/decisions-made-workspace-27.md`. The calendar half: `workspace/workspace-personal-calendar-rules.md`.
 
 ## What is there today?
 - The job reads the boxes every minute, 25 mails a run, one reader per box by a lock (`workspace/mail-fetch.md`). Nobody can ask for a read from the screen.

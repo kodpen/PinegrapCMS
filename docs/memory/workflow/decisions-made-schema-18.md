@@ -18,7 +18,7 @@ description: Decisions list, schema part 18 (2026-11-13 on): whatsapp and sms tr
 - Running sites: nothing changes until a draft with a file is written.
 
 ## Which tables hold a person's own plans? (owner, 2026-11-14, in the architect's window)
-- Asked by the census of `plans/personal-calendar-plans.md` (PC1, #9474). The owner, asked "Kişisel planlar (Takvimim) için şu şema eklensin mi?", answered: "Evet, eklensin".
+- Asked by the census of the personal calendar plan (PC1, #9474; `workspace/workspace-personal-calendar-rules.md`). The owner, asked "Kişisel planlar (Takvimim) için şu şema eklensin mi?", answered: "Evet, eklensin".
 - Shape: tables `ws_personal_plans` (a plan), `ws_personal_plan_steps` (a roadmap's steps), `ws_personal_plan_people` (who else sees a plan) and the column `ws_inbox.plan_id` (a reminder's plan), all in one step of the open version (PC3). No `copied_from`, no `deleted_at`.
 
 ## Which columns do the mailbox features get? (owner, 2026-11-14, in the architect's window)
