@@ -120,16 +120,6 @@ function email_campaign_job_prepare($email_recipient)
         return null;
     }
 
-    // Create an array that will store the fields for variables that need to be replaced.
-    $fields = array();
-
-    // setup variables
-    $mail_merge_first_name = '';
-    $mail_merge_last_name = '';
-    $mail_merge_nickname = '';
-    $mail_merge_salutation = '';
-    $mail_merge_suffix = '';
-    
     // get contact information for email recipient
     $query =
         "SELECT
@@ -146,64 +136,10 @@ function email_campaign_job_prepare($email_recipient)
         $result = db_q($query, array((int) $email_recipient['contact_id']));
         $row = mysqli_fetch_assoc($result);
     }
-    if (!$row) {
-        $row = array('first_name' => '', 'last_name' => '', 'nickname' => '', 'salutation' => '', 'suffix' => '');
-    }
 
-    $first_name = trim($row['first_name']);
-    $last_name = trim($row['last_name']);
-    
-    // if there is a first name in the database, update the variable
-    if ($row['first_name'] != '') {
-        $mail_merge_first_name = ' ' . trim($row['first_name']);
-    }
-    
-    // if there is a last name in the database, update the variable
-    if ($row['last_name'] != '') {
-        $mail_merge_last_name = ' ' . trim($row['last_name']);
-    }
-    
-    // if there is a nickname in the database, update the variable
-    if ($row['nickname'] != '') {
-        $mail_merge_nickname = trim($row['nickname']);
-    }
-    
-    // if there is a salutation in the database, update the variable
-    if ($row['salutation'] != '') {
-        $mail_merge_salutation = trim($row['salutation']);
-    }
-    
-    // if there is a suffix in the database, update the variable
-    if ($row['suffix'] != '') {
-        $mail_merge_suffix = ', ' . trim($row['suffix']);
-    }
-    
-    // if there is a nickname for the current email recipient, use that for the dynamic data
-    if ($mail_merge_nickname != '') {
-        $mail_merge_dynamic_data = trim($mail_merge_nickname);
-    
-    // else, there was not a nickname, so display the users full name
-    } else {
-        $mail_merge_dynamic_data = trim($mail_merge_salutation . $mail_merge_first_name . $mail_merge_last_name . $mail_merge_suffix);
-    }
-
-    // Add name field so that variable is replaced.
-    $fields[] = array(
-        'name' => 'name',
-        'data' => $mail_merge_dynamic_data,
-        'type' => '');
-
-    // Add first_name field so that variable is replaced.
-    $fields[] = array(
-        'name' => 'first_name',
-        'data' => $first_name,
-        'type' => '');
-
-    // Add last_name field so that variable is replaced.
-    $fields[] = array(
-        'name' => 'last_name',
-        'data' => $last_name,
-        'type' => '');
+    // ^^name^^, ^^first_name^^ and ^^last_name^^ (pg_mail_merge_contact_fields()).
+    $fields = pg_mail_merge_contact_fields($row ? $row : null);
+    $mail_merge_dynamic_data = $fields[0]['data'];
 
     // If this is an auto email campaign, then add fields for that type of campaign.
     if ($email_recipient['type'] == 'automatic') {
@@ -266,72 +202,8 @@ function email_campaign_job_prepare($email_recipient)
         // If this is a commercial email, then prepare organization and email preferences info.
         if ($email_recipient['purpose'] == 'commercial') {
             
-            $organization = '';
+            $organization = pg_mail_organization_line(pg_mail_organization());
 
-            // if there is an organization name, then add it to the organization
-            if (ORGANIZATION_NAME != '') {
-                $organization .= ORGANIZATION_NAME;
-            }
-
-            // if there is an organization address 1, then add it to the organization
-            if (ORGANIZATION_ADDRESS_1 != '') {
-                // if the organization is not blank, then add a space for separation
-                if ($organization != '') {
-                    $organization .= ' ';
-                }
-
-                $organization .= ORGANIZATION_ADDRESS_1;
-            }
-
-            // if there is an organization address 2, then add it to the organization
-            if (ORGANIZATION_ADDRESS_2 != '') {
-                // if the organization is not blank, then add a space for separation
-                if ($organization != '') {
-                    $organization .= ' ';
-                }
-                
-                $organization .= ORGANIZATION_ADDRESS_2;
-            }
-
-            // if there is an organization city, then add it to the organization
-            if (ORGANIZATION_CITY != '') {
-                // if the organization is not blank, then add a space for separation
-                if ($organization != '') {
-                    $organization .= ' ';
-                }
-                
-                $organization .= ORGANIZATION_CITY;
-            }
-
-            // if there is an organization state, then add it to the organization
-            if (ORGANIZATION_STATE != '') {
-                // if the organization is not blank, then add a space for separation
-                if ($organization != '') {
-                    $organization .= ' ';
-                }
-                
-                $organization .= ORGANIZATION_STATE;
-            }
-
-            // if there is an organization zip code, then add it to the organization
-            if (ORGANIZATION_ZIP_CODE != '') {
-                // if the organization is not blank, then add a space for separation
-                if ($organization != '') {
-                    $organization .= ' ';
-                }
-                
-                $organization .= ORGANIZATION_ZIP_CODE;
-            }
-
-            // if there is an organization country, then add it to the organization
-            if (ORGANIZATION_COUNTRY != '') {
-                // if the organization is not blank, then add a space for separation
-                if ($organization != '') {
-                    $organization .= ' ';
-                }
-                
-                $organization .= ORGANIZATION_COUNTRY;
-            }
             $email_recipient['body'] .=
                 "\n" .
                 "\n" .

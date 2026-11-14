@@ -178,28 +178,33 @@ function ws_flow_mail_marketing_refusal($email)
 }
 
 /**
- * A marketing e-mail's body with the campaigns' preferences and unsubscribe
- * link at its end: a line of plain text, or a paragraph of HTML. Pure but
- * for the link, given.
+ * A marketing e-mail's body with the campaigns' commercial footer at its
+ * end: the organization's name and address, then the preferences and
+ * unsubscribe link; a few lines of plain text, or a paragraph of HTML. Pure
+ * but for the link and the address, given.
  *
  * @param string $body
- * @param string $format plain_text | html
- * @param string $url    pg_email_preferences_url(), '' for none
+ * @param string $format       plain_text | html
+ * @param string $url          pg_email_preferences_url(), '' for none
+ * @param string $organization pg_mail_organization_line(), '' for none
  * @return string
  */
-function ws_flow_mail_unsubscribe_footer($body, $format, $url)
+function ws_flow_mail_unsubscribe_footer($body, $format, $url, $organization = '')
 {
-    if ((string) $url === '') {
+    $organization = trim((string) $organization);
+
+    if (((string) $url === '') && ($organization === '')) {
         return (string) $body;
     }
 
     $label = lang('Update email preferences or unsubscribe');
 
     if ($format === 'html') {
-        $footer = '<p style="font-size:12px;color:#666">' . h($label) . ': <a href="' . h($url) . '">' . h($url) . '</a></p>';
+        $footer = '<p style="font-size:12px;color:#666">' . (($organization !== '') ? h($organization) . (((string) $url !== '') ? '<br>' : '') : '')
+            . (((string) $url !== '') ? h($label) . ': <a href="' . h($url) . '">' . h($url) . '</a>' : '') . '</p>';
 
         return (stripos((string) $body, '</body>') !== false) ? (string) preg_replace('~</body>~i', $footer . '</body>', (string) $body, 1) : $body . $footer;
     }
 
-    return rtrim((string) $body) . "\n\n" . $label . ":\n" . $url;
+    return rtrim((string) $body) . (($organization !== '') ? "\n\n" . $organization : '') . (((string) $url !== '') ? "\n\n" . $label . ":\n" . $url : '');
 }
