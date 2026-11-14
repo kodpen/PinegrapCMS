@@ -2817,6 +2817,45 @@
         }, true);
     }
 
+    // Whether a message pane follows its newest line, and whether it goes
+    // down to it now. The reader's intent is kept, not the pane's geometry
+    // of the moment: content that grows by itself (a picture taking its
+    // size, a card drawn again, a batch after a hidden tab) never drops it.
+    // state: { following, height }, height being the pane's scrollHeight at
+    // the last stick. event.type: 'stick' (opened, sent, the arrow), 'leave'
+    // (a jump to a message, older lines loaded), 'grow' (the content or the
+    // pane changed size), 'scroll' (with near: within reach of the end).
+    // event.height is the scrollHeight now. Returns { following, height,
+    // scroll }.
+    function followEnd(state, event) {
+        var following = !!(state && state.following);
+        var height = (state && state.height) ? state.height : 0;
+
+        if (event.type === 'stick') {
+            return { following: true, height: event.height, scroll: true };
+        }
+
+        if (event.type === 'leave') {
+            return { following: false, height: height, scroll: false };
+        }
+
+        if (event.type === 'grow') {
+            return following ? { following: true, height: event.height, scroll: true } : { following: false, height: height, scroll: false };
+        }
+
+        // A scroll while following whose content is not the height of the
+        // last stick was moved by growth, not by the reader: back down.
+        if (following && (event.height !== height)) {
+            return { following: true, height: event.height, scroll: true };
+        }
+
+        if (event.near) {
+            return { following: true, height: event.height, scroll: false };
+        }
+
+        return { following: false, height: height, scroll: false };
+    }
+
     // One Tab stop over the messages of a pane, the newest until another is
     // focused: Up and Down move between messages, Home and End go to the
     // first and the last. A focused message shows its tools (:focus-within)
@@ -8766,6 +8805,7 @@
                             target.classList.add('ws-msg-highlight');
                         }
 
+                        self.leaveEnd();
                         target.scrollIntoView({ block: 'center' });
                     }
                 } else {
@@ -9273,20 +9313,7 @@
             self.pane = pane;
             messageKeys(pane);
 
-            // A picture that finishes loading under the newest line pushes
-            // it out of view; whoever was reading at the end stays there.
-            // (The conversation is no longer pulled down on every look.)
-            self.atEnd = true;
-            self.unseenBelow = 0;
-            pane.addEventListener('scroll', function () {
-                self.atEnd = self.nearEnd();
-                self.drawJump();
-            }, { passive: true });
-            pane.addEventListener('load', function (event) {
-                if (self.atEnd && event.target && (event.target.tagName === 'IMG')) {
-                    self.scrollToEnd();
-                }
-            }, true);
+            self.watchEnd(self.tab === 'messages' ? pane : null);
 
             if (self.tab === 'messages') {
                 self.drawMessages();
@@ -11917,6 +11944,7 @@
                     target.classList.add('ws-msg-highlight');
                 }
 
+                this.leaveEnd();
                 target.scrollIntoView({ block: 'center', behavior: 'smooth' });
             } else {
                 if (flash) {
@@ -14379,6 +14407,10 @@
             api('ws_messages_before', { channel_id: self.channel.id, before_id: first, era_id: self.era ? self.era.id : 0 }).then(function (data) {
                 var height = self.pane.scrollHeight;
 
+                // The place read stays; the end is followed again only when
+                // the reader goes back down.
+                self.leaveEnd();
+
                 self.messages = data.messages.concat(self.messages);
                 self.hasMore = data.has_more;
                 self.drawMessages();
@@ -14388,10 +14420,109 @@
             trigger.disabled = true;
         },
 
+        // Down to the newest line, following it from now on.
         scrollToEnd: function () {
-            if (this.pane) {
-                this.pane.scrollTop = this.pane.scrollHeight;
+            this.followEvent('stick');
+        },
+
+        // Following the newest line stops (a jump to a message wins over it).
+        leaveEnd: function () {
+            this.followEvent('leave');
+        },
+
+        // Applies followEnd() to the pane: goes down when it says so and
+        // draws the arrow.
+        followEvent: function (type) {
+            var pane = this.pane;
+
+            if (!pane) {
+                return;
             }
+
+            var next = followEnd({ following: this.atEnd, height: this.endHeight }, { type: type, height: pane.scrollHeight, near: this.nearEnd() });
+
+            this.atEnd = next.following;
+
+            if (next.scroll) {
+                pane.scrollTop = pane.scrollHeight;
+            }
+
+            this.endHeight = next.scroll ? pane.scrollHeight : next.height;
+            this.drawJump();
+        },
+
+        // Keeps a message pane (the channel's or a discussion's) at its newest
+        // line while the reader follows it: every growth of its content (a
+        // picture's size or its failure, a card drawn again) and of the pane
+        // itself goes down again; a reader who scrolled up stays put.
+        watchEnd: function (pane) {
+            var self = this;
+
+            (self.endWatch || []).forEach(function (observer) { observer.disconnect(); });
+            self.endWatch = [];
+            self.atEnd = true;
+            self.endHeight = 0;
+            self.unseenBelow = 0;
+
+            if (!pane) {
+                return;
+            }
+
+            function grown() {
+                if (self.pane === pane) {
+                    self.followEvent('grow');
+                }
+            }
+
+            pane.addEventListener('scroll', function () {
+                if (self.pane === pane) {
+                    self.followEvent('scroll');
+                }
+            }, { passive: true });
+
+            ['load', 'error', 'loadedmetadata'].forEach(function (name) {
+                pane.addEventListener(name, function (event) {
+                    var tag = event.target ? event.target.tagName : '';
+
+                    if ((tag === 'IMG') || (tag === 'VIDEO')) {
+                        grown();
+                    }
+                }, true);
+            });
+
+            if (typeof window.ResizeObserver !== 'function') {
+                return;
+            }
+
+            var sizes = new window.ResizeObserver(grown);
+
+            sizes.observe(pane);
+            Array.prototype.forEach.call(pane.children, function (node) { sizes.observe(node); });
+            self.endWatch.push(sizes);
+
+            if (typeof window.MutationObserver !== 'function') {
+                return;
+            }
+
+            // Lines are direct children of the pane: each one drawn is
+            // measured, each one removed let go.
+            var nodes = new window.MutationObserver(function (records) {
+                records.forEach(function (record) {
+                    Array.prototype.forEach.call(record.removedNodes, function (node) {
+                        if (node.nodeType === 1) {
+                            sizes.unobserve(node);
+                        }
+                    });
+                    Array.prototype.forEach.call(record.addedNodes, function (node) {
+                        if (node.nodeType === 1) {
+                            sizes.observe(node);
+                        }
+                    });
+                });
+            });
+
+            nodes.observe(pane, { childList: true });
+            self.endWatch.push(nodes);
         },
 
         nearEnd: function () {
@@ -14414,8 +14545,6 @@
             jump.addEventListener('click', function () {
                 self.unseenBelow = 0;
                 self.scrollToEnd();
-                self.atEnd = true;
-                self.drawJump();
             });
             self.jump = jump;
 
@@ -18139,7 +18268,9 @@
                     return;
                 }
 
-                var stick = scroll || self.nearEnd();
+                // The reader's intent, not the pane's geometry: a picture
+                // taking its size just now must not drop the end.
+                var stick = scroll || self.atEnd;
                 var grew = false;
                 var arrived = 0;
 
@@ -18271,9 +18402,8 @@
                 // after sending): someone reading a little above it stays put.
                 if (stick && self.tab === 'messages' && (scroll || grew)) {
                     self.scrollToEnd();
-                } else if (self.tab === 'messages' && arrived) {
+                } else if (self.tab === 'messages' && arrived && !stick) {
                     self.unseenBelow = (self.unseenBelow || 0) + arrived;
-                    self.atEnd = false;
                     self.drawJump();
                 }
 
@@ -18360,6 +18490,8 @@
             syncAgain: false,
             syncAgainScroll: false,
             atEnd: true,
+            endHeight: 0,
+            endWatch: null,
             unseenBelow: 0,
             localAt: {},
             sideKey: null,
@@ -18549,6 +18681,7 @@
 
                 if (target) {
                     target.classList.add('ws-msg-highlight');
+                    self.leaveEnd();
                     target.scrollIntoView({ block: 'center' });
                 } else {
                     self.scrollToEnd();
@@ -18693,12 +18826,7 @@
             center.appendChild(pane);
             self.pane = pane;
             messageKeys(pane);
-            self.atEnd = true;
-            self.unseenBelow = 0;
-            pane.addEventListener('scroll', function () {
-                self.atEnd = self.nearEnd();
-                self.drawJump();
-            }, { passive: true });
+            self.watchEnd(pane);
 
             self.drawMessages();
 
