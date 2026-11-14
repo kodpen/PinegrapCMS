@@ -4,7 +4,7 @@ description: Block families in their own files (style_designer_blocks_<family>.j
 ---
 
 ## Where does a new block family live?
-- In `pinegrap/assets/js/style_designer_blocks_<family>.js` (lower case, digits, `_`), never in `style_designer.src.js`. `pg_designer_js_sources()` (`includes/fn/output.php`) lists the core first, then the family files sorted by name; `pg_js_bundles()` builds `style_designer.min.js` from `pg_google_fonts.js` plus that list, so adding a family edits neither the core nor `output.php`. Run `php tools/build_js.php` after editing one.
+- In `pinegrap/assets/js/style_designer_blocks_<family>.js` (lower case, digits, `_`), never in `style_designer.src.js`. `pg_designer_js_sources()` (`includes/fn/output.php`) lists the core first, then the family files sorted by name; `pg_js_bundles()` builds `style_designer.min.js` from `pg_google_fonts.js` plus that list, so adding a family edits neither the core nor `output.php`.
 - The families shipped before (news, creative, local business…) stay in the core.
 
 ## What does a family file contain?

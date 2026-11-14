@@ -29,7 +29,7 @@ description: How visible text in style_designer.src.js must use _sdT('English') 
 - PHP default trees and widget fallback texts use `lang()`; their JS twins (`_swTypeDefaults`, `_emptyDefault`) use `_sdT()` with the same key.
 
 ## How is it checked?
-- `php tools/check_lang.php` (CI) fails on a missing key and on any `_sdT()` call that is not a single-quoted literal. `node --check assets/js/style_designer.src.js` after editing it (`php -l` does not read it), then `php tools/build_js.php`.
+- `php tools/check_lang.php` (CI) fails on a missing key and on any `_sdT()` call that is not a single-quoted literal. `node --check assets/js/style_designer.src.js` after editing it (`php -l` does not read it).
 - `pg_designer_i18n_keys()` scans the source, not the served `style_designer.min.js` (#3063): terser may rewrite a literal's quotes.
 - A raw literal in a palette `label` or a `defaultProps` text is reported by no check (`check_lang.php` reads only `lang()` / `_sdT()` calls): verify by eye (`designer/designer-sdt-translation.md`).
 
