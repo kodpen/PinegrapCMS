@@ -136,12 +136,13 @@ function ws_mail_pane_open($viewer, $conversation_id)
  * list. The script reads the pane again and adds the answer and the status
  * controls (workspace_mail.js).
  *
- * @param array|null $pane  ws_mail_pane_open(), null when it cannot be opened
- * @param string     $base  the panel's address, ending in /
- * @param string     $close the list's address without the conversation
+ * @param array|null $pane     ws_mail_pane_open(), null when it cannot be opened
+ * @param string     $base     the panel's address, ending in /
+ * @param string     $close    the list's address without the conversation
+ * @param bool       $channels the Workspace is on (ws_enabled()), so a channel opens
  * @return string HTML
  */
-function ws_mail_pane_page_html($pane, $base, $close)
+function ws_mail_pane_page_html($pane, $base, $close, $channels = true)
 {
     $shut = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($close) . '" data-ws-mail-close>'
         . '<i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Close')) . '</a>';
@@ -150,27 +151,29 @@ function ws_mail_pane_page_html($pane, $base, $close)
         return '<div class="ws-mail-pane-tools">' . $shut . '</div><p class="ws-empty">' . h(lang('This conversation cannot be opened.')) . '</p>';
     }
 
-    return ws_mail_pane_html($pane, $base, $shut);
+    return ws_mail_pane_html($pane, $base, $shut, $channels);
 }
 
 /**
  * The pane: the conversation's heading and its mails. Pure but for the
  * words and the time labels. A conversation of a mailbox kept in no channel
  * names its mailbox only and has no "Open in channel": this screen is the
- * one place it opens.
+ * one place it opens. With the Workspace off ($channels false) no channel
+ * opens either, so no conversation has the link, and none names a channel.
  *
- * @param array  $pane  ws_mail_pane()
- * @param string $base  the panel's address, ending in /
- * @param string $tools more of the heading's tools, HTML
+ * @param array  $pane     ws_mail_pane()
+ * @param string $base     the panel's address, ending in /
+ * @param string $tools    more of the heading's tools, HTML
+ * @param bool   $channels the Workspace is on (ws_enabled()), so a channel opens
  * @return string HTML
  */
-function ws_mail_pane_html($pane, $base, $tools = '')
+function ws_mail_pane_html($pane, $base, $tools = '', $channels = true)
 {
     $conversation = $pane['conversation'];
     $subject = (trim((string) $conversation['subject']) !== '') ? (string) $conversation['subject'] : lang('(no subject)');
     $customer = trim((string) $conversation['customer_name'] . ' <' . (string) $conversation['customer_email'] . '>');
     $url = $base . 'workspace.php?channel=' . (int) $conversation['channel_id'] . '&message=' . (int) $conversation['message_id'];
-    $room = ws_channel_is_mailbox($pane['channel']);
+    $room = ws_channel_is_mailbox($pane['channel']) || !$channels;
 
     $html = '<header class="ws-mail-pane-head"><h2 class="h5 mb-1" tabindex="-1">' . h($subject) . '</h2>'
         . '<div class="small fg-secondary">' . h($customer)

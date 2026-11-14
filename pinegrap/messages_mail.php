@@ -29,7 +29,7 @@ $user = validate_user();
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 
-$viewer = ws_screen_gate($user);
+$viewer = ws_screen_gate($user, false, true);
 
 if (!ws_mail_reads_ready()) {
     output_error(lang('The workspace is not installed yet: the database has to be updated first.'));
@@ -49,7 +49,7 @@ $pane = '';
 // The conversation of the address is opened (and read) before the list is
 // drawn, so its row is already read.
 if ($open > 0) {
-    $pane = ws_mail_pane_page_html(ws_mail_pane_open($viewer, $open), $base, ws_mail_list_page_url($filters));
+    $pane = ws_mail_pane_page_html(ws_mail_pane_open($viewer, $open), $base, ws_mail_list_page_url($filters), ws_enabled());
 }
 
 $list = ws_mail_list($viewer, $filters, $now);

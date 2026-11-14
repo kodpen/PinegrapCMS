@@ -264,11 +264,11 @@ function test_workspace_mail_list_wiring()
 	$boot = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 	$side = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_side.js');
 
-	pg_assert_contains('$viewer = ws_screen_gate($user);', $page, 'members only');
+	pg_assert_contains('$viewer = ws_screen_gate($user, false, true);', $page, 'members only');
 	pg_assert_contains('ws_mail_list($viewer, $filters, $now)', $page);
 	pg_assert_contains("ws_screen_assets(\$viewer, 'mail', array('mail' => array('strings' => ws_mail_screen_js_strings())))", $page, 'the script and its words');
 	pg_assert_contains('data-ws-mail-pane', $page, 'the pane beside the list');
-	pg_assert_contains('$pane = ws_mail_pane_page_html(ws_mail_pane_open($viewer, $open), $base, ws_mail_list_page_url($filters));', $page, 'the address\'s conversation drawn by the server');
+	pg_assert_contains('$pane = ws_mail_pane_page_html(ws_mail_pane_open($viewer, $open), $base, ws_mail_list_page_url($filters), ws_enabled());', $page, 'the address\'s conversation drawn by the server');
 	pg_assert_true(strpos($page, 'ws_mail_pane_open($viewer, $open)') < strpos($page, '$list = ws_mail_list($viewer, $filters, $now);'), 'read before the list and the menu count are drawn');
 	pg_assert_contains("(\$pane !== '') ? '' : ' hidden'", $page, 'shown when drawn');
 	pg_assert_contains('$pane = ws_mail_pane_open($viewer, (int) ($request[\'conversation_id\'] ?? 0));', $actions, 'the script opens it the same way');

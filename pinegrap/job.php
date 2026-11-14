@@ -1113,16 +1113,20 @@ if (
 // small read on a site with no mailbox that has a server; the reader and
 // its IMAP client are loaded only when one exists. The budget keeps the
 // general job short: a box needs fifteen seconds at most, and the boxes left
-// over are read on the next tick, longest waiting first.
+// over are read on the next tick, longest waiting first. Mail is read with the
+// Workspace off too (ws_mail_on()): the module is loaded only for the box.
 if (
-    defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED
-    && function_exists('ws_mail_ready') && ws_enabled() && ws_mail_ready()
+    ws_mail_on()
+    && is_file(dirname(__FILE__) . '/includes/workspace/bootstrap.php')
     && db_value("SELECT id FROM ws_mail_boxes WHERE enabled = 1 AND transport = 'imap' AND settings LIKE '%\"host\":\"_%' LIMIT 1")
 ) {
 
+    require_once(dirname(__FILE__) . '/includes/workspace/bootstrap.php');
     require_once(dirname(__FILE__) . '/includes/workspace/mail_fetch.php');
 
-    ws_mail_fetch_run(20);
+    if (ws_ready()) {
+        ws_mail_fetch_run(20);
+    }
 
     pg_cron_ran('workspace_mail_job');
 
@@ -1130,8 +1134,13 @@ if (
 
 // A Workspace mail still waiting on a queue row that is gone reads Not sent
 // (includes/workspace/mail_send.php): one small read on the created index.
-if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && function_exists('ws_mail_send_orphans_run') && ws_enabled()) {
-    ws_mail_send_orphans_run(time());
+// With the Workspace off the module is loaded only where a mailbox is on.
+if ((defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && ws_mail_on()) || ws_mail_in_use()) {
+    require_once(dirname(__FILE__) . '/includes/workspace/bootstrap.php');
+
+    if (ws_ready() && function_exists('ws_mail_send_orphans_run')) {
+        ws_mail_send_orphans_run(time());
+    }
 }
 
 // The visitor location database (includes/fn/geo.php): this month's list,

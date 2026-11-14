@@ -75,6 +75,21 @@ function ws_mail_box_kept_in($box)
 }
 
 /**
+ * Is a box kept in the mailbox itself with no other choice? With the
+ * Workspace off a new box, or one already kept in no channel, has no channel
+ * to pick: its people read it in Incoming e-mail. A box kept in a channel
+ * goes on writing its cards there. Pure.
+ *
+ * @param array|null $box
+ * @param bool       $workspace_on ws_enabled()
+ * @return bool
+ */
+function ws_mail_box_rooms_only($box, $workspace_on)
+{
+    return !$workspace_on && (!$box || (ws_mail_box_kept_in($box) === 'mailbox'));
+}
+
+/**
  * May this person answer, send and change the mail kept in this channel? In
  * a channel, whoever may post in it; in a mailbox's own room, where nobody
  * posts, its members. Team accounts only.
@@ -375,21 +390,23 @@ function ws_mail_room_url($base, $conversation_id = 0, $box_id = 0)
 
 /**
  * Where an inbox line about a mail leads: the card in its channel, or, for
- * mail kept in a mailbox's own room, its conversation on the E-mails screen.
+ * mail kept in a mailbox's own room and for any mail while the Workspace is
+ * off (no channel opens then), its conversation in Incoming e-mail.
  *
  * @param string     $base       the panel's address, ending in /
  * @param int        $channel_id the line's channel
  * @param int        $message_id the card or the mail's message
  * @param array|null $channel    the channel's row, when the caller has it
+ * @param bool       $channels   the Workspace is on (ws_enabled())
  * @return string
  */
-function ws_mail_notice_url($base, $channel_id, $message_id, $channel = null)
+function ws_mail_notice_url($base, $channel_id, $message_id, $channel = null, $channels = true)
 {
-    if (!ws_channel_is_mailbox($channel)) {
+    if ($channels && !ws_channel_is_mailbox($channel)) {
         return $base . 'workspace.php?channel=' . (int) $channel_id . '&message=' . (int) $message_id;
     }
 
-    return ws_mail_room_url($base, ws_mail_room_conversation_id((int) $channel['id'], (int) $message_id));
+    return ws_mail_room_url($base, ws_mail_room_conversation_id((int) $channel_id, (int) $message_id));
 }
 
 /**
@@ -448,7 +465,7 @@ function ws_mail_room_redirect($viewer, $query, $base)
  * @param string     $options the channel select's options, HTML
  * @return string HTML
  */
-function ws_mail_room_fields($prefix, $box, $options)
+function ws_mail_room_fields($prefix, $box, $options, $rooms_only = false)
 {
     if (!ws_mail_room_ready()) {
         return ws_mail_room_fields_html($prefix, $box, $options, false, array(), array());
@@ -460,7 +477,7 @@ function ws_mail_room_fields($prefix, $box, $options)
         $people[(int) $person['id']] = (string) $person['name'];
     }
 
-    return ws_mail_room_fields_html($prefix, $box, $options, true, $people, ws_mail_room_departments($box));
+    return ws_mail_room_fields_html($prefix, $box, $options, true, $people, ws_mail_room_departments($box), $rooms_only);
 }
 
 /**
@@ -475,11 +492,14 @@ function ws_mail_room_fields($prefix, $box, $options)
  * @param bool       $ready       ws_mail_room_ready()
  * @param array      $people      id => name, the team
  * @param array      $departments ws_mail_room_departments()
+ * @param bool       $rooms_only  ws_mail_box_rooms_only(): no Kept in choice
+ *                                and no channel, the readers always shown
  * @return string HTML
  */
-function ws_mail_room_fields_html($prefix, $box, $options, $ready, $people, $departments)
+function ws_mail_room_fields_html($prefix, $box, $options, $ready, $people, $departments, $rooms_only = false)
 {
-    $room = $ready && (ws_mail_box_kept_in($box) === 'mailbox');
+    $rooms_only = $rooms_only && $ready;
+    $room = $ready && ($rooms_only || (ws_mail_box_kept_in($box) === 'mailbox'));
     $channel = '
                 <div class="md:col-6' . ($room ? ' d-none' : '') . '" data-ws-mail-when="kept_in=channel">
                     <label class="form-label" for="' . $prefix . 'channel">' . h(lang('Channel')) . '</label>
@@ -492,7 +512,11 @@ function ws_mail_room_fields_html($prefix, $box, $options, $ready, $people, $dep
     }
 
     $settings = ws_mail_box_settings($box);
-    $html = '
+    $html = $rooms_only ? '
+                <div class="md:col-12">
+                    <input type="hidden" name="kept_in" value="mailbox">
+                    <div class="form-text">' . h(lang('With the Workspace off a mailbox keeps its mail itself: the people chosen here read and answer it in Incoming e-mail.')) . '</div>
+                </div>' : '
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'kept_in">' . h(lang('Kept in')) . '</label>
                     <select class="form-control form-control-sm" name="kept_in" id="' . $prefix . 'kept_in">

@@ -1176,14 +1176,16 @@ function ws_record_loader($urls, $fields = '')
 /**
  * Stops a workspace screen for somebody who is not in the team, or when the
  * module is off or not installed yet. The Flows screen ($flows) opens with
- * the module off too, once flows run on the site (pg_flows_enabled()): the
- * same team, the same rights.
+ * the module off too, once flows run on the site (pg_flows_enabled()), and
+ * Incoming e-mail ($mail) once mail is on (ws_mail_on()): the same team, the
+ * same rights.
  *
  * @param array $user  validate_user()
  * @param bool  $flows the Flows screen (workspace_flows.php)
+ * @param bool  $mail  Incoming e-mail (messages_mail.php)
  * @return array the viewer
  */
-function ws_screen_gate($user, $flows = false)
+function ws_screen_gate($user, $flows = false, $mail = false)
 {
     $settings_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('features', 'pgset-features');
 
@@ -1191,7 +1193,7 @@ function ws_screen_gate($user, $flows = false)
         output_error(lang('The workspace is not installed yet: the database has to be updated first.'));
     }
 
-    if (!ws_enabled() && !($flows && pg_flows_enabled())) {
+    if (!ws_enabled() && !($flows && pg_flows_enabled()) && !($mail && ws_mail_on())) {
         output_error(lang('The workspace is not switched on.') . ' <a href="' . h($settings_url) . '">' . lang('Settings') . '</a>');
     }
 

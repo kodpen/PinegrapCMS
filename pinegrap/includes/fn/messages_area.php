@@ -127,10 +127,10 @@ function pg_messages_tabs_for_user($user, $mail = null)
 }
 
 /**
- * Whether the signed-in person may open Incoming e-mail: the Workspace is on
- * and installed, they are on its team and a mailbox writes where they read
- * (ws_mail_list_visible(), the rule the Workspace's E-mails entry asked).
- * Asked once a request; the Workspace's files load only when it is on.
+ * Whether the signed-in person may open Incoming e-mail: mail is on at the
+ * site (ws_mail_on(), whatever the Workspace's switch), they are on the team
+ * and a mailbox writes where they read (ws_mail_list_visible()). Asked once a
+ * request; the Workspace's files load only once the mail tables are there.
  *
  * @param array $user validate_user()
  * @return bool
@@ -141,14 +141,14 @@ function pg_messages_mail_visible($user)
 
     $id = isset($user['id']) ? (int) $user['id'] : 0;
 
-    if ($id <= 0 || !defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+    if ($id <= 0 || !function_exists('ws_mail_on') || !ws_mail_on()) {
         return false;
     }
 
     if (!isset($seen[$id])) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 
-        $seen[$id] = ws_ready() && ws_enabled() && function_exists('ws_mail_list_visible')
+        $seen[$id] = ws_ready() && function_exists('ws_mail_list_visible')
             && ws_mail_list_visible(ws_viewer($user));
     }
 

@@ -1214,7 +1214,7 @@ function ws_mail_unsent_describe($row, $channel_name, $base, $channel = null)
     return array(
         'title' => lang(array('string' => 'Your e-mail in {var:1} could not be sent', 'vars' => $channel_name)),
         'body'  => $subject,
-        'url'   => ws_mail_notice_url($base, (int) $row['channel_id'], (int) $row['message_id'], $channel),
+        'url'   => ws_mail_notice_url($base, (int) $row['channel_id'], (int) $row['message_id'], $channel, ws_enabled()),
         'icon'  => 'bi-envelope-x',
     );
 }

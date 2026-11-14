@@ -389,21 +389,50 @@ function ws_flow_actions_without_workspace()
 }
 
 /**
+ * The panel actions Communication › Incoming e-mail (messages_mail.php,
+ * assets/js/workspace_mail.js) sends, which answer on a site whose
+ * Workspace is off while mail is on there (ws_mail_on()): the list, the
+ * pane and its read marks, status and holder, answers by e-mail and by
+ * WhatsApp, Send again, New e-mail and Forward, and the team the screen
+ * picks a holder from (ws_bootstrap) with its run of what is due (ws_tick).
+ * Every ws_mail_* action of ws_handle_action() is here
+ * (tests/workspace_mail_gate_test.php). Pure.
+ *
+ * @return string[]
+ */
+function ws_mail_actions_without_workspace()
+{
+    return array(
+        'ws_bootstrap', 'ws_tick',
+        'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_conversation',
+        'ws_mail_reply_form', 'ws_mail_reply', 'ws_mail_resend',
+        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward',
+        'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
+    );
+}
+
+/**
  * Whether the Workspace's switch lets an action through: every action while
  * it is on; with it off only the Flows screen's own
- * (ws_flow_actions_without_workspace()), once flows run there. Of those,
- * the search reads contacts only and a share goes to a person only: a
- * channel is the Workspace's. Pure.
+ * (ws_flow_actions_without_workspace()), once flows run there, and
+ * Incoming e-mail's (ws_mail_actions_without_workspace()), once mail is on.
+ * Of the Flows screen's, the search reads contacts only and a share goes to
+ * a person only: a channel is the Workspace's. Pure.
  *
  * @param string $action
  * @param array  $request
  * @param bool   $workspace_on ws_enabled()
  * @param bool   $flows_on     pg_flows_enabled()
+ * @param bool   $mail_on      ws_mail_on()
  * @return bool
  */
-function ws_action_switch_allows($action, $request, $workspace_on, $flows_on)
+function ws_action_switch_allows($action, $request, $workspace_on, $flows_on, $mail_on = false)
 {
     if ($workspace_on) {
+        return true;
+    }
+
+    if ($mail_on && in_array((string) $action, ws_mail_actions_without_workspace(), true)) {
         return true;
     }
 
@@ -434,8 +463,9 @@ function ws_handle_action($action, $request)
     $request = is_array($request) ? $request : array();
 
     // With the Workspace off ws_ready() is still asked: the Flows screen's
-    // actions read the team and the flows from the Workspace's tables.
-    if (!ws_action_switch_allows($action, $request, ws_enabled(), ws_ready() && pg_flows_enabled())) {
+    // and Incoming e-mail's actions read the team, the flows and the
+    // conversations from the Workspace's tables.
+    if (!ws_action_switch_allows($action, $request, ws_enabled(), ws_ready() && pg_flows_enabled(), ws_ready() && ws_mail_on())) {
         return ws_action_error(lang('The workspace is not switched on.'));
     }
 
@@ -483,9 +513,10 @@ function ws_handle_action($action, $request)
         // claude.ai may take seconds).
         case 'ws_tick':
             // With the Workspace off the Flows screen's look moves only the
-            // flows on (ws_scheduled_run() keeps to their anchors there).
+            // flows on (ws_scheduled_run() keeps to their anchors there);
+            // Incoming e-mail's look, on a site without flows, nothing.
             if (!ws_enabled()) {
-                if (function_exists('ws_scheduled_run')) {
+                if (pg_flows_enabled() && function_exists('ws_scheduled_run')) {
                     ws_scheduled_run();
                 }
 
@@ -2960,7 +2991,7 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array_merge(ws_mail_pane_tools($pane, $viewer), array(
-                'html'   => ws_mail_pane_html($pane, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/'),
+                'html'   => ws_mail_pane_html($pane, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', '', ws_enabled()),
                 'unread' => ws_mail_unread_count($viewer),
             )));
 
