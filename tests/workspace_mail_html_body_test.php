@@ -99,3 +99,20 @@ function test_workspace_mail_html_body_plain_form_stays_plain()
 	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
 	pg_assert_same(2, substr_count($actions, 'ws_mail_markup_apply($viewer, ws_mail_compose_mail('), 'New e-mail and Reply both ask it');
 }
+
+function test_workspace_mail_html_body_files_field_is_the_panel_picker()
+{
+	pg_assert_same(array(4, 9), ws_mail_compose_file_ids('4, 9,4,x,-2,0'), 'positive ids, each once, in order');
+	pg_assert_same(array(), ws_mail_compose_file_ids(array('4')), 'a list is no id list');
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	pg_assert_contains("'file_field' => ws_mail_file_field('ws-mail-reply-file')", $actions, 'Reply gets the picker field');
+	pg_assert_contains("'file_field' => ws_mail_file_field('ws-mail-new-file')", $actions, 'New e-mail gets the picker field');
+	pg_assert_same(2, substr_count($actions, 'ws_mail_compose_library_files($viewer, $request)'), 'both read the picked files');
+
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js');
+	pg_assert_contains("var upload = h.button('pg-button pg-button-quiet pg-button-sm mt-2', h.t('mail_upload'), 'bi-upload');", $script, 'the computer\'s files through a quiet button');
+	pg_assert_contains('chooser.hidden = true;', $script, 'the browser\'s own control is never drawn');
+	pg_assert_false(strpos($script, "var picker = el('input', 'form-control form-control-sm');") !== false, 'no bare file input left');
+	pg_assert_contains("(\$mode === 'mail')) && function_exists('pg_picker_script')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php'), 'the picker\'s script on Incoming e-mail');
+}

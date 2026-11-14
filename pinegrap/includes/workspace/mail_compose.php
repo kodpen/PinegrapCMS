@@ -191,6 +191,79 @@ function ws_mail_compose_files($part)
 }
 
 /**
+ * The Files field of New e-mail and Reply by e-mail: the panel's picker
+ * field over the files the writer may open in Files (kind channel_file, the
+ * writing box's "From the file manager"), as WhatsApp's answer has it. ''
+ * where the picker is missing.
+ *
+ * @param string $id the field's id
+ * @return string HTML
+ */
+function ws_mail_file_field($id)
+{
+    if (!function_exists('pg_picker_field')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/picker.php');
+    }
+
+    return function_exists('pg_picker_field') ? pg_picker_field('channel_file', 'file_id', '', array('id' => (string) $id)) : '';
+}
+
+/**
+ * The files of Files the form picked (file_ids, a comma list), each read as
+ * the writing box's "From the file manager" reads one (ws_library_file()),
+ * in ws_mail_compose_files()'s shape; the send checks kinds and sizes.
+ *
+ * @param array $viewer
+ * @param array $request
+ * @return array ok, error, files (name, bytes)
+ */
+function ws_mail_compose_library_files($viewer, $request)
+{
+    $out = array('ok' => true, 'error' => '', 'files' => array());
+    $ids = ws_mail_compose_file_ids($request['file_ids'] ?? '');
+
+    if (count($ids) > WS_MAIL_SEND_FILES) {
+        return array('ok' => false, 'error' => ws_mail_send_error_text('too_many_files'), 'files' => array());
+    }
+
+    foreach ($ids as $file_id) {
+        $library = ws_library_file($viewer, $file_id);
+        $path = $library['ok'] ? pg_file_local_copy($file_id) : '';
+        $bytes = ($path !== '') ? @file_get_contents($path) : false;
+
+        if (!$library['ok'] || !is_string($bytes)) {
+            return array('ok' => false, 'error' => $library['ok'] ? lang('Sorry, we could not find the file.') : (string) $library['error'], 'files' => array());
+        }
+
+        $out['files'][] = array('name' => (string) $library['file']['name'], 'bytes' => $bytes);
+    }
+
+    return $out;
+}
+
+/**
+ * The file ids a form posted as a comma list: positive, each once, in order.
+ * Pure.
+ *
+ * @param mixed $value
+ * @return int[]
+ */
+function ws_mail_compose_file_ids($value)
+{
+    $ids = array();
+
+    foreach (explode(',', is_scalar($value) ? (string) $value : '') as $part) {
+        $part = trim($part);
+
+        if (ctype_digit($part) && ((int) $part > 0)) {
+            $ids[(int) $part] = (int) $part;
+        }
+    }
+
+    return array_values($ids);
+}
+
+/**
  * The form's request as ws_mail_send() takes it: the mailbox, the channel
  * it is kept in, To, Cc, Bcc, Subject, the text and the files read from the
  * form parts. Pure.
@@ -298,6 +371,7 @@ function ws_mail_compose_js_strings()
         'mail_new_text'       => lang('Text'),
         'mail_new_signature'  => lang('Put under the text:'),
         'mail_new_files'      => lang('Files'),
+        'mail_upload'         => lang('Upload from your computer'),
         'mail_new_files_hint' => lang(array('string' => 'At most {var:1} files, {var:2} MB together.', 'vars' => array(WS_MAIL_SEND_FILES, (int) (WS_MAIL_SEND_FILES_BYTES / 1048576)))),
         'mail_new_remove'     => lang('Remove'),
         'mail_new_send'       => lang('Send'),

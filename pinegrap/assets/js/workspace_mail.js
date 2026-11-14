@@ -133,24 +133,15 @@
             savedReplies(text, box, view, h);
         }
 
-        // Files, as New e-mail takes them.
-        var picker = el('input', 'form-control form-control-sm');
+        // Files, as New e-mail takes them: from Files or the computer.
         var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
-
-        picker.type = 'file';
-        picker.multiple = true;
-
-        var fileRow = h.formRow(t('mail_new_files'), picker, t('mail_new_files_hint'));
+        var library = [];
+        var fileRow = h.formRow(t('mail_new_files'), filesField(h, data.file_field, library, files, function () {
+            fileRows(h, list, [library, files]);
+        }), t('mail_new_files_hint'));
 
         fileRow.appendChild(list);
         form.appendChild(fileRow);
-        picker.addEventListener('change', function () {
-            Array.prototype.forEach.call(picker.files || [], function (file) {
-                files.push(file);
-            });
-            picker.value = '';
-            fileRows(h, list, [files]);
-        });
 
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_reply_send'), 'bi-send');
 
@@ -164,6 +155,10 @@
             domainWarningClear(footer);
 
             var post = { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: body.value() };
+
+            if (library.length) {
+                post.file_ids = library.map(function (file) { return file.id; }).join(',');
+            }
 
             if (body.rich) {
                 post.format = 'markup';
@@ -235,6 +230,77 @@
         return String(item.text || item.body || '').replace(/<[@#][a-z_]+:[0-9]{1,10}>/g, function (token) {
             return labels[token] || '';
         });
+    }
+
+    // The Files field of a mail's forms: the panel's picker field over Files
+    // (the server's file_field, as WhatsApp's answer has it), each pick
+    // joining the list under it and the field emptied for the next; "Upload
+    // from your computer" opens the browser's chooser without drawing its
+    // own control. picked: { id, name } of Files; uploads: File objects.
+    function filesField(h, markup, picked, uploads, redraw) {
+        var wrap = h.el('div', 'ws-mail-files');
+
+        if (markup) {
+            var field = h.el('div', 'ws-mail-files-pick');
+
+            field.innerHTML = markup;
+            wrap.appendChild(field);
+
+            var value = field.querySelector('[data-pg-picker-value]');
+            var root = field.querySelector('[data-pg-picker-field]');
+
+            if (value) {
+                value.addEventListener('change', function () {
+                    var id = parseInt(value.value, 10) || 0;
+                    var input = field.querySelector('.pg-pfield-input');
+
+                    if (id <= 0) {
+                        return;
+                    }
+
+                    if (!picked.some(function (file) { return file.id === id; })) {
+                        picked.push({ id: id, name: (input && input.value) || ('#' + id) });
+                        redraw();
+                    }
+
+                    // The field's own clear, else by hand: the next pick starts empty.
+                    if (root && root.pgPickerField) {
+                        root.pgPickerField.set(null);
+                    } else {
+                        value.value = '';
+
+                        if (input) {
+                            input.value = '';
+                        }
+
+                        if (root) {
+                            root.classList.add('is-empty');
+                        }
+                    }
+                });
+            }
+        }
+
+        var chooser = h.el('input');
+        var upload = h.button('pg-button pg-button-quiet pg-button-sm mt-2', h.t('mail_upload'), 'bi-upload');
+
+        chooser.type = 'file';
+        chooser.multiple = true;
+        chooser.hidden = true;
+        upload.addEventListener('click', function () {
+            chooser.click();
+        });
+        chooser.addEventListener('change', function () {
+            Array.prototype.forEach.call(chooser.files || [], function (file) {
+                uploads.push(file);
+            });
+            chooser.value = '';
+            redraw();
+        });
+        wrap.appendChild(chooser);
+        wrap.appendChild(upload);
+
+        return wrap;
     }
 
     // The text of a written mail: the Workspace's writing box (bold, italic,
@@ -1462,7 +1528,7 @@
         options = options || {};
 
         h.api('ws_mail_compose').then(function (data) {
-            newForm(h, data.boxes || [], data.writer || '', options);
+            newForm(h, data.boxes || [], data.writer || '', options, data.file_field || '');
         }).catch(function (error) {
             h.fail(error);
         });
@@ -1487,7 +1553,7 @@
         });
     }
 
-    function newForm(h, boxes, writer, options) {
+    function newForm(h, boxes, writer, options, fileField) {
         var t = h.t;
         var el = h.el;
         var fill = options.fill || null;
@@ -1597,29 +1663,19 @@
 
         body.node.parentNode.appendChild(signature);
 
-        var picker = el('input', 'form-control form-control-sm');
         var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
-
-        picker.type = 'file';
-        picker.multiple = true;
-
-        var fileRow = h.formRow(t('mail_new_files'), picker, t('mail_new_files_hint'));
-
-        fileRow.appendChild(list);
-        form.appendChild(fileRow);
+        // Files picked from Files, posted by id (file_ids).
+        var library = [];
 
         // The forward's carried files first, then the person's own.
         function drawFiles() {
-            fileRows(h, list, [carried, files]);
+            fileRows(h, list, [carried, library, files]);
         }
 
-        picker.addEventListener('change', function () {
-            Array.prototype.forEach.call(picker.files || [], function (file) {
-                files.push(file);
-            });
-            picker.value = '';
-            drawFiles();
-        });
+        var fileRow = h.formRow(t('mail_new_files'), filesField(h, fileField, library, files, drawFiles), t('mail_new_files_hint'));
+
+        fileRow.appendChild(list);
+        form.appendChild(fileRow);
 
         function drawBox(channelId) {
             var box = boxOf(parseInt(from.value, 10)) || boxes[0];
@@ -1725,6 +1781,7 @@
                 body.set('');
                 files = [];
                 carried = fill ? fill.files.slice() : [];
+                library.length = 0;
 
                 if (fill) {
                     filled();
@@ -1773,6 +1830,10 @@
                 post.forward_kind = fill.kind;
                 post.forward_ids = fill.ids.join(',');
                 post.forward_files = carried.map(function (file) { return file.id; }).join(',');
+            }
+
+            if (library.length) {
+                post.file_ids = library.map(function (file) { return file.id; }).join(',');
             }
 
             formPost(h, 'ws_mail_new', post, files).then(function (data) {

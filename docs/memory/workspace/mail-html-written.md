@@ -4,6 +4,7 @@ description: A written Workspace e-mail's HTML body (MA10b2 #9473): the writing 
 ---
 
 ## Where is a mail written with formatting?
+- Files (#9473, architect 2941): the panel's picker field over Files (`ws_mail_file_field()`, kind `channel_file`), posted as `file_ids` and read by `ws_mail_compose_library_files()`; "Upload from your computer" a quiet button over a hidden input.
 - New e-mail and Reply by e-mail (`workspace_mail.js` `mailText()`): the Workspace's writing box through `h.richField()` (bold, italic, link, bullets, numbers, a quote under it; the selection bar; `;` saved replies, `@` and `#` as in a channel), posted as its light markup with `format=markup`. Forward keeps the text area: its quote is plain text a markup reading would change. Without the writing box, a text area as before.
 - Owner (2026-11-12, #8961): "eposta gövde html olabilmeli" (`workflow/decisions-made-workspace-21.md`).
 
