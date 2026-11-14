@@ -1,9 +1,16 @@
 ---
 name: plan-board-grid
-description: Plan board (workspace_board.php) grid columns and why .ws-board's min-width equals the grid minimum (#3815)
+description: Planning Board (workspace_board.php) Turkish name, grid columns and why .ws-board's min-width equals the grid minimum (#3815)
 ---
 
 # Plan board grid
+
+## What is the board called in Turkish?
+
+"Planlama panosu" in every value that names it ("Planning Board" reads
+"Planlama Panosu" in the menu, tour and screen title). Architect (2026-11-14):
+one name, never "Plan panosu"; change it only with `php tools/tr_add.php
+--replace`. "Board" alone stays "Pano", "team board" (a right) "ekip panosu".
 
 ## How wide are the columns?
 
