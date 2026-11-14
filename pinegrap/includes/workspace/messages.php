@@ -231,6 +231,8 @@ function ws_message_payloads($viewer, $rows, $options = array())
         // The discussion about a message, and the copies of what was decided
         // in one (threads.php).
         'threads'    => ws_threads_map($viewer, $ids),
+        // An agent's offer to conclude the discussion (threads.php).
+        'offers'     => ws_thread_offers_map($viewer, $ids),
         'copies'     => ws_thread_copies_map($ids),
         // The answers MCP agents gave, kept in their askers' names
         // (mcp_agent.php).
@@ -428,6 +430,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'scheduled'   => $deleted ? null : ($extra['scheduled'][$id] ?? null),
         'flow_run'    => $deleted ? null : ($extra['flow_runs'][$id] ?? null),
         'canvas_binding' => $deleted ? null : ($extra['canvas_bindings'][$id] ?? null),
+        'conclude_offer' => ($deleted || $past) ? null : ($extra['offers'][$id] ?? null),
         'quotes'      => $deleted ? array() : ($extra['quotes'][$id] ?? array()),
         'forwards'    => $deleted ? array() : ($extra['forwards'][$id] ?? array()),
         'thread'      => $deleted ? null : ($extra['threads'][$id] ?? null),

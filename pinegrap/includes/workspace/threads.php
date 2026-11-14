@@ -494,6 +494,18 @@ function ws_thread_agent_close_sentence()
 }
 
 /**
+ * The one sentence an agent is told about offering to conclude a discussion
+ * unasked: the app agent's brief and the model assistant's answer tool both
+ * read it. Pure.
+ *
+ * @return string
+ */
+function ws_thread_agent_offer_sentence()
+{
+    return 'When you think this discussion has reached its end and nobody asked you to conclude it, you may answer with offer_conclude true: a Conclude the discussion button then stands under your answer for a person in it to press.';
+}
+
+/**
  * Why an agent may not conclude a discussion for a request, '' when it may:
  * the request was asked in an open discussion, by a message of the person
  * the request names, written by that person (not a guest, an application,
@@ -529,6 +541,100 @@ function ws_thread_agent_close_problem($thread, $row, $message, $asker_in)
     }
 
     return '';
+}
+
+/**
+ * Whether an agent's offer to conclude shows to a reader under its message:
+ * the discussion is open, the reader is in it, and the message is the
+ * newest offer made in it. Pure.
+ *
+ * @param array|null $thread     ws_threads row
+ * @param bool       $member     the reader is in the discussion
+ * @param int        $message_id the message the offer is tied to
+ * @param int        $newest_id  the newest offer's message in the discussion
+ * @return bool
+ */
+function ws_thread_offer_shown($thread, $member, $message_id, $newest_id)
+{
+    return is_array($thread) && ((int) ($thread['closed_at'] ?? 0) === 0) && $member
+        && ((int) $message_id > 0) && ((int) $message_id === (int) $newest_id);
+}
+
+/**
+ * Ties an agent's offer to conclude the discussion to its answer: one
+ * ws_refs row (ref_type conclude_offer, ref_id the discussion), read by no
+ * record list, so no column is needed. Inserted beside the answer's own
+ * tags rather than through ws_refs_store(), which replaces them; an edit of
+ * the answer stores its tags again and drops the offer.
+ *
+ * @param int $message_id the agent's answer
+ * @param int $thread_id  the discussion
+ */
+function ws_thread_offer_store($message_id, $thread_id)
+{
+    if (((int) $message_id <= 0) || ((int) $thread_id <= 0)) {
+        return;
+    }
+
+    db("INSERT INTO ws_refs (source_type, source_id, channel_id, ref_type, ref_id, created_at)
+        VALUES ('message', '" . (int) $message_id . "', '" . (int) $thread_id . "', 'conclude_offer', '" . (int) $thread_id . "', '" . time() . "')");
+}
+
+/**
+ * The offers to conclude a discussion among the messages drawn, as the
+ * reader sees them (ws_thread_offer_shown()): message id => thread_id.
+ *
+ * @param array $viewer
+ * @param int[] $ids message ids
+ * @return array
+ */
+function ws_thread_offers_map($viewer, $ids)
+{
+    $ids = array_filter(array_map('intval', (array) $ids));
+
+    if (empty($ids)) {
+        return array();
+    }
+
+    $links = (array) db_items("SELECT source_id, ref_id FROM ws_refs
+        WHERE source_type = 'message' AND ref_type = 'conclude_offer' AND source_id IN (" . implode(',', $ids) . ")");
+    $out = array();
+    $newest = array();
+
+    foreach ($links as $link) {
+        $thread_id = (int) $link['ref_id'];
+
+        if (!isset($newest[$thread_id])) {
+            $newest[$thread_id] = (int) db_value("SELECT MAX(r.source_id) FROM ws_refs r
+                INNER JOIN ws_messages m ON m.id = r.source_id AND m.deleted_at = 0
+                WHERE r.source_type = 'message' AND r.ref_type = 'conclude_offer' AND r.ref_id = '" . $thread_id . "'");
+        }
+
+        if (ws_thread_offer_shown(ws_thread($thread_id), (bool) ws_channel_membership($thread_id, $viewer['id']), (int) $link['source_id'], $newest[$thread_id])) {
+            $out[(int) $link['source_id']] = array('thread_id' => $thread_id);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Why an agent may not offer to conclude a discussion under its answer, ''
+ * when it may: the same asker rule as concluding (a person in the
+ * discussion asked, ws_thread_agent_close_problem()), and words under which
+ * the button can stand.
+ *
+ * @param array $row      ws_ai_requests
+ * @param bool  $has_text the answer writes a message
+ * @return string
+ */
+function ws_thread_offer_problem($row, $has_text)
+{
+    if (!$has_text) {
+        return lang('An offer to conclude the discussion goes under an answer with words.');
+    }
+
+    return ws_thread_close_for_agent($row, '', true)['error'];
 }
 
 /**

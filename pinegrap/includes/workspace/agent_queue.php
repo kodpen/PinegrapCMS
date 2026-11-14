@@ -998,6 +998,7 @@ function ws_agent_brief($agent, $row, $scopes)
         // Asked in a discussion: it may conclude it when a person in it asks.
         if ($parent) {
             $lines[] = ws_thread_agent_close_sentence();
+            $lines[] = ws_thread_agent_offer_sentence();
         }
 
         $message = ws_message($row['message_id']);
