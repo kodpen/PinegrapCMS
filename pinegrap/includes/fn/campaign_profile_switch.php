@@ -489,8 +489,10 @@ function pg_profile_flow_switch_final($plan, $failed, $profiles)
         }
 
         foreach ($flow['members'] as $id) {
+            // The flow code's refusal comes as a sentence in the job's
+            // language; the partners' reason is kept as a spec.
             $plan['left'][$id] = ((int) $id === (int) $head) ? (string) $failed[$head]
-                : lang(array('string' => 'A profile of its chain stays: {var:1}.', 'vars' => (string) ($profiles[$head]['name'] ?? '')));
+                : array('string' => 'A profile of its chain stays: {var:1}.', 'vars' => (string) ($profiles[$head]['name'] ?? ''));
         }
 
         unset($plan['flows'][$head]);
@@ -653,4 +655,143 @@ function pg_profile_flow_switch_notice($state, $date, $actions = array())
         . (($made !== '') ? '<h3 class="h6 mt-3">' . h(lang('Flows made')) . '</h3><ul class="mb-0">' . $made . '</ul>' : '')
         . (($left !== '') ? '<h3 class="h6 mt-3">' . h(lang('Profiles left')) . '</h3><ul class="mb-0">' . $left . '</ul>' : '')
         . '</details></div></div>';
+}
+
+/**
+ * The name each profile action is shown under on the profile screens and in
+ * the conversion's report.
+ *
+ * @return string[] action => name
+ */
+function pg_profile_flow_action_names()
+{
+    return array(
+        'calendar_event_reserved'    => lang('Calendar Event Reserved'),
+        'custom_form_submitted'      => lang('Custom Form Submitted'),
+        'email_campaign_sent'        => lang('Auto Campaign Sent'),
+        'order_abandoned'            => lang('Order Abandoned'),
+        'order_completed'            => lang('Order Completed'),
+        'order_review_request'       => lang('Order Review Request'),
+        'order_shipped'              => lang('Order Shipped'),
+        'order_delivered'            => lang('Order Delivered'),
+        'subscription_renewed'       => lang('Subscription Renewed'),
+        'subscription_failed'        => lang('Subscription Payment Failed'),
+        'subscription_cancelled'     => lang('Subscription Cancelled'),
+        'subscription_price_changed' => lang('Subscription Price Changed'),
+        'product_ordered'            => lang('Product Ordered'),
+        'booking_confirmed'          => lang('Booking Confirmed'),
+        'booking_reminder'           => lang('Booking Reminder'),
+        'booking_rescheduled'        => lang('Booking Rescheduled'),
+        'booking_cancelled'          => lang('Booking Cancelled'),
+        'contact_group_joined'       => lang('Joined a Contact Group'),
+        'credit_issued'              => lang('Store Credit Issued'),
+        'credit_expiring'            => lang('Store Credit Expiring'),
+    );
+}
+
+/**
+ * Every profile of a chain a flow was made of, its head and its followers,
+ * with the flow. Pure.
+ *
+ * @param array $profiles id => row (action, action_item_id)
+ * @param int[] $switched head id => flow id (pg_profile_flow_switched())
+ * @return int[] profile id => flow id
+ */
+function pg_profile_flow_members($profiles, $switched)
+{
+    require_once PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_flow.php';
+
+    $members = array();
+
+    foreach (pg_profile_flow_chains($profiles)['chains'] as $head => $chain) {
+        if (!isset($switched[$head])) {
+            continue;
+        }
+
+        foreach ($chain as $place) {
+            $members[(int) $place[0]] = (int) $switched[$head];
+        }
+    }
+
+    return $members;
+}
+
+/**
+ * The profiles a flow was made of on this site, profile id => flow id; read
+ * once a request.
+ *
+ * @return int[]
+ */
+function pg_profile_flow_converted()
+{
+    static $converted = null;
+
+    if ($converted === null) {
+        $switched = pg_profile_flow_switched();
+        $profiles = array();
+
+        if (!empty($switched)) {
+            foreach ((array) db_items("SELECT id, action, action_item_id FROM email_campaign_profiles") as $row) {
+                $profiles[(int) $row['id']] = $row;
+            }
+        }
+
+        $converted = empty($profiles) ? array() : pg_profile_flow_members($profiles, $switched);
+    }
+
+    return $converted;
+}
+
+/**
+ * Where a profile screen sends its visitor instead of drawing, '' when it
+ * draws: a profile a flow was made of to that flow; any screen, on a site
+ * with no profile left, to the Automatic sends tab, where the flows and the
+ * conversion's report are. Pure.
+ *
+ * @param int   $profile_id the profile the screen is about, 0 for none
+ * @param int[] $converted  pg_profile_flow_converted()
+ * @param int   $left       how many profiles are left
+ * @return string address relative to the software directory
+ */
+function pg_profile_flow_screen_door($profile_id, $converted, $left)
+{
+    if (((int) $profile_id > 0) && isset($converted[(int) $profile_id])) {
+        return 'workspace_flows.php?flow=' . (int) $converted[(int) $profile_id];
+    }
+
+    return ((int) $left <= 0) ? 'messages_automatic.php' : '';
+}
+
+/**
+ * Sends the visitor of a profile screen on (pg_profile_flow_screen_door()),
+ * or returns when the screen draws.
+ *
+ * @param int $profile_id
+ */
+function pg_profile_flow_screen_go($profile_id = 0)
+{
+    $converted = pg_profile_flow_converted();
+    $left = (int) db_value("SELECT COUNT(*) FROM email_campaign_profiles") - count($converted);
+    $door = pg_profile_flow_screen_door((int) $profile_id, $converted, $left);
+
+    if ($door !== '') {
+        go(PATH . SOFTWARE_DIRECTORY . '/' . $door);
+    }
+}
+
+/**
+ * The SQL that leaves out the profiles a flow was made of, '' when none
+ * was. Pure.
+ *
+ * @param int[]  $converted pg_profile_flow_converted()
+ * @param string $column
+ * @return string " AND <column> NOT IN (…)"
+ */
+function pg_profile_flow_left_sql($converted, $column = 'email_campaign_profiles.id')
+{
+    if (empty($converted)) {
+        return '';
+    }
+
+    return ' AND ' . $column . " NOT IN ('" . implode("', '", array_map('intval', array_keys($converted))) . "')";
 }

@@ -145,9 +145,9 @@ function test_campaign_profile_switch_ceiling()
 	$plan = pg_profile_flow_convert($profiles, $facts);
 
 	pg_assert_same(array(), $plan['flows'], 'the chain holds a newer profile, and 3 is newer itself');
-	pg_assert_contains('made after the update', $plan['left'][2]);
-	pg_assert_contains('Profile 2', $plan['left'][1], 'its head stays with it');
-	pg_assert_contains('made after the update', $plan['left'][3]);
+	pg_assert_contains('made after the update', pg_profile_flow_reason_text($plan['left'][2]));
+	pg_assert_contains('Profile 2', pg_profile_flow_reason_text($plan['left'][1]), 'its head stays with it');
+	pg_assert_contains('made after the update', pg_profile_flow_reason_text($plan['left'][3]));
 }
 
 // A chain whose flow could not be published is left with the reason.
@@ -158,7 +158,7 @@ function test_campaign_profile_switch_final()
 
 	pg_assert_same(array(5), array_keys($final['flows']));
 	pg_assert_same('No owner.', $final['left'][1]);
-	pg_assert_contains('Shipped', $final['left'][2]);
+	pg_assert_contains('Shipped', pg_profile_flow_reason_text($final['left'][2]));
 	pg_assert_same(array(7 => 70), $final['done']);
 }
 
@@ -219,4 +219,61 @@ function test_campaign_profile_switch_checked_rule()
 	pg_assert_same(array(), ws_scheduled_event_switch(array('type' => 'event', 'event' => 'order.shipped')), 'a drawn flow');
 	pg_assert_same(array(), ws_scheduled_event_switch(array('profile_id' => 7)), 'without its second');
 	pg_assert_contains("'rule' => \$out + ws_scheduled_event_switch(\$rule)", file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php'), 'the event branch of ws_scheduled_rule_input() keeps them');
+}
+
+// A reason is kept as the lang() spec it is drawn from, so a report the job
+// stored is read in the reader's language; a plain sentence is shown as is.
+function test_campaign_profile_switch_reason_codes()
+{
+	$profiles = array(1 => campaign_profile_switch_test_row(1, array('action' => 'order_abandoned')));
+	$facts = array('texts' => array(1 => array('a')), 'stats' => array(), 'owners' => array(), 'outputs' => array(),
+		'limits' => array('delay_max' => 129600, 'max_nodes' => 100, 'starts_hourly' => 60, 'open_runs' => 500));
+	$plan = pg_profile_flow_convert($profiles, $facts);
+
+	pg_assert_same(array('string' => 'No start box covers its action yet.'), $plan['left'][1], 'stored untranslated');
+	pg_assert_same('No start box covers its action yet.', pg_profile_flow_reason_text($plan['left'][1]));
+	pg_assert_same('Its page is gone.', pg_profile_flow_reason_text(array('string' => 'Its page is gone.')));
+	pg_assert_same('A refusal.', pg_profile_flow_reason_text('A refusal.'), 'a sentence stored as it was');
+	pg_assert_same(array('string' => 'It waits longer than a flow\'s Wait box may.'), pg_profile_flow_wait(array('schedule_length' => 400, 'schedule_unit' => 'days'), 129600)['reason']);
+
+	$json = json_decode(json_encode($plan), true);
+	pg_assert_contains('No start box covers its action yet.', implode("\n", pg_profile_flow_report_lines($json, $profiles, array())), 'drawn from the stored plan');
+}
+
+// Every profile of a chain a flow was made of belongs to that flow.
+function test_campaign_profile_switch_members()
+{
+	$profiles = array(
+		1 => array('action' => 'order_shipped', 'action_item_id' => 0),
+		2 => array('action' => 'email_campaign_sent', 'action_item_id' => 1),
+		3 => array('action' => 'email_campaign_sent', 'action_item_id' => 2),
+		4 => array('action' => 'order_abandoned', 'action_item_id' => 0),
+	);
+
+	pg_assert_same(array(1 => 70, 2 => 70, 3 => 70), pg_profile_flow_members($profiles, array(1 => 70)));
+	pg_assert_same(array(), pg_profile_flow_members($profiles, array()));
+}
+
+// Where a profile screen sends its visitor: a converted profile to its flow,
+// any screen on a site with none left to the Automatic sends tab.
+function test_campaign_profile_switch_screen_door()
+{
+	$converted = array(1 => 70, 2 => 70);
+
+	pg_assert_same('workspace_flows.php?flow=70', pg_profile_flow_screen_door(2, $converted, 3));
+	pg_assert_same('', pg_profile_flow_screen_door(4, $converted, 3), 'a profile left draws');
+	pg_assert_same('', pg_profile_flow_screen_door(0, $converted, 1), 'the list with one left draws');
+	pg_assert_same('messages_automatic.php', pg_profile_flow_screen_door(0, $converted, 0), 'none left');
+	pg_assert_same('messages_automatic.php', pg_profile_flow_screen_door(0, array(), 0), 'a site with no profile at all');
+	pg_assert_same(" AND email_campaign_profiles.id NOT IN ('1', '2')", pg_profile_flow_left_sql($converted));
+	pg_assert_same('', pg_profile_flow_left_sql(array()));
+	pg_assert_same('Order Abandoned', pg_profile_flow_action_names()['order_abandoned']);
+
+	foreach (array('view_email_campaign_profiles.php' => 'pg_profile_flow_screen_go();', 'add_email_campaign_profile.php' => 'pg_profile_flow_screen_go();',
+		'import_email_campaign_profiles.php' => 'pg_profile_flow_screen_go();', 'edit_email_campaign_profile.php' => 'pg_profile_flow_screen_go($id);',
+		'duplicate_email_campaign_profile.php' => 'pg_profile_flow_screen_go($id);') as $file => $call) {
+		pg_assert_contains($call, file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' sends its visitor on');
+	}
+
+	pg_assert_contains('pg_profile_flow_switch_notice(', file_get_contents(PG_FUNCTIONS_DIR . '/messages_automatic.php'), 'the report on the flows side');
 }

@@ -25,6 +25,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_sends.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_automatic.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_switch.php');
 
 $user = validate_user();
 
@@ -50,6 +51,13 @@ if ($automatic_email) {
             'amber'
         );
     }
+
+    // The profiles turned into flows at the update: under way, or its
+    // report, here as well as on the profiles' list, which leaves once no
+    // profile is left (includes/fn/campaign_profile_switch.php).
+    $profile_flows_state = pg_profile_flow_switch_state();
+    $body .= pg_profile_flow_switch_notice($profile_flows_state, is_array($profile_flows_state)
+        ? get_absolute_time(array('timestamp' => (int) $profile_flows_state['done_at'], 'type' => 'date', 'format' => 'plain_text')) : '', pg_profile_flow_action_names());
 }
 
 if (!$automatic_flows) {

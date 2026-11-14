@@ -19,6 +19,6 @@ module: messages_automatic
 - Why a link and not the dialog on the tab: the dialog needs the Workspace kit and the flow config the Flows screen loads; the made flow opens on the canvas there.
 
 ## What about the campaign profiles?
-- For who passes the e-mail rule: a note "N campaign profile(s) still send as before, beside the flows." (enabled profiles, a role 3 user's own) leading to My Campaign Profiles, until MA9 turns them into flows.
+- For who passes the e-mail rule: a note "N campaign profile(s) still send as before, beside the flows." (enabled profiles left, not those a flow was made of; a role 3 user's own) leading to My Campaign Profiles, and the conversion's report (`pg_profile_flow_switch_notice()`, [[core/campaign-profile-screens-left]]).
 
 Test: `tests/messages_automatic_test.php`.

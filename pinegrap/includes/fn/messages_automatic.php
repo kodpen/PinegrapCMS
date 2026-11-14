@@ -337,15 +337,17 @@ function pg_messages_recipes_html($recipes)
 }
 
 /**
- * The campaign profiles still running for the person: enabled ones, a
- * role 3 user's own only.
+ * The campaign profiles still running for the person: enabled ones a flow
+ * was not made of, a role 3 user's own only.
  *
  * @param array $user
  * @return int
  */
 function pg_messages_profiles_running($user)
 {
-    $where = "enabled = '1'";
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_switch.php');
+
+    $where = "enabled = '1'" . pg_profile_flow_left_sql(pg_profile_flow_converted(), 'id');
 
     if ((int) ($user['role'] ?? 3) >= 3) {
         $where .= " AND created_user_id = '" . (int) ($user['id'] ?? 0) . "'";

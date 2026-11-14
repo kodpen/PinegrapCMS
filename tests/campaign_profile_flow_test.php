@@ -226,8 +226,8 @@ function test_campaign_profile_flow_convert()
 	pg_assert_same(array('start', 'calendar', 'wait_3', 'mail_3'), array_column($plan['flows'][3]['graph']['nodes'], 'id'));
 
 	pg_assert_same(array(6, 4, 5), array_keys($plan['left']));
-	pg_assert_contains('No start box', $plan['left'][4]);
-	pg_assert_contains('Left cart', $plan['left'][5], 'a follower stays with its chain');
+	pg_assert_contains('No start box', pg_profile_flow_reason_text($plan['left'][4]));
+	pg_assert_contains('Left cart', pg_profile_flow_reason_text($plan['left'][5]), 'a follower stays with its chain');
 
 	$lines = implode("\n", pg_profile_flow_report_lines($plan, $profiles, array(1 => array('made' => 4, 'busiest' => 1, 'waiting' => 2))));
 
@@ -252,8 +252,8 @@ function test_campaign_profile_flow_unfilled_field()
 	$plan = pg_profile_flow_convert($profiles, campaign_profile_flow_test_facts($profiles));
 
 	pg_assert_same(array(), $plan['flows']);
-	pg_assert_contains('^^order_reference_code^^', $plan['left'][1]);
-	pg_assert_contains('Profile 1', $plan['left'][2]);
+	pg_assert_contains('^^order_reference_code^^', pg_profile_flow_reason_text($plan['left'][1]));
+	pg_assert_contains('Profile 1', pg_profile_flow_reason_text($plan['left'][2]));
 }
 
 // The starting sites' profiles as MA9a worked them out by hand.

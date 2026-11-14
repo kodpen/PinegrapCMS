@@ -30,6 +30,10 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM email_campaign_profiles W
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
+// A profile a flow was made of is the flow's now: its address leads there.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_switch.php');
+pg_profile_flow_screen_go($id);
+
 $email_campaign_profile = db_item(
     "SELECT
         name,

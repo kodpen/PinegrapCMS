@@ -92,7 +92,8 @@ function pg_profile_flow_start($profile)
  *                         schedule_period, schedule_base
  * @param int   $max       the longest wait in minutes (WS_FLOW_DELAY_MAX)
  * @return array ok, config (null for no Wait box), minutes (how long it
- *               holds a run, 0 for until a date), reason
+ *               holds a run, 0 for until a date), reason (a lang()
+ *               spec, '' when it carries)
  */
 function pg_profile_flow_wait($profile, $max)
 {
@@ -108,13 +109,13 @@ function pg_profile_flow_wait($profile, $max)
 
     if (($profile['schedule_base'] ?? '') === 'calendar_event_start_time') {
         if (!$before && ($length > 0)) {
-            return $refuse(lang('It waits a time after the calendar event\'s start, which no Wait box counts from.'));
+            return $refuse(array('string' => 'It waits a time after the calendar event\'s start, which no Wait box counts from.'));
         }
 
         // The Wait box moves a moment on to its time of day, never back: a
         // send time before the start would land later than the profile's.
         if ($before && ($length > 0) && ($time !== '')) {
-            return $refuse(lang('It sends at a time of day before the calendar event\'s start, which a Wait box would move to later.'));
+            return $refuse(array('string' => 'It sends at a time of day before the calendar event\'s start, which a Wait box would move to later.'));
         }
 
         return array('ok' => true, 'minutes' => 0, 'reason' => '', 'config' => array('mode' => 'until', 'at' => '{{trigger.start_at}}',
@@ -122,11 +123,11 @@ function pg_profile_flow_wait($profile, $max)
     }
 
     if ($before && ($length > 0)) {
-        return $refuse(lang('It sends before its action, which no Wait box can do.'));
+        return $refuse(array('string' => 'It sends before its action, which no Wait box can do.'));
     }
 
     if ($minutes > (int) $max) {
-        return $refuse(lang('It waits longer than a flow\'s Wait box may.'));
+        return $refuse(array('string' => 'It waits longer than a flow\'s Wait box may.'));
     }
 
     if (($length === 0) && ($time === '')) {
@@ -290,18 +291,18 @@ function pg_profile_flow_owner($creator, $admin)
  * @param array $stats   made (campaigns in 30 days), busiest (in one hour)
  * @param int   $minutes how long its chain holds a run, waits added up
  * @param array $limits  starts_hourly, open_runs
- * @return string
+ * @return array|string the reason as a lang() spec, '' when none
  */
 function pg_profile_flow_limit_reason($stats, $minutes, $limits)
 {
     if ((int) ($stats['busiest'] ?? 0) > 0.8 * (int) $limits['starts_hourly']) {
-        return lang(array('string' => 'Its busiest hour made {var:1} campaigns; a flow starts at most {var:2} runs an hour.', 'vars' => array((int) $stats['busiest'], (int) $limits['starts_hourly'])));
+        return array('string' => 'Its busiest hour made {var:1} campaigns; a flow starts at most {var:2} runs an hour.', 'vars' => array((int) $stats['busiest'], (int) $limits['starts_hourly']));
     }
 
     $open = pg_profile_flow_open_runs((int) ($stats['made'] ?? 0), $minutes);
 
     if ($open > 0.8 * (int) $limits['open_runs']) {
-        return lang(array('string' => 'It would hold about {var:1} runs open; a flow keeps at most {var:2}.', 'vars' => array($open, (int) $limits['open_runs'])));
+        return array('string' => 'It would hold about {var:1} runs open; a flow keeps at most {var:2}.', 'vars' => array($open, (int) $limits['open_runs']));
     }
 
     return '';
@@ -392,7 +393,8 @@ function pg_profile_flow_graph($chain, $profiles, $boxes)
  *                        (optional: the highest profile id of the update, a
  *                        profile above it stays a profile)
  * @return array flows (head id => graph, name, paused, owner, members),
- *               left (id => reason), orphans (ids), done (head id =>
+ *               left (id => reason, a lang() spec drawn by
+ *               pg_profile_flow_reason_text()), orphans (ids), done (head id =>
  *               flow id of the chains already switched)
  */
 function pg_profile_flow_convert($profiles, $facts)
@@ -404,7 +406,7 @@ function pg_profile_flow_convert($profiles, $facts)
     $done = array();
 
     foreach ($split['orphans'] as $id) {
-        $left[$id] = lang('It follows a profile that is gone, so it sends nothing today.');
+        $left[$id] = array('string' => 'It follows a profile that is gone, so it sends nothing today.');
     }
 
     foreach ($split['chains'] as $head => $chain) {
@@ -422,12 +424,12 @@ function pg_profile_flow_convert($profiles, $facts)
         // A profile made after the update is not the update's to convert.
         foreach ($chain as $place) {
             if (((int) ($facts['ceiling'] ?? 0) > 0) && ((int) $place[0] > (int) $facts['ceiling'])) {
-                $reasons[$place[0]] = lang('It was made after the update.');
+                $reasons[$place[0]] = array('string' => 'It was made after the update.');
             }
         }
 
         if ($event === '') {
-            $reasons[$head] = lang('No start box covers its action yet.');
+            $reasons[$head] = array('string' => 'No start box covers its action yet.');
         }
 
         foreach ($chain as $place) {
@@ -444,13 +446,13 @@ function pg_profile_flow_convert($profiles, $facts)
             if (!$wait['ok']) {
                 $reasons[$id] = $wait['reason'];
             } elseif (!empty($missing) && ($event !== '')) {
-                $reasons[$id] = lang(array('string' => 'No value of its start fills {var:1}.', 'vars' => '^^' . implode('^^, ^^', $missing) . '^^'));
+                $reasons[$id] = array('string' => 'No value of its start fills {var:1}.', 'vars' => '^^' . implode('^^, ^^', $missing) . '^^');
             } elseif ((($profiles[$id]['format'] ?? '') === 'html') && ((int) ($profiles[$id]['page_id'] ?? 0) <= 0)) {
-                $reasons[$id] = lang('Its page is gone.');
+                $reasons[$id] = array('string' => 'Its page is gone.');
             } else {
                 $limit = pg_profile_flow_limit_reason($facts['stats'][$head] ?? array(), $held[$id], $limits);
 
-                if ($limit !== '') {
+                if (!empty($limit)) {
                     $reasons[$id] = $limit;
                 }
             }
@@ -459,13 +461,13 @@ function pg_profile_flow_convert($profiles, $facts)
         $graph = empty($reasons) ? pg_profile_flow_graph($chain, $profiles, $boxes) : null;
 
         if (is_array($graph) && (count($graph['nodes']) > (int) $limits['max_nodes'])) {
-            $reasons[$head] = lang('The flow would hold more boxes than a flow may.');
+            $reasons[$head] = array('string' => 'The flow would hold more boxes than a flow may.');
         }
 
         if (!empty($reasons)) {
             foreach ($chain as $place) {
                 $first = array_keys($reasons)[0];
-                $left[$place[0]] = $reasons[$place[0]] ?? lang(array('string' => 'A profile of its chain stays: {var:1}.', 'vars' => (string) $profiles[$first]['name']));
+                $left[$place[0]] = $reasons[$place[0]] ?? array('string' => 'A profile of its chain stays: {var:1}.', 'vars' => (string) $profiles[$first]['name']);
             }
 
             continue;
@@ -525,6 +527,21 @@ function pg_profile_flow_box_line($node, $events = array())
     }
 
     return (string) $node['kind'];
+}
+
+/**
+ * Why a profile stays, in the reader's language. A reason is kept
+ * untranslated, as the lang() spec it is drawn from (string, vars), so a
+ * report stored by the general job is drawn in whoever reads it's language;
+ * a plain string (a refusal of the flow code, or a report stored before) is
+ * shown as it is.
+ *
+ * @param array|string $reason
+ * @return string
+ */
+function pg_profile_flow_reason_text($reason)
+{
+    return (is_array($reason) && isset($reason['string'])) ? (string) lang($reason) : (string) $reason;
 }
 
 /**
@@ -606,7 +623,7 @@ function pg_profile_flow_report_lines($plan, $profiles, $stats, $events = array(
 
     foreach ($plan['left'] as $id => $reason) {
         $lines[] = '';
-        $lines[] = lang(array('string' => '“{var:1}” ({var:2}, {var:3}) stays a profile: {var:4}', 'vars' => array((string) $profiles[$id]['name'], (string) $profiles[$id]['action'], $state($id), $reason)));
+        $lines[] = lang(array('string' => '“{var:1}” ({var:2}, {var:3}) stays a profile: {var:4}', 'vars' => array((string) $profiles[$id]['name'], (string) $profiles[$id]['action'], $state($id), pg_profile_flow_reason_text($reason))));
         if (($count = $counts($id)) !== '') {
             $lines[] = $count;
         }

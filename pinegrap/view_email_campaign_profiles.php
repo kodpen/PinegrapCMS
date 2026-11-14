@@ -27,6 +27,10 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_switch.php');
 $user = validate_user();
 validate_email_access($user);
 
+// A site with no profile left has no list: the flows they became, and the
+// conversion's report, are on the Automatic sends tab.
+pg_profile_flow_screen_go();
+
 include_once('liveform.class.php');
 $liveform = new liveform('view_email_campaign_profiles');
 
@@ -51,28 +55,7 @@ $list_state = pg_list_state('view_email_campaign_profiles', $sort_columns, $sort
 $sort_levels = $list_state['sorts'];
 
 // The name each action is shown under; the Action column sorts by it.
-$action_names = array(
-    'calendar_event_reserved' => lang('Calendar Event Reserved'),
-    'custom_form_submitted' => lang('Custom Form Submitted'),
-    'email_campaign_sent' => lang('Auto Campaign Sent'),
-    'order_abandoned' => lang('Order Abandoned'),
-    'order_completed' => lang('Order Completed'),
-    'order_review_request' => lang('Order Review Request'),
-    'order_shipped' => lang('Order Shipped'),
-    'order_delivered' => lang('Order Delivered'),
-    'subscription_renewed' => lang('Subscription Renewed'),
-    'subscription_failed' => lang('Subscription Payment Failed'),
-    'subscription_cancelled' => lang('Subscription Cancelled'),
-    'subscription_price_changed' => lang('Subscription Price Changed'),
-    'product_ordered' => lang('Product Ordered'),
-    'booking_confirmed' => lang('Booking Confirmed'),
-    'booking_reminder' => lang('Booking Reminder'),
-    'booking_rescheduled' => lang('Booking Rescheduled'),
-    'booking_cancelled' => lang('Booking Cancelled'),
-    'contact_group_joined' => lang('Joined a Contact Group'),
-    'credit_issued' => lang('Store Credit Issued'),
-    'credit_expiring' => lang('Store Credit Expiring'),
-);
+$action_names = pg_profile_flow_action_names();
 
 // What each sort code orders by. Only codes pg_list_state() let through
 // reach pg_list_order_by(), and it writes nothing but these.
@@ -95,7 +78,9 @@ $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $all_email_campaign_profiles = $row[0];
 
-$where = "";
+// The profiles a flow was made of are the flow's now: the list holds the
+// profiles left.
+$where = "WHERE 1 = 1" . pg_profile_flow_left_sql(pg_profile_flow_converted()) . " ";
 
 
 // If user has a user role, then only get profiles that he/she created.
