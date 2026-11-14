@@ -408,6 +408,7 @@ function pg_mcp_prompt_canvas_chart_text($values, $site, $attached) {
 		. 'Then:' . "\n"
 		. '- Choose the chart kind by what the data says (amounts, parts, a change over time, one figure) and the board by where it will be seen; the card board unless the person asked for a slide or a post.' . "\n"
 		. '- Use only data you were given or read; if a number is missing, ask for it instead of making one up.' . "\n"
+		. '- When a ready layout fits (three figures over a bar chart, a report page, a comparison, a slide), send it instead: layout, theme (the board) and fill with its named layers\' words and chart_values, as listed under layouts by ' . pg_mcp_tool_name('workspace.canvas.templates') . ', dry_run true first.' . "\n"
 		. '- Write the SVG with the guide\'s sizes, font and colours, each part a top-level element with an id (title, subtitle, legend, axis, bars or lines, note), and send it with the tool ' . pg_mcp_tool_name('workspace.channels.canvases.create') . ' with layers split and background the board\'s colour, dry_run true first, then for real.' . "\n"
 		. '- Report the message the canvas was posted as.' . "\n"
 		. 'Write the chart\'s words in the language the channel is written in.' . "\n\n"

@@ -1884,6 +1884,7 @@
     "Poems": "Şiirler",
     "Poems after Dark": "Karanlıktan Sonra Şiirler",
     "Poetry Collection": "Şiir Seçkisi",
+    "Point": "Madde",
     "Point %s": "Nokta %s",
     "Point CURL_CA_BUNDLE at a cacert.pem in data/config.php, or as a last resort set ALLOW_INSECURE_UPDATE_TLS to true there.": "data/config.php içinde CURL_CA_BUNDLE ayarını bir cacert.pem dosyasına yönlendirin ya da son çare olarak oradaki ALLOW_INSECURE_UPDATE_TLS ayarını true yapın.",
     "Point Text": "Nokta Metni",
