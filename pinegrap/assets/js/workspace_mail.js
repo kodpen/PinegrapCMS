@@ -160,6 +160,9 @@
 
         fileRow.appendChild(list);
         form.appendChild(fileRow);
+        draftKept(h, kept, library, box, function () {
+            fileRows(h, list, [library, files]);
+        });
 
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_reply_send'), 'bi-send');
 
@@ -216,7 +219,7 @@
             cc.field.value = kept.cc || '';
             bcc.field.value = kept.bcc || '';
             footer.insertBefore(draftSave(h, kept, function () {
-                return { cc: cc.field.value, bcc: bcc.field.value, text: body.value() };
+                return { cc: cc.field.value, bcc: bcc.field.value, text: body.value(), format: body.rich ? 'markup' : '', file_ids: draftFileIds(library) };
             }), send);
         }
 
@@ -2056,6 +2059,36 @@
         });
     }
 
+    // A draft kept on the server brings its files into the form's Files
+    // list, sent by id and checked again at Send, and, when it keeps a
+    // formatted body the form does not show, the server's note under the
+    // text (mail_drafts_screen.php).
+    function draftKept(h, draft, library, after, redraw) {
+        if (!draft) {
+            return;
+        }
+
+        (draft.files || []).forEach(function (file) {
+            if (!library.some(function (picked) { return picked.id === file.id; })) {
+                library.push({ id: file.id, name: file.name });
+            }
+        });
+
+        redraw();
+
+        if (draft.html_note && after && after.parentNode) {
+            var note = h.el('p', 'pg-field-help mt-2 mb-0', draft.html_note);
+
+            note.setAttribute('data-ws-mail-draft-html', '');
+            after.parentNode.insertBefore(note, after.nextSibling);
+        }
+    }
+
+    // The Files ids of a form's list, as Save draft keeps them.
+    function draftFileIds(library) {
+        return library.map(function (file) { return file.id; }).join(',');
+    }
+
     // Save draft, beside Send in a form opened from a draft kept on the
     // server: the form's fields written back to it, so a change is never
     // lost by closing the form (mail_drafts_screen.php).
@@ -2236,6 +2269,7 @@
 
         fileRow.appendChild(list);
         form.appendChild(fileRow);
+        draftKept(h, server, library, body.node, drawFiles);
 
         function drawBox(channelId) {
             var box = boxOf(parseInt(from.value, 10)) || boxes[0];
@@ -2440,7 +2474,7 @@
             footer.appendChild(draftSave(h, server, function () {
                 var fields = current();
 
-                return { to: fields.to, cc: fields.cc, bcc: fields.bcc, subject: fields.subject, text: fields.text };
+                return { to: fields.to, cc: fields.cc, bcc: fields.bcc, subject: fields.subject, text: fields.text, format: body.rich ? 'markup' : '', file_ids: draftFileIds(library) };
             }));
         }
 

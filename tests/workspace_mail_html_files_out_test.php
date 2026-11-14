@@ -215,3 +215,63 @@ function test_ws_mail_out_file_ids_are_given_out()
 	pg_assert_same(array_keys(ws_api_mail_file_schema()), array_keys($files[4][0]));
 	pg_assert_same(90, $files[4][0]['file_id']);
 }
+
+function ws_mail_out_test_draft($fields)
+{
+	return array_merge(array('id' => 4, 'conversation_id' => 0, 'box_id' => 2, 'to_list' => 'a@example.com', 'cc_list' => '', 'bcc_list' => '',
+		'subject' => 'S', 'body_text' => '', 'body_html' => '<p>Hello <b>there</b></p>', 'draft_files' => '7,9', 'created_at' => 0), $fields);
+}
+
+function test_ws_mail_draft_form_fields_carry_html_and_files()
+{
+	$files = array(array('id' => 7, 'name' => 'a.pdf'));
+	$fields = ws_mail_draft_form_fields(ws_mail_out_test_draft(array()), 0, $files);
+
+	pg_assert_same('Hello there', $fields['text'], 'a draft kept with HTML alone opens with its words');
+	pg_assert_same($files, $fields['files'], 'its files join the form\'s Files list');
+	pg_assert_contains('formatted body', $fields['html_note'], 'the form says it keeps a formatted body');
+	pg_assert_same('', ws_mail_draft_form_fields(ws_mail_out_test_draft(array('body_html' => null, 'body_text' => 'T')), 0)['html_note'], 'a text draft says nothing');
+}
+
+function test_ws_mail_draft_sent_html_follows_the_text()
+{
+	$draft = ws_mail_out_test_draft(array());
+
+	pg_assert_same('<p>Hello <b>there</b></p>', ws_mail_draft_sent_html($draft, "Hello  there\n"), 'unchanged words keep the draft\'s HTML');
+	pg_assert_same('', ws_mail_draft_sent_html($draft, 'Hello you'), 'a changed text is sent as written');
+	pg_assert_same('', ws_mail_draft_sent_html(ws_mail_out_test_draft(array('body_html' => '')), 'Hello there'), 'no HTML, none');
+	pg_assert_false(ws_mail_draft_text_changed(ws_mail_out_test_draft(array('body_text' => 'Own text')), ' Own   text '));
+	pg_assert_true(ws_mail_draft_text_changed(ws_mail_out_test_draft(array('body_text' => 'Own text')), 'Hello there'), 'its own text wins over the HTML\'s words');
+}
+
+function test_ws_mail_draft_save_request_keeps_html_in_step()
+{
+	$draft = ws_mail_out_test_draft(array());
+	$viewer = array('id' => 3, 'member' => true);
+
+	pg_assert_same(array('cc' => 'c@example.com'), ws_mail_draft_save_request($viewer, $draft, array('cc' => 'c@example.com', 'text' => 'Hello there', 'format' => 'markup')),
+		'an unchanged text leaves the text and HTML as kept');
+	pg_assert_same(array('text' => 'New words', 'html' => ''), ws_mail_draft_save_request($viewer, $draft, array('text' => 'New words')),
+		'a changed plain text drops the stale HTML');
+	pg_assert_same(array('file_ids' => '7'), ws_mail_draft_save_request($viewer, $draft, array('file_ids' => '7')), 'the Files list when sent');
+
+	$source = ws_mail_out_test_source('ws_mail_draft_save_request');
+	pg_assert_contains('ws_mail_markup_parts(', $source, 'a changed text from the writing box gets its HTML');
+}
+
+function test_ws_mail_draft_panel_keeps_html_and_files()
+{
+	$save = ws_mail_out_test_source('ws_mail_draft_save');
+	pg_assert_contains('ws_mail_draft_save_request(', $save);
+	pg_assert_true(strpos($save, 'ws_mail_draft_body_check(') < strpos($save, 'ws_mail_draft_update('), 'files checked before anything is written');
+	pg_assert_contains('ws_mail_draft_keep_body(', $save, 'body_html and draft_files written with the text');
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	pg_assert_same(2, substr_count($actions, 'ws_mail_draft_sent_mail($viewer, $mail, $request)'), 'Send from a draft keeps its HTML, reply and new mail');
+	pg_assert_contains('ws_mail_send_file_reach(', ws_mail_out_test_source('ws_mail_compose_library_files'), 'a kept channel file is sent with the right checked');
+	pg_assert_contains('ws_mail_send_file_reach(', ws_mail_out_test_source('ws_mail_draft_form_files'), 'only files the person may send open in the form');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js');
+	pg_assert_same(2, substr_count($js, 'file_ids: draftFileIds(library)'), 'Save draft keeps the Files list, reply and new mail');
+	pg_assert_contains('function draftKept(', $js);
+}

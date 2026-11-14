@@ -211,7 +211,10 @@ function ws_mail_file_field($id)
 /**
  * The files of Files the form picked (file_ids, a comma list), each read as
  * the writing box's "From the file manager" reads one (ws_library_file()),
- * in ws_mail_compose_files()'s shape; the send checks kinds and sizes.
+ * in ws_mail_compose_files()'s shape; the send checks kinds and sizes. A
+ * file the file manager refuses is still taken when it is the file of a
+ * message in a channel the person reads (ws_mail_send_file_reach()), as a
+ * draft kept through the API may carry one into the form.
  *
  * @param array $viewer
  * @param array $request
@@ -228,6 +231,12 @@ function ws_mail_compose_library_files($viewer, $request)
 
     foreach ($ids as $file_id) {
         $library = ws_library_file($viewer, $file_id);
+
+        if (!$library['ok']) {
+            $reach = ws_mail_send_file_reach($viewer, $file_id);
+            $library = $reach['ok'] ? array('ok' => true, 'error' => '', 'file' => $reach['file']) : $library;
+        }
+
         $path = $library['ok'] ? pg_file_local_copy($file_id) : '';
         $bytes = ($path !== '') ? @file_get_contents($path) : false;
 
