@@ -29,7 +29,7 @@ function pg_email_ready_designs()
         'newsletter'   => array('title' => 'Newsletter', 'text' => 'News, a story with a picture and a link to read more.', 'icon' => 'bi-newspaper'),
         'sale'         => array('title' => 'Sale or launch', 'text' => 'A headline offer with two product cards and a button to the shop.', 'icon' => 'bi-tag'),
         'announcement' => array('title' => 'Announcement', 'text' => 'One piece of news told plainly, with a button.', 'icon' => 'bi-megaphone'),
-        'welcome'      => array('title' => 'Welcome', 'text' => 'A greeting by name for a new member or subscriber.', 'icon' => 'bi-person-raised-hand'),
+        'welcome'      => array('title' => 'Welcome e-mail', 'text' => 'A greeting by name for a new member or subscriber.', 'icon' => 'bi-person-raised-hand'),
         'order'        => array('title' => 'After an order', 'text' => 'Thanks by name, a product card and a way back to the shop.', 'icon' => 'bi-bag-check'),
     );
 }

@@ -332,7 +332,7 @@ function pg_messages_template_email_card(array $own, $designs, $self)
     foreach (pg_email_ready_designs() as $key => $design) {
         $title = lang($design['title']);
         $ready .= '<figure class="pg-email-ready">'
-            . '<div class="pg-email-ready-shot"><iframe src="' . h($self . '?preview=' . rawurlencode($key)) . '" title="' . h($title) . '" loading="lazy" sandbox="" tabindex="-1"></iframe></div>'
+            . '<div class="pg-email-ready-shot"><iframe src="' . h($self . '?preview=' . rawurlencode($key)) . '" title="' . h($title) . '" sandbox="" tabindex="-1"></iframe></div>'
             . '<figcaption><span class="pg-list-row-title">' . h($title) . '</span>'
             . '<span class="pg-list-row-text">' . h(lang($design['text'])) . '</span>'
             . ($designs ? '<a class="pg-button pg-button-quiet pg-button-sm" target="_blank" rel="noopener" href="add_system_style.php?start=email&amp;ready=' . h(rawurlencode($key)) . '"><i class="bi bi-envelope-plus" aria-hidden="true"></i>' . h(lang('Use this design')) . '</a>' : '')

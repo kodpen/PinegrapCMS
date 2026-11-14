@@ -27901,7 +27901,8 @@ body.pg-measure-report #content {
   border-radius: 0;
 }
 /* The E-mail designs card: the ready designs as small previews of the
-   600 px mail (drawn at 40 %, nothing in them takes a click), each with its
+   mail (a 640 px frame, wider than the mail pass's 620 px phone rule, drawn
+   at 37.5 %; nothing in them takes a click), each with its
    name, line and button; the site's own designs as rows under them. */
 .pg-email-ready-grid {
   display: grid;
@@ -27925,10 +27926,10 @@ body.pg-measure-report #content {
   box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
 }
 .pg-email-ready-shot iframe {
-  width: 600px;
-  height: 550px;
+  width: 640px;
+  height: 587px;
   border: 0;
-  transform: scale(0.4);
+  transform: scale(0.375);
   transform-origin: 0 0;
   pointer-events: none;
 }

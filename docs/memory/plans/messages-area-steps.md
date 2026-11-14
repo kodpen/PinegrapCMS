@@ -16,7 +16,7 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
   - MA5b (M, done #9426, `ui/campaign-content-step.md`) The content step, drawn anew: design, pasted HTML or plain text; "Take the design again"; wide and phone preview.
   - MA5c (M, done #9465, `designer/email-designs.md`) E-mail designs: folder, `props.pgEmail`, 600/375 px canvas, six mail parts, the mail pass on their body.
   - MA5c2 (S, done #9520, `designer/email-designs-parts.md`) Header, footer, greeting, product card, the check line.
-  - MA5d (M, `designer/email-designs-ready.md`) Five ready designs with previews; e-mail designs in Templates.
+  - MA5d (M, done #9525, `designer/email-designs-ready.md`) Five ready designs with previews; e-mail designs in Templates.
   - MA5d2 (S) The template's and earlier campaigns' designs as copies; the site's colours.
   - MA5e (S) "Send a test to me": to oneself and up to five addresses, never counted, a limit per user.
 - MA6 (M, SMS texts done #9294, WhatsApp templates #9355 (WA3b), `ui/messages-area-templates-tab.md`) Templates: e-mail designs (with MA5), SMS texts and WhatsApp templates in one tab.
