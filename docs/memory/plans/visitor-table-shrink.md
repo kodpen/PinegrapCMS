@@ -18,7 +18,7 @@ description: Plan (owner report 2026-11-13, was issue #9130): the visitor table 
 ## Which steps?
 - VT1 (M, done #9396) The automatic path does not hang on a disk it cannot read: with the free space unknown, the split and the rebuild still go ahead when the rows left are small against the file (the copy needs only their room), under a bound the step sets and tries at 5 million rows; after a failed try it stops and the card says why, leaving the button.
   - The room asked for (three times the rows plus 1 GB today, "about 1.2 GB" for rows that fit in 30 MB) is brought down to what the copy needs.
-- VT2 (S) The card says what is true: the months named right (they read one too late), "being split" not "moved to InnoDB" for an InnoDB table, why "Clean visitor records now" is disabled, no "shrank" line when the size did not change, and no "Shrink now" where there is nothing to give back. With every visit inside the kept period it says so and what a shorter period does.
+- VT2 (S, done #9418) The card says what is true: the months named right (they read one too late), "being split" not "moved to InnoDB" for an InnoDB table, why "Clean visitor records now" is disabled, no "shrank" line when the size did not change, and no "Shrink now" where there is nothing to give back. With every visit inside the kept period it says so and what a shorter period does.
 - VT3 (S) Close-out: the rules into `visitors/`, this plan deleted.
 
 ## What does every step keep?

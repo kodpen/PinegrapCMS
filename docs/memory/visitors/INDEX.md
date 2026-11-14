@@ -35,6 +35,7 @@
 - visitor-ip-early-removal.md: A visit's IP address set to 0 after config.visitor_ip_days (default 30, step 10.8) by the visitor cleanup, chunked with a cursor marker; dedup check safety, screens that show 0
 - visitor-item-links-and-chart-labels.md: How visitor report rows build item URLs, why chart and tooltip numbers differ, and why the home page is stored under many names.
 - visitor-monthly-partitions.md: The visitors table split into one partition per month (step 10.7, #499): how months are dropped, opened, converted, and what happens without partitioning
+- visitor-records-card-texts.md: What the Visitor records card says and offers (#9418): month names, why Clean up is off, every record inside the period, a rebuild that gave nothing back, Shrink now
 - visitor-report-filters-and-form.md: Visitor report filter checks (unknown field, date, day count), paid/organic rule, the form after a save error, the report name, the period presets, order columns, Visit Details landing page
 - visitor-report-ready-reports.md: The visitor report's ready reports (over time, by source, by landing page, by country), the &p= period, the strip, and the Visitor Summaries, Visitor map and On the site now cards' See all (#8800)
 - visitor-report-site-time.md: Why the Visitor Report's year/month/day groups and Date filter go through pg_site_time_sql(): the fixed session offset, daylight saving shifts per row, the window, what is left
