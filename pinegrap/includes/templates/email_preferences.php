@@ -33,7 +33,7 @@ if (!defined('PG_INIT_LOADED')) {
 	<div class="checkbox">
 		<label>
 		<input type="checkbox" name="opt_in_sms" value="1">
-		<?=lang('I want to receive campaign and offer messages by SMS.')?>
+		<?=h(pg_sms_opt_in_label())?>
 		</label>
 		<input type="hidden" name="opt_in_sms_shown" value="1">
 	</div>

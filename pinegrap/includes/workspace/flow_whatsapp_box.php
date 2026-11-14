@@ -224,7 +224,7 @@ function ws_step_whatsapp_template_problem($config, $template, $name)
         return lang(array('string' => 'The box {var:1} sends a WhatsApp template that is not approved.', 'vars' => $name));
     }
 
-    $read = pg_whatsapp_message_slots($template['components'] ?? array());
+    $read = pg_whatsapp_message_slots($template['components'] ?? array(), $template['offer'] ?? '');
 
     if ($read['unsupported'] !== '') {
         return lang(array('string' => 'The box {var:1} cannot fill its WhatsApp template: {var:2}', 'vars' => array($name, $read['unsupported'])));
@@ -253,7 +253,7 @@ function ws_step_whatsapp_template_problem($config, $template, $name)
  */
 function ws_step_whatsapp_components($template, $action)
 {
-    $read = pg_whatsapp_message_slots(is_array($template) ? ($template['components'] ?? array()) : array());
+    $read = pg_whatsapp_message_slots(is_array($template) ? ($template['components'] ?? array()) : array(), is_array($template) ? ($template['offer'] ?? '') : '');
     $vars = array();
     $values = array();
 
@@ -537,7 +537,7 @@ function ws_step_whatsapp_offered()
         return array();
     }
 
-    $rows = db_items("SELECT name, language, category, status, parameter_format, components, samples FROM whatsapp_templates WHERE status = 'APPROVED' ORDER BY name, language");
+    $rows = db_items("SELECT name, language, category, status, parameter_format, components, samples, offer FROM whatsapp_templates WHERE status = 'APPROVED' ORDER BY name, language");
     $rows = is_array($rows) ? $rows : array();
     $names = array();
 

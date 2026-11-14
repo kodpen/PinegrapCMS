@@ -28105,6 +28105,22 @@ body.pg-measure-report #content {
 .pg-wa-button-row > .pg-field-error {
   grid-column: 1 / -1;
 }
+/* The offer code card: the mode beside the title, then the offer, a key's
+   validity and, on a template WhatsApp holds, the variable. */
+.pg-wa-offer-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.pg-wa-offer-head .pg-seg {
+  margin-left: auto;
+}
+.pg-wa-offer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 14px;
+}
 @media (max-width: 767.98px) {
   .pg-wa-button-row {
     grid-template-columns: minmax(0, 1fr) 28px;

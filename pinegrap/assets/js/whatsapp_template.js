@@ -3,6 +3,7 @@
  *
  * The WhatsApp template designer (whatsapp_template.php): the type buttons,
  * the header (none, text, or a file of Files), the buttons' rows, the
+ * offer code card (none, a shared code or a key for each person), the
  * message editor with its variables as chips (pg_var_chips.js), the
  * formatting buttons, the character count, the sample value rows kept in
  * step with the message's variables, and the phone preview redrawn as the
@@ -333,9 +334,14 @@
         var kind = row.querySelector('[name="button_type[]"]').value;
         var value = row.querySelector('[name="button_value[]"]');
         var sample = row.querySelector('[name="button_sample[]"]');
+        var text = row.querySelector('[name="button_text[]"]');
 
-        value.hidden = kind === 'QUICK_REPLY';
-        sample.hidden = kind !== 'URL';
+        // A copy-code button has no text of its own (WhatsApp writes it),
+        // only the sample code WhatsApp's review reads.
+        text.hidden = kind === 'COPY_CODE';
+        value.hidden = kind === 'QUICK_REPLY' || kind === 'COPY_CODE';
+        sample.hidden = kind !== 'URL' && kind !== 'COPY_CODE';
+        sample.placeholder = sample.getAttribute(kind === 'COPY_CODE' ? 'data-pg-wa-placeholder-code' : 'data-pg-wa-placeholder-url') || '';
         value.placeholder = value.getAttribute(kind === 'PHONE_NUMBER' ? 'data-pg-wa-placeholder-phone' : 'data-pg-wa-placeholder-url') || '';
     }
 
@@ -344,7 +350,7 @@
 
         Array.prototype.forEach.call(buttonRows.querySelectorAll('[data-pg-wa-button]'), function (row) {
             var kind = row.querySelector('[name="button_type[]"]').value;
-            var text = row.querySelector('[name="button_text[]"]').value.trim();
+            var text = kind === 'COPY_CODE' ? (data.copyText || '') : row.querySelector('[name="button_text[]"]').value.trim();
 
             if (text !== '') {
                 html += '<div class="pg-wa-msg-button"><i class="bi ' + escapeHtml((data.icons || {})[kind] || 'bi-reply') + '" aria-hidden="true"></i>' + escapeHtml(text) + '</div>';
@@ -400,6 +406,28 @@
     if (buttonRows) {
         drawButtons();
     }
+
+    // The offer code: none, a shared code or a key for each person; a key
+    // has a validity of its own.
+    var offerMode = document.getElementById('offer_mode');
+    var offerParts = document.getElementById('pg_wa_offer');
+
+    Array.prototype.forEach.call(form.querySelectorAll('[data-pg-wa-offer]'), function (button) {
+        button.addEventListener('click', function () {
+            var mode = button.getAttribute('data-pg-wa-offer');
+
+            offerMode.value = mode;
+            offerParts.hidden = mode === '';
+
+            Array.prototype.forEach.call(form.querySelectorAll('[data-pg-wa-offer]'), function (other) {
+                other.setAttribute('aria-pressed', other === button ? 'true' : 'false');
+            });
+
+            Array.prototype.forEach.call(form.querySelectorAll('[data-pg-wa-offer-part]'), function (part) {
+                part.hidden = part.getAttribute('data-pg-wa-offer-part') !== mode;
+            });
+        });
+    });
 
     rows.addEventListener('input', function () {
         previewBody.innerHTML = pgWaFormat(body.value, samples());

@@ -33,6 +33,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/var_chips.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_offer.php');
 
 // Meta's limits for a template's parts, in characters.
 define('PG_WHATSAPP_DESIGN_BODY_MAX', 1024);
@@ -45,6 +46,9 @@ define('PG_WHATSAPP_DESIGN_SAMPLE_MAX', 200);
 // Meta's limits for a header text and a button's text, in characters.
 define('PG_WHATSAPP_DESIGN_HEADER_MAX', 60);
 define('PG_WHATSAPP_DESIGN_BUTTON_MAX', 25);
+
+// The longest code a copy-code button's sample holds; Meta copies at most 20.
+define('PG_WHATSAPP_DESIGN_CODE_MAX', 20);
 
 // Buttons a template designed here holds (Meta takes ten; more than three
 // show as a list behind "See all options").
@@ -125,6 +129,7 @@ function pg_whatsapp_design_variable_presets()
         lang('Date'),
         lang('Tracking number'),
         lang('Link'),
+        pg_whatsapp_offer_label(),
     );
 }
 
@@ -172,7 +177,7 @@ function pg_whatsapp_design_new()
         'status' => 'DRAFT', 'reason' => '', 'parameter_format' => 'POSITIONAL',
         'header' => array(), 'body' => '', 'footer' => '', 'buttons' => array(),
         'labels' => array(), 'samples' => array(), 'components' => array(),
-        'header_file' => array(), 'header_link' => '',
+        'header_file' => array(), 'header_link' => '', 'offer' => pg_whatsapp_offer_read(''),
     );
 }
 
@@ -196,6 +201,7 @@ function pg_whatsapp_design_from_row($row)
     }
 
     $design['id'] = isset($row['id']) ? (int) $row['id'] : 0;
+    $design['offer'] = pg_whatsapp_offer_read(isset($row['offer']) ? $row['offer'] : '');
 
     $components = isset($row['components']) ? (is_array($row['components']) ? $row['components'] : json_decode((string) $row['components'], true)) : array();
     $design['components'] = is_array($components) ? array_values(array_filter($components, 'is_array')) : array();
@@ -262,8 +268,10 @@ function pg_whatsapp_design_from_row($row)
  * @param array $post   $_POST: name, language, category, body, footer,
  *                      label_<n>, sample_<n>, header_format (NONE, TEXT,
  *                      IMAGE, VIDEO, DOCUMENT), header_text, header_file
- *                      (a file's id), and per button row button_type[],
- *                      button_text[], button_value[], button_sample[]
+ *                      (a file's id), per button row button_type[],
+ *                      button_text[], button_value[], button_sample[] (a
+ *                      link's sample, a copy-code button's sample code),
+ *                      and offer_mode, offer_code, offer_days
  * @param array $design the design the screen was opened with
  * @return array
  */
@@ -325,6 +333,12 @@ function pg_whatsapp_design_posted($post, $design)
         $label = $cell($texts);
         $value = $cell($values);
 
+        // A copy-code button has no text of its own: WhatsApp writes it.
+        if ($type === 'COPY_CODE') {
+            $design['buttons'][] = array('type' => 'COPY_CODE', 'example' => $cell($samples));
+            continue;
+        }
+
         if (($label === '') && ($value === '')) {
             continue;
         }
@@ -344,6 +358,18 @@ function pg_whatsapp_design_posted($post, $design)
         }
 
         $design['buttons'][] = $button;
+    }
+
+    // The offer code goes where the message holds the chip "Offer code";
+    // a variable named in the form counts only when there is no such chip.
+    $design['offer'] = pg_whatsapp_offer_posted($post);
+
+    if ($design['offer']['mode'] !== '') {
+        $chip = array_search(pg_whatsapp_offer_label(), $design['labels'], true);
+
+        if ($chip !== false) {
+            $design['offer']['variable'] = (string) $chip;
+        }
     }
 
     return $design;
@@ -418,6 +444,26 @@ function pg_whatsapp_design_check($design)
 
     $errors += pg_whatsapp_design_check_header($design);
     $errors += pg_whatsapp_design_check_buttons($design['buttons']);
+
+    // The offer code: a copy-code button without one is marked on its row,
+    // and a message that carries one is a marketing template.
+    if (!isset($errors['body'])) {
+        foreach (pg_whatsapp_offer_check($design['offer'], pg_whatsapp_design_components($design)) as $field => $message) {
+            if ($field === 'offer_mode') {
+                foreach (array_values($design['buttons']) as $row => $button) {
+                    if (($button['type'] === 'COPY_CODE') && !isset($errors['button_' . $row])) {
+                        $errors['button_' . $row] = $message;
+                    }
+                }
+            } else {
+                $errors[$field] = $message;
+            }
+        }
+    }
+
+    if (($design['offer']['mode'] !== '') && ($design['category'] !== 'MARKETING') && !isset($errors['category'])) {
+        $errors['category'] = lang('A template with an offer code is a marketing template: choose Marketing.');
+    }
 
     if ($length($design['footer']) > PG_WHATSAPP_DESIGN_FOOTER_MAX) {
         $errors['footer'] = lang(array('string' => 'The footer may hold at most {var:1} characters.', 'vars' => array(PG_WHATSAPP_DESIGN_FOOTER_MAX)));
@@ -607,7 +653,7 @@ function pg_whatsapp_design_check_header($design)
 function pg_whatsapp_design_check_buttons($buttons)
 {
     $errors = array();
-    $count = array('URL' => 0, 'PHONE_NUMBER' => 0);
+    $count = array('URL' => 0, 'PHONE_NUMBER' => 0, 'COPY_CODE' => 0);
 
     if (count($buttons) > PG_WHATSAPP_DESIGN_BUTTONS_MAX) {
         return array('button_0' => lang(array('string' => 'A template may have at most {var:1} buttons.', 'vars' => array(PG_WHATSAPP_DESIGN_BUTTONS_MAX))));
@@ -615,10 +661,16 @@ function pg_whatsapp_design_check_buttons($buttons)
 
     foreach (array_values($buttons) as $row => $button) {
         $type = $button['type'];
-        $text = (string) $button['text'];
+        $text = isset($button['text']) ? (string) $button['text'] : '';
         $field = 'button_' . $row;
 
-        if (!in_array($type, array('URL', 'PHONE_NUMBER', 'QUICK_REPLY'), true)) {
+        if ($type === 'COPY_CODE') {
+            if (!isset($button['example']) || !preg_match('/^[A-Za-z0-9_-]{1,' . PG_WHATSAPP_DESIGN_CODE_MAX . '}$/D', (string) $button['example'])) {
+                $errors[$field] = lang(array('string' => 'Give the copy-code button a sample code of at most {var:1} letters and digits, without spaces.', 'vars' => array(PG_WHATSAPP_DESIGN_CODE_MAX)));
+            } elseif (++$count['COPY_CODE'] > 1) {
+                $errors[$field] = lang('A template may have only one copy-code button.');
+            }
+        } elseif (!in_array($type, array('URL', 'PHONE_NUMBER', 'QUICK_REPLY'), true)) {
             $errors[$field] = lang('Choose the button\'s kind.');
         } elseif ($text === '') {
             $errors[$field] = lang('Give the button a text.');
@@ -718,8 +770,9 @@ function pg_whatsapp_design_format_html($text, $samples)
  * header by the public address of its file (header_link), a link button's
  * variable by its sample; no database.
  *
- * A template with a copy-code or one-time-code button, or a media header
- * whose file is not open to everyone, cannot be sent as a test.
+ * A copy-code button carries its sample code. A template with a
+ * one-time-code button, or a media header whose file is not open to
+ * everyone, cannot be sent as a test.
  *
  * @param array $design pg_whatsapp_design_from_row()
  * @return array ok, components, error
@@ -815,7 +868,19 @@ function pg_whatsapp_design_send_components($design)
         $type = isset($button['type']) ? strtoupper((string) $button['type']) : '';
         $url = isset($button['url']) ? (string) $button['url'] : '';
 
-        if (($type === 'COPY_CODE') || ($type === 'OTP')) {
+        if ($type === 'COPY_CODE') {
+            $example = isset($button['example']) ? $button['example'] : '';
+            $example = is_array($example) ? (string) reset($example) : (string) $example;
+
+            if ($example === '') {
+                return array('ok' => false, 'components' => array(), 'error' => lang('The copy-code button has no sample code to send.'));
+            }
+
+            $components[] = array('type' => 'button', 'sub_type' => 'COPY_CODE', 'index' => (string) $index, 'parameters' => array(array('type' => 'coupon_code', 'coupon_code' => $example)));
+            continue;
+        }
+
+        if ($type === 'OTP') {
             return array('ok' => false, 'components' => array(), 'error' => lang('A template with a button that takes a value cannot be sent as a test yet.'));
         }
 
@@ -871,7 +936,7 @@ function pg_whatsapp_design_load($id)
     }
 
     $row = db_item(
-        "SELECT id, meta_id, name, language, category, status, reason, parameter_format, components, samples
+        "SELECT id, meta_id, name, language, category, status, reason, parameter_format, components, samples, offer
         FROM whatsapp_templates
         WHERE id = '" . (int) $id . "'");
 
@@ -910,13 +975,14 @@ function pg_whatsapp_design_save($design, $user_id)
     // Values bound to placeholders: db_q() reads every ? of its SQL as one,
     // and a message ("Is your order ready?") or a link holds them.
     $columns = "name = ?, language = ?, category = ?, parameter_format = 'POSITIONAL',
-        components = ?, samples = ?, updated_user_id = ?, updated_at = UNIX_TIMESTAMP()";
+        components = ?, samples = ?, offer = ?, updated_user_id = ?, updated_at = UNIX_TIMESTAMP()";
     $values = array(
         $design['name'],
         $design['language'],
         $design['category'],
         json_encode(pg_whatsapp_design_components($design), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         pg_whatsapp_design_samples_json($design),
+        pg_whatsapp_offer_json($design['offer']),
         (int) $user_id,
     );
 
@@ -939,7 +1005,6 @@ function pg_whatsapp_design_save($design, $user_id)
     $saved = db_q("INSERT INTO whatsapp_templates SET " . $columns . ",
         meta_id = NULL,
         status = 'DRAFT',
-        offer = '',
         created_user_id = '" . (int) $user_id . "',
         created_at = UNIX_TIMESTAMP()", $values);
 

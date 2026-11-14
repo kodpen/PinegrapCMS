@@ -9,7 +9,7 @@ module: whatsapp_design
 - The list is `pg_whatsapp_design_header_files()`: non-design files by name ending (files.type is cut at four characters), newest 200, never `pg_file_withheld()`. The chosen file is kept in samples `header_file` {id, name}; the stored HEADER has no example until it is sent.
 
 ## Which buttons?
-- Up to three (drawing): Link (`https://…`, a `{{1}}` only at its end with a sample, at most two), Phone call (`+` and 7–20 digits, one), Quick reply. Text at most 25. `pg_whatsapp_design_check_buttons()`.
+- Up to three (drawing): Link (`https://…`, a `{{1}}` only at its end with a sample, at most two), Phone call (`+` and 7–20 digits, one), Quick reply, Copy code (WA10: one, a sample code, needs the template's offer; `whatsapp-offer-codes.md`). Text at most 25. `pg_whatsapp_design_check_buttons()`.
 - Saved quick replies come last (Meta wants them grouped). A link's sample is kept in its `example` (the full address); `pg_whatsapp_design_url_sample()` reads it back.
 
 ## What does Send for approval do?
@@ -21,7 +21,7 @@ module: whatsapp_design
 - A draft, or a REJECTED template (`pg_whatsapp_design_editable()`): its name and language stay (fields disabled, kept by `pg_whatsapp_design_posted()`). In review, approved and others are read-only. A rejected template saved but not sent again is overwritten by the next refresh.
 
 ## What does the test send do with media and links?
-- A media header goes as a `link` to the file's public address, only when `pg_file_open_to_everyone()`; otherwise refused. A link button's variable is filled with its sample. Copy-code and one-time-code buttons are still refused (WA10).
+- A media header goes as a `link` to the file's public address, only when `pg_file_open_to_everyone()`; otherwise refused. A link button's variable is filled with its sample, a copy-code button with its sample code (`whatsapp-offer-codes.md`). One-time-code buttons are refused.
 
 ## Which trap was found?
 - `db_q()` reads every `?` of its SQL as a placeholder, so a text with "?" was spliced into the SQL and the query refused: drafts with a question mark did not save (WA8) and a Meta template with one was never stored by the refresh (WA3). Both now bind their values (`data/db-q-placeholder-helper.md`).
