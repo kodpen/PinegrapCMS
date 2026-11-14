@@ -279,15 +279,25 @@ function ws_flow_event_outputs()
     $quote = array($value('number', 'text', lang('Quote number')), $value('status', 'text', lang('Status')), $value('account_id', 'number', lang('Current account')),
         $value('issue_date', 'text', lang('Issue date')), $value('valid_until', 'text', lang('Valid until')), $value('currency', 'text', lang('Currency')));
     $credit = array($value('customer_id', 'number', lang('Contact')), $value('account_id', 'number', lang('User')), $value('kind', 'text', lang('Kind')),
-        $value('reason', 'text', lang('Reason')), $value('expires_at', 'text', lang('Expires')));
+        $value('reason', 'text', lang('Reason')), $value('expires_at', 'text', lang('Expires')),
+        $value('amount', 'number', lang('Amount in minor units')), $value('balance', 'number', lang('Balance in minor units')),
+        $value('source', 'text', lang('Where the credit came from')), $value('name', 'text', lang('The customer\'s name')));
     $subscription = array($value('customer_id', 'number', lang('Contact')), $value('product_id', 'number', lang('Product')), $value('status', 'text', lang('Status')),
-        $value('previous_status', 'text', lang('Previous status')), $value('order_id', 'number', lang('Order')), $value('retry_count', 'number', lang('Retries')));
+        $value('previous_status', 'text', lang('Previous status')), $value('order_id', 'number', lang('Order')), $value('retry_count', 'number', lang('Retries')),
+        $value('product_name', 'text', lang('The name of the product')), $value('order_number', 'text', lang('Order number')),
+        $value('amount', 'number', lang('Amount in minor units')), $value('currency', 'text', lang('Currency')), $value('next_charge_at', 'text', lang('Next charge')));
+    // The tracking values a shipment mail fills (pg_shipment_event_values()).
+    $tracking = array($value('tracking_numbers_text', 'text', lang('Tracking numbers')), $value('carrier_name', 'text', lang('Carrier')),
+        $value('tracking_url', 'text', lang('Tracking link')));
+    $booking = array($value('name', 'text', lang('Name')), $value('email', 'text', lang('E-mail')), $value('start_at', 'text', lang('Start')),
+        $value('end_at', 'text', lang('End')), $value('status', 'text', lang('Status')), $value('service_name', 'text', lang('Service')),
+        $value('staff_name', 'text', lang('Staff member')));
 
     return array(
         'order.created'          => array($order),
         'order.status_changed'   => array($order, $value('status', 'text', lang('Status')), $value('previous', 'text', lang('Previous status'))),
-        'order.shipped'          => array($order),
-        'order.delivered'        => array($order, $value('delivery_date', 'text', lang('Delivery date'))),
+        'order.shipped'          => array_merge(array($order), $tracking),
+        'order.delivered'        => array_merge(array($order, $value('delivery_date', 'text', lang('Delivery date'))), $tracking),
         'order.cancelled'        => array($order),
         'order.return.requested' => array($order),
         'order.return.approved'  => $return,
@@ -316,7 +326,12 @@ function ws_flow_event_outputs()
         'campaign.sent'          => array($value('id', 'number', lang('Campaign')), $value('channel', 'text', lang('Channel')), $value('type', 'text', lang('Type'))),
         'page.created'           => array($value('name', 'text', lang('Page'))),
         'page.updated'           => array($value('name', 'text', lang('Page'))),
-        'calendar_event.reserved' => array($value('recurrence_number', 'number', lang('Repeat')), $value('quantity', 'number', lang('Quantity')), $value('order_id', 'number', lang('Order')), $order, $value('contact_id', 'number', lang('Contact'))),
+        'calendar_event.reserved' => array($value('recurrence_number', 'number', lang('Repeat')), $value('quantity', 'number', lang('Quantity')), $value('order_id', 'number', lang('Order')), $order, $value('contact_id', 'number', lang('Contact')),
+            $value('start_at', 'text', lang('The reserved start'))),
+        'booking.created'        => $booking,
+        'booking.confirmed'      => $booking,
+        'booking.rescheduled'    => $booking,
+        'booking.cancelled'      => $booking,
         'erp.invoice.created'    => $invoice,
         'erp.invoice.paid'       => $invoice,
         'erp.invoice.overdue'    => array_merge($invoice, array($value('days_overdue', 'number', lang('Days overdue')))),

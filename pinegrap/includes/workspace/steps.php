@@ -2583,6 +2583,10 @@ function ws_flow_box_try($viewer, $flow, $data)
                     return array('outcome' => 'failed', 'refusal' => $date['error']) + $answer;
                 }
 
+                if ($date['passed'] && ($delay['passed'] === 'end')) {
+                    return array('outcome' => '', 'said' => lang('The moment has passed, so the run would end here.')) + $answer;
+                }
+
                 return array(
                     'outcome' => 'done',
                     'said'    => ($date['until'] <= time())
@@ -2592,10 +2596,14 @@ function ws_flow_box_try($viewer, $flow, $data)
                 ) + $answer;
             }
 
+            $until = ws_flow_delay_until($delay, time());
+
             return array(
                 'outcome' => 'done',
-                'said'    => lang(array('string' => 'Waits {var:1}, then the boxes after it start.', 'vars' => ws_flow_delay_text($node['config']))),
-                'next'    => array(ws_scheduled_moment(ws_flow_delay_until($node['config'], time()))),
+                'said'    => ($delay['time'] !== '')
+                    ? lang(array('string' => 'Waits until {var:1}, then the boxes after it start.', 'vars' => ws_scheduled_moment($until)))
+                    : lang(array('string' => 'Waits {var:1}, then the boxes after it start.', 'vars' => ws_flow_delay_text($node['config']))),
+                'next'    => array(ws_scheduled_moment($until)),
             ) + $answer;
 
         // The flow it would start; the chain's depth and the started flow's

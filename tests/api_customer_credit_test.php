@@ -161,6 +161,11 @@ function test_store_credit_webhook_data()
 	pg_assert_same(501, $data['order_id'], 'order');
 	pg_assert_same(1800, $data['amount_used'], 'amount used');
 	pg_assert_true(!array_key_exists('code', $data), 'no code');
+	pg_assert_same('', $data['name'], 'no name read');
+
+	$named = pg_credit_event_data(api_customer_credit_test_card(array('first_name' => 'Ada', 'last_name' => 'Yıldız', 'kind' => 'refund')));
+	pg_assert_same('Ada Yıldız', $named['name'], 'the customer\'s name a credit mail fills');
+	pg_assert_same(function_exists('pg_credit_kinds') ? lang('Refund') : '', $named['source'], 'where the credit came from');
 
 	$plain = pg_credit_event_data(api_customer_credit_test_card(array('customer_id' => '0')));
 	pg_assert_same(null, $plain['customer_id'], 'an account that is no contact');

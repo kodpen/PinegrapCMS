@@ -233,7 +233,7 @@ function test_api_calendar_event_reserved_is_listed()
 function test_api_calendar_event_reserved_payload()
 {
 	pg_assert_same(
-		array('id' => 12, 'recurrence_number' => 3, 'quantity' => 2, 'order_item_id' => 81, 'order_id' => 40, 'order_number' => 1007, 'contact_id' => 5),
+		array('id' => 12, 'recurrence_number' => 3, 'quantity' => 2, 'order_item_id' => 81, 'order_id' => 40, 'order_number' => 1007, 'contact_id' => 5, 'start_at' => null),
 		pg_order_reservation_event(
 			array('calendar_event_id' => '12', 'recurrence_number' => '3', 'quantity' => '2', 'order_item_id' => '81'),
 			'5',
@@ -243,6 +243,13 @@ function test_api_calendar_event_reserved_payload()
 	);
 
 	pg_assert_same(null, pg_order_reservation_event(array('calendar_event_id' => 1), 0, array())['contact_id'], 'no contact is null');
+
+	// The reserved repeat's start, written in the site's zone, as ISO UTC.
+	$saved = date_default_timezone_get();
+	date_default_timezone_set('Europe/Istanbul');
+	pg_assert_same('2026-11-20T06:30:00Z', pg_order_reservation_event(array('calendar_event_id' => 1), 0, array(), '2026-11-20 09:30:00')['start_at'], 'the start in UTC');
+	date_default_timezone_set($saved);
+	pg_assert_same(null, pg_order_reservation_event(array('calendar_event_id' => 1), 0, array(), 'no date')['start_at'], 'no start is null');
 }
 
 // Announced where the spots are taken, after the reservations check, so every

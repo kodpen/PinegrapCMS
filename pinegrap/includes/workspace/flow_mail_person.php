@@ -49,7 +49,9 @@ function ws_flow_mail_purposes()
  * Which record a run is about, as the person it writes to is read from: a
  * run started by hand or for a customer who stopped ordering keeps its
  * contact; one started by an event names the event's record
- * (ws_events_record_of()); a received e-mail its conversation. Pure.
+ * (ws_events_record_of()); a received e-mail its conversation; a calendar
+ * event's reservation, whose record is the event, its contact, else its
+ * order. Pure.
  *
  * @param string $subject_type the run's subject_type
  * @param int    $subject_id   the run's subject_id
@@ -69,6 +71,16 @@ function ws_flow_mail_person_source($subject_type, $subject_id, $context)
         $id = (int) ($payload['conversation_id'] ?? 0);
 
         return ($id > 0) ? array('mail', $id) : array('', 0);
+    }
+
+    // A reservation is about the calendar event, which has nobody: its
+    // person is the one who reserved, as a campaign profile wrote to them.
+    if ($event === 'calendar_event.reserved') {
+        if ((int) ($payload['contact_id'] ?? 0) > 0) {
+            return array('contact', (int) $payload['contact_id']);
+        }
+
+        return ((int) ($payload['order_id'] ?? 0) > 0) ? array('order', (int) $payload['order_id']) : array('', 0);
     }
 
     if (($event !== '') && function_exists('ws_events_record_of')) {

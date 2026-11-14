@@ -463,7 +463,8 @@ function pg_booking_ics_attachment($campaign)
 
 /**
  * What a booking.* event carries (pure): ids, times in ISO 8601 UTC, the
- * status and the source, never the manage token.
+ * status and the source, and the names a booking mail fills (service_name,
+ * staff_name, '' when unknown); never the manage token or its link.
  *
  * @param array $row
  * @return array
@@ -485,6 +486,8 @@ function pg_booking_event_payload($row)
         'end_at'     => $iso($row['end_at']),
         'status'     => (string) $row['status'],
         'source'     => (string) $row['source'],
+        'service_name' => (string) ($row['service_name'] ?? ''),
+        'staff_name'   => (string) ($row['staff_name'] ?? ''),
     );
 }
 

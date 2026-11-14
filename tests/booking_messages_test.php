@@ -308,6 +308,9 @@ function test_booking_messages_event_payload_and_catalogue()
 	pg_assert_false(isset($payload['manage_token']), 'no token');
 	pg_assert_same('2026-10-30T07:00:00Z', $payload['start_at']);
 	pg_assert_same(42, $payload['id']);
+	pg_assert_same('Haircut, wash; dry', $payload['service_name'], 'the service a booking mail names');
+	pg_assert_same('Deniz Kaya', $payload['staff_name'], 'the staff member a booking mail names');
+	pg_assert_false(isset($payload['manage_url']), 'no manage link');
 
 	$webhooks = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php');
 

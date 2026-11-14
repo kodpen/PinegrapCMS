@@ -827,6 +827,7 @@
     "End the conversation? The guest's link and session are closed and the room is archived. A new link opens it again.": "Görüşme bitirilsin mi? Misafirin bağlantısı ve oturumu kapanır, oda arşivlenir. Yeni bağlantı odayı yeniden açar.",
     "End the experiment and keep the live page as it is?": "Deney bitirilsin ve canlı sayfa olduğu gibi kalsın mı?",
     "End the experiment without publishing a winner?": "Deney bir kazanan yayımlanmadan bitirilsin mi?",
+    "End the run": "Çalışmayı bitir",
     "End the site's connection to this server? Its tools cannot be used until it is connected again.": "Sitenin bu sunucuyla bağlantısı kesilsin mi? Yeniden bağlanana kadar araçları kullanılamaz.",
     "End the subscription": "Aboneliği sonlandır",
     "End time": "Bitiş saati",

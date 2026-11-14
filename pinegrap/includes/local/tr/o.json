@@ -1737,6 +1737,7 @@
     "Optional extension(s) not installed:": "Kurulu olmayan isteğe bağlı uzantı(lar):",
     "Optional note…": "İsteğe bağlı not…",
     "Optional when you approve. When you reject it, say why.": "Onaylarken isteğe bağlı. Reddediyorsanız nedenini yazın.",
+    "Optional, in the site's time zone: the wait ends at the first such time at or after its end.": "İsteğe bağlı, sitenin saat diliminde: bekleme, sonunda ya da sonrasında gelen ilk bu saatte biter.",
     "Optional, like “Before the launch”. Without one it is called by its number.": "İsteğe bağlı, ör. “Lansman öncesi”. Ad verilmezse numarasıyla anılır.",
     "Optional. @ and # tags work here; the first record tagged is shown on the card.": "İsteğe bağlı. @ ve # etiketleri çalışır; etiketlenen ilk kayıt kartta gösterilir.",
     "Optional. An API key of the same project with the Google Picker API enabled, restricted to this site's address. It lets people pick files from their Google Drive when uploading.": "İsteğe bağlı. Aynı projede Google Picker API'si etkin, bu sitenin adresiyle sınırlandırılmış bir API anahtarı. Kişilerin yükleme yaparken Google Drive'larından dosya seçmesini sağlar.",

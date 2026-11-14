@@ -69,7 +69,7 @@ function test_workspace_webhook_start_events_outputs_are_payload_keys()
 	pg_assert_same(array('order_number', 'return_id', 'reason', 'refund_method'), $keys('order.return.refunded'));
 	pg_assert_same(array('status', 'contact_id', 'order_number'), $keys('cart_quote.ordered'));
 	pg_assert_same(array('order_number', 'provider', 'remote_order_id'), $keys('marketplace.order.imported'));
-	pg_assert_same(array('customer_id', 'product_id', 'status', 'previous_status', 'order_id', 'retry_count'), $keys('subscription.failed'));
+	pg_assert_same(array('customer_id', 'product_id', 'status', 'previous_status', 'order_id', 'retry_count', 'product_name', 'order_number', 'amount', 'currency', 'next_charge_at'), $keys('subscription.failed'));
 	pg_assert_same(array('reference_code', 'contact_id', 'order_number'), $keys('form.paid'));
 	pg_assert_same(array('product_id', 'quantity'), $keys('inventory.changed'));
 }
