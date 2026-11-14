@@ -664,15 +664,17 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
     $parent_id = ($card && ((int) $card['channel_id'] === (int) $check['channel']['id']) && ((int) $card['deleted_at'] === 0)) ? (int) $card['id'] : 0;
     $message = ws_mail_message_write($check['channel']['id'], $parent_id, $item_id, ws_mail_message_body(trim((string) $text)), 0, '', $now);
 
-    if ($parent_id > 0) {
-        ws_message_touch($parent_id);
-    }
-
     db("UPDATE ws_mail_items SET message_id = '" . (int) $message . "' WHERE id = '" . $item_id . "'");
     // Answered: the conversation waits for the customer, whose next mail opens it again.
     db("UPDATE ws_mail_conversations SET last_out_at = '" . $now . "', status = 'waiting', closed_at = 0,
             first_reply_at = IF(first_reply_at = 0, '" . $now . "', first_reply_at), updated_at = '" . $now . "'
         WHERE id = '" . $conversation_id . "'");
+
+    // The card is drawn again where it sits, now marked "Answered", also
+    // when the answer was written in Communication into another channel.
+    if ($card && ((int) $card['deleted_at'] === 0)) {
+        ws_message_touch((int) $card['id']);
+    }
 
     return array('ok' => true, 'error' => '', 'detail' => '', 'item_id' => $item_id, 'message_id' => (int) $message, 'copy' => $copy());
 }

@@ -26,7 +26,7 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 
 ## In which order?
 - MA0 first, then MA1; MA2, MA3, MA6, MA7 after MA1 in any order; MA2b after MA2. MA4 may run beside MA1; MA5 after MA4, MA3 and MA12.
-- MA8 after MA12; MA10b after MA1, MA10c after MA10b; MA9b and MA9c side by side, MA9d after both, MA9e after MA9d and the owner's look at its report, MA9f after MA9e.
+- MA8 after MA12; MA10b after MA1, MA10b2 and MA10c after MA10b in any order; MA9b and MA9c side by side, MA9d after both, MA9e after MA9d and the owner's look at its report, MA9f after MA9e.
 - Claim as `[plan:messages-area] <step> — <topic>`.
 
 ## What is left for the next session? (2026-11-14, after #9363)
