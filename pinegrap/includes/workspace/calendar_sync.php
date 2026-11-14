@@ -1730,6 +1730,13 @@ function ws_calsync_plans_post($user_id)
 
     if ($on !== $was) {
         ws_calsync_plans_switch($user_id, $on);
+        $now = ws_calsync_state($user_id);
+
+        // Switching on without a connected account changes nothing.
+        if (($now && $now['plans']) !== $on) {
+            return true;
+        }
+
         log_activity($on
             ? lang('turned on writing their own plans to their own calendar')
             : lang('turned off writing their own plans to their own calendar'), (string) ($_SESSION['sessionusername'] ?? ''));
