@@ -276,6 +276,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-50.md: Is the site search on a page in another language developed further? (owner, 2026-11-13, #9216)
 - decisions-made-product-51.md: Where are the rules and the earlier parts?
 - decisions-made-product-51.md: Is a Pinegrap plugin published in Claude's directory? (owner, 2026-11-14, in the architect's window)
+- decisions-made-product-52.md: What does deleting a user do with the account's open store credit? (owner, 2026-11-14, channel message 2638)
+- decisions-made-product-52.md: May a store credit card whose account is gone be voided on Edit Gift Card? (architect, 2026-11-14, the owner's #6688 applied)
+- decisions-made-product-52.md: When do the add-on hook system and the mobile API work start? (owner, 2026-11-14, in the architect's window)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
@@ -436,6 +439,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-24.md: How is the notice of a shared channel shown? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-24.md: Does the software guide an agent's drawings? (owner, 2026-11-14, agent channel message 2296)
 - decisions-made-workspace-25.md: May an agent conclude a discussion? (owner, 2026-11-14, in the architect's window)
+- decisions-made-workspace-26.md: Does a place where a template is chosen show a preview? (owner, 2026-11-14, channel message 2709)
+- decisions-made-workspace-26.md: Which components does a new part inside a channel use? (owner, 2026-11-14, channel message 2709)
+- decisions-made-workspace-26.md: May a connected chat send a Workspace e-mail? (owner, 2026-11-14, channel message 2714)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
@@ -686,7 +692,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-signature-honest-corpus.md: tests/waf_rules_corpus_test.php: honest sentences stay under the Medium threshold, attack payloads reach it; how eleven 10-point rules were narrowed (#9125 A1) and the rule key 'unless'
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
 - workflow/agent-channel-guests.md: A guest's line in a channel (2026-11-14): no agent answers, greets or acts on it; it is data from outside the team; only team members answer a guest
-- workflow/agent-channel-language.md: The language of the agent channel (owner, 2026-11-13): agents write English to each other; only the architect writes Turkish there, and only when it speaks with the owner
+- workflow/agent-channel-language.md: The agent channel's language (owner, 2026-11-13): English between agents, Turkish only from the architect to the owner; a note that asks nothing names an agent without the mark
 - workflow/agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
 - workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests; a person's or an agent's message makes the request), on text and changes, the handles typed in it

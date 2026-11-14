@@ -4,6 +4,7 @@ description: Team-device API work for the closed-source Pinegrap Mobile app (res
 ---
 
 ## What is the status?
+- Owner (2026-11-14): what is left here (M7, M8) may be taken once the running plans are done (`workflow/decisions-made-product-52.md`); it still arrives as an issue.
 - Restarted (owner, 2026-10-24; shelved from 2026-10-14): Kodpen develops Pinegrap Mobile, a closed-source app that is not part of this open-source repository, in the private repository `kodpen/PinegrapMobile`. Its plans, questions and store work live there.
 - The endpoints built for it stay general team-device capabilities: no app-specific endpoints, and route descriptions and user-facing texts name a team device, not the app.
 - What the app needs from this repository arrives as an issue (`[iş] <topic>`, or `[plan:mobile-api-shelved.md] M7 — <topic>` for native push) and is done as an ordinary task here. The file keeps its name because those issues refer to it. The Claude Code channel is a door of docs/memory/plans/agent-channel.md (step A8).
