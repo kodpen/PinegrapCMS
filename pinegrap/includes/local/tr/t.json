@@ -6365,6 +6365,7 @@
     "The scheduled action could not be saved.": "Programlanmış işlem kaydedilemedi.",
     "The scheduled action to start is gone.": "Başlatılacak programlanmış işlem artık yok.",
     "The scheduled flow is live.": "Zamanlanmış akış yayında.",
+    "The scheduled general job reads the messages customers sent to the account's receiving number (an 0850 number or a keyword on a short number, bought from the provider) every two minutes.": "Zamanlanmış genel iş, müşterilerin hesabın alıcı numarasına (sağlayıcıdan alınan bir 0850 numarası ya da kısa numaradaki bir anahtar kelime) gönderdiği mesajları iki dakikada bir okur.",
     "The scheduled job has not run yet.": "Zamanlanmış görev henüz çalışmadı.",
     "The scheduled message was deleted.": "Zamanlanmış mesaj silindi.",
     "The scheduled tasks have stopped running, which quietly stalls backups and mail.": "Zamanlanmış görevler çalışmayı bırakmış; bu, yedekleri ve e-postaları sessizce durdurur.",
