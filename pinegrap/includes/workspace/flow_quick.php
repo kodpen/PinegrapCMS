@@ -83,7 +83,7 @@ function ws_flow_quick_areas()
         'invoices'      => $area(lang('Invoices'), 'bi-receipt', 'site', array('event:erp.invoice.created', 'event:erp.invoice.paid',
             'event:erp.invoice.overdue', 'event:erp.invoice.edoc_changed', 'event:erp.receipt.created', 'event:erp.edoc.received')),
         'content'       => $area(lang('Content and campaigns'), 'bi-megaphone', 'site', array('event:page.created', 'event:page.updated',
-            'event:campaign.sent', 'event:mail.bounced')),
+            'event:campaign.sent', 'event:mail.bounced', 'event:whatsapp.received')),
         'workspace'     => $area(lang('Workspace'), 'bi-chat-square-text', 'site', array('event:workspace.task.completed',
             'event:workspace.task.status_changed', 'event:workspace.task.overdue', 'event:workspace.approval.decided', 'event:workspace.guest.message',
             'event:workspace.mail.received', 'event:workspace.flow.run.failed', 'join', 'mention', 'row')),
@@ -103,7 +103,7 @@ function ws_flow_quick_areas()
 function ws_flow_quick_groups()
 {
     return array(
-        'message' => array('label' => lang('Message'), 'kinds' => array('email', 'sms', 'notify', 'post', 'report')),
+        'message' => array('label' => lang('Message'), 'kinds' => array('email', 'sms', 'whatsapp', 'notify', 'post', 'report')),
         'people'  => array('label' => lang('People'), 'kinds' => array('task_open', 'task', 'approval', 'lead', 'checkin', 'task_digest')),
         'records' => array('label' => lang('Records'), 'kinds' => array('change', 'contact_group', 'record_get', 'row_add', 'row_set', 'row_get', 'rows_get')),
         'logic'   => array('label' => lang('Logic'), 'kinds' => array('delay', 'condition', 'for_each')),
@@ -736,6 +736,11 @@ function ws_flow_quick_fill($viewer, $scheduled = null, $lists = null)
     // The SMS box only where the site can send SMS (ws_step_sms_check()).
     if (!function_exists('pg_sms_ready') || !pg_sms_ready()) {
         $kinds = array_values(array_diff(($kinds === null) ? array_keys(ws_flow_kinds()) : $kinds, array('sms')));
+    }
+
+    // The WhatsApp box only where WhatsApp is set up (ws_step_whatsapp_check()).
+    if (!ws_step_whatsapp_ready()) {
+        $kinds = array_values(array_diff(($kinds === null) ? array_keys(ws_flow_kinds()) : $kinds, array('whatsapp')));
     }
 
     return array(

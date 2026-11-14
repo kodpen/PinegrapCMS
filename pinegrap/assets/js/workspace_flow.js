@@ -141,6 +141,7 @@
         post: { name: 'fl_kind_post', group: 'message', into: true, out: ['done', 'failed'] },
         email: { name: 'fl_kind_email', group: 'message', into: true, out: ['done', 'failed'] },
         sms: { name: 'fl_kind_sms', group: 'message', into: true, out: ['done', 'failed'] },
+        whatsapp: { name: 'fl_kind_whatsapp', group: 'message', into: true, out: ['done', 'failed'] },
         notify: { name: 'fl_kind_notify', group: 'message', into: true, out: ['done', 'failed'] },
         task_open: { name: 'fl_kind_task_open', group: 'people', into: true, out: ['done', 'failed'] },
         webhook: { name: 'fl_kind_webhook', group: 'system', into: true, out: ['done', 'failed'] },
@@ -220,6 +221,7 @@
         ['post', 'fl_add_post'],
         ['email', 'fl_add_email'],
         ['sms', 'fl_kind_sms'],
+        ['whatsapp', 'fl_kind_whatsapp'],
         ['notify', 'fl_kind_notify'],
         ['task_open', 'fl_kind_task_open'],
         ['webhook', 'fl_kind_webhook'],
@@ -621,6 +623,7 @@
             no_order: !!steps.no_order,
             ai: !!steps.ai,
             sms: !!steps.sms,
+            whatsapp: steps.whatsapp || null,
             agents: steps.agents || [],
             mcp: steps.mcp || []
         };
@@ -685,6 +688,14 @@
             }
 
             return config.to ? t('fl_email_meta', config.to) : t('fl_sms_no_to');
+        }
+
+        if (node.kind === 'whatsapp') {
+            if (!config.template) {
+                return t('fl_wa_no_template');
+            }
+
+            return (config.recipient === 'record_person') ? t('fl_email_person_info') : (config.to ? t('fl_email_meta', config.to) : t('fl_sms_no_to'));
         }
 
         if (node.kind === 'notify') {
@@ -3566,6 +3577,10 @@
         post: [['body', 'fl_post_body', 4000]],
         email: [['subject', 'fl_email_subject', 250], ['body', 'fl_email_body', 20000]],
         sms: [['text', 'fl_sms_text', 900]],
+        // A variable's label takes its number (the fourth item).
+        whatsapp: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(function (n) {
+            return ['v' + n, 'fl_wa_var', 1000, n];
+        }).concat([['fallback_subject', 'fl_email_subject', 250], ['fallback_body', 'fl_email_body', 20000]]),
         notify: [['text', 'fl_notify_text', 500]],
         task_open: [['title', 'fl_title', 200], ['description', 'fl_description', 8000]],
         webhook: [['text', 'fl_post_body', 4000], ['url', 'fl_url', 2000]],
@@ -3727,7 +3742,7 @@
                 && ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list')))
                 && ((node.kind !== 'delay') || (config.mode === 'until'));
         }).map(function (item) {
-            return { key: item[0], label: t(item[1]), text: config[item[0]] };
+            return { key: item[0], label: (item.length > 3) ? t(item[1], item[3]) : t(item[1]), text: config[item[0]] };
         }).concat(cells);
     }
 
@@ -3750,7 +3765,7 @@
         }).filter(function (item) {
             return ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list'))) && (!kindOf(node).loop || !config[item[0]]);
         }).map(function (item) {
-            return { key: item[0], label: t(item[1]), text: (typeof config[item[0]] === 'string') ? config[item[0]] : '', max: item[2] };
+            return { key: item[0], label: (item.length > 3) ? t(item[1], item[3]) : t(item[1]), text: (typeof config[item[0]] === 'string') ? config[item[0]] : '', max: item[2] };
         });
     }
 
@@ -4514,6 +4529,7 @@
                 && ((item[0] !== 'contact_group') || (stepLists().groups.length > 0))
                 && ((item[0] !== 'ai') || stepLists().ai)
                 && ((item[0] !== 'sms') || stepLists().sms)
+                && ((item[0] !== 'whatsapp') || !!stepLists().whatsapp)
                 && ((item[0] !== 'agent') || (stepLists().agents.length > 0))
                 && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
@@ -6290,7 +6306,7 @@
     // ws_flow_task_texts()). A derived value fills only {{date}}, {{time}}
     // and {{weekday}} (ws_flow_derived_words()). In any other box such a
     // word stays as typed: a table cell, MCP arguments, a check-in's question.
-    var WORD_KINDS = ['post', 'email', 'sms', 'notify', 'task', 'task_open', 'webhook', 'task_digest', 'report', 'approval'];
+    var WORD_KINDS = ['post', 'email', 'sms', 'whatsapp', 'notify', 'task', 'task_open', 'webhook', 'task_digest', 'report', 'approval'];
 
     // The help under a value field: the words named only where they work.
     function valuesHint(node) {
@@ -7149,6 +7165,10 @@
             smsFields(box, node);
         }
 
+        if (node.kind === 'whatsapp') {
+            whatsappFields(box, node);
+        }
+
         if (node.kind === 'notify') {
             notifyFields(box, node);
         }
@@ -7595,6 +7615,132 @@
         box.appendChild(field(t('fl_email_purpose'), purpose, t('fl_sms_purpose_help')));
         box.appendChild(valueField(node, t('fl_sms_text'), config.text, 900, function (value) {
             config.text = value;
+            refreshNode(node);
+        }, true));
+    }
+
+    // A WhatsApp box: a typed mobile number or the person of the run's
+    // record, one approved template of the account, a value for each of its
+    // variables, and the e-mail sent in its place when there is no number or
+    // the message cannot be queued. Each variable is a row of its own named
+    // by its place and where it sits, never by Meta's {{1}}; a row carries
+    // data-wa-var and data-wa-part for the template designer's variable
+    // chips to take over.
+    function whatsappFields(box, node) {
+        var config = node.config;
+        var person = config.recipient === 'record_person';
+        var lists = stepLists().whatsapp || { templates: [] };
+        var templates = lists.templates || [];
+        var recipient = K.select([['typed', t('fl_sms_typed')], ['record_person', t('fl_email_person')]], person ? 'record_person' : 'typed');
+
+        recipient.addEventListener('change', function () {
+            config.recipient = recipient.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_email_recipient'), recipient));
+
+        if (!person) {
+            box.appendChild(field(t('fl_sms_to'), textInput(config.to, 200, function (value) {
+                config.to = value;
+                refreshNode(node);
+            }), t('fl_sms_to_help')));
+        }
+
+        var chosen = null;
+        var choices = [['', t('fl_wa_template_pick')]];
+
+        templates.forEach(function (template) {
+            choices.push([template.key, template.name + ' · ' + template.language]);
+
+            if (template.key === config.template) {
+                chosen = template;
+            }
+        });
+
+        // A template the account no longer offers stays named, so the box
+        // is not emptied silently; publishing says what is wrong with it.
+        if (config.template && !chosen) {
+            choices.push([config.template, config.template.replace('|', ' · ')]);
+        }
+
+        var pick = K.select(choices, config.template || '');
+
+        pick.addEventListener('change', function () {
+            config.template = pick.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_wa_template'), pick, templates.length ? t('fl_wa_template_help') : t('fl_wa_none')));
+
+        if (chosen && chosen.vars.length) {
+            var vars = el('div', 'wsf-wa-vars');
+
+            vars.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_wa_vars')));
+            chosen.vars.forEach(function (variable) {
+                var key = 'v' + variable.n;
+                var row = valueField(node, variable.label, config[key], 1000, function (value) {
+                    config[key] = value;
+                    refreshNode(node);
+                });
+                var hint = row.querySelector('.form-text');
+
+                // The value hint is said once, under the group.
+                if (hint) {
+                    Array.prototype.forEach.call(row.querySelectorAll('[aria-describedby="' + hint.id + '"]'), function (control) {
+                        control.removeAttribute('aria-describedby');
+                    });
+                    hint.remove();
+                }
+
+                // The variable as a chip naming what it stands for, before
+                // where it sits; never Meta's {{n}}.
+                var caption = row.querySelector('label');
+
+                if (caption && window.pgVarChips) {
+                    caption.insertBefore(document.createTextNode(' '), caption.firstChild);
+                    caption.insertBefore(window.pgVarChips.chip(variable.chip || t('fl_wa_var', variable.n)), caption.firstChild);
+                } else if (caption) {
+                    caption.textContent = (variable.chip || t('fl_wa_var', variable.n)) + ' · ' + variable.label;
+                }
+
+                row.classList.replace('mb-5', 'mb-3');
+                row.setAttribute('data-wa-var', String(variable.n));
+                row.setAttribute('data-wa-part', variable.part);
+                vars.appendChild(row);
+            });
+            vars.appendChild(el('div', 'form-text mb-5', t('fl_wa_vars_help')));
+            box.appendChild(vars);
+        }
+
+        var fallback = el('input', 'check');
+
+        fallback.type = 'checkbox';
+        fallback.checked = !!config.fallback;
+        fallback.addEventListener('change', function () {
+            config.fallback = fallback.checked ? 1 : 0;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_wa_fallback'), fallback, t('fl_wa_fallback_help')));
+
+        if (!config.fallback) {
+            return;
+        }
+
+        if (!person) {
+            box.appendChild(field(t('fl_wa_fallback_to'), textInput(config.fallback_to, 2000, function (value) {
+                config.fallback_to = value;
+                refreshNode(node);
+            })));
+        }
+
+        box.appendChild(valueField(node, t('fl_email_subject'), config.fallback_subject, 250, function (value) {
+            config.fallback_subject = value;
+            refreshNode(node);
+        }));
+        box.appendChild(valueField(node, t('fl_email_body'), config.fallback_body, 20000, function (value) {
+            config.fallback_body = value;
             refreshNode(node);
         }, true));
     }
@@ -11089,6 +11235,8 @@
             config = { to: '', subject: '', body: '', page_id: 0, recipient: 'typed', purpose: 'info' };
         } else if (kind === 'sms') {
             config = { to: '', recipient: 'typed', purpose: 'info', text: '' };
+        } else if (kind === 'whatsapp') {
+            config = { to: '', recipient: 'typed', template: '', fallback: 0, fallback_to: '', fallback_subject: '', fallback_body: '' };
         } else if (kind === 'notify') {
             config = { user_ids: [], text: '' };
         } else if (kind === 'task_open') {

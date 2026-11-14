@@ -66,6 +66,7 @@ function ws_flow_setting_values()
         'email.purpose'      => ws_flow_mail_purposes(),
         'sms.recipient'      => ws_step_sms_recipients(),
         'sms.purpose'        => ws_step_sms_purposes(),
+        'whatsapp.recipient' => ws_step_whatsapp_recipients(),
         'webhook.format'     => array('generic', 'text', 'discord'),
         'web_check.mode'     => array('status', 'ssl'),
         'task_digest.mode'   => array('mine', 'channel'),

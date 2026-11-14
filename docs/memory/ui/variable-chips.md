@@ -6,7 +6,7 @@ module: var_chips
 
 ## What are they?
 - A message's variable shown as a chip in the accent's tint that names what it stands for (Customer's name, Order number …) instead of Meta's `{{1}}`. Owner (2026-11-13), channel 25 #2222: `platform/whatsapp-template-designer.md`.
-- Shared: `includes/fn/var_chips.php` (`pg_var_chip_html($label, $palette)`, `pg_var_chips_script()`), `assets/js/pg_var_chips.js` (served as written, no twin), CSS block "Look A: variable chips" in `backend.src.css`. First user: `whatsapp_template.php`; the WA5 rows that say what fills a variable reuse the chip.
+- Shared: `includes/fn/var_chips.php` (`pg_var_chip_html($label, $palette)`, `pg_var_chips_script()`), `assets/js/pg_var_chips.js` (served as written, no twin), CSS block "Look A: variable chips" in `backend.src.css`. First user: `whatsapp_template.php`; the Flows WhatsApp box's variable rows (`workspace/workspace-flows-whatsapp-box.md`) and the WA5 rows that say what fills a variable reuse the chip.
 
 ## How does the editor work?
 - `pgVarChips.mount(textarea, {labels, palette, max, readonly, texts, onChange})` puts a `contenteditable` editor before the textarea and hides it; the textarea stays the posted field and always holds the text with `{{1}}`, `{{2}}` … numbered by first appearance. `labels` maps the numbers it opens with to names.

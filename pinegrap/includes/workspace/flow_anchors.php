@@ -311,6 +311,8 @@ function ws_flow_event_outputs()
         'customer.consent_changed' => array($value('consent_channel', 'text', lang('Channel')), $value('consent_purpose', 'text', lang('Purpose')), $value('consent_status', 'text', lang('Status')), $value('consent_source', 'text', lang('Source'))),
         'mail.bounced'           => array($value('address', 'text', lang('E-mail')), $value('kind', 'text', lang('Kind')), $value('source', 'text', lang('Source')),
             $value('suppressed', 'number', lang('Mail to it is stopped')), $value('contact_id', 'number', lang('Contact')), $value('campaign_id', 'number', lang('Campaign'))),
+        'whatsapp.received'      => array($value('from', 'text', lang('Mobile number')), $value('profile_name', 'text', lang('Name on WhatsApp')), $value('type', 'text', lang('Type')),
+            $value('body', 'text', lang('Message')), $value('contact_id', 'number', lang('Contact'))),
         'campaign.sent'          => array($value('id', 'number', lang('Campaign')), $value('channel', 'text', lang('Channel')), $value('type', 'text', lang('Type'))),
         'page.created'           => array($value('name', 'text', lang('Page'))),
         'page.updated'           => array($value('name', 'text', lang('Page'))),

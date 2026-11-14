@@ -1209,6 +1209,7 @@
     "Only when I am mentioned": "Yalnızca anıldığımda",
     "Only when a run fails": "Yalnız bir çalıştırma başarısız olunca",
     "Only when a submitted form is updated": "Yalnızca gönderilmiş bir form güncellendiğinde",
+    "Only when the message cannot be queued; a message WhatsApp reports as failed later sends no e-mail.": "Yalnızca mesaj kuyruğa eklenemediğinde; WhatsApp sonradan başarısız bildirirse e-posta gitmez.",
     "Only when there is a value": "Yalnız değer varsa",
     "Only when you ask for a company.": "Yalnızca bir şirket adına soruyorsanız.",
     "Only when you come for an association, a club or a company.": "Yalnızca bir dernek, kulüp ya da şirket adına geliyorsanız.",

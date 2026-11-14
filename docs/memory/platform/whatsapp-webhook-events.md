@@ -23,6 +23,8 @@ module: whatsapp_webhook
 - With the Workspace on and a channel named on the card it also becomes a conversation there (`workspace/mail-phone-conversations.md`).
 - Kept two years (`pg_whatsapp_inbox_sweep()` in `job.php`, 1000 rows a run); a contact holder (merge move, erase find) and erased by number or contact as "WhatsApp messages received".
 
+- A new message (not a retry of a wamid already kept) is announced as `whatsapp.received` after the bell notice (WA7, #9372): flows start on "A WhatsApp message arrived" and the API's webhooks get it (`workspace/workspace-flows-whatsapp-box.md`).
+
 ## How was it verified?
 - `tests/whatsapp_webhook_test.php` (events, states, template changes, notice, bell visibility, history line, wiring), `privacy_erase_test.php`, `contact_holders_test.php`. No database and no Meta account in the cloud session: the step, the writes and a real post were not run.
 

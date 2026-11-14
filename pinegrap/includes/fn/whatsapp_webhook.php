@@ -552,6 +552,10 @@ function pg_whatsapp_inbox_receive($event, $now)
 
     pg_whatsapp_inbox_to_channel($event, $contact_id, $at, $now);
 
+    // Flows that start on "A WhatsApp message arrived", and the API's
+    // webhooks; the payload names the message's type as type.
+    pg_announce('whatsapp.received', pg_whatsapp_received_event($inbox_id, array('type' => (string) $event['kind']) + $event, $contact_id));
+
     return true;
 }
 

@@ -370,7 +370,7 @@ function test_workspace_flow_quick_js_ways_in()
 // it asks for is one of the flow strings.
 function test_workspace_flow_quick_js_wiring()
 {
-	pg_assert_same(array('assets/js/workspace_flow.js', 'assets/js/workspace_flow_quick.js'), pg_js_bundles()['assets/js/workspace_flow.min.js'] ?? null);
+	pg_assert_same(array('assets/js/pg_var_chips.js', 'assets/js/workspace_flow.js', 'assets/js/workspace_flow_quick.js'), pg_js_bundles()['assets/js/workspace_flow.min.js'] ?? null);
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow_quick.js');
 	$strings = ws_flow_js_strings();

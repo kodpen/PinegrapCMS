@@ -198,6 +198,9 @@ function ws_events_catalog()
         'contact_group.joined' => array('label' => lang('A contact joins a contact group'), 'when' => lang('When a contact joins a contact group'), 'record' => 'contact', 'right' => 'contacts', 'filter' => 'group'),
         'customer.consent_changed' => array('label' => lang('A contact\'s consent changes'), 'when' => lang('When a contact gives or withdraws a consent'), 'record' => 'contact', 'right' => 'contacts', 'filter' => ''),
         'mail.bounced'     => array('label' => lang('An e-mail bounces'), 'when' => lang('When an e-mail to an address bounces'), 'record' => 'contact', 'right' => 'contacts', 'filter' => ''),
+        // A customer's message to the site's WhatsApp number, about the
+        // contact of its number (pg_whatsapp_received_event()).
+        'whatsapp.received' => array('label' => lang('A WhatsApp message arrived'), 'when' => lang('When a customer writes to the site\'s WhatsApp number'), 'record' => 'contact', 'right' => 'contacts', 'filter' => ''),
         'campaign.sent'    => array('label' => lang('A campaign is sent'), 'when' => lang('When an e-mail campaign finishes sending or an SMS campaign is queued'), 'record' => '', 'right' => 'emails', 'filter' => ''),
         'user.created'     => array('label' => lang('A user account is made'), 'when' => lang('When a user account is made through the API'), 'record' => 'user_account', 'right' => 'users', 'filter' => ''),
         // A page: checked against the pages the creator's tag resolves
@@ -660,6 +663,11 @@ function ws_events_record_of($event, $payload)
 
         case 'customer.consent_changed':
             return array('contact', (int) ($payload['id'] ?? 0));
+
+        // A WhatsApp message: the contact of its number, none for a number
+        // no contact has.
+        case 'whatsapp.received':
+            return ((int) ($payload['contact_id'] ?? 0) > 0) ? array('contact', (int) $payload['contact_id']) : array('', 0);
 
         case 'stock.low':
         case 'inventory.changed':
