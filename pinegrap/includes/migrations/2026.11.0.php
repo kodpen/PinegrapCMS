@@ -197,6 +197,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_invitation();      // 11.0.204
 	upgrade_2026_11_0_ws_mail_draft_files();     // 11.0.205
 	upgrade_2026_11_0_campaign_profile_flows();  // 11.0.206
+	upgrade_2026_11_0_ws_mail_send_later();      // 11.0.207
 
 }
 
@@ -6636,5 +6637,26 @@ function upgrade_2026_11_0_campaign_profile_flows() {
 		install_skipped('e-mail campaign profiles already turned into flows, or none, skipped');
 
 	}
+
+}
+
+// Send later (includes/workspace/mail_later.php): an outgoing mail written
+// with a time waits as send_state 'later' until send_at, and the general job
+// reads the due ones by idx_later. sent_at keeps its one meaning: the time a
+// mail left. No backfill: every mail written before this step left at once.
+function upgrade_2026_11_0_ws_mail_send_later() {
+
+	if (!install_table_exists('ws_mail_items')) {
+
+		install_skipped('ws_mail_items does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_mail_items', 'send_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_mail_items', 'idx_later', "INDEX idx_later (send_state, send_at)");
+
+	install_note('Workspace: an e-mail can be written now and sent at a chosen time.');
 
 }

@@ -204,7 +204,7 @@ function test_workspace_mail_forward_wiring()
 	pg_assert_contains("'boxes'   => ws_mail_compose_boxes(ws_mail_send_boxes(\$viewer)),", $case, 'the boxes the person may send from');
 	pg_assert_contains("'forward' => ws_mail_forward_fill(\$source),", $case, 'what the form is filled with');
 
-	$new = substr($actions, (int) strpos($actions, "case 'ws_mail_new':"), 2000);
+	$new = substr($actions, (int) strpos($actions, "case 'ws_mail_new':"), 2600);
 	pg_assert_contains("\$forward = ws_mail_forward_request(\$viewer, \$request);", $new, 'a forward is read again when sent');
 	pg_assert_contains("ws_mail_compose_mail(\$request, array_merge(\$forward['files'], \$files['files'])), \$request);", $new, 'its files go with the mail, through the one send path');
 	pg_assert_contains("ws_mail_forward_line(\$viewer, \$forward['source'], (int) \$result['item_id']);", $new, 'the line under the source once sent');

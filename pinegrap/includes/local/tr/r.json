@@ -1080,6 +1080,7 @@
     "Remove the task": "Görevi kaldır",
     "Remove the thread": "İpi kaldır",
     "Remove the thread: {var:1}": "İpi kaldır: {var:1}",
+    "Remove the time": "Zamanı kaldır",
     "Remove the watcher {var:1}": "{var:1} takipçisini kaldır",
     "Remove the webhook before changing the environment or the seller ID: the webhook was registered for the current ones and would keep delivering their packages.": "Ortamı ya da satıcı kimliğini değiştirmeden önce webhook'u kaldırın: webhook şu ankiler için kaydedildi ve onların paketlerini göndermeye devam eder.",
     "Remove the webhook?": "Webhook kaldırılsın mı?",

@@ -121,13 +121,13 @@ function test_workspace_mail_compose_who_may_send()
 	pg_assert_same('not_ready', ws_mail_send_check(array('id' => 4, 'member' => true), array('box_id' => 1))['error'], 'nothing without the database');
 
 	$actions = workspace_mail_compose_test_source('includes/workspace/actions.php');
-	$case = substr($actions, (int) strpos($actions, "case 'ws_mail_compose':"), 2000);
+	$case = substr($actions, (int) strpos($actions, "case 'ws_mail_compose':"), 2800);
 
 	pg_assert_contains("case 'ws_mail_new':", $case, 'the send action');
 	pg_assert_contains("if (empty(\$viewer['member'])) {\n                return ws_action_error(ws_mail_send_error_text('no_box'));", $case, 'a guest is refused');
 	pg_assert_contains("ws_mail_compose_boxes(ws_mail_send_boxes(\$viewer))", $case, 'the form offers only the boxes the person may send from');
 	pg_assert_contains("\$files = ws_mail_compose_files(\$_FILES['files'] ?? null);", $case, 'files as form parts');
-	pg_assert_contains("\$result = ws_mail_send(\$viewer, \$mail);", $case, 'sent through the one send path, which checks box, channel, addresses and files');
+	pg_assert_contains("\$result = ws_mail_send(\$viewer, \$mail + array('send_at' => \$later['at']));", $case, 'sent through the one send path, which checks box, channel, addresses and files');
 	pg_assert_true(strpos($case, 'ws_mail_reply_send') === false && strpos($case, 'email(') === false, 'no other way out');
 
 	$check = workspace_mail_compose_test_source('includes/workspace/mail_send.php');
