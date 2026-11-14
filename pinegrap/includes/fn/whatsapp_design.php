@@ -876,7 +876,7 @@ function pg_whatsapp_design_send_components($design)
                 return array('ok' => false, 'components' => array(), 'error' => lang('The copy-code button has no sample code to send.'));
             }
 
-            $components[] = array('type' => 'button', 'sub_type' => 'copy_code', 'index' => (string) $index, 'parameters' => array(array('type' => 'coupon_code', 'coupon_code' => $example)));
+            $components[] = array('type' => 'button', 'sub_type' => 'COPY_CODE', 'index' => (string) $index, 'parameters' => array(array('type' => 'coupon_code', 'coupon_code' => $example)));
             continue;
         }
 

@@ -365,7 +365,7 @@ function pg_whatsapp_message_components($template, $vars, $values)
         // The offer code's places: filled by the queue (pg_whatsapp_enqueue()).
         if (!empty($slot['offer'])) {
             if ($slot['part'] === 'copy_code') {
-                $buttons[$slot['index']] = array('sub_type' => 'copy_code', 'parameter' => array('type' => 'coupon_code', 'coupon_code' => PG_WHATSAPP_OFFER_PLACEHOLDER));
+                $buttons[$slot['index']] = array('sub_type' => 'COPY_CODE', 'parameter' => array('type' => 'coupon_code', 'coupon_code' => PG_WHATSAPP_OFFER_PLACEHOLDER));
             } else {
                 $parameter = array('type' => 'text');
 

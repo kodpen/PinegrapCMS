@@ -142,7 +142,7 @@ function test_whatsapp_offer_slots()
 	pg_assert_true($filled['ok'], 'filled');
 	pg_assert_same(array('Ayşe', PG_WHATSAPP_OFFER_PLACEHOLDER, 'x.com'), array_column($filled['components'][0]['parameters'], 'text'), 'the code\'s place kept in order');
 	pg_assert_same(
-		array('type' => 'button', 'sub_type' => 'copy_code', 'index' => '0', 'parameters' => array(array('type' => 'coupon_code', 'coupon_code' => PG_WHATSAPP_OFFER_PLACEHOLDER))),
+		array('type' => 'button', 'sub_type' => 'COPY_CODE', 'index' => '0', 'parameters' => array(array('type' => 'coupon_code', 'coupon_code' => PG_WHATSAPP_OFFER_PLACEHOLDER))),
 		$filled['components'][1], 'the copy-code button');
 	pg_assert_true(pg_whatsapp_offer_needed($filled['components']), 'the send needs a code');
 
@@ -168,6 +168,6 @@ function test_whatsapp_offer_design_test_send()
 	$sent = pg_whatsapp_design_send_components($design);
 	pg_assert_true($sent['ok'], 'a copy-code button can be tested');
 	$last = end($sent['components']);
-	pg_assert_same('copy_code', $last['sub_type'], 'with its sample code');
+	pg_assert_same('COPY_CODE', $last['sub_type'], 'with its sample code');
 	pg_assert_same('K7M29QXA', $last['parameters'][0]['coupon_code'], 'the sample');
 }
