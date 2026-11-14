@@ -292,6 +292,7 @@ description: Generated from the module field of the memory files: each includes/
 - `whatsapp`: [[whatsapp-connection]], [[whatsapp-outbox-queue]], [[whatsapp-overview]], [[whatsapp-templates]]
 - `whatsapp_design`: [[whatsapp-template-approval]], [[whatsapp-template-designer]]
 - `whatsapp_forms`: [[whatsapp-form-messages]]
+- `whatsapp_media`: [[mail-phone-media]]
 - `whatsapp_messages`: [[whatsapp-order-messages]]
 - `whatsapp_offer`: [[whatsapp-offer-codes]]
 - `whatsapp_reply`: [[mail-phone-reply]], [[mail-phone-reply-files]]

@@ -833,3 +833,58 @@ function pg_whatsapp_cloud_send_media($app, $number, $type, $mime, $name, $bytes
         $response['connect'],
         $response['request_size']));
 }
+
+/**
+ * The request asking where a received message's file is: GET /<media id>
+ * for this number. The answer's address works for a few minutes.
+ *
+ * @param array  $app
+ * @param string $media_id the message's media id (whatsapp_inbox.media_id)
+ * @return array url, headers
+ */
+function pg_whatsapp_cloud_media_info_request($app, $media_id)
+{
+    return pg_whatsapp_cloud_get_request($app, rawurlencode((string) $media_id), array('phone_number_id' => (string) $app['phone_number_id']));
+}
+
+/**
+ * Reads the answer to pg_whatsapp_cloud_media_info_request(): the file's
+ * address (https only), type and size. gone: Meta says the file is not
+ * there (expired, deleted, not this account's), so asking again is no use.
+ *
+ * @param array $answer pg_whatsapp_cloud_answer()
+ * @return array ok, url, mime, size (0 when not said), error, gone
+ */
+function pg_whatsapp_cloud_media_info_parse($answer)
+{
+    if ($answer['error'] !== '') {
+        // Only Meta saying the file is not there gives it up: a refused
+        // token or a passing fault leaves it to be asked for again.
+        return array('ok' => false, 'url' => '', 'mime' => '', 'size' => 0, 'error' => $answer['error'],
+            'gone' => in_array((string) $answer['code'], array('100', '131052', '131053'), true));
+    }
+
+    $data = $answer['data'];
+    $url = (isset($data['url']) && is_string($data['url'])) ? trim($data['url']) : '';
+    $mime = (isset($data['mime_type']) && is_string($data['mime_type'])) ? strtolower(trim($data['mime_type'])) : '';
+
+    if (!preg_match('~^https://[^\s/?#]+/~i', $url) || ($mime === '')) {
+        return array('ok' => false, 'url' => '', 'mime' => '', 'size' => 0, 'error' => lang('Meta did not say where the file is.'), 'gone' => true);
+    }
+
+    return array('ok' => true, 'url' => $url, 'mime' => $mime, 'size' => (isset($data['file_size']) && is_scalar($data['file_size'])) ? max(0, (int) $data['file_size']) : 0,
+        'error' => '', 'gone' => false);
+}
+
+/**
+ * The request fetching a received file from the address Meta gave, with the
+ * account's token.
+ *
+ * @param array  $app
+ * @param string $url pg_whatsapp_cloud_media_info_parse()'s
+ * @return array url, headers
+ */
+function pg_whatsapp_cloud_media_file_request($app, $url)
+{
+    return array('url' => (string) $url, 'headers' => array('Authorization: Bearer ' . $app['token']));
+}
