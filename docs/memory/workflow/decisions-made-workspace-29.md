@@ -22,4 +22,5 @@ description: Decisions made, workspace part 29 (2026-11-14 on): the nine additio
 - The features he had named for it: more options, options with pictures and links ("daha fazla seçenekli ve görselli ve bağlantılı"), a box half picture and half options, a picture on every row, options told in text or a drawing.
 - Still his rules: "ajan soruyu geri alabilsin veya değişiklik yapabilsin, daha sonra tekrar sorabilsin", "ajan sorusu yanıtlandığında soran ajan uyandırılsın".
 - This takes in the tenth addition of poll 3363 (text under an option, an own-words answer, a recommended mark). Plan: `plans/poll-agent-questions.md`; the flag: `decisions-made-schema-19.md`.
-- The architect's, not the owner's words: the asked person or the channel's owners answer, several answers or "Other" are sent with one Send, an answered agent question counts as a decision in the channel's memory.
+- Shown the draft (`plans/poll-agent-questions/drawing.html`: a person's poll, an agent question with one answer, one with several and "Other") and asked "Çizim bu haliyle olur mu?", he answered: "Evet, böyle olsun".
+- The architect's, told to him with the draft and not objected to: the asked person or the channel's owners answer, an answer cannot be changed afterwards, an answered agent question counts as a decision in the channel's memory.

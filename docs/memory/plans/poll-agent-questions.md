@@ -5,7 +5,8 @@ description: Plan (owner 2026-11-14): the poll gains described, pictured and lin
 
 ## What is asked?
 - Owner (2026-11-14, in the architect's window, after dropping a separate question card): one thing, the poll. It gains the features; a poll an agent or an assistant asks is marked an agent question by the server and only looks and settles differently. His words: `workflow/decisions-made-workspace-29.md`; the column: `workflow/decisions-made-schema-19.md`.
-- Today (`workspace/agent-questions.md`): two to ten bare labels; a vote wakes nobody; the asking agent closes the poll and the outcome is a decision line in the agent's name.
+- Today: `workspace/agent-questions.md`.
+- The draft he approved: `plans/poll-agent-questions/drawing.html`, opened in a browser; AQ3 and AQ4 follow it.
 
 ## What does every poll gain?
 - An option carries a line of description, an optional picture (a channel file; a drawing is a file too, never inline markup) and optional links. One option may be marked recommended. "Other" takes an answer in the voter's own words when the asker allows it.

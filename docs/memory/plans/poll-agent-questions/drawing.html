@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Poll and agent question: the approved draft</title>
+<!-- Draft drawing of plans/poll-agent-questions.md, approved by the owner on 2026-11-14.
+     It shows shape and behaviour only; the real boxes take their look from look A. Sample texts are Turkish, as shown. -->
+<style>
+:root{--bg:#f6f6f4;--card:#fff;--soft:#f0efec;--line:#d9d7d1;--text:#1f2328;--text2:#5d5f63;--text3:#8a8c90;--accent:#1b6fc2;--accent-bg:#e6f1fb;--ok:#1d6b3a;--ok-bg:#e6f4ea;--bad:#a32d2d;--mark:#378add}
+@media (prefers-color-scheme:dark){:root{--bg:#14161b;--card:#1d2026;--soft:#262a31;--line:#3a3f48;--text:#e6e8eb;--text2:#a9adb4;--text3:#7d828a;--accent:#7bb6f0;--accent-bg:#1c3552;--ok:#8fd3a5;--ok-bg:#183524;--bad:#f09595}}
+body{margin:0;padding:16px;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,sans-serif}
+main{max-width:720px;margin:0 auto}
+.cap{font-size:13px;color:var(--text2);margin:18px 0 6px}
+.q{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.qh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--text2);margin-bottom:10px}
+.qh b{color:var(--text);font-weight:600}
+.face{width:26px;height:26px;border-radius:7px;background:var(--accent-bg);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
+.face.p{border-radius:50%;background:var(--soft);color:var(--text2)}
+.chip{font-size:12px;padding:2px 8px;border-radius:8px;background:var(--soft)}
+.rec{font-size:11px;padding:1px 7px;border-radius:8px;background:var(--accent-bg);color:var(--accent);font-weight:400}
+.qt{font-size:15px;font-weight:600;margin:0 0 4px}
+.qd{font-size:13px;color:var(--text2);margin:0 0 12px}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px}
+.aq .opt{cursor:pointer}
+.opt.on{border:2px solid var(--accent);padding:8px 9px}
+.tick{flex:0 0 16px;height:16px;margin-top:2px;border:1.5px solid var(--text3);border-radius:50%;box-sizing:border-box}
+.many .tick{border-radius:4px}
+.opt.on .tick{border-color:var(--accent);background:var(--accent);box-shadow:inset 0 0 0 3px var(--card)}
+.ol{font-weight:600;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cnt{margin-left:auto;font-weight:400;font-size:12.5px;color:var(--text2)}
+.od{font-size:12.5px;color:var(--text2);margin-top:2px}
+a{color:var(--accent);text-decoration:none}
+.qf{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--text3)}
+.qf .r{margin-left:auto;display:flex;gap:8px}
+button{font:inherit;font-size:13px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--text);cursor:pointer}
+button.main{background:var(--text);color:var(--card);border-color:transparent}
+input{font:inherit;flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text)}
+.th{flex:0 0 72px;border-radius:6px;overflow:hidden;background:var(--soft);line-height:0}
+.bar{height:4px;border-radius:2px;background:var(--soft);margin-top:6px;overflow:hidden}
+.bar span{display:block;height:100%;background:var(--mark)}
+.split{display:flex;gap:14px;flex-wrap:wrap}
+.split>div{flex:1 1 250px;min-width:0}
+.pv{background:var(--soft);border-radius:8px;padding:10px;line-height:0}
+.ans{display:flex;gap:8px;align-items:center;padding:8px 10px;background:var(--ok-bg);color:var(--ok);border-radius:8px;font-weight:600;margin-bottom:6px}
+.err{font-size:13px;color:var(--bad);margin-top:6px}
+.sts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.st{background:var(--soft);border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--text2)}
+.st b{display:block;font-size:13px;color:var(--text);margin-bottom:3px}
+svg .ln{fill:var(--line)}
+svg .cell{fill:none;stroke:var(--line);stroke-width:.5}
+svg .mk{fill:var(--mark)}
+</style>
+</head>
+<body>
+<main>
+
+<div class="cap">1 · Oylama (bir kişi sorar): yeni özellikler gelir, oy sayıları ve kapatma bugünkü gibi kalır</div>
+<div class="q">
+  <div class="qh"><span class="face p">SK</span><b>Selin K.</b><span>bir oylama başlattı</span><span class="chip">Oylama</span></div>
+  <p class="qt">Kasım bülteni hangi tasarımla gitsin?</p>
+  <div class="opt on"><span class="tick"></span><div class="th" data-m="hero"></div><div style="flex:1;min-width:0"><div class="ol">Kapak görselli duyuru <span class="rec">Önerilen</span><span class="cnt">3 oy</span></div><div class="od">Üstte büyük görsel, tek düğme. <a href="#">Önizlemeyi aç</a></div><div class="bar"><span style="width:60%"></span></div></div></div>
+  <div class="opt"><span class="tick"></span><div class="th" data-m="cols"></div><div style="flex:1;min-width:0"><div class="ol">İki sütunlu bülten<span class="cnt">2 oy</span></div><div class="od">Yan yana iki haber kutusu. <a href="#">Önizlemeyi aç</a></div><div class="bar"><span style="width:40%"></span></div></div></div>
+  <div class="opt"><span class="tick"></span><div style="flex:1;min-width:0"><div class="ol">Başka<span class="cnt">0 oy</span></div><div class="od">Kendi önerinizi yazın.</div></div></div>
+  <div class="qf"><span>5 kişiden 5 oy · oyunuzu değiştirebilirsiniz</span><span class="r"><button>Düzenle</button><button>Geri al</button><button>Oylamayı kapat</button></span></div>
+</div>
+
+<div class="cap">2 · Ajan sorusu (aynı kutu, ajan sorunca): sayı ve kapatma yok. Bir seçeneğe tıklayın, yanıt kutunun içinde kalır</div>
+<div class="q aq" data-mode="one" data-agent="Mimar Ahmet">
+  <div class="qh"><span class="face">MA</span><b>Mimar Ahmet</b><span class="chip">AI ajan</span><span>soruyor: Erdal Güral</span><span class="chip">Ajan sorusu</span></div>
+  <p class="qt">Birkaç gün süren plan takvimde nasıl çizilsin?</p>
+  <div class="body">
+    <p class="qd">PC9 adımı bunu bekliyor. <a href="#">PR #9540</a></p>
+    <div class="split">
+      <div><div class="pv"></div></div>
+      <div>
+        <div class="opt" data-w="bar"><span class="tick"></span><div><div class="ol">Haftalık tek çubuk <span class="rec">Önerilen</span></div><div class="od">Plan, hafta satırında tek çubuk olur.</div></div></div>
+        <div class="opt" data-w="boxes"><span class="tick"></span><div><div class="ol">Gün gün kutular</div><div class="od">Her günün kendi kutusu; bugünkü hali.</div></div></div>
+        <div class="opt" data-w="dots"><span class="tick"></span><div><div class="ol">Yalnızca nokta</div><div class="od">Günlerde küçük işaret.</div></div></div>
+      </div>
+    </div>
+    <div class="qf"><span>Yalnızca Erdal Güral yanıtlar · seçtiğiniz an kabul edilir</span></div>
+  </div>
+</div>
+
+<div class="cap">3 · Ajan sorusu, çok seçimli ve "Başka": işaretleyip tek Gönder</div>
+<div class="q aq many" data-mode="many" data-agent="Elçin">
+  <div class="qh"><span class="face">EL</span><b>Elçin</b><span class="chip">AI ajan</span><span>soruyor: Erdal Güral</span><span class="chip">Ajan sorusu</span></div>
+  <p class="qt">Hangi hazır e-posta tasarımları kurulumla gelsin?</p>
+  <div class="body">
+    <div class="opt on"><span class="tick"></span><div class="th" data-m="hero"></div><div><div class="ol">Kapak görselli duyuru <span class="rec">Önerilen</span></div><div class="od">Üstte büyük görsel, tek düğme.</div></div></div>
+    <div class="opt"><span class="tick"></span><div class="th" data-m="cols"></div><div><div class="ol">İki sütunlu bülten</div><div class="od">Yan yana iki haber kutusu.</div></div></div>
+    <div class="opt"><span class="tick"></span><div class="th" data-m="plain"></div><div><div class="ol">Düz metin mektup</div><div class="od">Görselsiz, kişisel yazışma gibi.</div></div></div>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="text" class="other" placeholder="Başka: kendi yanıtınızı yazın" aria-label="Başka yanıt"><button class="main send">Gönder</button></div>
+    <div class="err"></div>
+    <div class="qf"><span>Yalnızca Erdal Güral yanıtlar</span></div>
+  </div>
+</div>
+
+<div class="cap">Diğer durumlar (oylamada da ajan sorusunda da aynı)</div>
+<div class="sts">
+  <div class="st"><b>Değiştirildi</b>Soran, yanıt gelmeden metni veya seçenekleri değiştirir; kutuda "düzenlendi" yazar.</div>
+  <div class="st"><b>Geri alındı</b>Kutu soluk kalır, oy ya da yanıt alınmaz.</div>
+  <div class="st"><b>Yeniden soruldu</b>En altta yeni kutu açılır; eskisi "yeniden soruldu" bağlantısıyla ona gider.</div>
+</div>
+<p><button id="rst">Çizimi sıfırla</button></p>
+
+</main>
+<script>
+(function () {
+    // Wireframe of a calendar week grid with one plan drawn as a bar, as boxes or as dots.
+    function cal(kind) {
+        var s = '<svg viewBox="0 0 280 142" width="100%" role="img" aria-label="Takvim taslağı">';
+        for (var r = 0; r < 3; r++) {
+            for (var c = 0; c < 7; c++) {
+                s += '<rect class="cell" x="' + (c * 40 + 0.5) + '" y="' + (r * 46 + 2.5) + '" width="39" height="45"/>';
+                s += '<rect class="ln" x="' + (c * 40 + 5) + '" y="' + (r * 46 + 8) + '" width="8" height="4" rx="1"/>';
+            }
+        }
+        var i;
+        if (kind === 'bar') { s += '<rect class="mk" x="44" y="70" width="152" height="13" rx="3"/>'; }
+        if (kind === 'boxes') { for (i = 1; i < 5; i++) { s += '<rect class="mk" x="' + (i * 40 + 4) + '" y="70" width="32" height="13" rx="3"/>'; } }
+        if (kind === 'dots') { for (i = 1; i < 5; i++) { s += '<circle class="mk" cx="' + (i * 40 + 20) + '" cy="78" r="4"/>'; } }
+        return s + '</svg>';
+    }
+    // Thumbnail wireframe of an e-mail design.
+    function mail(kind) {
+        var s = '<svg viewBox="0 0 72 52" width="72" height="52" aria-hidden="true">';
+        if (kind === 'hero') { s += '<rect class="mk" x="6" y="6" width="60" height="20" rx="2"/><rect class="ln" x="6" y="31" width="44" height="3" rx="1"/><rect class="ln" x="6" y="38" width="22" height="7" rx="2"/>'; }
+        if (kind === 'cols') { s += '<rect class="mk" x="6" y="6" width="28" height="18" rx="2"/><rect class="mk" x="38" y="6" width="28" height="18" rx="2"/><rect class="ln" x="6" y="29" width="28" height="3" rx="1"/><rect class="ln" x="38" y="29" width="28" height="3" rx="1"/>'; }
+        if (kind === 'plain') { for (var i = 0; i < 6; i++) { s += '<rect class="ln" x="6" y="' + (7 + i * 7) + '" width="' + (i % 3 === 2 ? 34 : 60) + '" height="3" rx="1"/>'; } }
+        return s + '</svg>';
+    }
+    function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    // The answered state: the choices stay in the box under the person's name, no outcome line is written.
+    function done(q, list) {
+        var h = '';
+        list.forEach(function (t) { h += '<div class="ans"><span>✓</span><span>' + esc(t) + '</span></div>'; });
+        h += '<div class="qf"><span>Erdal Güral yanıtladı · az önce</span><span>·</span><span>' + esc(q.getAttribute('data-agent')) + ' uyandırıldı</span></div>';
+        q.querySelector('.body').innerHTML = h;
+    }
+    function label(o) { return o.querySelector('.ol').firstChild.textContent.trim(); }
+    function wire() {
+        document.querySelectorAll('[data-m]').forEach(function (e) { e.innerHTML = mail(e.getAttribute('data-m')); });
+        document.querySelectorAll('.pv').forEach(function (e) { e.innerHTML = cal('bar'); });
+        document.querySelectorAll('.aq').forEach(function (q) {
+            var many = q.getAttribute('data-mode') === 'many';
+            q.querySelectorAll('.opt').forEach(function (o) {
+                if (!many && o.getAttribute('data-w')) {
+                    o.addEventListener('mouseenter', function () { q.querySelector('.pv').innerHTML = cal(o.getAttribute('data-w')); });
+                }
+                o.addEventListener('click', function (ev) {
+                    if (ev.target.tagName === 'A') { return; }
+                    // One answer: the click is the answer. Several: the click only ticks.
+                    if (!many) { done(q, [label(o)]); return; }
+                    o.classList.toggle('on');
+                    q.querySelector('.err').textContent = '';
+                });
+            });
+            var send = q.querySelector('.send');
+            if (!send) { return; }
+            var other = q.querySelector('.other');
+            other.addEventListener('input', function () { q.querySelector('.err').textContent = ''; });
+            send.addEventListener('click', function () {
+                var list = [];
+                q.querySelectorAll('.opt.on').forEach(function (o) { list.push(label(o)); });
+                var t = other.value.trim();
+                if (t) { list.push('Başka: ' + t); }
+                if (!list.length) { q.querySelector('.err').textContent = 'Önce bir seçenek işaretleyin ya da yanıtınızı yazın'; return; }
+                done(q, list);
+            });
+        });
+    }
+    var keep = [];
+    document.querySelectorAll('.aq .body').forEach(function (b) { keep.push(b.innerHTML); });
+    wire();
+    document.getElementById('rst').addEventListener('click', function () {
+        document.querySelectorAll('.aq .body').forEach(function (b, i) { b.innerHTML = keep[i]; });
+        wire();
+    });
+    document.querySelectorAll('a[href="#"]').forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); }); });
+})();
+</script>
+</body>
+</html>
