@@ -1375,7 +1375,7 @@ function pg_whatsapp_queue_run($limit = 10, $seconds = 15)
         }
 
         $row = db_item(
-            "SELECT id, attempts, send_after, expires_at, kind, recipient, category, template_name, template_language, payload
+            "SELECT id, attempts, send_after, expires_at, kind, reference, recipient, category, template_name, template_language, payload
             FROM whatsapp_outbox
             WHERE id = '" . $id . "'");
 
@@ -1396,8 +1396,13 @@ function pg_whatsapp_queue_run($limit = 10, $seconds = 15)
                     $driver = true;
                 }
 
-                $send = pg_whatsapp_cloud_send($app, $row['recipient'], $row['template_name'], $row['template_language'],
-                    json_decode((string) $row['payload'], true));
+                $payload = json_decode((string) $row['payload'], true);
+
+                // An answer inside the customer's 24 hours is free text
+                // (includes/fn/whatsapp_reply.php); everything else a template.
+                $send = (($payload['type'] ?? '') === 'text')
+                    ? pg_whatsapp_cloud_send_text($app, $row['recipient'], (string) ($payload['text'] ?? ''))
+                    : pg_whatsapp_cloud_send($app, $row['recipient'], $row['template_name'], $row['template_language'], $payload);
             }
         }
 
@@ -1415,6 +1420,12 @@ function pg_whatsapp_queue_run($limit = 10, $seconds = 15)
                 error_code = '" . e(pg_mail_clip(($send === null) ? '' : (string) $send['code'], 16)) . "',
                 claimed_at = 0
             WHERE id = '" . $id . "'");
+
+        // A Workspace answer's message learns how it went.
+        if (($row['kind'] === 'reply') && in_array($outcome['status'], array('sent', 'failed', 'uncertain'), true)) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_reply.php');
+            pg_whatsapp_reply_outcome($id, (string) $row['reference'], $outcome['status'], (string) $outcome['last_error']);
+        }
 
         if ($outcome['status'] === 'sent') {
             $result['sent']++;
