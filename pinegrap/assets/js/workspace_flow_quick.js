@@ -439,6 +439,7 @@
 
     var pure = {
         recipesFor: recipesFor,
+        recipeOpening: recipeOpening,
         freeId: freeId,
         fromRecipe: fromRecipe,
         boxCount: boxCount,
@@ -1429,8 +1430,24 @@
         }
     }
 
+    // A recipe by its key and the first of its starts the catalogue offers,
+    // a start about any record left out: the dialog then opens on the
+    // recipe's steps (Communication › Automatic sends links to it).
+    function recipeOpening(quick, key) {
+        var recipe = ((quick && Array.isArray(quick.recipes)) ? quick.recipes : []).filter(function (item) {
+            return item && (item.key === key);
+        })[0];
+        var start = recipe ? (Array.isArray(recipe.fits) ? recipe.fits : []).filter(function (fit) {
+            return (fit !== 'record') && !!startOf(quick, fit);
+        })[0] : '';
+
+        return start ? { recipe: recipe, start: start } : null;
+    }
+
     // Opens the dialog on its first stage. options: operators (key =>
-    // label), start (a start's key to begin on), home, onDone, onClose.
+    // label), start (a start's key to begin on), recipe (a recipe's key: its
+    // start chosen and its steps added, on the Steps stage), home, onDone,
+    // onClose.
     function open(kit, quick, options) {
         if (!kit || !quick || !areas(quick).length) {
             return false;
@@ -1442,7 +1459,8 @@
         el = kit.el;
         ui = ui || make();
 
-        var chosen = startOf(quick, options.start) ? options.start : '';
+        var opening = options.recipe ? recipeOpening(quick, String(options.recipe)) : null;
+        var chosen = opening ? opening.start : (startOf(quick, options.start) ? options.start : '');
 
         ui.state = {
             quick: quick,
@@ -1460,6 +1478,12 @@
             error: '',
             chosen: { start: chosen, config: {}, only_when: [], steps: [], name: '', publish: true }
         };
+
+        if (opening) {
+            ui.state.chosen.steps = fromRecipe(opening.recipe, []);
+            ui.state.stage = 'steps';
+            ui.state.at = ui.state.chosen.steps.length ? ui.state.chosen.steps[0].id : '';
+        }
 
         draw();
         pgUI.dialog.show(ui.modal);

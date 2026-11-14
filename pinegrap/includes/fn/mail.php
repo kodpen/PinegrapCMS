@@ -939,6 +939,191 @@ function pg_auto_campaign_group_opted_out($email_subscription, $opt_in)
     return ((string) $email_subscription === '1') && ($opt_in !== null) && ((string) $opt_in === '0');
 }
 
+/**
+ * An HTML mail page with a base tag and absolute addresses, as campaigns send
+ * a page: links, images and background images that are relative become
+ * addresses on $site. A page that has a base tag of its own is left as it
+ * is, and so is a link whose address is a mail-merge field
+ * (href="^^review_url^^"): the field holds a whole address. Pure.
+ *
+ * @param string $body the page's HTML
+ * @param string $site scheme and host, no trailing slash (https://example.com)
+ * @return string
+ */
+function pg_mail_page_absolute_links($body, $site)
+{
+    $body = (string) $body;
+
+    if (preg_match('/<\s*base\s+[^>]*href\s*=\s*["\'](?:http:\/\/|https:\/\/|ftp:\/\/).*?["\']/is', $body)) {
+        return $body;
+    }
+
+    $body = preg_replace('/<head>/i', '<head>' . "\n" . '<base href="' . $site . '/" />', $body);
+    // Links.
+    $body = preg_replace('/(<\s*a\s+[^>]*href\s*=\s*["\'])(?!ftp:\/\/|https:\/\/|mailto:|http:\/\/|\^\^)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . $site . "/$2", $body);
+    // Images.
+    $body = preg_replace('/(<\s*img\s+[^>]*src\s*=\s*["\'])(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . $site . "/$2", $body);
+    // CSS background images.
+    $body = preg_replace('/(background-image\s*:\s*url\s*\(\s*(?:"|\'|))(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?(?:"|\'|).*?\))/is', "$1" . $site . "/$2", $body);
+    // HTML background images.
+    return (string) preg_replace('/(background\s*=\s*["\'])(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'])/is', "$1" . $site . "/$2", $body);
+}
+
+/**
+ * The tracking code a commercial mail's links carry (?t=): the page's name,
+ * then the day and time it was made, in the site's date order. Pure but for
+ * DATE_FORMAT.
+ *
+ * @param string $page_name
+ * @param int    $time
+ * @return string
+ */
+function pg_mail_page_tracking_code($page_name, $time)
+{
+    $month_and_day = (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day')) ? 'm/d' : 'd/m';
+
+    return $page_name . '_' . date($month_and_day . '/Y_h:i_A', (int) $time);
+}
+
+/**
+ * An HTML mail with ?t=<code> on every link to this site that has none yet,
+ * so a visit from the mail is counted as the campaign's. A link to another
+ * site, a mailto: link and one whose address is a mail-merge field (its
+ * address is known only once the field is filled, and a code added now
+ * would land behind its #fragment) are left as they are. Pure.
+ *
+ * @param string $body
+ * @param string $code     pg_mail_page_tracking_code()
+ * @param string $hostname this site's host name (HOSTNAME_SETTING)
+ * @return string
+ */
+function pg_mail_page_tracking_codes($body, $code, $hostname)
+{
+    $body = (string) $body;
+    $host = mb_strtolower(str_replace('www.', '', (string) $hostname));
+
+    preg_match_all('/(<\s*a\s+[^>]*href\s*=\s*["\']\s*)(.*?)(\s*["\'].*?>)/is', $body, $links);
+
+    foreach ($links[0] as $key => $link) {
+        $url = str_replace(array("\r\n", "\n"), '', $links[2][$key]);
+
+        if (mb_substr($url, 0, 2) == '^^') {
+            continue;
+        }
+
+        $parts = @parse_url($url);
+
+        if (
+            ($parts == false)
+            || (!empty($parts['scheme']) && !in_array(mb_strtolower($parts['scheme']), array('http', 'https'), true))
+            || (!empty($parts['host']) && (mb_strtolower(str_replace('www.', '', $parts['host'])) != $host))
+            || (!empty($parts['query']) && (mb_strpos($parts['query'], 't=') !== false))
+        ) {
+            continue;
+        }
+
+        $new_url = (!empty($parts['scheme']) ? $parts['scheme'] . '://' : '')
+            . (!empty($parts['host']) ? $parts['host'] : '')
+            . (!empty($parts['path']) ? $parts['path'] : '')
+            . '?' . (!empty($parts['query']) ? $parts['query'] . '&amp;' : '')
+            . 't=' . h(urlencode($code))
+            . (!empty($parts['fragment']) ? '#' . $parts['fragment'] : '');
+
+        $body = str_replace($link, $links[1][$key] . $new_url . $links[3][$key], $body);
+    }
+
+    return $body;
+}
+
+/**
+ * The organization's name and address as a commercial mail's footer gives
+ * them: name, address lines, then city, state, zip code and country.
+ *
+ * @return array name, address_1, address_2, city, state, zip_code, country
+ */
+function pg_mail_organization()
+{
+    $value = function ($name) {
+        return defined($name) ? (string) constant($name) : '';
+    };
+
+    return array(
+        'name'      => $value('ORGANIZATION_NAME'),
+        'address_1' => $value('ORGANIZATION_ADDRESS_1'),
+        'address_2' => $value('ORGANIZATION_ADDRESS_2'),
+        'city'      => $value('ORGANIZATION_CITY'),
+        'state'     => $value('ORGANIZATION_STATE'),
+        'zip_code'  => $value('ORGANIZATION_ZIP_CODE'),
+        'country'   => $value('ORGANIZATION_COUNTRY'),
+    );
+}
+
+/**
+ * The organization's name and address on one line, the parts that are not
+ * empty joined by a space, as a plain text commercial mail ends. Pure.
+ *
+ * @param array $organization pg_mail_organization()
+ * @return string
+ */
+function pg_mail_organization_line($organization)
+{
+    return implode(' ', array_filter(array_map('strval', array_values((array) $organization)), function ($part) {
+        return $part !== '';
+    }));
+}
+
+/**
+ * What a commercial HTML mail's footer says: the organization's name and
+ * address and, with a preferences address, the links to update e-mail
+ * preferences or unsubscribe. Pure.
+ *
+ * @param array  $organization    pg_mail_organization()
+ * @param string $preferences_url the preferences screen's address, HTML
+ *                                ready (its <email_address_id> placeholder
+ *                                is filled per recipient); '' for none
+ * @return string HTML
+ */
+function pg_mail_commercial_content_html($organization, $preferences_url)
+{
+    $organization = (array) $organization + array_fill_keys(array('name', 'address_1', 'address_2', 'city', 'state', 'zip_code', 'country'), '');
+    $html = h($organization['name']) . "\n" . h($organization['address_1']) . "\n" . h($organization['address_2']) . "\n"
+        . h($organization['city']) . ' ' . h($organization['state']) . ' ' . h($organization['zip_code']) . ' ' . h($organization['country']) . '<br>';
+
+    if ((string) $preferences_url !== '') {
+        $html .= '<a href="' . $preferences_url . '" style="color: #666666">' . lang('Update email preferences') . '</a>' . lang(' or ') . '<a href="' . $preferences_url . '" style="color: #666666">' . lang('unsubscribe') . '</a><br>';
+    }
+
+    return $html;
+}
+
+/**
+ * The fields a mail fills for the person it goes to (^^name^^,
+ * ^^first_name^^, ^^last_name^^), from their contact: name is the nickname,
+ * else salutation, first and last name and suffix. Pure.
+ *
+ * @param array|null $contact first_name, last_name, nickname, salutation,
+ *                            suffix; null for an address with no contact
+ * @return array replace_variables() fields
+ */
+function pg_mail_merge_contact_fields($contact)
+{
+    $contact = (is_array($contact) ? $contact : array()) + array('first_name' => '', 'last_name' => '', 'nickname' => '', 'salutation' => '', 'suffix' => '');
+    $part = function ($key) use ($contact) {
+        return trim((string) $contact[$key]);
+    };
+
+    $name = ($part('nickname') !== '') ? $part('nickname') : trim($part('salutation')
+        . (($part('first_name') !== '') ? ' ' . $part('first_name') : '')
+        . (($part('last_name') !== '') ? ' ' . $part('last_name') : '')
+        . (($part('suffix') !== '') ? ', ' . $part('suffix') : ''));
+
+    return array(
+        array('name' => 'name', 'data' => $name, 'type' => ''),
+        array('name' => 'first_name', 'data' => $part('first_name'), 'type' => ''),
+        array('name' => 'last_name', 'data' => $part('last_name'), 'type' => ''),
+    );
+}
+
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
@@ -1102,100 +1287,14 @@ function create_auto_email_campaigns($properties)
             $body = get_page_content($email_campaign_profile['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, $data);
             // A link made with the editor's Link button to a field holding a whole address (^^review_url^^, ^^tracking_url^^, ...) was stored with http:// in front of it.
             $body = pg_mail_merge_address_hrefs($body);
-            // Find if there is a base tag in the HTML.
-            $base_in_html = preg_match('/<\s*base\s+[^>]*href\s*=\s*["\'](?:http:\/\/|https:\/\/|ftp:\/\/).*?["\']/is', $body);
-            // If there is not a base tag in the HTML, add base tag and convert relative links to absolute links.
-            if (!$base_in_html) {
-                $base = '<head>' . "\n" . '<base href="' . URL_SCHEME . HOSTNAME_SETTING . '/" />';
-                $body = preg_replace('/<head>/i', $base, $body);
-                // Change relative URLs to absolute URLs for links. A link whose address is a
-                // mail-merge field (href="^^review_url^^") is left as written: the field holds a
-                // whole address and is filled in below, after this pass.
-                $body = preg_replace('/(<\s*a\s+[^>]*href\s*=\s*["\'])(?!ftp:\/\/|https:\/\/|mailto:|http:\/\/|\^\^)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
-                // Change relative URLs to absolute URLs for images.
-                $body = preg_replace('/(<\s*img\s+[^>]*src\s*=\s*["\'])(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
-                // Change relative URLs to absolute URLs for CSS background images.
-                $body = preg_replace('/(background-image\s*:\s*url\s*\(\s*(?:"|\'|))(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?(?:"|\'|).*?\))/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
-                // Change relative URLs to absolute URLs for HTML background images.
-                $body = preg_replace('/(background\s*=\s*["\'])(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'])/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
-            }
+            $body = pg_mail_page_absolute_links($body, URL_SCHEME . HOSTNAME_SETTING);
             $commercial_content = '';
             // If the campaign is commercial, then add tracking codes to links and prepare
             // commercial content for footer.
             if ($email_campaign_profile['purpose'] == 'commercial') {
-                // Get all links in order to add tracking codes to links.
-                preg_match_all('/(<\s*a\s+[^>]*href\s*=\s*["\']\s*)(.*?)(\s*["\'].*?>)/is', $body, $links);
-                // If the date format is month and then day, then use that format.
-                if (DATE_FORMAT == 'month_day') {
-                    $month_and_day_format = 'm/d';
-                    // Otherwise the date format is day and then month, so use that format.
-                } else {
-                    $month_and_day_format = 'd/m';
-                }
-                // Set tracking code to contain the page name and date and time.
-                $tracking_code = $email_campaign_profile['page_name'] . '_' . date($month_and_day_format . '/Y_h:i_A');
-                // loop through all links in order to add tracking codes to links
-                foreach ($links[0] as $key => $link) {
-                    // set the URL that was found in the link
-                    $url = $links[2][$key];
-                    // remove new lines from the link
-                    $url = str_replace("\r\n", '', $url);
-                    $url = str_replace("\n", '', $url);
-                    // A link whose address is a mail-merge field gets no tracking code: the
-                    // address is only known once the field is filled in, and a code added
-                    // here would land behind its #fragment.
-                    if (mb_substr($url, 0, 2) == '^^') {
-                        continue;
-                    }
-                    $url_parts = @parse_url($url);
-                    // if the URL is valid
-                    // and if there is not a scheme or the scheme is http or https
-                    // and if there is not a hostname or the hostname is this site's hostname
-                    // and if there is not already a tracking code in the URL
-                    // then continue with adding tracking code to URL
-                    if (($url_parts != false) && ((isset($url_parts['scheme']) == false) || ($url_parts['scheme'] == '') || (mb_strtolower($url_parts['scheme']) == 'http') || (mb_strtolower($url_parts['scheme']) == 'https')) && ((isset($url_parts['host']) == false) || ($url_parts['host'] == '') || (mb_strtolower(str_replace('www.', '', $url_parts['host'])) == mb_strtolower(str_replace('www.', '', HOSTNAME_SETTING)))) && ((isset($url_parts['query']) == false) || ($url_parts['query'] == '') || mb_strpos($url_parts['query'], 't=') === false)) {
-                        $new_url = '';
-                        // if there is a scheme, then add scheme to new URL
-                        if ((isset($url_parts['scheme']) == true) && ($url_parts['scheme'] != '')) {
-                            $new_url .= $url_parts['scheme'] . '://';
-                        }
-                        // if there is a hostname, then add hostname to new URL
-                        if ((isset($url_parts['host']) == true) && ($url_parts['host'] != '')) {
-                            $new_url .= $url_parts['host'];
-                        }
-                        // if there is a path, then add path to new URL
-                        if ((isset($url_parts['path']) == true) && ($url_parts['path'] != '')) {
-                            $new_url .= $url_parts['path'];
-                        }
-                        $new_url .= '?';
-                        // if there is a query string, then add query string and ampersand to new URL
-                        if ((isset($url_parts['query']) == true) && ($url_parts['query'] != '')) {
-                            $new_url .= $url_parts['query'] . '&amp;';
-                        }
-                        $new_url .= 't=' . h(urlencode($tracking_code));
-                        // if there is a bookmark, then add bookmark to the new URL
-                        if ((isset($url_parts['fragment']) == true) && ($url_parts['fragment'] != '')) {
-                            $new_url .= '#' . $url_parts['fragment'];
-                        }
-                        $entire_link = $links[0][$key];
-                        $link_start = $links[1][$key];
-                        $link_end = $links[3][$key];
-                        // replace the link with the new link
-                        $body = str_replace($entire_link, $link_start . $new_url . $link_end, $body);
-                    }
-                }
-                $commercial_content = h(ORGANIZATION_NAME) . '
-
-                    ' . h(ORGANIZATION_ADDRESS_1) . '
-
-                    ' . h(ORGANIZATION_ADDRESS_2) . '
-
-                    ' . h(ORGANIZATION_CITY) . ' ' . h(ORGANIZATION_STATE) . ' ' . h(ORGANIZATION_ZIP_CODE) . ' ' . h(ORGANIZATION_COUNTRY) . '<br>';
+                $body = pg_mail_page_tracking_codes($body, pg_mail_page_tracking_code($email_campaign_profile['page_name'], time()), HOSTNAME_SETTING);
                 // If there is a contact, then include email preferences info.
-                if ($contact) {
-                    $email_preferences_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/email_preferences.php?id=<email_address_id></email_address_id>';
-                    $commercial_content .= '<a href="' . $email_preferences_url . '" style="color: #666666">' . lang('Update email preferences') . '</a>' . lang(' or ') . '<a href="' . $email_preferences_url . '" style="color: #666666">' . lang('unsubscribe') . '</a><br>';
-                }
+                $commercial_content = pg_mail_commercial_content_html(pg_mail_organization(), $contact ? URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/email_preferences.php?id=<email_address_id></email_address_id>' : '');
             }
             // get URL for page
             $page_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign.php?r=<reference_code></reference_code>';

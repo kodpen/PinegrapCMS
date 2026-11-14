@@ -278,6 +278,7 @@
     "Campaign profile ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Kampanya profili ({var:1}) API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından değiştirildi.",
     "Campaign profile ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "Kampanya profili ({var:1}) API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından oluşturuldu.",
     "Campaign profile ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Kampanya profili ({var:1}) API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından silindi.",
+    "Campaign profiles": "Kampanya profilleri",
     "Campaign settings": "Kampanya ayarları",
     "Campaigns": "Kampanyalar",
     "Campaigns and codes": "Kampanyalar ve kodlar",

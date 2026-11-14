@@ -28045,6 +28045,52 @@ textarea.pg-campaign-text {
   font-size: var(--pg-text-meta);
   color: var(--pg-fg-3);
 }
+/* Automatic sends: a flow's channels as tiles beside the words; the ready
+   recipes as inner cards, three to a row (one on a phone), each a link with
+   its title over the chain of its boxes. */
+.pg-messages-sends {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pg-messages-sends > span:last-child {
+  margin-left: 2px;
+}
+.pg-messages-recipes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+@media (max-width: 767.98px) {
+  .pg-messages-recipes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.pg-messages-recipe {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  color: inherit;
+  text-decoration: none;
+}
+.pg-messages-recipe:hover {
+  background: var(--pg-hover);
+}
+.pg-messages-recipe:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+.pg-messages-recipe-title {
+  font-weight: var(--pg-weight-medium);
+}
+.pg-messages-recipe-chain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
 /* A list's filters: segmented controls side by side, wrapping as a row. */
 .pg-messages-filters {
   display: flex;
