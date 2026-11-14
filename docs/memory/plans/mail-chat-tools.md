@@ -10,14 +10,14 @@ description: Plan (owner 2026-11-14): Workspace e-mail read, drafted and sent fr
 - The MT1 census: `plans/mail-chat-tools-census.md` (each route and tool, the callers apart, the directory check). Exact scopes: MT2, MT4, MT5 in `plans/mail-chat-tools-steps.md`, MT3 in `plans/mail-chat-tools-drafts.md`.
 
 ## Which steps?
-- MT1 (S, no product code) Census. Per route: what a chat needs and does not get (the whole text, the HTML, the files of a mail, the quote). Where a draft lives (a reply's as an item with `send_state` `draft`; a new mail's has no conversation yet) and who reads it. The callers apart (`api/api-device-sessions.md`). The tools against `api/claude-plugin-tool-check.md`. Written into this file; a needed column is asked first.
+- MT1 (S) Census: what a chat needs per route, where a draft lives, the callers apart, the tools against `api/claude-plugin-tool-check.md`.
   - Done in #9463: a draft is a `ws_mail_items` row; its files go in `draft_files` (owner, B, `workflow/decisions-made-schema-18.md`).
-- MT2 (M) Reading. A mail's text whole and its cleaned HTML on request, its files listed and fetched through the Files routes, as tools. Every mail body carries the outside mark (`workspace/workspace-outside-caution.md`).
+- MT2 (M) Reading: a mail whole, its cleaned HTML, its files, the outside mark.
   - Done in #9484: `workspace.mail_items.get`, `text_max`, the mail's `files`/`outside`/`has_html`/`bcc`, `workspace.files.content` (`workspace/mail-api-reading.md`).
 - MT3 (M) Drafts on the server, in two steps:
   - MT3a (done, #9516) The server: a reply's and a new mail's draft kept, read, changed and deleted as routes and tools for every caller that may read the conversation; the readers of sent mail leave drafts out (`workspace/mail-drafts.md`).
   - MT3b The E-mails screen's Drafts view: a draft opens in the reply drawer or the New e-mail form, and Send there is the person's and deletes the draft. Look A, the picture set in the agent channel.
-- MT4 (M, done #9533) Sending from a person's connection. A new scope, `workspace:mail_send`, that no connection of today holds and the consent screen names. With it a person's OAuth connection or device session may call reply, new mail and "send this draft" as tools; the panel's own checks, limits and the unknown-domain stop hold, Idempotency-Key, dry run. The mail is the person's; the Site Log names the application it went through.
+- MT4 (M, done #9533) Sending from a person's connection under `workspace:mail_send` (`workspace/mail-send-scope.md`).
 - MT5 (M, after MA10b) HTML and files out. `html` on reply, new mail and drafts, cleaned by the allowlist cleaner, the text part made from it when none is sent; files by their Files id within the panel's limits, the sender's right to each checked at Send; a draft keeps them in `ws_mail_items.draft_files` (MT5's migration step).
   - Done in #9541: `html` and `file_ids` on reply, new mail and drafts, `draft_files` and `draft_app_id` by 11.0.206 (`workspace/mail-api-html-files.md`).
 - MT5b (S, after MT5 and MT3b #9543) The application's pill on a Drafts row: the name of the `draft_app_id` application, read from its row when the row is drawn; a deleted one reads as "an assistant". Its own picture in the agent channel under 3346, naming the architect.
