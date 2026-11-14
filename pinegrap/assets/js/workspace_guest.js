@@ -234,6 +234,13 @@
         var bubble = el('div', 'pg-guest-bubble');
         var meta = el('div', 'pg-guest-meta');
         meta.appendChild(el('b', '', message.mine ? t('you') : message.name));
+
+        // An agent or an assistant is named with its badge; a guest wakes
+        // none of them, whatever they write.
+        if (message.agent && message.badge) {
+            meta.appendChild(el('span', 'pg-guest-badge', message.badge));
+        }
+
         meta.appendChild(el('span', '', message.time + (message.edited ? ' · ' + t('edited') : '')));
         bubble.appendChild(meta);
 
@@ -414,11 +421,13 @@
     }
 
     // A poll staff opened in the room: the guest votes like anybody in it.
+    // An agent's is read only.
     function drawPoll(poll) {
         var box = el('div', 'pg-guest-poll');
         var total = poll.options.reduce(function (sum, option) { return sum + option.count; }, 0);
         var chosen = {};
-        var open = !poll.closed && !state.readOnly;
+        // An agent's poll asks the team: the guest reads it.
+        var open = !poll.closed && !state.readOnly && !poll.readonly;
 
         poll.options.forEach(function (option) {
             chosen[option.id] = option.mine;
