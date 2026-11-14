@@ -155,3 +155,43 @@ function test_messages_templates_email_designs_card()
 	pg_assert_true(strpos($html, 'pg-email-own-title') < strpos($html, 'pg-email-ready-grid'), 'with some: one\'s own designs first');
 	pg_assert_contains(h(lang('Your own designs first, then the ready designs to start a new one from.')), $html, 'the line follows the order');
 }
+
+function test_messages_templates_email_copies()
+{
+	$own = pg_messages_template_email_rows(array());
+	$copies = array(
+		array('page_id' => 9, 'title' => 'Welcome <E-mail>', 'kind' => 'template', 'stamp' => 0),
+		array('page_id' => 21, 'title' => 'spring', 'kind' => 'campaign', 'stamp' => 0),
+	);
+	$html = pg_messages_template_email_card($own, true, '/x.php', $copies);
+	pg_assert_contains('href="add_system_style.php?start=email&amp;copy=9"', $html, 'a copy opens as a new e-mail design');
+	pg_assert_contains('Welcome &lt;E-mail&gt;', $html, 'its name, escaped');
+	pg_assert_contains(h(lang('From the template')), $html, 'where it comes from');
+	pg_assert_contains(h(lang('From a campaign')), $html, 'a campaign\'s design');
+	pg_assert_same(2, substr_count($html, h(lang('Make a copy'))), 'a button per page');
+	pg_assert_true(strpos($html, 'pg-email-ready-grid') < strpos($html, 'pg-email-copies'), 'after the ready designs');
+
+	pg_assert_false(strpos(pg_messages_template_email_card($own, true, '/x.php'), 'pg-email-copies') !== false, 'none: no list');
+	pg_assert_false(strpos(pg_messages_template_email_card($own, false, '/x.php', $copies), 'copy=') !== false, 'copies only for a designer');
+}
+
+function test_messages_templates_email_copies_have_an_end()
+{
+	$copies = array();
+	for ($i = 1; $i <= 7; $i++) {
+		$copies[] = array('page_id' => 100 + $i, 'title' => 'campaign ' . $i, 'kind' => 'campaign', 'stamp' => 0);
+	}
+	$copies[] = array('page_id' => 9, 'title' => 'welcome', 'kind' => 'template', 'stamp' => 0);
+	$html = pg_messages_template_email_card(array(), true, '/x.php', $copies);
+	$more = strpos($html, '<details class="pg-email-copies-more">');
+
+	pg_assert_true($more !== false, 'the rest behind a summary');
+	pg_assert_contains(h(lang(array('string' => 'Show all ({var:1})', 'vars' => array(8)))), $html, 'Show all, with every row counted');
+	pg_assert_true(strpos($html, 'copy=105"') < $more && strpos($html, 'copy=106"') > $more, 'the newest five campaigns shown, the sixth behind it');
+	pg_assert_true(strpos($html, 'copy=9"') < $more, 'a template row shown: five of each kind');
+	pg_assert_same(3, substr_count($html, 'class="pg-email-part'), 'three parts, split the same way');
+	pg_assert_false(strpos(pg_messages_template_email_card(array(), true, '/x.php', array_slice($copies, 2)), 'pg-email-copies-more') !== false, 'five of each kind: no summary');
+
+	$own = pg_messages_template_email_rows(array(array('page_id' => '7', 'page_name' => 'mine', 'page_style' => '3', 'page_timestamp' => '0')));
+	pg_assert_same(3, substr_count(pg_messages_template_email_card($own, true, '/x.php', $copies), 'class="pg-email-part'), 'with one\'s own designs too');
+}

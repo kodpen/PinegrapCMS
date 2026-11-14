@@ -7,8 +7,8 @@
  * programs drop linked style sheets and most read no class rules, so a
  * designed body carries its look inline; the pass takes out what would only
  * weigh (stylesheet links, the page's CSS, scripts), writes every
- * var(--x, fallback) as its fallback (no mail program knows the page's
- * custom properties), puts in one small head style for phones and says
+ * var(--x, fallback) as its palette's colour or else its fallback (no mail
+ * program knows the page's custom properties), puts in one small head style for phones and says
  * whether the design draws its own footer and whether the result is over
  * the size Gmail clips at. Pure: no database, no files.
  *
@@ -53,21 +53,42 @@ function pg_mail_pass_head_style()
 }
 
 /**
+ * Whether a value may be written for a custom property: a hex colour or an
+ * rgb()/rgba() of plain numbers, nothing that could close the declaration.
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function pg_mail_pass_value_ok($value)
+{
+    return is_string($value)
+        && (bool) preg_match('/^(#[0-9A-Fa-f]{3,8}|rgba?\([0-9.,%\s]+\))$/', $value);
+}
+
+/**
  * Every var(--name, fallback) written as its fallback, the innermost first,
- * so var(--a, var(--b, #123)) becomes #123. A var() without a fallback is
+ * so var(--a, var(--b, #123)) becomes #123. A name given in $vars (the
+ * colours of the design's palette) is written as that value instead, with
+ * or without a fallback. A var() without a fallback and without a value is
  * left as it is: there is nothing to write in its place.
  *
  * @param string $text
+ * @param array  $vars '--name' => colour
  * @return string
  */
-function pg_mail_pass_var_fallbacks($text)
+function pg_mail_pass_var_fallbacks($text, $vars = array())
 {
     $text = (string) $text;
-    $pattern = '/var\(\s*--[A-Za-z0-9_-]+\s*,\s*((?:[^()]|\([^()]*\))*?)\s*\)/';
+    $vars = is_array($vars) ? $vars : array();
+    $pattern = '/var\(\s*(--[A-Za-z0-9_-]+)\s*(?:,\s*((?:[^()]|\([^()]*\))*?)\s*)?\)/';
 
     for ($round = 0; $round < 5; $round++) {
-        $next = preg_replace_callback($pattern, function ($m) {
-            return trim($m[1]);
+        $next = preg_replace_callback($pattern, function ($m) use ($vars) {
+            if (isset($vars[$m[1]]) && pg_mail_pass_value_ok($vars[$m[1]])) {
+                return $vars[$m[1]];
+            }
+
+            return (isset($m[2]) && $m[2] !== '') ? trim($m[2]) : $m[0];
         }, $text);
 
         if (($next === null) || ($next === $text)) {
@@ -85,9 +106,11 @@ function pg_mail_pass_var_fallbacks($text)
  * the caller then leaves the fixed campaign footer out.
  *
  * @param string $html the e-mail render of a design (a whole document)
+ * @param array  $vars the palette's colours by custom property name
+ *                     (pg_email_palette_vars()); none: the fallbacks
  * @return array html, has_footer, bytes, clipped (over pg_mail_pass_clip_bytes())
  */
-function pg_mail_pass($html)
+function pg_mail_pass($html, $vars = array())
 {
     $html = (string) $html;
 
@@ -96,7 +119,7 @@ function pg_mail_pass($html)
     $html = (string) preg_replace('#<style\b[^>]*>.*?</style\s*>#is', '', $html);
     $html = (string) preg_replace('#<link\b[^>]*>#i', '', $html);
 
-    $html = pg_mail_pass_var_fallbacks($html);
+    $html = pg_mail_pass_var_fallbacks($html, $vars);
 
     if (preg_match('#</head\s*>#i', $html)) {
         $html = (string) preg_replace('#</head\s*>#i', pg_mail_pass_head_style() . '</head>', $html, 1);

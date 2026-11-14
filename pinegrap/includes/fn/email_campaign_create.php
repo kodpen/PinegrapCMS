@@ -255,7 +255,8 @@ function pg_email_campaign_design_body($page_id)
     $with_footer = true;
 
     if (pg_email_design_tree_is(json_decode(pg_page_tree_json($page_id), true))) {
-        $pass = pg_mail_pass($body);
+        // In the colours of the palette the design wears.
+        $pass = pg_mail_pass($body, pg_email_palette_vars(pg_email_page_palette($page_id)));
         $body = $pass['html'];
         $with_footer = !$pass['has_footer'];
     }

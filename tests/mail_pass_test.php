@@ -91,3 +91,16 @@ function test_mail_pass_size()
 	pg_assert_false($small['clipped'], 'a small body is not clipped');
 	pg_assert_true($large['clipped'], 'over 102 KB Gmail clips');
 }
+
+function test_mail_pass_writes_the_sites_colours()
+{
+	$vars = array('--bs-primary' => '#047857', '--pg-on-primary' => '#ffffff', '--no-fallback' => '#111111');
+	$out = pg_mail_pass(mail_pass_test_render(), $vars);
+
+	pg_assert_contains('background:#047857;color:#fff', $out['html'], 'a named colour wins over its fallback');
+	pg_assert_contains('background:#ffffff', $out['html'], 'a colour not given keeps its fallback');
+	pg_assert_contains('color:#111111', $out['html'], 'a var() without a fallback takes a given value');
+	pg_assert_same('#ffffff', pg_mail_pass_var_fallbacks('var(--pg-on-primary, #000)', array('--pg-on-primary' => '#ffffff')), 'the value, not the fallback');
+	pg_assert_same('#0d6efd', pg_mail_pass_var_fallbacks('var(--bs-primary,#0d6efd)', array('--bs-primary' => 'red;x:y')), 'a value that is no colour is never written');
+	pg_assert_same('#047857', pg_mail_pass_var_fallbacks('var(--a, var(--bs-primary, #0d6efd))', array('--bs-primary' => '#047857')), 'inside a nested var() too');
+}
