@@ -133,10 +133,10 @@ function ws_canvas_api_routes()
             'handler'     => 'ws_api_canvas_templates',
             'returns'     => array(
                 'templates' => array(array('id' => 'integer', 'name' => 'string', 'width' => 'integer', 'height' => 'integer', 'background' => 'string', 'layers' => array(array('name' => 'string', 'kind' => 'string', 'text' => 'string?')))),
-                'layouts'   => array(array('name' => 'string', 'use' => 'string', 'themes' => array('string'), 'width' => 'integer', 'height' => 'integer', 'chart_values' => 'integer', 'layers' => array(array('name' => 'string', 'kind' => 'string', 'text' => 'string?')))),
+                'layouts'   => array(array('name' => 'string', 'title' => 'string', 'use' => 'string', 'themes' => array('string'), 'width' => 'integer', 'height' => 'integer', 'chart_values' => 'integer', 'layers' => array(array('name' => 'string', 'kind' => 'string', 'text' => 'string?')))),
             ),
             'summary'     => 'List the canvas templates and ready layouts',
-            'description' => 'The canvases people marked as templates in Files (Save as template in the image editor): each with its file id (the template to give to POST /workspace/channels/{id}/canvases), its file name, its size and background, and its named layers from the bottom up - name, kind (text, picture, shape, icon, svg or another of the editor\'s kinds) and a text layer\'s words. Only text and picture layers are filled; the rest stay as drawn. Beside them, layouts: the ready layouts shipped with Pinegrap, drawn by the drawing guide (GET /workspace/canvas/guide) - each with its name (the layout to give to the same route), what it is for, its themes (light, dark), its size, how many chart_values its bar chart takes (0: no chart) and its named layers with their words.',
+            'description' => 'The canvases people marked as templates in Files (Save as template in the image editor): each with its file id (the template to give to POST /workspace/channels/{id}/canvases), its file name, its size and background, and its named layers from the bottom up - name, kind (text, picture, shape, icon, svg or another of the editor\'s kinds) and a text layer\'s words. Only text and picture layers are filled; the rest stay as drawn. Beside them, layouts: the ready layouts shipped with Pinegrap, drawn by the drawing guide (GET /workspace/canvas/guide) - each with its name (the layout to give to the same route), its title in the site\'s language (the canvas file\'s name when none is given), what it is for, its themes (light, dark), its size, how many chart_values its bar chart takes (0: no chart) and its named layers with their words.',
             'params'      => array(),
         ),
 
@@ -471,7 +471,7 @@ function ws_api_canvases_create($params)
 
     $text = (string) ($params['text'] ?? '');
     $app_id = ws_api_writer_app_id();
-    $name = ws_canvas_file_name($params['name'] ?? '');
+    $name = ws_canvas_file_name((($layout !== '') && ((string) ($params['name'] ?? '') === '')) ? ws_canvas_layout_words($layout)['title'] : ($params['name'] ?? ''));
     $png = ws_canvas_blank_png($doc->artboard->width, $doc->artboard->height, $doc->artboard->background);
 
     // The checks ws_message_send_file_bytes() makes, made first so that a

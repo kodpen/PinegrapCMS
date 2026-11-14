@@ -8,7 +8,7 @@
 - agent-canvas-guide.md: The drawing guide an agent reads before drawing a canvas (canvas_guide.php): one set of values, its text, GET workspace/canvas/guide, the MCP resource and prompt
 - agent-canvas-layer-writes.md: An agent writes a canvas's layers one by one (canvas_layer_write.php): add a text, picture, shape or icon, style, order, name, lock, a layer by its name, GET workspace/canvas/fonts
 - agent-canvas-layers.md: An agent's SVG taken apart into a layer per element on the server (layers "split", canvas_split.php): placement, names, definitions, the bounding boxes, the browser fixture both sides read
-- agent-canvas-layouts.md: Ready layouts (DG4): four canvas templates shipped with Pinegrap, drawn from the drawing guide in light or dark, listed beside people's templates and filled by layout, theme, fill and chart_values
+- agent-canvas-layouts.md: Ready layouts (DG4): four canvas templates shipped with Pinegrap, drawn from the drawing guide in light or dark, listed beside people's templates and filled by layout, theme, fill and chart_values [decision: here]
 - agent-canvas-overview.md: Start file of the agent-canvas-* cluster: an agent designs on a Workspace canvas through the API, MCP and the assistants' tools; the binding decisions, the parts and which file holds each [decision: decisions-made-workspace-16.md]
 - agent-canvas-picture.md: How an agent's canvas gets its picture: the server draws it where it can (mark server), else a member's browser posts it once (canvas_picture); the takes, the ?v= address
 - agent-canvas-save.md: An agent saves a canvas's picture into Files (POST messages/{id}/canvas/save, canvas_save.php): a file create of the change catalogue, tier 2 at once, tier 1 a card, the formats, the pending refusal

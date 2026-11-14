@@ -115,6 +115,13 @@ function test_workspace_canvas_layouts_list()
 	pg_assert_same(array('light', 'dark'), $list['slide']['themes'], 'both themes');
 	pg_assert_same(array(1920, 1080), array($list['slide']['width'], $list['slide']['height']), 'the slide board');
 
+	foreach ($list as $name => $row) {
+		pg_assert_true(($row['title'] !== '') && ($row['use'] !== ''), $name . ': a title and its use in the site\'s language');
+	}
+
+	pg_assert_same(lang('Report page'), $list['report_page']['title'], 'the title through lang()');
+	pg_assert_same(lang(array('string' => 'Label {var:1}', 'vars' => 3)), workspace_canvas_layouts_layer(ws_canvas_layout_doc('figures_chart', 'light'), 'chart_label_3')['text'], 'a numbered placeholder through lang()');
+
 	$layers = array_column($list['figures_chart']['layers'], null, 'name');
 
 	pg_assert_same(array('text', 'Title'), array($layers['title']['kind'], $layers['title']['text']), 'a text layer with its words');

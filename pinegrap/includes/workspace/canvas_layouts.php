@@ -26,19 +26,41 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_template_fill.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_guide.php');
 
 /**
- * The ready layouts: name => board (of the guide's boards), what it is for
- * and how many bars its chart has (0: none). Pure.
+ * The ready layouts: name => board (of the guide's boards) and how many
+ * bars its chart has (0: none); their words are ws_canvas_layout_words().
+ * Pure.
  *
  * @return array[]
  */
 function ws_canvas_layouts()
 {
     return array(
-        'figures_chart' => array('board' => 'card', 'bars' => 6, 'use' => 'a row of three figures, each with its change, over a bar chart'),
-        'report_page'   => array('board' => 'portrait', 'bars' => 6, 'use' => 'a report page: two figures, a short summary and a bar chart'),
-        'comparison'    => array('board' => 'card', 'bars' => 0, 'use' => 'two things side by side, each with its figure, a caption and three points'),
-        'slide'         => array('board' => 'slide', 'bars' => 5, 'use' => 'a slide: a title and three points at the left, a bar chart at the right'),
+        'figures_chart' => array('board' => 'card', 'bars' => 6),
+        'report_page'   => array('board' => 'portrait', 'bars' => 6),
+        'comparison'    => array('board' => 'card', 'bars' => 0),
+        'slide'         => array('board' => 'slide', 'bars' => 5),
     );
+}
+
+/**
+ * A layout's name and what it is for, in the panel's language: the default
+ * name of the canvas's file and what the list shows.
+ *
+ * @param string $name a key of ws_canvas_layouts()
+ * @return array title, use
+ */
+function ws_canvas_layout_words($name)
+{
+    switch ($name) {
+        case 'figures_chart':
+            return array('title' => lang('Figures with a chart'), 'use' => lang('A row of three figures, each with its change, over a bar chart.'));
+        case 'report_page':
+            return array('title' => lang('Report page'), 'use' => lang('A report page: two figures, a short summary and a bar chart.'));
+        case 'comparison':
+            return array('title' => lang('Comparison'), 'use' => lang('Two things side by side, each with its figure, a caption and three points.'));
+        default:
+            return array('title' => lang('Slide'), 'use' => lang('A slide: a title and three points at the left, a bar chart at the right.'));
+    }
 }
 
 /**
@@ -183,7 +205,7 @@ function ws_canvas_layout_operations($name, $theme, $values = null)
             $bx = $plot_x + $i * $band + ($band - $bar) / 2;
             $rect('chart_bar_' . ($i + 1), $bx, $base - $bh, $bar, $bh, $p['series'][0], $px($mk['bar_radius']));
 
-            $label = lang('Label') . ' ' . ($i + 1);
+            $label = lang(array('string' => 'Label {var:1}', 'vars' => $i + 1));
             $text('chart_label_' . ($i + 1), $label, 'axis', $bx + $bar / 2 - mb_strlen($label) * $size / 4, $base + $px(8));
 
             if ($i === $n - 1) {
@@ -198,7 +220,7 @@ function ws_canvas_layout_operations($name, $theme, $values = null)
     // third one falling so both change colours are seen.
     $figure = function ($n, $x, $y) use ($text, $px) {
         $sample = array(1 => array('31.200', '▲ 12,4 %', 'up'), 2 => array('1.284', '▲ 3,1 %', 'up'), 3 => array('86 %', '▼ 2,0 %', 'down'));
-        $y += $text('figure_' . $n . '_label', lang('Figure') . ' ' . $n, 'label', $x, $y) + $px(8);
+        $y += $text('figure_' . $n . '_label', lang(array('string' => 'Figure {var:1}', 'vars' => $n)), 'label', $x, $y) + $px(8);
         $y += $text('figure_' . $n . '_value', $sample[$n][0], 'figure', $x, $y);
         $y += $text('figure_' . $n . '_change', $sample[$n][1], 'label', $x, $y, $sample[$n][2]);
 
@@ -274,7 +296,7 @@ function ws_canvas_layout_operations($name, $theme, $values = null)
             for ($k = 1; $k <= 3; $k++) {
                 $line($side . '_rule_' . $k, $x + $pad, $iy, $x + $col - $pad, max(1, $px(1)), $p['baseline']);
                 $iy += $px(12);
-                $text($side . '_point_' . $k, lang('Point') . ' ' . $k, 'label', $x + $pad, $iy);
+                $text($side . '_point_' . $k, lang(array('string' => 'Point {var:1}', 'vars' => $k)), 'label', $x + $pad, $iy);
                 $text($side . '_point_' . $k . '_value', '—', 'label', $x + $col / 2, $iy, 'ink');
                 $iy += (int) round($lsize * 1.25) + $px(12);
             }
@@ -345,9 +367,11 @@ function ws_canvas_layouts_list()
 
     foreach (ws_canvas_layouts() as $name => $layout) {
         $summary = pg_canvas_template_summary(ws_canvas_layout_doc($name, 'light'));
+        $words = ws_canvas_layout_words($name);
         $list[] = array(
             'name'         => $name,
-            'use'          => $layout['use'],
+            'title'        => $words['title'],
+            'use'          => $words['use'],
             'themes'       => ws_canvas_layout_themes(),
             'width'        => $summary['width'],
             'height'       => $summary['height'],
