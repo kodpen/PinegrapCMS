@@ -25,6 +25,6 @@ description: Add to my calendar on a mail (PC7): the button, the filled New plan
 - Owner (2026-11-14, channel 3219-3220): mail never changes a plan by itself; no answer to the organiser. Architect (2026-11-14, 3271): the look and these four points.
 
 ## What about a contact's erasure?
-- Nothing scrubs `ws_mail_items` on erasure (`pg_privacy_erase_tables()` lists no mail table); the organiser's address in `invitation` stays like `from_email`. Asked by the coordinator (channel 3270).
+- Nothing scrubs `ws_mail_items` on erasure (`pg_privacy_erase_tables()` lists no mail table); the organiser's address in `invitation` stays like `from_email`. Architect (2026-11-14, channel 3273): enough for PC7; Workspace records are outside a contact's erasure by its own list (`core/personal-data-erasure.md`, `core/contact-holders.md`); the product question stays with the owner.
 
 Test: `tests/workspace_personal_plan_mail_test.php`.
