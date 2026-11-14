@@ -1,6 +1,6 @@
 ---
 name: iyzipay-sdk-php85-patch
-description: includes/iyzipay-php 2.0.59 kept quiet on PHP 8.4/8.5: nullable parameters marked, curl_close() guarded; why no update, what an update re-applies (#PRNUM)
+description: includes/iyzipay-php 2.0.59 kept quiet on PHP 8.4/8.5: nullable parameters marked, curl_close() guarded; why no update, what an update re-applies (#9485)
 ---
 
 ## Why a patch and not a newer SDK?
