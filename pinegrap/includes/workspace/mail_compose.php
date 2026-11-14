@@ -220,6 +220,56 @@ function ws_mail_compose_mail($request, $files)
 }
 
 /**
+ * A mail written in the Workspace's writing box (bold, italic, struck,
+ * highlighted, code, links, lists, a quote, a table: the light markup of
+ * includes/workspace/render.php) as the two parts it leaves with: the plain
+ * text (ws_plain_text()) that search, the card and a quote read, and the HTML
+ * the renderer draws. Mail programs read no class rules, so the quote and a
+ * table carry their look inline. The HTML is cleaned again by
+ * ws_mail_send_input().
+ *
+ * @param array  $viewer
+ * @param string $markup
+ * @return array text, html
+ */
+function ws_mail_markup_parts($viewer, $markup)
+{
+    $markup = trim(str_replace(array("\r\n", "\r"), "\n", (string) $markup));
+
+    if ($markup === '') {
+        return array('text' => '', 'html' => '');
+    }
+
+    $html = strtr(ws_render_body($markup, array()), array(
+        ' class="ws-quote"'             => ' style="margin: 0 0 0 .5em; padding-left: .75em; border-left: 3px solid #d0d7de; color: #57606a;"',
+        ' class="table table-sm ws-table"' => ' border="1" cellpadding="6" style="border-collapse: collapse; border-color: #d0d7de;"',
+    ));
+
+    return array('text' => ws_plain_text($viewer, $markup), 'html' => $html);
+}
+
+/**
+ * The form's mail with its text written in the writing box (the request's
+ * format "markup"): the text becomes the plain part and the HTML is added.
+ * Anything else is left as it came, plain text as before.
+ *
+ * @param array $viewer
+ * @param array $mail    ws_mail_compose_mail()'s
+ * @param array $request the form's request
+ * @return array
+ */
+function ws_mail_markup_apply($viewer, $mail, $request)
+{
+    if (!isset($request['format']) || ($request['format'] !== 'markup')) {
+        return $mail;
+    }
+
+    $parts = ws_mail_markup_parts($viewer, (string) ($mail['text'] ?? ''));
+
+    return array_merge($mail, $parts);
+}
+
+/**
  * The words of the New e-mail form (assets/js/workspace_mail.js).
  *
  * @return array key => text

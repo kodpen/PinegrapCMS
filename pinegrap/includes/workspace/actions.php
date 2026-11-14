@@ -2736,9 +2736,9 @@ function ws_handle_action($action, $request)
                 return ws_action_error($files['error'], 'files');
             }
 
-            $mail = ws_mail_compose_mail($request, $files['files']);
+            $mail = ws_mail_markup_apply($viewer, ws_mail_compose_mail($request, $files['files']), $request);
             $result = ws_mail_send($viewer, array('conversation_id' => $conversation_id, 'cc' => $mail['cc'], 'bcc' => $mail['bcc'],
-                'text' => $mail['text'], 'files' => $mail['files'], 'send_anyway' => $mail['send_anyway']));
+                'text' => $mail['text'], 'html' => $mail['html'] ?? '', 'files' => $mail['files'], 'send_anyway' => $mail['send_anyway']));
 
             if (!$result['ok']) {
                 return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), in_array($result['error'], array('empty', 'too_long'), true) ? 'text' : '')
@@ -2819,7 +2819,7 @@ function ws_handle_action($action, $request)
                 return ws_action_error($forward['error']);
             }
 
-            $mail = ws_mail_compose_mail($request, array_merge($forward['files'], $files['files']));
+            $mail = ws_mail_markup_apply($viewer, ws_mail_compose_mail($request, array_merge($forward['files'], $files['files'])), $request);
             $result = ws_mail_send($viewer, $mail);
 
             if (!$result['ok']) {

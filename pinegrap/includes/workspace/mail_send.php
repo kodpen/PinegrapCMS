@@ -84,14 +84,19 @@ function ws_mail_send_addresses($value)
  * subject, the text (1 to WS_MAIL_REPLY_MAX characters) and the files (the
  * channel's upload rules, WS_MAIL_SEND_FILES and WS_MAIL_SEND_FILES_BYTES).
  *
- * @param array $mail to, cc, bcc, subject, text, files (each name and bytes)
- * @return array ok, error, detail, to, cc, bcc, subject, text, files (name, extension, bytes)
+ * An HTML body, when given, goes through the allowlist cleaner
+ * (pg_mail_html_clean()) and is kept beside the text, which stays the plain
+ * part that search, the card and the quote read; HTML the cleaner refuses
+ * (over its size) refuses the mail rather than sending it bare.
+ *
+ * @param array $mail to, cc, bcc, subject, text, html (optional), files (each name and bytes)
+ * @return array ok, error, detail, to, cc, bcc, subject, text, html ('' for none), files (name, extension, bytes)
  */
 function ws_mail_send_input($mail)
 {
     $mail = is_array($mail) ? $mail : array();
     $out = array('ok' => false, 'error' => '', 'detail' => '', 'to' => array(), 'cc' => array(), 'bcc' => array(),
-        'subject' => '', 'text' => '', 'files' => array());
+        'subject' => '', 'text' => '', 'html' => '', 'files' => array());
     $refuse = function ($error, $detail = '') use ($out) {
         return array_merge($out, array('error' => $error, 'detail' => (string) $detail));
     };
@@ -131,6 +136,16 @@ function ws_mail_send_input($mail)
         return $refuse('too_long');
     }
 
+    $html = (isset($mail['html']) && is_string($mail['html'])) ? trim($mail['html']) : '';
+
+    if ($html !== '') {
+        $html = function_exists('pg_mail_html_clean') ? pg_mail_html_clean($html) : '';
+
+        if ($html === '') {
+            return $refuse('too_long');
+        }
+    }
+
     $files = array_values(array_filter((array) ($mail['files'] ?? array()), 'is_array'));
 
     if (count($files) > WS_MAIL_SEND_FILES) {
@@ -159,7 +174,7 @@ function ws_mail_send_input($mail)
     }
 
     return array_merge($out, array('ok' => true, 'to' => $to, 'cc' => $cc, 'bcc' => $bcc,
-        'subject' => mb_substr($subject, 0, 200), 'text' => $text, 'files' => $taken));
+        'subject' => mb_substr($subject, 0, 200), 'text' => $text, 'html' => $html, 'files' => $taken));
 }
 
 /**
@@ -775,6 +790,13 @@ function ws_mail_send_properties($item, $box, $route)
         'keep_mime'          => true,
     );
 
+    // A written HTML body leaves as HTML with the same signature and quote;
+    // the mail's own text part is made from it by email().
+    if (trim((string) ($item['body_html'] ?? '')) !== '') {
+        $properties['format'] = 'html';
+        $properties['body'] = ws_mail_answer_html((string) $item['body_html'], (string) $item['from_name'], $box, (is_array($answered) && $answered) ? $answered : null);
+    }
+
     if (!empty($route['smtp'])) {
         $properties['smtp'] = $route['smtp'];
     }
@@ -949,6 +971,8 @@ function ws_mail_send($viewer, $mail)
         return array('ok' => false, 'error' => 'not_sent', 'detail' => '', 'conversation_id' => $conversation_id, 'item_id' => 0, 'message_id' => 0, 'state' => '');
     }
 
+    ws_mail_send_keep_html($item_id, $input['html']);
+
     $card = ws_mail_message_write($channel['id'], 0, $item_id, ws_mail_message_body($input['text']), 0, '', $now);
     $refused = ws_mail_send_keep_files($channel, $card, $item_id, $input['files'], (int) $viewer['id'], $now);
 
@@ -959,6 +983,25 @@ function ws_mail_send($viewer, $mail)
     $state = is_array($item) ? ws_mail_send_dispatch($item, 0) : 'failed';
 
     return array('ok' => true, 'error' => '', 'detail' => '', 'conversation_id' => $conversation_id, 'item_id' => $item_id, 'message_id' => (int) $card, 'state' => $state);
+}
+
+/**
+ * Keeps a written mail's cleaned HTML on its item (body_html), where the
+ * mail leaves from and the reading pane draws it. Its own UPDATE, as an
+ * incoming mail's: a failed write costs the HTML, never the mail. Nothing
+ * before the column exists (ws_mail_html_ready()).
+ *
+ * @param int    $item_id
+ * @param string $html    ws_mail_send_input()'s, '' for none
+ * @return void
+ */
+function ws_mail_send_keep_html($item_id, $html)
+{
+    if (((int) $item_id <= 0) || ((string) $html === '') || !ws_mail_html_ready()) {
+        return;
+    }
+
+    db("UPDATE ws_mail_items SET body_html = '" . e((string) $html) . "' WHERE id = '" . (int) $item_id . "'");
 }
 
 /**
@@ -1000,6 +1043,8 @@ function ws_mail_send_answer($viewer, $check, $writer, $now)
     if ($item_id <= 0) {
         return array('ok' => false, 'error' => 'not_sent', 'detail' => '', 'conversation_id' => $conversation_id, 'item_id' => 0, 'message_id' => 0, 'state' => '');
     }
+
+    ws_mail_send_keep_html($item_id, $input['html']);
 
     // Under the card, as today's answers are; a card gone or moved leaves
     // the answer in the channel on its own, its files under it.
