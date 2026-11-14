@@ -952,6 +952,44 @@
             });
         }
 
+        // Check e-mail: the server reads the person's boxes now (or the box
+        // the list is narrowed to) and answers the line over the list; when
+        // mail came, the list as the address filters it, the open
+        // conversation still marked.
+        function check(button) {
+            var line = root.querySelector('[data-ws-mail-check-line]');
+            var data = { box_id: button.getAttribute('data-ws-mail-check') || '0', conversation: String(current || 0) };
+
+            new URLSearchParams(window.location.search).forEach(function (value, key) {
+                if (key !== 'before' && key !== 'conversation') {
+                    data[key] = value;
+                }
+            });
+
+            button.disabled = true;
+            button.setAttribute('aria-busy', 'true');
+
+            h.api('ws_mail_check', data).then(function (result) {
+                var list = root.querySelector('.ws-mail-list');
+
+                button.disabled = false;
+                button.removeAttribute('aria-busy');
+
+                if (line) {
+                    line.innerHTML = result.html;
+                    line.hidden = false;
+                }
+
+                if (result.list && list) {
+                    list.innerHTML = result.list;
+                }
+            }).catch(function (error) {
+                button.disabled = false;
+                button.removeAttribute('aria-busy');
+                h.fail(error);
+            });
+        }
+
         // The mail's own buttons, in the pane however it was drawn.
         pane.addEventListener('click', function (event) {
             var target = event.target.closest('[data-ws-mail-plain], [data-ws-mail-show-pictures]');
@@ -985,7 +1023,7 @@
         });
 
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-forward], [data-ws-mail-close]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-forward], [data-ws-mail-close]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -994,7 +1032,9 @@
 
             event.preventDefault();
 
-            if (target.hasAttribute('data-ws-mail-new')) {
+            if (target.hasAttribute('data-ws-mail-check')) {
+                check(target);
+            } else if (target.hasAttribute('data-ws-mail-new')) {
                 // The new conversation opens in the pane once sent.
                 compose(h, { sent: function (data) { open(data.conversation_id); } });
             } else if (target.hasAttribute('data-ws-mail-forward')) {

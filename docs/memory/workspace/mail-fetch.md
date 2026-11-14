@@ -7,7 +7,7 @@ description: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in j
 - `job.php` on every tick (G2c2, no switch, like the scheduled actions): while the module is on and a box `enabled`, `transport = 'imap'` has a `host`, it loads `mail_fetch.php` and calls `ws_mail_fetch_run(20)`, then `pg_cron_ran('workspace_mail_job')`. A site with no such box costs one small read.
 - Catalogue `workspace_mail_job`: `inline => true`, `dispatch => false` (no switch on the scheduled jobs screen, not in the rotation; Operations alerts count it as always expected). `workspace_mail_job.php` (`ws_mail_fetch_run(40)`) stays for a dedicated cron line.
 - `ws_mail_fetch_run()` reads boxes not read in the last `WS_MAIL_FETCH_EVERY` (60) s, longest waiting first, while a whole box budget (15 s) still fits.
-- `includes/workspace/mail_fetch.php` is loaded only by those two callers (`require_once`), with the IMAP client (`mail-imap-client.md`).
+- `includes/workspace/mail_fetch.php` is loaded only by those two callers and Check e-mail's `ws_mail_check_run()` (`mail-check.md`), each by `require_once`, with the IMAP client (`mail-imap-client.md`).
 
 ## What does System status show?
 - Tile "Incoming E-mail" (reported, not scored; only while a box with a server is on), from `ws_mail_fetch_health()` in `mail_settings.php`: red when a box's `last_error` is set (not `too_large`); yellow for `too_large` or no good read (`ok_at`, else `created_at`) for over an hour; detail rows per box with the error text from `ws_mail_error_text()`. Links to `workspace_settings.php#ws-mail`.

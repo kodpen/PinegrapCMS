@@ -1236,6 +1236,7 @@
     "Check all tables now? Every table is read in full and a broken MyISAM table is repaired; on a large database that takes minutes. Take a backup first.": "Tüm tablolar şimdi denetlensin mi? Her tablo baştan sona okunur, bozuk bulunan MyISAM tabloları onarılır; büyük bir veritabanında dakikalar sürer. Önce yedek alın.",
     "Check and record the quality of each stage": "Her aşamanın kalitesini kontrol edip kayda geçirmek",
     "Check box as text": "Onay kutusu metin olarak",
+    "Check e-mail": "E-postaları denetle",
     "Check failed": "Denetim yapılamadı",
     "Check for Updates": "Güncellemeleri Kontrol Et",
     "Check if Design File should be included on All Themes screen and in Theme preview": "Tasarım Dosyasının Tüm Temalar ekranında ve Tema önizlemesinde eklenip eklenmeyeceğini kontrol edin",

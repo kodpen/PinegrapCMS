@@ -1384,6 +1384,7 @@
     "{var:1} never ran": "{var:1} tanesi hiç çalışmadı",
     "{var:1} new": "{var:1} yeni",
     "{var:1} new contacts this week.": "Bu hafta {var:1} yeni kişi.",
+    "{var:1} new e-mails": "{var:1} yeni e-posta",
     "{var:1} new form{suffix:1}": "{var:1} yeni form",
     "{var:1} new item(s) for you": "Sizin için {var:1} yeni kayıt",
     "{var:1} new messages": "{var:1} yeni mesaj",

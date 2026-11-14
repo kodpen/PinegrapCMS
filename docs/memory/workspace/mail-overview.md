@@ -11,7 +11,7 @@ description: Workspace e-mail as a whole: mailboxes, the card or a box's room, t
 - The name rule, IMAP, the eleven answers, what the screen is and what is left: `mail-decisions.md`. The records: `workflow/decisions-made-product-10.md`, `decisions-made-workspace-13.md`, `-17.md`, `-21.md` (the list moves into the messages area, MA10).
 
 ## Which parts are there?
-- Reading a box: `mail-fetch.md`, `mail-imap-client.md`, `mail-microsoft.md`; the parse and the store: `mail-parse.md`, `mail-ingest.md`, `mail-html.md`; routes and the customer's line: `mail-routing.md`.
+- Reading a box: `mail-fetch.md`, Check e-mail on the list `mail-check.md`, `mail-imap-client.md`, `mail-microsoft.md`; the parse and the store: `mail-parse.md`, `mail-ingest.md`, `mail-html.md`; routes and the customer's line: `mail-routing.md`.
 - The card in a channel and the Mailboxes card of the settings: `mail-card.md`, `workspace-mail-settings-dialog.md`; a box kept in no channel: `mail-room.md`; the "Support box" switch: `mail-support-box.md`.
 - The E-mails screen (Incoming, Sent, Not sent, filters, the row, the menu): `mail-list.md`; the reading pane and unread marks: `mail-screen-pane.md`, `mail-html-preview.md`.
 - Sending: `mail-send.md`, `mail-send-outcome.md`, `core/mail-queue-outcome.md`, `mail-email-fields.md`, `mail-sent-and-bounces.md`; New e-mail: `mail-compose.md`; Forward as e-mail: `mail-forward.md`; Reply by e-mail: `mail-reply.md`.

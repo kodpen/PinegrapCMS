@@ -623,9 +623,10 @@ function ws_mail_list_more_html($filters, $next)
  * @param bool     $can_send   the person may send from a mailbox (New e-mail)
  * @param bool     $support    a support box is among the boxes
  * @param string[] $transports ws_mail_list_transports()
+ * @param bool     $can_check  the person reads a mailbox with a server (Check e-mail)
  * @return string HTML
  */
-function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false, $support = true, $transports = array())
+function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false, $support = true, $transports = array(), $can_check = false)
 {
     $statuses = ws_mail_statuses() + array('all' => lang('All'));
     $holders = array('all' => lang('Anybody'), 'me' => lang('Held by me'), 'none' => lang('Held by nobody'));
@@ -680,11 +681,17 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
             . ' href="messages_mail.php' . (($query !== '') ? '?' . h($query) : '') . '"><i class="bi bi-' . $label[1] . ' me-1" aria-hidden="true"></i>' . h($label[0]) . '</a>';
     }
 
+    // Check e-mail reads now the boxes the person reads, or the one box the
+    // list is narrowed to (mail_check.php); without such a box it is not
+    // drawn.
+    $check = $can_check ? '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-check="' . (int) $filters['box'] . '">'
+        . '<i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>' . h(lang('Check e-mail')) . '</button>' : '';
+
     // New e-mail opens its form in a drawer (workspace_mail.js); without a
     // mailbox to send from it is not drawn.
     return pg_screen_toolbar(array(
         'primary'   => $can_send ? '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-mail-new><i class="bi bi-pencil-square me-2" aria-hidden="true"></i>' . h(lang('New e-mail')) . '</button>' : '',
-        'secondary' => '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-read-all><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Mark all as read')) . '</button>',
+        'secondary' => $check . '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-read-all><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Mark all as read')) . '</button>',
         'search'    => $search,
         'view'      => '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
     ));
