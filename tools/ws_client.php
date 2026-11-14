@@ -265,7 +265,7 @@ function ws_client_request($method, $url, $settings, $body = null, $headers = ar
 
 	if ($raw === false) {
 		$out['error'] = curl_error($ch);
-		curl_close($ch);
+		unset($ch);
 		return $out;
 	}
 
@@ -273,7 +273,7 @@ function ws_client_request($method, $url, $settings, $body = null, $headers = ar
 	$out['status'] = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
 	$out['headers'] = substr((string) $raw, 0, $size);
 	$out['body'] = (string) substr((string) $raw, $size);
-	curl_close($ch);
+	unset($ch);
 
 	return $out;
 }

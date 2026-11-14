@@ -15,7 +15,7 @@ description: Plan (owner 2026-11-14): the PHP error log of the owner's dev machi
 
 ## Which steps?
 - EL1 (S, no product code) Census. Every distinct Pinegrap line of the log (main checkout only, worktrees and scratch folders left out), grouped by file, checked against `development`: still there or gone. The list goes into `plans/php-error-log-clean-census.md`, most frequent first. A fatal error that is a real fault gets a `bug` issue.
-- EL2 (S) Own code. `tools/ws_client.php` frees its handle without `curl_close()` (`core/deprecated-resource-free-calls.md`). A test like `http_response_header_test.php` scans own code for the calls PHP 8.1 to 8.5 deprecate; a guarded call keeps its `phpcs:ignore`.
+- EL2 (S) Own code. Done #9468. `tools/ws_client.php` frees its handle without `curl_close()` (`core/deprecated-resource-free-calls.md`). A test like `http_response_header_test.php` scans own code for the calls PHP 8.1 to 8.5 deprecate; a guarded call keeps its `phpcs:ignore`.
 - EL3 (M) Bundled libraries, one PR each: the library's newer release that is clean on 8.5 and still runs on PHP 7.1, or the smallest guarded patch written down in `core/`. A release that changes behaviour is asked first.
 - EL4 (M) The eight files above: the cause fixed (a missing row, a key that may be absent, a constant defined twice), never an `@`; a test for each pure function touched.
 - EL5 (M, as many PRs as the census needs) The rest of the census by family, each PR of the usual size.
