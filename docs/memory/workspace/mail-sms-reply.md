@@ -12,7 +12,7 @@ module: sms_reply
 ## What does Reply by SMS do?
 - The card's button (payload `sms_reply`, `sms_window`) opens the Reply by WhatsApp drawer with its SMS branch (`whatsappForm(message, view, h, true)` in `workspace_mail.js`): whom it goes to, the time left, the text, saved replies, Send by SMS. No files and no templates.
 - Under the text: "{n} / 1000 characters, {p} SMS" and the encoding line (Standard characters, or Unicode makes every part shorter), live as the person writes.
-- Actions `ws_sms_reply_form`, `ws_sms_reply` share the WhatsApp case in `includes/workspace/actions.php`; the item, card message and waiting status are written by `ws_mail_phone_reply_send(..., 'sms')` as for WhatsApp. Text: `pg_sms_text()` form, at most `PG_SMS_ANSWER_MAX` (1000, the layer's `pg_sms_max_length()`).
+- Actions `ws_sms_reply_form`, `ws_sms_reply` share the WhatsApp case in `includes/workspace/actions.php`; the item, card message and waiting status are written by `ws_mail_phone_reply_send()` with transport `sms` (no file or template is read) as for WhatsApp. Text: `pg_sms_text()` form, at most `PG_SMS_ANSWER_MAX` (1000, the layer's `pg_sms_max_length()`).
 
 ## How is the length counted?
 - `pg_sms_parts()` (`includes/fn/sms_reply.php`): GSM-7 while every character is in the GSM 03.38 alphabet (extension characters `^{}\[~]|€` count two): 160 in one message, 153 a part. Else UCS-2 in UTF-16 units (an emoji is two): 70, then 67 a part. Turkish ğ ı ş İ Ş Ğ ç make it UCS-2.

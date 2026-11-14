@@ -23,7 +23,7 @@ description: Steps WA12-WA18 of plans/whatsapp-channel.md (owner 2026-11-13, #91
 - WA14c (S), the next free step: a received picture, voice message or document fetched from Meta into the card's files, as a mail's attachments.
 - WA15 (M) The list, the event and the API, in two parts. WA15a done in #9420: the list's Kind filter, the event's transport and number, reading over the API (`workspace/mail-phone-list-event-api.md`). WA15b done in #9455: answering a WhatsApp conversation over the API through `whatsapp_outbox`, free text only inside the 24 hours, as `workspace/mail-api.md`.
 - WA16 (M) Done in #9412 (Twilio webhook, Channel field, stop words) and #9425 (the Netgsm and İleti Merkezi polls): `platform/sms-incoming.md`. SMS into a channel, for the providers WA12 found able: the receiver (webhook or the general job's poll), the number's channel in the SMS settings, the conversation by number, an opt-out word written to the consent log.
-- WA17 (S) Answering by SMS: the drawer counts the length and the messages it makes, no files; a provider without incoming SMS offers nothing.
+- WA17 (S) Done in #9450: answering by SMS, `workspace/mail-sms-reply.md`.
 - WA18 (S) Close-out: the lasting rules into `workspace/` and `platform/`, `workspace/mail-decisions.md` brought up to date, the plan deleted.
 
 ## In which order?
