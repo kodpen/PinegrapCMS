@@ -13,7 +13,7 @@ description: Plan (owner 2026-11-14): "My calendar" beside e-mail and a person's
 
 ## Which steps?
 - PC1 (S, done #9474) Census: `workspace/personal-calendar-census-*.md` (readers, tables, words, mail, privacy); the architect answered the rest, the tables wait for the owner's yes.
-- PC2 (M) "My calendar": the Work Calendar opened on the reader alone (own tasks, the plan items they are in, bookings, own iCal layer), by month, week and as a list; a "My calendar" button in the E-mails toolbar and the Workspace menu.
+- PC2 (M) Done #9477: "My calendar" (`workspace_my_calendar.php`) by month, week and list; the button on the E-mails toolbar and the Workspace menu tile (`workspace/workspace-my-calendar.md`).
 - PC3 (M, schema) Plans: the tables; `ws_personal_plan_can_see()` as the one gate and a guard test that no reader goes around it; the "New plan" drawer (title, day or days, time, note, reminder); drawn for its owner on My calendar and Today; the reminder through the task reminders' path.
 - PC4 (S) Sharing: "Who can see" on the drawer: Only me (the default), chosen team members, the whole team. The others read it on their My calendar under the owner's name and change nothing.
 - PC5 (M) Roadmap: a plan with dated steps (title, day, done), drawn as a bar with its steps and its progress. "Make a task" on a step opens the task drawer filled; the step then follows the task's state.

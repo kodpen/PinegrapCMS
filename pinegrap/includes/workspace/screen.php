@@ -897,6 +897,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'tasks'     => $base . 'workspace_tasks.php',
             'board'     => $base . 'workspace_board.php',
             'calendar'  => $base . 'workspace_calendar.php',
+            'my_calendar' => $base . 'workspace_my_calendar.php',
             'timeline'  => $base . 'workspace_timeline.php',
             'notes'     => $base . 'workspace_notes.php',
             'flows'     => $base . 'workspace_flows.php',

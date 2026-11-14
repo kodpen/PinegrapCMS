@@ -24,7 +24,11 @@ class Curl
         if ($body === false) {
             $errno = curl_errno($ch);
             $err   = curl_error($ch);
-            curl_close($ch);
+            if (PHP_VERSION_ID < 80000) {
+                // From PHP 8.0 the handle is an object freed with its last
+                // reference; curl_close() does nothing there and is deprecated in 8.5.
+                curl_close($ch); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated -- guarded by PHP_VERSION_ID < 80000 above
+            }
             // Log so the operator can spot SSL/network issues without
             // attaching a debugger.
             @error_log("Iyzipay\\Curl: cURL error #$errno: $err (URL: $url)");
@@ -38,7 +42,9 @@ class Curl
                 'errorMessage' => 'cURL: ' . $err,
             ));
         }
-        curl_close($ch);
+        if (PHP_VERSION_ID < 80000) {
+            curl_close($ch); // phpcs:ignore PHPCompatibility.FunctionUse.RemovedFunctions.curl_closeDeprecated -- guarded by PHP_VERSION_ID < 80000 above
+        }
         return $body;
     }
 }
