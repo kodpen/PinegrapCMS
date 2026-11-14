@@ -704,8 +704,10 @@ function ws_mail_html_from_eml($item_id, $relative)
  */
 function ws_mail_eml_sweep($limit = 500)
 {
+    // A blocked mail's .eml goes with its row (ws_mail_block_sweep()).
+    $blocks = function_exists('ws_mail_blocks_ready') && ws_mail_blocks_ready();
     $rows = db_items("SELECT id, raw_path FROM ws_mail_items
-        WHERE raw_path <> '' AND created_at < '" . (time() - (WS_MAIL_EML_DAYS * 86400)) . "'
+        WHERE raw_path <> '' AND created_at < '" . (time() - (WS_MAIL_EML_DAYS * 86400)) . "'" . ($blocks ? ' AND blocked_at = 0' : '') . "
         ORDER BY id
         LIMIT " . max(1, (int) $limit));
 
@@ -867,6 +869,8 @@ function ws_mail_message_write($channel_id, $parent_id, $item_id, $body, $file_i
  * - loop:      our own, automatic or bulk mail (reason); nothing kept.
  * - bounce:    a delivery failure of one of the box's answers, kept as a
  *              line under its conversation (ws_mail_bounce_store()).
+ * - blocked:   the sender is on the block list (mail_blocks.php); only the
+ *              item's head and the .eml are kept, outside every conversation.
  * - held:      the sender passed WS_MAIL_SENDER_HOURLY this hour; nothing
  *              kept, so a reader leaves it in the mailbox for a later run.
  * - refused:   no sender, too large to read, or no channel to write in
@@ -924,9 +928,19 @@ function ws_mail_ingest($raw, $box)
     }
 
     $now = time();
+    $blocks = function_exists('ws_mail_blocks_ready') && ws_mail_blocks_ready();
 
+    // A blocked sender's mail is kept outside every conversation, its head
+    // and .eml only, so no card, notice, flow or automatic answer follows
+    // (mail_blocks.php); the fetch takes it as done.
+    if ($blocks && ws_mail_block_find($box_id, $from_email)) {
+        return ws_mail_block_store($raw, $box, $parsed, $hash, $from_email, $now);
+    }
+
+    // Blocked mail kept for the sender does not count toward the hold.
     if ((int) db_value("SELECT COUNT(*) FROM ws_mail_items
-        WHERE box_id = '" . $box_id . "' AND from_email = '" . e($from_email) . "' AND created_at > '" . ($now - 3600) . "'") >= WS_MAIL_SENDER_HOURLY) {
+        WHERE box_id = '" . $box_id . "' AND from_email = '" . e($from_email) . "' AND created_at > '" . ($now - 3600) . "'"
+        . ($blocks ? ' AND blocked_at = 0' : '')) >= WS_MAIL_SENDER_HOURLY) {
         return array_merge($result, array('status' => 'held'));
     }
 

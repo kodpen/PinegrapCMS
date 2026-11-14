@@ -384,6 +384,9 @@ function ws_mail_ingest_message($result)
         case 'loop':
             return array('notice' => false, 'text' => lang('This e-mail was not brought in: it was sent by this site or automatically, or to a list.'));
 
+        case 'blocked':
+            return array('notice' => true, 'text' => lang('This sender is blocked: the e-mail was kept for 30 days and opened no conversation.'));
+
         case 'held':
             return array('notice' => false, 'text' => lang(array('string' => 'This sender has sent more than {var:1} e-mails in the last hour; try again later.', 'vars' => WS_MAIL_SENDER_HOURLY)));
     }
@@ -1280,6 +1283,7 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
             <div class="card-body">
                 ' . $rows . '
                 ' . $intro . '
+                ' . (function_exists('ws_mail_blocks_html') ? ws_mail_blocks_html(ws_mail_blocks_list(), $form) : '') . '
                 ' . ws_mail_connect_form($viewer, $form) . '
             </div>
         </div>

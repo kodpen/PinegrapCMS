@@ -127,6 +127,13 @@ if (ws_enabled() && function_exists('ws_mail_html_fill')) {
     ws_mail_html_fill();
 }
 
+// Blocked senders' mail past its 30 days, row and .eml together, before
+// the .eml sweep below, which leaves blocked mail alone
+// (includes/workspace/mail_blocks.php).
+if (ws_enabled() && function_exists('ws_mail_block_sweep')) {
+    ws_mail_block_sweep();
+}
+
 // Original .eml files of incoming mail past their 30 days
 // (includes/workspace/mail.php).
 if (ws_enabled() && function_exists('ws_mail_eml_sweep')) {
