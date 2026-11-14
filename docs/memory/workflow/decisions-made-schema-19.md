@@ -1,6 +1,6 @@
 ---
 name: decisions-made-schema-19
-description: Decisions list, schema part 19 (2026-11-14 on): ws_mail_items.invitation, what a mail's calendar part said, kept for the invitation card of a personal plan
+description: Decisions list, schema part 19 (2026-11-14 on): ws_mail_items.invitation for the invitation card of a personal plan; ws_mail_items.draft_app_id, the application that wrote a mail draft
 ---
 
 ## Where are the rules and the earlier parts?
@@ -16,3 +16,9 @@ description: Decisions list, schema part 19 (2026-11-14 on): ws_mail_items.invit
 
 ## Does a later mail of the same invitation change the plan? (architect, 2026-11-14)
 - The architect's, not the owner's words, inside the plan's rule "No answer goes to the organiser": a later REQUEST or CANCEL with the same UID never changes a plan by itself. That mail draws its own card, and the plan changes only when its owner presses the button on it. Mail from outside does not write into a private calendar.
+
+## Does a mail draft keep which application wrote it? (owner, 2026-11-14, agent channel poll 3369)
+- Yes: `ws_mail_items.draft_app_id` INT UNSIGNED NOT NULL DEFAULT 0, the application that created the draft, 0 for a draft written in the panel. Written on create only; added by step MT5 of `plans/mail-chat-tools.md` with `install_add_column()`.
+- The owner chose "Evet, sütun eklensin; asistanın taslağı etiketle görünsün" over "Hayır, sütun eklenmesin; taslakta kimin yazdığı görünmesin" (the outcome: channel message 3372).
+- Why asked: `ws_mail_draft_insert()` stores the person for every caller, so the Drafts view (MT3b, #9543) cannot tell an assistant's draft from the person's own. With the column the row carries the application's name as a pill; #9543 lands without it.
+- Running sites: no backfill; a draft made before the step reads as the person's own.
