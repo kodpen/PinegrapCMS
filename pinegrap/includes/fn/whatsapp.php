@@ -1398,11 +1398,19 @@ function pg_whatsapp_queue_run($limit = 10, $seconds = 15)
 
                 $payload = json_decode((string) $row['payload'], true);
 
-                // An answer inside the customer's 24 hours is free text
-                // (includes/fn/whatsapp_reply.php); everything else a template.
-                $send = (($payload['type'] ?? '') === 'text')
-                    ? pg_whatsapp_cloud_send_text($app, $row['recipient'], (string) ($payload['text'] ?? ''))
-                    : pg_whatsapp_cloud_send($app, $row['recipient'], $row['template_name'], $row['template_language'], $payload);
+                // An answer inside the customer's 24 hours is free text or a
+                // file (includes/fn/whatsapp_reply.php); everything else a
+                // template.
+                $type = (is_array($payload) && isset($payload['type']) && is_string($payload['type'])) ? $payload['type'] : '';
+
+                if ($type === 'text') {
+                    $send = pg_whatsapp_cloud_send_text($app, $row['recipient'], (string) ($payload['text'] ?? ''));
+                } elseif (in_array($type, array('image', 'video', 'document'), true)) {
+                    require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_reply.php');
+                    $send = pg_whatsapp_reply_send_media($app, $row['recipient'], $payload);
+                } else {
+                    $send = pg_whatsapp_cloud_send($app, $row['recipient'], $row['template_name'], $row['template_language'], $payload);
+                }
             }
         }
 
