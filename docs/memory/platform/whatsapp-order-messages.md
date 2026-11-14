@@ -31,4 +31,4 @@ module: whatsapp_messages
 ## How was it verified?
 - `tests/whatsapp_messages_test.php` (variables, slots, components, offered templates, the card's decision, wiring), `stock_notify_item_view_test.php`. No database, no Meta account and no sandbox send in the cloud session.
 
-Related: docs/memory/platform/whatsapp-outbox-queue.md, docs/memory/platform/whatsapp-templates.md, docs/memory/platform/sms-order-messages.md
+Related: docs/memory/platform/whatsapp-outbox-queue.md, docs/memory/platform/whatsapp-templates.md, docs/memory/platform/sms-order-messages.md, docs/memory/platform/whatsapp-form-messages.md

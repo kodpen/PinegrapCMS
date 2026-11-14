@@ -13,7 +13,7 @@ description: Steps WA0-WA11 of the WhatsApp channel plan (#8950): facts and stor
 - WA3b (S) WhatsApp templates in Communication › Templates. Done in #9355: `ui/messages-area-templates-tab.md`.
 - WA4 (M) Webhook receiver. Done in #9351: `platform/whatsapp-webhook-events.md`.
 - WA5 (M) Order moments: received, shipped, delivered, back in stock, beside the SMS events of `platform/sms-order-messages.md`; per event a template and what fills each variable; off by default. Done in #9347: `platform/whatsapp-order-messages.md`. Not to be switched on anywhere before the owner's first live send.
-- WA6 (M) Forms: a custom form's message to its sender: which field holds the number, which template, which fields fill it.
+- WA6 (M) Forms: a custom form's message to its sender: which field holds the number, which template, which fields fill it. Done in #9374: `platform/whatsapp-form-messages.md`. Not to be switched on anywhere before the owner's first live send.
 - WA7 (M) Done in #9372: `workspace/workspace-flows-whatsapp-box.md`. Flows: the box "Send a WhatsApp message" (recipient from a value, template, variables, "send an e-mail when there is no number or it fails") and the event "A WhatsApp message arrived" in the event start's catalogue; both general, by `workspace/workspace-flows-adding.md`.
 - WA8 (M) Template designer, first half. Done in #9350: `platform/whatsapp-template-designer.md`.
 - WA9 (M) Template designer, second half: header image, video or document from Files, the buttons, "Send for approval", the state shown, editing a rejected template.
