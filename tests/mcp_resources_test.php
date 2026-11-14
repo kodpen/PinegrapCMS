@@ -267,8 +267,7 @@ function test_mcp_resources_list_follows_the_routes_offered()
 
 	$resources = pg_mcp_resources_list($routes);
 
-	pg_assert_same(1, count($resources), 'one fixed resource');
-	pg_assert_same('pinegrap://workspace/my-day', $resources[0]['uri']);
+	pg_assert_same(array('pinegrap://workspace/my-day', 'pinegrap://workspace/canvas-guide'), array_column($resources, 'uri'), 'two fixed resources');
 	pg_assert_same('application/json', $resources[0]['mimeType']);
 	pg_assert_true($resources[0]['name'] !== '' && $resources[0]['description'] !== '', 'named and described');
 
@@ -277,7 +276,7 @@ function test_mcp_resources_list_follows_the_routes_offered()
 	pg_assert_same(array('pinegrap://workspace/channels/{id}/context', 'pinegrap://workspace/channels/{id}/customer', 'pinegrap://workspace/refs/{type}/{id}'), array_column($templates, 'uriTemplate'));
 	pg_assert_same(array('application/json', 'application/json', 'application/json'), array_column($templates, 'mimeType'));
 
-	foreach (array('my_day', 'channel_context', 'channel_customer', 'record_refs') as $key) {
+	foreach (array('my_day', 'channel_context', 'channel_customer', 'record_refs', 'canvas_guide') as $key) {
 		pg_assert_true(pg_mcp_resource_route($key, $routes) !== null, $key . ' is read through its route');
 	}
 
@@ -308,7 +307,7 @@ function test_mcp_resources_left_out_with_their_route()
 
 	$routes = mcp_resources_test_routes(array('workspace:read'), mcp_resources_test_schema_with('workspace.my_day.get', array('mcp' => false)));
 
-	pg_assert_same(array(), pg_mcp_resources_list($routes));
+	pg_assert_same(array('pinegrap://workspace/canvas-guide'), array_column(pg_mcp_resources_list($routes), 'uri'), 'my day goes, the guide stays');
 
 	// A route under another scope follows that scope.
 	$routes = mcp_resources_test_routes(array('workspace:read'), mcp_resources_test_schema_with('workspace.refs.get', array('scope' => 'orders:read')));

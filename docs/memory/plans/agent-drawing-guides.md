@@ -22,4 +22,6 @@ description: Plan (owner 2026-11-14): what the canvas side gives an agent's draw
 - No second tool beside the canvas (owner, 2026-11-11, `workflow/decisions-made-workspace-16.md`); a new operation goes into the route, the MCP tool and `edit_canvas` alike; the limits stay (20 operations a call, a document of 1 MB): a chart is one operation.
 - No table or column; a step that needs one stops and asks the architect. A layer the server writes is one the editor's model accepts.
 - Every step from DG2 on posts real pictures (dark and light) in the agent channel before its PR goes ready.
+- From DG2 on, each step also draws a real canvas in agent channel 25 through the canvas API route or MCP tool with the channel's agent key, as an agent would, beside its pictures, so the owner sees the trial in the channel (owner, 2026-11-14, message 2660).
+- Owner (2026-11-14, message 2660): DG1's drawings approved as they are; drawing them through the API is DG3.
 - DG1 first; DG2 after the owner's look at it; DG3, DG4 and DG5 after DG2, side by side. Claim as `[plan:agent-drawing-guides] <step> — <topic>`.
