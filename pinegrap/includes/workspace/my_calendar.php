@@ -303,6 +303,11 @@ function ws_my_calendar($viewer, $view, $anchor = '')
         $days[$date]['events'] = ws_my_calendar_sort_events($day['events']);
     }
 
+    // A plan with a roadmap carries how far it has come.
+    if (function_exists('ws_personal_plans_progress_place')) {
+        $days = ws_personal_plans_progress_place($days, $viewer);
+    }
+
     return array(
         'view'     => $range['view'],
         'label'    => ws_my_calendar_label($range),

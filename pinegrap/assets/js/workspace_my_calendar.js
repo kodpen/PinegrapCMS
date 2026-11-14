@@ -219,6 +219,12 @@
             }
 
             item.appendChild(document.createTextNode((event.time ? event.time + ' ' : '') + event.title));
+
+            // A plan with a roadmap: how many of its steps are done.
+            if (event.steps_total && window.PGWsRoadmap) {
+                item.appendChild(el('span', 'ws-roadmap-count pg-tabular', window.PGWsRoadmap.progress(event)));
+            }
+
             item.title = event.title + (event.layer ? ' · ' + event.layer : '') + (event.owner ? ' · ' + s('plan_of').replace('{1}', event.owner) : '');
 
             return item;
@@ -404,7 +410,7 @@
 
                 day.events.forEach(function (event) {
                     section.appendChild(listRow(el('span', 'ws-cal-event-dot ws-kind-' + event.kind), event.title,
-                        event.plan_id ? (event.owner ? s('plan_of').replace('{1}', event.owner) : s('my_plan')) : (event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || '')),
+                        event.plan_id ? (event.owner ? s('plan_of').replace('{1}', event.owner) : s('my_plan')) + (event.steps_total && window.PGWsRoadmap ? ' · ' + window.PGWsRoadmap.label(event, s) : '') : (event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || '')),
                         event.time || h.t('all_day'),
                         (event.url || event.plan_id || !event.readonly) ? function () { openEvent(event); } : null));
                 });
@@ -613,6 +619,28 @@
             note.value = plan ? plan.note : '';
             body.appendChild(field(s('plan_note'), note));
 
+            // The roadmap: dated steps and the plan's progress.
+            var roadmap = window.PGWsRoadmap ? window.PGWsRoadmap.section(h, s, plan, {
+                range: function () { return { start: first.value, end: last.value || first.value }; },
+                saveAll: function () {
+                    return submit().then(function (saved) {
+                        h.hideOffcanvas(node);
+                        load();
+
+                        return saved;
+                    });
+                },
+                reopen: function (planId) {
+                    load();
+                    openPlan(planId);
+                }
+            }) : null;
+
+            if (roadmap) {
+                body.appendChild(roadmap.node);
+                [first, last].forEach(function (control) { control.addEventListener('change', roadmap.redraw); });
+            }
+
             // Somebody else's plan opened to the reader: read, not changed.
             if (!mine) {
                 // The panel's read-only state: every field dimmed, nothing to type in.
@@ -646,6 +674,28 @@
 
             var save = el('button', 'pg-button pg-button-fill pg-button-sm', s('save'));
             save.type = 'button';
+
+            // Saves the plan, then its steps; resolves with the roadmap.
+            function submit() {
+                return h.api('ws_personal_plan_save', {
+                    plan_id: plan ? plan.id : 0,
+                    title: name.value,
+                    start: first.value,
+                    end: last.value,
+                    all_day: whole.checked ? 1 : 0,
+                    start_time: from.value,
+                    end_time: until.value,
+                    remind: remind.value,
+                    note: note.value,
+                    visibility: whoValue,
+                    people: whoValue === 'people' ? picker.value() : []
+                }).then(function (result) {
+                    plan = plan || result.plan;
+
+                    return roadmap ? roadmap.save(result.plan.id) : null;
+                });
+            }
+
             save.addEventListener('click', function () {
                 // Chosen team members with nobody chosen: said at the field.
                 if (whoValue === 'people' && !picker.value().length) {
@@ -658,19 +708,7 @@
                 }
 
                 save.disabled = true;
-                h.api('ws_personal_plan_save', {
-                    plan_id: plan ? plan.id : 0,
-                    title: name.value,
-                    start: first.value,
-                    end: last.value,
-                    all_day: whole.checked ? 1 : 0,
-                    start_time: from.value,
-                    end_time: until.value,
-                    remind: remind.value,
-                    note: note.value,
-                    visibility: whoValue,
-                    people: whoValue === 'people' ? picker.value() : []
-                }).then(function () {
+                submit().then(function () {
                     save.disabled = false;
                     h.hideOffcanvas(node);
                     h.toast(s('plan_saved'), 'success');

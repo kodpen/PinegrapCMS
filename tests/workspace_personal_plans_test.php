@@ -142,6 +142,7 @@ function test_workspace_personal_plan_tables_are_read_through_the_module_alone()
 {
 	$allowed = array(
 		'includes/workspace/personal_plans.php',
+		'includes/workspace/personal_plan_steps.php',
 		'includes/migrations/2026.11.0.php',
 		'install/index.php',
 	);

@@ -43,5 +43,5 @@ pg_page_shell([
         </div>
     </div>
 </main>
-' . ws_screen_assets($viewer, 'my_calendar', array('my_calendar' => array('strings' => ws_my_calendar_js_strings() + ws_personal_plan_js_strings()))) .
+' . ws_screen_assets($viewer, 'my_calendar', array('my_calendar' => array('strings' => ws_my_calendar_js_strings() + ws_personal_plan_js_strings() + ws_personal_plan_steps_js_strings()))) .
 output_footer();
