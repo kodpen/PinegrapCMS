@@ -17,5 +17,5 @@ description: Decisions made, workspace part 26: a template is chosen with a prev
 
 ## May a connected chat send a Workspace e-mail? (owner, 2026-11-14, channel message 2714)
 - The owner asked for a plan: "API mcp ile e-posta okuyacak, gönderecek, taslak olarak kaydedecek bir plan hazırlar misin. Hem html hem düz metin. Claude sohbetinden direkt e-posta okuyup yanıtlama işleri için".
-- So: over the API and MCP a mail is read, kept as a draft on the server and sent, in plain text and in HTML. Plan: `plans/mail-chat-tools.md`.
+- So: over the API and MCP a mail is read, kept as a draft on the server and sent, in plain text and in HTML. Plan `mail-chat-tools`, closed 2026-11-14: `workspace/mail-overview.md`.
 - The architect's reading, told to him in the channel (the answer to 2714): sending is for a person's own connection, in that person's name, under a scope of its own that no connection of today holds. His answer 7 of #2444 ("assistants never e-mail customers, drafts only", `workspace/mail-decisions.md`) stays for an application key, a channel agent and Pinegrap AI.

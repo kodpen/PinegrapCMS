@@ -10,7 +10,7 @@ description: Plan (owner 2026-11-14): the E-mails screen gains Check e-mail, a p
 - The job reads the boxes every minute, 25 mails a run, one reader per box by a lock (`workspace/mail-fetch.md`). Nobody can ask for a read from the screen.
 - One Signature per box, plain text, under the writer's name (`workspace/mail-compose.md`).
 - Only the loop gate and the hold at 20 mails an hour stop a sender (`workspace/mail-ingest.md`).
-- `workspace/mail-decisions.md` names as later: recipient suggestions, sending at a chosen time, a box's Sent folder. Drafts on the server are MT3 of `plans/mail-chat-tools.md`.
+- `workspace/mail-decisions.md` names as later: recipient suggestions, sending at a chosen time, a box's Sent folder. Drafts on the server: `workspace/mail-drafts.md`.
 
 ## Which steps?
 - IB1 (S, no product code) Census, done #9479: findings `plans/mail-inbox-features-census.md`, each step's exact scope `plans/mail-inbox-features-scopes.md`; the columns of IB3, IB4 and IB7: `workflow/decisions-made-schema-18.md`.

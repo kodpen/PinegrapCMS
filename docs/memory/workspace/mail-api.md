@@ -1,13 +1,13 @@
 ---
 name: mail-api
-description: Workspace e-mail in the external API and MCP (api_mail.php, G7, WM8 #8737): routes, list filters, unread, send_state, which are tools, who may answer or send, errors, the webhook
+description: Workspace e-mail in the API and MCP (G7, WM8 #8737, MT1-MT6): routes, list filters, unread, send_state, tools, who may answer or send, errors, the webhook
 ---
 
 ## Which routes?
-- `includes/workspace/api_mail.php`, `ws_mail_api_routes()` merged at the end of `ws_api_routes()`. Scopes `workspace:read` / `workspace:write`, no new scope; no mailbox management in the API.
+- `includes/workspace/api_mail.php`, `ws_mail_api_routes()` merged at the end of `ws_api_routes()`. Scopes `workspace:read` / `workspace:write`; sending `workspace:mail_send` (`mail-send-scope.md`); no mailbox management.
 - `GET /workspace/mail/conversations`: status, holder me/none, channel_id; cursor on newest mail + id, limit 1-100.
 - Its view, box_id, q and unread go through the screen's own `ws_mail_list_filters()`, `ws_mail_list_where()` and `ws_mail_unread_sql()` (via `ws_api_mail_list_filters()`); view is `all` by default.
-- `GET …/{id}` (with `mails`, newest 200 oldest first, plus the delivery failures of its answers found by `in_reply_to`), `POST …/{id}` (+PATCH: status, assignee_id; 0 or null = nobody), `POST …/{id}/reply` (text, 201 `WorkspaceMail` with `copy_kept`; WhatsApp: `mail-phone-list-event-api.md`).
+- `GET …/{id}` (with `mails`, newest 200 oldest first, plus the delivery failures of its answers found by `in_reply_to`), `POST …/{id}` (+PATCH: status, assignee_id; 0 or null = nobody), `POST …/{id}/reply` (text or html, file_ids, 201 `WorkspaceMail` with `copy_kept`; WhatsApp: `mail-phone-list-event-api.md`).
 - `POST …/{id}/read` (marks it read up to its newest mail, `ws_mail_read_mark()`), `POST /workspace/mail/messages` (a new mail, 201 `WorkspaceMailConversation` with its mail).
 - Objects `WorkspaceMailConversation` (`transport` email/whatsapp/sms and `customer_phone`, overdue, first_reply_due_at from the box's target, `unread` for the owner by the screen's rule, null before 11.0.185; GET does not mark read) and `WorkspaceMail` (direction, verified only for incoming, automatic, bounce, refused_files, to, cc, `send_state` sent/queued/failed with `send_error`, null for incoming).
 - A channel decides, not the box: `ws_api_mail_channel_reached()` = `ws_can_read_channel()`, and the Claude application only where `ws_claude_channel_allowed()`.
