@@ -330,17 +330,38 @@ function pg_sms_webhook_throttled()
 }
 
 /**
- * The SMS settings' "Customers' messages" part: the address to give the
- * provider and the Channel field, '' for a provider that cannot receive or
+ * The address a provider that posts customers' SMS is given, drawn in its
+ * own block of the SMS settings; '' for a provider that is asked instead or
  * with the Workspace off.
  *
- * @param string $provider the chosen provider
- * @param int    $user_id
+ * @param string $provider
  * @return string HTML
  */
-function pg_sms_channel_field($provider, $user_id)
+function pg_sms_webhook_field($provider)
 {
-    if (!pg_sms_incoming_supported($provider) || !defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+    if (((pg_sms_incoming_ways()[(string) $provider] ?? '') !== 'webhook') || !defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+        return '';
+    }
+
+    return '
+                                                        <div class="pg-f-md">
+                                                            <label for="sms_webhook_url_' . h($provider) . '" class="form-label">' . lang('Address for customers\' messages') . '</label>
+                                                            <input type="text" id="sms_webhook_url_' . h($provider) . '" class="form-control" value="' . h(pg_sms_webhook_url($provider)) . '" readonly>
+                                                            <div class="form-text">' . lang('In Twilio, paste it as the number\'s "A message comes in" webhook (HTTP POST).') . '</div>
+                                                        </div>';
+}
+
+/**
+ * The SMS settings' Channel field, drawn once below the providers' blocks:
+ * where customers' SMS open their conversations, whichever provider brings
+ * them; '' with the Workspace off.
+ *
+ * @param int $user_id
+ * @return string HTML
+ */
+function pg_sms_channel_field($user_id)
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
         return '';
     }
 
@@ -348,21 +369,8 @@ function pg_sms_channel_field($provider, $user_id)
 
     $field = ws_mail_phone_card_field((int) $user_id, 'sms');
 
-    if ($field === '') {
-        return '';
-    }
-
-    if (pg_sms_incoming_ways()[$provider] === 'poll') {
-        return $field . '
-                                                        <div class="col-12 form-text">' . lang('The scheduled general job reads the messages customers sent to the account\'s receiving number (an 0850 number or a keyword on a short number, bought from the provider) every two minutes.') . '</div>';
-    }
-
-    return '
-                                                        <div class="pg-f-md">
-                                                            <label for="sms_webhook_url" class="form-label">' . lang('Address for customers\' messages') . '</label>
-                                                            <input type="text" id="sms_webhook_url" class="form-control" value="' . h(pg_sms_webhook_url($provider)) . '" readonly>
-                                                            <div class="form-text">' . lang('In Twilio, paste it as the number\'s "A message comes in" webhook (HTTP POST).') . '</div>
-                                                        </div>' . $field;
+    return ($field === '') ? '' : $field . '
+                                                        <div class="col-12 form-text">' . lang('Twilio posts customers\' messages to the address shown with its account; for Netgsm and İleti Merkezi the scheduled general job reads the messages sent to the account\'s receiving number (an 0850 number or a keyword on a short number, bought from the provider) every two minutes.') . '</div>';
 }
 
 /**

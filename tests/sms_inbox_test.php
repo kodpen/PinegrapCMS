@@ -104,7 +104,9 @@ function test_sms_inbox_wiring()
 	pg_assert_contains("!empty(\$message['stop']) || pg_sms_is_stop_word(", $read('includes/fn/sms_inbox.php'), 'a provider\'s own unsubscribe stops too');
 	pg_assert_contains("\$sms_channel_post = pg_sms_channel_check(\$_POST, USER_ID, \$liveform);", $read('includes/settings/contact.save.php'));
 	pg_assert_contains('pg_sms_channel_save($sms_channel_post, USER_ID);', $read('includes/settings/contact.save.php'));
-	pg_assert_contains('pg_sms_channel_field($key,', $read('includes/fn/sms.php'));
+	pg_assert_contains('pg_sms_webhook_field($key)', $read('includes/fn/sms.php'), 'the address in its provider\'s block');
+	pg_assert_same(1, substr_count($read('includes/fn/sms.php'), 'pg_sms_channel_field('), 'one Channel field below the blocks, so one sms_channel is posted');
+	pg_assert_same('', pg_sms_webhook_field('netgsm'), 'a polled provider has no address');
 	pg_assert_contains("hash('sha256', \$transport . ':' . (string) \$message['wamid'])", $read('includes/workspace/mail_phone.php'), 'an SMS id and a wamid never meet');
 	pg_assert_contains("bi-chat-dots", $read('includes/workspace/mail.php'), 'an SMS card has its own badge');
 	pg_assert_true(in_array('sms_webhook.php', waf_country_api_scripts(), true), 'called from the provider\'s servers');
