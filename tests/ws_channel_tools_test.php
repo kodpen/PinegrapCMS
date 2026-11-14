@@ -359,3 +359,40 @@ function test_ws_channel_tools_post_send_repeat()
 	list($r) = ws_channel_tools_send_run(array(403, 201));
 	pg_assert_same(array(1, false, 403), array($r['calls'], $r['no_answer'], $r['answer']['status']));
 }
+
+function test_ws_channel_tools_post_file_body()
+{
+	$path = (string) tempnam(sys_get_temp_dir(), 'wsfile');
+	file_put_contents($path, 'x');
+
+	$built = ws_post_file_body('  Screenshot of step 2 ', array('file' => $path, 'parent' => '41'));
+	pg_assert_same(array('text' => 'Screenshot of step 2', 'parent_id' => 41), $built['body']);
+	pg_assert_same($path, $built['file']);
+
+	// The text may be left out: the file is the message.
+	pg_assert_same(array(), ws_post_file_body('', array('file' => $path))['body']);
+
+	pg_assert_same(null, ws_post_file_body('x', array('file' => true))['body']);
+	pg_assert_same(null, ws_post_file_body('x', array('file' => $path . '-missing'))['body']);
+	pg_assert_same(null, ws_post_file_body('x', array('file' => sys_get_temp_dir()))['body']);
+	pg_assert_same(null, ws_post_file_body('x', array('file' => $path, 'kind' => 'note'))['body']);
+	pg_assert_same(null, ws_post_file_body('x', array('file' => $path, 'parent' => '0'))['body']);
+	pg_assert_same('', ws_post_file_body(str_repeat('ş', 4001), array('file' => $path))['file']);
+
+	unlink($path);
+}
+
+function test_ws_channel_tools_failure_line()
+{
+	$answer = function ($status, $body, $error = '') {
+		return array('status' => $status, 'headers' => '', 'body' => $body, 'error' => $error);
+	};
+
+	pg_assert_same('network: timeout', ws_client_failure($answer(0, '', 'timeout')));
+	pg_assert_same('HTTP 403 forbidden', ws_client_failure($answer(403, '{"error":{"code":"forbidden","message":"No."}}')));
+	pg_assert_same(
+		'HTTP 422 validation_failed: The file is larger than 20 MB. (file)',
+		ws_client_failure($answer(422, '{"error":{"code":"validation_failed","message":"The file is\nlarger than 20 MB.","field":"file"}}'))
+	);
+	pg_assert_same(300 + strlen('HTTP 422 validation_failed: ...'), strlen(ws_client_failure($answer(422, '{"error":{"code":"validation_failed","message":"' . str_repeat('a', 400) . '"}}'))));
+}

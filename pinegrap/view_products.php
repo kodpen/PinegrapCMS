@@ -207,7 +207,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                 </form>
             </div>
         </div>
-        ' . pg_seo_render_detail_offcanvas() . '
+        ' . pg_seo_render_run_script() . '
         ' . pg_product_modify_dialog('view_products_form') . '
     ';
 

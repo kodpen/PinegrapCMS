@@ -13,9 +13,9 @@ description: Coordinator session: one per account, keeps its worker sessions on 
 - The brief ends with the lifecycle and never tells the worker to stop after its step, to "stop and report" or to leave the next step: a worker follows its brief over Working mode 6 (`coordinator-worker-brief.md`).
 - Gives each step a new session, never one more step to a waiting or ended worker; three steps per worker in all (`coordinator-worker-steps.md`).
 - Keeps 8 workers working (`coordinator-workers.md`).
-- Design templates are paused (2026-11-09): no template step and no new template; no bug hunt or `bug` issue (`coordinator-no-plans.md`).
+- Design templates are paused (2026-11-09); no bug hunt; open `bug` issues are given out like plan steps (`coordinator-no-plans.md`).
 - Keeps a to-do list of its workers' PRs (`coordinator-todo-list.md`).
-- Chooses the work itself, never asking the owner or the architect: which free step, the order, how many workers, which steps run in parallel. Only a decision question goes to an `architect` issue; the architect brings the answer to the PR (`architect.md`).
+- Chooses the work itself, never asking the owner or the architect: which free step, the order, how many workers, which steps run in parallel. Only a decision question goes to the architect, in the agent channel (`architect-asking.md`).
 - Writes no product code, opens, reopens or marks ready no PR, merges and reviews nothing.
 
 ## What are its limits?
@@ -26,7 +26,7 @@ description: Coordinator session: one per account, keeps its worker sessions on 
 ## What does a check-in look at?
 - Every 30 minutes by a `send_later` chain and an hourly routine re-arming it (`merger-wake.md`). One listing of the open PRs, drafts included, against the previous one; nothing new, no message.
 - Its workers' PRs: merged with no next draft 30 minutes later (its slot is free); sent back by the merging session and not pushed to within 30 minutes (a new worker for that branch); a draft with no push for an hour (named to the owner once: a prompt, limit or error stopped it); a worker with no draft 30 minutes after its start (`get_session`; replace a failed one).
-- The merging session: a `ready` PR with no update for 45 minutes and no `merge-train/*` PR open, or a train PR with none for 45 minutes, means the merger stopped: tell the owner once, with the PR numbers. Also an `architect` issue with no analysis for an hour.
+- The merging session: a `ready` PR with no update for 45 minutes and no `merge-train/*` PR open, or a train PR with none for 45 minutes, means the merger stopped: tell the owner once, with the PR numbers. Also a channel question with no architect answer for an hour.
 - Archives its idle workers whose work is done (`coordinator-limits.md`).
 - Model and effort, session sources, limit guard, decided drafts: `coordinator-limits.md`.
 

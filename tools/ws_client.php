@@ -223,11 +223,13 @@ function ws_client_max_id($messages, $floor)
  * @param string $method GET or POST
  * @param string $url
  * @param array{site: string, key: string, secret: string} $settings
- * @param array<string,mixed>|null $body JSON body for POST
+ * @param array<string,mixed>|null $body JSON body for POST, or the form
+ *        fields (CURLFile values among them) with $form
  * @param string[] $headers extra header lines
+ * @param bool $form send $body as multipart/form-data
  * @return array{status: int, headers: string, body: string, error: string}
  */
-function ws_client_request($method, $url, $settings, $body = null, $headers = array())
+function ws_client_request($method, $url, $settings, $body = null, $headers = array(), $form = false)
 {
 	$out = array('status' => 0, 'headers' => '', 'body' => '', 'error' => '');
 
@@ -249,7 +251,10 @@ function ws_client_request($method, $url, $settings, $body = null, $headers = ar
 	curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 
-	if ($body !== null) {
+	if ($body !== null && $form) {
+		// curl writes the multipart Content-Type with its boundary itself.
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+	} elseif ($body !== null) {
 		$lines[] = 'Content-Type: application/json';
 		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 	}
@@ -305,5 +310,18 @@ function ws_client_failure($answer)
 	$json = json_decode($answer['body'], true);
 	$code = is_array($json) && isset($json['error']['code']) ? (string) $json['error']['code'] : '';
 
-	return 'HTTP ' . $answer['status'] . ($code !== '' ? ' ' . $code : '');
+	$line = 'HTTP ' . $answer['status'] . ($code !== '' ? ' ' . $code : '');
+
+	// A refused input (a file too large, or of a kind the site does not take)
+	// is told by the API's own message, cut to one short line.
+	if ($answer['status'] === 422 && is_array($json) && isset($json['error']['message']) && is_string($json['error']['message'])) {
+		$message = trim((string) preg_replace('/\s+/', ' ', $json['error']['message']));
+		$line .= ': ' . (strlen($message) > 300 ? substr($message, 0, 300) . '...' : $message);
+
+		if (isset($json['error']['field']) && is_string($json['error']['field']) && $json['error']['field'] !== '') {
+			$line .= ' (' . $json['error']['field'] . ')';
+		}
+	}
+
+	return $line;
 }

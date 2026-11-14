@@ -1,6 +1,6 @@
 ---
 name: coordinator-no-plans
-description: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; no bug hunt and no bug issue as work
+description: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; no bug hunt; open bug issues are work like plan steps
 ---
 
 ## Are the design template plans paused?
@@ -20,10 +20,12 @@ description: Design template plans are paused (2026-11-09) but for the lines the
 - A worker whose template step landed takes the plan's next step on the same terms (CLAUDE.md, Working mode 6); else it ends and its slot goes to the main list.
 - Why: coordinators gave template steps out while feature plan steps waited.
 
-## Are bug issues or a bug hunt given out?
-- No, since 2026-11-06. Workers only build the project: a free plan step, else a new design template. No coordinator starts a bug hunt or gives a `bug` issue to a worker, and no worker claims one.
-- The open `bug` issues (the test coordinator's and those of the earlier hunts) wait for the owner (`test-coordinator.md`).
-- Why: the workers' quota goes to building the project (on 2026-11-06 seven new hunts started within five minutes).
+## Is a bug hunt given out?
+- No, since 2026-11-06: no hunt for new faults. Why: quota goes to building the project (seven hunts started within five minutes that day).
+
+## Are open bug issues given out?
+- Yes, since 2026-11-13: an open `bug` issue is work for every coordinator, given out like a plan step, one per worker and PR (`test-coordinator.md`).
+- Why: the owner's message 2270 in the agent channel (2026-11-13) asked for more work per wake: bug issues are now finished and closed.
 
 ## When is a new design template started?
 - When a slot is still free and no template plan is open.

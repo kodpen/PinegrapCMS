@@ -4,7 +4,8 @@
  *
  * Communication › Templates (includes/fn/messages_templates.php): the SMS
  * texts as list rows, their state, own or built-in text, the events the
- * card does not offer left out, the link to the card.
+ * card does not offer left out, the link to the card; the WhatsApp
+ * templates with their state, tone, reason and Refresh.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -18,6 +19,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once PG_FUNCTIONS_DIR . '/includes/fn/sms_messages.php';
 require_once PG_FUNCTIONS_DIR . '/includes/fn/messages_templates.php';
+require_once PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php';
 
 function messages_templates_test_definitions()
 {
@@ -62,8 +64,7 @@ function test_messages_templates_card_markup()
 	pg_assert_same(1, substr_count($html, 'pg-pill pg-tone-teal'), 'one event on');
 	pg_assert_same(1, substr_count($html, 'pg-pill pg-tone-gray'), 'one event off');
 
-	pg_assert_contains('pgset-whatsapp', pg_messages_template_coming_card('settings.php#pgset-whatsapp'), 'WhatsApp leads to its card for a manager');
-	pg_assert_false(strpos(pg_messages_template_coming_card(''), 'href=') !== false, 'and nowhere for a campaign maker');
+	pg_assert_false(strpos(pg_messages_template_coming_card(), 'WhatsApp') !== false, 'WhatsApp has its own card, no Soon row');
 }
 
 function test_messages_templates_every_card_event_has_a_kind_label()
@@ -73,4 +74,61 @@ function test_messages_templates_every_card_event_has_a_kind_label()
 	foreach (pg_sms_message_events() as $event => $definition) {
 		pg_assert_true(isset($kinds[$definition['kind']]), $event . ' has a kind label');
 	}
+}
+
+function messages_templates_test_whatsapp()
+{
+	return array(
+		array('name' => 'order_shipped', 'language' => 'tr', 'category' => 'UTILITY', 'status' => 'APPROVED', 'reason' => ''),
+		array('name' => 'spring <sale>', 'language' => 'en_US', 'category' => 'MARKETING', 'status' => 'REJECTED', 'reason' => 'PROMOTIONAL'),
+		array('name' => 'code', 'language' => 'tr', 'category' => 'AUTHENTICATION', 'status' => 'PENDING', 'reason' => 'NONE_LEFT'),
+		array('name' => 'old', 'language' => 'tr', 'category' => 'UTILITY', 'status' => 'APPROVED', 'reason' => 'SCAM'),
+		array('name' => 'draft', 'language' => 'tr', 'category' => 'UTILITY', 'status' => 'DRAFT', 'reason' => ''),
+	);
+}
+
+function test_messages_templates_whatsapp_rows()
+{
+	$rows = pg_messages_template_whatsapp_rows(messages_templates_test_whatsapp());
+
+	pg_assert_same(array('teal', 'rose', 'amber', 'teal', 'gray'), array_column($rows, 'tone'), 'approved, rejected, in review, approved, draft');
+	pg_assert_same(lang('Approved'), $rows[0]['pill'], 'the state by its label');
+	pg_assert_same(lang('Utility'), $rows[0]['category'], 'the type by its label');
+	pg_assert_same(lang('Promotional content'), $rows[1]['reason'], 'a rejection\'s reason by its label');
+	pg_assert_same('', $rows[2]['reason'], 'no reason while not rejected');
+	pg_assert_same('', $rows[3]['reason'], 'an old reason left on an approved template is not shown');
+
+	pg_assert_same('SOMETHING_NEW', pg_messages_template_whatsapp_reason('SOMETHING_NEW'), 'a new code as it comes');
+	pg_assert_same('rose', pg_messages_template_whatsapp_tone('DISABLED'), 'disabled is rose');
+	pg_assert_same('amber', pg_messages_template_whatsapp_tone('PAUSED'), 'paused is amber');
+	pg_assert_same('gray', pg_messages_template_whatsapp_tone('ARCHIVED'), 'archived is gray');
+}
+
+function test_messages_templates_whatsapp_card()
+{
+	$rows = pg_messages_template_whatsapp_rows(messages_templates_test_whatsapp());
+	$state = array('sub' => 'Read', 'error' => '', 'refresh' => 'messages_templates.php?a=1&b=2', 'token' => '<input type="hidden" name="token" value="t">', 'settings' => 'settings.php#pgset-whatsapp', 'empty' => 'None');
+	$html = pg_messages_template_whatsapp_card($rows, $state);
+
+	pg_assert_contains('<section class="pg-card pg-messages-card">', $html, 'a look A card');
+	pg_assert_contains('action="messages_templates.php?a=1&amp;b=2"', $html, 'Refresh posts to the tab, escaped');
+	pg_assert_contains('name="token"', $html, 'with the CSRF field');
+	pg_assert_contains('value="whatsapp_refresh"', $html, 'and its action');
+	pg_assert_contains('spring &lt;sale&gt;', $html, 'a name, escaped');
+	pg_assert_contains('en_US', $html, 'the language');
+	pg_assert_same(1, substr_count($html, h(lang('Promotional content'))), 'the one rejection\'s reason');
+	pg_assert_false(strpos($html, 'None') !== false, 'no empty line while there are templates');
+	pg_assert_same(5, substr_count($html, 'bi-whatsapp'), 'a row per template');
+
+	$state['refresh'] = '';
+	$html = pg_messages_template_whatsapp_card(array(), $state);
+	pg_assert_false(strpos($html, 'whatsapp_refresh') !== false, 'no Refresh without its address');
+	pg_assert_contains('href="settings.php#pgset-whatsapp"', $html, 'the way to the card instead');
+	pg_assert_contains('None', $html, 'the empty line');
+
+	$state['settings'] = '';
+	$state['error'] = 'Meta <said> no';
+	$html = pg_messages_template_whatsapp_card(array(), $state);
+	pg_assert_false(strpos($html, 'href=') !== false, 'nothing to follow for a campaign maker');
+	pg_assert_contains('Meta &lt;said&gt; no', $html, 'a failed read, escaped');
 }

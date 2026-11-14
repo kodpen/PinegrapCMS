@@ -24310,6 +24310,13 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   line-height: 1.5rem;
   overflow-wrap: anywhere;
 }
+/* A fragment a cell's link loaded (the SEO analysis) spans the panel
+   under its column's line, part of that line. */
+.pg-list-table-details dd.pg-list-table-details-more {
+  grid-column: 1 / -1;
+  padding-top: 0;
+  border-top: 0;
+}
 .pg-list-table-details-actions {
   display: flex;
   flex-wrap: wrap;
@@ -27722,6 +27729,12 @@ body.pg-measure-report #content {
 }
 .pg-messages-row-pill {
   align-self: center;
+}
+.pg-messages-card-head > form {
+  margin: 0;
+}
+.pg-messages-card-empty {
+  margin: 4px 12px 10px;
 }
 
 }
