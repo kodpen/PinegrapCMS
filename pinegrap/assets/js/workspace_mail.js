@@ -1412,8 +1412,52 @@
             });
         }
 
+        // Block sender's form under a mail (mail_blocks.php): each of its two
+        // choices keeps one pressed button; Block sender posts them.
+        pane.addEventListener('submit', function (event) {
+            var form = event.target.closest('[data-ws-mail-block]');
+
+            if (!form) {
+                return;
+            }
+
+            event.preventDefault();
+
+            var data = { item_id: parseInt(form.getAttribute('data-ws-mail-block'), 10) };
+            var send = form.querySelector('[type="submit"]');
+
+            Array.prototype.forEach.call(form.querySelectorAll('[data-ws-mail-block-choice]'), function (group) {
+                var chosen = group.querySelector('[aria-pressed="true"]');
+
+                data[group.getAttribute('data-ws-mail-block-choice')] = chosen ? chosen.getAttribute('data-value') : '';
+            });
+
+            send.disabled = true;
+
+            h.api('ws_mail_block', data).then(function (result) {
+                h.toast(result.text, 'success');
+
+                if (current > 0) {
+                    open(current);
+                }
+            }).catch(function (error) {
+                send.disabled = false;
+                h.fail(error);
+            });
+        });
+
         // The mail's own buttons, in the pane however it was drawn.
         pane.addEventListener('click', function (event) {
+            var choice = event.target.closest('[data-ws-mail-block-choice] .pg-seg-item');
+
+            if (choice) {
+                Array.prototype.forEach.call(choice.parentNode.querySelectorAll('.pg-seg-item'), function (item) {
+                    item.setAttribute('aria-pressed', item === choice ? 'true' : 'false');
+                });
+
+                return;
+            }
+
             var target = event.target.closest('[data-ws-mail-plain], [data-ws-mail-show-pictures]');
 
             if (!target) {

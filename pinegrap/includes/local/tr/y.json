@@ -346,6 +346,7 @@
     "You closed {var:1} task{suffix:1} this week, and {var:2} on your list {suffix:2} still past due.": "Bu hafta {var:1} görev kapattın; listende son tarihi geçmiş {var:2} görev hâlâ duruyor.",
     "You confirm the time, or ask for another, on the same page.": "Saati aynı sayfada onaylarsınız ya da başka bir saat istersiniz.",
     "You decide who can do what with administrator, editor and contributor roles.": "Yönetici, editör, katkıda bulunan rolleri ile kimin ne yapabileceğini siz belirleyin.",
+    "You do not have access to Workspace settings.": "Çalışma Alanı ayarlarına erişiminiz yok.",
     "You do not have access to add a design.": "Tasarım ekleme yetkiniz yok.",
     "You do not have access to add or remove watchers because comments are disabled for the page. <a href=\"javascript:history.go(-1);\">Go back</a>.": "Sayfada yorumlar devre dışı olduğu için izleyici ekleyip kaldıramazsınız. <a href=\"javascript:history.go(-1);\">Geri git</a>.",
     "You do not have access to add or remove watchers because watching comments is disabled for the page. <a href=\"javascript:history.go(-1);\">Go back</a>.": "Sayfada yorum izleme devre dışı olduğu için izleyici ekleyip kaldıramazsınız. <a href=\"javascript:history.go(-1);\">Geri git</a>.",

@@ -2897,6 +2897,18 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok();
 
+        // Block sender, from a mail of the E-mails screen's pane
+        // (mail_blocks.php): the address or its domain, for this box or
+        // every box.
+        case 'ws_mail_block':
+            if (!function_exists('ws_mail_block_add')) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $result = ws_mail_block_add($viewer, (int) ($request['item_id'] ?? 0), $request, (string) ($_SESSION['sessionusername'] ?? ''));
+
+            return $result['ok'] ? ws_action_ok(array('text' => $result['text'])) : ws_action_error($result['error']);
+
         // Check e-mail: the person's IMAP boxes read now (mail_check.php);
         // when mail came, the list is drawn again with the screen's filters.
         case 'ws_mail_check':
