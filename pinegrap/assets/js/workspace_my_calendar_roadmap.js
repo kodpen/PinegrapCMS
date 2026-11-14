@@ -170,7 +170,7 @@
         // place of one of theirs.
         function choose(mine) {
             var pick = el('select', 'form-control form-control-sm');
-            var go = el('button', 'pg-button pg-button-primary pg-button-sm', s('template_save'));
+            var go = el('button', 'pg-button pg-button-quiet pg-button-sm', s('template_keep'));
 
             h.clear(chooser);
             pick.setAttribute('aria-label', s('template_save'));
@@ -331,7 +331,14 @@
                 if (move.checked && before && day.value && index < steps.length - 1) {
                     steps = shiftFollowing(steps, index, before, day.value);
                     drawSteps();
-                    list.querySelectorAll('.ws-roadmap-day')[index].focus();
+
+                    // The drawn date box, or the input itself before it is drawn.
+                    var again = list.querySelectorAll('.ws-roadmap-step')[index];
+                    var box = again && (again.querySelector('.pg-date-box') || again.querySelector('.ws-roadmap-day'));
+
+                    if (box) {
+                        box.focus();
+                    }
 
                     return;
                 }

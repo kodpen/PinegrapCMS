@@ -18,6 +18,7 @@ description: A person's own plan made for a customer (PC6): contact_id, the draw
 
 ## What does "New roadmap" on the card do?
 - Offered (`ws_customer_card_roadmap_offer()`) to a team member who may open the customer's contact. "Empty roadmap" opens My calendar with `?new_plan=1&contact=<id>`: the New plan drawer with the customer filled in. "Copy one of my plans" lists the person's 5 latest own plans.
+- "Team templates" follow: the team's roadmap templates, each filling the New plan drawer (`workspace-roadmap-templates.md`).
 - A copy writes nothing (architect, channel 3345): the plan's link opens My calendar with `&from=<plan>`, and the New plan drawer is filled by `ws_personal_plan_copy_draft()` (`ws_personal_plan_copy_shift()` pure): title, note, the customer, the steps; it starts today, keeps its length, time of day and each step's distance to the start; nothing done, no task tied, no reminder, Only me. The plan exists only after Save.
 
 ## Merge, erasure and export?

@@ -416,6 +416,7 @@ function ws_roadmap_template_js_strings()
     return array(
         'template_save'        => lang('Save as team template'),
         'template_save_new'    => lang('As a new template'),
+        'template_keep'        => lang('Save the template'),
         'template_save_over'   => lang('In place of: {1}'),
         'template_saved'       => lang('Saved as a team template. The team can use it under New roadmap on a customer\'s card.'),
         'steps_move_following' => lang('Move the following steps too'),
