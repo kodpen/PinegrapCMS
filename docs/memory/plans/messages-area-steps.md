@@ -31,8 +31,8 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - MA8 after MA12; MA10b after MA1, MA10b2 and MA10c after MA10b in any order; MA9b and MA9c side by side, MA9d after both, MA9e after MA9d and the owner's look at its report, MA9f after MA9e.
 - Claim as `[plan:messages-area] <step> — <topic>`.
 
-## What is left for the next session? (2026-11-14, after #9363)
-- MA5d2 next, then MA5e.
+## What is left for the next session? (2026-11-14, after #9525)
+- MA5d2 next (claimed), then MA5e.
 - Left open by MA2b (#9275): Sends' slow search and sorts at 500,000 rows a queue (`platform/messages-area-sends.md`).
 - The shell, the doors and the tabs so far: `ui/messages-area-shell.md`, `ui/messages-area-campaigns-tab.md`.
 
