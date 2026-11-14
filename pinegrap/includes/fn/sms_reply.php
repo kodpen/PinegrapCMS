@@ -154,18 +154,6 @@ function pg_sms_reply_window_text($seconds)
 }
 
 /**
- * Whether a provider can answer a customer's SMS: only one the site can
- * receive through (pg_sms_incoming_ways()). Pure.
- *
- * @param string $provider
- * @return bool
- */
-function pg_sms_reply_provider_answers($provider)
-{
-    return is_string($provider) && ($provider !== '') && isset(pg_sms_incoming_ways()[$provider]);
-}
-
-/**
  * Whether this site answers SMS conversations: SMS set up with a provider
  * that receives.
  *
@@ -173,7 +161,7 @@ function pg_sms_reply_provider_answers($provider)
  */
 function pg_sms_reply_ready()
 {
-    return pg_sms_ready() && pg_sms_reply_provider_answers(pg_sms_provider());
+    return pg_sms_ready() && pg_sms_incoming_supported(pg_sms_provider());
 }
 
 /**
@@ -189,7 +177,7 @@ function pg_sms_reply_ready()
  */
 function pg_sms_enqueue_reply($number, $text, $options)
 {
-    if (!pg_sms_reply_provider_answers(pg_sms_provider())) {
+    if (!pg_sms_incoming_supported(pg_sms_provider())) {
         return array('ok' => false, 'row' => 0, 'error' => lang('The SMS provider set up does not receive customers\' messages, so it cannot answer them.'));
     }
 

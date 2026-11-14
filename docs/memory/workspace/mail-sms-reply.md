@@ -6,7 +6,7 @@ module: sms_reply
 
 ## When can an SMS conversation be answered?
 - Within 7 days of the number's last SMS (`PG_SMS_REPLY_WINDOW`, from `ws_mail_conversations.last_in_at`; owner, #9286). After it the card reads "The 7 days after the customer's last SMS have passed" and offers nothing.
-- Only while the site's SMS provider receives (`pg_sms_reply_provider_answers()`: a key of `pg_sms_incoming_ways()`, today Twilio, Netgsm, İleti Merkezi). Another provider: no button, no status row (`ws_mail_phone_sms_offered()` gates the payload).
+- Only while the site's SMS provider receives (`pg_sms_incoming_supported()`: a key of `pg_sms_incoming_ways()`, today Twilio, Netgsm, İleti Merkezi). Another provider: no button, no status row (`ws_mail_phone_sms_offered()` gates the payload).
 - For whoever may answer in the channel (`ws_mail_can_answer()`), on the `sms` box's conversations (`ws_mail_phone_reply_target(..., 'sms')`).
 
 ## What does Reply by SMS do?

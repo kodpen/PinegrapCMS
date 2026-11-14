@@ -622,7 +622,7 @@ function ws_mail_phone_reply_target($viewer, $conversation_id, $now, $transport 
         }
 
         // A provider the site cannot receive through offers no answer.
-        if (!pg_sms_reply_provider_answers(pg_sms_provider())) {
+        if (!pg_sms_incoming_supported(pg_sms_provider())) {
             return array_merge($out, array('error' => 'sms_receive'));
         }
 

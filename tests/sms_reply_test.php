@@ -60,11 +60,11 @@ function test_sms_reply_kind_and_providers()
 	pg_assert_true(array_key_exists('reply', $kinds), 'reply is a kind');
 	pg_assert_same(false, $kinds['reply'], 'transactional: no promotion, no consent asked');
 
-	pg_assert_true(pg_sms_reply_provider_answers('twilio'), 'Twilio receives');
-	pg_assert_true(pg_sms_reply_provider_answers('netgsm'), 'Netgsm receives');
-	pg_assert_true(pg_sms_reply_provider_answers('iletimerkezi'), 'İleti Merkezi receives');
-	pg_assert_true(!pg_sms_reply_provider_answers(''), 'no provider');
-	pg_assert_true(!pg_sms_reply_provider_answers('vonage'), 'a provider without incoming SMS offers nothing');
+	pg_assert_true(pg_sms_incoming_supported('twilio'), 'Twilio receives');
+	pg_assert_true(pg_sms_incoming_supported('netgsm'), 'Netgsm receives');
+	pg_assert_true(pg_sms_incoming_supported('iletimerkezi'), 'İleti Merkezi receives');
+	pg_assert_true(!pg_sms_incoming_supported(''), 'no provider');
+	pg_assert_true(!pg_sms_incoming_supported('vonage'), 'a provider without incoming SMS offers nothing');
 }
 
 function test_sms_reply_card()
