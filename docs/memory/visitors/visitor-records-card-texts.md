@@ -1,6 +1,6 @@
 ---
 name: visitor-records-card-texts
-description: What the Visitor records card on Database engine says and offers (#9418): month names, the disabled Clean up button, every record inside the period, a rebuild that gave nothing back, when Shrink now shows
+description: What the Visitor records card says and offers (#9418): month names, why Clean up is off, every record inside the period, a rebuild that gave nothing back, Shrink now
 ---
 
 ## How are the months named?
