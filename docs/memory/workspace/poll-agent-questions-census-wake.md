@@ -1,6 +1,6 @@
 ---
 name: poll-agent-questions-census-wake
-description: AQ1 census for the agent question: an agent changing its poll, the answer's request row and brief, the memory index, the ring; open behaviour questions
+description: AQ1 census for the agent question: an agent changing its poll, the answer's request row and brief, the memory index, the ring; the answered behaviour questions
 ---
 
 ## What keeps an agent from changing or taking back its poll today?
@@ -14,12 +14,13 @@ description: AQ1 census for the agent question: an agent changing its poll, the 
 
 ## How does the memory index read an answered agent question?
 - No column. Decisions are read from `ws_messages.kind = 'decision'` (`ws_memory_brief()` in `channel_memory.php`, and `briefing.php`, `channel_board.php`, `palette.php`, `status.php`, the Decisions tab). With no outcome line, `ws_memory_brief()` also reads polls with `agent_question = 1`, `closed_at > 0`, `withdrawn_at = 0`, as "question — answer (who)", in time order with the decisions.
-- Whether the Decisions tab and the other decision readers list it too is not in the plan: a question for the owner.
+- It is a channel decision on the Decisions tab and in the memory index alike (architect, message 3460), with no outcome line: every decision reader above lists it.
 
 ## How is the asked person rung?
 - `ws_question_ring()` already rings an application's poll's mentioned people, else the channel's owners, whatever their notify level (`agent-checklist-questions.md`). AQ5 keeps it for an agent question and adds the Today and dashboard Assistant card lines. No column.
 
-## Which behaviour questions does the census leave?
-- Does asking again take the old poll back by itself?
-- Does an answered agent question show on the Decisions tab, or only in the memory index?
-- Can several be asked (a department mention): does the first answer settle it?
+## Which behaviour questions were answered? (owner, 2026-11-14, poll 3459; architect, message 3460)
+- Asking again takes back a poll still open and links its box to the new one; an answered or closed poll stays, named by the new one's `again_of`.
+- An answered agent question shows on the Decisions tab and in the memory index.
+- With several asked, the first answer settles it and is not changed afterwards.
+- The record follows in the decisions list (schema part 20); the outcome is agent channel message 3461.
