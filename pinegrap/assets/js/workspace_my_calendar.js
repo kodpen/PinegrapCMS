@@ -242,6 +242,14 @@
                 item.appendChild(h.icon('bi-camera-video', 'me-1'));
             }
 
+            // A time of a repeating plan, marked before it is opened.
+            if (event.repeat) {
+                var repeatIcon = h.icon('bi-arrow-repeat', 'me-1');
+                repeatIcon.setAttribute('aria-label', (S.repeat_options || {})[event.repeat] || '');
+                repeatIcon.setAttribute('role', 'img');
+                item.appendChild(repeatIcon);
+            }
+
             item.appendChild(document.createTextNode((event.time ? event.time + ' ' : '') + event.title));
 
             // A plan with a roadmap: how many of its steps are done.
@@ -434,7 +442,7 @@
 
                 day.events.forEach(function (event) {
                     section.appendChild(listRow(el('span', 'ws-cal-event-dot ws-kind-' + event.kind), event.title,
-                        event.plan_id ? (event.owner ? s('plan_of').replace('{1}', event.owner) : s('my_plan')) + (event.steps_total && window.PGWsRoadmap ? ' · ' + window.PGWsRoadmap.label(event, s) : '') : (event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || '')),
+                        event.plan_id ? (event.owner ? s('plan_of').replace('{1}', event.owner) : s('my_plan')) + (event.repeat && S.repeat_options ? ' · ' + S.repeat_options[event.repeat] : '') + (event.steps_total && window.PGWsRoadmap ? ' · ' + window.PGWsRoadmap.label(event, s) : '') : (event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || '')),
                         event.time || h.t('all_day'),
                         (event.url || event.plan_id || !event.readonly) ? function () { openEvent(event); } : null));
                 });
@@ -627,6 +635,8 @@
             repeat.value = plan ? (plan.repeat || '') : '';
 
             var every = input('number', String(plan && plan.repeat_every ? plan.repeat_every : 1));
+            every.classList.remove('pg-input');
+            every.classList.add('form-control');
             every.min = '1';
             every.max = '99';
             every.inputMode = 'numeric';
@@ -645,19 +655,33 @@
             endCount.max = '999';
             endCount.inputMode = 'numeric';
 
-            var repeatMore = el('div', 'ws-plan-repeat');
+            // Two rows of two, as the days and the hours: Repeat with Repeat
+            // every (the unit beside the number), then Repeat ends with the
+            // number of times or the last day.
             var everyRow = field(s('repeat_every'), every);
+            var everyGroup = el('div', 'input-group');
+            // The unit beside "Repeat every": days, weeks, months or years.
+            var unitNote = el('span', 'input-group-text');
+            everyGroup.appendChild(every);
+            everyGroup.appendChild(unitNote);
+            everyRow.appendChild(everyGroup);
+
+            var repeatRow = el('div', 'ws-plan-pair');
+            var repeatMore = el('div', 'ws-plan-repeat');
             var endDayRow = field(s('repeat_until'), endDay);
             var endCountRow = field(s('repeat_count'), endCount);
-            // The unit under "Repeat every": days, weeks, months or years.
-            var unitNote = el('div', 'pg-text-meta');
-            everyRow.appendChild(unitNote);
-            [everyRow, field(s('repeat_ends'), ends), endDayRow, endCountRow].forEach(function (row) { repeatMore.appendChild(row); });
+            var endsRow = el('div', 'ws-plan-pair');
+            endsRow.appendChild(field(s('repeat_ends'), ends));
+            endsRow.appendChild(endDayRow);
+            endsRow.appendChild(endCountRow);
+            repeatMore.appendChild(endsRow);
 
             var roadmap = null;
 
             function repeatView() {
                 repeatMore.classList.toggle('d-none', !repeat.value);
+                everyRow.classList.toggle('d-none', !repeat.value);
+                // "Never" leaves the second place of the row empty.
                 endDayRow.classList.toggle('d-none', ends.value !== 'until');
                 endCountRow.classList.toggle('d-none', ends.value !== 'count');
                 unitNote.textContent = repeat.value ? s('repeat_unit_' + repeat.value) : '';
@@ -671,7 +695,9 @@
             ends.addEventListener('change', repeatView);
 
             if (mine) {
-                body.appendChild(field(s('repeat'), repeat));
+                repeatRow.appendChild(field(s('repeat'), repeat));
+                repeatRow.appendChild(everyRow);
+                body.appendChild(repeatRow);
                 body.appendChild(repeatMore);
             }
 

@@ -648,6 +648,8 @@ function ws_personal_plans_place($days, $plans, $reader = 0, $names = array())
                 'id'          => 0,
                 'plan_id'     => (int) $plan['id'],
                 'plan_day'    => (string) ($plan['time_day'] ?? ''),
+                // A time of a repeating plan: its rule, marked before it is opened.
+                'repeat'      => (string) ($plan['repeat_frequency'] ?? ''),
                 'kind'        => 'personal',
                 'title'       => (string) $plan['title'],
                 'time'        => ((int) $plan['all_day'] === 1) ? '' : date('H:i', max((int) $plan['starts_at'], $day_start)),
