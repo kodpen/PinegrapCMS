@@ -234,6 +234,8 @@ function ws_mail_pane_item_html($item, $base = '')
         $html .= '<div class="mt-1"><span class="badge theme-secondary">' . h(lang('Automatic answer')) . '</span></div>';
     }
 
+    // An invitation's card above its words (personal_plan_mail.php).
+    $html .= function_exists('ws_mail_invitation_card_html') ? ws_mail_invitation_card_html($item, !empty($item['calendar'])) : '';
     $html .= ws_mail_pane_body_html($item, $name, $base);
 
     foreach ($item['files'] as $file) {

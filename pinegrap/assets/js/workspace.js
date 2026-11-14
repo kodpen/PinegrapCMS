@@ -13293,6 +13293,21 @@
         bindChecks: function (body, message) {
             var self = this;
 
+            // An invitation's Add to my calendar (workspace_my_calendar.js),
+            // for a reader it is offered to.
+            Array.prototype.forEach.call(body.querySelectorAll('[data-ws-mail-calendar]'), function (button) {
+                if (!message.mail_calendar || !window.PGWsMyCalendar) {
+                    button.remove();
+                    return;
+                }
+
+                button.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    window.PGWsMyCalendar.fromMail(featureHelpers(), message.mail_calendar);
+                });
+            });
+
             Array.prototype.forEach.call(body.querySelectorAll('[data-ws-item-task]'), function (button) {
                 button.addEventListener('click', function (event) {
                     event.preventDefault();

@@ -93,3 +93,77 @@ function test_workspace_personal_plan_mail_wiring()
 	pg_assert_contains("mail_item: plan ? 0 : (defaults.mail_item || 0)", $read('assets/js/workspace_my_calendar.js'), 'a new plan only is tied to the mail');
 	pg_assert_contains('ws_personal_plan_mail_item($viewer, (int) $data[\'mail_item\'])', $read('includes/workspace/personal_plans.php'), 'the mail is read again on save');
 }
+
+function test_workspace_mail_invitation_read()
+{
+	$ics = "BEGIN:VCALENDAR\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:abc-123@example.com\r\nSUMMARY:Quarterly review\\, Q4\r\n"
+		. "DTSTART:20261120T100000Z\r\nDTEND:20261120T113000Z\r\nLOCATION:Room 4\r\nORGANIZER;CN=\"Ayşe Kaya\":mailto:Ayse@Example.com\r\n"
+		. "ATTENDEE;CN=Bob:mailto:bob@example.com\r\nDESCRIPTION:Long text\r\nBEGIN:VALARM\r\nSUMMARY:Alarm\r\nEND:VALARM\r\nEND:VEVENT\r\n"
+		. "BEGIN:VEVENT\r\nUID:second\r\nSUMMARY:Second\r\nDTSTART:20261121T100000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+	$read = ws_mail_invitation_read(array(
+		array('content_type' => 'application/pdf', 'filename' => 'a.pdf', 'content' => 'x'),
+		array('content_type' => 'text/calendar', 'filename' => '', 'content' => $ics),
+	));
+
+	pg_assert_same('abc-123@example.com', $read['uid']);
+	pg_assert_same('REQUEST', $read['method']);
+	pg_assert_same('Quarterly review, Q4', $read['summary'], 'the first event, its escapes undone; not the alarm\'s');
+	pg_assert_same(strtotime('2026-11-20 10:00:00 UTC'), $read['start']);
+	pg_assert_same(strtotime('2026-11-20 11:30:00 UTC'), $read['end']);
+	pg_assert_false($read['all_day']);
+	pg_assert_same('Room 4', $read['location']);
+	pg_assert_same(array('name' => 'Ayşe Kaya', 'email' => 'ayse@example.com'), $read['organizer']);
+	pg_assert_same(array('uid', 'method', 'summary', 'start', 'end', 'all_day', 'location', 'organizer'), array_keys($read), 'no attendees, description or alarm');
+
+	$day = ws_mail_invitation_read(array(array('content_type' => 'application/octet-stream', 'filename' => 'invite.ics',
+		'content' => "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:d\nSTATUS:CANCELLED\nSUMMARY:" . str_repeat('x', 300) . "\nDTSTART;VALUE=DATE:20261124\nEND:VEVENT\nEND:VCALENDAR")));
+	pg_assert_true($day['all_day']);
+	pg_assert_same('CANCEL', $day['method'], 'a cancelled event');
+	pg_assert_same(strtotime('2026-11-25 00:00:00'), $day['end'], 'one day when it names no end');
+	pg_assert_same(255, mb_strlen($day['summary']), 'text cut to 255');
+
+	pg_assert_same(null, ws_mail_invitation_read(array(array('content_type' => 'text/calendar', 'filename' => '', 'content' => 'BEGIN:VCALENDAR\nnot an event'))), 'a part that does not read');
+	pg_assert_same(null, ws_mail_invitation_read(array()), 'no calendar part');
+}
+
+function test_workspace_mail_invitation_fill_and_card()
+{
+	$invitation = array('uid' => 'u', 'method' => 'REQUEST', 'summary' => 'Re: Kick-off', 'start' => strtotime('2026-11-20 10:00:00'), 'end' => strtotime('2026-11-20 11:30:00'),
+		'all_day' => false, 'location' => 'Room <4>', 'organizer' => array('name' => '', 'email' => 'ayse@example.com'));
+	$item = array('id' => 12, 'subject' => 'Invitation: Kick-off', 'sent_at' => strtotime('2026-11-14 09:00:00'), 'invitation' => json_encode($invitation));
+	$fill = ws_personal_plan_mail_fill($item);
+
+	pg_assert_same('Kick-off', $fill['title'], 'the event\'s title');
+	pg_assert_same('2026-11-20', $fill['start'], 'the event\'s day, not the mail\'s');
+	pg_assert_same('10:00', $fill['start_time']);
+	pg_assert_same('11:30', $fill['end_time']);
+	pg_assert_false($fill['all_day']);
+	pg_assert_same('Room <4>', $fill['note'], 'the place as the note');
+
+	$all_day = ws_personal_plan_mail_fill(array('id' => 1, 'invitation' => json_encode(array_merge($invitation, array('all_day' => true,
+		'start' => strtotime('2026-11-24 00:00:00'), 'end' => strtotime('2026-11-26 00:00:00'))))));
+	pg_assert_same(array('2026-11-24', '2026-11-25'), array($all_day['start'], $all_day['end']), 'an all-day event\'s last day');
+
+	$card = ws_mail_invitation_card_html($item, true);
+	pg_assert_contains('data-ws-mail-calendar="12"', $card);
+	pg_assert_contains('Room &lt;4&gt;', $card, 'escaped');
+	pg_assert_contains('ayse@example.com', $card, 'the organiser');
+	pg_assert_false(strpos(ws_mail_invitation_card_html($item, false), 'data-ws-mail-calendar') !== false, 'no button when not offered');
+	pg_assert_same('', ws_mail_invitation_card_html(array('id' => 1, 'invitation' => ''), true), 'a mail without an invitation');
+	pg_assert_same('', ws_mail_invitation_card_html(array('id' => 1, 'invitation' => '{bad'), true), 'an unreadable column');
+	pg_assert_contains(h(lang('Changed invitation')), ws_mail_invitation_card_html(array_merge($item, array('invitation' => json_encode(array_merge($invitation, array('changed' => true))))), true));
+	pg_assert_contains(h(lang('Cancelled invitation')), ws_mail_invitation_card_html(array_merge($item, array('invitation' => json_encode(array_merge($invitation, array('method' => 'CANCEL'))))), true));
+}
+
+function test_workspace_mail_invitation_wiring()
+{
+	$read = function ($path) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+	};
+
+	pg_assert_contains("ws_mail_invitation_keep(\$item_id, \$box_id, \$parsed['attachments']);", $read('includes/workspace/mail.php'), 'kept at ingest');
+	pg_assert_contains('ws_mail_invitation_card_html($item, ws_personal_plans_ready())', $read('includes/workspace/mail.php'), 'the card in the channel');
+	pg_assert_contains("ws_mail_invitation_card_html(\$item, !empty(\$item['calendar']))", $read('includes/workspace/mail_pane.php'), 'the card in the pane');
+	pg_assert_contains("install_add_column('ws_mail_items', 'invitation', \"TEXT NULL\");", $read('includes/migrations/2026.11.0.php'));
+	pg_assert_contains("querySelectorAll('[data-ws-mail-calendar]')", $read('assets/js/workspace.js'), 'the channel card\'s button, taken away for a reader not offered it');
+}

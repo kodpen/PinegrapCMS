@@ -176,6 +176,26 @@ function ws_personal_plans_between($user_id, $from_ts, $to_ts)
 }
 
 /**
+ * The reader's own newest plan made from a mail conversation (Add to my
+ * calendar), through the gate.
+ *
+ * @param int $user_id
+ * @param int $conversation_id
+ * @return array|null
+ */
+function ws_personal_plan_of_mail($user_id, $conversation_id)
+{
+    if (!ws_personal_plans_ready() || ((int) $user_id <= 0) || ((int) $conversation_id <= 0)) {
+        return null;
+    }
+
+    $plan = db_item("SELECT * FROM ws_personal_plans
+        WHERE user_id = '" . (int) $user_id . "' AND mail_conversation_id = '" . (int) $conversation_id . "' ORDER BY id DESC LIMIT 1");
+
+    return ws_personal_plan_can_see($user_id, $plan) ? $plan : null;
+}
+
+/**
  * Reads and checks a plan sent by the drawer. Pure.
  *
  * @param array $data title, note, start (Y-m-d), end (Y-m-d, '' = start),

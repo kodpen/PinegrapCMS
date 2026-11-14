@@ -1049,6 +1049,11 @@ function ws_mail_ingest($raw, $box)
 
     $raw_path = ws_mail_eml_store(ws_mail_eml_path($box_id, $hash, $now), $raw);
 
+    // An invitation's event, kept beside the mail (personal_plan_mail.php).
+    if (function_exists('ws_mail_invitation_keep')) {
+        ws_mail_invitation_keep($item_id, $box_id, $parsed['attachments']);
+    }
+
     db("UPDATE ws_mail_items SET conversation_id = '" . $conversation_id . "', message_id = '" . (int) $message_id . "',
             raw_path = '" . e($raw_path) . "', refused_files = '" . e(implode("\n", array_slice($refused, 0, 100))) . "'
         WHERE id = '" . $item_id . "'");
@@ -1379,6 +1384,12 @@ function ws_mail_card_html($row, $item)
 
     // A customer's mail shows its first lines; the team's own answer stays whole.
     $html .= '<div>' . nl2br(h($out ? (string) $row['body'] : ws_mail_card_excerpt((string) $row['body'])), false) . '</div>';
+
+    // An invitation's card: its button only for a reader it is offered to
+    // (personal_plan_mail.php; the script takes it away for the others).
+    if (!$out && function_exists('ws_mail_invitation_card_html') && ((int) ($item['message_id'] ?? 0) === (int) $row['id'])) {
+        $html .= ws_mail_invitation_card_html($item, ws_personal_plans_ready());
+    }
 
     if ($card) {
         $base = (defined('OUTPUT_PATH') && defined('OUTPUT_SOFTWARE_DIRECTORY')) ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' : '';

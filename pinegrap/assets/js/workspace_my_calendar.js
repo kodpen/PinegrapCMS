@@ -652,7 +652,7 @@
             var note = el('textarea', 'pg-input');
             note.rows = 4;
             note.maxLength = 2000;
-            note.value = plan ? plan.note : '';
+            note.value = plan ? plan.note : (defaults.note || '');
             body.appendChild(field(s('plan_note'), note));
 
             // Somebody else's plan opened to the reader: read, not changed.
@@ -741,7 +741,8 @@
     // New plan drawer filled from the mail, its words sent with the fill.
     function fromMail(h, itemId) {
         h.api('ws_personal_plan_mail', { item_id: itemId }).then(function (result) {
-            planKit(h, result.strings || {}, function () {}).drawer(null, result.fill || {});
+            // An invitation already made a plan of: that plan, as the mail says it now.
+            planKit(h, result.strings || {}, function () {}).drawer(result.plan || null, result.fill || {});
         }).catch(h.fail);
     }
 
