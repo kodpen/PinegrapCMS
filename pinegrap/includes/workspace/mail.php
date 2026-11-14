@@ -1300,8 +1300,8 @@ function ws_mail_card_answered_html($conversation, $who)
     $when = function_exists('ws_time_label') ? ws_time_label($out) : date('d.m.Y H:i', $out);
     $parts = array_filter(array(lang('Answered'), (string) $who, $when), 'strlen');
 
-    return '<div class="ws-mail-card-answered small mt-1"><span class="badge theme-success"><i class="bi bi-reply me-1" aria-hidden="true"></i>'
-        . h(implode(' · ', $parts)) . '</span></div>';
+    // Look A's status pill (the owner's rule for new parts inside a channel).
+    return '<div class="ws-mail-card-answered mt-1"><span class="pg-pill pg-tone-teal">' . h(implode(' · ', $parts)) . '</span></div>';
 }
 
 /**
@@ -1384,7 +1384,7 @@ function ws_mail_card_html($row, $item)
         $base = (defined('OUTPUT_PATH') && defined('OUTPUT_SOFTWARE_DIRECTORY')) ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' : '';
 
         $html .= ws_mail_card_answered_html($conversation, (string) ($item['answered_by'] ?? ''))
-            . '<div class="ws-mail-card-open mt-2"><a class="btn btn-sm btn-outline theme-secondary" href="' . h(ws_mail_room_url($base, (int) $conversation['id'])) . '">'
+            . '<div class="ws-mail-card-open mt-2"><a class="pg-button pg-button-quiet pg-button-sm" href="' . h(ws_mail_room_url($base, (int) $conversation['id'])) . '">'
             . '<i class="bi bi-envelope-open me-1" aria-hidden="true"></i>' . h(lang('Open e-mail')) . '</a></div>';
     }
 

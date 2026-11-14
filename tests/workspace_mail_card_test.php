@@ -338,6 +338,7 @@ function test_workspace_mail_card_open_link_and_answered()
 
 	pg_assert_contains('messages_mail.php?view=all&amp;conversation=3"', $html, 'Open e-mail is a plain link to the conversation in Communication');
 	pg_assert_contains(h(lang('Open e-mail')), $html, 'named');
+	pg_assert_contains('<a class="pg-button pg-button-quiet pg-button-sm" href=', $html, 'look A\'s quiet button');
 	pg_assert_true(strpos($html, 'ws-mail-card-answered') === false, 'not answered yet');
 
 	$answer = ws_mail_card_html(array('id' => 101, 'file_id' => 0, 'body' => 'x'), $item);
@@ -346,7 +347,7 @@ function test_workspace_mail_card_open_link_and_answered()
 	$item['conversation']['last_out_at'] = 2000;
 	$item['answered_by'] = 'Can <Demir>';
 	$html = ws_mail_card_html(array('id' => 100, 'file_id' => 0, 'body' => 'Hi'), $item);
-	pg_assert_contains('ws-mail-card-answered', $html, 'answered once the newest answer is later than the newest mail');
+	pg_assert_contains('<span class="pg-pill pg-tone-teal">', $html, 'answered once the newest answer is later than the newest mail, as look A\'s pill');
 	pg_assert_contains(h(lang('Answered')) . ' · Can &lt;Demir&gt; · ', $html, 'who answered, escaped');
 
 	$item['conversation']['last_in_at'] = 3000;
