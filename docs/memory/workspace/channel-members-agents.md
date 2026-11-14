@@ -1,6 +1,6 @@
 ---
 name: channel-members-agents
-description: A channel's agents among its members (#8936): agents as squares in the head's faces, People here and Agents here in Channel info, last seen; a person's time only for a manager
+description: A channel's agents and guests among its members (#8936, GV2): agents as squares in the head's faces, People here, Agents here and Guests in Channel info, last seen; a person's and a guest's time only for a manager
 ---
 
 ## Where do a channel's agents show beside its people?
@@ -9,8 +9,12 @@ description: A channel's agents among its members (#8936): agents as squares in 
 - An agent's row: square face, name with the badge "AI agent" ("Assistant" for Claude, Pinegrap AI and a `model` agent), "Paused" for an agent not active, under it `@handle · <wake rule>` ("wakes when mentioned", "wakes on every message", "wakes on [ci]", "wakes on replies to it"), its last seen at the right.
 - A manager gets "Manage" under the list: Channel settings opened scrolled to "Agents in this channel" (`channelForm(channel, { agents: true })`, `PGWsChannelAgents.mount(…, { reveal })`).
 
+## Where are a channel's guests listed?
+- Channel info, after "Agents here": "Guests · n", one row per guest with an open share of the channel or of a guest's room (`ws_channel_info_guests()`; open = not ended, a link, not expired: `ws_guest_share_closed()`). Every reader sees them, since everything written there is read by them.
+- A row: the guest's initials face, name with the badge "Guest", under it "Read only" or "Read and write" · "Shared by <name> on <date>" (`ws_channel_info_guest()`, pure but for lang()); at the right, for a channel manager only, "Here now" (teal dot, seen in the last 90 s) or `ws_seen_ago_words()` of `ws_guests.last_seen_at`. Ending or relinking stays in the share bar's Manage. Tests: `tests/workspace_guest_channel_info_test.php`.
+
 ## What does the server send?
-- `ws_channel_detail()` adds `agents` (`ws_channel_member_agents()`, one `ws_channel_member_agent()` per row of `ws_channel_agents()`) for every reader of the channel, and `seen` on each member only for a channel manager (`ws_channel_member_seen()`).
+- `ws_channel_detail()` adds `guests` (above) and `agents` (`ws_channel_member_agents()`, one `ws_channel_member_agent()` per row of `ws_channel_agents()`) for every reader of the channel, and `seen` on each member only for a channel manager (`ws_channel_member_seen()`).
 - An agent's last seen, `seen_state`: a poll `app` agent's `seen_at` in short words (`ws_seen_ago_words()`), `on` (teal dot) under 10 minutes, `late` (amber pill) at 10 minutes or never (`WS_AGENT_NOT_SEEN_AFTER`); a push agent "Last knock …" from `door_last_knock`, `late` while `door_error` is set; Claude, Pinegrap AI and a `model` agent "Always ready".
 - A person's: "Online" while `ws_presence()` reads online, else `user.user_online_timestamp` in the same short words; no new column. Other members keep the online dot on the face.
 
