@@ -10882,7 +10882,7 @@
             // Neither are a mail card's head (sender check, address, status),
             // its whole text again behind Show all, and the files not taken
             // in (ws_mail_card_html() in includes/workspace/mail.php).
-            Array.prototype.forEach.call(box.querySelectorAll('.ws-form-card, .ws-mail-card-head, .ws-mail-card details, .ws-mail-card-refused'), function (part) {
+            Array.prototype.forEach.call(box.querySelectorAll('.ws-form-card, .ws-mail-card-head, .ws-mail-card details, .ws-mail-card-refused, .ws-mail-card-open, .ws-mail-card-answered'), function (part) {
                 if (part.parentNode) {
                     part.parentNode.removeChild(part);
                 }

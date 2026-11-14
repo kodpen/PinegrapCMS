@@ -1171,9 +1171,32 @@ function ws_mail_items_map($rows)
             $transports[(int) $box['id']] = (string) $box['transport'];
         }
 
+        // The writer of each answered conversation's newest answer, for the
+        // card's "Answered · who · time".
+        $answered = array();
+
+        foreach ($conversations as $conversation) {
+            if ((int) $conversation['last_out_at'] > (int) $conversation['last_in_at']) {
+                $answered[] = (int) $conversation['id'];
+            }
+        }
+
+        $writers = array();
+
+        if ($answered && function_exists('ws_person_name')) {
+            foreach ((array) db_items("SELECT conversation_id, user_id FROM ws_mail_items
+                WHERE conversation_id IN (" . implode(',', $answered) . ") AND direction = 'out' AND user_id > 0
+                ORDER BY id DESC") as $writer) {
+                if (!isset($writers[(int) $writer['conversation_id']])) {
+                    $writers[(int) $writer['conversation_id']] = ws_person_name((int) $writer['user_id']);
+                }
+            }
+        }
+
         foreach ($items as $id => $item) {
             $conversation = $conversations[(int) $item['conversation_id']] ?? null;
             $items[$id]['conversation'] = $conversation;
+            $items[$id]['answered_by'] = $conversation ? (string) ($writers[(int) $conversation['id']] ?? '') : '';
             $items[$id]['first_reply_hours'] = $conversation ? (int) ($hours[(int) $conversation['box_id']] ?? 0) : 0;
             $items[$id]['support'] = $conversation ? ($support[(int) $conversation['box_id']] ?? true) : true;
             $items[$id]['transport'] = $conversation ? ($transports[(int) $conversation['box_id']] ?? 'imap') : 'imap';
@@ -1222,14 +1245,71 @@ function ws_mail_sender($item, $people = null)
 }
 
 /**
+ * The first lines of a mail's text as its card shows them: at most 8 lines
+ * or 600 characters, cut on a word, with a mark when something was left
+ * out; runs of empty lines read as one break. The whole mail is read in
+ * Communication › Incoming e-mail. Pure.
+ *
+ * @param string $text
+ * @param int    $lines
+ * @param int    $chars
+ * @return string
+ */
+function ws_mail_card_excerpt($text, $lines = 8, $chars = 600)
+{
+    $text = trim(preg_replace("/\n{2,}/", "\n", str_replace(array("\r\n", "\r"), "\n", (string) $text)));
+    $parts = explode("\n", $text);
+    $cut = false;
+
+    if (count($parts) > $lines) {
+        $text = implode("\n", array_slice($parts, 0, $lines));
+        $cut = true;
+    }
+
+    if (mb_strlen($text) > $chars) {
+        $short = mb_substr($text, 0, $chars);
+        $space = max((int) mb_strrpos($short, ' '), (int) mb_strrpos($short, "\n"));
+        $text = ($space > 0) ? mb_substr($short, 0, $space) : $short;
+        $cut = true;
+    }
+
+    return $cut ? rtrim($text) . '…' : $text;
+}
+
+/**
+ * "Answered · who · time" under a conversation's card, once its newest
+ * answer is later than its newest mail (no column of its own: the
+ * conversation's last_out_at against its last_in_at). Pure but for the time
+ * label.
+ *
+ * @param array  $conversation ws_mail_conversations row
+ * @param string $who          the newest answer's writer, '' when unknown
+ * @return string HTML, '' when not answered
+ */
+function ws_mail_card_answered_html($conversation, $who)
+{
+    $out = (int) ($conversation['last_out_at'] ?? 0);
+
+    if ($out <= (int) ($conversation['last_in_at'] ?? 0)) {
+        return '';
+    }
+
+    $when = function_exists('ws_time_label') ? ws_time_label($out) : date('d.m.Y H:i', $out);
+    $parts = array_filter(array(lang('Answered'), (string) $who, $when), 'strlen');
+
+    return '<div class="ws-mail-card-answered small mt-1"><span class="badge theme-success"><i class="bi bi-reply me-1" aria-hidden="true"></i>'
+        . h(implode(' · ', $parts)) . '</span></div>';
+}
+
+/**
  * What a mail's message shows: whether the sender was verified, the address,
- * the subject on the conversation's card, the text as plain text (never as
- * HTML or Workspace markup), the whole text behind "Show all" when the
- * message holds less, and the attachments that were not taken in. A message
+ * the subject on the conversation's card, the text's first lines as plain
+ * text (never as HTML or Workspace markup), and on the card "Answered · who
+ * · time" and an "Open e-mail" link to the conversation in Communication ›
+ * Incoming e-mail, where the whole mail and its files are read. A message
  * that only carries an attachment shows nothing of its own. A reply's quote
  * of the card (plain() in workspace.js) leaves out the head
- * (.ws-mail-card-head), Show all and the files not taken in
- * (.ws-mail-card-refused).
+ * (.ws-mail-card-head), the mark and the link.
  *
  * @param array      $row  ws_messages row
  * @param array|null $item ws_mail_items_map() entry
@@ -1294,20 +1374,15 @@ function ws_mail_card_html($row, $item)
         $html .= '<div class="fw-semibold mb-1">' . h((string) $item['subject']) . '</div>';
     }
 
-    $html .= '<div>' . nl2br(h((string) $row['body']), false) . '</div>';
+    // A customer's mail shows its first lines; the team's own answer stays whole.
+    $html .= '<div>' . nl2br(h($out ? (string) $row['body'] : ws_mail_card_excerpt((string) $row['body'])), false) . '</div>';
 
-    $full = (string) $item['body_text'];
+    if ($card) {
+        $base = (defined('OUTPUT_PATH') && defined('OUTPUT_SOFTWARE_DIRECTORY')) ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' : '';
 
-    if (mb_strlen($full) > mb_strlen((string) $row['body'])) {
-        $html .= '<details class="mt-1"><summary class="small">' . h(lang('Show all')) . '</summary><div class="mt-1">'
-            . nl2br(h(mb_substr($full, 0, 100000)), false) . '</div></details>';
-    }
-
-    $refused = array_filter(explode("\n", (string) $item['refused_files']), 'strlen');
-
-    if ($refused) {
-        $html .= '<div class="ws-mail-card-refused small fg-secondary mt-1"><i class="bi bi-paperclip me-1" aria-hidden="true"></i>'
-            . h(lang(array('string' => 'Not taken in: {var:1}', 'vars' => implode(', ', $refused)))) . '</div>';
+        $html .= ws_mail_card_answered_html($conversation, (string) ($item['answered_by'] ?? ''))
+            . '<div class="ws-mail-card-open mt-2"><a class="btn btn-sm btn-outline theme-secondary" href="' . h(ws_mail_room_url($base, (int) $conversation['id'])) . '">'
+            . '<i class="bi bi-envelope-open me-1" aria-hidden="true"></i>' . h(lang('Open e-mail')) . '</a></div>';
     }
 
     return $html . '</div>';

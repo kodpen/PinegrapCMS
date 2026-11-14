@@ -34,7 +34,7 @@ function test_settings_workspace_link_old_anchors()
 	pg_assert_same('settings_workspace_team.php#pgset-ws-departments', pg_settings_workspace_link('#ws-departments'));
 	pg_assert_same('settings_workspace_assistants.php#pgset-ws-claude', pg_settings_workspace_link('ws-claude'));
 	pg_assert_same('settings_workspace_assistants.php#pgset-ws-mcp', pg_settings_workspace_link('ws-mcp-4'), 'a server of the MCP card names the card');
-	pg_assert_same('settings_workspace_channels.php#pgset-ws-mail', pg_settings_workspace_link('ws-mail'));
+	pg_assert_same('settings_mailboxes.php#pgset-ws-mail', pg_settings_workspace_link('ws-mail'));
 	pg_assert_same('settings_workspace_channels.php#pgset-ws-templates', pg_settings_workspace_link('ws-templates'));
 	pg_assert_same('settings_workspace_channels.php#pgset-ws-voice', pg_settings_workspace_link('pgset-ws-voice'), 'a card\'s own anchor');
 }
