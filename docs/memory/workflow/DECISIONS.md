@@ -678,6 +678,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/list-table-rollout.md: How the panel lists moved from DataTables to the list table driver (TD1-TD14, done with #8253): the driver, the rules that still hold, where each batch is noted, what the removal took out
 - ui/look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail
 - ui/main-menu-automation-flows-row.md: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, icon A and its motion
+- ui/main-menu-communication-icon.md: The Communication row's own drawing (row 9): a speech bubble with an arrow out and an arrow in, its colours and hover movement; the megaphone it replaced
 - ui/main-menu-overview.md: The panel's main menu as a whole: rows in categories, panels and second-level panels, states and the drawer, gates, the decisions that bind it, and which main-menu file holds each part
 - ui/messages-area-look.md: Communication area look (MA12 #9363): pill tab strip, filter segments, notices under the strip, Sends figures and pills, Channels grid, old screens left inside
 - ui/messages-area-mail-tab.md: Communication › Incoming e-mail (MA10b #9453): the tab and its gate, the moved list and pane, the door from workspace_mail.php, the menu row and its unread badge, what MA10b2 and MA10c add
