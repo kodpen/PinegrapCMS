@@ -55,13 +55,14 @@ function ws_mail_api_routes()
             'handler'     => 'ws_api_mail_conversations_list',
             'returns'     => array('list' => 'WorkspaceMailConversation'),
             'summary'     => 'List e-mail conversations',
-            'description' => 'The e-mail conversations of the workspace channels the owner of the application reads, the one with the newest mail first; the mailbox does not decide, the channel does. status, holder and channel_id narrow the list; view, box_id, q and unread work as on the E-mails screen. unread says whether the conversation has mail that came in after the owner last read it (null before the database is updated); POST /workspace/mail/conversations/{id}/read marks it read. overdue says the box\'s first-answer time passed with nobody answering; first_reply_due_at is that time, null when none is due. Open one with GET /workspace/mail/conversations/{id}; its card is the message message_id in channel_id.' . $untrusted,
+            'description' => 'The e-mail conversations of the workspace channels the owner of the application reads, the one with the newest mail first; the mailbox does not decide, the channel does. status, holder and channel_id narrow the list; view, box_id, transport, q and unread work as on the E-mails screen. A customer\'s WhatsApp messages and SMS are conversations of the same list: transport says how one came (email, whatsapp or sms) and customer_phone is its number, with subject and customer_email empty. unread says whether the conversation has mail that came in after the owner last read it (null before the database is updated); POST /workspace/mail/conversations/{id}/read marks it read. overdue says the box\'s first-answer time passed with nobody answering; first_reply_due_at is that time, null when none is due. Open one with GET /workspace/mail/conversations/{id}; its card is the message message_id in channel_id.' . $untrusted,
             'params'      => array(
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'open', 'waiting', 'closed'), 'default' => 'all', 'description' => 'open: new mail or the customer wrote again; waiting: answered, waiting for the customer; closed: closed by hand.'),
                 array('name' => 'holder', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'me', 'none'), 'default' => 'all', 'description' => 'me: held by the owner of the application; none: held by nobody.'),
                 array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the conversations of this channel.'),
                 array('name' => 'view', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'incoming', 'sent', 'unsent'), 'default' => 'all', 'description' => 'incoming: with mail that came in; sent: with a mail that went out; unsent: with a mail waiting in the mail queue or given up on (send_state queued or failed).'),
                 array('name' => 'box_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the conversations of this mailbox.'),
+                array('name' => 'transport', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'email', 'whatsapp', 'sms'), 'default' => 'all', 'description' => 'Only the conversations that came by e-mail, by WhatsApp or by SMS.'),
                 array('name' => 'q', 'in' => 'query', 'type' => 'string', 'max_length' => WS_MAIL_LIST_QUERY_MAX, 'description' => 'Words in the subject, the customer\'s name or address, or any mail\'s sender, To, Cc or text.'),
                 array('name' => 'unread', 'in' => 'query', 'type' => 'bool', 'description' => 'true: only the conversations unread for the owner.'),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50, 'description' => 'Conversations per page.'),
@@ -110,7 +111,7 @@ function ws_mail_api_routes()
             'returns'     => 'WorkspaceMail',
             'status'      => 201,
             'summary'     => 'Answer an e-mail conversation by e-mail',
-            'description' => 'Sends text to the conversation\'s customer from its mailbox\'s address, with the person\'s name under it and the customer\'s last mail quoted, as "Reply by e-mail" on the card does; the answer is drawn under the card and the conversation waits for the customer. Only the person\'s own team devices session (POST /auth/login) may: an application key or an OAuth connection is refused with 403, and it is no MCP tool, since an assistant never writes to a customer. 403 also when the person may not write in the channel. 409 cannot_send when the mailbox cannot send (switched off, no sending server, the site\'s mail settings for another domain, no address to answer; the reason in the message); 409 not_sent when the sending server refused it. Send an Idempotency-Key: a retry after a timeout must not mail the customer twice. copy_kept is false when the mailbox\'s sent folder kept no copy (null on a mail read back). id is 0 in the rare case the mail left but its record could not be written.',
+            'description' => 'Sends text to the conversation\'s customer from its mailbox\'s address, with the person\'s name under it and the customer\'s last mail quoted, as "Reply by e-mail" on the card does; the answer is drawn under the card and the conversation waits for the customer. Only the person\'s own team devices session (POST /auth/login) may: an application key or an OAuth connection is refused with 403, and it is no MCP tool, since an assistant never writes to a customer. 403 also when the person may not write in the channel. 409 cannot_send when the mailbox cannot send (switched off, no sending server, the site\'s mail settings for another domain, no address to answer, as for a WhatsApp or SMS conversation; the reason in the message); 409 not_sent when the sending server refused it. Send an Idempotency-Key: a retry after a timeout must not mail the customer twice. copy_kept is false when the mailbox\'s sent folder kept no copy (null on a mail read back). id is 0 in the rare case the mail left but its record could not be written.',
             'params'      => array($id, array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_REPLY_MAX, 'required' => true, 'description' => 'The answer as plain text.')),
         ),
 
@@ -180,6 +181,10 @@ function ws_api_mail_conversation_present($conversation, $hours, $now, $items = 
         'subject'            => (string) $conversation['subject'],
         'customer_email'     => (string) $conversation['customer_email'],
         'customer_name'      => (string) $conversation['customer_name'],
+        // How it came (the box's transport, which the caller adds to the
+        // row), and a WhatsApp or SMS customer's number in E.164.
+        'transport'          => ws_mail_transport_kind($conversation['transport'] ?? ''),
+        'customer_phone'     => ((string) ($conversation['customer_phone'] ?? '') !== '') ? '+' . (string) $conversation['customer_phone'] : null,
         'contact_id'         => ((int) $conversation['contact_id'] > 0) ? (int) $conversation['contact_id'] : null,
         'status'             => (string) $conversation['status'],
         'assignee_id'        => ((int) $conversation['assignee_id'] > 0) ? (int) $conversation['assignee_id'] : null,
@@ -206,6 +211,8 @@ function ws_api_mail_conversation_schema()
         'subject'            => 'string',
         'customer_email'     => 'string',
         'customer_name'      => 'string',
+        'transport'          => 'string',
+        'customer_phone'     => 'string?',
         'contact_id'         => 'integer?',
         'status'             => 'string',
         'assignee_id'        => 'integer?',
@@ -349,6 +356,22 @@ function ws_api_mail_box_hours()
 }
 
 /**
+ * Each box's transport (ws_mail_boxes.transport).
+ *
+ * @return array box id => transport
+ */
+function ws_api_mail_box_transports()
+{
+    $transports = array();
+
+    foreach ((array) db_items("SELECT id, transport FROM ws_mail_boxes") as $box) {
+        $transports[(int) $box['id']] = (string) $box['transport'];
+    }
+
+    return $transports;
+}
+
+/**
  * A conversation with its mails, the newest WS_API_MAIL_ITEMS_MAX of them
  * oldest first.
  *
@@ -381,6 +404,7 @@ function ws_api_mail_conversation_answer($conversation)
     $items = ws_api_mail_items_order($items);
 
     $unread = ws_api_mail_unread_map((int) ws_api_viewer()['id'], array((int) $conversation['id']));
+    $conversation['transport'] = ws_api_mail_box_transports()[(int) $conversation['box_id']] ?? '';
 
     return ws_api_mail_conversation_present($conversation, (int) (ws_api_mail_box_hours()[(int) $conversation['box_id']] ?? 0), time(), $items,
         $unread[(int) $conversation['id']] ?? null);
@@ -444,6 +468,7 @@ function ws_api_mail_list_filters($params)
         'status' => (string) ($params['status'] ?? 'all'),
         'holder' => (string) ($params['holder'] ?? 'all'),
         'box'    => isset($params['box_id']) ? (string) (int) $params['box_id'] : '',
+        'transport' => (string) ($params['transport'] ?? ''),
         'q'      => (string) ($params['q'] ?? ''),
     ));
     $filters['unread'] = !empty($params['unread']);
@@ -556,11 +581,13 @@ function ws_api_mail_conversations_list($params)
     }
 
     $hours = ws_api_mail_box_hours();
+    $transports = ws_api_mail_box_transports();
     $now = time();
     $unread = ws_api_mail_unread_map((int) $viewer['id'], array_column($rows, 'id'));
     $out = array();
 
     foreach ($rows as $row) {
+        $row['transport'] = $transports[(int) $row['box_id']] ?? '';
         $out[] = ws_api_mail_conversation_present($row, (int) ($hours[(int) $row['box_id']] ?? 0), $now, null, $unread[(int) $row['id']] ?? null);
     }
 

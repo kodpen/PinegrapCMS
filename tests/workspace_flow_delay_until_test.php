@@ -28,7 +28,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
 function test_workspace_flow_delay_until_config()
 {
 	pg_assert_same(
-		array('mode' => 'until', 'at' => '{{trigger.start}}', 'amount' => 2, 'unit' => 'hours'),
+		array('mode' => 'until', 'at' => '{{trigger.start}}', 'amount' => 2, 'unit' => 'hours', 'time' => '', 'passed' => 'go'),
 		ws_flow_config_normalize('delay', array('mode' => 'until', 'at' => " {{trigger.start}}\n", 'amount' => '2', 'unit' => 'hours'))
 	);
 	pg_assert_same('for', ws_flow_delay_normalize(array('mode' => 'later'))['mode'], 'an unknown mode waits for a time');

@@ -17,6 +17,7 @@ module: picker
 - The File Manager window caches the product lists only; a link with a page always asks for its own fields (`shortLinkTargetMissing()`).
 
 - Product builder Custom Form (`page_custom_form`) and e-mail campaign profile Custom Form (`page_form`) and Page (`page_view`), #8824. Their hidden inputs carry `collapse-if-selected` and `data-bs-target` through `value_attributes`: `backend.src.js` opens and closes the section for `input.collapse-if-selected` as for a select. The Body Preview frame loads `data-base` plus the picked name; the Custom Form's fields are read from `input[name="submit_form_custom_form_page_id"]`.
+- New campaign's Page (`page_view`, MA5b #9426; `campaign-content-step.md`).
 - The campaign screen's script sets `required` on the field's text input (ids `page_id`, `custom_form_page_id`); the saves check it anyway.
 
 ## What stays a list?

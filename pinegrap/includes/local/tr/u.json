@@ -623,6 +623,7 @@
     "unsaved": "kaydedilmemiş",
     "unsaved changes": "kaydedilmemiş değişiklik",
     "unsubscribe": "abonelikten çık",
+    "until the next {var:1}": "bir sonraki {var:1} saatine kadar",
     "until {var:1}": "{var:1} tarihine kadar",
     "untouched for a week or more": "bir haftadır ya da daha uzun süredir dokunulmamış olanlar",
     "untracked": "takip edilmiyor",

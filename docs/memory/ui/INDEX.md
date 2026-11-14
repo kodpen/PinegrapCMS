@@ -59,6 +59,7 @@
 - calendar-location-availability.md: How check_calendar_event_location_availability() finds a room already booked, including recurring, overnight and multi-day events
 - calendar-shared-form.md: The calendar create and edit screens share includes/forms/calendar_form.php: what it holds and what stays in the screens
 - calendar-view-date.md: The date a calendar view is asked for (?date=, kept in the session): format, check and why it is written with two-digit month and day
+- campaign-content-step.md: The content card of New campaign and Edit Campaign (MA5b #9426): body as a design, pasted HTML or plain text, the preview and phone preview, "Take the design again", what is stored
 - cart-quote-screen-layout.md: The new cart quote screen (add_cart_quote.php) on the product_builder pattern: which card holds what, the Summary that follows the boxes, the boxes' searches
 - catalog-new-group-address.md: Catalog Manager New Product Group takes its address from its first name; delete badges carry the count in the sentence, the bin progress says so, New image hidden in the catalog
 - catalog-rename-live-row.md: Catalog Manager rename (grid, tree, Bulk Rename) refuses a product or group that is deleted or in the Recycle Bin
@@ -419,6 +420,7 @@
 - menu-item-shared-form.md: The menu item create and edit screens share includes/forms/menu_item_form.php
 - menu-items-sort-order.md: The menu screen's Save Order (sort_menu_items): the posted tree is checked against the menu as it is now before any row is written; stale or looping trees are refused
 - menu-shared-form.md: The menu create and edit screens share includes/forms/menu_form.php: what it holds, the underscore name rule, what stays in the screens
+- messages-area-automatic-tab.md: Communication › Automatic sends (MA8): the flows that send a message on the table driver, its gate, runs today, the ready recipes and ?quick= into the quick setup, the profiles note
 - messages-area-campaigns-tab.md: Communication › Campaigns (MA3, #9215): e-mail and SMS campaigns in one list, the channel and state filters, the merged row ids and Delete Selected, New campaign's channel menu
 - messages-area-look.md: Communication area look (MA12 #9363): pill tab strip, filter segments, notices under the strip, Sends figures and pills, Channels grid, old screens left inside [decision: here]
 - messages-area-mail-tab.md: Communication › Incoming e-mail (MA10b #9453): the tab and its gate, the moved list and pane, the door from workspace_mail.php, the menu row and its unread badge, what MA10b2 and MA10c add [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]

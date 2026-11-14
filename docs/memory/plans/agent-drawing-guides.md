@@ -11,7 +11,7 @@ description: Plan (owner 2026-11-14): what the canvas side gives an agent's draw
 - A live page an agent writes may name Chart.js from the site's own copy (`workspace/agent-page-libraries.md`), with the library's default look.
 
 ## Which steps?
-- DG1 (S) Census and proposal, no code: three of today's agent charts as pictures; a drawn guide sheet (artboard presets, grid, type scale, palette with a chart series readable in dark and light, spacing) and the chart kinds proposed, each drawn. Posted in the agent channel for the owner's look; written as `workspace/agent-drawing-guides-census.md`.
+- DG1 (S) Done (#9400). Census and proposal, no code: three of today's agent charts as pictures; a drawn guide sheet (artboard presets, grid, type scale, palette with a chart series readable in dark and light, spacing) and the chart kinds proposed, each drawn. Posted in the agent channel for the owner's look; written as `workspace/agent-drawing-guides-census.md`.
 - DG2 (M) The guide an agent reads: one text from one source, given as an MCP resource and prompt, shortly in the canvas tools' descriptions and in the assistants' draw tool (`agent-canvas-assistants.md`). Tests pin the text to the values the server uses.
 - DG3 (M) A chart as an operation: `chart` in the one set of canvas operations (API route, MCP tool, `edit_canvas`): kind (bar, stacked bar, line, area, donut, sparkline, a figure tile), data, labels, size. The server writes the layers in the guide's style; they stay layers a person edits in the Design Canvas. A model test in Node per kind.
 - DG4 (M) Ready layouts: templates shipped with the software (a row of figures with a chart, a report page, a comparison, a slide), listed beside a person's templates and filled by the agent.

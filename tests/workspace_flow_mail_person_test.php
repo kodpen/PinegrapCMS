@@ -62,6 +62,13 @@ function test_workspace_flow_mail_person_source()
 	pg_assert_same(array('', 0), ws_flow_mail_person_source('', 0, array('event' => 'stock.low', 'event_payload' => array('id' => 5))), 'a record with no person');
 	pg_assert_same(array('', 0), ws_flow_mail_person_source('', 0, array('trigger' => 'schedule')), 'a run at a time');
 	pg_assert_same(array('', 0), ws_flow_mail_person_source('', 0, array('event' => 'order.shipped', 'event_payload' => array())), 'an event without its id');
+
+	$reserved = function ($payload) {
+		return ws_flow_mail_person_source('', 0, array('event' => 'calendar_event.reserved', 'event_payload' => $payload + array('id' => 6)));
+	};
+	pg_assert_same(array('contact', 8), $reserved(array('contact_id' => 8, 'order_id' => 40)), 'a reservation writes to its contact');
+	pg_assert_same(array('order', 40), $reserved(array('contact_id' => null, 'order_id' => 40)), 'else to its order\'s person');
+	pg_assert_same(array('', 0), $reserved(array('contact_id' => null, 'order_id' => 0)), 'nobody');
 }
 
 function test_workspace_flow_mail_person_unsubscribe_footer()

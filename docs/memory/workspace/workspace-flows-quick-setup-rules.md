@@ -21,4 +21,4 @@ description: Flows quick setup's lasting rules (owner 2026-11-12, #8950; built Q
 ## Where does it open?
 - The Flows list: "Quick setup" beside "New flow" in the bar and under the empty list's words, for whoever builds flows (`FL.quick` served, not a single-flow layer): `quickOffered()` in `workspace_flow.js` (#9333).
 - The made flow opens on the canvas (`quickMade()`: `keepEntry()`, `show()`), with a toast that it works or why it stayed a draft (`publish_error`).
-- The messages area's way in belongs to its own plan (`plans/messages-area-steps.md` MA8), with `PGWsFlowQuick.open(PGWsKit, flows.quick, { operators, home, onDone })`.
+- The address `workspace_flows.php?quick=1` opens it over the list, `?quick=<recipe key>` on that recipe's steps (`recipe` option of `PGWsFlowQuick.open()`); Communication › Automatic sends links there (`ui/messages-area-automatic-tab.md`, MA8).

@@ -22,6 +22,7 @@ include('init.php');
 require_once(dirname(__FILE__) . '/includes/forms/email_campaign_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_recipients.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_create.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_content.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -31,34 +32,11 @@ pg_request_single_values(array('page_id'));
 
 // if form has not been submitted yet
 if (!$_POST) {
-    // if a page id was passed in the query string, then check the HTML radio button and show and hide rows
-    if (isset($_GET['page_id']) == TRUE) {
-        $output_format_plain_text_checked = '';
-        $output_format_html_checked = ' checked="checked"';
-
-        $query = "SELECT page_name, page_folder FROM page WHERE page_id = ?";
-        $result = db_q($query, array((string) $_GET['page_id'])) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-        // A page that no longer exists (stale link, hand-typed URL) leaves
-        // these empty, as before, without the PHP notices.
-        $page_name = $row['page_name'] ?? '';
-        $folder_id = $row['page_folder'] ?? '';
-        
-        // if the user has edit access to the page, then prepare to show body preview row and set iframe source
-        if (check_edit_access($folder_id) == true) {
-            $output_body_preview_iframe_source = OUTPUT_PATH . h(encode_url_path($page_name)) . '?edit=no&email=true';
-
-        // else the user does not have edit access to the page, so hide body preview row and set iframe source to blank
-        } else {
-            $output_body_preview_iframe_source = '';
-        }
-
-    // else a page id was not passed in the query string, so check the plain text radio button and show and hide rows
-    } else {
-        $output_format_plain_text_checked = ' checked="checked"';
-        $output_format_html_checked = '';
-        $output_body_preview_iframe_source = '';
-    }
+    // A page passed in the address (a page's "Send as campaign") is the
+    // design chosen; without one the design is still the first kind shown.
+    $output_body_kind = 'design';
+    $output_preview = '';
+    $output_edit_url = '';
 
     $output_body = '';
 
@@ -69,50 +47,28 @@ if (!$_POST) {
             "\n" .
             "\n" .
             "\n" .
-            h($plain_text_email_campaign_footer);
+            $plain_text_email_campaign_footer;
     }
 
-    // get all pages
-    $query =
-        "SELECT
-            page.page_id as id,
-            page.page_name as name,
-            page.page_folder as folder_id,
-            folder.folder_archived
-        FROM page
-        LEFT JOIN folder ON page.page_folder = folder.folder_id
-        WHERE folder.folder_archived = '0'
-        ORDER BY page.page_name";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
-    $pages = array();
-    
-    // loop through all pages so they can be added to array
-    while ($row = mysqli_fetch_assoc($result)) {
-        $pages[] = $row;
-    }
-    
-    $output_page_options = '';
-    
-    // loop through all pages in order to prepare options for pick list
-    foreach ($pages as $page) {
-        // if the user has access to view this page, then prepare option for this page
-        if (check_view_access($page['folder_id']) == true) {
-            // assume that this page should not be selected by default, until we find out otherwise
-            $selected = '';
-            
-            // if this page should be selected, then prepare to select it
-            if ($page['id'] == ($_GET['page_id'] ?? '')) {
-                $selected = ' selected="selected"';
-            }
-            
-            // prepare option
-            // The preview frame loads the URL the option carries, built from
-            // the page name, never from the option's label.
-            $output_page_options .= '<option value="' . $page['id'] . '" data-url="' . h(OUTPUT_PATH . encode_url_path($page['name']) . '?edit=no&email=true') . '"' . $selected . '>' . h($page['name']) . '</option>';
+    // The design is the page picker field (kind page_view: any page the
+    // sender may view, searched as typed). A page passed in the address
+    // (a page's "Send as campaign") is drawn chosen, with its preview.
+    $output_page_id = (string) (int) ($_GET['page_id'] ?? '');
+
+    if ($output_page_id !== '0') {
+        $result = db_q("SELECT page_name, page_folder, page_style FROM page WHERE page_id = ?", array($output_page_id)) or output_error('Query failed.');
+        $row = mysqli_fetch_assoc($result);
+
+        if ($row && check_view_access($row['page_folder'])) {
+            $output_preview = OUTPUT_PATH . encode_url_path($row['page_name']) . '?edit=no&email=true';
+            $output_edit_url = check_edit_access($row['page_folder']) ? pg_page_edit_url(array('page_id' => $output_page_id, 'page_style' => $row['page_style'])) : '';
         }
+    } else {
+        $output_page_id = '';
     }
-    
+
+    $output_page_field = pg_picker_field('page_view', 'page_id', $output_page_id, array('value_attributes' => array('data-pg-campaign-page' => ''))) . pg_picker_script();
+
     // get all contact groups
     $query =
         "SELECT
@@ -193,52 +149,14 @@ if (!$_POST) {
                 <form name="form" action="add_email_campaign.php" method="post" >
                     ' . get_token_field() . '
                     ' . pg_email_campaign_layout(
-                        pg_email_campaign_message_card(
-                            pg_email_campaign_subject_row(''),
-                            pg_email_campaign_format_row(
-                                '<div class="form-field  d-inline-grid me-5">
-                                    <input class="radio collapse-switcher" type="radio" id="format_plain_text" name="format" value="plain_text" data-bs-target="#email_format_plain_text_row"' . $output_format_plain_text_checked . ' />
-                                    <label for="format_plain_text">' . lang('Plain Text') . '</label>
-                                </div>
-                                <div class="form-field  d-inline-grid me-5">
-                                    <input class="radio collapse-switcher" type="radio" id="format_html" name="format" value="html"  data-bs-target="#email_format_html_row"' . $output_format_html_checked . '/>
-                                    <label for="format_html">' . lang('HTML') . '</label>
-                                </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="email_format_plain_text_row">
-                                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
-                                    <div class="popover-body">
-                                        <div class="row">
-                                            <div class="col-12 my-1">
-                                              <label for="email_body" class="form-label">' . lang('Body') . '</label>
-                                              <textarea name="body" id="email_body" placeholder="' . lang('Type E-mail body here') . '..." class="form-control" style="width: 99%; height: 300px">' . $output_body . '</textarea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100"  id="email_format_html_row">
-                                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
-                                    <div class="popover-body">
-                                        <div class="row">
-                                            <div class="col-12 sm:col-8 my-1">
-                                                <label class="form-label" for="page_id">' . lang('Page') . '</label>
-                                                <select class="form-control collapse-if-selected" id="page_id" name="page_id" onchange="document.getElementById(\'body_preview_iframe\').src = this.options[this.selectedIndex].getAttribute(\'data-url\') || \'about:blank\';" data-bs-target="#body_preview_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . $output_page_options . '</select>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                <div class="popover-body">
-                                                    <div class="row">
-                                                        <div class="col-12 my-1">
-                                                            <div style="margin-bottom: 1em">' . lang('Body Preview') . '</div>
-                                                            <iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="' . $output_body_preview_iframe_source . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>'
-                            )
-                        ) . pg_email_campaign_card(
+                        pg_campaign_content_card(array(
+                            'mode'         => 'add',
+                            'kind'         => $output_body_kind,
+                            'page_field'   => $output_page_field,
+                            'edit_url'     => $output_edit_url,
+                            'text'         => $output_body,
+                            'preview'      => $output_preview,
+                        )) . pg_email_campaign_card(
                             lang('E-Mail Message To My Contact Groups'),
                             '<div class="col-12 my-3">
                                 ' . $output_contact_groups . '
@@ -264,49 +182,7 @@ if (!$_POST) {
                         '<button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
                     ) . '
                 </form>
-                <script>
-                (function () {
-                    // Each callout\'s arrow points at the control that opened
-                    // it (the radio\'s middle, the select\'s start) wherever the
-                    // controls sit at this width; a fixed offset pointed past
-                    // the Plain Text radio.
-                    var callouts = [
-                        [\'email_format_plain_text_row\', \'format_plain_text\', 0],
-                        [\'email_format_html_row\', \'format_html\', 0],
-                        [\'body_preview_row\', \'page_id\', 24]
-                    ];
-
-                    function place() {
-                        callouts.forEach(function (callout) {
-                            var box = document.getElementById(callout[0]);
-                            var control = document.getElementById(callout[1]);
-                            var arrow = box ? box.querySelector(\':scope > .popover-arrow\') : null;
-
-                            if (!arrow || !control || !box.offsetWidth) {
-                                return;
-                            }
-
-                            var c = control.getBoundingClientRect();
-                            var point = callout[2] ? c.left + callout[2] : c.left + c.width / 2;
-                            var left = point - box.getBoundingClientRect().left - box.clientLeft - arrow.offsetWidth / 2;
-
-                            left = Math.min(Math.max(0, left), box.clientWidth - arrow.offsetWidth);
-                            arrow.style.transform = \'translate(\' + Math.round(left) + \'px, 0px)\';
-                        });
-                    }
-
-                    // The select opens its callout through an animated
-                    // collapse, so it is placed again once that has run.
-                    document.addEventListener(\'change\', function (event) {
-                        if ((event.target.name === \'format\') || (event.target.id === \'page_id\')) {
-                            setTimeout(place, 0);
-                            setTimeout(place, 400);
-                        }
-                    });
-                    window.addEventListener(\'resize\', place);
-                    window.addEventListener(\'load\', place);
-                })();
-                </script>
+                ' . pg_campaign_content_script() . '
 </main>' .
     output_footer();
     
@@ -317,7 +193,10 @@ if (!$_POST) {
     // The format and purpose are ones the form offers, and the subject and
     // addresses are checked before anything is stored: a campaign without
     // a sender address only failed later, at every delivery.
-    $_POST['format'] = pg_email_campaign_allowed_value('format', $_POST['format'] ?? null);
+    // The body kind names the format: a design and pasted HTML are HTML, a
+    // pasted body without a page.
+    $body_kind = pg_campaign_content_posted_kind($_POST);
+    $_POST['format'] = ($body_kind !== null) ? pg_campaign_content_format($body_kind) : null;
     $_POST['purpose'] = pg_email_campaign_allowed_value('purpose', $_POST['purpose'] ?? null);
     $_POST['page_id'] = (isset($_POST['page_id']) && is_scalar($_POST['page_id'])) ? (string) $_POST['page_id'] : '';
 
@@ -349,9 +228,21 @@ if (!$_POST) {
     $_POST['from_email_address'] = trim((string) $_POST['from_email_address']);
     $_POST['reply_email_address'] = trim((string) ($_POST['reply_email_address'] ?? ''));
 
-    // if the user selected plain text, then clear the page id, so we don't store it with the e-mail campaign
-    if ($_POST['format'] == 'plain_text') {
-        $_POST['page_id'] = '';
+    // Pasted HTML: cleaned by the outgoing mode before anything else, so an
+    // empty or refused paste stops here.
+    $pasted_html = '';
+
+    if ($body_kind === 'html') {
+        $pasted_html = pg_mail_html_clean_outgoing(pg_email_campaign_posted_text($_POST, 'html_body'));
+
+        if ($pasted_html === '') {
+            output_error(lang('Paste the HTML of the e-mail: nothing that can be sent was left of it.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+    }
+
+    // A plain text or pasted body is stored without a page.
+    if ($body_kind !== 'design') {
+        $_POST['page_id'] = '0';
 
     // else the user selected HTML for the format, so do some checks
     } else {
@@ -415,127 +306,17 @@ if (!$_POST) {
     if ($_POST['format'] == 'plain_text') {
         $body = $_POST['body'];
 
+    // Pasted HTML gets the same base, tracking code and footer as a design.
+    } elseif ($body_kind === 'html') {
+        $body = pg_email_campaign_prepare_html_body($pasted_html, trim((string) $_POST['subject']));
+
     // else HTML was selected for the format, so prepare body and store in variable
     } else {
         // The page as its recipients may read it: nothing of the sender's
         // session (token, account widgets) goes into the e-mail.
         $body = pg_email_campaign_page_body($_POST['page_id']);
         
-        // find if there is a base tag in the HTML
-        $base_in_html = preg_match('/<\s*base\s+[^>]*href\s*=\s*["\'](?:http:\/\/|https:\/\/|ftp:\/\/).*?["\']/is', $body);
-
-        // if there is not a base tag in the HTML, add base tag and convert relative links to absolute links
-        if (!$base_in_html) {
-            $base = '<head>' . "\n" . '<base href="' . URL_SCHEME . HOSTNAME_SETTING . '/" />';
-            $body = preg_replace('/<head>/i', $base, $body);
-
-            // change relative URLs to absolute URLs for links
-            $body = preg_replace('/(<\s*a\s+[^>]*href\s*=\s*["\'])(?!ftp:\/\/|https:\/\/|mailto:|http:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
-
-            // change relative URLs to absolute URLs for images
-            $body = preg_replace('/(<\s*img\s+[^>]*src\s*=\s*["\'])(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'].*?>)/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
-
-            // change relative URLs to absolute URLs for CSS background images
-            $body = preg_replace('/(background-image\s*:\s*url\s*\(\s*(?:"|\'|))(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?(?:"|\'|).*?\))/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
-
-            // change relative URLs to absolute URLs for HTML background images
-            $body = preg_replace('/(background\s*=\s*["\'])(?!http:\/\/|https:\/\/)(?:\/|\.\.\/|\.\/|)(.*?["\'])/is', "$1" . URL_SCHEME . HOSTNAME_SETTING . "/$2", $body);
-        }
-        
-        // get all links in order to add tracking codes to links
-        preg_match_all('/(<\s*a\s+[^>]*href\s*=\s*["\']\s*)(.*?)(\s*["\'].*?>)/is', $body, $links);
-
-        // If the date format is month and then day, then use that format.
-        if (DATE_FORMAT == 'month_day') {
-            $month_and_day_format = 'm/d';
-
-        // Otherwise the date format is day and then month, so use that format.
-        } else {
-            $month_and_day_format = 'd/m';
-        }
-
-        // set tracking code to contain the page name and date and time
-        $tracking_code = get_page_name($_POST['page_id']) . '_' . date($month_and_day_format . '/Y_h:i_A');
-
-        // loop through all links in order to add tracking codes to links
-        foreach ($links[0] as $key => $link) {
-            // set the URL that was found in the link
-            $url = $links[2][$key];
-            
-            // remove new lines from the link
-            $url = str_replace("\r\n", '', $url);
-            $url = str_replace("\n", '', $url);
-            
-            $url_parts = @parse_url($url);
-            
-            // if the URL is valid
-            // and if there is not a scheme or the scheme is http or https
-            // and if there is not a hostname or the hostname is this site's hostname
-            // and if there is not already a tracking code in the URL
-            // then continue with adding tracking code to URL
-            if (
-                ($url_parts != false)
-                && ((isset($url_parts['scheme']) == false) || ($url_parts['scheme'] == '') || (mb_strtolower($url_parts['scheme']) == 'http') || (mb_strtolower($url_parts['scheme']) == 'https'))
-                && ((isset($url_parts['host']) == false) || ($url_parts['host'] == '') || (mb_strtolower(str_replace('www.', '', $url_parts['host'])) == mb_strtolower(str_replace('www.', '', HOSTNAME_SETTING))))
-                && ((isset($url_parts['query']) == false) || ($url_parts['query'] == '') || mb_strpos($url_parts['query'], 't=') === false)
-            ) {
-                $new_url = '';
-                
-                // if there is a scheme, then add scheme to new URL
-                if ((isset($url_parts['scheme']) == true) && ($url_parts['scheme'] != '')) {
-                    $new_url .= $url_parts['scheme'] . '://';
-                }
-                
-                // if there is a hostname, then add hostname to new URL
-                if ((isset($url_parts['host']) == true) && ($url_parts['host'] != '')) {
-                    $new_url .= $url_parts['host'];
-                }
-                
-                // if there is a path, then add path to new URL
-                if ((isset($url_parts['path']) == true) && ($url_parts['path'] != '')) {
-                    $new_url .= $url_parts['path'];
-                }
-                
-                $new_url .= '?';
-                
-                // if there is a query string, then add query string and ampersand to new URL
-                if ((isset($url_parts['query']) == true) && ($url_parts['query'] != '')) {
-                    $new_url .= $url_parts['query'] . '&amp;';
-                }
-                
-                $new_url .= 't=' . h(urlencode($tracking_code));
-                
-                // if there is a bookmark, then add bookmark to the new URL
-                if ((isset($url_parts['fragment']) == true) && ($url_parts['fragment'] != '')) {
-                    $new_url .= '#' . $url_parts['fragment'];
-                }
-                
-                $entire_link = $links[0][$key];
-                $link_start = $links[1][$key];
-                $link_end = $links[3][$key];        
-                
-                // replace the link with the new link
-                $body = str_replace($entire_link, $link_start . $new_url . $link_end, $body);
-            }
-        }
-        
-        // get URL for page
-        $page_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign.php?r=<reference_code></reference_code>';
-
-        $email_preferences_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/email_preferences.php?id=<email_address_id></email_address_id>';
-        
-        $footer =
-			     '<div class="software_email_footer" style="font-family: arial; font-size: 11px; color: #666666; text-align: center; background-color: #ffffff; padding: 5px; margin-top: 15px">
-			         <a href="' . $page_url . '" style="color: #666666">' . lang('View this email at our site') . '</a><br>
-			         ' . h(ORGANIZATION_NAME) . '
-			         ' . h(ORGANIZATION_ADDRESS_1) . '
-			         ' . h(ORGANIZATION_ADDRESS_2) . '
-			         ' . h(ORGANIZATION_CITY) . ' ' . h(ORGANIZATION_STATE) . ' ' . h(ORGANIZATION_ZIP_CODE) . ' ' . h(ORGANIZATION_COUNTRY) . '<br>
-			         <a href="' . $email_preferences_url . '" style="color: #666666">' . lang('Update email preferences') . '</a>' . lang(' or ') . '<a href="' . $email_preferences_url . '" style="color: #666666">' . lang('unsubscribe') . '</a><br>
-			     </div>
-			     </body>';
-
-        $body = preg_replace('/<\/body>/i', $footer, $body);
+        $body = pg_email_campaign_prepare_html_body($body, get_page_name($_POST['page_id']));
     }
 
     $email_campaign_id = pg_email_campaign_insert(array(
@@ -557,8 +338,8 @@ if (!$_POST) {
 
     $log_page = '';
 
-    // if HTML was selected for the format, then add page info to log message
-    if ($_POST['format'] == 'html') {
+    // if a design was chosen, then add page info to log message
+    if ($body_kind === 'design') {
         $log_page = ', ' . lang('page') . ': ' . get_page_name($_POST['page_id']);
     }
     

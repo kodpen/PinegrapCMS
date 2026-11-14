@@ -210,6 +210,26 @@ function test_workspace_flow_quick_js_recipes()
 	pg_assert_same(array(), $out[2]);
 }
 
+// The quick setup opened on a recipe (Communication › Automatic sends'
+// ?quick=<key>): the first of its starts the catalogue offers; none for a
+// recipe of any start about a record, an unknown key or a start not offered.
+function test_workspace_flow_quick_js_recipe_opening()
+{
+	$out = workspace_flow_quick_js_test_run('C.recipes = [
+			{ key: "thank", fits: ["event:gone", "event:order.created"], steps: [] },
+			{ key: "task", fits: ["record"], steps: [] },
+			{ key: "lost", fits: ["event:gone"], steps: [] }
+		];
+		var start = function (key) { var o = Q.recipeOpening(C, key); return o ? o.start : null; };
+		return [start("thank"), start("task"), start("lost"), start("none")];');
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('event:order.created', null, null, null), $out);
+}
+
 // A new step takes the first free id, never the start's or its read box's;
 // a recipe's steps are copies after those chosen, held ones after their box;
 // a loop counts its End box; the steps are sent with their title.

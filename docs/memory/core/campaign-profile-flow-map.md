@@ -12,6 +12,6 @@ description: An e-mail campaign profile's action, delay and send time laid again
 
 ## What do the delay and the send time become?
 - Profile: `schedule_length` × `schedule_unit` (days or hours, up to 9 digits) after the action, then moved to `schedule_time` on that day or the next (00:00:00 is any time; a chosen midnight is stored 00:01). A calendar reservation may count before or after the event's start. A moment already past makes no campaign; the campaign job sends at `start_time`.
-- Flow: the Wait box (`delay`, `workspace/workspace-flows-delay-box.md`) waits from a minute up to `WS_FLOW_DELAY_MAX`, or until a date less a time; it has no time of day, and a date already past goes on at once.
-- Covered: a length within `WS_FLOW_DELAY_MAX` with "any time", after the action; length 0 needs no Wait box. Not covered: a send time, a longer wait, before or after a calendar event's start (`calendar_event.reserved` carries no start; Read a record has no calendar event).
+- Flow: the Wait box (`delay`, `workspace/workspace-flows-delay-box.md`) waits from a minute up to `WS_FLOW_DELAY_MAX`, or until a date less a time; since #9437 it moves on to a time of day, and in until mode a passed moment goes on or ends the run.
+- Covered: a length within `WS_FLOW_DELAY_MAX`, after the action, with a send time as the box's time of day (00:00:00 "any time" is none); length 0 needs no Wait box. Before or after a calendar event's start: until `{{trigger.start_at}}` of `calendar_event.reserved` (#9437), less the length for before; "a moment past makes no campaign" is End the run. Not covered: a longer wait.
 - Purpose, consent and the e-mail itself: [[campaign-profile-flow-email]].

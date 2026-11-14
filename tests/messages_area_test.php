@@ -59,11 +59,11 @@ function test_messages_area_unknown_gate_refuses()
 function test_messages_area_mail_tab_follows_the_mail_list_alone()
 {
 	$all = array('campaigns', 'automatic', 'templates', 'sends', 'channels');
-	pg_assert_same(array_merge(array('mail'), $all), pg_messages_tabs_for(0, false, true), 'an administrator who reads a box sees Incoming e-mail first');
-	pg_assert_same($all, pg_messages_tabs_for(0, false, false), 'no box read: no Incoming e-mail, even for an administrator');
-	pg_assert_same(array('mail'), pg_messages_tabs_for(3, false, true), 'a member without campaign rights sees Incoming e-mail alone');
-	pg_assert_true(pg_messages_gate_allows('mail', 3, false, true), 'the mail gate asks the mail list only');
-	pg_assert_false(pg_messages_gate_allows('mail', 0, true, false), 'the campaigns right does not open the mail tab');
+	pg_assert_same(array_merge(array('mail'), $all), pg_messages_tabs_for(0, false, false, true), 'an administrator who reads a box sees Incoming e-mail first');
+	pg_assert_same($all, pg_messages_tabs_for(0, false, false, false), 'no box read: no Incoming e-mail, even for an administrator');
+	pg_assert_same(array('mail'), pg_messages_tabs_for(3, false, false, true), 'a member without campaign rights sees Incoming e-mail alone');
+	pg_assert_true(pg_messages_gate_allows('mail', 3, false, false, true), 'the mail gate asks the mail list only');
+	pg_assert_false(pg_messages_gate_allows('mail', 0, true, true, false), 'the campaigns right does not open the mail tab');
 }
 
 function test_messages_area_tab_strip_marks_the_open_tab()

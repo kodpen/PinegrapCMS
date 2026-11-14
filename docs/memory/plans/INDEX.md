@@ -7,7 +7,6 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
-- agent-conclude-discussion.md: Plan (owner 2026-11-14): an agent concludes a discussion when a person in it asks, and unasked only offers a Conclude button a person presses
 - agent-drawing-guides.md: Plan (owner 2026-11-14): what the canvas side gives an agent's drawing: a guide it reads, charts as an operation, ready layouts, a chart preset for live pages
 - agent-knock-routine-form.md: Plan (architect 2026-11-13, #9241): a push door on a routine's fire address is knocked in the routine's form (it answered HTTP 400 to the webhook form); one step, RK1, then a live check
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
@@ -15,7 +14,6 @@
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
-- designer-assistant-apply-error.md: Plan (owner 2026-11-12, #8970): the designer Assistant's Apply answered with a PHP message instead of JSON; reproduce, fix the cause, JSON answers under errors, a readable message; steps DA1-DA3
 - designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): the components the designer canvas still draws as one closed block are listed, then opened into editable element trees; steps CB0-CB2
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
@@ -55,5 +53,3 @@
 - whatsapp-channel-steps.md: Steps WA0-WA11 of the WhatsApp channel plan (#8950): facts and storage first, connection, queue, templates, webhook, orders, forms, the Flows box, the template designer, offer codes
 - whatsapp-channel-storage.md: WA0's proposals (2026-11-12), open for the architect before WA2: queue, templates and customer messages in tables of their own, SMS marketing consent as the gate, single-use key codes
 - whatsapp-channel.md: Plan (owner 2026-11-12, #8950; 2026-11-13, #9151): WhatsApp beside e-mail for orders, forms and flows, own Meta app, templates, offer codes; customers' WhatsApp and SMS answered in a channel
-- workspace-channel-look-prototype.md: The style sheet tried on dev for step CL1 of plans/workspace-channel-look.md (one header card, colour wash, pill tabs, day chip, writing box card); a browser trial, not in the code
-- workspace-channel-look.md: Plan (owner 2026-11-10, handed to workers 2026-11-11): the Workspace channel screen in the dashboard's manner (one header card, colour wash, pill tabs, panes as cards); steps CL1-CL4 in order

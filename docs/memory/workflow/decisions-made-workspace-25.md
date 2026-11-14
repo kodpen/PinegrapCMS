@@ -8,4 +8,4 @@ description: Decisions made, Workspace part 25: when an agent may conclude a dis
 - Asked which rule an agent should have, he answered: "istenince sonlandırsın. istemeden de tartışmanın sonuçlandığını düşünüyorsa sonlandırma düğmesi sunabilir. kullanıcı tıklayınca tartışmayı sonlandırır."
 - So: an agent concludes a discussion when a person in it asks it to. Unasked it never concludes; when it thinks the discussion has reached its end it may offer a Conclude button, and the discussion is concluded when a person presses it.
 - The architect's reading, not his words: "a person in it" leaves out a guest, a mail and another agent (`workflow/agent-channel-guests.md`); the rule holds in every channel's discussions, not only an agent channel's.
-- Plan: `plans/agent-conclude-discussion.md` (AD1 on request, AD2 the offer).
+- Built in #9404 (on request) and #9416 (the offer): `workspace/agent-conclude-discussion.md`.

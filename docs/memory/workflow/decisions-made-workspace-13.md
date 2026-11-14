@@ -19,7 +19,7 @@ description: Decisions list, workspace part 13 (2026-11-10 on): the Workspace ma
 
 ## Who builds the channel look? (owner, 2026-11-11)
 - Owner (2026-11-11): "workspace kanal görünümü yapan oturumu bulamıyorum onu başkası devir alsın ve tamamlasın." The session he had named for the design has ended.
-- Architect (2026-11-11): his words are the go-ahead for the look he was shown on 2026-11-10 (`plans/workspace-channel-look/01-before-after.jpg`). Coordinators hand CL1-CL3 out like any plan's steps, one after another, built against the picture. For this plan it lifts "the session the owner names" (`decisions-made-workspace-5.md`).
+- Architect (2026-11-11): his words are the go-ahead for the look he was shown on 2026-11-10 (a before/after picture). Coordinators hand CL1-CL4 out like any plan's steps, one after another, built against the picture. For this plan it lifts "the session the owner names" (`decisions-made-workspace-5.md`).
 
 ## Where do the Workspace settings live? (owner, 2026-11-11)
 - Owner (2026-11-11): "workspace ayarları çok karıştı, site ayarları altına taşıyalım. dikkatli olunması için adım adım. workspace ayarları düğmesi tıklandığında ilgili ayarlara gitsin."

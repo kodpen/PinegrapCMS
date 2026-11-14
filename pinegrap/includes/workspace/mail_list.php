@@ -8,7 +8,9 @@
  * overdue first answer, the mailbox and a search, a page at a time; each
  * row's address is this screen with its conversation, whose reading pane
  * the server draws (mail_pane.php), so the mail opens with or without the
- * script, never a channel. Who may read a channel decides which
+ * script, never a channel. A customer's WhatsApp messages and SMS are
+ * conversations of the same tables (mail_phone.php): they are listed beside
+ * the e-mails, and a Kind select narrows the list to one transport. Who may read a channel decides which
  * conversations appear (ws_can_read_channel()), never the box.
  *
  * @author      Erdal Güral (Kodpen)
@@ -28,14 +30,40 @@ define('WS_MAIL_LIST_PAGE', 50);
 define('WS_MAIL_LIST_QUERY_MAX', 100);
 
 /**
+ * The ways a conversation comes and is answered, as the list and the event
+ * rule name them. Pure.
+ *
+ * @return array email | whatsapp | sms => label
+ */
+function ws_mail_transport_labels()
+{
+    return array('email' => lang('E-mail'), 'whatsapp' => lang('WhatsApp'), 'sms' => lang('SMS'));
+}
+
+/**
+ * The transport of a box as the list, the event and the API name it: a
+ * mailbox's way of fetching (imap, graph, gmail, push) is e-mail. Pure.
+ *
+ * @param string|null $box_transport ws_mail_boxes.transport
+ * @return string email | whatsapp | sms
+ */
+function ws_mail_transport_kind($box_transport)
+{
+    $box_transport = (string) $box_transport;
+
+    return in_array($box_transport, array('whatsapp', 'sms'), true) ? $box_transport : 'email';
+}
+
+/**
  * The list's filters as asked in the address, each a known word. Pure.
  *
  * @param array $query view (incoming | sent | unsent | all), status (open |
  *                     waiting | closed | all; open in Incoming, else all by
  *                     default), holder (all | me | none), overdue (1), box
- *                     (a mailbox id), q (the search), before (the cursor)
- * @return array view, status, holder, overdue (bool), box (int), q, before
- *               (null or [time, id])
+ *                     (a mailbox id), transport (email | whatsapp | sms,
+ *                     '' for every kind), q (the search), before (the cursor)
+ * @return array view, status, holder, overdue (bool), box (int), transport,
+ *               q, before (null or [time, id])
  */
 function ws_mail_list_filters($query)
 {
@@ -54,6 +82,7 @@ function ws_mail_list_filters($query)
         'holder'  => $word('holder', array('all', 'me', 'none'), 'all'),
         'overdue' => !empty($query['overdue']) && ((string) $query['overdue'] === '1'),
         'box'     => (is_scalar($query['box'] ?? null) && ctype_digit((string) $query['box'])) ? (int) $query['box'] : 0,
+        'transport' => $word('transport', array_keys(ws_mail_transport_labels()), ''),
         'q'       => $search,
         'before'  => ws_mail_list_cursor($query['before'] ?? ''),
     );
@@ -89,6 +118,7 @@ function ws_mail_list_query($filters, $change = array())
         'holder'  => ($filters['holder'] !== 'all') ? $filters['holder'] : '',
         'overdue' => $filters['overdue'] ? '1' : '',
         'box'     => ($filters['box'] > 0) ? (string) $filters['box'] : '',
+        'transport' => (string) ($filters['transport'] ?? ''),
         'q'       => $filters['q'],
     );
 
@@ -159,6 +189,15 @@ function ws_mail_list_where($filters, $viewer_id, $channel_ids, $charset = '', $
 
     if ((int) ($filters['box'] ?? 0) > 0) {
         $where[] = "box_id = '" . (int) $filters['box'] . "'";
+    }
+
+    // One transport: a number's box by its own, e-mail every other box.
+    $transport = (string) ($filters['transport'] ?? '');
+
+    if (in_array($transport, array('whatsapp', 'sms'), true)) {
+        $where[] = "box_id IN (SELECT b.id FROM ws_mail_boxes b WHERE b.transport = '" . $transport . "')";
+    } elseif ($transport === 'email') {
+        $where[] = "box_id NOT IN (SELECT b.id FROM ws_mail_boxes b WHERE b.transport IN ('whatsapp', 'sms'))";
     }
 
     // An answer written before the send state is sent ('').
@@ -244,6 +283,31 @@ function ws_mail_list_boxes($viewer)
 }
 
 /**
+ * The transports of the boxes whose conversations the reader sees, for the
+ * Kind select.
+ *
+ * @param array $viewer
+ * @return string[] ws_mail_transport_kind() values, each once
+ */
+function ws_mail_list_transports($viewer)
+{
+    $channel_ids = ws_mail_list_channels($viewer);
+
+    if (!$channel_ids) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach ((array) db_values("SELECT DISTINCT transport FROM ws_mail_boxes WHERE id IN (SELECT DISTINCT box_id FROM ws_mail_conversations
+        WHERE channel_id IN (" . implode(',', array_map('intval', $channel_ids)) . "))") as $transport) {
+        $out[] = ws_mail_transport_kind($transport);
+    }
+
+    return array_values(array_unique($out));
+}
+
+/**
  * Whether a support box is among the boxes whose conversations the reader
  * sees (ws_mail_list_boxes()). Pure.
  *
@@ -297,8 +361,8 @@ function ws_mail_list_visible($viewer)
  * @param array $filters ws_mail_list_filters()
  * @param int   $now
  * @return array rows (conversation rows with box_name, channel_name,
- *               assignee_name, first_reply_hours, overdue, support, mails, snippet,
- *               unread, unsent), next (the next page's cursor, '' for none)
+ *               assignee_name, first_reply_hours, overdue, support, transport,
+ *               mails, snippet, unread, unsent), next (the next page's cursor, '' for none)
  */
 function ws_mail_list($viewer, $filters, $now)
 {
@@ -316,8 +380,9 @@ function ws_mail_list($viewer, $filters, $now)
 
     $boxes = array();
 
-    foreach ((array) db_items("SELECT id, name, settings FROM ws_mail_boxes") as $box) {
-        $boxes[(int) $box['id']] = array('name' => (string) $box['name'], 'hours' => ws_mail_first_reply_hours($box), 'support' => ws_mail_box_is_support($box));
+    foreach ((array) db_items("SELECT id, name, settings, transport FROM ws_mail_boxes") as $box) {
+        $boxes[(int) $box['id']] = array('name' => (string) $box['name'], 'hours' => ws_mail_first_reply_hours($box), 'support' => ws_mail_box_is_support($box),
+            'transport' => ws_mail_transport_kind($box['transport']));
     }
 
     $out = array();
@@ -331,7 +396,7 @@ function ws_mail_list($viewer, $filters, $now)
         }
 
         $seen = $row;
-        $box = $boxes[(int) $row['box_id']] ?? array('name' => '', 'hours' => 0, 'support' => true);
+        $box = $boxes[(int) $row['box_id']] ?? array('name' => '', 'hours' => 0, 'support' => true, 'transport' => 'email');
         $overdue = ws_mail_first_reply_overdue($row, $box['hours'], $now);
 
         if ($filters['overdue'] && !$overdue) {
@@ -348,6 +413,7 @@ function ws_mail_list($viewer, $filters, $now)
             'first_reply_hours' => $box['hours'],
             'overdue'           => $overdue,
             'support'           => $box['support'],
+            'transport'         => $box['transport'],
         );
     }
 
@@ -441,7 +507,9 @@ function ws_mail_list_page_url($filters, $conversation_id = 0)
 /**
  * The rows of a page of the list. A row opens its conversation on this
  * screen (ws_mail_list_page_url()), never its channel; the screen's script
- * opens it in the pane in place.
+ * opens it in the pane in place. A WhatsApp or SMS conversation has no
+ * subject: its row names the customer or their number and carries the
+ * transport's badge.
  *
  * @param array[] $rows    ws_mail_list() rows
  * @param array   $filters ws_mail_list_filters() of the rows' page
@@ -455,8 +523,11 @@ function ws_mail_list_rows_html($rows, $filters, $now, $open = 0)
 
     foreach ($rows as $row) {
         $url = ws_mail_list_page_url($filters, (int) $row['id']);
-        $subject = (trim((string) $row['subject']) !== '') ? (string) $row['subject'] : lang('(no subject)');
-        $who = (trim((string) $row['customer_name']) !== '') ? (string) $row['customer_name'] : (string) $row['customer_email'];
+        $transport = ws_mail_transport_kind($row['transport'] ?? '');
+        $phone = ($transport !== 'email');
+        $subject = (trim((string) $row['subject']) !== '') ? (string) $row['subject'] : ($phone ? '' : lang('(no subject)'));
+        $number = ((string) ($row['customer_phone'] ?? '') !== '') ? '+' . (string) $row['customer_phone'] : '';
+        $who = (trim((string) $row['customer_name']) !== '') ? (string) $row['customer_name'] : (((string) $row['customer_email'] !== '') ? (string) $row['customer_email'] : $number);
         $last = max((int) $row['last_in_at'], (int) $row['last_out_at']);
         $unsent = (string) ($row['unsent'] ?? '');
         $classes = 'ws-mail-row' . (!empty($row['unread']) ? ' ws-mail-unread' : '') . (!empty($row['overdue']) ? ' ws-mail-overdue' : '');
@@ -467,9 +538,10 @@ function ws_mail_list_rows_html($rows, $filters, $now, $open = 0)
             . (!empty($row['unread']) ? '<span class="visually-hidden">' . h(lang('Unread')) . '</span>' : '')
             . (((int) ($row['mails'] ?? 0) > 1) ? '<span class="ws-count" title="' . h(lang('E-mails')) . '">' . (int) $row['mails'] . '</span>' : '')
             . '<span class="ws-mail-time">' . h(ws_time_label($last)) . '</span></span>'
-            . '<span class="ws-mail-subject">' . h($subject) . '</span>'
+            . (($subject !== '') ? '<span class="ws-mail-subject">' . h($subject) . '</span>' : '')
             . ((string) ($row['snippet'] ?? '') !== '' ? '<span class="ws-mail-snippet">' . h((string) $row['snippet']) . '</span>' : '')
             . '<span class="ws-mail-row-meta">'
+            . ws_mail_list_transport_badge_html($transport)
             . (($unsent === 'failed') ? '<span class="badge theme-danger">' . h(lang('Not sent')) . '</span>' : '')
             . (($unsent === 'waiting') ? '<span class="badge theme-secondary">' . h(lang('Waiting to be sent')) . '</span>' : '')
             . (((string) $row['box_name'] !== '') ? '<span>' . h((string) $row['box_name']) . '</span>' : '')
@@ -479,6 +551,26 @@ function ws_mail_list_rows_html($rows, $filters, $now, $open = 0)
     }
 
     return $html;
+}
+
+/**
+ * The badge of a WhatsApp or SMS conversation in its row; none for an
+ * e-mail. Pure.
+ *
+ * @param string $transport ws_mail_transport_kind()
+ * @return string HTML
+ */
+function ws_mail_list_transport_badge_html($transport)
+{
+    if ($transport === 'whatsapp') {
+        return '<span class="badge theme-success"><i class="bi bi-whatsapp me-1" aria-hidden="true"></i>' . h(lang('WhatsApp')) . '</span>';
+    }
+
+    if ($transport === 'sms') {
+        return '<span class="badge theme-warning"><i class="bi bi-chat-dots me-1" aria-hidden="true"></i>' . h(lang('SMS')) . '</span>';
+    }
+
+    return '';
 }
 
 /**
@@ -523,19 +615,21 @@ function ws_mail_list_more_html($filters, $next)
  * The screen toolbar: the views, Status, Held by and Mailbox as selects
  * (each keeping the other words), "First answer overdue" as a toggle, the
  * search and Mark all as read. Status, Held by and the toggle only while a
- * support box is among the reader's (ws_mail_list_support()).
+ * support box is among the reader's (ws_mail_list_support()); Kind only
+ * while conversations of more than one transport are.
  *
- * @param array $filters ws_mail_list_filters()
- * @param array $boxes   ws_mail_list_boxes()
- * @param bool  $can_send the person may send from a mailbox (New e-mail)
- * @param bool  $support  a support box is among the boxes
+ * @param array    $filters    ws_mail_list_filters()
+ * @param array    $boxes      ws_mail_list_boxes()
+ * @param bool     $can_send   the person may send from a mailbox (New e-mail)
+ * @param bool     $support    a support box is among the boxes
+ * @param string[] $transports ws_mail_list_transports()
  * @return string HTML
  */
-function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false, $support = true)
+function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false, $support = true, $transports = array())
 {
     $statuses = ws_mail_statuses() + array('all' => lang('All'));
     $holders = array('all' => lang('Anybody'), 'me' => lang('Held by me'), 'none' => lang('Held by nobody'));
-    $keep = array('view', 'status', 'holder', 'overdue', 'box', 'q');
+    $keep = array('view', 'status', 'holder', 'overdue', 'box', 'transport', 'q');
 
     $overdue = '<a class="btn btn-sm btn-text theme-secondary' . ($filters['overdue'] ? ' active' : '') . '" aria-pressed="' . ($filters['overdue'] ? 'true' : 'false') . '"'
         . ' href="messages_mail.php?' . h(ws_mail_list_query($filters, array('overdue' => $filters['overdue'] ? '' : '1'))) . '"><i class="bi bi-alarm me-1" aria-hidden="true"></i>' . h(lang('First answer overdue')) . '</a>';
@@ -550,6 +644,13 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
             array('label' => lang('Mailbox'), 'icon' => 'mailbox', 'keep' => $keep));
     }
 
+    $kinds = array_intersect_key(ws_mail_transport_labels(), array_flip((array) $transports));
+
+    if (count($kinds) > 1) {
+        $search[] = pg_filter_select('transport', array('' => lang('All kinds')) + $kinds, (string) ($filters['transport'] ?? ''),
+            array('label' => lang('Kind'), 'icon' => 'chat-left-text', 'keep' => $keep));
+    }
+
     if ($support) {
         $search[] = $overdue;
     }
@@ -557,7 +658,7 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
     // The search keeps every other word; a new search starts at page one.
     $hidden = '';
 
-    foreach (array('view', 'status', 'holder', 'overdue', 'box') as $key) {
+    foreach (array('view', 'status', 'holder', 'overdue', 'box', 'transport') as $key) {
         if (isset($_GET[$key]) && is_scalar($_GET[$key]) && ((string) $_GET[$key] !== '')) {
             $hidden .= '<input type="hidden" name="' . h($key) . '" value="' . h((string) $_GET[$key]) . '">';
         }

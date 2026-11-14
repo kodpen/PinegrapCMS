@@ -96,9 +96,13 @@ function test_email_campaign_extra_recipient_has_a_label()
 
 function test_email_campaign_screens_preview_frames_have_a_title()
 {
+	// Both screens draw their preview through the content card.
 	foreach (array('add_email_campaign.php', 'edit_email_campaign.php') as $file) {
-		pg_assert_contains('<iframe id="body_preview_iframe" title="' . "' . h(lang('Body Preview')) . '" . '"', email_campaign_screens_source($file), $file . ' titles the preview frame');
+		pg_assert_contains('pg_campaign_content_card(', email_campaign_screens_source($file), $file . ' draws the content card');
 	}
+
+	require_once PG_FUNCTIONS_DIR . '/includes/fn/campaign_content.php';
+	pg_assert_contains('id="body_preview_iframe" title="' . h(lang('Body Preview')) . '"', pg_campaign_content_preview('x.php', ''), 'the preview frame has a title');
 }
 
 function test_email_campaign_shared_form_headings()
@@ -122,8 +126,10 @@ function test_email_campaign_edit_fields_are_named()
 	pg_assert_contains('<select id="status" name="status" class="form-control">', $src, 'the Status select carries the label\'s id');
 	pg_assert_contains('id="bcc_email_address" aria-label="' . "' . h(lang('BCC E-mail Address')) . '" . '"', $src, 'the BCC box is named');
 	pg_assert_false(strpos($src, "<p>' . \$output_bcc_email_address . '</p>") !== false, 'the BCC row is not nested in a paragraph');
-	pg_assert_contains('<textarea name="body" id="email_body"', $src, 'the plain-text body has an id');
-	pg_assert_contains('<label for="email_body" class="form-label">' . "' . lang('Body') . '" . '</label>', $src, 'the plain-text body is labelled');
+	require_once PG_FUNCTIONS_DIR . '/includes/fn/campaign_content.php';
+	$card = pg_campaign_content_card(array('mode' => 'edit', 'kind' => 'text'));
+	pg_assert_contains('name="body" id="email_body"', $card, 'the plain-text body has an id');
+	pg_assert_contains('<label class="pg-field-label" for="email_body">' . h(lang('Body')) . '</label>', $card, 'the plain-text body is labelled');
 	pg_assert_false(strpos($src, "\$output_progress_percentage . '% (") !== false, 'the progress does not glue % in English order');
 	pg_assert_contains("lang(array('string' => '{var:1}%', 'vars' => array(\$output_progress_percentage)))", $src, 'the progress prints through {var:1}%');
 }

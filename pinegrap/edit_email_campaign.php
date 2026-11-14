@@ -19,6 +19,8 @@
 include('init.php');
 require_once(dirname(__FILE__) . '/includes/forms/email_campaign_form.php');
 require_once(dirname(__FILE__) . '/includes/fn/email_campaign_send.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_create.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_content.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -70,6 +72,7 @@ if (!$_POST) {
             email_campaigns.purpose,
             email_campaigns.created_timestamp, 
             email_campaigns.page_id,
+            email_campaigns.last_modified_timestamp,
             user.user_username
         FROM email_campaigns
         LEFT JOIN email_campaign_profiles ON email_campaigns.email_campaign_profile_id = email_campaign_profiles.id
@@ -97,6 +100,7 @@ if (!$_POST) {
     $purpose = $row['purpose'];
     $created_timestamp = $row['created_timestamp'];
     $page_id = $row['page_id'];
+    $last_modified_timestamp = (int) $row['last_modified_timestamp'];
     
     // if the creator username is blank then set to placeholder
     if ($creator_username == '') {
@@ -259,29 +263,33 @@ if (!$_POST) {
         }
     }
 
-    $output_format = '';
-    $output_body = '';
+    include_once('liveform.class.php');
+    $edit_liveform = new liveform('edit_email_campaign');
 
-    // if the format is plain text, then output that
-    if ($format == 'plain_text') {
-        $output_format = lang('Plain Text');
-        $output_body_heading = '<label for="email_body" class="form-label">' . lang('Body') . '</label>';
+    // The content card: the stored kind, the stored body's preview, and for
+    // a manual campaign drawn from a page whether the page changed since.
+    $content = array(
+        'mode'    => $readonly ? 'read' : 'edit',
+        'kind'    => pg_campaign_content_kind($format, $page_id),
+        'subject' => $subject,
+        'preview' => ($format == 'html') ? 'view_email_campaign.php?id=' . (int) $_GET['id'] : '',
+    );
 
-        $output_readonly_attribute = '';
-
-        // if the status is complete, then make the text area read-only
-        if ($status == 'complete') {
-            $output_readonly_attribute = ' readonly="readonly"';
-        }
-
-        $output_body = '<textarea name="body" id="email_body" placeholder="' . lang('Type E-mail body here') . '..."' . $output_readonly_attribute . ' class="form-control" style="width: 99%; height: 300px">' . h($body) . '</textarea>';
-
-    // else the format is HTML, so output that
+    if ($content['kind'] === 'text') {
+        $content['text'] = $body;
+    } elseif ($content['kind'] === 'html') {
+        $content['html'] = pg_campaign_content_without_footer($body);
     } else {
-        $output_format = lang('HTML');
-        // The preview is a frame with its own title, not a field.
-        $output_body_heading = '<div class="form-label">' . lang('Body') . '</div>';
-        $output_body = '<iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="view_email_campaign.php?id=' . h($_GET['id']) .'" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>';
+        $design_result = db_q("SELECT page_id, page_name, page_folder, page_style, page_timestamp FROM page WHERE page_id = ?", array((string) (int) $page_id)) or output_error('Query failed.');
+        $design = mysqli_fetch_assoc($design_result);
+
+        if ($design) {
+            $content['page_name'] = $design['page_name'];
+            $content['edit_url'] = check_edit_access($design['page_folder']) ? pg_page_edit_url($design) : '';
+            $content['changed'] = ($type == 'manual') && check_view_access($design['page_folder']) && pg_campaign_content_design_changed($design['page_timestamp'], $last_modified_timestamp);
+        } else {
+            $content['page_name'] = '[' . lang('Deleted') . ']';
+        }
     }
 
     // Prepare to area differently based on the type of campaign.
@@ -401,17 +409,12 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
+                ' . $edit_liveform->output_notices() . '
                 ' . $output_button_bar . '
                 ' . $output_form_start . '
                 ' . pg_email_campaign_layout(
-                    pg_email_campaign_message_card(
-                        pg_email_campaign_subject_row($subject, $readonly),
-                        pg_email_campaign_format_row($output_format, true),
-                        '<div class="col-12 my-3">
-                            ' . $output_body_heading . '
-                            ' . $output_body . '
-                        </div>'
-                    ) . $output_to_rows . pg_email_campaign_from_card(array(
+                    pg_campaign_content_card($content)
+ . $output_to_rows . pg_email_campaign_from_card(array(
                         'from_name' => $from_name,
                         'from_email_address' => $from_email_address,
                         'reply_email_address' => $reply_email_address,
@@ -439,6 +442,8 @@ if (!$_POST) {
                 ' . $output_form_end . '
 </main>' .
         output_footer();
+
+    $edit_liveform->remove_form();
     
 // else form has been submitted
 } else {
@@ -458,7 +463,8 @@ if (!$_POST) {
             type,
             status,
             subject,
-            format
+            format,
+            page_id
         FROM email_campaigns
         WHERE id = ?";
     $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
@@ -468,6 +474,7 @@ if (!$_POST) {
     $status = $row['status'];
     $subject = $row['subject'];
     $format = $row['format'];
+    $body_kind = pg_campaign_content_kind($format, $row['page_id']);
     
     // if the e-mail campaign is complete, then output error
     if ($status == 'complete') {
@@ -505,10 +512,35 @@ if (!$_POST) {
     }
 
     $sql_body = "";
+    $took_design = false;
 
     // if the format is plain text, then allow the body to be updated
     if ($format == 'plain_text') {
         $sql_body = "body = '" . escape($_POST['body']) . "',";
+
+    // Pasted HTML is cleaned again, without the footer it was stored with,
+    // and made ready as on create.
+    } elseif ($body_kind === 'html') {
+        $pasted_html = pg_mail_html_clean_outgoing(pg_campaign_content_without_footer(pg_email_campaign_posted_text($_POST, 'html_body')));
+
+        if ($pasted_html === '') {
+            output_error(lang('Paste the HTML of the e-mail: nothing that can be sent was left of it.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        $sql_body = "body = '" . escape(pg_email_campaign_prepare_html_body($pasted_html, trim((string) $_POST['subject']))) . "',";
+
+    // "Take the design again": a manual campaign's page drawn anew, on the
+    // same terms as on create (the user may view the page).
+    } elseif (($body_kind === 'design') && ($type == 'manual') && !empty($_POST['take_design'])) {
+        $design_result = db_q("SELECT page_folder FROM page WHERE page_id = ?", array((string) (int) $row['page_id'])) or output_error('Query failed.');
+        $design = mysqli_fetch_assoc($design_result);
+
+        if (!$design || !check_view_access($design['page_folder'])) {
+            output_error(lang('You are not authorized to send that page for the body of the campaign.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        $sql_body = "body = '" . escape(pg_email_campaign_prepare_html_body(pg_email_campaign_page_body($row['page_id']), get_page_name($row['page_id']))) . "',";
+        $took_design = true;
     }
 
     $sql_bcc_email_address = "";
@@ -549,6 +581,14 @@ if (!$_POST) {
 
     // Both campaign states are one list now (view_email_campaigns.php).
     $liveform = new liveform('view_email_campaigns');
+
+    // After "Take the design again" the screen stays open on the new body.
+    if ($took_design) {
+        $edit_liveform = new liveform('edit_email_campaign');
+        $edit_liveform->add_notice(lang('The design was taken again; the e-mail below is what will be sent.'));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_email_campaign.php?id=' . (int) $_POST['id']);
+        exit;
+    }
 
     $liveform->add_notice(lang('The campaign has been saved.'));
 
