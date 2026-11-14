@@ -68,7 +68,7 @@
 - currency-symbol-as-text.md: A stored currency symbol is HTML (&#8378;): raw into HTML, decoded (pg_money_text(), html_entity_decode()) before h(), .text(), a canvas or a script; fixed spots, the guard test
 - custom-form-private-access-expiry.md: A custom form's private access expiry is today plus N calendar days (pg_cf_private_expiry_date()), never N * 86400 seconds, so a clock change does not end it a day early (PR #7039)
 - db-legacy-and-magic-quotes.md: PHP 5 remnants removed (PR #3149, #3195): the DB_LEGACY mysql_* connection in db_connect() and router.php, the magic quotes strip of init.php and the installer; a config that still sets DB_LEGACY [decision: decisions-made-product-3.md]
-- deprecated-resource-free-calls.md: Handles are freed with unset(), not curl_close()/finfo_close()/openssl_x509_free(); db_connect() checks a reused connection with SELECT 1, not mysqli_ping() (PR #1744)
+- deprecated-resource-free-calls.md: Handles are freed with unset(), not curl_close()/finfo_close(); a test keeps own code free of what PHP 8.1-8.5 deprecates; db_connect() checks a connection with SELECT 1, not mysqli_ping()
 - designer-i18n-audit-tool.md: The designer text audit tool docs/_tools/designer_i18n.php (not in the repository): check/extract/apply workflow, how Turkish is detected, and the three classes allowed in skip.
 - device-limit-and-session-sign-out.md: Which sessions the device limit signs out, what ends with a session (notifications), and the Sessions screen's confirmations and wording
 - dom-node-html.md: pg_dom_html() instead of $document->saveHTML($node): one DOM node's HTML the same on every PHP version (7.1-7.2 pretty-printed it), its callers and its test
