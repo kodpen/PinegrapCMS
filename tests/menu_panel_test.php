@@ -192,6 +192,21 @@ function test_menu_tools_icon_is_two_coloured_and_moves()
 	pg_assert_contains('#menu .list-group-item:is(:hover, :focus-visible) .pg-mi-tools .pg-mi-lid {', $css, 'the lid opens on hover');
 }
 
+function test_menu_communication_row_draws_a_bubble_with_two_arrows()
+{
+	$svg = pg_menu_icon('communication', 'campaigns-color');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	pg_assert_contains("\$menu_items[9]['menu_icon'] = 'communication';", pg_test_function_source('output_menu'), 'row 9 names its own drawing');
+	pg_assert_contains('class="pg-mi pg-mi-communication me-3 campaigns-color"', $svg, 'the module colour');
+	pg_assert_contains('<path class="pg-mi-out" d="M7.5 8.2h9M14.2 5.9l2.3 2.3-2.3 2.3"/>', $svg, 'the arrow going out');
+	pg_assert_contains('<path class="pg-mi-in" d="M16.5 12.8h-9M9.8 10.5l-2.3 2.3 2.3 2.3"/>', $svg, 'the arrow coming in');
+	pg_assert_same('', pg_menu_icon('campaigns', 'campaigns-color'), 'the megaphone went with it');
+	pg_assert_contains('#menu .pg-mi-communication { --pg-mi-a: var(--pg-mi-sky); }', $css, 'its accent hue');
+	pg_assert_contains('.pg-mi-communication .pg-mi-out {', $css, 'the arrows move on hover');
+	pg_assert_false(strpos($css, 'pg-mi-campaigns') !== false, 'no rule of the megaphone is left');
+}
+
 function test_menu_tools_markup_opens_its_groups()
 {
 	$groups = array(
