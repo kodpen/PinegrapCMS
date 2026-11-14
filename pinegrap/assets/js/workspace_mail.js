@@ -379,6 +379,9 @@
         });
     }
 
+    // Inside the 24 hours: the answer and one file (its words the caption);
+    // after them: an approved template and a field per variable. Both go
+    // through ws_whatsapp_reply as a form, the file as New e-mail's files.
     function whatsappAnswer(conversation, data, view, h) {
         var t = h.t;
         var el = h.el;
@@ -386,6 +389,10 @@
         var body = h.clear(node.querySelector('.drawer-body'));
         var footer = h.clear(node.querySelector('.drawer-footer'));
         var form = el('form', 'ws-wa-answer');
+        var open = data.seconds > 0;
+        var templates = data.templates || [];
+        var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('wa_reply_send'), 'bi-whatsapp');
+        var post;
 
         node.querySelector('.drawer-title').textContent = t('wa_reply');
         footer.classList.remove('d-none');
@@ -397,28 +404,27 @@
         form.appendChild(el('div', 'small fg-secondary mb-1', t('wa_reply_to', data.name ? data.name + ' (' + data.to + ')' : data.to)));
         form.appendChild(el('div', 'small fg-secondary mb-3', data.window));
 
-        var text = el('textarea', 'form-control');
-        text.id = h.nextId('ws-wa-reply-');
-        text.name = 'text';
-        text.rows = 8;
-        text.maxLength = 4096;
-
-        var box = el('div', 'ws-mail-reply-box position-relative');
-        box.appendChild(text);
-        form.appendChild(h.formRow(t('wa_reply_text'), box, t('wa_reply_hint')));
-        savedReplies(text, box, view, h);
-
-        var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('wa_reply_send'), 'bi-whatsapp');
+        if (open) {
+            post = whatsappText(form, view, h);
+        } else if (templates.length) {
+            post = whatsappTemplate(form, templates, h);
+        } else {
+            form.appendChild(el('p', 'small mb-0', t('wa_reply_no_templates')));
+            h.showOffcanvas(node);
+            return;
+        }
 
         send.addEventListener('click', function () {
-            if (!text.value.trim()) {
-                text.focus();
+            var request = post();
+
+            if (!request) {
                 return;
             }
 
             send.disabled = true;
+            request.fields.conversation_id = conversation;
 
-            h.api('ws_whatsapp_reply', { conversation_id: conversation, text: text.value }).then(function (result) {
+            formPost(h, 'ws_whatsapp_reply', request.fields, request.files).then(function (result) {
                 h.hideOffcanvas(node);
                 h.toast(result.state === 'failed' ? t('wa_reply_failed') : t('wa_reply_sent'), result.state === 'failed' ? 'warning' : 'success');
                 view.sync();
@@ -430,7 +436,137 @@
 
         footer.appendChild(send);
         h.showOffcanvas(node);
-        text.focus();
+    }
+
+    // The answer's words, the saved replies and one file. Returns what the
+    // send posts, or null after pointing at what is missing.
+    function whatsappText(form, view, h) {
+        var t = h.t;
+        var el = h.el;
+        var text = el('textarea', 'form-control');
+        var files = [];
+
+        text.id = h.nextId('ws-wa-reply-');
+        text.name = 'text';
+        text.rows = 8;
+        text.maxLength = 4096;
+
+        var box = el('div', 'ws-mail-reply-box position-relative');
+        box.appendChild(text);
+        form.appendChild(h.formRow(t('wa_reply_text'), box, t('wa_reply_hint')));
+        savedReplies(text, box, view, h);
+
+        var picker = el('input', 'form-control form-control-sm');
+        var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
+
+        picker.type = 'file';
+        picker.accept = '.jpg,.jpeg,.png,.mp4,.3gp,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx';
+
+        var fileRow = h.formRow(t('wa_reply_file'), picker, t('wa_reply_file_hint'));
+
+        fileRow.appendChild(list);
+        form.appendChild(fileRow);
+        picker.addEventListener('change', function () {
+            // One file a message: a new pick takes the place of the last.
+            files.length = 0;
+
+            if (picker.files && picker.files[0]) {
+                files.push(picker.files[0]);
+            }
+
+            picker.value = '';
+            fileRows(h, list, [files]);
+        });
+        setTimeout(function () {
+            text.focus();
+        }, 0);
+
+        return function () {
+            if (!text.value.trim() && !files.length) {
+                text.focus();
+                return null;
+            }
+
+            return { fields: { text: text.value }, files: files };
+        };
+    }
+
+    // The approved templates, the chosen one's text and a field per
+    // variable, named as the template designer named it.
+    function whatsappTemplate(form, templates, h) {
+        var t = h.t;
+        var el = h.el;
+        var choice = h.select([['', t('wa_reply_template_pick')]].concat(templates.map(function (item) {
+            return [item.key, item.name + ' (' + item.language + ')'];
+        })), '');
+        var holder = el('div');
+        var inputs = [];
+
+        form.appendChild(h.formRow(t('wa_reply_template'), choice, t('wa_reply_template_hint')));
+        form.appendChild(holder);
+
+        function chosen() {
+            return templates.filter(function (item) {
+                return item.key === choice.value;
+            })[0] || null;
+        }
+
+        choice.addEventListener('change', function () {
+            var item = chosen();
+
+            h.clear(holder);
+            inputs = [];
+
+            if (!item) {
+                return;
+            }
+
+            var preview = el('div', 'small border rounded p-3 mb-5', item.text);
+
+            // The template's lines as the customer reads them.
+            preview.style.whiteSpace = 'pre-line';
+            holder.appendChild(preview);
+
+            if (item.marketing) {
+                holder.appendChild(el('p', 'small fg-secondary mb-5', t('wa_reply_marketing')));
+            }
+
+            item.slots.forEach(function (slot) {
+                var input = el('input', 'form-control');
+
+                input.type = 'text';
+                input.maxLength = 1000;
+                input.dataset.slot = slot.key;
+                holder.appendChild(h.formRow(slot.label, input));
+                inputs.push(input);
+            });
+        });
+
+        return function () {
+            var item = chosen();
+            var values = {};
+            var empty = null;
+
+            if (!item) {
+                choice.focus();
+                return null;
+            }
+
+            inputs.forEach(function (input) {
+                values[input.dataset.slot] = input.value;
+
+                if (!empty && !input.value.trim()) {
+                    empty = input;
+                }
+            });
+
+            if (empty) {
+                empty.focus();
+                return null;
+            }
+
+            return { fields: { template: item.key, values: JSON.stringify(values) }, files: [] };
+        };
     }
 
     // Under a conversation's card: Reply, Forward, Send again, the status
@@ -440,17 +576,18 @@
     function node(message, view, h) {
         var row = h.el('div', 'ws-mail-reply mt-1');
 
+        // After the 24 hours the drawer offers the approved templates.
         if (message.whatsapp_reply) {
-            if (message.whatsapp_window > 0) {
-                var answer = h.button('btn btn-sm btn-outline theme-success py-0', h.t('wa_reply'), 'bi-whatsapp');
+            var answer = h.button('btn btn-sm btn-outline theme-success py-0', h.t('wa_reply'), 'bi-whatsapp');
 
-                answer.addEventListener('click', function (event) {
-                    event.stopPropagation();
-                    whatsappForm(message, view, h);
-                });
-                row.appendChild(answer);
-            } else {
-                row.appendChild(h.el('span', 'small fg-secondary', h.t('wa_reply_closed')));
+            answer.addEventListener('click', function (event) {
+                event.stopPropagation();
+                whatsappForm(message, view, h);
+            });
+            row.appendChild(answer);
+
+            if (!(message.whatsapp_window > 0)) {
+                row.appendChild(h.el('span', 'small fg-secondary ms-2', h.t('wa_reply_closed')));
             }
         }
 
