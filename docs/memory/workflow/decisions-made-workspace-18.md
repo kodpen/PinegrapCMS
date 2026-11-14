@@ -22,4 +22,4 @@ description: Decisions list, workspace part 18 (2026-11-12): the channel sound s
 - This widens #8762 (`decisions-made-workspace-16.md`), where a page reached nothing; the rest of that guard stays.
 
 ## In which order is it built? (owner, 2026-11-12, #8850)
-- DL1 and DL2 of the panel's design language and the bridge first; workflow tables as Data and the phone on top of them. Plan: `plans/canvas-one.md`.
+- DL1 and DL2 of the panel's design language and the bridge first; workflow tables as Data and the phone on top of them. Plan done; its lasting rules: `workspace/canvas-overview.md`.
