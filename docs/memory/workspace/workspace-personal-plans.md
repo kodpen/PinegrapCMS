@@ -1,10 +1,10 @@
 ---
 name: workspace-personal-plans
-description: A person's private plans on My calendar (PC3): step 11.0.200, the gate ws_personal_plan_can_see() and its guard test, the drawer, Today, the plan_reminder line
+description: A person's private plans on My calendar (PC3): step 11.0.201, the gate ws_personal_plan_can_see() and its guard test, the drawer, Today, the plan_reminder line
 ---
 
 ## Where are plans kept?
-- Step 11.0.200 of 2026.11.0 (`upgrade_2026_11_0_ws_personal_plans()`): `ws_personal_plans` (owner `user_id`, title, note, `starts_at`/`ends_at` end exclusive, `all_day`, `remind_at`/`reminded_at`, `visibility`, `contact_id`, `mail_conversation_id`), `ws_personal_plan_steps`, `ws_personal_plan_people`, and `ws_inbox.plan_id`. One probe: `ws_personal_plans_ready()`. Shape and reasons: `personal-calendar-census-tables.md`.
+- Step 11.0.201 of 2026.11.0 (`upgrade_2026_11_0_ws_personal_plans()`): `ws_personal_plans` (owner `user_id`, title, note, `starts_at`/`ends_at` end exclusive, `all_day`, `remind_at`/`reminded_at`, `visibility`, `contact_id`, `mail_conversation_id`), `ws_personal_plan_steps`, `ws_personal_plan_people`, and `ws_inbox.plan_id`. One probe: `ws_personal_plans_ready()`. Shape and reasons: `personal-calendar-census-tables.md`.
 - `visibility`, `contact_id`, `mail_conversation_id`, the steps and the people stay unused until PC4-PC7. `contact_id` is listed in `pg_contact_holders()` only by PC6; until then `tests/contact_holders_test.php` names it as an exception.
 - Never a `ws_events` row: its readers do not ask whose row it is (`personal-calendar-census-readers.md`).
 

@@ -31,7 +31,7 @@ const WS_PERSONAL_PLAN_NOTE_MAX = 2000;
 const WS_PERSONAL_PLAN_MAX = 5000;
 
 /**
- * Whether the database has the plan tables (2026.11.0, 11.0.200): the one
+ * Whether the database has the plan tables (2026.11.0, 11.0.201): the one
  * probe, as the step adds them and ws_inbox.plan_id at once.
  *
  * @return bool

@@ -78,7 +78,7 @@ function ws_notify($user_id, $kind, $data)
     // A plan item, by its own id (2026.4.10, 10.86).
     $event_id = (function_exists('ws_meetings_ready') && ws_meetings_ready()) ? (int) ($data['event_id'] ?? 0) : 0;
 
-    // A person's own plan, by its id (2026.11.0, 11.0.200).
+    // A person's own plan, by its id (2026.11.0, 11.0.201).
     $plan_id = (function_exists('ws_personal_plans_ready') && ws_personal_plans_ready()) ? (int) ($data['plan_id'] ?? 0) : 0;
 
     // The same thing twice is one row: an edit that mentions somebody again,

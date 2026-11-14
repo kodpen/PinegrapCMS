@@ -190,7 +190,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_whatsapp_templates();      // 11.0.197
 	upgrade_2026_11_0_whatsapp_inbox();          // 11.0.198
 	upgrade_2026_11_0_ws_mail_phone();           // 11.0.199
-	upgrade_2026_11_0_ws_personal_plans();       // 11.0.200
+	upgrade_2026_11_0_ws_personal_plans();       // 11.0.201
 
 }
 
