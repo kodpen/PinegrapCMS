@@ -377,8 +377,10 @@ function pg_messages_template_email_card(array $own, $designs, $self, array $cop
                 'tone' => ($copy['kind'] === 'template') ? 'violet' : 'teal',
                 'title' => (string) $copy['title'],
                 'url' => '',
-                'meta' => $from,
-                'text' => '',
+                // Where it comes from leads the line under the name, so a long
+                // name keeps its width on a phone (as the SMS rows).
+                'meta' => '',
+                'text' => h($from),
                 'pill' => '',
                 'pill_tone' => 'gray',
                 'action' => '<a class="pg-button pg-button-quiet pg-button-sm" target="_blank" rel="noopener" href="add_system_style.php?start=email&amp;copy=' . (int) $copy['page_id'] . '"><i class="bi bi-copy" aria-hidden="true"></i>' . h(lang('Make a copy')) . '</a>',

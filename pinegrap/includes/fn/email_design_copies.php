@@ -162,7 +162,8 @@ function pg_email_design_copy_source($page_id)
 
 /**
  * The pages offered as copies: the installed templates' e-mail pages, then
- * the pages of the latest manual campaigns, each page once, the ones that
+ * the pages of the latest manual campaigns (under the latest one's
+ * subject), each page once, the ones that
  * are no copy source left out (pg_email_design_copy_source()).
  *
  * @param int $limit at most this many of each kind
@@ -211,26 +212,32 @@ function pg_email_design_copy_list($limit = 8)
         }
     }
 
+    // The latest campaigns first; a page used again is listed once, under
+    // its latest campaign's subject.
     $campaigns = db_items(
-        "SELECT email_campaigns.page_id, MAX(email_campaigns.created_timestamp) AS last_used, page.page_name
+        "SELECT email_campaigns.page_id, email_campaigns.subject, email_campaigns.created_timestamp
         FROM email_campaigns
         INNER JOIN page ON page.page_id = email_campaigns.page_id
         WHERE email_campaigns.type = 'manual' AND email_campaigns.page_id > 0
-        GROUP BY email_campaigns.page_id, page.page_name
-        ORDER BY last_used DESC LIMIT " . ($limit * 2)
+        ORDER BY email_campaigns.created_timestamp DESC LIMIT 100"
     );
     $count = 0;
 
     foreach (is_array($campaigns) ? $campaigns : array() as $row) {
         $page_id = (int) $row['page_id'];
 
-        if ($count >= $limit || isset($seen[$page_id]) || pg_email_design_copy_source($page_id) === null) {
+        if ($count >= $limit || isset($seen[$page_id])) {
             continue;
         }
 
         $seen[$page_id] = true;
+
+        if (pg_email_design_copy_source($page_id) === null) {
+            continue;
+        }
+
         $count++;
-        $out[] = array('page_id' => $page_id, 'title' => (string) $row['page_name'], 'kind' => 'campaign', 'stamp' => (int) $row['last_used']);
+        $out[] = array('page_id' => $page_id, 'title' => (string) $row['subject'], 'kind' => 'campaign', 'stamp' => (int) $row['created_timestamp']);
     }
 
     return $out;

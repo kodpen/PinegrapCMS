@@ -28126,6 +28126,18 @@ body.pg-measure-report #content {
 .pg-email-copies > .pg-card-sub {
   margin: 0 12px 4px;
 }
+/* A phone: the button goes under the name and its line, in line with
+   them (the 28 px tile and the row's 11 px gap), so the name keeps the
+   row's width. */
+@media (max-width: 575.98px) {
+  .pg-email-copies .pg-list-row {
+    flex-wrap: wrap;
+  }
+  .pg-email-copies .pg-messages-row-action {
+    flex-basis: 100%;
+    padding-left: 39px;
+  }
+}
 .pg-messages-card-head > form {
   margin: 0;
 }
