@@ -47,7 +47,7 @@ if ($automatic_email) {
             lang(array('string' => '{var:1} campaign profile(s) still send as before, beside the flows.', 'vars' => array(pg_format_number($profiles, 0)))),
             lang('Campaign profiles'),
             'view_email_campaign_profiles.php',
-            'violet'
+            'amber'
         );
     }
 }
@@ -59,7 +59,7 @@ if (!$automatic_flows) {
             : lang('Automation flows are not available yet; run the upgrade.'),
         '',
         '',
-        'blue'
+        'amber'
     );
 
     echo pg_messages_tab_page('automatic', $user, lang('Messages the site sends by itself when something happens.'), $body);

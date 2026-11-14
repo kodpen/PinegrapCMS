@@ -329,8 +329,8 @@ function pg_messages_recipes_html($recipes)
             . '<span class="pg-messages-recipe-chain">' . $chain . '</span></a>';
     }
 
-    return '<section class="pg-card pg-messages-card mb-5">'
-        . '<div class="pg-messages-card-head"><h2 class="pg-title-section">' . h(lang('Ready recipes')) . '</h2>'
+    return '<section class="pg-card pg-messages-card mt-5 mb-5">'
+        . '<div class="pg-messages-card-head"><h2 class="pg-title-section pg-messages-card-heading">' . h(lang('Ready recipes')) . '</h2>'
         . '<a class="btn btn-sm btn-outline theme-secondary rounded-pill px-4" href="' . h(pg_messages_quick_url('')) . '"><i class="bi bi-magic me-2" aria-hidden="true"></i>' . h(lang('Quick setup')) . '</a></div>'
         . '<p class="pg-text-2 mb-3">' . h(lang('Start from a common send; the quick setup asks for the rest.')) . '</p>'
         . '<div class="pg-messages-recipes">' . $cards . '</div></section>';
