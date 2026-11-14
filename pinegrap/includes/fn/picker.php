@@ -1980,9 +1980,15 @@ function pg_picker_field_view($kind, $value, $item)
     $page = ($kind['source'] === 'pages');
 
     if ($state === 'missing') {
-        // A name stays as stored; an id has no name left to tell.
-        $view['text'] = ($kind['value'] === 'id') ? '#' . $values[0] : (string) $values[0];
-        $view['meta'] = $page ? lang('Stored value · page not found') : lang('Stored value · file not found');
+        // A name stays as stored. An id has no name left to tell, so the
+        // field says so in words and the id goes to the meta line.
+        if ($kind['value'] === 'id') {
+            $view['text'] = $page ? lang('Page not found') : lang('File not found');
+            $view['meta'] = lang(array('string' => 'Stored value · #{var:1}', 'vars' => (string) $values[0]));
+        } else {
+            $view['text'] = (string) $values[0];
+            $view['meta'] = $page ? lang('Stored value · page not found') : lang('Stored value · file not found');
+        }
         $view['icon'] = !empty($kind['pictures']) ? 'bi-image' : 'bi-file-earmark-x';
         $view['note'] = $page ? lang('This page no longer exists; choose another.') : lang('This file is no longer in Files; choose another.');
         $view['tone'] = 'warning';

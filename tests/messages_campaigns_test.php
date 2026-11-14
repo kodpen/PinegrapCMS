@@ -76,3 +76,13 @@ function test_messages_campaigns_old_lists_are_doors()
 	$sms = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_sms_campaigns.php');
 	pg_assert_contains("go(PATH . SOFTWARE_DIRECTORY . '/view_email_campaigns.php?channel=sms')", $sms, 'SMS list leads to the SMS channel');
 }
+
+function test_messages_campaign_start_time_reads_no_time_as_zero()
+{
+	pg_assert_same(0, pg_messages_campaign_start_time(''), 'empty');
+	pg_assert_same(0, pg_messages_campaign_start_time(null), 'null');
+	pg_assert_same(0, pg_messages_campaign_start_time('0000-00-00 00:00:00'), 'the zero date');
+	pg_assert_same(0, pg_messages_campaign_start_time('1000-01-01 00:00:00'), 'the API marker, shown as year 1000 before');
+	pg_assert_same(0, pg_messages_campaign_start_time('not a date'), 'unreadable');
+	pg_assert_same(strtotime('2026-11-14 09:30:00'), pg_messages_campaign_start_time('2026-11-14 09:30:00'), 'a real time');
+}

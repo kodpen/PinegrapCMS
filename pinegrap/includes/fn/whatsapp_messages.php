@@ -230,24 +230,53 @@ function pg_whatsapp_message_slots($components)
 }
 
 /**
- * How a slot is named on the card.
+ * What each body variable stands for, as the template designer named it
+ * (the samples column: {"body": [{"label": …}, …]} in {{1}}, {{2}} order).
  *
- * @param array $slot pg_whatsapp_message_slots() slot
- * @return string
+ * @param string $samples the samples column
+ * @return array 'body:<n>' => label; empty for a template made at Meta
  */
-function pg_whatsapp_message_slot_label($slot)
+function pg_whatsapp_message_slot_names($samples)
 {
-    $variable = '{{' . $slot['name'] . '}}';
+    $decoded = json_decode((string) $samples, true);
+    $names = array();
+
+    if (!is_array($decoded) || !isset($decoded['body']) || !is_array($decoded['body'])) {
+        return $names;
+    }
+
+    foreach (array_values($decoded['body']) as $index => $item) {
+        if (is_array($item) && isset($item['label']) && is_scalar($item['label']) && (trim((string) $item['label']) !== '')) {
+            $names['body:' . ($index + 1)] = trim((string) $item['label']);
+        }
+    }
+
+    return $names;
+}
+
+/**
+ * A slot as a chip naming what it stands for, and where it sits: the
+ * designer's name for a body variable, "Value 2" for one without.
+ *
+ * @param array $slot   pg_whatsapp_message_slots() slot
+ * @param array $labels pg_whatsapp_message_slot_names()
+ * @return string HTML
+ */
+function pg_whatsapp_message_slot_chip($slot, $labels)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/var_chips.php');
+
+    $name = isset($labels[$slot['key']]) ? $labels[$slot['key']] : lang(array('string' => 'Value {var:1}', 'vars' => array($slot['name'])));
 
     if ($slot['part'] === 'header') {
-        return lang(array('string' => '{var:1} in the header', 'vars' => array($variable)));
+        $where = lang('in the header');
+    } elseif ($slot['part'] === 'button') {
+        $where = lang(array('string' => 'in the link of button {var:1}', 'vars' => array((int) $slot['index'] + 1)));
+    } else {
+        $where = lang('in the message');
     }
 
-    if ($slot['part'] === 'button') {
-        return lang(array('string' => '{var:1} in the link of button {var:2}', 'vars' => array($variable, (int) $slot['index'] + 1)));
-    }
-
-    return lang(array('string' => '{var:1} in the message', 'vars' => array($variable)));
+    return pg_var_chip_html($name) . ' <span class="pg-text-meta">' . h($where) . '</span>';
 }
 
 /**
@@ -374,6 +403,7 @@ function pg_whatsapp_message_offered($rows)
             'language' => (string) $row['language'],
             'category' => strtoupper((string) $row['category']),
             'slots'    => $read['slots'],
+            'labels'   => pg_whatsapp_message_slot_names(isset($row['samples']) ? $row['samples'] : ''),
         );
     }
 
@@ -516,7 +546,7 @@ function pg_whatsapp_message_templates()
     }
 
     return pg_whatsapp_message_offered((array) db_items(
-        "SELECT name, language, category, status, parameter_format, components
+        "SELECT name, language, category, status, parameter_format, components, samples
         FROM whatsapp_templates
         WHERE status = 'APPROVED'
         ORDER BY name, language"));
@@ -649,7 +679,7 @@ function pg_whatsapp_choice_html($prefix, $stored, $offered, $choices, $column)
 
             $blocks .= '
                                         <div class="' . h($column) . $hidden . '"' . $marks . '>
-                                            <label class="form-label" for="' . h($field_name) . '">' . h(pg_whatsapp_message_slot_label($slot)) . '</label>
+                                            <label class="form-label" for="' . h($field_name) . '">' . pg_whatsapp_message_slot_chip($slot, isset($template['labels']) ? $template['labels'] : array()) . '</label>
                                             <select name="' . h($field_name) . '" id="' . h($field_name) . '" class="form-control">' . $list . '</select>
                                         </div>';
         }

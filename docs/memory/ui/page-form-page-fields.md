@@ -17,7 +17,7 @@ module: forms
 - A test (`tests/page_form_page_fields_test.php`) checks every `pg_page_form_page_field()` call names types some kind lists; `pg_picker_field()` prints nothing for an unknown kind.
 
 ## What happens to a stored archived or binned page?
-- It stays and is posted unchanged. The field shows it under its name with a note: archived folder amber ("visitors cannot open it", `get_page.php` serves it to editors only), Recycle Bin red (its name before the bin), gone `#id` amber, a role 3 user's closed folder unnamed with a lock (`pg_picker_field_view()`).
+- It stays and is posted unchanged. The field shows it under its name with a note: archived folder amber ("visitors cannot open it", `get_page.php` serves it to editors only), Recycle Bin red (its name before the bin), gone "Page not found" amber (the id in the meta line), a role 3 user's closed folder unnamed with a lock (`pg_picker_field_view()`).
 - Browse opens on its folder, or the folder it was binned from, where it is listed marked and cannot be chosen (`picker-pages.md`).
 - Before, a role 3 user's select dropped a stored page in a folder they cannot edit, and a plain Save wrote the empty option over it.
 

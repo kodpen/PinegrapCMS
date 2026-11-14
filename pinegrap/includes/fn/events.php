@@ -134,6 +134,30 @@ function pg_campaign_sent_event($channel, $id, $type)
     );
 }
 
+// The whatsapp.received payload of a customer's message the webhook kept
+// (includes/fn/whatsapp_webhook.php); no database. Single values only, as a
+// flow's start box reads them: id (the whatsapp_inbox row), from (E.164
+// digits, '' for a user known only by username), profile_name, type (text,
+// image, button and Meta's others), body (the text, a caption or a button's
+// title, cut to 1000 characters) and contact_id (0 for a number no contact
+// has). Never the media or the wamid.
+function pg_whatsapp_received_event($inbox_id, $message, $contact_id)
+{
+    $message = is_array($message) ? $message : array();
+    $text = function ($key) use ($message) {
+        return (isset($message[$key]) && is_scalar($message[$key])) ? trim((string) $message[$key]) : '';
+    };
+
+    return array(
+        'id'           => (int) $inbox_id,
+        'from'         => preg_replace('/\D+/', '', $text('from')),
+        'profile_name' => mb_substr($text('profile_name'), 0, 200, 'UTF-8'),
+        'type'         => mb_substr($text('type'), 0, 24, 'UTF-8'),
+        'body'         => mb_substr($text('body'), 0, 1000, 'UTF-8'),
+        'contact_id'   => max(0, (int) $contact_id),
+    );
+}
+
 // A contact that did not exist a moment ago, whichever screen or form made it.
 //
 // The address book is written from eight places in this software and most of
@@ -294,6 +318,7 @@ function pg_event_workspace_events()
         'user.created',
         'customer.consent_changed',
         'mail.bounced',
+        'whatsapp.received',
         'campaign.sent',
         'page.created',
         'page.updated',

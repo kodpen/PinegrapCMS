@@ -167,6 +167,7 @@ function test_workspace_flow_outputs_answered()
 		'contact_group' => array('ws_step_contact_group_do'),
 		'ai'          => array('ws_step_ai_parse'),
 		'sms'         => array('ws_step_sms_do'),
+		'whatsapp'    => array('ws_step_whatsapp_do', 'ws_step_whatsapp_fallback'),
 		'agent'       => array('ws_step_agent_settlement'),
 	);
 

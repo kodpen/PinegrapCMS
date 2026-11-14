@@ -3530,6 +3530,7 @@ function ws_flow_js_strings()
         'fl_rows_read_help'   => lang('The tables the flow\'s owner may read; the box reads with their rights.'),
         'fl_kind_record_get'  => lang('Read a record'),
         'fl_kind_sms'         => lang('Send an SMS'),
+        'fl_kind_whatsapp'    => lang('Send a WhatsApp message'),
         'fl_kind_contact_group' => lang('Add to or take out of a contact group'),
         'fl_record_kind'      => lang('Kind of record'),
         'fl_record_kind_pick' => lang('Choose a kind of record'),
@@ -3747,6 +3748,17 @@ function ws_flow_js_strings()
         'fl_sms_no_to'        => lang('No number yet'),
         'fl_sms_purpose_help' => lang('Marketing goes only to a number whose person agreed to marketing SMS, with the sender identity added; otherwise the box sends nothing and the run says why.'),
         'fl_sms_text'         => lang('Text of the message'),
+        'fl_wa_template'      => lang('Template'),
+        'fl_wa_template_pick' => lang('Choose an approved template'),
+        'fl_wa_template_help' => lang('WhatsApp takes only templates it approved. A marketing template goes only to a number whose person agreed to marketing messages.'),
+        'fl_wa_no_template'   => lang('No template yet'),
+        'fl_wa_none'          => lang('The WhatsApp account has no approved template the box can fill yet.'),
+        'fl_wa_vars'          => lang('Variables of the template'),
+        'fl_wa_vars_help'     => lang('Each variable needs a value; Add value puts in what started the run or what an earlier box gave.'),
+        'fl_wa_var'           => ws_js_template('Variable {var:1}', 1),
+        'fl_wa_fallback'      => lang('Send an e-mail when there is no number or it fails'),
+        'fl_wa_fallback_help' => lang('Only when the message cannot be queued; a message WhatsApp reports as failed later sends no e-mail.'),
+        'fl_wa_fallback_to'   => lang('E-mail address'),
         'fl_values_hint'      => lang('Add value puts in what started the run or what an earlier box gave; {{date}} and the other words of scheduled actions work too.'),
         'fl_values_hint_plain' => lang('Add value puts in what started the run or what an earlier box gave.'),
         'fl_values_hint_value' => lang('Add value puts in what started the run or what an earlier box gave; {{date}}, {{time}} and {{weekday}} give today\'s date, the time and the day of the week.'),
@@ -4228,6 +4240,9 @@ function ws_flow_js_config($viewer, $mode)
         // The SMS box is offered while the site can send SMS
         // (ws_step_sms_check()).
         $steps['sms'] = function_exists('pg_sms_ready') && pg_sms_ready();
+        // The WhatsApp box is offered while WhatsApp is set up, with the
+        // approved templates it can fill (ws_step_whatsapp_check()).
+        $steps['whatsapp'] = ws_step_whatsapp_ready() ? array('templates' => ws_step_whatsapp_offered()) : false;
         // The agents an agent box may ask, each with the channels the owner
         // may write in where it is allowed (flow_agent_box.php).
         $steps['agents'] = function_exists('ws_step_agent_form_list') ? ws_step_agent_form_list($viewer) : array();

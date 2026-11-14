@@ -2,7 +2,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The WhatsApp template designer (whatsapp_template.php): the type buttons,
- * the message editor with its variables as chips (pg_var_chips.js), the
+ * the header (none, text, or a file of Files), the buttons' rows, the
+ * message editor with its variables as chips (pg_var_chips.js), the
  * formatting buttons, the character count, the sample value rows kept in
  * step with the message's variables, and the phone preview redrawn as the
  * message, footer and samples change.
@@ -258,6 +259,146 @@
 
     if (footer) {
         footer.addEventListener('input', update);
+    }
+
+    // The header: none, a text, or a file of Files of one format; only the
+    // shown file list is posted.
+    var headerFormat = document.getElementById('header_format');
+    var headerText = document.getElementById('header_text');
+    var previewHead = document.getElementById('pg_wa_preview_head');
+    var previewMedia = document.getElementById('pg_wa_preview_media');
+
+    function showHeader(format) {
+        var media = ['IMAGE', 'VIDEO', 'DOCUMENT'].indexOf(format) !== -1;
+
+        headerFormat.value = format;
+
+        Array.prototype.forEach.call(form.querySelectorAll('[data-pg-wa-header]'), function (button) {
+            button.setAttribute('aria-pressed', button.getAttribute('data-pg-wa-header') === format ? 'true' : 'false');
+        });
+
+        Array.prototype.forEach.call(form.querySelectorAll('[data-pg-wa-header-part]'), function (part) {
+            var kind = part.getAttribute('data-pg-wa-header-part');
+            part.hidden = !((kind === 'TEXT' && format === 'TEXT') || (kind === 'MEDIA' && media));
+        });
+
+        Array.prototype.forEach.call(form.querySelectorAll('[data-pg-wa-header-file]'), function (list) {
+            var mine = list.getAttribute('data-pg-wa-header-file') === format;
+            list.hidden = !mine;
+            list.disabled = !mine || !data.editable;
+        });
+
+        previewHead.hidden = format !== 'TEXT';
+        previewHead.innerHTML = pgWaFormat(headerText ? headerText.value : '', {});
+        previewMedia.hidden = !media;
+
+        // A picture already drawn stays while its format is kept.
+        if (media && !(format === 'IMAGE' && previewMedia.querySelector('img'))) {
+            previewMedia.innerHTML = '<i class="bi ' + escapeHtml((data.media || {})[format] || 'bi-image') + '"></i>';
+        }
+    }
+
+    Array.prototype.forEach.call(form.querySelectorAll('[data-pg-wa-header]'), function (button) {
+        button.addEventListener('click', function () {
+            showHeader(button.getAttribute('data-pg-wa-header'));
+        });
+    });
+
+    Array.prototype.forEach.call(form.querySelectorAll('[data-pg-wa-header-file]'), function (list) {
+        list.addEventListener('change', function () {
+            var image = previewMedia.querySelector('img');
+
+            if (image) {
+                image.remove();
+            }
+
+            showHeader(headerFormat.value);
+        });
+    });
+
+    if (headerText) {
+        headerText.addEventListener('input', function () {
+            previewHead.innerHTML = pgWaFormat(headerText.value, {});
+        });
+    }
+
+    // The buttons: rows added from the template row, at most data.buttons;
+    // a row's kind decides which of its fields show.
+    var buttonRows = document.getElementById('pg_wa_buttons');
+    var buttonTemplate = document.getElementById('pg_wa_button_template');
+    var buttonAdd = document.getElementById('pg_wa_button_add');
+    var previewButtons = document.getElementById('pg_wa_preview_buttons');
+
+    function fitRow(row) {
+        var kind = row.querySelector('[name="button_type[]"]').value;
+        var value = row.querySelector('[name="button_value[]"]');
+        var sample = row.querySelector('[name="button_sample[]"]');
+
+        value.hidden = kind === 'QUICK_REPLY';
+        sample.hidden = kind !== 'URL';
+        value.placeholder = value.getAttribute(kind === 'PHONE_NUMBER' ? 'data-pg-wa-placeholder-phone' : 'data-pg-wa-placeholder-url') || '';
+    }
+
+    function drawButtons() {
+        var html = '';
+
+        Array.prototype.forEach.call(buttonRows.querySelectorAll('[data-pg-wa-button]'), function (row) {
+            var kind = row.querySelector('[name="button_type[]"]').value;
+            var text = row.querySelector('[name="button_text[]"]').value.trim();
+
+            if (text !== '') {
+                html += '<div class="pg-wa-msg-button"><i class="bi ' + escapeHtml((data.icons || {})[kind] || 'bi-reply') + '" aria-hidden="true"></i>' + escapeHtml(text) + '</div>';
+            }
+        });
+
+        previewButtons.innerHTML = html;
+
+        if (buttonAdd) {
+            buttonAdd.disabled = buttonRows.querySelectorAll('[data-pg-wa-button]').length >= (data.buttons || 3);
+        }
+    }
+
+    if (buttonRows) {
+        Array.prototype.forEach.call(buttonRows.querySelectorAll('[data-pg-wa-button]'), fitRow);
+
+        buttonRows.addEventListener('change', function (event) {
+            var row = event.target.closest('[data-pg-wa-button]');
+
+            if (row) {
+                fitRow(row);
+                drawButtons();
+            }
+        });
+
+        buttonRows.addEventListener('input', drawButtons);
+
+        buttonRows.addEventListener('click', function (event) {
+            var remove = event.target.closest('[data-pg-wa-button-remove]');
+
+            if (remove) {
+                remove.closest('[data-pg-wa-button]').remove();
+                drawButtons();
+
+                if (buttonAdd) {
+                    buttonAdd.focus();
+                }
+            }
+        });
+    }
+
+    if (buttonAdd && buttonTemplate) {
+        buttonAdd.addEventListener('click', function () {
+            var row = buttonTemplate.content.firstElementChild.cloneNode(true);
+
+            buttonRows.appendChild(row);
+            fitRow(row);
+            drawButtons();
+            row.querySelector('[name="button_text[]"]').focus();
+        });
+    }
+
+    if (buttonRows) {
+        drawButtons();
     }
 
     rows.addEventListener('input', function () {

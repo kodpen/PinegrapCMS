@@ -53,8 +53,10 @@ function test_messages_area_tab_strip_marks_the_open_tab()
 {
 	$html = pg_messages_tab_strip('sends', array('campaigns', 'sends'), '/p/');
 	pg_assert_contains('href="/p/messages_sends.php"', $html, 'the tab address');
-	pg_assert_contains('class="nav-link active" aria-current="page" href="/p/messages_sends.php"', $html, 'the open tab is current');
-	pg_assert_contains('class="nav-link" href="/p/view_email_campaigns.php"', $html, 'another tab is a plain link');
+	pg_assert_contains('class="pg-seg-item is-active" aria-current="page" href="/p/messages_sends.php"', $html, 'the open tab is current');
+	pg_assert_contains('class="pg-seg-item" href="/p/view_email_campaigns.php"', $html, 'another tab is a plain link');
+	pg_assert_contains('<div class="pg-seg">', $html, 'drawn as the segmented control');
+	pg_assert_contains('title="Campaigns"', $html, 'a tab keeps its label as the title for its icon alone at a phone width');
 	pg_assert_false(strpos($html, 'messages_channels.php') !== false, 'a tab outside the list is not drawn');
 }
 
@@ -147,4 +149,44 @@ function test_messages_area_channel_cards_html()
 	pg_assert_contains('<span class="pg-pill pg-tone-teal">Good</span>', $html, 'a good domain is a teal pill');
 	pg_assert_contains('<span class="pg-pill pg-tone-gray">Off</span>', $html, 'an off channel is gray');
 	pg_assert_contains('href="smtp_settings.php"', $html, 'the e-mail card leads to SMTP Settings');
+}
+
+function test_messages_area_seg_filter_keeps_the_other_filters()
+{
+	$html = pg_messages_seg_filter('state', array('active' => 'Active', 'finished' => 'Finished'), 'finished', 'active', 'list.php', array('channel' => 'sms'), 'Status');
+	pg_assert_contains('<div class="pg-seg" role="group" aria-label="Status">', $html, 'a labelled segmented control');
+	pg_assert_contains('class="pg-seg-item" href="list.php?channel=sms">Active</a>', $html, 'the default choice leaves its parameter out');
+	pg_assert_contains('class="pg-seg-item is-active" aria-current="true" href="list.php?channel=sms&amp;state=finished">Finished</a>', $html, 'the chosen one is raised and keeps the channel');
+	$plain = pg_messages_seg_filter('channel', array('all' => 'All'), 'all', 'all', 'list.php', array('state' => ''), 'Channel');
+	pg_assert_contains('href="list.php"', $plain, 'no query when every filter is its default');
+}
+
+function test_messages_area_note()
+{
+	$html = pg_messages_note('Not <set> up', 'Set up', '/s?a=1&b=2');
+	pg_assert_contains('Not &lt;set&gt; up', $html, 'the sentence is escaped');
+	pg_assert_contains('href="/s?a=1&amp;b=2">Set up</a>', $html, 'the button leads to its address');
+	pg_assert_contains('pg-tone-amber', $html, 'amber by default');
+	pg_assert_false(strpos(pg_messages_note('Text'), '<a ') !== false, 'no button without a label');
+}
+
+function test_messages_area_channel_cards_are_links_in_a_padded_card()
+{
+	$html = pg_messages_channel_cards_html(pg_messages_channel_cards(array(), messages_area_channel_urls()));
+	pg_assert_contains('<section class="pg-card pg-messages-card">', $html, 'the heading sits inside a padded card');
+	pg_assert_contains('<a class="pg-card-inner pg-messages-channel" href="smtp_settings.php">', $html, 'the whole card is the link');
+	pg_assert_contains('<div class="pg-messages-channels">', $html, 'the even grid');
+}
+
+function test_messages_area_progress_bar()
+{
+	$html = pg_messages_progress_html(1, 2, '1 / 2 · 50%', '1 <b>delivered</b>');
+	pg_assert_contains('role="progressbar" aria-valuemin="0" aria-valuemax="2" aria-valuenow="1"', $html, 'a progressbar for screen readers');
+	pg_assert_contains('style="width: 50%"', $html, 'the done share fills half');
+	pg_assert_contains('<span class="pg-messages-progress-figure">1 / 2 · 50%</span>', $html, 'the figure beside the bar');
+	pg_assert_contains('<div class="pg-messages-progress-note">1 <b>delivered</b></div>', $html, 'the note under it, as markup');
+	pg_assert_contains('is-full', pg_messages_progress_html(3, 3, '3 / 3'), 'a finished campaign is full');
+	pg_assert_contains('style="width: 0%"', pg_messages_progress_html(0, 0, '0 / 0'), 'nothing of nothing is an empty bar');
+	pg_assert_contains('style="width: 100%"', pg_messages_progress_html(5, 3, '5 / 3'), 'never past the end');
+	pg_assert_false(strpos(pg_messages_progress_html(1, 2, 'x'), 'progress-note') !== false, 'no note without one');
 }

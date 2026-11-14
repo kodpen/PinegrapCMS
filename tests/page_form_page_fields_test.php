@@ -140,7 +140,7 @@ function test_page_form_page_fields_stored_page_marks()
 	$page = $kinds['page'];
 
 	$missing = pg_picker_field_view($page, 42, null);
-	pg_assert_same(array('missing', '#42', 'warning'), array($missing['state'], $missing['text'], $missing['tone']));
+	pg_assert_same(array('missing', lang('Page not found'), 'warning'), array($missing['state'], $missing['text'], $missing['tone']));
 	pg_assert_same(lang('This page no longer exists; choose another.'), $missing['note']);
 
 	$archived = pg_picker_field_view($page, 7, array('state' => 'offline', 'text' => 'Old offers', 'address' => '/old-offers'));

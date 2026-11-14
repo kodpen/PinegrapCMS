@@ -14,7 +14,7 @@ description: Decisions list, workspace part 21 (2026-11-12 on): incoming e-mail 
 - The architect's, not the owner's words: the name stays "Gelen e-posta", never "gelen kutusu" (`workspace/mail-decisions.md`); what the card keeps besides the link is proposed in MA10a.
 
 ## Is the canvas card's line of tables and Bind a table approved? (owner, 2026-11-12, #8964)
-- Approved with three corrections wanted in the same PR (#8960, step CO2 of `plans/canvas-one-steps.md`): at 390 px a bound table's name keeps its own line in the Bind a table drawer; the card's Open button reads "Aç" in Turkish through a text of its own; the chip says "okur" where the page only reads.
+- Approved with three corrections wanted in the same PR (#8960, step CO2 of the canvas-one plan, closed in `workspace/canvas-overview.md`): at 390 px a bound table's name keeps its own line in the Bind a table drawer; the card's Open button reads "Aç" in Turkish through a text of its own; the chip says "okur" where the page only reads.
 - Shown the card and the drawer drawn from the PR's own code, wide and phone, the owner (2026-11-12): "Ta, Ma" (Ta: approved, with the three corrections the architect found).
 
 ## What does the line under a message show when the message woke more than one agent? (owner, 2026-11-13, #9188)

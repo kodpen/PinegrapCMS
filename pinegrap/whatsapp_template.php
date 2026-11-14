@@ -42,6 +42,7 @@ if ($id) {
     if (!$design) {
         output_error(lang('The WhatsApp template could not be found.') . ' <a href="' . h($list_url) . '">' . lang('Go back') . '</a>.');
     }
+    $design = pg_whatsapp_design_resolve_file($design);
 } else {
     $design = pg_whatsapp_design_new();
 }
@@ -70,17 +71,35 @@ if ($_POST) {
         go($self);
     }
 
-    if (isset($_POST['submit_save']) && $editable) {
-        $design = pg_whatsapp_design_posted($_POST, $design);
+    // Save draft, and Send for approval, which saves first: what is sent
+    // is always what is kept.
+    if ((isset($_POST['submit_save']) || isset($_POST['submit_approval'])) && $editable) {
+        $design = pg_whatsapp_design_resolve_file(pg_whatsapp_design_posted($_POST, $design));
         $errors = pg_whatsapp_design_check($design);
 
         if (!$errors) {
             $saved = pg_whatsapp_design_save($design, $user['id']);
 
             if ($saved['ok']) {
-                log_activity(lang(array('string' => 'WhatsApp template draft saved: {var:1}', 'vars' => array($design['name']))), $_SESSION['sessionusername']);
-                $liveform->add_notice(lang('The draft was saved. WhatsApp sees it once it is sent for approval.'));
-                go(PATH . SOFTWARE_DIRECTORY . '/whatsapp_template.php?id=' . (int) $saved['id']);
+                $target = PATH . SOFTWARE_DIRECTORY . '/whatsapp_template.php?id=' . (int) $saved['id'];
+
+                if (!isset($_POST['submit_approval'])) {
+                    log_activity(lang(array('string' => 'WhatsApp template draft saved: {var:1}', 'vars' => array($design['name']))), $_SESSION['sessionusername']);
+                    $liveform->add_notice(lang('The draft was saved. WhatsApp sees it once it is sent for approval.'));
+                    go($target);
+                }
+
+                $design = pg_whatsapp_design_resolve_file(pg_whatsapp_design_load($saved['id']));
+                $result = pg_whatsapp_design_submit($design, $user['id']);
+
+                if ($result['ok']) {
+                    log_activity(lang(array('string' => 'WhatsApp template sent for approval: {var:1}', 'vars' => array($design['name']))), $_SESSION['sessionusername']);
+                    $liveform->add_notice($result['message']);
+                } else {
+                    $liveform->add_error($result['message']);
+                }
+
+                go($target);
             }
 
             $errors[($saved['field'] !== '') ? $saved['field'] : '_form'] = $saved['error'];
@@ -116,6 +135,7 @@ $disabled = $editable ? '' : ' disabled';
 
 // The three stages of a template; the first is the designer's.
 $stage = ($design['status'] === 'APPROVED') ? 3 : (($design['status'] === 'DRAFT') ? 1 : 2);
+$known = ($design['meta_id'] !== '');
 $output_stages = '';
 
 foreach (array(1 => lang('Design'), 2 => lang('WhatsApp approval'), 3 => lang('Use in orders, forms and flows')) as $number => $label) {
@@ -142,7 +162,7 @@ $output_basics =
         <div class="card-body pt-0"><div class="pg-wa-basics">
             <div>
                 <label class="pg-field-label" for="name">' . h(lang('Name')) . '</label>
-                <input type="text" class="pg-input pg-wa-mono" id="name" name="name" maxlength="' . PG_WHATSAPP_DESIGN_NAME_MAX . '" value="' . h($design['name']) . '" autocomplete="off" spellcheck="false" pattern="[a-z0-9_]+"' . $invalid('name') . $disabled . '>
+                <input type="text" class="pg-input pg-wa-mono" id="name" name="name" maxlength="' . PG_WHATSAPP_DESIGN_NAME_MAX . '" value="' . h($design['name']) . '" autocomplete="off" spellcheck="false" pattern="[a-z0-9_]+"' . $invalid('name') . ($known ? ' disabled' : $disabled) . '>
                 ' . ($field_error('name') ?: '<div class="pg-field-help">' . h(lang('Lower-case letters, digits and _, as WhatsApp asks.')) . '</div>') . '
             </div>
             <div>
@@ -153,7 +173,7 @@ $output_basics =
             </div>
             <div>
                 <label class="pg-field-label" for="language">' . h(lang('Language')) . '</label>
-                <select class="pg-input" id="language" name="language"' . $invalid('language') . $disabled . '>' . $output_languages . '</select>
+                <select class="pg-input" id="language" name="language"' . $invalid('language') . ($known ? ' disabled' : $disabled) . '>' . $output_languages . '</select>
                 ' . $field_error('language') . '
             </div>
         </div></div>
@@ -208,11 +228,15 @@ $output_message =
 // A template WhatsApp holds: why it is read-only, and a rejection's reason.
 $output_state = '';
 
-if (!$editable) {
-    $output_state = '<div class="alert theme-' . (($design['status'] === 'REJECTED') ? 'danger' : 'secondary') . '" role="status"><p class="mb-0">'
-        . h(($design['status'] === 'APPROVED')
-            ? lang('WhatsApp approved this template. It cannot be changed; send yourself a test to see it on your phone.')
-            : lang('This template is with WhatsApp, so it is shown here as WhatsApp holds it.'))
+$state_texts = array(
+    'APPROVED' => lang('WhatsApp approved this template. It cannot be changed; send yourself a test to see it on your phone.'),
+    'PENDING'  => lang('WhatsApp is reviewing this template; a review takes up to 24 hours. Its state is read again every six hours.'),
+    'REJECTED' => lang('WhatsApp rejected this template. Change it and send it for approval again; its name and language stay.'),
+);
+
+if ($design['status'] !== 'DRAFT') {
+    $output_state = '<div class="alert theme-' . (($design['status'] === 'REJECTED') ? 'danger' : (($design['status'] === 'APPROVED') ? 'success' : 'secondary')) . '" role="status"><p class="mb-0">'
+        . h(isset($state_texts[$design['status']]) ? $state_texts[$design['status']] : lang('This template is with WhatsApp, so it is shown here as WhatsApp holds it.'))
         . (($design['reason'] !== '') ? '<br>' . h(lang(array('string' => 'Reason given by WhatsApp: {var:1}', 'vars' => array($design['reason'])))) : '')
         . '</p></div>';
 }
@@ -227,16 +251,17 @@ foreach (pg_whatsapp_design_variables($design['body']) as $key) {
 
 // The phone: the header, the message, the footer and the buttons as
 // WhatsApp draws them.
-$output_header = '';
+$header_format = $design['header'] ? (isset($design['header']['format']) ? strtoupper((string) $design['header']['format']) : 'TEXT') : 'NONE';
+$media_icons = array('IMAGE' => 'bi-image', 'VIDEO' => 'bi-play-btn', 'DOCUMENT' => 'bi-file-earmark-text', 'LOCATION' => 'bi-geo-alt');
+$header_text = ($header_format === 'TEXT') && isset($design['header']['text']) ? (string) $design['header']['text'] : '';
 
-if ($design['header']) {
-    $format = isset($design['header']['format']) ? strtoupper((string) $design['header']['format']) : '';
-    $icons = array('IMAGE' => 'bi-image', 'VIDEO' => 'bi-play-btn', 'DOCUMENT' => 'bi-file-earmark', 'LOCATION' => 'bi-geo-alt');
-
-    $output_header = ($format === 'TEXT')
-        ? '<div class="pg-wa-msg-head">' . pg_whatsapp_design_format_html(isset($design['header']['text']) ? (string) $design['header']['text'] : '', array()) . '</div>'
-        : '<div class="pg-wa-msg-media" aria-hidden="true"><i class="bi ' . (isset($icons[$format]) ? $icons[$format] : 'bi-image') . '"></i></div>';
-}
+// The picture itself when it is in Files and open to everyone, else the
+// format's icon.
+$output_header =
+    '<div class="pg-wa-msg-media" id="pg_wa_preview_media"' . (isset($media_icons[$header_format]) ? '' : ' hidden') . ' aria-hidden="true">'
+    . ((($header_format === 'IMAGE') && ($design['header_link'] !== '')) ? '<img src="' . h($design['header_link']) . '" alt="">' : '<i class="bi ' . h(isset($media_icons[$header_format]) ? $media_icons[$header_format] : 'bi-image') . '"></i>')
+    . '</div>'
+    . '<div class="pg-wa-msg-head" id="pg_wa_preview_head"' . (($header_format === 'TEXT') ? '' : ' hidden') . '>' . pg_whatsapp_design_format_html($header_text, array()) . '</div>';
 
 $output_buttons_preview = '';
 $button_icons = array('URL' => 'bi-box-arrow-up-right', 'PHONE_NUMBER' => 'bi-telephone', 'COPY_CODE' => 'bi-copy', 'QUICK_REPLY' => 'bi-reply', 'OTP' => 'bi-copy');
@@ -245,6 +270,110 @@ foreach ($design['buttons'] as $button) {
     $type = isset($button['type']) ? strtoupper((string) $button['type']) : '';
     $output_buttons_preview .= '<div class="pg-wa-msg-button"><i class="bi ' . (isset($button_icons[$type]) ? $button_icons[$type] : 'bi-reply') . '" aria-hidden="true"></i>' . h(isset($button['text']) ? (string) $button['text'] : '') . '</div>';
 }
+
+$output_buttons_preview = '<div id="pg_wa_preview_buttons">' . $output_buttons_preview . '</div>';
+
+// The header card: none, a text, or a picture, video or document from
+// Files (one list per format; only the shown one is posted).
+$header_labels = array('NONE' => lang('None'), 'TEXT' => lang('Text'), 'IMAGE' => lang('Image'), 'VIDEO' => lang('Video'), 'DOCUMENT' => lang('Document'));
+$header_icons = array('NONE' => '', 'TEXT' => 'bi-fonts', 'IMAGE' => 'bi-image', 'VIDEO' => 'bi-play-btn', 'DOCUMENT' => 'bi-file-earmark');
+$output_header_kinds = '';
+
+foreach ($header_labels as $value => $label) {
+    $output_header_kinds .= '<button type="button" class="pg-seg-item" data-pg-wa-header="' . $value . '" aria-pressed="' . (($header_format === $value) ? 'true' : 'false') . '"' . $disabled . '>'
+        . ($header_icons[$value] !== '' ? '<i class="bi ' . $header_icons[$value] . '" aria-hidden="true"></i>' : '') . h($label) . '</button>';
+}
+
+$output_header_files = '';
+
+foreach (array('IMAGE', 'VIDEO', 'DOCUMENT') as $format) {
+    $chosen = ($header_format === $format) && !empty($design['header_file']['id']) ? (int) $design['header_file']['id'] : 0;
+    $files = pg_whatsapp_design_header_files($format);
+    $options = '<option value="">' . h(lang('Choose a file')) . '</option>';
+    $found = false;
+
+    foreach ($files as $file) {
+        $found = $found || ($file['id'] === $chosen);
+        $options .= '<option value="' . $file['id'] . '"' . (($file['id'] === $chosen) ? ' selected' : '') . '>' . h($file['name'] . ' · ' . pg_format_number(max(1, round($file['size'] / 1024)), 0) . ' KB') . '</option>';
+    }
+
+    // A file kept on the template but no longer offered (too large, renamed)
+    // stays chosen, so the check names what is wrong with it.
+    if ($chosen && !$found) {
+        $options .= '<option value="' . $chosen . '" selected>' . h(($design['header_file']['name'] !== '') ? $design['header_file']['name'] : lang('A file no longer in Files')) . '</option>';
+    }
+
+    $output_header_files .= '<select class="pg-input" name="header_file" id="header_file_' . strtolower($format) . '" data-pg-wa-header-file="' . $format . '"' . (($header_format === $format) ? '' : ' hidden disabled') . $invalid('header_file') . ($editable ? '' : ' disabled') . '>' . $options . '</select>';
+}
+
+$output_header_card =
+    '<section class="card pg-wa-card">
+        <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Header')) . ' <span class="pg-field-label-note">· ' . h(lang('optional')) . '</span></h2>
+        <div class="card-body pt-0">
+            <span class="pg-seg pg-wa-seg-wrap" role="group" aria-label="' . h(lang('Header')) . '">' . $output_header_kinds . '</span>
+            <input type="hidden" name="header_format" id="header_format" value="' . h($header_format) . '">
+            <div class="pg-wa-header-part" data-pg-wa-header-part="TEXT"' . (($header_format === 'TEXT') ? '' : ' hidden') . '>
+                <label class="pg-field-label" for="header_text">' . h(lang('Header text')) . '</label>
+                <input type="text" class="pg-input" id="header_text" name="header_text" maxlength="' . PG_WHATSAPP_DESIGN_HEADER_MAX . '" value="' . h($header_text) . '"' . $invalid('header_text') . $disabled . '>
+                ' . ($field_error('header_text') ?: '<div class="pg-field-help">' . h(lang('A bold line above the message, at most 60 characters.')) . '</div>') . '
+            </div>
+            <div class="pg-wa-header-part" data-pg-wa-header-part="MEDIA"' . (isset($media_icons[$header_format]) ? '' : ' hidden') . '>
+                <label class="pg-field-label" for="header_file_' . strtolower(isset($media_icons[$header_format]) ? $header_format : 'image') . '">' . h(lang('File from Files')) . '</label>
+                ' . $output_header_files . '
+                ' . ($field_error('header_file') ?: '<div class="pg-field-help">' . lang(array('string' => 'A JPG or PNG picture up to 5 MB, an MP4 video up to 16 MB or a PDF up to 16 MB, uploaded in {var:1} first. WhatsApp\'s review gets a copy of it.', 'vars' => array('<a href="view_folders.php">' . h(lang('Files')) . '</a>'))) . '</div>') . '
+            </div>
+        </div>
+    </section>';
+
+// The buttons card: up to three rows; the script adds and removes rows
+// from the template row.
+$button_kinds = array('URL' => lang('Link'), 'PHONE_NUMBER' => lang('Phone call'), 'QUICK_REPLY' => lang('Quick reply'));
+
+$button_row = function ($button, $row) use ($button_kinds, $errors, $editable) {
+    $type = isset($button['type']) ? strtoupper((string) $button['type']) : 'URL';
+    $value = ($type === 'URL') ? (isset($button['url']) ? (string) $button['url'] : '') : (($type === 'PHONE_NUMBER') ? (isset($button['phone_number']) ? (string) $button['phone_number'] : '') : '');
+    $sample = isset($button['sample']) ? (string) $button['sample'] : '';
+    $kinds = $button_kinds;
+
+    if (!isset($kinds[$type])) {
+        $kinds[$type] = $type;
+    }
+
+    $options = '';
+
+    foreach ($kinds as $kind => $label) {
+        $options .= '<option value="' . h($kind) . '"' . (($kind === $type) ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+
+    $off = $editable ? '' : ' disabled';
+    $field = 'button_' . $row;
+
+    return '<div class="pg-wa-button-row" data-pg-wa-button>'
+        . '<select class="pg-input pg-input-sm" name="button_type[]" aria-label="' . h(lang('Button kind')) . '"' . $off . '>' . $options . '</select>'
+        . '<input type="text" class="pg-input pg-input-sm" name="button_text[]" maxlength="' . PG_WHATSAPP_DESIGN_BUTTON_MAX . '" value="' . h(isset($button['text']) ? (string) $button['text'] : '') . '" placeholder="' . h(lang('Button text')) . '" aria-label="' . h(lang('Button text')) . '"' . (isset($errors[$field]) ? ' aria-invalid="true"' : '') . $off . '>'
+        . '<input type="text" class="pg-input pg-input-sm" name="button_value[]" maxlength="2000" value="' . h($value) . '" data-pg-wa-placeholder-url="' . h(lang('https://… , {{1}} at the end for a value')) . '" data-pg-wa-placeholder-phone="' . h(lang('+90 212 555 01 02')) . '" aria-label="' . h(lang('Link or phone number')) . '"' . (($type === 'QUICK_REPLY') ? ' hidden' : '') . $off . '>'
+        . '<input type="text" class="pg-input pg-input-sm" name="button_sample[]" maxlength="200" value="' . h($sample) . '" placeholder="' . h(lang('Sample for {{1}}')) . '" aria-label="' . h(lang('Sample for the link\'s variable')) . '"' . (($type === 'URL') ? '' : ' hidden') . $off . '>'
+        . ($editable ? '<button type="button" class="pg-icon-button pg-icon-button-sm" data-pg-wa-button-remove aria-label="' . h(lang('Remove button')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>' : '')
+        . (isset($errors[$field]) ? '<div class="pg-field-help pg-field-error">' . h($errors[$field]) . '</div>' : '')
+        . '</div>';
+};
+
+$output_button_rows = '';
+
+foreach (array_values($design['buttons']) as $row => $button) {
+    $output_button_rows .= $button_row($button, $row);
+}
+
+$output_buttons_card =
+    '<section class="card pg-wa-card">
+        <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Buttons')) . ' <span class="pg-field-label-note">· ' . h(lang(array('string' => 'at most {var:1}', 'vars' => array(PG_WHATSAPP_DESIGN_BUTTONS_MAX)))) . '</span></h2>
+        <div class="card-body pt-0">
+            <div id="pg_wa_buttons">' . $output_button_rows . '</div>
+            ' . ($editable ? '<template id="pg_wa_button_template">' . $button_row(array('type' => 'URL'), 99) . '</template>
+            <button type="button" class="pg-button pg-button-ghost pg-button-sm" id="pg_wa_button_add"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a button')) . '</button>
+            <span class="pg-text-meta">' . h(lang('Link, phone call or quick reply. A quick reply\'s answer can start a flow.')) . '</span>' : '') . '
+        </div>
+    </section>';
 
 $app = pg_whatsapp_app();
 $business = ($app['verified_name'] ?? '') !== '' ? (string) $app['verified_name'] : (string) (defined('ORGANIZATION_NAME') && ORGANIZATION_NAME !== '' ? ORGANIZATION_NAME : HOSTNAME_SETTING);
@@ -285,7 +414,8 @@ $output_side =
 $output_actions = '';
 
 if ($editable) {
-    $output_actions .= '<button type="submit" name="submit_save" value="1" class="pg-button pg-button-fill"><i class="bi bi-check-circle" aria-hidden="true"></i>' . h(lang('Save draft')) . '</button>';
+    $output_actions .= '<button type="submit" name="submit_save" value="1" class="pg-button pg-button-quiet"><i class="bi bi-check-circle" aria-hidden="true"></i>' . h(lang('Save draft')) . '</button>'
+        . '<button type="submit" name="submit_approval" value="1" class="pg-button pg-button-fill" data-confirm-content="' . h(lang('The template is saved and sent to WhatsApp for review. While WhatsApp reviews it, it cannot be changed.')) . '"><i class="bi bi-patch-check" aria-hidden="true"></i>' . h(lang('Send for approval')) . '</button>';
 }
 
 if ($design['status'] === 'APPROVED') {
@@ -313,6 +443,9 @@ $script_data = array(
     'remove'   => lang('Remove {var:1}'),
     'fallback' => lang('Value {var:1}'),
     'editable' => $editable,
+    'buttons'  => PG_WHATSAPP_DESIGN_BUTTONS_MAX,
+    'icons'    => $button_icons,
+    'media'    => $media_icons,
 );
 
 echo
@@ -338,7 +471,7 @@ pg_page_shell(
     <form name="form" action="' . h($self) . '" method="post" id="pg_wa_form" data-pg-wa="' . h(json_encode($script_data, JSON_UNESCAPED_UNICODE)) . '">
         ' . get_token_field() . '
         <div class="row">
-            <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $output_basics . $output_message . '</div>
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $output_basics . $output_header_card . $output_message . $output_buttons_card . '</div>
             <div class="col-12 lg:col-4 2xl:col-3 order-2">' . $output_side . '</div>
             ' . ($output_actions !== '' ? '<div class="col-12 order-3 position-sticky"><nav class="buttons navigation" aria-label="' . h(lang('Actions')) . '">' . $output_actions . '</nav></div>' : '') . '
         </div>

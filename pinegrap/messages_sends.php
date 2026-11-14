@@ -89,53 +89,56 @@ if ($sends_page === false) {
 }
 
 $sends_counts = pg_messages_sends_tiles($user, $sends_now);
-$sends_tiles = '';
+$sends_figures = array();
 
 foreach (
     array(
-        array(lang('Queued'), 'queued', ''),
-        array(lang('Sending'), 'sending', ''),
-        array(lang('Sent in the last 24 hours'), 'sent', ''),
-        array(lang('Failed'), 'failed', ' fg-danger'),
-        array(lang('Outcome unknown'), 'uncertain', ' fg-emphasis-warning'),
+        array(lang('Queued'), 'queued', 'bi-hourglass-split', 'blue'),
+        array(lang('Sending'), 'sending', 'bi-arrow-repeat', 'violet'),
+        array(lang('Sent in the last 24 hours'), 'sent', 'bi-check2-all', 'teal'),
+        array(lang('Failed'), 'failed', 'bi-x-octagon', 'rose'),
+        array(lang('Outcome unknown'), 'uncertain', 'bi-question-circle', 'amber'),
     ) as $sends_tile
 ) {
-    // A campaign maker's tiles count their campaigns' waiting recipients
+    // A campaign maker's figures count their campaigns' waiting recipients
     // only; the queue figures are not theirs to see.
     if (!$sends_manager && ($sends_tile[1] !== 'queued')) {
         continue;
     }
 
-    $sends_tiles .= '
-            <div class="col-6 md:col-4 xl:col">
-                <div class="card h-100">
-                    <div class="card-body">
-                        <div class="small fg-secondary">' . h($sends_tile[0]) . '</div>
-                        <div class="fs-2xl fw-bold' . (($sends_counts[$sends_tile[1]] > 0) ? $sends_tile[2] : '') . '">' . pg_format_number($sends_counts[$sends_tile[1]], 0) . '</div>
-                    </div>
-                </div>
-            </div>';
+    $sends_figures[] = array('label' => $sends_tile[0], 'icon' => $sends_tile[2], 'tone' => $sends_tile[3], 'value' => pg_format_number($sends_counts[$sends_tile[1]], 0));
 }
 
+// The toolbar as the drawing has it: search, the channel as a segmented
+// control, then the source, state and period, Run now at the right.
 $sends_keep = array('channel', 'source', 'state', 'period');
-$sends_toolbar = pg_filter_select('period', pg_messages_sends_periods(), $sends_filters['period'], array('keep' => $sends_keep, 'label' => lang('Period'), 'icon' => 'calendar3'))
-    . pg_filter_select('channel', array('' => lang('All channels')) + pg_messages_sends_channels(), $sends_filters['channel'], array('keep' => $sends_keep, 'label' => lang('Channel')))
+$sends_keep_values = array();
+
+foreach ($sends_keep as $sends_key) {
+    $sends_keep_values[$sends_key] = ($sends_key === 'period' && $sends_filters['period'] === '7') ? '' : $sends_filters[$sends_key];
+}
+
+$sends_filters_html = '<div class="pg-messages-filters">'
+    . pg_messages_seg_filter('channel', array('' => lang('All')) + pg_messages_sends_channels(), $sends_filters['channel'], '', 'messages_sends.php', $sends_keep_values, lang('Channel'))
     . pg_filter_select('source', array('' => lang('All sources')) + pg_messages_sends_sources(), $sends_filters['source'], array('keep' => $sends_keep, 'label' => lang('Source')))
-    . pg_filter_select('state', array('' => lang('All states')) + pg_mail_queue_list_status_labels(pg_messages_sends_states()), $sends_filters['state'], array('keep' => $sends_keep, 'label' => lang('State')));
+    . pg_filter_select('state', array('' => lang('All states')) + pg_mail_queue_list_status_labels(pg_messages_sends_states()), $sends_filters['state'], array('keep' => $sends_keep, 'label' => lang('Status')))
+    . pg_filter_select('period', pg_messages_sends_periods(), $sends_filters['period'], array('keep' => $sends_keep, 'label' => lang('Period'), 'icon' => 'calendar3'))
+    . '</div>';
+$sends_run_form = '';
 
 $sends_state_line = '';
 $sends_transport_warning = '';
 
 if ($sends_manager) {
-    $sends_toolbar = '
+    $sends_run_form = '
             <form action="' . h($sends_self) . '" method="post" class="disable_shortcut">
                 ' . get_token_field() . '
-                <button type="submit" name="sends_action" value="run_now" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Run now') . '</button>
-            </form>' . $sends_toolbar;
+                <button type="submit" name="sends_action" value="run_now" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-play" aria-hidden="true"></i>' . lang('Run now') . '</button>
+            </form>';
 
     $sends_state_line = pg_mail_job_alive()
-        ? '<span class="badge theme-success">' . lang('Queue active') . '</span> <span class="small fg-secondary">' . lang('E-mail is handed to the scheduled job (the general job or mail_job.php).') . '</span>'
-        : '<span class="badge theme-secondary">' . lang('Queue inactive') . '</span> <span class="small fg-secondary">' . lang('Neither the general job nor mail_job.php has run in the last 15 minutes, so e-mail is sent immediately.') . '</span>';
+        ? '<span class="pg-pill pg-tone-teal">' . lang('Queue active') . '</span> ' . lang('E-mail is handed to the scheduled job (the general job or mail_job.php).')
+        : '<span class="pg-pill pg-tone-gray">' . lang('Queue inactive') . '</span> ' . lang('Neither the general job nor mail_job.php has run in the last 15 minutes, so e-mail is sent immediately.');
 
     $sends_runs = pg_cron_last_runs();
     $sends_run = (is_array($sends_runs) && isset($sends_runs['mail_job'])) ? (int) $sends_runs['mail_job'] : 0;
@@ -148,15 +151,10 @@ if ($sends_manager) {
         WHERE (status = 'sent') OR (attempts > 0)
         ORDER BY id DESC
         LIMIT 1"))) {
-        $sends_transport_warning = '
-            <div class="alert theme-warning d-flex flex-wrap align-items-center gap-3 mt-5" role="alert">
-                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
-                <span>' . h(pg_mail_transport_failure_sentence()) . '</span>
-                <a class="btn btn-sm btn-solid theme-warning ms-auto" href="' . h(PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php') . '">' . h(lang('Open SMTP Settings')) . '</a>
-            </div>';
+        $sends_transport_warning = pg_messages_note(pg_mail_transport_failure_sentence(), lang('Open SMTP Settings'), PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php', 'amber', 'alert');
     }
 
-    $sends_state_line = $sends_transport_warning . '<p class="small mt-3 mb-0">' . $sends_state_line . ' · ' . lang('Last run of the mail queue') . ': '
+    $sends_state_line = $sends_transport_warning . '<p class="pg-text-meta pg-messages-state">' . $sends_state_line . ' · ' . lang('Last run of the mail queue') . ': '
         . (($sends_run > 0) ? prepare_form_data_for_output(date('Y-m-d H:i:s', $sends_run), 'date and time') : lang('Never')) . '</p>';
 }
 
@@ -175,13 +173,13 @@ pg_page_shell(array(
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
             ' . pg_messages_tab_strip_for('sends', $user) . '
-            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">' . $sends_toolbar . '
-                <div class="pg-toolbar-grow"></div>
-                ' . pg_list_table_search_box('messages_sends') . '
-            </nav>
+            ' . pg_screen_toolbar(array(
+                'grow'     => $sends_filters_html,
+                'search'   => pg_list_table_search_box('messages_sends'),
+                'overflow' => $sends_run_form,
+            ), array('class' => 'pg-messages-toolbar')) . '
+            ' . pg_messages_sends_figures_html($sends_figures) . '
             ' . $sends_state_line . '
-            <div class="row g-5 my-3">' . $sends_tiles . '
-            </div>
             <form action="' . h($sends_self) . '" method="post" class="disable_shortcut" data-pg-sends-loading="' . h(lang('Loading…')) . '" data-pg-sends-failed="' . h(lang('The recipients could not be read.')) . '">
                 ' . get_token_field() . '
                 ' . pg_list_table_html($sends_source, $sends_page, lang('Sends')) . '
