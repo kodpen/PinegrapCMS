@@ -15,6 +15,7 @@ description: The standing caution in every agent's and assistant's brief (GV5): 
 ## How is a guest's message marked?
 - In the conversation a brief carries: `ws_ai_author_words('guest', …)` gives "Name (guest, outside the team)", as an incoming mail is "(e-mail from outside the team)".
 - In the API: `outside` (boolean) on the message (`ws_api_message_present()`) and on each message of `GET /workspace/channels/{id}/context`, true for a guest's line and an incoming mail (`ws_message_outside()`, pure). The context names a guest and a mail's sender in `author` (empty before #9423).
+- On each mail of the mail routes too (`ws_api_mail_present()`, `mail-api-reading.md`): true for mail that came in.
 
 ## How is it checked?
 - `tests/workspace_guest_caution_test.php`: the rule, the texts built without a database, each other builder by its source, the author words, `ws_message_outside()`, the API fields. `tests/ai_prompt_rules_test.php` counts nine assistant lines.

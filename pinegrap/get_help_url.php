@@ -473,6 +473,7 @@ function get_help_url($properties = array())
         'workspace'               => 'workspace#channels',
         'workspace_board'         => 'workspace#planning-board',
         'workspace_calendar'      => 'workspace#work-calendar',
+        'workspace_my_calendar'   => 'workspace#work-calendar',
         'workspace_tasks'         => 'workspace#my-tasks',
         'workspace_timeline'      => 'workspace#decision-timeline',
         'workspace_settings'      => 'workspace#workspace-settings',
