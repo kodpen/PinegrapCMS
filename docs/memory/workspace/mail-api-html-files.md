@@ -22,5 +22,10 @@ description: HTML and files in Workspace e-mail sent or drafted over the API and
 - A draft's `file_ids` replaces its list (an empty list takes them off); the writer's right to each is checked when it is kept and again for the sender at Send (`ws_api_mail_drafts_send()`); the sent draft's row goes, its list with it.
 - `WorkspaceMailDraft` gains `html` (null for none) and `file_ids`. A file or HTML alone is a draft (`ws_mail_draft_has_words()`).
 
+## What does the Drafts view do with them? (`mail_drafts_screen.php`)
+- Open draft: the text (its HTML's words when it has none), its files in the form's Files list (`ws_mail_draft_form_files()`, only those the person may send), and a note under the text when it keeps HTML the form does not show.
+- Send: the draft's `body_html` while the text is unchanged (`ws_mail_draft_sent_mail()`), else the form's; its files go by `file_ids`, and `ws_mail_compose_library_files()` takes a channel message's file too (`ws_mail_send_file_reach()`).
+- Save draft: an unchanged text keeps text and HTML; a changed one takes the writing box's HTML or none (`ws_mail_draft_save_request()`); the Files list replaces `draft_files`. PR Merge held MT5 for this loss (channel 3407).
+
 ## Tests?
 - `tests/workspace_mail_html_files_out_test.php`, `workspace_mail_drafts_test.php`, `workspace_api_mail_test.php`. No route was called against a database or a mail server.
