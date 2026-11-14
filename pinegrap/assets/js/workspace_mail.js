@@ -455,7 +455,7 @@
         savedReplies(text, box, view, h);
 
         if (sms) {
-            var count = el('div', 'small fg-secondary mt-n2 mb-1');
+            var count = el('div', 'small fg-secondary mb-1');
             var kind = el('div', 'small fg-secondary');
             var counted = function () {
                 var parts = smsParts(text.value);
