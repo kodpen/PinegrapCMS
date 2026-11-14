@@ -8,7 +8,7 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - MA0 (S, done #9074) The census (`platform/messages-area-census-*.md`), answered on #9081.
 - MA1 (M, done #9182) The shell: the menu row, the five tabs with their gates, old addresses leading in.
 - MA2 (M, done #9252) Sends: the list, tiles, filters, row buttons and e-mail sources built behind `pg_messages_sends_list_open()` (`platform/messages-area-sends.md`).
-- MA2b (M, done #9275) The list table driver puts a source's keyset bound and batch limit into each branch and counts per branch; then the Sends list opens, `mail_queue.php` becomes a door (`pg_messages_sends_queue_door()`) and automatic campaigns leave the Campaigns list.
+- MA2b (M, done #9275) Keyset bounds per branch; the Sends list opens, `mail_queue.php` becomes a door, automatic campaigns leave Campaigns.
 - MA3 (M, done #9215) Campaigns: one list for e-mail and SMS campaigns; "New campaign" asks the channel first, then recipients, content, time.
 - MA4 (S, done #9074) E-mail body as a page: the way MA5 builds (`designer/campaign-email-body-*.md`), #9083.
 - MA5 The campaign's content step (`plans/messages-area-decided.md`), in five PRs:
@@ -16,7 +16,8 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
   - MA5b (M, done #9426, `ui/campaign-content-step.md`) The content step, drawn anew: design, pasted HTML or plain text; "Take the design again"; wide and phone preview.
   - MA5c (M, done #9465, `designer/email-designs.md`) E-mail designs: folder, `props.pgEmail`, 600/375 px canvas, six mail parts, the mail pass on their body.
   - MA5c2 (S, done #9520, `designer/email-designs-parts.md`) Header, footer, greeting, product card, the check line.
-  - MA5d (M) Five ready designs, the template's and earlier campaigns' as copies; e-mail designs in Templates.
+  - MA5d (M, `designer/email-designs-ready.md`) Five ready designs with previews; e-mail designs in Templates.
+  - MA5d2 (S) The template's and earlier campaigns' designs as copies; the site's colours.
   - MA5e (S) "Send a test to me": to oneself and up to five addresses, never counted, a limit per user.
 - MA6 (M, SMS texts done #9294, WhatsApp templates #9355 (WA3b), `ui/messages-area-templates-tab.md`) Templates: e-mail designs (with MA5), SMS texts and WhatsApp templates in one tab.
 - MA7 (S, done #9200) Channels: e-mail sender, SMS, WhatsApp and İYS as cards with their state, each leading to its settings.

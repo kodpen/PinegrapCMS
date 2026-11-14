@@ -27,6 +27,19 @@ include_once('liveform.class.php');
 $user = validate_user();
 validate_email_access($user);
 
+// A ready e-mail design's preview, drawn as it is sent, for the frames of
+// the E-mail designs card (sandboxed there: no script runs).
+if (isset($_GET['preview']) && is_string($_GET['preview'])) {
+    if (!pg_email_ready_design_valid($_GET['preview'])) {
+        http_response_code(404);
+        exit;
+    }
+
+    header('Content-Type: text/html; charset=utf-8');
+    echo pg_email_ready_design_html($_GET['preview']);
+    exit;
+}
+
 $liveform = new liveform('messages_templates');
 $templates_manager = ((int) $user['role'] <= 2);
 $templates_self = PATH . SOFTWARE_DIRECTORY . '/messages_templates.php';
@@ -114,7 +127,24 @@ $body .= pg_messages_template_whatsapp_card(
     )
 );
 
-$body .= pg_messages_template_coming_card();
+// The ready e-mail designs, then the site's own: the pages in the
+// e-mail designs folder (none read before the folder exists).
+$templates_email_folder = pg_email_designs_folder_id(false);
+$templates_email_pages = array();
+
+if ($templates_email_folder > 0) {
+    $templates_email_pages = db_items(
+        "SELECT page_id, page_name, page_style, page_timestamp FROM page
+        WHERE page_folder = '" . (int) $templates_email_folder . "' AND page_style > 0
+        ORDER BY page_timestamp DESC LIMIT 50"
+    );
+}
+
+$body .= pg_messages_template_email_card(
+    pg_messages_template_email_rows(is_array($templates_email_pages) ? $templates_email_pages : array()),
+    ((int) $user['role'] <= 1),
+    $templates_self
+);
 
 echo pg_messages_tab_page('templates', $user, lang('E-mail designs and message texts to start a send from.'), $body);
 

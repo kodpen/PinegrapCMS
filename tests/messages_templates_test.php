@@ -64,7 +64,6 @@ function test_messages_templates_card_markup()
 	pg_assert_same(1, substr_count($html, 'pg-pill pg-tone-teal'), 'one event on');
 	pg_assert_same(1, substr_count($html, 'pg-pill pg-tone-gray'), 'one event off');
 
-	pg_assert_false(strpos(pg_messages_template_coming_card(), 'WhatsApp') !== false, 'WhatsApp has its own card, no Soon row');
 }
 
 function test_messages_templates_every_card_event_has_a_kind_label()
@@ -131,4 +130,25 @@ function test_messages_templates_whatsapp_card()
 	$html = pg_messages_template_whatsapp_card(array(), $state);
 	pg_assert_false(strpos($html, 'href=') !== false, 'nothing to follow for a campaign maker');
 	pg_assert_contains('Meta &lt;said&gt; no', $html, 'a failed read, escaped');
+}
+
+function test_messages_templates_email_designs_card()
+{
+	$rows = pg_messages_template_email_rows(array(
+		array('page_id' => '7', 'page_name' => 'spring <sale>', 'page_style' => '3', 'page_timestamp' => '0'),
+	));
+	pg_assert_same(array(array('title' => 'spring <sale>', 'url' => 'edit_system_style.php?id=3&page=7', 'stamp' => 0)), $rows, 'a row per own design, opening its editor');
+
+	$html = pg_messages_template_email_card($rows, true, '/pinegrap/messages_templates.php');
+	pg_assert_same(5, substr_count($html, '<figure class="pg-email-ready">'), 'the five ready designs');
+	pg_assert_same(5, substr_count($html, 'sandbox="" tabindex="-1"'), 'each preview frame runs nothing');
+	pg_assert_contains('src="/pinegrap/messages_templates.php?preview=newsletter"', $html, 'drawn by the tab');
+	pg_assert_contains('href="add_system_style.php?start=email&amp;ready=sale"', $html, 'Use this design opens it in the editor');
+	pg_assert_contains('spring &lt;sale&gt;', $html, 'an own design, escaped');
+	pg_assert_contains('href="edit_system_style.php?id=3&amp;page=7"', $html, 'its editor');
+	pg_assert_false(strpos($html, 'Soon') !== false, 'no Soon row any more');
+
+	$reader = pg_messages_template_email_card(array(), false, '/x.php');
+	pg_assert_false(strpos($reader, 'add_system_style.php') !== false, 'Use this design only for a designer');
+	pg_assert_contains(h(lang('No e-mail designs of your own yet: start one from a ready design.')), $reader, 'none of one\'s own');
 }

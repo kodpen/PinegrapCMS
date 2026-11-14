@@ -1485,6 +1485,7 @@
     "No e-document provider is selected; the delivery note stays a paper document.": "e-Belge sağlayıcısı seçilmemiş; irsaliye kâğıt belge olarak kalır.",
     "No e-document provider sends e-Delivery Notes yet.": "Henüz hiçbir e-Belge sağlayıcısı e-İrsaliye göndermiyor.",
     "No e-mail conversation matches.": "Eşleşen e-posta konuşması yok.",
+    "No e-mail designs of your own yet: start one from a ready design.": "Henüz kendi e-posta tasarımınız yok: hazır bir tasarımdan başlayın.",
     "No e-mail is sent to this address: {var:1}": "Bu adrese e-posta gönderilmiyor: {var:1}",
     "No e-mail yet": "Henüz e-posta yok",
     "No earlier figure": "Önceki rakam yok",
