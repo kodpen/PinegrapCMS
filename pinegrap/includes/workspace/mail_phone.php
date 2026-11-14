@@ -466,3 +466,307 @@ function ws_mail_phone_card_check($post, $user_id, $liveform, $transport = 'what
 
     return array('channel_id' => $decided['channel_id']);
 }
+
+/* ---------------------------------------------------------------------------
+   Reply by WhatsApp: free text inside the customer's 24 hours
+   --------------------------------------------------------------------------- */
+
+/**
+ * Loads the WhatsApp account and its answer queue (includes/fn/).
+ */
+function ws_mail_phone_load()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_reply.php');
+}
+
+/**
+ * The conversation a WhatsApp card offers to answer: on the conversation's
+ * card, for a reader who may write in its channel. Pure.
+ *
+ * @param array      $row      ws_messages row
+ * @param array|null $item     ws_mail_items_map() entry
+ * @param bool       $can_post
+ * @return int conversation id, 0 for none
+ */
+function ws_mail_phone_reply_offer($row, $item, $can_post)
+{
+    $conversation = is_array($item) ? $item['conversation'] : null;
+
+    if (!$can_post || ((string) ($item['transport'] ?? '') !== 'whatsapp') || !is_array($conversation)
+        || ((int) $conversation['message_id'] !== (int) $row['id'])) {
+        return 0;
+    }
+
+    return (int) $conversation['id'];
+}
+
+/**
+ * Seconds left to answer a WhatsApp conversation with text. Pure apart
+ * from the module it loads.
+ *
+ * @param array|null $conversation ws_mail_conversations row
+ * @param int        $now
+ * @return int
+ */
+function ws_mail_phone_window($conversation, $now)
+{
+    ws_mail_phone_load();
+
+    return is_array($conversation) ? pg_whatsapp_window_left((int) ($conversation['last_in_at'] ?? 0), $now) : 0;
+}
+
+/**
+ * The sentence for a refused WhatsApp answer.
+ *
+ * @param string $error
+ * @return string
+ */
+function ws_mail_phone_reply_error_text($error)
+{
+    $texts = array(
+        'no_access' => lang('You cannot answer in this conversation\'s channel.'),
+        'not_phone' => lang('This conversation is not a WhatsApp conversation.'),
+        'off'       => lang('WhatsApp is not set up.'),
+        'window'    => lang('The 24 hours after the customer\'s last message have passed: WhatsApp takes only an approved template now.'),
+        'empty'     => lang('Write the answer.'),
+        'too_long'  => lang(array('string' => 'A WhatsApp message holds at most {var:1} characters.', 'vars' => array(4096))),
+        'number'    => lang('This conversation has no WhatsApp number to answer.'),
+        'demo'      => lang('No WhatsApp message is sent from a demonstration site.'),
+        'not_ready' => lang('The database has not been upgraded yet.'),
+        'not_failed' => lang('This message is not waiting to be sent again.'),
+    );
+
+    return $texts[$error] ?? lang('The answer could not be sent.');
+}
+
+/**
+ * Whether this person may answer this WhatsApp conversation now: they may
+ * write in its channel, it is the WhatsApp box's, WhatsApp is set up and the
+ * customer's 24 hours are open.
+ *
+ * @param array $viewer
+ * @param int   $conversation_id
+ * @param int   $now
+ * @return array ok, error, conversation, box, channel, seconds (left of the window)
+ */
+function ws_mail_phone_reply_target($viewer, $conversation_id, $now)
+{
+    $out = array('ok' => false, 'error' => '', 'conversation' => null, 'box' => null, 'channel' => null, 'seconds' => 0);
+
+    if (!ws_mail_phone_ready()) {
+        return array_merge($out, array('error' => 'not_ready'));
+    }
+
+    $conversation = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . (int) $conversation_id . "'");
+    $channel = is_array($conversation) ? ws_channel((int) $conversation['channel_id']) : null;
+
+    if (!$channel || empty($viewer['member']) || !ws_mail_can_answer($viewer, $channel)) {
+        return array_merge($out, array('error' => 'no_access'));
+    }
+
+    $box = ws_mail_box((int) $conversation['box_id']);
+
+    if (!$box || ((string) $box['transport'] !== 'whatsapp')) {
+        return array_merge($out, array('error' => 'not_phone'));
+    }
+
+    ws_mail_phone_load();
+
+    if (!pg_whatsapp_ready()) {
+        return array_merge($out, array('error' => 'off'));
+    }
+
+    $seconds = pg_whatsapp_window_left((int) $conversation['last_in_at'], $now);
+
+    if ($seconds <= 0) {
+        return array_merge($out, array('error' => 'window'));
+    }
+
+    return array('ok' => true, 'error' => '', 'conversation' => $conversation, 'box' => $box, 'channel' => $channel, 'seconds' => $seconds);
+}
+
+/**
+ * Queues an answer and writes it under the conversation's card, as an
+ * e-mail answer is written: Waiting to be sent until the queue has sent it.
+ * The conversation then waits for the customer.
+ *
+ * @param array  $viewer
+ * @param int    $conversation_id
+ * @param string $text
+ * @return array ok, error, message_id, state (queued | failed)
+ */
+function ws_mail_phone_reply_send($viewer, $conversation_id, $text)
+{
+    $now = time();
+    $target = ws_mail_phone_reply_target($viewer, $conversation_id, $now);
+    $refuse = function ($error) {
+        return array('ok' => false, 'error' => $error, 'message_id' => 0, 'state' => '');
+    };
+
+    if (!$target['ok']) {
+        return $refuse($target['error']);
+    }
+
+    $conversation = $target['conversation'];
+    $box = $target['box'];
+    $channel = $target['channel'];
+    $number = (string) $conversation['customer_phone'];
+    $checked = pg_whatsapp_reply_row($number, $text, array('window_ends' => $now + $target['seconds']), $now);
+
+    if (isset($checked['error'])) {
+        return $refuse($checked['error']);
+    }
+
+    $body = json_decode($checked['payload'], true);
+    $text = (string) $body['text'];
+    $writer = ws_person_name((int) $viewer['id']);
+    $hash = hash('sha256', 'whatsapp-out:' . bin2hex(random_bytes(16)));
+
+    $written = db_q("INSERT INTO ws_mail_items (box_id, conversation_id, direction, rfc_message_hash, from_email, from_name, to_list, subject, body_text,
+            auth, user_id, send_state, created_at)
+        VALUES (?, ?, 'out', ?, ?, ?, ?, '', ?, 'pass', ?, 'queued', ?)", array(
+            (int) $box['id'], (int) $conversation['id'], $hash, (string) $box['address'], $writer, '+' . $number, $text, (int) $viewer['id'], $now,
+        ));
+    $item_id = $written ? (int) mysqli_insert_id(db::$con) : 0;
+
+    if ($item_id <= 0) {
+        return $refuse('not_sent');
+    }
+
+    $card = ws_message((int) $conversation['message_id']);
+    $parent_id = ($card && ((int) $card['channel_id'] === (int) $channel['id']) && ((int) $card['deleted_at'] === 0)) ? (int) $card['id'] : 0;
+    $message_id = ws_mail_message_write($channel['id'], $parent_id, $item_id, ws_mail_message_body($text), 0, '', $now);
+
+    if ($parent_id > 0) {
+        ws_message_touch($parent_id);
+    }
+
+    db("UPDATE ws_mail_items SET message_id = '" . (int) $message_id . "' WHERE id = '" . $item_id . "'");
+    // Answered: the conversation waits for the customer, whose next message opens it again.
+    db("UPDATE ws_mail_conversations SET last_out_at = '" . (int) $now . "', status = 'waiting', closed_at = 0,
+            first_reply_at = IF(first_reply_at = 0, '" . (int) $now . "', first_reply_at), updated_at = '" . (int) $now . "'
+        WHERE id = '" . (int) $conversation['id'] . "'");
+
+    $state = ws_mail_phone_dispatch(array('id' => $item_id, 'send_state' => 'queued', 'outbox_id' => 0), $conversation, 0, $now);
+
+    return array('ok' => true, 'error' => '', 'message_id' => (int) $message_id, 'state' => $state);
+}
+
+/**
+ * Puts an item's answer in the WhatsApp queue and names the row on it; a
+ * refusal marks it Not sent at once with the reason.
+ *
+ * @param array $item         ws_mail_items row (id, send_state, outbox_id, body_text)
+ * @param array $conversation ws_mail_conversations row
+ * @param int   $previous     the queue row of the attempt before, 0 for the first
+ * @param int   $now
+ * @return string queued | failed
+ */
+function ws_mail_phone_dispatch($item, $conversation, $previous, $now)
+{
+    ws_mail_phone_load();
+
+    $text = isset($item['body_text']) ? (string) $item['body_text']
+        : (string) db_value("SELECT body_text FROM ws_mail_items WHERE id = '" . (int) $item['id'] . "'");
+    $ref = pg_whatsapp_reply_ref((int) $item['id'], (int) $previous);
+    $queued = pg_whatsapp_enqueue_reply((string) $conversation['customer_phone'], $text, array(
+        'reference'   => $ref,
+        'contact_id'  => (int) $conversation['contact_id'],
+        'window_ends' => (int) $now + pg_whatsapp_window_left((int) $conversation['last_in_at'], $now),
+    ));
+
+    if (!$queued['ok']) {
+        pg_whatsapp_reply_outcome(0, $ref, 'failed', ws_mail_phone_reply_error_text($queued['error']));
+
+        return 'failed';
+    }
+
+    db("UPDATE ws_mail_items SET outbox_id = '" . (int) $queued['row'] . "'
+        WHERE id = '" . (int) $item['id'] . "' AND send_state = 'queued' AND outbox_id = '" . (int) $previous . "'");
+
+    return 'queued';
+}
+
+/**
+ * Send again for a WhatsApp answer that could not leave: only while the
+ * customer's 24 hours are still open, and only one press counts.
+ *
+ * @param array $viewer
+ * @param array $item ws_mail_items row, failed
+ * @return array ok, error, detail, state
+ */
+function ws_mail_phone_resend($viewer, $item)
+{
+    $refuse = function ($error) {
+        return array('ok' => false, 'error' => 'phone', 'detail' => ws_mail_phone_reply_error_text($error), 'state' => '');
+    };
+
+    $now = time();
+    $target = ws_mail_phone_reply_target($viewer, (int) $item['conversation_id'], $now);
+
+    if (!$target['ok']) {
+        return $refuse($target['error']);
+    }
+
+    db("UPDATE ws_mail_items SET send_state = 'queued', send_error = ''
+        WHERE id = '" . (int) $item['id'] . "' AND send_state = 'failed' AND outbox_id = '" . (int) $item['outbox_id'] . "'");
+
+    if (mysqli_affected_rows(db::$con) <= 0) {
+        return $refuse('not_failed');
+    }
+
+    if ((int) $item['message_id'] > 0) {
+        ws_message_touch((int) $item['message_id']);
+    }
+
+    $item['send_state'] = 'queued';
+
+    return array('ok' => true, 'error' => '', 'detail' => '',
+        'state' => ws_mail_phone_dispatch($item, $target['conversation'], (int) $item['outbox_id'], $now));
+}
+
+/**
+ * What the drawer shows before it is opened: whom the answer goes to and
+ * the time left; or why it cannot be written.
+ *
+ * @param array $viewer
+ * @param int   $conversation_id
+ * @return array ok, error, to, name, seconds, window (the sentence)
+ */
+function ws_mail_phone_reply_form($viewer, $conversation_id)
+{
+    $target = ws_mail_phone_reply_target($viewer, $conversation_id, time());
+
+    if (!$target['ok']) {
+        return array('ok' => false, 'error' => $target['error']);
+    }
+
+    return array(
+        'ok'      => true,
+        'error'   => '',
+        'to'      => '+' . (string) $target['conversation']['customer_phone'],
+        'name'    => (string) $target['conversation']['customer_name'],
+        'seconds' => (int) $target['seconds'],
+        'window'  => pg_whatsapp_window_text($target['seconds']),
+    );
+}
+
+/**
+ * The texts of the "Reply by WhatsApp" drawer (assets/js/workspace_mail.js).
+ *
+ * @return array key => text
+ */
+function ws_mail_phone_js_strings()
+{
+    return array(
+        'wa_reply'        => lang('Reply by WhatsApp'),
+        'wa_reply_to'     => ws_js_template('To {var:1}', 1),
+        'wa_reply_text'   => lang('Answer'),
+        'wa_reply_hint'   => lang('Plain text, at most 4096 characters. It goes from the site\'s WhatsApp number; the conversation then waits for the customer.'),
+        'wa_reply_send'   => lang('Send by WhatsApp'),
+        'wa_reply_closed' => lang('The 24 hours after the customer\'s last message have passed: WhatsApp takes only an approved template now.'),
+        'wa_reply_sent'   => lang('The answer is waiting to be sent by WhatsApp.'),
+        'wa_reply_failed' => lang('The answer could not be sent; it is marked Not sent.'),
+    );
+}

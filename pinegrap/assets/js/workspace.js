@@ -10809,7 +10809,7 @@
 
             // A conversation's card answered by e-mail, or a mail that could
             // not leave with its Send again (workspace_mail.js).
-            if ((message.mail_reply || message.mail_resend) && window.PGWsMail) {
+            if ((message.mail_reply || message.mail_resend || message.whatsapp_reply) && window.PGWsMail) {
                 main.appendChild(window.PGWsMail.node(message, self, featureHelpers()));
             }
 
