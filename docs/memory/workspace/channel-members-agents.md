@@ -9,7 +9,7 @@ description: A channel's agents and guests among its members (#8936, GV2): agent
 - An agent's row: square face, name with the badge "AI agent" ("Assistant" for Claude, Pinegrap AI and a `model` agent), "Paused" for an agent not active, under it `@handle · <wake rule>` ("wakes when mentioned", "wakes on every message", "wakes on [ci]", "wakes on replies to it"), its last seen at the right.
 - A manager gets "Manage" under the list: Channel settings opened scrolled to "Agents in this channel" (`channelForm(channel, { agents: true })`, `PGWsChannelAgents.mount(…, { reveal })`).
 
-## Where are a channel's guests listed?
+## Where are a channel's guests listed? (GV2, #9427)
 - Channel info, after "Agents here": "Guests · n", one row per guest with an open share of the channel or of a guest's room (`ws_channel_info_guests()`; open = not ended, a link, not expired: `ws_guest_share_closed()`). Every reader sees them, since everything written there is read by them.
 - A row: the guest's initials face, name with the badge "Guest", under it "Read only" or "Read and write" · "Shared by <name> on <date>" (`ws_channel_info_guest()`, pure but for lang()); at the right, for a channel manager only, "Here now" (teal dot, seen in the last 90 s) or `ws_seen_ago_words()` of `ws_guests.last_seen_at`. Ending or relinking stays in the share bar's Manage. Tests: `tests/workspace_guest_channel_info_test.php`.
 
