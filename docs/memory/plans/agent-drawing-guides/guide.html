@@ -45,7 +45,7 @@ document.getElementById('presets').innerHTML = pr.map(function (p) { return '<di
   s += '<rect x="0" y="0" width="' + m + '" height="' + h + '" fill="' + gMix(a, P.bg, 0.16) + '"/>' + gText(24, 340, '48', 18, 600, P.ink2, 'middle');
   s += gText(m + cw + g / 2, 650, '24', 16, 600, P.ink2, 'middle') + gText(m + cw / 2, 650, Math.round(cw) + '', 16, 600, P.ink2, 'middle');
   document.getElementById('gridboard').innerHTML = gBoard({ w: w, h: h, dw: 720 }, s, P);
-  document.getElementById('gridvals').innerHTML = '<tr><th>Ölçü</th><th>Kart (ölçek 1)</th><th>Slayt (1,6)</th></tr>' + [['Kenar boşluğu', 48], ['Sütun arası', 24], ['Sütun', 70], ['Taban birimi', 8], ['Eksen yazı payı', 64], ['Köşe (çubuk ucu)', 6], ['Çizgi', 3], ['Yüzey boşluğu', 2]].map(function (r) { return '<tr><td>' + r[0] + '</td><td class="n">' + r[1] + '</td><td class="n">' + Math.round(r[1] * 1.6) + '</td></tr>'; }).join(''); })();
+  document.getElementById('gridvals').innerHTML = '<tr><th>Ölçü</th><th>Kart (ölçek 1)</th><th>Slayt (1,6)</th></tr>' + [['Kenar boşluğu', 48], ['Sütun arası', 24], ['Sütun', 70], ['Taban birimi', 8], ['Eksen yazı payı', 64], ['Köşe (çubuk ucu)', 6], ['Çizgi', 6], ['Yüzey boşluğu', 2]].map(function (r) { return '<tr><td>' + r[0] + '</td><td class="n">' + r[1] + '</td><td class="n">' + Math.round(r[1] * 1.6) + '</td></tr>'; }).join(''); })();
 
 var ty = [['Başlık', 44, 700, 'ink', 'Bu haftanın satışları'], ['Büyük rakam', 72, 700, 'ink', '₺159.400'], ['Alt başlık', 24, 400, 'ink2', 'Günlük ciro, ₺'], ['Etiket, lejant, değer', 20, 600, 'ink2', 'Kredi kartı · 31,2 B'], ['Eksen', 18, 400, 'ink3', '0   10 B   20 B   30 B'], ['Kaynak notu', 16, 400, 'ink3', 'Kaynak: Siparişler · 8–14 Kasım']];
 document.getElementById('type').innerHTML = '<tr><th>Rol</th><th>Boy / kalınlık</th><th>Renk</th><th>Örnek (yarı boyda, kanalda göründüğü gibi)</th></tr>' + ty.map(function (t) { return '<tr><td>' + t[0] + '</td><td class="n">' + t[1] + ' / ' + t[2] + '</td><td class="n"><span class="gsw" style="background:' + P[t[3]] + '"></span>' + t[3] + '</td><td style="font-size:' + t[1] / 2 + 'px;font-weight:' + t[2] + ';color:' + P[t[3]] + ';background:' + P.bg + ';line-height:1.3">' + t[4] + '</td></tr>'; }).join('');
@@ -59,7 +59,7 @@ document.getElementById('pal').innerHTML = [['Koyu tahta', G.dark], ['Açık tah
 document.getElementById('marks').innerHTML = '<tr><th>İşaret</th><th>Kural (Kart ölçeğinde)</th></tr>' + [
   ['Çubuk', 'En çok 40 kalın ve bandın %56\'sı; veri ucu 6 yuvarlak, taban düz; tek tabandan büyür'],
   ['Yan yana / yığılmış çubuk', 'Seriler arası 4; yığında parçalar arası 2 yüzey boşluğu; çevre çizgisi yok'],
-  ['Çizgi', '3 kalın, yuvarlak birleşim; uçta 6 yarıçaplı nokta, 3 yüzey halkası, yanında son değer'],
+  ['Çizgi', '6 kalın (kanalda yarı boyda 3 px görünür; kutucuk ve şeritte eğilim 3), yuvarlak birleşim; uçta 6 yarıçaplı nokta, 3 yüzey halkası, yanında son değer'],
   ['Alan', 'Seri renginin %14\'ü yüzeyle karışık düz renk (saydamlık yok)'],
   ['Halka', 'Dış 190, iç 128; dilimler arası ince boşluk; ortada toplam; en çok beş dilim, artanı "Diğer"'],
   ['Izgara ve eksen', 'Yalnız yatay, 1 kalın, düz (kesikli değil); taban çizgisi 2; 4–5 yuvarlak adım (0 · 10 B · 20 B)'],

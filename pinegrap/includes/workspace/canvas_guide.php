@@ -76,7 +76,8 @@ function ws_canvas_guide_values()
             'bar_radius'    => 6,
             'group_gap'     => 4,
             'stack_gap'     => 2,
-            'line'          => 3,
+            'line'          => 6,
+            'trend_line'    => 3,
             'dot'           => 6,
             'ring'          => 3,
             'area_mix'      => 14,
@@ -141,10 +142,10 @@ function ws_canvas_guide_text()
         . 'Colours: choose a dark or a light board and keep to its set; give the board its background colour.' . "\n"
         . '- dark: ' . ws_canvas_guide_palette_line($v['palettes']['dark']) . '.' . "\n"
         . '- light: ' . ws_canvas_guide_palette_line($v['palettes']['light']) . '.' . "\n"
-        . 'Series take their colours in the order given and keep them when a series is filtered out; at most ' . $m['series_max'] . ' series, the rest folds into other. Text never wears a series colour: titles, labels, values and legends use ink, ink2 and ink3. Up and down colour only a change figure, always with an arrow. Use solid colours, no transparency, so every part stays a layer people can edit.' . "\n\n"
+        . 'Series take their colours in the order given and keep them when a series is filtered out; at most ' . $m['series_max'] . ' series, the rest folds into other. Text never wears a series colour: titles, labels, values and legends use ink, ink2 and ink3. Up and down colour only a change figure, always with an arrow. A chart of one series takes the colour of the channel it is drawn in, at a tone that reads on its board (the first series colour when the channel has none); a chart of several series keeps the series colours. Use solid colours, no transparency, so every part stays a layer people can edit.' . "\n\n"
         . 'Marks:' . "\n"
         . '- Bar: at most ' . $m['bar_max'] . ' thick and ' . $m['bar_band'] . '% of its band; the data end rounded ' . $m['bar_radius'] . ', square at the baseline; all bars grow from one baseline. ' . $m['group_gap'] . ' between bars of a group; a gap of ' . $m['stack_gap'] . ' in the background colour between the parts of a stack; no outlines.' . "\n"
-        . '- Line: ' . $m['line'] . ' thick, round joins and caps; a dot of radius ' . $m['dot'] . ' at its end with a ring of ' . $m['ring'] . ' in the background colour, and the last value beside it.' . "\n"
+        . '- Line: ' . $m['line'] . ' thick (a sparkline\'s or a figure tile\'s trend ' . $m['trend_line'] . ', on its own board), round joins and caps; a dot of radius ' . $m['dot'] . ' at its end with a ring of ' . $m['ring'] . ' in the background colour, and the last value beside it.' . "\n"
         . '- Area: the line over a fill of its series colour mixed ' . $m['area_mix'] . '% into the background, as one solid colour.' . "\n"
         . '- Donut: outer radius ' . $m['donut_outer'] . ', inner ' . $m['donut_inner'] . ', a thin gap between slices, the total in the middle, the legend at the right with each name, count and share.' . "\n"
         . '- Grid and axes: horizontal gridlines only, ' . $m['grid'] . ' thick and solid (never dashed), in grid; the baseline ' . $m['baseline'] . ' thick in baseline; ' . $m['ticks_min'] . ' to ' . $m['ticks_max'] . ' round steps (0, 10K, 20K).' . "\n"

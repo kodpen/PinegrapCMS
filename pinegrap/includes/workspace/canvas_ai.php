@@ -161,21 +161,41 @@ function ws_canvas_ai_tools($tool)
 {
     return array(
         $tool('draw_canvas', 'Post a picture into the channel, drawn as SVG, only when the request asks for a drawing, a diagram, a chart or another picture. It is posted under the request as a canvas people open in the image editor with its layers. Still call answer at the end. Draw it by this guide:' . "\n\n" . ws_canvas_guide_text(), array(
+            'chart'      => array('type' => 'string', 'description' => 'Instead of svg, for a chart: a JSON object as the chart operation of edit_canvas takes it, without op; the server draws it by the guide.'),
             'svg'        => array('type' => 'string', 'description' => 'A whole <svg> element with xmlns="http://www.w3.org/2000/svg", width and height (16 to 8000 pixels) or a viewBox. No scripts, no outside addresses, no pictures as data. At most 1 MB.'),
             'background' => array('type' => 'string', 'description' => 'The artboard\'s colour as #rrggbb, or transparent; white when left out.'),
             'text'       => array('type' => 'string', 'description' => 'Words beside the canvas, optional.'),
             'name'       => array('type' => 'string', 'description' => 'The canvas\'s name, optional.'),
             'layers'     => array('type' => 'string', 'enum' => array('split', 'one'), 'description' => 'split: a layer per top-level element, each named by its id, so one part can be changed later; a text becomes a text layer, a picture of a file of this channel (its address as the message gives it) a picture layer; one (the default): the drawing as one layer.'),
-        ), array('svg')),
+        ), array()),
         $tool('read_canvas', 'Read a canvas of this channel, an assistant\'s or a person\'s: its artboard, its newest version, its layers (id, type, kind, box, name, a text layer\'s text, an svg layer\'s markup) and, for a presentation, its scenes (the layers are the open scene\'s). Read it before edit_canvas.', array(
             'message_id' => array('type' => 'integer', 'description' => 'The message the canvas is in.'),
         ), array('message_id')),
-        $tool('edit_canvas', 'Change a canvas of this channel in place, only when the request asks to change it. The operations are applied in order, all or none, to the newest version: add (svg; x, y, w, h, rot optional: a new layer on top; layers split for a layer per element), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional), box (layer; any of x, y, w, h, rot: move, resize, turn), svg (svg; background, layers optional: the whole canvas anew), style (layer and look: a text\'s font, size, weight, italic, align, color, bg; a shape\'s color, fill none, solid or soft, stroke, dash, radius; an icon\'s color; opacity), order (layer, to front, back, above or below, target), name (layer, name), lock (layer, locked true or false), size (preset square, portrait, story, share or banner, or width and height: the board keeps its middle), background (background #rrggbb or transparent: the open scene\'s) and scene (action add with copy, name, duration optional; choose, remove with scene; transition with kind none, fade, slide, zoom or wipe and ms; duration with duration in ms; at most 30 scenes, the layer operations work on the open one). add also takes type text (text, font sans, serif, hand, display, mono or g:<Google family>, size, weight, color, align), picture (file_id of a file of this channel), shape (shape rectangle or ellipse with x, y, w, h, or line with x1, y1, x2, y2; color, fill, stroke) or icon (icon, a Bootstrap Icons name; color), and name. A layer is named by its id or its name. A locked layer is not changed. Still call answer at the end.', array(
+        $tool('edit_canvas', 'Change a canvas of this channel in place, only when the request asks to change it. The operations are applied in order, all or none, to the newest version: add (svg; x, y, w, h, rot optional: a new layer on top; layers split for a layer per element), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional), box (layer; any of x, y, w, h, rot: move, resize, turn), svg (svg; background, layers optional: the whole canvas anew), style (layer and look: a text\'s font, size, weight, italic, align, color, bg; a shape\'s color, fill none, solid or soft, stroke, dash, radius; an icon\'s color; opacity), order (layer, to front, back, above or below, target), name (layer, name), lock (layer, locked true or false), size (preset square, portrait, story, share or banner, or width and height: the board keeps its middle), background (background #rrggbb or transparent: the open scene\'s) scene (action add with copy, name, duration optional; choose, remove with scene; transition with kind none, fade, slide, zoom or wipe and ms; duration with duration in ms; at most 30 scenes, the layer operations work on the open one) and ' . ws_canvas_chart_op_text() . ' add also takes type text (text, font sans, serif, hand, display, mono or g:<Google family>, size, weight, color, align), picture (file_id of a file of this channel), shape (shape rectangle or ellipse with x, y, w, h, or line with x1, y1, x2, y2; color, fill, stroke) or icon (icon, a Bootstrap Icons name; color), and name. A layer is named by its id or its name. A locked layer is not changed. Still call answer at the end.', array(
             'message_id' => array('type' => 'integer', 'description' => 'The message the canvas is in.'),
             'version'    => array('type' => 'integer', 'description' => 'The newest version, as read_canvas gave it.'),
             'operations' => array('type' => 'string', 'description' => 'A JSON list of at most 20 objects such as [{"op": "text", "layer": "l2", "text": "Q4"}, {"op": "box", "layer": "l0", "x": 40}].'),
         ), array('message_id', 'version', 'operations')),
     );
+}
+
+/**
+ * draw_canvas's chart argument, a JSON object in a string: null when none
+ * was given, the checked chart, or the refusal. Pure.
+ *
+ * @param mixed $value
+ * @return array|null
+ */
+function ws_canvas_ai_chart($value)
+{
+    if (($value === null) || ($value === '')) {
+        return null;
+    }
+
+    $op = is_string($value) ? json_decode(trim($value), true) : $value;
+    $checked = is_array($op) ? ws_canvas_chart_check($op) : array('error' => 'chart_kind');
+
+    return ($checked['error'] !== '') ? array('error' => ws_canvas_edit_error_text($checked['error'])) : $checked['chart'];
 }
 
 /**
@@ -253,8 +273,15 @@ function ws_canvas_ai_tool_run($row, &$state, $name, $args, $asker)
     $by = ws_canvas_ai_by(ws_model_running());
 
     if ($name === 'draw_canvas') {
-        $mode = ws_canvas_split_mode($args['layers'] ?? null);
-        $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg((string) ($args['svg'] ?? ''), (string) ($args['background'] ?? ''), $mode === 'split', ws_canvas_split_resolver((int) $channel['id'], false));
+        $chart = ws_canvas_ai_chart($args['chart'] ?? null);
+
+        if (isset($chart['error'])) {
+            return $chart;
+        }
+
+        $mode = ($chart !== null) ? 'split' : ws_canvas_split_mode($args['layers'] ?? null);
+        $drawn = ($chart !== null) ? ws_canvas_chart_svg($chart, ws_canvas_chart_channel_tone($channel)) : array('svg' => (string) ($args['svg'] ?? ''), 'background' => (string) ($args['background'] ?? ''));
+        $made = ($mode === null) ? array('error' => 'layers') : ws_canvas_from_svg($drawn['svg'], $drawn['background'], $mode === 'split', ws_canvas_split_resolver((int) $channel['id'], false));
 
         if ($made['error'] !== '') {
             return array('error' => ws_canvas_from_svg_error_text($made['error']));
@@ -312,7 +339,7 @@ function ws_canvas_ai_tool_run($row, &$state, $name, $args, $asker)
         return array('error' => 'Write operations as a JSON list of objects, each with its op.');
     }
 
-    $edited = ws_canvas_edit_apply($target['doc'], $operations, ws_canvas_split_resolver((int) $target['message']['channel_id'], false), ws_canvas_write_file_resolver((int) $target['message']['channel_id'], false));
+    $edited = ws_canvas_edit_apply($target['doc'], $operations, ws_canvas_split_resolver((int) $target['message']['channel_id'], false), ws_canvas_write_file_resolver((int) $target['message']['channel_id'], false), ws_canvas_chart_channel_tone($channel));
 
     if ($edited['error'] !== '') {
         return array('error' => (($edited['index'] >= 0) ? 'Operation ' . $edited['index'] . ': ' : '') . ws_canvas_edit_error_text($edited['error']));

@@ -18,7 +18,7 @@ Paths are relative to pinegrap/.
 - Edit both twins. Editing only `.src.js` is silent: the code is right, the file is never read. Symptom: "I changed the code, the page still behaves the old way".
 - `add_to_cart.src.js` / `add_to_cart.min.js` are a twin pair that no `<script>` in the code prints today; keep the two in step if you touch them.
 - The criterion is not the file name: it is whether the `<script src>` line that prints the file contains `ENVIRONMENT_SUFFIX`. Served as written, with no twin: `erp_invoice_editor.js`, `offer_editor.js`.
-- The Workspace scripts, `backend.src.js` and `style_designer.src.js` are minified from a list instead (`pg_js_bundles()`, `js-bundles.md`): edit the source, run `php tools/build_js.php`.
+- The Workspace scripts, `backend.src.js` and `style_designer.src.js` are minified from a list instead (`pg_js_bundles()`, `js-bundles.md`): edit the source and commit it alone; the landing builds the `.min.js` (`js-bundles.md`).
 
 ## Where does JS that runs on the front end live?
 - Two places: panel screens load `backend.src.js` (served as `backend.min.js`); the page a visitor sees loads `frontend.<suffix>.js`. Each has its own keyboard-shortcut block and its own toolbar hooks.

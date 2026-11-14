@@ -16,7 +16,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 ## Clusters
 
 - `storefront-api-*`: 9 files.
-- `whatsapp-channel-*`: 7 files; start at `whatsapp-channel.md`.
 
 ## Files
 

@@ -23,11 +23,15 @@
  *   (tools/merge_train.php), so two branches never conflict on them. A
  *   folder README's hand-written key rules, between its two marker lines,
  *   may change;
+ * - the branch does not change a bundle tools/build_js.php or
+ *   tools/build_css.php writes (the .min.js and .min.css files of
+ *   pg_js_bundles() and pg_css_bundles()): the landing builds them, so two
+ *   branches never conflict on them;
  * - more than PG_CHECK_PR_SIZE_LIMIT product lines (changed lines under
  *   pinegrap/, minified bundles and language files not counted) prints a
  *   warning, never a failure.
  * A merge train (merge-train/*), development and main skip the author,
- * changelog, memory list and size checks: they carry the commits of other branches,
+ * changelog, memory list, bundle and size checks: they carry the commits of other branches,
  * Dependabot's among them; --identity-exempt does the same for a pull
  * request Dependabot opened. The trailer and config.php checks apply to every
  * branch.
@@ -197,6 +201,49 @@ function check_pr_memory_list_problem($path, $before, $after, $merge_base)
 		. '; php tools/memory_index.php --files checks the memory files (docs/memory/workflow/merge-train-tool.md)';
 }
 
+// What is wrong with a branch's changes to the generated bundles: one message
+// per path of $files that is one of $bundles (paths relative to the
+// repository root), naming the commit to restore it from.
+function check_pr_bundle_problems(array $files, array $bundles, $merge_base)
+{
+	$problems = array();
+
+	foreach (array_keys($files) as $path) {
+		if (in_array((string) $path, $bundles, true)) {
+			$problems[] = "the branch changes $path, which the landing builds (tools/build_js.php, tools/build_css.php, run by tools/merge_train.php); "
+				. 'restore it with git checkout ' . substr((string) $merge_base, 0, 12) . ' -- ' . $path
+				. '; build it to try the change, but do not commit it (docs/memory/core/js-bundles.md)';
+		}
+	}
+
+	return $problems;
+}
+
+// The bundles of the checked-out tree, relative to the repository root, from
+// the lists the build tools read. functions.php loads the modules under
+// includes/fn/ without a connection, as tools/build_js.php does.
+function check_pr_bundles()
+{
+	$software = dirname(__DIR__) . '/pinegrap';
+
+	if (!is_file($software . '/functions.php')) {
+		return array();
+	}
+
+	require_once($software . '/functions.php');
+	$bundles = array();
+
+	foreach (array('pg_js_bundles', 'pg_css_bundles') as $list) {
+		if (function_exists($list)) {
+			foreach (array_keys($list()) as $bundle) {
+				$bundles[] = 'pinegrap/' . $bundle;
+			}
+		}
+	}
+
+	return $bundles;
+}
+
 // The product lines of a change: changed lines in files under pinegrap/,
 // minified bundles and the language files under includes/local/ not counted.
 function check_pr_product_lines(array $files)
@@ -361,6 +408,17 @@ if (!$exempt && !$identity_exempt) {
 			$fail($problem);
 			$failed = true;
 		}
+	}
+
+	$touches_min = false;
+
+	foreach (array_keys($files) as $path) {
+		$touches_min = $touches_min || (bool) preg_match('/\.min\.(js|css)$/', (string) $path);
+	}
+
+	foreach ($touches_min ? check_pr_bundle_problems($files, check_pr_bundles(), $merge_base) : array() as $problem) {
+		$fail($problem);
+		$failed = true;
 	}
 
 	$lines = check_pr_product_lines($files);

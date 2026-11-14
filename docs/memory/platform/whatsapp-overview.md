@@ -19,7 +19,7 @@ module: whatsapp
 - An e-mail that went before keeps going; WhatsApp never takes its place.
 - Numbers through `pg_sms_number()`; no second normaliser.
 - A demo site sends and receives nothing. The token and secrets are sealed in `connect_apps`, never shown again, logged or exported.
-- No table or column without the owner's yes (`plans/whatsapp-channel-storage.md` while the plan lives).
+- No table or column without the owner's yes (`workflow/decisions-made-schema-17.md`, `-schema-18.md`).
 
 ## What does a person see?
 - Communication › WhatsApp card: the account in five steps and a test message (`whatsapp-connection.md`).

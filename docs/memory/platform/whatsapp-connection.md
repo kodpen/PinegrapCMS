@@ -9,7 +9,7 @@ module: whatsapp
 - `pg_whatsapp_app()` reads it; `pg_whatsapp_ready()` is enabled, complete and not a demo site. The secrets are never put back in a field, logged or exported: an empty field keeps the stored value.
 
 ## What does the card show?
-- Communication › WhatsApp (`pgset-whatsapp`, before İYS): a switch, then five numbered steps as `<h6>` group headings with help (App ID and App Secret, Access Token, Phone Number ID, WhatsApp Business Account ID, Webhook), a Test Number filled from the signed-in person's mobile and "Save and send a test message". Drawn: `plans/whatsapp-channel/settings-card.html`.
+- Communication › WhatsApp (`pgset-whatsapp`, before İYS): a switch, then five numbered steps as `<h6>` group headings with help (App ID and App Secret, Access Token, Phone Number ID, WhatsApp Business Account ID, Webhook), a Test Number filled from the signed-in person's mobile and "Save and send a test message". Drawn: `platform/whatsapp-look/settings-card.html`.
 - After a check: "Connected: name, number, quality … Checked with Meta on …". Step 5 shows the read-only Callback URL and Verify Token once an account is stored, with a warning when the site is not on https (Meta calls only https).
 
 ## What does Save do?
