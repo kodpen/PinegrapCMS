@@ -9,6 +9,7 @@
  *   channel_summary (channel_id)    summarise a channel from its context
  *   weekly_report   (channel_id?)   a weekly report from the person's day
  *   blog_post       (form_id, topic?)  a post written as one record of a form
+ *   canvas_chart    (channel_id, topic?)  a chart drawn as a canvas by the drawing guide
  *
  * A prompt is offered only while the resources it reads are the caller's to
  * read, and it names or embeds nothing else: channel_summary embeds the
@@ -66,6 +67,18 @@ function pg_mcp_prompt_kinds() {
 			'needs'       => array('form_fields'),
 			'tools'       => array('forms.get', 'forms.submission_create'),
 			'embed'       => array('resource' => 'form_fields', 'arguments' => array('id' => 'form_id'))
+		),
+
+		'canvas_chart' => array(
+			'title'       => 'Draw a chart',
+			'description' => 'Draw a chart, a figure tile or a report card as a canvas in a channel, by the drawing guide: its board, grid, type, palette and the rules of the chart kind.',
+			'arguments'   => array(
+				array('name' => 'channel_id', 'description' => 'The id of the channel to draw the canvas in.', 'required' => true),
+				array('name' => 'topic', 'description' => 'What the chart shows, in a few words.', 'required' => false, 'kind' => 'text')
+			),
+			'needs'       => array('canvas_guide'),
+			'tools'       => array('workspace.channels.canvases.create'),
+			'embed'       => array('resource' => 'canvas_guide', 'arguments' => array())
 		)
 
 	);
@@ -307,6 +320,10 @@ function pg_mcp_prompt_result($name, $values, $site, $routes, $embedded) {
 
 		$text = pg_mcp_prompt_blog_post_text($values, $site, $routes, $embedded !== null);
 
+	} else if ($name === 'canvas_chart') {
+
+		$text = pg_mcp_prompt_canvas_chart_text($values, $site, $embedded !== null);
+
 	} else {
 
 		$text = 'Write a weekly report for the person who connected you to the Workspace of ' . $site . ', from what you can read there now.' . "\n\n"
@@ -372,6 +389,28 @@ function pg_mcp_prompt_blog_post_text($values, $site, $routes, $attached) {
 		. $pictures . "\n"
 		. '- Send it with the tool ' . $create . ' with dry_run true first and read the answer; then send it again without dry_run. Report the record\'s id, its reference code and its url, the address it is read at on the site (null when no public page shows the form\'s records).' . "\n"
 		. 'Write in the language the person writes in. If the form has no field for the body, or the fields cannot be read, say so and stop.' . "\n\n"
+		. pg_mcp_prompt_rules_text();
+
+}
+
+// canvas_chart's text. $attached says whether the drawing guide follows as
+// an embedded resource.
+function pg_mcp_prompt_canvas_chart_text($values, $site, $attached) {
+
+	$about = isset($values['topic']) ? ' showing: ' . $values['topic'] : '';
+
+	$guide = $attached
+		? 'The drawing guide is attached below as the resource ' . pg_mcp_resource_uri('canvas_guide', array()) . '.'
+		: 'Read the drawing guide from ' . pg_mcp_prompt_read_line('canvas_guide', array()) . '.';
+
+	return 'Draw a chart for the person who asked' . $about . ', as a canvas in channel ' . $values['channel_id'] . ' of the Workspace of ' . $site . '.' . "\n\n"
+		. $guide . ' It gives the board sizes, the grid, the type scale, spacing, a dark and a light board palette and the rules of each chart kind.' . "\n\n"
+		. 'Then:' . "\n"
+		. '- Choose the chart kind by what the data says (amounts, parts, a change over time, one figure) and the board by where it will be seen; the card board unless the person asked for a slide or a post.' . "\n"
+		. '- Use only data you were given or read; if a number is missing, ask for it instead of making one up.' . "\n"
+		. '- Write the SVG with the guide\'s sizes, font and colours, each part a top-level element with an id (title, subtitle, legend, axis, bars or lines, note), and send it with the tool ' . pg_mcp_tool_name('workspace.channels.canvases.create') . ' with layers split and background the board\'s colour, dry_run true first, then for real.' . "\n"
+		. '- Report the message the canvas was posted as.' . "\n"
+		. 'Write the chart\'s words in the language the channel is written in.' . "\n\n"
 		. pg_mcp_prompt_rules_text();
 
 }
