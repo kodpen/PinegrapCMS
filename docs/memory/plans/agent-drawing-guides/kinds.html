@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>agent drawing guides: the seven chart kinds drawn by the guide</title>
+<script>if (location.search.indexOf('light') > -1) document.documentElement.setAttribute('data-theme', 'light');</script>
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js"></script>
+</head>
+<body>
+<div class="stage">
+  <div class="cap" style="margin-bottom:22px"><b>Önerilen grafik türleri</b>Her biri rehberin değerleriyle, 1200 × 675 (kutucuk 600 × 360, şerit 600 × 120) tahtada, yarı boyda. Tahta panelin temasıyla değil, ajanın seçtiği temayla çizilir; bu sayfa koyu/açık hangisindeyse o çizilmiştir.</div>
+  <div class="grid2" id="kinds"></div>
+</div>
+<script>
+var P = document.documentElement.getAttribute('data-theme') === 'light' ? G.light : G.dark, days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+var items = [
+  ['Çubuk', 'Tek seri; değer yalnız öne çıkan çubukta, gerisi eksende.', gBars({ dw: 600, title: 'Bu haftanın satışları', sub: 'Günlük ciro, ₺', labels: days, series: [[18400, 22100, 19800, 24600, 31200, 27400, 15900]], mark: 4, note: 'Kaynak: Siparişler · 8–14 Kasım' }, P)],
+  ['Yığılmış çubuk', 'En çok beş seri, 2 px yüzey boşluğu, lejant başlığın altında.', gBars({ dw: 600, title: 'Kanala göre siparişler', sub: 'Günlük sipariş adedi', legend: ['Site', 'Trendyol', 'Hepsiburada'], labels: days, series: [[42, 51, 47, 58, 66, 61, 38], [18, 22, 25, 21, 30, 34, 26], [9, 12, 10, 14, 17, 15, 11]], mark: 4 }, P, true)],
+  ['Çizgi', '3 px çizgi, uçta halkalı nokta ve değer; ızgara yatay ve ince.', gLine({ dw: 600, title: 'Ziyaretçiler', sub: 'Son 12 hafta, haftalık tekil', legend: ['Bu yıl', 'Geçen yıl'], every: 2, labels: ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'H7', 'H8', 'H9', 'H10', 'H11', 'H12'], series: [[8200, 8900, 8600, 9400, 10100, 9800, 11200, 11900, 11400, 12600, 13300, 14100], [7400, 7600, 7900, 7700, 8300, 8600, 8400, 8900, 9300, 9100, 9600, 9900]] }, P)],
+  ['Alan', 'Tek seri; alan serinin %14\'ü kadar düz renk (saydamlık değil, katman düzenlenebilir kalır).', gLine({ dw: 600, title: 'Stok değeri', sub: 'Ay sonu, ₺', every: 1, labels: ['May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas'], series: [[412000, 398000, 431000, 455000, 447000, 482000, 506000]] }, P, true)],
+  ['Halka', 'Ortada toplam; lejant sağda, adı, adedi ve payıyla. En çok beş dilim, artanı "Diğer".', gDonut({ dw: 600, title: 'Ödeme yöntemleri', sub: 'Bu ay, sipariş adedi', unit: 'sipariş', names: ['Kredi kartı', 'Havale', 'Kapıda ödeme', 'Diğer'], values: [612, 214, 98, 41] }, P)],
+  ['Rakam kutucuğu', 'Bir rakam, değişimi (yön ok ve renkle, metinle de) ve 12 noktalık eğilim.', gTile({ dw: 600, label: 'Bu haftanın cirosu', value: '₺159.400', delta: '+12,4 %', vs: 'geçen haftaya göre', data: [98, 104, 101, 112, 118, 109, 121, 127, 124, 131, 142, 159] }, P)],
+  ['Kıvılcım çizgisi', 'Bir satırda ad, rakam ve eksensiz eğilim; tablo ve kutucuk içinde de kullanılır.', gSparkline({ dw: 600, label: 'Sepette bırakılan', value: '214', data: [180, 192, 176, 201, 188, 197, 210, 205, 214] }, P)]
+];
+document.getElementById('kinds').innerHTML = items.map(function (it) {
+  return '<div class="fig"><div class="cap"><b>' + it[0] + '</b>' + it[1] + '</div><div class="board" style="width:600px">' + it[2] + '</div></div>'; }).join('');
+</script>
+</body>
+</html>

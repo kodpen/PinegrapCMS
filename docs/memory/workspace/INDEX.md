@@ -20,6 +20,7 @@
 - agent-discussion-reach.md: A channel's registry agent asked in the channel's discussions by name (A4b3 #8600): ws_agent_reach_rows(), the merged row, its readers, what stays the discussion's own [decision: decisions-made-workspace-12.md]
 - agent-door-knock-trial.md: Push door trial (dev, 2026-11-13): the site's knock reached a signed receiver in the same second; what a session on a personal computer still needs; a routine's fire address answered HTTP 400
 - agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (agent:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
+- agent-drawing-guides-census.md: DG1 census and proposal: what today's agent charts lack, and the guide's proposed boards, grid, type, spacing, two board palettes, marks and seven chart kinds
 - agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869) [decision: decisions-made-schema-16.md, decisions-made-workspace-14.md]
 - agent-emoji.md: The one fitting emoji an agent leaves on the message that asked it (#8932): the brief, the answer route's emoji, a model assistant's answer tool, what is refused [decision: decisions-made-workspace-19.md]
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier
@@ -89,6 +90,7 @@
 - mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it [decision: decisions-made-schema-15.md, decisions-made-schema-16.md, decisions-made-workspace-13.md, decisions-made-workspace-17.md]
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
 - mail-phone-conversations.md: A customer's WhatsApp message as a Workspace conversation (WA13, #9389, step 11.0.199): the WhatsApp box and its Channel field, threading by number, the card, what stays mail-only [decision: decisions-made-workspace-23.md]
+- mail-phone-list-event-api.md: WhatsApp and SMS conversations in the E-mails list (Kind filter), the workspace.mail.received event (transport, number, How it came) and the API (#9420)
 - mail-phone-reply.md: Reply by WhatsApp from a Workspace conversation (WA14a, #9405): free text inside the customer's 24 hours, queued in whatsapp_outbox as kind reply, its outcome on the item, Send again, the drawer
 - mail-reply.md: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc, Bcc, files, Reply to all, the drawer, route, headers and subject, the API's answer sent at once
 - mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test [decision: decisions-made-workspace-17.md]

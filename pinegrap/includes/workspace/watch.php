@@ -253,7 +253,9 @@ function ws_events_catalog()
     }
 
     if (function_exists('ws_mail_ready') && ws_mail_ready()) {
-        $catalog['workspace.mail.received'] = array('label' => lang('An e-mail is received'), 'when' => lang('When an e-mail is received'), 'record' => 'channel', 'right' => 'member', 'filter' => '', 'channel' => true);
+        // An e-mail, or a customer's WhatsApp message or SMS in a channel
+        // (mail_phone.php), narrowed by how it came.
+        $catalog['workspace.mail.received'] = array('label' => lang('An e-mail or message is received'), 'when' => lang('When an e-mail or message is received'), 'record' => 'channel', 'right' => 'member', 'filter' => 'transport', 'channel' => true);
     }
 
     // A run of another flow that failed: checked against the runs the
@@ -768,6 +770,12 @@ function ws_events_filter_value($event, $payload)
 
     if ((string) $event === 'contact_group.joined') {
         return (string) (int) ($payload['group_id'] ?? 0);
+    }
+
+    // How a conversation's message came; one kept before the transport was
+    // carried is an e-mail.
+    if ((string) $event === 'workspace.mail.received') {
+        return ((string) ($payload['transport'] ?? '') !== '') ? (string) $payload['transport'] : 'email';
     }
 
     return (string) ($payload['status'] ?? '');
@@ -1527,6 +1535,7 @@ function ws_events_js_config($viewer)
     $own_filters = array(
         'task_status' => array('filter_label' => lang('Status it moves to'), 'any' => lang('Any status'), 'options' => $pairs(ws_task_statuses())),
         'outcome'     => array('filter_label' => lang('How it ended'), 'any' => lang('However it ended'), 'options' => $pairs(ws_events_approval_outcomes())),
+        'transport'   => array('filter_label' => lang('How it came'), 'any' => lang('Any way'), 'options' => $pairs(ws_mail_transport_labels())),
     );
 
     $list = array();
