@@ -104,17 +104,21 @@ function ws_mail_check_text($stored)
 
 /**
  * The line over the list after a check: the count, then each box that
- * failed with the words of its Mailboxes card. Pure.
+ * failed with the words of its Mailboxes card. When no box could be read
+ * the count says nothing true, so only the failures are written. Pure.
  *
- * @param array $result ws_mail_check_run(): stored, failed (name, error,
- *                      detail, host), waiting (boxes another reader held or
- *                      the press had no time left for)
+ * @param array $result ws_mail_check_run(): stored, read (boxes read or
+ *                      fresh from a read in the last WS_MAIL_CHECK_GAP
+ *                      seconds), failed (name, error, detail, host), waiting
+ *                      (boxes another reader held or the press had no time
+ *                      left for)
  * @return string HTML
  */
 function ws_mail_check_line_html($result)
 {
     $failed = (array) ($result['failed'] ?? array());
-    $html = '<p class="mb-1"><i class="bi bi-' . ((int) $result['stored'] > 0 ? 'envelope-check fg-success' : 'envelope fg-secondary') . ' me-2" aria-hidden="true"></i>'
+    $counted = !$failed || ((int) ($result['read'] ?? 0) > 0) || ((int) $result['stored'] > 0);
+    $html = !$counted ? '' : '<p class="mb-1"><i class="bi bi-' . ((int) $result['stored'] > 0 ? 'envelope-check fg-success' : 'envelope fg-secondary') . ' me-2" aria-hidden="true"></i>'
         . '<strong>' . h(ws_mail_check_text($result['stored'])) . '</strong></p>';
 
     foreach ($failed as $box) {
@@ -174,12 +178,12 @@ function ws_mail_check_boxes($viewer, $box_id = 0)
  *
  * @param array $viewer
  * @param int   $box_id 0 for every box the person reads
- * @return array ok, error ('' | 'demo' | 'limit' | 'no_box'), stored,
+ * @return array ok, error ('' | 'demo' | 'limit' | 'no_box'), stored, read,
  *               failed (name, error, detail, host), waiting
  */
 function ws_mail_check_run($viewer, $box_id = 0)
 {
-    $out = array('ok' => false, 'error' => '', 'stored' => 0, 'failed' => array(), 'waiting' => 0);
+    $out = array('ok' => false, 'error' => '', 'stored' => 0, 'read' => 0, 'failed' => array(), 'waiting' => 0);
 
     // A demonstration site's boxes are examples: nothing is read.
     if (pg_demo()) {
@@ -202,7 +206,9 @@ function ws_mail_check_run($viewer, $box_id = 0)
     $until = microtime(true) + WS_MAIL_CHECK_BUDGET;
 
     foreach ($boxes as $box) {
+        // Read moments ago: its mail is already in.
         if (!ws_mail_check_due($box, time())) {
+            $out['read']++;
             continue;
         }
 
@@ -221,7 +227,9 @@ function ws_mail_check_run($viewer, $box_id = 0)
 
         $out['stored'] += (int) $result['stored'];
 
-        if (!$result['ok']) {
+        if ($result['ok']) {
+            $out['read']++;
+        } else {
             $out['failed'][] = array(
                 'name'   => (string) $box['name'],
                 'error'  => (string) $result['error'],

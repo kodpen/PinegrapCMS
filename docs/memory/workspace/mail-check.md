@@ -16,6 +16,8 @@ description: Check e-mail on Communication › Incoming e-mail (IB2): which boxe
 
 ## What does the list say after it?
 - `ws_mail_check_line_html()` in `[data-ws-mail-check-line]` (role status) under the toolbar: "3 new e-mails", "1 new e-mail" or "No new e-mail"; each failed box as "<name>: " and the words of its Mailboxes card (`ws_mail_error_text()`); a waiting box adds "Some mailboxes are being read already; their e-mail comes in a moment."
+- Architect (2026-11-14): when no box could be read (`read` 0, a failure, nothing stored), the count line is not written, only the failures; with a box read and one failed, both stand. A box read in the last 15 s counts as read.
+- While the request runs (a read can hold it for many seconds) the button is disabled, `aria-busy`, with a spinner and "Checking e-mail…"; the button's Turkish is "E-postaları kontrol et", the owner's verb (architect, channel 2941).
 - When mail came, the answer carries the list drawn again with the address's filters (`ws_mail_list_html()`), the open conversation still marked.
 
 ## Tests?

@@ -63,11 +63,19 @@ function test_workspace_mail_check_line_html()
 	pg_assert_contains('3 new e-mails', $html, 'the count');
 	pg_assert_false(strpos($html, 'bi-exclamation-triangle') !== false, 'no failure');
 
-	$html = ws_mail_check_line_html(array('stored' => 0, 'failed' => array(array('name' => 'Support <b>', 'error' => 'timeout', 'detail' => '', 'host' => 'imap.example.com')), 'waiting' => 0));
+	$failed = array(array('name' => 'Support <b>', 'error' => 'timeout', 'detail' => '', 'host' => 'imap.example.com'));
+	$html = ws_mail_check_line_html(array('stored' => 0, 'read' => 1, 'failed' => $failed, 'waiting' => 0));
 
-	pg_assert_contains('No new e-mail', $html, 'none came');
+	pg_assert_contains('No new e-mail', $html, 'one box read, none came');
 	pg_assert_contains('Support &lt;b&gt;', $html, 'the box\'s name, escaped');
 	pg_assert_contains(h(ws_mail_error_text('timeout', '', 'imap.example.com')), $html, 'the card\'s own words');
+
+	$html = ws_mail_check_line_html(array('stored' => 0, 'read' => 0, 'failed' => $failed, 'waiting' => 0));
+
+	pg_assert_false(strpos($html, 'No new e-mail') !== false, 'no box read: no count');
+	pg_assert_contains(h(ws_mail_error_text('timeout', '', 'imap.example.com')), $html, 'only the failure');
+
+	pg_assert_contains('No new e-mail', ws_mail_check_line_html(array('stored' => 0, 'read' => 0, 'failed' => array(), 'waiting' => 0)), 'nothing failed');
 
 	$html = ws_mail_check_line_html(array('stored' => 0, 'failed' => array(), 'waiting' => 2));
 
@@ -97,5 +105,7 @@ function test_workspace_mail_check_wiring()
 	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js');
 
 	pg_assert_contains("h.api('ws_mail_check'", $script, 'the script asks the action');
+	pg_assert_contains("w('checking')", $script, 'the button says it is working');
+	pg_assert_true(isset(ws_mail_screen_js_strings()['checking']), 'its words');
 	pg_assert_contains('data-ws-mail-check-line', file_get_contents(PG_FUNCTIONS_DIR . '/messages_mail.php'), 'the line under the toolbar');
 }

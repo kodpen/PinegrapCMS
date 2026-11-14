@@ -1180,14 +1180,26 @@
                 }
             });
 
+            // A read can hold the request for many seconds: the button says
+            // it is working until the answer comes.
+            var label = button.innerHTML;
+
+            function done() {
+                button.disabled = false;
+                button.removeAttribute('aria-busy');
+                button.innerHTML = label;
+            }
+
             button.disabled = true;
             button.setAttribute('aria-busy', 'true');
+            button.innerHTML = '';
+            button.appendChild(h.el('span', 'spinner-border spinner-border-sm me-1')).setAttribute('aria-hidden', 'true');
+            button.appendChild(document.createTextNode(w('checking')));
 
             h.api('ws_mail_check', data).then(function (result) {
                 var list = root.querySelector('.ws-mail-list');
 
-                button.disabled = false;
-                button.removeAttribute('aria-busy');
+                done();
 
                 if (line) {
                     line.innerHTML = result.html;
@@ -1198,8 +1210,7 @@
                     list.innerHTML = result.list;
                 }
             }).catch(function (error) {
-                button.disabled = false;
-                button.removeAttribute('aria-busy');
+                done();
                 h.fail(error);
             });
         }
