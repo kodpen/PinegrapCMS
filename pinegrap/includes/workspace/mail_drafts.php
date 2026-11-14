@@ -201,6 +201,25 @@ function ws_mail_draft_keep_body($id, $fields)
 }
 
 /**
+ * Keeps the application a draft was kept through (draft_app_id, 11.0.206):
+ * written once, when the draft is created; a later change by anyone leaves
+ * it. Nothing before the column is there, nor for 0.
+ *
+ * @param int $id
+ * @param int $app_id ws_api_writer_app_id()
+ * @return bool
+ */
+function ws_mail_draft_keep_app($id, $app_id)
+{
+    if (((int) $app_id <= 0) || !function_exists('pg_schema_has') || !pg_schema_has('ws_mail_items', 'draft_app_id')) {
+        return true;
+    }
+
+    return (bool) db("UPDATE ws_mail_items SET draft_app_id = '" . (int) $app_id . "'
+        WHERE id = '" . (int) $id . "' AND send_state = '" . WS_MAIL_DRAFT_STATE . "'");
+}
+
+/**
  * Whether a draft, once its changes are made, still holds anything. Pure.
  *
  * @param array $fields to, cc, bcc, subject, text, html, file_ids

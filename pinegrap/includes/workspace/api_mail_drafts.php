@@ -313,6 +313,8 @@ function ws_api_mail_drafts_create($params)
 
     if ($id > 0) {
         ws_mail_draft_keep_body($id, array_intersect_key($checked['fields'], array('html' => 1, 'file_ids' => 1)));
+        // The application it came through, once; the Drafts view names it.
+        ws_mail_draft_keep_app($id, ws_api_writer_app_id());
     }
 
     $draft = ($id > 0) ? ws_mail_draft($id) : null;

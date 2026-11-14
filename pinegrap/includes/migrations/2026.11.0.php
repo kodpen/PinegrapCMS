@@ -6576,11 +6576,13 @@ function upgrade_2026_11_0_ws_mail_invitation() {
 
 }
 
-// The files of an e-mail draft kept on the server: a JSON list of files.id
+// The files of an e-mail draft kept on the server: a comma list of files.id
 // (a file taken from the File Manager has no message, so message ids would
 // not do). NULL on every row that is not a draft with files; Send checks the
-// sender's right to each file again and empties the column
-// (includes/workspace/mail_drafts.php).
+// sender's right to each file again and the sent draft goes. draft_app_id is
+// the application that kept the draft through the API (ws_api_writer_app_id()),
+// written when it is created; 0 for one written in the panel and for every
+// row before this step (includes/workspace/mail_drafts.php).
 function upgrade_2026_11_0_ws_mail_draft_files() {
 
 	if (!install_table_exists('ws_mail_items')) {
@@ -6592,6 +6594,7 @@ function upgrade_2026_11_0_ws_mail_draft_files() {
 	}
 
 	install_add_column('ws_mail_items', 'draft_files', "TEXT NULL");
+	install_add_column('ws_mail_items', 'draft_app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: an e-mail draft kept on the server can hold files until it is sent.');
 

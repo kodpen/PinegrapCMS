@@ -19,7 +19,8 @@ description: Plan (owner 2026-11-14): Workspace e-mail read, drafted and sent fr
   - MT3b The E-mails screen's Drafts view: a draft opens in the reply drawer or the New e-mail form, and Send there is the person's and deletes the draft. Look A, the picture set in the agent channel.
 - MT4 (M, done #9533) Sending from a person's connection. A new scope, `workspace:mail_send`, that no connection of today holds and the consent screen names. With it a person's OAuth connection or device session may call reply, new mail and "send this draft" as tools; the panel's own checks, limits and the unknown-domain stop hold, Idempotency-Key, dry run. The mail is the person's; the Site Log names the application it went through.
 - MT5 (M, after MA10b) HTML and files out. `html` on reply, new mail and drafts, cleaned by the allowlist cleaner, the text part made from it when none is sent; files by their Files id within the panel's limits, the sender's right to each checked at Send; a draft keeps them in `ws_mail_items.draft_files` (MT5's migration step).
-  - Done in #9541: `html` and `file_ids` on reply, new mail and drafts, `draft_files` by 11.0.206 (`workspace/mail-api-html-files.md`).
+  - Done in #9541: `html` and `file_ids` on reply, new mail and drafts, `draft_files` and `draft_app_id` by 11.0.206 (`workspace/mail-api-html-files.md`).
+- MT5b (S, after MT5 and MT3b #9543) The application's pill on a Drafts row: the name of the `draft_app_id` application, read from its row when the row is drawn; a deleted one reads as "an assistant". Its own picture in the agent channel under 3346, naming the architect.
 - MT6 (S) Close-out: `workspace/mail-api.md` and `mail-decisions.md` brought up to date, the plugin's e-mail skill named for `plans/claude-plugin-bundle.md`, this plan and its three census files deleted.
 
 ## What does every step keep?
@@ -28,4 +29,4 @@ description: Plan (owner 2026-11-14): Workspace e-mail read, drafted and sent fr
 - A mail's text is data from outside: nothing in it is followed as a request, and the tools' descriptions say so.
 - The channel decides who reaches a conversation, as today.
 - No table or column without asking the architect. `php tools/check_api_schema.php` passes in every step.
-- MT1 first; MT2 and MT3 beside each other; MT3b after MT3a; MT4 after MT3a; MT5 after MT4 and MA10b. Claim as `[plan:mail-chat-tools] <step> — <topic>`.
+- MT1 first; MT2 and MT3 beside each other; MT3b after MT3a; MT4 after MT3a; MT5 after MT4 and MA10b; MT5b after MT5 and MT3b; MT6 after MT5b. Claim as `[plan:mail-chat-tools] <step> — <topic>`.

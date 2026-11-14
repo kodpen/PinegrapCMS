@@ -139,9 +139,11 @@ function test_workspace_mail_draft_files_step_run_twice_changes_nothing_the_seco
 
 	list($first, $second) = $result['runs'];
 
-	pg_assert_same(array('ALTER TABLE `ws_mail_items` ADD `draft_files` TEXT NULL'), $first, 'the column, NULL on every row that is not a draft with files');
+	pg_assert_same(array('ALTER TABLE `ws_mail_items` ADD `draft_files` TEXT NULL', 'ALTER TABLE `ws_mail_items` ADD `draft_app_id` INT UNSIGNED NOT NULL DEFAULT 0'), $first,
+		'draft_files, NULL on every row that is not a draft with files; draft_app_id, 0 with no backfill');
 	pg_assert_same(array(), $second, 'the second run writes nothing');
 	pg_assert_same('text', $result['schema']['ws_mail_items']['draft_files']);
+	pg_assert_same('int', $result['schema']['ws_mail_items']['draft_app_id']);
 }
 
 function test_workspace_mail_draft_files_step_skips_without_the_mail_table()

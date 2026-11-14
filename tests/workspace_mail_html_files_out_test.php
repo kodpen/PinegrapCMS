@@ -198,6 +198,12 @@ function test_ws_mail_out_draft_writes_check_files_before_the_rehearsal_stops()
 	pg_assert_contains('ws_mail_draft_body_check(', ws_mail_out_test_source('ws_mail_draft_create_check'));
 	pg_assert_contains('ws_mail_draft_keep_body(', ws_mail_out_test_source('ws_api_mail_drafts_create'));
 	pg_assert_contains('ws_mail_draft_files_ready()', ws_mail_out_test_source('ws_mail_draft_keep_body'), 'the column only once it is there');
+
+	// The application is written on create only, never by a change.
+	pg_assert_contains('ws_mail_draft_keep_app($id, ws_api_writer_app_id())', ws_mail_out_test_source('ws_api_mail_drafts_create'));
+	pg_assert_false(strpos(ws_mail_out_test_source('ws_api_mail_drafts_update'), 'ws_mail_draft_keep_app(') !== false, 'a change leaves it');
+	pg_assert_false(strpos(ws_mail_out_test_source('ws_mail_draft_update'), 'draft_app_id') !== false, 'the panel\'s change leaves it');
+	pg_assert_contains("pg_schema_has('ws_mail_items', 'draft_app_id')", ws_mail_out_test_source('ws_mail_draft_keep_app'));
 }
 
 function test_ws_mail_out_file_ids_are_given_out()
