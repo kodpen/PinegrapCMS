@@ -628,25 +628,29 @@ function pg_profile_flow_switch_notice($state, $date, $actions = array())
         $made .= '<li><a href="workspace_flows.php?flow=' . (int) $flow_id . '">' . h((string) ($profiles[$head]['name'] ?? '')) . '</a></li>';
     }
 
-    // The profiles left, as the dry-run report words them; its first line
-    // counts what is drawn here as two lists.
+    // The profiles left, each as the dry-run report words it, its name
+    // leading to the profile and its counts under it.
     $left = '';
-    $lines = pg_profile_flow_report_lines(array('flows' => array(), 'left' => $plan['left'], 'done' => array()), $profiles, (array) ($report['stats'] ?? array()));
 
-    foreach (array_slice($lines, 1) as $line) {
-        if (trim($line) === '') {
-            continue;
+    foreach ((array) $plan['left'] as $id => $reason) {
+        $lines = array_values(array_filter(pg_profile_flow_report_lines(array('flows' => array(), 'left' => array($id => $reason), 'done' => array()), $profiles, (array) ($report['stats'] ?? array())), function ($line) {
+            return trim($line) !== '';
+        }));
+        $name = h('“' . (string) ($profiles[$id]['name'] ?? '') . '”');
+        $text = h((string) ($lines[1] ?? ''));
+        $at = strpos($text, $name);
+
+        if ($at !== false) {
+            $text = substr($text, 0, $at) . '<a href="edit_email_campaign_profile.php?id=' . (int) $id . '">' . $name . '</a>' . substr($text, $at + strlen($name));
         }
 
-        // An indented line (a profile's counts) sits under its name.
-        $under = (strlen($line) > strlen(ltrim($line)));
-        $left .= '<div' . ($under ? ' class="ps-3 fg-secondary"' : '') . '>' . h(trim($line)) . '</div>';
+        $left .= '<li>' . $text . (isset($lines[2]) ? '<div class="fg-secondary">' . h(trim($lines[2])) . '</div>' : '') . '</li>';
     }
 
     return $open('success', 'bi-diagram-3')
         . '<strong>' . h(lang(array('string' => 'Profiles turned into flows on {var:1}', 'vars' => $date))) . '</strong>'
         . '<details class="mt-2"><summary>' . h(lang(array('string' => 'Flows made: {var:1}; profiles left: {var:2}', 'vars' => array(count((array) $plan['done']), count((array) $plan['left']))))) . '</summary>'
         . (($made !== '') ? '<h3 class="h6 mt-3">' . h(lang('Flows made')) . '</h3><ul class="mb-0">' . $made . '</ul>' : '')
-        . (($left !== '') ? '<h3 class="h6 mt-3">' . h(lang('Profiles left')) . '</h3>' . $left : '')
+        . (($left !== '') ? '<h3 class="h6 mt-3">' . h(lang('Profiles left')) . '</h3><ul class="mb-0">' . $left . '</ul>' : '')
         . '</details></div></div>';
 }

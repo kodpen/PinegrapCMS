@@ -182,7 +182,8 @@ function test_campaign_profile_switch_notice()
 	pg_assert_contains('<a href="workspace_flows.php?flow=70">Shipped &lt;b&gt;</a>', $html, 'linked and escaped');
 	pg_assert_contains('No start box covers its action yet.', $html);
 	pg_assert_contains('Flows made: 1; profiles left: 1', $html);
-	pg_assert_contains('“Left cart” (Order Abandoned, on)', $html, 'the action by its name on the screen');
+	pg_assert_contains('<a href="edit_email_campaign_profile.php?id=4">“Left cart”</a> (Order Abandoned, on)', $html, 'a profile left leads to the profile, its action by the screen\'s name');
+	pg_assert_true(strpos($html, 'Last 30 days') === false, 'no line of zeros');
 }
 
 // The bell line is the administrators' alone.
@@ -195,4 +196,27 @@ function test_campaign_profile_switch_bell()
 	pg_assert_true(pg_notification_visible($row, array('id' => 1, 'role' => '0')), 'an administrator');
 	pg_assert_true(!pg_notification_visible($row, array('id' => 2, 'role' => 1)), 'a designer');
 	pg_assert_contains('view_email_campaign_profiles.php', pg_notification_display($row)['url']);
+}
+
+// A Send an e-mail box to the record's person is checked at publish with a
+// stand-in address; the address a run puts in is kept. Before, every such
+// flow was refused "Write the address to send it to."
+function test_campaign_profile_switch_record_person_check()
+{
+	pg_assert_same('person@example.com', ws_step_check_stand_in('email', array('recipient' => 'record_person', 'to' => ''))['to']);
+	pg_assert_same('ayse@example.org', ws_step_check_stand_in('email', array('recipient' => 'record_person', 'to' => 'ayse@example.org'))['to'], 'the run\'s address is kept');
+	pg_assert_same('', ws_step_check_stand_in('email', array('recipient' => 'typed', 'to' => ''))['to'], 'a typed box still needs its address');
+	pg_assert_same(array('recipient' => 'record_person'), ws_step_check_stand_in('sms', array('recipient' => 'record_person')), 'other boxes untouched');
+	pg_assert_contains('ws_step_check_stand_in($kind, $config)', file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/steps.php'), 'ws_step_check() asks it');
+}
+
+// The checked event rule the anchor keeps carries the profile and the
+// second; before, ws_scheduled_rule_input() dropped them and the window
+// never applied.
+function test_campaign_profile_switch_checked_rule()
+{
+	pg_assert_same(array('profile_id' => 7, 'switched_at' => 1234), ws_scheduled_event_switch(array('type' => 'event', 'event' => 'order.shipped', 'profile_id' => 7, 'switched_at' => 1234)));
+	pg_assert_same(array(), ws_scheduled_event_switch(array('type' => 'event', 'event' => 'order.shipped')), 'a drawn flow');
+	pg_assert_same(array(), ws_scheduled_event_switch(array('profile_id' => 7)), 'without its second');
+	pg_assert_contains("'rule' => \$out + ws_scheduled_event_switch(\$rule)", file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php'), 'the event branch of ws_scheduled_rule_input() keeps them');
 }

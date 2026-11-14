@@ -26,6 +26,6 @@ module: campaign_profile_flow
 - `pg_profile_flow_limit_reason()`: the head's busiest hour of 30 days over 80% of min(`WS_FLOW_STARTS_HOURLY`, `WS_SCHEDULED_CHAIN_HOURLY`), or open runs (`pg_profile_flow_open_runs()`: 30 days' campaigns spread per minute × the chain's waits added up, a send time counted as a day) over 80% of `WS_FLOW_MAX_OPEN_RUNS`.
 
 ## What does the report say?
-- `pg_profile_flow_report_lines()`: counts; per flow its name, state (a disabled head: paused), owner and why it changed, one line per box (`pg_profile_flow_box_line()`), per profile its last 30 days (automatic campaigns, busiest hour, ready or paused ones left to the campaign job, for commercial the recipients no contact holds); per profile left its name, action, state and reason.
+- `pg_profile_flow_report_lines()`: counts; per flow its name, state, owner and why it changed, one line per box (`pg_profile_flow_box_line()`), per profile its last 30 days (automatic campaigns, busiest hour, ready or paused ones left to the campaign job, for commercial the recipients no contact holds; no line when all are 0); per profile left its name, action, state and reason.
 - A box line names the start by its `ws_events_catalog()` label, as the flow screen does (facts `events`); a Wait length as "1 day", "3 days", "1 hour" (`pg_profile_flow_length_text()`, the flow screen's keys).
 - Sandbox check (2026-11-14, `turkish_default`): "Kargo Yola Çıktı" becomes a paused flow, "Sipariş Yardımı" stays (no start), as [[campaign-profile-flow-dry-run]] worked out by hand.

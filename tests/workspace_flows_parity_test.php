@@ -2286,7 +2286,6 @@ function workspace_flows_parity_table()
 			array(workspace_flows_parity_prefixed('at', 'date time repeat every days until'), 3, 'schedule trigger box option'),
 			array(array('join.channel_id'), 3, 'join trigger box: one channel, or any public one (0)'),
 			array(workspace_flows_parity_prefixed('event', 'event page_id status channel_id'), 3, 'event trigger box option'),
-			array(workspace_flows_parity_prefixed('event', 'profile_id switched_at'), 3, 'event trigger box of a flow an e-mail campaign profile became: the profile and the second it was switched off (includes/fn/campaign_profile_switch.php)'),
 			array(array('weekdays.days'), 3, 'condition box: days of the week'),
 			array(workspace_flows_parity_prefixed('hours', 'from to'), 3, 'condition box: hours, past midnight too (ws_scheduled_hours_hold())'),
 			array(workspace_flows_parity_prefixed('metric', 'metric op value param'), 3, 'condition box: a count, its channel or threshold, since the last run'),

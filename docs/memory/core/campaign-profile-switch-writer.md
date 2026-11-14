@@ -16,14 +16,14 @@ module: campaign_profile_switch
 ## How is a chain switched?
 - `pg_profile_flow_switch_chain()`: `ws_flow_save()` and `ws_flow_publish()` as the owner, then `UPDATE … SET enabled = 0 WHERE id = ? AND enabled = 1`; no row changed: the flow is paused. A refused publish deletes the new draft, so the chain stays a profile with the reason.
 - `pg_profile_flow_switched()` reads every flow's draft, deleted ones too: a chain is never switched twice.
-- A Send an e-mail box to the record's person is checked at publish with a stand-in address (`ws_step_check()`); before, every such flow was refused "Write the address to send it to."
+- A Send an e-mail box to the record's person is checked at publish with a stand-in address (`ws_step_check_stand_in()`); before, every such flow was refused "Write the address to send it to."
 
 ## How does an event meet the switch?
-- `ws_flow_anchor_normalize('event')` and `ws_scheduled_rule_input()` keep `profile_id` and `switched_at` only when both are set, so the anchor's rule carries them.
+- `ws_flow_anchor_normalize('event')` and `ws_scheduled_rule_input()` (`ws_scheduled_event_switch()`) keep `profile_id` and `switched_at` only when both are set, so the anchor's rule carries them.
 - `ws_events_start()` asks `pg_profile_flow_event_starts()`: the event's `ws_events_in.created_at`; inside ±60 s whether the profile mailed the event's person (`pg_profile_flow_event_email()`) from that second less 60 s. The pure rule is `pg_profile_flow_switch_starts()`.
 
 ## Where is the report?
-- E-mail Campaign Profiles screen: `pg_profile_flow_switch_notice()`, the panel's alert (`id="profile-flows"`); due or running: under way; done: "Profiles turned into flows on <date>" opening to the flows made (linked) and the profiles left, drawn by `pg_profile_flow_report_lines()` in the reader's language, actions by the screen's names.
+- E-mail Campaign Profiles screen: `pg_profile_flow_switch_notice()`, the panel's alert (`id="profile-flows"`); due or running: under way; done: "Profiles turned into flows on <date>" opening to two lists: the flows made, each linked to its flow, and the profiles left, each linked to its profile, as `pg_profile_flow_report_lines()` words them in the reader's language, actions by the screen's names (architect, 2026-11-14).
 - MA9f moves it with the screen: where the profiles screen goes, the report stays reachable from the flows side.
 
 ## When do the followers go off?

@@ -1340,15 +1340,7 @@ function ws_scheduled_rule_input($viewer, $rule)
                 $out['channel_id'] = $event_channel;
             }
 
-            // A flow an e-mail campaign profile became keeps the profile and
-            // the second it was switched off (ws_flow_anchor_normalize()),
-            // read by ws_events_start() around that second.
-            if (((int) ($rule['profile_id'] ?? 0) > 0) && ((int) ($rule['switched_at'] ?? 0) > 0)) {
-                $out['profile_id'] = (int) $rule['profile_id'];
-                $out['switched_at'] = (int) $rule['switched_at'];
-            }
-
-            return array('ok' => true, 'error' => '', 'rule' => $out);
+            return array('ok' => true, 'error' => '', 'rule' => $out + ws_scheduled_event_switch($rule));
 
         case 'workday':
             return array('ok' => true, 'error' => '', 'rule' => array('type' => 'workday'));
@@ -1473,6 +1465,23 @@ function ws_scheduled_rule_input($viewer, $rule)
     }
 
     return $fail(lang('That kind of rule is not known.'));
+}
+
+/**
+ * What an event rule of a flow an e-mail campaign profile became keeps of
+ * the switch: the profile and the second it was turned off, read by
+ * ws_events_start() around that second; nothing for any other rule. Pure.
+ *
+ * @param array $rule
+ * @return array profile_id, switched_at; or empty
+ */
+function ws_scheduled_event_switch($rule)
+{
+    if (((int) ($rule['profile_id'] ?? 0) <= 0) || ((int) ($rule['switched_at'] ?? 0) <= 0)) {
+        return array();
+    }
+
+    return array('profile_id' => (int) $rule['profile_id'], 'switched_at' => (int) $rule['switched_at']);
 }
 
 /**

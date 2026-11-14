@@ -560,9 +560,17 @@ function pg_profile_flow_length_text($amount, $unit)
  */
 function pg_profile_flow_report_lines($plan, $profiles, $stats, $events = array())
 {
+    // A profile's last 30 days, '' when every number is 0: a line of zeros
+    // says nothing.
     $counts = function ($id) use ($stats, $profiles) {
         $row = $stats[$id] ?? array();
-        $line = '    ' . lang(array('string' => 'Last 30 days: {var:1} campaigns, at most {var:2} in an hour; {var:3} ready or paused stay with the campaign job', 'vars' => array((int) ($row['made'] ?? 0), (int) ($row['busiest'] ?? 0), (int) ($row['waiting'] ?? 0))));
+        $no_contact = ((($profiles[$id]['purpose'] ?? '') === 'commercial') ? (int) ($row['no_contact'] ?? 0) : 0);
+
+        if (((int) ($row['made'] ?? 0) + (int) ($row['busiest'] ?? 0) + (int) ($row['waiting'] ?? 0) + $no_contact) === 0) {
+            return '';
+        }
+
+        $line = '    ' . lang(array('string' => 'Last 30 days: {var:1} campaigns, at most {var:2} in an hour; {var:3} of them ready or paused stay with the campaign job', 'vars' => array((int) ($row['made'] ?? 0), (int) ($row['busiest'] ?? 0), (int) ($row['waiting'] ?? 0))));
 
         if ((($profiles[$id]['purpose'] ?? '') === 'commercial') && ((int) ($row['no_contact'] ?? 0) > 0)) {
             $line .= '; ' . lang(array('string' => '{var:1} recipients no contact holds would no longer be mailed', 'vars' => (int) $row['no_contact']));
@@ -590,14 +598,18 @@ function pg_profile_flow_report_lines($plan, $profiles, $stats, $events = array(
 
         foreach ($flow['members'] as $id) {
             $lines[] = '  ' . lang(array('string' => 'Profile “{var:1}”', 'vars' => (string) $profiles[$id]['name']));
-            $lines[] = $counts($id);
+            if (($count = $counts($id)) !== '') {
+                $lines[] = $count;
+            }
         }
     }
 
     foreach ($plan['left'] as $id => $reason) {
         $lines[] = '';
         $lines[] = lang(array('string' => '“{var:1}” ({var:2}, {var:3}) stays a profile: {var:4}', 'vars' => array((string) $profiles[$id]['name'], (string) $profiles[$id]['action'], $state($id), $reason)));
-        $lines[] = $counts($id);
+        if (($count = $counts($id)) !== '') {
+            $lines[] = $count;
+        }
     }
 
     return $lines;
