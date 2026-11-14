@@ -55,17 +55,19 @@ function test_campaign_content_design_changed()
 
 function test_campaign_content_card_add()
 {
-	$html = pg_campaign_content_card(array('mode' => 'add', 'kind' => 'design', 'page_options' => '<option value="3">News</option>', 'text' => "a<b"));
+	$html = pg_campaign_content_card(array('mode' => 'add', 'kind' => 'design', 'page_field' => '<div class="pg-pfield">PICKER</div>', 'text' => "a<b"));
 
 	pg_assert_contains('<input type="radio" class="pg-campaign-kind" name="body_kind" value="design" id="body_kind_design" checked>', $html, 'the design is chosen');
 	pg_assert_contains('value="html" id="body_kind_html">', $html, 'pasted HTML offered');
 	pg_assert_contains('value="text" id="body_kind_text">', $html, 'plain text offered');
 	pg_assert_contains('<div class="pg-seg pg-campaign-kinds" role="radiogroup"', $html, 'the kinds as a segmented control');
-	pg_assert_contains('<select class="pg-input" id="page_id" name="page_id"><option value="">Choose a page</option><option value="3">News</option></select>', $html, 'the page list');
+	pg_assert_contains('<label class="pg-field-label" for="page_id">Page</label><div class="pg-pfield">PICKER</div>', $html, 'the page is the picker field the screen passes');
+	pg_assert_false(strpos($html, '<select') !== false, 'no list of every page');
+	pg_assert_contains('data-base="', $html, 'the frame knows the site address a picked page name is added to');
 	pg_assert_contains('<textarea class="pg-input pg-campaign-code" name="html_body"', $html, 'the HTML field');
 	pg_assert_contains('placeholder="Type E-mail body here...">a&lt;b</textarea>', $html, 'the text field, escaped');
 	pg_assert_contains('id="body_design_edit" target="_blank" rel="noopener" href="#" hidden', $html, 'no edit link before a page is chosen');
-	pg_assert_contains('<iframe class="pg-campaign-frame" id="body_preview_iframe" title="Body Preview" src="about:blank" hidden>', $html, 'an empty frame waits');
+	pg_assert_contains('src="about:blank" hidden></iframe>', $html, 'an empty frame waits');
 	pg_assert_contains('for="body_preview_phone"', $html, 'the phone preview switch');
 	pg_assert_false(strpos($html, 'take_design') !== false, 'no "take again" on create');
 }
@@ -95,4 +97,17 @@ function test_campaign_content_card_edit_pasted_and_read()
 	pg_assert_contains(' readonly placeholder=', $read, 'the body cannot be changed');
 	pg_assert_false(strpos($read, 'name="subject"') !== false, 'no subject field');
 	pg_assert_false(strpos($read, 'body_preview_phone"><i') !== false, 'no phone preview for plain text');
+}
+
+function test_campaign_content_add_screen_uses_the_page_view_picker()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/add_email_campaign.php');
+
+	pg_assert_contains("pg_picker_field('page_view', 'page_id', \$output_page_id", $source, 'the design is the page picker field of kind page_view, as the campaign profile\'s Page');
+	pg_assert_contains('pg_picker_script()', $source, 'with the picker\'s script');
+	pg_assert_false(strpos($source, 'ORDER BY page.page_name') !== false, 'every page is no longer read into a list');
+
+	$script = pg_campaign_content_script();
+	pg_assert_contains('input[data-pg-campaign-page]', $script, 'the frame follows the picked page');
+	pg_assert_contains('"edit_page.php?id=" + encodeURIComponent(input.value)', $script, 'and so does Edit the design');
 }

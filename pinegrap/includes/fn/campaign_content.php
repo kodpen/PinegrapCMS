@@ -113,7 +113,7 @@ function pg_campaign_content_design_changed($page_timestamp, $stored_timestamp)
 function pg_campaign_content_preview($src, $empty)
 {
     return '<div class="pg-campaign-preview">'
-        . '<iframe class="pg-campaign-frame" id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="' . h(($src !== '') ? $src : 'about:blank') . '"' . (($src === '') ? ' hidden' : '') . '></iframe>'
+        . '<iframe class="pg-campaign-frame" id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" data-base="' . h(defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . '" src="' . h(($src !== '') ? $src : 'about:blank') . '"' . (($src === '') ? ' hidden' : '') . '></iframe>'
         . '<p class="pg-campaign-preview-empty pg-text-2"' . (($src !== '') ? ' hidden' : '') . '>' . h($empty) . '</p>'
         . '</div>';
 }
@@ -126,7 +126,8 @@ function pg_campaign_content_preview($src, $empty)
  *               one) or read (a completed campaign: nothing is a field)
  *   kind        design, html or text
  *   subject     the subject
- *   page_options <option> markup of the pages that may be the design (add)
+ *   page_field  the page picker field of the design (add; kind page_view,
+ *               posted as page_id)
  *   page_name   the design's page name (edit, read)
  *   edit_url    where the design is edited ('' when the user may not)
  *   html        the pasted HTML (html kind)
@@ -139,7 +140,7 @@ function pg_campaign_content_preview($src, $empty)
  */
 function pg_campaign_content_card($o)
 {
-    $o += array('mode' => 'add', 'kind' => 'design', 'subject' => '', 'page_options' => '', 'page_name' => '', 'edit_url' => '', 'html' => '', 'text' => '', 'preview' => '', 'changed' => false);
+    $o += array('mode' => 'add', 'kind' => 'design', 'subject' => '', 'page_field' => '', 'page_name' => '', 'edit_url' => '', 'html' => '', 'text' => '', 'preview' => '', 'changed' => false);
     $mode = $o['mode'];
     $kinds = pg_campaign_content_kinds();
     $kind = array_key_exists($o['kind'], $kinds) ? $o['kind'] : 'design';
@@ -194,8 +195,7 @@ function pg_campaign_content_card($o)
         $side .= '<div class="pg-campaign-part is-design">';
 
         if ($mode === 'add') {
-            $side .= '<label class="pg-field-label" for="page_id">' . h(lang('Page')) . '</label>'
-                . '<select class="pg-input" id="page_id" name="page_id"><option value="">' . h(lang('Choose a page')) . '</option>' . $o['page_options'] . '</select>';
+            $side .= '<label class="pg-field-label" for="page_id">' . h(lang('Page')) . '</label>' . $o['page_field'];
         } else {
             $side .= '<p class="pg-text-2 mb-0"><span class="pg-text-meta">' . h(lang('Page')) . '</span><br>' . h($o['page_name']) . '</p>';
         }
@@ -241,9 +241,13 @@ function pg_campaign_content_card($o)
 }
 
 /**
- * The script of the add screen's design part: the frame and the "Edit the
- * design" link follow the chosen page (each option carries data-url and
- * data-edit).
+ * The script of the add screen's design part: the frame and "Edit the
+ * design" follow the page picked in the picker field. The field's hidden
+ * input (data-pg-campaign-page) holds the page id and fires change; its
+ * text input (id page_id) shows the page's name, which the frame's address
+ * is made of, as the campaign profile's preview does. edit_page.php sends a
+ * designer page on to the visual editor and refuses a page the user may not
+ * edit.
  *
  * @return string
  */
@@ -251,30 +255,31 @@ function pg_campaign_content_script()
 {
     return '<script>
     (function () {
-        var select = document.getElementById("page_id");
-        var frame = document.getElementById("body_preview_iframe");
-        var edit = document.getElementById("body_design_edit");
+        document.addEventListener("change", function (event) {
+            var input = event.target;
 
-        if (!select || !frame) {
-            return;
-        }
+            if (!input || !input.matches || !input.matches("input[data-pg-campaign-page]")) {
+                return;
+            }
 
-        select.addEventListener("change", function () {
-            var option = select.options[select.selectedIndex];
-            var url = (option && option.getAttribute("data-url")) || "";
-            var editUrl = (option && option.getAttribute("data-edit")) || "";
-            var empty = frame.parentNode.querySelector(".pg-campaign-preview-empty");
+            var frame = document.getElementById("body_preview_iframe");
+            var name = document.getElementById("page_id");
+            var edit = document.getElementById("body_design_edit");
+            var picked = (input.value !== "") && name && (name.value !== "");
+            var empty = frame ? frame.parentNode.querySelector(".pg-campaign-preview-empty") : null;
 
-            frame.src = url || "about:blank";
-            frame.hidden = !url;
+            if (frame) {
+                frame.src = picked ? frame.getAttribute("data-base") + encodeURIComponent(name.value) + "?edit=no&email=true" : "about:blank";
+                frame.hidden = !picked;
+            }
 
             if (empty) {
-                empty.hidden = !!url;
+                empty.hidden = picked;
             }
 
             if (edit) {
-                edit.href = editUrl || "#";
-                edit.hidden = !editUrl;
+                edit.href = picked ? "edit_page.php?id=" + encodeURIComponent(input.value) : "#";
+                edit.hidden = !picked;
             }
         });
     })();

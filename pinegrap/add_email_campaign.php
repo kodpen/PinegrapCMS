@@ -50,56 +50,25 @@ if (!$_POST) {
             $plain_text_email_campaign_footer;
     }
 
-    // get all pages
-    $query =
-        "SELECT
-            page.page_id as id,
-            page.page_name as name,
-            page.page_folder as folder_id,
-            page.page_style,
-            folder.folder_archived
-        FROM page
-        LEFT JOIN folder ON page.page_folder = folder.folder_id
-        WHERE folder.folder_archived = '0'
-        ORDER BY page.page_name";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    
-    $pages = array();
-    
-    // loop through all pages so they can be added to array
-    while ($row = mysqli_fetch_assoc($result)) {
-        $pages[] = $row;
-    }
-    
-    $output_page_options = '';
-    
-    // loop through all pages in order to prepare options for pick list
-    foreach ($pages as $page) {
-        // if the user has access to view this page, then prepare option for this page
-        if (check_view_access($page['folder_id']) == true) {
-            // assume that this page should not be selected by default, until we find out otherwise
-            $selected = '';
-            
-            // if this page should be selected, then prepare to select it
-            if ($page['id'] == ($_GET['page_id'] ?? '')) {
-                $selected = ' selected="selected"';
-            }
-            
-            // The preview frame loads the URL the option carries, built from
-            // the page name, never from the option's label; "Edit the design"
-            // is offered only on a page the user may edit.
-            $page_url = OUTPUT_PATH . encode_url_path($page['name']) . '?edit=no&email=true';
-            $page_edit = check_edit_access($page['folder_id']) ? pg_page_edit_url(array('page_id' => $page['id'], 'page_style' => $page['page_style'])) : '';
+    // The design is the page picker field (kind page_view: any page the
+    // sender may view, searched as typed). A page passed in the address
+    // (a page's "Send as campaign") is drawn chosen, with its preview.
+    $output_page_id = (string) (int) ($_GET['page_id'] ?? '');
 
-            if ($selected !== '') {
-                $output_preview = $page_url;
-                $output_edit_url = $page_edit;
-            }
+    if ($output_page_id !== '0') {
+        $result = db_q("SELECT page_name, page_folder, page_style FROM page WHERE page_id = ?", array($output_page_id)) or output_error('Query failed.');
+        $row = mysqli_fetch_assoc($result);
 
-            $output_page_options .= '<option value="' . $page['id'] . '" data-url="' . h($page_url) . '" data-edit="' . h($page_edit) . '"' . $selected . '>' . h($page['name']) . '</option>';
+        if ($row && check_view_access($row['page_folder'])) {
+            $output_preview = OUTPUT_PATH . encode_url_path($row['page_name']) . '?edit=no&email=true';
+            $output_edit_url = check_edit_access($row['page_folder']) ? pg_page_edit_url(array('page_id' => $output_page_id, 'page_style' => $row['page_style'])) : '';
         }
+    } else {
+        $output_page_id = '';
     }
-    
+
+    $output_page_field = pg_picker_field('page_view', 'page_id', $output_page_id, array('value_attributes' => array('data-pg-campaign-page' => ''))) . pg_picker_script();
+
     // get all contact groups
     $query =
         "SELECT
@@ -183,7 +152,7 @@ if (!$_POST) {
                         pg_campaign_content_card(array(
                             'mode'         => 'add',
                             'kind'         => $output_body_kind,
-                            'page_options' => $output_page_options,
+                            'page_field'   => $output_page_field,
                             'edit_url'     => $output_edit_url,
                             'text'         => $output_body,
                             'preview'      => $output_preview,
