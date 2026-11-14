@@ -1,6 +1,6 @@
 ---
 name: personal-calendar-census-tables
-description: PC1 proposal (2026-11-14), shaped by the architect and waiting for the owner's yes: the tables and columns a person's private plans need, each with its reason and step
+description: PC1 proposal (2026-11-14), shaped by the architect and approved by the owner (decisions-made-schema-18): the tables and columns a person's private plans need, each with its reason and step
 ---
 
 ## Why new tables at all?
@@ -21,7 +21,7 @@ description: PC1 proposal (2026-11-14), shaped by the architect and waiting for 
 
 ## What stays out?
 - No repeat rule (a plan does not repeat; the plan file names none), no colour, no capacity, no `department_id` (team-wide sharing is `visibility`), no column on `ws_events`, `ws_tasks` or `ws_mail_items` in PC3, no bin.
-- PC7's invitation needs what the mail's calendar part said after the raw mail is gone (30 days): either a TEXT `ws_mail_items.invitation` (JSON: uid, method, summary, start, end, all_day, location, organizer) filled at ingest, or the card only while the `.eml` exists. Asked with PC7, not now (`personal-calendar-census-mail.md`).
+- PC7's invitation needs what the mail's calendar part said after the raw mail is gone (30 days): a TEXT `ws_mail_items.invitation` filled at ingest, approved by the owner on 2026-11-14 and added by PC7's own step (`workflow/decisions-made-schema-19.md`). Not chosen: the card only while the `.eml` exists.
 
 ## Who decides the tables?
-- The owner's yes or no, asked by the architect (agent channel 25, messages 2853 and 2857): the three tables and `ws_inbox.plan_id` as above. PC3 waits only for it.
+- The owner's yes or no, asked by the architect (agent channel 25, messages 2853 and 2857): the three tables and `ws_inbox.plan_id` as above. Approved on 2026-11-14 (`workflow/decisions-made-schema-18.md`) and built by PC3 (#9500).
