@@ -120,3 +120,13 @@ function test_a_guest_tick_asks_nobody()
 {
 	ws_guest_agent_lines_test_asks_nobody('ws_guest_check');
 }
+
+function test_a_flow_a_guest_message_started_asks_no_agent()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_agent_box.php');
+
+	pg_assert_same(true, ws_step_agent_guest_started(array('event' => 'workspace.guest.message', 'channel_id' => 4)));
+	pg_assert_same(false, ws_step_agent_guest_started(array('event' => 'workspace.mail.received')));
+	pg_assert_same(false, ws_step_agent_guest_started(array('trigger' => 'manual')));
+	pg_assert_same(false, ws_step_agent_guest_started(array()));
+}

@@ -291,6 +291,19 @@ function ws_step_agent_text($action)
 }
 
 /**
+ * Was the run started by a guest's message (workspace.guest.message)? Its
+ * Ask an agent box asks nobody: nothing a guest does makes a request for an
+ * agent (decisions-made-workspace-24). Pure.
+ *
+ * @param array $context ws_flow_run_context()
+ * @return bool
+ */
+function ws_step_agent_guest_started($context)
+{
+    return (string) ($context['event'] ?? '') === 'workspace.guest.message';
+}
+
+/**
  * A box this request claimed asks its agent: the message goes in the
  * channel in the owner's name, and the box waits on the request it made.
  * A message that made no request (a brake held, the agent was taken out of

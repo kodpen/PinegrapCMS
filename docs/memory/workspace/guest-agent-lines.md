@@ -18,4 +18,4 @@ description: The guest page lists the agents' and assistants' messages beside pe
 
 ## Does a guest's action ask an agent?
 - No. `ws_guest_send()`, `ws_guest_react()`, `ws_guest_vote()` and `ws_guest_check()` call no wake or request function; a guest's tag is taken out by `ws_guest_clean_text()`. `tests/workspace_guest_agent_lines_test.php` holds one test for each.
-- Not changed: `ws_guest_send()` still emits `workspace.guest.message`, which a team-made flow may listen to.
+- A flow started by `workspace.guest.message` runs, but its Ask an agent box settles as failed ("A guest's message asks no agent.") without asking: `ws_step_agent_guest_started()` in `flow_agent_box.php`, called from `steps.php`. Its Pinegrap AI box still runs: it reads the text and answers the flow, never a channel.
