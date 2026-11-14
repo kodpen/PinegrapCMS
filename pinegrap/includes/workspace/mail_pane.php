@@ -39,7 +39,9 @@ function ws_mail_pane_columns($html)
         . ($html
             ? "(body_html IS NOT NULL AND body_html <> '') AS has_html,"
                 . " (LOCATE(' data-pg-src=\"http', body_html) > 0 OR LOCATE(' data-pg-background=\"http', body_html) > 0) AS outside_pictures"
-            : '0 AS has_html, 0 AS outside_pictures');
+            : '0 AS has_html, 0 AS outside_pictures')
+        // An invitation's event for its card (personal_plan_mail.php), once the column is there.
+        . ((function_exists('ws_mail_invitation_ready') && ws_mail_invitation_ready()) ? ', invitation' : '');
 }
 
 /**
@@ -130,6 +132,8 @@ function ws_mail_pane_open($viewer, $conversation_id)
 
     // Block sender (mail_blocks.php), then Forward.
     $pane = ws_mail_block_pane($pane, $viewer);
+    // Add to my calendar on each mail (personal_plan_mail.php).
+    $pane = function_exists('ws_personal_plan_mail_pane') ? ws_personal_plan_mail_pane($pane, !empty($viewer['member']) && ws_personal_plans_ready(), ws_personal_plan_mail_plans((int) $viewer['id'])) : $pane;
 
     return ws_mail_forward_pane($pane, ws_mail_forward_may($viewer));
 }
@@ -238,6 +242,8 @@ function ws_mail_pane_item_html($item, $base = '')
         $html .= '<div class="mt-1"><span class="badge theme-secondary">' . h(lang('Automatic answer')) . '</span></div>';
     }
 
+    // An invitation's card above its words (personal_plan_mail.php).
+    $html .= function_exists('ws_mail_invitation_card_html') ? ws_mail_invitation_card_html($item, (string) ($item['calendar_tools'] ?? '')) : '';
     $html .= ws_mail_pane_body_html($item, $name, $base);
 
     foreach ($item['files'] as $file) {
@@ -256,11 +262,18 @@ function ws_mail_pane_item_html($item, $base = '')
             . ((trim((string) $bounce['body_text']) !== '') ? ' ' . h((string) $bounce['body_text']) : '') . '</div>';
     }
 
-    // Forward as e-mail (mail_forward.php, ws_mail_forward_pane()) and Block
-    // sender (mail_blocks.php, ws_mail_block_pane()).
+    // Forward as e-mail (mail_forward.php, ws_mail_forward_pane()), Block
+    // sender (mail_blocks.php, ws_mail_block_pane()) and Add to my calendar
+    // (personal_plan_mail.php, ws_personal_plan_mail_pane()).
     $tools = !empty($item['forward']) ? '<button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-forward="' . (int) $item['id'] . '">'
         . '<i class="bi bi-envelope-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Forward')) . '</button>' : '';
     $tools .= (!empty($item['block']) && function_exists('ws_mail_block_item_html')) ? ws_mail_block_item_html($item) : '';
+
+    // A mail whose invitation has its card carries the button there.
+    if (!empty($item['calendar']) && !(function_exists('ws_mail_invitation_of') && ws_mail_invitation_of($item))) {
+        $tools .= '<button type="button" class="btn btn-sm btn-text theme-secondary px-0' . (($tools !== '') ? ' ms-3' : '') . '" data-ws-mail-calendar="' . (int) $item['id'] . '">'
+            . '<i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>' . h(lang('Add to my calendar')) . '</button>';
+    }
 
     if ($tools !== '') {
         $html .= '<div class="ws-mail-item-tools mt-2">' . $tools . '</div>';

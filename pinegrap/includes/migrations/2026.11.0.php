@@ -194,6 +194,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_personal_plans();       // 11.0.201
 	upgrade_2026_11_0_ws_mail_blocks();          // 11.0.202
 	upgrade_2026_11_0_ws_mail_own_signature();   // 11.0.203
+	upgrade_2026_11_0_ws_mail_invitation();      // 11.0.204
 
 }
 
@@ -6550,5 +6551,26 @@ function upgrade_2026_11_0_ws_mail_own_signature() {
 	install_add_column('ws_profiles', 'mail_signature', "TEXT NULL");
 
 	install_note('Workspace: a person can set their own e-mail signature under My e-mail settings.');
+
+}
+
+// A mail's invitation (its calendar part's first event: uid, method, summary,
+// start, end, all_day, location, organiser) kept at ingest as JSON, so the
+// invitation card and Add to my calendar outlive the raw mail, which goes
+// after WS_MAIL_EML_DAYS (includes/workspace/personal_plan_mail.php). Mail
+// taken in before this step shows no card.
+function upgrade_2026_11_0_ws_mail_invitation() {
+
+	if (!install_table_exists('ws_mail_items')) {
+
+		install_skipped('ws_mail_items does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_mail_items', 'invitation', "TEXT NULL");
+
+	install_note('Workspace: an invitation that comes by e-mail is drawn as a card under the mail, with Add to my calendar. Mail that came before the upgrade shows no card.');
 
 }

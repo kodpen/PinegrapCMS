@@ -5,7 +5,7 @@ description: A person's private plans on My calendar (PC3): step 11.0.201, the g
 
 ## Where are plans kept?
 - Step 11.0.201 of 2026.11.0 (`upgrade_2026_11_0_ws_personal_plans()`): `ws_personal_plans` (owner `user_id`, title, note, `starts_at`/`ends_at` end exclusive, `all_day`, `remind_at`/`reminded_at`, `visibility`, `contact_id`, `mail_conversation_id`), `ws_personal_plan_steps`, `ws_personal_plan_people`, and `ws_inbox.plan_id`. One probe: `ws_personal_plans_ready()`. Shape and reasons: `personal-calendar-census-tables.md`.
-- `contact_id` and `mail_conversation_id` stay unused until PC6 and PC7; the steps are the roadmap (PC5, `workspace-personal-plan-roadmap.md`). `contact_id` is listed in `pg_contact_holders()` only by PC6; until then `tests/contact_holders_test.php` names it as an exception.
+- `contact_id` stays unused until PC6; the steps are the roadmap (PC5, `workspace-personal-plan-roadmap.md`); `mail_conversation_id` is written by Add to my calendar (`workspace-personal-plan-mail.md`). `contact_id` is listed in `pg_contact_holders()` only by PC6; until then `tests/contact_holders_test.php` names it as an exception.
 - Never a `ws_events` row: its readers do not ask whose row it is (`personal-calendar-census-readers.md`).
 
 ## Who may see a plan?

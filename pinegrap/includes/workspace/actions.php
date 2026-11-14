@@ -4715,12 +4715,18 @@ function ws_handle_action($action, $request)
         case 'ws_personal_plan_get':
             $plan = ws_personal_plan((int) $viewer['id'], (int) ($request['plan_id'] ?? 0));
 
-            return $plan ? ws_action_ok(array('plan' => ws_personal_plan_for_reader((int) $viewer['id'], $plan))) : ws_action_error(lang('This plan cannot be found.'));
+            return $plan ? ws_action_ok(array('plan' => ws_personal_plan_for_reader((int) $viewer['id'], $plan, $viewer))) : ws_action_error(lang('This plan cannot be found.'));
 
         case 'ws_personal_plan_save':
             $result = ws_personal_plan_save($viewer, $request, (int) ($request['plan_id'] ?? 0));
 
             return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('plan' => $result['plan']));
+
+        // Add to my calendar: the drawer filled from a mail the reader may read.
+        case 'ws_personal_plan_mail':
+            $result = ws_personal_plan_mail_draft($viewer, (int) ($request['item_id'] ?? 0), is_scalar($request['mode'] ?? '') ? (string) ($request['mode'] ?? '') : '');
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok($result);
 
         case 'ws_personal_plan_delete':
             $result = ws_personal_plan_delete($viewer, (int) ($request['plan_id'] ?? 0));

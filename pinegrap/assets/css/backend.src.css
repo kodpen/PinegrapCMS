@@ -18262,6 +18262,19 @@ button.ws-cal-more {
   align-items: center;
   margin-bottom: 16px;
 }
+/* An invitation in a mail (personal_plan_mail.php). */
+.ws-mail-invite {
+  max-width: 480px;
+  padding: 12px;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius);
+}
+.ws-mail-invite-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
 .ws-mycal-empty {
   margin: 0;
   padding: 32px 16px;

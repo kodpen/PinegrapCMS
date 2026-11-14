@@ -415,6 +415,12 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'mail_resend' => ($mail && !$deleted && function_exists('ws_mail_resend_offer')) ? ws_mail_resend_offer($extra['mail'][(int) $row['sender_id']] ?? null, $can_post, $viewer, $row) : 0,
         // The mail its text offers to forward as e-mail (mail_forward.php), 0 for none.
         'mail_forward' => ($mail && !$deleted && function_exists('ws_mail_forward_offer')) ? ws_mail_forward_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $viewer) : 0,
+        // The mail its text offers to add to the reader's calendar (personal_plan_mail.php), 0 for none.
+        'mail_calendar' => ($mail && !$deleted && function_exists('ws_personal_plan_mail_offer'))
+            ? ws_personal_plan_mail_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $viewer, ws_personal_plans_ready()) : 0,
+        // Its invitation card's buttons for this reader (personal_plan_mail.php), '' for none.
+        'mail_invite_tools' => ($mail && !$deleted && function_exists('ws_personal_plan_mail_tools_for'))
+            ? ws_personal_plan_mail_tools_for($row, $extra['mail'][(int) $row['sender_id']] ?? null, $viewer) : '',
         // Its status and holder, for the same reader (mail_status.php), null for none.
         'mail_state'  => ($mail && !$deleted && function_exists('ws_mail_state_offer'))
             ? ws_mail_state_offer($extra['mail'][(int) $row['sender_id']] ?? null, ws_mail_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post), (int) $viewer['id']) : null,
