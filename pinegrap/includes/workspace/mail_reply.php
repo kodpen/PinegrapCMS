@@ -172,6 +172,37 @@ function ws_mail_answer_body($text, $writer, $box, $answered)
 }
 
 /**
+ * The HTML of a mail as it leaves when it was written with formatting: the
+ * written part as given (already cleaned), then the writer, the Signature
+ * and the answered mail's quote exactly as the text of ws_mail_answer_body()
+ * has them, escaped, line by line. Pure but for the quote's words.
+ *
+ * @param string     $html     the cleaned HTML of the written part
+ * @param string     $writer
+ * @param array      $box      ws_mail_boxes row
+ * @param array|null $answered ws_mail_items row, null when nothing is answered
+ * @return string a whole document
+ */
+function ws_mail_answer_html($html, $writer, $box, $answered)
+{
+    $marker = "\x01pg-mail-body\x01";
+    $text = ws_mail_answer_body($marker, $writer, $box, $answered);
+    $at = strpos($text, $marker);
+    $before = ($at === false) ? '' : substr($text, 0, $at);
+    $after = ($at === false) ? "\n\n" . $text : substr($text, $at + strlen($marker));
+    $lines = function ($part) {
+        return nl2br(h((string) $part), false);
+    };
+
+    return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>'
+        . '<body style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #1f2328;">'
+        . (($before !== '') ? '<div>' . $lines($before) . '</div>' : '')
+        . '<div>' . (string) $html . '</div>'
+        . '<div style="color: #57606a;">' . $lines($after) . '</div>'
+        . '</body></html>';
+}
+
+/**
  * The mail an answer answers: the newest that came in.
  *
  * @param int $conversation_id

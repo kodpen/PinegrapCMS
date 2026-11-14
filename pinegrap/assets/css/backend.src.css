@@ -15953,6 +15953,14 @@ a.ws-chip:hover {
 /* The ; list of saved replies in the e-mail reply drawer
    (workspace_mail.js), under the answer: above it the drawer's top would
    cut it off. */
+/* A written mail's writing box (workspace_mail.js mailText()): the
+   height of the text area it replaces, its tools under it. */
+.ws-mail-rich .ws-rich {
+  min-height: 12rem;
+}
+.ws-mail-rich .ws-mail-rich-tools {
+  margin-top: var(--ws-space-1, .25rem);
+}
 .ws-mail-reply-box .ws-picker {
   top: 100%;
   bottom: auto;
