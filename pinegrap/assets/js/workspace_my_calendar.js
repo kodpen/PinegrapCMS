@@ -209,6 +209,11 @@
                 item.appendChild(h.icon('bi-calendar2-heart', 'me-1'));
             }
 
+            // A plan of the reader's own: the drawer's lock, "only you".
+            if (event.plan_id) {
+                item.appendChild(h.icon('bi-lock-fill', 'me-1'));
+            }
+
             if (event.meeting_url) {
                 item.appendChild(h.icon('bi-camera-video', 'me-1'));
             }
@@ -475,6 +480,7 @@
 
             var name = input('text', plan ? plan.title : '');
             name.maxLength = 255;
+            name.required = true;
             body.appendChild(field(s('plan_title'), name));
 
             var days = el('div', 'ws-plan-pair');
@@ -512,7 +518,8 @@
             whole.addEventListener('change', timeView);
             timeView();
 
-            var remind = el('select', 'pg-input');
+            // The panel's select (its own caret), as the panel's forms draw one.
+            var remind = el('select', 'form-control');
             [['', s('plan_no_remind')]].concat(Object.keys(S.remind_options || {}).map(function (key) {
                 return [key, S.remind_options[key]];
             })).forEach(function (option) {
@@ -578,6 +585,11 @@
                 });
             });
             footer.appendChild(save);
+
+            // The panel's one required marker on Title's label.
+            if (window.pgInjectAriaAndRequiredMarkers) {
+                window.pgInjectAriaAndRequiredMarkers(body);
+            }
 
             h.showOffcanvas(node);
             window.setTimeout(function () { name.focus(); }, 200);

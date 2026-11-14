@@ -14,7 +14,7 @@ description: A person's private plans on My calendar (PC3): step 11.0.201, the g
 - No Site Log, audit line, webhook or flow event names a plan; nothing is exported.
 
 ## How is a plan made and drawn?
-- My calendar: "New plan" in the toolbar and on a day's right-click menu opens the drawer (title, first and last day, All day, start and end time, reminder, note; "Only you see this plan."). A plan is drawn as kind `personal` (violet) and opens in the same drawer, with Delete (after a confirmation, no bin). `?plan=N` opens a plan.
+- My calendar: "New plan" in the toolbar and on a day's right-click menu opens the drawer (title, first and last day, All day, start and end time, reminder, note; "Only you see this plan."). A plan is drawn as kind `personal` (violet, a lock before its title; on a phone the bar takes the violet at 80%) and opens in the same drawer, with Delete (after a confirmation, no bin). `?plan=N` opens a plan.
 - Actions `ws_personal_plan_get`, `_save`, `_delete` (`includes/panel/actions.php`); input checked by `ws_personal_plan_clean()` (pure, tested). No end time: one hour. An all-day plan ends at midnight after its last day.
 - Today's "Calendar · today" card lists the reader's plans of the day as "My plan".
 

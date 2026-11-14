@@ -18746,6 +18746,10 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   .ws-cal-event.ws-kind-visit {
     background: color-mix(in srgb, var(--pg-warning) 70%, transparent);
   }
+  /* A plan of the reader's own: its violet as strong as the list's dot. */
+  .ws-cal-event.ws-kind-personal {
+    background: color-mix(in srgb, var(--pg-tone-violet) 80%, transparent);
+  }
   .ws-cal-channel {
     background: rgba(var(--ws-accent-rgb), .25);
   }
