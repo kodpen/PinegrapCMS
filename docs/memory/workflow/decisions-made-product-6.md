@@ -16,7 +16,7 @@ description: Decisions list, product part 6 (2026-10-29 night on): subscriptions
 - Decided (owner, 2026-10-30): no; the plan stays a weak plan for now and is evaluated later, the roadmap's watch-list line stays. The architect's design for the day it starts is in `plans/visitor-ai-assistant.md`.
 
 ## Does the add-on system start in 2026.11.0? (#3344)
-- Decided (owner, 2026-10-30): no, after 2026.11.0 ships; the plan stays on the watch list and new PSP, carrier and marketplace drivers keep landing in the core. The architect's notes for the start are in `plans/addon-hook-system.md`.
+- Decided (owner, 2026-10-30): no, after 2026.11.0 ships; the plan stays on the watch list and new PSP, carrier and marketplace drivers keep landing in the core. The architect's notes for the start are in `plans/addon-hook-system.md`. Changed on 2026-11-14 to a start in two parts: `decisions-made-product-52.md`.
 
 ## Does the printed order show the recipient's shipping card? (#3346)
 - Decided (owner, 2026-10-30): yes: `print_order.php` prints its existing `$output_shipping_details` card for each real recipient above that recipient's items, empty rows hidden, in the print view. Until then the printout showed no recipient name or address.
