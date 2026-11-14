@@ -774,6 +774,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/personal-calendar-census-privacy.md: PC1 census (2026-11-14): export, erasure, account deletion and leaving the team today, and what each does with private plans (architect's answer)
 - workspace/personal-calendar-census-tables.md: PC1 proposal (2026-11-14), shaped by the architect and approved by the owner (decisions-made-schema-18): the tables and columns a person's private plans need, each with its reason and step
 - workspace/personal-calendar-census-words.md: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Planning Board, /workspace/plan, "#plan") and the names proposed for a private plan
+- workspace/plan-board-grid.md: Planning Board (workspace_board.php) Turkish name, grid columns and why .ws-board's min-width equals the grid minimum (#3815)
 - workspace/workflow-table-channel.md: A workflow table of a channel (ws_wtables.channel_id, 11.0.191): rights from the channel, made in or moved to a channel, lists, bin, screen card, API, webhooks
 - workspace/workflow-table-key-column.md: The key column of a workflow table (wtable_keys.php, PR #8509): text or number, filled in and unique, refusals, the lock, by: key, the API ?key=, the import matching by key
 - workspace/workflow-table-row-numbers.md: The stable # number of workflow table rows (11.0.183, PR #8461): counter in ws_wtables.next_number, the row's number, kept through the bin, shown in #, found by by: number

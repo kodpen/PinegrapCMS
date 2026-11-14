@@ -133,7 +133,7 @@
 - personal-calendar-census-readers.md: PC1 census (2026-11-14): every reader of the Work Calendar's rows (ws_events) and of Today, which one asks whose row it is, and what each must do with a person's private plan
 - personal-calendar-census-tables.md: PC1 proposal (2026-11-14), shaped by the architect and approved by the owner (decisions-made-schema-18): the tables and columns a person's private plans need, each with its reason and step [decision: here]
 - personal-calendar-census-words.md: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Planning Board, /workspace/plan, "#plan") and the names proposed for a private plan [decision: here]
-- plan-board-grid.md: Plan board (workspace_board.php) grid columns and why .ws-board's min-width equals the grid minimum (#3815)
+- plan-board-grid.md: Planning Board (workspace_board.php) Turkish name, grid columns and why .ws-board's min-width equals the grid minimum (#3815) [decision: here]
 - voice-browser-to-text.md: "Convert to text" for a voice message by the browser's own model (pg_voice_text.js, owner request 2026-10-29): where it shows, Prompt API with audio input, pieces of 30 s, nothing sent or kept
 - workflow-table-board.md: Board view of a workflow table (T2, #2994): rows as cards by a status column via the channel board's mountSource(); a move writes the status cell with ws_wtable_row_update()
 - workflow-table-channel.md: A workflow table of a channel (ws_wtables.channel_id, 11.0.191): rights from the channel, made in or moved to a channel, lists, bin, screen card, API, webhooks [decision: here]
