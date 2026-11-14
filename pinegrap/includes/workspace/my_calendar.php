@@ -289,7 +289,14 @@ function ws_my_calendar($viewer, $view, $anchor = '')
     // ── Their own plans, through the plans' gate ──
 
     if (function_exists('ws_personal_plans_between')) {
-        $days = ws_personal_plans_place($days, ws_personal_plans_between($me, $from_ts, $to_ts + 1));
+        $plans = ws_personal_plans_between($me, $from_ts, $to_ts + 1);
+        $names = array();
+
+        foreach (ws_people(array_unique(array_map('intval', array_column($plans, 'user_id')))) as $id => $brief) {
+            $names[(int) $id] = (string) $brief['name'];
+        }
+
+        $days = ws_personal_plans_place($days, $plans, $me, $names);
     }
 
     foreach ($days as $date => $day) {

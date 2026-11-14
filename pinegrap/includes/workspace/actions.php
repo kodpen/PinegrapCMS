@@ -4647,7 +4647,7 @@ function ws_handle_action($action, $request)
         case 'ws_personal_plan_get':
             $plan = ws_personal_plan((int) $viewer['id'], (int) ($request['plan_id'] ?? 0));
 
-            return $plan ? ws_action_ok(array('plan' => ws_personal_plan_present($plan))) : ws_action_error(lang('This plan cannot be found.'));
+            return $plan ? ws_action_ok(array('plan' => ws_personal_plan_for_reader((int) $viewer['id'], $plan))) : ws_action_error(lang('This plan cannot be found.'));
 
         case 'ws_personal_plan_save':
             $result = ws_personal_plan_save($viewer, $request, (int) ($request['plan_id'] ?? 0));

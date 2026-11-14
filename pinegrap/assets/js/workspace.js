@@ -6398,6 +6398,8 @@
             planItem: featurePlanItem,
             statusName: function (status) { return BOOT.statuses[status] || ''; },
             dmy: dmy,
+            // The team (ws_team_members()), for a picker of its own people.
+            team: function () { return (BOOT && BOOT.people) || []; },
             calendarLanes: calendarLanes,
             pressKeys: pressKeys,
             onContext: onContext

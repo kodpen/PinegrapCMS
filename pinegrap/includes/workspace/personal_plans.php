@@ -48,17 +48,20 @@ function ws_personal_plans_ready()
 }
 
 /**
- * The one gate of a plan: may this person see it? Only its owner, while both
- * are on the team: a plan of somebody who left is read by nobody, and a
- * guest has no calendar. Sharing (visibility, ws_personal_plan_people) opens
- * it to others in a later step, here and nowhere else.
+ * The one gate of a plan: may this person see it? Its owner, and those the
+ * owner opened it to (visibility): chosen team members (people) or the whole
+ * team (team); "me" is the default. Both reader and owner must be on the team:
+ * a plan of somebody who left is read by nobody, a guest has no calendar, and
+ * an administrator is no exception.
  *
  * @param int        $user_id the reader
  * @param array|null $plan    ws_personal_plans row
  * @param int[]|null $team    the team's ids (ws_team_ids()), for a test
+ * @param int[]|null $people  the chosen members (ws_personal_plan_people_ids()),
+ *                            for a test; read when the plan names people
  * @return bool
  */
-function ws_personal_plan_can_see($user_id, $plan, $team = null)
+function ws_personal_plan_can_see($user_id, $plan, $team = null, $people = null)
 {
     $user_id = (int) $user_id;
 
@@ -72,7 +75,38 @@ function ws_personal_plan_can_see($user_id, $plan, $team = null)
         return false;
     }
 
-    return (int) $plan['user_id'] === $user_id;
+    if ((int) $plan['user_id'] === $user_id) {
+        return true;
+    }
+
+    $visibility = (string) ($plan['visibility'] ?? 'me');
+
+    if ($visibility === 'team') {
+        return true;
+    }
+
+    if ($visibility === 'people') {
+        $people = ($people === null) ? ws_personal_plan_people_ids((int) $plan['id']) : array_map('intval', (array) $people);
+
+        return in_array($user_id, $people, true);
+    }
+
+    return false;
+}
+
+/**
+ * The team members a plan is opened to, one by one.
+ *
+ * @param int $plan_id
+ * @return int[]
+ */
+function ws_personal_plan_people_ids($plan_id)
+{
+    if (!ws_personal_plans_ready() || ((int) $plan_id <= 0)) {
+        return array();
+    }
+
+    return array_map('intval', (array) db_values("SELECT user_id FROM ws_personal_plan_people WHERE plan_id = '" . (int) $plan_id . "' ORDER BY user_id"));
 }
 
 /**
@@ -125,8 +159,12 @@ function ws_personal_plans_between($user_id, $from_ts, $to_ts)
     $plans = array();
     $team = ws_team_ids();
 
+    // Their own, those opened to the team, and those naming them; the gate
+    // then decides each one.
     foreach ((array) db_items("SELECT * FROM ws_personal_plans
-        WHERE user_id = '" . (int) $user_id . "' AND starts_at < '" . (int) $to_ts . "' AND ends_at > '" . (int) $from_ts . "'
+        WHERE (user_id = '" . (int) $user_id . "' OR visibility = 'team'
+            OR (visibility = 'people' AND id IN (SELECT plan_id FROM ws_personal_plan_people WHERE user_id = '" . (int) $user_id . "')))
+        AND starts_at < '" . (int) $to_ts . "' AND ends_at > '" . (int) $from_ts . "'
         ORDER BY starts_at, id
         LIMIT 1000") as $plan) {
         if (ws_personal_plan_can_see($user_id, $plan, $team)) {
@@ -213,7 +251,27 @@ function ws_personal_plan_clean($data)
         $remind_at = max(1, $at - ((int) $remind * 60));
     }
 
+    // Who else may see it: nobody (the default), chosen team members or the
+    // whole team. The members are checked against the team when saved.
+    $visibility = $text($data['visibility'] ?? 'me');
+    $visibility = in_array($visibility, array('me', 'people', 'team'), true) ? $visibility : 'me';
+    $people = array();
+
+    if ($visibility === 'people') {
+        foreach ((array) ($data['people'] ?? array()) as $id) {
+            if (is_scalar($id) && ctype_digit((string) $id) && ((int) $id > 0)) {
+                $people[(int) $id] = (int) $id;
+            }
+        }
+
+        if (empty($people)) {
+            return array('error' => lang('Choose who may see the plan.'));
+        }
+    }
+
     return array(
+        'visibility' => $visibility,
+        'people'    => array_values($people),
         'title'     => $title,
         'note'      => $note,
         'starts_at' => (int) $starts_at,
@@ -249,10 +307,17 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
     $now = time();
     $plan_id = (int) $plan_id;
 
+    // Only team members other than the owner can be chosen: a guest never.
+    $people = array_values(array_diff(array_intersect($clean['people'], ws_team_ids()), array($user_id)));
+
+    if (($clean['visibility'] === 'people') && empty($people)) {
+        return array('error' => lang('Choose who may see the plan.'));
+    }
+
     // A reminder already gone stays gone unless its moment moved.
     $values = "title = '" . e($clean['title']) . "', note = '" . e($clean['note']) . "',
         starts_at = '" . $clean['starts_at'] . "', ends_at = '" . $clean['ends_at'] . "', all_day = '" . $clean['all_day'] . "',
-        remind_at = '" . $clean['remind_at'] . "', updated_at = '" . $now . "'";
+        remind_at = '" . $clean['remind_at'] . "', visibility = '" . e($clean['visibility']) . "', updated_at = '" . $now . "'";
 
     if ($plan_id > 0) {
         $plan = ws_personal_plan($user_id, $plan_id);
@@ -272,7 +337,15 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
         $plan_id = (int) mysqli_insert_id(db::$con);
     }
 
-    return array('ok' => true, 'plan' => ws_personal_plan_present(ws_personal_plan($user_id, $plan_id)));
+    db("DELETE FROM ws_personal_plan_people WHERE plan_id = '" . $plan_id . "'");
+
+    if ($clean['visibility'] === 'people') {
+        db("INSERT IGNORE INTO ws_personal_plan_people (plan_id, user_id) VALUES " . implode(', ', array_map(function ($id) use ($plan_id) {
+            return "('" . $plan_id . "', '" . (int) $id . "')";
+        }, $people)));
+    }
+
+    return array('ok' => true, 'plan' => ws_personal_plan_for_reader($user_id, ws_personal_plan($user_id, $plan_id)));
 }
 
 /**
@@ -368,7 +441,36 @@ function ws_personal_plan_present($plan)
         'end_time'   => $all_day ? '' : date('H:i', $ends),
         'all_day'    => $all_day,
         'remind'     => ((int) $plan['remind_at'] > 0) ? (string) max(0, (int) round(($at - (int) $plan['remind_at']) / 60)) : '',
+        'visibility' => (string) ($plan['visibility'] ?? 'me'),
+        'owner_id'   => (int) ($plan['user_id'] ?? 0),
     );
+}
+
+/**
+ * A plan as one reader gets it: the owner gets everything and may change it;
+ * anybody it is opened to reads it under the owner's name, without the
+ * owner's reminder or the list of the others it is opened to.
+ *
+ * @param int   $user_id the reader
+ * @param array $plan    a row the gate let through
+ * @return array
+ */
+function ws_personal_plan_for_reader($user_id, $plan)
+{
+    $out = ws_personal_plan_present($plan);
+    $mine = ((int) $plan['user_id'] === (int) $user_id);
+    $owner = $mine ? null : ws_people(array((int) $plan['user_id']));
+
+    $out['mine'] = $mine;
+    $out['people'] = ($mine && ($out['visibility'] === 'people')) ? ws_personal_plan_people_ids((int) $plan['id']) : array();
+    $out['owner_name'] = $mine ? '' : (string) ($owner[(int) $plan['user_id']]['name'] ?? '');
+
+    if (!$mine) {
+        $out['remind'] = '';
+        $out['visibility'] = '';
+    }
+
+    return $out;
 }
 
 /**
@@ -380,7 +482,7 @@ function ws_personal_plan_present($plan)
  * @param array[] $plans ws_personal_plans rows
  * @return array the days
  */
-function ws_personal_plans_place($days, $plans)
+function ws_personal_plans_place($days, $plans, $reader = 0, $names = array())
 {
     foreach ($plans as $plan) {
         foreach (array_keys($days) as $date) {
@@ -400,6 +502,8 @@ function ws_personal_plans_place($days, $plans)
                 'scope'       => 'people',
                 'people'      => array(),
                 'meeting_url' => '',
+                // A plan opened to the reader by somebody else: whose it is.
+                'owner'       => ((int) ($plan['user_id'] ?? 0) !== (int) $reader) ? (string) ($names[(int) ($plan['user_id'] ?? 0)] ?? '') : '',
             );
         }
     }
@@ -518,6 +622,16 @@ function ws_personal_plan_js_strings()
         'save'           => lang('Save'),
         'delete'         => lang('Delete'),
         'my_plan'        => lang('My plan'),
+        'plan_of'        => ws_js_template('Plan of {var:1}', 1),
+        'plan_shared_by' => ws_js_template('{var:1} shared this plan with you. Only they can change it.', 1),
+        'plan_who'       => lang('Who can see'),
+        'plan_private_people' => lang('You and the people you choose see this plan. Only you can change it.'),
+        'plan_private_team'   => lang('The whole team sees this plan. Only you can change it.'),
+        'plan_only_me'   => lang('Only me'),
+        'plan_chosen'    => lang('Chosen team members'),
+        'plan_people_hint'  => lang('Choose the team members who may see this plan.'),
+        'plan_people_error' => lang('Choose who may see the plan.'),
+        'plan_team'      => lang('The whole team'),
         'remind_options' => array(
             '0'    => lang('At the start'),
             '15'   => lang('15 minutes before'),

@@ -219,7 +219,7 @@
             }
 
             item.appendChild(document.createTextNode((event.time ? event.time + ' ' : '') + event.title));
-            item.title = event.title + (event.layer ? ' · ' + event.layer : '');
+            item.title = event.title + (event.layer ? ' · ' + event.layer : '') + (event.owner ? ' · ' + s('plan_of').replace('{1}', event.owner) : '');
 
             return item;
         }
@@ -404,7 +404,7 @@
 
                 day.events.forEach(function (event) {
                     section.appendChild(listRow(el('span', 'ws-cal-event-dot ws-kind-' + event.kind), event.title,
-                        event.plan_id ? s('my_plan') : (event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || '')),
+                        event.plan_id ? (event.owner ? s('plan_of').replace('{1}', event.owner) : s('my_plan')) : (event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || '')),
                         event.time || h.t('all_day'),
                         (event.url || event.plan_id || !event.readonly) ? function () { openEvent(event); } : null));
                 });
@@ -475,7 +475,11 @@
 
             var lock = el('p', 'ws-plan-private pg-text-meta');
             lock.appendChild(h.icon('bi-lock', 'me-1'));
-            lock.appendChild(document.createTextNode(s('plan_private')));
+            var mine = !plan || plan.mine;
+
+            var lockText = document.createTextNode(mine ? s('plan_private') : s('plan_shared_by').replace('{1}', plan.owner_name));
+
+            lock.appendChild(lockText);
             body.appendChild(lock);
 
             var name = input('text', plan ? plan.title : '');
@@ -533,13 +537,93 @@
                 remind.value = '';
             }
 
-            body.appendChild(field(s('plan_remind'), remind));
+            if (mine) {
+                body.appendChild(field(s('plan_remind'), remind));
+            }
+
+            // Who can see: Only me, chosen team members, the whole team.
+            var who = el('div', 'pg-seg ws-plan-who');
+            var whoValue = plan && plan.visibility ? plan.visibility : 'me';
+            var whoItems = {};
+
+            who.setAttribute('role', 'group');
+            who.setAttribute('aria-label', s('plan_who'));
+
+            [['me', s('plan_only_me')], ['people', s('plan_chosen')], ['team', s('plan_team')]].forEach(function (option) {
+                var item = el('button', 'pg-seg-item', option[1]);
+                item.type = 'button';
+                item.addEventListener('click', function () {
+                    whoValue = option[0];
+                    whoView();
+                });
+                whoItems[option[0]] = item;
+                who.appendChild(item);
+            });
+
+            // The team but the owner: a plan is always its owner's to see.
+            var picker = h.peoplePicker(plan ? (plan.people || []) : [], h.team().map(function (member) { return member.id; }).filter(function (id) { return id !== h.cfg.me; }));
+            var pickerRow = el('div', 'ws-plan-field');
+            var pickerHint = el('div', 'pg-field-help', s('plan_people_hint'));
+            var pickerError = el('div', 'pg-field-help pg-field-error d-none', s('plan_people_error'));
+
+            pickerHint.id = h.nextId('ws-plan-people-');
+            pickerError.id = h.nextId('ws-plan-people-');
+            picker.setAttribute('aria-label', s('plan_chosen'));
+            picker.setAttribute('aria-describedby', pickerHint.id);
+            pickerRow.appendChild(picker);
+            pickerRow.appendChild(pickerHint);
+            pickerRow.appendChild(pickerError);
+
+            // The hint while nobody is chosen; a choice clears the error.
+            function pickerView() {
+                var none = !picker.value().length;
+
+                pickerHint.classList.toggle('d-none', !none);
+
+                if (!none) {
+                    pickerError.classList.add('d-none');
+                    picker.removeAttribute('aria-invalid');
+                    picker.setAttribute('aria-describedby', pickerHint.id);
+                }
+            }
+
+            picker.addEventListener('change', pickerView);
+            pickerView();
+
+            function whoView() {
+                Object.keys(whoItems).forEach(function (key) {
+                    whoItems[key].setAttribute('aria-pressed', key === whoValue ? 'true' : 'false');
+                });
+                pickerRow.classList.toggle('d-none', whoValue !== 'people');
+                lockText.textContent = s({ me: 'plan_private', people: 'plan_private_people', team: 'plan_private_team' }[whoValue]);
+            }
+
+            if (mine) {
+                var whoRow = el('div', 'ws-plan-field');
+                whoRow.appendChild(el('span', 'pg-field-label', s('plan_who')));
+                whoRow.appendChild(who);
+                body.appendChild(whoRow);
+                body.appendChild(pickerRow);
+                whoView();
+            }
 
             var note = el('textarea', 'pg-input');
             note.rows = 4;
             note.maxLength = 2000;
             note.value = plan ? plan.note : '';
             body.appendChild(field(s('plan_note'), note));
+
+            // Somebody else's plan opened to the reader: read, not changed.
+            if (!mine) {
+                // The panel's read-only state: every field dimmed, nothing to type in.
+                body.classList.add('ws-plan-readonly');
+                body.querySelectorAll('input, textarea, select').forEach(function (control) {
+                    control.disabled = true;
+                });
+                footer.classList.add('d-none');
+                h.showOffcanvas(node);
+                return;
+            }
 
             if (plan) {
                 var remove = el('button', 'pg-button pg-button-danger pg-button-sm me-auto', s('delete'));
@@ -563,6 +647,16 @@
             var save = el('button', 'pg-button pg-button-fill pg-button-sm', s('save'));
             save.type = 'button';
             save.addEventListener('click', function () {
+                // Chosen team members with nobody chosen: said at the field.
+                if (whoValue === 'people' && !picker.value().length) {
+                    pickerError.classList.remove('d-none');
+                    pickerHint.classList.add('d-none');
+                    picker.setAttribute('aria-invalid', 'true');
+                    picker.setAttribute('aria-describedby', pickerError.id);
+                    picker.scrollIntoView({ block: 'nearest' });
+                    return;
+                }
+
                 save.disabled = true;
                 h.api('ws_personal_plan_save', {
                     plan_id: plan ? plan.id : 0,
@@ -573,7 +667,9 @@
                     start_time: from.value,
                     end_time: until.value,
                     remind: remind.value,
-                    note: note.value
+                    note: note.value,
+                    visibility: whoValue,
+                    people: whoValue === 'people' ? picker.value() : []
                 }).then(function () {
                     save.disabled = false;
                     h.hideOffcanvas(node);
