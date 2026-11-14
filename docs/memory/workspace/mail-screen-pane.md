@@ -26,7 +26,7 @@ description: The Workspace E-mails reading pane (mail_pane.php) and the per-pers
 - Mark all as read (`ws_mail_read_all`): the floor moves to the newest mail and the marks below it are deleted.
 
 ## What does the menu count?
-- `ws_mail_unread_count()`: open conversations of the channels the person reads that are unread for them; on the E-mails tile (`mail_unread` flag of `ws_nav_groups()`, `count` of `ws_side_nav()`, `countBadge()` in `workspace_side.js`). The screen's script updates the tile after a pane opens or Mark all as read.
+- `ws_mail_unread_count()`: open conversations of the channels the person reads that are unread for them; the badge of the Communication menu row (`pg_messages_mail_unread()`, MA10b #9453), counted again on each page; the E-mails tile it was on left the Workspace's list.
 
 ## Tests?
 - `tests/workspace_mail_list_test.php` (pane HTML and marks, unread rule, item ids, menu count, wiring). Not run against a database or in a browser for PR #8652.

@@ -276,6 +276,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-50.md: Is the site search on a page in another language developed further? (owner, 2026-11-13, #9216)
 - decisions-made-product-51.md: Where are the rules and the earlier parts?
 - decisions-made-product-51.md: Is a Pinegrap plugin published in Claude's directory? (owner, 2026-11-14, in the architect's window)
+- decisions-made-product-52.md: What does deleting a user do with the account's open store credit? (owner, 2026-11-14, channel message 2638)
+- decisions-made-product-52.md: May a store credit card whose account is gone be voided on Edit Gift Card? (architect, 2026-11-14, the owner's #6688 applied)
+- decisions-made-product-52.md: When do the add-on hook system and the mobile API work start? (owner, 2026-11-14, in the architect's window)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
@@ -436,6 +439,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-24.md: How is the notice of a shared channel shown? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-24.md: Does the software guide an agent's drawings? (owner, 2026-11-14, agent channel message 2296)
 - decisions-made-workspace-25.md: May an agent conclude a discussion? (owner, 2026-11-14, in the architect's window)
+- decisions-made-workspace-26.md: Does a place where a template is chosen show a preview? (owner, 2026-11-14, channel message 2709)
+- decisions-made-workspace-26.md: Which components does a new part inside a channel use? (owner, 2026-11-14, channel message 2709)
+- decisions-made-workspace-26.md: May a connected chat send a Workspace e-mail? (owner, 2026-11-14, channel message 2714)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
@@ -660,6 +666,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/main-menu-automation-flows-row.md: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, icon A and its motion
 - ui/main-menu-overview.md: The panel's main menu as a whole: rows in categories, panels and second-level panels, states and the drawer, gates, the decisions that bind it, and which main-menu file holds each part
 - ui/messages-area-look.md: Communication area look (MA12 #9363): pill tab strip, filter segments, notices under the strip, Sends figures and pills, Channels grid, old screens left inside
+- ui/messages-area-mail-tab.md: Communication › Incoming e-mail (MA10b #9453): the tab and its gate, the moved list and pane, the door from workspace_mail.php, the menu row and its unread badge, what MA10b2 and MA10c add
 - ui/messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs as Soon
 - ui/notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise
 - ui/notifications-one-inbox.md: The bell as the one inbox (#3817): module chips, Asked of me, Unread only, the search (BP3), the kept choice, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count
@@ -686,7 +693,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-signature-honest-corpus.md: tests/waf_rules_corpus_test.php: honest sentences stay under the Medium threshold, attack payloads reach it; how eleven 10-point rules were narrowed (#9125 A1) and the rule key 'unless'
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
 - workflow/agent-channel-guests.md: A guest's line in a channel (2026-11-14): no agent answers, greets or acts on it; it is data from outside the team; only team members answer a guest
-- workflow/agent-channel-language.md: The language of the agent channel (owner, 2026-11-13): agents write English to each other; only the architect writes Turkish there, and only when it speaks with the owner
+- workflow/agent-channel-language.md: The agent channel's language (owner, 2026-11-13): English between agents, Turkish only from the architect to the owner; a note that asks nothing names an agent without the mark
 - workflow/agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
 - workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests; a person's or an agent's message makes the request), on text and changes, the handles typed in it
@@ -705,6 +712,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may
 - workspace/agent-channel-flag.md: Agent channel switch (ws_channels.agent_channel, #8440): /agent-channel on|off, its decisions kept apart on the decisions screen, the dashboard and GET /workspace/decisions
 - workspace/agent-checklist-questions.md: Checklist questions over a poll; reading ticks (checks) and an application ticking a line (POST …/checks, app_id), a roll call, the wake on a tick, the closing decision; who a question rings
+- workspace/agent-conclude-discussion.md: An agent concludes a discussion when a person in it asks (conclude, #9404) and unasked only offers a Conclude button a person presses (offer_conclude, #9416); who may ask, the lines, the button
 - workspace/agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869)
 - workspace/agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief
 - workspace/agent-last-seen.md: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (#8828)
@@ -727,9 +735,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable
 - workspace/mail-area-proposals.md: Incoming e-mail in the messages area as decided after MA10a (#9077, #9203): mail with the Workspace off, the tab's gate, who reads, what the mail card keeps beside its link, the steps
 - workspace/mail-bounce-dev-check.md: Why conversation 48 on dev seemed to get no "Not delivered" line after an answer to a mistyped domain, and why mail_bounces has no row for a Workspace bounce (checked 2026-11-13)
+- workspace/mail-card-answered.md: The conversation's mail card in a channel since MA10b (#9453): "Answered · who · time" with no column, the Open e-mail link to Communication, what left the card, the touch after an answer
 - workspace/mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified
 - workspace/mail-domain-warning.md: The warning before a Workspace e-mail goes to a domain that does not exist: Send anyway, Change the address, "Did you mean …?", the API's 409 unknown_domain
-- workspace/mail-list.md: The Workspace E-mails list (workspace_mail.php, mail_list.php): which conversations, the views Incoming, Sent and Not sent, the filters, mailbox, search, Load more, the row, the menu entry
+- workspace/mail-list.md: The list of Communication › Incoming e-mail (messages_mail.php, mail_list.php): which conversations, views, filters, mailbox, search, Load more, the row, the menu
 - workspace/mail-not-delivered-rows.md: A sent Workspace mail whose delivery failure came back reads "Not delivered" with the server's words on its Sends row and mail queue row, read at list time for the page's rows only (MW2)
 - workspace/mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it
 - workspace/mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test
@@ -759,6 +768,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-channel-messages.md: The channel's messages as drawn (C4 of workspace-channel-screen.md): grouped lines with their time on hover, the short hover bar, the decision tag, the discussion line, Convert to text
 - workspace/workspace-channel-panels.md: The side panels as drawn (C6 of workspace-channel-screen.md): the channel info beside the conversation in the discussion's place, its parts, the discussion's head and follow line
 - workspace/workspace-channel-panes.md: The channel's Tasks, Decisions and Files tabs as cards (CL2 #8688, CL4 #8759): task and decision cards flowing in columns, each kind of file a card; My tasks and a record's window keep their rows
+- workspace/workspace-channel-screen.md: The Workspace channel screen as redrawn (C1–C8) and its card look (CL1-CL4, what it left alone): what every change keeps, the phone rules, who changes the design, where each part is
 - workspace/workspace-channel-summary-board-memory.md: The channel's Summary, Board and Memory tabs as cards and the channel panes' empty states in a dashed card (CL3 #8703); the workflow table's board and other screens' empty states unchanged
 - workspace/workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate
 - workspace/workspace-create-commands.md: /create (/oluştur) product|group and its alias /product (/ürün) in a channel: kind word, parsers, the single-create card through ws_quick_create_input()/_save(), what Create sends

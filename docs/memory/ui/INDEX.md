@@ -59,6 +59,7 @@
 - calendar-location-availability.md: How check_calendar_event_location_availability() finds a room already booked, including recurring, overnight and multi-day events
 - calendar-shared-form.md: The calendar create and edit screens share includes/forms/calendar_form.php: what it holds and what stays in the screens
 - calendar-view-date.md: The date a calendar view is asked for (?date=, kept in the session): format, check and why it is written with two-digit month and day
+- campaign-content-step.md: The content card of New campaign and Edit Campaign (MA5b #9426): body as a design, pasted HTML or plain text, the preview and phone preview, "Take the design again", what is stored
 - cart-quote-screen-layout.md: The new cart quote screen (add_cart_quote.php) on the product_builder pattern: which card holds what, the Summary that follows the boxes, the boxes' searches
 - catalog-new-group-address.md: Catalog Manager New Product Group takes its address from its first name; delete badges carry the count in the sentence, the bin progress says so, New image hidden in the catalog
 - catalog-rename-live-row.md: Catalog Manager rename (grid, tree, Bulk Rename) refuses a product or group that is deleted or in the Recycle Bin
@@ -389,7 +390,7 @@
 - loading-curtain.md: Panel transitions (pg_preloader_markup()): arrival curtain after 120 ms and held screens, the leaving bar after 150 ms until pagehide, what never shows it, the download cookie [decision: decisions-made-product-21.md]
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: the columns, the Summary, the save bar, the default, what stays in the screens
 - look-check.md: tools/check_look.php (#8905): panel CSS outside look A's recipes (sizes or weights off the scale, colour literals) may only fall against its baseline; what it skips, --update
-- look-design-examples.md: The Design examples screen (design_examples.php, DL2 #8907): every look A recipe live in a light and a dark pane, the classes under each, what is not a recipe yet; where a step copies markup from
+- look-design-examples.md: The Design examples screen (design_examples.php, DL2 #8907): every look A recipe live in a light and a dark pane, the classes under each, what is not a recipe yet; where a step copies markup from [decision: decisions-made-workspace-26.md]
 - look-edit-screens-wrapped-cards.md: Add and edit screens in look A: a card takes the look card only straight in its column; how wrapped cards, forms and full-width cards are handled
 - look-edit-screens.md: Add and edit screens in look A (DL5c, #8934): the edit width on every add/edit screen, columns 1300 and 376 from the shared classes, look cards and titles, the floating save bar; what is not done yet
 - look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
@@ -422,7 +423,8 @@
 - messages-area-automatic-tab.md: Communication › Automatic sends (MA8): the flows that send a message on the table driver, its gate, runs today, the ready recipes and ?quick= into the quick setup, the profiles note
 - messages-area-campaigns-tab.md: Communication › Campaigns (MA3, #9215): e-mail and SMS campaigns in one list, the channel and state filters, the merged row ids and Delete Selected, New campaign's channel menu
 - messages-area-look.md: Communication area look (MA12 #9363): pill tab strip, filter segments, notices under the strip, Sends figures and pills, Channels grid, old screens left inside [decision: here]
-- messages-area-shell.md: The Communication area (MA1 #9182, MA7 #9200): menu row 9, five tabs and gates, the tab strip, doors, the interim tabs, the Channels cards
+- messages-area-mail-tab.md: Communication › Incoming e-mail (MA10b #9453): the tab and its gate, the moved list and pane, the door from workspace_mail.php, the menu row and its unread badge, what MA10b2 and MA10c add [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
+- messages-area-shell.md: The Communication area (MA1 #9182, MA7 #9200, MA10b #9453): menu row 9, Incoming e-mail and the five tabs with their gates, the tab strip, doors, the interim tabs, the Channels cards
 - messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs as Soon [decision: here]
 - migration-screen.md: The Migration screen (migration.php): source password handling, API URL check, error details, wording
 - money-box-focus.md: A money box that opens focused is focused on document ready after the Inputmask binding, never by an inline script while the page parses (gift card Amount, #9047)

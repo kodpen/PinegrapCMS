@@ -1,15 +1,16 @@
 ---
 name: workspace-mail-settings-dialog
-description: The Mailboxes card in Site Settings (Channels, mail and voice) and on Workspace Settings: drawers, ws_mail names, the shared check and write, the .eml form of its own, the Connect form
+description: The Mailboxes card in Site Settings (category Mailboxes, gate mail) and on Workspace Settings: drawers, ws_mail names, the shared check and write, the .eml form of its own, the Connect form
 ---
 
 ## Where is the Mailboxes card?
-- PR #8899 (SW6b of the Workspace settings move, [[workspace-settings-overview]]): in Channels, mail and voice, section `pgset-ws-mail`, after Channel templates. It was the category's last link, so the "On the Workspace Settings screen" card and `ws_settings_screen_links_card()` are gone. The old screen's address redirects here (PR #8931).
-- `pg_settings_legacy_anchors()` maps `ws-mail` to the card.
+- Since MA10b (#9453): a category of its own, Mailboxes (`settings_mailboxes.php`, `includes/settings/mailboxes.php` and `.save.php`), under Site beside Communication, section `pgset-ws-mail`.
+- Its gate `mail` (`pg_settings_mail_settings_allowed()`): the Workspace's tables and its settings right (`ws_rights()`), whatever the switch, so the Workspace's switch never hides it (owner: "ayarları da ayarlara taşınsın"). It reads no `prep.php`, like the Workspace categories (`pg_settings_category_is_workspace()` is true for both gates).
+- Before, it sat in Channels, mail and voice (PR #8899, SW6b). `pg_settings_legacy_anchors()` maps `ws-mail` to the new category.
 
 ## What opens in a drawer?
 - Each box's line keeps its channel ("Kept in the mailbox itself", a link to its list, for a box kept in no channel), last e-mail and last check; Test connection is a named submit button `ws_mail_test` (value the box's id), run after the pane's save. Edit opens `pgset-ws-mail-<id>`, Add a mailbox `pgset-ws-mail-0` (`ws_settings_mail_drawer()`).
-- A box's drawer holds its form and, after it, "Bring in an .eml file": a form of its own (`ws_mail_eml_form()`), since a file cannot travel with the pane's Ajax save. It posts to the category's page (`settings_workspace_channels.php`) with the button `ws_mail_eml` and the file `ws_mail_eml_file`; the browser then shows that page with the result.
+- A box's drawer holds its form and, after it, "Bring in an .eml file": a form of its own (`ws_mail_eml_form()`), since a file cannot travel with the pane's Ajax save. It posts to the category's page (`settings_mailboxes.php`) with the button `ws_mail_eml` and the file `ws_mail_eml_file`; the browser then shows that page with the result.
 - "Connect a Microsoft account for mailboxes" is a button of the hidden Connect form `pgset_mail_connect` (`ui/settings-modal-card-extras.md`), returning to the category's page.
 
 ## Which names does the dialog post?

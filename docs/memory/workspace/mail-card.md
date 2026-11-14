@@ -1,16 +1,17 @@
 ---
 name: mail-card
-description: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)
+description: How a mail is drawn in a Workspace channel (ws_mail_card_html(): first lines, Answered, Open e-mail; sender like a guest) and the Mailboxes card with the .eml upload (mail_settings.php)
 ---
 
 ## How is a mail message drawn?
 - `ws_message_payloads()` reads the page's mails once (`ws_mail_items_map()`: items with their conversation) into `$extra['mail']`; `ws_message_payload()` gives a `sender_kind 'mail'` message `ws_mail_sender()` (name from the mail, else the address; `id` 0, `title` the address, letters avatar, `mail: true`, like `ws_guest_sender()`) and `html` from `ws_mail_card_html()`, never `ws_render_body()`: mail text is untrusted and is not Workspace markup.
-- The card: badge "E-mail" (`auth` pass) or "Sender not verified" (fail / none) with the address; the subject only on the conversation's card (`conversation.message_id` = the message); the message text escaped with `nl2br`; `<details>` "Show all" with `body_text` (first 100,000 characters) when it is longer than the message; "Not taken in: …" from `refused_files`. An attachment's own message (file, no text) draws only its file; a missing item says "This e-mail is no longer available."
+- The card (MA10b): badge "E-mail" (`auth` pass) or "Sender not verified" (fail / none) with the address; the subject only on the conversation's card (`conversation.message_id` = the message); a customer's text as its first lines (`ws_mail_card_excerpt()`: 8 lines or 600 characters, cut on a word), escaped; answers whole. An attachment's own message (file, no text) draws only its file; a missing item says "This e-mail is no longer available."
+- On the conversation's card: "Answered · who · time" and "Open e-mail" ([[mail-card-answered]]).
 - Pinned bar, Ctrl+K, Home, board files: `ws_message_rows_senders()` reads a list's mails and people (answer writers too) once; `ws_message_row_sender()` names each row (messages.php). They drew a mail nameless before (PR #3765).
 - No JavaScript change: the screen draws `sender` and `html` as for any message. Mail messages cannot be edited, marked or deleted.
 
 ## Where are mailboxes added?
-- Site Settings › Channels, mail and voice (holders of the Workspace settings right), card `pgset-ws-mail` from `ws_mail_settings_card()` ([[workspace-mail-settings-dialog]]).
+- Site Settings › Mailboxes (holders of the Workspace settings right, whatever the switch), card `pgset-ws-mail` from `ws_mail_settings_card()` ([[workspace-mail-settings-dialog]]).
 - A box: name (≤ 100), address, channel (a public or private channel the editor reads, `ws_mail_box_channels()`; a box keeps a channel its editor cannot see until another is picked), checking server (`settings.auth_server`, a host name; `mail-ingest.md`), on/off. Checked by the pure `ws_mail_box_input()`. Added or changed, with a Site Log line; no delete yet.
 - Reading (G2b, PR #2788): mail service (`ws_mail_providers()`: Gmail/Google Workspace, Yandex, iCloud, Zoho, Yahoo, Microsoft 365, another server; none = .eml only), which fills an empty IMAP server, port and checking server (only `mx.google.com` and `mx.zohomail.com` are fixed names; the others write under each host's own name). `settings`: `provider`, `host`, `port`, `user`, `move_folder`, `secret` (`pg_connect_seal(['password' => …])`); columns `folder`, `after_fetch`. Microsoft 365 / Outlook.com signs in with a connected account, no password (`mail-microsoft.md`).
 - The password is drawn empty with "Stored. Type a new one…"; an empty box keeps it, but a new server or user needs it typed again; no key (`pg_connect_can_seal()` false) refuses to save one.

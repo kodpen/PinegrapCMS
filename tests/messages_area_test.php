@@ -20,7 +20,7 @@ require_once PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php';
 
 function test_messages_area_five_tabs_in_order()
 {
-	pg_assert_same(array('campaigns', 'automatic', 'templates', 'sends', 'channels'), array_keys(pg_messages_area_tabs()), 'the five tabs in the drawn order');
+	pg_assert_same(array('mail', 'campaigns', 'automatic', 'templates', 'sends', 'channels'), array_keys(pg_messages_area_tabs()), 'Incoming e-mail first, then the five tabs in the drawn order');
 	$tabs = pg_messages_area_tabs();
 	pg_assert_same('view_email_campaigns.php', $tabs['campaigns']['file'], 'Campaigns stays the old list address');
 }
@@ -44,9 +44,26 @@ function test_messages_area_tabs_by_role()
 	pg_assert_same(array('campaigns', 'automatic', 'templates', 'sends'), pg_messages_tabs_for_user(array('role' => '3', 'manage_emails' => '1')), 'a database row');
 }
 
+function test_messages_area_mail_door_keeps_the_words()
+{
+	pg_assert_same('messages_mail.php', pg_messages_mail_door(array()), 'the bare address');
+	pg_assert_same('messages_mail.php?view=all&box=3&conversation=12', pg_messages_mail_door(array('view' => 'all', 'box' => '3', 'conversation' => '12')), 'a conversation of a box');
+	pg_assert_same('messages_mail.php?q=a%20b', pg_messages_mail_door(array('q' => 'a b', 'x' => array('1'), 'e' => '')), 'a list and an empty word are dropped');
+}
+
 function test_messages_area_unknown_gate_refuses()
 {
 	pg_assert_false(pg_messages_gate_allows('other', 0, true), 'an unknown gate admits nobody');
+}
+
+function test_messages_area_mail_tab_follows_the_mail_list_alone()
+{
+	$all = array('campaigns', 'automatic', 'templates', 'sends', 'channels');
+	pg_assert_same(array_merge(array('mail'), $all), pg_messages_tabs_for(0, false, false, true), 'an administrator who reads a box sees Incoming e-mail first');
+	pg_assert_same($all, pg_messages_tabs_for(0, false, false, false), 'no box read: no Incoming e-mail, even for an administrator');
+	pg_assert_same(array('mail'), pg_messages_tabs_for(3, false, false, true), 'a member without campaign rights sees Incoming e-mail alone');
+	pg_assert_true(pg_messages_gate_allows('mail', 3, false, false, true), 'the mail gate asks the mail list only');
+	pg_assert_false(pg_messages_gate_allows('mail', 0, true, true, false), 'the campaigns right does not open the mail tab');
 }
 
 function test_messages_area_tab_strip_marks_the_open_tab()

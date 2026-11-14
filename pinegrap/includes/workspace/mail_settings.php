@@ -1334,7 +1334,7 @@ function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog)
 
     return pg_settings_drawer('pgset-ws-mail-' . $id, h((string) $box['name']) . ' · ' . h((string) $box['address']),
         ws_mail_box_form('', $box, $channels, $ai_ready, $form)
-        . '<div class="border-top pt-5 mt-5">' . ws_mail_eml_form(pg_settings_url('workspace_channels'), $id, true) . '</div>', $in_dialog);
+        . '<div class="border-top pt-5 mt-5">' . ws_mail_eml_form(pg_settings_url('mailboxes'), $id, true) . '</div>', $in_dialog);
 }
 
 /**

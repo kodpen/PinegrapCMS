@@ -8,6 +8,8 @@ description: Pinegrap AI and model assistants draw, read and edit Workspace canv
 - `ws_canvas_ai_offered()`: a request asked in a channel (not a note, task, page or MCP server alias), the versions table there, the assistant's application set and `ws_assistant_writer()` finding a reader who may post in the channel. The same for Pinegrap AI and for a model assistant (`model:<id>` request, run through the same loop, `model-assistants.md`).
 - Read and edit reach only canvases of the request's own channel (`ws_canvas_ai_target()`: not deleted, not in an earlier version of the conversation).
 
+- `draw_canvas`'s description ends with the whole drawing guide (`agent-canvas-guide.md`).
+
 ## What do they do?
 - The same as the API routes (`agent-canvas-svg.md`, `agent-canvas-edit.md`): `ws_canvas_from_svg()`, a blank picture posted as the assistant's application under the request (`parent_id` the request's message), the document kept as a `file_versions` row with source `agent`, `picture: pending` until a member's browser draws it (`agent-canvas-picture.md`). An edit is `ws_canvas_edit_apply()` on the newest version, a stale `version` refused, then `pg_file_versions_prune()`, the author's `canvas_edited` inbox line for a person's canvas and `ws_message_touch()`.
 - `by` in the document (`ws_canvas_ai_by()`): a model assistant as `{id, kind: model, handle}` from `ws_model_running()`, Pinegrap AI as `{id: 0, kind: ai, handle: ai}`.

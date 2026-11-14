@@ -19,6 +19,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once PG_FUNCTIONS_DIR . '/includes/fn/campaign_content.php';
+
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_send.php');
 
@@ -100,9 +102,11 @@ function test_email_campaign_screens_use_the_checks()
 	pg_assert_contains('pg_email_campaign_send_refusal(', $send, 'the send window refuses paused campaigns');
 	pg_assert_contains("\$_POST['email_campaigns'] ?? array()", $delete, 'delete without a selection reads no missing key');
 
-	// The preview frame is built from the option's URL, never its label.
+	// The preview frame is built from the picked page's name on the site
+	// address, never from a label's markup.
 	pg_assert_false(strpos($add, 'firstChild.nodeValue') !== false, 'the preview URL is not the option text');
-	pg_assert_contains('data-url=', $add, 'each page option carries its URL');
+	pg_assert_contains('pg_campaign_content_script()', $add, 'the content card\'s script drives the preview');
+	pg_assert_contains('encodeURIComponent(name.value)', pg_campaign_content_script(), 'the picked name is encoded into the address');
 
 	// The save bar and the form end follow the row, as on create.
 	pg_assert_false((bool) preg_match('/\$output_buttons \. \'\s*\'\s*\. \$output_form_end \. \'\s*<\/div>\s*<\/div>/', $edit), 'the save bar does not sit inside the row');
