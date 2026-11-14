@@ -202,6 +202,46 @@ function test_workspace_agent_page_chart_guide_is_the_guides_look()
 	pg_assert_contains('prefers-color-scheme: dark', $script, 'it follows the reader');
 }
 
+// A chart of one series takes its channel's colour where it reads on the
+// board, else a tone of it that does, else the guide's first colour.
+function test_workspace_agent_page_chart_guide_channel_colour()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_guide.php');
+
+	$guide = ws_canvas_guide_values();
+	$dark = $guide['palettes']['dark']['background'];
+	$light = $guide['palettes']['light']['background'];
+
+	pg_assert_same('#6b5ca5', ws_page_chart_guide_tone('#6B5CA5', $light), 'a colour that reads stays');
+	pg_assert_same('#6b5ca5', ws_page_chart_guide_tone('#6b5ca5', $dark));
+
+	$lifted = ws_page_chart_guide_tone('#3f4a5a', $dark);
+	pg_assert_false(in_array($lifted, array('', '#3f4a5a'), true), 'too dark on the dark board: a lighter tone of it');
+	pg_assert_true(ws_page_chart_guide_contrast($lifted, $dark) >= 3, 'the tone reads');
+	pg_assert_same('#3f4a5a', ws_page_chart_guide_tone('#3f4a5a', $light));
+
+	pg_assert_same('', ws_page_chart_guide_tone('', $dark), 'no channel colour');
+	pg_assert_same('', ws_page_chart_guide_tone('red', $dark), 'not a colour');
+	pg_assert_same('#808080', ws_page_chart_guide_tone('#ffffff', $light), 'white on white: its first tone that reads');
+	pg_assert_true(abs(ws_page_chart_guide_contrast('#000000', '#ffffff') - 21) < 0.01);
+
+	foreach (array('dark', 'light') as $mode) {
+		$p = $guide['palettes'][$mode];
+		$none = ws_page_chart_guide_values('')['sets'][$mode];
+		$indigo = ws_page_chart_guide_values('#6b5ca5')['sets'][$mode];
+
+		pg_assert_same($p['series'][0], $none['single'], $mode . ': no channel colour, the guide\'s first');
+		pg_assert_same('#6b5ca5', $indigo['single'], $mode . ': the channel colour');
+		pg_assert_same($p['series'], $indigo['series'], $mode . ': several series keep the guide\'s palette');
+		pg_assert_same(ws_page_chart_guide_mix('#6b5ca5', $p['background'], $guide['marks']['area_mix']), $indigo['single_area'], $mode . ': its area');
+	}
+
+	pg_assert_same('#ffffff', ws_page_chart_guide_values('#ffffff')['sets']['dark']['single'], 'white reads on the dark board');
+	pg_assert_contains('"single":"#6b5ca5"', ws_page_chart_guide_script(array('channel_hex' => '#6b5ca5')), 'the page\'s channel colour goes into its script');
+	pg_assert_contains('PgChartGuide', ws_page_with_libraries('<p>x</p>', array('chartjs', 'chart_guide'), array('channel_hex' => '#6b5ca5')));
+	pg_assert_contains('"single":"#6b5ca5"', ws_page_with_libraries('<p>x</p>', array('chart_guide'), array('channel_hex' => '#6b5ca5')));
+}
+
 function test_workspace_agent_page_libraries_check()
 {
 	pg_assert_same(array('names' => array(), 'error' => ''), ws_page_libraries_check(null));
