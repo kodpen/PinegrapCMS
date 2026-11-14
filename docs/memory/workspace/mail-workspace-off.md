@@ -18,6 +18,7 @@ module: workspace_mail_gate
 - The bell: `pg_notification_off_line()` lets through `pg_notification_mail_kinds()` (`mail_assigned`, `mail_customer`, `mail_unsent`) while mail is on, beside the flows' kinds (`automation-flows-bell.md`); described and marked read as theirs.
 
 ## What changes on the screens with the Workspace off?
+- The tab's heading line names "the mailboxes you read" instead of channels, and the toolbar draws no My calendar (`ws_mail_list_my_calendar_html(false)`), whose screen is the Workspace's. Architect (2026-11-14, channel 3168).
 - The pane shows no "Open in channel" and no `#channel` for any conversation (`ws_mail_pane_html(…, $channels)`); an inbox line about a mail leads to its conversation in Incoming e-mail (`ws_mail_notice_url(…, $channels)`).
 - Mailboxes (Site Settings): a new box, or one already kept in no channel, is kept in "The mailbox itself" with no choice (`ws_mail_box_rooms_only()`): a hidden `kept_in`, the line "With the Workspace off a mailbox keeps its mail itself…", the People and Departments lists; no channel, no Routing, no Pinegrap AI switch. The save forces `kept_in` to mailbox and keeps the routes the box had.
 - A box kept in a channel goes on writing its cards and keeps its form; its channel's members read it in the area. The card's list names its channel without a link.
@@ -27,7 +28,7 @@ module: workspace_mail_gate
 - Device banners (`pg_push_queue_still_relevant()`), as for flows. The WhatsApp connection card's Channel step (`ws_mail_phone_card_viewer()`).
 
 ## Which test guards it?
-- `tests/workspace_mail_gate_test.php`: every `case 'ws_mail_*'` and every action `workspace_mail.js` sends is in the list; the entries ask the gate; every `/workspace/mail…` route is merged; every `ws_notify()` kind of a `mail*.php` is a mail kind of the bell; the box kept in the mailbox itself. A new mail action, route or notice kind fails it until it is covered.
+- `tests/workspace_mail_gate_test.php`: a new mail action (`case 'ws_mail_*'` or a call of `workspace_mail.js`), `/workspace/mail…` route or `ws_notify()` kind of a `mail*.php` fails it until covered; also the entries and the box form.
 
 ## What stays unverified?
 - No database or browser ran the Workspace-off paths in the cloud session; the tests check the pure parts and the wiring.

@@ -207,3 +207,19 @@ function test_workspace_mail_gate_box_kept_in_the_mailbox()
 	pg_assert_contains("'routes' => ws_mail_routes(\$box)", $check, 'and keeps the routes the form did not draw');
 	pg_assert_contains('ws_enabled() && ws_mail_triage_due(', workspace_mail_gate_test_file('includes/workspace/mail.php'), 'no suggestion with the Workspace off');
 }
+
+// With the Workspace off the tab's heading line names the mailboxes, not
+// channels, and the toolbar draws no My calendar, whose screen is the
+// Workspace's.
+function test_workspace_mail_gate_tab_without_channels()
+{
+	pg_assert_same('', ws_mail_list_my_calendar_html(false), 'no My calendar with the Workspace off');
+	pg_assert_contains('href="workspace_my_calendar.php"', ws_mail_list_my_calendar_html(true), 'My calendar with it on');
+	pg_assert_false(strpos(ws_mail_list_filters_html(ws_mail_list_filters(array()), array(), false, true, array(), false, false), 'workspace_my_calendar.php') !== false, 'the toolbar leaves it out');
+
+	$page = workspace_mail_gate_test_file('messages_mail.php');
+
+	pg_assert_contains("'heading_description' => ws_enabled()", $page, 'the heading line follows the switch');
+	pg_assert_contains("lang('The e-mail conversations of the mailboxes you read.", $page, 'the mailboxes you read');
+	pg_assert_contains(", ws_enabled()) . '", $page, 'the toolbar is told the switch');
+}
