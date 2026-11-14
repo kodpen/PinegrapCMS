@@ -20,7 +20,7 @@ description: A customer's WhatsApp message as a Workspace conversation (WA13, #9
 
 ## What does the card show and offer?
 - `ws_mail_items_map()` gives each item its box's `transport`; `ws_mail_card_html()` draws the WhatsApp badge and the number in place of the address (the name is the message's sender). Status and holder as a mail's.
-- No "Reply by e-mail" (`mail_reply` 0 in the payload; the reply endpoint refuses a conversation without a customer address anyway) and no "Forward as e-mail" (`ws_mail_forward_offer()`). Answering by WhatsApp is WA14; the list's transport filter, events and API are WA15; no triage or automatic answer is started for it.
+- No "Reply by e-mail" (`mail_reply` 0 in the payload; the reply endpoint refuses a conversation without a customer address anyway) and no "Forward as e-mail" (`ws_mail_forward_offer()`). Answering by WhatsApp: `mail-phone-reply.md`; the list's transport filter, events and API are WA15; no triage or automatic answer is started for it.
 
 ## How was it verified?
 - `tests/workspace_mail_phone_test.php` (the step run twice in memory, box values, the Channel field, the card, offers, the customer line, wiring). No database write was run in the cloud session apart from the sandbox pictures.

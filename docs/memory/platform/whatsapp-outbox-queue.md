@@ -11,6 +11,7 @@ module: whatsapp
 
 ## How does the general job send it?
 - `job.php` loads the module and runs `pg_whatsapp_queue_run(10, 15)` after the SMS pass; an empty table costs one read. No Run now and no settings test through it: the card's test message stays immediate (`whatsapp-connection.md`).
+- A Workspace answer is a row of its own: kind `reply`, category `SERVICE`, a text payload sent as free text (`workspace/mail-phone-reply.md`).
 - At the send `pg_whatsapp_queue_refusal()` fails the row for good when WhatsApp is off or incomplete (no burst after switching on again), a marketing template's consent is gone, or the payload is unreadable. Then `pg_whatsapp_cloud_send()`.
 - The outcome is `pg_sms_queue_outcome()` itself: sent (the wamid into `wamid`), queued again only when Meta's code allows (`pg_whatsapp_cloud_code_retries()`) or nothing reached Meta, `uncertain` never sent again, expired without an attempt. Meta's code goes into `error_code`. A row stuck in `sending` 15 minutes becomes `uncertain`.
 - Failed and uncertain rows get an activity-log line. Sent rows are swept after 7 days, failed and uncertain ones 30 days after queueing.
