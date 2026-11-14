@@ -286,7 +286,7 @@ description: Generated from the module field of the memory files: each includes/
 - `waf_log_list`: [[waf-log-paging]]
 - `waf_notice`: [[waf-ban-notice]]
 - `waf_rescue`: [[waf-self-rescue]], [[waf-settings-save-and-release]]
-- `whatsapp`: [[whatsapp-connection]], [[whatsapp-outbox-queue]], [[whatsapp-templates]]
+- `whatsapp`: [[whatsapp-connection]], [[whatsapp-outbox-queue]], [[whatsapp-overview]], [[whatsapp-templates]]
 - `whatsapp_design`: [[whatsapp-template-approval]], [[whatsapp-template-designer]]
 - `whatsapp_forms`: [[whatsapp-form-messages]]
 - `whatsapp_messages`: [[whatsapp-order-messages]]
