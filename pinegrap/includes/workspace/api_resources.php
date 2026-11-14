@@ -4486,6 +4486,8 @@ function ws_api_tasks_create($params)
 
         if ($sent['ok']) {
             db("UPDATE ws_tasks SET source_message_id = '" . (int) $sent['message_id'] . "' WHERE id = '" . (int) $result['task_id'] . "'");
+            $made = ws_task($result['task_id']);
+            ws_api_assistants_carry_on(ws_task_ask_tags($viewer, $made, '', ws_task_tag_text($made), ws_api_writer_app_id() > 0));
         }
     }
 
@@ -4565,7 +4567,7 @@ function ws_api_tasks_update($params)
         'warnings' => $warnings,
     ));
 
-    $result = ws_task_update($viewer, $task, $data);
+    $result = ws_task_update($viewer, $task, $data, ws_api_writer_app_id());
 
     if (!$result['ok']) {
         ws_api_task_refused($result);

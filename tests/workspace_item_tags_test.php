@@ -92,7 +92,7 @@ function test_ws_item_tags_other_messages_wired()
 		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/' . $path);
 	};
 
-	pg_assert_contains("ws_message_ask_noted(\$viewer, \$target, \$sent['message_id'], (string) \$comment, ws_message_by_app(\$options['app_id'] ?? 0, \$options['via_client_id'] ?? 0));", $read('forward.php'), 'a forward\'s comment');
+	pg_assert_contains("ws_message_ask_noted(\$viewer, \$target, \$sent['message_id'], (string) \$comment, \$by_app);", $read('forward.php'), 'a forward\'s comment');
 	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$body, ws_message_by_app(\$app_id));\n\n    return array('ok' => true, 'error' => '', 'field' => '', 'message_id' => (int) \$sent['message_id'], 'approval_id' => \$approval_id);", $read('approvals.php'), 'an approval request, after its row');
 
 	$status = $read('status.php');
@@ -104,4 +104,56 @@ function test_ws_item_tags_other_messages_wired()
 	pg_assert_contains("(string) \$template['pinned'], ws_message_by_app(\$app_id));", $templates, 'a template\'s pinned text');
 
 	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$body);", $read('scheduled.php'), 'a flow\'s Post a message');
+}
+
+// A tag outside a message's body (a poll, a check-in answer, a forwarded
+// copy, a task) wakes only in an agent channel, only when the channel's
+// owner or a manager wrote it, never in a canvas.
+function test_ws_message_item_tags_may()
+{
+	pg_assert_true(ws_message_item_tags_may(true, true), 'a manager in an agent channel');
+	pg_assert_false(ws_message_item_tags_may(true, false), 'a member who does not manage the channel');
+	pg_assert_false(ws_message_item_tags_may(false, true), 'a team channel');
+	pg_assert_false(ws_message_item_tags_may(true, true, true), 'a canvas');
+}
+
+function test_ws_poll_tag_text()
+{
+	pg_assert_same("Which one?\n@prmerge\nB", ws_poll_tag_text('Which one?', array('@prmerge', 'B')), 'options as texts');
+	pg_assert_same("Q\nA @elcin", ws_poll_tag_text('Q', array(array('id' => 3, 'label' => 'A @elcin'))), 'options as rows');
+	pg_assert_same('', ws_message_tags_added(ws_poll_tag_text('Q @x', array('@y')), ws_poll_tag_text('Q @x', array('@y', 'C'))), 'an added plain option asks nobody');
+	pg_assert_same('@z', ws_message_tags_added(ws_poll_tag_text('Q @x', array('@y')), ws_poll_tag_text('Q @x', array('@y', '@z'))), 'an added option\'s tag');
+}
+
+function test_ws_task_tag_text()
+{
+	pg_assert_same("Fix @prmerge\nsee @elcin", ws_task_tag_text(array('title' => 'Fix @prmerge', 'description' => 'see @elcin')));
+	pg_assert_same('@elcin', ws_message_tags_added(ws_task_tag_text(array('title' => 'Fix @prmerge', 'description' => '')), ws_task_tag_text(array('title' => 'Fix @prmerge', 'description' => '@elcin'))), 'a description edit asks its added tag');
+}
+
+// Polls, check-in answers, forwarded copies, tasks and task notes (TW3):
+// their tags go through the writer's check (ws_message_ask_item()).
+function test_ws_item_tags_outside_body_wired()
+{
+	$read = function ($path) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/' . $path);
+	};
+
+	$interact = $read('interact.php');
+	pg_assert_contains("ws_message_ask_item(\$viewer, \$channel, (int) \$sent['message_id'], '', ws_poll_tag_text(\$checked['question'], \$options), ws_message_by_app(\$app_id));", $interact, 'a new poll');
+	pg_assert_contains("ws_message_ask_item(\$viewer, ws_channel(\$poll['channel_id']), (int) \$message['id'], \$before, ws_poll_tag_text(\$question, \$options));", $interact, 'a poll\'s edit');
+	pg_assert_contains("ws_message_ask_item(\$viewer, \$channel, (int) \$message['id'], \$before, \$text);", $read('status.php'), 'a check-in answer');
+	pg_assert_contains("ws_message_ask_item(\$viewer, \$target, (int) \$sent['message_id'], (string) \$comment,", $read('forward.php'), 'a forward\'s copies');
+
+	$tasks = $read('tasks.php');
+	pg_assert_contains("ws_task_ask_tags(\$viewer, \$now, ws_task_tag_text(\$task), ws_task_tag_text(\$now), ws_message_by_app(\$app_id));", $tasks, 'a task\'s edit');
+	pg_assert_contains("return ws_message_ask_item(\$viewer, ws_channel(\$message['channel_id']), (int) \$message['id'], \$old, \$new, \$by_app, \$assistants);", $tasks, 'hung on the task\'s card');
+
+	$notes = $read('task_work.php');
+	pg_assert_contains("ws_task_ask_tags(\$viewer, \$task, '', \$clean['body'], ws_message_by_app(\$app_id), false);", $notes, 'a task note, registry agents alone');
+	pg_assert_contains("ws_task_ask_tags(\$viewer, \$task, (string) \$note['body'], \$clean['body'], false, false);", $notes, 'a task note\'s edit');
+
+	pg_assert_contains("ws_task_ask_tags(\$viewer, \$made, '', ws_task_tag_text(\$made));", $read('actions.php'), 'a task made in the panel');
+	pg_assert_contains("ws_task_ask_tags(\$viewer, \$made, '', ws_task_tag_text(\$made));", $read('commands.php'), '/task');
+	pg_assert_contains("ws_api_assistants_carry_on(ws_task_ask_tags(\$viewer, \$made, '', ws_task_tag_text(\$made), ws_api_writer_app_id() > 0));", $read('api_resources.php'), 'a task made over the API');
 }

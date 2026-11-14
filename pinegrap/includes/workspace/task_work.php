@@ -1035,6 +1035,14 @@ function ws_task_note_add($viewer, $task, $body, $app_id = 0, $ask = true)
     // (delegation.php); an application's note never does.
     $notice = ($ask && ($app_id <= 0) && function_exists('ws_task_delegation_from_note')) ? ws_task_delegation_from_note($viewer, $task, $clean['body']) : '';
 
+    // Its tags wake the registry's agents in an agent channel when the
+    // channel's manager wrote it; Pinegrap AI's own note wakes nobody.
+    $by_ai = ((int) $app_id > 0) && function_exists('ws_ai_config') && ((int) $app_id === (int) ws_ai_config()['app_id']);
+
+    if ($ask && !$by_ai) {
+        ws_task_ask_tags($viewer, $task, '', $clean['body'], ws_message_by_app($app_id), false);
+    }
+
     return array('ok' => true, 'error' => '', 'note_id' => $note_id, 'notice' => $notice);
 }
 
@@ -1076,6 +1084,7 @@ function ws_task_note_edit($viewer, $task, $note, $body)
     ws_task_notes_recount($task['id']);
     ws_task_refs_add($task, $tokens);
     ws_task_note_notify($viewer, $task, $new);
+    ws_task_ask_tags($viewer, $task, (string) $note['body'], $clean['body'], false, false);
 
     return array('ok' => true, 'error' => '');
 }

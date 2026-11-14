@@ -474,6 +474,7 @@ function ws_checkin_answer($viewer, $checkin_id, $text)
     }
 
     $now = time();
+    $before = (string) db_value("SELECT body FROM ws_checkin_answers WHERE checkin_id = '" . (int) $checkin['id'] . "' AND user_id = '" . (int) $viewer['id'] . "'");
 
     if ($text === '') {
         db("DELETE FROM ws_checkin_answers WHERE checkin_id = '" . (int) $checkin['id'] . "' AND user_id = '" . (int) $viewer['id'] . "'");
@@ -484,6 +485,10 @@ function ws_checkin_answer($viewer, $checkin_id, $text)
     }
 
     ws_message_touch($message['id']);
+
+    // A tag the answer adds wakes in an agent channel when its manager
+    // answered, hung on the check-in's message.
+    ws_message_ask_item($viewer, $channel, (int) $message['id'], $before, $text);
 
     return array('ok' => true, 'error' => '', 'message_id' => (int) $message['id']);
 }

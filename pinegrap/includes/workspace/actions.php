@@ -4208,6 +4208,10 @@ function ws_handle_action($action, $request)
                 if ($sent['ok'] && !ws_channel_is_thread($channel)) {
                     db("UPDATE ws_tasks SET source_message_id = '" . (int) $sent['message_id'] . "' WHERE id = '" . (int) $result['task_id'] . "'");
                 }
+
+                // Its card written: the task's tags may wake (agent channels).
+                $made = ws_task($result['task_id']);
+                ws_task_ask_tags($viewer, $made, '', ws_task_tag_text($made));
             }
 
             return ws_action_ok(array('task_id' => $result['task_id']));

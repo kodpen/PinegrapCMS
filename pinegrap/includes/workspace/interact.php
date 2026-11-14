@@ -701,6 +701,10 @@ function ws_poll_create($viewer, $channel, $data, $app_id = 0)
         ws_question_ring($channel, (int) $sent['message_id'], ws_tokens($checked['question']));
     }
 
+    // A tag in the question or an option wakes in an agent channel when its
+    // manager asked (ws_message_ask_item()).
+    ws_message_ask_item($viewer, $channel, (int) $sent['message_id'], '', ws_poll_tag_text($checked['question'], $options), ws_message_by_app($app_id));
+
     return array('ok' => true, 'error' => '', 'field' => '', 'message_id' => (int) $sent['message_id'], 'poll_id' => $poll_id);
 }
 
@@ -731,6 +735,7 @@ function ws_poll_edit($viewer, $poll, $data)
     $multiple = $checked['multiple'];
     $anonymous = $checked['anonymous'];
     $closes_at = $checked['closes_at'];
+    $before = ws_poll_tag_text((string) $message['body'], (array) db_values("SELECT label FROM ws_poll_options WHERE poll_id = '" . (int) $poll['id'] . "' ORDER BY sort"));
 
     // The question is the message: its edit keeps tags, mentions and
     // checklists right and tells whoever it newly mentions.
@@ -764,7 +769,29 @@ function ws_poll_edit($viewer, $poll, $data)
     db("UPDATE ws_polls SET multiple = '" . ($multiple ? 1 : 0) . "', anonymous = '" . ($anonymous ? 1 : 0) . "', closes_at = '" . $closes_at . "'
         WHERE id = '" . (int) $poll['id'] . "'");
 
+    // Only the tags the edit adds to the question or the options ask.
+    ws_message_ask_item($viewer, ws_channel($poll['channel_id']), (int) $message['id'], $before, ws_poll_tag_text($question, $options));
+
     return array('ok' => true, 'error' => '', 'field' => '');
+}
+
+/**
+ * A poll's words as one text, for its tags: the question, then each
+ * option on its own line. Pure.
+ *
+ * @param string $question
+ * @param array  $options texts, or rows with a label
+ * @return string
+ */
+function ws_poll_tag_text($question, $options)
+{
+    $lines = array((string) $question);
+
+    foreach ((array) $options as $option) {
+        $lines[] = is_array($option) ? (string) ($option['label'] ?? '') : (string) $option;
+    }
+
+    return implode("\n", $lines);
 }
 
 /**

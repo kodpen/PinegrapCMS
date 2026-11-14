@@ -273,9 +273,14 @@ function ws_forward_to_channel($viewer, $message_ids, $target, $comment = '', $o
     // screens are told it changed.
     ws_message_touch($sent['message_id']);
 
-    // A tag in the comment asks as in a message; the copies' own words
-    // asked where they were written.
-    ws_message_ask_noted($viewer, $target, $sent['message_id'], (string) $comment, ws_message_by_app($options['app_id'] ?? 0, $options['via_client_id'] ?? 0));
+    // A tag in the comment asks as in a message. The copies' words asked
+    // where they were written; here their tags the comment lacks wake in an
+    // agent channel when its manager forwarded them.
+    $by_app = ws_message_by_app($options['app_id'] ?? 0, $options['via_client_id'] ?? 0);
+    ws_message_ask_noted($viewer, $target, $sent['message_id'], (string) $comment, $by_app);
+    ws_message_ask_item($viewer, $target, (int) $sent['message_id'], (string) $comment, (string) $comment . "\n" . implode("\n", array_map(function ($row) {
+        return (string) $row['body'];
+    }, $picked['rows'])), $by_app);
 
     return array('ok' => true, 'error' => '', 'message_id' => (int) $sent['message_id']);
 }

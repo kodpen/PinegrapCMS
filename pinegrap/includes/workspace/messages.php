@@ -1241,6 +1241,76 @@ function ws_message_ask_added($viewer, $channel, $message_id, $old, $new, $by_ap
 }
 
 /**
+ * Whether a tag outside a message's body (a poll, a check-in answer, a
+ * forwarded copy, a task, a task note, a shared note, a table cell) may
+ * wake: only in an agent channel, only when the channel's owner or a
+ * manager wrote it, never in a canvas. A tag in a message's body wakes as
+ * before, for every team member in every channel. Pure.
+ *
+ * @param bool $agent_channel the channel's agent switch is on
+ * @param bool $manages       the writer is the channel's owner or a manager
+ * @param bool $in_canvas     the text is a canvas's
+ * @return bool
+ */
+function ws_message_item_tags_may($agent_channel, $manages, $in_canvas = false)
+{
+    return $agent_channel && $manages && !$in_canvas;
+}
+
+/**
+ * The writer's check for a tag outside a message's body: the channel's
+ * agent switch on and the writer its owner or a manager
+ * (ws_can_manage_channel()). A discussion follows its channel.
+ *
+ * @param array $viewer    the writer (a person, or an application's owner)
+ * @param array $channel
+ * @param bool  $in_canvas the text is a canvas's
+ * @return bool
+ */
+function ws_message_item_tags_writer($viewer, $channel, $in_canvas = false)
+{
+    if (!is_array($channel) || !function_exists('ws_agent_channel_ready') || !ws_agent_channel_ready()) {
+        return false;
+    }
+
+    $home = ws_channel_is_thread($channel) ? ws_thread_parent_channel($channel) : $channel;
+
+    return is_array($home) && ws_message_item_tags_may(ws_agent_channel_is($home), ws_can_manage_channel($viewer, $home), $in_canvas);
+}
+
+/**
+ * After a text outside a message's body was written or changed: its added
+ * tags ask by name alone (ws_message_ask_added()), hung on the item's
+ * message, when the writer's check lets them (ws_message_item_tags_writer()).
+ * Claude's run starts here; the screens showing the message carry Pinegrap
+ * AI and an MCP agent on.
+ *
+ * @param array  $viewer
+ * @param array  $channel    the channel of the message
+ * @param int    $message_id the item's message (poll, check-in, forward, task card)
+ * @param string $old        the text before ('' for a new item)
+ * @param string $new        the text now
+ * @param bool   $by_app     ws_message_by_app()
+ * @param bool   $assistants false: the registry's agents alone (a task note,
+ *                           whose Claude, AI and MCP go through delegation.php)
+ * @return array ws_message_ask_assistants()'s shape
+ */
+function ws_message_ask_item($viewer, $channel, $message_id, $old, $new, $by_app = false, $assistants = true)
+{
+    if (((int) $message_id <= 0) || !ws_message_item_tags_writer($viewer, $channel)) {
+        return ws_message_asked_none();
+    }
+
+    $asked = ws_message_ask_added($viewer, $channel, $message_id, $old, $new, $by_app || !$assistants);
+
+    if (!empty($asked['claude']) && function_exists('ws_claude_dispatch')) {
+        ws_claude_dispatch();
+    }
+
+    return $asked;
+}
+
+/**
  * May this person bring others into the channel? Anyone who may write in a
  * public channel; only its members in a private one.
  *
