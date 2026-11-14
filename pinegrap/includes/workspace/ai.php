@@ -1680,6 +1680,12 @@ function ws_ai_step($row)
                 ws_model_conclude_after($row);
             }
 
+            // Unasked, an offer only: a button under the answer for a
+            // person in the discussion to press.
+            if (($done === 'done') && !$conclude && !empty($call['args']['offer_conclude']) && ws_ai_answer_takes_conclude($row)) {
+                ws_model_offer_after($row);
+            }
+
             return $done;
         }
 
@@ -4084,6 +4090,7 @@ function ws_ai_tools($row)
         // Asked in an open discussion: it may conclude it when asked.
         if (function_exists('ws_ai_answer_takes_conclude') && ws_ai_answer_takes_conclude($row)) {
             $tools[0]['function']['parameters']['properties']->conclude = array('type' => 'boolean', 'description' => ws_thread_agent_close_sentence() . ' Here no_answer is an empty text.');
+            $tools[0]['function']['parameters']['properties']->offer_conclude = array('type' => 'boolean', 'description' => ws_thread_agent_offer_sentence() . ' It needs text; not with conclude.');
         }
     }
 

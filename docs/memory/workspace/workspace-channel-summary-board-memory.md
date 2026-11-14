@@ -24,7 +24,7 @@ description: The channel's Summary, Board and Memory tabs as cards and the chann
 - Other screens' `.ws-empty` (Today, My tasks, the kit's panels, the scheduled lists) keep their look.
 
 ## Why?
-- Owner (2026-11-10): the channel screen is "line after line"; `plans/workspace-channel-look/01-before-after.jpg` shows the summary as a card with Time spent beside it as tiles. CL3 of `plans/workspace-channel-look.md`.
+- Owner (2026-11-10): the channel screen is "line after line"; the before/after picture he approved shows the summary as a card with Time spent beside it as tiles. CL3 of the channel look (`workspace-channel-screen.md`).
 
 ## How was it checked?
 - #8703: sandbox before/after at 1440 and 390 px, light and dark (Summary with and without text, Board with tasks and empty, Memory with records, empty and its form, an empty Tasks tab); `tests/workspace_channel_look_test.php`. Dev look after landing.

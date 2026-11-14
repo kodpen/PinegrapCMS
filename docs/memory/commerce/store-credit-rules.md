@@ -17,6 +17,7 @@ description: What binds store credit (owner, 2026-11-02, #5039, #6306): a custom
 - An order's points are taken back on cancellation and refund; a shortfall after a conversion reduces or expires the newest points card, never below zero; not retroactive (#6306, `workflow/decisions-made-product-25.md`, `store-credit-points-take-back.md`).
 - Mails `credit_issued` and `credit_expiring` are campaign profile actions; the expiring notice goes 14 days ahead (`store-credit-mails.md`).
 - Erasing a customer voids their credit and clears `user_id` (`api/api-customer-credit.md`).
+- Deleting a user account voids their open credit the same way (owner, 2026-11-14, #9016, `user-delete-store-credit.md`; his words: `workflow/decisions-made-product-52.md`).
 
 ## Where is the rest?
 - Screens: `store-credit-screens.md`; API and webhooks: `api/api-customer-credit.md`; gift card screens: `gift-card-screens-store-credit.md`.

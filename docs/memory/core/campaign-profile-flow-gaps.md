@@ -4,10 +4,11 @@ description: What no flow box covers of an e-mail campaign profile (MA9a, #9077)
 ---
 
 ## Which gaps are closed first? (decided: `plans/messages-area-decided-2.md`)
-- MA9b, before the converter, the e-mail box sends as a campaign does: optional From name, From address, Reply-to and BCC; a page body with a base tag and absolute links, its `^^fields^^` (and `[[…||]]` fallbacks) filled from the run's start values and the recipient's contact (`^^name^^`, `^^first_name^^`, `^^last_name^^`), the page's PHP given the run's record as `data`.
+- MA9b (done, #9435; [[workspace/workspace-flows-email-campaign]]), before the converter, the e-mail box sends as a campaign does: optional From name, From address, Reply-to and BCC; a page body with a base tag and absolute links, its `^^fields^^` (and `[[…||]]` fallbacks) filled from the run's start values and the recipient's contact (`^^name^^`, `^^first_name^^`, `^^last_name^^`), the page's PHP given the run's record as `data`.
 - The same step, for marketing: `?t=` codes on same-site links and the campaigns' commercial footer (organization address, preferences and unsubscribe links); a run started by `contact_group.joined` refuses a contact opted out of that group.
-- MA9c, the Wait box and the events: an optional time of day (HH:MM, the site's zone: the first such moment at or after the wait's end); in until mode "If the moment has passed: go on / end the run" (go on by default, so flows drawn before keep their way).
-- The same step: `calendar_event.reserved` gains `start_at` (the reserved repeat's start) and its contact as the e-mail box's person; the events carry the single values their profile mails fill (shipment, booking, subscription, credit fields) as start-box outputs.
+- MA9c, done #9437, the Wait box and the events: an optional time of day (HH:MM, the site's zone: the first such moment at or after the wait's end); in until mode "If the moment has passed: go on / end the run" (go on by default, so flows drawn before keep their way) (`workspace/workspace-flows-delay-box.md`).
+- The same step: `calendar_event.reserved` gained `start_at` and its contact (else its order) as the e-mail box's person; the events carry their mail values as start-box outputs: shipments `tracking_numbers_text`, `carrier_name`, `tracking_url`; bookings `service_name`, `staff_name`; subscriptions `product_name`, `order_number`; credit `source`, `name`.
+- Not carried: a booking's manage link, a subscription's card and confirm links (they would reach every webhook subscriber); a profile filling them keeps running as a profile (a field no value fills).
 - Why these: each is general (every flow gains it), none needs a column, and without them hardly a real profile converts: the starting sites' profiles all set their own sender, and most bodies greet with `^^name^^`.
 
 ## Which profiles keep running as profiles? (decided)

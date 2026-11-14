@@ -128,7 +128,7 @@ function db_q_campaigns_visitor_report_test_calls($path)
 function db_q_campaigns_visitor_report_test_files()
 {
 	return array(
-		'add_email_campaign.php' => 3,
+		'add_email_campaign.php' => 2,
 		'includes/fn/email_campaign_create.php' => 6,
 		'edit_email_campaign.php' => 7,
 		'send_email_campaign.php' => 8,

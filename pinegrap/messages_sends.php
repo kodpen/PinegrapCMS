@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Communication › Sends: every message the site sends in one list, the
- * e-mail and SMS queues' single messages and the campaigns
+ * e-mail, SMS and WhatsApp queues' single messages and the campaigns
  * (includes/fn/messages_sends.php), with the tiles, the channel, source,
  * state and period filters, Run now, and each row's Retry and Delete under
  * its own queue's rules. The queue rows are for role <= 2 (they hold

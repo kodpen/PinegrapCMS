@@ -82,7 +82,7 @@ function test_email_campaign_form_used_by_both_screens()
 	foreach (array('add_email_campaign.php', 'edit_email_campaign.php') as $file) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		pg_assert_contains("require_once(dirname(__FILE__) . '/includes/forms/email_campaign_form.php');", $source, $file . ' loads the shared form');
-		foreach (array('pg_email_campaign_message_card(', 'pg_email_campaign_subject_row(', 'pg_email_campaign_format_row(', 'pg_email_campaign_from_card(', 'pg_email_campaign_schedule_card(', 'pg_email_campaign_purpose_card(') as $call) {
+		foreach (array('pg_campaign_content_card(', 'pg_email_campaign_from_card(', 'pg_email_campaign_schedule_card(', 'pg_email_campaign_purpose_card(') as $call) {
 			pg_assert_contains($call, $source, $file . ' calls ' . $call);
 		}
 		pg_assert_false(strpos($source, 'id="purpose_commercial"') !== false, $file . ' prints no own purpose radios');

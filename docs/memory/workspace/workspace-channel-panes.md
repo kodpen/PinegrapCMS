@@ -20,7 +20,7 @@ description: The channel's Tasks, Decisions and Files tabs as cards (CL2 #8688, 
 - Inside a group the list has no frame and the rows no rule between them; a row is tinted on hover. `.ws-file-meta` keeps one line cut short (`tests/workspace_files_tab_test.php`).
 
 ## Why?
-- Owner (2026-11-10): the channel screen is "line after line"; the Tasks pane of `plans/workspace-channel-look/01-before-after.jpg` shows tasks as cards in a grid. CL2 of `plans/workspace-channel-look.md`.
+- Owner (2026-11-10): the channel screen is "line after line"; the before/after picture he approved shows tasks as cards in a grid. CL2 of the channel look (`workspace-channel-screen.md`).
 - Owner (2026-11-11), on the Decisions tab on dev (six narrow cards a row, gaps under short ones, a green edge on each): cards up to twice as wide and one under the other, the green gone, a modern card; Tasks the same. CL4 (#8759).
 
 ## How was it checked?

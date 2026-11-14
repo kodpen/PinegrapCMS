@@ -486,6 +486,38 @@ function pg_credit_void($card_id, $reason = '')
 }
 
 /**
+ * The credit of an account being deleted: every card with a balance is
+ * voided (note line and audit line), then the closed cards are released
+ * (user_id 0), since MySQL may hand the deleted id to a new account, which
+ * would then list them. A card whose void lost a race with a spend keeps
+ * its balance and its id, so it is never turned into a plain gift card that
+ * pays for whoever knows the code. Runs before the user row goes.
+ *
+ * @param int $user_id
+ * @return int  how many cards were voided
+ */
+function pg_credit_forget_user($user_id)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || !pg_credit_ready()) {
+        return 0;
+    }
+
+    $voided = 0;
+
+    foreach (db_values("SELECT id FROM gift_cards WHERE user_id = " . $user_id . " AND balance > 0") as $card_id) {
+        if (pg_credit_void((int) $card_id, lang('Account deleted'))) {
+            $voided++;
+        }
+    }
+
+    db_q("UPDATE gift_cards SET user_id = 0 WHERE user_id = ? AND balance = 0", array($user_id));
+
+    return $voided;
+}
+
+/**
  * Take up to $amount off a customer's credit card, with a note line giving
  * the reason; a card brought to 0 is closed (never picked again). The
  * balance is written over the one read, so an order spending the card

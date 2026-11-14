@@ -7,7 +7,7 @@ description: Workspace e-mail in the external API and MCP (api_mail.php, G7, WM8
 - `includes/workspace/api_mail.php`, `ws_mail_api_routes()` merged at the end of `ws_api_routes()`. Scopes `workspace:read` / `workspace:write`, no new scope; no mailbox management in the API.
 - `GET /workspace/mail/conversations`: status, holder me/none, channel_id; cursor on newest mail + id, limit 1-100.
 - Its view, box_id, q and unread go through the screen's own `ws_mail_list_filters()`, `ws_mail_list_where()` and `ws_mail_unread_sql()` (via `ws_api_mail_list_filters()`); view is `all` by default, so a caller sending none gets what it always got.
-- `GET …/{id}` (with `mails`, newest 200 oldest first, plus the delivery failures of its answers found by `in_reply_to`), `POST …/{id}` (+PATCH: status, assignee_id; 0 or null = nobody), `POST …/{id}/reply` (text, 201 `WorkspaceMail` with `copy_kept`).
+- `GET …/{id}` (with `mails`, newest 200 oldest first, plus the delivery failures of its answers found by `in_reply_to`), `POST …/{id}` (+PATCH: status, assignee_id; 0 or null = nobody), `POST …/{id}/reply` (text, 201 `WorkspaceMail` with `copy_kept`; WhatsApp: `mail-phone-list-event-api.md`).
 - `POST …/{id}/read` (marks it read up to its newest mail, `ws_mail_read_mark()`), `POST /workspace/mail/messages` (a new mail, 201 `WorkspaceMailConversation` with its mail).
 - Objects `WorkspaceMailConversation` (overdue, first_reply_due_at from the box's target, `unread` for the owner by the screen's rule, null before 11.0.185; GET does not mark read) and `WorkspaceMail` (direction, verified only for incoming, automatic, bounce, refused_files, to, cc, `send_state` sent/queued/failed with `send_error`, null for incoming).
 - A channel decides, not the box: `ws_api_mail_channel_reached()` = `ws_can_read_channel()`, and the Claude application only where `ws_claude_channel_allowed()`.
@@ -26,4 +26,4 @@ description: Workspace e-mail in the external API and MCP (api_mail.php, G7, WM8
 - `ws_api_message_present()`: `sender_kind` mail gets `sender` from `ws_mail_sender()` (user_id for a team answer) and `mail` {item_id, conversation_id, direction, from_email} (`WorkspaceMessageMail`); null for other kinds.
 
 ## Tests?
-- `tests/workspace_api_mail_test.php`. No route was called against a database or a mail server in the cloud sessions (G7, #8737).
+- `tests/workspace_api_mail_test.php`. No route was called against a database or a mail server (G7, #8737).

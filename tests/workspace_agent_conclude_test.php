@@ -168,3 +168,57 @@ function test_workspace_agent_conclude_model_tool()
 	pg_assert_contains('ws_model_conclude_after(', $source);
 	pg_assert_contains("\$conclude", $source);
 }
+
+// The offer's button: open discussion, a reader in it, the newest offer.
+function test_workspace_agent_conclude_offer_shown()
+{
+	$open = array('channel_id' => 90, 'closed_at' => 0);
+	$closed = array('channel_id' => 90, 'closed_at' => 1700000000);
+
+	pg_assert_true(ws_thread_offer_shown($open, true, 300, 300), 'the newest offer, to a person in it');
+	pg_assert_same(false, ws_thread_offer_shown($open, false, 300, 300), 'a reader not in it');
+	pg_assert_same(false, ws_thread_offer_shown($closed, true, 300, 300), 'concluded');
+	pg_assert_same(false, ws_thread_offer_shown($open, true, 280, 300), 'an older offer');
+	pg_assert_same(false, ws_thread_offer_shown(null, true, 300, 300), 'not a discussion');
+	pg_assert_same(false, ws_thread_offer_shown($open, true, 0, 0), 'no message');
+}
+
+// The offer needs words, and the brief and the model tool say it from one
+// sentence.
+function test_workspace_agent_conclude_offer_rules()
+{
+	pg_assert_true(ws_thread_offer_problem(array('id' => 1), false) !== '', 'no words, no button');
+	pg_assert_same(1, preg_match_all('/[.!?](\s|$)/', ws_thread_agent_offer_sentence()), 'one sentence');
+	pg_assert_contains('ws_thread_agent_offer_sentence()', workspace_agent_conclude_test_source('ws_agent_brief'));
+	pg_assert_contains('ws_thread_agent_offer_sentence()', workspace_agent_conclude_test_source('ws_ai_tools'));
+
+	$route = null;
+
+	foreach (ws_agent_request_api_routes() as $candidate) {
+		if ($candidate['id'] === 'workspace.agent_requests.answer') {
+			$route = $candidate;
+		}
+	}
+
+	$names = array_map(function ($param) {
+		return $param['name'];
+	}, $route['params']);
+	pg_assert_true(in_array('offer_conclude', $names, true));
+	pg_assert_true(isset($route['returns']['offer']));
+
+	$source = workspace_agent_conclude_test_source('ws_api_agent_request_answer');
+	pg_assert_true(strpos($source, 'ws_thread_offer_problem(') < strpos($source, 'api_dry_run_stop('), 'checked before the dry run stops');
+	pg_assert_contains('ws_thread_offer_store($reply_id', $source);
+	pg_assert_contains('ws_model_offer_after(', workspace_agent_conclude_test_source('ws_ai_step'));
+}
+
+// The screen draws the button only from the payload, with the discussion's
+// own Conclude.
+function test_workspace_agent_conclude_offer_screen()
+{
+	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains('message.conclude_offer && (typeof self.conclude', $js);
+	pg_assert_contains('concludeOfferNode: function', $js);
+	pg_assert_contains("'conclude_offer' => (\$deleted || \$past) ? null", file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php'));
+}

@@ -1032,6 +1032,59 @@ module.exports = [
     },
 
     {
+        name: 'the Wait box\'s settings: a time of day, and until a date what a passed moment does; the choice is saved',
+        fixture: 'wait',
+        run: async (h) => {
+            await h.open();
+            await pick(h, 'delay_1');
+
+            const fields = await h.page(() => Array.prototype.map.call(document.querySelectorAll('#wsf-side .form-label'), (label) => label.textContent.trim()));
+
+            h.ok('Time of day and If the moment has passed are offered', (fields.indexOf(h.t('fl_delay_time')) !== -1) && (fields.indexOf(h.t('fl_delay_passed')) !== -1), fields);
+            h.ok('the box says when it ends', (await h.page(() => document.querySelector('#ws-root [data-node="delay_1"]').textContent)).indexOf(h.t('fl_delay_at_time', h.t('fl_delay_until_before', h.t('fl_delay_day'), '2026-12-01 18:30'), '09:00')) !== -1);
+            await h.page((label) => {
+                const select = Array.prototype.filter.call(document.querySelectorAll('#wsf-side select'), (node) => Array.prototype.some.call(node.options, (option) => option.value === 'end'))[0];
+
+                select.value = 'end';
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            const save = await saveNumber(h, 1);
+
+            await h.page(() => {
+                const side = document.querySelector('#wsf-side .wsf-side-body') || document.querySelector('#wsf-side');
+
+                side.scrollTop = side.scrollHeight;
+                Array.prototype.forEach.call(document.querySelectorAll('#wsf-side *'), (node) => {
+                    if (node.scrollHeight > node.clientHeight + 4) {
+                        node.scrollTop = node.scrollHeight;
+                    }
+                });
+            });
+            h.same('End the run is kept with the time of day', [nodeIn(save.data.graph, 'delay_1').config.passed, nodeIn(save.data.graph, 'delay_1').config.time], ['end', '09:00']);
+        }
+    },
+
+    {
+        name: 'on a phone the Wait box\'s settings fit the sheet, nothing scrolls sideways',
+        fixture: 'wait',
+        width: 390,
+        run: async (h) => {
+            await h.open();
+            await h.click({ text: h.t('fl_canvas'), within: BAR });
+            await h.page(() => document.querySelector('#ws-root [data-node="delay_1"]').focus());
+            await h.waitFor('delay_1 chosen', (harness) => harness.state().selected && (harness.state().selected.id === 'delay_1'), 3000);
+            await h.page(() => {
+                const field = Array.prototype.filter.call(document.querySelectorAll('#wsf-side select'), (node) => Array.prototype.some.call(node.options, (option) => option.value === 'end'))[0];
+
+                field.scrollIntoView({ block: 'center' });
+            });
+            h.ok('the passed choice is in the sheet', await h.page(() => Array.prototype.some.call(document.querySelectorAll('#wsf-side select'), (node) => Array.prototype.some.call(node.options, (option) => option.value === 'end'))));
+            h.ok('nothing scrolls sideways', await h.page(() => document.documentElement.scrollWidth <= window.innerWidth));
+        }
+    },
+
+    {
         name: 'Change on the start row makes the start another kind in place, its arrows kept, one undo step',
         run: async (h) => {
             await h.open();

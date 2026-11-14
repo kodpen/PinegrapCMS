@@ -1016,6 +1016,7 @@
     "Meta did not confirm the change to the template.": "Meta şablondaki değişikliği onaylamadı.",
     "Meta did not take the file.": "Meta dosyayı kabul etmedi.",
     "Meta did not take the header's sample file.": "Meta başlığın örnek dosyasını almadı.",
+    "Meta error {var:1}": "Meta hatası {var:1}",
     "Meta keywords": "Meta anahtar kelimeleri",
     "Meta may have taken a WhatsApp message to +{var:1}; it is not sent again by itself: {var:2}": "Meta, +{var:1} numarasına giden bir WhatsApp mesajını almış olabilir; kendiliğinden yeniden gönderilmez: {var:2}",
     "Meta may have the test message to {var:1}, but its answer did not say so: {var:2}": "{var:1} numarasına giden deneme mesajı Meta'ya ulaşmış olabilir, ama Meta'nın cevabı bunu söylemedi: {var:2}",

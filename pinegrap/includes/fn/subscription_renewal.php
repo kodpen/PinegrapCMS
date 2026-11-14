@@ -1104,9 +1104,12 @@ function pg_subscription_webhook_event($event, $status_before, $status_after)
 
 /**
  * The payload of a subscription.* event: the identifiers, the move and the
- * money; never the card token or the payment service's ids. Pure.
+ * money, and the single values a subscription mail fills (product_name,
+ * order_number of the renewal order); never the card token, the card or
+ * confirm links or the payment service's ids. Pure.
  *
- * @param array  $row           the subscriptions row after the event
+ * @param array  $row           the subscriptions row after the event, with
+ *                              product_name and order_number when read
  * @param int    $contact_id    the customer record of the row's account, 0
  *                              for none
  * @param string $event         subscription_events.kind
@@ -1130,6 +1133,8 @@ function pg_subscription_webhook_data($row, $contact_id, $event, $status_before,
         'currency'        => (string) ($row['currency'] ?? ''),
         'next_charge_at'  => ($next > 0) ? gmdate('Y-m-d\TH:i:s\Z', $next) : null,
         'retry_count'     => (int) ($row['retry_count'] ?? 0),
+        'product_name'    => (string) ($row['product_name'] ?? ''),
+        'order_number'    => (string) ($row['order_number'] ?? ''),
     );
 }
 
@@ -1155,14 +1160,17 @@ function pg_subscription_announce($id, $event, $status_before, $status_after, $o
 
     try {
         $row = db_item("SELECT s.id, s.product_id, s.status, s.amount, s.currency, s.next_charge_at, s.retry_count,
-                COALESCE(u.user_contact, 0) AS contact_id
+                COALESCE(u.user_contact, 0) AS contact_id, COALESCE(p.name, '') AS product_name
             FROM subscriptions AS s
             LEFT JOIN user AS u ON u.user_id = s.user_id
+            LEFT JOIN products AS p ON p.id = s.product_id
             WHERE s.id = '" . e((int) $id) . "'");
 
         if (!$row) {
             return false;
         }
+
+        $row['order_number'] = ((int) $order_id > 0) ? (string) db_value("SELECT order_number FROM orders WHERE id = '" . e((int) $order_id) . "'") : '';
 
         pg_announce($name, pg_subscription_webhook_data($row, (int) $row['contact_id'], $event, $status_before, $order_id));
     } catch (\Throwable $exception) {

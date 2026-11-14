@@ -20,10 +20,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /**
  * The payload of a store credit event (pure): the card, its account and that
  * account's customer record, money in minor units, moments in ISO-8601 UTC,
- * and what the event adds (order_id and amount_used, expired_amount).
+ * and what the event adds (order_id and amount_used, expired_amount). The
+ * values a store credit mail fills ride along as single values: source (the
+ * kind's name) and name (the customer's, '' when unknown).
  *
  * @param array $card   gift_cards row: id, user_id, kind, reason, amount,
- *                      balance, expires_at, and customer_id (user.user_contact)
+ *                      balance, expires_at, and customer_id (user.user_contact);
+ *                      first_name, last_name (the account's contact) if read
  * @param array $extra  event fields laid over the card's
  * @return array
  */
@@ -41,6 +44,8 @@ function pg_credit_event_data(array $card, array $extra = array())
         'amount'      => (int) ($card['amount'] ?? 0),
         'balance'     => (int) ($card['balance'] ?? 0),
         'expires_at'  => ($expires > 0) ? gmdate('Y-m-d\TH:i:s\Z', $expires) : null,
+        'source'      => (string) ((function_exists('pg_credit_kinds') ? pg_credit_kinds() : array())[(string) ($card['kind'] ?? '')] ?? ''),
+        'name'        => trim((string) ($card['first_name'] ?? '') . ' ' . (string) ($card['last_name'] ?? '')),
     );
 
     foreach ($extra as $name => $value) {
@@ -66,9 +71,11 @@ function pg_credit_announce($event, $card_id, array $extra = array())
 
     $card = db_item(
         "SELECT gift_cards.id, gift_cards.user_id, gift_cards.kind, gift_cards.reason, gift_cards.amount,
-            gift_cards.balance, gift_cards.expires_at, COALESCE(user.user_contact, 0) AS customer_id
+            gift_cards.balance, gift_cards.expires_at, COALESCE(user.user_contact, 0) AS customer_id,
+            contacts.first_name, contacts.last_name
         FROM gift_cards
         LEFT JOIN user ON user.user_id = gift_cards.user_id
+        LEFT JOIN contacts ON contacts.id = user.user_contact
         WHERE gift_cards.id = '" . (int) $card_id . "'");
 
     if (!is_array($card) || ((int) $card['user_id'] <= 0)) {
