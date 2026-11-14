@@ -27,3 +27,4 @@ description: Decisions list, workspace part 20 (2026-11-12 on): canvas-one drawi
 - Owner (2026-11-12): "önemli her şeyi workspace altına tıktık ama açılmadığında akış ve birçok özellik kapalı kalacak. akışları ana menüye taşıyalım ne dersin? animasyonlu bir ikonu olsun adını da otomasyon akışları olarak güncelleyelim."
 - Asked by letters with the drawing: "Ya" (the row's place as drawn), "M1a" (on everywhere; not chosen: a switch of their own). On the three moving icons: "simge için a iyi olur" (a path with a dot that follows it).
 - "akışlar kanal içinde açılır ekranı yine kanalda kalır modernize edilerek.": the view inside a channel stays.
+- The name stays (owner, 2026-11-14, in the architect's window): he asked "Otomasyon Akışları adını Rutinler olarak mı güncellesek?" and, after the architect's view, said "Tamam, Otomasyon akışları kalsın". Not chosen: Rutinler (the panel already calls Claude's scheduled run a "rutin").
