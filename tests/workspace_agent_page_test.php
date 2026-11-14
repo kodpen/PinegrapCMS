@@ -192,6 +192,7 @@ function test_workspace_agent_page_chart_guide_is_the_guides_look()
 
 	pg_assert_same(0, strpos($preset['font'], 'Inter,'), 'the guide\'s family first');
 	pg_assert_same($guide['marks']['bar_max'], $preset['marks']['bar_max']);
+	pg_assert_same($guide['marks']['line'], $preset['marks']['line'], 'the line is the sheet\'s width');
 	pg_assert_same($guide['marks']['series_max'], $preset['marks']['series_max']);
 	pg_assert_same((int) round($guide['marks']['donut_inner'] / $guide['marks']['donut_outer'] * 100), $preset['marks']['cutout']);
 

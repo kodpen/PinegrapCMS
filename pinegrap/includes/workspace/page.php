@@ -422,8 +422,8 @@ function ws_page_chart_guide_tone($hex, $background)
  * (ws_canvas_guide_values()) so a live page's chart and a drawn one share
  * one palette and one type scale. The guide's pixels are for a 1200-wide
  * board a channel shows at about half size; a live page is read at its own
- * size, so its type and marks are the guide's times 2/3, never under 12 for
- * text. A chart of one series takes the page's channel colour, in the tone
+ * size, so its type and marks are the guide's times 2/3 (the line keeps the
+ * guide's width), never under 12 for text. A chart of one series takes the page's channel colour, in the tone
  * that reads on the board (ws_page_chart_guide_tone()), else the guide's
  * first series colour. Pure.
  *
@@ -477,7 +477,7 @@ function ws_page_chart_guide_values($channel_hex = '')
             'bar_max'    => $m['bar_max'],
             'bar_band'   => $m['bar_band'],
             'bar_radius' => $px($m['bar_radius']),
-            'line'       => $px($m['line'], 2),
+            'line'       => $m['line'],
             'dot'        => $px($m['dot'], 3),
             'ring'       => $px($m['ring'], 2),
             'grid'       => $m['grid'],
