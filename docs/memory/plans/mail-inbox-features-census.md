@@ -8,7 +8,7 @@ description: IB1 census (2026-11-14) of plans/mail-inbox-features.md: a read on 
 - One box holds the request up to `WS_MAIL_FETCH_BUDGET` (15) s of IMAP plus up to 25 ingests; N boxes in one request is N × that. IB2 bounds the whole press, leaving the rest to the job. Microsoft 365 boxes are `imap` too (XOAUTH2), same call.
 
 ## Where is a person's own setting kept?
-- `ws_profiles` (PRIMARY KEY `user_id`): `title`, `day_minutes`, `workdays`, `excluded` (team settings) and `notes_pinned`, the person's own (2026.4.8, written by `INSERT … ON DUPLICATE KEY UPDATE` in `notes.php`). Time zone: `user.timezone` (`USER_TIMEZONE`). No mail column anywhere.
+- `ws_profiles` (PRIMARY KEY `user_id`): `title`, `day_minutes`, `workdays`, `excluded` (team settings) and `notes_pinned`, the person's own (2026.4.8, written by `INSERT … ON DUPLICATE KEY UPDATE` in `notes.php`). Time zone: `user.timezone` (`USER_TIMEZONE`). No mail column then; IB3 added `ws_profiles.mail_signature` (11.0.203, `workspace/mail-own-signature.md`).
 
 ## Is a blocked mail a conversation or a row of its own?
 - `ws_mail_conversations.status` is an ENUM (open, waiting, closed) and every conversation has a card; every list, count, the API and the customer line read it. A blocked mail as a conversation would need a MODIFY and a filter in each reader.
