@@ -367,10 +367,92 @@
         });
     }
 
+    // Reply by WhatsApp: whom it goes to and the time left of the
+    // customer's 24 hours, asked of the server first (ws_whatsapp_reply_form);
+    // the answer then waits in the WhatsApp queue (ws_whatsapp_reply,
+    // mail_phone.php) and reads Waiting to be sent or Not sent until it left.
+    function whatsappForm(message, view, h) {
+        h.api('ws_whatsapp_reply_form', { conversation_id: message.whatsapp_reply }).then(function (data) {
+            whatsappAnswer(message.whatsapp_reply, data, view, h);
+        }).catch(function (error) {
+            h.fail(error);
+        });
+    }
+
+    function whatsappAnswer(conversation, data, view, h) {
+        var t = h.t;
+        var el = h.el;
+        var node = h.offcanvas('ws-wa-reply', t('wa_reply'));
+        var body = h.clear(node.querySelector('.drawer-body'));
+        var footer = h.clear(node.querySelector('.drawer-footer'));
+        var form = el('form', 'ws-wa-answer');
+
+        node.querySelector('.drawer-title').textContent = t('wa_reply');
+        footer.classList.remove('d-none');
+        form.noValidate = true;
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+        });
+        body.appendChild(form);
+        form.appendChild(el('div', 'small fg-secondary mb-1', t('wa_reply_to', data.name ? data.name + ' (' + data.to + ')' : data.to)));
+        form.appendChild(el('div', 'small fg-secondary mb-3', data.window));
+
+        var text = el('textarea', 'form-control');
+        text.id = h.nextId('ws-wa-reply-');
+        text.name = 'text';
+        text.rows = 8;
+        text.maxLength = 4096;
+
+        var box = el('div', 'ws-mail-reply-box position-relative');
+        box.appendChild(text);
+        form.appendChild(h.formRow(t('wa_reply_text'), box, t('wa_reply_hint')));
+        savedReplies(text, box, view, h);
+
+        var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('wa_reply_send'), 'bi-whatsapp');
+
+        send.addEventListener('click', function () {
+            if (!text.value.trim()) {
+                text.focus();
+                return;
+            }
+
+            send.disabled = true;
+
+            h.api('ws_whatsapp_reply', { conversation_id: conversation, text: text.value }).then(function (result) {
+                h.hideOffcanvas(node);
+                h.toast(result.state === 'failed' ? t('wa_reply_failed') : t('wa_reply_sent'), result.state === 'failed' ? 'warning' : 'success');
+                view.sync();
+            }).catch(function (error) {
+                send.disabled = false;
+                h.fail(error);
+            });
+        });
+
+        footer.appendChild(send);
+        h.showOffcanvas(node);
+        text.focus();
+    }
+
     // Under a conversation's card: Reply, Forward, Send again, the status
-    // and holder. Under an answer that could not leave: Send again only.
+    // and holder. Under an answer that could not leave: Send again only. A
+    // WhatsApp conversation's card: Reply by WhatsApp while the customer's
+    // 24 hours are open, the status and holder.
     function node(message, view, h) {
         var row = h.el('div', 'ws-mail-reply mt-1');
+
+        if (message.whatsapp_reply) {
+            if (message.whatsapp_window > 0) {
+                var answer = h.button('btn btn-sm btn-outline theme-success py-0', h.t('wa_reply'), 'bi-whatsapp');
+
+                answer.addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    whatsappForm(message, view, h);
+                });
+                row.appendChild(answer);
+            } else {
+                row.appendChild(h.el('span', 'small fg-secondary', h.t('wa_reply_closed')));
+            }
+        }
 
         if (message.mail_reply) {
             var open = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('mail_reply'), 'bi-reply');
@@ -431,7 +513,7 @@
         var t = h.t;
         var current = message.mail_state;
         var change = function (data, control) {
-            data.conversation_id = message.mail_reply;
+            data.conversation_id = message.mail_reply || message.whatsapp_reply;
             control.disabled = true;
 
             h.api('ws_mail_conversation', data).then(function () {

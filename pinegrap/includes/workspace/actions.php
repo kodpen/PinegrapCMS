@@ -2748,6 +2748,32 @@ function ws_handle_action($action, $request)
             return ws_action_ok(array('message_id' => $result['message_id'], 'state' => $result['state']));
 
         // Send again: an outgoing mail that could not leave (mail_send.php).
+        // Reply by WhatsApp inside the customer's 24 hours (mail_phone.php):
+        // whom it goes to and the time left first, then the answer, queued.
+        case 'ws_whatsapp_reply_form':
+        case 'ws_whatsapp_reply':
+            if (!function_exists('ws_mail_phone_reply_send') || !ws_mail_phone_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $conversation_id = (int) ($request['conversation_id'] ?? 0);
+
+            if ($action === 'ws_whatsapp_reply_form') {
+                $form = ws_mail_phone_reply_form($viewer, $conversation_id);
+
+                return $form['ok']
+                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'seconds' => $form['seconds'], 'window' => $form['window']))
+                    : ws_action_error(ws_mail_phone_reply_error_text($form['error']));
+            }
+
+            $result = ws_mail_phone_reply_send($viewer, $conversation_id, is_scalar($request['text'] ?? null) ? (string) $request['text'] : '');
+
+            if (!$result['ok']) {
+                return ws_action_error(ws_mail_phone_reply_error_text($result['error']), in_array($result['error'], array('empty', 'too_long'), true) ? 'text' : '');
+            }
+
+            return ws_action_ok(array('message_id' => $result['message_id'], 'state' => $result['state']));
+
         case 'ws_mail_resend':
             if (!function_exists('ws_mail_resend') || !ws_mail_send_ready()) {
                 return ws_action_error(lang('The database has not been upgraded yet.'));
@@ -2755,8 +2781,9 @@ function ws_handle_action($action, $request)
 
             $result = ws_mail_resend($viewer, (int) ($request['item_id'] ?? 0));
 
+            // A WhatsApp answer's refusal says its own reason (mail_phone.php).
             if (!$result['ok']) {
-                return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']));
+                return ws_action_error(($result['error'] === 'phone') ? (string) $result['detail'] : ws_mail_send_error_text($result['error'], $result['detail']));
             }
 
             return ws_action_ok(array('state' => $result['state']));

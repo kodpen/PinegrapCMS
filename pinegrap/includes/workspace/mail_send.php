@@ -1074,6 +1074,11 @@ function ws_mail_resend($viewer, $item_id)
         return $refuse('not_failed');
     }
 
+    // A WhatsApp answer goes back to the WhatsApp queue (mail_phone.php).
+    if (function_exists('ws_mail_phone_resend') && ws_mail_box_is_phone(ws_mail_box((int) $item['box_id']))) {
+        return ws_mail_phone_resend($viewer, $item);
+    }
+
     $channel_id = (int) db_value("SELECT channel_id FROM ws_messages WHERE id = '" . (int) $item['message_id'] . "'");
     $channel = ($channel_id > 0) ? ws_channel($channel_id) : null;
 
@@ -1129,6 +1134,10 @@ function ws_mail_send_badge_html($item)
 
         return '<span class="badge theme-danger"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . h(lang('Not sent')) . '</span>'
             . (($reason !== '') ? ' <span class="ms-1">' . h($reason) . '</span>' : '');
+    }
+
+    if (function_exists('ws_mail_item_is_phone') && ws_mail_item_is_phone($item)) {
+        return '<span class="badge theme-success"><i class="bi bi-whatsapp me-1" aria-hidden="true"></i>' . h(lang('Sent by WhatsApp')) . '</span>';
     }
 
     return '<span class="badge theme-success"><i class="bi bi-send me-1" aria-hidden="true"></i>' . h(lang('Sent by e-mail')) . '</span>';
