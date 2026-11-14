@@ -66,3 +66,60 @@ function test_sms_reply_kind_and_providers()
 	pg_assert_true(!pg_sms_reply_provider_answers(''), 'no provider');
 	pg_assert_true(!pg_sms_reply_provider_answers('vonage'), 'a provider without incoming SMS offers nothing');
 }
+
+function test_sms_reply_card()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+	$conversation = array('id' => 3, 'message_id' => 40, 'last_in_at' => time() - 600);
+	$item = array('id' => 8, 'message_id' => 40, 'conversation' => $conversation, 'transport' => 'sms');
+	$row = array('id' => 40);
+
+	pg_assert_same(3, ws_mail_phone_reply_offer($row, $item, true, 'sms'), 'on an SMS card, for a writer');
+	pg_assert_same(0, ws_mail_phone_reply_offer($row, $item, true), 'no WhatsApp answer on an SMS card');
+	pg_assert_same(0, ws_mail_phone_reply_offer($row, array('transport' => 'whatsapp') + $item, true, 'sms'), 'no SMS answer on a WhatsApp card');
+	pg_assert_same(0, ws_mail_phone_reply_offer($row, $item, false, 'sms'), 'not for a reader');
+	pg_assert_true(ws_mail_phone_window($conversation, time(), 'sms') > 600000, '7 days less ten minutes');
+	pg_assert_true(ws_mail_phone_window($conversation, time()) < 86400, 'WhatsApp\'s window as before');
+
+	pg_assert_same(array('text' => "Merhaba,\nyarın."), ws_mail_phone_sms_text("  Merhaba,\r\nyarın. "), 'as it is sent');
+	pg_assert_same(array('error' => 'empty'), ws_mail_phone_sms_text(" \n "), 'empty');
+	pg_assert_same(array('error' => 'sms_too_long'), ws_mail_phone_sms_text(str_repeat('ş', PG_SMS_ANSWER_MAX + 1)), 'too long');
+	pg_assert_same(array('text' => str_repeat('a', PG_SMS_ANSWER_MAX)), ws_mail_phone_sms_text(str_repeat('a', PG_SMS_ANSWER_MAX)), 'at the limit');
+	pg_assert_same(pg_sms_max_length(), PG_SMS_ANSWER_MAX, 'the layer\'s own limit');
+
+	foreach (array('not_sms', 'sms_off', 'sms_receive', 'sms_window', 'sms_too_long', 'sms_number') as $error) {
+		pg_assert_true(ws_mail_phone_reply_error_text($error) !== lang('The answer could not be sent.'), 'a sentence for ' . $error);
+	}
+
+	$out = array('direction' => 'out', 'send_state' => 'sent', 'transport' => 'sms');
+	pg_assert_contains(lang('Sent by SMS'), ws_mail_send_badge_html($out), 'sent by SMS');
+	pg_assert_contains(lang('Not sent'), ws_mail_send_badge_html(array('send_state' => 'failed') + $out), 'not sent');
+
+	pg_assert_same(lang('Answer to a customer'), pg_sms_queue_list_kinds()['reply'], 'the Sends label');
+}
+
+function test_sms_reply_wiring()
+{
+	$read = function ($path) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+	};
+
+	$sms = $read('includes/fn/sms.php');
+	pg_assert_contains("pg_sms_reply_outcome(\$id, (string) \$row['reference'], \$outcome['status'], (string) \$outcome['last_error']);", $sms, 'an answer learns how it went');
+	pg_assert_contains("kind, recipient, body, reference FROM sms_outbox", $sms, 'the reference is read with the row');
+
+	$phone = $read('includes/workspace/mail_phone.php');
+	pg_assert_contains("pg_sms_enqueue_reply((string) \$conversation['customer_phone'], \$text, array(", $phone, 'an answer leaves through sms_outbox only');
+	pg_assert_contains("\$queued = pg_sms_enqueue('+' . (string) \$number, \$text, 'reply', array(", $read('includes/fn/sms_reply.php'), 'as the kind reply');
+
+	pg_assert_contains("case 'ws_sms_reply':", $read('includes/workspace/actions.php'), 'the action');
+	pg_assert_contains("'ws_sms_reply_form', 'ws_sms_reply',", $read('includes/panel/actions.php'), 'registered, with the token');
+	pg_assert_contains("'sms_reply'       => (", $read('includes/workspace/messages.php'), 'the payload offers it');
+	pg_assert_contains("&& ws_mail_phone_sms_offered())", $read('includes/workspace/messages.php'), 'only with a provider that receives');
+
+	$script = $read('assets/js/workspace_mail.js');
+	pg_assert_contains("whatsappForm(message, view, h, true);", $script, 'the same drawer');
+	pg_assert_contains('function smsParts(text) {', $script, 'the counter\'s twin');
+	pg_assert_contains("h.api(sms ? 'ws_sms_reply' : 'ws_whatsapp_reply'", $script, 'sent by its own action');
+}

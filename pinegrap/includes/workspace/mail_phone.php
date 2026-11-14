@@ -507,6 +507,25 @@ function ws_mail_phone_reply_offer($row, $item, $can_post, $transport = 'whatsap
 }
 
 /**
+ * Whether SMS cards offer Reply by SMS on this site: SMS set up with a
+ * provider that receives customers' messages. A provider without incoming
+ * SMS offers nothing. Asked once per request.
+ *
+ * @return bool
+ */
+function ws_mail_phone_sms_offered()
+{
+    static $offered = null;
+
+    if ($offered === null) {
+        ws_mail_phone_load();
+        $offered = pg_sms_reply_ready();
+    }
+
+    return $offered;
+}
+
+/**
  * Seconds left to answer a phone conversation with text: WhatsApp's 24
  * hours, or the 7 days an SMS answer may follow the number's last SMS. Pure
  * apart from the modules it loads.

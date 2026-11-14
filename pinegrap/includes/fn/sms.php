@@ -1417,7 +1417,7 @@ function pg_sms_queue_run($limit = 10, $seconds = 15)
             continue;
         }
 
-        $row = db_item("SELECT id, attempts, send_after, expires_at, kind, recipient, body FROM sms_outbox WHERE id = '" . $id . "'");
+        $row = db_item("SELECT id, attempts, send_after, expires_at, kind, recipient, body, reference FROM sms_outbox WHERE id = '" . $id . "'");
 
         // Deleted from the queue screen in the moment between.
         if (!is_array($row)) {
@@ -1442,6 +1442,12 @@ function pg_sms_queue_run($limit = 10, $seconds = 15)
                 provider_id = '" . e(pg_mail_clip($outcome['provider_id'], 64)) . "',
                 claimed_at = 0
             WHERE id = '" . $id . "'");
+
+        // A Workspace answer's message learns how it went (sms_reply.php).
+        if (($row['kind'] === 'reply') && in_array($outcome['status'], array('sent', 'failed', 'uncertain'), true)) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_reply.php');
+            pg_sms_reply_outcome($id, (string) $row['reference'], $outcome['status'], (string) $outcome['last_error']);
+        }
 
         if ($outcome['status'] === 'sent') {
             $result['sent']++;

@@ -230,6 +230,7 @@ description: Generated from the module field of the memory files: each includes/
 - `sms_campaigns`: [[sms-campaign-limit-and-labels]], [[sms-campaign-screen-layout]], [[sms-campaigns]]
 - `sms_codes`: [[sms-codes]]
 - `sms_inbox`: [[sms-incoming]]
+- `sms_reply`: [[mail-sms-reply]]
 - `speculation`: [[speculation-prefetch]], [[speculation-prefetch-left-out]]
 - `state_list_edit`: [[list-table-quick-edit-states]]
 - `stock_location_screens`: [[stock-locations-screens]]
