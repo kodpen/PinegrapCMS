@@ -2726,7 +2726,8 @@ function ws_handle_action($action, $request)
                 $form = ws_mail_answer_form($viewer, $conversation_id);
 
                 return $form['ok']
-                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'others' => $form['others'], 'file_field' => ws_mail_file_field('ws-mail-reply-file')))
+                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'others' => $form['others'], 'file_field' => ws_mail_file_field('ws-mail-reply-file'),
+                        'box' => $form['box'], 'writer' => ws_person_name((int) $viewer['id']), 'own_signature' => ws_mail_own_signature((int) $viewer['id'])))
                     : ws_action_error(ws_mail_reply_error_text($form['error']));
             }
 
@@ -2806,6 +2807,28 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('state' => $result['state']));
 
+        // My e-mail settings: the person's own signature, which stands in
+        // place of their name in every mail they send (mail_signature.php).
+        // People only; whoever may open the E-mails screen keeps their own.
+        case 'ws_mail_my_settings':
+        case 'ws_mail_my_settings_save':
+            if (!function_exists('ws_mail_own_signature_ready') || !ws_mail_own_signature_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if (empty($viewer['member'])) {
+                return ws_action_error(lang('Only team members have e-mail settings.'));
+            }
+
+            if ($action === 'ws_mail_my_settings') {
+                return ws_action_ok(array('signature' => ws_mail_own_signature((int) $viewer['id']), 'writer' => ws_person_name((int) $viewer['id']),
+                    'max' => WS_MAIL_SIGNATURE_MAX, 'lines' => WS_MAIL_SIGNATURE_LINES));
+            }
+
+            $saved = ws_mail_own_signature_save($viewer, $request['signature'] ?? '');
+
+            return $saved['ok'] ? ws_action_ok(array('signature' => $saved['signature'])) : ws_action_error($saved['error'], 'signature');
+
         // New e-mail: the mailboxes the person may send from with their
         // channels and Signatures, and the form sent through the queue
         // (mail_compose.php, ws_mail_send()). People only; a guest has no
@@ -2822,7 +2845,7 @@ function ws_handle_action($action, $request)
 
             if ($action === 'ws_mail_compose') {
                 return ws_action_ok(array('boxes' => ws_mail_compose_boxes(ws_mail_send_boxes($viewer)), 'writer' => ws_person_name((int) $viewer['id']),
-                    'file_field' => ws_mail_file_field('ws-mail-new-file')));
+                    'own_signature' => ws_mail_own_signature((int) $viewer['id']), 'file_field' => ws_mail_file_field('ws-mail-new-file')));
             }
 
             $files = ws_mail_compose_files($_FILES['files'] ?? null);
@@ -2877,6 +2900,7 @@ function ws_handle_action($action, $request)
             return ws_action_ok(array(
                 'boxes'   => ws_mail_compose_boxes(ws_mail_send_boxes($viewer)),
                 'writer'  => ws_person_name((int) $viewer['id']),
+                'own_signature' => ws_mail_own_signature((int) $viewer['id']),
                 'forward' => ws_mail_forward_fill($source),
             ));
 

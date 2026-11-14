@@ -14,7 +14,7 @@ description: Workspace e-mail as a whole: mailboxes, the card or a box's room, t
 - Reading a box: `mail-fetch.md`, Check e-mail on the list `mail-check.md`, `mail-imap-client.md`, `mail-microsoft.md`; the parse and the store: `mail-parse.md`, `mail-ingest.md`, `mail-html.md`; routes and the customer's line: `mail-routing.md`.
 - The card in a channel and the Mailboxes card of the settings: `mail-card.md`, `workspace-mail-settings-dialog.md`; a box kept in no channel: `mail-room.md`; the "Support box" switch: `mail-support-box.md`.
 - The E-mails screen (Incoming, Sent, Not sent, filters, the row, the menu): `mail-list.md`; the reading pane and unread marks: `mail-screen-pane.md`, `mail-html-preview.md`.
-- Sending: `mail-send.md`, `mail-send-outcome.md`, `core/mail-queue-outcome.md`, `mail-email-fields.md`, `mail-sent-and-bounces.md`; a box's Sent folder read back: `mail-sent-folder.md`; New e-mail: `mail-compose.md`; Forward as e-mail: `mail-forward.md`; Reply by e-mail: `mail-reply.md`.
+- Sending: `mail-send.md`, `mail-send-outcome.md`, `core/mail-queue-outcome.md`, `mail-email-fields.md`, `mail-sent-and-bounces.md`; a box's Sent folder read back: `mail-sent-folder.md`; New e-mail: `mail-compose.md`; a person's own signature: `mail-own-signature.md`; Forward as e-mail: `mail-forward.md`; Reply by e-mail: `mail-reply.md`.
 - Status, holder, first-answer time, automatic answer: `mail-status.md`; who is told and the event: `mail-notices-and-event.md`; Pinegrap AI's suggestion: `mail-triage.md`; the API and MCP: `mail-api.md`.
 - Tables: `mail-tables.md`, `mail-tables-sending.md`.
 

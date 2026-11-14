@@ -693,7 +693,7 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
     return pg_screen_toolbar(array(
         'primary'   => $can_send ? '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-mail-new><i class="bi bi-pencil-square me-2" aria-hidden="true"></i>' . h(lang('New e-mail')) . '</button>' : '',
         'secondary' => $check . '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-read-all><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Mark all as read')) . '</button>'
-            . ws_mail_list_my_calendar_html(),
+            . ws_mail_list_my_calendar_html() . ws_mail_list_my_settings_html($can_send),
         'search'    => $search,
         'view'      => '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
     ));
@@ -709,4 +709,21 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
 function ws_mail_list_my_calendar_html()
 {
     return '<a class="pg-button pg-button-quiet pg-button-sm" href="workspace_my_calendar.php" data-ws-my-calendar><i class="bi bi-calendar-heart" aria-hidden="true"></i>' . h(lang('My calendar')) . '</a>';
+}
+
+/**
+ * The toolbar's "My e-mail settings": the person's own signature, opened in
+ * a dialog (workspace_mail.js). Drawn for whoever may send from a mailbox,
+ * once the database has its column (mail_signature.php).
+ *
+ * @param bool $can_send
+ * @return string
+ */
+function ws_mail_list_my_settings_html($can_send)
+{
+    if (!$can_send || !function_exists('ws_mail_own_signature_ready') || !ws_mail_own_signature_ready()) {
+        return '';
+    }
+
+    return '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-ws-mail-my-settings><i class="bi bi-person-gear" aria-hidden="true"></i>' . h(lang('My e-mail settings')) . '</button>';
 }

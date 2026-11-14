@@ -775,6 +775,9 @@ function ws_mail_send_properties($item, $box, $route)
             ORDER BY id DESC LIMIT 1")
         : null;
 
+    // The writer's own signature stands in their name's place, read now.
+    $writer = ws_mail_writer_lines((string) $item['from_name'], ws_mail_own_signature((int) ($item['user_id'] ?? 0)));
+
     $properties = array(
         'to'                 => ws_mail_send_addresses((string) $item['to_list']),
         'cc'                 => ws_mail_send_addresses((string) $item['cc_list']),
@@ -782,7 +785,7 @@ function ws_mail_send_properties($item, $box, $route)
         'from_name'          => (string) $box['name'],
         'from_email_address' => (string) $box['address'],
         'subject'            => (string) $item['subject'],
-        'body'               => ws_mail_answer_body((string) $item['body_text'], (string) $item['from_name'], $box, (is_array($answered) && $answered) ? $answered : null),
+        'body'               => ws_mail_answer_body((string) $item['body_text'], $writer, $box, (is_array($answered) && $answered) ? $answered : null),
         'headers'            => ws_mail_send_headers($item),
         'type'               => 'workspace',
         // The text stays out of failure notices and the Site Log; the writer
@@ -796,7 +799,7 @@ function ws_mail_send_properties($item, $box, $route)
     // the mail's own text part is made from it by email().
     if (trim((string) ($item['body_html'] ?? '')) !== '') {
         $properties['format'] = 'html';
-        $properties['body'] = ws_mail_answer_html((string) $item['body_html'], (string) $item['from_name'], $box, (is_array($answered) && $answered) ? $answered : null);
+        $properties['body'] = ws_mail_answer_html((string) $item['body_html'], $writer, $box, (is_array($answered) && $answered) ? $answered : null);
     }
 
     if (!empty($route['smtp'])) {

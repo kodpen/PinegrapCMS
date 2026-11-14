@@ -7343,6 +7343,7 @@
     "At most {var:1} actions follow one another in a chain.": "Bir zincirde en fazla {var:1} işlem art arda çalışır.",
     "At most {var:1} addresses at a time.": "Bir seferde en çok {var:1} adres.",
     "At most {var:1} channels for customers are opened an hour, so none was opened for this one.": "Saatte en çok {var:1} müşteri kanalı açılır; bu müşteri için kanal açılmadı.",
+    "At most {var:1} characters and {var:2} lines.": "En çok {var:1} karakter ve {var:2} satır.",
     "At most {var:1} characters.": "En fazla {var:1} karakter.",
     "At most {var:1} conditions.": "En fazla {var:1} koşul.",
     "At most {var:1} customers can be asked to approve.": "En çok {var:1} müşteriden onay istenebilir.",
