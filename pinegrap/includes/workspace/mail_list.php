@@ -715,7 +715,7 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
         'secondary' => $check . '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-read-all><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Mark all as read')) . '</button>'
             . ws_mail_list_my_calendar_html($calendar) . ws_mail_list_my_settings_html($can_send),
         'search'    => $search,
-        'view'      => '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
+        'view'      => '<span class="ws-mail-toolbar-break" aria-hidden="true"></span><div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
     ));
 }
 

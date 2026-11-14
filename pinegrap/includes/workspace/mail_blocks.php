@@ -606,7 +606,7 @@ function ws_mail_blocked_items($viewer, $limit = 200)
  */
 function ws_mail_blocked_html($items, $now)
 {
-    $note = '<p class="pg-field-help px-3 my-3">' . h(lang(array('string' => 'Blocked e-mails are kept for {var:1} days, then deleted. "Not blocked" brings one in as a conversation; the sender stays blocked.', 'vars' => WS_MAIL_BLOCK_DAYS))) . '</p>';
+    $note = '<p class="pg-field-help px-3 my-3">' . h(lang(array('string' => 'Blocked e-mails are kept for {var:1} days, then deleted. "Move to the inbox" brings one in as a conversation; the sender stays blocked.', 'vars' => WS_MAIL_BLOCK_DAYS))) . '</p>';
 
     if (!$items) {
         return $note . '<p class="fg-secondary my-5 px-3">' . h(lang('No blocked e-mail.')) . '</p>';
@@ -628,7 +628,7 @@ function ws_mail_blocked_html($items, $now)
             // Without its original a mail cannot be brought in (ws_mail_unblock_decide()).
             . (ws_mail_unblock_decide(array_merge($item, array('blocked_at' => 1)), array((int) $item['box_id']))['ok']
                 ? '<button type="button" class="pg-button pg-button-quiet pg-button-sm ms-auto" data-ws-mail-unblock="' . (int) $item['id'] . '">'
-                    . '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>' . h(lang('Not blocked')) . '</button>'
+                    . '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>' . h(lang('Move to the inbox')) . '</button>'
                 : '')
             . '</span></div>';
     }
@@ -665,7 +665,7 @@ function ws_mail_unblock_decide($item, $box_ids)
 }
 
 /**
- * The Site Log line of "Not blocked". Pure but for the words.
+ * The Site Log line of "Move to the inbox". Pure but for the words.
  *
  * @param string $from
  * @param string $box_name
@@ -677,7 +677,7 @@ function ws_mail_unblock_log_line($from, $box_name)
 }
 
 /**
- * "Not blocked": the kept row is deleted, then the mail's .eml goes through
+ * "Move to the inbox": the kept row is deleted, then the mail's .eml goes through
  * ws_mail_ingest() past the block check, so it becomes a conversation as if
  * it had just come (card, notices, flows; never the automatic answer of a
  * mail older than the box's rules allow, which the ingest decides). The

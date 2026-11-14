@@ -1574,7 +1574,7 @@
             });
         }
 
-        // Not blocked, in the Blocked view (mail_blocks.php): the mail becomes
+        // Move to the inbox, in the Blocked view (mail_blocks.php): the mail becomes
         // a conversation, which opens in Incoming.
         function unblock(button) {
             button.disabled = true;

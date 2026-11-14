@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the "Blocked" view of the E-mails screen and "Not blocked"
+ * Tests for the "Blocked" view of the E-mails screen and "Move to the inbox"
  * (includes/workspace/mail_blocks.php): the view word, who may bring a
  * blocked mail in, its Site Log line, the rows, and the wiring into the
  * ingest, the screen, the panel action and the script. No database.
@@ -60,13 +60,13 @@ function test_workspace_mail_blocked_html()
 	);
 	$html = ws_mail_blocked_html($items, $now);
 
-	pg_assert_contains('data-ws-mail-unblock="9"', $html, 'Not blocked per row');
+	pg_assert_contains('data-ws-mail-unblock="9"', $html, 'Move to the inbox per row');
 	pg_assert_true(strpos($html, 'data-ws-mail-unblock="8"') === false, 'none without its original');
 	pg_assert_contains('Spam &lt;Co&gt;', $html, 'the name, escaped');
 	pg_assert_contains('b@y.com', $html, 'the address without a name');
 	pg_assert_contains(h(lang('(no subject)')), $html, 'no subject');
-	pg_assert_contains(h(lang('Not blocked')), $html, 'the button');
-	pg_assert_contains(h(lang(array('string' => 'Blocked e-mails are kept for {var:1} days, then deleted. "Not blocked" brings one in as a conversation; the sender stays blocked.', 'vars' => WS_MAIL_BLOCK_DAYS))), $html, 'what the view is');
+	pg_assert_contains(h(lang('Move to the inbox')), $html, 'the button');
+	pg_assert_contains(h(lang(array('string' => 'Blocked e-mails are kept for {var:1} days, then deleted. "Move to the inbox" brings one in as a conversation; the sender stays blocked.', 'vars' => WS_MAIL_BLOCK_DAYS))), $html, 'what the view is');
 	pg_assert_contains(h(lang('No blocked e-mail.')), ws_mail_blocked_html(array(), $now), 'empty');
 }
 
@@ -75,7 +75,7 @@ function test_workspace_mail_blocked_view_wiring()
 	pg_assert_contains("if (\$blocks && empty(\$options['past_block']) && ws_mail_block_find(", workspace_mail_blocked_view_test_source('includes/workspace/mail.php'), 'the ingest can pass the block');
 
 	$blocks = workspace_mail_blocked_view_test_source('includes/workspace/mail_blocks.php');
-	pg_assert_contains("ws_mail_ingest(\$raw, \$box, array('past_block' => true))", $blocks, 'Not blocked takes the .eml in past the block');
+	pg_assert_contains("ws_mail_ingest(\$raw, \$box, array('past_block' => true))", $blocks, 'Move to the inbox takes the .eml in past the block');
 	pg_assert_contains('DELETE FROM ws_mail_items WHERE id = ? AND blocked_at > 0', $blocks, 'the kept row goes first');
 	pg_assert_contains('log_activity(ws_mail_unblock_log_line(', $blocks, 'a Site Log line');
 

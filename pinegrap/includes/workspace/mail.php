@@ -880,7 +880,7 @@ function ws_mail_message_write($channel_id, $parent_id, $item_id, $body, $file_i
  * @param string $raw
  * @param array  $box     ws_mail_boxes row
  * @param array  $options past_block: true takes the mail in although its
- *                        sender is blocked ("Not blocked", mail_blocks.php)
+ *                        sender is blocked ("Move to the inbox", mail_blocks.php)
  * @return array status, reason, item_id, conversation_id, message_id
  */
 function ws_mail_ingest($raw, $box, $options = array())

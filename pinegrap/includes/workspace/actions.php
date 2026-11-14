@@ -2974,7 +2974,7 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('text' => $result['text'])) : ws_action_error($result['error']);
 
-        // Not blocked: a blocked mail brought in as a conversation, its
+        // Move to the inbox: a blocked mail brought in as a conversation, its
         // sender left on the list (mail_blocks.php). A demonstration site
         // takes no mail in.
         case 'ws_mail_unblock':
