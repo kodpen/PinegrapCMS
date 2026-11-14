@@ -14,7 +14,7 @@ description: Plan (owner 2026-11-14): "My calendar" beside e-mail and a person's
 ## Which steps?
 - PC1 (S, done #9474) Census: `workspace/personal-calendar-census-*.md` (readers, tables, words, mail, privacy); the architect answered the rest, the tables wait for the owner's yes.
 - PC2 (M) Done #9477: "My calendar" (`workspace_my_calendar.php`) by month, week and list; the button on the E-mails toolbar and the Workspace menu tile (`workspace/workspace-my-calendar.md`).
-- PC3 (M, schema) Plans: in progress (`workspace/workspace-personal-plans.md`): step 11.0.201, the gate `ws_personal_plan_can_see()` and its guard test, the "New plan" drawer, My calendar and Today, the reminder line `plan_reminder`.
+- PC3 (M, schema) Plans: Done #9500 (`workspace/workspace-personal-plans.md`): step 11.0.201, the gate `ws_personal_plan_can_see()` and its guard test, the "New plan" drawer, My calendar and Today, the reminder line `plan_reminder`.
 - PC4 (S) Sharing: "Who can see" on the drawer: Only me (the default), chosen team members, the whole team. The others read it on their My calendar under the owner's name and change nothing.
 - PC5 (M) Roadmap: a plan with dated steps (title, day, done), drawn as a bar with its steps and its progress. "Make a task" on a step opens the task drawer filled; the step then follows the task's state.
 - PC6 (M) For a customer: a plan names a contact (the pick of `workspace/workspace-visit-contact.md`) and shows on the customer's card and history to those who may see the plan. "New roadmap" on the card starts empty or from the person's own plans, copied. Merge and erasure as visits. PC6 also lists `ws_personal_plans.contact_id` in `pg_contact_holders()` and drops its test exception.
