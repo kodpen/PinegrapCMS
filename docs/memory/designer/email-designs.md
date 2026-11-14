@@ -1,6 +1,6 @@
 ---
 name: email-designs
-description: E-mail designs (MA5c): the private folder, props.pgEmail, the 600 px canvas and Phone view, mail blocks as presentation tables, their inline look map and canvas twin
+description: E-mail designs (MA5c #9465): the private folder, props.pgEmail, the 600 px canvas and Phone view, mail blocks as presentation tables, their inline look map and canvas twin
 module: email_designs
 ---
 
