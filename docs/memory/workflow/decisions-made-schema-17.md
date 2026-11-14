@@ -7,7 +7,7 @@ description: Decisions list, schema part 17 (2026-11-12 on): canvas-one's ws_can
 - `decisions-made.md`; the generated `DECISIONS.md` lists every part's entries. Entries name the issue, the date and the migration shape.
 
 ## Which tables and columns were approved?
-- All five are the questions of step CO0 of `plans/canvas-one.md` (PR #8922), option A of each issue, made by 2026.11.0 steps with the idempotent helpers. Running sites get empty tables and columns of 0: nothing changes on screen.
+- All five are the questions of step CO0 of the canvas-one plan (PR #8922, closed in `workspace/canvas-overview.md`), option A of each issue, made by 2026.11.0 steps with the idempotent helpers. Running sites get empty tables and columns of 0: nothing changes on screen.
 - A canvas's second part (owner, 2026-11-12, #8923): a new table `ws_canvas_parts`: `message_id`, `part` VARCHAR(8) (`drawing` | `page`), `file_id`, who made it; `UNIQUE (message_id, part)`, `idx_file (file_id)`.
   - Owner (2026-11-12), in the architect's window: "Yeni tablo (Önerilen)". Not chosen: a column on `ws_messages`; no schema (the id in the version document).
 - The tables bound to a canvas (owner, 2026-11-12, #8924): a new table `ws_canvas_tables`: `message_id`, `table_id`, `access` VARCHAR(8) (`read` | `write`), who bound it; `UNIQUE (message_id, table_id)`, `idx_table (table_id)`; no foreign keys; at most 20 bindings a canvas, checked in PHP.
