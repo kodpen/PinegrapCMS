@@ -511,6 +511,7 @@
     "Delivered to your office or served at your event, from ten people up.": "On kişiden itibaren ofisinize teslim ya da etkinliğinizde servis.",
     "Delivered to {var:1} of {var:2} recipients.": "{var:2} alıcıdan {var:1} alıcıya teslim edildi.",
     "Delivered today": "Bugün teslim",
+    "Delivered:": "Teslim edildi:",
     "Deliveries": "Teslimatlar",
     "Deliveries a return may be asked for": "İade istenebilecek teslimatlar",
     "Deliveries to this subscription are switched off. Set its status to active first.": "Bu aboneliğe gönderim kapalı. Önce durumunu active yapın.",

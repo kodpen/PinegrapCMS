@@ -225,7 +225,7 @@ function test_messages_sends_whatsapp_row()
 	pg_assert_contains('bi-whatsapp', json_encode($row['cells']['channel']), 'the WhatsApp tile');
 
 	$record['delivery'] = pg_messages_sends_whatsapp_delivery_row(array('delivery' => 'read', 'delivered_at' => 1700000200, 'read_at' => '1700000300', 'error_code' => ''));
-	pg_assert_contains(h(lang('Read')), json_encode(pg_messages_sends_row($record, 1700000500)['cells']['result']), 'a read message says so');
+	pg_assert_contains(h(lang('Read:')), json_encode(pg_messages_sends_row($record, 1700000500)['cells']['result']), 'a read message says so');
 
 	$record['delivery'] = pg_messages_sends_whatsapp_delivery_row(array('delivery' => 'failed', 'error_code' => '131026'));
 	$row = json_encode(pg_messages_sends_row($record, 1700000500)['cells']);

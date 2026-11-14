@@ -493,7 +493,7 @@ function pg_messages_sends_ready_branches()
         $ready[] = 'sms';
     }
 
-    if (function_exists('pg_whatsapp_queue_ready') && pg_whatsapp_queue_ready()) {
+    if (pg_messages_sends_whatsapp_ready()) {
         $ready[] = 'whatsapp';
     }
 
@@ -704,9 +704,12 @@ function pg_messages_sends_row(array $record, $now)
         if ((string) $record['state'] === 'sent') {
             $result = ((int) $record['next_at'] > 0) ? pg_mail_queue_list_time($record['next_at']) : '';
 
-            if (($delivery !== null) && (($delivery['read_at'] > 0) || ($delivery['delivered_at'] > 0))) {
-                $read = ($delivery['read_at'] > 0);
-                $result .= ' <span class="small fg-secondary">' . h($read ? lang('Read') : lang('Delivered')) . ' ' . pg_mail_queue_list_time($read ? $delivery['read_at'] : $delivery['delivered_at']) . '</span>';
+            // A WhatsApp message the phone took says so in place of the
+            // time Meta took it, the furthest state first.
+            if (($delivery !== null) && ($delivery['read_at'] > 0)) {
+                $result = h(lang('Read:')) . ' ' . pg_mail_queue_list_time($delivery['read_at']);
+            } elseif (($delivery !== null) && ($delivery['delivered_at'] > 0)) {
+                $result = h(lang('Delivered:')) . ' ' . pg_mail_queue_list_time($delivery['delivered_at']);
             }
         } elseif ((string) $record['state'] === 'queued') {
             $result = ((int) $record['next_at'] > (int) $now) ? pg_mail_queue_list_time($record['next_at']) : h(lang('On the next run'));
@@ -872,7 +875,7 @@ function pg_messages_sends_tiles(array $user, $now)
             }
         }
 
-        if (function_exists('pg_whatsapp_queue_ready') && pg_whatsapp_queue_ready()) {
+        if (pg_messages_sends_whatsapp_ready()) {
             foreach (pg_messages_sends_whatsapp_counts($now) as $key => $value) {
                 $counts[$key] += (int) $value;
             }
@@ -1020,6 +1023,17 @@ function pg_messages_sends_recipients_html(array $user, $sid)
 /* ---------------------------------------------------------------------------
    The WhatsApp queue's rows (whatsapp_outbox) as the list works them
    --------------------------------------------------------------------------- */
+
+/**
+ * Whether the upgrade has made the WhatsApp queue. Read here rather than
+ * through includes/fn/whatsapp.php, which this screen does not load.
+ *
+ * @return bool
+ */
+function pg_messages_sends_whatsapp_ready()
+{
+    return pg_schema_has('whatsapp_outbox');
+}
 
 /**
  * What the webhook wrote about the WhatsApp rows of a batch: delivered,

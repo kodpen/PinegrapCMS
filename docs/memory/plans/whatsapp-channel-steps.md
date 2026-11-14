@@ -8,7 +8,7 @@ description: Steps WA0-WA11 of the WhatsApp channel plan (#8950): facts and stor
 - WA0's proposals: `whatsapp-channel-storage.md`, asked in #9085 (queue, templates, customers' messages) and #9087 (consent, per-recipient key). The card drawn: `plans/whatsapp-channel/settings-card.html`.
 - WA1 (M) Connection. Done in #9067: `platform/whatsapp-connection.md`. The webhook's verify call and signature check are in it, so step 5 of the card can be completed; WA4 reads the events.
 - WA2 (M) Queue and sender. Done in #9306: `platform/whatsapp-outbox-queue.md`. The queue's place in Communication › Sends is WA2b.
-- WA2b (S) The WhatsApp branch (3) of Communication › Sends with Retry and Delete as the SMS rows have, built under #9295 (drawing, look A, screenshots approved).
+- WA2b (S) The WhatsApp branch (3) of Communication › Sends. Done in #9409: `platform/messages-area-sends.md`.
 - WA3 (M) Templates of the account. Done in #9325: `platform/whatsapp-templates.md`. Their list is WA3b.
 - WA3b (S) WhatsApp templates in Communication › Templates. Done in #9355: `ui/messages-area-templates-tab.md`.
 - WA4 (M) Webhook receiver. Done in #9351: `platform/whatsapp-webhook-events.md`.
