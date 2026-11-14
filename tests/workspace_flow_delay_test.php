@@ -68,11 +68,11 @@ function test_workspace_flow_delay_kind()
 // Its settings: a whole amount and a unit; anything else is dropped.
 function test_workspace_flow_delay_config()
 {
-	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => 2, 'unit' => 'hours'), ws_flow_config_normalize('delay', array('amount' => '2', 'unit' => 'hours', 'x' => 1)));
-	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => '', 'unit' => 'minutes'), ws_flow_config_normalize('delay', array()));
-	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => '', 'unit' => 'minutes'), ws_flow_config_normalize('delay', array('amount' => 'soon', 'unit' => 'weeks')));
-	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => 0, 'unit' => 'days'), ws_flow_config_normalize('delay', array('amount' => -3, 'unit' => 'days')));
-	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => 999999, 'unit' => 'days'), ws_flow_config_normalize('delay', array('amount' => 10 ** 9, 'unit' => 'days')), 'held to a number the problems name');
+	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => 2, 'unit' => 'hours', 'time' => '', 'passed' => 'go'), ws_flow_config_normalize('delay', array('amount' => '2', 'unit' => 'hours', 'x' => 1)));
+	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => '', 'unit' => 'minutes', 'time' => '', 'passed' => 'go'), ws_flow_config_normalize('delay', array()));
+	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => '', 'unit' => 'minutes', 'time' => '', 'passed' => 'go'), ws_flow_config_normalize('delay', array('amount' => 'soon', 'unit' => 'weeks')));
+	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => 0, 'unit' => 'days', 'time' => '', 'passed' => 'go'), ws_flow_config_normalize('delay', array('amount' => -3, 'unit' => 'days')));
+	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => 999999, 'unit' => 'days', 'time' => '', 'passed' => 'go'), ws_flow_config_normalize('delay', array('amount' => 10 ** 9, 'unit' => 'days')), 'held to a number the problems name');
 
 	pg_assert_same(120, ws_flow_delay_minutes(array('amount' => 2, 'unit' => 'hours')));
 	pg_assert_same(4320, ws_flow_delay_minutes(array('amount' => 3, 'unit' => 'days')));

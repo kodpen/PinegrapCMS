@@ -16,7 +16,8 @@ description: Plan (owner 2026-11-14): an agent concludes a discussion when a per
   - One function beside `ws_thread_close()`; `closed_by` keeps the person who asked; the system line names the agent and that person ("… concluded the discussion at …'s request").
   - Reached alike by an application agent (the answer route, its MCP tool) and a model agent (its tool). The request's brief says in one sentence, from one source, that the agent may conclude when asked.
   - Tests: the asker a person in it, a person not in it, a guest, another agent; an already concluded discussion; `no_answer` with conclude.
-- AD2 (M) The offer. An agent that thinks a discussion has reached its end, unasked, puts a "Conclude the discussion" button under its message. A person in the discussion presses it and concludes as today, in their own name. The button shows only to the people in the discussion, only while it is open, and only on the agent's newest offer.
+- AD2 (M) — done, #9416: `offer_conclude` on the answer route and the model's tool; a `ws_refs` row `conclude_offer` on the answer; the button `concludeOfferNode()`.
+  - The offer. An agent that thinks a discussion has reached its end, unasked, puts a "Conclude the discussion" button under its message. A person in the discussion presses it and concludes as today, in their own name. The button shows only to the people in the discussion, only while it is open, and only on the agent's newest offer.
   - Built on what is there (the agent's one-choice question, `workspace/agent-questions.md`, or a message kind); the step chooses and says why in its PR.
   - Real pictures of the button (dark and light, wide and 390 px) in the agent channel before the PR goes ready.
 - AD3 (S) Close-out: the rules into `workspace/` (a file of its own, the discussion files' lines corrected), this plan deleted.

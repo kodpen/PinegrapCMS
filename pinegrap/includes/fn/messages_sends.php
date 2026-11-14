@@ -5,8 +5,8 @@
  * Communication › Sends (messages_sends.php): every message the site sends
  * in one list on the list table driver. The list reads no table of its own:
  * its source is one UNION ALL of a SELECT per branch (the e-mail queue, the
- * SMS queue, manual e-mail campaigns, SMS campaigns, automatic e-mail
- * campaigns as single messages), each holding the period on its own indexed
+ * SMS queue, the WhatsApp queue, manual e-mail campaigns, SMS campaigns,
+ * automatic e-mail campaigns as single messages), each holding the period on its own indexed
  * time, and the list table driver reads them as branches (each batch
  * bounded, ordered and cut inside every branch, counted per branch), so a
  * batch reads only the head of each branch's index range. A row id is the branch
@@ -29,8 +29,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue_list.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
 
 /**
- * The branches of the list by number. 3 is kept for the WhatsApp queue;
- * 7 is the last free number (an eighth source is a question of its own).
+ * The branches of the list by number; 7 is the last free number (an eighth
+ * source is a question of its own).
  *
  * @return array number => key
  */
@@ -39,6 +39,7 @@ function pg_messages_sends_branches()
     return array(
         1 => 'mail',
         2 => 'sms',
+        3 => 'whatsapp',
         4 => 'email_campaign',
         5 => 'sms_campaign',
         6 => 'automatic',
@@ -107,7 +108,35 @@ function pg_messages_sends_channels()
     return array(
         'email' => lang('E-mail'),
         'sms' => lang('SMS'),
+        'whatsapp' => lang('WhatsApp'),
     );
+}
+
+/**
+ * The channel of a branch.
+ *
+ * @param string $branch a value of pg_messages_sends_branches()
+ * @return string email, sms or whatsapp
+ */
+function pg_messages_sends_branch_channel($branch)
+{
+    if ($branch === 'whatsapp') {
+        return 'whatsapp';
+    }
+
+    return in_array($branch, array('sms', 'sms_campaign'), true) ? 'sms' : 'email';
+}
+
+/**
+ * Whether a branch is a queue of single messages (the e-mail, SMS and
+ * WhatsApp queues), which only role <= 2 reads and works.
+ *
+ * @param string $branch
+ * @return bool
+ */
+function pg_messages_sends_queue_branch($branch)
+{
+    return in_array($branch, array('mail', 'sms', 'whatsapp'), true);
 }
 
 /**
@@ -309,7 +338,7 @@ function pg_messages_sends_branch_sql($branch, array $filters, array $user, $now
     }
 
     $number = (int) $numbers[$branch];
-    $channel = in_array($branch, array('sms', 'sms_campaign'), true) ? 'sms' : 'email';
+    $channel = pg_messages_sends_branch_channel($branch);
 
     if (($filters['channel'] !== '') && ($filters['channel'] !== $channel)) {
         return null;
@@ -317,7 +346,7 @@ function pg_messages_sends_branch_sql($branch, array $filters, array $user, $now
 
     // The queues hold password resets and receipts: only for role <= 2,
     // as the mail queue screen.
-    if (in_array($branch, array('mail', 'sms'), true) && ($role > 2)) {
+    if (pg_messages_sends_queue_branch($branch) && ($role > 2)) {
         return null;
     }
 
@@ -348,6 +377,21 @@ function pg_messages_sends_branch_sql($branch, array $filters, array $user, $now
                 (CASE WHEN sms_outbox.status = 'sent' THEN sms_outbox.sent_at ELSE sms_outbox.send_after END) AS next_at, 0 AS owner, sms_outbox.expires_at AS expires
                 FROM sms_outbox";
             $where[] = 'sms_outbox.created_at >= ?';
+            $params[] = $since;
+            break;
+
+        case 'whatsapp':
+            // The message is named by its template and language: the body
+            // is Meta's template with the payload's values.
+            $state = 'whatsapp_outbox.status';
+            $source = 'whatsapp_outbox.kind';
+            $select = "whatsapp_outbox.id AS rid, whatsapp_outbox.id * 8 + $number AS sid, whatsapp_outbox.created_at AS at, 'whatsapp' AS channel, 'message' AS row_kind,
+                whatsapp_outbox.recipient AS recipient, CONCAT(whatsapp_outbox.template_name, ' · ', whatsapp_outbox.template_language) AS what,
+                whatsapp_outbox.kind AS source, whatsapp_outbox.status AS state,
+                0 AS done, 0 AS total, whatsapp_outbox.last_error AS error, whatsapp_outbox.attempts AS attempts,
+                (CASE WHEN whatsapp_outbox.status = 'sent' THEN whatsapp_outbox.sent_at ELSE whatsapp_outbox.send_after END) AS next_at, 0 AS owner, whatsapp_outbox.expires_at AS expires
+                FROM whatsapp_outbox";
+            $where[] = 'whatsapp_outbox.created_at >= ?';
             $params[] = $since;
             break;
 
@@ -414,8 +458,8 @@ function pg_messages_sends_branch_sql($branch, array $filters, array $user, $now
         if ($branch === 'mail') {
             $where[] = 'mail_outbox.status = ?';
             $params[] = ($filters['state'] === 'blocked') ? 'suppressed' : $filters['state'];
-        } elseif ($branch === 'sms') {
-            $where[] = 'sms_outbox.status = ?';
+        } elseif (($branch === 'sms') || ($branch === 'whatsapp')) {
+            $where[] = (($branch === 'sms') ? 'sms_outbox' : 'whatsapp_outbox') . '.status = ?';
             $params[] = $filters['state'];
         } else {
             $where[] = $state . ' = ?';
@@ -448,6 +492,10 @@ function pg_messages_sends_ready_branches()
 
     if (pg_sms_queue_ready()) {
         $ready[] = 'sms';
+    }
+
+    if (pg_messages_sends_whatsapp_ready()) {
+        $ready[] = 'whatsapp';
     }
 
     $ready[] = 'email_campaign';
@@ -539,8 +587,8 @@ function pg_messages_sends_search()
 
 /**
  * The row buttons a row gets under its own queue's rules: an e-mail Retry
- * while queued or failed; a text Retry while queued, failed or of unknown
- * outcome and not expired (asked first when unknown: it may have reached
+ * while queued or failed; a text or WhatsApp Retry while queued, failed or
+ * of unknown outcome and not expired (asked first when unknown: it may have reached
  * the phone); Delete on every queue row and campaign. Campaign recipients
  * have no Retry.
  *
@@ -561,7 +609,7 @@ function pg_messages_sends_buttons(array $record, $expired = false)
 
     if (($parts['branch'] === 'mail') && in_array($state, array('queued', 'failed'), true)) {
         $buttons[] = 'retry';
-    } elseif (($parts['branch'] === 'sms') && in_array($state, array('queued', 'failed', 'uncertain'), true) && !$expired) {
+    } elseif (in_array($parts['branch'], array('sms', 'whatsapp'), true) && in_array($state, array('queued', 'failed', 'uncertain'), true) && !$expired) {
         $buttons[] = ($state === 'uncertain') ? 'retry_confirm' : 'retry';
     }
 
@@ -615,6 +663,18 @@ function pg_messages_sends_row(array $record, $now)
         $state = array(lang('Not delivered'), 'theme-danger');
         $record['error'] = (string) $record['bounce'];
     }
+
+    // Meta took a WhatsApp message; what became of it on the phone comes
+    // later through the webhook (delivered, read, or failed with a reason).
+    $delivery = (isset($record['delivery']) && is_array($record['delivery'])) ? $record['delivery'] : null;
+
+    if (($delivery !== null) && ((string) $record['state'] === 'sent') && ($delivery['delivery'] === 'failed')) {
+        $state = array(lang('Not delivered'), 'theme-danger');
+
+        if ((string) $record['error'] === '') {
+            $record['error'] = ($delivery['error_code'] !== '') ? lang(array('string' => 'Meta error {var:1}', 'vars' => $delivery['error_code'])) : '';
+        }
+    }
     $what = (string) $record['what'];
     $what_html = ($what !== '') ? h($what) : '[' . h(lang('No name')) . ']';
 
@@ -639,11 +699,19 @@ function pg_messages_sends_row(array $record, $now)
         $recipient = h(lang(array('string' => '{var:1} Contact{suffix:1}', 'vars' => pg_format_number($total, 0), 'suffix' => ($total == 1) ? '' : 's')));
         $result = pg_messages_progress_html((int) $record['done'], $total, pg_format_number((int) $record['done'], 0) . ' / ' . pg_format_number($total, 0));
     } else {
-        $recipient = (($branch === 'sms') ? '+' : '') . h((string) $record['recipient']);
+        $recipient = ((($branch === 'sms') || ($branch === 'whatsapp')) ? '+' : '') . h((string) $record['recipient']);
         $result = '';
 
         if ((string) $record['state'] === 'sent') {
             $result = ((int) $record['next_at'] > 0) ? pg_mail_queue_list_time($record['next_at']) : '';
+
+            // A WhatsApp message the phone took says so in place of the
+            // time Meta took it, the furthest state first.
+            if (($delivery !== null) && ($delivery['read_at'] > 0)) {
+                $result = h(lang('Read:')) . ' ' . pg_mail_queue_list_time($delivery['read_at']);
+            } elseif (($delivery !== null) && ($delivery['delivered_at'] > 0)) {
+                $result = h(lang('Delivered:')) . ' ' . pg_mail_queue_list_time($delivery['delivered_at']);
+            }
         } elseif ((string) $record['state'] === 'queued') {
             $result = ((int) $record['next_at'] > (int) $now) ? pg_mail_queue_list_time($record['next_at']) : h(lang('On the next run'));
         }
@@ -752,12 +820,17 @@ function pg_messages_sends_list_source($user, $params, $now = null)
             }
 
             $bounced = pg_mail_queue_bounced(pg_mail_queue_bounce_candidates($mail, 'state', 'source'));
+            $delivered = pg_messages_sends_whatsapp_delivery($records);
 
             foreach ($records as $record) {
                 $parts = pg_messages_sends_sid_parts($record['sid']);
 
                 if (($parts !== null) && ($parts['branch'] === 'mail') && isset($bounced[$parts['id']])) {
                     $record['bounce'] = $bounced[$parts['id']];
+                }
+
+                if (($parts !== null) && ($parts['branch'] === 'whatsapp') && isset($delivered[$parts['id']])) {
+                    $record['delivery'] = $delivered[$parts['id']];
                 }
 
                 $rows[] = pg_messages_sends_row($record, $now);
@@ -802,6 +875,12 @@ function pg_messages_sends_tiles(array $user, $now)
                 $counts[$key] += (int) $value;
             }
         }
+
+        if (pg_messages_sends_whatsapp_ready()) {
+            foreach (pg_messages_sends_whatsapp_counts($now) as $key => $value) {
+                $counts[$key] += (int) $value;
+            }
+        }
     }
 
     $waiting = db_q(
@@ -824,8 +903,8 @@ function pg_messages_sends_tiles(array $user, $now)
  *
  * @param array  $user
  * @param string $action 'retry:<sid>' or 'delete:<sid>'
- * @return string the outcome: '', 'queued' (an e-mail), 'queued_sms',
- *                'sent', 'unsent', 'deleted'
+ * @return string the outcome: '', 'queued' (an e-mail), 'queued_sms' (a
+ *                text or WhatsApp message), 'sent', 'unsent', 'deleted'
  */
 function pg_messages_sends_action(array $user, $action)
 {
@@ -839,7 +918,7 @@ function pg_messages_sends_action(array $user, $action)
         return '';
     }
 
-    $queue = in_array($parts['branch'], array('mail', 'sms'), true);
+    $queue = pg_messages_sends_queue_branch($parts['branch']);
 
     if ($queue && ((int) $user['role'] > 2)) {
         return '';
@@ -854,6 +933,10 @@ function pg_messages_sends_action(array $user, $action)
             return pg_sms_queue_retry($parts['id']) ? 'queued_sms' : '';
         }
 
+        if ($parts['branch'] === 'whatsapp') {
+            return pg_messages_sends_whatsapp_retry($parts['id']) ? 'queued_sms' : '';
+        }
+
         return '';
     }
 
@@ -862,6 +945,8 @@ function pg_messages_sends_action(array $user, $action)
             return pg_mail_queue_delete($parts['id']) ? 'deleted' : '';
         case 'sms':
             return pg_sms_queue_delete($parts['id']) ? 'deleted' : '';
+        case 'whatsapp':
+            return pg_messages_sends_whatsapp_delete($parts['id']) ? 'deleted' : '';
         case 'sms_campaign':
             return (pg_sms_campaigns_delete(array($parts['id']), $user) > 0) ? 'deleted' : '';
         default:
@@ -934,4 +1019,128 @@ function pg_messages_sends_recipients_html(array $user, $sid)
     }
 
     return '<ul class="list-unstyled mb-0">' . $html . '</ul>';
+}
+
+/* ---------------------------------------------------------------------------
+   The WhatsApp queue's rows (whatsapp_outbox) as the list works them
+   --------------------------------------------------------------------------- */
+
+/**
+ * Whether the upgrade has made the WhatsApp queue. Read here rather than
+ * through includes/fn/whatsapp.php, which this screen does not load.
+ *
+ * @return bool
+ */
+function pg_messages_sends_whatsapp_ready()
+{
+    return pg_schema_has('whatsapp_outbox');
+}
+
+/**
+ * What the webhook wrote about the WhatsApp rows of a batch: delivered,
+ * read, or failed with Meta's code. One read by primary key for the batch.
+ *
+ * @param array $records rows of the derived table
+ * @return array row id => delivery, delivered_at, read_at, error_code
+ */
+function pg_messages_sends_whatsapp_delivery(array $records)
+{
+    $ids = array();
+
+    foreach ($records as $record) {
+        $parts = pg_messages_sends_sid_parts($record['sid']);
+
+        if (($parts !== null) && ($parts['branch'] === 'whatsapp') && ((string) $record['state'] === 'sent')) {
+            $ids[] = (int) $parts['id'];
+        }
+    }
+
+    if (!$ids) {
+        return array();
+    }
+
+    $found = array();
+
+    foreach ((array) db_items("SELECT id, delivery, delivered_at, read_at, error_code FROM whatsapp_outbox WHERE id IN (" . implode(', ', $ids) . ")") as $row) {
+        $found[(int) $row['id']] = pg_messages_sends_whatsapp_delivery_row($row);
+    }
+
+    return $found;
+}
+
+/**
+ * A row's delivery columns, typed. Pure.
+ *
+ * @param array $row delivery, delivered_at, read_at, error_code
+ * @return array the same keys
+ */
+function pg_messages_sends_whatsapp_delivery_row(array $row)
+{
+    return array(
+        'delivery' => (string) ($row['delivery'] ?? ''),
+        'delivered_at' => (int) ($row['delivered_at'] ?? 0),
+        'read_at' => (int) ($row['read_at'] ?? 0),
+        'error_code' => (string) ($row['error_code'] ?? ''),
+    );
+}
+
+/**
+ * Puts a WhatsApp message back in the queue at once, under the SMS queue's
+ * rule: one waiting, failed or of unknown outcome and not expired. One
+ * being sent, one that was sent and one past its expiry are left alone.
+ *
+ * @param int $id
+ * @return bool whether the message was put back in the queue
+ */
+function pg_messages_sends_whatsapp_retry($id)
+{
+    db(
+        "UPDATE whatsapp_outbox
+        SET status = 'queued', send_after = 0, attempts = 0, claimed_at = 0
+        WHERE
+            (id = '" . (int) $id . "')
+            AND (status IN ('queued', 'failed', 'uncertain'))
+            AND ((expires_at = 0) OR (expires_at > UNIX_TIMESTAMP()))");
+
+    return mysqli_affected_rows(db::$con) > 0;
+}
+
+/**
+ * Removes a WhatsApp message from the queue, sent or not.
+ *
+ * @param int $id
+ * @return bool whether a message was removed
+ */
+function pg_messages_sends_whatsapp_delete($id)
+{
+    db("DELETE FROM whatsapp_outbox WHERE id = '" . (int) $id . "'");
+
+    return mysqli_affected_rows(db::$con) > 0;
+}
+
+/**
+ * The WhatsApp queue's figures for the tiles, from the queue's idx_due.
+ *
+ * @param int $now
+ * @return array queued, sending, sent (in the last 24 hours), failed,
+ *               uncertain
+ */
+function pg_messages_sends_whatsapp_counts($now)
+{
+    $row = db_item(
+        "SELECT
+            SUM(CASE WHEN status = 'queued' THEN 1 ELSE 0 END) AS queued,
+            SUM(CASE WHEN status = 'sending' THEN 1 ELSE 0 END) AS sending,
+            SUM(CASE WHEN (status = 'sent') AND (sent_at >= " . ((int) $now - 86400) . ") THEN 1 ELSE 0 END) AS sent,
+            SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed,
+            SUM(CASE WHEN status = 'uncertain' THEN 1 ELSE 0 END) AS uncertain
+        FROM whatsapp_outbox");
+
+    $counts = array();
+
+    foreach (array('queued', 'sending', 'sent', 'failed', 'uncertain') as $status) {
+        $counts[$status] = (is_array($row) && isset($row[$status])) ? (int) $row[$status] : 0;
+    }
+
+    return $counts;
 }

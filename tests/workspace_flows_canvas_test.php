@@ -3489,6 +3489,7 @@ state = { embed: null, mounted: null, screen: false, poll: { timer: 0, delay: 0,
     out.noKit = (function () { window.PGWsKit = null; var none = mount(root, {}, {}); window.PGWsKit = K; return none; })();
     out.address = addressOptions('?run=3&flow=12&box=email_4');
     out.noAddress = addressOptions('');
+    out.quickAddress = [addressOptions('?quick=1').quick, addressOptions('?quick=thank_then_review&x=1').quick, addressOptions('?quick=A<b').quick];
     state.embed = { destroy: function () { ended++; state.embed = null; } };
     answers.push(function () { return Promise.resolve({ flows: [{ id: 7 }], scheduled: null }); });
     var full = start(root, { people: [] });
@@ -3550,8 +3551,9 @@ JS
 	}
 
 	pg_assert_same(null, $result['noKit'], 'nothing is mounted without the Workspace kit');
-	pg_assert_same(array('flow' => 12, 'box' => 'email_4', 'run' => 3), $result['address'], 'the address names a flow, a box and a run');
-	pg_assert_same(array('flow' => 0, 'box' => '', 'run' => 0), $result['noAddress'], 'an empty address names none');
+	pg_assert_same(array('flow' => 12, 'box' => 'email_4', 'run' => 3, 'quick' => ''), $result['address'], 'the address names a flow, a box and a run');
+	pg_assert_same(array('flow' => 0, 'box' => '', 'run' => 0, 'quick' => ''), $result['noAddress'], 'an empty address names none');
+	pg_assert_same(array('1', 'thank_then_review', ''), $result['quickAddress'], 'the quick setup and a recipe by the address; anything else names none');
 	pg_assert_same(array('ws_flow_list'), $result['full']['calls'], 'the Flows screen reads its list');
 	pg_assert_same(array(7), $result['full']['opened'], 'start() opens the flow the address names');
 	pg_assert_same(array('bindCanvas', 'list', 'run 31', 'select post_2'), $result['full']['log'], 'then its run, and its box in the run shown');

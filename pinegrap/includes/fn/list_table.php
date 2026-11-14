@@ -1232,6 +1232,7 @@ function pg_list_table_printed_lists()
         'view_offers',
         'view_bookings', 'view_products_variant_sets',
         'workspace_wtables',
+        'messages_automatic',
     );
 }
 

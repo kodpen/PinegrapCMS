@@ -101,7 +101,8 @@ function line(title) {
 // second arrow joins the task to the end on the same outcome. threads: 7's
 // boxes in one row, its second task reading the first one's task in its
 // description (a data thread). big: 7's draft holds notes enough to be over
-// the 60 000 bytes a keepalive save may carry. empty: no flow at all.
+// the 60 000 bytes a keepalive save may carry. wait: 7 holds a Wait box
+// (delay_1) with a time of day. empty: no flow at all.
 function fixture(name) {
     const onboarding = {
         v: 1,
@@ -127,6 +128,17 @@ function fixture(name) {
             box('end_1', 'end', 960, 0)
         ];
         onboarding.edges = [{ from: 'manual_1', to: 'task_1', on: 'next' }, { from: 'task_1', to: 'task_2', on: 'done' }, { from: 'task_2', to: 'end_1', on: 'done' }];
+    }
+
+    // wait: 7 is a start, a Wait box until a written date, a day before at
+    // 09:00, and an end.
+    if (name === 'wait') {
+        onboarding.nodes = [
+            box('manual_1', 'manual', 0, 0),
+            box('delay_1', 'delay', 320, 0, 'A day before, at 9', { mode: 'until', at: '2026-12-01 18:30', amount: 1, unit: 'days', time: '09:00', passed: 'go' }),
+            box('end_1', 'end', 640, 0)
+        ];
+        onboarding.edges = [{ from: 'manual_1', to: 'delay_1', on: 'next' }, { from: 'delay_1', to: 'end_1', on: 'done' }];
     }
 
     if (name === 'big') {

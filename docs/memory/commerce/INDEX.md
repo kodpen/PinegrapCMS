@@ -353,6 +353,7 @@
 - trendyol-return-rejection.md: Rejecting a Trendyol return (claim issue): the reasons read with the returns, which need a document, the query-plus-multipart call, the screen's form and checks, what stays unverified (PR #1837)
 - trendyol-returns.md: Trendyol returns (claims): read on a button for the last 14 days, kept in the session only, approve a return's waiting units after a confirm; the calls, what the docs did not prove
 - trendyol-stock-price.md: Trendyol stock and price push: price-and-inventory batch by barcode, what is left out before the call, the 15-minute repeat refusal, status-less batch result; webhooks carry no stock.
+- user-delete-store-credit.md: Deleting a user account voids its open store credit (note "Account deleted", audit revoke) and releases the closed cards; a card that lost the void race stays bound (#9016) [decision: decisions-made-product-27.md]
 - variant-price-rules.md: How variant prices are computed from attribute price rules (base, multiplier, delta), the fixed order and rounding, the top a rule price may reach, the single compute function and its JS preview twin.
 - variant-set-form-template.md: Variant-set product form model: template rows on the product group, copies on each product, form_fields row shapes, pg_pb_apply_form_template rules (2026.4).
 - verified-shipping-address-screens.md: Verified shipping address screens: state labels via pg_geo_state_option_labels(), country sort by shown name, required state picker, state filter fit to the bar (#9080), Turkish name

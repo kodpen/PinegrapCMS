@@ -1200,6 +1200,27 @@ function ws_model_conclude_after($row)
 }
 
 /**
+ * Puts the offer to conclude the discussion under a model assistant's
+ * answer once it is written, under the same rule as an application
+ * agent's offer (ws_thread_offer_problem()); nothing when it is refused.
+ *
+ * @param array $row ws_ai_requests
+ * @return bool the offer was made
+ */
+function ws_model_offer_after($row)
+{
+    $reply_id = (int) db_value("SELECT reply_message_id FROM ws_ai_requests WHERE id = '" . (int) $row['id'] . "'");
+
+    if (($reply_id <= 0) || (ws_thread_offer_problem($row, true) !== '')) {
+        return false;
+    }
+
+    ws_thread_offer_store($reply_id, (int) $row['channel_id']);
+
+    return true;
+}
+
+/**
  * The emoji a model assistant's answer leaves on the asking message, '' when
  * it gave none or one it may not leave (ws_agent_emoji_problem()): a wrong
  * one is dropped, never a reason to fail the answer.

@@ -328,7 +328,7 @@ function update_order($request) {
                 ? $shipped_recipient['ship_date']
                 : null,
             'parcels'          => pg_shipment_api_parcels((int) $shipped_recipient['id']),
-        ));
+        ) + pg_shipment_event_values(pg_shipment_mail_fields(array((int) $shipped_recipient['id']))));
 
         // The customer's text and WhatsApp messages, held back like the
         // e-mail when the caller says the customer is not to be told.

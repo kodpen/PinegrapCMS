@@ -509,7 +509,7 @@ function pg_user_update($user_id, $fields, $editor, $save_access = true)
  * Deletes an account and everything that is only its own: sign-in tokens,
  * second factor and passkeys, linked identities, connected accounts,
  * favourites, back-in-stock requests, access records, address book, messages
- * and saved replies. The audit line keeps the row as it was. The caller has checked that the editor
+ * and saved replies; open store credit is voided. The audit line keeps the row as it was. The caller has checked that the editor
  * reaches the account and that it is not the last administrator.
  *
  * @param int $user_id
@@ -544,6 +544,13 @@ function pg_user_delete($user_id)
     // So do its favourites and back-in-stock requests.
     pg_wishlist_forget_user($user_id);
     pg_stock_notify_forget_user($user_id);
+
+    // Open store credit is voided with its note and audit line while the
+    // account still exists: afterwards no screen could void it, and a
+    // customer's card cannot be deleted from the gift card screen.
+    if (function_exists('pg_credit_forget_user')) {
+        pg_credit_forget_user($user_id);
+    }
 
     db_q("DELETE FROM user WHERE user_id = ?", array($id)) or output_error('Query failed.');
 

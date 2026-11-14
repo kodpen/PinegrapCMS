@@ -25,16 +25,16 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 // The filters of a list, defaults but for the changes.
 function workspace_mail_list_test_filters($changes = array())
 {
-	return array_merge(array('view' => 'all', 'status' => 'all', 'holder' => 'all', 'overdue' => false, 'box' => 0, 'q' => '', 'before' => null), $changes);
+	return array_merge(array('view' => 'all', 'status' => 'all', 'holder' => 'all', 'overdue' => false, 'box' => 0, 'transport' => '', 'q' => '', 'before' => null), $changes);
 }
 
 function test_workspace_mail_list_filters()
 {
-	pg_assert_same(array('view' => 'incoming', 'status' => 'open', 'holder' => 'all', 'overdue' => false, 'box' => 0, 'q' => '', 'before' => null),
+	pg_assert_same(array('view' => 'incoming', 'status' => 'open', 'holder' => 'all', 'overdue' => false, 'box' => 0, 'transport' => '', 'q' => '', 'before' => null),
 		ws_mail_list_filters(array()), 'open incoming conversations of anybody');
-	pg_assert_same(array('view' => 'incoming', 'status' => 'all', 'holder' => 'me', 'overdue' => true, 'box' => 2, 'q' => 'kargo', 'before' => array(500, 9)),
+	pg_assert_same(array('view' => 'incoming', 'status' => 'all', 'holder' => 'me', 'overdue' => true, 'box' => 2, 'transport' => '', 'q' => 'kargo', 'before' => array(500, 9)),
 		ws_mail_list_filters(array('status' => 'all', 'holder' => 'me', 'overdue' => '1', 'box' => '2', 'q' => '  kargo ', 'before' => '500-9')));
-	pg_assert_same(array('view' => 'incoming', 'status' => 'open', 'holder' => 'all', 'overdue' => false, 'box' => 0, 'q' => '', 'before' => null),
+	pg_assert_same(array('view' => 'incoming', 'status' => 'open', 'holder' => 'all', 'overdue' => false, 'box' => 0, 'transport' => '', 'q' => '', 'before' => null),
 		ws_mail_list_filters(array('view' => 'spam', 'status' => 'spam', 'holder' => array('me'), 'overdue' => 'yes', 'box' => '-1', 'q' => array('x'), 'before' => '1-2-3')), 'unknown words fall back');
 
 	pg_assert_same('all', ws_mail_list_filters(array('view' => 'sent'))['status'], 'Sent shows every status by default');

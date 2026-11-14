@@ -40,7 +40,7 @@ function test_flow_date_inputs_carry_their_hook()
 	pg_assert_same(1, preg_match('/function dateInput\(type, value, onValue\) \{/', $src), 'one helper builds the date and time inputs');
 	pg_assert_same(1, preg_match("/K\\.dateField\\(input, type\\);/", $src), 'the helper hooks its input through the kit');
 	pg_assert_true(strpos($src, "input.addEventListener('change', function () { onValue(input.value); });") !== false, 'the helper reads the value on the change the drawn box fires');
-	pg_assert_same(5, preg_match_all("/dateInput\\('(date|time|datetime-local)', /", $src), 'the schedule date, time and last day, the condition hours and the template time go through the helper');
+	pg_assert_same(6, preg_match_all("/dateInput\\('(date|time|datetime-local)', /", $src), 'the schedule date, time and last day, the condition hours, the Wait box\'s time of day and the template time go through the helper');
 	pg_assert_same(1, preg_match("/dateInput\\(\\(kind === 'date'\\) \\? 'date' : 'datetime-local', /", $src), 'a record field of a date or a date and time kind keeps its native store');
 	pg_assert_true(strpos($src, "String(value || '').replace(' ', 'T').slice(0, 16)") !== false, 'a date and time value still goes in as Y-m-d\\TH:i');
 	pg_assert_true(strpos($src, "typed.replace('T', ' ').slice(0, 16) + ':00'") !== false, 'and is still stored as Y-m-d H:i:s');

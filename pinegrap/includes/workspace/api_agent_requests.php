@@ -35,6 +35,7 @@ function ws_api_agent_answer_schema()
 {
     return ws_api_claude_request_schema() + array(
         'conclude' => array('asked' => 'boolean', 'done' => 'boolean', 'error' => 'string'),
+        'offer'    => array('asked' => 'boolean', 'done' => 'boolean', 'error' => 'string'),
     );
 }
 
@@ -86,13 +87,14 @@ function ws_agent_request_api_routes()
             'dry_run'     => true,
             'returns'     => ws_api_agent_answer_schema(),
             'summary'     => 'Answer a request',
-            'description' => 'Writes text under the message that asked, as the application, with the person who asked mentioned, and swaps the eye for a tick. no_answer true closes the request without writing anything (it takes no text). emoji leaves one emoji on the message that asked, with text or with no_answer. conclude true, for a request asked in a discussion by a person in it who asks for it, concludes the discussion after the answer is written (closed_by is that person); any other request is not concluded, conclude.error says why and the answer is still written. Other things the agent does (a task, a poll, a proposal) go through their own routes. 403 when the channel no longer lets the agent answer or the person who asked can no longer write there; 409 closed when the request is closed; 409 editing while the writer is editing the message that asked; 409 edited when it was edited after the claim: the request waits again, claim it and read the new words.' . $only,
+            'description' => 'Writes text under the message that asked, as the application, with the person who asked mentioned, and swaps the eye for a tick. no_answer true closes the request without writing anything (it takes no text). emoji leaves one emoji on the message that asked, with text or with no_answer. conclude true, for a request asked in a discussion by a person in it who asks for it, concludes the discussion after the answer is written (closed_by is that person); any other request is not concluded, conclude.error says why and the answer is still written. offer_conclude true, with text, unasked, puts a Conclude the discussion button under the answer for the people in the discussion; one of them presses it to conclude in their own name (the same asker rule; offer.error says why it was not made). Other things the agent does (a task, a poll, a proposal) go through their own routes. 403 when the channel no longer lets the agent answer or the person who asked can no longer write there; 409 closed when the request is closed; 409 editing while the writer is editing the message that asked; 409 edited when it was edited after the claim: the request waits again, claim it and read the new words.' . $only,
             'params'      => array(
                 $id,
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'description' => 'The answer; required unless no_answer is true.'),
                 array('name' => 'no_answer', 'in' => 'body', 'type' => 'bool', 'description' => 'Close the request without writing anything: it needs no answer.'),
                 array('name' => 'emoji', 'in' => 'body', 'type' => 'string', 'max_length' => 32, 'description' => 'One fitting emoji left on the message that asked, as the application: beside text, or with no_answer in place of it. Never on the agent\'s own message; a wake asked by no message takes none.'),
                 array('name' => 'conclude', 'in' => 'body', 'type' => 'bool', 'description' => 'Conclude the discussion the request was asked in, after the answer: only when a person in it asked for it. Never unasked.'),
+                array('name' => 'offer_conclude', 'in' => 'body', 'type' => 'bool', 'description' => 'Unasked, when the discussion seems to have reached its end: a Conclude the discussion button under the answer, which a person in it presses. Takes text; not with conclude.'),
             ),
         ),
         array(
@@ -480,6 +482,15 @@ function ws_api_agent_request_answer($params)
         ? ws_thread_close_for_agent($row, (string) $agent['handle'], true) : null;
     $concluding = $conclude ? array('conclude' => array('asked' => true, 'done' => $conclude['ok'], 'error' => $conclude['error'])) : array();
 
+    // An offer stands under the answer's words; concluding at once leaves
+    // nothing to offer.
+    if (!empty($params['offer_conclude']) && $conclude) {
+        api_fail_validation(lang('Offer to conclude the discussion, or conclude it; not both.'), 'offer_conclude');
+    }
+
+    $offer_problem = !empty($params['offer_conclude']) ? ws_thread_offer_problem($row, empty($params['no_answer'])) : null;
+    $concluding += ($offer_problem !== null) ? array('offer' => array('asked' => true, 'done' => ($offer_problem === ''), 'error' => (string) $offer_problem)) : array();
+
     $now = time();
     $reply_id = 0;
 
@@ -514,6 +525,10 @@ function ws_api_agent_request_answer($params)
         }
 
         $reply_id = (int) $sent['message_id'];
+
+        if ($offer_problem === '') {
+            ws_thread_offer_store($reply_id, (int) $place['channel']['id']);
+        }
 
         // The answer wakes the agents it names, the asking one included, or
         // the one whose rule wakes it on answers to its messages.
@@ -556,6 +571,7 @@ function ws_api_agent_request_answer($params)
 
     api_ok(ws_api_claude_request_present($viewer, ws_api_agent_request_or_404($agent, $row['id'])) + array(
         'conclude' => array('asked' => (bool) $conclude, 'done' => $conclude ? $conclude['ok'] : false, 'error' => $conclude ? $conclude['error'] : ''),
+        'offer'    => array('asked' => ($offer_problem !== null), 'done' => ($offer_problem === ''), 'error' => (string) $offer_problem),
     ));
 }
 

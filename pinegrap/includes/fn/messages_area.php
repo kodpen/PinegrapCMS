@@ -27,7 +27,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /**
  * The five tabs in their order. 'gate' names the rule the tab's screen asks:
  * 'email' is validate_email_access() (role <= 2 or the Campaign Manager
- * right), 'manager' is role <= 2. Labels are English; the strip translates.
+ * right), 'manager' is role <= 2, 'email_or_flows' either the e-mail rule
+ * or the Flows screen's (pg_flows_user_may()): Automatic sends lists flows
+ * and, until they are turned into flows, the campaign profiles still
+ * running. Labels are English; the strip translates.
  *
  * @return array key => array(file, label, icon, gate)
  */
@@ -35,7 +38,7 @@ function pg_messages_area_tabs()
 {
     return array(
         'campaigns' => array('file' => 'view_email_campaigns.php', 'label' => 'Campaigns', 'icon' => 'bi-megaphone', 'gate' => 'email'),
-        'automatic' => array('file' => 'messages_automatic.php', 'label' => 'Automatic sends', 'icon' => 'bi-diagram-3', 'gate' => 'email'),
+        'automatic' => array('file' => 'messages_automatic.php', 'label' => 'Automatic sends', 'icon' => 'bi-diagram-3', 'gate' => 'email_or_flows'),
         'templates' => array('file' => 'messages_templates.php', 'label' => 'Templates', 'icon' => 'bi-card-text', 'gate' => 'email'),
         'sends'     => array('file' => 'messages_sends.php', 'label' => 'Sends', 'icon' => 'bi-send', 'gate' => 'email'),
         'channels'  => array('file' => 'messages_channels.php', 'label' => 'Channels', 'icon' => 'bi-broadcast', 'gate' => 'manager'),
@@ -45,14 +48,19 @@ function pg_messages_area_tabs()
 /**
  * Whether a person passes a tab's gate.
  *
- * @param string $gate          'email' or 'manager'
+ * @param string $gate          'email', 'manager' or 'email_or_flows'
  * @param int    $role          0 administrator to 3 user
  * @param bool   $manage_emails the Campaign Manager right
+ * @param bool   $flows         may open the Flows screen (pg_flows_user_may())
  * @return bool
  */
-function pg_messages_gate_allows($gate, $role, $manage_emails)
+function pg_messages_gate_allows($gate, $role, $manage_emails, $flows = false)
 {
     $role = (int) $role;
+
+    if ($gate === 'email_or_flows') {
+        return (bool) $flows || pg_messages_gate_allows('email', $role, $manage_emails);
+    }
 
     if ($gate === 'manager') {
         return $role <= 2;
@@ -70,14 +78,15 @@ function pg_messages_gate_allows($gate, $role, $manage_emails)
  *
  * @param int  $role
  * @param bool $manage_emails
+ * @param bool $flows may open the Flows screen
  * @return array
  */
-function pg_messages_tabs_for($role, $manage_emails)
+function pg_messages_tabs_for($role, $manage_emails, $flows = false)
 {
     $keys = array();
 
     foreach (pg_messages_area_tabs() as $key => $tab) {
-        if (pg_messages_gate_allows($tab['gate'], $role, $manage_emails)) {
+        if (pg_messages_gate_allows($tab['gate'], $role, $manage_emails, $flows)) {
             $keys[] = $key;
         }
     }
@@ -86,7 +95,9 @@ function pg_messages_tabs_for($role, $manage_emails)
 }
 
 /**
- * The same for a signed-in user row (validate_user()).
+ * The same for a signed-in user row (validate_user()). The Flows screen's
+ * gate is asked only of a role 3 user without the Campaign Manager right:
+ * everyone else passes Automatic sends' gate already.
  *
  * @param array $user
  * @return array
@@ -95,8 +106,10 @@ function pg_messages_tabs_for_user($user)
 {
     $role = isset($user['role']) ? (int) $user['role'] : 3;
     $manage_emails = !empty($user['manage_emails']);
+    $flows = ($role >= 3) && !$manage_emails && !empty($user['id'])
+        && function_exists('pg_flows_user_may') && pg_flows_user_may($user);
 
-    return pg_messages_tabs_for($role, $manage_emails);
+    return pg_messages_tabs_for($role, $manage_emails, $flows);
 }
 
 /**
