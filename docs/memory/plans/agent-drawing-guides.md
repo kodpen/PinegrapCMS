@@ -15,7 +15,7 @@ description: Plan (owner 2026-11-14): what the canvas side gives an agent's draw
 - DG2 (M) Done (#9457). The guide an agent reads: one text from one source, given as an MCP resource and prompt, shortly in the canvas tools' descriptions and in the assistants' draw tool (`agent-canvas-assistants.md`). Tests pin the text to the values the server uses.
 - DG3 (M) A chart as an operation: `chart` in the one set of canvas operations (API route, MCP tool, `edit_canvas`): kind (bar, stacked bar, line, area, donut, sparkline, a figure tile), data, labels, size. The server writes the layers in the guide's style; they stay layers a person edits in the Design Canvas. A model test in Node per kind.
   - DG3's channel trial changes the data of the chart in message 2725 of channel 25 through the new `chart` operation (an edit of that canvas, not a new one): the last bar to 40 and the title marked "düzenlenmiş"; the canvas link and before/after pictures as a reply to 2736 (owner, 2026-11-14, message 2736: he opened 2725 in the Design Canvas and edited it).
-- DG4 (M) Ready layouts: templates shipped with the software (a row of figures with a chart, a report page, a comparison, a slide), listed beside a person's templates and filled by the agent.
+- DG4 (M) Done (#9464). Ready layouts (`workspace/agent-canvas-layouts.md`): templates shipped with the software (a row of figures with a chart, a report page, a comparison, a slide), listed beside a person's templates and filled by the agent.
 - DG5 (S) Live pages: an agent's Chart.js charts take the guide's palette and type by a ready preset the page names.
 - DG6 (S) Close-out: the rules into `workspace/agent-canvas-*.md`, this plan deleted.
 

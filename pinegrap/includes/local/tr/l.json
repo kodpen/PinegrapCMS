@@ -19,6 +19,7 @@
     "Label class": "Etiket sınıfı",
     "Label of the quantity box": "Adet kutusunun etiketi",
     "Label to display on pages": "Sayfalarda görüntülenecek etiket",
+    "Label {var:1}": "Etiket {var:1}",
     "Labels": "Etiketler",
     "Labels not in this PDF": "Bu PDF'te olmayan etiketler",
     "Labels put on a pull request": "Çekme isteğine konan etiketler",
