@@ -9,8 +9,7 @@ description: The e-mail campaign create and edit screens share includes/forms/em
 
 ## Which helpers does it hold?
 - `pg_email_campaign_card($title, $body)`: the full-width card every part uses (the screens also use it for create's contact-group card).
-- `pg_email_campaign_message_card($subject_row, $format_row, $extra)`: the 'E-Mail Message' card; edit passes its body as `$extra`.
-- `pg_email_campaign_subject_row($subject, $readonly)`, `pg_email_campaign_format_row($content, $fixed)`: create passes its format radios with the plain-text body and the page select with preview; edit passes the stored format name with `$fixed = true`.
+- The subject and body are the content card since MA5b #9426 (`campaign-content-step.md`); `pg_email_campaign_message_card()`, `pg_email_campaign_subject_row()` and `pg_email_campaign_format_row()` are no longer called by the screens, only by their tests.
 - `pg_email_campaign_from_card($values, $readonly)`: from name, from address, reply-to. Create prefills `ORGANIZATION_NAME` and the user's address.
 - `pg_email_campaign_schedule_card($start_time, $readonly, $enabled)`: `''` unless `email_campaign_job_enabled()` (or `$enabled`); a zero date is blank; read-only and blank prints "Immediately" (before #2925 that branch never ran). Prints `get_date_time_picker_format() . pg_fields_script()`, no timepicker call (`bs6_timepicker_addon_test.php`).
 - `pg_email_campaign_purpose_card($purpose, $readonly)`: CAN-SPAM commercial/transactional; anything but `commercial` checks transactional.
