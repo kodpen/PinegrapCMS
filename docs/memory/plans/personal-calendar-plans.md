@@ -17,10 +17,10 @@ description: Plan (owner 2026-11-14): "My calendar" beside e-mail and a person's
 - PC3 (M, schema) Plans: in progress (`workspace/workspace-personal-plans.md`): step 11.0.201, the gate `ws_personal_plan_can_see()` and its guard test, the "New plan" drawer, My calendar and Today, the reminder line `plan_reminder`.
 - PC4 (S) Sharing: "Who can see" on the drawer: Only me (the default), chosen team members, the whole team. The others read it on their My calendar under the owner's name and change nothing.
 - PC5 (M) Roadmap: a plan with dated steps (title, day, done), drawn as a bar with its steps and its progress. "Make a task" on a step opens the task drawer filled; the step then follows the task's state.
-- PC6 (M) For a customer: a plan names a contact (the pick of `workspace/workspace-visit-contact.md`) and shows on the customer's card and history to those who may see the plan. "New roadmap" on the card starts empty or from the person's own plans, copied. Merge and erasure as visits. PC6 also lists `ws_personal_plans.contact_id` in `pg_contact_holders()` and drops its exception in `tests/contact_holders_test.php`.
+- PC6 (M) For a customer: a plan names a contact (the pick of `workspace/workspace-visit-contact.md`) and shows on the customer's card and history to those who may see the plan. "New roadmap" on the card starts empty or from the person's own plans, copied. Merge and erasure as visits. PC6 also lists `ws_personal_plans.contact_id` in `pg_contact_holders()` and drops its test exception.
 - PC7 (M) E-mail and calendar: "Add to my calendar" in a mail's menu makes a plan tied to the conversation; an invitation in a mail is drawn as a card with the same button. No answer goes to the organiser.
 - PC8 (M) API and MCP: a person's own plans listed, added and changed by that person's connection under a scope of its own. An application key and a channel agent never read a private plan; an assistant hears of a plan only when its owner asks.
-- PC3c (S, later, no schema) The planning board's Turkish name becomes "Planlama panosu" everywhere, through `tools/tr_add.php --replace` (architect 2857 point 4; left out of PC3 to keep it small).
+- PC3c (S, later) The board's Turkish name becomes "Planlama panosu" everywhere, with `tools/tr_add.php --replace` (architect 2857).
 - PC9 (S) Close-out: the memory files, this plan deleted. Later: plans written into the person's Google or Outlook calendar. A roadmap is not shown to the customer on the site (owner, 2026-11-14).
 
 ## What does every step keep?
