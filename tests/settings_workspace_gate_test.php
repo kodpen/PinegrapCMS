@@ -63,16 +63,19 @@ function test_settings_workspace_gate_heading_and_keys()
 {
 	$categories = settings_workspace_gate_test_categories();
 
-	pg_assert_same(18, count($categories), 'the registry\'s categories are read');
+	pg_assert_same(19, count($categories), 'the registry\'s categories are read');
 	pg_assert_same(settings_workspace_gate_test_workspace_keys(), array_slice(array_keys($categories), -3), 'the three Workspace categories close the list');
 
 	foreach ($categories as $key => $category) {
 		$workspace = in_array($key, settings_workspace_gate_test_workspace_keys(), true);
+		$mail = ($key === 'mailboxes');
 
-		pg_assert_same($workspace ? 'workspace' : null, $category['gate'] ?? null, $key . ': gated by the Workspace settings right only when it is a Workspace category');
+		pg_assert_same($workspace ? 'workspace' : ($mail ? 'mail' : null), $category['gate'] ?? null, $key . ': gated by the Workspace settings right only when it is a Workspace category or Mailboxes');
 		pg_assert_same($workspace, $category['group'] === 'workspace', $key . ': under the Workspace heading only when it is a Workspace category');
-		pg_assert_same($workspace, pg_settings_category_is_workspace($category), $key . ': known as a Workspace category');
+		pg_assert_same($workspace || $mail, pg_settings_category_is_workspace($category), $key . ': read without the site settings\' preparation');
 	}
+
+	pg_assert_contains("define('PG_SETTINGS_KEY', 'mailboxes');", settings_workspace_gate_test_source('settings_mailboxes.php'), 'Mailboxes: its page');
 
 	$groups = settings_workspace_gate_test_source('includes/settings/registry.php');
 	pg_assert_contains("'workspace' => lang('Workspace'),", $groups, 'the fifth heading');
@@ -91,13 +94,24 @@ function test_settings_workspace_gate_heading_and_keys()
 function test_settings_workspace_gate_right_holder_opens_workspace_only()
 {
 	$categories = settings_workspace_gate_test_categories();
-	$reader = array('manager' => false, 'workspace' => true);
+	$reader = array('manager' => false, 'workspace' => true, 'mail' => true);
 
-	pg_assert_same(settings_workspace_gate_test_workspace_keys(), array_keys(pg_settings_categories_for(array('role' => 3), $reader, $categories)));
+	pg_assert_same(array_merge(array('mailboxes'), settings_workspace_gate_test_workspace_keys()), array_keys(pg_settings_categories_for(array('role' => 3), $reader, $categories)));
 
 	foreach ($categories as $key => $category) {
 		pg_assert_same(pg_settings_category_is_workspace($category), pg_settings_category_open($category, $reader), $key);
 	}
+}
+
+// Mailboxes opens for the Workspace settings right whatever the switch: the
+// reader's 'mail', never 'workspace' (switch on) or the manager role.
+function test_settings_workspace_gate_mailboxes_follow_the_right_not_the_switch()
+{
+	$categories = settings_workspace_gate_test_categories();
+
+	pg_assert_true(pg_settings_category_open($categories['mailboxes'], array('manager' => false, 'workspace' => false, 'mail' => true)), 'the right with the Workspace off');
+	pg_assert_false(pg_settings_category_open($categories['mailboxes'], array('manager' => true, 'workspace' => false, 'mail' => false)), 'a manager without the right');
+	pg_assert_false(pg_settings_category_open($categories['workspace_channels'], array('manager' => false, 'workspace' => false, 'mail' => true)), 'the Workspace categories stay behind the switch');
 }
 
 // Case 2: a manager without the right (kept out of the team) is refused the
@@ -109,6 +123,7 @@ function test_settings_workspace_gate_manager_without_right_is_refused()
 	$open = array_keys(pg_settings_categories_for(array('role' => 2), $reader, $categories));
 
 	pg_assert_same(15, count($open), 'every other category');
+	pg_assert_false(in_array('mailboxes', $open, true), 'Mailboxes is refused too');
 
 	foreach (settings_workspace_gate_test_workspace_keys() as $key) {
 		pg_assert_false(in_array($key, $open, true), $key . ' is refused');
@@ -122,7 +137,7 @@ function test_settings_workspace_gate_other_categories_stay_the_managers()
 {
 	$categories = settings_workspace_gate_test_categories();
 
-	pg_assert_same(array_keys($categories), array_keys(pg_settings_categories_for(array('role' => 0), array('manager' => true, 'workspace' => true), $categories)), 'a manager with the right opens every category');
+	pg_assert_same(array_keys($categories), array_keys(pg_settings_categories_for(array('role' => 0), array('manager' => true, 'workspace' => true, 'mail' => true), $categories)), 'a manager with the right opens every category');
 	pg_assert_same(array(), pg_settings_categories_for(array('role' => 3), array('manager' => false, 'workspace' => false), $categories), 'a reader with neither opens none');
 
 	foreach ($categories as $key => $category) {

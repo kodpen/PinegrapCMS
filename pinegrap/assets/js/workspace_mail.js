@@ -672,7 +672,8 @@
             Array.prototype.forEach.call(document.querySelectorAll(selector), callback);
         }
 
-        // The E-mails tile of the menu (workspace_side.js) shows the number.
+        // The number on an E-mails tile, where a page still draws one; the
+        // Communication row of the menu counts again on the next page.
         function badge(count) {
             each('[data-ws-nav="mail"]', function (tile) {
                 var node = tile.querySelector('.ws-count');

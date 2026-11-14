@@ -120,6 +120,7 @@ function test_settings_search_every_category_names_its_group()
 		'privacy'     => 'site',
 		'languages'   => 'site',
 		'contact'     => 'site',
+		'mailboxes'   => 'site',
 		'security'    => 'security',
 		'firewall'    => 'security',
 		'commerce'    => 'selling',

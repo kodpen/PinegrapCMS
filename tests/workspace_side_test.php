@@ -35,7 +35,6 @@ function workspace_side_test_flags($changes = array())
 		'messages'      => true,
 		'flows'         => true,
 		'mcp'           => true,
-		'mail'          => true,
 	), $changes);
 }
 
@@ -59,7 +58,7 @@ function test_workspace_side_screen_names_the_workspace_screens()
 	pg_assert_same('timeline', ws_side_screen('/pinegrap/workspace_timeline.php'));
 	pg_assert_same('flows', ws_side_screen('/pinegrap/workspace_flows.php'));
 	pg_assert_same('mcp', ws_side_screen('/pinegrap/workspace_mcp.php'));
-	pg_assert_same('mail', ws_side_screen('/pinegrap/workspace_mail.php'));
+	pg_assert_same('', ws_side_screen('/pinegrap/workspace_mail.php'), 'E-mail is read in Communication');
 	pg_assert_same('settings', ws_side_screen('/pinegrap/workspace_settings.php'));
 	pg_assert_same('settings', ws_side_screen('/pinegrap/workspace_template.php'), 'a template is written from the settings');
 	pg_assert_same('settings', ws_side_screen('/pinegrap/settings_workspace_channels.php'), 'the Workspace categories of Site Settings, as a page');
@@ -79,7 +78,7 @@ function test_workspace_side_nav_keeps_every_place_under_its_gate()
 	$staff = ws_nav_groups(array('role' => 1, 'settings' => true), workspace_side_test_flags());
 
 	pg_assert_same(array('home'), workspace_side_test_keys($staff, 'top'), 'Today alone at the top');
-	pg_assert_same(array('tasks', 'notes', 'wtables', 'flows', 'calendar', 'board', 'timeline', 'mail'), workspace_side_test_keys($staff, 'tools'), 'the tiles, My Tasks first');
+	pg_assert_same(array('tasks', 'notes', 'wtables', 'flows', 'calendar', 'board', 'timeline'), workspace_side_test_keys($staff, 'tools'), 'the tiles, My Tasks first');
 	pg_assert_same(array('scheduled', 'mcp', 'calendar_feed', 'archived', 'audit'), workspace_side_test_keys($staff, 'more'), 'behind More');
 	pg_assert_same(array('settings'), workspace_side_test_keys($staff, 'head'), 'the settings gear sits in the head');
 
@@ -95,7 +94,7 @@ function test_workspace_side_nav_keeps_every_place_under_its_gate()
 	pg_assert_same(array(), $member['head'], 'no settings without the right');
 
 	$none = ws_nav_groups(array('role' => 3, 'settings' => false), workspace_side_test_flags(array(
-		'notes' => false, 'wtables' => false, 'calendar_feed' => false, 'actions' => false, 'messages' => false, 'flows' => false, 'mcp' => false, 'mail' => false,
+		'notes' => false, 'wtables' => false, 'calendar_feed' => false, 'actions' => false, 'messages' => false, 'flows' => false, 'mcp' => false,
 	)));
 
 	pg_assert_same(array('home'), workspace_side_test_keys($none, 'top'), 'every member has Today');

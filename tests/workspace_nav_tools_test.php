@@ -32,7 +32,6 @@ function workspace_nav_tools_test_flags($changes = array())
 		'messages'      => true,
 		'flows'         => true,
 		'mcp'           => true,
-		'mail'          => true,
 	), $changes);
 }
 
@@ -48,7 +47,7 @@ function test_workspace_nav_tools_are_the_daily_screens_in_the_drawn_order()
 {
 	$groups = ws_nav_groups(array('role' => 1, 'settings' => true), workspace_nav_tools_test_flags());
 
-	pg_assert_same(array('tasks', 'notes', 'wtables', 'flows', 'calendar', 'board', 'timeline', 'mail'), workspace_nav_tools_test_keys($groups, 'tools'), 'the tiles, My Tasks first');
+	pg_assert_same(array('tasks', 'notes', 'wtables', 'flows', 'calendar', 'board', 'timeline'), workspace_nav_tools_test_keys($groups, 'tools'), 'the tiles, My Tasks first');
 	pg_assert_same(array('scheduled', 'mcp', 'calendar_feed', 'archived', 'audit'), workspace_nav_tools_test_keys($groups, 'more'), 'behind More');
 	pg_assert_false(isset($groups['work']), 'Work and planning is gone');
 	pg_assert_false(isset($groups['records']), 'Decisions and archive is gone');
@@ -58,7 +57,6 @@ function test_workspace_nav_tools_keep_the_gate_of_each_screen()
 {
 	$member = ws_nav_groups(array('role' => 3, 'settings' => false), workspace_nav_tools_test_flags(array(
 		'notes' => false,
-		'mail'  => false,
 		'mcp'   => false,
 	)));
 

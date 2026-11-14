@@ -4173,18 +4173,28 @@ function output_menu($properties = false)
         $menu_items[8]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_sessions.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-laptop bi-me-2\'>' . lang('Sessions') . '</a>';
     }
 
-    if ((($user['role'] < 3) || ($user['manage_emails'] == true))) {
-        // COMMUNICATION: the messages area. Its panel lists the tabs this
-        // person may open (each under its screen's own gate) and New campaign
-        // (includes/fn/messages_area.php).
-        require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
+    // COMMUNICATION: the messages area. Its panel lists the tabs this person
+    // may open (each under its screen's own gate) and New campaign
+    // (includes/fn/messages_area.php). Somebody who reads a mailbox without
+    // campaign rights gets the row with Incoming e-mail alone.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
+    $messages_tabs = pg_messages_tabs_for_user($user);
+
+    if ($messages_tabs) {
+        $messages_tab_list = pg_messages_area_tabs();
         $menu_items[9]['id'] = 9;
-        $menu_items[9]['href'] = 'view_email_campaigns.php';
+        $menu_items[9]['href'] = $messages_tab_list[$messages_tabs[0]]['file'];
         $menu_items[9]['menu_icon'] = 'campaigns';
         $menu_items[9]['color_class'] = 'campaigns-color';
         $menu_items[9]['title'] = 'Communication';
         $menu_items[9]['context'] = true;
-        $menu_items[9]['data-bs-content'] = pg_messages_menu_entries(pg_messages_tabs_for_user($user), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target);
+        $menu_items[9]['data-bs-content'] = pg_messages_menu_entries($messages_tabs, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target);
+
+        // The open e-mail conversations unread for the person.
+        if (in_array('mail', $messages_tabs, true)) {
+            $menu_items[9]['badge'] = pg_messages_mail_unread($user);
+            $menu_items[9]['badge_title'] = lang(array('string' => '{var:1} unread e-mail conversation(s)', 'vars' => $menu_items[9]['badge']));
+        }
     }
 
     // ECOMMERCE
@@ -4830,6 +4840,7 @@ function output_menu($properties = false)
         case 'messages_templates.php':
         case 'messages_sends.php':
         case 'messages_channels.php':
+        case 'messages_mail.php':
             $active_menu = 9;
             break;
         case 'erp_dashboard.php':
@@ -4899,7 +4910,6 @@ function output_menu($properties = false)
         case 'settings_workspace_channels.php':
         case 'workspace_template.php':
         case 'workspace_calendar_feed.php':
-        case 'workspace_mail.php':
         case 'workspace_wtables.php':
             $active_menu = 23;
             break;
