@@ -4,7 +4,7 @@ description: A tag in a channel item asks the tagged assistant or wakes the tagg
 ---
 
 ## What is the rule?
-- Owner (2026-11-13): a tag anywhere in a channel item wakes the tagged assistant, as a text message does. Plan: `plans/channel-item-tags-wake.md`. Symptom fixed: a picture tagging an agent made no request (`workspace-voice-asks.md`).
+- Owner (2026-11-13): a tag anywhere in a channel item wakes the tagged assistant, as a text message does. Carried out in #9359, #9378, #9390, #9402. Symptom fixed: a picture tagging an agent made no request (`workspace-voice-asks.md`).
 - Guest messages, mail and the answers of Claude, Pinegrap AI or an MCP server wake nobody (architect, 2026-11-13; `agent-words-wake.md`).
 
 ## Which helpers ask? (messages.php)

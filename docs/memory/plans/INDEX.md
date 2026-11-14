@@ -10,8 +10,6 @@
 - agent-conclude-discussion.md: Plan (owner 2026-11-14): an agent concludes a discussion when a person in it asks, and unasked only offers a Conclude button a person presses
 - agent-drawing-guides.md: Plan (owner 2026-11-14): what the canvas side gives an agent's drawing: a guide it reads, charts as an operation, ready layouts, a chart preset for live pages
 - agent-knock-routine-form.md: Plan (architect 2026-11-13, #9241): a push door on a routine's fire address is knocked in the routine's form (it answered HTTP 400 to the webhook form); one step, RK1, then a live check
-- channel-item-tags-wake-steps.md: Steps TW1-TW5 of the channel-item-tags-wake plan: file caption, edit, note and decision; other messages; polls, tasks; shared notes, table cells (agent channels, managers); close-out
-- channel-item-tags-wake.md: Plan: a tag anywhere in a Workspace channel item (file caption, edit, note, poll, task, table cell) wakes the tagged assistant as a text message does; rulings, shared helper
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
