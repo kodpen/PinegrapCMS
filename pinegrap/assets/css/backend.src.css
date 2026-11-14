@@ -28281,8 +28281,8 @@ textarea.pg-campaign-text {
   color: var(--pg-fg-3);
 }
 /* "Send a test to me" at the end of the content card's side: the other
-   addresses, a line saying where it goes, the button; the sample photo
-   warning above them. */
+   addresses, a line saying where it goes, the button. The sample photo
+   warning sits above the line, with the design. */
 .pg-campaign-test {
   display: flex;
   flex-direction: column;
@@ -28300,6 +28300,7 @@ textarea.pg-campaign-text {
 }
 .pg-campaign-samples {
   display: flex;
+  margin-top: 12px;
   align-items: flex-start;
   gap: 8px;
   padding: 10px 12px;

@@ -246,26 +246,25 @@ function pg_campaign_content_card($o)
         $side .= '<p class="pg-campaign-part is-design pg-campaign-hint">' . h(lang('The page is drawn as an e-mail when the campaign is saved; what is saved is what will be sent.')) . '</p>';
     }
 
+    // A ready design's sample photos would go out as they are: said with
+    // the design, where "Edit the design" is the way to change them.
+    if (($mode === 'edit') && is_array($o['test']) && (int) ($o['test']['samples'] ?? 0) > 0) {
+        $side .= '<div class="pg-campaign-samples" role="status"><i class="bi bi-image" aria-hidden="true"></i><span class="pg-text-2">'
+            . h(lang(array('string' => 'The e-mail still holds {var:1} sample photo(s) of a ready design: put your own pictures in the design before it is sent.', 'vars' => array((int) $o['test']['samples']))))
+            . '</span></div>';
+    }
+
     // "Send a test to me": the stored e-mail to the user and up to five more
     // addresses, after the campaign is saved (pg_campaign_test_send()).
     if (($mode === 'edit') && is_array($o['test'])) {
         $own = (string) ($o['test']['own'] ?? '');
-        $samples = (int) ($o['test']['samples'] ?? 0);
-        $side .= '<div class="pg-campaign-test">';
-
-        // A ready design's sample photos would go out as they are.
-        if ($samples > 0) {
-            $side .= '<div class="pg-campaign-samples" role="status"><i class="bi bi-image" aria-hidden="true"></i><span class="pg-text-2">'
-                . h(lang(array('string' => 'The e-mail still holds {var:1} sample photo(s) of a ready design: put your own pictures in the design before it is sent.', 'vars' => array($samples))))
-                . '</span></div>';
-        }
-
-        $side .= '<label class="pg-field-label" for="test_addresses">' . h(lang('Send a test')) . '</label>'
+        $side .= '<div class="pg-campaign-test">'
+            . '<label class="pg-field-label" for="test_addresses">' . h(lang('Test e-mail')) . '</label>'
             . '<input class="pg-input" type="text" name="test_addresses" id="test_addresses" autocomplete="off" placeholder="' . h(lang('Up to five more addresses, separated by commas')) . '">'
             . '<p class="pg-campaign-hint">' . h(($own !== '')
                 ? lang(array('string' => 'Goes to you ({var:1}) and the addresses above; the campaign is saved first. A test is never counted in the campaign.', 'vars' => array($own)))
                 : lang('Goes to the addresses above; the campaign is saved first. A test is never counted in the campaign.')) . '</p>'
-            . '<button type="submit" class="pg-button pg-button-quiet" name="send_test" value="1"><i class="bi bi-send" aria-hidden="true"></i>' . h(lang('Send a test to me')) . '</button>'
+            . '<button type="submit" class="pg-button pg-button-quiet" name="send_test" value="1"><i class="bi bi-send" aria-hidden="true"></i>' . h(lang('Send a test')) . '</button>'
             . '</div>';
     }
 

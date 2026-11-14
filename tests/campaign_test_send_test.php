@@ -56,7 +56,9 @@ function test_campaign_test_panel_on_the_card()
 	pg_assert_contains('name="send_test"', $card, 'the button posts the form');
 	pg_assert_contains('name="test_addresses"', $card, 'the other addresses');
 	pg_assert_contains('me@example.com', $card, 'one\'s own address shown');
-	pg_assert_contains(h(lang('Send a test to me')), $card, 'its words');
+	pg_assert_contains(h(lang('Send a test')), $card, 'its words');
+	pg_assert_contains(h(lang('Test e-mail')), $card, 'its label');
+	pg_assert_true(strpos($card, 'pg-campaign-samples') < strpos($card, 'pg-campaign-test'), 'the warning with the design, above the test');
 	pg_assert_contains('pg-campaign-samples', $card, 'the sample photo warning');
 
 	$clean = pg_campaign_content_card(array('mode' => 'edit', 'kind' => 'html', 'test' => array('own' => 'me@example.com', 'samples' => 0)));

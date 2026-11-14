@@ -621,11 +621,11 @@ if (!$_POST) {
             $test_result = is_array($test_campaign) ? pg_campaign_test_send($test_campaign, $test_addresses, (int) $user['id']) : array('sent' => 0, 'failed' => $test_addresses);
 
             if ($test_result['sent'] > 0) {
-                $edit_liveform->add_notice(lang(array('string' => 'The campaign was saved and a test was sent to {var:1}.', 'vars' => array(implode(', ', array_diff($test_addresses, $test_result['failed']))))));
+                $edit_liveform->add_notice(lang(array('string' => 'The campaign was saved and a test was sent ({var:1}).', 'vars' => array(implode(', ', array_diff($test_addresses, $test_result['failed']))))));
             }
 
             if ($test_result['failed']) {
-                $edit_liveform->add_warning(lang(array('string' => 'The test could not be sent to {var:1}: check the campaign mail server in SMTP Settings.', 'vars' => array(implode(', ', $test_result['failed'])))));
+                $edit_liveform->add_warning(lang(array('string' => 'The test could not be sent ({var:1}): check the campaign mail server in SMTP Settings.', 'vars' => array(implode(', ', $test_result['failed'])))));
             }
 
             log_activity(lang(array('string' => 'a test of campaign (subject: {var:1}) was sent', 'vars' => array($subject))), $_SESSION['sessionusername']);
