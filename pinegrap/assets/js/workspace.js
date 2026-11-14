@@ -8836,21 +8836,28 @@
         },
 
         // Who outside the team reads this channel, and for staff who may
-        // manage it, their links.
+        // manage it, their links: a full row while a link is open, null once
+        // none is (shareHeadButton() takes its place in the head).
         shareBar: function (channel) {
             var self = this;
             var info = channel.shares;
-            var open = info.guests.filter(function (guest) { return guest.open; });
-            var bar = el('div', 'alert rounded-0 m-0 py-3 small d-flex flex-wrap align-items-center gap-3 ws-share-bar ' + (open.length ? 'theme-warning' : 'theme-secondary'));
+            var open = info ? info.guests.filter(function (guest) { return guest.open; }) : [];
 
-            bar.appendChild(icon('bi-box-arrow-up-right', 'fs-md'));
+            if (!open.length) {
+                return null;
+            }
+
+            var bar = el('div', 'alert rounded-0 m-0 py-3 small d-flex flex-wrap align-items-center gap-3 ws-share-bar ws-share-bar-open theme-warning');
+
+            bar.setAttribute('role', 'status');
+            bar.appendChild(icon('bi-broadcast', 'fs-md ws-share-bar-icon'));
 
             var names = open.map(function (guest) {
                 return guest.name + ' (' + (guest.access === 'read' ? t('share_read_badge') : t('share_write_badge')) + ')';
             });
 
             var text = el('div', 'flex-grow-1 ws-share-bar-text');
-            text.appendChild(el('span', 'fw-semibold', open.length ? t('share_bar', names.join(', ')) : t('share_bar_closed')));
+            text.appendChild(el('span', 'fw-semibold', t('share_bar', names.join(', '))));
 
             open.filter(function (guest) { return guest.online; }).forEach(function (guest) {
                 text.appendChild(el('span', 'ws-guest-online ms-3', guest.name + ' · ' + t('guest_online')));
@@ -8865,6 +8872,57 @@
             }
 
             return bar;
+        },
+
+        // A channel that was shared, with no link open now: a small button
+        // with an exclamation mark in the head, not a row; it opens the same
+        // Manage. null while a link is open or nothing was shared.
+        shareHeadButton: function (channel) {
+            var self = this;
+            var info = channel.shares;
+
+            if (!info || info.guests.some(function (guest) { return guest.open; })) {
+                return null;
+            }
+
+            var notice = button('btn btn-sm btn-text theme-warning ws-head-share', '', 'bi-exclamation-circle', t('share_bar_closed'));
+
+            notice.title = t('share_bar_closed');
+
+            if (info.can_host) {
+                notice.addEventListener('click', function () { self.shareManage(channel); });
+            } else {
+                notice.addEventListener('click', function () { toast(t('share_bar_closed'), 'info'); });
+            }
+
+            return notice;
+        },
+
+        // The share bar and the head's button as the channel's shares now
+        // stand (a share opened, ended or relinked while the screen is open).
+        drawShareNotice: function () {
+            var channel = this.channel;
+            var center = this.center;
+
+            Array.prototype.forEach.call(center.querySelectorAll('.ws-share-bar, .ws-head-share'), function (node) { node.remove(); });
+
+            if (!channel || channel.guest || !channel.shares) {
+                return;
+            }
+
+            var bar = this.shareBar(channel);
+            var before = center.querySelector('.ws-era-bar, .ws-tabs');
+
+            if (bar && before) {
+                before.before(bar);
+            }
+
+            var notice = this.shareHeadButton(channel);
+            var actions = center.querySelector('.ws-head-channel .ws-head-actions');
+
+            if (notice && actions) {
+                actions.insertBefore(notice, actions.firstChild);
+            }
         },
 
         shareManage: function (channel) {
@@ -8989,6 +9047,14 @@
             head.appendChild(self.headTitle(channel));
 
             var actions = el('div', 'ws-head-actions');
+
+            // Shared once, no link open now (shareHeadButton()).
+            var shareNotice = channel.guest ? null : self.shareHeadButton(channel);
+
+            if (shareNotice) {
+                actions.appendChild(shareNotice);
+            }
+
             var faces = button('btn btn-sm btn-text theme-secondary ws-head-faces ws-head-wide', '', '', t('members'));
             memberFaces(faces, channel);
             faces.addEventListener('click', function () { self.showMembers(); });
@@ -9051,9 +9117,12 @@
                 card.appendChild(self.guestBar(channel));
             }
 
-            // A channel of the team that people outside it read.
-            if (channel.shares) {
-                card.appendChild(self.shareBar(channel));
+            // A channel of the team that people outside it read, while a
+            // link is open.
+            var shareRow = channel.shares ? self.shareBar(channel) : null;
+
+            if (shareRow) {
+                card.appendChild(shareRow);
             }
 
             // An earlier version of the conversation: read as it was, with
@@ -18052,19 +18121,8 @@
 
                 // Who outside the team reads along, as it changes.
                 if ((data.shares !== undefined) && self.channel && !self.channel.guest && (JSON.stringify(data.shares) !== JSON.stringify(self.channel.shares || null))) {
-                    var shareWas = self.center.querySelector('.ws-share-bar');
-
                     self.channel.shares = data.shares;
-
-                    var shareBefore = self.center.querySelector('.ws-era-bar, .ws-tabs');
-
-                    if (shareWas && data.shares) {
-                        shareWas.replaceWith(self.shareBar(self.channel));
-                    } else if (shareWas) {
-                        shareWas.remove();
-                    } else if (data.shares && shareBefore) {
-                        shareBefore.before(self.shareBar(self.channel));
-                    }
+                    self.drawShareNotice();
                 }
 
                 // A guest's link and whether they are here, as they change.
