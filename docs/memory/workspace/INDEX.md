@@ -64,6 +64,7 @@
 - claude-draft-decide-once.md: A task Claude or Pinegrap AI proposes in a channel (ws_ai_drafts) is decided once: conditional claim checked by affected rows; a claim left with no task opens again after 10 minutes, never twice
 - claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable [decision: here]
 - contact-group-joined-event.md: Flow event contact_group.joined: one ws_events_in row per contact added to a group, from pg_announce_contact_group_members(); payload, group filter kept as status, outputs [decision: decisions-made-product-27.md]
+- guest-agent-lines.md: The guest page lists the agents' and assistants' messages beside people's (GV1): which senders, how drawn, what a guest may do on them, and that nothing a guest does asks an agent
 - mail-api.md: Workspace e-mail in the external API and MCP (api_mail.php, G7, WM8 #8737): routes, list filters, unread, send_state, which are tools, who may answer or send, errors, the webhook
 - mail-area-proposals.md: Incoming e-mail in the messages area as decided after MA10a (#9077, #9203): mail with the Workspace off, the tab's gate, who reads, what the mail card keeps beside its link, the steps [decision: decisions-made-workspace-22.md]
 - mail-area-shell.md: What incoming e-mail takes from the Workspace today (MA10a, #9077): the E-mails list, the conversation, New e-mail and the card against the Workspace's gate, shell, script bundle, menu and job passes
