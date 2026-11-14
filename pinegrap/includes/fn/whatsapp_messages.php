@@ -381,24 +381,96 @@ function pg_whatsapp_message_offered($rows)
 }
 
 /**
- * The name of one variable's list on the card: short, a form field's name,
- * the same for the same template and position.
+ * The name of one variable's list: short, a form field's name, the same for
+ * the same template and position.
  *
- * @param string $event
+ * @param string $prefix   the choice's field prefix, such as wa_msg_order_received
  * @param string $template 'name|language'
  * @param int    $position the slot's place in the template
  * @return string
  */
+function pg_whatsapp_choice_var_name($prefix, $template, $position)
+{
+    return $prefix . '_' . substr(md5((string) $template), 0, 8) . '_' . (int) $position;
+}
+
+/**
+ * The name of one event's variable list on the WhatsApp Messages card.
+ *
+ * @param string $event
+ * @param string $template 'name|language'
+ * @param int    $position
+ * @return string
+ */
 function pg_whatsapp_message_var_name($event, $template, $position)
 {
-    return 'wa_msg_' . $event . '_' . substr(md5((string) $template), 0, 8) . '_' . (int) $position;
+    return pg_whatsapp_choice_var_name('wa_msg_' . $event, $template, $position);
+}
+
+/**
+ * One posted choice of a switch, a template and a value per variable (pure),
+ * the shape an order event and a form's message share. A template no longer
+ * offered (no longer approved) is kept while the switch is off, so a
+ * template Meta paused does not lose the choices made for it.
+ *
+ * @param array  $post
+ * @param string $prefix  field prefix: <prefix>_on, <prefix>_template, the
+ *                        variable lists of pg_whatsapp_choice_var_name()
+ * @param array  $before  on, template, vars as stored
+ * @param array  $offered pg_whatsapp_message_offered()
+ * @param array  $choices the values a variable may take: value => label
+ * @return array row (on, template, vars), marks (field => sentence)
+ */
+function pg_whatsapp_choice_decide($post, $prefix, $before, $offered, $choices)
+{
+    $on = !empty($post[$prefix . '_on']);
+    $template = (isset($post[$prefix . '_template']) && is_string($post[$prefix . '_template'])) ? trim($post[$prefix . '_template']) : '';
+    $marks = array();
+    $vars = array();
+
+    if ($template === '') {
+        if ($on) {
+            $marks[$prefix . '_template'] = lang('Choose a template to switch this message on.');
+        }
+
+        return array('row' => array('on' => false, 'template' => '', 'vars' => array()), 'marks' => $marks);
+    }
+
+    if (!isset($offered[$template])) {
+        if ($on) {
+            $marks[$prefix . '_template'] = lang('This template is not approved on WhatsApp, or it has a part an order\'s values cannot fill.');
+        }
+
+        $kept = (isset($before['template']) && ($template === $before['template']) && isset($before['vars'])) ? $before['vars'] : array();
+
+        return array('row' => array('on' => false, 'template' => $template, 'vars' => $kept), 'marks' => $marks);
+    }
+
+    foreach ($offered[$template]['slots'] as $position => $slot) {
+        $name = pg_whatsapp_choice_var_name($prefix, $template, $position);
+        $value = (isset($post[$name]) && is_string($post[$name])) ? $post[$name] : '';
+
+        if (($value !== '') && !isset($choices[$value])) {
+            $marks[$name] = lang('This value is not one of the message\'s values.');
+            continue;
+        }
+
+        if ($value === '') {
+            if ($on) {
+                $marks[$name] = lang(array('string' => 'Choose what fills {var:1}.', 'vars' => array(h('{{' . $slot['name'] . '}}'))));
+            }
+
+            continue;
+        }
+
+        $vars[$slot['key']] = $value;
+    }
+
+    return array('row' => array('on' => $on, 'template' => $template, 'vars' => $vars), 'marks' => $marks);
 }
 
 /**
  * What a post of the WhatsApp Messages card asks for; no database.
- *
- * A template no longer offered (no longer approved) is kept while its event
- * is off, so a template Meta paused does not lose the choices made for it.
  *
  * @param array $post
  * @param array $before  pg_whatsapp_message_settings()
@@ -412,55 +484,15 @@ function pg_whatsapp_message_settings_decide($post, $before, $offered)
         return null;
     }
 
-    $fields = pg_whatsapp_message_field_labels();
+    $labels = pg_whatsapp_message_field_labels();
     $events = array();
     $marks = array();
 
     foreach (pg_whatsapp_message_events() as $event => $definition) {
-        $on = !empty($post['wa_msg_' . $event . '_on']);
-        $template = (isset($post['wa_msg_' . $event . '_template']) && is_string($post['wa_msg_' . $event . '_template'])) ? trim($post['wa_msg_' . $event . '_template']) : '';
-        $vars = array();
-
-        if ($template === '') {
-            if ($on) {
-                $marks['wa_msg_' . $event . '_template'] = lang('Choose a template to switch this message on.');
-            }
-
-            $events[$event] = array('on' => false, 'template' => '', 'vars' => array());
-            continue;
-        }
-
-        if (!isset($offered[$template])) {
-            if ($on) {
-                $marks['wa_msg_' . $event . '_template'] = lang('This template is not approved on WhatsApp, or it has a part an order\'s values cannot fill.');
-            }
-
-            $kept = ($template === $before[$event]['template']) ? $before[$event]['vars'] : array();
-            $events[$event] = array('on' => false, 'template' => $template, 'vars' => $kept);
-            continue;
-        }
-
-        foreach ($offered[$template]['slots'] as $position => $slot) {
-            $name = pg_whatsapp_message_var_name($event, $template, $position);
-            $field = (isset($post[$name]) && is_string($post[$name])) ? $post[$name] : '';
-
-            if (($field !== '') && (!in_array($field, $definition['fields'], true) || !isset($fields[$field]))) {
-                $marks[$name] = lang('This value is not one of the message\'s values.');
-                continue;
-            }
-
-            if ($field === '') {
-                if ($on) {
-                    $marks[$name] = lang(array('string' => 'Choose what fills {var:1}.', 'vars' => array(h('{{' . $slot['name'] . '}}'))));
-                }
-
-                continue;
-            }
-
-            $vars[$slot['key']] = $field;
-        }
-
-        $events[$event] = array('on' => $on, 'template' => $template, 'vars' => $vars);
+        $choices = array_intersect_key($labels, array_flip($definition['fields']));
+        $decided = pg_whatsapp_choice_decide($post, 'wa_msg_' . $event, $before[$event], $offered, $choices);
+        $events[$event] = $decided['row'];
+        $marks += $decided['marks'];
     }
 
     return array(
@@ -558,12 +590,41 @@ function pg_whatsapp_message_settings_save($decision, $user_id)
 function pg_whatsapp_message_event_html($event, $definition, $stored, $offered)
 {
     $name = 'wa_msg_' . $event . '_';
-    $labels = pg_whatsapp_message_field_labels();
+    $choices = array_intersect_key(pg_whatsapp_message_field_labels(), array_flip($definition['fields']));
 
+    // Columns of the card's own row, so the settings layout puts each label
+    // beside its list.
+    return '
+                                        <div class="col-12">
+                                            <h6 class="fw-bold mb-0">' . h($definition['label']) . '</h6>
+                                        </div>
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input type="checkbox" name="' . h($name) . 'on" id="' . h($name) . 'on" value="1"' . ($stored['on'] ? ' checked="checked"' : '') . ' class=""/></div>
+                                                <label class="" for="' . h($name) . 'on">' . lang('Send this message') . '</label>
+                                            </div>
+                                        </div>' . pg_whatsapp_choice_html('wa_msg_' . $event, $stored, $offered, $choices, 'col-12');
+}
+
+/**
+ * A choice's template list and, per offered template, one list per variable
+ * of the values that may fill it. Only the chosen template's lists show; the
+ * script (pg_whatsapp_message_settings_script()) shows another template's
+ * lists when the template is changed.
+ *
+ * @param string $prefix  field prefix (pg_whatsapp_choice_decide())
+ * @param array  $stored  on, template, vars
+ * @param array  $offered pg_whatsapp_message_offered()
+ * @param array  $choices value => label
+ * @param string $column  the columns' class
+ * @return string
+ */
+function pg_whatsapp_choice_html($prefix, $stored, $offered, $choices, $column)
+{
     $options = '<option value="">' . h(lang('Choose a template')) . '</option>';
 
     // A template chosen before and no longer offered stays listed, named as
-    // such, so a save while the event is off keeps it.
+    // such, so a save while the switch is off keeps it.
     if (($stored['template'] !== '') && !isset($offered[$stored['template']])) {
         $options .= '<option value="' . h($stored['template']) . '" selected="selected">' . h(str_replace('|', ' · ', $stored['template']) . ' (' . lang('not approved') . ')') . '</option>';
     }
@@ -574,48 +635,35 @@ function pg_whatsapp_message_event_html($event, $definition, $stored, $offered)
         $category = function_exists('pg_whatsapp_template_category_label') ? pg_whatsapp_template_category_label($template['category']) : $template['category'];
         $options .= '<option value="' . h($key) . '"' . (($key === $stored['template']) ? ' selected="selected"' : '') . '>' . h($template['name'] . ' · ' . $template['language'] . ' · ' . $category) . '</option>';
 
-        $rows = '';
         $hidden = ($key === $stored['template']) ? '' : ' d-none';
+        $marks = ' data-pg-wa-for="' . h($prefix) . '" data-pg-wa-vars="' . h($key) . '"';
 
         foreach ($template['slots'] as $position => $slot) {
-            $field_name = pg_whatsapp_message_var_name($event, $key, $position);
-            $chosen = (($key === $stored['template']) && isset($stored['vars'][$slot['key']])) ? $stored['vars'][$slot['key']] : '';
-            $choices = '<option value="">' . h(lang('Choose a value')) . '</option>';
+            $field_name = pg_whatsapp_choice_var_name($prefix, $key, $position);
+            $chosen = (($key === $stored['template']) && isset($stored['vars'][$slot['key']])) ? (string) $stored['vars'][$slot['key']] : '';
+            $list = '<option value="">' . h(lang('Choose a value')) . '</option>';
 
-            foreach ($definition['fields'] as $field) {
-                $choices .= '<option value="' . h($field) . '"' . (($field === $chosen) ? ' selected="selected"' : '') . '>' . h($labels[$field]) . '</option>';
+            foreach ($choices as $value => $label) {
+                $list .= '<option value="' . h($value) . '"' . (((string) $value === $chosen) ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
             }
 
-            $rows .= '
-                                        <div class="col-12' . $hidden . '" data-pg-wa-for="' . h($event) . '" data-pg-wa-vars="' . h($key) . '">
+            $blocks .= '
+                                        <div class="' . h($column) . $hidden . '"' . $marks . '>
                                             <label class="form-label" for="' . h($field_name) . '">' . h(pg_whatsapp_message_slot_label($slot)) . '</label>
-                                            <select name="' . h($field_name) . '" id="' . h($field_name) . '" class="form-control">' . $choices . '</select>
+                                            <select name="' . h($field_name) . '" id="' . h($field_name) . '" class="form-control">' . $list . '</select>
                                         </div>';
         }
 
         if ($template['slots'] === array()) {
-            $rows = '
-                                        <div class="col-12 form-text' . $hidden . '" data-pg-wa-for="' . h($event) . '" data-pg-wa-vars="' . h($key) . '">' . lang('This template has no variables.') . '</div>';
+            $blocks .= '
+                                        <div class="col-12 form-text' . $hidden . '"' . $marks . '>' . lang('This template has no variables.') . '</div>';
         }
-
-        $blocks .= $rows;
     }
 
-    // Columns of the card's own row, so the settings layout puts each label
-    // beside its list; the variables of a template not chosen stay hidden.
     return '
-                                        <div class="col-12">
-                                            <h6 class="fw-bold mb-0">' . h($definition['label']) . '</h6>
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="form-field">
-                                                <div class="switch"><input type="checkbox" name="' . h($name) . 'on" id="' . h($name) . 'on" value="1"' . ($stored['on'] ? ' checked="checked"' : '') . ' class=""/></div>
-                                                <label class="" for="' . h($name) . 'on">' . lang('Send this message') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12">
-                                            <label class="form-label" for="' . h($name) . 'template">' . lang('Template') . '</label>
-                                            <select name="' . h($name) . 'template" id="' . h($name) . 'template" class="form-control" data-pg-wa-template="' . h($event) . '">' . $options . '</select>
+                                        <div class="' . h($column) . '">
+                                            <label class="form-label" for="' . h($prefix) . '_template">' . lang('Template') . '</label>
+                                            <select name="' . h($prefix) . '_template" id="' . h($prefix) . '_template" class="form-control" data-pg-wa-template="' . h($prefix) . '">' . $options . '</select>
                                         </div>' . $blocks;
 }
 

@@ -238,6 +238,12 @@ function pg_cf_form_mails_send($page_id, $form_id, array $settings, array $mail)
     $form_id = (int) $form_id;
     $plan = pg_cf_form_mails_plan($settings, $mail);
 
+    // The form's WhatsApp message to its sender goes when its e-mails do:
+    // not while a fee is owed, once the record is paid.
+    if (empty($mail['fee_owed'])) {
+        pg_whatsapp_form_message($page_id, $form_id);
+    }
+
     $submitter_email_address = (string) ($mail['submitter_email_address'] ?? '');
     $contact_id = (int) ($mail['contact_id'] ?? 0);
     $key_code = (string) ($mail['key_code'] ?? '');

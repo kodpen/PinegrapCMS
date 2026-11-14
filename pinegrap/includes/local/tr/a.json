@@ -6198,6 +6198,7 @@
     "Another upgrade is running": "Başka bir yükseltme çalışıyor",
     "Another upgrade is running right now. Wait for it to finish, then refresh this screen.": "Şu anda başka bir yükseltme çalışıyor. Bitmesini bekleyin, sonra bu ekranı yenileyin.",
     "Another user already has this e-mail address.": "Bu e-posta adresi başka bir kullanıcıda kayıtlı.",
+    "Another variable": "Başka bir değişken",
     "Another visit?": "Başka bir ziyaret mi?",
     "Another visitor record cleanup is running (the general job, or another tab). Try again in a minute.": "Başka bir ziyaretçi kaydı temizliği sürüyor (genel görev ya da başka bir sekme). Bir dakika sonra yeniden deneyin.",
     "Another visitor record job is running (the cleanup, the move to InnoDB or a rebuild). Try again in a minute.": "Başka bir ziyaretçi kaydı işi çalışıyor (temizlik, InnoDB'ye taşıma ya da yeniden kurma). Bir dakika sonra yeniden deneyin.",

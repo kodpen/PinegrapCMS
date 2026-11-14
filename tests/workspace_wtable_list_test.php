@@ -133,6 +133,28 @@ function test_ws_wtable_list_segments()
 	pg_assert_same(1, substr_count($html, 'aria-current'), 'one segment is chosen');
 }
 
+function test_ws_wtable_list_segments_with_icons()
+{
+	$html = ws_wtable_list_segments('Show', array(
+		array('label' => 'All', 'url' => 'a', 'current' => true, 'count' => 6, 'icon' => 'bi-grid'),
+		array('label' => 'Mine & more', 'url' => 'b', 'current' => false, 'count' => 2, 'icon' => 'bi-person'),
+	));
+
+	pg_assert_true(strpos($html, '<span class="pg-seg pg-seg-icons" role="group" aria-label="Show">') === 0, 'icon segments make the control .pg-seg-icons');
+	pg_assert_contains('<a class="pg-seg-item" href="b" title="Mine &amp; more"><i class="bi bi-person" aria-hidden="true"></i><span class="pg-seg-label">Mine &amp; more <span class="pg-seg-count">2</span></span></a>', $html, 'icon, then the label with its count, the name as tooltip');
+	pg_assert_same(2, substr_count($html, 'pg-seg-label'));
+
+	$icons = ws_wtable_list_segment_icons();
+
+	foreach (array_merge(array_keys(ws_wtable_list_scopes(true)), array('tables', 'deleted')) as $key) {
+		pg_assert_true(isset($icons[$key]), 'an icon for ' . $key);
+	}
+
+	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/workspace_wtables.php');
+
+	pg_assert_true(substr_count($screen, "'icon' => \$segment_icons[") === 3, 'both strips of the screen carry icons');
+}
+
 function test_ws_wtable_list_columns()
 {
 	$columns = ws_wtable_list_columns();
@@ -332,4 +354,5 @@ function test_workspace_wtable_list_canvases_cell()
 	pg_assert_true(isset($cells['canvases']), 'the list has the column');
 	pg_assert_same('Sales board', ws_canvas_name(array('file_name' => 'Sales board.html')), 'a canvas is named by its page without .html');
 	pg_assert_same('Plan.HTM', ws_canvas_name(array('file_name' => 'Plan.HTM.html')));
+	pg_assert_same('Sales board', ws_canvas_name(array('file_name' => 'Sales board.png')), 'a canvas whose message carries its drawing, without .png');
 }
