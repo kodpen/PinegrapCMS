@@ -135,6 +135,9 @@
 - personal-calendar-census-readers.md: PC1 census (2026-11-14): every reader of the Work Calendar's rows (ws_events) and of Today, which one asks whose row it is, and what each must do with a person's private plan
 - personal-calendar-census-tables.md: PC1 proposal (2026-11-14), shaped by the architect and approved by the owner (decisions-made-schema-18): the tables and columns a person's private plans need, each with its reason and step [decision: here]
 - personal-calendar-census-words.md: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Planning Board, /workspace/plan, "#plan") and the names proposed for a private plan [decision: here]
+- personal-calendar-more-census-repeat.md: PC10 census (2026-11-14) for PC11 repeating plans: how a plan's days are stored and read, what This one / This and the following and a reminder each time need, the columns proposed
+- personal-calendar-more-census-template.md: PC10 census (2026-11-14) for PC12 team roadmap templates: how a roadmap is copied today, what Save as team template and Move the following steps too need, the tables proposed
+- personal-calendar-more-census-write.md: PC10 census (2026-11-14) for PC13: own plans written to Google or Outlook by the task writer (calendar_sync.php), what it keeps per person, the switch in My calendar, no column
 - plan-board-grid.md: Planning Board (workspace_board.php) Turkish name, grid columns and why .ws-board's min-width equals the grid minimum (#3815) [decision: here]
 - voice-browser-to-text.md: "Convert to text" for a voice message by the browser's own model (pg_voice_text.js, owner request 2026-10-29): where it shows, Prompt API with audio input, pieces of 30 s, nothing sent or kept
 - workflow-table-board.md: Board view of a workflow table (T2, #2994): rows as cards by a status column via the channel board's mountSource(); a move writes the status cell with ws_wtable_row_update()
