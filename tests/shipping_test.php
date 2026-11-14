@@ -581,3 +581,20 @@ function test_shipping_european_carriers()
 	pg_assert_same('Royal Mail', get_shipping_carrier_name('AB123456785GB', 'Royal Mail', ''), 'name');
 	pg_assert_false(pg_shipment_number_warning('01234567890123', 'dpd'), 'no pattern, no warning');
 }
+
+// The single values order.shipped and order.delivered carry for a flow's
+// start box: the tracking mail fields, the numbers' list renamed.
+function test_shipment_event_values()
+{
+	pg_assert_same(
+		array('tracking_numbers_text' => 'AB1, AB2', 'carrier_name' => 'Yurtiçi', 'tracking_url' => 'https://example.com/t?n=AB1'),
+		pg_shipment_event_values(array(
+			array('name' => 'tracking_numbers', 'data' => 'AB1, AB2'),
+			array('name' => 'carrier_name', 'data' => 'Yurtiçi'),
+			array('name' => 'tracking_url', 'data' => 'https://example.com/t?n=AB1'),
+			array('name' => 'order_number', 'data' => '1001'),
+		)),
+		'the tracking fields, nothing else'
+	);
+	pg_assert_same(array('tracking_numbers_text' => '', 'carrier_name' => '', 'tracking_url' => ''), pg_shipment_event_values(array()), 'every key, empty');
+}

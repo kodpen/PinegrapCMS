@@ -91,7 +91,7 @@ function test_mail_merge_hrefs_called_by_auto_campaigns()
 	$mail = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/mail.php');
 	$page = strpos($mail, '$body = get_page_content($email_campaign_profile[\'page_id\']');
 	$hrefs = strpos($mail, '$body = pg_mail_merge_address_hrefs($body)');
-	$absolute = strpos($mail, '$base_in_html = preg_match(');
+	$absolute = strpos($mail, '$body = pg_mail_page_absolute_links($body,');
 
 	pg_assert_true(($page !== false) && ($hrefs !== false) && ($absolute !== false) && ($page < $hrefs) && ($hrefs < $absolute), 'after the page, before the absolute addresses');
 }

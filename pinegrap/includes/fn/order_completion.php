@@ -1807,22 +1807,29 @@ function pg_order_complete_line_reservation(array $line, $contact_id, array $ord
         'calendar_event_recurrence_number' => $recurrence_number,
         'contact_id' => $contact_id));
 
-    pg_announce('calendar_event.reserved', pg_order_reservation_event($line, $contact_id, $order));
+    $reserved = get_calendar_event($calendar_event_id, $recurrence_number);
+
+    pg_announce('calendar_event.reserved', pg_order_reservation_event($line, $contact_id, $order, is_array($reserved) ? (string) $reserved['start_date_and_time'] : ''));
 }
 
 /**
  * What calendar_event.reserved carries for an order line that reserved an
- * event: the event's id as id, the repeat, the spots taken and the order.
- * Pure.
+ * event: the event's id as id, the repeat, the spots taken, the order and
+ * start_at, the reserved repeat's start (ISO UTC, null when unknown). Pure
+ * but for the site's zone the start is written in.
  *
- * @param array $line       calendar_event_id, recurrence_number, quantity,
- *                          order_item_id
- * @param int   $contact_id
- * @param array $order      order_id, order_number
+ * @param array  $line       calendar_event_id, recurrence_number, quantity,
+ *                           order_item_id
+ * @param int    $contact_id
+ * @param array  $order      order_id, order_number
+ * @param string $start      the repeat's start, Y-m-d H:i:s in the site's
+ *                           zone (get_calendar_event()), '' for none
  * @return array
  */
-function pg_order_reservation_event(array $line, $contact_id, array $order)
+function pg_order_reservation_event(array $line, $contact_id, array $order, $start = '')
 {
+    $start_at = ((string) $start !== '') ? strtotime((string) $start) : false;
+
     return array(
         'id'                => (int) $line['calendar_event_id'],
         'recurrence_number' => (int) ($line['recurrence_number'] ?? 0),
@@ -1831,6 +1838,7 @@ function pg_order_reservation_event(array $line, $contact_id, array $order)
         'order_id'          => (int) ($order['order_id'] ?? 0),
         'order_number'      => (int) ($order['order_number'] ?? 0),
         'contact_id'        => ((int) $contact_id > 0) ? (int) $contact_id : null,
+        'start_at'          => ($start_at !== false) ? gmdate('Y-m-d\TH:i:s\Z', $start_at) : null,
     );
 }
 

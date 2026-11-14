@@ -634,11 +634,14 @@ function ws_flow_delay_units()
  * A delay box's settings as it keeps them: mode (for: a time to wait; until:
  * a date and time read from at, a value or a written date), at (one line),
  * amount ('' when none is set, else a whole number of at least 0, held below
- * a size the problems still name; in until mode how long before the date)
- * and unit (ws_flow_delay_units()).
+ * a size the problems still name; in until mode how long before the date),
+ * unit (ws_flow_delay_units()), time ('' or HH:MM, a time of day in the
+ * site's zone the wait's end moves on to) and passed (until mode: go, the
+ * boxes after it start at once, or end, the run ends here, when the moment
+ * has passed; go for a box drawn before it was offered).
  *
  * @param array $config
- * @return array mode, at, amount, unit
+ * @return array mode, at, amount, unit, time, passed
  */
 function ws_flow_delay_normalize($config)
 {
@@ -651,7 +654,67 @@ function ws_flow_delay_normalize($config)
         'at'     => is_scalar($at) ? ws_flow_line((string) $at, 200) : '',
         'amount' => (is_bool($amount) || !is_numeric($amount)) ? '' : (int) max(0, min(999999, (float) $amount)),
         'unit'   => isset(ws_flow_delay_units()[$unit]) ? $unit : 'minutes',
+        'time'   => ws_flow_delay_clock($config['time'] ?? ''),
+        'passed' => (($config['passed'] ?? '') === 'end') ? 'end' : 'go',
     );
+}
+
+/**
+ * A time of day as a delay box keeps it: HH:MM (a single-digit hour gains
+ * its 0), '' for none or for what is no time of day. Pure.
+ *
+ * @param mixed $text
+ * @return string
+ */
+function ws_flow_delay_clock($text)
+{
+    if (!is_string($text) || !preg_match('/^([01]?\d|2[0-3]):([0-5]\d)$/', trim($text), $match)) {
+        return '';
+    }
+
+    return sprintf('%02d:%s', (int) $match[1], $match[2]);
+}
+
+/**
+ * The first moment at or after $moment whose time of day in $zone is $time
+ * (HH:MM): that day's when it has not passed, else the next day's. A time a
+ * clock change skips that day is read as the zone reads it (02:30 on the
+ * spring change is 03:30). No time of day leaves the moment as it is. Pure.
+ *
+ * @param int    $moment unix time
+ * @param string $time   HH:MM, '' for none
+ * @param string $zone   a time zone name, '' for the site's (PHP's default)
+ * @return int unix time
+ */
+function ws_flow_delay_at_time($moment, $time, $zone = '')
+{
+    $time = ws_flow_delay_clock($time);
+
+    if (($time === '') || ((int) $moment <= 0)) {
+        return (int) $moment;
+    }
+
+    try {
+        $place = new DateTimeZone(((string) $zone !== '') ? (string) $zone : date_default_timezone_get());
+    } catch (\Exception $exception) {
+        $place = new DateTimeZone('UTC');
+    }
+
+    list($hour, $minute) = array_map('intval', explode(':', $time));
+    $day = new DateTime('@' . (int) $moment);
+    $day->setTimezone($place);
+
+    for ($step = 0; $step < 3; $step++) {
+        $candidate = new DateTime($day->format('Y-m-d') . ' 00:00:00', $place);
+        $candidate->modify('+' . $step . ' day');
+        $candidate->setTime($hour, $minute, 0);
+
+        if ($candidate->getTimestamp() >= (int) $moment) {
+            return $candidate->getTimestamp();
+        }
+    }
+
+    return (int) $moment;
 }
 
 /**
@@ -689,7 +752,7 @@ function ws_flow_delay_problems($config, $name)
         if ((strpos($config['at'], '{{') === false) && (ws_flow_delay_moment($config['at']) === 0)) {
             return array(lang(array('string' => 'The delay box {var:1} waits until a date written as YYYY-MM-DD HH:MM.', 'vars' => $name)));
         }
-    } elseif ($minutes < 1) {
+    } elseif (($minutes < 1) && ($config['time'] === '')) {
         return array(lang(array('string' => 'The delay box {var:1} needs a time to wait.', 'vars' => $name)));
     }
 
@@ -739,29 +802,34 @@ function ws_flow_delay_moment($text)
 
 /**
  * The moment a delay box in until mode waits until, from its date as filled
- * ($at): the date less the time before it, at once when that has passed.
- * Pure but for the site's zone of a date written without one.
+ * ($at): the date less the time before it, moved on to its time of day when
+ * it has one; at once when that has passed (passed true: the box's passed
+ * setting decides whether the run goes on). Pure but for the site's zone of
+ * a date written without one.
  *
  * @param array  $config ws_flow_delay_normalize()
  * @param string $at     the date, filled
  * @param int    $now
- * @return array until (unix, 0 when it cannot wait), error ('' or why not)
+ * @return array until (unix, 0 when it cannot wait), passed (bool), error
+ *               ('' or why not)
  */
 function ws_flow_delay_until_date($config, $at, $now)
 {
+    $config = ws_flow_delay_normalize($config);
     $moment = ws_flow_delay_moment($at);
 
     if ($moment === 0) {
-        return array('until' => 0, 'error' => lang(array('string' => 'The delay box has no date to wait until: “{var:1}” is not a date.', 'vars' => mb_substr(trim((string) $at), 0, 80))));
+        return array('until' => 0, 'passed' => false, 'error' => lang(array('string' => 'The delay box has no date to wait until: “{var:1}” is not a date.', 'vars' => mb_substr(trim((string) $at), 0, 80))));
     }
 
-    $until = max((int) $now, $moment - ws_flow_delay_minutes($config) * 60);
+    $wanted = ws_flow_delay_at_time($moment - ws_flow_delay_minutes($config) * 60, $config['time']);
+    $until = max((int) $now, $wanted);
 
     if ($until > (int) $now + WS_FLOW_DELAY_MAX * 60) {
-        return array('until' => 0, 'error' => lang('The delay box waits at most 90 days: the date is further away.'));
+        return array('until' => 0, 'passed' => false, 'error' => lang('The delay box waits at most 90 days: the date is further away.'));
     }
 
-    return array('until' => $until, 'error' => '');
+    return array('until' => $until, 'passed' => ($wanted <= (int) $now), 'error' => '');
 }
 
 /**
@@ -788,7 +856,9 @@ function ws_flow_delay_text($config)
 }
 
 /**
- * The moment a delay box that starts waiting at $from waits until.
+ * The moment a delay box that starts waiting at $from waits until: its time
+ * later, moved on to its time of day when it has one (the first such moment
+ * at or after it, in the site's zone).
  *
  * @param array $config
  * @param int   $from unix time
@@ -796,7 +866,9 @@ function ws_flow_delay_text($config)
  */
 function ws_flow_delay_until($config, $from)
 {
-    return (int) $from + ws_flow_delay_minutes($config) * 60;
+    $config = ws_flow_delay_normalize($config);
+
+    return ws_flow_delay_at_time((int) $from + ws_flow_delay_minutes($config) * 60, $config['time']);
 }
 
 /**
@@ -3228,12 +3300,20 @@ function ws_flow_delay_run($step, $node, $run = null)
     $minutes = ws_flow_delay_minutes($config);
 
     if ($config['mode'] === 'until') {
-        $until = ws_flow_delay_run_until($run, $step, $config);
+        $date = ws_flow_delay_run_until($run, $step, $config);
+        $until = $date['until'];
 
         if ($until === 0) {
             return;
         }
-    } elseif (($minutes < 1) || ($minutes > WS_FLOW_DELAY_MAX)) {
+
+        // A moment that has passed ends the run here when the box says so:
+        // no outcome, so no box after it is reached (as an End box).
+        if ($date['passed'] && ($config['passed'] === 'end')) {
+            ws_flow_step_settle($step, 'running', 'done', '', lang('The moment has passed, so the run ends here.'), array('waited_until' => ws_flow_time($until)));
+            return;
+        }
+    } elseif ((($minutes < 1) && ($config['time'] === '')) || ($minutes > WS_FLOW_DELAY_MAX)) {
         ws_flow_step_settle($step, 'running', 'failed', '', lang('The delay box has no time to wait within 90 days.'));
         return;
     } else {
@@ -3262,14 +3342,14 @@ function ws_flow_delay_run($step, $node, $run = null)
 
 /**
  * The moment a delay box in until mode waits until, its date filled with the
- * run's values (the owner's rights now, as a value condition reads them); 0
- * after it has settled the box failed: the owner left the staff, the value
- * is no date, or it is more than 90 days away.
+ * run's values (the owner's rights now, as a value condition reads them);
+ * until 0 after it has settled the box failed: the owner left the staff, the
+ * value is no date, or it is more than 90 days away.
  *
  * @param array|null $run    ws_flow_runs row
  * @param array      $step   ws_flow_run_steps row, running
  * @param array      $config ws_flow_delay_normalize()
- * @return int
+ * @return array until (unix, 0 when settled failed), passed (bool)
  */
 function ws_flow_delay_run_until($run, $step, $config)
 {
@@ -3280,7 +3360,7 @@ function ws_flow_delay_run_until($run, $step, $config)
 
         if (!is_array($owner) || !ws_flow_builder($owner)) {
             ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
-            return 0;
+            return array('until' => 0, 'passed' => false);
         }
 
         $graph = ws_flow_run_graph($run);
@@ -3293,7 +3373,7 @@ function ws_flow_delay_run_until($run, $step, $config)
         ws_flow_step_settle($step, 'running', 'failed', '', $date['error']);
     }
 
-    return $date['until'];
+    return array('until' => $date['until'], 'passed' => $date['passed']);
 }
 
 /**

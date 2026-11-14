@@ -451,6 +451,8 @@ function ws_step_config_normalize($kind, $config)
             $recipient = (string) ($config['recipient'] ?? '');
             $purpose = (string) ($config['purpose'] ?? '');
 
+            // An optional sender of its own, as a campaign's
+            // (flow_mail_campaign.php); '' sends as the site.
             return array(
                 'to'        => ws_flow_lines(is_array($to) ? implode(', ', array_map('ws_flow_text', $to)) : $to, 2000),
                 'subject'   => ws_flow_line($config['subject'] ?? '', 250),
@@ -458,7 +460,7 @@ function ws_step_config_normalize($kind, $config)
                 'page_id'   => $number($config['page_id'] ?? 0),
                 'recipient' => ($recipient === 'record_person') ? 'record_person' : 'typed',
                 'purpose'   => ($purpose === 'marketing') ? 'marketing' : 'info',
-            );
+            ) + (function_exists('ws_flow_mail_sender_normalize') ? ws_flow_mail_sender_normalize($config) : array());
 
         case 'sms':
             return ws_step_sms_normalize($config);
@@ -711,6 +713,8 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             if (((int) $config['page_id'] <= 0) && (($config['subject'] === '') || ($config['body'] === ''))) {
                 $problems[] = lang(array('string' => 'The box {var:1} needs the subject and the text of the e-mail.', 'vars' => $name));
             }
+
+            $problems = array_merge($problems, function_exists('ws_flow_mail_sender_problems') ? ws_flow_mail_sender_problems($config, $name) : array());
 
             break;
 
@@ -2027,6 +2031,8 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     $routed = ws_flow_outcome_routed($graph, $node['id'], 'failed');
     $config = $node['config'];
 
+    $mail_person = array();
+
     // An e-mail to the person of the run's record: their address read now
     // with the owner's rights; marketing only with their consent, else the
     // box is done with nothing sent and the reason in the run.
@@ -2034,12 +2040,19 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $person = ws_flow_mail_person($owner, $run);
         $refusal = ($person['error'] === '') && (($config['purpose'] ?? '') === 'marketing') ? ws_flow_mail_marketing_refusal($person['email']) : '';
 
+        // A run that joining a contact group started writes no marketing
+        // to a contact who opted out of that group's e-mail.
+        if (($person['error'] === '') && ($refusal === '') && (($config['purpose'] ?? '') === 'marketing')) {
+            $refusal = ws_flow_mail_group_refusal($run);
+        }
+
         if (($person['error'] !== '') || ($refusal !== '')) {
             ws_flow_step_settle($step, 'running', 'done', 'done', ($person['error'] !== '') ? $person['error'] : $refusal, array('sent' => 0));
             return;
         }
 
         $config['to'] = $person['email'];
+        $mail_person = $person;
     }
 
     // An SMS to the person of the run's record: their mobile number read
@@ -2152,6 +2165,12 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     // Marketing mail carries the campaigns' unsubscribe link and headers.
     if (($kind === 'email') && (($config['recipient'] ?? '') === 'record_person') && (($config['purpose'] ?? '') === 'marketing')) {
         $action['marketing'] = true;
+    }
+
+    // An e-mail goes as a campaign's: its sender, its ^^fields^^ and a
+    // page's data (flow_mail_campaign.php).
+    if ($kind === 'email') {
+        $action = ws_flow_mail_campaign_action($action, $config, $owner, $run, $values, $mail_person);
     }
 
     // A line in somebody's inbox names the flow it comes from: the notice
@@ -2376,6 +2395,10 @@ function ws_flow_box_try($viewer, $flow, $data)
             $person = ws_flow_mail_person($owner, $run);
             $refusal = ($person['error'] === '') && (($config['purpose'] ?? '') === 'marketing') ? ws_flow_mail_marketing_refusal($person['email']) : '';
 
+            if (($person['error'] === '') && ($refusal === '') && (($config['purpose'] ?? '') === 'marketing')) {
+                $refusal = ws_flow_mail_group_refusal($run);
+            }
+
             if (($person['error'] !== '') || ($refusal !== '')) {
                 return array('outcome' => 'done', 'said' => ($person['error'] !== '') ? $person['error'] : $refusal) + $answer;
             }
@@ -2583,6 +2606,10 @@ function ws_flow_box_try($viewer, $flow, $data)
                     return array('outcome' => 'failed', 'refusal' => $date['error']) + $answer;
                 }
 
+                if ($date['passed'] && ($delay['passed'] === 'end')) {
+                    return array('outcome' => '', 'said' => lang('The moment has passed, so the run would end here.')) + $answer;
+                }
+
                 return array(
                     'outcome' => 'done',
                     'said'    => ($date['until'] <= time())
@@ -2592,10 +2619,14 @@ function ws_flow_box_try($viewer, $flow, $data)
                 ) + $answer;
             }
 
+            $until = ws_flow_delay_until($delay, time());
+
             return array(
                 'outcome' => 'done',
-                'said'    => lang(array('string' => 'Waits {var:1}, then the boxes after it start.', 'vars' => ws_flow_delay_text($node['config']))),
-                'next'    => array(ws_scheduled_moment(ws_flow_delay_until($node['config'], time()))),
+                'said'    => ($delay['time'] !== '')
+                    ? lang(array('string' => 'Waits until {var:1}, then the boxes after it start.', 'vars' => ws_scheduled_moment($until)))
+                    : lang(array('string' => 'Waits {var:1}, then the boxes after it start.', 'vars' => ws_flow_delay_text($node['config']))),
+                'next'    => array(ws_scheduled_moment($until)),
             ) + $answer;
 
         // The flow it would start; the chain's depth and the started flow's

@@ -6,7 +6,7 @@ module: messages_area
 
 ## What is the shell?
 - Main menu row 9 under Marketing is "Communication" (İletişim), slot and icon kept, gate as before: role <= 2 or the Campaign Manager right. Its panel lists the tabs the person may open, then "New campaign" (`add_email_campaign.php`); history and profile entries left the panel.
-- Five tabs, each its own screen and gate (`pg_messages_area_tabs()` in `includes/fn/messages_area.php`): Campaigns `view_email_campaigns.php`, Automatic sends `messages_automatic.php`, Templates `messages_templates.php`, Sends `messages_sends.php` (all `validate_email_access()`), Channels `messages_channels.php` (role <= 2).
+- Five tabs, each its own screen and gate (`pg_messages_area_tabs()` in `includes/fn/messages_area.php`): Campaigns `view_email_campaigns.php`, Automatic sends `messages_automatic.php` (`email_or_flows`: that rule or the Flows screen's, `messages-area-automatic-tab.md`), Templates `messages_templates.php`, Sends `messages_sends.php` (all `validate_email_access()`), Channels `messages_channels.php` (role <= 2).
 - Architect's ruling behind it: `plans/messages-area-decided.md` (#9081).
 
 ## How is the tab strip drawn?
@@ -14,13 +14,13 @@ module: messages_area
 - A new tab screen uses `pg_messages_tab_page()` (heading "Communication", the strip, the body, the footer). An old screen inside the shell prints the strip above its toolbar.
 
 ## Which old screens sit inside the shell?
-- Campaigns tab: `view_email_campaigns.php` (below). Automatic sends open: My Campaign Profiles.
+- Campaigns tab: `view_email_campaigns.php` (below). My Campaign Profiles is reached from Automatic sends' note until MA9.
 - `view_sms_campaigns.php`, `edit_sms_campaign.php` and the four new screens mark row 9 in the active-row map; `mail_queue.php` is a door since MA2b (#9275); its row 25 case in the map stays, unused.
 - Doors (`validate_user()`, then `go()`, no right of their own): `view_email_campaign_history.php` to `?state=finished`, `view_sms_campaigns.php` to `?channel=sms` (MA3). `mail_queue.php` to the Sends tab with its channel (MA2b). Still to come: profiles (MA9f).
 
 ## What do the new tabs show before their step?
-- Rows (`pg_messages_place_rows()`) leading to where the job is done today. Templates lists its SMS texts since MA6 (`messages-area-templates-tab.md`) and leads to the WhatsApp card (role <= 2). Automatic sends: My Campaign Profiles, Automation flows when `pg_flows_menu_row()` admits. Channels has its cards since MA7 (below).
-- Sends has its list since MA2b (`platform/messages-area-sends.md`); MA8 replaces Automatic sends' body; MA8 also moves Automatic sends to the flows' gate.
+- Rows (`pg_messages_place_rows()`) leading to where the job is done today. Templates lists its SMS texts since MA6 (`messages-area-templates-tab.md`) and leads to the WhatsApp card (role <= 2). Channels has its cards since MA7 (below).
+- Sends has its list since MA2b (`platform/messages-area-sends.md`); Automatic sends since MA8 (`messages-area-automatic-tab.md`).
 
 ## What does the Channels tab show? (MA7, #9200)
 - Four cards, two to a row and all as high as the highest (MA12): E-mail, SMS, WhatsApp, İYS; each card a link to its settings (SMTP Settings, the Communication cards) with a state pill and one line.

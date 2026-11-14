@@ -787,7 +787,7 @@ function pg_shipment_delivered($ship_to_id, $time, $opts = array())
         'ship_to_id'    => $ship_to_id,
         'delivery_date' => $day,
         'parcels'       => pg_shipment_api_parcels($ship_to_id),
-    ));
+    ) + pg_shipment_event_values(pg_shipment_mail_fields(array($ship_to_id))));
 
     if (!empty($opts['notify'])) {
 
@@ -1134,6 +1134,31 @@ function pg_shipment_mail_fields($ship_to_ids)
     }
 
     return pg_shipment_merge_fields($views);
+}
+
+/**
+ * The single values an order.shipped or order.delivered event carries for a
+ * flow's start box, from the tracking mail-merge fields of its address
+ * (pg_shipment_merge_fields()): tracking_numbers_text (the numbers joined,
+ * beside the list tracking_numbers), carrier_name and tracking_url. Pure.
+ *
+ * @param  array $fields list of name, data
+ * @return array tracking_numbers_text, carrier_name, tracking_url
+ */
+function pg_shipment_event_values($fields)
+{
+    $out = array('tracking_numbers_text' => '', 'carrier_name' => '', 'tracking_url' => '');
+
+    foreach ((array) $fields as $field) {
+        $name = (string) ($field['name'] ?? '');
+        $key = ($name === 'tracking_numbers') ? 'tracking_numbers_text' : $name;
+
+        if (array_key_exists($key, $out)) {
+            $out[$key] = (string) ($field['data'] ?? '');
+        }
+    }
+
+    return $out;
 }
 
 /**

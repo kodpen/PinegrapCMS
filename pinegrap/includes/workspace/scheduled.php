@@ -4120,8 +4120,11 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
             return array('ok' => true, 'text' => lang(array('string' => 'written in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $sent['message_id']);
 
         case 'email':
-            // A page body below is site HTML, not filled, and stays whole.
+            // A page body below is site HTML, not filled with {{values}},
+            // and stays whole; a flow's box fills its ^^fields^^ as a
+            // campaign does (flow_mail_campaign.php).
             $limits = ws_scheduled_text_limits();
+            $fields = is_array($action['fields'] ?? null) ? $action['fields'] : array();
             $subject = ws_scheduled_fill_cut(ws_scheduled_fill((string) $action['subject'], $context), $limits['email_subject']);
             $format = 'plain_text';
             $body = ws_scheduled_fill_cut(ws_scheduled_fill((string) $action['body'], $context), $limits['email_body']);
@@ -4135,18 +4138,33 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
 
                 require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
 
-                $body = (string) get_page_content((int) $page['page_id'], '', '', 'preview', true);
+                $data = is_array($action['data'] ?? null) ? $action['data'] : array();
+                $body = (string) get_page_content((int) $page['page_id'], '', '', 'preview', true, $data);
                 $format = 'html';
+
+                // A flow's page goes as a campaign's page: a base tag and
+                // absolute addresses; marketing adds the ?t= codes and the
+                // commercial footer.
+                if (!empty($context['flow']['id'])) {
+                    $body = ws_flow_mail_page_html($body, !empty($action['marketing']), URL_SCHEME . HOSTNAME_SETTING, pg_mail_page_tracking_code((string) $page['page_name'], time()), HOSTNAME_SETTING,
+                        pg_mail_organization(), URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/email_preferences.php?id=' . ws_flow_mail_preferences_placeholder());
+                }
 
                 if ($subject === '') {
                     $subject = ((string) ($page['page_title'] ?? '') !== '') ? (string) $page['page_title'] : (string) $page['page_name'];
                 }
             }
 
+            if (!empty($fields)) {
+                $subject = replace_variables(array('content' => $subject, 'fields' => $fields, 'format' => 'plain_text'));
+                $body = replace_variables(array('content' => $body, 'fields' => $fields, 'format' => $format));
+            }
+
             // A flow's box hands its mail to the queue under the flow's id,
             // so Communication › Sends lists it with the flow as source.
             $flow_source = !empty($context['flow']['id']) ? 'flow:' . (int) $context['flow']['id'] : '';
-            $sent = ws_scheduled_mail((array) $action['to'], $subject, $body, $format, !empty($action['marketing']), $flow_source);
+            $sender = is_array($action['sender'] ?? null) ? ws_flow_mail_sender_properties($action['sender']) : array();
+            $sent = ws_scheduled_mail((array) $action['to'], $subject, $body, $format, !empty($action['marketing']), $flow_source, $sender);
 
             if ($sent === 0) {
                 return $fail(lang(array('string' => 'The e-mail to {var:1} could not be sent.', 'vars' => implode(', ', (array) $action['to'])))) + array('data' => array('sent' => 0));
@@ -4237,9 +4255,11 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
  * @param bool     $marketing commercial mail: each with its preferences and
  *                            unsubscribe link and List-Unsubscribe headers
  * @param string   $source    'flow:<id>' for a flow's box: queued under it
+ * @param array    $sender    a flow box's own sender: email() from_name,
+ *                            from_email_address, reply_to, bcc, only those set
  * @return int how many went out (or were queued)
  */
-function ws_scheduled_mail($to, $subject, $body, $format = 'plain_text', $marketing = false, $source = '')
+function ws_scheduled_mail($to, $subject, $body, $format = 'plain_text', $marketing = false, $source = '', $sender = array())
 {
     $sent = 0;
 
@@ -4253,10 +4273,21 @@ function ws_scheduled_mail($to, $subject, $body, $format = 'plain_text', $market
             'body'               => $body,
         );
 
-        if ($marketing) {
+        // A flow's e-mail box may send as a sender of its own
+        // (ws_flow_mail_sender_properties()).
+        $properties = (array) $sender + $properties;
+
+        // A page body carries the campaigns' commercial footer already, its
+        // preferences link waiting for the address; any other marketing
+        // mail gets the footer here.
+        if ($marketing && (strpos((string) $body, ws_flow_mail_preferences_placeholder()) !== false)) {
             $properties['type'] = 'campaign';
             $properties['purpose'] = 'commercial';
-            $properties['body'] = ws_flow_mail_unsubscribe_footer($body, $format, pg_email_preferences_url($address));
+            $properties['body'] = str_replace(ws_flow_mail_preferences_placeholder(), pg_email_preferences_placeholder_value($address), (string) $body);
+        } elseif ($marketing) {
+            $properties['type'] = 'campaign';
+            $properties['purpose'] = 'commercial';
+            $properties['body'] = ws_flow_mail_unsubscribe_footer($body, $format, pg_email_preferences_url($address), pg_mail_organization_line(pg_mail_organization()));
         }
 
         // A message with a source goes through the queue while a job works

@@ -438,6 +438,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-24.md: How is the notice of a shared channel shown? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-24.md: Does the software guide an agent's drawings? (owner, 2026-11-14, agent channel message 2296)
 - decisions-made-workspace-25.md: May an agent conclude a discussion? (owner, 2026-11-14, in the architect's window)
+- decisions-made-workspace-26.md: Does a place where a template is chosen show a preview? (owner, 2026-11-14, channel message 2709)
+- decisions-made-workspace-26.md: Which components does a new part inside a channel use? (owner, 2026-11-14, channel message 2709)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
@@ -517,6 +519,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - commerce/subscriptions-number-of-payments.md: What a product's Number of Payments (recurring_number_of_payments) counts on store-run subscriptions (#4623): N charges in all, the order's own charge included; legacy gateway profiles differ
 - commerce/tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far
 - commerce/tr-place-list.md: The Turkish place list (includes/geo/places/TR.json, 81 provinces, 973 districts): lookup, the city box suggester, the spelling written at save, the order screen's note for an unlisted district
+- commerce/user-delete-store-credit.md: Deleting a user account voids its open store credit (note "Account deleted", audit revoke) and releases the closed cards; a card that lost the void race stays bound (#9016)
 - core/audiences-overview.md: Contact groups filled by rules as a whole (owner 2026-11-02): why they exist, the decisions that bind them, and which file holds each part (rules, recompute, editor, doors, token, joined triggers)
 - core/audit-trail-contacts.md: Contacts in audit_log (#2170, #2246, #2620, #2643, #2768): which panel, API, import, İYS, Workspace, storefront, job, merge paths write a line, the label, erasure
 - core/audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect

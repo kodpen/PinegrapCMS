@@ -169,6 +169,7 @@
     "Balance (what is owed today, or the credit in the customer's favour)": "Bakiye (bugünkü borç ya da müşterinin alacağı)",
     "Balance as of": "Bakiye tarihi",
     "Balance as of {var:1}": "{var:1} itibarıyla bakiye",
+    "Balance in minor units": "Kuruş cinsinden bakiye",
     "Balances are never exchanged.": "Bakiyeler hiçbir zaman aktarılmaz.",
     "Balances, receipts and payments.": "Bakiyeler, tahsilatlar ve ödemeler.",
     "Balayage & Highlights": "Balyaj ve Röfle",

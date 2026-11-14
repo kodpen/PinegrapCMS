@@ -413,7 +413,7 @@ function mp_order_apply_tracking($order_id, $package, $account = null) {
 		'tracking_numbers' => array($recorded['number']),
 		'ship_date'        => null,
 		'parcels'          => pg_shipment_api_parcels((int)$ship_to_id, null, $recorded['number'])
-	));
+	) + pg_shipment_event_values(pg_shipment_mail_fields(array((int)$ship_to_id))));
 
 	$ships_itself = false;
 

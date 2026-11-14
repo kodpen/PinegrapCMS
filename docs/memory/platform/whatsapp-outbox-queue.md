@@ -24,7 +24,7 @@ module: whatsapp
 - A contact holder (`pg_contact_holders()`: merge move, erase find); `pg_privacy_erase_tables()` deletes rows by recipient (the person's phones) or contact_id, listed as "WhatsApp messages".
 
 ## Where is it shown?
-- Not yet. Communication › Sends keeps branch 3 for it (`messages-area-sends.md`); a screen of the area is built only under the architect's decision of #9295 (drawing, look A, screenshots approved by the owner), so the WhatsApp branch is a step of its own.
+- Communication › Sends, branch 3 (WA2b, #9409; `messages-area-sends.md`): its rows with delivery state, Retry and Delete for role <= 2, the WhatsApp channel filter. No Run now: the general job sends it.
 
 ## How was it verified?
 - `tests/whatsapp_queue_test.php` (row, refusals, refusal at send, outcome, wiring), `privacy_erase_test.php`. No database and no Meta call in the cloud session: the step, the enqueue and the run were not run against MySQL.
