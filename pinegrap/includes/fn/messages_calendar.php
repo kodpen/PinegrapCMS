@@ -294,7 +294,7 @@ function pg_messages_calendar_grid_html($view, $days, $buckets, $today, $weekday
                 $chips = '';
 
                 foreach ($entries as $entry) {
-                    $chips .= pg_messages_calendar_chip_html($entry, count($entries) > 1);
+                    $chips .= pg_messages_calendar_chip_html($entry, true);
                 }
 
                 $body .= '<div class="pg-sendcal-hour"><div class="pg-sendcal-hour-label pg-text-meta">' . h($hour . ':00') . '</div>' . $chips . '</div>';
@@ -588,6 +588,20 @@ function pg_messages_calendar_weekdays()
 }
 
 /**
+ * A month's heading: its name and the year ("November 2026").
+ *
+ * @param string $date Y-m-d, any day of the month
+ * @return string
+ */
+function pg_messages_calendar_month_title($date)
+{
+    $names = array(lang('January'), lang('February'), lang('March'), lang('April'), lang('May'), lang('June'),
+        lang('July'), lang('August'), lang('September'), lang('October'), lang('November'), lang('December'));
+
+    return $names[(int) substr($date, 5, 2) - 1] . ' ' . substr($date, 0, 4);
+}
+
+/**
  * The Sends tab's view switch: the list or the calendar.
  *
  * @param bool $calendar whether the calendar is open
@@ -625,7 +639,8 @@ function pg_messages_calendar_body($user, $get, $now)
     $in_range = array_values(array_filter($days, function ($day) {
         return $day['in_range'];
     }));
-    $range = prepare_form_data_for_output($in_range[0]['date'], 'date') . ' – ' . prepare_form_data_for_output($in_range[count($in_range) - 1]['date'], 'date');
+    $range = ($filters['view'] === 'month') ? pg_messages_calendar_month_title($filters['date'])
+        : prepare_form_data_for_output($in_range[0]['date'], 'date') . ' – ' . prepare_form_data_for_output($in_range[count($in_range) - 1]['date'], 'date');
 
     $nav = '<div class="pg-sendcal-nav" role="group" aria-label="' . h(lang('Days shown')) . '">'
         . '<a class="pg-button pg-button-quiet pg-button-sm pg-button-icon" href="' . h($url(pg_messages_calendar_step($filters['view'], $filters['date'], -1))) . '" title="' . h(lang('Previous')) . '"><span class="bi bi-chevron-left" aria-hidden="true"></span><span class="visually-hidden">' . h(lang('Previous')) . '</span></a>'

@@ -117,3 +117,19 @@ function test_messages_calendar_wired_on_the_sends_tab()
 
 	pg_assert_true(preg_match('/\b(INSERT|UPDATE|DELETE)\b/', $module) === 0, 'the calendar writes nothing');
 }
+
+function test_messages_calendar_month_title()
+{
+	pg_assert_same(lang('November') . ' 2026', pg_messages_calendar_month_title('2026-11-14'), 'the month name and the year');
+	pg_assert_same(lang('January') . ' 2027', pg_messages_calendar_month_title('2027-01-01'), 'January');
+}
+
+function test_messages_calendar_week_chip_keeps_its_clock()
+{
+	$days = pg_messages_calendar_days('week', '2026-11-16');
+	$at = strtotime('2026-11-17 09:30:00');
+	$html = pg_messages_calendar_grid_html('week', $days, pg_messages_calendar_bucket(array(array('kind' => 'mail', 'at' => $at, 'title' => 'Alone', 'url' => 'x', 'groups' => array(), 'clash' => array())), $days), '2026-11-14', pg_messages_calendar_weekdays(), 'messages_sends.php?view=calendar');
+
+	pg_assert_true(strpos($html, '<span class="pg-sendcal-time">09:30</span>') !== false, 'a send alone in its hour still shows its own clock');
+	pg_assert_true(strpos($html, '09:00</div>') !== false, 'under its hour line');
+}
