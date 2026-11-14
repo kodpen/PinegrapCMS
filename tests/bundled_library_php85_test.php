@@ -2,14 +2,15 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests that the bundled dompdf and PHPMailer stay quiet on PHP 8.5. Both
- * call handle-freeing functions that PHP 8.5 deprecates (imagedestroy(),
- * xml_parser_free(), curl_close(), openssl_pkey_free()); their releases keep
- * each call behind a PHP 7 check, and a library update that drops one would
- * log a deprecation on every PDF render or DKIM-signed mail. Non-canonical
- * casts such as (boolean) are reported when a file is compiled, and a read of
- * $http_response_header before the function writes it is reported the same
- * way, so neither may appear in the loaded code.
+ * Tests that the bundled dompdf, PHPMailer and iyzico SDK stay quiet on
+ * PHP 8.5. They call handle-freeing functions that PHP 8.5 deprecates
+ * (imagedestroy(), xml_parser_free(), curl_close(), openssl_pkey_free()) only
+ * behind a PHP 7 check, and a library update that drops one would log a
+ * deprecation on every PDF render, DKIM-signed mail or iyzico call.
+ * Non-canonical casts such as (boolean), implicitly nullable parameters
+ * (PHP 8.4) and a read of $http_response_header before the function writes
+ * it are reported when a file is compiled, so none may appear in the loaded
+ * code.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -27,7 +28,7 @@ function pg_test_bundled_php85_files()
 {
 	$files = array();
 
-	foreach (array('/includes/dompdf', '/includes/phpmailer/src') as $folder) {
+	foreach (array('/includes/dompdf', '/includes/phpmailer/src', '/includes/iyzipay-php/src') as $folder) {
 		$directory = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR . $folder, FilesystemIterator::SKIP_DOTS));
 
 		foreach ($directory as $file) {
@@ -115,6 +116,110 @@ function test_bundled_libraries_use_canonical_casts()
 	}
 
 	pg_assert_same(array(), $found, 'non-canonical casts');
+}
+
+// PHP 8.4 reports "Type $x = null" without the "?" when the file is compiled.
+function test_bundled_libraries_mark_nullable_parameters()
+{
+	$found = array();
+	// T_FN (7.4) and the qualified-name tokens (8.0) do not exist on PHP 7.1.
+	$function_tokens = array(T_FUNCTION);
+	$type_tokens = array(T_STRING, T_ARRAY, T_CALLABLE);
+
+	foreach (array('T_FN') as $name) {
+		if (defined($name)) {
+			$function_tokens[] = constant($name);
+		}
+	}
+
+	foreach (array('T_NAME_QUALIFIED', 'T_NAME_FULLY_QUALIFIED') as $name) {
+		if (defined($name)) {
+			$type_tokens[] = constant($name);
+		}
+	}
+
+	foreach (pg_test_bundled_php85_files() as $path) {
+		$tokens = array();
+
+		foreach (token_get_all((string) file_get_contents($path)) as $token) {
+			if (!is_array($token) || !in_array($token[0], array(T_WHITESPACE, T_COMMENT, T_DOC_COMMENT), true)) {
+				$tokens[] = $token;
+			}
+		}
+
+		$count = count($tokens);
+
+		for ($i = 0; $i < $count; $i++) {
+			if (!is_array($tokens[$i]) || !in_array($tokens[$i][0], $function_tokens, true)) {
+				continue;
+			}
+
+			while (($i < $count) && ($tokens[$i] !== '(')) {
+				$i++;
+			}
+
+			for ($depth = 0; $i < $count; $i++) {
+				if ($tokens[$i] === '(') {
+					$depth++;
+				} elseif ($tokens[$i] === ')') {
+					if (--$depth === 0) {
+						break;
+					}
+				}
+
+				if (!is_array($tokens[$i]) || ($tokens[$i][0] !== T_VARIABLE) || !isset($tokens[$i + 2])
+					|| ($tokens[$i + 1] !== '=') || !is_array($tokens[$i + 2]) || (strtolower($tokens[$i + 2][1]) !== 'null')) {
+					continue;
+				}
+
+				$type = $i - 1;
+
+				// Skip a by-reference "&" or a variadic "...".
+				if (($tokens[$type] === '&') || (is_array($tokens[$type]) && ($tokens[$type][0] === T_ELLIPSIS))) {
+					$type--;
+				}
+
+				$typed = is_array($tokens[$type]) && in_array($tokens[$type][0], $type_tokens, true);
+
+				if ($typed && ($tokens[$type - 1] !== '?') && ($tokens[$type - 1] !== '|')) {
+					$found[] = pg_test_bundled_php85_name($path) . ':' . $tokens[$i][2] . ' ' . $tokens[$type][1] . ' ' . $tokens[$i][1];
+				}
+			}
+		}
+	}
+
+	pg_assert_same(array(), $found, 'implicitly nullable parameters');
+}
+
+// The iyzico SDK's request parameters were marked "?" for PHP 8.4; each still
+// takes null, and the three IyzipayResource ones stay required, as PHP had
+// treated them (a default before a required parameter is no default).
+function test_iyzico_sdk_nullable_parameters_keep_their_meaning()
+{
+	require_once PG_FUNCTIONS_DIR . '/includes/iyzipay-php/IyzipayBootstrap.php';
+	IyzipayBootstrap::init();
+
+	$methods = array(
+		array('Iyzipay\IyzipayResource', 'getHttpHeadersV2', 1, false),
+		array('Iyzipay\IyzipayResource', 'getHttpHeadersIsV2', 1, false),
+		array('Iyzipay\IyzipayResource', 'prepareAuthorizationStringV2', 1, false),
+		array('Iyzipay\IyziAuthV2Generator', 'generateAuthContent', 4, true),
+		array('Iyzipay\IyziAuthV2Generator', 'getHmacSHA256Signature', 3, true),
+		array('Iyzipay\IyziAuthV2Generator', 'getPayload', 1, true),
+		array('Iyzipay\JsonBuilder', 'addArray', 1, true),
+		array('Iyzipay\RequestStringBuilder', 'appendArray', 1, true),
+	);
+
+	foreach ($methods as $method) {
+		$parameter = (new ReflectionMethod($method[0], $method[1]))->getParameters()[$method[2]];
+		$label = $method[0] . '::' . $method[1] . '() $' . $parameter->getName();
+
+		pg_assert_true($parameter->allowsNull(), $label . ' takes null');
+		pg_assert_same($method[3], $parameter->isOptional(), $label . ' optional');
+	}
+
+	// Without a request, the payload is the URI's path from /v2 on.
+	pg_assert_same('/v2/subscription/products', \Iyzipay\IyziAuthV2Generator::getPayload('https://sandbox-api.iyzipay.com/v2/subscription/products'), 'payload without a request');
 }
 
 // PHP 8.5 reports $http_response_header unless the function has written the
