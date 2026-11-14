@@ -23,13 +23,13 @@ module: whatsapp_design
 
 ## What is Send myself a test?
 - Only for an APPROVED template, read-only otherwise. Sent at once with `pg_whatsapp_cloud_send()` to the signed-in person's mobile (`pg_whatsapp_design_own_number()`), filled with the samples (`pg_whatsapp_design_send_components()`, header text and named parameters too), in the card test's bucket of ten an hour. Disabled without a mobile number.
-- Refused for now: a picture, video or document header, and buttons that take a value (copy code, URL with a variable, OTP): WA9 adds them.
+- Media headers and link variables: `whatsapp-template-approval.md`.
 
 ## What did the owner decide about variables?
 - Owner (2026-11-13): `{{1}}` in the message box confuses a user; each variable is a draggable Bootstrap chip naming what it stands for (customer name, order number …), dragged in, moved or removed; Meta's `{{n}}` stays in the stored body (channel 25 #2222). Built in WA8b (#9376): `ui/variable-chips.md`; the labels are the chips' names (`pg_whatsapp_design_chip_labels()`: "Value 2" without one).
 
-## What is left to WA9?
-- Header media from Files, buttons, Send for approval, editing a rejected template. The type Authentication has no own form yet.
+## What is described elsewhere?
+- Header, buttons, Send for approval, a rejected template: `whatsapp-template-approval.md` (WA9). The type Authentication has no own form yet.
 
 ## How was it verified?
 - `tests/whatsapp_design_test.php`. On the sandbox: new draft, a missing sample, saved, a taken name; pictures dark and light, wide and phone. No Meta account: the test send was not run against Meta.

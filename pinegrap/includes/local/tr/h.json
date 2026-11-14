@@ -320,6 +320,7 @@
     "Header Words": "Başlık Yazısı",
     "Header cell": "Başlık Hücresi",
     "Header cell (th)": "Başlık hücresi (th)",
+    "Header text": "Başlık metni",
     "Heading": "Başlık",
     "Heading (Return request #12)": "Başlık (İade talebi #12)",
     "Heading 1": "Başlık 1",
@@ -1534,5 +1535,6 @@
     "how-we-work": "nasil-calisiyoruz",
     "hp": "hp",
     "https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, fail2ban, iptables, nosniff, referrer": "https, ssl, secure mode, certificate, header, csp, content security policy, hsts, frame, clickjacking, fail2ban, iptables, nosniff, referrer, guvenli mod, güvenli mod, sertifika, baslik",
+    "https://… , {{1}} at the end for a value": "https://… , bir değer için sonda {{1}}",
     "hunger, nutrition, school meals, farming, seeds, harvest": "açlık, beslenme, okul yemeği, tarım, tohum, hasat"
 }
