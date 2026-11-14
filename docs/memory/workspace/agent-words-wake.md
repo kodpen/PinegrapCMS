@@ -6,6 +6,10 @@ description: An application's API message and an agent's answer wake the agents 
 ## Which messages written by an application wake agents?
 - `POST /workspace/channels/{id}/messages` with an application's key, or through an OAuth connection, kind message only (`ws_api_message_wakes_agents()`), and an agent's answer (`POST /workspace/agent-requests/{id}/answer`). Both call `ws_agent_after_app_send()`, which calls `ws_agent_after_send()` and nothing else.
 - So do an application's message with a file (files.create, canvases), its notes and decisions, and its agent's edit of its own message by the tags it adds (`channel-item-tags.md`).
+
+## Which tags outside a message's body wake? (owner, 2026-11-13, #9341)
+- A tag in a poll, a check-in answer, a forwarded copy, a task, a task note, a shared note or a table cell wakes the agent it names only in an agent channel, only when the channel's owner or a manager wrote it, never in a canvas (`ws_message_item_tags_writer()`). A save asks only the tags it adds.
+- A note's tag hangs on its card, a cell's on one system line per save; the brief tells the agent where the tag sits (`channel-item-tags.md`).
 - Claude, Pinegrap AI and the MCP aliases are never asked by an application's words (`ws_api_message_asks_assistants()` stays a person's only). A woken model agent is carried on as from a person's message (`ws_api_assistants_carry_on()`).
 - The symptom it fixed (owner, 2026-11-11; #8806): the architect's API message naming `@prmerge` made no request and no "Waiting for" line, and the reply made none for the architect.
 
