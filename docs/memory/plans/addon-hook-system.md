@@ -1,12 +1,12 @@
 ---
 name: addon-hook-system
-description: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
+description: Plan (approved 2026-10-19; not to be started before the running plans end, owner 2026-11-14): add-on packages under includes/addons/ with manifest and hooks, so drivers add without forking
 ---
 
 ## What did the owner decide?
 - 2026-10-19: open this after the payment driver layer is in use; the driver interface is the first add-on contract. Nothing in the core is removed or moved to add-ons; add-ons only add.
 - 2026-10-30 (#3344): not in 2026.11.0; it starts after that version ships, and new PSP, carrier and marketplace drivers keep landing in the core until then. Architect's notes for the start, re-read then: the hook list and manifest as below; enabled state and settings in an `addons` table (`slug`, `version`, `enabled`, `settings` JSON with secret fields sealed, `installed_at`, `enabled_by`) by `install_create_table()` in the then-open version; no panel zip upload before the signature check.
-- 2026-11-14: next after the running plans, with core improvements and dead-code clean-up beside it (`workflow/decisions-made-product-52.md`).
+- 2026-11-14: starts when the running plans are done, in two parts (`workflow/decisions-made-product-52.md`): before 2026.11.0 ships the design note, the registry and hooks for the core's own use, core improvements and dead-code clean-up; after it zip upload, the shipped drivers moved into add-on folders, the open contract.
 
 ## Why?
 - There is no hook/filter API (`do_action`-style) and no add-on packaging; extension today means PHP regions, per-page hook code, the API, webhooks and MCP. Every compared platform has a marketplace or plugin system; without one, every new PSP, carrier or marketplace lands in the core and in `submit_order.php`-style switch statements.
@@ -26,4 +26,4 @@ description: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships):
 - Should add-ons be allowed to add panel menu items and settings cards? Yes, through the manifest, rendered by core templates only.
 
 ## Where to start?
-- After 2026.11.0 ships (owner, #3344); the payment driver layer is done (`commerce/payment-driver-layer-decisions.md`). Read `includes/fn/events.php` and `core/file-placement-rules.md`, `core/file-header-and-embedded-libraries.md` (gate constants, header block).
+- When the running plans are done (owner, 2026-11-14); the payment driver layer is done (`commerce/payment-driver-layer-decisions.md`). Read `includes/fn/events.php` and `core/file-placement-rules.md`, `core/file-header-and-embedded-libraries.md` (gate constants, header block).
