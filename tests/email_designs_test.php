@@ -139,3 +139,29 @@ function test_email_designs_palette_and_canvas_follow_the_root()
 	pg_assert_contains('data-w="600" title="\' + esc(_sdT(\'E-mail, 600 px wide\'))', $js, 'a 600 px width');
 	pg_assert_contains('data-w="375" title="\' + esc(_sdT(\'Phone view, 375 px wide\'))', $js, 'a 375 px Phone view');
 }
+
+function test_email_designs_page_name_is_free_and_their_own()
+{
+	pg_assert_same('e-posta-tasarimi', pg_email_design_page_name('E-posta tasarımı', array()), 'the words as an address');
+	pg_assert_same('e-posta-tasarimi-2', pg_email_design_page_name('E-posta tasarımı', array('E-Posta-Tasarimi')), 'taken in any case: the next number');
+	pg_assert_same('e-posta-tasarimi-4', pg_email_design_page_name('E-posta tasarımı', array('e-posta-tasarimi', 'e-posta-tasarimi-2', 'e-posta-tasarimi-3')), 'the first free number');
+	pg_assert_same('email-design', pg_email_design_page_name('***', array()), 'no letters: a plain name');
+	pg_assert_same('e-posta-tasarimi', pg_email_design_new_page(3, 'e-posta-tasarimi')['page_name'], 'the tab carries it');
+}
+
+function test_email_designs_offer_nothing_a_mail_cannot_carry()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/style_designer.css');
+
+	pg_assert_contains("document.body.classList.toggle('sd-email-design', on);", $js, 'the editor knows it is an e-mail');
+	foreach (array('#sd-vb-motion', '#sd-vb-proto', '#sd-as-sec-js') as $id) {
+		pg_assert_contains('body.sd-email-design ' . $id, $css, $id . ' is not offered');
+	}
+	pg_assert_contains('body.sd-email-design .sd-as-mail-note { display:block; }', $css, 'the note on what reaches the mail');
+
+	$card = pg_campaign_content_card(array('mode' => 'add'));
+	pg_assert_contains('pg-campaign-phone disabled" aria-disabled="true"', $card, 'no phone preview before a page is chosen');
+	pg_assert_contains('id="body_preview_phone" disabled>', $card, 'its switch waits too');
+	pg_assert_false(strpos(pg_campaign_content_card(array('mode' => 'add', 'preview' => 'x.html')), 'aria-disabled="true"') !== false, 'a chosen page has it');
+}

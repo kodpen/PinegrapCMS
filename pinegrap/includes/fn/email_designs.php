@@ -175,16 +175,62 @@ function pg_email_design_starter_tree()
 }
 
 /**
+ * A page name for a new e-mail design: the words as an address, with the
+ * first number from 2 that no page has taken when the plain name is taken.
+ *
+ * @param string $words  e.g. "E-posta tasarımı"
+ * @param array  $taken  page names already used (any case)
+ * @return string
+ */
+function pg_email_design_page_name($words, $taken)
+{
+    $base = trim(str_replace('_', '-', pg_sw_slugify((string) $words)), '-');
+    if ($base === '') {
+        $base = 'email-design';
+    }
+
+    $used = array();
+    foreach ((array) $taken as $name) {
+        $used[mb_strtolower((string) $name, 'UTF-8')] = true;
+    }
+
+    $name = $base;
+    for ($n = 2; isset($used[$name]) && $n < 10000; $n++) {
+        $name = $base . '-' . $n;
+    }
+
+    return $name;
+}
+
+/**
+ * A page name for a new e-mail design that no page has yet. The base is
+ * letters, digits and hyphens only, so it needs no LIKE escaping.
+ *
+ * @param string $words
+ * @return string
+ */
+function pg_email_design_free_page_name($words)
+{
+    $base = pg_email_design_page_name($words, array());
+    $rows = db_values("SELECT page_name FROM page WHERE page_name LIKE '" . e($base) . "%'");
+
+    return pg_email_design_page_name($words, is_array($rows) ? $rows : array());
+}
+
+/**
  * The editor's first tab for a new e-mail design: the starter tree, in the
  * e-mail designs folder, kept out of search, the sitemap and the search
  * engines, never a draft (the folder is private already).
  *
- * @param int $folder_id
+ * @param int    $folder_id
+ * @param string $page_name the tab's and the page's name
  * @return array a page descriptor as pg_designer_blank_page() gives
  */
-function pg_email_design_new_page($folder_id)
+function pg_email_design_new_page($folder_id, $page_name = '')
 {
     $page = pg_designer_blank_page(0, pg_email_design_starter_tree());
+    // The tab carries the design's own words, not the editor's "New Page".
+    $page['page_name']     = (string) $page_name;
     $page['page_folder']   = (int) $folder_id;
     $page['page_search']   = 0;
     $page['page_sitemap']  = 0;

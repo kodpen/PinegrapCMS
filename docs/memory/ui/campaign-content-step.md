@@ -20,7 +20,7 @@ module: campaign_content
 - When the page changed after the campaign's last save (`page.page_timestamp` over `last_modified_timestamp`, manual campaigns only): an amber line and "Take the design again", which draws the page anew (view access checked), saves, and stays on the screen with a notice. The stored e-mail is what goes.
 
 ## How is it previewed?
-- A frame of the page (create, `?edit=no&email=true`) or of the stored body (`view_email_campaign.php?id=`); "Preview on a phone" narrows it to 375 px.
+- A frame of the page (create, `?edit=no&email=true`) or of the stored body (`view_email_campaign.php?id=`); "Preview on a phone" narrows it to 375 px. On create it is disabled (`disabled`, `aria-disabled`, its switch too) until a page is chosen (#9465).
 
 ## What is known and left?
 - A page's header can put the sender's account bar (name, logout link) into the stored body: a widget outside the signed-out e-mail render (`core/email-campaign-html-body.md`), seen on the sandbox's home-1; the e-mail designs of MA5c draw no such header.

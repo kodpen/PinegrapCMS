@@ -229,6 +229,11 @@ function pg_campaign_content_card($o)
     $phone = '<label class="pg-button pg-button-quiet pg-campaign-phone" for="body_preview_phone"><i class="bi bi-phone" aria-hidden="true"></i>' . h(lang('Preview on a phone')) . '</label>';
 
     if ($mode === 'add') {
+        // Nothing to look at on a phone until a page is chosen: the button
+        // waits, as the frame does (pg_campaign_content_script()).
+        if ($o['preview'] === '') {
+            $phone = str_replace('class="pg-button pg-button-quiet pg-campaign-phone"', 'class="pg-button pg-button-quiet pg-campaign-phone disabled" aria-disabled="true"', $phone);
+        }
         $side .= '<div class="pg-campaign-part is-design">' . $phone . '</div>';
     } elseif ($o['preview'] !== '') {
         $side .= $phone;
@@ -241,7 +246,7 @@ function pg_campaign_content_card($o)
     return '<div class="col-12"><section class="pg-card pg-campaign-content mb-7" data-kind="' . h($kind) . '">'
         . '<h2 class="pg-title-section">' . h(lang('Content')) . '</h2>'
         . $radios
-        . '<input type="checkbox" class="pg-campaign-phone-switch" id="body_preview_phone">'
+        . '<input type="checkbox" class="pg-campaign-phone-switch" id="body_preview_phone"' . ((($mode === 'add') && ($o['preview'] === '')) ? ' disabled' : '') . '>'
         . '<div class="pg-campaign-grid"><div class="pg-campaign-main">' . $main . '</div><div class="pg-campaign-side">' . $side . '</div></div>'
         . '</section></div>';
 }
@@ -286,6 +291,21 @@ function pg_campaign_content_script()
             if (edit) {
                 edit.href = picked ? "edit_page.php?id=" + encodeURIComponent(input.value) : "#";
                 edit.hidden = !picked;
+            }
+
+            var phone = document.querySelector(".pg-campaign-part.is-design .pg-campaign-phone");
+            var phoneSwitch = document.getElementById("body_preview_phone");
+
+            if (phone) {
+                phone.classList.toggle("disabled", !picked);
+                phone.setAttribute("aria-disabled", picked ? "false" : "true");
+            }
+
+            if (phoneSwitch) {
+                phoneSwitch.disabled = !picked;
+                if (!picked) {
+                    phoneSwitch.checked = false;
+                }
             }
         });
     })();

@@ -7166,8 +7166,8 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-bp-btn" data-w="1200" title="' + esc(_sdT('Desktop (XL)')) + '"><span class="bi bi-display"></span></button>' +
             '<button type="button" class="sd-bp-btn active" data-w="0" title="' + esc(_sdT('Full Width')) + '"><span class="bi bi-arrows-fullscreen"></span></button>' +
             // An e-mail design's two widths (_sdEmailCanvasSync()).
-            '<button type="button" class="sd-bp-btn sd-bp-mail" data-w="600" title="' + esc(_sdT('E-mail, 600 px wide')) + '"><span class="bi bi-envelope"></span><span>' + esc(_sdT('E-mail')) + '</span></button>' +
-            '<button type="button" class="sd-bp-btn sd-bp-mail" data-w="375" title="' + esc(_sdT('Phone view, 375 px wide')) + '"><span class="bi bi-phone"></span><span>' + esc(_sdT('Phone view')) + '</span></button>' +
+            '<button type="button" class="sd-bp-btn sd-bp-mail" data-w="600" title="' + esc(_sdT('E-mail, 600 px wide')) + '" aria-label="' + esc(_sdT('E-mail, 600 px wide')) + '"><span class="bi bi-envelope"></span></button>' +
+            '<button type="button" class="sd-bp-btn sd-bp-mail" data-w="375" title="' + esc(_sdT('Phone view, 375 px wide')) + '" aria-label="' + esc(_sdT('Phone view, 375 px wide')) + '"><span class="bi bi-phone"></span></button>' +
             '<span class="sd-bp-label" id="sd-bp-label">—</span>' +
             '</div>' +
             '<div class="sd-bp-bar-right">' +
@@ -53531,6 +53531,7 @@ const StyleDesigner = (function () {
             '</div>' +
             '<div id="sd-assets-body">' +
                 '<div id="sd-tab-design" class="sd-as-tab-pane">' +
+                    '<p class="sd-as-mail-note">' + esc(_sdT('An e-mail keeps only the looks written on its elements: these style sheets show on the canvas and are left out of the sent mail.')) + '</p>' +
                     '<div class="sd-as-section" id="sd-as-sec-css">' +
                         '<div class="sd-as-sec-hdr" data-as-toggle="css">' +
                             '<span class="sd-as-sec-chev bi bi-chevron-down"></span>' +
@@ -66158,6 +66159,10 @@ const StyleDesigner = (function () {
         var on = !!(tree && tree.props && tree.props.pgEmail);
         if (wrapper.classList.contains('sd-canvas-email') === on) return;
         wrapper.classList.toggle('sd-canvas-email', on);
+        // What a mail cannot carry (scripts, animations, the prototype's
+        // links between pages) is not offered; the right panel says that
+        // only the looks written on the elements reach the sent mail.
+        document.body.classList.toggle('sd-email-design', on);
         var pick = wrapper.querySelector(on ? '.sd-bp-mail[data-w="600"]' : '.sd-bp-btn[data-w="0"]');
         if (pick) pick.click();
     }

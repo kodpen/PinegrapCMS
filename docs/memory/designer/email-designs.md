@@ -6,11 +6,8 @@ module: email_designs
 
 ## What is an e-mail design?
 - A page of a visual design whose root carries `props.pgEmail` (`pg_email_design_tree_is()`, `includes/fn/email_designs.php`). It is made with "New e-mail design" on New campaign (role <= 1) or `add_system_style.php?start=email`: one unsaved tab with the starter tree (frame, heading, text, button), the folder set, no search, no sitemap, noindex, nofollow, never a draft.
+- Its page and tab name is the words "E-mail design" as an address with the first free number (`pg_email_design_free_page_name()`), never the editor's "New Page" (architect, channel 2941). The editor: `email-designs-editor.md`.
 - Its folder: the private "E-mail designs" folder, made on first use; the id is `config_text` `email_designs_folder_id` (`pg_email_designs_folder_id($create)`). A folder deleted or in the bin is replaced by a new one.
-
-## How does the designer show it?
-- `_sdEmailCanvasSync()` (called after every `renderCanvas()` in `render()`) sets `.sd-canvas-email` on `#sd-canvas`: the page widths hide and two buttons show, "E-mail" (600 px, chosen on open) and "Phone view" (375 px). A page that is no e-mail goes back to full width.
-- The palette's E-mail group (family file `assets/js/style_designer_blocks_mail.js`, prefix `mail-`) shows only in an e-mail design, first; elsewhere it is left out (`_sdBlockPaletteGroups()`).
 
 ## What is a mail block?
 - A semantic node with `props._mail` naming its kind: frame, cell, group, heading, text, button_row, button, picture, divider, space, columns, column. The tree keeps classes and props only.
