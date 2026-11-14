@@ -2024,6 +2024,7 @@
     "{var:1} · {var:2}": "{var:1} · {var:2}",
     "{var:1} · {var:2} lines": "{var:1} · {var:2} kalem",
     "{var:1} · {var:2} line{suffix:1}": "{var:1} · {var:2} kalem",
+    "{var:1} · {var:2} plans · written {var:3}": "{var:1} · {var:2} plan · yazıldı {var:3}",
     "{var:1} · {var:2} · last step {var:3}": "{var:1} · {var:2} · son adım {var:3}",
     "{var:1} · {var:2} · {var:3}": "{var:1} · {var:2} · {var:3}",
     "{var:1} · {var:2}%": "{var:1} · %{var:2}",

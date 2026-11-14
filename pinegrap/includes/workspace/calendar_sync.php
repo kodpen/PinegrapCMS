@@ -38,6 +38,15 @@
  * repeating tasks and done tasks are not moved; a deleted or renamed event
  * changes nothing and the next write of it restores it.
  *
+ * The person's own plans (My calendar) can be written too, by a switch of
+ * their own there, into a second calendar the site makes for plans: only
+ * plans the person owns, whatever whom they are opened to, never a plan
+ * someone else shared with them. Title, days and times and a link to the
+ * plan only. Plans go one way: that calendar is never read back, and the
+ * next write puts a plan back as it stands on the site. Plans never join the
+ * calendar subscription's items (ws_calendar_feed_task_items()), which
+ * build the outgoing iCal address.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -241,18 +250,26 @@ function ws_calsync_plan($bodies, $written, $limit)
 }
 
 /**
- * A stored state in its known shape, array() when writing is off.
+ * A stored state in its known shape, array() when writing is off for both
+ * tasks and plans. The tasks calendar_id is '' while only plans are written;
+ * a plans calendar is kept after the switch went off until its events are
+ * deleted.
  *
  * @param array $state as unsealed
  * @return array provider, connection_id, calendar_id, written (id => hash),
  *               remote (id => provider's id), synced_at, error, left,
- *               read_token (Google syncToken or Graph deltaLink), read_started
+ *               read_token (Google syncToken or Graph deltaLink), read_started,
+ *               plans (the switch), plans_calendar_id, plans_written (id => hash)
  */
 function ws_calsync_state_clean($state)
 {
+    $state = is_array($state) ? $state : array();
     $provider = (string) ($state['provider'] ?? 'google');
+    $calendar = is_string($state['calendar_id'] ?? null) ? $state['calendar_id'] : '';
+    $plans = !empty($state['plans']);
+    $plans_calendar = is_string($state['plans_calendar_id'] ?? null) ? $state['plans_calendar_id'] : '';
 
-    if (empty($state['calendar_id']) || !isset(ws_calsync_provider_names()[$provider])) {
+    if ((($calendar === '') && !$plans && ($plans_calendar === '')) || !isset(ws_calsync_provider_names()[$provider])) {
         return array();
     }
 
@@ -265,17 +282,31 @@ function ws_calsync_state_clean($state)
     }
 
     return array(
-        'provider'      => $provider,
-        'connection_id' => (int) ($state['connection_id'] ?? 0),
-        'calendar_id'   => (string) $state['calendar_id'],
-        'written'       => is_array($state['written'] ?? null) ? $state['written'] : array(),
-        'remote'        => $remote,
-        'synced_at'     => (int) ($state['synced_at'] ?? 0),
-        'error'         => (string) ($state['error'] ?? ''),
-        'left'          => (int) ($state['left'] ?? 0),
-        'read_token'    => is_string($state['read_token'] ?? null) ? $state['read_token'] : '',
-        'read_started'  => (int) ($state['read_started'] ?? 0),
+        'provider'          => $provider,
+        'connection_id'     => (int) ($state['connection_id'] ?? 0),
+        'calendar_id'       => $calendar,
+        'written'           => is_array($state['written'] ?? null) ? $state['written'] : array(),
+        'remote'            => $remote,
+        'synced_at'         => (int) ($state['synced_at'] ?? 0),
+        'error'             => (string) ($state['error'] ?? ''),
+        'left'              => (int) ($state['left'] ?? 0),
+        'read_token'        => is_string($state['read_token'] ?? null) ? $state['read_token'] : '',
+        'read_started'      => (int) ($state['read_started'] ?? 0),
+        'plans'             => $plans,
+        'plans_calendar_id' => $plans_calendar,
+        'plans_written'     => is_array($state['plans_written'] ?? null) ? $state['plans_written'] : array(),
     );
+}
+
+/**
+ * Whether the person's tasks are written (the tasks calendar is there).
+ *
+ * @param array $state ws_calsync_state_clean()
+ * @return bool
+ */
+function ws_calsync_tasks_on($state)
+{
+    return !empty($state) && ((string) $state['calendar_id'] !== '');
 }
 
 /**
@@ -860,13 +891,154 @@ function ws_calsync_bodies($viewer, $provider, $since, $until, $timezone)
 }
 
 
+/**
+ * The times one plan is written as, inside the writer's window: today one,
+ * the plan's own days, under the uid ws-plan-<id>. A plan that repeats is
+ * written one event a time, each with a suffix of its day (-Ymd) in its key.
+ *
+ * @param array $plan     a plan row (ws_personal_plan())
+ * @param int   $since_ts the window's first moment
+ * @param int   $until_ts the moment after the window
+ * @return array[] key (the uid's suffix), starts_at, ends_at (exclusive)
+ */
+function ws_calsync_plan_times($plan, $since_ts, $until_ts)
+{
+    $starts = (int) ($plan['starts_at'] ?? 0);
+    $ends = max($starts, (int) ($plan['ends_at'] ?? 0));
+
+    if (($starts <= 0) || ($starts >= (int) $until_ts) || (max($ends, $starts + 1) <= (int) $since_ts)) {
+        return array();
+    }
+
+    return array(array('key' => '', 'starts_at' => $starts, 'ends_at' => $ends));
+}
+
+/**
+ * The calendar items of the person's own plans: those whose owner is the
+ * person, read through the plans' gate, whoever else they are opened to. A
+ * plan someone else shared with the person is never one. Title, days and
+ * times and a link to the plan on My calendar; never the note, the
+ * customer or the roadmap's steps.
+ *
+ * @param array[] $plans    plan rows the person may see (ws_personal_plans_between())
+ * @param int     $user_id  the person
+ * @param int[]   $team     the team's ids (ws_team_ids())
+ * @param string  $base     the panel's address, ending in a slash
+ * @param int     $since_ts
+ * @param int     $until_ts
+ * @return array[] items as ws_calendar_feed_items() gives them
+ */
+function ws_calsync_plan_items($plans, $user_id, $team, $base, $since_ts, $until_ts)
+{
+    $items = array();
+    $user_id = (int) $user_id;
+
+    foreach ($plans as $plan) {
+        if (!is_array($plan) || ((int) ($plan['user_id'] ?? 0) !== $user_id)
+            || !ws_personal_plan_can_see($user_id, $plan, $team, array())) {
+            continue;
+        }
+
+        $id = (int) $plan['id'];
+        $url = $base . 'workspace_my_calendar.php?plan=' . $id;
+        $all_day = !empty($plan['all_day']);
+
+        foreach (ws_calsync_plan_times($plan, $since_ts, $until_ts) as $time) {
+            $items[] = array(
+                'uid'         => 'ws-plan-' . $id . (string) $time['key'],
+                'summary'     => (string) ($plan['title'] ?? ''),
+                'description' => $url,
+                'url'         => $url,
+                'all_day'     => $all_day,
+                // A whole-day plan ends at midnight after its last day.
+                'start'       => $all_day ? date('Y-m-d', $time['starts_at']) : (int) $time['starts_at'],
+                'end'         => $all_day ? date('Y-m-d', max($time['starts_at'], $time['ends_at'] - 1)) : (int) $time['ends_at'],
+                'rrule'       => '',
+                'categories'  => array(),
+                'status'      => 'CONFIRMED',
+                'transparent' => true,
+                'stamp'       => (int) $time['starts_at'],
+            );
+        }
+    }
+
+    return $items;
+}
+
+/**
+ * What the person's plans calendar should carry: derived id => body, empty
+ * while the switch is off, so the events written before are deleted.
+ *
+ * @param array  $state    ws_calsync_state_clean()
+ * @param array  $viewer
+ * @param string $since    Y-m-d
+ * @param string $until    Y-m-d
+ * @param string $timezone
+ * @return array
+ */
+function ws_calsync_plan_bodies($state, $viewer, $since, $until, $timezone)
+{
+    if (empty($state['plans']) || !function_exists('ws_personal_plans_between')) {
+        return array();
+    }
+
+    $since_ts = strtotime($since . ' 00:00:00');
+    $until_ts = strtotime($until . ' 00:00:00 +1 day');
+    $items = ws_calsync_plan_items(
+        ws_personal_plans_between((int) $viewer['id'], $since_ts, $until_ts),
+        (int) $viewer['id'],
+        ws_team_ids(),
+        ws_calendar_feed_panel_url(''),
+        $since_ts,
+        $until_ts
+    );
+
+    $bodies = array();
+
+    foreach (array_slice($items, 0, WS_CALENDAR_FEED_LIMIT) as $item) {
+        $bodies[ws_calsync_event_id(HOSTNAME_SETTING, (string) $item['uid'])] = ($state['provider'] === 'microsoft')
+            ? ws_calsync_graph_body($item)
+            : ws_calsync_google_body($item, $timezone);
+    }
+
+    return $bodies;
+}
+
+
 /* ---------------------------------------------------------------------------
    Writing
    --------------------------------------------------------------------------- */
 
 /**
+ * Makes a calendar of the site's in the person's account.
+ *
+ * @param string $provider
+ * @param int    $connection_id
+ * @param string $name
+ * @param string $description
+ * @return array ok, error, id
+ */
+function ws_calsync_make_calendar($provider, $connection_id, $name, $description)
+{
+    $made = ($provider === 'microsoft')
+        ? ws_calsync_call($provider, $connection_id, 'POST', '/calendars', array('name' => $name))
+        : ws_calsync_call($provider, $connection_id, 'POST', '/calendars', array(
+            'summary'     => $name,
+            'description' => $description,
+            'timeZone'    => date_default_timezone_get(),
+        ));
+
+    if (!$made['ok'] || empty($made['data']['id']) || !is_string($made['data']['id'])) {
+        return array('ok' => false, 'error' => ws_calsync_error($made), 'id' => '');
+    }
+
+    return array('ok' => true, 'error' => '', 'id' => $made['data']['id']);
+}
+
+/**
  * Turns writing on: makes the site's calendar in the person's account and
- * writes the tasks into it.
+ * writes the tasks into it. While only plans are written, the account those
+ * go to is the one tasks use too.
  *
  * @param int    $user_id
  * @param string $provider
@@ -874,40 +1046,39 @@ function ws_calsync_bodies($viewer, $provider, $since, $until, $timezone)
  */
 function ws_calsync_start($user_id, $provider)
 {
+    $state = ws_calsync_state($user_id);
+
+    if (ws_calsync_tasks_on($state)) {
+        return ws_calsync_sync($user_id);
+    }
+
+    $provider = $state ? $state['provider'] : (string) $provider;
     $account = in_array($provider, ws_calsync_offered(), true) ? ws_calsync_connection($user_id, $provider) : null;
 
     if (!$account || ($account['status'] !== 'active')) {
         return array('ok' => false, 'error' => lang('Connect your account first.'));
     }
 
-    if (ws_calsync_state($user_id)) {
-        return ws_calsync_sync($user_id);
-    }
+    $made = ws_calsync_make_calendar(
+        $provider,
+        $account['id'],
+        lang(array('string' => 'Workspace tasks ({var:1})', 'vars' => HOSTNAME_SETTING)),
+        lang('Your tasks from the workspace. Changes are made on the site.')
+    );
 
-    $name = lang(array('string' => 'Workspace tasks ({var:1})', 'vars' => HOSTNAME_SETTING));
-
-    $made = ($provider === 'microsoft')
-        ? ws_calsync_call($provider, $account['id'], 'POST', '/calendars', array('name' => $name))
-        : ws_calsync_call($provider, $account['id'], 'POST', '/calendars', array(
-            'summary'     => $name,
-            'description' => lang('Your tasks from the workspace. Changes are made on the site.'),
-            'timeZone'    => date_default_timezone_get(),
-        ));
-
-    if (!$made['ok'] || empty($made['data']['id']) || !is_string($made['data']['id'])) {
-        return array('ok' => false, 'error' => ws_calsync_error($made));
+    if (!$made['ok']) {
+        return array('ok' => false, 'error' => $made['error']);
     }
 
     $saved = ws_calsync_state_save($user_id, array(
         'provider'      => $provider,
         'connection_id' => (int) $account['id'],
-        'calendar_id'   => $made['data']['id'],
+        'calendar_id'   => $made['id'],
         'written'       => array(),
-        'remote'        => array(),
         'synced_at'     => 0,
         'error'         => '',
         'left'          => 0,
-    ));
+    ) + ($state ? $state : array('remote' => array())));
 
     if (!$saved) {
         return array('ok' => false, 'error' => lang('This site has no encryption key, so it cannot keep the connection.'));
@@ -917,15 +1088,83 @@ function ws_calsync_start($user_id, $provider)
 }
 
 /**
- * Deletes one written event.
+ * The account plans are written with: the one tasks are written with, or
+ * else the first offered provider the person has connected.
  *
- * @param array  $state
- * @param int    $connection_id
- * @param string $id the derived id
+ * @param int   $user_id
+ * @param array $state ws_calsync_state_clean()
+ * @return array|null pg_connect_account_public() with provider
+ */
+function ws_calsync_plans_account($user_id, $state)
+{
+    $providers = $state ? array($state['provider']) : ws_calsync_offered();
+
+    foreach ($providers as $provider) {
+        $account = in_array($provider, ws_calsync_offered(), true) ? ws_calsync_connection($user_id, $provider) : null;
+
+        if ($account && ($account['status'] === 'active')) {
+            return $account + array('provider' => $provider);
+        }
+    }
+
+    return null;
+}
+
+/**
+ * The plans switch of My calendar. On needs a connected account and writes
+ * at once; off is kept and the next run deletes the plan events, then the
+ * empty plans calendar.
+ *
+ * @param int  $user_id
+ * @param bool $on
  * @return array ok, error
  */
-function ws_calsync_delete_event(&$state, $connection_id, $id)
+function ws_calsync_plans_switch($user_id, $on)
 {
+    $state = ws_calsync_state($user_id);
+
+    if (!$on) {
+        if (!$state || !$state['plans']) {
+            return array('ok' => true, 'error' => '');
+        }
+
+        $state['plans'] = false;
+        // Picked by the next run of the job, not an hour later.
+        $state['left'] = max(1, (int) $state['left']);
+        ws_calsync_state_save($user_id, $state);
+
+        return array('ok' => true, 'error' => '');
+    }
+
+    $account = ws_calsync_plans_account($user_id, $state);
+
+    if (!$account) {
+        return array('ok' => false, 'error' => lang('Connect your account first.'));
+    }
+
+    $state = ws_calsync_state_clean(array('plans' => true, 'provider' => $account['provider'], 'connection_id' => (int) $account['id']) + ($state ? $state : array()));
+    $state['plans'] = true;
+
+    if (!ws_calsync_state_save($user_id, $state)) {
+        return array('ok' => false, 'error' => lang('This site has no encryption key, so it cannot keep the connection.'));
+    }
+
+    return ws_calsync_sync($user_id);
+}
+
+/**
+ * Deletes one written event.
+ *
+ * @param array       $state
+ * @param int         $connection_id
+ * @param string      $id       the derived id
+ * @param string|null $calendar the calendar's id, the tasks one when null
+ * @return array ok, error
+ */
+function ws_calsync_delete_event(&$state, $connection_id, $id, $calendar = null)
+{
+    $calendar = ($calendar === null) ? $state['calendar_id'] : (string) $calendar;
+
     if ($state['provider'] === 'microsoft') {
         // Never made (a create that failed): nothing to delete.
         if (!isset($state['remote'][$id])) {
@@ -934,7 +1173,7 @@ function ws_calsync_delete_event(&$state, $connection_id, $id)
 
         $done = ws_calsync_call('microsoft', $connection_id, 'DELETE', '/events/' . rawurlencode($state['remote'][$id]));
     } else {
-        $done = ws_calsync_call('google', $connection_id, 'DELETE', '/calendars/' . rawurlencode($state['calendar_id']) . '/events/' . rawurlencode((string) $id));
+        $done = ws_calsync_call('google', $connection_id, 'DELETE', '/calendars/' . rawurlencode($calendar) . '/events/' . rawurlencode((string) $id));
     }
 
     // Already gone (404) or already deleted (410) is what was wanted.
@@ -950,19 +1189,21 @@ function ws_calsync_delete_event(&$state, $connection_id, $id)
 /**
  * Writes one event, made when it is not there yet.
  *
- * @param array  $state
- * @param int    $connection_id
- * @param string $id   the derived id
- * @param array  $body
- * @return array ok, error
+ * @param array       $state
+ * @param int         $connection_id
+ * @param string      $id       the derived id
+ * @param array       $body
+ * @param string|null $calendar the calendar's id, the tasks one when null
+ * @return array ok, error, gone (the calendar was deleted in the account)
  */
-function ws_calsync_put_event(&$state, $connection_id, $id, $body)
+function ws_calsync_put_event(&$state, $connection_id, $id, $body, $calendar = null)
 {
     $provider = $state['provider'];
+    $calendar = ($calendar === null) ? $state['calendar_id'] : (string) $calendar;
     $done = array('ok' => false, 'status' => 404);
 
     if ($provider === 'microsoft') {
-        $events = '/calendars/' . rawurlencode($state['calendar_id']) . '/events';
+        $events = '/calendars/' . rawurlencode($calendar) . '/events';
 
         if (isset($state['remote'][$id])) {
             $done = ws_calsync_call($provider, $connection_id, 'PATCH', '/events/' . rawurlencode($state['remote'][$id]), $body);
@@ -978,7 +1219,7 @@ function ws_calsync_put_event(&$state, $connection_id, $id, $body)
             }
         }
     } else {
-        $events = '/calendars/' . rawurlencode($state['calendar_id']) . '/events';
+        $events = '/calendars/' . rawurlencode($calendar) . '/events';
         $done = ws_calsync_call($provider, $connection_id, 'PUT', $events . '/' . rawurlencode((string) $id), $body);
 
         // Not there yet: made with the same id.
@@ -988,19 +1229,128 @@ function ws_calsync_put_event(&$state, $connection_id, $id, $body)
     }
 
     if ($done['ok']) {
-        return array('ok' => true, 'error' => '');
+        return array('ok' => true, 'error' => '', 'gone' => false);
     }
 
     // A create answered 404: the person deleted the site's calendar, and
     // writing stops until they turn it on again, which makes a new one.
-    return array('ok' => false, 'error' => ((int) $done['status'] === 404)
+    return array('ok' => false, 'gone' => ((int) $done['status'] === 404), 'error' => ((int) $done['status'] === 404)
         ? lang('The Workspace tasks calendar was deleted from your account. Turn writing on again to make a new one.')
         : ws_calsync_error($done));
 }
 
 /**
+ * Makes one run's calls (ws_calsync_plan()) on one calendar and keeps what
+ * was written under $key ('written' for tasks, 'plans_written' for plans).
+ *
+ * @param array  $state
+ * @param int    $connection_id
+ * @param array  $plan     ws_calsync_plan()
+ * @param string $calendar
+ * @param string $key
+ * @return array error, gone, written, deleted
+ */
+function ws_calsync_write(&$state, $connection_id, $plan, $calendar, $key)
+{
+    $done = array('error' => '', 'gone' => false, 'written' => 0, 'deleted' => 0);
+
+    foreach ($plan['delete'] as $id) {
+        $call = ws_calsync_delete_event($state, $connection_id, (string) $id, $calendar);
+
+        if (!$call['ok']) {
+            $done['error'] = $call['error'];
+
+            return $done;
+        }
+
+        unset($state[$key][$id]);
+        $done['deleted']++;
+    }
+
+    foreach ($plan['put'] as $id => $body) {
+        $call = ws_calsync_put_event($state, $connection_id, (string) $id, $body, $calendar);
+
+        if (!$call['ok']) {
+            $done['error'] = $call['error'];
+            $done['gone'] = !empty($call['gone']);
+
+            return $done;
+        }
+
+        $state[$key][$id] = ws_calsync_body_hash($body);
+        $done['written']++;
+    }
+
+    return $done;
+}
+
+/**
+ * The plans' share of a run: the plans calendar made when the switch is on
+ * and it is not there yet, the person's own plans written into it, and once
+ * the switch is off its events deleted and then the empty calendar. Never
+ * read back: an event moved or deleted there is written again as the plan
+ * stands at its next change.
+ *
+ * @param array  $state
+ * @param array  $viewer
+ * @param int    $connection_id
+ * @param int    $limit    calls this share may make
+ * @param string $since    Y-m-d
+ * @param string $until    Y-m-d
+ * @param string $timezone
+ * @return array error, written, deleted, left
+ */
+function ws_calsync_sync_plans(&$state, $viewer, $connection_id, $limit, $since, $until, $timezone)
+{
+    $answer = array('error' => '', 'written' => 0, 'deleted' => 0, 'left' => 0);
+
+    if (!$state['plans'] && ($state['plans_calendar_id'] === '')) {
+        return $answer;
+    }
+
+    $bodies = ws_calsync_plan_bodies($state, $viewer, $since, $until, $timezone);
+
+    if ($state['plans_calendar_id'] === '') {
+        $made = ws_calsync_make_calendar(
+            $state['provider'],
+            $connection_id,
+            lang(array('string' => 'Workspace plans ({var:1})', 'vars' => HOSTNAME_SETTING)),
+            lang('Your own plans from My calendar. Changes are made on the site.')
+        );
+
+        if (!$made['ok']) {
+            $answer['error'] = $made['error'];
+
+            return $answer;
+        }
+
+        $state['plans_calendar_id'] = $made['id'];
+        $state['plans_written'] = array();
+    }
+
+    $plan = ws_calsync_plan($bodies, $state['plans_written'], $limit);
+    $done = ws_calsync_write($state, $connection_id, $plan, $state['plans_calendar_id'], 'plans_written');
+
+    $answer['written'] = $done['written'];
+    $answer['deleted'] = $done['deleted'];
+    $answer['error'] = $done['gone']
+        ? lang('The Workspace plans calendar was deleted from your account. Switch writing your plans off and on again to make a new one.')
+        : $done['error'];
+    $answer['left'] = ($answer['error'] === '') ? (int) $plan['left'] : 0;
+
+    // Switched off and emptied: the plans calendar goes too (best effort).
+    if (!$state['plans'] && ($answer['error'] === '') && ($answer['left'] === 0) && !$state['plans_written']) {
+        ws_calsync_call($state['provider'], $connection_id, 'DELETE', '/calendars/' . rawurlencode($state['plans_calendar_id']));
+        $state['plans_calendar_id'] = '';
+    }
+
+    return $answer;
+}
+
+/**
  * Writes the person's tasks to their calendar: new and changed ones, and
- * deletes those no longer carried, up to WS_CALSYNC_WRITES_MAX calls.
+ * deletes those no longer carried; then their own plans when they switched
+ * that on; up to WS_CALSYNC_WRITES_MAX calls together.
  *
  * @param int $user_id
  * @return array ok, error, written, deleted, left, moved (tasks moved from the calendar)
@@ -1046,75 +1396,67 @@ function ws_calsync_sync($user_id)
     $since = date('Y-m-d', strtotime($today . ' 12:00:00 -' . WS_CALENDAR_FEED_PAST_DAYS . ' days'));
     $until = date('Y-m-d', strtotime($today . ' 12:00:00 +' . WS_CALENDAR_FEED_AHEAD_DAYS . ' days'));
     $timezone = date_default_timezone_get();
-    $wanted = ws_calsync_bodies($viewer, $provider, $since, $until, $timezone);
-
-    // What the person moved in the calendar comes in before anything is
-    // written over it. A refused or skipped move is forgotten as written, so
-    // the event is written back as the task stands.
-    $read = ws_calsync_read($state, $account['id'], $since, $until, $timezone);
-    $moved = 0;
-
-    if ($read['ok']) {
-        foreach (ws_calsync_moves($read['changes'], $wanted['bodies'], $state['written'], $wanted['tasks'], $provider, $timezone) as $id => $move) {
-            if (ws_calsync_apply_move($viewer, $user, $move['task_id'], $move['when']) === 'kept') {
-                $moved++;
-            } else {
-                unset($state['written'][$id]);
-            }
-        }
-    }
-
-    // A booking owns its time: a move made in the calendar is refused and
-    // the event written back, with one bell line naming the booking.
-    if ($read['ok']) {
-        $booked = array_map(function ($booking) {
-            return (int) $booking['id'];
-        }, $wanted['bookings']);
-
-        foreach (ws_calsync_moves($read['changes'], $wanted['bodies'], $state['written'], $booked, $provider, $timezone) as $id => $move) {
-            unset($state['written'][$id]);
-            pg_booking_calendar_refused($user_id, $wanted['bookings'][$id]);
-        }
-    }
-
-    $answer['moved'] = $moved;
-
-    if ($moved > 0) {
-        $wanted = ws_calsync_bodies($viewer, $provider, $since, $until, $timezone);
-    }
-
-    $bodies = $wanted['bodies'];
-
-    $plan = ws_calsync_plan($bodies, $state['written'], WS_CALSYNC_WRITES_MAX);
     $error = '';
+    $read = array('ok' => true, 'error' => '');
+    $plan = array('put' => array(), 'delete' => array(), 'left' => 0);
 
-    foreach ($plan['delete'] as $id) {
-        $done = ws_calsync_delete_event($state, $account['id'], (string) $id);
+    if (ws_calsync_tasks_on($state)) {
+        $wanted = ws_calsync_bodies($viewer, $provider, $since, $until, $timezone);
 
-        if (!$done['ok']) {
-            $error = $done['error'];
-            break;
-        }
+        // What the person moved in the calendar comes in before anything is
+        // written over it. A refused or skipped move is forgotten as written,
+        // so the event is written back as the task stands.
+        $read = ws_calsync_read($state, $account['id'], $since, $until, $timezone);
+        $moved = 0;
 
-        unset($state['written'][$id]);
-        $answer['deleted']++;
-    }
-
-    if ($error === '') {
-        foreach ($plan['put'] as $id => $body) {
-            $done = ws_calsync_put_event($state, $account['id'], (string) $id, $body);
-
-            if (!$done['ok']) {
-                $error = $done['error'];
-                break;
+        if ($read['ok']) {
+            foreach (ws_calsync_moves($read['changes'], $wanted['bodies'], $state['written'], $wanted['tasks'], $provider, $timezone) as $id => $move) {
+                if (ws_calsync_apply_move($viewer, $user, $move['task_id'], $move['when']) === 'kept') {
+                    $moved++;
+                } else {
+                    unset($state['written'][$id]);
+                }
             }
-
-            $state['written'][$id] = ws_calsync_body_hash($body);
-            $answer['written']++;
         }
+
+        // A booking owns its time: a move made in the calendar is refused and
+        // the event written back, with one bell line naming the booking.
+        if ($read['ok']) {
+            $booked = array_map(function ($booking) {
+                return (int) $booking['id'];
+            }, $wanted['bookings']);
+
+            foreach (ws_calsync_moves($read['changes'], $wanted['bodies'], $state['written'], $booked, $provider, $timezone) as $id => $move) {
+                unset($state['written'][$id]);
+                pg_booking_calendar_refused($user_id, $wanted['bookings'][$id]);
+            }
+        }
+
+        $answer['moved'] = $moved;
+
+        if ($moved > 0) {
+            $wanted = ws_calsync_bodies($viewer, $provider, $since, $until, $timezone);
+        }
+
+        $plan = ws_calsync_plan($wanted['bodies'], $state['written'], WS_CALSYNC_WRITES_MAX);
+        $done = ws_calsync_write($state, $account['id'], $plan, $state['calendar_id'], 'written');
+        $error = $done['error'];
+        $answer['written'] = $done['written'];
+        $answer['deleted'] = $done['deleted'];
     }
 
-    $state['left'] = ($error === '') ? (int) $plan['left'] : 0;
+    $left = ($error === '') ? (int) $plan['left'] : 0;
+
+    // The plans take the calls the tasks left over.
+    if ($error === '') {
+        $plans = ws_calsync_sync_plans($state, $viewer, $account['id'], WS_CALSYNC_WRITES_MAX - count($plan['put']) - count($plan['delete']), $since, $until, $timezone);
+        $error = $plans['error'];
+        $answer['written'] += $plans['written'];
+        $answer['deleted'] += $plans['deleted'];
+        $left += $plans['left'];
+    }
+
+    $state['left'] = ($error === '') ? $left : 0;
 
     // A read that failed is said on the card once the writes went well.
     if (($error === '') && !$read['ok']) {
@@ -1123,7 +1465,13 @@ function ws_calsync_sync($user_id)
 
     $state['synced_at'] = time();
     $state['error'] = $error;
-    ws_calsync_state_save($user_id, $state);
+
+    // Neither tasks nor plans are written any more: nothing to keep.
+    if (!ws_calsync_state_clean($state)) {
+        pg_connect_service_delete(ws_calsync_state_key($user_id));
+    } else {
+        ws_calsync_state_save($user_id, $state);
+    }
 
     $answer['ok'] = ($error === '');
     $answer['error'] = $error;
@@ -1133,8 +1481,9 @@ function ws_calsync_sync($user_id)
 }
 
 /**
- * Turns writing off. The site's calendar is deleted from the person's
- * account when it can be (best effort); the state goes either way.
+ * Turns writing tasks off. The tasks calendar is deleted from the person's
+ * account when it can be (best effort); the state goes with it, but for
+ * the plans part when that is still written.
  *
  * @param int $user_id
  */
@@ -1143,11 +1492,40 @@ function ws_calsync_stop($user_id)
     $state = ws_calsync_state($user_id);
     $account = $state ? ws_calsync_connection($user_id, $state['provider']) : null;
 
-    if ($account && ($account['status'] === 'active')) {
+    if ($account && ($account['status'] === 'active') && ws_calsync_tasks_on($state)) {
         ws_calsync_call($state['provider'], $account['id'], 'DELETE', '/calendars/' . rawurlencode($state['calendar_id']));
     }
 
-    pg_connect_service_delete(ws_calsync_state_key($user_id));
+    $state = ws_calsync_stop_tasks($state);
+
+    if (!$state) {
+        pg_connect_service_delete(ws_calsync_state_key($user_id));
+    } else {
+        ws_calsync_state_save($user_id, $state);
+    }
+}
+
+/**
+ * A state with the tasks part taken away: array() when no plans are
+ * written either.
+ *
+ * @param array $state ws_calsync_state_clean()
+ * @return array
+ */
+function ws_calsync_stop_tasks($state)
+{
+    if (!$state) {
+        return array();
+    }
+
+    $state['calendar_id'] = '';
+    $state['written'] = array();
+    $state['read_token'] = '';
+    $state['read_started'] = 0;
+    $state['error'] = '';
+    $state['remote'] = array_intersect_key($state['remote'], $state['plans_written']);
+
+    return ws_calsync_state_clean($state);
 }
 
 /**
@@ -1209,12 +1587,12 @@ function ws_calsync_post($user_id, $action, $liveform)
     $username = (string) ($_SESSION['sessionusername'] ?? '');
 
     if (($action === 'calsync_start') || ($action === 'calsync_sync')) {
-        $first = !ws_calsync_state($user_id);
+        $first = !ws_calsync_tasks_on(ws_calsync_state($user_id));
         $done = ($action === 'calsync_start')
             ? ws_calsync_start($user_id, (string) ($_POST['calsync_provider'] ?? ''))
             : ws_calsync_sync($user_id);
 
-        if ($first && ws_calsync_state($user_id)) {
+        if ($first && ws_calsync_tasks_on(ws_calsync_state($user_id))) {
             log_activity(lang('turned on writing their workspace tasks to their own calendar'), $username);
         }
 
@@ -1263,7 +1641,7 @@ function ws_calsync_card($user_id)
         ? '<p class="small ' . (($flash['kind'] === 'error') ? 'fg-danger' : 'fg-success') . '" role="status">' . h($flash['text']) . '</p>'
         : '';
 
-    if ($state) {
+    if (ws_calsync_tasks_on($state)) {
         $provider = $state['provider'];
         $account = ws_calsync_connection($user_id, $provider);
 
@@ -1300,7 +1678,8 @@ function ws_calsync_card($user_id)
                 <p class="small fg-secondary">' . h(lang('Connect your account and your tasks are written to a calendar of their own there, kept up to date every hour. Changes are made here.')) . '</p>
                 <div class="d-flex flex-wrap gap-3">';
 
-        foreach ($offered as $provider) {
+        // While only plans are written, tasks go to the same account.
+        foreach (($state ? array_intersect($offered, array($state['provider'])) : $offered) as $provider) {
             $account = ws_calsync_connection($user_id, $provider);
 
             if ($account && ($account['status'] === 'active')) {
@@ -1326,4 +1705,94 @@ function ws_calsync_card($user_id)
                 ' . $body . '
             </div>
         </div>';
+}
+
+
+/* ---------------------------------------------------------------------------
+   The plans switch on My calendar (workspace_my_calendar.php)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The switch's post (my_calendar_action calsync_plans).
+ *
+ * @param int $user_id
+ * @return bool whether the post was the switch's
+ */
+function ws_calsync_plans_post($user_id)
+{
+    if ((string) ($_POST['my_calendar_action'] ?? '') !== 'calsync_plans') {
+        return false;
+    }
+
+    $on = !empty($_POST['plans_on']);
+    $was = ws_calsync_state($user_id);
+    $was = $was && $was['plans'];
+
+    if ($on !== $was) {
+        ws_calsync_plans_switch($user_id, $on);
+        log_activity($on
+            ? lang('turned on writing their own plans to their own calendar')
+            : lang('turned off writing their own plans to their own calendar'), (string) ($_SESSION['sessionusername'] ?? ''));
+    }
+
+    return true;
+}
+
+/**
+ * The switch "Write my plans to my calendar", empty when the site offers no
+ * provider.
+ *
+ * @param int $user_id
+ * @return string
+ */
+function ws_calsync_plans_card($user_id)
+{
+    if (!ws_calsync_offered()) {
+        return '';
+    }
+
+    $names = ws_calsync_provider_names();
+    $state = ws_calsync_state($user_id);
+    $on = $state && $state['plans'];
+    $account = ws_calsync_plans_account($user_id, $state);
+    $error = false;
+
+    if (!$account) {
+        $text = lang('Connect your Google or Microsoft account under Calendar subscription first.');
+    } elseif ($on && ($state['error'] !== '')) {
+        $text = $state['error'];
+        $error = true;
+    } elseif ($on && ($state['synced_at'] > 0)) {
+        $text = lang(array('string' => '{var:1} · {var:2} plans · written {var:3}', 'vars' => array(
+            $names[$account['provider']]['name'], count($state['plans_written']), date('d.m.Y H:i', $state['synced_at']),
+        )));
+    } else {
+        $text = lang(array('string' => 'Your own plans go to a calendar of their own in {var:1}: title, days and times only. Plans shared with you are never written.', 'vars' => $names[$account['provider']]['name']));
+    }
+
+    $title = lang('Write my plans to my calendar');
+    $meta = '<div class="pg-text-meta' . ($error ? ' fg-danger' : '') . '" id="ws-calsync-plans-text">' . h($text);
+
+    if (!$account) {
+        $meta .= ' <a href="workspace_calendar_feed.php#ws-calendar-sync">' . h(lang('Calendar subscription')) . '</a>';
+    }
+
+    $meta .= '</div>';
+
+    return '
+        <form method="post" action="workspace_my_calendar.php" id="ws-calsync-plans" class="pg-card-inner ws-calsync-plans disable_shortcut">
+            ' . get_token_field() . '
+            <input type="hidden" name="my_calendar_action" value="calsync_plans">
+            <div class="pg-card-inner-row">
+                <span class="pg-icon-tile pg-icon-tile-lg pg-tone-violet" aria-hidden="true"><span class="bi bi-calendar-check"></span></span>
+                <div class="ws-calsync-plans-text"><strong class="pg-list-row-title">' . h($title) . '</strong>' . $meta . '</div>
+                <input type="checkbox" class="pg-switch" name="plans_on" value="1" id="ws-calsync-plans-on" aria-label="' . h($title) . '" aria-describedby="ws-calsync-plans-text"'
+                    . ($on ? ' checked' : '') . ((!$account && !$on) ? ' disabled' : '') . '>
+            </div>
+        </form>
+        <script>
+            document.getElementById("ws-calsync-plans-on").addEventListener("change", function () {
+                this.form.submit();
+            });
+        </script>';
 }

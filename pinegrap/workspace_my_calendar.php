@@ -21,6 +21,18 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 // Team accounts only: a channel guest is no member and has no calendar.
 $viewer = ws_screen_gate($user);
 
+// The switch writing the person's own plans to their Google or Outlook
+// calendar (includes/workspace/calendar_sync.php).
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    validate_token_field();
+
+    if (ws_calsync_plans_post((int) $user['id'])) {
+        header('Location: ' . URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/workspace_my_calendar.php#ws-calsync-plans');
+
+        exit();
+    }
+}
+
 echo
 pg_page_shell([
         'title' => lang('My calendar'),
@@ -38,6 +50,7 @@ pg_page_shell([
                     <div id="ws-root">
                         <div class="ws-empty">' . h(lang('Loading…')) . '</div>
                     </div>
+                    ' . ws_calsync_plans_card((int) $user['id']) . '
                 </div>
             </div>
         </div>
