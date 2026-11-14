@@ -511,7 +511,16 @@ function test_picker_field_view_and_markup()
 	pg_assert_true($missing['note'] !== '');
 
 	$gone = pg_picker_field_view($kinds['file'], 42, null);
-	pg_assert_same(array('missing', '#42', 'bi-file-earmark-x'), array($gone['state'], $gone['text'], $gone['icon']), 'an id kind has no name left to tell');
+	pg_assert_same(array('missing', lang('Deleted file'), 'bi-file-earmark-x'), array($gone['state'], $gone['text'], $gone['icon']), 'an id kind with no name left is a plain label');
+	pg_assert_same(lang(array('string' => 'No longer exists · #{var:1}', 'vars' => '42')), $gone['meta'], 'the id only in the meta line');
+
+	$named = pg_picker_field_view($kinds['file'], 42, array('value' => 42, 'state' => 'missing', 'text' => 'price-list.pdf'));
+	pg_assert_same(array('missing', 'price-list.pdf', 'warning'), array($named['state'], $named['text'], $named['tone']), 'the last name the site keeps');
+	pg_assert_same(lang(array('string' => 'No longer exists · #{var:1}', 'vars' => '42')), $named['meta']);
+
+	$page_gone = pg_picker_field_view($kinds['page'], '294', null);
+	pg_assert_same(lang('Deleted page'), $page_gone['text']);
+	pg_assert_false(strpos($page_gone['text'], '#') !== false, 'never a bare id as the name');
 
 	$ok = array('value' => 'logo.png', 'text' => 'logo.png', 'state' => 'ok', 'thumb' => '/thumb/logo.png', 'type' => 'png', 'path' => array(array('name' => 'Files')), 'width' => 64, 'height' => 64, 'size_label' => '2 KB');
 	$view = pg_picker_field_view($kinds['public_image'], 'logo.png', $ok);

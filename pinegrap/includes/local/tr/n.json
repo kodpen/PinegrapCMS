@@ -1721,6 +1721,7 @@
     "No live stories yet.": "Henüz yayında yazı yok.",
     "No local orders yet.": "Henüz yerel sipariş yok.",
     "No longer a template.": "Artık şablon değil.",
+    "No longer exists · #{var:1}": "Artık yok · #{var:1}",
     "No longer fits the page": "Artık sayfaya uymuyor",
     "No longer fits the page; ask again.": "Artık sayfaya uymuyor; yeniden isteyin.",
     "No longer in the team": "Artık ekipte değil",
