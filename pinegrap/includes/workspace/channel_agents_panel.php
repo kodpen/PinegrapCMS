@@ -373,6 +373,9 @@ function ws_channel_member_agent($row, $now)
 
     return array(
         'id'         => (int) ($agent['id'] ?? 0),
+        // The application it writes as, so the screen can tell its
+        // messages in this channel (workspace.js speaksAnswer()).
+        'app_id'     => (int) ($agent['app_id'] ?? 0),
         'handle'     => (string) ($agent['handle'] ?? ''),
         'name'       => (string) ($agent['name'] ?? ''),
         'role'       => ws_agent_role_label($agent['role'] ?? ''),

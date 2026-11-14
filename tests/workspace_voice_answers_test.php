@@ -73,7 +73,7 @@ function test_ws_voice_answers_are_wired()
 	$spoken = substr($voice, $from, strpos($voice, "\n}\n", $from) - $from);
 
 	pg_assert_contains("!ws_voice_channel_allowed(\$channel)", $spoken, 'a channel that keeps its recordings sends no answer out either');
-	pg_assert_contains("asked = this.answersRecording(parent)", $read('assets/js/workspace.js'), 'the screen knows an answer to a recording');
+	pg_assert_contains("asked = !!(parent && parent.mine) && this.answersRecording(parent)", $read('assets/js/workspace.js'), 'the screen knows an answer to a recording');
 	pg_assert_contains("(!asked && !voice.speakOn(CFG.api_url, CFG.me))", $read('assets/js/workspace.js'), 'the switch only decides other answers');
 	pg_assert_contains("window.PGWsVoice.isVoice(file.name)", $read('assets/js/workspace.js'), 'a recording by name');
 }
@@ -99,7 +99,11 @@ function test_ws_voice_answers_read_aloud()
 
 	pg_assert_true(($from !== false) && ($to !== false) && ($recording_from !== false) && ($recording_to !== false), 'the methods are there');
 
-	$methods = 'var screen = { findMessage: function (id) { return parents[id]; }, '
+	preg_match('/^    function speaksAnswer\(message, parent, channel\) \{.*?^    \}$/ms', $screen, $decides);
+	pg_assert_true(!empty($decides), 'speaksAnswer() is there');
+
+	$methods = ($decides[0] ?? '') . "\n"
+		. 'var screen = { channel: { agents: [] }, findMessage: function (id) { return parents[id]; }, '
 		. substr($screen, $from, $to - $from) . "\n        }, "
 		. substr($screen, $recording_from, $recording_to - $recording_from) . "\n        } };";
 	$file = tempnam(sys_get_temp_dir(), 'pgspeak') . '.js';
