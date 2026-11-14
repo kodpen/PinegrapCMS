@@ -58,6 +58,8 @@
         bar.setAttribute('role', 'progressbar');
         bar.setAttribute('aria-valuemin', '0');
         bar.setAttribute('aria-valuemax', '100');
+        // The dots repeat the steps below; a screen reader hears the count.
+        marks.setAttribute('aria-hidden', 'true');
         bar.appendChild(fillBar);
         bar.appendChild(marks);
         root.appendChild(bar);
@@ -91,21 +93,45 @@
             var last = dayNumber(range.end);
             var width = (first !== null && last !== null && last > first) ? last - first : 0;
 
+            // The fill and the dots share one scale, the plan's days: the fill
+            // ends at the dot of the last step of the leading done run.
+            var reach = 0;
+            var leading = true;
+
+            function placeOf(step) {
+                var at = dayNumber(step.day);
+
+                if (at === null || first === null) {
+                    return null;
+                }
+
+                // A day outside the plan's days stands at the bar's end.
+                return width ? Math.min(100, Math.max(0, (at - first) * 100 / width)) : 50;
+            }
+
+            kept.forEach(function (step) {
+                leading = leading && step.done;
+
+                if (leading && placeOf(step) !== null) {
+                    reach = Math.max(reach, placeOf(step));
+                }
+            });
+
             count.textContent = kept.length ? fill(s('step_progress'), [done, kept.length]) : '';
-            fillBar.style.width = percent + '%';
+            fillBar.style.width = reach + '%';
             bar.setAttribute('aria-valuenow', String(percent));
-            bar.setAttribute('aria-label', count.textContent || s('roadmap'));
+            bar.setAttribute('aria-valuetext', count.textContent);
+            bar.setAttribute('aria-label', s('roadmap'));
             bar.classList.toggle('d-none', !kept.length);
             h.clear(marks);
 
             kept.forEach(function (step) {
-                var at = dayNumber(step.day);
+                var place = placeOf(step);
 
-                if (at === null || first === null) {
+                if (place === null) {
                     return;
                 }
 
-                var place = width ? Math.min(100, Math.max(0, (at - first) * 100 / width)) : 50;
                 var mark = el('span', 'ws-roadmap-mark' + (step.done ? ' is-done' : ''));
 
                 mark.style.left = place + '%';
@@ -151,6 +177,12 @@
             done.type = 'checkbox';
             done.checked = !!step.done;
             done.disabled = !editable || step.follows;
+
+            // A tied step's mark is its task's: said on the greyed box.
+            if (step.follows) {
+                done.title = s('step_follows');
+                done.setAttribute('aria-description', s('step_follows'));
+            }
             done.setAttribute('aria-label', s('step_done'));
             done.addEventListener('change', function () {
                 step.done = done.checked;

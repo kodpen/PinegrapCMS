@@ -18347,7 +18347,12 @@ button.ws-cal-more {
 }
 @media (max-width: 575.98px) {
   .ws-roadmap-step {
-    grid-template-columns: auto minmax(0, 1fr) 4rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  /* A touch target of 40 px for "Make a task" and "Remove the step". */
+  .ws-roadmap-tools .pg-icon-button {
+    width: 40px;
+    height: 40px;
   }
   .ws-roadmap-day {
     grid-column: 2;
@@ -18356,6 +18361,7 @@ button.ws-cal-more {
   .ws-roadmap-tools {
     grid-row: 1;
     grid-column: 3;
+    min-width: 82px;
   }
   /* A plan's chip is a bar on a phone: no room for its count. */
   .ws-cal-event .ws-roadmap-count {

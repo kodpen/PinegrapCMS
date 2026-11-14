@@ -394,7 +394,7 @@ function ws_personal_plan_steps_js_strings()
         'step_remove'      => lang('Remove the step'),
         'step_make_task'   => lang('Make a task'),
         'step_open_task'   => lang('Open the task'),
-        'step_follows'     => lang('Follows its task'),
+        'step_follows'     => lang("Follows the task's state"),
         'step_task_linked' => lang('The step now follows the task.'),
         'step_progress'    => ws_js_template('{var:1} of {var:2} steps done', 2),
         'step_no_day'      => lang('No day'),
