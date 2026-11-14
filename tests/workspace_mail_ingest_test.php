@@ -211,7 +211,7 @@ function test_workspace_mail_eml_sweep_runs_from_the_daily_job()
 {
 	$job = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_recurring_job.php');
 
-	pg_assert_contains("if (ws_enabled() && function_exists('ws_mail_eml_sweep')) {\n    ws_mail_eml_sweep();\n}", $job, 'called by the repeating-tasks job');
+	pg_assert_contains("if (ws_ready() && ws_mail_on() && function_exists('ws_mail_eml_sweep')) {\n    ws_mail_eml_sweep();\n}", $job, 'called by the repeating-tasks job');
 }
 
 function test_workspace_mail_attachments_sort_takes_the_pictures_the_html_shows()

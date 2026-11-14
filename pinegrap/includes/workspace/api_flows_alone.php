@@ -124,16 +124,20 @@ function ws_flows_alone_openapi_objects()
 
 /**
  * The permission row on the Application Access screen: the Workspace's own
- * scopes, which the flow routes ask, under the name of what they reach.
+ * scopes, which the flow routes ask, under the name of what they reach. The
+ * mail routes, merged too while mail is on (api_mail_alone.php), ask the
+ * same scopes: this row, read first, names both.
  *
  * @return array
  */
 function ws_flows_alone_scope_groups()
 {
+    $mail = function_exists('ws_mail_on') && ws_mail_on();
+
     return array(
         'workspace' => array(
-            'label'       => lang('Automation flows'),
-            'description' => lang('Flows, their runs and shares'),
+            'label'       => $mail ? lang('Automation flows and e-mail') : lang('Automation flows'),
+            'description' => $mail ? lang('Flows, their runs and shares; e-mail conversations') : lang('Flows, their runs and shares'),
             'icon'        => 'bi-diagram-3',
             'read'        => 'workspace:read',
             'write'       => 'workspace:write',

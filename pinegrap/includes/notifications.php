@@ -71,23 +71,58 @@ function pg_notification_flow_kinds()
 	return array('flow_finished', 'scheduled_notice');
 }
 
-// Is this Workspace inbox line one a flow wrote, for the bell of a site
-// whose Workspace is switched off? One read per person per request: the ids
-// of their inbox lines of pg_notification_flow_kinds().
-function pg_notification_flow_line($user_id, $inbox_id)
+// The kinds of Workspace inbox line incoming e-mail writes: a conversation
+// given to one (mail_assigned), its customer wrote again to its holder
+// (mail_customer), an e-mail one wrote could not be sent (mail_unsent). Mail
+// is read with the Workspace off (ws_mail_on()), so the bell shows them
+// then too. Pure.
+function pg_notification_mail_kinds()
+{
+	return array('mail_assigned', 'mail_customer', 'mail_unsent');
+}
+
+// The kinds of Workspace inbox line the bell shows with the Workspace off:
+// a flow's while flows run, mail's while mail is on. Pure.
+//
+// @param bool $flows_on pg_flows_enabled()
+// @param bool $mail_on  ws_mail_on()
+// @return string[]
+function pg_notification_off_kinds($flows_on, $mail_on)
+{
+	return array_merge($flows_on ? pg_notification_flow_kinds() : array(), $mail_on ? pg_notification_mail_kinds() : array());
+}
+
+// Does the bell show any Workspace line with the Workspace off: flows run or
+// mail is on?
+function pg_notification_off_lines_on()
+{
+	return (function_exists('pg_flows_enabled') && pg_flows_enabled())
+		|| (function_exists('ws_mail_on') && ws_mail_on());
+}
+
+// Is this Workspace inbox line one a flow or incoming e-mail wrote, for the
+// bell of a site whose Workspace is switched off? One read per person per
+// request: the ids of their inbox lines of pg_notification_off_kinds().
+function pg_notification_off_line($user_id, $inbox_id)
 {
 	static $lines = array();
 
 	$user_id = (int) $user_id;
 	$inbox_id = (int) $inbox_id;
 
-	if (($user_id <= 0) || ($inbox_id <= 0) || !function_exists('pg_flows_enabled') || !pg_flows_enabled()) {
+	if (($user_id <= 0) || ($inbox_id <= 0)) {
+		return false;
+	}
+
+	$kinds = pg_notification_off_kinds(function_exists('pg_flows_enabled') && pg_flows_enabled(), function_exists('ws_mail_on') && ws_mail_on());
+
+	if (empty($kinds)) {
 		return false;
 	}
 
 	if (!isset($lines[$user_id])) {
 		$ids = db_values("SELECT id FROM ws_inbox
-			WHERE user_id = '" . $user_id . "' AND kind IN ('" . implode("', '", pg_notification_flow_kinds()) . "')");
+			WHERE user_id = '" . $user_id . "' AND kind IN ('" . implode("', '", $kinds) . "')");
 
 		$lines[$user_id] = array_fill_keys(array_map('intval', (array) $ids), true);
 	}
@@ -120,8 +155,10 @@ function pg_notification_visible($notification, $rights)
 
 	// A mention, a task handed over, an invitation to a channel: always
 	// addressed, and only while the workspace is switched on. With it off,
-	// flows still run (pg_flows_enabled()), so the lines they write stay:
-	// a run of one's flow that ended or failed, Let people know.
+	// flows still run (pg_flows_enabled()) and mail is read (ws_mail_on()),
+	// so the lines they write stay: a run of one's flow that ended or failed,
+	// Let people know, a conversation given to one, its customer's answer, an
+	// e-mail that could not be sent.
 	if ($action == 'workspace') {
 		if ($target <= 0) {
 			return false;
@@ -131,7 +168,7 @@ function pg_notification_visible($notification, $rights)
 			return true;
 		}
 
-		return pg_notification_flow_line($target, (int) ($notification['reference_id'] ?? 0));
+		return pg_notification_off_line($target, (int) ($notification['reference_id'] ?? 0));
 	}
 
 	// A customer's return request, or their word that the goods are on their
@@ -575,11 +612,11 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['icon']   = 'assets/images/notification-chat.png';
 		$display['badge']  = 'assets/images/notification-chat-badge.png';
 
-		// With the Workspace off the ladder let through only a flow's lines
-		// (pg_notification_flow_line()), which flows still write.
+		// With the Workspace off the ladder let through only a flow's and
+		// mail's lines (pg_notification_off_line()), which are still written.
 		$workspace_on = defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED;
 
-		if (($workspace_on || (function_exists('pg_flows_enabled') && pg_flows_enabled())) && ((int) ($notification['reference_id'] ?? 0) > 0)) {
+		if (($workspace_on || pg_notification_off_lines_on()) && ((int) ($notification['reference_id'] ?? 0) > 0)) {
 
 			require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 
@@ -838,9 +875,9 @@ function pg_notification_mark_read($notification_ids, $user_id)
 		VALUES " . implode(',', $values));
 
 	// A workspace row read in the bell is read in the workspace's inbox too;
-	// with the Workspace off the ladder lets through only a flow's lines,
-	// which flows still write.
-	if (((defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) || (function_exists('pg_flows_enabled') && pg_flows_enabled()))
+	// with the Workspace off the ladder lets through only a flow's and mail's
+	// lines, which are still written.
+	if (((defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) || pg_notification_off_lines_on())
 		&& pg_notification_targets_available()) {
 
 		$references = db_values("SELECT reference_id FROM notifications

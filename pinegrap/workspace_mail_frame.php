@@ -39,7 +39,8 @@ function workspace_mail_frame_refuse()
     exit();
 }
 
-if (!ws_ready() || !ws_enabled() || !pg_guarded_frame_request_framed($_SERVER)) {
+// Mail is read with the Workspace off too (ws_mail_on()).
+if (!ws_ready() || !ws_mail_on() || !pg_guarded_frame_request_framed($_SERVER)) {
     workspace_mail_frame_refuse();
 }
 

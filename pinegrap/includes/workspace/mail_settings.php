@@ -29,7 +29,7 @@ function ws_mail_ready()
     static $ready = null;
 
     if ($ready === null) {
-        $ready = pg_schema_has('ws_mail_boxes') && pg_schema_has('ws_mail_conversations') && pg_schema_has('ws_mail_items');
+        $ready = ws_mail_on();
     }
 
     return $ready;
@@ -675,6 +675,14 @@ function ws_mail_box_save_check($viewer, $box, $post)
         return array('ok' => false, 'error' => $error, 'field' => $field, 'values' => array(), 'auto' => array(), 'settings' => array());
     };
 
+    // With the Workspace off a new box, or one kept in no channel, is kept in
+    // the mailbox itself whatever was posted (ws_mail_box_rooms_only()).
+    $rooms_only = ws_mail_box_rooms_only($box, ws_enabled());
+
+    if ($rooms_only) {
+        $post['kept_in'] = 'mailbox';
+    }
+
     $checked = ws_mail_box_input($post);
 
     if (!$checked['ok']) {
@@ -704,6 +712,11 @@ function ws_mail_box_save_check($viewer, $box, $post)
         return (int) $route['channel_id'];
     }, ws_mail_routes($box));
     $routes = ws_mail_routes_input((array) ($post['route_match'] ?? array()), (array) ($post['route_channel'] ?? array()), array_keys($channels), $kept_channels);
+
+    // The form drew no routing: the box keeps the routes it had.
+    if ($rooms_only) {
+        $routes = array('ok' => true, 'error' => '', 'routes' => ws_mail_routes($box));
+    }
 
     if (!$routes['ok']) {
         return $fail($routes['error'], 'route_match');
@@ -858,9 +871,12 @@ function ws_mail_sent_position_resets($before, $after)
  *                             fields ws_mail[<id>][...] joined to it
  *                             (ws_mail_box_dialog_names()), a named Save
  *                             (ws_mail_box_save, value the box's id)
+ * @param bool       $rooms_only ws_mail_box_rooms_only(): kept in the mailbox
+ *                             itself, so no channel, routing or suggestion
+ *                             under a card is offered
  * @return string
  */
-function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form = null)
+function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form = null, $rooms_only = false)
 {
     $id = $box ? (int) $box['id'] : 0;
     $prefix = 'ws_mail_' . $id . '_';
@@ -888,13 +904,13 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form =
                     <label class="form-label" for="' . $prefix . 'address">' . h(lang('E-mail address')) . '</label>
                     <input class="form-control form-control-sm" type="email" name="address" id="' . $prefix . 'address" maxlength="255" required value="' . h($box ? (string) $box['address'] : '') . '" placeholder="support@example.com">
                 </div>
-                ' . ws_mail_room_fields($prefix, $box, $options) . '
+                ' . ws_mail_room_fields($prefix, $box, $options, $rooms_only) . '
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'auth">' . h(lang('Checking server')) . '</label>
                     <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="auth_server" id="' . $prefix . 'auth" maxlength="255" value="' . h((string) ($settings['auth_server'] ?? '')) . '" placeholder="mx.google.com" autocomplete="off">
                     <div class="form-text">' . h(lang('The server that receives this mailbox\'s mail and writes Authentication-Results. Only its verdict is believed; left empty, every sender stays unverified and no mail is tied to a customer.')) . '</div>
                 </div>
-                ' . ws_mail_route_fields($prefix, $box, $channels) . '
+                ' . ($rooms_only ? '' : ws_mail_route_fields($prefix, $box, $channels)) . '
                 ' . ws_mail_box_server_fields($prefix, $box, $settings) . '
                 <div class="md:col-12">
                     <label class="form-label" for="' . $prefix . 'signature">' . h(lang('Signature')) . '</label>
@@ -908,7 +924,7 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false, $form =
                     ' . ws_mail_auto_reply_fields($prefix, $box) . '
                     </div>
                 </div>
-                ' . ws_mail_triage_field($prefix, $box, $ai_ready) . '
+                ' . ws_mail_triage_field($prefix, $box, $ai_ready && !$rooms_only) . '
                 <div class="md:col-12">
                     <div class="form-field">
                         <input class="check" type="checkbox" name="reads_bounces" value="1" id="' . $prefix . 'reads_bounces"' . (!empty($settings['reads_bounces']) ? ' checked' : '') . '>
@@ -1216,12 +1232,18 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
 
     $channels = ws_mail_box_channels($viewer);
     $ai_ready = ws_mail_triage_ai_ready();
+    $workspace_on = ws_enabled();
     $rows = '';
 
     foreach (ws_mail_settings_boxes() as $box) {
         $id = (int) $box['id'];
         $channel = $channels[(int) $box['channel_id']] ?? null;
         $place = $channel ? '<a href="workspace.php?channel=' . (int) $channel['id'] . '">#' . h((string) $channel['name']) . '</a>' : h(lang('A channel you do not see'));
+
+        // With the Workspace off no channel opens: its name only.
+        if ($channel && !$workspace_on) {
+            $place = h('#' . (string) $channel['name']);
+        }
 
         // A box kept in no channel is read on the E-mails screen.
         if (ws_mail_box_kept_in($box) === 'mailbox') {
@@ -1361,15 +1383,16 @@ function ws_settings_mail_drawer($box, $viewer, $form, $in_dialog)
 {
     $channels = ws_mail_box_channels($viewer);
     $ai_ready = ws_mail_triage_ai_ready();
+    $rooms_only = ws_mail_box_rooms_only($box, ws_enabled());
 
     if (!$box) {
-        return pg_settings_drawer('pgset-ws-mail-0', h(lang('Add a mailbox')), ws_mail_box_form('', null, $channels, $ai_ready, $form), $in_dialog);
+        return pg_settings_drawer('pgset-ws-mail-0', h(lang('Add a mailbox')), ws_mail_box_form('', null, $channels, $ai_ready, $form, $rooms_only), $in_dialog);
     }
 
     $id = (int) $box['id'];
 
     return pg_settings_drawer('pgset-ws-mail-' . $id, h((string) $box['name']) . ' · ' . h((string) $box['address']),
-        ws_mail_box_form('', $box, $channels, $ai_ready, $form)
+        ws_mail_box_form('', $box, $channels, $ai_ready, $form, $rooms_only)
         . '<div class="border-top pt-5 mt-5">' . ws_mail_eml_form(pg_settings_url('mailboxes'), $id, true) . '</div>', $in_dialog);
 }
 

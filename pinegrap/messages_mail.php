@@ -29,7 +29,7 @@ $user = validate_user();
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 
-$viewer = ws_screen_gate($user);
+$viewer = ws_screen_gate($user, false, true);
 
 if (!ws_mail_reads_ready()) {
     output_error(lang('The workspace is not installed yet: the database has to be updated first.'));
@@ -49,7 +49,7 @@ $pane = '';
 // The conversation of the address is opened (and read) before the list is
 // drawn, so its row is already read.
 if ($open > 0) {
-    $pane = ws_mail_pane_page_html(ws_mail_pane_open($viewer, $open), $base, ws_mail_list_page_url($filters));
+    $pane = ws_mail_pane_page_html(ws_mail_pane_open($viewer, $open), $base, ws_mail_list_page_url($filters), ws_enabled());
 }
 
 $list = ws_mail_list($viewer, $filters, $now);
@@ -62,9 +62,15 @@ echo pg_page_shell(array(
     'icon'                => 'campaign',
     'heading'             => lang('Communication'),
     // A customer's WhatsApp messages and SMS are listed here too, once any came.
-    'heading_description' => (count($transports) > 1)
-        ? lang('The e-mail, WhatsApp and SMS conversations of the channels you can read. Open one to read it, answer it or change its status and holder.')
-        : lang('The e-mail conversations of the channels you can read. Open one to read it, answer it or change its status and holder.'),
+    // With the Workspace off there are no channels: the line names the
+    // mailboxes the person reads.
+    'heading_description' => ws_enabled()
+        ? ((count($transports) > 1)
+            ? lang('The e-mail, WhatsApp and SMS conversations of the channels you can read. Open one to read it, answer it or change its status and holder.')
+            : lang('The e-mail conversations of the channels you can read. Open one to read it, answer it or change its status and holder.'))
+        : ((count($transports) > 1)
+            ? lang('The e-mail, WhatsApp and SMS conversations of the mailboxes you read. Open one to read it, answer it or change its status and holder.')
+            : lang('The e-mail conversations of the mailboxes you read. Open one to read it, answer it or change its status and holder.')),
 )) . '
 
 <main id="content" class="container-fluid"><div class="row"><div class="col-12">
@@ -72,7 +78,7 @@ echo pg_page_shell(array(
 <div class="ws-shell">
 <div class="ws-shell-main">
     <div id="ws-root" class="ws-mail-screen' . (($pane !== '') ? ' ws-mail-reading' : '') . '">
-        ' . ws_mail_list_filters_html($filters, $boxes, ws_mail_send_ready() && (bool) ws_mail_send_boxes($viewer), ws_mail_list_support($boxes, ws_mail_plain_box_ids()), $transports, !pg_demo() && (bool) ws_mail_check_boxes($viewer, $filters['box'])) . '
+        ' . ws_mail_list_filters_html($filters, $boxes, ws_mail_send_ready() && (bool) ws_mail_send_boxes($viewer), ws_mail_list_support($boxes, ws_mail_plain_box_ids()), $transports, !pg_demo() && (bool) ws_mail_check_boxes($viewer, $filters['box']), ws_enabled()) . '
         <div class="ws-mail-check-line" data-ws-mail-check-line role="status" aria-live="polite" hidden></div>
         <div class="ws-mail-columns">
             <div class="ws-mail-list">' . ws_mail_list_html($list, $filters, $now, $open) . '</div>

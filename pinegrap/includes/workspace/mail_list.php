@@ -625,9 +625,10 @@ function ws_mail_list_more_html($filters, $next)
  * @param bool     $support    a support box is among the boxes
  * @param string[] $transports ws_mail_list_transports()
  * @param bool     $can_check  the person reads a mailbox with a server (Check e-mail)
+ * @param bool     $calendar   the Workspace is on, so My calendar opens (ws_enabled())
  * @return string HTML
  */
-function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false, $support = true, $transports = array(), $can_check = false)
+function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false, $support = true, $transports = array(), $can_check = false, $calendar = true)
 {
     $statuses = ws_mail_statuses() + array('all' => lang('All'));
     $holders = array('all' => lang('Anybody'), 'me' => lang('Held by me'), 'none' => lang('Held by nobody'));
@@ -693,7 +694,7 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
     return pg_screen_toolbar(array(
         'primary'   => $can_send ? '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-mail-new><i class="bi bi-pencil-square me-2" aria-hidden="true"></i>' . h(lang('New e-mail')) . '</button>' : '',
         'secondary' => $check . '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-read-all><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Mark all as read')) . '</button>'
-            . ws_mail_list_my_calendar_html() . ws_mail_list_my_settings_html($can_send),
+            . ws_mail_list_my_calendar_html($calendar) . ws_mail_list_my_settings_html($can_send),
         'search'    => $search,
         'view'      => '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
     ));
@@ -702,12 +703,18 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
 /**
  * The E-mails toolbar's way to the reader's own calendar
  * (workspace_my_calendar.php): what they have to do sits beside what they
- * are asked by mail.
+ * are asked by mail. Nothing with the Workspace off: that screen is the
+ * Workspace's.
  *
+ * @param bool $workspace_on ws_enabled()
  * @return string
  */
-function ws_mail_list_my_calendar_html()
+function ws_mail_list_my_calendar_html($workspace_on = true)
 {
+    if (!$workspace_on) {
+        return '';
+    }
+
     return '<a class="pg-button pg-button-quiet pg-button-sm" href="workspace_my_calendar.php" data-ws-my-calendar><i class="bi bi-calendar-heart" aria-hidden="true"></i>' . h(lang('My calendar')) . '</a>';
 }
 

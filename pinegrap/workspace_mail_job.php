@@ -32,9 +32,10 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_fetch.php');
 
 $result = array('boxes' => 0, 'stored' => 0, 'failed' => 0);
 
-// The module switched off, or no mailbox, is not a failure: the run is
-// recorded so the scheduled-task health indicator stays green.
-if (ws_enabled()) {
+// Mail is read whether or not the Workspace is switched on (ws_mail_on()).
+// No mailbox tables, or no mailbox, is not a failure: the run is recorded so
+// the scheduled-task health indicator stays green.
+if (ws_ready() && ws_mail_on()) {
     $result = ws_mail_fetch_run(40);
 }
 

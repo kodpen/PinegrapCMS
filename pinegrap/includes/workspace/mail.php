@@ -1116,8 +1116,9 @@ function ws_mail_ingest($raw, $box)
     }
 
     // Pinegrap AI's suggestion on a new conversation, where the box switched
-    // it on (mail_triage.php): made after the response, never here.
-    if (function_exists('ws_mail_triage_due') && ws_mail_triage_due($box, $opened, ws_mail_triage_ai_ready())) {
+    // it on (mail_triage.php): made after the response, never here. It is a
+    // message under the card, which nobody sees with the Workspace off.
+    if (function_exists('ws_mail_triage_due') && ws_enabled() && ws_mail_triage_due($box, $opened, ws_mail_triage_ai_ready())) {
         ws_mail_triage_queue($conversation_id);
     }
 

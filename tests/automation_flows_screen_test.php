@@ -162,7 +162,7 @@ function test_automation_flows_screen_gate_and_answers()
 
 	$gate = automation_flows_screen_test_php('includes/workspace/screen.php', 'ws_screen_gate');
 
-	pg_assert_contains('if (!ws_enabled() && !($flows && pg_flows_enabled())) {', $gate, 'the Flows screen opens with the Workspace off');
+	pg_assert_contains('if (!ws_enabled() && !($flows && pg_flows_enabled()) && !($mail && ws_mail_on())) {', $gate, 'the Flows screen opens with the Workspace off');
 	pg_assert_true(strpos($gate, 'if (!ws_ready()) {') < strpos($gate, '!ws_enabled()'), 'a site not yet updated is told so first');
 	pg_assert_true(strpos($gate, "\$viewer['member']") > strpos($gate, '!ws_enabled()'), 'the team\'s rights decide after the switch');
 
@@ -172,12 +172,12 @@ function test_automation_flows_screen_gate_and_answers()
 
 	$door = automation_flows_screen_test_php('includes/workspace/actions.php', 'ws_handle_action');
 
-	pg_assert_contains('if (!ws_action_switch_allows($action, $request, ws_enabled(), ws_ready() && pg_flows_enabled())) {', $door, 'the switch asked first');
+	pg_assert_contains('if (!ws_action_switch_allows($action, $request, ws_enabled(), ws_ready() && pg_flows_enabled(), ws_ready() && ws_mail_on())) {', $door, 'the switch asked first');
 	pg_assert_true(strpos($door, 'ws_action_switch_allows(') < strpos($door, '$viewer = ws_viewer($user);'), 'before the person is read');
 	pg_assert_false(strpos($door, "    if (!ws_enabled()) {\n        return ws_action_error") !== false, 'no refusal of every action left');
 
 	$tick = automation_flows_screen_test_case('ws_tick');
-	$off = strpos($tick, "if (!ws_enabled()) {\n                if (function_exists('ws_scheduled_run')) {\n                    ws_scheduled_run();\n                }\n\n                return ws_action_ok();");
+	$off = strpos($tick, "if (!ws_enabled()) {\n                if (pg_flows_enabled() && function_exists('ws_scheduled_run')) {\n                    ws_scheduled_run();\n                }\n\n                return ws_action_ok();");
 
 	pg_assert_true($off !== false, 'with the Workspace off a look runs only the scheduled run');
 	pg_assert_true($off < strpos($tick, 'ws_recurrence_tick()'), 'before the Workspace\'s own parts');

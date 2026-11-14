@@ -7,6 +7,7 @@ module: automation_flows
 ## Do the flow routes answer with the Workspace off?
 - Yes, once flows run on the site (`pg_flows_enabled()`, `automation-flows-gate.md`). `api_modules()` lists a `flows` module, on when `api_modules_flows_alone(WORKSPACE_ENABLED, pg_flows_enabled())` (pure): Workspace off and the flow tables there. With the Workspace on its own `includes/workspace/api.php` carries the flows as before.
 - Its file `includes/workspace/api_flows_alone.php` (prefix `ws_flows_alone_`) loads `includes/workspace/api.php` and picks from its lists; nothing is copied.
+- The mail routes have a module of their own built the same way (`mail`, `api_mail_alone.php`, `mail-workspace-off.md`); with both on, this module's permission row, read first, says "Automation flows and e-mail".
 
 ## What does it merge?
 - The 26 routes whose id starts with `workspace.flows.` or `workspace.flow_` (flows, versions, templates, kinds, shares, runs): 11 under `workspace:read`, 15 under `workspace:write`. Ids, paths, scopes and handlers are the Workspace's, so a key keeps working when the switch changes.

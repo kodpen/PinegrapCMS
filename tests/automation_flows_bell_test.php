@@ -41,9 +41,9 @@ function test_automation_flows_bell_kinds()
 function test_automation_flows_bell_ladder_without_flows()
 {
 	pg_assert_false(defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED, 'the Workspace is off in the test runner');
-	pg_assert_false(pg_notification_flow_line(5, 9), 'no flow tables, no flow line');
-	pg_assert_false(pg_notification_flow_line(0, 9), 'nobody addressed');
-	pg_assert_false(pg_notification_flow_line(5, 0), 'no inbox line');
+	pg_assert_false(pg_notification_off_line(5, 9), 'no flow tables, no flow line');
+	pg_assert_false(pg_notification_off_line(0, 9), 'nobody addressed');
+	pg_assert_false(pg_notification_off_line(5, 0), 'no inbox line');
 
 	$row = array('action' => 'workspace', 'target_user_id' => 5, 'reference_id' => 9);
 	$rights = array('id' => 5, 'role' => 3, 'manage_ecommerce' => false, 'manage_forms' => false, 'manage_erp' => false, 'manage_erp_cash' => false);
@@ -57,10 +57,10 @@ function test_automation_flows_bell_ladder_without_flows()
 // button follow.
 function test_automation_flows_bell_wiring()
 {
-	pg_assert_contains("return pg_notification_flow_line(\$target, (int) (\$notification['reference_id'] ?? 0));", automation_flows_bell_test_php('includes/notifications.php', 'pg_notification_visible'), 'the ladder asks the line');
+	pg_assert_contains("return pg_notification_off_line(\$target, (int) (\$notification['reference_id'] ?? 0));", automation_flows_bell_test_php('includes/notifications.php', 'pg_notification_visible'), 'the ladder asks the line');
 	pg_assert_contains(', target_user_id, reference_id', automation_flows_bell_test_php('includes/notifications.php', 'pg_notification_ladder_columns'), 'the columns carry the line');
-	pg_assert_contains("(\$workspace_on || (function_exists('pg_flows_enabled') && pg_flows_enabled()))", automation_flows_bell_test_php('includes/notifications.php', 'pg_notification_display'), 'described while flows run');
-	pg_assert_contains("(function_exists('pg_flows_enabled') && pg_flows_enabled())", automation_flows_bell_test_php('includes/notifications.php', 'pg_notification_mark_read'), 'read in the inbox too');
+	pg_assert_contains("(\$workspace_on || pg_notification_off_lines_on())", automation_flows_bell_test_php('includes/notifications.php', 'pg_notification_display'), 'described while flows run');
+	pg_assert_contains("pg_notification_off_lines_on())", automation_flows_bell_test_php('includes/notifications.php', 'pg_notification_mark_read'), 'read in the inbox too');
 	pg_assert_contains("'url'   => !ws_enabled() ? '' :", automation_flows_bell_test_php('includes/workspace/notify.php', 'ws_inbox_describe'), 'a notice opens nothing with the Workspace off');
 	pg_assert_contains("((\$display['action'] === 'workspace') && ((string) \$display['url'] === '')) ? ''", automation_flows_bell_test_php('includes/panel/notifications.php', 'pg_panel_get_notifications'), 'a row with nowhere to go has no button');
 }

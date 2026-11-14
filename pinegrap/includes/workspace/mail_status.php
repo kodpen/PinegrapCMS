@@ -369,7 +369,7 @@ function ws_mail_inbox_describe($row, $actor, $channel_name, $base, $channel = n
     return array(
         'title' => $title,
         'body'  => is_array($conversation) ? (string) $conversation['subject'] : '',
-        'url'   => ws_mail_notice_url($base, (int) $row['channel_id'], (int) $row['message_id'], $channel),
+        'url'   => ws_mail_notice_url($base, (int) $row['channel_id'], (int) $row['message_id'], $channel, ws_enabled()),
         'icon'  => 'bi-envelope',
     );
 }

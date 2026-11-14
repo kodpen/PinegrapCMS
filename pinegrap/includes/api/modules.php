@@ -76,6 +76,18 @@ function api_modules() {
 			'prefix'  => 'ws_flows_alone_'
 		),
 
+		// Incoming e-mail is read whatever the Workspace's switch
+		// (ws_mail_on()). With the Workspace off this one merges the mail
+		// routes, their objects and event alone, as the flows module does.
+		'mail' => array(
+			'enabled' => api_modules_mail_alone(
+				(defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED == true),
+				(function_exists('ws_mail_on') && ws_mail_on())
+			),
+			'file'    => dirname(__FILE__) . '/../workspace/api_mail_alone.php',
+			'prefix'  => 'ws_mail_alone_'
+		),
+
 		// The front-end translation: on once the 2026.4.6 upgrade has made its
 		// tables, whether or not a target language has been added yet.
 		'translations' => array(
@@ -93,6 +105,14 @@ function api_modules() {
 function api_modules_flows_alone($workspace_on, $flows_ready) {
 
 	return !$workspace_on && $flows_ready;
+
+}
+
+// Are the mail routes merged on their own (pure)? Only with the Workspace off,
+// which would otherwise carry them, and once mail is on (ws_mail_on()).
+function api_modules_mail_alone($workspace_on, $mail_on) {
+
+	return !$workspace_on && $mail_on;
 
 }
 
