@@ -545,10 +545,12 @@ function ws_mail_send_ref_parse($ref)
 
 /**
  * The send state an outgoing item reads as: '' (an answer written before
- * the state was kept, or no column yet) is sent. Pure.
+ * the state was kept, or no column yet) is sent; external is a mail read
+ * from the mailbox's Sent folder, written in a mail program, which left
+ * like a sent one and is never offered Send again. Pure.
  *
  * @param array|null $item ws_mail_items row
- * @return string queued | sent | failed, '' for a mail that came in
+ * @return string queued | sent | failed | external, '' for a mail that came in
  */
 function ws_mail_send_state($item)
 {
@@ -558,7 +560,7 @@ function ws_mail_send_state($item)
 
     $state = (string) ($item['send_state'] ?? '');
 
-    return in_array($state, array('queued', 'failed'), true) ? $state : 'sent';
+    return in_array($state, array('queued', 'failed', 'external'), true) ? $state : 'sent';
 }
 
 /**

@@ -60,7 +60,7 @@ function ws_mail_api_routes()
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'open', 'waiting', 'closed'), 'default' => 'all', 'description' => 'open: new mail or the customer wrote again; waiting: answered, waiting for the customer; closed: closed by hand.'),
                 array('name' => 'holder', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'me', 'none'), 'default' => 'all', 'description' => 'me: held by the owner of the application; none: held by nobody.'),
                 array('name' => 'channel_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the conversations of this channel.'),
-                array('name' => 'view', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'incoming', 'sent', 'unsent'), 'default' => 'all', 'description' => 'incoming: with mail that came in; sent: with a mail that went out; unsent: with a mail waiting in the mail queue or given up on (send_state queued or failed).'),
+                array('name' => 'view', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'incoming', 'sent', 'unsent'), 'default' => 'all', 'description' => 'incoming: with mail that came in; sent: with a mail that went out (send_state sent or external); unsent: with a mail waiting in the mail queue or given up on (send_state queued or failed).'),
                 array('name' => 'box_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the conversations of this mailbox.'),
                 array('name' => 'transport', 'in' => 'query', 'type' => 'enum', 'values' => array('all', 'email', 'whatsapp', 'sms'), 'default' => 'all', 'description' => 'Only the conversations that came by e-mail, by WhatsApp or by SMS.'),
                 array('name' => 'q', 'in' => 'query', 'type' => 'string', 'max_length' => WS_MAIL_LIST_QUERY_MAX, 'description' => 'Words in the subject, the customer\'s name or address, or any mail\'s sender, To, Cc or text.'),
@@ -78,7 +78,7 @@ function ws_mail_api_routes()
             'handler'     => 'ws_api_mail_conversations_get',
             'returns'     => 'WorkspaceMailConversation',
             'summary'     => 'One e-mail conversation, with its mails',
-            'description' => 'A conversation of a channel the owner reads, with its mails oldest first (at most ' . WS_API_MAIL_ITEMS_MAX . ', the newest kept): what the customer wrote (direction in; verified when the mailbox\'s checking server vouched for the sender), the team\'s answers (direction out, user_id the writer), the mailbox\'s automatic answer (automatic) and a delivery failure of an answer (bounce, its text the receiving server\'s words). refused_files names attachments that were not taken in; the ones taken in are files of the messages under the card.' . $untrusted,
+            'description' => 'A conversation of a channel the owner reads, with its mails oldest first (at most ' . WS_API_MAIL_ITEMS_MAX . ', the newest kept): what the customer wrote (direction in; verified when the mailbox\'s checking server vouched for the sender), the team\'s answers (direction out, user_id the writer), the mailbox\'s automatic answer (automatic), an answer written in a mail program and read from the mailbox\'s Sent folder (direction out, send_state external, user_id null) and a delivery failure of an answer (bounce, its text the receiving server\'s words). refused_files names attachments that were not taken in; the ones taken in are files of the messages under the card.' . $untrusted,
             'params'      => array($id),
         ),
 
@@ -256,8 +256,8 @@ function ws_api_mail_present($item)
         'sent_at'        => api_time($item['sent_at']),
         'created_at'     => api_time($item['created_at']),
         // An outgoing mail's state in the mail queue (ws_mail_send_state()):
-        // sent, queued or failed with the queue's reason; null for one that
-        // came in.
+        // sent, queued or failed with the queue's reason, external for one
+        // read from the mailbox's Sent folder; null for one that came in.
         'send_state'     => $out ? ws_mail_send_state($item) : null,
         'send_error'     => ($out && (ws_mail_send_state($item) === 'failed')) ? (string) ($item['send_error'] ?? '') : null,
         'copy_kept'      => null,

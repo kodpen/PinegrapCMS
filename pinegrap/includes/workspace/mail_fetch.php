@@ -165,6 +165,8 @@ function ws_mail_fetch($box)
         require_once(PG_FUNCTIONS_DIR . '/includes/fn/imap_client.php');
     }
 
+    require_once(__DIR__ . '/mail_sent_folder.php');
+
     $box_id = (int) $box['id'];
     $lock = 'pg_ws_mail_' . $box_id;
     $out = array('ok' => false, 'error' => '', 'detail' => '', 'stored' => 0, 'skipped' => 0);
@@ -183,10 +185,14 @@ function ws_mail_fetch($box)
         $set .= ", uidvalidity = '" . (int) $result['uidvalidity'] . "', last_uid = '" . (int) $result['last_uid'] . "'";
     }
 
+    if (isset($result['sent_uidvalidity'])) {
+        $set .= ", sent_uidvalidity = '" . (int) $result['sent_uidvalidity'] . "', sent_last_uid = '" . (int) $result['sent_last_uid'] . "'";
+    }
+
     db("UPDATE ws_mail_boxes SET " . $set . " WHERE id = '" . $box_id . "'");
     db("SELECT RELEASE_LOCK('" . e($lock) . "')");
 
-    unset($result['uidvalidity'], $result['last_uid']);
+    unset($result['uidvalidity'], $result['last_uid'], $result['sent_uidvalidity'], $result['sent_last_uid']);
 
     return $result;
 }
@@ -353,6 +359,16 @@ function ws_mail_fetch_box($box, $out)
 
     if ($session['error'] !== '') {
         return $failed();
+    }
+
+    // The Sent folder after the box's own (mail_sent_folder.php), with what
+    // is left of the session's time; its failure never fails the box.
+    if (ws_mail_sent_due($settings, ws_mail_sent_ready(), (float) $session['deadline'] - microtime(true))) {
+        $sent = ws_mail_sent_read($session, $box, $settings);
+
+        if ($sent) {
+            $out = array_merge($out, $sent);
+        }
     }
 
     pg_imap_logout($session);

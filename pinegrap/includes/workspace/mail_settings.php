@@ -102,8 +102,9 @@ function ws_mail_box_port_shown($stored, $provider, $key)
  *                     channel_id, auth_server, enabled,
  *                     provider, host, port, user, password, folder,
  *                     after_fetch, move_folder, smtp_host, smtp_port,
- *                     reply_via, sent_copy, sent_folder, connection_id,
- *                     reads_bounces, signature (ws_mail_signature_input())
+ *                     reply_via, sent_copy, sent_folder, read_sent,
+ *                     connection_id, reads_bounces, signature
+ *                     (ws_mail_signature_input())
  * @return array ok, error, field (the refused one, '' when ok), values (the
  *               same keys; password as typed, '' to keep)
  */
@@ -150,6 +151,7 @@ function ws_mail_box_input($input)
         'smtp_port'   => ($smtp_host !== '') ? (int) $line('smtp_port', (string) $preset['smtp_port']) : 0,
         'sent_copy'   => !empty($input['sent_copy']) ? 1 : 0,
         'sent_folder' => $line('sent_folder'),
+        'read_sent'   => !empty($input['read_sent']) ? 1 : 0,
         'connection_id' => $connection_id,
         'reads_bounces' => !empty($input['reads_bounces']) ? 1 : 0,
         'signature'   => $signature['signature'],
@@ -777,7 +779,7 @@ function ws_mail_box_save_check($viewer, $box, $post)
         unset($settings['secret']);
     }
 
-    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port', 'sent_copy', 'sent_folder', 'connection_id', 'reads_bounces', 'signature') as $key) {
+    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port', 'sent_copy', 'sent_folder', 'read_sent', 'connection_id', 'reads_bounces', 'signature') as $key) {
         $settings[$key] = $values[$key];
     }
 
@@ -808,6 +810,12 @@ function ws_mail_box_save_write($viewer, $box, $checked, $username)
         reply_via = '" . e($values['reply_via']) . "', auto_reply = '" . (int) $auto['auto_reply'] . "', auto_reply_text = '" . e($auto['auto_reply_text']) . "',
         enabled = '" . (int) $values['enabled'] . "', updated_at = '" . $now . "'";
 
+    // The Sent folder's position starts again when reading it stops or
+    // another folder is named, so the next first read begins at the present.
+    if ($box && ws_mail_sent_position_resets(ws_mail_box_settings($box), $settings) && pg_schema_has('ws_mail_boxes', 'sent_last_uid')) {
+        $set .= ", sent_uidvalidity = 0, sent_last_uid = 0";
+    }
+
     if ($box) {
         db("UPDATE ws_mail_boxes SET " . $set . " WHERE id = '" . (int) $box['id'] . "'");
         log_activity(lang(array('string' => 'the mailbox {var:1} was changed', 'vars' => $values['name'])), $username);
@@ -815,6 +823,23 @@ function ws_mail_box_save_write($viewer, $box, $checked, $username)
         db("INSERT INTO ws_mail_boxes SET " . $set . ", created_by = '" . (int) $viewer['id'] . "', created_at = '" . $now . "'");
         log_activity(lang(array('string' => 'the mailbox {var:1} was added', 'vars' => $values['name'])), $username);
     }
+}
+
+/**
+ * Whether a box's save forgets the Sent folder's position: reading it is
+ * off now, or it was on and another Sent folder is named. Pure.
+ *
+ * @param array $before the box's settings as stored
+ * @param array $after  the settings being saved
+ * @return bool
+ */
+function ws_mail_sent_position_resets($before, $after)
+{
+    if (empty($after['read_sent'])) {
+        return true;
+    }
+
+    return !empty($before['read_sent']) && ((string) ($before['sent_folder'] ?? '') !== (string) ($after['sent_folder'] ?? ''));
 }
 
 /**
@@ -1065,6 +1090,13 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 <div class="md:col-4">
                     <label class="form-label" for="' . $prefix . 'sent_folder">' . h(lang('Sent folder')) . '</label>
                     <input class="form-control form-control-sm" type="text" name="sent_folder" id="' . $prefix . 'sent_folder" maxlength="255" value="' . h((string) ($settings['sent_folder'] ?? '')) . '" placeholder="' . h(lang('Found by itself')) . '">
+                </div>
+                <div class="md:col-12">
+                    <div class="form-field">
+                        <input class="check" type="checkbox" name="read_sent" value="1" id="' . $prefix . 'read_sent"' . (!empty($settings['read_sent']) ? ' checked' : '') . '>
+                        <label for="' . $prefix . 'read_sent">' . h(lang('Read the Sent folder')) . '</label>
+                    </div>
+                    <div class="form-text">' . h(lang('An answer written in a mail program joins its conversation as a sent mail. Only mail sent after this is switched on is read; a mail that answers no conversation is left out.')) . '</div>
                 </div>
                 <div class="md:col-12">
                     <details class="small fg-secondary"><summary>' . h(lang('What each service needs')) . '</summary><ul class="mb-0 mt-2">' . $hints . '</ul></details>

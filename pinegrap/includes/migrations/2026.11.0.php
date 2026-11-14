@@ -6415,7 +6415,7 @@ function upgrade_2026_11_0_ws_mail_phone() {
 
 }
 
-// A mailbox's Sent folder read by the mail job (IB7): its own UID position,
+// A mailbox's Sent folder read by the mail job: its own UID position,
 // apart from the box's folder (uidvalidity, last_uid), so mail written in a
 // mail program reaches its conversation. 0 means "not read yet": the first
 // read starts at the folder's newest mail, never with old sent mail.
