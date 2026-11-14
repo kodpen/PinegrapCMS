@@ -17,6 +17,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - Keep a text field's `max_length` within its varchar column: the non-strict session cuts the rest in silence and the client still gets 200 (`api-text-field-limits.md`).
 - Announce with `pg_announce()` and a name listed in `api_webhook_events()` (an unknown name is dropped silently), never from a bulk import (`api-webhook-events.md`).
 - Keep OAuth tokens as `api_devices` rows and outgoing tokens behind `pg_connect_*()`: no token table, file or config column, and never read a refresh token (`api-connected-accounts.md`).
+- Mark a route that moves money or makes a cost with `'moves_money' => true`; a test keeps it out of `api_plugin_scopes()` (`api-plugin-scopes.md`).
 <!-- key-rules:end -->
 
 ## Clusters

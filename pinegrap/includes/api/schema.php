@@ -24,6 +24,13 @@
 //
 // Adding an endpoint means adding a row here and writing its handler. Nothing
 // else has to be touched.
+//
+// 'moves_money' => true marks a route that moves money or makes a cost: a
+// refund, a carrier label, a sale with its payment, a gift card or store
+// credit, a till or bank movement, a commission marked paid, a subscription
+// charged again. Nothing reads it at run time; a test keeps every marked
+// route out of the scopes an assistant plugin is offered
+// (api_plugin_scopes()). Mark a new route of that kind the same way.
 
 if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
@@ -698,6 +705,7 @@ function api_schema() {
 			'method'  => 'POST',
 			'path'    => '/orders',
 			'scope'   => 'orders:write',
+			'moves_money' => true,
 			'handler' => 'api_orders_create',
 			'dry_run' => true,
 			'status'  => 201,
@@ -774,6 +782,7 @@ function api_schema() {
 			'method'  => 'POST',
 			'path'    => '/orders/{id}/shipments/label',
 			'scope'   => 'orders:write',
+			'moves_money' => true,
 			'handler' => 'api_orders_label_create',
 			'dry_run' => true,
 			'status'  => 201,
@@ -892,6 +901,7 @@ function api_schema() {
 			'method'  => 'POST',
 			'path'    => '/returns/{id}',
 			'scope'   => 'orders:write',
+			'moves_money' => true,
 			'handler' => 'api_returns_update',
 			'dry_run' => true,
 			'returns' => 'OrderReturn',
@@ -2674,6 +2684,7 @@ function api_schema() {
 			'method'  => 'POST',
 			'path'    => '/gift-cards',
 			'scope'   => 'gift_cards:write',
+			'moves_money' => true,
 			'handler' => 'api_gift_cards_create',
 			'dry_run' => true,
 			'returns' => 'GiftCard',
@@ -2693,6 +2704,7 @@ function api_schema() {
 			'also_accepts' => array('PATCH'),
 			'path'    => '/gift-cards/{id}',
 			'scope'   => 'gift_cards:write',
+			'moves_money' => true,
 			'handler' => 'api_gift_cards_update',
 			'dry_run' => true,
 			'returns' => 'GiftCard',
@@ -2711,6 +2723,7 @@ function api_schema() {
 			'method'  => 'DELETE',
 			'path'    => '/gift-cards/{id}',
 			'scope'   => 'gift_cards:write',
+			'moves_money' => true,
 			'handler' => 'api_gift_cards_delete',
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
@@ -2813,6 +2826,7 @@ function api_schema() {
 			'also_accepts' => array('PATCH'),
 			'path'    => '/commissions/{id}',
 			'scope'   => 'commissions:write',
+			'moves_money' => true,
 			'handler' => 'api_commissions_update',
 			'dry_run' => true,
 			'returns' => 'Commission',
@@ -3372,6 +3386,7 @@ function api_schema() {
 			'method'  => 'POST',
 			'path'    => '/customers/{id}/credit',
 			'scope'   => 'gift_cards:write',
+			'moves_money' => true,
 			'handler' => 'api_customers_credit_issue',
 			'dry_run' => true,
 			'returns' => 'StoreCreditCard',
@@ -3392,6 +3407,7 @@ function api_schema() {
 			'method'  => 'POST',
 			'path'    => '/customers/{id}/credit/{card_id}/void',
 			'scope'   => 'gift_cards:write',
+			'moves_money' => true,
 			'handler' => 'api_customers_credit_void',
 			'dry_run' => true,
 			'returns' => 'StoreCreditCard',
@@ -3440,6 +3456,7 @@ function api_schema() {
 			'method'  => 'POST',
 			'path'    => '/customers/{id}/subscriptions/{subscription_id}/resume',
 			'scope'   => 'customers:write',
+			'moves_money' => true,
 			'handler' => 'api_customers_subscriptions_resume',
 			'dry_run' => true,
 			'returns' => 'Subscription',
