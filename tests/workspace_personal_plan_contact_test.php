@@ -97,3 +97,44 @@ function test_workspace_personal_plan_contact_guards()
 	$holders = pg_contact_holders();
 	pg_assert_same(array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'), $holders['ws_personal_plans'], 'merge moves it, erasure finds it');
 }
+
+function test_workspace_personal_plan_export_row()
+{
+	$row = ws_personal_plan_export_row(
+		array('id' => 4, 'title' => 'Onboarding', 'all_day' => 1, 'starts_at' => strtotime('2026-11-20 00:00'), 'ends_at' => strtotime('2026-11-23 00:00'), 'note' => 'private words', 'remind_at' => 5),
+		'Ayşe Yılmaz',
+		array(array('title' => 'Kick-off', 'day' => '2026-11-20'), array('title' => 'Open', 'day' => '0000-00-00'))
+	);
+
+	pg_assert_same(array(
+		'record' => 'plan',
+		'id'     => 4,
+		'title'  => 'Onboarding',
+		'starts' => '2026-11-20',
+		'ends'   => '2026-11-22',
+		'owner'  => 'Ayşe Yılmaz',
+		'steps'  => 'Kick-off (2026-11-20); Open',
+	), $row, 'title, days, owner and steps; no note, no reminder');
+
+	$timed = ws_personal_plan_export_row(array('id' => 5, 'title' => 'Call', 'all_day' => 0, 'starts_at' => strtotime('2026-11-20 10:00'), 'ends_at' => strtotime('2026-11-20 11:00')), '', array());
+	pg_assert_same('2026-11-20 10:00', $timed['starts']);
+	pg_assert_same('2026-11-20 11:00', $timed['ends']);
+}
+
+// A contact's data export lists a plan only when it is shared with the whole
+// team (owner, channel 3361): asked in the query and again row by row, and
+// the export reads plans through this function alone.
+function test_workspace_personal_plan_export_lists_whole_team_plans_alone()
+{
+	$module = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/personal_plan_contact.php');
+	$start = strpos($module, 'function ws_personal_plans_export(');
+	$body = substr($module, $start, (int) strpos($module, "\n}\n", $start) - $start);
+
+	pg_assert_contains("AND visibility = 'team'", $body, 'the query asks for whole-team plans');
+	pg_assert_contains("if ((string) \$plan['visibility'] !== 'team') {", $body, 'and every row is held to it again');
+	pg_assert_false(strpos($body, "'me'") !== false || strpos($body, "'people'") !== false, 'no other visibility is named');
+
+	$export = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/privacy_export.php');
+	pg_assert_contains('ws_personal_plans_export($contact_ids, $limit)', $export, 'the export lists plans by the contact');
+	pg_assert_false((bool) preg_match('/ws_personal_plan(s|_steps|_people)\b[^(_]/', $export), 'and never reads the plan tables itself');
+}

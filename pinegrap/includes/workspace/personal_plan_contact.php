@@ -315,6 +315,90 @@ function ws_personal_plan_copy_draft($viewer, $plan_id)
 }
 
 /**
+ * A plan as a contact's data export lists it: its title, days, owner and
+ * roadmap steps. Pure.
+ *
+ * @param array   $plan  ws_personal_plans row
+ * @param string  $owner the owner's name
+ * @param array[] $steps its ws_personal_plan_steps rows, in order
+ * @return array
+ */
+function ws_personal_plan_export_row($plan, $owner, $steps)
+{
+    $all_day = ((int) $plan['all_day'] === 1);
+    // An all-day plan ends at the midnight after its last day.
+    $last = $all_day ? (int) $plan['ends_at'] - 1 : (int) $plan['ends_at'];
+    $format = $all_day ? 'Y-m-d' : 'Y-m-d H:i';
+    $listed = array();
+
+    foreach ((array) $steps as $step) {
+        $day = (string) $step['day'];
+        $listed[] = (string) $step['title'] . ((($day !== '') && ($day !== '0000-00-00')) ? ' (' . $day . ')' : '');
+    }
+
+    return array(
+        'record' => 'plan',
+        'id'     => (int) $plan['id'],
+        'title'  => (string) $plan['title'],
+        'starts' => date($format, (int) $plan['starts_at']),
+        'ends'   => date($format, max((int) $plan['starts_at'], $last)),
+        'owner'  => (string) $owner,
+        'steps'  => implode('; ', $listed),
+    );
+}
+
+/**
+ * The plans naming the person's contacts that a data export lists: only
+ * those shared with the whole team. A plan kept to its owner or to chosen
+ * team members is never listed, whoever runs the export (owner, channel
+ * 3361). Its note, reminder and the people it names stay out.
+ *
+ * @param int[] $contact_ids
+ * @param int   $limit       pg_privacy_export_row_limit()
+ * @return array rows, truncated
+ */
+function ws_personal_plans_export($contact_ids, $limit)
+{
+    $contact_ids = array_values(array_filter(array_map('intval', (array) $contact_ids)));
+
+    if (empty($contact_ids) || !ws_personal_plans_ready()) {
+        return array('rows' => array(), 'truncated' => false);
+    }
+
+    $plans = (array) db_items("SELECT * FROM ws_personal_plans
+        WHERE contact_id IN (" . implode(',', $contact_ids) . ") AND visibility = 'team'
+        ORDER BY starts_at, id
+        LIMIT " . ((int) $limit + 1));
+    $truncated = count($plans) > (int) $limit;
+    $plans = array_slice($plans, 0, (int) $limit);
+    $names = array();
+    $owners = array_values(array_unique(array_map('intval', array_column($plans, 'user_id'))));
+
+    if (!empty($owners)) {
+        foreach ((array) db_items("SELECT u.user_id, u.user_username, c.first_name, c.last_name FROM user u
+            LEFT JOIN contacts c ON c.id = u.user_contact WHERE u.user_id IN (" . implode(',', $owners) . ")") as $user) {
+            // First and last name of the user's contact, else the username.
+            $name = trim(trim((string) $user['first_name']) . ' ' . trim((string) $user['last_name']));
+            $names[(int) $user['user_id']] = ($name !== '') ? $name : (string) $user['user_username'];
+        }
+    }
+
+    $steps = ws_personal_plan_step_rows(array_column($plans, 'id'));
+    $rows = array();
+
+    foreach ($plans as $plan) {
+        // The rule again, row by row: nothing but a whole-team plan leaves.
+        if ((string) $plan['visibility'] !== 'team') {
+            continue;
+        }
+
+        $rows[] = ws_personal_plan_export_row($plan, $names[(int) $plan['user_id']] ?? '', $steps[(int) $plan['id']] ?? array());
+    }
+
+    return array('rows' => $rows, 'truncated' => $truncated);
+}
+
+/**
  * The texts of the customer field on the plan drawer and of "New roadmap".
  *
  * @return array
