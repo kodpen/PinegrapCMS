@@ -593,6 +593,7 @@
     "{var:1} / {var:2}": "{var:1} / {var:2}",
     "{var:1} / {var:2} bytes": "{var:1} / {var:2} bayt",
     "{var:1} / {var:2} bytes, {var:3} of {var:4} columns inline; {var:5}": "{var:1} / {var:2} bayt, {var:4} sütunun {var:3} tanesi satır içinde; {var:5}",
+    "{var:1} / {var:2} characters, {var:3} SMS": "{var:1} / {var:2} karakter, {var:3} SMS",
     "{var:1} / {var:2} read": "{var:1} / {var:2} okudu",
     "{var:1} <script> block{suffix:1} left out.": "{var:1} <script> bloğu alınmadı.",
     "{var:1} <style> block{suffix:1} left out. Paste brings markup only; use Import HTML for a page with its stylesheets.": "{var:1} <style> bloğu alınmadı. Yapıştırma yalnızca işaretlemeyi getirir; stil dosyalarıyla birlikte bir sayfa için HTML İçe Aktar'ı kullanın.",

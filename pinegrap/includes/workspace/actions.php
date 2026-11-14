@@ -2750,26 +2750,31 @@ function ws_handle_action($action, $request)
         // Send again: an outgoing mail that could not leave (mail_send.php).
         // Reply by WhatsApp inside the customer's 24 hours (mail_phone.php):
         // whom it goes to and the time left first, then the answer, queued.
+        // Reply by SMS within 7 days of the number's last SMS, in the same
+        // drawer and the same way, queued in sms_outbox as the kind reply.
         case 'ws_whatsapp_reply_form':
         case 'ws_whatsapp_reply':
+        case 'ws_sms_reply_form':
+        case 'ws_sms_reply':
             if (!function_exists('ws_mail_phone_reply_send') || !ws_mail_phone_ready()) {
                 return ws_action_error(lang('The database has not been upgraded yet.'));
             }
 
             $conversation_id = (int) ($request['conversation_id'] ?? 0);
+            $transport = (strpos($action, 'ws_sms_') === 0) ? 'sms' : 'whatsapp';
 
-            if ($action === 'ws_whatsapp_reply_form') {
-                $form = ws_mail_phone_reply_form($viewer, $conversation_id);
+            if (($action === 'ws_whatsapp_reply_form') || ($action === 'ws_sms_reply_form')) {
+                $form = ws_mail_phone_reply_form($viewer, $conversation_id, $transport);
 
                 return $form['ok']
-                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'seconds' => $form['seconds'], 'window' => $form['window']))
+                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'seconds' => $form['seconds'], 'window' => $form['window'], 'max' => $form['max']))
                     : ws_action_error(ws_mail_phone_reply_error_text($form['error']));
             }
 
-            $result = ws_mail_phone_reply_send($viewer, $conversation_id, is_scalar($request['text'] ?? null) ? (string) $request['text'] : '');
+            $result = ws_mail_phone_reply_send($viewer, $conversation_id, is_scalar($request['text'] ?? null) ? (string) $request['text'] : '', $transport);
 
             if (!$result['ok']) {
-                return ws_action_error(ws_mail_phone_reply_error_text($result['error']), in_array($result['error'], array('empty', 'too_long'), true) ? 'text' : '');
+                return ws_action_error(ws_mail_phone_reply_error_text($result['error']), in_array($result['error'], array('empty', 'too_long', 'sms_too_long'), true) ? 'text' : '');
             }
 
             return ws_action_ok(array('message_id' => $result['message_id'], 'state' => $result['state']));

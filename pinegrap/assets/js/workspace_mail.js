@@ -367,27 +367,73 @@
         });
     }
 
-    // Reply by WhatsApp: whom it goes to and the time left of the
-    // customer's 24 hours, asked of the server first (ws_whatsapp_reply_form);
-    // the answer then waits in the WhatsApp queue (ws_whatsapp_reply,
-    // mail_phone.php) and reads Waiting to be sent or Not sent until it left.
-    function whatsappForm(message, view, h) {
-        h.api('ws_whatsapp_reply_form', { conversation_id: message.whatsapp_reply }).then(function (data) {
-            whatsappAnswer(message.whatsapp_reply, data, view, h);
+    // The GSM 03.38 default alphabet (one place each) and its extension
+    // (two places each): the twin of pg_sms_gsm_chars() and
+    // pg_sms_gsm_extension_chars() (includes/fn/sms_reply.php).
+    var SMS_GSM = '@\u00a3$\u00a5\u00e8\u00e9\u00f9\u00ec\u00f2\u00c7\n\u00d8\u00f8\r\u00c5\u00e5\u0394_\u03a6\u0393\u039b\u03a9\u03a0\u03a8\u03a3\u0398\u039e'
+        + '\u00c6\u00e6\u00df\u00c9 !"#\u00a4%&\'()*+,-./0123456789:;<=>?\u00a1ABCDEFGHIJKLMNOPQRSTUVWXYZ\u00c4\u00d6\u00d1\u00dc\u00a7\u00bf'
+        + 'abcdefghijklmnopqrstuvwxyz\u00e4\u00f6\u00f1\u00fc\u00e0';
+    var SMS_GSM_EXTENSION = '^{}\\[~]|\u20ac\f';
+
+    // The length of an SMS text and the messages it makes, as
+    // pg_sms_parts() counts it: GSM-7 (160, then 153 a part) while every
+    // character is in the alphabet, else UCS-2 in UTF-16 units (70, then 67).
+    function smsParts(text) {
+        var plain = String(text).replace(/\r\n?/g, '\n').replace(/\t/g, ' ').replace(/[\x00-\x08\x0B-\x1F\x7F]/g, '').trim();
+        var gsm = true;
+        var units = 0;
+
+        Array.from(plain).forEach(function (char) {
+            if (!gsm) {
+                return;
+            }
+
+            if (SMS_GSM.indexOf(char) !== -1) {
+                units++;
+            } else if (SMS_GSM_EXTENSION.indexOf(char) !== -1) {
+                units += 2;
+            } else {
+                gsm = false;
+            }
+        });
+
+        if (!gsm) {
+            units = plain.length;
+        }
+
+        var single = gsm ? 160 : 70;
+        var perPart = units > single ? (gsm ? 153 : 67) : single;
+        var parts = units === 0 ? 0 : Math.ceil(units / perPart);
+
+        return { encoding: gsm ? 'gsm' : 'ucs2', units: units, parts: parts, per_part: perPart, left: Math.max(1, parts) * perPart - units };
+    }
+
+    // Reply by WhatsApp or by SMS: whom it goes to and the time left (the
+    // customer's 24 hours, or 7 days after their last SMS), asked of the
+    // server first (ws_whatsapp_reply_form, ws_sms_reply_form); the answer
+    // then waits in its queue (mail_phone.php) and reads Waiting to be sent
+    // or Not sent until it left. An SMS answer takes no files and counts the
+    // messages its text makes.
+    function whatsappForm(message, view, h, sms) {
+        var conversation = sms ? message.sms_reply : message.whatsapp_reply;
+
+        h.api(sms ? 'ws_sms_reply_form' : 'ws_whatsapp_reply_form', { conversation_id: conversation }).then(function (data) {
+            whatsappAnswer(conversation, data, view, h, sms);
         }).catch(function (error) {
             h.fail(error);
         });
     }
 
-    function whatsappAnswer(conversation, data, view, h) {
+    function whatsappAnswer(conversation, data, view, h, sms) {
         var t = h.t;
         var el = h.el;
-        var node = h.offcanvas('ws-wa-reply', t('wa_reply'));
+        var title = t(sms ? 'sms_reply' : 'wa_reply');
+        var node = h.offcanvas('ws-wa-reply', title);
         var body = h.clear(node.querySelector('.drawer-body'));
         var footer = h.clear(node.querySelector('.drawer-footer'));
         var form = el('form', 'ws-wa-answer');
 
-        node.querySelector('.drawer-title').textContent = t('wa_reply');
+        node.querySelector('.drawer-title').textContent = title;
         footer.classList.remove('d-none');
         form.noValidate = true;
         form.addEventListener('submit', function (event) {
@@ -401,14 +447,32 @@
         text.id = h.nextId('ws-wa-reply-');
         text.name = 'text';
         text.rows = 8;
-        text.maxLength = 4096;
+        text.maxLength = data.max || 4096;
 
         var box = el('div', 'ws-mail-reply-box position-relative');
         box.appendChild(text);
-        form.appendChild(h.formRow(t('wa_reply_text'), box, t('wa_reply_hint')));
+        form.appendChild(h.formRow(t('wa_reply_text'), box, t(sms ? 'sms_reply_hint' : 'wa_reply_hint')));
         savedReplies(text, box, view, h);
 
-        var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('wa_reply_send'), 'bi-whatsapp');
+        if (sms) {
+            var count = el('div', 'small fg-secondary mb-1');
+            var kind = el('div', 'small fg-secondary');
+            var counted = function () {
+                var parts = smsParts(text.value);
+
+                count.textContent = t('sms_reply_count', Array.from(text.value.trim()).length, text.maxLength, parts.parts);
+                kind.textContent = t(parts.encoding === 'gsm' ? 'sms_reply_gsm' : 'sms_reply_ucs2');
+            };
+
+            count.setAttribute('aria-live', 'polite');
+            text.setAttribute('aria-describedby', count.id = h.nextId('ws-sms-count-'));
+            text.addEventListener('input', counted);
+            form.appendChild(count);
+            form.appendChild(kind);
+            counted();
+        }
+
+        var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t(sms ? 'sms_reply_send' : 'wa_reply_send'), sms ? 'bi-chat-dots' : 'bi-whatsapp');
 
         send.addEventListener('click', function () {
             if (!text.value.trim()) {
@@ -418,9 +482,9 @@
 
             send.disabled = true;
 
-            h.api('ws_whatsapp_reply', { conversation_id: conversation, text: text.value }).then(function (result) {
+            h.api(sms ? 'ws_sms_reply' : 'ws_whatsapp_reply', { conversation_id: conversation, text: text.value }).then(function (result) {
                 h.hideOffcanvas(node);
-                h.toast(result.state === 'failed' ? t('wa_reply_failed') : t('wa_reply_sent'), result.state === 'failed' ? 'warning' : 'success');
+                h.toast(result.state === 'failed' ? t('wa_reply_failed') : t(sms ? 'sms_reply_sent' : 'wa_reply_sent'), result.state === 'failed' ? 'warning' : 'success');
                 view.sync();
             }).catch(function (error) {
                 send.disabled = false;
@@ -451,6 +515,20 @@
                 row.appendChild(answer);
             } else {
                 row.appendChild(h.el('span', 'small fg-secondary', h.t('wa_reply_closed')));
+            }
+        }
+
+        if (message.sms_reply) {
+            if (message.sms_window > 0) {
+                var text = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('sms_reply'), 'bi-chat-dots');
+
+                text.addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    whatsappForm(message, view, h, true);
+                });
+                row.appendChild(text);
+            } else {
+                row.appendChild(h.el('span', 'small fg-secondary', h.t('sms_reply_closed')));
             }
         }
 
@@ -513,7 +591,7 @@
         var t = h.t;
         var current = message.mail_state;
         var change = function (data, control) {
-            data.conversation_id = message.mail_reply || message.whatsapp_reply;
+            data.conversation_id = message.mail_reply || message.whatsapp_reply || message.sms_reply;
             control.disabled = true;
 
             h.api('ws_mail_conversation', data).then(function () {

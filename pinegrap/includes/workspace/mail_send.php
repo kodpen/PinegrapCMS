@@ -1074,7 +1074,7 @@ function ws_mail_resend($viewer, $item_id)
         return $refuse('not_failed');
     }
 
-    // A WhatsApp answer goes back to the WhatsApp queue (mail_phone.php).
+    // A WhatsApp or SMS answer goes back to its own queue (mail_phone.php).
     if (function_exists('ws_mail_phone_resend') && ws_mail_box_is_phone(ws_mail_box((int) $item['box_id']))) {
         return ws_mail_phone_resend($viewer, $item);
     }
@@ -1134,6 +1134,10 @@ function ws_mail_send_badge_html($item)
 
         return '<span class="badge theme-danger"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . h(lang('Not sent')) . '</span>'
             . (($reason !== '') ? ' <span class="ms-1">' . h($reason) . '</span>' : '');
+    }
+
+    if (((string) ($item['transport'] ?? '')) === 'sms') {
+        return '<span class="badge theme-success"><i class="bi bi-chat-dots me-1" aria-hidden="true"></i>' . h(lang('Sent by SMS')) . '</span>';
     }
 
     if (function_exists('ws_mail_item_is_phone') && ws_mail_item_is_phone($item)) {

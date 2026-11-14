@@ -365,7 +365,7 @@ function pg_panel_actions()
         'ws_channel_customer_followup',
         'ws_mail_reply', 'ws_mail_resend', 'ws_mail_conversation', 'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all',
         'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_reply_form',
-        'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
+        'ws_whatsapp_reply_form', 'ws_whatsapp_reply', 'ws_sms_reply_form', 'ws_sms_reply',
     ) as $ws_action) {
         $actions[$ws_action] = array('file' => 'workspace.php', 'handler' => 'pg_panel_ws', 'exempt' => true, 'token' => true, 'write' => true);
     }
