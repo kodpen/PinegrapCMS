@@ -255,20 +255,28 @@ function ws_mail_route_channel($box, $parsed)
  * @param int    $channel_id the conversation's channel
  * @param string $subject
  * @param string $mailbox    the name of a mailbox kept in no channel, '' otherwise
+ * @param string $transport  mail, or whatsapp for a WhatsApp message (the
+ *                           subject is then the message's first words)
  * @return string
  */
-function ws_mail_customer_line_text($name, $channel_id, $subject, $mailbox = '')
+function ws_mail_customer_line_text($name, $channel_id, $subject, $mailbox = '', $transport = 'mail')
 {
     $plain = function ($text) {
         return trim(preg_replace('/<([@#][a-z_]+:[0-9]+)>/i', '$1', preg_replace('/\s+/u', ' ', (string) $text)));
     };
     $subject = mb_substr($plain($subject), 0, 200);
 
-    return lang(array('string' => 'An e-mail from {var:1} came into {var:2}: {var:3}', 'vars' => array(
+    $vars = array(
         mb_substr($plain($name), 0, 200),
         ($plain($mailbox) !== '') ? mb_substr($plain($mailbox), 0, 100) : '<#channel:' . (int) $channel_id . '>',
         ($subject !== '') ? $subject : lang('(no subject)'),
-    )));
+    );
+
+    if ($transport === 'whatsapp') {
+        return lang(array('string' => 'A WhatsApp message from {var:1} came into {var:2}: {var:3}', 'vars' => $vars));
+    }
+
+    return lang(array('string' => 'An e-mail from {var:1} came into {var:2}: {var:3}', 'vars' => $vars));
 }
 
 /**
@@ -278,10 +286,11 @@ function ws_mail_customer_line_text($name, $channel_id, $subject, $mailbox = '')
  * most WS_MAIL_CUSTOMER_LINES_MAX, the most recently used first.
  *
  * @param array  $conversation ws_mail_conversations row (contact_id or user_id set)
- * @param string $name         the sender's name or address
+ * @param string $name         the sender's name, address or number
+ * @param string $transport    see ws_mail_customer_line_text()
  * @return int lines written
  */
-function ws_mail_customer_lines($conversation, $name)
+function ws_mail_customer_lines($conversation, $name, $transport = 'mail')
 {
     if (!function_exists('ws_customer_channels')) {
         return 0;
@@ -297,7 +306,7 @@ function ws_mail_customer_lines($conversation, $name)
 
     $own = ws_channel((int) $conversation['channel_id']);
     $text = ws_mail_customer_line_text($name, (int) $conversation['channel_id'], (string) $conversation['subject'],
-        ws_channel_is_mailbox($own) ? (string) $own['name'] : '');
+        ws_channel_is_mailbox($own) ? (string) $own['name'] : '', $transport);
     $written = 0;
 
     foreach ($channels as $channel) {

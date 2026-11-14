@@ -483,8 +483,10 @@ function ws_mail_forward_line_html($item)
  */
 function ws_mail_forward_offer($row, $item, $viewer)
 {
+    // Forward as e-mail is the mail's own; a WhatsApp message is not offered it.
     if (empty($viewer['member']) || !is_array($item) || ((int) $row['file_id'] > 0)
-        || ((int) ($item['message_id'] ?? 0) !== (int) $row['id']) || ws_mail_item_is_bounce($item)) {
+        || ((int) ($item['message_id'] ?? 0) !== (int) $row['id']) || ws_mail_item_is_bounce($item)
+        || (function_exists('ws_mail_item_is_phone') && ws_mail_item_is_phone($item))) {
         return 0;
     }
 

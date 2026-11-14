@@ -22,6 +22,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
 
 
 
@@ -122,6 +123,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
     // about at Meta before MailChimp can create anything.
     $whatsapp_settings_post = pg_whatsapp_settings_check($_POST, $liveform);
     $whatsapp_messages_post = pg_whatsapp_message_settings_check($_POST, $liveform);
+    $whatsapp_channel_post = pg_whatsapp_channel_check($_POST, USER_ID, $liveform);
 
     // ── İYS ──
     //
@@ -282,5 +284,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
     pg_sms_settings_save($sms_settings_post, USER_ID, $liveform);
     pg_sms_message_settings_save($sms_messages_post, USER_ID);
     pg_whatsapp_settings_save($whatsapp_settings_post, USER_ID, $liveform);
+    pg_whatsapp_channel_save($whatsapp_channel_post, USER_ID);
     pg_whatsapp_message_settings_save($whatsapp_messages_post, USER_ID);
     pg_iys_settings_save($iys_settings_post, USER_ID, $liveform);

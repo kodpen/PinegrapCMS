@@ -189,6 +189,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_whatsapp_outbox();         // 11.0.196
 	upgrade_2026_11_0_whatsapp_templates();      // 11.0.197
 	upgrade_2026_11_0_whatsapp_inbox();          // 11.0.198
+	upgrade_2026_11_0_ws_mail_phone();           // 11.0.199
 
 }
 
@@ -6377,5 +6378,38 @@ function upgrade_2026_11_0_whatsapp_inbox() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('WhatsApp: messages customers send to the site\'s WhatsApp number show as a notice and in the contact\'s history.');
+
+}
+
+// A WhatsApp or SMS conversation lives in the Workspace mail tables
+// (includes/workspace/mail_phone.php): a ws_mail_boxes row per WhatsApp
+// account or SMS number with its own transport, and the customer's number on
+// the conversation, which a new message joins by (box_id, customer_phone).
+// The transport is widened only when the value is missing, as ws_channels.kind
+// was, so a second run rebuilds nothing.
+function upgrade_2026_11_0_ws_mail_phone() {
+
+	if (!install_table_exists('ws_mail_boxes') || !install_table_exists('ws_mail_conversations')) {
+
+		install_skipped('ws_mail_boxes or ws_mail_conversations does not exist, skipped');
+
+		return;
+
+	}
+
+	$transport = install_column_info('ws_mail_boxes', 'transport');
+
+	if (!is_array($transport)) {
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'ws_mail_boxes.transport')));
+	} elseif (strpos((string) $transport['Type'], "'whatsapp'") === false) {
+		install_modify_column('ws_mail_boxes', 'transport', "ENUM('imap','graph','gmail','push','whatsapp','sms') NOT NULL DEFAULT 'imap'");
+	} else {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'ws_mail_boxes.transport whatsapp')));
+	}
+
+	install_add_column('ws_mail_conversations', 'customer_phone', "VARCHAR(20) NOT NULL DEFAULT ''");
+	install_add_index('ws_mail_conversations', 'idx_box_phone', "INDEX idx_box_phone (box_id, customer_phone)");
+
+	install_note('Workspace: a customer\'s WhatsApp message can open a conversation in a channel, as an e-mail does.');
 
 }

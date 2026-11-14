@@ -17,7 +17,7 @@ description: Steps WA12-WA18 of plans/whatsapp-channel.md (owner 2026-11-13, #91
 
 ## Which steps?
 - WA12 (S, no product code) Census and proposal. Done in #9281: `whatsapp-channel-census.md`, `-incoming-sms.md`, `-conversation-storage.md` (decided #9286, all as proposed).
-- WA13 (M) WhatsApp into a channel: the account's card names a channel as a mailbox does; a message WA4 received opens a conversation there or joins the open one of that number; the contact found by number; the known customer's line in their channels, notices and assignment as e-mail's.
+- WA13 (M) WhatsApp into a channel. Done in #9389: `workspace/mail-phone-conversations.md`. Media fetching into the card's files is left for WA14.
 - WA14 (M) Answering by WhatsApp: the card's "Reply by WhatsApp" and the drawer: text and a file from Files inside the 24 hours, the time left shown; after it the approved templates with their variables. Waiting, Not sent and Send again as e-mail's.
 - WA15 (M) The list, the event and the API: WhatsApp conversations in the conversations list beside e-mails, with a filter by transport; the flow event carries the conversation; reading and answering over the API as `workspace/mail-api.md`.
 - WA16 (M) SMS into a channel, for the providers WA12 found able: the receiver (webhook or the general job's poll), the number's channel in the SMS settings, the conversation by number, an opt-out word written to the consent log.
