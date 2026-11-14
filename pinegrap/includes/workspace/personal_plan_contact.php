@@ -350,8 +350,8 @@ function ws_personal_plan_export_row($plan, $owner, $steps)
 /**
  * The plans naming the person's contacts that a data export lists: only
  * those shared with the whole team. A plan kept to its owner or to chosen
- * team members is never listed, whoever runs the export (owner, channel
- * 3361). Its note, reminder and the people it names stay out.
+ * team members is never listed, whoever runs the export. Its note,
+ * reminder and the people it names stay out.
  *
  * @param int[] $contact_ids
  * @param int   $limit       pg_privacy_export_row_limit()

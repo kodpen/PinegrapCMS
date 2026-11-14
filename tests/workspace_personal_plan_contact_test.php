@@ -122,7 +122,7 @@ function test_workspace_personal_plan_export_row()
 }
 
 // A contact's data export lists a plan only when it is shared with the whole
-// team (owner, channel 3361): asked in the query and again row by row, and
+// team: asked in the query and again row by row, and
 // the export reads plans through this function alone.
 function test_workspace_personal_plan_export_lists_whole_team_plans_alone()
 {
