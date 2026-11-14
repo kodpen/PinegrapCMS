@@ -139,6 +139,7 @@ function pg_audit_rules()
         'form_no_action'     => array('editor' => array('form_no_action')),
         'cf_field_unnamed'   => array('editor' => array('cf_field_unnamed')),
         'redundant_entry'    => array('editor' => array('redundant_entry')),
+        'mail_block'         => array('editor' => array('mail_block')),
     );
 
     $rules = array();

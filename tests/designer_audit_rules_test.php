@@ -80,7 +80,7 @@ function designer_audit_rules_test_run($script, $page_level = false)
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$code_js = '';
 
-	$names = array('_sdAttr', '_sdAuditHasText', '_sdAuditAttr', '_sdAuditHasName', '_sdAuditAltDecided', '_sdAuditTypeSubmits', '_sdAuditSubmits', '_sdAuditFormHasSubmit', '_sdAuditFormGoesNowhere', 'validateTree');
+	$names = array('_sdAttr', '_sdAuditHasText', '_sdAuditAttr', '_sdAuditHasName', '_sdAuditAltDecided', '_sdAuditTypeSubmits', '_sdAuditSubmits', '_sdAuditFormHasSubmit', '_sdAuditFormGoesNowhere', '_sdMailCheckIssues', 'validateTree');
 	if ($page_level) {
 		$names[] = '_pageLevelIssues';
 		$names[] = '_cfWidgetOwnsPageForm';
