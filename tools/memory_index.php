@@ -81,7 +81,15 @@
  *
  * Usage:  php tools/memory_index.php           write the index files
  *         php tools/memory_index.php --check   compare only; nothing is
- *                                              written (CI)
+ *                                              written (CI on development
+ *                                              and on a merge train)
+ *         php tools/memory_index.php --files   check the memory files
+ *                                              alone and compare no index;
+ *                                              nothing is written (CI on a
+ *                                              pull request, whose branch
+ *                                              does not carry the generated
+ *                                              lists: the landing writes
+ *                                              them, tools/merge_train.php)
  * Exit:   0 when the indexes were written or are current; 1 when a file has
  *         missing or invalid frontmatter, a memory file is too large or sits
  *         outside a known folder, a module field names no module file, a
@@ -89,7 +97,8 @@
  *         a topic file or decisions part links a memory file that does not
  *         exist ([[name]] or folder/file.md; plans are exempt), a cluster of
  *         MIN_OVERVIEW_FILES files or more has no start file, or, with
- *         --check, an index differs from what the files produce.
+ *         --check, an index differs from what the files produce (--files
+ *         reports all of these but the last).
  *
  * Line endings do not count: files are read with CR removed and the indexes
  * are written with LF endings, so a checkout that turned them into CRLF passes.
@@ -157,7 +166,8 @@ if (defined('PG_TEST_RUNNER')) {
 	return;
 }
 
-$check = in_array('--check', array_slice($argv, 1), true);
+$files_only = in_array('--files', array_slice($argv, 1), true);
+$check = $files_only || in_array('--check', array_slice($argv, 1), true);
 
 $repository = dirname(__DIR__);
 $docs = $repository . '/docs';
@@ -359,6 +369,11 @@ if ($errors) {
 	}
 	fwrite(STDERR, count($errors) . " problem(s); the memory index was not written.\n");
 	exit(1);
+}
+
+if ($files_only) {
+	echo "The memory files are valid; the indexes were not compared.\n";
+	exit(0);
 }
 
 $stale = 0;

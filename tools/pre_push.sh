@@ -11,12 +11,16 @@
 # result. Which ones run follows from what the branch changes against the
 # point it left origin/development, as CI checks the whole pull request:
 #
-#   every push                  memory index (tools/memory_index.php --check);
+#   every push                  memory files (tools/memory_index.php --files),
+#                               and the generated lists too (--check) on
+#                               development and a merge-train/* branch,
+#                               whose landing writes them;
 #                               the branch's commits: no Co-Authored-By: or
 #                               Claude-Session: trailer, Erdal Güral as
 #                               author and committer, no change to
-#                               pinegrap/changelog.txt or
-#                               pinegrap/data/config.php (tools/check_pr.php)
+#                               pinegrap/changelog.txt,
+#                               pinegrap/data/config.php or a generated
+#                               memory list (tools/check_pr.php)
 #   any change outside the      php -l of the changed PHP files, translation
 #   documentation (docs/,       keys, designer bindings, external API schema,
 #   .github/, .claude/, the     audit rule registry, get_file.php copies,
@@ -266,14 +270,19 @@ check_commit() {
 	fi
 
 	if [ "$code" = 1 ]; then
-		say "checking $short: memory index, commits, PHP syntax, translation keys, bindings, API schema, copies, unit tests..."
+		say "checking $short: memory, commits, PHP syntax, translation keys, bindings, API schema, copies, unit tests..."
 	else
-		say "checking $short: memory index, commits (the branch changes documentation only)..."
+		say "checking $short: memory, commits (the branch changes documentation only)..."
 	fi
 
 	# The long-line rule compares the memory files with where the branch left
-	# development; without a base the tool looks for it itself.
-	run_tool 'memory index' memory_index.php --check "--base=$base"
+	# development; without a base the tool looks for it itself. A work branch
+	# carries no generated memory list (tools/check_pr.php): only its memory
+	# files are checked; the landing writes the lists (tools/merge_train.php).
+	case "$branch" in
+		development|main|merge-train/*|'') run_tool 'memory index' memory_index.php --check "--base=$base" ;;
+		*) run_tool 'memory files' memory_index.php --files "--base=$base" ;;
+	esac
 
 	# Without a base the branch's own commits are unknown.
 	if [ -n "$base" ]; then
