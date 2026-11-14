@@ -22,7 +22,10 @@ description: A mailbox's block list (IB4): Block sender under a mail, who may bl
 
 ## How long is a blocked mail kept?
 - `ws_mail_block_sweep()` in `workspace_recurring_job.php`, before `ws_mail_eml_sweep()`, deletes items with `blocked_at > 0` older than `WS_MAIL_BLOCK_DAYS` (30), row and `.eml` together, 500 a run. The `.eml` sweep skips blocked items.
-- The "Blocked" view and "Not blocked" are IB4b of `plans/mail-inbox-features.md`.
+
+## What do the Blocked view and Not blocked do? (IB4b, #9531)
+- "Blocked" is a view of the E-mails screen (`view=blocked`, drawn while the person has a box, or is in the view): the blocked mails of the boxes the person may answer in (`ws_mail_blocked_box_ids()`), newest first, at most 200, with sender, subject, box and time (`ws_mail_blocked_html()`). No status, holder or kind filter there.
+- "Not blocked" (action `ws_mail_unblock`, `ws_mail_unblock()`): deletes the kept row, then takes its `.eml` through `ws_mail_ingest($raw, $box, array('past_block' => true))`, so it becomes a conversation; the screen opens it. The sender stays on the list. If the ingest keeps nothing the row is put back; a missing `.eml` refuses. A Site Log line; refused on a demonstration site.
 
 ## Which schema?
 - Step `upgrade_2026_11_0_ws_mail_blocks()` (11.0.202): table `ws_mail_blocks` (id, box_id, kind address|domain, value VARCHAR(255), created_by, created_at, UNIQUE (box_id, kind, value(191))) and `ws_mail_items.blocked_at` INT UNSIGNED. Approved by the owner in the architect's window (channel 25, 2955). Readiness: `ws_mail_blocks_ready()`.

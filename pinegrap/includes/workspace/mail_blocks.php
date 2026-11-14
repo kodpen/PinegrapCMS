@@ -538,3 +538,206 @@ function ws_mail_block_item_html($item)
         . '<button type="button" class="pg-button pg-button-ghost pg-button-sm" data-bs-toggle="collapse" data-bs-target="#ws-mail-block-' . $id . '">' . h(lang('Cancel')) . '</button></div>'
         . '</form></div>';
 }
+
+/**
+ * The mailboxes whose blocked mail this person sees in the "Blocked" view
+ * and may bring in: those they may answer in (ws_mail_can_answer() in the
+ * box's own channel or room), as for blocking in one box. A guest has none.
+ *
+ * @param array $viewer
+ * @return int[] box ids
+ */
+function ws_mail_blocked_box_ids($viewer)
+{
+    static $cache = array();
+
+    $key = (int) ($viewer['id'] ?? 0);
+
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+
+    $out = array();
+
+    if (ws_mail_blocks_ready() && !empty($viewer['member'])) {
+        foreach ((array) db_items("SELECT * FROM ws_mail_boxes ORDER BY name, id") as $box) {
+            $channel = ws_mail_box_is_phone($box) ? null : ws_channel((int) $box['channel_id']);
+
+            if ($channel && ws_can_read_channel($viewer, $channel) && ws_mail_can_answer($viewer, $channel)) {
+                $out[] = (int) $box['id'];
+            }
+        }
+    }
+
+    return $cache[$key] = $out;
+}
+
+/**
+ * The blocked mails of the person's mailboxes, newest first, each with its
+ * box's name.
+ *
+ * @param array $viewer
+ * @param int   $limit
+ * @return array[]
+ */
+function ws_mail_blocked_items($viewer, $limit = 200)
+{
+    $box_ids = ws_mail_blocked_box_ids($viewer);
+
+    if (!$box_ids) {
+        return array();
+    }
+
+    return (array) db_items("SELECT i.id, i.box_id, i.from_email, i.from_name, i.subject, i.created_at, b.name AS box_name
+        FROM ws_mail_items i INNER JOIN ws_mail_boxes b ON b.id = i.box_id
+        WHERE i.box_id IN (" . implode(',', array_map('intval', $box_ids)) . ") AND i.blocked_at > 0
+        ORDER BY i.id DESC
+        LIMIT " . max(1, (int) $limit));
+}
+
+/**
+ * The "Blocked" view's rows: sender, subject, mailbox and time, and "Not
+ * blocked", which the screen's script posts (workspace_mail.js). Pure but
+ * for the words.
+ *
+ * @param array[] $items ws_mail_blocked_items()
+ * @param int     $now
+ * @return string HTML
+ */
+function ws_mail_blocked_html($items, $now)
+{
+    $note = '<p class="pg-field-help px-3 my-3">' . h(lang(array('string' => 'Blocked e-mails are kept for {var:1} days, then deleted. "Not blocked" brings one in as a conversation; the sender stays blocked.', 'vars' => WS_MAIL_BLOCK_DAYS))) . '</p>';
+
+    if (!$items) {
+        return $note . '<p class="fg-secondary my-5 px-3">' . h(lang('No blocked e-mail.')) . '</p>';
+    }
+
+    $html = '';
+
+    foreach ($items as $item) {
+        $who = (trim((string) $item['from_name']) !== '') ? (string) $item['from_name'] : (string) $item['from_email'];
+        $subject = (trim((string) $item['subject']) !== '') ? (string) $item['subject'] : lang('(no subject)');
+
+        $html .= '<div class="ws-mail-row" data-ws-mail-blocked="' . (int) $item['id'] . '">'
+            . '<span class="ws-mail-row-head"><span class="ws-mail-who">' . h($who) . '</span>'
+            . '<span class="ws-mail-time">' . h(ws_time_label((int) $item['created_at'])) . '</span></span>'
+            . '<span class="ws-mail-subject">' . h($subject) . '</span>'
+            . '<span class="ws-mail-row-meta">'
+            . (($who !== (string) $item['from_email']) ? '<span>' . h((string) $item['from_email']) . '</span>' : '')
+            . '<span>' . h((string) $item['box_name']) . '</span>'
+            . '<button type="button" class="pg-button pg-button-quiet pg-button-sm ms-auto" data-ws-mail-unblock="' . (int) $item['id'] . '">'
+            . '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>' . h(lang('Not blocked')) . '</button>'
+            . '</span></div>';
+    }
+
+    return $note . '<div class="ws-mail-rows">' . $html . '</div>';
+}
+
+/**
+ * Whether this person may bring a blocked mail in: it is still blocked, its
+ * box is one of theirs (ws_mail_blocked_box_ids()) and its original is kept
+ * under the mail folder. Pure but for the words.
+ *
+ * @param array|null $item    ws_mail_items row
+ * @param int[]      $box_ids ws_mail_blocked_box_ids()
+ * @return array ok, error
+ */
+function ws_mail_unblock_decide($item, $box_ids)
+{
+    if (!is_array($item) || ((int) ($item['blocked_at'] ?? 0) === 0)) {
+        return array('ok' => false, 'error' => lang('This e-mail is no longer blocked.'));
+    }
+
+    if (!in_array((int) $item['box_id'], array_map('intval', (array) $box_ids), true)) {
+        return array('ok' => false, 'error' => lang('Only someone who may answer in this mailbox can bring this e-mail in.'));
+    }
+
+    $path = (string) ($item['raw_path'] ?? '');
+
+    if ((strpos($path, 'mail/') !== 0) || (strpos($path, '..') !== false)) {
+        return array('ok' => false, 'error' => lang('The original of this e-mail is no longer kept, so it cannot be brought in.'));
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * The Site Log line of "Not blocked". Pure but for the words.
+ *
+ * @param string $from
+ * @param string $box_name
+ * @return string
+ */
+function ws_mail_unblock_log_line($from, $box_name)
+{
+    return lang(array('string' => 'a blocked e-mail from {var:1} was brought into {var:2}', 'vars' => array((string) $from, (string) $box_name)));
+}
+
+/**
+ * "Not blocked": the kept row is deleted, then the mail's .eml goes through
+ * ws_mail_ingest() past the block check, so it becomes a conversation as if
+ * it had just come (card, notices, flows; never the automatic answer of a
+ * mail older than the box's rules allow, which the ingest decides). The
+ * sender stays on the block list. When the ingest takes nothing, the row
+ * is put back as it was.
+ *
+ * @param array  $viewer
+ * @param int    $item_id
+ * @param string $username for the Site Log line
+ * @return array ok, error, conversation_id
+ */
+function ws_mail_unblock($viewer, $item_id, $username)
+{
+    $refuse = function ($error) {
+        return array('ok' => false, 'error' => $error, 'conversation_id' => 0);
+    };
+
+    if (!ws_mail_blocks_ready()) {
+        return $refuse(lang('The database has not been upgraded yet.'));
+    }
+
+    $item = db_item("SELECT * FROM ws_mail_items WHERE id = '" . (int) $item_id . "'");
+    $decided = ws_mail_unblock_decide($item ?: null, ws_mail_blocked_box_ids($viewer));
+
+    if (!$decided['ok']) {
+        return $refuse($decided['error']);
+    }
+
+    $box = ws_mail_box((int) $item['box_id']);
+    $file = PG_FUNCTIONS_DIR . '/data/' . (string) $item['raw_path'];
+    $raw = (is_array($box) && is_file($file)) ? @file_get_contents($file) : false;
+
+    if (!is_string($raw) || ($raw === '')) {
+        return $refuse(lang('The original of this e-mail is no longer kept, so it cannot be brought in.'));
+    }
+
+    // The row goes first: the ingest refuses a mail already kept in the box.
+    db_q("DELETE FROM ws_mail_items WHERE id = ? AND blocked_at > 0", array((int) $item['id']));
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return $refuse(lang('This e-mail is no longer blocked.'));
+    }
+
+    $result = ws_mail_ingest($raw, $box, array('past_block' => true));
+
+    if ($result['status'] !== 'stored') {
+        $columns = array_keys($item);
+
+        db_q("INSERT INTO ws_mail_items (`" . implode('`, `', $columns) . "`) VALUES (" . implode(', ', array_fill(0, count($columns), '?')) . ")",
+            array_values($item));
+
+        return $refuse(lang('This e-mail could not be brought in. It stays blocked.'));
+    }
+
+    // A mail of the same month is written to the same .eml; an older one's
+    // original is removed.
+    $kept = (string) db_value("SELECT raw_path FROM ws_mail_items WHERE id = '" . (int) $result['item_id'] . "'");
+
+    if ($kept !== (string) $item['raw_path']) {
+        @unlink($file);
+    }
+
+    log_activity(ws_mail_unblock_log_line((string) $item['from_email'], (string) $box['name']), $username);
+
+    return array('ok' => true, 'error' => '', 'conversation_id' => (int) $result['conversation_id']);
+}
