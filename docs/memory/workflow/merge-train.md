@@ -13,7 +13,7 @@ description: Working rule (2026-10-25) for the merging session: one merger, one 
 ## When does the merging session merge?
 - As soon as a train lands, the next one is built from the ready, green PRs waiting: sessions wait on their merge for the next step, and a full queue stops new work. It wakes on a tick chain, never on a CI event ([[merger-wake]]). A security fix or a broken `development` may be merged at once, alone.
 - A PR that changes only `docs/`, `CLAUDE.md` or `.github/` lands alone once green, outside the windows: every new session reads the rules from `development`: a rules PR behind a train leaves sessions on old rules.
-  - It gets its own `--no-ff` merge commit `<PR title> (#n)` on `origin/development` (indexes by `php tools/memory_index.php`), pushed fast-forward. When a train is already waiting and both regenerate the same index, it rides that train instead, so `development` does not move under the train.
+  - It gets its own `--no-ff` merge commit `<PR title> (#n)` on `origin/development` (then `php tools/merge_train.php --indexes`), pushed fast-forward. When a train is already waiting and both regenerate the same index, it rides that train instead, so `development` does not move under the train.
 
 ## Which PRs go into a train?
 - Open PRs whose CI is green on their head and that carry the `ready` label, or that have had no push for an hour while green; never one from a fork, which no session merges ([[merge-train-forks]]). Oldest first, up to 12 a train. A PR over the size limit (`working-mode.md`) rides a train of its own, at the latest an hour after it became eligible ([[merge-train-order]]).
