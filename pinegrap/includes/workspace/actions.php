@@ -2762,14 +2762,26 @@ function ws_handle_action($action, $request)
                 $form = ws_mail_phone_reply_form($viewer, $conversation_id);
 
                 return $form['ok']
-                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'seconds' => $form['seconds'], 'window' => $form['window']))
+                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'seconds' => $form['seconds'], 'window' => $form['window'],
+                        'templates' => $form['templates'], 'file_field' => $form['file_field']))
                     : ws_action_error(ws_mail_phone_reply_error_text($form['error']));
             }
 
-            $result = ws_mail_phone_reply_send($viewer, $conversation_id, is_scalar($request['text'] ?? null) ? (string) $request['text'] : '');
+            // One file at most, as New e-mail's files are read; a template
+            // with its values (JSON) after the 24 hours.
+            $files = ws_mail_compose_files($_FILES['files'] ?? null);
+
+            if (!$files['ok']) {
+                return ws_action_error($files['error'], 'files');
+            }
+
+            $result = ws_mail_phone_reply_send($viewer, $conversation_id, $request, $files['files']);
 
             if (!$result['ok']) {
-                return ws_action_error(ws_mail_phone_reply_error_text($result['error']), in_array($result['error'], array('empty', 'too_long'), true) ? 'text' : '');
+                $fields = array('empty' => 'text', 'too_long' => 'text', 'caption_long' => 'text', 'one_file' => 'files', 'file_type' => 'files',
+                    'file_size' => 'files', 'file_refused' => 'files', 'file_not_kept' => 'files', 'no_template' => 'template');
+
+                return ws_action_error(ws_mail_phone_reply_error_text($result['error'], $result['detail']), $fields[$result['error']] ?? '');
             }
 
             return ws_action_ok(array('message_id' => $result['message_id'], 'state' => $result['state']));
