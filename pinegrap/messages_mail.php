@@ -63,10 +63,10 @@ echo pg_page_shell(array(
     'heading_description' => lang('The e-mail conversations of the channels you can read. Open one to read it, answer it or change its status and holder.'),
 )) . '
 
-<main id="content" class="container-fluid p-0">
+<main id="content" class="container-fluid"><div class="row"><div class="col-12">
+' . pg_messages_tab_strip_for('mail', $user) . '
 <div class="ws-shell">
 <div class="ws-shell-main">
-    ' . pg_messages_tab_strip_for('mail', $user) . '
     <div id="ws-root" class="ws-mail-screen' . (($pane !== '') ? ' ws-mail-reading' : '') . '">
         ' . ws_mail_list_filters_html($filters, $boxes, ws_mail_send_ready() && (bool) ws_mail_send_boxes($viewer), ws_mail_list_support($boxes, ws_mail_plain_box_ids())) . '
         <div class="ws-mail-columns">
@@ -76,4 +76,4 @@ echo pg_page_shell(array(
     </div>
 </div>
 </div>
-</main>' . ws_screen_assets($viewer, 'mail', array('mail' => array('strings' => ws_mail_screen_js_strings()))) . output_footer();
+</div></div></main>' . ws_screen_assets($viewer, 'mail', array('mail' => array('strings' => ws_mail_screen_js_strings()))) . output_footer();
