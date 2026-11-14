@@ -406,7 +406,7 @@ JS
 	pg_assert_same(array('schedule', true, false), $result['rowsChange'], 'Change lists the other start kinds');
 	pg_assert_same(true, $result['rowsSearched'], 'a search lists them too');
 	pg_assert_same(array(false, false, false, false, true, true, true), $result['filled'], 'Change asks first only for a start whose settings were filled in');
-	pg_assert_same(array('start:manual,schedule,event,join,row,no_order,web,mention', 'message:post,email,sms,notify,report'), $result['firstItems'], 'each group keeps the palette\'s order');
+	pg_assert_same(array('start:manual,schedule,event,join,row,no_order,web,mention', 'message:post,email,sms,whatsapp,notify,report'), $result['firstItems'], 'each group keeps the palette\'s order');
 	pg_assert_same(array('end:end', 'values:constants,value'), $result['endItems'], 'the End box has its own group, the value boxes come last');
 	pg_assert_same(array('start:schedule'), $result['search'], 'a search keeps the boxes whose name holds it, any case');
 	pg_assert_same(array('start:manual'), $result['words'], 'every word searched for');
@@ -2228,7 +2228,7 @@ function ws_flows_canvas_test_groups()
 		'values' => array('#e58fd0', array('constants', 'value')),
 		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
-		'message' => array('#6ea8ff', array('post', 'email', 'sms', 'notify', 'report')),
+		'message' => array('#6ea8ff', array('post', 'email', 'sms', 'whatsapp', 'notify', 'report')),
 		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'rows_get', 'record_get', 'contact_group', 'ai', 'agent'))
 	);
 }

@@ -613,7 +613,9 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
             ));
         } elseif ($visitor_move['state'] === 'failed') {
             $visitor_move_level = 'warning';
-            $visitor_move_text = pg_visitor_move_result_text($visitor_move) . ' ' . lang('The general job tries again in a week; Move to InnoDB now tries now.');
+            $visitor_move_text = pg_visitor_move_result_text($visitor_move) . ' ' . ($visitor_move['blind_failed']
+                ? lang('The free disk space of the database server cannot be read from here, so the general job does not start it on its own again; Move to InnoDB now tries now.')
+                : lang('The general job tries again in a week; Move to InnoDB now tries now.'));
         } else {
             $visitor_move_reason = pg_visitor_move_reason_text($visitor_move);
             $visitor_move_text = lang('This table is on MyISAM, which locks the whole table for each statement: the cleanup works in small steps so visits wait only briefly.') . ' '
@@ -637,7 +639,9 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
             ));
         } elseif (($visitor_move['state'] === 'failed') && ($visitor_move['kind'] === 'split')) {
             $visitor_move_level = 'warning';
-            $visitor_move_text = pg_visitor_move_result_text($visitor_move) . ' ' . lang('The general job tries again in a week; Split into months now tries now.');
+            $visitor_move_text = pg_visitor_move_result_text($visitor_move) . ' ' . ($visitor_move['blind_failed']
+                ? lang('The free disk space of the database server cannot be read from here, so the general job does not start it on its own again; Split into months now tries now.')
+                : lang('The general job tries again in a week; Split into months now tries now.'));
         } else {
             $visitor_move_reason = ($visitor_move['kind'] === 'split') ? pg_visitor_move_reason_text($visitor_move) : '';
             $visitor_move_text = lang('This table is not split into months yet, so old records are removed a chunk at a time and their room stays in the file until it is rebuilt.') . ' '

@@ -218,6 +218,7 @@
 - whatsapp-form-messages.md: A custom form's WhatsApp message to its sender (WA6, #9374): number field, template, a field per variable, connect_apps whatsapp_forms, sent with the e-mails, off by default
 - whatsapp-order-messages.md: WhatsApp order moments (WA5, #9347): the WhatsApp Messages card, one approved template per event and a value per variable, connect_apps whatsapp_messages, where each is queued, off by default
 - whatsapp-outbox-queue.md: WhatsApp queue (whatsapp_outbox, step 11.0.196, WA2): pg_whatsapp_enqueue() and its refusals, the general job's pass on the SMS queue's rules, consent asked again at the send, erasure [decision: decisions-made-product-48.md]
+- whatsapp-template-approval.md: WhatsApp template designer, second half (WA9, #9395): header from Files, buttons, Send for approval with the sample upload, a rejected template edited, test send with media
 - whatsapp-template-designer.md: WhatsApp template designer, first half (WA8, #9350): whatsapp_template.php, drafts in whatsapp_templates, the draft check, samples column, phone preview and its JS twin, Send myself a test [decision: here]
 - whatsapp-templates.md: WhatsApp templates (whatsapp_templates, step 11.0.197, WA3): read from Meta page by page, the refresh plan, the job every six hours and after a card save, the readers
 - whatsapp-webhook-events.md: whatsapp_webhook.php events (WA4, #9351): delivery states, template changes, a customer's message into whatsapp_inbox (11.0.198), its bell notice and customer-history line

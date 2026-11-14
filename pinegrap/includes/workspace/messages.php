@@ -1313,6 +1313,174 @@ function ws_message_ask_item($viewer, $channel, $message_id, $old, $new, $by_app
 }
 
 /**
+ * The text around the tags of an item, for the brief: the paragraphs that
+ * name one of them (the whole text when none does), cut to $cap characters
+ * around the first tag. Pure.
+ *
+ * @param string $text the item's text (a note's body, a row's cells)
+ * @param string $tags ws_message_tags_added(): tags one space apart
+ * @param int    $cap
+ * @return string
+ */
+function ws_item_tag_excerpt($text, $tags, $cap = 2000)
+{
+    $text = trim((string) $text);
+    $want = ws_message_tags((string) $tags);
+    $kept = array();
+
+    foreach (preg_split('/\n\s*\n/', $text) as $paragraph) {
+        if (array_intersect($want, ws_message_tags($paragraph))) {
+            $kept[] = trim($paragraph);
+        }
+    }
+
+    $out = empty($kept) ? $text : implode("\n\n", $kept);
+
+    if (mb_strlen($out) <= $cap) {
+        return $out;
+    }
+
+    $first = empty($want) ? false : mb_stripos($out, $want[0]);
+    $start = ($first === false) ? 0 : max(0, min($first - (int) ($cap / 2), mb_strlen($out) - $cap));
+
+    return mb_substr($out, $start, $cap);
+}
+
+/**
+ * What an agent tagged outside a message is told of the item, in English as
+ * the rest of the brief: what it is and its name, where the tag sits, the
+ * text around it, who wrote it, the route that reads it whole, and where the
+ * answer goes. Pure.
+ *
+ * @param array $item kind (note, table, task), name, where, text, writer,
+ *                    route, under (card, line)
+ * @return string[]
+ */
+function ws_item_brief_lines($item)
+{
+    $kinds = array('note' => 'a shared note', 'table' => 'a table cell', 'task' => 'a task');
+    $kind = $kinds[(string) ($item['kind'] ?? '')] ?? 'an item of the channel';
+    $where = trim((string) ($item['where'] ?? ''));
+    $lines = array();
+
+    $lines[] = 'You were tagged in ' . $kind . ', not in a message: "' . (string) ($item['name'] ?? '') . '"' . (($where !== '') ? ', ' . $where : '') . '.';
+    $lines[] = 'Written by ' . (string) ($item['writer'] ?? '') . '. The text around the tag:';
+    $lines[] = pg_ai_data_block('item', (string) ($item['text'] ?? ''));
+
+    if ((string) ($item['route'] ?? '') !== '') {
+        $lines[] = 'Read the whole of it with ' . (string) $item['route'] . '.';
+    }
+
+    $lines[] = (($item['under'] ?? '') === 'card')
+        ? 'Your answer goes under that card in the channel.'
+        : 'Your answer goes under that line in the channel.';
+
+    return $lines;
+}
+
+/**
+ * The ai_state a request made by a tag outside a message carries. Pure.
+ *
+ * @param array $item ws_item_brief_lines()'s shape
+ * @return string JSON
+ */
+function ws_item_request_state($item)
+{
+    return (string) json_encode(array('item' => $item), JSON_UNESCAPED_UNICODE);
+}
+
+/**
+ * The item a request was made for, or null for any other request. Pure.
+ *
+ * @param array $row ws_ai_requests: ai_state
+ * @return array|null
+ */
+function ws_item_of($row)
+{
+    $state = json_decode((string) ($row['ai_state'] ?? ''), true);
+
+    return (is_array($state) && isset($state['item']) && is_array($state['item'])) ? $state['item'] : null;
+}
+
+/**
+ * Asks the channel's agents a tag outside a message names, by name alone,
+ * hung on $message_id, with the item told in the brief. Only the registry's
+ * agents: Claude, Pinegrap AI and the MCP aliases are asked from messages.
+ * The writer's check is the caller's (ws_message_item_tags_writer()).
+ *
+ * @param array    $viewer the writer
+ * @param array    $channel
+ * @param int      $message_id the card or the line
+ * @param string   $added ws_message_tags_added()
+ * @param array    $item  ws_item_brief_lines()'s shape
+ * @param string[] $skip  agent values the same save asked already
+ * @return string[] the agent values asked
+ */
+function ws_item_ask($viewer, $channel, $message_id, $added, $item, $skip = array())
+{
+    if (($added === '') || ((int) $message_id <= 0) || !function_exists('ws_agent_after_send')) {
+        return array();
+    }
+
+    return ws_agent_after_send($viewer, $channel, $message_id, $added, '', true, array('state' => ws_item_request_state($item), 'skip' => $skip));
+}
+
+/**
+ * The channel's agents the added tags name, by name alone, as handles:
+ * whether a line is worth writing at all.
+ *
+ * @param array  $channel
+ * @param string $added ws_message_tags_added()
+ * @return string[] @handles
+ */
+function ws_item_agents_named($channel, $added)
+{
+    if (($added === '') || !function_exists('ws_agent_reach_rows') || !ws_agents_ready()) {
+        return array();
+    }
+
+    $named = array();
+
+    foreach (ws_agent_reach_rows($channel) as $row) {
+        if (ws_agent_wake_matches($row, $added, false, true)) {
+            $named[] = '@' . (string) $row['handle'];
+        }
+    }
+
+    return array_values(array_unique($named));
+}
+
+/**
+ * An item with no message of its own in its channel (a table cell, a task
+ * with no card): one system line per save that adds tags, naming the
+ * writer, the tagged agents and where the tag sits, without the item's
+ * words; the request hangs on the line, asked as the writer. The line
+ * itself asks nobody. The writer's check is the caller's.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $added ws_message_tags_added()
+ * @param array  $item  ws_item_brief_lines()'s shape, under line
+ * @param string $place where the tag sits, translated ("table X, row #4, column Y")
+ * @return string[] the agent values asked
+ */
+function ws_item_ask_line($viewer, $channel, $added, $item, $place)
+{
+    $named = ws_item_agents_named($channel, $added);
+
+    if (empty($named)) {
+        return array();
+    }
+
+    $line = ws_message_system((int) $channel['id'], lang(array(
+        'string' => '{var:1} named {var:2} in {var:3}.',
+        'vars'   => array('<@user:' . (int) $viewer['id'] . '>', implode(', ', $named), $place),
+    )));
+
+    return ws_item_ask($viewer, $channel, $line, $added, array('under' => 'line') + $item);
+}
+
+/**
  * May this person bring others into the channel? Anyone who may write in a
  * public channel; only its members in a private one.
  *

@@ -150,15 +150,70 @@ function test_visitor_move_db_is_local()
 	}
 }
 
-// What is asked to be free: three times the rows that are left and the
-// indexes, and a gigabyte. Removed rows inside the file are not counted.
+// The room of the rows a copy holds: on MyISAM the data figure counts the
+// removed rows, on InnoDB it does not.
+function test_visitor_rows_room()
+{
+	pg_assert_same(0.0, pg_visitor_rows_room(array()), 'nothing known');
+	pg_assert_same(300.0, pg_visitor_rows_room(array('engine' => 'myisam', 'data' => 900.0, 'free' => 700.0, 'index' => 100.0)));
+	pg_assert_same(100.0, pg_visitor_rows_room(array('engine' => 'myisam', 'data' => 100.0, 'free' => 400.0, 'index' => 100.0)), 'free above data counts as no rows');
+	pg_assert_same(1000.0, pg_visitor_rows_room(array('engine' => 'innodb', 'data' => 900.0, 'free' => 700.0, 'index' => 100.0)), 'InnoDB free space is outside the data figure');
+}
+
+// After a large delete InnoDB's data figure keeps the emptied pages; the
+// record count at 384 bytes each caps it.
+function test_visitor_rows_room_estimate()
+{
+	$megabyte = 1048576.0;
+
+	pg_assert_same(0.0, pg_visitor_rows_room_estimate(array()), 'nothing known');
+	pg_assert_same(5000000 * 384.0, pg_visitor_rows_room_estimate(array('engine' => 'innodb', 'rows' => 5000000, 'data' => 2370 * $megabyte, 'index' => 570 * $megabyte, 'free' => 524 * $megabyte)), 'the sandbox table after half of 10 million visits went');
+	pg_assert_same(30 * $megabyte, pg_visitor_rows_room_estimate(array('engine' => 'innodb', 'rows' => 200000, 'data' => 25 * $megabyte, 'index' => 5 * $megabyte)), 'statistics below the cap');
+	pg_assert_same(300.0, pg_visitor_rows_room_estimate(array('engine' => 'myisam', 'rows' => 0, 'data' => 900.0, 'free' => 700.0, 'index' => 100.0)), 'no count: the statistics');
+}
+
+// What is asked to be free for the move: what the copy holds, half again for
+// InnoDB pages and the server's logs, and 256 MB for the rest of the server.
 function test_visitor_move_disk_needed()
 {
-	$gigabyte = 1073741824.0;
+	$margin = 268435456.0;
 
-	pg_assert_same($gigabyte, pg_visitor_move_disk_needed(array()), 'nothing known');
-	pg_assert_same(3 * (200.0 + 100.0) + $gigabyte, pg_visitor_move_disk_needed(array('data' => 900.0, 'free' => 700.0, 'index' => 100.0)));
-	pg_assert_same(3 * 100.0 + $gigabyte, pg_visitor_move_disk_needed(array('data' => 100.0, 'free' => 400.0, 'index' => 100.0)), 'free above data counts as no rows');
+	pg_assert_same($margin, pg_visitor_move_disk_needed(array()), 'nothing known');
+	pg_assert_same(1.5 * 300.0 + $margin, pg_visitor_move_disk_needed(array('engine' => 'myisam', 'data' => 900.0, 'free' => 700.0, 'index' => 100.0)));
+	pg_assert_same(1.5 * 1000.0 + $margin, pg_visitor_move_disk_needed(array('engine' => 'innodb', 'data' => 900.0, 'free' => 700.0, 'index' => 100.0)), 'a split copies every InnoDB row');
+
+	// Rows that fit in 30 MB no longer ask for about 1.2 GB.
+	$needed = pg_visitor_move_disk_needed(array('engine' => 'innodb', 'data' => 25.0 * 1048576, 'free' => 210.0 * 1048576, 'index' => 5.0 * 1048576));
+	pg_assert_true($needed < 400.0 * 1048576, 'about 300 MB for 30 MB of rows');
+	pg_assert_same(1.5 * 1000000 * 384.0 + $margin, pg_visitor_move_disk_needed(array('engine' => 'innodb', 'rows' => 1000000, 'data' => 1400.0 * 1048576, 'index' => 130.0 * 1048576)), 'the emptied pages a large delete leaves are not asked for');
+}
+
+// The bound under which a copy goes ahead without the free disk space read:
+// rows left at most half the file, at most 5 million of them and at most
+// 2 GB of room.
+function test_visitor_blind_ok()
+{
+	$megabyte = 1048576.0;
+
+	pg_assert_true(pg_visitor_blind_ok(200000, 30 * $megabyte, 240 * $megabyte), 'the sandbox table: 30 MB of rows in a 240 MB file');
+	pg_assert_true(pg_visitor_blind_ok(5000000, 600 * $megabyte, 1200 * $megabyte), 'exactly half, exactly 5 million');
+	pg_assert_false(pg_visitor_blind_ok(4960000, 1290 * $megabyte, 1300 * $megabyte), 'every record kept: the copy needs the whole file');
+	pg_assert_false(pg_visitor_blind_ok(5000001, 600 * $megabyte, 1200 * $megabyte), 'over 5 million rows');
+	pg_assert_false(pg_visitor_blind_ok(4000000, 2100 * $megabyte, 8000 * $megabyte), 'over 2 GB of rows');
+	pg_assert_false(pg_visitor_blind_ok(200000, 30 * $megabyte, 0.0), 'file size unknown');
+	pg_assert_false(pg_visitor_blind_ok(0, 0.0, 240 * $megabyte), 'nothing known about the rows');
+}
+
+// A try that started without the free disk space read and failed stops the
+// next ones; a finished move or rebuild clears that.
+function test_visitor_blind_failed_after()
+{
+	pg_assert_true(pg_visitor_blind_failed_after(false, true, 'failed'));
+	pg_assert_false(pg_visitor_blind_failed_after(false, false, 'failed'), 'a try that had read the disk');
+	pg_assert_true(pg_visitor_blind_failed_after(true, false, 'waiting'), 'kept while nothing finishes');
+	pg_assert_true(pg_visitor_blind_failed_after(true, false, 'copying'));
+	pg_assert_false(pg_visitor_blind_failed_after(true, false, 'done'), 'cleared once one finished');
+	pg_assert_false(pg_visitor_blind_failed_after(true, true, 'done'));
 }
 
 // The facts of a MyISAM table the general job may move on its own.
@@ -176,6 +231,8 @@ function pg_test_visitor_move_facts($changes = array())
 		'backlog' => false,
 		'disk_free' => 10.0 * 1073741824,
 		'needed' => 2.0 * 1073741824,
+		'blind_ok' => false,
+		'blind_failed' => false,
 	);
 }
 
@@ -197,6 +254,21 @@ function test_visitor_move_hold_reason_on_its_own()
 	pg_assert_same('backlog', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('backlog' => true))));
 	pg_assert_same('disk_unknown', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('disk_free' => null))));
 	pg_assert_same('disk_low', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('disk_free' => 1.0 * 1073741824))));
+}
+
+// With the free disk space unknown, a copy small against the file goes ahead
+// on its own, until one such try has failed; a disk read as too small is
+// never overruled.
+function test_visitor_move_hold_reason_disk_unknown()
+{
+	pg_assert_same('', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('disk_free' => null, 'blind_ok' => true))));
+	pg_assert_same('', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('kind' => 'split', 'disk_free' => null, 'blind_ok' => true))), 'a split too');
+	pg_assert_same('disk_unknown', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('disk_free' => null, 'blind_ok' => false))), 'too large a copy');
+	pg_assert_same('blind_failed', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('disk_free' => null, 'blind_ok' => true, 'blind_failed' => true))));
+	pg_assert_same('failed', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('disk_free' => null, 'blind_ok' => true, 'blind_failed' => true, 'failed' => true))), 'the week after the failure says failed');
+	pg_assert_same('backlog', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('disk_free' => null, 'blind_ok' => true, 'backlog' => true))), 'still waits for the cleanup');
+	pg_assert_same('disk_low', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('disk_free' => 1.0, 'blind_ok' => true))), 'a disk read as full');
+	pg_assert_same('', pg_visitor_move_hold_reason(pg_test_visitor_move_facts(array('blind_failed' => true))), 'a readable disk with room');
 }
 
 // The operator's request skips the period, the backlog, an earlier failure and
@@ -239,13 +311,30 @@ function test_visitor_shrink_worth()
 	pg_assert_false(pg_visitor_shrink_worth(array()), 'nothing known');
 }
 
-// The free space inside the file is not part of the rows on InnoDB.
+// What a rebuild asks to be free: the new file, the sort files of the
+// indexes and 256 MB for the log of the writes made meanwhile and the rest of
+// the server. The free space inside the file is not part of the rows.
 function test_visitor_shrink_disk_needed()
 {
-	$gigabyte = 1073741824.0;
+	$margin = 268435456.0;
 
-	pg_assert_same($gigabyte, pg_visitor_shrink_disk_needed(array()), 'nothing known');
-	pg_assert_same(3 * (300.0 + 100.0) + $gigabyte, pg_visitor_shrink_disk_needed(array('data' => 300.0, 'free' => 900.0, 'index' => 100.0)));
+	pg_assert_same($margin, pg_visitor_shrink_disk_needed(array()), 'nothing known');
+	pg_assert_same(300.0 + 100.0 + 100.0 + $margin, pg_visitor_shrink_disk_needed(array('engine' => 'innodb', 'data' => 300.0, 'free' => 900.0, 'index' => 100.0)));
+	pg_assert_same(2 * 1000000 * 384.0 + $margin, pg_visitor_shrink_disk_needed(array('engine' => 'innodb', 'rows' => 1000000, 'data' => 1400.0 * 1048576, 'index' => 1000.0 * 1048576)), 'sort files at most the size of the rows');
+}
+
+// A rebuild is worth it too when the rows left take at most half the file and
+// it gives 128 MB or more back, whatever the server says is free.
+function test_visitor_shrink_worth_by_file()
+{
+	$megabyte = 1048576.0;
+
+	pg_assert_true(pg_visitor_shrink_worth_by_file(1830 * $megabyte, 3516 * $megabyte + 200 * $megabyte));
+	pg_assert_true(pg_visitor_shrink_worth_by_file(128 * $megabyte, 256 * $megabyte), 'exactly half, exactly 128 MB back');
+	pg_assert_false(pg_visitor_shrink_worth_by_file(1290 * $megabyte, 1300 * $megabyte), 'every record kept');
+	pg_assert_false(pg_visitor_shrink_worth_by_file(20 * $megabyte, 100 * $megabyte), 'less than 128 MB back');
+	pg_assert_false(pg_visitor_shrink_worth_by_file(0.0, 100 * $megabyte), 'nothing known');
+	pg_assert_false(pg_visitor_shrink_worth_by_file(20 * $megabyte, 0.0), 'file size unknown');
 }
 
 // The hour with the fewest page views; a missing hour had none; a tie goes
@@ -289,6 +378,8 @@ function pg_test_visitor_shrink_facts($changes = array())
 		'needed' => 2.0 * 1073741824,
 		'hour' => 3,
 		'quiet_hour' => 3,
+		'blind_ok' => false,
+		'blind_failed' => false,
 	);
 }
 
@@ -311,6 +402,19 @@ function test_visitor_shrink_hold_reason_on_its_own()
 	pg_assert_same('disk_low', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('disk_free' => 1.0 * 1073741824))));
 	pg_assert_same('hour', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('hour' => 14))));
 	pg_assert_same('small', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('worth' => false, 'disk_free' => null, 'hour' => 14))), 'nothing to gain comes first');
+}
+
+// With the free disk space unknown, a rebuild whose rows are small against the
+// file goes ahead in the quietest hour, until one such try has failed.
+function test_visitor_shrink_hold_reason_disk_unknown()
+{
+	pg_assert_same('', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('disk_free' => null, 'blind_ok' => true))));
+	pg_assert_same('disk_unknown', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('disk_free' => null))));
+	pg_assert_same('blind_failed', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('disk_free' => null, 'blind_ok' => true, 'blind_failed' => true))));
+	pg_assert_same('hour', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('disk_free' => null, 'blind_ok' => true, 'hour' => 14))), 'still in the quietest hour only');
+	pg_assert_same('small', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('disk_free' => null, 'blind_ok' => true, 'worth' => false))));
+	pg_assert_same('partitioned', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('disk_free' => null, 'blind_ok' => true, 'partitioned' => true))));
+	pg_assert_same('disk_low', pg_visitor_shrink_hold_reason(pg_test_visitor_shrink_facts(array('disk_free' => 1.0, 'blind_ok' => true))), 'a disk read as full');
 }
 
 // The operator's request skips the size, an earlier rebuild, the cleanup,

@@ -12,7 +12,7 @@ description: Flows quick setup drawing against today's boxes and events: drawn s
 - "Only when" (drawn: order total over 1.000,00 ₺): order total is no value of `order.created`, so a record field puts a Read a record box before the condition boxes.
 
 ## Which drawn steps are there? (drawn label: kind)
-- Message: E-posta gönder `email`, Ekibe bildir `notify`, Kanala yaz `post`; also `report`. WhatsApp mesajı gönder: none until WA7 (`plans/whatsapp-channel-steps.md`), then its kind joins the message group. SMS gönder: `sms` (QS6, offered while SMS is set up).
+- Message: E-posta gönder `email`, Ekibe bildir `notify`, Kanala yaz `post`; also `report`. WhatsApp mesajı gönder: `whatsapp` (WA7, #9372, offered while WhatsApp is set up). SMS gönder: `sms` (QS6, offered while SMS is set up).
 - People: Görev aç `task_open` (also `task`, which waits), Onay iste `approval`, Müşteriyi kanala al `lead`; also `checkin`, `task_digest`.
 - Records: Sipariş durumunu değiştir: `change` with id `{{trigger.record_id}}` (the start's `read` id), the order of the run (QS1b); Kişiyi gruba ekle `contact_group` (QS7, `workspace-flows-contact-group-box.md`); Tabloya satır ekle `row_add`; Teklif kodu ver: none; also `record_get`, `row_set`, `row_get`, `rows_get`.
 - Logic: Bekle `delay`, Yalnızca şu durumda `condition`, Her biri için `for_each` (its End box placed by the setup).

@@ -851,6 +851,24 @@ function ws_task_ask_tags($viewer, $task, $old, $new, $by_app = false, $assistan
     $message = (is_array($task) && ((int) $task['channel_id'] > 0) && ((int) ($task['source_message_id'] ?? 0) > 0)) ? ws_message((int) $task['source_message_id']) : null;
 
     if (!is_array($message) || ((int) $message['deleted_at'] > 0) || ((int) $message['channel_id'] !== (int) $task['channel_id'])) {
+        // No card in its channel: one line there names the tag and carries
+        // the request; a task with no channel asks nobody.
+        $channel = (is_array($task) && ((int) $task['channel_id'] > 0)) ? ws_channel($task['channel_id']) : null;
+        $added = ws_message_tags_added(ws_tokens_normalise((string) $old), ws_tokens_normalise((string) $new));
+
+        if (($added !== '') && is_array($channel) && ws_message_item_tags_writer($viewer, $channel)) {
+            $title = (string) $task['title'];
+
+            ws_item_ask_line($viewer, $channel, $added, array(
+                'kind'   => 'task',
+                'name'   => $title,
+                'where'  => 'the ' . ($assistants ? 'title or description' : 'notes'),
+                'text'   => ws_item_tag_excerpt((string) $new, $added),
+                'writer' => ws_person_name($viewer['id']),
+                'route'  => 'GET /workspace/tasks/' . (int) $task['id'],
+            ), lang(array('string' => 'the task "{var:1}"', 'vars' => $title)));
+        }
+
         return ws_message_asked_none();
     }
 

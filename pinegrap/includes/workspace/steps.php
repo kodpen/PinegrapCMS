@@ -121,6 +121,11 @@ function ws_step_kinds()
         // A text message queued through the SMS layer (flow_sms_box.php).
         'sms'       => array('label' => lang('Send an SMS'), 'type' => 'sms', 'texts' => array('text'), 'lines' => array(),
             'outputs' => array($number('sent', lang('SMS messages queued')))),
+        // An approved WhatsApp template queued through the WhatsApp layer,
+        // an e-mail in its place when it cannot go (flow_whatsapp_box.php).
+        'whatsapp'  => array('label' => lang('Send a WhatsApp message'), 'type' => 'whatsapp', 'texts' => function_exists('ws_step_whatsapp_texts') ? ws_step_whatsapp_texts() : array(),
+            'lines' => function_exists('ws_step_whatsapp_var_keys') ? array_merge(ws_step_whatsapp_var_keys(), array('fallback_subject')) : array(),
+            'outputs' => array($number('sent', lang('WhatsApp messages queued')), $number('emailed', lang('E-mails sent in its place')))),
         'notify'    => array('label' => lang('Let people know'), 'type' => 'notify', 'texts' => array('text'), 'lines' => array('text'),
             'outputs' => array($number('told', lang('People told')))),
         'task_open' => array('label' => lang('Open a task without waiting'), 'type' => 'task', 'texts' => array('title', 'description'), 'lines' => array('title'),
@@ -457,6 +462,9 @@ function ws_step_config_normalize($kind, $config)
 
         case 'sms':
             return ws_step_sms_normalize($config);
+
+        case 'whatsapp':
+            return ws_step_whatsapp_normalize($config);
 
         case 'notify':
             return array(
@@ -884,6 +892,10 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             $problems = ws_step_sms_problems($config, $name);
             break;
 
+        case 'whatsapp':
+            $problems = ws_step_whatsapp_problems($config, $name);
+            break;
+
         case 'contact_group':
             $problems = ws_step_contact_group_problems($config, $name);
             break;
@@ -967,6 +979,12 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
     // Nor is an SMS box: it queues its message itself (flow_sms_box.php).
     if ($kind === 'sms') {
         return ws_step_sms_check($viewer, $config);
+    }
+
+    // Nor is a WhatsApp box: it queues its template itself
+    // (flow_whatsapp_box.php).
+    if ($kind === 'whatsapp') {
+        return ws_step_whatsapp_check($viewer, $config);
     }
 
     // Nor is a Pinegrap AI box: it asks the model itself (flow_ai_box.php).
@@ -1718,6 +1736,9 @@ function ws_step_scheduled_texts()
         'post'        => array('body'),
         'email'       => array('subject', 'body'),
         'sms'         => array('text'),
+        // Its variables are filled where it queues them, in a loop over the
+        // box's settings (ws_step_whatsapp_do()).
+        'whatsapp'    => array('fallback_subject', 'fallback_body'),
         'notify'      => array('text'),
         'task_open'   => array('title', 'description'),
         'webhook'     => array('text'),
@@ -2035,6 +2056,23 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $config['to'] = pg_sms_dial($person['number']);
     }
 
+    // A WhatsApp message to the person of the run's record: their mobile
+    // number read now with the owner's rights, and their address for the
+    // e-mail in its place. One with no number is left to the box, which
+    // sends that e-mail or ends done with nothing sent.
+    $whatsapp_person = array('email' => '');
+
+    if (($kind === 'whatsapp') && (($config['recipient'] ?? '') === 'record_person')) {
+        $whatsapp_person = ws_step_whatsapp_person($owner, $run, !empty($config['fallback']));
+
+        if (($whatsapp_person['number'] === '') && empty($config['fallback'])) {
+            ws_flow_step_settle($step, 'running', 'done', 'done', $whatsapp_person['error'], array('sent' => 0, 'emailed' => 0));
+            return;
+        }
+
+        $config['to'] = ($whatsapp_person['number'] !== '') ? pg_sms_dial($whatsapp_person['number']) : '';
+    }
+
     // A change box's record named by a value of the run is read now; the
     // change is then checked on that record as on one named by its number.
     if (($kind === 'change') && is_string($config['id'] ?? null)) {
@@ -2166,6 +2204,8 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $done = ws_step_record_get_do($owner, $action);
     } elseif ($kind === 'sms') {
         $done = ws_step_sms_do($action, $step_context + array('viewer' => $owner, 'row' => $row), ws_step_sms_reference($run['id'], $step['node_id'], $step['pass'] ?? 0));
+    } elseif ($kind === 'whatsapp') {
+        $done = ws_step_whatsapp_do($action, $step_context + array('viewer' => $owner, 'row' => $row), ws_step_whatsapp_reference($run['id'], $step['node_id'], $step['pass'] ?? 0), $whatsapp_person);
     } elseif ($kind === 'contact_group') {
         $done = ws_step_contact_group_do($owner, $action, $run);
     } else {
@@ -2352,6 +2392,23 @@ function ws_flow_box_try($viewer, $flow, $data)
             $config['to'] = pg_sms_dial($person['number']);
         }
 
+        // A WhatsApp message to the person of the run's record, as the run
+        // reads them; the consent of a marketing template is asked as it
+        // is queued.
+        if (($kind === 'whatsapp') && (($config['recipient'] ?? '') === 'record_person')) {
+            if ($run_id <= 0) {
+                return array('outcome' => 'done', 'said' => lang('Writes to the person of the record the run is about: choose a run to see who.')) + $answer;
+            }
+
+            $person = ws_step_whatsapp_person($owner, $run, !empty($config['fallback']));
+
+            if (($person['number'] === '') && empty($config['fallback'])) {
+                return array('outcome' => 'done', 'said' => $person['error']) + $answer;
+            }
+
+            $config['to'] = ($person['number'] !== '') ? pg_sms_dial($person['number']) : '';
+        }
+
         // A change box's record named by a value: a chosen run gives it, as
         // the run reads it; without one only the rest of the change is
         // checked.
@@ -2413,6 +2470,8 @@ function ws_flow_box_try($viewer, $flow, $data)
             $said = ws_step_record_get_text($action);
         } elseif ($kind === 'sms') {
             $said = ws_step_sms_text($action);
+        } elseif ($kind === 'whatsapp') {
+            $said = ws_step_whatsapp_text($action);
         } elseif ($kind === 'contact_group') {
             $said = ws_step_contact_group_text($action);
         } elseif ($kind === 'ai') {

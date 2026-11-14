@@ -7854,8 +7854,9 @@ function pg_js_bundles()
         // Live pictures of designs and templates (window.PGLivePicture,
         // includes/fn/design_previews.php).
         'assets/js/pg_live_picture.min.js'         => array('assets/js/pg_live_picture.js'),
-        // The flow canvas, then the quick setup's dialog (window.PGWsFlowQuick).
-        'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js', 'assets/js/workspace_flow_quick.js'),
+        // The flow canvas, then the quick setup's dialog (window.PGWsFlowQuick);
+        // the variable chips first, for the WhatsApp box's variables.
+        'assets/js/workspace_flow.min.js'          => array('assets/js/pg_var_chips.js', 'assets/js/workspace_flow.js', 'assets/js/workspace_flow_quick.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the
         // team: small, and apart from the workspace's own set.

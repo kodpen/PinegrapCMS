@@ -107,6 +107,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_ai_box.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_agent_box.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_mail_person.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_sms_box.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_whatsapp_box.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_conditions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_values.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_loops.php');

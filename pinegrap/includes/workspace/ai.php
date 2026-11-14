@@ -1627,8 +1627,17 @@ function ws_ai_step($row)
             // and nothing proposed it closes the request alone.
             $emoji = function_exists('ws_model_answer_emoji') ? ws_model_answer_emoji($row, (string) ($call['args']['emoji'] ?? '')) : '';
 
-            if (($emoji !== '') && ($said === '') && empty(array_filter((array) ($state['proposals'] ?? array())))) {
+            // Asked to conclude the discussion: done after the answer, as an
+            // application agent's conclude is (threads.php).
+            $conclude = !empty($call['args']['conclude']) && function_exists('ws_ai_answer_takes_conclude') && ws_ai_answer_takes_conclude($row);
+
+            if ((($emoji !== '') || $conclude) && ($said === '') && empty(array_filter((array) ($state['proposals'] ?? array())))) {
                 ws_model_close_with_emoji($row, $emoji);
+
+                if ($conclude) {
+                    ws_model_conclude_after($row);
+                }
+
                 return 'done';
             }
 
@@ -1665,6 +1674,10 @@ function ws_ai_step($row)
 
             if (($done === 'done') && ($emoji !== '')) {
                 ws_ai_react((int) $row['message_id'], $emoji, true);
+            }
+
+            if (($done === 'done') && $conclude) {
+                ws_model_conclude_after($row);
             }
 
             return $done;
@@ -3875,6 +3888,14 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
         if ($unheard !== '') {
             $parts[] = ws_voice_unheard_line($unheard);
         }
+
+        // Tagged outside a message (a shared note, a table cell, a task).
+        $item = function_exists('ws_item_of') ? ws_item_of($row) : null;
+
+        if ($item) {
+            $parts[] = '';
+            $parts = array_merge($parts, ws_item_brief_lines($item));
+        }
     }
 
     $text = array_merge(ws_ai_briefing_head($asker, $agent), array(''), $parts);
@@ -4041,6 +4062,11 @@ function ws_ai_tools($row)
             'text'  => array('type' => 'string', 'description' => 'The answer in the language of the request. Markdown; tags such as <@user:12> or <#order:1045>. Empty with an emoji when the message needs no words (a thank-you, an acknowledgement).'),
             'emoji' => array('type' => 'string', 'description' => 'Optional: one fitting emoji left on the message that asked, beside the text or in place of it: a celebration for good news, a heart for thanks, a thumbs up for "done".'),
         ), array());
+
+        // Asked in an open discussion: it may conclude it when asked.
+        if (function_exists('ws_ai_answer_takes_conclude') && ws_ai_answer_takes_conclude($row)) {
+            $tools[0]['function']['parameters']['properties']->conclude = array('type' => 'boolean', 'description' => ws_thread_agent_close_sentence() . ' Here no_answer is an empty text.');
+        }
     }
 
     // A request from the Visual Page Editor: its page, and nothing else.

@@ -840,6 +840,7 @@ function ws_wtable_row_create_write($viewer, $table, $input)
 
     ws_ref_source_write('wtable_row', array($row_id => ws_wtable_row_ref_tokens($columns, $cells)));
     ws_wtable_row_announce('created', $table, $row_id, (int) $viewer['id']);
+    ws_wtable_row_ask_tags($viewer, $table, $row_id, array(), $cells, ws_wtable_row_via_given($input));
 
     return array('ok' => true, 'error' => '', 'field' => '', 'status' => 201, 'row_id' => $row_id, 'revision' => 1);
 }
@@ -958,6 +959,7 @@ function ws_wtable_row_update_write($viewer, $table, $row, $input)
     }
 
     ws_ref_source_write('wtable_row', array((int) $row['id'] => ws_wtable_row_ref_tokens($columns, $cells)));
+    ws_wtable_row_ask_tags($viewer, $table, (int) $row['id'], ws_wtable_cells_decode($row['cells']), $cells, ws_wtable_row_via_given($input));
     ws_wtable_touch($table_id);
     ws_wtable_row_announce('updated', $table, (int) $row['id'], (int) $viewer['id'], array_keys($check['cells']));
 
@@ -1096,4 +1098,96 @@ function ws_wtable_row_move($viewer, $table, $row, $input)
     }
 
     return array('ok' => true, 'error' => '', 'field' => '', 'status' => 200, 'position' => $plan['to']);
+}
+
+/**
+ * The tags a row's save adds, cell by cell: the added tags of every text
+ * cell, the names of the columns they sit in, and the row's words for the
+ * brief (the row's name cell, then each tagged cell). Pure.
+ *
+ * @param array $columns ws_wtable_columns()
+ * @param array $before  cells before (empty for a new row)
+ * @param array $after   cells now
+ * @return array added (tags one space apart, '' for none), columns (names), text
+ */
+function ws_wtable_row_tags_added($columns, $before, $after)
+{
+    $added = array();
+    $names = array();
+    $lines = array();
+    $name_cell = '';
+
+    foreach ((array) $columns as $id => $column) {
+        $value = $after[(string) $id] ?? null;
+
+        if (!is_string($value) || ($value === '')) {
+            continue;
+        }
+
+        if (($name_cell === '') || (function_exists('ws_wtable_is_key') && ws_wtable_is_key($column))) {
+            $name_cell = (string) $column['name'] . ': ' . $value;
+        }
+
+        $old = $before[(string) $id] ?? '';
+        $new_tags = ws_message_tags_added(is_string($old) ? $old : '', $value);
+
+        if ($new_tags === '') {
+            continue;
+        }
+
+        $added = array_merge($added, explode(' ', $new_tags));
+        $names[] = (string) $column['name'];
+        $lines[] = (string) $column['name'] . ': ' . $value;
+    }
+
+    if ($name_cell !== '' && !in_array($name_cell, $lines, true)) {
+        array_unshift($lines, $name_cell);
+    }
+
+    return array('added' => implode(' ', array_values(array_unique($added))), 'columns' => $names, 'text' => empty($names) ? '' : implode("\n", $lines));
+}
+
+/**
+ * After a row of a channel's table was saved: the tags it adds wake the
+ * channel's agents they name, when the channel is an agent channel and its
+ * manager wrote them (ws_message_item_tags_writer()), on one line in the
+ * channel per save (ws_item_ask_line()). A row written through a canvas, or
+ * of a table with no channel, asks nobody.
+ *
+ * @param array $viewer
+ * @param array $table
+ * @param int   $row_id
+ * @param array $before cells before (empty for a new row)
+ * @param array $after  cells now
+ * @param int   $via    the canvas it was written through, 0 for none
+ * @return string[] the agent values asked
+ */
+function ws_wtable_row_ask_tags($viewer, $table, $row_id, $before, $after, $via = 0)
+{
+    $channel_id = (int) ($table['channel_id'] ?? 0);
+
+    if (((int) $via > 0) || ($channel_id <= 0) || !function_exists('ws_item_ask_line')) {
+        return array();
+    }
+
+    $columns = ws_wtable_columns((int) $table['id']);
+    $found = ws_wtable_row_tags_added($columns, (array) $before, (array) $after);
+    $channel = ($found['added'] !== '') ? ws_channel($channel_id) : null;
+
+    if (!is_array($channel) || !ws_message_item_tags_writer($viewer, $channel)) {
+        return array();
+    }
+
+    $row = ws_wtable_row((int) $table['id'], (int) $row_id);
+    $number = is_array($row) ? (int) ($row['number'] ?? $row['position'] ?? 0) : 0;
+    $column = implode(', ', $found['columns']);
+
+    return ws_item_ask_line($viewer, $channel, $found['added'], array(
+        'kind'   => 'table',
+        'name'   => (string) $table['name'],
+        'where'  => 'row #' . $number . ' (id ' . (int) $row_id . '), column ' . $column,
+        'text'   => ws_item_tag_excerpt($found['text'], $found['added']),
+        'writer' => ws_person_name($viewer['id']),
+        'route'  => 'GET /workspace/tables/' . (int) $table['id'] . '/rows/' . (int) $row_id,
+    ), lang(array('string' => 'table "{var:1}", row #{var:2}, column {var:3}', 'vars' => array((string) $table['name'], $number, $column))));
 }

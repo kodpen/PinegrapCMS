@@ -1922,6 +1922,8 @@ function pg_visitor_move_last()
         'bytes_source' => isset($last['bytes_source']) ? (string) $last['bytes_source'] : '',
         'finished_at' => isset($last['finished_at']) ? (int) $last['finished_at'] : 0,
         'failed_at' => isset($last['failed_at']) ? (int) $last['failed_at'] : 0,
+        'blind' => !empty($last['blind']),
+        'blind_failed' => !empty($last['blind_failed']),
     );
 }
 
@@ -1932,6 +1934,8 @@ function pg_visitor_move_last()
  */
 function pg_visitor_move_save($last)
 {
+    $last['blind_failed'] = pg_visitor_blind_failed_after(!empty($last['blind_failed']), !empty($last['blind']), isset($last['state']) ? (string) $last['state'] : '');
+
     $marker = pg_visitor_move_marker();
 
     if (!is_dir(dirname($marker))) {
@@ -1989,13 +1993,91 @@ function pg_visitor_move_db_is_local($host)
 }
 
 /**
+ * Room on the disk left over for the rest of the server once a move or a
+ * rebuild has taken what it needs: the server's logs, temporary tables and
+ * the site's other writes while it runs.
+ */
+define('PG_VISITOR_DISK_MARGIN', 268435456);
+
+/**
+ * The most records left with which the general job moves or rebuilds the
+ * table without reading the free disk space (pg_visitor_blind_ok()).
+ */
+define('PG_VISITOR_BLIND_MAX_ROWS', 5000000);
+
+/**
+ * The most room those records may take, data and indexes, for the same.
+ */
+define('PG_VISITOR_BLIND_MAX_BYTES', 2147483648);
+
+/**
+ * Room one visit takes in a fresh copy of the table, data and indexes, at
+ * most: the figure a record count is turned into room with.
+ */
+define('PG_VISITOR_ROW_BYTES', 384);
+
+/**
+ * The room the rows that are left take, data and indexes: what a copy of the
+ * table holds.
+ *
+ * MyISAM counts the room of removed rows inside its data figure and reports
+ * it as free; InnoDB keeps that room outside the data figure.
+ *
+ * No database access.
+ *
+ * @param array $catalog_row pg_db_table_catalog()['visitors']
+ * @return float bytes
+ */
+function pg_visitor_rows_room($catalog_row)
+{
+    $data = isset($catalog_row['data']) ? (float) $catalog_row['data'] : 0.0;
+    $free = isset($catalog_row['free']) ? (float) $catalog_row['free'] : 0.0;
+    $index = isset($catalog_row['index']) ? (float) $catalog_row['index'] : 0.0;
+
+    if (isset($catalog_row['engine']) && ($catalog_row['engine'] === 'myisam')) {
+        $data = max(0.0, $data - $free);
+    }
+
+    return $data + $index;
+}
+
+/**
+ * The room the rows that are left would take in a fresh copy, for deciding
+ * whether they are small against the file: the smaller of the server's
+ * statistics and PG_VISITOR_ROW_BYTES for each record.
+ *
+ * After a large delete InnoDB keeps the emptied pages reserved for the table
+ * and counts them in its data figure: with half of 10 million visits removed
+ * the statistics still said 2.9 GB for the 5 million left in a 3.5 GB file.
+ * The record count follows the delete.
+ *
+ * No database access.
+ *
+ * @param array $catalog_row pg_db_table_catalog()['visitors']
+ * @return float bytes
+ */
+function pg_visitor_rows_room_estimate($catalog_row)
+{
+    $room = pg_visitor_rows_room($catalog_row);
+    $rows = isset($catalog_row['rows']) ? max(0, (int) $catalog_row['rows']) : 0;
+
+    if ($rows <= 0) {
+        return $room;
+    }
+
+    return min($room, (float) $rows * PG_VISITOR_ROW_BYTES);
+}
+
+/**
  * Free disk space the move asks for before the general job starts it on its
  * own, from the figures of the table now.
  *
- * The copy holds the rows that are left (the data less the room of removed
- * rows, and the indexes); InnoDB keeps the same rows in up to about one and
- * a half times the room, and the server's logs grow with the copy as well.
- * Three times that, and a gigabyte left over for the rest of the server.
+ * The copy holds the rows that are left (pg_visitor_rows_room_estimate());
+ * InnoDB keeps rows in up to about one
+ * and a half times the room of MyISAM, and a table split into months reserves
+ * a few megabytes in each month's file. Half again on top of the rows, and
+ * PG_VISITOR_DISK_MARGIN for the rest of the server. The old table goes once
+ * the copy is in place.
  *
  * No database access.
  *
@@ -2004,11 +2086,68 @@ function pg_visitor_move_db_is_local($host)
  */
 function pg_visitor_move_disk_needed($catalog_row)
 {
-    $data = isset($catalog_row['data']) ? (float) $catalog_row['data'] : 0.0;
-    $free = isset($catalog_row['free']) ? (float) $catalog_row['free'] : 0.0;
-    $index = isset($catalog_row['index']) ? (float) $catalog_row['index'] : 0.0;
+    return (1.5 * pg_visitor_rows_room_estimate($catalog_row)) + (float) PG_VISITOR_DISK_MARGIN;
+}
 
-    return (3 * (max(0.0, $data - $free) + $index)) + 1073741824.0;
+/**
+ * Whether a copy of the rows that are left is small enough to be made without
+ * the free disk space read (the database server on another host, or PHP not
+ * allowed to look at its data directory).
+ *
+ * Only when the rows take at most half the table's file, number at most
+ * PG_VISITOR_BLIND_MAX_ROWS and take at most PG_VISITOR_BLIND_MAX_BYTES: the
+ * copy then needs only their room, and once it is in place the disk gets the
+ * whole old file back, at least twice what the copy took. Should the disk be
+ * full all the same, the server refuses the copy's writes, the copy is
+ * dropped and the table stays as it was; the general job then does not try
+ * again this way (pg_visitor_blind_failed_after()).
+ *
+ * No database access.
+ *
+ * @param int   $rows      records left
+ * @param float $rows_room pg_visitor_rows_room()
+ * @param float $file      the table's file size (pg_visitor_table_file_size())
+ * @return bool
+ */
+function pg_visitor_blind_ok($rows, $rows_room, $file)
+{
+    $rows = (int) $rows;
+    $rows_room = (float) $rows_room;
+    $file = (float) $file;
+
+    if (($rows_room <= 0) || ($file <= 0)) {
+        return false;
+    }
+
+    return ($rows <= PG_VISITOR_BLIND_MAX_ROWS)
+        && ($rows_room <= (float) PG_VISITOR_BLIND_MAX_BYTES)
+        && (($rows_room * 2) <= $file);
+}
+
+/**
+ * Whether the marker should say that a move or a rebuild the general job
+ * started without the free disk space read has failed, which keeps it from
+ * starting another that way. A move or rebuild that finishes, by the general
+ * job or on the operator's request, clears it.
+ *
+ * No database access.
+ *
+ * @param bool   $blind_failed what the marker says now
+ * @param bool   $blind        the last try started without the disk read
+ * @param string $state        the marker's state
+ * @return bool
+ */
+function pg_visitor_blind_failed_after($blind_failed, $blind, $state)
+{
+    if ($state === 'done') {
+        return false;
+    }
+
+    if (($state === 'failed') && $blind) {
+        return true;
+    }
+
+    return (bool) $blind_failed;
 }
 
 /**
@@ -2066,6 +2205,24 @@ function pg_visitor_move_kind($engine, $partition, $splittable)
 }
 
 /**
+ * The hold reason of a move or rebuild whose free disk space cannot be read,
+ * or '' when it may go ahead without it.
+ *
+ * No database access.
+ *
+ * @param array $facts blind_ok (bool), blind_failed (bool)
+ * @return string '', 'disk_unknown', 'blind_failed'
+ */
+function pg_visitor_blind_hold($facts)
+{
+    if (empty($facts['blind_ok'])) {
+        return 'disk_unknown';
+    }
+
+    return empty($facts['blind_failed']) ? '' : 'blind_failed';
+}
+
+/**
  * Why the general job does not start moving the table now, or '' when it may.
  *
  * On its own it starts only once the cleanup has brought the table down to
@@ -2076,13 +2233,19 @@ function pg_visitor_move_kind($engine, $partition, $splittable)
  *
  * No database access.
  *
+ * Where the free disk space cannot be read, a copy small against the file
+ * (pg_visitor_blind_ok()) still starts, until one started so has failed.
+ *
  * @param array $facts kind (pg_visitor_move_kind()), capable (bool), fits
  *                     (bool|null), old_exists (bool), requested (bool), failed (bool: a
  *                     move stopped on an error in the last week),
  *                     days (int), cleaned (bool: the cleanup has run),
- *                     backlog (bool), disk_free (float|null), needed (float)
+ *                     backlog (bool), disk_free (float|null), needed (float),
+ *                     blind_ok (bool: pg_visitor_blind_ok()), blind_failed
+ *                     (bool: a move started without the disk read failed)
  * @return string '', 'engine', 'unsupported', 'too_wide', 'name_taken',
- *                'failed', 'no_period', 'backlog', 'disk_unknown', 'disk_low'
+ *                'failed', 'no_period', 'backlog', 'disk_unknown',
+ *                'blind_failed', 'disk_low'
  */
 function pg_visitor_move_hold_reason($facts)
 {
@@ -2119,7 +2282,7 @@ function pg_visitor_move_hold_reason($facts)
     }
 
     if ($facts['disk_free'] === null) {
-        return 'disk_unknown';
+        return pg_visitor_blind_hold($facts);
     }
 
     if ((float) $facts['disk_free'] < (float) $facts['needed']) {
@@ -2455,6 +2618,14 @@ function pg_visitor_move_step(&$last, $deadline, $chunk, $result)
 
         $last['needed'] = pg_visitor_move_disk_needed($catalog_row);
 
+        $disk_free = pg_visitor_move_disk_free();
+        $blind_ok = false;
+
+        if ($disk_free === null) {
+            $file_now = pg_visitor_table_file_size($catalog_row);
+            $blind_ok = pg_visitor_blind_ok(isset($catalog_row['rows']) ? (int) $catalog_row['rows'] : 0, pg_visitor_rows_room_estimate($catalog_row), $file_now['bytes']);
+        }
+
         $reason = pg_visitor_move_hold_reason(array(
             'kind' => $kind,
             'capable' => $capability['ok'],
@@ -2465,8 +2636,10 @@ function pg_visitor_move_step(&$last, $deadline, $chunk, $result)
             'days' => is_array($settings) ? $settings['days'] : 0,
             'cleaned' => ($cleanup['checked_at'] > 0),
             'backlog' => $cleanup['backlog'],
-            'disk_free' => pg_visitor_move_disk_free(),
+            'disk_free' => $disk_free,
             'needed' => $last['needed'],
+            'blind_ok' => $blind_ok,
+            'blind_failed' => $last['blind_failed'],
         ));
 
         if ($reason !== '') {
@@ -2490,6 +2663,10 @@ function pg_visitor_move_step(&$last, $deadline, $chunk, $result)
         if ($error !== '') {
             return pg_visitor_move_fail($last, $result, $error);
         }
+
+        // A copy the general job starts without the disk read: should it
+        // fail, the next is not started that way.
+        $last['blind'] = (($disk_free === null) && !$last['requested']);
 
         $last['state'] = 'copying';
         $last['reason'] = '';
@@ -2909,6 +3086,9 @@ function pg_visitor_move_reason_text($last)
 
             case 'disk_low':
                 return lang(array('string' => 'The general job does not start splitting it into months on its own, because the database server has less free disk space than the split needs, about {var:1}.', 'vars' => array(pg_innodb_size_label($last['needed']))));
+
+            case 'blind_failed':
+                return lang('The general job no longer splits it into months on its own: the free disk space of the database server cannot be read from here, and the split it last started without it stopped. Split into months now still starts it.');
         }
 
         return '';
@@ -2936,6 +3116,9 @@ function pg_visitor_move_reason_text($last)
 
         case 'disk_low':
             return lang(array('string' => 'The general job does not start moving it to InnoDB on its own, because the database server has less free disk space than the move needs, about {var:1}.', 'vars' => array(pg_innodb_size_label($last['needed']))));
+
+        case 'blind_failed':
+            return lang('The general job no longer moves it to InnoDB on its own: the free disk space of the database server cannot be read from here, and the move it last started without it stopped. Move to InnoDB now still starts it.');
     }
 
     return '';
@@ -3007,6 +3190,8 @@ function pg_visitor_shrink_last()
         'file_source' => isset($last['file_source']) ? (string) $last['file_source'] : '',
         'needed' => isset($last['needed']) ? (float) $last['needed'] : 0.0,
         'quiet_hour' => isset($last['quiet_hour']) ? (int) $last['quiet_hour'] : 3,
+        'blind' => !empty($last['blind']),
+        'blind_failed' => !empty($last['blind_failed']),
     );
 }
 
@@ -3017,6 +3202,8 @@ function pg_visitor_shrink_last()
  */
 function pg_visitor_shrink_save($last)
 {
+    $last['blind_failed'] = pg_visitor_blind_failed_after(!empty($last['blind_failed']), !empty($last['blind']), isset($last['state']) ? (string) $last['state'] : '');
+
     $marker = pg_visitor_shrink_marker();
 
     if (!is_dir(dirname($marker))) {
@@ -3061,13 +3248,36 @@ function pg_visitor_shrink_worth($catalog_row)
 }
 
 /**
+ * Whether a rebuild is worth its while by the table's file: the rows that are
+ * left would take at most half of it, and it would give at least
+ * PG_VISITOR_SHRINK_MIN_FREE back. Reaches what pg_visitor_shrink_worth()
+ * misses after a large delete, when InnoDB still counts the emptied pages in
+ * its data figure and not as free.
+ *
+ * No database access.
+ *
+ * @param float $rows_room pg_visitor_rows_room_estimate()
+ * @param float $file      the table's file size (pg_visitor_table_file_size())
+ * @return bool
+ */
+function pg_visitor_shrink_worth_by_file($rows_room, $file)
+{
+    $rows_room = (float) $rows_room;
+    $file = (float) $file;
+
+    return ($rows_room > 0) && ($file > 0) && (($rows_room * 2) <= $file)
+        && (($file - $rows_room) >= PG_VISITOR_SHRINK_MIN_FREE);
+}
+
+/**
  * Free disk space a rebuild asks for before the general job starts one on its
  * own.
  *
- * On InnoDB the free space is not part of the data figure: the new file holds
- * about the data and the indexes, the sort files for the indexes and the log
- * of the writes made during the rebuild come on top. Three times that, and a
- * gigabyte left over for the rest of the server, as for the move.
+ * The new file holds the rows that are left (pg_visitor_rows_room_estimate()),
+ * without the free space of the old one; the sort files for the indexes take
+ * about the indexes' room, never more than the rows' own, and
+ * the log of the writes made during the rebuild comes out of
+ * PG_VISITOR_DISK_MARGIN with the rest of the server.
  *
  * No database access.
  *
@@ -3076,10 +3286,11 @@ function pg_visitor_shrink_worth($catalog_row)
  */
 function pg_visitor_shrink_disk_needed($catalog_row)
 {
-    $data = isset($catalog_row['data']) ? (float) $catalog_row['data'] : 0.0;
     $index = isset($catalog_row['index']) ? (float) $catalog_row['index'] : 0.0;
 
-    return (3 * ($data + $index)) + 1073741824.0;
+    $rows_room = pg_visitor_rows_room_estimate($catalog_row);
+
+    return $rows_room + min($index, $rows_room) + (float) PG_VISITOR_DISK_MARGIN;
 }
 
 /**
@@ -3169,20 +3380,27 @@ function pg_visitor_shrink_facts($catalog_row, $last, $requested)
 
     $days = is_array($settings) ? (int) $settings['days'] : 0;
 
+    $disk_free = pg_visitor_move_disk_free();
+    $file_now = pg_visitor_table_file_size($catalog_row);
+    $rows_room = pg_visitor_rows_room_estimate($catalog_row);
+    $rows = isset($catalog_row['rows']) ? (int) $catalog_row['rows'] : 0;
+
     return array(
         'engine' => isset($catalog_row['engine']) ? (string) $catalog_row['engine'] : '',
         'moving' => in_array($move['state'], array('copying', 'swapped'), true),
         'partitioned' => (pg_visitor_partition_read('visitors')['state'] === 'monthly'),
         'per_table' => $per_table,
         'requested' => (bool) $requested,
-        'worth' => pg_visitor_shrink_worth($catalog_row),
+        'worth' => pg_visitor_shrink_worth($catalog_row) || pg_visitor_shrink_worth_by_file($rows_room, $file_now['bytes']),
         'failed' => (($last['state'] === 'failed') && ($last['failed_at'] > (time() - 7 * 86400))),
         'recent' => (($last['state'] === 'done') && ($last['finished_at'] > (time() - 7 * 86400))),
         'backlog' => ($days > 0) && (($cleanup['checked_at'] <= 0) || $cleanup['backlog']),
-        'disk_free' => pg_visitor_move_disk_free(),
+        'disk_free' => $disk_free,
         'needed' => pg_visitor_shrink_disk_needed($catalog_row),
         'hour' => (int) date('G'),
         'quiet_hour' => pg_visitor_shrink_quiet_hour(pg_visitor_shrink_hour_views()),
+        'blind_ok' => ($disk_free === null) && pg_visitor_blind_ok($rows, $rows_room, $file_now['bytes']),
+        'blind_failed' => !empty($last['blind_failed']),
     );
 }
 
@@ -3208,10 +3426,12 @@ function pg_visitor_shrink_facts($catalog_row, $last, $requested)
  *                     failed (bool: a rebuild failed in the last week),
  *                     recent (bool: a rebuild ended in the last week),
  *                     backlog (bool), disk_free (float|null), needed (float),
- *                     hour (int, now), quiet_hour (int)
+ *                     hour (int, now), quiet_hour (int), blind_ok (bool:
+ *                     pg_visitor_blind_ok()), blind_failed (bool: a rebuild
+ *                     started without the disk read failed)
  * @return string '', 'engine', 'moving', 'shared_tablespace', 'partitioned',
  *                'small', 'failed', 'recent', 'backlog', 'disk_unknown',
- *                'disk_low', 'hour'
+ *                'blind_failed', 'disk_low', 'hour'
  */
 function pg_visitor_shrink_hold_reason($facts)
 {
@@ -3255,10 +3475,15 @@ function pg_visitor_shrink_hold_reason($facts)
     }
 
     if ($facts['disk_free'] === null) {
-        return 'disk_unknown';
+
+        $blind = pg_visitor_blind_hold($facts);
+
+        if ($blind !== '') {
+            return $blind;
+        }
     }
 
-    if ((float) $facts['disk_free'] < (float) $facts['needed']) {
+    if (($facts['disk_free'] !== null) && ((float) $facts['disk_free'] < (float) $facts['needed'])) {
         return 'disk_low';
     }
 
@@ -3429,6 +3654,7 @@ function pg_visitor_shrink_run($requested = false)
     $last['reason'] = '';
     $last['error'] = '';
     $last['started'] = time();
+    $last['blind'] = (($facts['disk_free'] === null) && !$requested);
     $file_before = pg_visitor_table_file_size($catalog_row);
 
     $last['file_before'] = $file_before['bytes'];
@@ -3590,7 +3816,9 @@ function pg_visitor_shrink_reason_text($reason, $last)
             return lang('Too little of the file is free for a rebuild to be worth it.');
 
         case 'failed':
-            return pg_visitor_shrink_result_text($last) . ' ' . lang('The general job tries again a week later; Shrink now tries now.');
+            return pg_visitor_shrink_result_text($last) . ' ' . (!empty($last['blind_failed'])
+                ? lang('The free disk space of the database server cannot be read from here, so the general job does not rebuild it on its own again; Shrink now tries now.')
+                : lang('The general job tries again a week later; Shrink now tries now.'));
 
         case 'recent':
             return lang('The table was rebuilt in the last week; the general job looks at it again after that.');
@@ -3603,6 +3831,9 @@ function pg_visitor_shrink_reason_text($reason, $last)
 
         case 'disk_low':
             return lang(array('string' => 'The general job does not give it back on its own, because the database server has less free disk space than rebuilding the table needs, about {var:1}.', 'vars' => array(pg_innodb_size_label($last['needed']))));
+
+        case 'blind_failed':
+            return lang('The general job no longer gives it back on its own: the free disk space of the database server cannot be read from here, and the rebuild it last started without it stopped. Shrink now still rebuilds it.');
 
         case 'hour':
         case '':

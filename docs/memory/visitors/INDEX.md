@@ -30,6 +30,7 @@
 - visitor-channel-rule.md: The channel of a visit (paid, email, ai, organic, social, referral, direct), the search-engine table of init_tracking() and the ENUM step that appended today's engines [decision: decisions-made-schema-10.md]
 - visitor-counter-dedup-key.md: Why http_referer is not part of the visitor dedup key in init_tracking(), how the visitor IP is resolved, and the defensive user_agent column probe (2026.2.5).
 - visitor-daily-summary.md: The daily visitor summary written for every day through yesterday: what a day holds, the day order of a run, where the raw rows take over (pg_visitor_rows_from), who reads it
+- visitor-disk-unknown.md: How the visitor table split and rebuild go ahead when PHP cannot read the database disk's free space: the rows' room estimate, the 5 million row bound, the stop after a failed blind try (#9396)
 - visitor-figures-module.md: includes/fn/visitor_figures.php: the visitor figures of a window (totals, breakdown, traffic series, content), which days come from the daily summary and which from the raw rows
 - visitor-ip-early-removal.md: A visit's IP address set to 0 after config.visitor_ip_days (default 30, step 10.8) by the visitor cleanup, chunked with a cursor marker; dedup check safety, screens that show 0
 - visitor-item-links-and-chart-labels.md: How visitor report rows build item URLs, why chart and tooltip numbers differ, and why the home page is stored under many names.

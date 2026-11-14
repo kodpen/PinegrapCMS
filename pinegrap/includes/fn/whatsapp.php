@@ -1556,17 +1556,16 @@ function pg_whatsapp_templates_refresh()
     $stored = (array) db_items("SELECT id, meta_id, name, language FROM whatsapp_templates");
     $plan = pg_whatsapp_templates_plan($stored, $read['templates']);
 
-    $columns = function ($template) {
-        return "meta_id = '" . e($template['meta_id']) . "',
-            name = '" . e($template['name']) . "',
-            language = '" . e($template['language']) . "',
-            category = '" . e($template['category']) . "',
-            status = '" . e($template['status']) . "',
-            reason = '" . e($template['reason']) . "',
-            parameter_format = '" . e($template['parameter_format']) . "',
-            components = '" . e(json_encode($template['components'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "',
-            quality = '" . e($template['quality']) . "',
-            synced_timestamp = UNIX_TIMESTAMP()";
+    // Values bound to placeholders: db_q() reads every ? of its SQL as one,
+    // and a template's text ("Is your order ready?") holds them.
+    $columns = "meta_id = ?, name = ?, language = ?, category = ?, status = ?, reason = ?, parameter_format = ?,
+        components = ?, quality = ?, synced_timestamp = UNIX_TIMESTAMP()";
+    $values = function ($template) {
+        return array(
+            $template['meta_id'], $template['name'], $template['language'], $template['category'], $template['status'],
+            $template['reason'], $template['parameter_format'],
+            json_encode($template['components'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $template['quality'],
+        );
     };
 
     // Removed first, so an added template never collides with a name and
@@ -1577,13 +1576,13 @@ function pg_whatsapp_templates_refresh()
     }
 
     foreach ($plan['update'] as $id => $template) {
-        if (db_q("UPDATE whatsapp_templates SET " . $columns($template) . " WHERE id = '" . (int) $id . "'") !== false) {
+        if (db_q("UPDATE whatsapp_templates SET " . $columns . " WHERE id = '" . (int) $id . "'", $values($template)) !== false) {
             $result['changed']++;
         }
     }
 
     foreach ($plan['insert'] as $template) {
-        if (db_q("INSERT INTO whatsapp_templates SET " . $columns($template) . ", samples = '', offer = '', created_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP()") !== false) {
+        if (db_q("INSERT INTO whatsapp_templates SET " . $columns . ", samples = '', offer = '', created_at = UNIX_TIMESTAMP(), updated_at = UNIX_TIMESTAMP()", $values($template)) !== false) {
             $result['added']++;
         }
     }

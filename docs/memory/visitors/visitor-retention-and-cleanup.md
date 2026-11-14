@@ -20,12 +20,10 @@ description: How the visitors table is kept small: retention days, daily summary
 
 ## What else keeps it small?
 - One partition per month (step 10.7, #499): old months are dropped at once (`visitor-monthly-partitions`).
-- MyISAM `visitors` moves to InnoDB by itself (`pg_visitor_move_run()`, #426; split into months on the way) once the backlog is gone and the local DB disk has 3 × the rows + 1 GB free: chunked copy, catch-up of changed rows, `RENAME TABLE`. "Move to InnoDB now" skips the disk and backlog checks.
-- InnoDB file rebuilt online (`pg_visitor_shrink_*`, #453) when free space ≥ 128 MB and more than half of the remaining rows, in the quietest hour of the last two weeks, with 3 × (data + index) + 1 GB free; otherwise "Shrink now" with the missing condition.
-- Bots are not recorded (`init_tracking()` asks `waf_classify_bot()`, WAF on or off).
-- On InnoDB the `ip_address` and `idx_user_agent` indexes were dropped (~350 MB at 3.8 M rows).
-- Referring address and user agent are kept once each in `visitor_texts`, the row holds their numbers (step 10.6, `visitor-texts-list`); the cleanup prunes values no visit names.
-- The IP address goes (set to 0) after `config.visitor_ip_days` (default 30, step 10.8), in the same run (`visitor-ip-early-removal`).
+- MyISAM `visitors` moves to InnoDB by itself (`pg_visitor_move_run()`, #426; split into months on the way) once the backlog is gone and the local DB disk has 1.5 × the rows' room + 256 MB free (`pg_visitor_move_disk_needed()`, #9396): chunked copy, catch-up of changed rows, `RENAME TABLE`. "Move to InnoDB now" skips the disk and backlog checks.
+- InnoDB file rebuilt online (`pg_visitor_shrink_*`, #453) when free space ≥ 128 MB and more than half of the remaining rows, or the rows' room is at most half the file and gives ≥ 128 MB back (#9396), in the quietest hour of the last two weeks, with rows' room + min(index, rows' room) + 256 MB free; otherwise "Shrink now" with the missing condition.
+
+- Free disk space unreadable: `visitor-disk-unknown.md`.
 
 ## What do backups and restores do with it?
 - Every backup dumps the tables in `pg_backup_rowless_tables()` (visitors, form view tables, logs; #434, #438, #480; docs/memory/data/backup-rowless-tables.md) as structure only; the move's working copies are never dumped; the size estimate skips them too.

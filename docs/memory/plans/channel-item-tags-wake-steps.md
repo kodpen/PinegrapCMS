@@ -21,7 +21,7 @@ description: Steps TW1-TW5 of the channel-item-tags-wake plan: file caption, edi
   - The request hangs on the item's message (poll, check-in, forward, the task's card); an item with none is a question for the architect before the step starts.
   - The writer's check (agent switch on, owner or channel manager) is one function shared by TW3 and TW4.
   - After: a poll option or task note naming `@agent`, written by the channel's manager in an agent channel, makes one request; a member's, or one elsewhere, makes none; an edit asks only added tags.
-- TW4 (agent channels, owner or channel manager only; #9341) Shared notes, workflow table cells; never a canvas. Census: ~500 lines.
+- TW4 (agent channels, owner or channel manager only; #9341) Shared notes, workflow table cells; never a canvas. Done: #9402 (architect's answer in `workspace/channel-item-tags.md`).
   - Shared note content (`ws_note_share_channel()` notes.php and its edits), table cells (`ws_wtable_row_create()`, `ws_wtable_row_update()` wtable_rows.php). Canvas text layers wake nobody (owner, #9341).
   - These have no message of their own: which message a request hangs on and what the brief tells the agent of where the tag is, is asked of the architect when TW3 lands.
   - After: a cell naming `@agent` written by the channel's manager in an agent channel makes one request; a save that keeps it, or a member's cell, makes none.

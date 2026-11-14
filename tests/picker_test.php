@@ -511,7 +511,13 @@ function test_picker_field_view_and_markup()
 	pg_assert_true($missing['note'] !== '');
 
 	$gone = pg_picker_field_view($kinds['file'], 42, null);
-	pg_assert_same(array('missing', '#42', 'bi-file-earmark-x'), array($gone['state'], $gone['text'], $gone['icon']), 'an id kind has no name left to tell');
+	pg_assert_same(array('missing', lang('File not found'), 'bi-file-earmark-x'), array($gone['state'], $gone['text'], $gone['icon']), 'an id kind is told in words, never by its id');
+	pg_assert_same(lang(array('string' => 'Stored value · #{var:1}', 'vars' => '42')), $gone['meta'], 'the id moves to the meta line');
+	pg_assert_true($gone['note'] !== '', 'the amber note stays');
+
+	$page_gone = pg_picker_field_view($kinds['page'], '294', null);
+	pg_assert_same(array(lang('Page not found'), lang(array('string' => 'Stored value · #{var:1}', 'vars' => '294')), 'warning'), array($page_gone['text'], $page_gone['meta'], $page_gone['tone']));
+	pg_assert_contains('name="home_page" value="294"', pg_picker_field_markup('page', 'home_page', '294', $page_gone), 'the stored value is posted unchanged');
 
 	$ok = array('value' => 'logo.png', 'text' => 'logo.png', 'state' => 'ok', 'thumb' => '/thumb/logo.png', 'type' => 'png', 'path' => array(array('name' => 'Files')), 'width' => 64, 'height' => 64, 'size_label' => '2 KB');
 	$view = pg_picker_field_view($kinds['public_image'], 'logo.png', $ok);
