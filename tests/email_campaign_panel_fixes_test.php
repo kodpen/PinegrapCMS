@@ -44,7 +44,8 @@ function test_email_campaign_create_draws_the_page_through_the_helper()
 {
 	$source = email_campaign_panel_fixes_source('add_email_campaign.php');
 
-	pg_assert_contains('$body = pg_email_campaign_page_body($_POST[\'page_id\']);', $source, 'the body is drawn without the sender\'s session');
+	pg_assert_contains('$body = pg_email_campaign_design_body($_POST[\'page_id\']);', $source, 'the body is drawn without the sender\'s session');
+	pg_assert_contains('$body = pg_email_campaign_page_body($page_id);', email_campaign_panel_fixes_source('includes/fn/email_campaign_create.php'), 'through the helper');
 	pg_assert_false(strpos($source, 'get_page_content(') !== false, 'no direct render in the sender\'s session');
 
 	$page = email_campaign_panel_fixes_source('get_page_content.php');
