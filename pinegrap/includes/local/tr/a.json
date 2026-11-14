@@ -8227,6 +8227,7 @@
     "amenities": "olanaklar",
     "amount must be a whole number of minor units of at least 0.": "amount, en az 0 olan tam sayı küçük birim (kuruş) olmalıdır.",
     "an approval waiting for you": "onayınızı bekleyen bir istek",
+    "an assistant": "bir asistan",
     "an e-mail was brought into the mailbox {var:1} by hand": "{var:1} e-posta kutusuna elle bir e-posta alındı",
     "an error occurred when communicating with the spam protection service {var:1}, so visitor's request was accepted": "spam koruma hizmeti ile iletişim kurulurken bir hata oluştu {var:1}, bu nedenle ziyaretçinin isteği kabul edildi",
     "an item": "bir öğe",
