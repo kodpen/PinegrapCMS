@@ -63,7 +63,7 @@ function test_workspace_channel_look_card_holds_header_bars_and_tabs()
 	pg_assert_contains('card.appendChild(auditBar);', $center, 'the audit bar is a row of the card');
 	pg_assert_contains('card.appendChild(joinBar);', $center, 'and the join bar');
 	pg_assert_contains('card.appendChild(self.guestBar(channel));', $center, 'and the guest bar');
-	pg_assert_contains('card.appendChild(self.shareBar(channel));', $center, 'and the share bar');
+	pg_assert_contains('card.appendChild(shareRow);', $center, 'and the share bar while a link is open');
 	pg_assert_contains('card.appendChild(eraBar);', $center, 'and the era bar');
 	pg_assert_contains('card.appendChild(tabs);', $center, 'the tabs close the card');
 	pg_assert_false(strpos($center, 'center.appendChild(head)') !== false, 'the header is not a loose child of the pane');

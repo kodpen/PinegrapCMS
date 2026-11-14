@@ -13499,6 +13499,29 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-head-icon {
   flex: 1 1 0;
   min-width: 0;
 }
+/* While a link is open the row stands out: an edge in the warning colour
+   and its mark in a filled circle. With no link open there is no row; the
+   head carries a small button with an exclamation mark instead. */
+.ws-share-bar-open {
+  box-shadow: inset 4px 0 0 var(--bs-warning-base);
+}
+[dir="rtl"] .ws-share-bar-open {
+  box-shadow: inset -4px 0 0 var(--bs-warning-base);
+}
+.ws-share-bar-open .ws-share-bar-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--bs-warning-base);
+  color: var(--bs-warning-contrast);
+}
+.ws-head-share {
+  color: var(--bs-warning-fg-emphasis);
+}
 .ws-avatars {
   display: inline-flex;
 }

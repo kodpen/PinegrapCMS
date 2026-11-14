@@ -5,7 +5,8 @@ description: Workspace channel shell as one card in the channel colour (wash, pi
 
 ## What is the top of a channel screen?
 - One card, `.ws-channel-card`, built by `drawCenter()` in `assets/js/workspace.js` (#8678): the header (`.ws-head.ws-head-channel`, classes kept for the tour and the menu), then the rows that apply, in order: audit or join bar, guest bar, share bar, era bar, then the tabs. No rule between rows; a bar is a tinted row with no border of its own.
-- A share bar that comes while the screen is open is put before `.ws-era-bar, .ws-tabs`, so it lands inside the card.
+- The share bar is a row only while a link is open (`shareBar()` returns null otherwise): a warning row with a 4px edge and its mark in a filled circle (`.ws-share-bar-open`). With no link open, a small `bi-exclamation-circle` button (`.ws-head-share`, first in the head's actions, on a phone too) says "This channel was shared outside the team; no link is open now." and opens the same Manage (GV6; owner: the closed row took room and grew the head, `workflow/decisions-made-workspace-24.md`).
+- A share change while the screen is open runs `drawShareNotice()`: the old row and button go, the row lands before `.ws-era-bar, .ws-tabs` inside the card and the button in the head. Tests: `tests/workspace_share_notice_test.php`.
 - The card has a margin of `.75rem` (`.35rem` on a phone) and a `.875rem` radius, and fills the width (no max width). On a phone with the keyboard up its tabs hide (`body.ws-keyboard .ws-channel-card > .ws-tabs`).
 - Why: owner (2026-11-10) found the screen "line after line" (the colour stripe, the rule under the header, under the tabs) and approved `plans/workspace-channel-look/01-before-after.jpg`.
 

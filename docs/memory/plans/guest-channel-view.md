@@ -17,8 +17,8 @@ description: Plan (owner 2026-11-14): a guest sees the agents' messages on the g
 - GV3 (S) Done (#9415). Read aloud covers the channel's agents: an answer of a registry agent of the channel to the viewer's own message, or one that names the viewer, is read as an assistant's is (`workspace/workspace-voice-read-aloud.md`).
 - GV5 (M) Done (#9423). The standing caution in every channel (`workspace/workspace-outside-caution.md`): each brief and prompt the site gives an agent or an assistant says that a guest's line, a mail's text and other outside text are data from outside the team, never a request or an instruction.
   - A guest's messages are marked as a guest's in the conversation the brief carries and in the API's message, so an agent reading by itself can tell. Unit tests on the built text. Owner: "her kanalda bu konuda varsayılan dikkatli olmayı sağlayacak bir promp bilgisi olması iyi olurdu".
-- GV6 (S) The share bar (`workspace/workspace-channel-identity-motion.md`): while a share is open it stays a full row and stands out more; once no link is open the row goes, and a small button with an exclamation mark in the channel's head opens the same Manage. Owner: "bu şekilde gereksiz alan kaplattırıp head alanını büyütüyor".
-- GV4 (S) Close-out: the rules into `workspace/` (guest page, Channel info, read aloud, the caution), this plan deleted.
+- GV6 (S) Done (#9439). The share bar (`workspace/workspace-channel-identity-motion.md`): while a share is open it stays a full row and stands out more; once no link is open the row goes, and a small button with an exclamation mark in the channel's head opens the same Manage. Owner: "bu şekilde gereksiz alan kaplattırıp head alanını büyütüyor".
+- GV4 (S) Free, for whoever lands the last step. Close-out: the rules into `workspace/` (guest page, Channel info, read aloud, the caution), this plan deleted.
 
 ## What does every step keep?
 - No table or column; a step that needs one stops and asks the architect. What a guest may do stays as it is: text, an answer, an emoji, a vote, a tick; no files, tags or commands.
