@@ -13,7 +13,7 @@ description: Plan (owner 2026-11-14): a page or file field never leads with an i
 
 ## Which steps?
 - PN1 (S) The missing state in words: the main text is "Page not found" / "File not found" (a file's last known name where there is one), the id moves to the small line ("Stored value · #294"), the amber note stays. One change in `pg_picker_field_view()`, so every picker field gets it; its test first. Real pictures of the field (dark and light) in the agent channel before the PR goes ready; `ui/picker-field.md` and `ui/page-form-page-fields.md` corrected in the same PR.
-- PN2 (S) Census, then the fixes it finds: panel fields, list cells and summaries that print a stored page's or file's id where the name can be read (grep the screens for the page and file id columns printed raw). Each found place shows the name, by the picker's own reading where it fits. Nothing found: the census's result is written into `ui/picker-overview.md` and the step ends.
+- PN2 (S) **Done (#9399): nothing found, result in `ui/picker-overview.md`.** Census, then the fixes it finds: panel fields, list cells and summaries that print a stored page's or file's id where the name can be read (grep the screens for the page and file id columns printed raw). Each found place shows the name, by the picker's own reading where it fits. Nothing found: the census's result is written into `ui/picker-overview.md` and the step ends.
 - PN3 (S) Close-out: this plan deleted, the rule kept in `ui/picker-field.md`.
 
 ## What does every step keep?
