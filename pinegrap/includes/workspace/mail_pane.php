@@ -127,10 +127,10 @@ function ws_mail_pane_open($viewer, $conversation_id)
 
     ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
 
-    $pane = ws_mail_forward_pane($pane, ws_mail_forward_may($viewer));
+    // Block sender (mail_blocks.php), then Forward.
+    $pane = ws_mail_block_pane($pane, $viewer);
 
-    // Block sender (mail_blocks.php).
-    return function_exists('ws_mail_block_pane') ? ws_mail_block_pane($pane, $viewer) : $pane;
+    return ws_mail_forward_pane($pane, ws_mail_forward_may($viewer));
 }
 
 /**
