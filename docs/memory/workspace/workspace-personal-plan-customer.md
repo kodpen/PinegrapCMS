@@ -22,6 +22,6 @@ description: A person's own plan made for a customer (PC6): contact_id, the draw
 
 ## Merge, erasure and export?
 - `pg_contact_holders()` row `ws_personal_plans` (merge `move`, erase `find`); the erasure sets `contact_id` 0 (`pg_privacy_erase_tables()`, label "Roadmaps"); the plan stays its owner's.
-- Export: a plan is not exported (nothing a staff member writes for themselves is). Whether a customer's export lists a plan naming them waits on the owner (architect, channel 3273).
+- Export: a customer's export lists nothing of a plan (architect, channel 3328). Whether it should list plans opened to the whole team, title and days, is with the owner; a yes is a step of its own.
 
 Tests: `tests/workspace_personal_plan_contact_test.php`, `tests/contact_holders_test.php`, `tests/privacy_erase_test.php`.

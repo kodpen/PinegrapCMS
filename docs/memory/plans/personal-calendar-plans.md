@@ -17,7 +17,7 @@ description: Plan (owner 2026-11-14): "My calendar" beside e-mail and a person's
 - PC3 (M, schema) Plans: Done #9500 (`workspace/workspace-personal-plans.md`): step 11.0.201, the gate `ws_personal_plan_can_see()` and its guard test, the "New plan" drawer, My calendar and Today, the reminder line `plan_reminder`.
 - PC4 (S) Done #9512: "Who can see" (Only me, Chosen team members, The whole team); the others read it under the owner's name and change nothing (`workspace/workspace-personal-plan-sharing.md`).
 - PC5 (M) Done #9522: roadmap, dated steps, progress bar, "Make a task" (`workspace/workspace-personal-plan-roadmap.md`). Later, its own step (architect, 3215): one bar per week row, not a chip and "2/5" each day.
-- PC6 (M) Done #9540: a plan names a customer; Roadmaps on the card and history; "New roadmap" empty or copied; merge and erasure (`workspace/workspace-personal-plan-customer.md`). Export waits on 3273.
+- PC6 (M) Done #9540: a plan names a customer; Roadmaps on the card and history; "New roadmap" empty or copied; merge and erasure (`workspace/workspace-personal-plan-customer.md`). Not exported (3328).
 - PC7 (M) Done #9528: "Add to my calendar" on a mail makes a plan tied to the conversation; an invitation (11.0.204) is a card with the same button; no answer to the organiser (`workspace/workspace-personal-plan-mail.md`).
 - PC8 (M) API and MCP: a person's own plans listed, added and changed by that person's connection under a scope of its own. An application key and a channel agent never read a private plan; an assistant hears of a plan only when its owner asks.
 - PC3c (S, done #9524) The board's Turkish name becomes "Planlama panosu" everywhere, with `tools/tr_add.php --replace` (architect 2857).
