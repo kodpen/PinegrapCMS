@@ -1264,9 +1264,13 @@ function ws_mail_card_html($row, $item)
     $conversation = $item['conversation'];
     $card = is_array($conversation) && ((int) $conversation['message_id'] === (int) $row['id']);
     $out = ((string) ($item['direction'] ?? 'in') === 'out');
-    // A customer's WhatsApp message: Meta vouches for the number it came from.
+    // A customer's WhatsApp message or SMS: the service vouches for the
+    // number it came from.
     $phone = !$out && function_exists('ws_mail_item_is_phone') && ws_mail_item_is_phone($item);
-    $badge = $phone
+    $sms = $phone && ((string) ($item['transport'] ?? '') === 'sms');
+    $badge = $sms
+        ? '<span class="badge theme-warning"><i class="bi bi-chat-dots me-1" aria-hidden="true"></i>' . h(lang('SMS')) . '</span>'
+        : ($phone
         ? '<span class="badge theme-success"><i class="bi bi-whatsapp me-1" aria-hidden="true"></i>' . h(lang('WhatsApp')) . '</span>'
         : ($out
         ? (function_exists('ws_mail_item_is_auto_reply') && ws_mail_item_is_auto_reply($item)
@@ -1274,7 +1278,7 @@ function ws_mail_card_html($row, $item)
             : ws_mail_send_badge_html($item))
         : (((string) $item['auth'] === 'pass')
         ? '<span class="badge theme-info"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . h(lang('E-mail')) . '</span>'
-        : '<span class="badge theme-warning"><i class="bi bi-envelope-exclamation me-1" aria-hidden="true"></i>' . h(lang('Sender not verified')) . '</span>'));
+        : '<span class="badge theme-warning"><i class="bi bi-envelope-exclamation me-1" aria-hidden="true"></i>' . h(lang('Sender not verified')) . '</span>')));
 
     // An answer names whom it went to; a mail, who sent it.
     $html = '<div class="ws-mail-card">'
