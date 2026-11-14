@@ -60,9 +60,9 @@ function test_ws_api_mail_routes()
 		'workspace.mail_conversations.get'    => array('GET', '/workspace/mail/conversations/{id}', 'workspace:read'),
 		'workspace.mail_items.get'            => array('GET', '/workspace/mail/items/{id}', 'workspace:read'),
 		'workspace.mail_conversations.update' => array('POST', '/workspace/mail/conversations/{id}', 'workspace:write'),
-		'workspace.mail_conversations.reply'  => array('POST', '/workspace/mail/conversations/{id}/reply', 'workspace:write'),
+		'workspace.mail_conversations.reply'  => array('POST', '/workspace/mail/conversations/{id}/reply', 'workspace:mail_send'),
 		'workspace.mail_conversations.read'   => array('POST', '/workspace/mail/conversations/{id}/read', 'workspace:write'),
-		'workspace.mail_messages.send'        => array('POST', '/workspace/mail/messages', 'workspace:write'),
+		'workspace.mail_messages.send'        => array('POST', '/workspace/mail/messages', 'workspace:mail_send'),
 	);
 
 	pg_assert_same(array_keys($expected), array_keys($routes), 'the routes, in order');
@@ -101,20 +101,24 @@ function test_ws_api_mail_routes()
 	pg_assert_same('int', $list['box_id']['type']);
 }
 
-// Reading and changing a conversation are tools; an answer to a customer
-// never is: an assistant does not write to customers.
+// Every mail route is a tool. Sending is the person's: the reply and a new
+// mail carry workspace:mail_send, which only a connection the person allowed
+// to send holds, and their handlers refuse an application key.
 function test_ws_api_mail_mcp_tools()
 {
 	$routes = ws_api_mail_test_routes();
 
 	foreach ($routes as $id => $route) {
-		if (in_array($id, array('workspace.mail_conversations.reply', 'workspace.mail_messages.send'), true)) {
-			pg_assert_same(false, $route['mcp'] ?? null, $id . ' carries \'mcp\' => false');
-			pg_assert_false(pg_mcp_route_is_offered($route), $id . ' is no tool');
-		} else {
-			pg_assert_true(pg_mcp_route_is_offered($route), $id . ' is a tool');
-		}
+		pg_assert_true(pg_mcp_route_is_offered($route), $id . ' is a tool');
+		$sends = in_array($id, array('workspace.mail_conversations.reply', 'workspace.mail_messages.send'), true);
+		pg_assert_same($sends, $route['scope'] === 'workspace:mail_send', $id . ': only a send carries the mail scope');
 	}
+
+	foreach (array('ws_api_mail_conversations_reply', 'ws_api_mail_messages_send') as $handler) {
+		pg_assert_contains('ws_api_mail_send_gate()', ws_api_mail_test_source($handler), $handler . ' refuses a key');
+	}
+
+	pg_assert_contains('ws_api_person_only(', ws_api_mail_test_source('ws_api_mail_send_gate'), 'a device session or an OAuth connection, never a key');
 }
 
 function test_ws_api_mail_writes_check_before_the_rehearsal()
@@ -122,7 +126,7 @@ function test_ws_api_mail_writes_check_before_the_rehearsal()
 	$writes = array(
 		'ws_api_mail_conversations_update' => array('ws_mail_conversation_check(', 'ws_mail_conversation_set('),
 		'ws_api_mail_conversations_reply'  => array('ws_mail_reply_check(', 'ws_mail_reply_send('),
-		'ws_api_mail_messages_send'        => array('ws_mail_send_check(', 'ws_mail_send($viewer, $mail)'),
+		'ws_api_mail_send_checked'         => array('ws_mail_send_check(', 'ws_mail_send($viewer, $mail)'),
 		'ws_api_mail_conversations_read'   => array('ws_api_mail_conversation_or_404(', 'ws_mail_read_mark('),
 	);
 
@@ -136,14 +140,17 @@ function test_ws_api_mail_writes_check_before_the_rehearsal()
 	}
 
 	$reply = ws_api_mail_test_source('ws_api_mail_conversations_reply');
-	pg_assert_true(strpos($reply, 'ws_api_own_words_only(') < strpos($reply, 'api_dry_run_stop('), 'the person\'s own before anything');
+	pg_assert_true(strpos($reply, 'ws_api_mail_send_gate(') < strpos($reply, 'api_dry_run_stop('), 'the person\'s before anything');
+	pg_assert_contains('ws_api_log(', $reply, 'the activity log names the application');
 
-	// A new mail: the person's own session only, the form's fields through
-	// the one send path, no second way out.
+	// A new mail: the person's, the form's fields through the one send path,
+	// no second way out.
 	$send = ws_api_mail_test_source('ws_api_mail_messages_send');
-	pg_assert_true(strpos($send, 'ws_api_own_words_only(') < strpos($send, 'ws_mail_send_check('), 'the person\'s own before anything');
-	pg_assert_contains('$mail = ws_mail_compose_mail($params, array());', $send, 'the New e-mail form\'s fields, no files');
-	pg_assert_true(strpos($send, 'email(') === false && strpos($send, 'pg_mail_enqueue(') === false, 'no other way out');
+	pg_assert_true(strpos($send, 'ws_api_mail_send_gate(') < strpos($send, 'ws_api_mail_send_checked('), 'the person\'s before anything');
+	pg_assert_contains('ws_mail_compose_mail($params, array())', ws_api_mail_test_source('ws_api_mail_new_mail'), 'the New e-mail form\'s fields, no files');
+	$checked = ws_api_mail_test_source('ws_api_mail_send_checked');
+	pg_assert_true(strpos($checked, 'email(') === false && strpos($checked, 'pg_mail_enqueue(') === false, 'no other way out');
+	pg_assert_contains('ws_api_log(', $checked, 'the activity log names the application');
 
 	// Read marks: a device session, never an application key.
 	pg_assert_contains('ws_api_person_only(', ws_api_mail_test_source('ws_api_mail_conversations_read'), 'the person marks read');

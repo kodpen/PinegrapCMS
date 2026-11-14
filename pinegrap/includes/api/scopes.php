@@ -621,7 +621,8 @@ function api_plugin_writes() {
 		'bookings:write', 'calendars:write', 'campaigns:write', 'comments:write',
 		'contact_groups:write', 'erp:write', 'files:write', 'forms:write',
 		'inventory:write', 'offers:write', 'pages:write', 'products:write',
-		'store:write', 'tasks:write', 'translations:write', 'workspace:write'
+		'store:write', 'tasks:write', 'translations:write', 'workspace:write',
+		'workspace:mail_send'
 	);
 
 }

@@ -14,9 +14,9 @@ description: Workspace e-mail in the external API and MCP (api_mail.php, G7, WM8
 
 ## Which are tools, and who may answer?
 - List, get and the status/holder change are MCP tools. The change runs `ws_mail_conversation_check()` (split from `ws_mail_conversation_set()` for the dry run); nothing to change answers 200 with the conversation.
-- The reply is no tool (`'mcp' => false`) and needs the team devices session (`ws_api_own_words_only()`): an assistant never writes to a customer (design rule), and a key writes as an application. Checks `ws_mail_reply_check()`, then `api_dry_run_stop()`, then `ws_mail_reply_send()`: sent at once, while the panel's answer is queued (WM7, `mail-reply.md`).
+- The reply and a new mail are tools under `workspace:mail_send`: the person's, from a device session or an OAuth connection allowed to send; a key is refused (`ws_api_mail_send_gate()`; `mail-send-scope.md`). The reply runs `ws_mail_reply_check()`, `api_dry_run_stop()`, `ws_mail_reply_send()`: sent at once, while the panel's answer is queued (WM7, `mail-reply.md`).
 - The read mark is a tool held to `ws_api_person_only()` like `workspace.inbox.read`: a device session or an OAuth connection, never a key (an integration reading is not the person reading).
-- A new mail is no tool (`'mcp' => false`), person-only (`ws_api_own_words_only()`; #2444 answer 7: assistants never send). Same path as the panel's New e-mail: `ws_mail_compose_mail()` (no files yet), `ws_mail_send_check()`, `api_dry_run_stop()`, `ws_mail_send()`; `channel_id` left out is the box's own.
+- A new mail takes the panel's New e-mail path (`ws_api_mail_send_checked()`): `ws_mail_compose_mail()` (no files yet), `ws_mail_send_check()`, `api_dry_run_stop()`, `ws_mail_send()`; `channel_id` left out is the box's own.
 - New-mail refusals `ws_api_mail_send_refusal()`: 422 to/subject/text, 403 box_id/channel_id, 429 hourly, 409 unknown_domain (sent again with `send_anyway`, `mail-domain-warning.md`), 409 not_sent, 503 before the upgrade.
 - Reply errors: 422 `text`; 403 when the person may not write in the channel; 409 `cannot_send` (box off, no sending server, domain, no address) and 409 `not_sent` (server refused, its words appended). A mail that left but whose row was lost answers 201 with id 0, so a retry does not mail twice.
 

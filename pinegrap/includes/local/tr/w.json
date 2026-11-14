@@ -1677,6 +1677,7 @@
     "WhatsApp Business account": "WhatsApp Business hesabı",
     "WhatsApp Message to Submitter": "Gönderene WhatsApp Mesajı",
     "WhatsApp Messages": "WhatsApp Mesajları",
+    "WhatsApp answer sent from the Workspace to {var:1}": "Workspace'ten {var:1} numarasına WhatsApp yanıtı gönderildi",
     "WhatsApp approval": "WhatsApp onayı",
     "WhatsApp approved the template at once. It can be used now.": "WhatsApp şablonu hemen onayladı. Artık kullanılabilir.",
     "WhatsApp approved this template. It cannot be changed; send yourself a test to see it on your phone.": "WhatsApp bu şablonu onayladı. Değiştirilemez; telefonunuzda görmek için kendinize deneme gönderin.",

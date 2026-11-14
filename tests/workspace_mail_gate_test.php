@@ -135,7 +135,7 @@ function test_workspace_mail_gate_api_routes()
 		$ids[] = $route['id'];
 		pg_assert_true(strpos($route['path'], '/workspace/mail') === 0, $route['id'] . ' is under /workspace/mail…');
 		pg_assert_true(function_exists($route['handler']), $route['id'] . ' has its handler');
-		pg_assert_true(in_array($route['scope'], array('workspace:read', 'workspace:write'), true), $route['id'] . ' asks a Workspace scope');
+		pg_assert_true(in_array($route['scope'], array('workspace:read', 'workspace:write', 'workspace:mail_send'), true), $route['id'] . ' asks a Workspace scope');
 
 		$returns = is_array($route['returns']) ? $route['returns']['list'] : $route['returns'];
 		$named[$returns] = true;
@@ -156,7 +156,7 @@ function test_workspace_mail_gate_api_routes()
 	}
 
 	pg_assert_same(array('workspace.mail.received'), array_keys(ws_mail_alone_webhook_events()), 'its event');
-	pg_assert_same(array('workspace'), array_keys(ws_mail_alone_scope_groups()), 'one permission row');
+	pg_assert_same(array('workspace', 'workspace_mail'), array_keys(ws_mail_alone_scope_groups()), 'the mail row and the row that sends in the person\'s name');
 }
 
 // The bell shows mail's lines with the Workspace off: every kind mail

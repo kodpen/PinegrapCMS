@@ -165,13 +165,14 @@ function api_device_app_check($app) {
 
 // What a device may do: the application's ceiling narrowed to what the person
 // may delegate today, recomputed on every call so a demotion takes effect on
-// the next request. Two adjustments on top of that:
+// the next request. Three adjustments on top of that:
 //
 //   * webhooks:manage never. A subscription sends the site's events to an
 //     address; that is set up once by an integration, not by a phone.
 //   * account:read and account:write always. They cover the person's own
 //     notifications, devices and push registration, which is what signing in
 //     from a device is for in the first place.
+//   * workspace:mail_send with workspace:write, within the owner's rights.
 function api_device_scopes($app, $owner) {
 
 	$granted = json_decode((string)$app['scopes'], true);
@@ -187,6 +188,15 @@ function api_device_scopes($app, $owner) {
 			$scopes[] = $scope;
 
 		}
+
+	}
+
+	// A person who writes in the Workspace from a device has always sent its
+	// e-mail from there; the mail scope keeps that, within the owner's rights.
+	if (in_array('workspace:write', $scopes, true) && !in_array('workspace:mail_send', $scopes, true)
+		&& in_array('workspace:mail_send', api_owner_scopes($owner), true)) {
+
+		$scopes[] = 'workspace:mail_send';
 
 	}
 

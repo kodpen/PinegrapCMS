@@ -83,6 +83,16 @@ function ws_scope_groups()
             'read'        => '',
             'write'       => 'workspace:commands',
         ),
+        // Sending e-mail in the person's name from the Workspace mailboxes: a
+        // scope of its own, so no connection holds it until the person
+        // agrees to it on the consent screen.
+        'workspace_mail' => array(
+            'label'       => lang('Send e-mail'),
+            'description' => lang('Sends e-mail from the Workspace mailboxes in your name'),
+            'icon'        => 'bi-envelope-arrow-up',
+            'read'        => '',
+            'write'       => 'workspace:mail_send',
+        ),
         'tasks' => array(
             'label'       => lang('Tasks'),
             'description' => lang('Tasks and the planning board'),
@@ -110,7 +120,9 @@ function ws_owner_scopes($owner)
         return array();
     }
 
-    return array('workspace:read', 'workspace:write', 'workspace:commands', 'tasks:read', 'tasks:write');
+    // Which mailbox a person may send from is checked when the mail is sent
+    // (ws_mail_send_check()).
+    return array('workspace:read', 'workspace:write', 'workspace:commands', 'workspace:mail_send', 'tasks:read', 'tasks:write');
 }
 
 /**

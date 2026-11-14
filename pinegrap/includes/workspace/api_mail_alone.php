@@ -6,7 +6,8 @@
  *
  * Mail is read and answered whatever the Workspace's switch (ws_mail_on()),
  * so its routes, objects and event must not go dark with it: a key holding
- * workspace:read or workspace:write keeps reaching /workspace/mail…
+ * workspace:read or workspace:write keeps reaching /workspace/mail… (a
+ * person's connection sends under workspace:mail_send)
  * whichever way the switch is set. With the Workspace on,
  * includes/workspace/api.php contributes everything, mail included; with it
  * off, includes/api/modules.php loads this file, which contributes only the
@@ -138,17 +139,19 @@ function ws_mail_alone_scope_groups()
             'read'        => 'workspace:read',
             'write'       => 'workspace:write',
         ),
+        'workspace_mail' => ws_scope_groups()['workspace_mail'],
     );
 }
 
 /**
  * Which of the scopes an application owner may delegate: the Workspace's
- * own ceiling, kept to the two scopes the mail routes ask.
+ * own ceiling, kept to the scopes the mail routes ask (sending in the
+ * person's name is workspace:mail_send).
  *
  * @param array $owner
  * @return array
  */
 function ws_mail_alone_owner_scopes($owner)
 {
-    return array_values(array_intersect(ws_owner_scopes($owner), array('workspace:read', 'workspace:write')));
+    return array_values(array_intersect(ws_owner_scopes($owner), array('workspace:read', 'workspace:write', 'workspace:mail_send')));
 }
