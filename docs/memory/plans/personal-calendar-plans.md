@@ -12,9 +12,9 @@ description: Plan (owner 2026-11-14): "My calendar" beside e-mail and a person's
 - A task has a due time and a reminder (`workspace/workspace-task-reminders.md`) but is the team's, never private.
 
 ## Which steps?
-- PC1 (S, no product code) Census, into this file: every reader of the calendar and of Today and what each does with a private row; the tables proposed (a plan, its steps, who sees it), each asked first; the words beside "plan item" and the planning board; whether `pg_mail_parse()` keeps a mail's calendar part; personal data export and erasure; an account that leaves.
+- PC1 (S, done #9474) Census: `workspace/personal-calendar-census-*.md` (readers, tables, words, mail, privacy); the architect answered the rest, the tables wait for the owner's yes.
 - PC2 (M) Done #9477: "My calendar" (`workspace_my_calendar.php`) by month, week and list; the button on the E-mails toolbar and the Workspace menu tile (`workspace/workspace-my-calendar.md`).
-- PC3 (M, schema) Plans: the tables; `ws_plan_can_see()` as the one gate and a guard test that no reader goes around it; the "New plan" drawer (title, day or days, time, note, reminder); drawn for its owner on My calendar and Today; the reminder through the task reminders' path.
+- PC3 (M, schema) Plans: the tables; `ws_personal_plan_can_see()` as the one gate and a guard test that no reader goes around it; the "New plan" drawer (title, day or days, time, note, reminder); drawn for its owner on My calendar and Today; the reminder through the task reminders' path.
 - PC4 (S) Sharing: "Who can see" on the drawer: Only me (the default), chosen team members, the whole team. The others read it on their My calendar under the owner's name and change nothing.
 - PC5 (M) Roadmap: a plan with dated steps (title, day, done), drawn as a bar with its steps and its progress. "Make a task" on a step opens the task drawer filled; the step then follows the task's state.
 - PC6 (M) For a customer: a plan names a contact (the pick of `workspace/workspace-visit-contact.md`) and shows on the customer's card and history to those who may see the plan. "New roadmap" on the card starts empty or from the person's own plans, copied. Merge and erasure as visits.
