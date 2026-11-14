@@ -1013,6 +1013,7 @@
     "Meta description": "Meta açıklaması",
     "Meta did not accept the access token: it is wrong, expired or was revoked.": "Meta erişim anahtarını kabul etmedi: anahtar yanlış, süresi dolmuş ya da iptal edilmiş.",
     "Meta did not accept this App ID and App secret.": "Meta bu Uygulama Kimliği ile Uygulama Gizli Anahtarı'nı kabul etmedi.",
+    "Meta error {var:1}": "Meta hatası {var:1}",
     "Meta keywords": "Meta anahtar kelimeleri",
     "Meta may have taken a WhatsApp message to +{var:1}; it is not sent again by itself: {var:2}": "Meta, +{var:1} numarasına giden bir WhatsApp mesajını almış olabilir; kendiliğinden yeniden gönderilmez: {var:2}",
     "Meta may have the test message to {var:1}, but its answer did not say so: {var:2}": "{var:1} numarasına giden deneme mesajı Meta'ya ulaşmış olabilir, ama Meta'nın cevabı bunu söylemedi: {var:2}",

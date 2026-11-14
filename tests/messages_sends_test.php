@@ -28,7 +28,8 @@ function test_messages_sends_sid_round_trip()
 		pg_assert_same(array('branch' => $branch, 'id' => 1044), pg_messages_sends_sid_parts((string) $sid), $branch . ' from the address');
 	}
 
-	pg_assert_same(null, pg_messages_sends_sid_parts(1044 * 8 + 3), 'the WhatsApp number has no branch yet');
+	pg_assert_same(array('branch' => 'whatsapp', 'id' => 1044), pg_messages_sends_sid_parts(1044 * 8 + 3), 'branch 3 is the WhatsApp queue');
+	pg_assert_same(null, pg_messages_sends_sid_parts(1044 * 8 + 7), 'branch 7 is still free');
 	pg_assert_same(null, pg_messages_sends_sid_parts(1044 * 8), 'branch 0 is none');
 	pg_assert_same(null, pg_messages_sends_sid_parts(1), 'no row id 0');
 	pg_assert_same(null, pg_messages_sends_sid_parts('12abc'), 'not a number');
@@ -87,6 +88,12 @@ function test_messages_sends_channel_filter_drops_branches()
 	pg_assert_same(null, pg_messages_sends_branch_sql('automatic', $filters, $manager, 1700000000), 'no automatic campaigns');
 	pg_assert_true(is_array(pg_messages_sends_branch_sql('sms', $filters, $manager, 1700000000)), 'the SMS queue');
 	pg_assert_true(is_array(pg_messages_sends_branch_sql('sms_campaign', $filters, $manager, 1700000000)), 'the SMS campaigns');
+	pg_assert_same(null, pg_messages_sends_branch_sql('whatsapp', $filters, $manager, 1700000000), 'no WhatsApp queue under SMS');
+
+	$whatsapp = pg_messages_sends_filters(array('channel' => 'whatsapp'));
+	pg_assert_true(is_array(pg_messages_sends_branch_sql('whatsapp', $whatsapp, $manager, 1700000000)), 'the WhatsApp queue under WhatsApp');
+	pg_assert_same(null, pg_messages_sends_branch_sql('sms', $whatsapp, $manager, 1700000000), 'and no SMS queue there');
+	pg_assert_same(null, pg_messages_sends_branch_sql('mail', $whatsapp, $manager, 1700000000), 'nor the e-mail queue');
 }
 
 function test_messages_sends_campaign_maker_sees_only_their_campaigns()
@@ -96,6 +103,7 @@ function test_messages_sends_campaign_maker_sees_only_their_campaigns()
 
 	pg_assert_same(null, pg_messages_sends_branch_sql('mail', $filters, $maker, 1700000000), 'the e-mail queue holds password resets');
 	pg_assert_same(null, pg_messages_sends_branch_sql('sms', $filters, $maker, 1700000000), 'nor the SMS queue');
+	pg_assert_same(null, pg_messages_sends_branch_sql('whatsapp', $filters, $maker, 1700000000), 'nor the WhatsApp queue');
 
 	foreach (array('email_campaign', 'sms_campaign', 'automatic') as $branch) {
 		$sql = pg_messages_sends_branch_sql($branch, $filters, $maker, 1700000000);
@@ -115,6 +123,11 @@ function test_messages_sends_queue_state_filter_reads_the_stored_status()
 	pg_assert_true(in_array('suppressed', $sql['params'], true), 'Blocked is the stored suppressed');
 	pg_assert_true(strpos($sql['sql'], 'mail_outbox.status = ?') !== false, 'on the indexed status');
 
+	$sql = pg_messages_sends_branch_sql('whatsapp', pg_messages_sends_filters(array('state' => 'uncertain', 'source' => 'order')), $manager, 1700000000);
+	pg_assert_true(strpos($sql['sql'], 'whatsapp_outbox.status = ?') !== false, 'a WhatsApp state on its indexed status');
+	pg_assert_true(in_array('uncertain', $sql['params'], true) && in_array('order', $sql['params'], true), 'with the state and the kind bound');
+	pg_assert_true(strpos($sql['sql'], 'whatsapp_outbox.kind = ?') !== false, 'the source is the kind it was queued with');
+
 	$from = pg_messages_sends_from(pg_messages_sends_filters(array()), $manager, 1700000000, array('mail', 'sms'));
 	pg_assert_same(1, substr_count($from['sql'], 'UNION ALL'), 'two branches, one union');
 	pg_assert_true(substr_count($from['sql'], '?') === count($from['params']), 'the union binds every value in order');
@@ -131,6 +144,10 @@ function test_messages_sends_buttons_follow_each_queue()
 	pg_assert_same(array('delete'), pg_messages_sends_buttons($row('mail', 'sent')), 'a sent e-mail is not sent again');
 	pg_assert_same(array('retry_confirm', 'delete'), pg_messages_sends_buttons($row('sms', 'uncertain')), 'an unknown text is asked first');
 	pg_assert_same(array('delete'), pg_messages_sends_buttons($row('sms', 'failed'), true), 'an expired text is not retried');
+	pg_assert_same(array('retry', 'delete'), pg_messages_sends_buttons($row('whatsapp', 'failed')), 'a failed WhatsApp message is retried');
+	pg_assert_same(array('retry_confirm', 'delete'), pg_messages_sends_buttons($row('whatsapp', 'uncertain')), 'an unknown WhatsApp message is asked first');
+	pg_assert_same(array('delete'), pg_messages_sends_buttons($row('whatsapp', 'sent')), 'a sent WhatsApp message is not sent again');
+	pg_assert_same(array('delete'), pg_messages_sends_buttons($row('whatsapp', 'queued'), true), 'an expired WhatsApp message is not retried');
 	pg_assert_same(array('delete'), pg_messages_sends_buttons($row('automatic', 'failed')), 'a campaign recipient has no Retry');
 	pg_assert_same(array('delete'), pg_messages_sends_buttons($row('email_campaign', 'sending', 'campaign')), 'a campaign is deleted, not retried');
 }
@@ -195,4 +212,25 @@ function test_messages_sends_figures_html()
 	pg_assert_contains('style="--pg-report-figs: 2"', $html, 'as many columns as figures');
 	pg_assert_contains('<dd class="pg-report-fig-value">3.288</dd><dd class="pg-report-fig-note">soon</dd>', $html, 'figure and note');
 	pg_assert_same(1, substr_count($html, 'pg-report-fig-note'), 'a figure without a note has none');
+}
+
+function test_messages_sends_whatsapp_row()
+{
+	$record = array('sid' => pg_messages_sends_sid(9, 3), 'at' => 1700000000, 'channel' => 'whatsapp', 'row_kind' => 'message', 'recipient' => '905321234567',
+		'what' => 'siparis_alindi · tr', 'source' => 'order', 'state' => 'sent', 'done' => 0, 'total' => 0, 'error' => '', 'attempts' => 1,
+		'next_at' => 1700000100, 'expires' => 0);
+
+	$row = pg_messages_sends_row($record, 1700000500);
+	pg_assert_contains('+905321234567', $row['cells']['recipient']['html'] ?? json_encode($row['cells']['recipient']), 'the number in E.164');
+	pg_assert_contains('bi-whatsapp', json_encode($row['cells']['channel']), 'the WhatsApp tile');
+
+	$record['delivery'] = pg_messages_sends_whatsapp_delivery_row(array('delivery' => 'read', 'delivered_at' => 1700000200, 'read_at' => '1700000300', 'error_code' => ''));
+	pg_assert_contains(h(lang('Read')), json_encode(pg_messages_sends_row($record, 1700000500)['cells']['result']), 'a read message says so');
+
+	$record['delivery'] = pg_messages_sends_whatsapp_delivery_row(array('delivery' => 'failed', 'error_code' => '131026'));
+	$row = json_encode(pg_messages_sends_row($record, 1700000500)['cells']);
+	pg_assert_contains(h(lang('Not delivered')), $row, 'a failure after Meta took it');
+	pg_assert_contains('131026', $row, 'with Meta\'s code');
+
+	pg_assert_same(array('delivery' => '', 'delivered_at' => 0, 'read_at' => 0, 'error_code' => ''), pg_messages_sends_whatsapp_delivery_row(array()), 'nothing written yet');
 }
