@@ -219,6 +219,7 @@ function pg_messages_sends_sources()
         'reminder' => lang('Reminder'),
         'stock' => lang('Back in stock'),
         'booking' => lang('Booking'),
+        'reply' => lang('Answer to a customer'),
         'marketing' => lang('Marketing'),
         'test' => lang('Test'),
         'system' => lang('System'),

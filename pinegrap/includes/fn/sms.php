@@ -260,6 +260,8 @@ function pg_sms_kinds()
         'booking'   => false,
         // A flow's Send an SMS box with the purpose info.
         'flow'      => false,
+        // A Workspace answer to a customer's own SMS (sms_reply.php).
+        'reply'     => false,
         'marketing' => true,
     );
 }
