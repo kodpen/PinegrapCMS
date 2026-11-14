@@ -201,7 +201,7 @@ function test_workspace_mail_reply_reaches_the_screen()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js');
 
-	pg_assert_contains("'mail_reply'  => (\$mail && !\$deleted && function_exists('ws_mail_reply_offer'))", $messages, 'the payload offers it');
+	pg_assert_contains("'mail_reply'  => (\$mail && !\$deleted && function_exists('ws_mail_reply_offer') && !(function_exists('ws_mail_item_is_phone')", $messages, 'the payload offers it, not on a WhatsApp card');
 	pg_assert_contains("case 'ws_mail_reply':", $actions, 'the action');
 	pg_assert_contains('$result = ws_mail_send($viewer, array(\'conversation_id\' => $conversation_id,', $actions, 'checked and sent by the server, through the queue');
 	pg_assert_contains('window.PGWsMail.node(message, self, featureHelpers())', $screen, 'drawn under the card');

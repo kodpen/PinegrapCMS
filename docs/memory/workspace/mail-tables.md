@@ -9,7 +9,7 @@ description: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_
 - No database in the cloud sessions: `tests/workspace_mail_schema_test.php` runs the step twice against an in-memory schema with the real runner helpers; the second run must write nothing.
 
 ## What does ws_mail_boxes hold?
-- `name`, `address`, `transport` (imap | graph | gmail | push), `settings` TEXT (JSON: server, port, user, the password sealed with `pg_connect_seal()`, the move folder, a connection id), `folder` (default `INBOX`), `after_fetch` (seen | move), `channel_id`, `reply_via` (box | site | connection).
+- `name`, `address`, `transport` (imap | graph | gmail | push; whatsapp and sms since 11.0.199, `mail-phone-conversations.md`), `settings` TEXT (JSON: server, port, user, the password sealed with `pg_connect_seal()`, the move folder, a connection id), `folder` (default `INBOX`), `after_fetch` (seen | move), `channel_id`, `reply_via` (box | site | connection).
 - `auto_reply` (0 by default) and `auto_reply_text`: answer 8 (per box, off, editable), here so G5 needs no step.
 - IMAP position `uidvalidity` / `last_uid`; `checked_at`, `ok_at`, `last_error` for the box card and System status; `enabled`, `created_by`, `created_at`, `updated_at`.
 

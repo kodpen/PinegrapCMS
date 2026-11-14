@@ -66,6 +66,8 @@ $ws_box_checked = null;
 if (($ws_box_id !== null) && is_scalar($ws_box_id) && ws_mail_ready()) {
     $ws_box_id = max(0, (int) $ws_box_id);
     $ws_box = ($ws_box_id > 0) ? ws_mail_box($ws_box_id) : null;
+    // A WhatsApp or SMS account's box is kept by its own card.
+    $ws_box = ws_mail_box_is_phone($ws_box) ? null : $ws_box;
 
     if (($ws_box_id > 0) && !$ws_box) {
         $liveform->mark_error('ws_mail[' . $ws_box_id . '][name]', lang('That mailbox could not be found.'));

@@ -550,7 +550,50 @@ function pg_whatsapp_inbox_receive($event, $now)
 
     create_notification(pg_whatsapp_inbox_notice($inbox_id, $event));
 
+    pg_whatsapp_inbox_to_channel($event, $contact_id, $at, $now);
+
     return true;
+}
+
+/**
+ * Brings a kept message into the channel the WhatsApp card names, as a
+ * conversation of the Workspace (includes/workspace/mail_phone.php). Nothing
+ * while the Workspace is off or no channel is named; the bell notice and the
+ * contact's history stay either way.
+ *
+ * @param array $event      pg_whatsapp_webhook_events()'s message
+ * @param int   $contact_id the contact the number matched, 0 for none
+ * @param int   $at         when it was sent
+ * @param int   $now
+ * @return array|null ws_mail_phone_ingest(), null when not tried
+ */
+function pg_whatsapp_inbox_to_channel($event, $contact_id, $at, $now)
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+        return null;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    if (!ws_enabled() || !ws_mail_phone_ready()) {
+        return null;
+    }
+
+    $box = ws_mail_phone_box('whatsapp');
+
+    if (!$box || empty($box['enabled'])) {
+        return null;
+    }
+
+    return ws_mail_phone_ingest($box, array(
+        'wamid'      => (string) $event['wamid'],
+        'from'       => (string) $event['from'],
+        'name'       => (string) $event['profile_name'],
+        'text'       => (string) $event['body'],
+        'kind'       => (string) $event['kind'],
+        'contact_id' => (int) $contact_id,
+        'at'         => (int) $at,
+    ), $now);
 }
 
 /**
@@ -611,3 +654,57 @@ function pg_whatsapp_inbox_contact_rows($contact_id, $before, $limit)
         ORDER BY received_at DESC, id DESC
         LIMIT " . max(1, (int) $limit));
 }
+
+/**
+ * The WhatsApp card's Channel step (includes/workspace/mail_phone.php), ''
+ * while the Workspace is off.
+ *
+ * @param int $user_id
+ * @return string HTML
+ */
+function pg_whatsapp_channel_field($user_id)
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+        return '';
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    return ws_mail_phone_card_field((int) $user_id);
+}
+
+/**
+ * Reads the card's Channel field before anything of the pane is written.
+ *
+ * @param array  $post
+ * @param int    $user_id
+ * @param object $liveform
+ * @return array|null see ws_mail_phone_card_check()
+ */
+function pg_whatsapp_channel_check($post, $user_id, $liveform)
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+        return null;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    return ws_mail_phone_card_check($post, (int) $user_id, $liveform);
+}
+
+/**
+ * Writes the WhatsApp box after the account was saved, so its name and
+ * number are the account's own.
+ *
+ * @param array|null $decision pg_whatsapp_channel_check()
+ * @param int        $user_id
+ */
+function pg_whatsapp_channel_save($decision, $user_id)
+{
+    if (!is_array($decision) || !function_exists('ws_mail_phone_box_save')) {
+        return;
+    }
+
+    ws_mail_phone_box_save(pg_whatsapp_app(), (int) $decision['channel_id'], (int) $user_id);
+}
+

@@ -571,6 +571,8 @@ function ws_mail_settings_post($viewer, $action, $liveform, $input = null, $file
     $username = (string) ($_SESSION['sessionusername'] ?? '');
     $box_id = is_scalar($post['box_id'] ?? 0) ? (int) ($post['box_id'] ?? 0) : 0;
     $box = ($box_id > 0) ? ws_mail_box($box_id) : null;
+    // A WhatsApp or SMS account's box is kept by its own card.
+    $box = ws_mail_box_is_phone($box) ? null : $box;
 
     if (($box_id > 0) && !$box) {
         $refuse(lang('That mailbox could not be found.'));
@@ -1274,8 +1276,11 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
  */
 function ws_mail_settings_boxes()
 {
-    return (array) db_items("SELECT b.*, (SELECT MAX(i.created_at) FROM ws_mail_items i WHERE i.box_id = b.id) AS last_mail_at
-        FROM ws_mail_boxes b ORDER BY b.name");
+    // A WhatsApp or SMS account's box is kept by its own card, not here.
+    return array_values(array_filter((array) db_items("SELECT b.*, (SELECT MAX(i.created_at) FROM ws_mail_items i WHERE i.box_id = b.id) AS last_mail_at
+        FROM ws_mail_boxes b ORDER BY b.name"), function ($box) {
+            return !ws_mail_box_is_phone($box);
+        }));
 }
 
 /**

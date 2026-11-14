@@ -309,10 +309,13 @@ function pg_whatsapp_settings_fields()
         $number = ($digits !== '') ? '+' . $digits : '';
     }
 
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
+
     return pg_whatsapp_settings_html(pg_whatsapp_app(), array(
-        'refusal'     => pg_whatsapp_settings_refusal(),
-        'webhook_url' => pg_whatsapp_webhook_url(),
-        'test_to'     => $number,
+        'refusal'      => pg_whatsapp_settings_refusal(),
+        'webhook_url'  => pg_whatsapp_webhook_url(),
+        'test_to'      => $number,
+        'channel_html' => pg_whatsapp_channel_field(defined('USER_ID') ? (int) USER_ID : 0),
     ));
 }
 
@@ -353,7 +356,8 @@ function pg_whatsapp_settings_link($label, $url)
  * @param array $app     pg_whatsapp_app()
  * @param array $context refusal (pg_whatsapp_settings_refusal()), webhook_url,
  *                       test_to (the signed-in person's mobile number, '' for
- *                       none)
+ *                       none), channel_html (the Workspace's Channel field,
+ *                       optional: drawn as step 6 when given)
  * @return string
  */
 function pg_whatsapp_settings_html($app, $context)
@@ -456,6 +460,10 @@ function pg_whatsapp_settings_html($app, $context)
                                                             <label for="whatsapp_verify_token" class="form-label">' . lang('Verify Token') . '</label>
                                                             <input type="text" id="whatsapp_verify_token" class="form-control" value="' . h($app['verify_token']) . '" readonly="readonly"/>
                                                         </div>';
+    }
+
+    if ((string) ($context['channel_html'] ?? '') !== '') {
+        $html .= pg_whatsapp_settings_step(6, lang('Conversations'), lang('Where customers\' WhatsApp messages are read and handled in the Workspace.')) . $context['channel_html'];
     }
 
     $html .= '

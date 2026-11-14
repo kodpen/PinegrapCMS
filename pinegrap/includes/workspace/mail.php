@@ -1123,7 +1123,8 @@ function ws_mail_ingest($raw, $box)
  * @param array[] $rows ws_messages rows
  * @return array item id => ws_mail_items row, with a 'conversation' key (the
  *               ws_mail_conversations row or null), its box's
- *               first_reply_hours and support (ws_mail_box_is_support())
+ *               first_reply_hours, support (ws_mail_box_is_support()) and
+ *               transport (whatsapp for a WhatsApp conversation)
  */
 function ws_mail_items_map($rows)
 {
@@ -1162,10 +1163,12 @@ function ws_mail_items_map($rows)
         // whether it is a support box, for the card's state.
         $hours = array();
         $support = array();
+        $transports = array();
 
-        foreach ((array) db_items("SELECT id, settings FROM ws_mail_boxes WHERE id IN (" . implode(',', array_merge(array(0), $box_ids)) . ")") as $box) {
+        foreach ((array) db_items("SELECT id, settings, transport FROM ws_mail_boxes WHERE id IN (" . implode(',', array_merge(array(0), $box_ids)) . ")") as $box) {
             $hours[(int) $box['id']] = function_exists('ws_mail_first_reply_hours') ? ws_mail_first_reply_hours($box) : 0;
             $support[(int) $box['id']] = !function_exists('ws_mail_box_is_support') || ws_mail_box_is_support($box);
+            $transports[(int) $box['id']] = (string) $box['transport'];
         }
 
         foreach ($items as $id => $item) {
@@ -1173,6 +1176,7 @@ function ws_mail_items_map($rows)
             $items[$id]['conversation'] = $conversation;
             $items[$id]['first_reply_hours'] = $conversation ? (int) ($hours[(int) $conversation['box_id']] ?? 0) : 0;
             $items[$id]['support'] = $conversation ? ($support[(int) $conversation['box_id']] ?? true) : true;
+            $items[$id]['transport'] = $conversation ? ($transports[(int) $conversation['box_id']] ?? 'imap') : 'imap';
         }
     }
 
@@ -1260,18 +1264,23 @@ function ws_mail_card_html($row, $item)
     $conversation = $item['conversation'];
     $card = is_array($conversation) && ((int) $conversation['message_id'] === (int) $row['id']);
     $out = ((string) ($item['direction'] ?? 'in') === 'out');
-    $badge = $out
+    // A customer's WhatsApp message: Meta vouches for the number it came from.
+    $phone = !$out && function_exists('ws_mail_item_is_phone') && ws_mail_item_is_phone($item);
+    $badge = $phone
+        ? '<span class="badge theme-success"><i class="bi bi-whatsapp me-1" aria-hidden="true"></i>' . h(lang('WhatsApp')) . '</span>'
+        : ($out
         ? (function_exists('ws_mail_item_is_auto_reply') && ws_mail_item_is_auto_reply($item)
             ? '<span class="badge theme-secondary"><i class="bi bi-robot me-1" aria-hidden="true"></i>' . h(lang('Automatic answer')) . '</span>'
             : ws_mail_send_badge_html($item))
         : (((string) $item['auth'] === 'pass')
         ? '<span class="badge theme-info"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . h(lang('E-mail')) . '</span>'
-        : '<span class="badge theme-warning"><i class="bi bi-envelope-exclamation me-1" aria-hidden="true"></i>' . h(lang('Sender not verified')) . '</span>');
+        : '<span class="badge theme-warning"><i class="bi bi-envelope-exclamation me-1" aria-hidden="true"></i>' . h(lang('Sender not verified')) . '</span>'));
 
     // An answer names whom it went to; a mail, who sent it.
     $html = '<div class="ws-mail-card">'
         . '<div class="ws-mail-card-head small fg-secondary mb-1">' . $badge . ' <span class="ms-1">'
-        . h($out ? lang(array('string' => 'To {var:1}', 'vars' => (string) $item['to_list'])) : (string) $item['from_email']) . '</span>'
+        . h($out ? lang(array('string' => 'To {var:1}', 'vars' => (string) $item['to_list']))
+            : ($phone ? trim((string) $item['from_name'] . ' ' . (string) $item['from_email']) : (string) $item['from_email'])) . '</span>'
         . (($card && ($item['support'] ?? true) && function_exists('ws_mail_status_html'))
             ? ws_mail_status_html($conversation, ((int) ($conversation['assignee_id'] ?? 0) > 0) ? ws_person_name((int) $conversation['assignee_id']) : '',
                 (int) ($item['first_reply_hours'] ?? 0), time())
