@@ -1095,6 +1095,7 @@
     "List Settings": "Liste Ayarları",
     "List all pages or read/update a specific page": "Tüm sayfaları listele veya belirli bir sayfayı oku/güncelle",
     "List all users or get a specific user (Manager+ only)": "Tüm kullanıcıları listele veya belirli bir kullanıcıyı getir (Yönetici+ gerekli)",
+    "List at most a year at a time.": "Bir seferde en fazla bir yıl listeleyin.",
     "List description": "Liste açıklaması",
     "List fields": "Liste alanları",
     "List form submissions (loop_area)": "Form gönderilerini listele (loop_area)",
