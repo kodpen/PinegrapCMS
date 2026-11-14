@@ -4,6 +4,7 @@
 
 - agent-activity.md: The Agents card's activity per app and model agent: counts of 7 and 30 days, next wake, door failures, waiting and failed requests with Cancel, Ask again, Knock now; token counts [decision: decisions-made-schema-14.md, decisions-made-workspace-10.md]
 - agent-canvas-assistants.md: Pinegrap AI and model assistants draw, read and edit Workspace canvases as ws_ai_step() tools (canvas_ai.php): when offered, who the version names, what the model reads
+- agent-canvas-chart.md: The chart canvas operation (canvas_chart.php): kinds, data, boards, how the server draws it by the guide, the channel's colour for one series, the refusals, create and draw_canvas [decision: here]
 - agent-canvas-edit.md: An agent edits any canvas of its channel in place (POST|PATCH messages/{id}/canvas): operations, 409 when stale, the agent version, the inbox line, the "Edited by @handle" mark and Undo
 - agent-canvas-guide.md: The drawing guide an agent reads before drawing a canvas (canvas_guide.php): one set of values, its text, GET workspace/canvas/guide, the MCP resource and prompt
 - agent-canvas-layer-writes.md: An agent writes a canvas's layers one by one (canvas_layer_write.php): add a text, picture, shape or icon, style, order, name, lock, a layer by its name, GET workspace/canvas/fonts

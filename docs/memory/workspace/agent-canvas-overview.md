@@ -23,6 +23,7 @@ description: Start file of the agent-canvas-* cluster: an agent designs on a Wor
 - The board's size, background and scenes: `agent-canvas-scenes.md`.
 - Templates a person marks and an agent fills: `agent-canvas-templates.md`.
 - The drawing guide an agent reads before it draws (boards, grid, type, palettes, chart rules): `agent-canvas-guide.md`.
+- A chart drawn by the server from data (the chart operation, the channel's colour): `agent-canvas-chart.md`.
 - The picture, drawn by the server where it can, else by a browser: `agent-canvas-picture.md` (the server's drawing: `platform/image-server-draw.md`).
 - Saving the picture into Files under the risk tiers: `agent-canvas-save.md`.
 - The assistants' tools (`draw_canvas`, `read_canvas`, `edit_canvas`): `agent-canvas-assistants.md`.

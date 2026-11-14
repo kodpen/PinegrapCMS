@@ -258,7 +258,7 @@ function test_workspace_canvas_scenes_match_the_editors_model()
 
 function test_workspace_canvas_scenes_rows()
 {
-	pg_assert_same(array('add', 'replace', 'remove', 'text', 'box', 'svg', 'style', 'order', 'name', 'lock', 'size', 'background', 'scene'), ws_canvas_edit_ops(), 'the operations');
+	pg_assert_same(array('add', 'replace', 'remove', 'text', 'box', 'svg', 'style', 'order', 'name', 'lock', 'size', 'background', 'scene', 'chart'), ws_canvas_edit_ops(), 'the operations');
 
 	$routes = array_column(ws_canvas_api_routes(), null, 'id');
 	$of = array_column($routes['workspace.messages.canvas.edit']['params'], null, 'name')['operations']['of'];
