@@ -196,6 +196,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_own_signature();   // 11.0.203
 	upgrade_2026_11_0_ws_mail_invitation();      // 11.0.204
 	upgrade_2026_11_0_ws_mail_draft_files();     // 11.0.205
+	upgrade_2026_11_0_ws_approval_agents();      // 11.0.210
 
 }
 
@@ -6597,5 +6598,31 @@ function upgrade_2026_11_0_ws_mail_draft_files() {
 	install_add_column('ws_mail_items', 'draft_app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: an e-mail draft kept on the server can hold files until it is sent.');
+
+}
+
+// Agents asked to approve (includes/workspace/approvals.php). A request a
+// person makes by hand may ask the channel's agents and assistants beside its
+// people; ws_approval_agents is one row per agent asked, beside
+// ws_approval_people's rows for the team and ws_approval_guests' for people
+// outside it, so no reader of the people's rows changes. agent is the value
+// the agent's requests carry in ws_ai_requests.agent (agent:<id>, model:<id>,
+// ai, or Claude's); request_id the request that woke it for this approval.
+// The answer is decision, note and decided_at, as a person's. No backfill:
+// every request before this step asked people only.
+function upgrade_2026_11_0_ws_approval_agents() {
+
+	install_create_table('ws_approval_agents', "CREATE TABLE ws_approval_agents (
+		approval_id INT UNSIGNED NOT NULL,
+		agent       VARCHAR(32) NOT NULL DEFAULT '',
+		request_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		decision    ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
+		note        VARCHAR(255) NOT NULL DEFAULT '',
+		decided_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (approval_id, agent),
+		KEY idx_agent (agent, decision)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: an approval request asked by hand can ask the channel\'s agents and assistants beside its people.');
 
 }
