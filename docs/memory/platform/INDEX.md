@@ -184,6 +184,7 @@
 - sms-codes.md: One-time codes by SMS (includes/fn/sms_codes.php): session hash bound to purpose, subject and number, ten minutes, five guesses, queue reference and expires_at per send
 - sms-erp-overdue.md: ERP overdue receivable SMS (PR #3626): event erp_overdue (kind reminder, off by default), one text per account per notice, which number, the reference, digest count, invoice screen line
 - sms-iletimerkezi-driver.md: İleti Merkezi SMS driver (includes/sms/iletimerkezi.php, PR #3623): REST v1 send-sms and get-sender, panel-issued key and hash, answer codes, retry and uncertain rules
+- sms-incoming-providers.md: Which SMS providers can receive a customer's message, how and at what cost (Twilio, İleti Merkezi, Netgsm; read 2026-11-13 for WA12, not tried live)
 - sms-incoming.md: A customer's SMS into a channel (WA16a #9412, WA16b): Twilio's webhook sms_webhook.php, Netgsm and İleti Merkezi asked by the general job, the Channel field, stop words to the consent log [decision: decisions-made-workspace-23.md]
 - sms-marketing-kind.md: The marketing SMS kind (PR #3820, #3570): sender identity and type label settings, appended to marketing texts only, the consent rule pg_sms_send() and pg_sms_enqueue() apply [decision: decisions-made-customers.md, decisions-made-product-8.md]
 - sms-netgsm-driver.md: Netgsm SMS driver (includes/sms/netgsm.php, PR #600): REST v2 send and msgheader calls, answer codes, when a send may be retried or is uncertain, refused vs could-not-ask, own cURL call

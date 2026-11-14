@@ -4,6 +4,7 @@
 
 - agent-activity.md: The Agents card's activity per app and model agent: counts of 7 and 30 days, next wake, door failures, waiting and failed requests with Cancel, Ask again, Knock now; token counts [decision: decisions-made-schema-14.md, decisions-made-workspace-10.md]
 - agent-canvas-assistants.md: Pinegrap AI and model assistants draw, read and edit Workspace canvases as ws_ai_step() tools (canvas_ai.php): when offered, who the version names, what the model reads
+- agent-canvas-chart.md: The chart canvas operation (canvas_chart.php): kinds, data, boards, how the server draws it by the guide, the channel's colour for one series, the refusals, create and draw_canvas [decision: here]
 - agent-canvas-edit.md: An agent edits any canvas of its channel in place (POST|PATCH messages/{id}/canvas): operations, 409 when stale, the agent version, the inbox line, the "Edited by @handle" mark and Undo
 - agent-canvas-guide.md: The drawing guide an agent reads before drawing a canvas (canvas_guide.php): one set of values, its text, GET workspace/canvas/guide, the MCP resource and prompt
 - agent-canvas-layer-writes.md: An agent writes a canvas's layers one by one (canvas_layer_write.php): add a text, picture, shape or icon, style, order, name, lock, a layer by its name, GET workspace/canvas/fonts
@@ -23,7 +24,7 @@
 - agent-discussion-reach.md: A channel's registry agent asked in the channel's discussions by name (A4b3 #8600): ws_agent_reach_rows(), the merged row, its readers, what stays the discussion's own [decision: decisions-made-workspace-12.md]
 - agent-door-knock-trial.md: Push door trial (dev, 2026-11-13): the site's knock reached a signed receiver in the same second; what a session on a personal computer still needs; a routine's fire address answered HTTP 400
 - agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (agent:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
-- agent-drawing-guides-census.md: DG1 census and proposal: what today's agent charts lack, and the guide's proposed boards, grid, type, spacing, two board palettes, marks and seven chart kinds
+- agent-drawing-guides-census.md: DG1 census and proposal: what today's agent charts lack, and the guide's proposed boards, grid, type, spacing, two board palettes, marks and seven chart kinds [decision: here]
 - agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869) [decision: decisions-made-schema-16.md, decisions-made-workspace-14.md]
 - agent-emoji.md: The one fitting emoji an agent leaves on the message that asked it (#8932): the brief, the answer route's emoji, a model assistant's answer tool, what is refused [decision: decisions-made-workspace-19.md]
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier
@@ -33,7 +34,7 @@
 - agent-last-seen.md: An agent's last seen: ws_agents.seen_at set by every call with an app agent's own key, once a minute at most, and the words on the Agents card and in "Agents in this channel" (#8828) [decision: decisions-made-workspace-16.md]
 - agent-page-assistants.md: Pinegrap AI and model assistants make, read and edit live pages as ws_ai_step() tools (page_ai.php): make_live_page, read_live_page, edit_live_page by replacements; Claude via MCP
 - agent-page-card.md: The card of an agent's live page (#8851): Open, Full screen, View source and versions, Download, "Edited by" and Undo; runs only when opened, stops when the channel is left
-- agent-page-libraries.md: The site's libraries a live page names (Chart.js first, #8830): the list, how a call names one, how live_page.php puts the site's own copy in, never an address
+- agent-page-libraries.md: The site's libraries a live page names (Chart.js #8830, the chart_guide preset DG5): the list, how a call names one, how live_page.php puts the site's own copy in, never an address [decision: here]
 - agent-page.md: Live pages an agent makes (#8815): what one is for and is not, the routes, the mark of a page without a column, versions (20 kept), 409, who may [decision: decisions-made-workspace-16.md]
 - agent-questions.md: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name [decision: decisions-made-workspace-12.md]
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, where the membership rules are, the depth and hourly brakes [decision: decisions-made-workspace-7.md, decisions-made-workspace-8.md]
@@ -95,6 +96,7 @@
 - mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it [decision: decisions-made-schema-15.md, decisions-made-schema-16.md, decisions-made-workspace-13.md, decisions-made-workspace-17.md]
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
 - mail-phone-conversations.md: A customer's WhatsApp message as a Workspace conversation (WA13, #9389, step 11.0.199): the WhatsApp box and its Channel field, threading by number, the card, what stays mail-only [decision: decisions-made-workspace-23.md]
+- mail-phone-decisions.md: Why a customer's WhatsApp message and SMS are Workspace conversations like e-mail (owner #9151), where they are kept (#9286), the rules every part keeps, the drawer's owner rules, what was left out [decision: decisions-made-product-49.md, decisions-made-workspace-23.md]
 - mail-phone-list-event-api.md: WhatsApp and SMS conversations in the E-mails list (Kind filter), the workspace.mail.received event (transport, number, How it came) and the API (#9420, #9455)
 - mail-phone-media.md: A customer's WhatsApp picture, video, voice message or document fetched by the general job into the conversation card's files (WA14c, #9480), no new column; what is given up and why
 - mail-phone-reply-files.md: A WhatsApp answer's file and template (WA14b, #9446): Meta's kinds and sizes before the queue, the upload at the send, templates with typed values after the 24 hours, Send again

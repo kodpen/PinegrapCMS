@@ -27,8 +27,9 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 ## Clusters
 
-- `agent-canvas-*`: 13 files; start at `agent-canvas-overview.md`.
+- `agent-canvas-*`: 14 files; start at `agent-canvas-overview.md`.
 - `automation-flows-*`: 6 files.
+- `mail-phone-*`: 6 files.
 - `workflow-tables-*`: 28 files; start at `workflow-tables.md`.
 - `workspace-api-*`: 13 files; start at `workspace-api-overview.md`.
 - `workspace-channel-*`: 20 files; start at `workspace-channel-overview.md`.

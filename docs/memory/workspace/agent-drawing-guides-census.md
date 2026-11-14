@@ -25,7 +25,7 @@ description: DG1 census and proposal: what today's agent charts lack, and the gu
 
 ## Which marks?
 - Bar at most 40 thick and 56 % of its band, 6 radius on the data end, square at the baseline; 4 between grouped bars, 2 surface gap in a stack, no outlines.
-- Line 3, round joins; end dot r 6 with a 3 surface ring and the last value beside it. Area: the series mixed 14 % into the surface as a solid colour, so the layer stays editable.
+- Line 6 on the card board, read as 3 px at the channel's half size (owner, 2026-11-14, message 2955: "Kalın: 6"); a tile's or strip's trend 3; round joins; end dot r 6 with a 3 surface ring and the last value beside it. Area: the series mixed 14 % into the surface as a solid colour, so the layer stays editable.
 - Donut: outer 190, inner 128, total in the middle, legend at the right with count and share.
 - Grid horizontal only, 1 thick, solid; baseline 2; 4-5 round steps. Values labelled selectively (the highlighted bar, line ends). Legend from two series up. Numbers in Turkish format (31.200, 31,2 B, 12,4 %, ₺ first).
 

@@ -19,18 +19,22 @@
 #                               Claude-Session: trailer, Erdal Güral as
 #                               author and committer, no change to
 #                               pinegrap/changelog.txt,
-#                               pinegrap/data/config.php or a generated
-#                               memory list (tools/check_pr.php)
+#                               pinegrap/data/config.php, a generated
+#                               memory list or a bundle (tools/check_pr.php)
 #   any change outside the      php -l of the changed PHP files, translation
 #   documentation (docs/,       keys, designer bindings, external API schema,
 #   .github/, .claude/, the     audit rule registry, get_file.php copies,
 #                               Bootstrap 6 panel markup (check_bs6.php
 #                               --strict), the panel look (check_look.php),
-#                               minified
-#                               stylesheets (build_css.php --check), unit tests
+#                               minified stylesheets, unit tests
 #   root *.md files)
 #   a change to a panel script  node --check of the panel scripts CI checks,
-#   or to how they are built    minified scripts against their sources
+#   or to how they are built    minified scripts
+#
+# A work branch carries no bundle: its minified scripts and stylesheets are
+# built in the temporary tree, before the unit tests that read them. On
+# development and a merge-train/* branch, whose landing built them, they are
+# compared with their sources (--check).
 #
 # CI alone runs PHPStan and PHPCompatibility (minutes each), the code editor
 # bundle comparison (npm ci), the install check and the Docker check; a step
@@ -289,29 +293,14 @@ check_commit() {
 		run_tool 'commit authors, trailers, changelog' check_pr.php "$base" "$commit" "--branch=$branch"
 	fi
 
-	if [ "$code" = 1 ]; then
-
-		if [ -n "$base" ]; then
-			if [ ${#php_files[@]} -gt 0 ]; then
-				# shellcheck disable=SC2016
-				run_check 'php -l (changed PHP files)' bash -c 'rc=0; for f; do php -l "$f" >/dev/null 2>&1 || { php -l "$f"; rc=1; }; done; exit $rc' _ "${php_files[@]}"
-			fi
-		else
-			run_tool 'php -l' lint.php
-		fi
-
-		run_tool 'translation keys' check_lang.php
-		run_tool 'designer bindings' check_bindings.php
-		run_tool 'designer canvas samples' check_canvas_samples.php
-		run_tool 'external API schema' check_api_schema.php
-		run_tool 'audit rule registry' check_audit_rules.php
-		run_tool 'get_file.php copies' check_copies.php
-		run_tool 'Bootstrap 6 panel markup' check_bs6.php --strict
-		run_tool 'panel look' check_look.php
-		run_tool 'minified stylesheets' build_css.php --check
-		run_tool 'unit tests' test.php
-
-	fi
+	# A work branch carries no bundle (tools/check_pr.php): its bundles are
+	# built in the temporary tree before the unit tests, which read some of
+	# them. development and a merge train carry the bundles their landing
+	# built (tools/merge_train.php), which are compared with their sources.
+	case "$branch" in
+		development|main|merge-train/*|'') landing=1 ;;
+		*) landing=0 ;;
+	esac
 
 	if [ "$js" = 1 ]; then
 
@@ -332,12 +321,44 @@ check_commit() {
 		if [ ! -f "$dir/tools/build_js.php" ]; then
 			:
 		elif ! command -v npx >/dev/null 2>&1; then
-			say 'npx is not on the PATH: the minified scripts were not compared (CI compares them).'
+			say 'npx is not on the PATH: the minified scripts were not built (CI builds them).'
 		elif ! (cd "$dir" && npm_config_fetch_retries=0 npm_config_fetch_timeout=20000 npx --yes "${terser:-terser}" --version) >/dev/null 2>&1; then
-			say "npx could not run ${terser:-terser} (no npm registry?): the minified scripts were not compared (CI compares them)."
-		else
+			say "npx could not run ${terser:-terser} (no npm registry?): the minified scripts were not built (CI builds them)."
+		elif [ "$landing" = 1 ]; then
 			run_tool 'minified scripts' build_js.php --check
+		else
+			run_tool 'build the minified scripts' build_js.php
 		fi
+
+	fi
+
+	if [ "$code" = 1 ]; then
+
+		if [ -n "$base" ]; then
+			if [ ${#php_files[@]} -gt 0 ]; then
+				# shellcheck disable=SC2016
+				run_check 'php -l (changed PHP files)' bash -c 'rc=0; for f; do php -l "$f" >/dev/null 2>&1 || { php -l "$f"; rc=1; }; done; exit $rc' _ "${php_files[@]}"
+			fi
+		else
+			run_tool 'php -l' lint.php
+		fi
+
+		run_tool 'translation keys' check_lang.php
+		run_tool 'designer bindings' check_bindings.php
+		run_tool 'designer canvas samples' check_canvas_samples.php
+		run_tool 'external API schema' check_api_schema.php
+		run_tool 'audit rule registry' check_audit_rules.php
+		run_tool 'get_file.php copies' check_copies.php
+		run_tool 'Bootstrap 6 panel markup' check_bs6.php --strict
+		run_tool 'panel look' check_look.php
+
+		if [ "$landing" = 1 ]; then
+			run_tool 'minified stylesheets' build_css.php --check
+		else
+			run_tool 'build the minified stylesheets' build_css.php
+		fi
+
+		run_tool 'unit tests' test.php
 
 	fi
 

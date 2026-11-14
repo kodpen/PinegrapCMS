@@ -154,6 +154,40 @@ function test_campaign_profile_flow_owner()
 	pg_assert_same(1, pg_profile_flow_owner(array('id' => 4, 'name' => 'ayse', 'staff' => true, 'right' => false), $admin)['id'], 'without the start\'s right');
 	pg_assert_same(1, pg_profile_flow_owner(array('id' => 4, 'name' => 'ayse', 'staff' => false, 'right' => true), $admin)['id'], 'off the staff');
 	pg_assert_true(pg_profile_flow_owner(null, $admin)['changed'], 'an account gone');
+
+	// An administrator keeps the flow, with no reason given, whatever the
+	// start's right reads.
+	pg_assert_same(array('id' => 118, 'name' => 'admin', 'changed' => false, 'reason' => ''),
+		pg_profile_flow_owner(array('id' => 118, 'name' => 'admin', 'admin' => true, 'staff' => true, 'right' => false), $admin), 'an administrator keeps it');
+}
+
+// The start's right is read from ws_viewer(), which holds the module rights
+// a start asks for; ws_rights() holds only the workspace's own.
+function test_campaign_profile_flow_owner_reads_module_rights()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_flow.php');
+
+	pg_assert_true(strpos($source, 'ws_change_viewer_for_id(') !== false, 'the creator read as a viewer');
+	pg_assert_true(strpos($source, 'ws_rights_for_id(') === false, 'never the workspace rights alone');
+}
+
+// The report tool starts like job.php: a request with HTTP_HOST set is a web
+// request to init.php, which redirects it on a site with Secure Mode on.
+function test_campaign_profile_flow_report_tool_bootstrap()
+{
+	$source = file_get_contents(dirname(PG_FUNCTIONS_DIR) . '/tools/campaign_profile_flow_report.php');
+	$before = substr($source, 0, (int) strpos($source, "require './init.php';"));
+
+	pg_assert_true(strpos($before, 'unset($_SERVER[\'HTTP_HOST\'])') !== false, 'HTTP_HOST unset before init.php');
+	pg_assert_true(!preg_match('/\$_SERVER\[\'HTTP_HOST\'\]\s*=/', $before), 'no HTTP_HOST set');
+}
+
+function test_campaign_profile_flow_length_text()
+{
+	pg_assert_same('1 day', pg_profile_flow_length_text(1, 'days'));
+	pg_assert_same('3 days', pg_profile_flow_length_text(3, 'days'));
+	pg_assert_same('1 hour', pg_profile_flow_length_text(1, 'hours'));
+	pg_assert_same('5 hours', pg_profile_flow_length_text(5, 'hours'));
 }
 
 function test_campaign_profile_flow_limits()
@@ -201,6 +235,12 @@ function test_campaign_profile_flow_convert()
 	pg_assert_contains('Wait 7 days · then at 10:00', $lines);
 	pg_assert_contains('“Left cart” (order_abandoned, on) stays a profile', $lines);
 	pg_assert_contains('2 ready or paused stay with the campaign job', $lines);
+	pg_assert_contains('When something happens: order.shipped', $lines, 'a key with no name is shown as it is');
+
+	$named = implode("\n", pg_profile_flow_report_lines($plan, $profiles, array(), array('order.shipped' => 'An order is shipped')));
+
+	pg_assert_contains('When something happens: An order is shipped', $named, 'the name the flow screen shows');
+	pg_assert_contains('Wait until {{trigger.start_at}} less 1 day', $named, 'one day, singular');
 }
 
 // A field the start does not fill keeps the whole chain.

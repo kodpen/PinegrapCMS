@@ -173,6 +173,7 @@
 - social-sign-in.md: Sign in with Google, Microsoft and Apple: the flow, how an account is matched, where the buttons come from, and the failure screen (no more "404" on a refused sign-in)
 - software-text-in-site-languages.md: Which language the software's own texts take on a site page in a language with no language file: English, except the cookie window (owner decision 2026-10-09), and how that exception is fed. [decision: here]
 - sortablejs-library.md: The vendored SortableJS (assets/lib/sortablejs/, 1.15.7, unmodified): why it replaced jQuery UI .sortable(), which screens load it, how to update it [decision: decisions-made-panel-2.md]
+- stripe-classic-embedding.md: The classic Stripe library (1.17.2, includes/stripe) behind the 'Stripe' gateway, and the local patch that keeps it quiet on PHP 8.1 to 8.5
 - style-tag-css.md: CSS printed inside a <style> element goes through pg_style_tag_css(), never h(); the theme designer preview in get_page.php (edit_theme) and its theme_id key
 - submitted-form-content-helpers.md: pg_submitted_form_page() fills the page row keys of submitted billing/shipping forms; pg_form_reference_title_row() escapes the reference code title row; faults fixed.
 - submitter-email-access.md: How a member gets a submitted form's rights by e-mail address (submitter or watcher) and why a blank address never matches
