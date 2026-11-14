@@ -139,6 +139,13 @@ function test_whatsapp_reply_template_list()
 	pg_assert_same('Merhaba {{1}}', $list[0]['text'], 'its text');
 	pg_assert_same(array(array('key' => 'body:1', 'label' => 'Müşteri adı')), $list[0]['slots'], 'one field per variable, as the designer named it');
 	pg_assert_same(false, $list[0]['marketing'], 'a utility template');
+	pg_assert_same('Merhaba {{1}}', $list[0]['body'], 'the body the preview fills');
+
+	pg_assert_same(array('header' => 'Siparişiniz', 'body' => 'Merhaba {{1}}', 'footer' => 'Mağaza', 'buttons' => array('Gör')), pg_whatsapp_reply_template_parts(array(
+		array('type' => 'HEADER', 'format' => 'TEXT', 'text' => 'Siparişiniz'), array('type' => 'BODY', 'text' => 'Merhaba {{1}}'),
+		array('type' => 'FOOTER', 'text' => 'Mağaza'), array('type' => 'BUTTONS', 'buttons' => array(array('type' => 'URL', 'text' => 'Gör', 'url' => 'https://x/{{1}}'))),
+	)), 'the preview\'s parts');
+	pg_assert_same('', pg_whatsapp_reply_template_parts(array(array('type' => 'HEADER', 'format' => 'IMAGE'), array('type' => 'BODY', 'text' => 'x')))['header'], 'a picture header is no text');
 }
 
 function test_whatsapp_reply_media_wiring()
@@ -149,5 +156,9 @@ function test_whatsapp_reply_media_wiring()
 
 	pg_assert_contains("pg_whatsapp_reply_send_media(\$app, \$row['recipient'], \$payload)", $read('includes/fn/whatsapp.php'), 'a file payload goes as media');
 	pg_assert_contains("ws_mail_phone_reply_send(\$viewer, \$conversation_id, \$request, \$files['files'])", $read('includes/workspace/actions.php'), 'the drawer\'s file and template');
-	pg_assert_contains("formPost(h, 'ws_whatsapp_reply', request.fields, request.files)", $read('assets/js/workspace_mail.js'), 'the drawer sends the file');
+	$script = $read('assets/js/workspace_mail.js');
+	pg_assert_contains("formPost(h, 'ws_whatsapp_reply', request.fields, request.files)", $script, 'the drawer sends the answer');
+	pg_assert_contains("[data-pg-picker-value]", $script, 'the file comes from the panel\'s file field');
+	pg_assert_contains("pg_picker_field('channel_file', 'file_id'", $read('includes/workspace/mail_phone.php'), 'a file of Files');
+	pg_assert_contains("ws_library_file(\$viewer, \$file_id)", $read('includes/workspace/mail_phone.php'), 'read as the writing box reads one');
 }

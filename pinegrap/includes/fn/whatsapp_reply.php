@@ -259,7 +259,8 @@ function pg_whatsapp_reply_send_media($app, $number, $payload)
  * @param array $rows whatsapp_templates rows: name, language, category,
  *                    status, parameter_format, components, samples, offer
  * @return array[] key, name, language, category, marketing, text, slots
- *                 (key, label)
+ *                 (key, label), and the parts the drawer's preview draws
+ *                 (pg_whatsapp_reply_template_parts())
  */
 function pg_whatsapp_reply_templates_offered($rows)
 {
@@ -291,10 +292,41 @@ function pg_whatsapp_reply_templates_offered($rows)
             'marketing' => ($offered[$key]['category'] === 'MARKETING'),
             'text'      => pg_whatsapp_reply_template_text(is_array($components) ? $components : array(), null),
             'slots'     => $slots,
-        );
+        ) + pg_whatsapp_reply_template_parts(is_array($components) ? $components : array());
     }
 
     return $list;
+}
+
+/**
+ * The parts of a template the drawer's preview draws as a WhatsApp message:
+ * the text header, the body, the footer and the buttons' labels, their
+ * variables as Meta stores them. Pure.
+ *
+ * @param array $components as Meta reads them
+ * @return array header, body, footer, buttons (labels)
+ */
+function pg_whatsapp_reply_template_parts($components)
+{
+    $parts = array('header' => '', 'body' => '', 'footer' => '', 'buttons' => array());
+
+    foreach ((array) $components as $component) {
+        $type = (is_array($component) && isset($component['type'])) ? strtoupper((string) $component['type']) : '';
+
+        if (($type === 'HEADER') && (strtoupper((string) ($component['format'] ?? 'TEXT')) === 'TEXT')) {
+            $parts['header'] = (string) ($component['text'] ?? '');
+        } elseif (($type === 'BODY') || ($type === 'FOOTER')) {
+            $parts[strtolower($type)] = (string) ($component['text'] ?? '');
+        } elseif (($type === 'BUTTONS') && isset($component['buttons']) && is_array($component['buttons'])) {
+            foreach ($component['buttons'] as $button) {
+                if (is_array($button) && isset($button['text']) && is_scalar($button['text'])) {
+                    $parts['buttons'][] = (string) $button['text'];
+                }
+            }
+        }
+    }
+
+    return $parts;
 }
 
 /**

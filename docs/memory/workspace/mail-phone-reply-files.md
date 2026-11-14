@@ -5,8 +5,10 @@ module: whatsapp_reply
 ---
 
 ## Which files and templates?
+- The File field is the panel's picker field (`pg_picker_field('channel_file', 'file_id')`, markup sent by `ws_mail_phone_reply_form()`), a file of Files the writer may open, read by `ws_library_file()` as the writing box's "From the file manager"; architect 2711 after the owner's 2709. A copy is kept in the channel.
 - A file: `pg_whatsapp_reply_media()` before anything is kept: JPG/PNG 5 MB, MP4/3GP 16 MB, PDF, TXT, Word, Excel, PowerPoint 16 MB (Meta takes 100 MB, but the queue reads the file into memory); a GIF is refused. Files' own upload check first (`ws_upload_inspect()`). Caption at most 1024.
-- The drawer after the 24 hours: Template (`ws_mail_phone_reply_form()` sends `pg_whatsapp_reply_templates()`), its text, a field per variable as the designer named it; a marketing one says it needs consent; none: the WhatsApp Messages card's "No approved template can be chosen yet".
+- The drawer after the 24 hours: Template (`ws_mail_phone_reply_form()` sends `pg_whatsapp_reply_templates()`), the chosen one as the customer reads it (owner 2709: a template choice shows a preview): the designer's `.pg-wa-msg` bubble, typed values in place as they are typed (`whatsappPreview()`),
+- Below it a field per variable as the designer named it; a marketing one says it needs consent; none: the WhatsApp Messages card's "No approved template can be chosen yet".
 - A template: `pg_whatsapp_reply_templates_offered()` = `pg_whatsapp_message_offered()` (approved, no media header, no button needing more than text). `pg_whatsapp_reply_template_fill()`: every variable typed, components by `pg_whatsapp_message_components()`, the text the card keeps. An offer code is filled by the queue.
 - A marketing template or an offer code without marketing consent is refused before the write. Queued by `pg_whatsapp_enqueue()`, kind `reply`, the answer's reference, no expiry; consent asked again at the send.
 - A file's payload: `{"type":"image|video|document","file_id","name","caption"}`.

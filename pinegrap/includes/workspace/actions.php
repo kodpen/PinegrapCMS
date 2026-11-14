@@ -2763,7 +2763,7 @@ function ws_handle_action($action, $request)
 
                 return $form['ok']
                     ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'seconds' => $form['seconds'], 'window' => $form['window'],
-                        'templates' => $form['templates']))
+                        'templates' => $form['templates'], 'file_field' => $form['file_field']))
                     : ws_action_error(ws_mail_phone_reply_error_text($form['error']));
             }
 

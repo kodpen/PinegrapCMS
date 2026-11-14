@@ -379,9 +379,9 @@
         });
     }
 
-    // Inside the 24 hours: the answer and one file (its words the caption);
-    // after them: an approved template and a field per variable. Both go
-    // through ws_whatsapp_reply as a form, the file as New e-mail's files.
+    // Inside the 24 hours: the answer and one file of Files (its words the
+    // caption); after them: an approved template, its preview and a field per
+    // variable. Both go through ws_whatsapp_reply as a form.
     function whatsappAnswer(conversation, data, view, h) {
         var t = h.t;
         var el = h.el;
@@ -405,7 +405,7 @@
         form.appendChild(el('div', 'small fg-secondary mb-3', data.window));
 
         if (open) {
-            post = whatsappText(form, view, h);
+            post = whatsappText(form, data, view, h);
         } else if (templates.length) {
             post = whatsappTemplate(form, templates, h);
         } else {
@@ -438,13 +438,13 @@
         h.showOffcanvas(node);
     }
 
-    // The answer's words, the saved replies and one file. Returns what the
-    // send posts, or null after pointing at what is missing.
-    function whatsappText(form, view, h) {
+    // The answer's words, the saved replies and one file of Files in the
+    // panel's file field (pg_picker_field(), its markup from the server).
+    // Returns what the send posts, or null after pointing at what is missing.
+    function whatsappText(form, data, view, h) {
         var t = h.t;
         var el = h.el;
         var text = el('textarea', 'form-control');
-        var files = [];
 
         text.id = h.nextId('ws-wa-reply-');
         text.name = 'text';
@@ -456,43 +456,107 @@
         form.appendChild(h.formRow(t('wa_reply_text'), box, t('wa_reply_hint')));
         savedReplies(text, box, view, h);
 
-        var picker = el('input', 'form-control form-control-sm');
-        var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
+        var value = null;
 
-        picker.type = 'file';
-        picker.accept = '.jpg,.jpeg,.png,.mp4,.3gp,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx';
+        if (data.file_field) {
+            var field = el('div');
 
-        var fileRow = h.formRow(t('wa_reply_file'), picker, t('wa_reply_file_hint'));
+            field.innerHTML = data.file_field;
+            form.appendChild(h.formRow(t('wa_reply_file'), field, t('wa_reply_file_hint')));
+            value = field.querySelector('[data-pg-picker-value]');
+        }
 
-        fileRow.appendChild(list);
-        form.appendChild(fileRow);
-        picker.addEventListener('change', function () {
-            // One file a message: a new pick takes the place of the last.
-            files.length = 0;
-
-            if (picker.files && picker.files[0]) {
-                files.push(picker.files[0]);
-            }
-
-            picker.value = '';
-            fileRows(h, list, [files]);
-        });
         setTimeout(function () {
             text.focus();
         }, 0);
 
         return function () {
-            if (!text.value.trim() && !files.length) {
+            var file = value ? value.value : '';
+
+            if (!text.value.trim() && !file) {
                 text.focus();
                 return null;
             }
 
-            return { fields: { text: text.value }, files: files };
+            return { fields: { text: text.value, file_id: file }, files: [] };
         };
     }
 
-    // The approved templates, the chosen one's text and a field per
-    // variable, named as the template designer named it.
+    // A template's text as WhatsApp draws it: *bold*, _italic_, ~strike~,
+    // each variable as its typed value, or its name while it is empty, in a
+    // mark.
+    function whatsappFormat(source, part, values, names, offer) {
+        var marks = [];
+        var html = String(source || '').replace(/\{\{\s*([a-z0-9_]+)\s*\}\}/g, function (all, key) {
+            var slot = part + ':' + key;
+            var typed = values[slot] && values[slot].trim();
+
+            marks.push(typed || names[slot] || offer);
+            return '\u0001' + (marks.length - 1) + '\u0002';
+        });
+
+        html = html.replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+        html = html.replace(/\*([^*\n]+)\*/g, '<b>$1</b>').replace(/_([^_\n]+)_/g, '<i>$1</i>').replace(/~([^~\n]+)~/g, '<s>$1</s>');
+
+        return html.replace(/\u0001([0-9]+)\u0002/g, function (all, index) {
+            return '<mark>' + String(marks[index]).replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            }) + '</mark>';
+        }).replace(/\n/g, '<br>');
+    }
+
+    // The chosen template as the customer reads it: the template designer's
+    // WhatsApp message (.pg-wa-msg in its own colours), redrawn as the values
+    // are typed.
+    function whatsappPreview(item, values, h) {
+        var el = h.el;
+        var names = {};
+        var shell = el('div', 'pg-wa-designer mb-5');
+        var chat = el('div', 'pg-wa-chat rounded');
+        var message = el('div', 'pg-wa-msg');
+        var offer = h.t('wa_reply_offer');
+
+        item.slots.forEach(function (slot) {
+            names[slot.key] = slot.label;
+        });
+
+        chat.style.background = 'var(--pg-wa-chat-bg)';
+        chat.style.minHeight = '0';
+
+        if (item.header) {
+            var head = el('div', 'pg-wa-msg-head');
+
+            head.innerHTML = whatsappFormat(item.header, 'header', values, names, offer);
+            message.appendChild(head);
+        }
+
+        var body = el('div', 'pg-wa-msg-body');
+
+        body.innerHTML = whatsappFormat(item.body, 'body', values, names, offer);
+        message.appendChild(body);
+
+        if (item.footer) {
+            message.appendChild(el('div', 'pg-wa-msg-footer', item.footer));
+        }
+
+        var time = el('time', '', new Date().toTimeString().slice(0, 5));
+
+        message.appendChild(time);
+        (item.buttons || []).forEach(function (label) {
+            message.appendChild(el('div', 'pg-wa-msg-button', label));
+        });
+
+        chat.appendChild(message);
+        shell.appendChild(el('div', 'form-label', h.t('wa_reply_preview')));
+        shell.appendChild(chat);
+
+        return shell;
+    }
+
+    // The approved templates, the chosen one as the customer reads it and a
+    // field per variable, named as the template designer named it.
     function whatsappTemplate(form, templates, h) {
         var t = h.t;
         var el = h.el;
@@ -511,8 +575,19 @@
             })[0] || null;
         }
 
+        function typed() {
+            var values = {};
+
+            inputs.forEach(function (input) {
+                values[input.dataset.slot] = input.value;
+            });
+
+            return values;
+        }
+
         choice.addEventListener('change', function () {
             var item = chosen();
+            var preview = null;
 
             h.clear(holder);
             inputs = [];
@@ -521,10 +596,14 @@
                 return;
             }
 
-            var preview = el('div', 'small border rounded p-3 mb-5', item.text);
+            function redraw() {
+                var next = whatsappPreview(item, typed(), h);
 
-            // The template's lines as the customer reads them.
-            preview.style.whiteSpace = 'pre-line';
+                holder.replaceChild(next, preview);
+                preview = next;
+            }
+
+            preview = whatsappPreview(item, {}, h);
             holder.appendChild(preview);
 
             if (item.marketing) {
@@ -537,6 +616,7 @@
                 input.type = 'text';
                 input.maxLength = 1000;
                 input.dataset.slot = slot.key;
+                input.addEventListener('input', redraw);
                 holder.appendChild(h.formRow(slot.label, input));
                 inputs.push(input);
             });
@@ -544,7 +624,6 @@
 
         return function () {
             var item = chosen();
-            var values = {};
             var empty = null;
 
             if (!item) {
@@ -553,8 +632,6 @@
             }
 
             inputs.forEach(function (input) {
-                values[input.dataset.slot] = input.value;
-
                 if (!empty && !input.value.trim()) {
                     empty = input;
                 }
@@ -565,7 +642,7 @@
                 return null;
             }
 
-            return { fields: { template: item.key, values: JSON.stringify(values) }, files: [] };
+            return { fields: { template: item.key, values: JSON.stringify(typed()) }, files: [] };
         };
     }
 

@@ -650,8 +650,9 @@ function ws_mail_phone_reply_file($files)
  *
  * @param array   $viewer
  * @param int     $conversation_id
- * @param array   $request text, template, values (an array or its JSON)
- * @param array[] $files   ws_mail_compose_files()'s
+ * @param array   $request text, file_id (a file of Files), template, values
+ *                         (an array or its JSON)
+ * @param array[] $files   ws_mail_compose_files()'s, when no file_id
  * @return array ok, error, detail, message_id, state (queued | failed)
  */
 function ws_mail_phone_reply_send($viewer, $conversation_id, $request, $files = array())
@@ -705,6 +706,22 @@ function ws_mail_phone_reply_send($viewer, $conversation_id, $request, $files = 
         $send['template'] = array('id' => (int) $template['id'], 'name' => $template['name'], 'language' => $template['language'],
             'category' => $template['category'], 'components' => $filled['components']);
     } else {
+        // A file from Files (the drawer's picker field), read as the
+        // writing box's "From the file manager" reads one.
+        $file_id = (int) ($request['file_id'] ?? 0);
+
+        if ($file_id > 0) {
+            $library = ws_library_file($viewer, $file_id);
+            $path = $library['ok'] ? pg_file_local_copy($file_id) : '';
+            $bytes = ($path !== '') ? @file_get_contents($path) : false;
+
+            if (!$library['ok'] || !is_string($bytes)) {
+                return $refuse('file_refused', $library['ok'] ? lang('Sorry, we could not find the file.') : (string) $library['error']);
+            }
+
+            $files = array(array('name' => (string) $library['file']['name'], 'bytes' => $bytes));
+        }
+
         $picked = ws_mail_phone_reply_file($files);
 
         if (!$picked['ok']) {
@@ -924,11 +941,16 @@ function ws_mail_phone_resend($viewer, $item)
  * @param array $viewer
  * @param int   $conversation_id
  * @return array ok, error, to, name, seconds, window (the sentence),
- *               templates (pg_whatsapp_reply_templates(), after the 24 hours)
+ *               templates (pg_whatsapp_reply_templates(), after the 24 hours),
+ *               file_field (the picker field's markup, inside them)
  */
 function ws_mail_phone_reply_form($viewer, $conversation_id)
 {
     $target = ws_mail_phone_reply_target($viewer, $conversation_id, time(), false);
+
+    if (!function_exists('pg_picker_field')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/picker.php');
+    }
 
     if (!$target['ok']) {
         return array('ok' => false, 'error' => $target['error']);
@@ -942,6 +964,9 @@ function ws_mail_phone_reply_form($viewer, $conversation_id)
         'seconds' => (int) $target['seconds'],
         'window'  => pg_whatsapp_window_text($target['seconds']),
         'templates' => ($target['seconds'] > 0) ? array() : pg_whatsapp_reply_templates(),
+        // The panel's file field: a file of Files the writer may open.
+        'file_field' => (($target['seconds'] > 0) && function_exists('pg_picker_field'))
+            ? pg_picker_field('channel_file', 'file_id', '', array('id' => 'ws-wa-file')) : '',
     );
 }
 
@@ -959,6 +984,8 @@ function ws_mail_phone_js_strings()
         'wa_reply_hint'   => lang('Plain text, at most 4096 characters. It goes from the site\'s WhatsApp number; the conversation then waits for the customer.'),
         'wa_reply_file'   => lang('File'),
         'wa_reply_file_hint' => lang('One file: a JPG or PNG picture up to 5 MB, an MP4 or 3GP video or a document (PDF, Word, Excel, PowerPoint, text) up to 16 MB. The answer then goes beside it, at most 1024 characters.'),
+        'wa_reply_preview' => lang('As the customer reads it'),
+        'wa_reply_offer'  => lang('offer code'),
         'wa_reply_template' => lang('Template'),
         'wa_reply_template_pick' => lang('Choose an approved template'),
         'wa_reply_template_hint' => lang('After the 24 hours WhatsApp takes only a template Meta approved. Fill each value; the customer reads the text below with them.'),
