@@ -4,7 +4,7 @@ description: Working rule (2026-10-25): how much a session checks before its PR:
 ---
 
 ## How much checking is enough?
-- The tests of the area you changed (`php tools/test.php <filter>`), plus what your change touches (`check_lang` for texts, `check_bindings` for designer tokens, `node --check` for JS, `memory_index.php --check` for memory). `git push` runs the fast checks (`pre-push-checks.md`); CI runs the full suite, PHPStan and PHPCompatibility.
+- The tests of the area you changed (`php tools/test.php <filter>`), plus what your change touches (`check_lang` for texts, `check_bindings` for designer tokens, `node --check` for JS, `memory_index.php --files` for memory; the lists are written at landing). `git push` runs the fast checks (`pre-push-checks.md`); CI runs the full suite, PHPStan and PHPCompatibility.
 - `tools/static_analysis.sh` locally only when you changed PHP and want to know before CI, with your own cache folder: `PG_ANALYSIS_TOOLS=<scratch dir> bash tools/static_analysis.sh`. The default `~/.cache/pinegrap-analysis` is shared by sessions on one machine; one run deletes the phpcs report while another reads it ("The report … is missing").
 - A sandbox or a browser run only to reproduce a runtime error or a path no unit test can reach; say why in the PR.
 

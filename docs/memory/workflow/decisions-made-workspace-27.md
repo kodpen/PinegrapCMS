@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-27
-description: Decisions made, workspace part 27: Check e-mail, a person's own signature and a block list on the E-mails screen; "My calendar" beside e-mail and a person's private plans
+description: Decisions made, workspace part 27: Check e-mail, own signature and block list; "My calendar" and private plans; a customer's roadmap inside the team; one-series charts in the channel colour
 ---
 
 ## Does the E-mails screen get a button that reads the boxes now, and a mailbox's features? (owner, 2026-11-14, in the architect's window)
@@ -20,3 +20,7 @@ description: Decisions made, workspace part 27: Check e-mail, a person's own sig
 - Asked: "Müşteri kendi yol haritasını sitede görebilsin mi?" The owner: "Şimdilik ekip içi".
 - So: a roadmap made for a customer is seen by the team members its owner opens it to, on the customer's card and history. Nothing of it is drawn on the site or sent to the customer by the plan's steps.
 - "Şimdilik" leaves it open: showing it to the customer is a later decision of his, not a step somebody adds.
+
+## Does a chart of one series take its channel's colour? (owner, 2026-11-14, in the architect's window)
+- Asked: "Tek serili grafikler kanalın rengini alsın mı?" The owner: "Evet, alsın". He had asked it of a coordinator first: "chartlarda birden fazla renk kullanılmayacaksa chart göstergeleri kanalın rengini alabilir mi?"
+- So: an agent's chart of one series (bar, line, area, sparkline) is drawn in the colour of its channel; charts of several series and the donut keep the drawing guide's palette. A channel colour that does not read on the board gives way to its readable tone, then to the guide's first colour. Built by DG3 (#9467) and DG5 (#9469) of `plans/agent-drawing-guides.md`.
