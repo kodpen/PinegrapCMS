@@ -5803,6 +5803,7 @@
     "An e-mail address or a phone number is needed to reach the customer.": "Müşteriye ulaşmak için bir e-posta adresi ya da telefon numarası gerekir.",
     "An e-mail address, telephone number or postal address for accessibility questions.": "Erişilebilirlik soruları için bir e-posta adresi, telefon numarası veya posta adresi.",
     "An e-mail bounces": "Bir e-posta geri döner",
+    "An e-mail can wait at most {var:1} days.": "Bir e-posta en fazla {var:1} gün bekleyebilir.",
     "An e-mail carries at most {var:1} files.": "Bir e-posta en çok {var:1} dosya taşır.",
     "An e-mail could not be sent": "Bir e-posta gönderilemedi",
     "An e-mail from {var:1} came into {var:2}: {var:3}": "{var:1} kişisinden {var:2} kanalına bir e-posta geldi: {var:3}",

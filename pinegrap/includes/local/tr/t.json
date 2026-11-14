@@ -1436,6 +1436,7 @@
     "That till or bank account could not be found.": "Bu kasa veya banka hesabı bulunamadı.",
     "That till or bank account is kept in {var:1}, so it cannot take a movement in {var:2}.": "Bu kasa/banka hesabı {var:1} cinsinden tutuluyor; {var:2} cinsinden hareket alamaz.",
     "That till or bank account is not active.": "Bu kasa veya banka hesabı aktif değil.",
+    "That time does not exist; choose another.": "Böyle bir zaman yok; başka bir zaman seçin.",
     "That time entry could not be found.": "Süre kaydı bulunamadı.",
     "That time has already gone by.": "Bu zaman geçti.",
     "That time has passed, and the box does not start the flow again.": "O zaman geçti ve kutu akışı yeniden başlatmıyor.",
