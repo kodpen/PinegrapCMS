@@ -269,6 +269,7 @@
 - workspace-editor-smart-paste.md: Pasting into a Workspace writing box (#2018): HTML mapped to the box's markup and why it is safe, sheet ranges to the table window, a URL over words, pasted files elsewhere
 - workspace-editor-toolbar.md: One row of tools for every Workspace writing box (PGWsEditor.toolbar()); marks made on the nodes by format(), never execCommand; waiting marks, IME, pressed state, undo, labels
 - workspace-empty-states.md: Workspace empty lists with a small theme-coloured drawing (emptyState(), the shared ART kit / window.PGWsArt) and skeleton rows instead of "Loading…" (U4, PR #2027)
+- workspace-everyone-mention.md: The @herkes tag (AE5, #9571): who gets a mention line, which agents it wakes, the reserved handles herkes, everyone and hepsi [decision: here]
 - workspace-field-names.md: How Workspace drawer and dialog fields get their screen-reader names: formRow(), saLabelled(), ask(), labelTarget()/hasName(), the pickers
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
 - workspace-files-object-storage.md: Workspace channel files, note attachments, guest files and ERP documents in the object store: which functions read them, which places still write the file directory, the guard test
@@ -473,6 +474,7 @@
 - workspace-record-kind-registry.md: ws_record_kinds() (refs.php): one entry per Workspace record kind (prefixes, right, read scope, change kind, audit table, drawer, customer), the lists it is held to, the drift test
 - workspace-record-kinds.md: Every list a Workspace record kind (order, product, invoice...) must be in, the kinds each leaves out and why, the scope the assistants read a kind with, and the test that guards it
 - workspace-ref-sources.md: Notes and workflow table rows as ws_refs tag sources (#3135, decision #3138, 11.0.116): VARCHAR source_type, probe, writers with channel 0, per-source access in readers, backfill
+- workspace-roadmap-templates.md: Team roadmap templates (PC12, #9562): Save as team template, the two tables, who changes or deletes one, Team templates under New roadmap, Move the following steps too [decision: here]
 - workspace-root-folder.md: The Workspace folder at the top of the file manager (ws_root_folder_id()): when an existing top-level "Workspace" folder is taken over and when a new one is made beside it
 - workspace-sales-quote-change.md: A sales quote added from a change card (kind erp_quote, PR #1705): fields, the erp_lines value kind, what is filled in and checked, the writer erp_quote_save(), how the card and the assistants show it [decision: here]
 - workspace-sales-quote-invoice.md: A sales quote turned into an invoice draft from a change card (erp_quote action invoice, PR #1907): no fields, the shared state rule, the writer erp_quote_to_invoice(), the decision, the proposers
