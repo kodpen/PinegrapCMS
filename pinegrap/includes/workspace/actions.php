@@ -4855,6 +4855,25 @@ function ws_handle_action($action, $request)
 
             return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('draft' => $result['draft']));
 
+        // The team's roadmap templates (roadmap_templates.php).
+        case 'ws_roadmap_templates':
+            return ws_action_ok(array('templates' => ws_roadmap_templates_list($viewer)));
+
+        case 'ws_roadmap_template_save':
+            $result = ws_roadmap_template_save($viewer, (int) ($request['plan_id'] ?? 0), (int) ($request['template_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('template_id' => $result['template_id'], 'title' => $result['title']));
+
+        case 'ws_roadmap_template_delete':
+            $result = ws_roadmap_template_delete($viewer, (int) ($request['template_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array());
+
+        case 'ws_roadmap_template_draft':
+            $result = ws_roadmap_template_draft($viewer, (int) ($request['template_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('draft' => $result['draft']));
+
         case 'ws_conflicts':
             $from = ws_date_or_null($request['from'] ?? '') ?: date('Y-m-d');
             $to = ws_date_or_null($request['to'] ?? '') ?: date('Y-m-d', strtotime('+13 days'));

@@ -1125,6 +1125,7 @@
     "Changes {var:1} in the row {var:2} of the table “{var:3}”.": "“{var:3}” tablosunun {var:2} numaralı satırında şunları değiştirir: {var:1}.",
     "Changes {var:1} proposes": "{var:1} tarafından önerilen değişiklikler",
     "Changing Rooms": "Soyunma Odaları",
+    "Changing a step's day moves the later steps by the same number of days.": "Bir adımın gününü değiştirmek sonraki adımları da aynı gün kadar kaydırır.",
     "Changing an appointment": "Randevu değişikliği",
     "Changing careers: where to start": "Kariyer değiştirmek: nereden başlamalı",
     "Changing its type here changes them as well, layouts included. A separate copy can be made for this page instead, and the other pages stay as they are.": "Türünü burada değiştirmek onları da değiştirir — düzenleri dahil. Bunun yerine bu sayfa için ayrı bir kopya oluşturulabilir; diğer sayfalar olduğu gibi kalır.",
