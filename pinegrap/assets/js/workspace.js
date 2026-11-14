@@ -17303,6 +17303,13 @@
                     }
                 }
 
+                // Everyone in the room but the writer, first: @herkes as
+                // text, which the server reads (ws_message_everyone()). Only
+                // the channel and discussion composers carry a channel.
+                if (self.channel && (!needle || ['herkes', 'everyone', foldText(t('everyone'))].some(function (word) { return word.indexOf(needle) === 0; }))) {
+                    items.unshift({ label: t('everyone'), meta: t('everyone_meta'), icon: 'bi-megaphone', insert: '@herkes ' });
+                }
+
                 if (self.channel) {
                     mcpAliases();
 
