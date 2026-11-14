@@ -1127,7 +1127,7 @@ function ws_guest_refs($bodies)
                 'meta'   => '',
                 'status' => '',
                 'known'  => true,
-                'icon'   => $person ? 'bi-person' : ($kinds[$token['type']]['icon'] ?? ''),
+                'icon'   => ($token['type'] === 'app') ? 'bi-robot' : ($person ? 'bi-person' : ($kinds[$token['type']]['icon'] ?? '')),
             );
         }
     }
