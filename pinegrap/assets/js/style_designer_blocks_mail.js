@@ -197,7 +197,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
             { label: _sdT('E-mail: Product Card'), type: 'component', icon: 'bi-bag', extra: { componentType: 'mail-product' },
               desc: _sdT('A product\'s picture, name, price and a button to its page, written in by hand.') },
             { label: _sdT('E-mail: Footer'), type: 'component', icon: 'bi-layout-text-window', extra: { componentType: 'mail-footer' },
-              desc: _sdT('The web version link, your address and the preferences and unsubscribe links, filled when the campaign is saved; the fixed footer is then left out.') },
+              desc: _sdT('The web version link, your address and the unsubscribe links, filled when the campaign is saved in place of the fixed footer.') },
             { label: _sdT('E-mail: Two Columns'), type: 'component', icon: 'bi-layout-split', extra: { componentType: 'mail-columns' },
               desc: _sdT('Two columns side by side that stack on a phone.') }
         ],
