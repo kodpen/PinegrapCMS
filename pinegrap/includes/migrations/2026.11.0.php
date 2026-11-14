@@ -192,6 +192,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_phone();           // 11.0.199
 	upgrade_2026_11_0_ws_mail_sent_folder();     // 11.0.200
 	upgrade_2026_11_0_ws_personal_plans();       // 11.0.201
+	upgrade_2026_11_0_ws_mail_own_signature();   // 11.0.202
 
 }
 
@@ -6498,3 +6499,22 @@ function upgrade_2026_11_0_ws_personal_plans() {
 
 }
 
+// A person's own e-mail signature (My e-mail settings on the E-mails screen):
+// plain text that stands in place of the writer's name under every mail they
+// send from a mailbox, the box's Signature under it. NULL is "none", so the
+// mail keeps the writer's name as before.
+function upgrade_2026_11_0_ws_mail_own_signature() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'mail_signature', "TEXT NULL");
+
+	install_note('Workspace: a person can set their own e-mail signature under My e-mail settings.');
+
+}
