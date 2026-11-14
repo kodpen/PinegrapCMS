@@ -12,6 +12,12 @@
  * (data-pg-cid) and, once kept, by their file (data-pg-file). Pure
  * functions, no database and no files.
  *
+ * The outgoing mode (pg_mail_html_clean_outgoing()) cleans HTML pasted as a
+ * campaign's body with the same element and attribute lists: it keeps a
+ * picture's https address in place and https url() in styles, since the
+ * mail is the site's own and its pictures are meant to load, and a link may
+ * be a merge field (^^name^^). The incoming lists are not loosened.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -117,10 +123,14 @@ function pg_mail_html_void_elements()
  * A link's address when it is a web, mail or telephone address or a place
  * in the mail itself; '' otherwise (javascript:, data:, relative paths).
  *
+ * A merge field (^^name^^) is kept in the outgoing mode only: it is filled
+ * per recipient before the mail goes.
+ *
  * @param string $value
+ * @param bool   $outgoing
  * @return string
  */
-function pg_mail_html_href($value)
+function pg_mail_html_href($value, $outgoing = false)
 {
     $value = trim((string) $value);
 
@@ -129,6 +139,10 @@ function pg_mail_html_href($value)
     }
 
     if (($value[0] === '#') || preg_match('#^(https?://[^/?\#\s]|mailto:|tel:)#i', $value)) {
+        return $value;
+    }
+
+    if ($outgoing && preg_match('/^\^\^[a-z0-9_]{1,64}\^\^$/i', $value)) {
         return $value;
     }
 
@@ -143,11 +157,20 @@ function pg_mail_html_href($value)
  * declaration split at the ";" of a data: address must not leave an
  * unclosed url( behind.
  *
+ * In the outgoing mode an https url() (quoted or not, with no character
+ * that could close it early) is set aside before the check, so it passes
+ * while every other url() and function is refused as before.
+ *
  * @param string $value
+ * @param bool   $outgoing
  * @return bool
  */
-function pg_mail_html_css_ok($value)
+function pg_mail_html_css_ok($value, $outgoing = false)
 {
+    if ($outgoing) {
+        $value = preg_replace('#url\(\s*([\'"]?)https://[^\s\'"()\\\\<>{};]+\1\s*\)#i', 'u0', (string) $value);
+    }
+
     return !preg_match('#[\\\\<@{}]|/\*|url|image-set|cross-fade|\b(element|image|src|attr)\s*\(|expression|javascript|vbscript|behavior|binding#i', (string) $value);
 }
 
@@ -157,9 +180,10 @@ function pg_mail_html_css_ok($value)
  * when none is left.
  *
  * @param string $value
+ * @param bool   $outgoing
  * @return string
  */
-function pg_mail_html_style($value)
+function pg_mail_html_style($value, $outgoing = false)
 {
     $kept = array();
 
@@ -173,7 +197,7 @@ function pg_mail_html_style($value)
         $name = strtolower(trim($parts[0]));
         $item = trim(preg_replace('/\s+/', ' ', $parts[1]));
 
-        if (preg_match('/^-{0,2}[a-z][a-z0-9-]{0,63}$/', $name) && ($item !== '') && pg_mail_html_css_ok($item)) {
+        if (preg_match('/^-{0,2}[a-z][a-z0-9-]{0,63}$/', $name) && ($item !== '') && pg_mail_html_css_ok($item, $outgoing)) {
             $kept[] = $name . ': ' . $item;
         }
     }
@@ -210,10 +234,11 @@ function pg_mail_html_block_end($text, $open)
  * @font-face and every other at-rule are left out. '' when nothing is left.
  *
  * @param string $text
- * @param int    $depth nesting of @media / @supports, at most 3
+ * @param int    $depth    nesting of @media / @supports, at most 3
+ * @param bool   $outgoing
  * @return string
  */
-function pg_mail_html_sheet($text, $depth = 0)
+function pg_mail_html_sheet($text, $depth = 0, $outgoing = false)
 {
     $text = (string) $text;
 
@@ -252,7 +277,7 @@ function pg_mail_html_sheet($text, $depth = 0)
         $i = $close + 1;
 
         if (preg_match('/^@(media|supports)\s+(.+)$/i', $prelude, $at)) {
-            $inner = ($depth < 3) ? pg_mail_html_sheet($body, $depth + 1) : '';
+            $inner = ($depth < 3) ? pg_mail_html_sheet($body, $depth + 1, $outgoing) : '';
 
             if (($inner !== '') && pg_mail_html_css_ok($at[2])) {
                 $out .= '@' . strtolower($at[1]) . ' ' . $at[2] . ' {' . $inner . '}';
@@ -265,7 +290,7 @@ function pg_mail_html_sheet($text, $depth = 0)
             continue;
         }
 
-        $declarations = pg_mail_html_style($body);
+        $declarations = pg_mail_html_style($body, $outgoing);
 
         if ($declarations !== '') {
             $out .= $prelude . ' {' . $declarations . '}';
@@ -296,16 +321,24 @@ function pg_mail_html_cid($value)
  * picture of the mail is named by data-pg-cid, an embedded raster picture
  * keeps its src; anything else gives nothing.
  *
+ * In the outgoing mode an https address stays where it was and every
+ * other outside address (plain http, a Content-ID) is left out.
+ *
  * @param string $name src or background
  * @param string $value
+ * @param bool   $outgoing
  * @return array attribute => value
  */
-function pg_mail_html_picture($name, $value)
+function pg_mail_html_picture($name, $value, $outgoing = false)
 {
     $value = trim((string) $value);
 
     if (preg_match('/[\x00-\x1F\x7F]/', $value)) {
         return array();
+    }
+
+    if ($outgoing && !preg_match('#^data:#i', $value)) {
+        return preg_match('#^https://[^/?\#\s]#i', $value) ? array($name => $value) : array();
     }
 
     if (preg_match('#^https?://[^/?\#\s]#i', $value)) {
@@ -331,9 +364,10 @@ function pg_mail_html_picture($name, $value)
  * @param DOMElement $node
  * @param array      $own the element's own attributes (pg_mail_html_elements())
  * @param array      $common
+ * @param bool       $outgoing
  * @return array name => value
  */
-function pg_mail_html_attributes($node, $own, $common)
+function pg_mail_html_attributes($node, $own, $common, $outgoing = false)
 {
     $kept = array();
 
@@ -346,11 +380,11 @@ function pg_mail_html_attributes($node, $own, $common)
         }
 
         if ($name === 'style') {
-            $value = pg_mail_html_style($value);
+            $value = pg_mail_html_style($value, $outgoing);
         } elseif ($name === 'href') {
-            $value = pg_mail_html_href($value);
+            $value = pg_mail_html_href($value, $outgoing);
         } elseif (($name === 'src') || ($name === 'background')) {
-            $kept = array_merge($kept, pg_mail_html_picture($name, $value));
+            $kept = array_merge($kept, pg_mail_html_picture($name, $value, $outgoing));
 
             continue;
         } elseif (($name === 'dir') && !in_array(strtolower($value), array('ltr', 'rtl', 'auto'), true)) {
@@ -387,7 +421,8 @@ function pg_mail_html_unprefix($html)
  * @param DOMNode $node
  * @param int     $depth
  * @param array   $state elements, common, dropped, void, sheets (the style
- *                       sheets met, filled here), seen (a picture or text)
+ *                       sheets met, filled here), seen (a picture or text),
+ *                       outgoing (the outgoing mode)
  * @return string
  */
 function pg_mail_html_walk($node, $depth, &$state)
@@ -442,7 +477,7 @@ function pg_mail_html_walk($node, $depth, &$state)
             continue;
         }
 
-        $attributes = pg_mail_html_attributes($child, $state['elements'][$name], $state['common']);
+        $attributes = pg_mail_html_attributes($child, $state['elements'][$name], $state['common'], !empty($state['outgoing']));
 
         // A picture with nothing left to show is left out.
         if (($name === 'img') && !isset($attributes['src']) && !isset($attributes['data-pg-src']) && !isset($attributes['data-pg-cid'])) {
@@ -467,21 +502,22 @@ function pg_mail_html_walk($node, $depth, &$state)
 }
 
 /**
- * Cleans a mail's HTML part. The result is a fragment: the mail's style
- * sheets (cleaned) in one <style> element, then the body's kept content,
- * inside a <div> carrying the body's own look when it had one. '' when
- * there is no HTML, it is larger than pg_mail_html_max_bytes() before or
- * after cleaning, nothing to read is left, or PHP has no DOM extension.
+ * Reads HTML and walks it in either mode: the body's kept content, the
+ * body's own look (style, class, dir, lang, bgcolor as a background
+ * colour), the style sheets met and whether anything to read was found.
+ * null when there is no HTML, it is over pg_mail_html_max_bytes(), it
+ * cannot be read or PHP has no DOM extension.
  *
- * @param string $html UTF-8, as pg_mail_parse() gives it
- * @return string
+ * @param string $html
+ * @param bool   $outgoing
+ * @return array|null content, look, sheet, seen
  */
-function pg_mail_html_clean($html)
+function pg_mail_html_read($html, $outgoing)
 {
     $html = (string) $html;
 
     if ((trim($html) === '') || (strlen($html) > pg_mail_html_max_bytes()) || !class_exists('DOMDocument')) {
-        return '';
+        return null;
     }
 
     if (function_exists('mb_convert_encoding')) {
@@ -499,7 +535,7 @@ function pg_mail_html_clean($html)
     libxml_use_internal_errors($errors);
 
     if (!$loaded) {
-        return '';
+        return null;
     }
 
     $state = array(
@@ -509,10 +545,12 @@ function pg_mail_html_clean($html)
         'void'     => array_flip(pg_mail_html_void_elements()),
         'sheets'   => array(),
         'seen'     => false,
+        'outgoing' => (bool) $outgoing,
     );
 
     $body = $document->getElementsByTagName('body')->item(0);
     $content = '';
+    $look = array();
 
     foreach ($document->getElementsByTagName('head') as $head) {
         pg_mail_html_walk($head, 1, $state);
@@ -520,7 +558,7 @@ function pg_mail_html_clean($html)
 
     if ($body) {
         $content = pg_mail_html_walk($body, 1, $state);
-        $look = pg_mail_html_attributes($body, array('background'), array('style', 'class', 'dir', 'lang', 'bgcolor'));
+        $look = pg_mail_html_attributes($body, array('background'), array('style', 'class', 'dir', 'lang', 'bgcolor'), (bool) $outgoing);
 
         // bgcolor means nothing on a <div>: it becomes the first declaration.
         if (isset($look['bgcolor'])) {
@@ -532,24 +570,79 @@ function pg_mail_html_clean($html)
                 $look['style'] = $style;
             }
         }
-
-        if ($look) {
-            $tag = '<div';
-
-            foreach ($look as $attribute => $value) {
-                $tag .= ' ' . $attribute . '="' . htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
-            }
-
-            $content = $tag . '>' . $content . '</div>';
-        }
     }
 
-    if (!$state['seen']) {
+    return array(
+        'content' => $content,
+        'look'    => $look,
+        'sheet'   => pg_mail_html_sheet(implode("\n", $state['sheets']), 0, (bool) $outgoing),
+        'seen'    => $state['seen'],
+    );
+}
+
+/**
+ * An element's attributes written out.
+ *
+ * @param array $attributes name => value
+ * @return string
+ */
+function pg_mail_html_attribute_string($attributes)
+{
+    $out = '';
+
+    foreach ($attributes as $attribute => $value) {
+        $out .= ' ' . $attribute . '="' . htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '"';
+    }
+
+    return $out;
+}
+
+/**
+ * Cleans a mail's HTML part. The result is a fragment: the mail's style
+ * sheets (cleaned) in one <style> element, then the body's kept content,
+ * inside a <div> carrying the body's own look when it had one. '' when
+ * there is no HTML, it is larger than pg_mail_html_max_bytes() before or
+ * after cleaning, nothing to read is left, or PHP has no DOM extension.
+ *
+ * @param string $html UTF-8, as pg_mail_parse() gives it
+ * @return string
+ */
+function pg_mail_html_clean($html)
+{
+    $read = pg_mail_html_read($html, false);
+
+    if (($read === null) || !$read['seen']) {
         return '';
     }
 
-    $sheet = pg_mail_html_sheet(implode("\n", $state['sheets']));
-    $out = (($sheet !== '') ? '<style>' . $sheet . '</style>' : '') . $content;
+    $content = $read['look'] ? '<div' . pg_mail_html_attribute_string($read['look']) . '>' . $read['content'] . '</div>' : $read['content'];
+    $out = (($read['sheet'] !== '') ? '<style>' . $read['sheet'] . '</style>' : '') . $content;
+
+    return (strlen($out) > pg_mail_html_max_bytes()) ? '' : $out;
+}
+
+/**
+ * Cleans HTML pasted as a campaign's body (the outgoing mode): a whole
+ * document again, its style sheet (with @media rules) in the head, the
+ * body's own look on <body>, https pictures and https url() kept, merge
+ * fields kept in links. '' when nothing to read is left or it is over
+ * pg_mail_html_max_bytes() before or after cleaning.
+ *
+ * @param string $html UTF-8
+ * @return string a document
+ */
+function pg_mail_html_clean_outgoing($html)
+{
+    $read = pg_mail_html_read($html, true);
+
+    if (($read === null) || !$read['seen']) {
+        return '';
+    }
+
+    $out = '<!DOCTYPE html><html><head><meta charset="utf-8">'
+        . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        . (($read['sheet'] !== '') ? '<style>' . $read['sheet'] . '</style>' : '')
+        . '</head><body' . pg_mail_html_attribute_string($read['look']) . '>' . $read['content'] . '</body></html>';
 
     return (strlen($out) > pg_mail_html_max_bytes()) ? '' : $out;
 }

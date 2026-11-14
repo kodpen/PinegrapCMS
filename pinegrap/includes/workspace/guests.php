@@ -1109,16 +1109,25 @@ function ws_guest_refs($bodies)
             }
 
             $person = ($token['type'] === 'user');
+            $label = $person ? '@' . ws_person_name((int) $token['id']) : ($kinds[$token['type']]['label'] ?? str_replace('_', ' ', $token['type']));
+
+            // An agent or an assistant by its @name, as the team reads it;
+            // any other application by the word alone.
+            if ($token['type'] === 'app') {
+                $agent = ws_guest_agent_apps()[(int) $token['id']] ?? null;
+                $label = $agent ? $agent['tag'] : '@' . lang('Application');
+                $person = true;
+            }
 
             $refs[$key] = array(
                 'type'   => $token['type'],
                 'id'     => (int) $token['id'],
-                'label'  => $person ? '@' . ws_person_name((int) $token['id']) : ($kinds[$token['type']]['label'] ?? str_replace('_', ' ', $token['type'])),
+                'label'  => $label,
                 'url'    => '',
                 'meta'   => '',
                 'status' => '',
                 'known'  => true,
-                'icon'   => $person ? 'bi-person' : ($kinds[$token['type']]['icon'] ?? ''),
+                'icon'   => ($token['type'] === 'app') ? 'bi-robot' : ($person ? 'bi-person' : ($kinds[$token['type']]['icon'] ?? '')),
             );
         }
     }
@@ -1127,11 +1136,106 @@ function ws_guest_refs($bodies)
 }
 
 /**
+ * The applications whose lines a guest reads: Claude's, Pinegrap AI's and
+ * every registry agent's (ws_agents, any status, so earlier lines of a
+ * paused agent stay). Any other application (CI, an integration) is left
+ * out. Read once per request.
+ *
+ * @return array app_id => name, tag (@handle), badge
+ */
+function ws_guest_agent_apps()
+{
+    static $apps = null;
+
+    if ($apps !== null) {
+        return $apps;
+    }
+
+    $apps = array();
+
+    if (function_exists('ws_agents_ready') && ws_agents_ready()) {
+        foreach ((array) db_items("SELECT app_id, handle, name FROM ws_agents WHERE app_id > 0 AND kind IN ('app', 'model') ORDER BY id") as $row) {
+            if (!isset($apps[(int) $row['app_id']])) {
+                $name = trim((string) $row['name']);
+                $apps[(int) $row['app_id']] = array('name' => ($name !== '') ? $name : '@' . $row['handle'], 'tag' => '@' . $row['handle'], 'badge' => lang('AI agent'));
+            }
+        }
+    }
+
+    $claude_app_id = (function_exists('ws_claude_schema_ready') && ws_claude_schema_ready()) ? (int) ws_claude_config()['app_id'] : 0;
+    $ai_app_id = (function_exists('ws_ai_schema_ready') && ws_ai_schema_ready()) ? (int) ws_ai_config()['app_id'] : 0;
+
+    if ($claude_app_id > 0) {
+        $apps[$claude_app_id] = array('name' => 'Claude', 'tag' => '@Claude', 'badge' => lang('AI assistant'));
+    }
+
+    if ($ai_app_id > 0) {
+        $apps[$ai_app_id] = array('name' => 'Pinegrap AI', 'tag' => '@ai', 'badge' => lang('AI assistant'));
+    }
+
+    return $apps;
+}
+
+/**
+ * Whose line a message is on the guest page, or '' when the guest does not
+ * see it: a person of the team, a guest, or an agent (a registry agent, an
+ * assistant, an MCP agent's answer kept in its asker's name). Lines of other
+ * applications, system lines and every other kind are not the guest's. Pure.
+ *
+ * @param array $row        sender_kind, sender_id, kind
+ * @param int[] $agent_apps ws_guest_agent_apps() keys
+ * @param bool  $mcp_answer the message is an MCP agent's answer
+ * @return string person | guest | agent | ''
+ */
+function ws_guest_line_sender($row, $agent_apps, $mcp_answer = false)
+{
+    if (!in_array((string) ($row['kind'] ?? ''), array('message', 'decision', 'note', 'task'), true)) {
+        return '';
+    }
+
+    switch ((string) ($row['sender_kind'] ?? '')) {
+        case 'guest':
+            return 'guest';
+
+        case 'user':
+            return $mcp_answer ? 'agent' : 'person';
+
+        case 'app':
+            return (($row['kind'] !== 'task') && in_array((int) ($row['sender_id'] ?? 0), array_map('intval', (array) $agent_apps), true)) ? 'agent' : '';
+    }
+
+    return '';
+}
+
+/**
+ * The WHERE part of the senders a guest reads: people, guests and the
+ * applications of ws_guest_agent_apps(). Pure.
+ *
+ * @param int[]  $agent_apps
+ * @param string $alias table prefix with its dot, e.g. 'm.'
+ * @return string
+ */
+function ws_guest_lines_sql($agent_apps, $alias = '')
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $agent_apps), function ($id) { return $id > 0; })));
+    $people = $alias . "sender_kind IN ('user', 'guest')";
+
+    if (empty($ids)) {
+        return $people;
+    }
+
+    return '(' . $people . ' OR (' . $alias . "sender_kind = 'app' AND " . $alias . "kind <> 'task' AND " . $alias . 'sender_id IN (' . implode(',', $ids) . ')))';
+}
+
+/**
  * The messages of the guest's room as the guest reads them: drawn by the
  * same engine the staff's screen uses - formatting, tables, sums, code,
  * titled blocks, checklists - with the files and pictures, the polls and the
  * task cards staff put in the room. What the guest writes is drawn with the
  * few marks a guest may use. The room's system lines are the staff's.
+ * The lines of the channel's agents and of the assistants are listed beside
+ * people's, under their name and badge, without their change cards, buttons
+ * or request lines; their polls and checklists are read, not answered.
  *
  * @param array $context
  * @param int   $after  only the ones after this id
@@ -1146,11 +1250,12 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
     // The current conversation only: what came before a clear is an earlier
     // version the team keeps (eras.php).
     $floor = ws_guest_room_floor($channel_id);
+    $agent_apps = ws_guest_agent_apps();
 
     $rows = array_reverse((array) db_items("SELECT id, parent_id, sender_kind, sender_id, kind, body, task_id, file_id, file_name, edited_at, created_at
         FROM ws_messages
         WHERE channel_id = '" . $channel_id . "' AND deleted_at = 0
-        AND kind IN ('message', 'decision', 'note', 'task') AND sender_kind IN ('user', 'guest')
+        AND kind IN ('message', 'decision', 'note', 'task') AND " . ws_guest_lines_sql(array_keys($agent_apps)) . "
         AND id > '" . max((int) $after, $floor) . "'
         ORDER BY id DESC LIMIT " . max(1, min(200, (int) $limit))));
 
@@ -1175,7 +1280,9 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
         }
     }
 
-    $staff_rows = array_filter($rows, function ($row) { return $row['sender_kind'] === 'user'; });
+    // MCP agents' answers are kept in their askers' names (mcp_agent.php).
+    $mcp = function_exists('ws_mcp_agent_answers_map') ? ws_mcp_agent_answers_map($ids) : array();
+    $staff_rows = array_filter($rows, function ($row) { return $row['sender_kind'] !== 'guest'; });
     $refs = ws_guest_refs(array_map(function ($row) { return (string) $row['body']; }, $staff_rows));
     $checks = function_exists('ws_checks_map') ? ws_checks_map($ids) : array();
     $polls = function_exists('ws_polls_map') ? ws_polls_map($ids, array('id' => 0, 'role' => 3, 'member' => false, 'guest_id' => $guest_id)) : array();
@@ -1195,21 +1302,51 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
 
     foreach ($rows as $row) {
         $id = (int) $row['id'];
-        $staff = ($row['sender_kind'] === 'user');
+        $line = ws_guest_line_sender($row, array_keys($agent_apps), isset($mcp[$id]));
+
+        if ($line === '') {
+            continue;
+        }
+
+        $agent = ($line === 'agent');
+        $staff = ($line !== 'guest');
         $mine = !$staff && ((int) $row['sender_id'] === $guest_id);
-        $sender = $staff ? ($people[(int) $row['sender_id']] ?? null) : ws_guest_sender((int) $row['sender_id']);
-        $can_tick = $staff && !isset($listed[$id]);
+        $body = (string) $row['body'];
+        $badge = '';
+
+        if ($agent && isset($mcp[$id])) {
+            // Under the agent's own name, without the line naming its tool.
+            $view = ws_mcp_agent_answer_view($mcp[$id], $body);
+            $sender = $view['sender'];
+            $body = $view['text'];
+            $badge = lang('MCP agent');
+        } elseif ($agent) {
+            $sender = array('name' => $agent_apps[(int) $row['sender_id']]['name']) + ws_app_sender((int) $row['sender_id']);
+            $badge = $agent_apps[(int) $row['sender_id']]['badge'];
+        } else {
+            $sender = $staff ? ($people[(int) $row['sender_id']] ?? null) : ws_guest_sender((int) $row['sender_id']);
+        }
+
+        // An agent's checklist and poll ask the team: a guest reads them.
+        $can_tick = ($line === 'person') && !isset($listed[$id]);
+        $html = $staff ? ws_render_body($body, $refs, $checks[$id] ?? array(), $can_tick) : ws_guest_render($body);
+
+        if ($agent && (trim(strip_tags($html)) === '') && !isset($polls[$id])) {
+            continue;
+        }
 
         $message = array(
             'id'        => $id,
             'mine'      => $mine,
             'staff'     => $staff,
+            'agent'     => $agent,
+            'badge'     => $badge,
             'name'      => (string) ($sender['name'] ?? ''),
             'avatar'    => (string) ($sender['avatar'] ?? ''),
             'avatar_kind' => (string) ($sender['avatar_kind'] ?? ''),
             'initials'  => (string) ($sender['initials'] ?? ''),
             'tone'      => (int) ($sender['tone'] ?? 0),
-            'html'      => $staff ? ws_render_body((string) $row['body'], $refs, $checks[$id] ?? array(), $can_tick) : ws_guest_render($row['body']),
+            'html'      => $html,
             'time'      => date('d.m.Y H:i', (int) $row['created_at']),
             'edited'    => ((int) $row['edited_at'] > 0),
             'parent'    => null,
@@ -1224,10 +1361,23 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
             $quoted = db_item("SELECT id, sender_kind, sender_id, body, deleted_at, kind FROM ws_messages
                 WHERE id = '" . (int) $row['parent_id'] . "' AND channel_id = '" . $channel_id . "'");
 
-            if (is_array($quoted) && ((int) $quoted['deleted_at'] === 0) && in_array($quoted['kind'], array('message', 'decision', 'note'), true)
-                && in_array($quoted['sender_kind'], array('user', 'guest'), true)) {
-                $quoted_sender = ($quoted['sender_kind'] === 'guest') ? ws_guest_sender((int) $quoted['sender_id']) : current(ws_people(array((int) $quoted['sender_id'])));
-                $plain = trim(preg_replace('/\s+/u', ' ', strip_tags(ws_guest_render($quoted['body']))));
+            $quoted_mcp = is_array($quoted) && function_exists('ws_mcp_agent_answers_map') ? ws_mcp_agent_answers_map(array((int) $quoted['id'])) : array();
+            $quoted_line = is_array($quoted) ? ws_guest_line_sender($quoted, array_keys($agent_apps), !empty($quoted_mcp)) : '';
+
+            if (is_array($quoted) && ((int) $quoted['deleted_at'] === 0) && in_array($quoted['kind'], array('message', 'decision', 'note'), true) && ($quoted_line !== '')) {
+                $quoted_body = (string) $quoted['body'];
+
+                if (!empty($quoted_mcp)) {
+                    $quoted_view = ws_mcp_agent_answer_view(current($quoted_mcp), $quoted_body);
+                    $quoted_sender = $quoted_view['sender'];
+                    $quoted_body = $quoted_view['text'];
+                } elseif ($quoted['sender_kind'] === 'app') {
+                    $quoted_sender = array('name' => $agent_apps[(int) $quoted['sender_id']]['name']);
+                } else {
+                    $quoted_sender = ($quoted['sender_kind'] === 'guest') ? ws_guest_sender((int) $quoted['sender_id']) : current(ws_people(array((int) $quoted['sender_id'])));
+                }
+
+                $plain = trim(preg_replace('/\s+/u', ' ', strip_tags(ws_guest_render($quoted_body))));
 
                 $message['parent'] = array(
                     'id'   => (int) $quoted['id'],
@@ -1239,7 +1389,7 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
 
         // A file or a picture staff put in the room, from the guest's own
         // address: the channel's folder opens to its members only.
-        if ($staff && ((int) $row['file_id'] > 0) && ((string) db_value("SELECT name FROM files WHERE id = '" . (int) $row['file_id'] . "'") !== '')) {
+        if (($line === 'person') && ((int) $row['file_id'] > 0) && ((string) db_value("SELECT name FROM files WHERE id = '" . (int) $row['file_id'] . "'") !== '')) {
             $message['file'] = array(
                 'name' => (string) $row['file_name'],
                 'url'  => $endpoint . '?file=' . $id,
@@ -1265,6 +1415,8 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
 
             $message['poll'] = array(
                 'id'       => (int) $poll['id'],
+                // An agent's question is the team's to answer (ws_guest_vote()).
+                'readonly' => $agent,
                 'multiple' => !empty($poll['multiple']),
                 'closed'   => !empty($poll['closed']),
                 'closes'   => (string) $poll['closes'],
@@ -1366,6 +1518,21 @@ function ws_guest_message_in_reach($message_id, $floor)
 }
 
 /**
+ * Is a message a person's own line, not an agent's (an MCP agent's answer is
+ * kept in its asker's name)? A guest votes and ticks only on those.
+ *
+ * @param int $message_id
+ * @return bool
+ */
+function ws_guest_person_line($message_id)
+{
+    $row = db_item("SELECT sender_kind, sender_id, kind FROM ws_messages WHERE id = '" . (int) $message_id . "'");
+    $mcp = function_exists('ws_mcp_agent_answers_map') ? ws_mcp_agent_answers_map(array((int) $message_id)) : array();
+
+    return is_array($row) && (ws_guest_line_sender($row, array(), !empty($mcp)) === 'person');
+}
+
+/**
  * The guest's vote in a poll of their room, replacing the one before; an
  * empty choice takes it back.
  *
@@ -1380,6 +1547,11 @@ function ws_guest_vote($context, $poll_id, $option_ids)
 
     if (!$poll || ((int) $poll['channel_id'] !== (int) $context['channel']['id']) || !ws_guest_votes_ready()
         || !ws_guest_message_in_reach($poll['message_id'], ws_guest_room_floor($context['channel']['id']))) {
+        return array('ok' => false, 'error' => lang('Invalid request.'));
+    }
+
+    // An agent's poll asks the team, never a guest (ws_guest_messages()).
+    if (!ws_guest_person_line((int) $poll['message_id'])) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
     }
 
@@ -1424,7 +1596,8 @@ function ws_guest_check($context, $message_id, $item, $checked)
         WHERE id = '" . (int) $message_id . "' AND " . ws_guest_message_reach_sql($context['channel']['id'], ws_guest_room_floor($context['channel']['id'])) . "
         AND sender_kind = 'user'");
 
-    if (!is_array($message) || !ws_guest_votes_ready() || !function_exists('ws_checklist_items')) {
+    // An MCP agent's answer is kept in its asker's name: its list is the agent's.
+    if (!is_array($message) || !ws_guest_votes_ready() || !function_exists('ws_checklist_items') || !ws_guest_person_line((int) $message['id'])) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
     }
 
@@ -1554,7 +1727,8 @@ function ws_guest_send($context, $text, $parent_id = 0)
     $parent_id = (int) $parent_id;
 
     if (($parent_id > 0) && ((int) db_value("SELECT COUNT(*) FROM ws_messages
-        WHERE id = '" . $parent_id . "' AND channel_id = '" . (int) $channel['id'] . "' AND deleted_at = 0 AND kind = 'message'") === 0)) {
+        WHERE id = '" . $parent_id . "' AND channel_id = '" . (int) $channel['id'] . "' AND deleted_at = 0 AND kind = 'message'
+        AND " . ws_guest_lines_sql(array_keys(ws_guest_agent_apps()))) === 0)) {
         $parent_id = 0;
     }
 
@@ -1608,7 +1782,7 @@ function ws_guest_react($context, $message_id, $emoji)
 
     $message = db_item("SELECT id FROM ws_messages
         WHERE id = '" . (int) $message_id . "' AND " . ws_guest_message_reach_sql($context['channel']['id'], ws_guest_room_floor($context['channel']['id'])) . "
-        AND kind = 'message' AND sender_kind IN ('user', 'guest')");
+        AND kind = 'message' AND " . ws_guest_lines_sql(array_keys(ws_guest_agent_apps())));
 
     if (!is_array($message)) {
         return array('ok' => false, 'error' => lang('That message could not be found.'));

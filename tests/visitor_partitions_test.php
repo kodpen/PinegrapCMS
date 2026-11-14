@@ -59,6 +59,26 @@ function test_visitor_partition_months_by_the_site_clock()
 	});
 }
 
+// The card names a month by its partition's name; a bound made on another
+// clock (the table split while PHP ran on UTC, read on a UTC+3 site) still
+// names its own month, not the next one.
+function test_visitor_partition_month_label()
+{
+	pg_test_visitor_partition_in_zone('Europe/Istanbul', function () {
+
+		$utc_november = gmmktime(0, 0, 0, 11, 1, 2026);
+
+		pg_assert_same('2026-10', pg_visitor_partition_month_label($utc_november, 'p202610'), 'by the name');
+		pg_assert_same('2026-10', pg_visitor_partition_month_label($utc_november), 'a bound made on UTC, read three hours ahead');
+		pg_assert_same('2026-10', pg_visitor_partition_month_label(mktime(0, 0, 0, 11, 1, 2026)), 'a bound on the site clock');
+		pg_assert_same('2026-12', pg_visitor_partition_month_label(gmmktime(0, 0, 0, 1, 1, 2027), 'odd_name'), 'a name that is not a month');
+	});
+
+	pg_test_visitor_partition_in_zone('America/Los_Angeles', function () {
+		pg_assert_same('2026-10', pg_visitor_partition_month_label(gmmktime(0, 0, 0, 11, 1, 2026)), 'a bound made on UTC, read behind it');
+	});
+}
+
 // One month from the oldest visit's to two months after now, each bounded by
 // the start of the next month.
 function test_visitor_partition_plan_from_the_oldest_visit()

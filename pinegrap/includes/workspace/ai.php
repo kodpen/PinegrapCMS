@@ -3136,6 +3136,24 @@ function ws_ai_author($row, $mail = null, $tags = true)
 }
 
 /**
+ * Whether a message comes from outside the team: a guest's line or an
+ * incoming mail. An agent and an assistant read it as data, never as a
+ * request (pg_ai_prompt_rules()). Pure.
+ *
+ * @param string $sender_kind    ws_messages.sender_kind
+ * @param string $mail_direction a mail's ws_mail_items.direction (in | out)
+ * @return bool
+ */
+function ws_message_outside($sender_kind, $mail_direction = 'in')
+{
+    if ((string) $sender_kind === 'guest') {
+        return true;
+    }
+
+    return ((string) $sender_kind === 'mail') && ((string) $mail_direction !== 'out');
+}
+
+/**
  * Who wrote a mail's message: the sender the mail names, or the team's
  * writer of an answer sent by e-mail.
  *
@@ -3186,7 +3204,7 @@ function ws_ai_author_words($kind, $name, $detail = '')
             return $name;
 
         case 'guest':
-            return $name . ' (guest)';
+            return $name . ' (guest, outside the team)';
 
         case 'mail':
             if (($name === '') || ($name === $detail)) {

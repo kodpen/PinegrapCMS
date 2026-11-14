@@ -114,6 +114,28 @@ function ws_mail_phone_box_values($app, $channel_id)
 }
 
 /**
+ * The SMS box's columns from the provider, its receiving number and the
+ * chosen channel. Pure.
+ *
+ * @param string $provider   pg_sms_providers() key
+ * @param string $number     the number customers write to, as shown
+ * @param int    $channel_id 0 for none: the box is kept, switched off
+ * @return array name, address, settings (JSON), channel_id, enabled
+ */
+function ws_mail_phone_sms_box_values($provider, $number, $channel_id)
+{
+    $number = trim((string) $number);
+
+    return array(
+        'name'       => mb_substr(($number !== '') ? 'SMS ' . $number : 'SMS', 0, 100),
+        'address'    => mb_substr($number, 0, 255),
+        'settings'   => json_encode(array('app' => 'sms', 'provider' => (string) $provider)),
+        'channel_id' => max(0, (int) $channel_id),
+        'enabled'    => ((int) $channel_id > 0) ? 1 : 0,
+    );
+}
+
+/**
  * The channels the WhatsApp card offers: the open and private channels the
  * person may read, as a mailbox's form offers them.
  *
@@ -154,8 +176,13 @@ function ws_mail_phone_channel_decide($posted, $channels, $kept)
  * @param int   $kept     the box's channel now, 0 for none
  * @return string HTML
  */
-function ws_mail_phone_channel_html($channels, $kept)
+function ws_mail_phone_channel_html($channels, $kept, $transport = 'whatsapp')
 {
+    $name = ($transport === 'sms') ? 'sms_channel' : 'whatsapp_channel';
+    $help = ($transport === 'sms')
+        ? lang('A customer\'s SMS opens a conversation in this channel, or joins the open one of their number, as an e-mail does in a mailbox\'s channel.')
+        : lang('A customer\'s WhatsApp message opens a conversation in this channel, or joins the open one of their number, as an e-mail does in a mailbox\'s channel.');
+
     $options = '<option value="0">' . h(lang('No channel: a notice and the contact\'s history only')) . '</option>';
 
     if (((int) $kept > 0) && !isset($channels[(int) $kept])) {
@@ -169,9 +196,9 @@ function ws_mail_phone_channel_html($channels, $kept)
 
     return '
                                                         <div class="pg-f-md">
-                                                            <label for="whatsapp_channel" class="form-label">' . lang('Channel') . '</label>
-                                                            <select name="whatsapp_channel" id="whatsapp_channel" class="form-control">' . $options . '</select>
-                                                            <div class="form-text">' . lang('A customer\'s WhatsApp message opens a conversation in this channel, or joins the open one of their number, as an e-mail does in a mailbox\'s channel.') . '</div>
+                                                            <label for="' . $name . '" class="form-label">' . lang('Channel') . '</label>
+                                                            <select name="' . $name . '" id="' . $name . '" class="form-control">' . $options . '</select>
+                                                            <div class="form-text">' . $help . '</div>
                                                         </div>';
 }
 
@@ -187,12 +214,25 @@ function ws_mail_phone_channel_html($channels, $kept)
  */
 function ws_mail_phone_box_save($app, $channel_id, $user_id)
 {
-    if (!ws_mail_phone_ready()) {
+    return ws_mail_phone_box_write('whatsapp', ws_mail_phone_box_values($app, $channel_id), $user_id);
+}
+
+/**
+ * Writes the box of a transport from its columns: added the first time a
+ * channel is chosen, kept in step after that.
+ *
+ * @param string $transport whatsapp or sms
+ * @param array  $values    ws_mail_phone_box_values() or _sms_box_values()
+ * @param int    $user_id
+ * @return bool
+ */
+function ws_mail_phone_box_write($transport, $values, $user_id)
+{
+    if (!ws_mail_phone_ready() || !in_array($transport, ws_mail_phone_transports(), true)) {
         return false;
     }
 
-    $box = ws_mail_phone_box('whatsapp');
-    $values = ws_mail_phone_box_values($app, $channel_id);
+    $box = ws_mail_phone_box($transport);
     $now = time();
 
     if (!$box) {
@@ -201,8 +241,8 @@ function ws_mail_phone_box_save($app, $channel_id, $user_id)
         }
 
         return (bool) db_q("INSERT INTO ws_mail_boxes (name, address, transport, settings, channel_id, enabled, created_by, created_at, updated_at)
-            VALUES (?, ?, 'whatsapp', ?, ?, ?, ?, ?, ?)", array(
-                $values['name'], $values['address'], $values['settings'], $values['channel_id'], $values['enabled'], (int) $user_id, $now, $now,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", array(
+                $values['name'], $values['address'], $transport, $values['settings'], $values['channel_id'], $values['enabled'], (int) $user_id, $now, $now,
             ));
     }
 
@@ -243,7 +283,7 @@ function ws_mail_phone_kind_text($kind)
  * already), held (WS_MAIL_SENDER_HOURLY from one number this hour), refused
  * (reason: no_box, no_number, no_channel, not_saved).
  *
- * @param array $box     ws_mail_phone_box('whatsapp')
+ * @param array $box     ws_mail_phone_box(): whatsapp or sms
  * @param array $message wamid, from (E.164 digits), name, text, kind,
  *                       contact_id, at
  * @param int   $now
@@ -266,7 +306,10 @@ function ws_mail_phone_ingest($box, $message, $now)
     }
 
     $number = '+' . $digits;
-    $hash = hash('sha256', 'whatsapp:' . (string) $message['wamid']);
+    // The provider's message id, prefixed by the transport so a WhatsApp and
+    // an SMS id never meet.
+    $transport = ((string) ($box['transport'] ?? '') === 'sms') ? 'sms' : 'whatsapp';
+    $hash = hash('sha256', $transport . ':' . (string) $message['wamid']);
 
     if ((int) db_value("SELECT id FROM ws_mail_items WHERE box_id = '" . $box_id . "' AND rfc_message_hash = '" . e($hash) . "'") > 0) {
         return array_merge($result, array('status' => 'duplicate'));
@@ -335,7 +378,7 @@ function ws_mail_phone_ingest($box, $message, $now)
         // A known customer's channels hear of it, as of a new e-mail.
         if ($contact_id > 0) {
             ws_mail_customer_lines(array('channel_id' => (int) $channel['id'], 'subject' => mb_substr($body, 0, 200), 'contact_id' => $contact_id, 'user_id' => 0),
-                ($name !== '') ? $name : $number, 'whatsapp');
+                ($name !== '') ? $name : $number, $transport);
         }
     }
 
@@ -379,17 +422,18 @@ function ws_mail_phone_card_viewer($user_id)
  * @param int $user_id
  * @return string HTML
  */
-function ws_mail_phone_card_field($user_id)
+function ws_mail_phone_card_field($user_id, $transport = 'whatsapp')
 {
+    $transport = ($transport === 'sms') ? 'sms' : 'whatsapp';
     $viewer = ws_mail_phone_card_viewer($user_id);
 
     if (!$viewer) {
         return '';
     }
 
-    $box = ws_mail_phone_box('whatsapp');
+    $box = ws_mail_phone_box($transport);
 
-    return ws_mail_phone_channel_html(ws_mail_phone_channels($viewer), $box ? (int) $box['channel_id'] : 0);
+    return ws_mail_phone_channel_html(ws_mail_phone_channels($viewer), $box ? (int) $box['channel_id'] : 0, $transport);
 }
 
 /**
@@ -401,19 +445,21 @@ function ws_mail_phone_card_field($user_id)
  * @param object $liveform
  * @return array|null channel_id; null when the field was not drawn or refused
  */
-function ws_mail_phone_card_check($post, $user_id, $liveform)
+function ws_mail_phone_card_check($post, $user_id, $liveform, $transport = 'whatsapp')
 {
+    $transport = ($transport === 'sms') ? 'sms' : 'whatsapp';
+    $field = $transport . '_channel';
     $viewer = ws_mail_phone_card_viewer($user_id);
 
-    if (!$viewer || !array_key_exists('whatsapp_channel', (array) $post)) {
+    if (!$viewer || !array_key_exists($field, (array) $post)) {
         return null;
     }
 
-    $box = ws_mail_phone_box('whatsapp');
-    $decided = ws_mail_phone_channel_decide($post['whatsapp_channel'], ws_mail_phone_channels($viewer), $box ? (int) $box['channel_id'] : 0);
+    $box = ws_mail_phone_box($transport);
+    $decided = ws_mail_phone_channel_decide($post[$field], ws_mail_phone_channels($viewer), $box ? (int) $box['channel_id'] : 0);
 
     if (!$decided['ok']) {
-        $liveform->mark_error('whatsapp_channel', lang('Choose a channel you can see.'));
+        $liveform->mark_error($field, lang('Choose a channel you can see.'));
 
         return null;
     }

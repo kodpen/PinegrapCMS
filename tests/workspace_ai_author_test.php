@@ -44,7 +44,7 @@ function test_workspace_ai_author_person_app_guest()
 	pg_assert_same('Ayşe Yılmaz', ws_ai_author_words('user', 'Ayşe Yılmaz'));
 	pg_assert_same('Ayşe Yılmaz (the reader)', ws_ai_author_words('user', 'Ayşe Yılmaz', '(the reader)'));
 	pg_assert_same('Claude', ws_ai_author_words('app', 'Claude'));
-	pg_assert_same('Mehmet (guest)', ws_ai_author_words('guest', 'Mehmet'));
+	pg_assert_same('Mehmet (guest, outside the team)', ws_ai_author_words('guest', 'Mehmet'));
 }
 
 function test_workspace_ai_author_incoming_mail()

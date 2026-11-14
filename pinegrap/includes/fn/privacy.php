@@ -173,6 +173,7 @@ function pg_consent_log_sources()
         'iys',          // pulled back from İYS
         'form',         // a custom form: a double opt-in group or a field bound to the e-mail opt-in
         'complaint',    // a spam complaint reported back for a message (includes/fn/mail_bounces.php)
+        'message',      // a stop word in a customer's SMS (includes/fn/sms_inbox.php)
     );
 }
 
@@ -784,7 +785,7 @@ function pg_consent_sms_checkout_row($form)
     return
         '<tr>
             <td>&nbsp;</td>
-            <td>' . $form->output_field(array('type' => 'checkbox', 'name' => 'opt_in_sms', 'id' => 'opt_in_sms', 'value' => '1', 'class' => 'software_input_checkbox')) . '<label for="opt_in_sms"> ' . h(lang('I want to receive campaign and offer messages by SMS.')) . '</label><input type="hidden" name="opt_in_sms_shown" value="1"></td>
+            <td>' . $form->output_field(array('type' => 'checkbox', 'name' => 'opt_in_sms', 'id' => 'opt_in_sms', 'value' => '1', 'class' => 'software_input_checkbox')) . '<label for="opt_in_sms"> ' . h(pg_sms_opt_in_label()) . '</label><input type="hidden" name="opt_in_sms_shown" value="1"></td>
         </tr>';
 }
 

@@ -502,3 +502,54 @@ function test_visitor_figure_text()
 		pg_assert_true(($text !== '620 MB') && (strpos($text, '620 MB') !== false), $source);
 	}
 }
+
+// Why "Clean up visitor records now" is off: another database job, no
+// period, or nothing older than the period; '' when it is on.
+function test_visitor_cleanup_disabled_reason()
+{
+	pg_assert_same('', pg_visitor_cleanup_disabled_reason(true, 90, 12));
+	pg_assert_same('busy', pg_visitor_cleanup_disabled_reason(false, 90, 12));
+	pg_assert_same('no_period', pg_visitor_cleanup_disabled_reason(true, 0, 0));
+	pg_assert_same('inside_period', pg_visitor_cleanup_disabled_reason(true, 90, 0));
+	pg_assert_same('busy', pg_visitor_cleanup_disabled_reason(false, 0, 0), 'the running job first');
+}
+
+// A rebuild gave room back only when the file is at least 1 MB and 1 %
+// smaller; an unknown size never says it shrank.
+function test_visitor_shrink_gave_room()
+{
+	$megabyte = 1048576.0;
+
+	pg_assert_true(pg_visitor_shrink_gave_room(1600 * $megabyte, 516 * $megabyte));
+	pg_assert_false(pg_visitor_shrink_gave_room(376 * $megabyte, 376 * $megabyte), 'the same size');
+	pg_assert_false(pg_visitor_shrink_gave_room(376 * $megabyte, 380 * $megabyte), 'larger');
+	pg_assert_false(pg_visitor_shrink_gave_room(1300 * $megabyte, 1295 * $megabyte), 'under 1 %');
+	pg_assert_false(pg_visitor_shrink_gave_room(20 * $megabyte, 19.5 * $megabyte), 'under 1 MB');
+	pg_assert_false(pg_visitor_shrink_gave_room(0.0, 300 * $megabyte), 'before unknown');
+	pg_assert_false(pg_visitor_shrink_gave_room(300 * $megabyte, 0.0), 'after unknown');
+}
+
+// The room a rebuild would give back: the larger of the free space the server
+// reports and the file less the rows' room; "Shrink now" shows from 32 MB.
+function test_visitor_shrink_gain()
+{
+	$megabyte = 1048576.0;
+
+	pg_assert_same(1200 * $megabyte, pg_visitor_shrink_gain(400 * $megabyte, 1600 * $megabyte, 50 * $megabyte));
+	pg_assert_same(11 * $megabyte, pg_visitor_shrink_gain(387 * $megabyte, 376 * $megabyte, 11 * $megabyte), 'rows as large as the file: only the free space');
+	pg_assert_same(0.0, pg_visitor_shrink_gain(0.0, 0.0, 0.0));
+	pg_assert_true(pg_visitor_shrink_offered(32 * $megabyte));
+	pg_assert_false(pg_visitor_shrink_offered(31 * $megabyte));
+}
+
+// Every record inside the period: the card says so and what a shorter period
+// does, which depends on how the table is kept.
+function test_visitor_inside_period_text()
+{
+	$split = pg_visitor_inside_period_text(90, true, 'innodb');
+	$whole = pg_visitor_inside_period_text(90, false, 'innodb');
+	$myisam = pg_visitor_inside_period_text(90, false, 'myisam');
+
+	pg_assert_true(strpos($split, '90') !== false, 'names the period');
+	pg_assert_true(($split !== $whole) && ($whole !== $myisam) && ($split !== $myisam), 'one text for each');
+}

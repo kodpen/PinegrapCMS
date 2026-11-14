@@ -35,6 +35,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_offer.php');
+
 // The template the settings' test message sends: Meta's sample, which a new
 // WhatsApp Business account has.
 define('PG_WHATSAPP_TEST_TEMPLATE', 'hello_world');
@@ -1119,10 +1121,15 @@ function pg_whatsapp_queue_row($to, $template, $options, $now)
 /**
  * Puts one template message in the queue for the general job
  * (pg_whatsapp_queue_run()). This is what a request calls: it makes no call
- * to Meta. A marketing template goes only to a number with SMS marketing
- * consent and no refusal (pg_sms_marketing_permission()), asked here and
- * again when the message is sent. Nothing is queued while WhatsApp is not
- * set up, so nothing collects on a site without it.
+ * to Meta. A marketing template, and any message that carries an offer
+ * code, goes only to a number with SMS marketing consent and no refusal
+ * (pg_sms_marketing_permission()), asked here and again when the message is
+ * sent. Nothing is queued while WhatsApp is not set up, so nothing collects
+ * on a site without it.
+ *
+ * Components that hold PG_WHATSAPP_OFFER_PLACEHOLDER get the template's
+ * offer code here: the offer's own code, or a single-use key made for this
+ * number (its id into key_code_id), so a retry sends the same code.
  *
  * db_q() rather than db(): a request that only wanted to send a message must
  * not end because the queue refused a row.
@@ -1144,7 +1151,10 @@ function pg_whatsapp_enqueue($to, $template, $options = array())
         return $refused;
     }
 
-    if ($row['category'] === 'MARKETING') {
+    $components = json_decode($row['payload'], true);
+    $offered = pg_whatsapp_offer_needed($components);
+
+    if (($row['category'] === 'MARKETING') || $offered) {
         $refusal = pg_sms_marketing_permission($row['recipient']);
 
         if ($refusal !== '') {
@@ -1168,8 +1178,30 @@ function pg_whatsapp_enqueue($to, $template, $options = array())
         return $refused;
     }
 
+    // An offer code is made only for a message not queued already: a second
+    // enqueue of the same reference must not leave a key nobody gets.
+    $row['key_code_id'] = 0;
+
+    if ($offered) {
+        if (($row['reference'] !== null) && ($existing = (int) db_value("SELECT id FROM whatsapp_outbox WHERE reference = '" . e($row['reference']) . "'"))) {
+            return array('ok' => true, 'row' => $existing, 'duplicate' => true, 'error' => '');
+        }
+
+        $code = pg_whatsapp_offer_code_for_send(
+            pg_whatsapp_offer_read($row['template_id'] ? db_value("SELECT offer FROM whatsapp_templates WHERE id = '" . (int) $row['template_id'] . "'") : ''),
+            $row['template_name'], $row['recipient']);
+
+        if (!$code['ok']) {
+            $refused['error'] = $code['error'];
+            return $refused;
+        }
+
+        $row['payload'] = json_encode(pg_whatsapp_offer_fill($components, $code['code']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $row['key_code_id'] = $code['key_code_id'];
+    }
+
     $columns = array('created_at', 'send_after', 'expires_at', 'status', 'kind', 'recipient', 'reference', 'contact_id',
-        'template_id', 'template_name', 'template_language', 'category', 'payload');
+        'template_id', 'template_name', 'template_language', 'category', 'payload', 'key_code_id');
     $values = array();
 
     foreach ($columns as $column) {
@@ -1185,8 +1217,11 @@ function pg_whatsapp_enqueue($to, $template, $options = array())
         return array('ok' => true, 'row' => (int) mysqli_insert_id(db::$con), 'duplicate' => false, 'error' => '');
     }
 
+    $errno = (int) mysqli_errno(db::$con);
+    pg_whatsapp_offer_key_disable($row['key_code_id']);
+
     // ER_DUP_ENTRY on the reference: this message is already in the queue.
-    if (($row['reference'] !== null) && ((int) mysqli_errno(db::$con) === 1062)) {
+    if (($row['reference'] !== null) && ($errno === 1062)) {
         $existing = (int) db_value("SELECT id FROM whatsapp_outbox WHERE reference = '" . e($row['reference']) . "'");
 
         return array('ok' => true, 'row' => $existing, 'duplicate' => true, 'error' => '');
@@ -1227,6 +1262,43 @@ function pg_whatsapp_queue_refusal($row, $app, $consent)
     }
 
     return null;
+}
+
+/**
+ * Whether a queued message is gated as marketing at the send (pure): it was
+ * queued as one, or Meta has moved its template to marketing since.
+ *
+ * @param string $queued  the category the row was queued with
+ * @param string $current the template's category now ('' when not found)
+ * @return bool
+ */
+function pg_whatsapp_queue_marketing($queued, $current)
+{
+    return (strtoupper((string) $queued) === 'MARKETING') || (strtoupper((string) $current) === 'MARKETING');
+}
+
+/**
+ * Whether a claimed row is gated as marketing at the send: its category as
+ * queued, its template's category now, and a key made for it (a message
+ * that carries an offer code).
+ *
+ * @param int    $id       whatsapp_outbox.id
+ * @param string $category the row's category
+ * @return bool
+ */
+function pg_whatsapp_queue_row_marketing($id, $category)
+{
+    $row = db_item(
+        "SELECT whatsapp_outbox.key_code_id, whatsapp_templates.category
+        FROM whatsapp_outbox
+        LEFT JOIN whatsapp_templates ON whatsapp_templates.id = whatsapp_outbox.template_id
+        WHERE whatsapp_outbox.id = '" . (int) $id . "'");
+
+    if (!is_array($row)) {
+        return pg_whatsapp_queue_marketing($category, '');
+    }
+
+    return pg_whatsapp_queue_marketing($category, (string) $row['category']) || ((int) $row['key_code_id'] > 0);
 }
 
 /**
@@ -1315,7 +1387,7 @@ function pg_whatsapp_queue_run($limit = 10, $seconds = 15)
         $send = null;
 
         if (!$expired) {
-            $consent = ($row['category'] !== 'MARKETING') || (pg_sms_marketing_permission($row['recipient']) === '');
+            $consent = !pg_whatsapp_queue_row_marketing($id, $row['category']) || (pg_sms_marketing_permission($row['recipient']) === '');
             $send = pg_whatsapp_queue_refusal($row, $app, $consent);
 
             if ($send === null) {
@@ -1350,6 +1422,12 @@ function pg_whatsapp_queue_run($limit = 10, $seconds = 15)
         }
 
         $result['failed']++;
+
+        // A key whose message did not go reached nobody; one that may have
+        // gone stays usable.
+        if ($outcome['status'] === 'failed') {
+            pg_whatsapp_offer_key_disable(db_value("SELECT key_code_id FROM whatsapp_outbox WHERE id = '" . $id . "'"));
+        }
 
         if ($outcome['status'] === 'uncertain') {
             log_activity(lang(array(
@@ -1626,7 +1704,7 @@ function pg_whatsapp_templates_job()
  * @param string $name
  * @param string $language
  * @return array|null id, meta_id, name, language, category, status,
- *                    parameter_format, components (decoded)
+ *                    parameter_format, components (decoded), offer (JSON)
  */
 function pg_whatsapp_template_find($name, $language)
 {
@@ -1635,7 +1713,7 @@ function pg_whatsapp_template_find($name, $language)
     }
 
     $row = db_item(
-        "SELECT id, meta_id, name, language, category, status, parameter_format, components
+        "SELECT id, meta_id, name, language, category, status, parameter_format, components, offer
         FROM whatsapp_templates
         WHERE (name = '" . e((string) $name) . "') AND (language = '" . e((string) $language) . "')");
 

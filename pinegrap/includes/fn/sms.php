@@ -685,6 +685,22 @@ function pg_sms_number_sql($column)
 }
 
 /**
+ * The text of the SMS marketing consent box a visitor ticks. Consent given
+ * there covers WhatsApp's marketing templates too, so while WhatsApp is set
+ * up the box names both.
+ *
+ * @return string
+ */
+function pg_sms_opt_in_label()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+
+    return pg_whatsapp_ready()
+        ? lang('I want to receive campaign and offer messages by SMS and WhatsApp.')
+        : lang('I want to receive campaign and offer messages by SMS.');
+}
+
+/**
  * Why a marketing message may not go to a number, read from the database:
  * the contacts whose mobile number it is, and the contacts whose answer at a
  * checkout was about it (the billing phone of their latest order, as
@@ -1668,7 +1684,10 @@ function pg_sms_settings_fields()
     foreach (pg_sms_providers() as $key => $definition) {
         $html .= '
                                                         <div class="col-12" data-sms-provider="' . h($key) . '"' . (($key === $shown) ? '' : ' hidden') . '>
-                                                            <div class="row gy-5">' . pg_sms_settings_account_fields($key, $definition, ($key === $shown) ? $app : pg_sms_app($key)) . '
+                                                            <div class="row gy-5">' . pg_sms_settings_account_fields($key, $definition, ($key === $shown) ? $app : pg_sms_app($key))
+                                                                // Customers' SMS into a channel, for a provider that
+                                                                // can receive them (includes/fn/sms_inbox.php).
+                                                                . (function_exists('pg_sms_channel_field') ? pg_sms_channel_field($key, defined('USER_ID') ? USER_ID : 0) : '') . '
                                                             </div>
                                                         </div>';
     }

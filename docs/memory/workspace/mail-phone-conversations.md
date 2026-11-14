@@ -17,6 +17,7 @@ description: A customer's WhatsApp message as a Workspace conversation (WA13, #9
 - It joins the newest conversation of that number in the box that is not closed (status back to open, `mail_customer` to the holder), else opens one in the box's channel with the card as its first message. An archived channel refuses (`no_channel`).
 - A new conversation of a known contact writes "A WhatsApp message from {name} came into <#channel>: {first words}" into their channels (`ws_mail_customer_lines(..., 'whatsapp')`).
 - A message without text shows its kind ("[A picture]"); media is not fetched yet.
+- An SMS takes the same way through the `sms` box (`platform/sms-incoming.md`): the hash prefix, the customer line and the card's badge follow the box's transport; `ws_mail_phone_box_write()`, `ws_mail_phone_card_field()` / `_check()` take the transport.
 
 ## What does the card show and offer?
 - `ws_mail_items_map()` gives each item its box's `transport`; `ws_mail_card_html()` draws the WhatsApp badge and the number in place of the address (the name is the message's sender). Status and holder as a mail's.

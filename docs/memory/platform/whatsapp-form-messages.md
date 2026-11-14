@@ -8,7 +8,7 @@ module: whatsapp_forms
 - On the custom form page's settings, after "E-mail Submitter": "WhatsApp Message to Submitter" (`pg_whatsapp_form_section_html()`), drawn once the form has fields. A switch, "Mobile Number Field", "Template" and one list per variable.
 - The number field is one of the form's text boxes, the one filling the contact's mobile phone listed first (`pg_whatsapp_form_phone_choices()`).
 - A variable takes the store's name, the record's reference code or any field but an information block or a file upload (`pg_whatsapp_form_value_choices()`, values `store`, `reference_code`, `field:<id>`). A check box group's answers are joined with commas.
-- Templates are those of the WhatsApp Messages card ([[whatsapp-order-messages]]): approved, without a media header or a copy-code button. The template list and variable lists come from `pg_whatsapp_choice_html()` and `pg_whatsapp_choice_decide()`, shared with the order events.
+- Templates are those of the WhatsApp Messages card ([[whatsapp-order-messages]]): approved, without a media header, and a copy-code button only when the template has an offer code (`whatsapp-offer-codes.md`). The template list and variable lists come from `pg_whatsapp_choice_html()` and `pg_whatsapp_choice_decide()`, shared with the order events.
 
 ## Where is it kept?
 - `connect_apps` row `whatsapp_forms`, `options` = `{"forms":{"<page id>":{"on":bool,"phone_field":id,"template":"name|language","vars":{"<slot>":"<value>"}}}}`; no schema. A copied form page does not take the choice with it, and a deleted page's entry stays unread.

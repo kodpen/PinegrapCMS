@@ -2135,8 +2135,16 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         return;
     }
 
-    // An agent is asked in its channel; the box waits for its answer.
+    // An agent is asked in its channel; the box waits for its answer. A run
+    // a guest's message started asks no agent (ws_step_agent_guest_started()).
     if ($kind === 'agent') {
+        if (ws_step_agent_guest_started($context)) {
+            $end = ws_step_settlement(false, $routed);
+            ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], lang('A guest\'s message asks no agent.'));
+
+            return;
+        }
+
         ws_step_agent_ask($step, $owner, $action, $routed);
         return;
     }

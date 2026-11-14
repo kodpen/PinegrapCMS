@@ -14,7 +14,7 @@ description: Flows' Send a WhatsApp message box (kind whatsapp, WA7 #9372): an a
 ## How does it send?
 - Only queued: `pg_whatsapp_enqueue()` with kind `flow`, reference `flow:<run>:<pass>:<box>`; a marketing template expires 6 hours after queueing. Variables filled by `pg_whatsapp_message_components()` (WA5's, not copied).
 - Outputs `sent` (1 queued, 0 not) and `emailed` (the e-mails sent in its place).
-- Check: a template gone, not approved, with a media header or copy-code button, over 20 variables, or a variable left empty stops the box from being published.
+- Check: a template gone, not approved, with a media header or a copy-code button without an offer code (`platform/whatsapp-offer-codes.md`), over 20 variables, or a variable left empty stops the box from being published.
 
 ## When does the e-mail go in its place?
 - With `fallback` on: no number, or the message could not be queued (WhatsApp off, template not approved, consent refused, queue refusal). Check lets such a box through so the e-mail can go.
