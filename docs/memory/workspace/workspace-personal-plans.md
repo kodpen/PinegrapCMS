@@ -13,10 +13,8 @@ description: A person's private plans on My calendar (PC3): step 11.0.201, the g
 - Only `personal_plans.php` names the plan tables (besides the step and `get_tables()`); `tests/workspace_personal_plans_test.php` fails when another file does. Every read in the module goes through the gate.
 - No Site Log, audit line, webhook or flow event names a plan; nothing is exported.
 
-## How is a plan shared? (PC4)
-- "Who can see" on the drawer: Only me (`visibility` `me`, the default), Chosen team members (`people`, rows in `ws_personal_plan_people`; the owner and anyone off the team are dropped on save) or The whole team (`team`). The note above the title says who sees it.
-- The others read it on their My calendar and Today as "Plan of <owner>" ("admin kişisinin planı"), in a read-only drawer ("<owner> shared this plan with you. Only they can change it."), without the owner's reminder or the list of the others. Save and delete refuse them (only the owner may change it: `ws_personal_plan_can_edit()`).
-- Only the owner is reminded, so taking a share away leaves no inbox line to remove.
+## How is a plan shared?
+- PC4: `workspace-personal-plan-sharing.md`.
 
 ## How is a plan made and drawn?
 - My calendar: "New plan" in the toolbar and on a day's right-click menu opens the drawer (title, first and last day, All day, start and end time, reminder, note; "Only you see this plan."). A plan is drawn as kind `personal` (violet, a lock before its title; on a phone the bar takes the violet at 80%) and opens in the same drawer, with Delete (after a confirmation, no bin). `?plan=N` opens a plan.
