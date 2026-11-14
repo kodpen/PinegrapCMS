@@ -393,7 +393,7 @@ function ws_flow_actions_without_workspace()
  * assets/js/workspace_mail.js) sends, which answer on a site whose
  * Workspace is off while mail is on there (ws_mail_on()): the list, the
  * pane and its read marks, status and holder, answers by e-mail and by
- * WhatsApp, Send again, New e-mail and Forward, and the team the screen
+ * WhatsApp, Send again, New e-mail and Forward, Check e-mail, and the team the screen
  * picks a holder from (ws_bootstrap) with its run of what is due (ws_tick).
  * Every ws_mail_* action of ws_handle_action() is here
  * (tests/workspace_mail_gate_test.php). Pure.
@@ -404,7 +404,7 @@ function ws_mail_actions_without_workspace()
 {
     return array(
         'ws_bootstrap', 'ws_tick',
-        'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_conversation',
+        'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_conversation', 'ws_mail_check',
         'ws_mail_reply_form', 'ws_mail_reply', 'ws_mail_resend',
         'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward',
         'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
