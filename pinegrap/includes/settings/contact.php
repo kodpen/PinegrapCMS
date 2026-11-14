@@ -22,6 +22,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
 
 // ── Campaigns ──
 $pg_settings_cards[] = '

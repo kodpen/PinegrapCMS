@@ -228,6 +228,7 @@ description: Generated from the module field of the memory files: each includes/
 - `site_time_sql`: [[visitor-report-site-time]]
 - `sms_campaigns`: [[sms-campaign-limit-and-labels]], [[sms-campaign-screen-layout]], [[sms-campaigns]]
 - `sms_codes`: [[sms-codes]]
+- `sms_inbox`: [[sms-incoming]]
 - `speculation`: [[speculation-prefetch]], [[speculation-prefetch-left-out]]
 - `state_list_edit`: [[list-table-quick-edit-states]]
 - `stock_location_screens`: [[stock-locations-screens]]

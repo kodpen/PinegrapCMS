@@ -1668,7 +1668,10 @@ function pg_sms_settings_fields()
     foreach (pg_sms_providers() as $key => $definition) {
         $html .= '
                                                         <div class="col-12" data-sms-provider="' . h($key) . '"' . (($key === $shown) ? '' : ' hidden') . '>
-                                                            <div class="row gy-5">' . pg_sms_settings_account_fields($key, $definition, ($key === $shown) ? $app : pg_sms_app($key)) . '
+                                                            <div class="row gy-5">' . pg_sms_settings_account_fields($key, $definition, ($key === $shown) ? $app : pg_sms_app($key))
+                                                                // Customers' SMS into a channel, for a provider that
+                                                                // can receive them (includes/fn/sms_inbox.php).
+                                                                . (function_exists('pg_sms_channel_field') ? pg_sms_channel_field($key, defined('USER_ID') ? USER_ID : 0) : '') . '
                                                             </div>
                                                         </div>';
     }

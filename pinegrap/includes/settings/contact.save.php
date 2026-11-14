@@ -23,6 +23,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
 
 
 
@@ -124,6 +125,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
     $whatsapp_settings_post = pg_whatsapp_settings_check($_POST, $liveform);
     $whatsapp_messages_post = pg_whatsapp_message_settings_check($_POST, $liveform);
     $whatsapp_channel_post = pg_whatsapp_channel_check($_POST, USER_ID, $liveform);
+    $sms_channel_post = pg_sms_channel_check($_POST, USER_ID, $liveform);
 
     // ── İYS ──
     //
@@ -283,6 +285,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
     // config row; the test message, when its button was pressed, after that.
     pg_sms_settings_save($sms_settings_post, USER_ID, $liveform);
     pg_sms_message_settings_save($sms_messages_post, USER_ID);
+    pg_sms_channel_save($sms_channel_post, USER_ID);
     pg_whatsapp_settings_save($whatsapp_settings_post, USER_ID, $liveform);
     pg_whatsapp_channel_save($whatsapp_channel_post, USER_ID);
     pg_whatsapp_message_settings_save($whatsapp_messages_post, USER_ID);

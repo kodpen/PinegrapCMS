@@ -173,6 +173,7 @@ function pg_consent_log_sources()
         'iys',          // pulled back from İYS
         'form',         // a custom form: a double opt-in group or a field bound to the e-mail opt-in
         'complaint',    // a spam complaint reported back for a message (includes/fn/mail_bounces.php)
+        'message',      // a stop word in a customer's SMS (includes/fn/sms_inbox.php)
     );
 }
 

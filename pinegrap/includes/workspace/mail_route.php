@@ -276,6 +276,10 @@ function ws_mail_customer_line_text($name, $channel_id, $subject, $mailbox = '',
         return lang(array('string' => 'A WhatsApp message from {var:1} came into {var:2}: {var:3}', 'vars' => $vars));
     }
 
+    if ($transport === 'sms') {
+        return lang(array('string' => 'An SMS from {var:1} came into {var:2}: {var:3}', 'vars' => $vars));
+    }
+
     return lang(array('string' => 'An e-mail from {var:1} came into {var:2}: {var:3}', 'vars' => $vars));
 }
 
