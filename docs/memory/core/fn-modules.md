@@ -267,6 +267,7 @@ description: Generated from the module field of the memory files: each includes/
 - `user_list_edit`: [[list-table-quick-edit-users]]
 - `user_picker`: [[user-picker-search]]
 - `user_write`: [[user-write]]
+- `var_chips`: [[variable-chips]]
 - `variant_set_copy`: [[product-group-copy]]
 - `variant_set_list`: [[list-table-variant-sets]]
 - `vat_check`: [[eu-vat-check]]

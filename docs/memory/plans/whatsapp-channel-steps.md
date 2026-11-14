@@ -16,13 +16,14 @@ description: Steps WA0-WA11 of the WhatsApp channel plan (#8950): facts and stor
 - WA6 (M) Forms: a custom form's message to its sender: which field holds the number, which template, which fields fill it. Done in #9374: `platform/whatsapp-form-messages.md`. Not to be switched on anywhere before the owner's first live send.
 - WA7 (M) Done in #9372: `workspace/workspace-flows-whatsapp-box.md`. Flows: the box "Send a WhatsApp message" (recipient from a value, template, variables, "send an e-mail when there is no number or it fails") and the event "A WhatsApp message arrived" in the event start's catalogue; both general, by `workspace/workspace-flows-adding.md`.
 - WA8 (M) Template designer, first half. Done in #9350: `platform/whatsapp-template-designer.md`.
+- WA8b (S) Variables as chips (owner, channel 25 #2222). Done in #9376: `ui/variable-chips.md`.
 - WA9 (M) Template designer, second half: header image, video or document from Files, the buttons, "Send for approval", the state shown, editing a rejected template.
 - WA10 (M) Offer codes: the variable "Offer code" as the offer's shared code or a key made for the recipient at send time with the validity set on the template; the marketing consent gate of Ka on every path that sends.
 - WA11 (S) Close-out of WA1 to WA10: the lasting rules into `platform/`, the overview file. The plan is deleted by WA18 (`whatsapp-channel-steps-2.md`: a customer's WhatsApp message and SMS in a channel).
 
 ## In which order?
 - WA0 first; its questions (#9085) answered before WA2, WA3 and WA4 start, #9087 before WA10. WA1, then WA2, WA3 and WA4 one after the other (they share the module).
-- WA5, WA6 and WA7 after WA3, in any order. WA8 after WA3, WA9 after WA8, WA10 after WA9 and WA5.
+- WA5, WA6 and WA7 after WA3, in any order. WA8 after WA3, WA8b after WA8, WA9 after WA8b, WA10 after WA9 and WA5.
 - `flows-quick-setup.md` shows the WhatsApp step once WA7 has landed. The card, the template list and the queue tab move into the messages area when its shell is there (`messages-area-steps.md`).
 - Claim as `[plan:whatsapp-channel] <step> — <topic>`.
 

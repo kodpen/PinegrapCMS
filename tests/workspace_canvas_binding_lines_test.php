@@ -45,9 +45,9 @@ function test_workspace_canvas_binding_agent_name()
 
 function test_workspace_canvas_binding_line_text()
 {
-	pg_assert_same('@stock bound Products to Sales board · reads', ws_canvas_binding_line_text('@stock', 'Products', 'Sales board', 'read'));
+	pg_assert_same('@stock bound Products to Sales board · reads only', ws_canvas_binding_line_text('@stock', 'Products', 'Sales board', 'read'));
 	pg_assert_same('@stock bound Orders to Sales board · reads, writes', ws_canvas_binding_line_text('@stock', 'Orders', 'Sales board', 'write'));
-	pg_assert_same('@stock bound a table to Sales board · reads', ws_canvas_binding_line_text('@stock', '', 'Sales board', 'read'), 'a table the reader does not reach is not named');
+	pg_assert_same('@stock bound a table to Sales board · reads only', ws_canvas_binding_line_text('@stock', '', 'Sales board', 'read'), 'a table the reader does not reach is not named');
 }
 
 function test_workspace_canvas_binding_lines_from_refs()

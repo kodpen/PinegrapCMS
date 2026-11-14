@@ -842,9 +842,10 @@ if (!$table) {
     // The scopes as a segmented control with their counts, and the tables
     // beside the deleted ones; each segment is an address.
     $scope_items = array();
+    $segment_icons = ws_wtable_list_segment_icons();
 
     foreach (ws_wtable_list_scopes($with_channels) as $key => $label) {
-        $scope_items[] = array('label' => $label, 'url' => $self_url . (($key === 'all') ? '' : '?scope=' . $key), 'count' => $counts[$key], 'current' => ($key === $scope));
+        $scope_items[] = array('label' => $label, 'url' => $self_url . (($key === 'all') ? '' : '?scope=' . $key), 'count' => $counts[$key], 'current' => ($key === $scope), 'icon' => $segment_icons[$key] ?? 'bi-grid');
     }
 
     $scopes = $deleted_view ? '' : ws_wtable_list_segments(lang('Show'), $scope_items);
@@ -852,8 +853,8 @@ if (!$table) {
 
     if (ws_wtable_bin_ready()) {
         $views = ws_wtable_list_segments(lang('View'), array(
-            array('label' => lang('Tables'), 'url' => $self_url, 'current' => !$deleted_view),
-            array('label' => lang('Deleted tables'), 'url' => $self_url . '?view=deleted', 'current' => $deleted_view) + (empty($binned) ? array() : array('count' => count($binned))),
+            array('label' => lang('Tables'), 'url' => $self_url, 'current' => !$deleted_view, 'icon' => $segment_icons['tables']),
+            array('label' => lang('Deleted tables'), 'url' => $self_url . '?view=deleted', 'current' => $deleted_view, 'icon' => $segment_icons['deleted']) + (empty($binned) ? array() : array('count' => count($binned))),
         ));
     }
 
@@ -912,10 +913,14 @@ if (!$table) {
         </div>
     </dialog>';
 
-    $body = $import_card . $list_html . $windows;
+    // On a phone New table floats at the bottom right of the screen, in
+    // place of the toolbar's button.
+    $fab = '<button type="button" class="pg-button pg-button-fill ws-wt-fab sm:d-none" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>';
+
+    $body = $import_card . $list_html . $windows . $fab;
 
     $toolbar = pg_screen_toolbar(array(
-        'primary'   => '<button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>',
+        'primary'   => '<button type="button" class="pg-button pg-button-fill d-none sm:d-inline-flex" data-bs-toggle="dialog" data-bs-target="#ws_wt_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New table')) . '</button>',
         'secondary' => '<button type="button" class="pg-button pg-button-quiet" data-bs-toggle="dialog" data-bs-target="#ws_wt_import_new"><i class="bi bi-upload" aria-hidden="true"></i>' . h(lang('Import from file')) . '</button>',
         // Under the buttons, on a line of their own: the search, the
         // scopes and, at the right, the tables beside the deleted ones.

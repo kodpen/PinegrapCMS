@@ -7,6 +7,8 @@
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
+- agent-conclude-discussion.md: Plan (owner 2026-11-14): an agent concludes a discussion when a person in it asks, and unasked only offers a Conclude button a person presses
+- agent-drawing-guides.md: Plan (owner 2026-11-14): what the canvas side gives an agent's drawing: a guide it reads, charts as an operation, ready layouts, a chart preset for live pages
 - agent-knock-routine-form.md: Plan (architect 2026-11-13, #9241): a push door on a routine's fire address is knocked in the routine's form (it answered HTTP 400 to the webhook form); one step, RK1, then a live check
 - canvas-one-model.md: CO0 model of plans/canvas-one.md: what one canvas is in the store and the API: the message as its id, the drawing, page and data parts, one list of versions, the routes and the bridge's calls
 - canvas-one-schema.md: CO0 of plans/canvas-one.md: the five schema changes the later CO steps need (parts, bindings, consent, "through" on a row, channel tables), their issues and answers
@@ -15,6 +17,7 @@
 - canvas-one.md: Plan (owner 2026-11-12, #8850): the Workspace canvas as one thing with a drawing, a live page and data; the guarded bridge to the tables bound to it; tables as Data; steps in canvas-one-steps.md
 - channel-item-tags-wake-steps.md: Steps TW1-TW5 of the channel-item-tags-wake plan: file caption, edit, note and decision; other messages; polls, tasks; shared notes, table cells (agent channels, managers); close-out
 - channel-item-tags-wake.md: Plan: a tag anywhere in a Workspace channel item (file caption, edit, note, poll, task, table cell) wakes the tagged assistant as a text message does; rulings, shared helper
+- claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, in which order, and where each template stands
@@ -24,6 +27,7 @@
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
+- guest-channel-view.md: Plan (owner 2026-11-14): a guest sees the agents' messages on the guest page and still wakes no agent; guests listed in Channel info; the channel's agents' answers read aloud
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
 - kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
@@ -39,6 +43,7 @@
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
 - panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860, #9070), the list rules, what is only a placeholder
 - panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
+- picker-missing-name.md: Plan (owner 2026-11-14): a page or file field never leads with an id; the picker field's missing state in words, and a census of fields outside the picker that still print an id
 - report-screens-steps.md: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out
 - report-screens.md: Plan (owner 2026-11-11, #8673): the order, visitor, shipping and ERP VAT report screens drawn as the dashboard: figures, a chart, the table, settings in a drawer, ready reports; steps RS1-RS8
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
@@ -52,6 +57,7 @@
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
+- visitor-table-shrink.md: Plan (owner report 2026-11-13, was issue #9130): the visitor table that never gets smaller by itself where PHP cannot read the database disk, and the faults of the Visitor records card
 - whatsapp-channel-census.md: WA12's census (2026-11-13): what a WhatsApp or SMS conversation shares with the e-mail one (card, state, holder, list, notices, event, AI draft, rights) and what stays mail-only
 - whatsapp-channel-conversation-storage.md: WhatsApp and SMS conversations in the mail tables with a transport, an incoming SMS kept as a mail item, the answer's SMS kind, stop words (owner 2026-11-13, #9286)
 - whatsapp-channel-incoming-sms.md: Incoming SMS per provider (Netgsm, İleti Merkezi, Twilio), the WhatsApp message kinds shown, stop words, the SMS kind and consent of an answer (WA12; decided #9286)
