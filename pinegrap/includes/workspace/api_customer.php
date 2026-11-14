@@ -370,6 +370,8 @@ function ws_api_channel_customer_history($params)
     // (ws_customer_history_ref_rows()).
     $viewer['history_tasks'] = api_has_scope(api_current_scopes(), 'tasks:read');
     $viewer['history_claude'] = ws_api_is_claude();
+    // A person's own plans never reach an application (personal_plan_contact.php).
+    $viewer['history_plans'] = false;
     $identity = ws_customer_identity($viewer, $channel);
     $history = is_array($identity)
         ? ws_customer_history($viewer, $channel, $identity, (int) ($params['before'] ?? 0), ws_customer_history_limit($params['limit'] ?? null))

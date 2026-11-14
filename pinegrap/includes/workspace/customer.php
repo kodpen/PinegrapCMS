@@ -550,6 +550,10 @@ function ws_customer_js_strings()
         'cust_cart_quote_new' => lang('New cart quote'),
         'cust_forms'      => lang('Form submissions'),
         'cust_visits'     => lang('Customer visits'),
+        'cust_roadmaps'      => lang('Roadmaps'),
+        'cust_roadmap_new'   => lang('New roadmap'),
+        'cust_roadmap_empty' => lang('Empty roadmap'),
+        'cust_roadmap_copy'  => lang('Copy one of my plans'),
         'cust_empty'      => lang('Nothing to show for this customer yet.'),
         'cust_history'       => lang('History'),
         'cust_older'         => lang('Show older'),
@@ -1016,6 +1020,18 @@ function ws_customer_card($viewer, $channel)
 
     if (!empty($visits)) {
         $card['sections']['visits'] = $visits;
+    }
+
+    // The reader's roadmaps for the customer, and those opened to them
+    // (personal_plan_contact.php): nobody else learns of a plan here.
+    if (function_exists('ws_personal_plans_of_contact')) {
+        $roadmaps = ws_customer_card_roadmaps(ws_personal_plans_listed($viewer, ws_personal_plans_of_contact($viewer, $identity['contact_id'], 0, WS_PERSONAL_PLAN_CARD_ROWS)), $base);
+
+        if (!empty($roadmaps)) {
+            $card['sections']['roadmaps'] = $roadmaps;
+        }
+
+        $card['roadmap'] = ws_customer_card_roadmap_offer($viewer, $identity, $base);
     }
 
     return $card;

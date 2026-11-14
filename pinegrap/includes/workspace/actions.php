@@ -4766,6 +4766,20 @@ function ws_handle_action($action, $request)
 
             return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('roadmap' => $result['roadmap']));
 
+        // The customer a plan is made for (personal_plan_contact.php).
+        case 'ws_personal_plan_contact':
+            return ws_action_ok(array('contact' => ws_personal_plan_contact($viewer, (int) ($request['plan_id'] ?? 0))));
+
+        case 'ws_personal_plan_contact_save':
+            $result = ws_personal_plan_contact_save($viewer, (int) ($request['plan_id'] ?? 0), (int) ($request['contact_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error'], $result['field'] ?? '') : ws_action_ok(array('contact' => $result['contact']));
+
+        case 'ws_personal_plan_copy':
+            $result = ws_personal_plan_copy($viewer, (int) ($request['plan_id'] ?? 0), (int) ($request['contact_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('plan_id' => $result['plan_id'], 'url' => $result['url']));
+
         case 'ws_conflicts':
             $from = ws_date_or_null($request['from'] ?? '') ?: date('Y-m-d');
             $to = ws_date_or_null($request['to'] ?? '') ?: date('Y-m-d', strtotime('+13 days'));

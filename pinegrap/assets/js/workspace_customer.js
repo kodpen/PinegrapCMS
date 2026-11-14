@@ -152,6 +152,16 @@
             shown = true;
         }
 
+        // The person's own roadmaps for the customer, and those opened to
+        // them: sent only to readers the plans' gate lets see them.
+        if (sections.roadmaps) {
+            body.appendChild(sectionTitle(h, h.t('cust_roadmaps'), 'bi-signpost-split', 0));
+            sections.roadmaps.forEach(function (plan) {
+                body.appendChild(line(h, plan.title, plan.url, [plan.owner_text, plan.date_text], plan.progress_text));
+            });
+            shown = true;
+        }
+
         if (!shown) {
             body.appendChild(h.el('div', 'small fg-secondary mt-5', h.t('cust_empty')));
         }
@@ -170,6 +180,7 @@
         note: 'bi-journal-text',
         wtable_row: 'bi-table',
         visit: 'bi-geo-alt',
+        plan: 'bi-signpost-split',
         cart_quote: 'bi-cart3',
         whatsapp: 'bi-whatsapp'
     };
@@ -365,6 +376,55 @@
         return link;
     }
 
+    // "New roadmap": an empty plan for the customer on My calendar, or a copy
+    // of one of the person's own plans, starting today. Offered by the server
+    // only to a team member who may open the customer's contact.
+    function roadmapPart(h, offer) {
+        var part = h.el('div', 'card-body border-bottom d-none');
+        var open = h.button('btn btn-sm btn-outline theme-secondary', h.t('cust_roadmap_new'), 'bi-signpost-split');
+
+        open.setAttribute('aria-expanded', 'false');
+        open.addEventListener('click', function () {
+            var shown = !part.classList.contains('d-none');
+
+            h.clear(part);
+            part.classList.toggle('d-none', shown);
+            open.setAttribute('aria-expanded', shown ? 'false' : 'true');
+
+            if (shown) {
+                return;
+            }
+
+            var empty = h.el('a', 'btn btn-sm btn-solid theme-primary');
+            empty.href = offer.new_url;
+            empty.appendChild(h.icon('bi-plus-lg', 'me-1'));
+            empty.appendChild(document.createTextNode(h.t('cust_roadmap_empty')));
+            part.appendChild(empty);
+
+            if (!offer.copies.length) {
+                return;
+            }
+
+            part.appendChild(h.el('div', 'small fw-semibold mt-5 mb-1', h.t('cust_roadmap_copy')));
+            offer.copies.forEach(function (plan) {
+                var copy = h.button('btn btn-sm btn-link px-0 d-block text-start text-truncate', plan.title, 'bi-copy');
+
+                copy.addEventListener('click', function () {
+                    copy.disabled = true;
+                    h.api('ws_personal_plan_copy', { plan_id: plan.id, contact_id: offer.contact_id }).then(function (result) {
+                        window.location.href = result.url;
+                    }).catch(function (error) {
+                        copy.disabled = false;
+                        h.fail(error);
+                    });
+                });
+                part.appendChild(copy);
+            });
+        });
+
+        return { button: open, part: part };
+    }
+
     function card(channel, h) {
         var node = h.el('div', 'card ws-customer-card');
         var header = h.el('div', 'card-header d-flex flex-wrap justify-content-between align-items-center gap-3');
@@ -396,6 +456,13 @@
 
                 if (data.card.cart_quote_url) {
                     actions.insertBefore(cartQuoteLink(h, data.card.cart_quote_url), actions.firstChild);
+                }
+
+                if (data.card.roadmap) {
+                    var roadmap = roadmapPart(h, data.card.roadmap);
+
+                    actions.appendChild(roadmap.button);
+                    node.insertBefore(roadmap.part, body);
                 }
             } else {
                 node.remove();

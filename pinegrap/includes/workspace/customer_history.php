@@ -119,6 +119,12 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
     if ($rights['workspace']) {
         $data = array_merge($data, ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $read));
         $data['visits'] = ws_customer_history_visit_rows($identity, $before, $read);
+
+        // The roadmaps the reader may see, through the plans' gate; never
+        // to an application (the API's reader sets history_plans false).
+        if (function_exists('ws_personal_plans_of_contact') && ($viewer['history_plans'] ?? true)) {
+            $data['plans'] = ws_personal_plans_listed($viewer, ws_personal_plans_of_contact($viewer, $identity['contact_id'] ?? 0, $before, $read));
+        }
     }
 
     $whatsapp_contact = $rights['whatsapp'] ? ws_customer_history_whatsapp_contact($viewer, $identity, 'ws_viewer_contacts_open') : 0;
@@ -172,7 +178,8 @@ function ws_customer_history_whatsapp_contact($viewer, $identity, $open)
  *                         messages (channel_name, sender_name, excerpt),
  *                         tasks (title, status_label), notes (name, excerpt,
  *                         updated_at), rows (table_id, table, title,
- *                         updated_at), visits (title, starts_at),
+ *                         updated_at), visits (title, starts_at), plans
+ *                         (ws_personal_plans_listed()),
  *                         whatsapp (received_at, contact_id, from_number,
  *                         profile_name, type, body),
  *                         forms_horizon (ws_customer_history_forms_horizon())
@@ -287,6 +294,15 @@ function ws_customer_history_build($rights, $data, $money, $base, $limit)
         foreach ((array) ($data['visits'] ?? array()) as $row) {
             $entries[] = $entry('visit', $row['id'], $row['starts_at'] ?? 0, (string) $row['title'], lang('Customer visit'), '', null, '',
                 $base . 'workspace_calendar.php?month=' . date('Y-m', (int) ($row['starts_at'] ?? 0)) . '&event=' . (int) $row['id']);
+        }
+
+        // A roadmap made for the customer, at the time it starts; one of
+        // somebody else's says whose it is.
+        foreach ((array) ($data['plans'] ?? array()) as $row) {
+            $entries[] = $entry('plan', $row['id'], $row['starts_at'] ?? 0, (string) $row['title'],
+                (($row['owner'] ?? '') !== '') ? lang(array('string' => 'Plan of {var:1}', 'vars' => $row['owner'])) : lang('Roadmap'),
+                (($row['total'] ?? 0) > 0) ? $row['done'] . '/' . $row['total'] : '', null, '',
+                $base . 'workspace_my_calendar.php?view=list&date=' . date('Y-m-d', (int) ($row['starts_at'] ?? 0)) . '&plan=' . (int) $row['id']);
         }
 
         foreach ((array) ($data['rows'] ?? array()) as $row) {
