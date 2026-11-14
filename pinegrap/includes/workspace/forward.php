@@ -273,6 +273,10 @@ function ws_forward_to_channel($viewer, $message_ids, $target, $comment = '', $o
     // screens are told it changed.
     ws_message_touch($sent['message_id']);
 
+    // A tag in the comment asks as in a message; the copies' own words
+    // asked where they were written.
+    ws_message_ask_noted($viewer, $target, $sent['message_id'], (string) $comment, ws_message_by_app($options['app_id'] ?? 0, $options['via_client_id'] ?? 0));
+
     return array('ok' => true, 'error' => '', 'message_id' => (int) $sent['message_id']);
 }
 

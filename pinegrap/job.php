@@ -1019,6 +1019,10 @@ if (pg_whatsapp_queue_ready()) {
 // after its card was saved (pg_whatsapp_templates_job()).
 pg_whatsapp_templates_job();
 
+// Customers' WhatsApp messages are kept two years (includes/fn/whatsapp_webhook.php).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
+pg_whatsapp_inbox_sweep(time());
+
 // Workspace task reminders, and the notice that a task went overdue
 // (includes/workspace/reminders.php). Each look is one read; the workspace is
 // loaded only when one of them is due, so the general job stays as light as

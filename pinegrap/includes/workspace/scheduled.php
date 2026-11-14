@@ -4113,6 +4113,10 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
                 return $fail(lang(array('string' => 'Could not write in #{var:1}: {var:2}', 'vars' => array($channel['name'], $sent['error']))));
             }
 
+            // A tag in it asks as in the flow owner's own message; the
+            // agents' brakes hold a flow that answers its own wake.
+            ws_message_ask_noted($viewer, $channel, $sent['message_id'], $body);
+
             return array('ok' => true, 'text' => lang(array('string' => 'written in #{var:1}', 'vars' => $channel['name'])), 'message_id' => (int) $sent['message_id']);
 
         case 'email':

@@ -5,8 +5,9 @@
  * Workspace - the history of a channel's customer: their orders, cart quotes,
  * invoices, sales quotes and submitted forms, and the messages, tasks, notes and
  * workflow table rows elsewhere in the Workspace that tag them or a record
- * tied to them, and the customer visits on the Work Calendar that name them,
- * as one list, newest first.
+ * tied to them, the customer visits on the Work Calendar that name them, and
+ * the WhatsApp messages their contact sent to the site's number, as one list,
+ * newest first.
  *
  * It is read from the tables those records live in, each time it is asked
  * for; there is no activity table to keep in step, so records from before
@@ -53,7 +54,8 @@ function ws_customer_history_limit($limit)
  * right (the right of the cart quote screens), invoices and sales quotes the
  * ERP right (the read-only right holds it too: the history only reads),
  * submitted forms the forms right; the messages and tasks that tag the
- * customer any member of the Workspace, each only where they may see it.
+ * customer any member of the Workspace, each only where they may see it;
+ * the WhatsApp messages the contacts right (the right of the contact screens).
  *
  * @param array $viewer ws_viewer(), or the API's copy narrowed to the key's
  *                      scopes (ws_api_customer_viewer())
@@ -70,6 +72,7 @@ function ws_customer_history_rights($viewer)
         'sales_quotes' => $erp,
         'forms'        => !empty($viewer['forms']),
         'workspace'    => !empty($viewer['member']),
+        'whatsapp'     => !empty($viewer['contacts']),
     );
 }
 
@@ -118,7 +121,38 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
         $data['visits'] = ws_customer_history_visit_rows($identity, $before, $read);
     }
 
+    $whatsapp_contact = $rights['whatsapp'] ? ws_customer_history_whatsapp_contact($viewer, $identity, 'ws_viewer_contacts_open') : 0;
+
+    if ($whatsapp_contact > 0) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
+
+        $data['whatsapp'] = pg_whatsapp_inbox_contact_rows($whatsapp_contact, $before, $read);
+    }
+
     return ws_customer_history_build($rights, $data, 'ws_customer_money_text', OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $limit);
+}
+
+/**
+ * The contact whose received WhatsApp messages the reader may see in the
+ * history: the channel's contact, only when the reader may open it. The
+ * user role opens only the contacts filed in a contact group given to them
+ * (ws_viewer_contacts_open()); ws_customer_identity() hands over the contact
+ * id whether or not the reader may open it.
+ *
+ * @param array    $viewer
+ * @param array    $identity ws_customer_identity()
+ * @param callable $open     function ($viewer, $contact_ids): the ids kept
+ * @return int 0 for none
+ */
+function ws_customer_history_whatsapp_contact($viewer, $identity, $open)
+{
+    $contact_id = (int) ($identity['contact_id'] ?? 0);
+
+    if (($contact_id <= 0) || empty($viewer['contacts'])) {
+        return 0;
+    }
+
+    return in_array($contact_id, array_map('intval', (array) call_user_func($open, $viewer, array($contact_id))), true) ? $contact_id : 0;
 }
 
 /**
@@ -139,6 +173,8 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
  *                         tasks (title, status_label), notes (name, excerpt,
  *                         updated_at), rows (table_id, table, title,
  *                         updated_at), visits (title, starts_at),
+ *                         whatsapp (received_at, contact_id, from_number,
+ *                         profile_name, type, body),
  *                         forms_horizon (ws_customer_history_forms_horizon())
  * @param callable $money  function ($minor, $currency): string
  * @param string   $base   the panel's address, ending in /
@@ -256,6 +292,19 @@ function ws_customer_history_build($rights, $data, $money, $base, $limit)
         foreach ((array) ($data['rows'] ?? array()) as $row) {
             $entries[] = $entry('wtable_row', $row['id'], $row['updated_at'] ?? 0, (string) $row['title'], (string) $row['table'], '', null, '',
                 $base . 'workspace_wtables.php?id=' . (int) $row['table_id'] . '&row=' . (int) $row['id'] . '#ws-wt-row-form');
+        }
+    }
+
+    // A WhatsApp message the customer sent, at the time it arrived; it opens
+    // the contact it was matched to.
+    if (!empty($rights['whatsapp'])) {
+        foreach ((array) ($data['whatsapp'] ?? array()) as $row) {
+            $text = trim(preg_replace('/\s+/u', ' ', (string) ($row['body'] ?? '')));
+            $from = ((string) ($row['profile_name'] ?? '') !== '') ? (string) $row['profile_name'] : (((string) ($row['from_number'] ?? '') !== '') ? '+' . $row['from_number'] : '');
+
+            $entries[] = $entry('whatsapp', $row['id'], $row['received_at'] ?? 0, lang('WhatsApp message'),
+                trim($from . ': ' . (($text !== '') ? $text : '[' . (string) ($row['type'] ?? '') . ']'), ' :'), '', null, '',
+                $base . 'edit_contact.php?id=' . (int) ($row['contact_id'] ?? 0));
         }
     }
 

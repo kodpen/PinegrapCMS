@@ -72,6 +72,7 @@ function pg_contact_holders()
         'ws_wtable_bin_cells'          => array('table' => 'ws_wtable_row_bin', 'column' => 'cells', 'merge' => 'cells', 'erase' => 'scope'),
         'cart_quotes'                  => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
         'whatsapp_outbox'              => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
+        'whatsapp_inbox'               => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
     );
 }
 

@@ -27,7 +27,7 @@ description: Decision questions: asked in the agent channel, no architect issue 
 
 ## What is left of the issues?
 - The `architect` issues open on 2026-11-13 are closed as their records land.
-- An approval issue is still opened until step AQ1 of `plans/architect-channel-approvals.md` lands: the merge tool reads its `Karar` comment (`architect-asking.md`).
+- No approval issue either: a PR waiting on the owner's approval says `Approval: channel` and the merge tool reads the `Karar` comment on the PR itself (`architect-asking.md`, #9364).
 - A new architect session is told: "You are the architect: read `CLAUDE.md` and `workflow/architect.md`, wait on your request queue; ask me owner questions here."
 
 Related: docs/memory/workflow/architect-asking.md, docs/memory/workflow/architect-no-hand-over.md, docs/memory/workflow/owner-contact-channel.md, docs/memory/workflow/session-lifecycle.md

@@ -80,5 +80,4 @@ function test_bs6_js_leftovers_loader_metrics()
 		pg_assert_same($count, substr_count($source, 'spinner-border'), $path . ': spinner without the size');
 	}
 
-	pg_assert_contains('<div class=\\"spinner-border fg-primary\\" style=\\"font-size:2rem\\" role=\\"status\\"></div>', bs6_js_leftovers_source('seo.php'));
 }

@@ -23,7 +23,7 @@ description: Decisions list, workspace part 23 (2026-11-13 on): missing-domain m
 ## Are agents listed among who has seen a message? (owner, 2026-11-13, #9314)
 - Yes, under the message and in the "Who has seen it" drawer, in every channel. Owner (2026-11-13): "hem mesajların altında hemde kimler gördü alanında gören ajanların bilgileri yer almıyor. bu hem burası hemde normal kanallarda önemli".
 - Why: a message naming three agents read "Everyone in the channel has seen it" and said nothing of them, so he could not tell whether an order had reached them.
-- How it is counted is the architect's (technical, no table or column): `plans/message-seen-agents.md`.
+- How it is counted (technical, no table or column): `workspace/workspace-message-seen-by.md` (#9366).
 
 ## Whose tag wakes an agent, and where? (owner, 2026-11-13, #9341)
 - A guest's message, a mail's text and an answer of Claude, Pinegrap AI or an MCP assistant never wake an agent. Owner (2026-11-13): "misafir mesajı, e-posta ve yapay zekâ yanıtı ajan uyandırmaz kalmalı bu kural geçerli."

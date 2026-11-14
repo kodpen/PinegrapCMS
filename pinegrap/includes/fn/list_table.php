@@ -948,6 +948,8 @@ function pg_list_table_texts()
         'down' => lang('Move down'),
         'reset' => lang('Reset'),
         'pick' => lang('Select a row to see its details.'),
+        'loadFailed' => lang('Something went wrong. Please try again.'),
+        'sessionExpired' => lang('Your session has expired. Please sign in again.'),
         'quick' => lang('Quick edit'),
         'quickOn' => lang('Quick edit is on: a changed cell is saved as soon as you leave it.'),
         'quickOff' => lang('Quick edit is off.'),
@@ -1412,9 +1414,10 @@ function pg_list_table_seo_column($sort)
 }
 
 /**
- * The SEO column's cell: the score bar with its number, opening the
- * record's analysis; a fresh analysis redraws it (data-pg-seo-bar). Needs
- * seo.php.
+ * The SEO column's cell: the score bar with its number. A click selects the
+ * row and loads the record's analysis into the Details panel under this
+ * column's line (data-pg-details-load, pg_list_table.js); a fresh analysis
+ * redraws the bar (data-pg-seo-bar). Needs seo.php.
  *
  * @param string $type 'page' or 'product'
  * @param int    $id
@@ -1425,10 +1428,10 @@ function pg_list_table_seo_column($sort)
 function pg_list_table_seo_cell($type, $id, array $row)
 {
     $key = $type . ':' . (int) $id;
-    $url = 'get_seo_analysis.php?type=' . rawurlencode($type) . '&amp;id=' . (int) $id . get_token_query_string_field();
+    $url = 'get_seo_analysis.php?type=' . rawurlencode($type) . '&amp;id=' . (int) $id . get_token_query_string_field() . '&amp;fragment=checklist';
 
-    return pg_list_cell('<a href="javascript:void(0)" class="pg-seo-open pg-list-table-seo text-decoration-none" data-pg-seo-bar="' . h($key) . '"'
-        . ' aria-label="' . h(pg_seo_link_name($row)) . '" title="' . h(lang('SEO Detail')) . '" data-seo-url="' . $url . '">'
+    return pg_list_cell('<a href="javascript:void(0)" class="pg-list-table-seo text-decoration-none" data-pg-seo-bar="' . h($key) . '"'
+        . ' aria-label="' . h(pg_seo_link_name($row)) . '" title="' . h(lang('SEO Detail')) . '" data-pg-details-load="' . $url . '">'
         . pg_seo_render_bar($row) . '</a>',
         'align-middle', array('data-pg-sort-value' => pg_seo_row_scored($row) ? (int) $row['seo_score'] : -1));
 }

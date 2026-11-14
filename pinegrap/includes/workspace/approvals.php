@@ -304,6 +304,10 @@ function ws_approval_create($viewer, $channel, $data, $app_id = 0, $strict = tru
         ));
     }
 
+    // A tag in its title or text asks as in a message, once the approval
+    // it shows is written.
+    ws_message_ask_noted($viewer, $channel, $sent['message_id'], $body, ws_message_by_app($app_id));
+
     return array('ok' => true, 'error' => '', 'field' => '', 'message_id' => (int) $sent['message_id'], 'approval_id' => $approval_id);
 }
 

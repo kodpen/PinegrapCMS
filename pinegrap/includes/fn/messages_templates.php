@@ -7,8 +7,9 @@
  * the site sends on its own (the SMS Messages card,
  * includes/fn/sms_messages.php): each event with its kind, whether it is on
  * and the text it sends, its own or the built-in one. The texts are still
- * edited on their card; each row leads there. E-mail designs and WhatsApp
- * templates are announced in a card of their own.
+ * edited on their card; each row leads there. The WhatsApp templates read
+ * from Meta (includes/fn/whatsapp.php) with their state and Refresh; e-mail
+ * designs are announced in a card of their own.
  *
  * Loaded where it is needed (require_once), not by functions.php.
  *
@@ -144,14 +145,160 @@ function pg_messages_template_sms_card(array $rows, $url)
 }
 
 /**
- * The card of the templates still to come: e-mail designs, and WhatsApp
- * templates with a way to their settings for who may open them.
+ * The pill tone of a WhatsApp template's state: approved teal, waiting or
+ * held amber, refused or stopped rose, the rest gray.
  *
- * @param string $whatsapp_url the WhatsApp card's address, '' for a viewer
- *                             who may not open the settings
+ * @param string $status Meta's status, or DRAFT
  * @return string
  */
-function pg_messages_template_coming_card($whatsapp_url)
+function pg_messages_template_whatsapp_tone($status)
+{
+    $status = (string) $status;
+
+    if ($status === 'APPROVED') {
+        return 'teal';
+    }
+
+    if (in_array($status, array('PENDING', 'IN_APPEAL', 'PAUSED', 'FLAGGED'), true)) {
+        return 'amber';
+    }
+
+    if (in_array($status, array('REJECTED', 'DISABLED', 'LIMIT_EXCEEDED'), true)) {
+        return 'rose';
+    }
+
+    return 'gray';
+}
+
+/**
+ * A rejection's reason as the list says it; a code Meta adds later is
+ * shown as it comes.
+ *
+ * @param string $reason Meta's rejected_reason, '' for none
+ * @return string
+ */
+function pg_messages_template_whatsapp_reason($reason)
+{
+    $labels = array(
+        'ABUSIVE_CONTENT'      => lang('Abusive content'),
+        'INVALID_FORMAT'       => lang('Invalid format'),
+        'PROMOTIONAL'          => lang('Promotional content'),
+        'TAG_CONTENT_MISMATCH' => lang('The content does not match the category'),
+        'SCAM'                 => lang('Seen as a scam'),
+        'INCORRECT_CATEGORY'   => lang('Wrong category'),
+    );
+
+    $reason = (string) $reason;
+
+    return isset($labels[$reason]) ? $labels[$reason] : $reason;
+}
+
+/**
+ * The WhatsApp templates as rows of the card. Pure.
+ *
+ * @param array $templates pg_whatsapp_templates_list() rows
+ * @return array list of name, language, category, status, pill, tone, reason
+ */
+function pg_messages_template_whatsapp_rows(array $templates)
+{
+    $rows = array();
+
+    foreach ($templates as $template) {
+        $status = (string) $template['status'];
+        $reason = (string) $template['reason'];
+
+        $rows[] = array(
+            'name' => (string) $template['name'],
+            'language' => (string) $template['language'],
+            'category' => pg_whatsapp_template_category_label((string) $template['category']),
+            'status' => $status,
+            'pill' => pg_whatsapp_template_status_label($status),
+            'tone' => pg_messages_template_whatsapp_tone($status),
+            // A reason is kept only while it explains the state: Meta leaves
+            // the last one on a template that was approved after an edit.
+            'reason' => (($status === 'REJECTED') && ($reason !== '')) ? pg_messages_template_whatsapp_reason($reason) : '',
+        );
+    }
+
+    return $rows;
+}
+
+/**
+ * The WhatsApp templates card: the line on the last read from Meta, the
+ * Refresh button for who may press it, a failed read as a row of its own,
+ * then the templates.
+ *
+ * @param array $rows  pg_messages_template_whatsapp_rows()
+ * @param array $state sub (the line under the title), error (the last
+ *                     read's failure, '' for none), refresh (the action
+ *                     address, '' for no button), token (the CSRF field),
+ *                     settings (the WhatsApp card's address, '' for none),
+ *                     empty (the line when there is no template)
+ * @return string
+ */
+function pg_messages_template_whatsapp_card(array $rows, array $state)
+{
+    $button = '';
+
+    if ((string) $state['refresh'] !== '') {
+        $button = '<form method="post" action="' . h((string) $state['refresh']) . '" class="disable_shortcut">'
+            . (string) $state['token']
+            . '<input type="hidden" name="templates_action" value="whatsapp_refresh">'
+            . '<button type="submit" class="pg-button pg-button-sm"><span class="bi bi-arrow-clockwise" aria-hidden="true"></span>' . h(lang('Refresh')) . '</button>'
+            . '</form>';
+    } elseif ((string) $state['settings'] !== '') {
+        $button = '<a class="pg-button pg-button-sm" href="' . h((string) $state['settings']) . '"><span class="bi bi-gear" aria-hidden="true"></span>' . h(lang('WhatsApp settings')) . '</a>';
+    }
+
+    $html = '';
+
+    if ((string) $state['error'] !== '') {
+        $html .= pg_messages_template_row(array(
+            'icon' => 'bi-exclamation-triangle',
+            'tone' => 'rose',
+            'title' => lang('The last read from Meta failed'),
+            'url' => (string) $state['settings'],
+            'meta' => '',
+            'text' => h((string) $state['error']),
+            'pill' => lang('Error'),
+            'pill_tone' => 'rose',
+        ));
+    }
+
+    foreach ($rows as $row) {
+        // The language leads the line under the name, beside the type, so
+        // it stays next to the name on a wide window and on a phone.
+        $text = h($row['language']) . ' · ' . h($row['category']);
+
+        if ($row['reason'] !== '') {
+            $text .= ' · <b>' . h(lang('Reason')) . ':</b> ' . h($row['reason']);
+        }
+
+        $html .= pg_messages_template_row(array(
+            'icon' => 'bi-whatsapp',
+            'tone' => 'teal',
+            'title' => $row['name'],
+            'url' => '',
+            'meta' => '',
+            'text' => $text,
+            'pill' => $row['pill'],
+            'pill_tone' => $row['tone'],
+        ));
+    }
+
+    if (!$rows && ((string) $state['empty'] !== '')) {
+        $html .= '<p class="pg-card-sub pg-messages-card-empty">' . h((string) $state['empty']) . '</p>';
+    }
+
+    return pg_messages_template_card(lang('WhatsApp templates'), (string) $state['sub'], $button, $html);
+}
+
+/**
+ * The card of the templates still to come: e-mail designs.
+ *
+ * @return string
+ */
+function pg_messages_template_coming_card()
 {
     $rows = pg_messages_template_row(array(
         'icon' => 'bi-envelope',
@@ -160,17 +307,6 @@ function pg_messages_template_coming_card($whatsapp_url)
         'url' => '',
         'meta' => '',
         'text' => h(lang('The designs campaigns are sent with, ready ones beside your own.')),
-        'pill' => lang('Soon'),
-        'pill_tone' => 'gray',
-    ));
-
-    $rows .= pg_messages_template_row(array(
-        'icon' => 'bi-whatsapp',
-        'tone' => 'teal',
-        'title' => lang('WhatsApp templates'),
-        'url' => $whatsapp_url,
-        'meta' => '',
-        'text' => h(lang('The approved WhatsApp message templates.')),
         'pill' => lang('Soon'),
         'pill_tone' => 'gray',
     ));

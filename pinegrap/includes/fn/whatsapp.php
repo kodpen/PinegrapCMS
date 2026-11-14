@@ -22,7 +22,8 @@
  *
  * whatsapp_webhook.php answers Meta's verify call (the verify token shown on
  * the card) and accepts a POST only when its X-Hub-Signature-256 is the
- * body's HMAC with the app secret.
+ * body's HMAC with the app secret; what the POST says is read by
+ * includes/fn/whatsapp_webhook.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -933,8 +934,10 @@ function pg_whatsapp_webhook_throttled()
 
 /**
  * Answers a call to whatsapp_webhook.php: Meta's verify call (GET) and its
- * signed event posts. A signed post is answered 200, so Meta does not send it
- * again; its events are not read yet.
+ * signed event posts. A signed post's events are written down
+ * (includes/fn/whatsapp_webhook.php) and it is answered 200, so Meta does
+ * not send it again; a body that is not JSON is answered 200 as well, since
+ * sending it again would not change it.
  */
 function pg_whatsapp_webhook_receive()
 {
@@ -980,6 +983,10 @@ function pg_whatsapp_webhook_receive()
         pg_whatsapp_webhook_offence();
         pg_whatsapp_webhook_answer(401, json_encode(array('status' => 'wrong_signature')));
     }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
+
+    pg_whatsapp_webhook_apply(pg_whatsapp_webhook_events(json_decode($body, true), $app['phone_number_id']), $app);
 
     pg_whatsapp_webhook_answer(200, json_encode(array('ok' => true)));
 }

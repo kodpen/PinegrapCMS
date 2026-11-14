@@ -76,7 +76,10 @@ function test_panel_load_failures_seo_endpoint_refuses_before_redirect()
 function test_panel_load_failures_seo_fetches_check_response()
 {
 	$source = panel_load_failures_source('seo.php');
-	pg_assert_same(2, substr_count($source, 'if (!response.ok || response.redirected)'));
+	pg_assert_same(1, substr_count($source, 'if (!response.ok || response.redirected)'), 'the run buttons');
+
+	$driver = panel_load_failures_source('assets/js/pg_list_table.js');
+	pg_assert_same(1, substr_count($driver, 'if (!response.ok || response.redirected)'), 'the analysis loaded into a list\'s Details panel');
 	pg_assert_false(strpos($source, 'return response.text(); })') !== false, 'no answer is read without its status');
 
 	$folders = panel_load_failures_source('view_folders.php');
