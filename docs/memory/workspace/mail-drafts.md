@@ -17,6 +17,7 @@ description: E-mail drafts kept on the server (MT3a): a ws_mail_items row with s
 - `includes/workspace/api_mail_drafts.php`: `workspace.mail_drafts.list|get|create|update|delete` (tools) and `delete_post` (no tool), object `WorkspaceMailDraft`; every write has `dry_run`. Refusals `ws_api_mail_draft_refusal()`: 404 conversation, 403 no_access, 503 before 11.0.185, 422 the rest.
 
 ## Which readers leave drafts out?
-- `ws_mail_drafts_excluded_sql()` ('1 = 1' before the send state is kept): the pane (`ws_mail_pane()`), the API's conversation, one mail and read mark. `tests/workspace_mail_drafts_test.php` names each.
+- `ws_mail_drafts_excluded_sql()` ('1 = 1' before the send state is kept): the pane (`ws_mail_pane()`), the API's conversation, one mail and read mark, the E-mails list's search (`ws_mail_list_where()`).
+- `ws_mail_send_state()` gives `draft`, never `sent`; `ws_mail_send_last_hour()` does not count drafts against the hourly limit. `tests/workspace_mail_drafts_test.php` names each.
 
 Related: docs/memory/plans/mail-chat-tools-drafts.md, docs/memory/workspace/mail-api.md

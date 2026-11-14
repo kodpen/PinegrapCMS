@@ -217,8 +217,12 @@ function ws_mail_list_where($filters, $viewer_id, $channel_ids, $charset = '', $
     $search = (string) ($filters['q'] ?? '');
 
     if ($search !== '') {
+        // A draft kept on the server is not found by its words (mail_drafts.php).
+        $drafts_out = function_exists('ws_mail_drafts_excluded_sql') ? ws_mail_drafts_excluded_sql('i') : '1 = 1';
+        $drafts_out = ($drafts_out === '1 = 1') ? '' : $drafts_out . ' AND ';
         $where[] = '(' . ws_search_like_sql($search, array('subject', 'customer_name', 'customer_email'), $charset)
             . ' OR EXISTS (SELECT 1 FROM ws_mail_items i WHERE i.conversation_id = ws_mail_conversations.id AND '
+            . $drafts_out
             . ws_search_like_sql($search, array('i.from_name', 'i.from_email', 'i.to_list', 'i.cc_list', 'i.body_text'), $charset) . '))';
     }
 

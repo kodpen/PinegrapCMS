@@ -194,3 +194,11 @@ function test_ws_mail_drafts_stay_out_of_the_readers_of_sent_mail()
 		pg_assert_contains('ws_mail_drafts_excluded_sql(', ws_mail_drafts_test_source($reader), $reader . ' leaves drafts out');
 	}
 }
+
+function test_ws_mail_draft_is_never_read_as_sent()
+{
+	pg_assert_same('draft', ws_mail_send_state(array('direction' => 'out', 'send_state' => 'draft')), 'its own state');
+	pg_assert_same('sent', ws_mail_send_state(array('direction' => 'out', 'send_state' => '')), 'an answer from before the send state is still sent');
+	pg_assert_contains("send_state <> 'draft'", ws_mail_drafts_test_source('ws_mail_send_last_hour'), 'a draft does not count against the hourly limit');
+	pg_assert_contains('ws_mail_drafts_excluded_sql(', ws_mail_drafts_test_source('ws_mail_list_where'), 'the list\'s search does not find a draft');
+}

@@ -212,8 +212,9 @@ function ws_mail_send_limits($addresses, $blocked, $sent_last_hour)
  */
 function ws_mail_send_last_hour($user_id, $now)
 {
+    // A draft kept on the server was not sent (mail_drafts.php).
     return (int) db_value("SELECT COUNT(*) FROM ws_mail_items
-        WHERE direction = 'out' AND user_id = '" . (int) $user_id . "' AND created_at > '" . ((int) $now - 3600) . "'");
+        WHERE direction = 'out' AND send_state <> 'draft' AND user_id = '" . (int) $user_id . "' AND created_at > '" . ((int) $now - 3600) . "'");
 }
 
 /**
@@ -575,7 +576,9 @@ function ws_mail_send_state($item)
 
     $state = (string) ($item['send_state'] ?? '');
 
-    return in_array($state, array('queued', 'failed', 'external'), true) ? $state : 'sent';
+    // A draft kept on the server (mail_drafts.php) is its own state, never
+    // read as sent.
+    return in_array($state, array('queued', 'failed', 'external', 'draft'), true) ? $state : 'sent';
 }
 
 /**
