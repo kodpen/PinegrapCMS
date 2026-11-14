@@ -26,4 +26,5 @@ description: Plan: a tag anywhere in a Workspace channel item (file caption, edi
 - `channel-item-tags-wake-steps.md`: TW1-TW5, each with its census and its After line.
 
 ## Where does the work stand?
-- TW1 (#9359), TW2 (#9378) and TW3 (#9390) done; `workspace/channel-item-tags.md` holds the helpers and the writer's check. TW4 waits on the architect (which message a tag with no message of its own hangs on; a task with no card asks nobody until then), then the close-out.
+- TW1 (#9359), TW2 (#9378) and TW3 (#9390) done; `workspace/channel-item-tags.md` holds the helpers and the writer's check (`ws_message_item_tags_writer()`).
+- TW4 (#9402) done: shared notes and table cells, the architect's answer in `workspace/channel-item-tags.md`. TW5, the close-out, is next.

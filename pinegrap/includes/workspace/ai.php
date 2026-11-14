@@ -3888,6 +3888,14 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
         if ($unheard !== '') {
             $parts[] = ws_voice_unheard_line($unheard);
         }
+
+        // Tagged outside a message (a shared note, a table cell, a task).
+        $item = function_exists('ws_item_of') ? ws_item_of($row) : null;
+
+        if ($item) {
+            $parts[] = '';
+            $parts = array_merge($parts, ws_item_brief_lines($item));
+        }
     }
 
     $text = array_merge(ws_ai_briefing_head($asker, $agent), array(''), $parts);

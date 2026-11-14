@@ -455,9 +455,12 @@ function ws_agent_chain($message_id, $agent_apps)
  * @param bool   $mentions_only only the agents the body names wake (an edit's
  *                              added tags, ws_message_ask_added()): no all,
  *                              prefix or replies rule
+ * @param array  $extra state: ai_state the request carries (a tag outside a
+ *                      message, ws_item_request_state()); skip: agent
+ *                      values asked already by the same save
  * @return string[] the agent values a request was made for
  */
-function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = '', $mentions_only = false)
+function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = '', $mentions_only = false, $extra = array())
 {
     if (!ws_agents_ready() || !ws_ai_schema_ready()) {
         return array();
@@ -489,7 +492,7 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = 
         $value = ws_agent_request_value($row);
         $own_app = (int) $row['app_id'];
 
-        if ($value === '') {
+        if (($value === '') || in_array($value, (array) ($extra['skip'] ?? array()), true)) {
             continue;
         }
 
@@ -527,9 +530,11 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = 
         }
 
         list($pv_column, $pv_value) = pg_ai_prompt_version_insert();
+        $state = (string) ($extra['state'] ?? '');
 
-        db("INSERT INTO ws_ai_requests (channel_id, message_id, requested_by, status, agent, created_at" . $pv_column . ")
-            VALUES ('" . (int) $channel['id'] . "', '" . (int) $message_id . "', '" . (int) $viewer['id'] . "', 'queued', '" . e($value) . "', '" . time() . "'" . $pv_value . ")");
+        db("INSERT INTO ws_ai_requests (channel_id, message_id, requested_by, status, agent, created_at" . $pv_column . (($state !== '') ? ', ai_state' : '') . ")
+            VALUES ('" . (int) $channel['id'] . "', '" . (int) $message_id . "', '" . (int) $viewer['id'] . "', 'queued', '" . e($value) . "', '" . time() . "'" . $pv_value
+            . (($state !== '') ? ", '" . e($state) . "'" : '') . ")");
 
         $request_id = (int) mysqli_insert_id(db::$con);
 
@@ -1005,6 +1010,14 @@ function ws_agent_brief($agent, $row, $scopes)
         if ($message && ((int) $message['deleted_at'] === 0)) {
             $request = ws_plain_text($asker, (string) $message['body']);
             $lines[] = 'Read more of it with GET /workspace/channels/' . (int) $row['channel_id'] . '/context?limit=<n>: ask for only as many messages as the request needs.';
+        }
+
+        // Tagged outside a message (a shared note, a table cell, a task).
+        $item = ws_item_of($row);
+
+        if ($item) {
+            $lines[] = '';
+            $lines = array_merge($lines, ws_item_brief_lines($item));
         }
     }
 

@@ -157,3 +157,91 @@ function test_ws_item_tags_outside_body_wired()
 	pg_assert_contains("ws_task_ask_tags(\$viewer, \$made, '', ws_task_tag_text(\$made));", $read('commands.php'), '/task');
 	pg_assert_contains("ws_api_assistants_carry_on(ws_task_ask_tags(\$viewer, \$made, '', ws_task_tag_text(\$made), ws_api_writer_app_id() > 0));", $read('api_resources.php'), 'a task made over the API');
 }
+
+// A shared note or a table cell (TW4): the text around the tag, the brief's
+// lines, and the request state that carries them.
+function test_ws_item_tag_excerpt()
+{
+	$text = "First part.\n\nAsk @prmerge about the build.\nSecond line.\n\nLast part.";
+	pg_assert_same("Ask @prmerge about the build.\nSecond line.", ws_item_tag_excerpt($text, '@prmerge'), 'the paragraph with the tag');
+	pg_assert_same("Ask @prmerge about the build.\nSecond line.\n\nLast part. @elcin", ws_item_tag_excerpt($text . ' @elcin', '@PRMerge @elcin'), 'every paragraph with a tag');
+	pg_assert_same('plain', ws_item_tag_excerpt('plain', '@nobody'), 'no paragraph names it: the text');
+
+	$long = str_repeat('a', 3000) . ' @prmerge ' . str_repeat('b', 3000);
+	$cut = ws_item_tag_excerpt($long, '@prmerge', 2000);
+	pg_assert_true(mb_strlen($cut) <= 2000, 'capped');
+	pg_assert_contains('@prmerge', $cut, 'the cut keeps the tag');
+}
+
+function test_ws_item_brief_lines()
+{
+	$item = array('kind' => 'table', 'name' => 'Leads', 'where' => 'row #4, column Notes', 'text' => 'call @prmerge', 'writer' => 'Ali', 'route' => 'GET /workspace/tables/3/rows/9', 'under' => 'line');
+	$lines = implode("\n", ws_item_brief_lines($item));
+	pg_assert_contains('a table cell', $lines, 'what the item is');
+	pg_assert_contains('Leads', $lines, 'its name');
+	pg_assert_contains('row #4, column Notes', $lines, 'where the tag sits');
+	pg_assert_contains('call @prmerge', $lines, 'the text around the tag');
+	pg_assert_contains('Ali', $lines, 'who wrote it');
+	pg_assert_contains('GET /workspace/tables/3/rows/9', $lines, 'the route that reads it whole');
+	pg_assert_contains('under that line', $lines, 'where the answer goes');
+	pg_assert_contains('under that card', implode("\n", ws_item_brief_lines(array('kind' => 'note', 'under' => 'card') + $item)), 'a note\'s card');
+}
+
+function test_ws_item_request_state()
+{
+	$item = array('kind' => 'note', 'name' => 'Plan', 'where' => '', 'text' => '@x', 'writer' => 'Ali', 'route' => 'GET /workspace/notes/2', 'under' => 'card');
+	$row = array('message_id' => 5, 'agent' => 'agent:3', 'ai_state' => ws_item_request_state($item));
+	pg_assert_same($item, ws_item_of($row), 'read back');
+	pg_assert_same(null, ws_item_of(array('ai_state' => '{"wake":{"kind":"every"}}')), 'a wake is no item');
+	pg_assert_same(null, ws_item_of(array('ai_state' => '{"messages":[]}')), 'a model run\'s state is no item');
+	pg_assert_same(null, ws_agent_wake_of($row), 'an item request is no wake');
+}
+
+function test_ws_item_tags_shared_note_and_cells_wired()
+{
+	$read = function ($path) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/' . $path);
+	};
+
+	pg_assert_contains('ws_note_ask_tags($viewer, ', $read('notes.php'), 'a shared note\'s save and share');
+	$rows = $read('wtable_rows.php');
+	pg_assert_contains('ws_wtable_row_ask_tags($viewer, $table, $row_id, array(), $cells, ws_wtable_row_via_given($input));', $rows, 'a new row');
+	pg_assert_contains('ws_wtable_row_ask_tags($viewer, $table, (int) $row[\'id\'], ws_wtable_cells_decode($row[\'cells\']), $cells, ws_wtable_row_via_given($input));', $rows, 'a changed row');
+	pg_assert_contains('ws_item_ask_line(', $read('tasks.php'), 'a task with no card');
+	pg_assert_contains('ws_item_brief_lines(', $read('agent_queue.php'), 'an app agent\'s brief');
+	pg_assert_contains('ws_item_brief_lines(', $read('ai.php'), 'a model agent\'s brief');
+}
+
+function test_ws_wtable_row_tags_added()
+{
+	$columns = array('1' => array('name' => 'Name', 'type' => 'text'), '2' => array('name' => 'Notes', 'type' => 'text'), '3' => array('name' => 'Count', 'type' => 'number'));
+	$found = ws_wtable_row_tags_added($columns, array('1' => 'Acme', '2' => 'ask @x'), array('1' => 'Acme', '2' => 'ask @x and @prmerge', '3' => 4));
+	pg_assert_same('@prmerge', $found['added'], 'only the added tag');
+	pg_assert_same(array('Notes'), $found['columns'], 'the column it sits in');
+	pg_assert_same("Name: Acme\nNotes: ask @x and @prmerge", $found['text'], 'the row\'s name cell, then the tagged cell');
+
+	$kept = ws_wtable_row_tags_added($columns, array('2' => 'ask @x'), array('2' => 'ask @x again'));
+	pg_assert_same('', $kept['added'], 'a save that keeps the tag asks nobody');
+	pg_assert_same('', $kept['text'], 'nor tells anything');
+
+	$new = ws_wtable_row_tags_added($columns, array(), array('1' => '@prmerge lead', '2' => '@prmerge again'));
+	pg_assert_same('@prmerge', $new['added'], 'a tag in two cells, once');
+	pg_assert_same(array('Name', 'Notes'), $new['columns']);
+}
+
+// The line a table cell or a card-less task writes asks nobody itself: the
+// request is the one ws_item_ask() makes on it.
+function test_ws_item_line_asks_once()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');
+	$start = strpos($source, 'function ws_message_system(');
+	$system = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	foreach (array('ws_agent_after_send', 'ws_message_ask', 'ws_claude_after_send', 'ws_ai_after_send') as $ask) {
+		pg_assert_false(strpos($system, $ask) !== false, 'ws_message_system() does not call ' . $ask);
+	}
+
+	$start = strpos($source, 'function ws_item_ask_line(');
+	$line = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+	pg_assert_same(1, substr_count($line, 'ws_item_ask('), 'one request, on the line');
+}
