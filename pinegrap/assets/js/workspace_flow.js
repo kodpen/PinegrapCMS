@@ -7582,6 +7582,43 @@
             config.body = value;
             refreshNode(node);
         }, true));
+
+        // A box that sends a page (a converted campaign profile, the API)
+        // says so: its text is not sent.
+        if ((parseInt(config.page_id, 10) || 0) > 0) {
+            box.appendChild(el('div', 'form-text mb-5', t('fl_email_page', config.page_id)));
+        }
+
+        emailSenderFields(box, node);
+    }
+
+    // An e-mail box's own sender, as a campaign's: From name and address,
+    // Reply-to and BCC, each empty for the site's own. Folded away until one
+    // is set.
+    function emailSenderFields(box, node) {
+        var config = node.config;
+        var keys = [['from_name', t('fl_email_from_name'), t('fl_email_from_name_help')], ['from_email', t('fl_email_from_email'), t('fl_email_from_email_help')],
+            ['reply_to', t('fl_email_reply_to'), ''], ['bcc', t('fl_email_bcc'), t('fl_email_bcc_help')]];
+        var fold = el('details', 'mb-5');
+        var summary = el('summary', 'small fw-semibold mb-3', t('fl_email_sender'));
+
+        fold.open = keys.some(function (key) { return !!config[key[0]]; });
+        fold.appendChild(summary);
+
+        keys.forEach(function (key) {
+            var input = textInput(config[key[0]], 100, function (value) {
+                config[key[0]] = value;
+                refreshNode(node);
+            });
+
+            if (key[0] !== 'from_name') {
+                input.type = 'email';
+            }
+
+            fold.appendChild(field(key[1], input, key[2]));
+        });
+
+        box.appendChild(fold);
     }
 
     // An SMS box: a typed mobile number, or the person of the run's record
@@ -11232,7 +11269,7 @@
         } else if (kind === 'post') {
             config = { channel_id: homeChannelId(), body: '' };
         } else if (kind === 'email') {
-            config = { to: '', subject: '', body: '', page_id: 0, recipient: 'typed', purpose: 'info' };
+            config = { to: '', subject: '', body: '', page_id: 0, recipient: 'typed', purpose: 'info', from_name: '', from_email: '', reply_to: '', bcc: '' };
         } else if (kind === 'sms') {
             config = { to: '', recipient: 'typed', purpose: 'info', text: '' };
         } else if (kind === 'whatsapp') {
