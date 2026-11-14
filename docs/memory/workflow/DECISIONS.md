@@ -323,8 +323,6 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-18.md: Where are the rules and the earlier parts?
 - decisions-made-schema-18.md: Which tables and columns were approved?
 - decisions-made-schema-18.md: May a mail draft keep its files in a column of ws_mail_items? (owner, 2026-11-14, in the architect's window)
-- decisions-made-schema-18.md: Which tables hold a person's own plans? (owner, 2026-11-14, in the architect's window)
-- decisions-made-schema-18.md: Which columns do the mailbox features get? (owner, 2026-11-14, in the architect's window)
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
@@ -450,8 +448,6 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-27.md: Does a person get a calendar of their own beside e-mail, with private plans? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-27.md: Does the customer see their roadmap on the site? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-27.md: Does a chart of one series take its channel's colour? (owner, 2026-11-14, in the architect's window)
-- decisions-made-workspace-28.md: Where are the rules and the earlier parts?
-- decisions-made-workspace-28.md: How thick is the line of a chart in an agent's drawing? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)

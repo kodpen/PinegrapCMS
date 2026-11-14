@@ -17,11 +17,17 @@
  * - the branch does not change pinegrap/data/config.php in any way: its
  *   tracked content is <?php ?>, and a site's or sandbox's connection details
  *   and encryption key must never reach the repository;
+ * - the branch does not change the memory lists tools/memory_index.php
+ *   generates (docs/memory/README.md, each folder's README.md and INDEX.md,
+ *   workflow/DECISIONS.md, core/fn-modules.md): the landing writes them
+ *   (tools/merge_train.php), so two branches never conflict on them. A
+ *   folder README's hand-written key rules, between its two marker lines,
+ *   may change;
  * - more than PG_CHECK_PR_SIZE_LIMIT product lines (changed lines under
  *   pinegrap/, minified bundles and language files not counted) prints a
  *   warning, never a failure.
  * A merge train (merge-train/*), development and main skip the author,
- * changelog and size checks: they carry the commits of other branches,
+ * changelog, memory list and size checks: they carry the commits of other branches,
  * Dependabot's among them; --identity-exempt does the same for a pull
  * request Dependabot opened. The trailer and config.php checks apply to every
  * branch.
@@ -152,6 +158,45 @@ function check_pr_file_problems(array $files, $exempt)
 	return $problems;
 }
 
+// Whether a path is a memory list tools/memory_index.php generates.
+function check_pr_memory_list($path)
+{
+	$path = (string) $path;
+
+	if (in_array($path, array('docs/memory/README.md', 'docs/memory/workflow/DECISIONS.md', 'docs/memory/core/fn-modules.md'), true)) {
+		return true;
+	}
+
+	return (bool) preg_match('#^docs/memory/[^/]+/(README|INDEX)\.md$#', $path);
+}
+
+// A folder README with its key rules block emptied, so that two copies
+// compare equal when only the hand-written rules differ; null for null (the
+// file is absent on that side).
+function check_pr_without_key_rules($content)
+{
+	if ($content === null) {
+		return null;
+	}
+
+	return preg_replace('/(<!-- key-rules:start -->).*?(<!-- key-rules:end -->)/s', '$1$2', str_replace("\r", '', (string) $content));
+}
+
+// What is wrong with a branch's change to a generated memory list, given its
+// content where the branch left development and at the branch's head (null
+// when absent), or '' when nothing is.
+function check_pr_memory_list_problem($path, $before, $after, $merge_base)
+{
+	if (check_pr_without_key_rules($before) === check_pr_without_key_rules($after)) {
+		return '';
+	}
+
+	return "the branch changes $path, which the landing generates (tools/memory_index.php, run by tools/merge_train.php); "
+		. 'restore it with git checkout ' . substr((string) $merge_base, 0, 12) . ' -- ' . $path
+		. (preg_match('#/README\.md$#', (string) $path) ? ' and write a key rules change again by hand' : '')
+		. '; php tools/memory_index.php --files checks the memory files (docs/memory/workflow/merge-train-tool.md)';
+}
+
 // The product lines of a change: changed lines in files under pinegrap/,
 // minified bundles and the language files under includes/local/ not counted.
 function check_pr_product_lines(array $files)
@@ -210,6 +255,20 @@ function check_pr_git(array $args)
 	}
 
 	return $out;
+}
+
+// A file's content at a commit, or null when the commit has no such file.
+function check_pr_git_file($commit, $path)
+{
+	$listed = check_pr_git(array('ls-tree', '--name-only', $commit, '--', $path));
+
+	if (($listed === false) || (trim($listed) === '')) {
+		return null;
+	}
+
+	$content = check_pr_git(array('show', $commit . ':' . $path));
+
+	return ($content === false) ? null : $content;
 }
 
 // The test runner loads this file for the functions above.
@@ -291,6 +350,19 @@ foreach (check_pr_file_problems($files, $exempt || $identity_exempt) as $problem
 }
 
 if (!$exempt && !$identity_exempt) {
+	foreach (array_keys($files) as $path) {
+		if (!check_pr_memory_list($path)) {
+			continue;
+		}
+
+		$problem = check_pr_memory_list_problem($path, check_pr_git_file($merge_base, $path), check_pr_git_file($head, $path), $merge_base);
+
+		if ($problem !== '') {
+			$fail($problem);
+			$failed = true;
+		}
+	}
+
 	$lines = check_pr_product_lines($files);
 
 	if ($lines > PG_CHECK_PR_SIZE_LIMIT) {

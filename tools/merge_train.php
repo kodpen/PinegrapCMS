@@ -30,8 +30,15 @@
  *             A PR already in the branch is skipped, so after a stop the
  *             same command goes on. It stops, with the merge left open, on a
  *             conflict it cannot settle or a [SCHEME] item, which is worded
- *             by hand. Then pushes the branch and opens or retitles its
- *             draft PR, unless --no-push.
+ *             by hand. After the last merge it runs tools/memory_index.php
+ *             and commits what changed as "Regenerate the memory indexes":
+ *             a PR carries no generated memory list (tools/check_pr.php).
+ *             Then pushes the branch and opens or retitles its draft PR,
+ *             unless --no-push.
+ *         php tools/merge_train.php --indexes
+ *             The same regeneration and commit on the current branch, for a
+ *             PR that lands alone: run after its merge commit and before
+ *             the fast-forward push to development.
  *         php tools/merge_train.php --land
  *             Pushes the current merge-train/* branch to development as a
  *             fast-forward, once it is pushed, origin/development is its
@@ -64,6 +71,8 @@ define('MERGE_TRAIN_OVERSIZED_WAIT_SECONDS', 3600);
 define('MERGE_TRAIN_FIX_LINE', '[FIX] Miscellaneous bug fixes and new features.');
 define('MERGE_TRAIN_SECURITY_LINE', '[SECURITY] Implemented various security fixes.');
 define('MERGE_TRAIN_MODULE_LIST', 'docs/memory/core/fn-modules.md');
+define('MERGE_TRAIN_DECISION_LIST', 'docs/memory/workflow/DECISIONS.md');
+define('MERGE_TRAIN_INDEX_COMMIT', 'Regenerate the memory indexes');
 
 // The product lines of a change, path => changed lines: lines in files under
 // pinegrap/, minified bundles and the language files under includes/local/
@@ -970,12 +979,12 @@ function merge_train_generated_changed($porcelain, $kind)
 }
 
 // The generator that writes a path: 'index' (the memory README and INDEX
-// files and the module list, memory_index.php), 'script' (.min.js bundles,
+// files, the module list and the decisions list, memory_index.php), 'script' (.min.js bundles,
 // build_js.php), 'style' (.min.css stylesheets, build_css.php), or '' for a
 // file written by hand.
 function merge_train_generated($path)
 {
-	if (((strpos($path, 'docs/memory/') === 0) && in_array(basename($path), array('README.md', 'INDEX.md'), true)) || ($path === MERGE_TRAIN_MODULE_LIST)) {
+	if (((strpos($path, 'docs/memory/') === 0) && in_array(basename($path), array('README.md', 'INDEX.md'), true)) || in_array($path, array(MERGE_TRAIN_MODULE_LIST, MERGE_TRAIN_DECISION_LIST), true)) {
 		return 'index';
 	}
 
@@ -999,6 +1008,36 @@ function merge_train_source_of($path)
 	}
 
 	return (substr($path, -4) === '.css') ? 'style' : '';
+}
+
+// Runs tools/memory_index.php on the current branch and commits what it
+// changed as MERGE_TRAIN_INDEX_COMMIT: a pull request no longer carries the
+// generated memory lists (tools/check_pr.php), so every landing writes them
+// in the commits it pushes. No commit when nothing changed. Stops on a file
+// the tool refuses or a commit that fails.
+function merge_train_regenerate_indexes()
+{
+	if (merge_train_run(array(PHP_BINARY, 'tools/memory_index.php'), $out) !== 0) {
+		fwrite(STDOUT, $out);
+		merge_train_fail('tools/memory_index.php refused the merged memory files; fix them on the branch and run the command again.');
+	}
+
+	merge_train_run(array('git', 'status', '--porcelain', '--untracked-files=all'), $status);
+	$paths = merge_train_generated_changed((string) $status, 'index');
+
+	if (!$paths) {
+		fwrite(STDOUT, "The memory indexes are current.\n");
+
+		return false;
+	}
+
+	merge_train_git(array_merge(array('add', '--'), $paths));
+
+	if (!merge_train_git_shown(array('commit', '-m', MERGE_TRAIN_INDEX_COMMIT))) {
+		merge_train_fail('The commit of the regenerated memory indexes failed.');
+	}
+
+	return true;
 }
 
 // The PRs a train branch carries since its start, from its merge commits'
@@ -1114,6 +1153,10 @@ function merge_train_build(array $numbers, array $options)
 
 	$carried = merge_train_carried($branch);
 
+	if ($carried) {
+		merge_train_regenerate_indexes();
+	}
+
 	if (in_array('--no-push', $options, true) || !$carried) {
 		fwrite(STDOUT, "$branch carries: #" . implode(' #', $carried) . "\n");
 
@@ -1134,6 +1177,29 @@ function merge_train_build(array $numbers, array $options)
 		$created = merge_train_gh('POST', 'pulls', array('title' => $title, 'head' => $branch, 'base' => 'development', 'draft' => true, 'body' => 'One merge commit per PR: ' . '#' . implode(', #', $carried) . '.'));
 		fwrite(STDOUT, "Train PR #{$created['number']}: $title\n");
 	}
+}
+
+// --indexes: the landing of a pull request alone (docs/memory/workflow/
+// merge-train.md): on the branch holding its merge commit, before the
+// fast-forward push, the memory indexes are regenerated and committed.
+function merge_train_indexes()
+{
+	merge_train_require_identity();
+	$branch = merge_train_git(array('symbolic-ref', '--short', 'HEAD'));
+
+	if (in_array($branch, array('development', 'main'), true)) {
+		merge_train_fail("Run it on the branch that holds the merge, not on $branch.");
+	}
+
+	if (merge_train_git(array('rev-parse', '-q', '--verify', 'MERGE_HEAD')) !== false) {
+		merge_train_fail('A merge is in progress: commit it first.');
+	}
+
+	if (merge_train_git(array('status', '--porcelain', '--untracked-files=no')) !== '') {
+		merge_train_fail('The working tree has changes; commit or stash them first.');
+	}
+
+	merge_train_regenerate_indexes();
 }
 
 function merge_train_land()
@@ -1173,14 +1239,14 @@ $options = array();
 $numbers = array();
 
 foreach (array_slice($argv, 1) as $argument) {
-	if (in_array($argument, array('--start', '--list', '--build', '--land'), true) && ($mode === '')) {
+	if (in_array($argument, array('--start', '--list', '--build', '--indexes', '--land'), true) && ($mode === '')) {
 		$mode = $argument;
 	} elseif (in_array($argument, array('--stack', '--no-push'), true)) {
 		$options[] = $argument;
 	} elseif (ctype_digit(ltrim($argument, '#')) && ($mode === '--build')) {
 		$numbers[] = (int) ltrim($argument, '#');
 	} else {
-		merge_train_fail("Unknown argument: $argument\nUsage: php tools/merge_train.php --start [--stack] | --list | --build [<n> ...] [--no-push] | --land");
+		merge_train_fail("Unknown argument: $argument\nUsage: php tools/merge_train.php --start [--stack] | --list | --build [<n> ...] [--no-push] | --indexes | --land");
 	}
 }
 
@@ -1190,8 +1256,10 @@ if ($mode === '--start') {
 	merge_train_list();
 } elseif ($mode === '--build') {
 	merge_train_build($numbers, $options);
+} elseif ($mode === '--indexes') {
+	merge_train_indexes();
 } elseif ($mode === '--land') {
 	merge_train_land();
 } else {
-	merge_train_fail('Usage: php tools/merge_train.php --start [--stack] | --list | --build [<n> ...] [--no-push] | --land');
+	merge_train_fail('Usage: php tools/merge_train.php --start [--stack] | --list | --build [<n> ...] [--no-push] | --indexes | --land');
 }
