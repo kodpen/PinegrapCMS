@@ -22,6 +22,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+/** The largest file GET /workspace/messages/{id}/file/content hands out as JSON. */
+define('WS_API_FILE_CONTENT_MAX', 1048576);
+
 /**
  * The reader behind the current application: its owner.
  *
@@ -1982,10 +1985,19 @@ function ws_api_voice_message_refuse($refused)
  * Sends the file a message carries to whoever may read the message, as its
  * own bytes, a part of it (Range) or, for a picture, a smaller copy (size).
  */
-function ws_api_files_get($params)
+/**
+ * The message whose file the caller may fetch, with the file's local path,
+ * or a 404: a message of a channel the owner reads (and, for the
+ * application Claude works through, one where Claude may be asked) that
+ * carries a file and is not deleted.
+ *
+ * @param array $viewer
+ * @param int   $id message id
+ * @return array message, path
+ */
+function ws_api_message_file_or_404($viewer, $id)
 {
-    $viewer = ws_api_viewer();
-    $message = ws_message((int) $params['id']);
+    $message = ws_message((int) $id);
 
     if (!$message || ((int) $message['deleted_at'] > 0) || ((int) $message['file_id'] <= 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
         api_fail_not_found(lang('File'));
@@ -1997,11 +2009,21 @@ function ws_api_files_get($params)
     $stored = basename((string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'"));
 
     // The local file, or a copy of one moved to the object store.
-    $path = pg_file_reader_path($stored);
+    $path = ($stored === '') ? '' : pg_file_reader_path($stored);
 
     if (($stored === '') || ($path === '')) {
         api_fail_not_found(lang('File'));
     }
+
+    return array('message' => $message, 'path' => $path);
+}
+
+function ws_api_files_get($params)
+{
+    $viewer = ws_api_viewer();
+    $found = ws_api_message_file_or_404($viewer, (int) $params['id']);
+    $message = $found['message'];
+    $path = $found['path'];
 
     $type = ws_file_type($message['file_name']);
 
@@ -2018,6 +2040,59 @@ function ws_api_files_get($params)
     }
 
     api_send_file($path, $type['mime'], (string) $message['file_name'], $type['inline']);
+}
+
+/**
+ * A message's file as JSON with its bytes in base64, for a caller that
+ * takes no binary answer (an MCP tool): the reach of ws_api_files_get(),
+ * at most WS_API_FILE_CONTENT_MAX bytes.
+ */
+function ws_api_files_content($params)
+{
+    $viewer = ws_api_viewer();
+    $found = ws_api_message_file_or_404($viewer, (int) $params['id']);
+    $size = @filesize($found['path']);
+
+    if (!ws_api_file_content_fits($size)) {
+        api_fail_validation(lang('The file is larger than 1 MB: fetch its bytes from GET /workspace/messages/{id}/file.'), 'id');
+    }
+
+    $bytes = @file_get_contents($found['path']);
+
+    if (!is_string($bytes)) {
+        api_fail_not_found(lang('File'));
+    }
+
+    api_ok(array(
+        'message_id'     => (int) $found['message']['id'],
+        'name'           => (string) $found['message']['file_name'],
+        'content_type'   => ws_file_type($found['message']['file_name'])['mime'],
+        'size'           => strlen($bytes),
+        'content_base64' => base64_encode($bytes),
+    ));
+}
+
+/**
+ * Whether a file of this many bytes is handed out as JSON. Pure.
+ *
+ * @param int|false $size filesize()'s answer
+ * @return bool
+ */
+function ws_api_file_content_fits($size)
+{
+    return ($size !== false) && ((int) $size <= WS_API_FILE_CONTENT_MAX);
+}
+
+// What ws_api_files_content() returns.
+function ws_api_file_content_schema()
+{
+    return array(
+        'message_id'     => 'integer',
+        'name'           => 'string',
+        'content_type'   => 'string',
+        'size'           => 'integer',
+        'content_base64' => 'string',
+    );
 }
 
 function ws_api_messages_react($params)
