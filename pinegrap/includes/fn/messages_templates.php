@@ -85,7 +85,7 @@ function pg_messages_template_card($title, $sub, $button, $rows)
  * One row of a card: a tile, the title (a link when an address is given)
  * with a meta word at its right, at most two lines of text, a pill.
  *
- * @param array $row icon, tone, title, url, meta, text (markup), pill, pill_tone
+ * @param array $row icon, tone, title, url, meta, text (markup), pill ('' for none), pill_tone
  * @return string
  */
 function pg_messages_template_row(array $row)
@@ -104,7 +104,7 @@ function pg_messages_template_row(array $row)
         . '</div>'
         . (((string) ($row['text'] ?? '') !== '') ? '<div class="pg-list-row-text">' . $row['text'] . '</div>' : '')
         . '</div>'
-        . '<span class="pg-pill pg-tone-' . h((string) $row['pill_tone']) . ' pg-messages-row-pill">' . h((string) $row['pill']) . '</span>'
+        . (((string) $row['pill'] !== '') ? '<span class="pg-pill pg-tone-' . h((string) $row['pill_tone']) . ' pg-messages-row-pill">' . h((string) $row['pill']) . '</span>' : '')
         . '</div>';
 }
 
@@ -349,7 +349,7 @@ function pg_messages_template_email_card(array $own, $designs, $self)
             'url' => $row['url'],
             'meta' => ($row['stamp'] > 0) ? get_relative_time(array('timestamp' => $row['stamp'], 'format' => 'plain_text')) : '',
             'text' => '',
-            'pill' => lang('E-mail design'),
+            'pill' => '',
             'pill_tone' => 'gray',
         ));
     }
