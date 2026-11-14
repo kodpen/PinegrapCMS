@@ -190,6 +190,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_whatsapp_templates();      // 11.0.197
 	upgrade_2026_11_0_whatsapp_inbox();          // 11.0.198
 	upgrade_2026_11_0_ws_mail_phone();           // 11.0.199
+	upgrade_2026_11_0_ws_mail_sent_folder();     // 11.0.200
 
 }
 
@@ -6411,5 +6412,26 @@ function upgrade_2026_11_0_ws_mail_phone() {
 	install_add_index('ws_mail_conversations', 'idx_box_phone', "INDEX idx_box_phone (box_id, customer_phone)");
 
 	install_note('Workspace: a customer\'s WhatsApp message can open a conversation in a channel, as an e-mail does.');
+
+}
+
+// A mailbox's Sent folder read by the mail job (IB7): its own UID position,
+// apart from the box's folder (uidvalidity, last_uid), so mail written in a
+// mail program reaches its conversation. 0 means "not read yet": the first
+// read starts at the folder's newest mail, never with old sent mail.
+function upgrade_2026_11_0_ws_mail_sent_folder() {
+
+	if (!install_table_exists('ws_mail_boxes')) {
+
+		install_skipped('ws_mail_boxes does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_mail_boxes', 'sent_uidvalidity', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_mail_boxes', 'sent_last_uid', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: a mailbox can read its Sent folder, so an answer written in a mail program shows in its conversation. It stays off until "Read the Sent folder" is switched on for the box.');
 
 }
