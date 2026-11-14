@@ -367,6 +367,8 @@ function ws_mail_compose_js_strings()
         'mail_new_bcc'        => lang('Bcc'),
         'mail_new_cc_bcc'     => lang('Cc and Bcc'),
         'mail_new_addresses'  => lang('Separate addresses with commas.'),
+        'mail_suggest_label'  => lang('Suggested addresses'),
+        'mail_suggest_bounced' => lang('Bounced address'),
         'mail_new_subject'    => lang('Subject'),
         'mail_new_text'       => lang('Text'),
         'mail_new_signature'  => lang('Put under the text:'),

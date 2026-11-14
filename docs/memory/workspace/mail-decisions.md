@@ -36,7 +36,7 @@ Each (a) (architect, under the owner's delegation, #2444):
 ## What is the E-mails screen? (plan closed, WM1-WM14)
 - Owner (2026-11-10, #8604): one list of every e-mail, writing and forwarding from the Workspace through the mail queue, for the mailboxes, not the site's own. Architect (2026-11-10): the screen grows, no second screen; first view "Incoming".
 - A channel decides who sends, not the box (`ws_mail_can_answer()`); team accounts only; every sent mail is a conversation with a card. Owner (2026-11-11, #8765): a row opens the mail, never a channel; HTML drawn; a box may be kept in no channel.
-- Later: recipient suggestions, drafts kept on the server, sending at a chosen time, an assistant's draft for a new mail; HTML: `mail-html-written.md`. The PRs: `mail-overview.md`.
+- Later: drafts kept on the server, sending at a chosen time, an assistant's draft for a new mail; HTML: `mail-html-written.md`. The PRs: `mail-overview.md`.
 
 ## What stays unverified?
 - G4 against a Microsoft 365 tenant (`mail-microsoft.md`), G8 on a site with an AI key (`mail-triage.md`), and a run against the dedicated test box of answer 11, which is not set up. No IMAP or SMTP server was reached from the cloud sessions.
