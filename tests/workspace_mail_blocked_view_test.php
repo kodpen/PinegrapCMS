@@ -55,12 +55,13 @@ function test_workspace_mail_blocked_html()
 {
 	$now = 1800000000;
 	$items = array(
-		array('id' => 9, 'from_email' => 'spam@x.com', 'from_name' => 'Spam <Co>', 'subject' => 'Offer', 'box_name' => 'Support', 'created_at' => $now - 60),
-		array('id' => 8, 'from_email' => 'b@y.com', 'from_name' => '', 'subject' => '', 'box_name' => 'Sales', 'created_at' => $now - 7200),
+		array('id' => 9, 'box_id' => 1, 'from_email' => 'spam@x.com', 'from_name' => 'Spam <Co>', 'subject' => 'Offer', 'box_name' => 'Support', 'created_at' => $now - 60, 'raw_path' => 'mail/1/a.eml'),
+		array('id' => 8, 'box_id' => 1, 'from_email' => 'b@y.com', 'from_name' => '', 'subject' => '', 'box_name' => 'Sales', 'created_at' => $now - 7200, 'raw_path' => ''),
 	);
 	$html = ws_mail_blocked_html($items, $now);
 
 	pg_assert_contains('data-ws-mail-unblock="9"', $html, 'Not blocked per row');
+	pg_assert_true(strpos($html, 'data-ws-mail-unblock="8"') === false, 'none without its original');
 	pg_assert_contains('Spam &lt;Co&gt;', $html, 'the name, escaped');
 	pg_assert_contains('b@y.com', $html, 'the address without a name');
 	pg_assert_contains(h(lang('(no subject)')), $html, 'no subject');
@@ -86,6 +87,6 @@ function test_workspace_mail_blocked_view_wiring()
 	pg_assert_contains("(\$filters['view'] === 'blocked')", $screen, 'the screen draws the view');
 	pg_assert_contains('ws_mail_blocked_html(', $screen, 'its rows');
 
-	pg_assert_contains("'blocked' => array(lang('Blocked'), 'slash-circle')", workspace_mail_blocked_view_test_source('includes/workspace/mail_list.php'), 'a view on the toolbar');
+	pg_assert_contains("'blocked' => array(lang('Blocked e-mail'), 'slash-circle')", workspace_mail_blocked_view_test_source('includes/workspace/mail_list.php'), 'a view on the toolbar');
 	pg_assert_contains("h.api('ws_mail_unblock'", workspace_mail_blocked_view_test_source('assets/js/workspace_mail.js'), 'the script posts it');
 }

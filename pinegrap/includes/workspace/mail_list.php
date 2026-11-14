@@ -691,7 +691,7 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
 
     // Blocked mail is kept outside the conversations (mail_blocks.php).
     if ($blocked || ($filters['view'] === 'blocked')) {
-        $view_list += array('blocked' => array(lang('Blocked'), 'slash-circle'));
+        $view_list += array('blocked' => array(lang('Blocked e-mail'), 'slash-circle'));
     }
 
     foreach ($view_list as $view => $label) {

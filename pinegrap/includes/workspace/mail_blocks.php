@@ -588,7 +588,7 @@ function ws_mail_blocked_items($viewer, $limit = 200)
         return array();
     }
 
-    return (array) db_items("SELECT i.id, i.box_id, i.from_email, i.from_name, i.subject, i.created_at, b.name AS box_name
+    return (array) db_items("SELECT i.id, i.box_id, i.from_email, i.from_name, i.subject, i.created_at, i.raw_path, b.name AS box_name
         FROM ws_mail_items i INNER JOIN ws_mail_boxes b ON b.id = i.box_id
         WHERE i.box_id IN (" . implode(',', array_map('intval', $box_ids)) . ") AND i.blocked_at > 0
         ORDER BY i.id DESC
@@ -625,8 +625,11 @@ function ws_mail_blocked_html($items, $now)
             . '<span class="ws-mail-row-meta">'
             . (($who !== (string) $item['from_email']) ? '<span>' . h((string) $item['from_email']) . '</span>' : '')
             . '<span>' . h((string) $item['box_name']) . '</span>'
-            . '<button type="button" class="pg-button pg-button-quiet pg-button-sm ms-auto" data-ws-mail-unblock="' . (int) $item['id'] . '">'
-            . '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>' . h(lang('Not blocked')) . '</button>'
+            // Without its original a mail cannot be brought in (ws_mail_unblock_decide()).
+            . (ws_mail_unblock_decide(array_merge($item, array('blocked_at' => 1)), array((int) $item['box_id']))['ok']
+                ? '<button type="button" class="pg-button pg-button-quiet pg-button-sm ms-auto" data-ws-mail-unblock="' . (int) $item['id'] . '">'
+                    . '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>' . h(lang('Not blocked')) . '</button>'
+                : '')
             . '</span></div>';
     }
 
