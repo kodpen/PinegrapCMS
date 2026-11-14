@@ -5,11 +5,11 @@ description: The panel's bell with the Workspace off (#9288): it shows the inbox
 
 ## Which Workspace lines does the bell show with the Workspace off?
 - Only the lines a flow writes, `pg_notification_flow_kinds()` (`includes/notifications.php`): `flow_finished` (a run of one's flow ended or failed, for its owner) and `scheduled_notice` (Let people know). Every other Workspace row stays hidden, as before.
-- The ladder `pg_notification_visible()` asks `pg_notification_flow_line($target, $reference_id)`: one read per person per request of their `ws_inbox` ids of those kinds, and only while `pg_flows_enabled()`. With the Workspace on nothing changed.
+- The ladder `pg_notification_visible()` asks `pg_notification_off_line($target, $reference_id)`: one read per person per request of their `ws_inbox` ids of `pg_notification_off_kinds()`, the flows' kinds while `pg_flows_enabled()` and mail's while `ws_mail_on()` (`mail-workspace-off.md`). With the Workspace on nothing changed.
 - `pg_notification_ladder_columns()` carries `reference_id` beside `target_user_id`, so marking one read and Delete All Notifications see the same rows the list draws.
 
 ## How is such a row drawn and read?
-- `pg_notification_display()` describes a Workspace row while the Workspace is on or flows run (`ws_bell_describe()`): a run's line opens it on the Flows screen (`workspace_flows.php?flow=…&run=…`, open with the Workspace off), and a failed run keeps Try again (`ws_flow_step_mend` is a Flows action).
+- `pg_notification_display()` describes a Workspace row while the Workspace is on, flows run or mail is on (`pg_notification_off_lines_on()`, `ws_bell_describe()`): a run's line opens it on the Flows screen (`workspace_flows.php?flow=…&run=…`, open with the Workspace off), and a failed run keeps Try again (`ws_flow_step_mend` is a Flows action).
 - A Let people know line opens nothing with the Workspace off (`ws_inbox_describe()` gives no url, `workspace.php` is shut): the endpoint gives it no button, the title is plain text and Mark as read reads it.
 - Read in the bell is read in the inbox too (`pg_notification_mark_read()`), with the Workspace on or flows running, so GET /workspace/inbox and the bell agree.
 

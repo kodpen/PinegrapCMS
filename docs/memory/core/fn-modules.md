@@ -339,6 +339,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_starters`: [[widget-starters]], [[widget-starters-detail]]
 - `widgets_wishlist`: [[wishlist-widget]]
 - `wishlist`: [[wishlist]]
+- `workspace_mail_gate`: [[mail-workspace-off]]
 - `xlsx_write`: [[workflow-tables-export]]
 - `zone_list_edit`: [[list-table-quick-edit-zones]]
 

@@ -125,7 +125,7 @@ function test_workspace_mail_frame_route()
 	$reader = substr($pane, (int) strpos($pane, 'function ws_mail_frame('), 2200);
 
 	pg_assert_contains("include('init.php');\n\n\$user = validate_user();", $route, 'signed in');
-	pg_assert_contains('if (!ws_ready() || !ws_enabled() || !pg_guarded_frame_request_framed($_SERVER)) {', $route, 'only as a frame');
+	pg_assert_contains('if (!ws_ready() || !ws_mail_on() || !pg_guarded_frame_request_framed($_SERVER)) {', $route, 'only as a frame');
 	pg_assert_contains('$frame = (($item_id > 0) && $viewer[\'member\']) ? ws_mail_frame($viewer, $item_id) : null;', $route, 'a member');
 	pg_assert_contains("http_response_code(404);", $route);
 	pg_assert_contains("pg_guarded_frame_send(pg_mail_html_document(\$frame['html']), 'mail', lang('E-mail'), array(", $route, 'the mail mode');

@@ -389,21 +389,51 @@ function ws_flow_actions_without_workspace()
 }
 
 /**
+ * The panel actions Communication › Incoming e-mail (messages_mail.php,
+ * assets/js/workspace_mail.js) sends, which answer on a site whose
+ * Workspace is off while mail is on there (ws_mail_on()): the list, the
+ * pane and its read marks, status and holder, answers by e-mail and by
+ * WhatsApp, Send again, New e-mail and Forward, Check e-mail, and the team the screen
+ * picks a holder from (ws_bootstrap) with its run of what is due (ws_tick).
+ * Every ws_mail_* action of ws_handle_action() is here
+ * (tests/workspace_mail_gate_test.php). Pure.
+ *
+ * @return string[]
+ */
+function ws_mail_actions_without_workspace()
+{
+    return array(
+        'ws_bootstrap', 'ws_tick',
+        'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_conversation', 'ws_mail_check',
+        'ws_mail_reply_form', 'ws_mail_reply', 'ws_mail_resend',
+        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block',
+        'ws_mail_my_settings', 'ws_mail_my_settings_save',
+        'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
+    );
+}
+
+/**
  * Whether the Workspace's switch lets an action through: every action while
  * it is on; with it off only the Flows screen's own
- * (ws_flow_actions_without_workspace()), once flows run there. Of those,
- * the search reads contacts only and a share goes to a person only: a
- * channel is the Workspace's. Pure.
+ * (ws_flow_actions_without_workspace()), once flows run there, and
+ * Incoming e-mail's (ws_mail_actions_without_workspace()), once mail is on.
+ * Of the Flows screen's, the search reads contacts only and a share goes to
+ * a person only: a channel is the Workspace's. Pure.
  *
  * @param string $action
  * @param array  $request
  * @param bool   $workspace_on ws_enabled()
  * @param bool   $flows_on     pg_flows_enabled()
+ * @param bool   $mail_on      ws_mail_on()
  * @return bool
  */
-function ws_action_switch_allows($action, $request, $workspace_on, $flows_on)
+function ws_action_switch_allows($action, $request, $workspace_on, $flows_on, $mail_on = false)
 {
     if ($workspace_on) {
+        return true;
+    }
+
+    if ($mail_on && in_array((string) $action, ws_mail_actions_without_workspace(), true)) {
         return true;
     }
 
@@ -434,8 +464,9 @@ function ws_handle_action($action, $request)
     $request = is_array($request) ? $request : array();
 
     // With the Workspace off ws_ready() is still asked: the Flows screen's
-    // actions read the team and the flows from the Workspace's tables.
-    if (!ws_action_switch_allows($action, $request, ws_enabled(), ws_ready() && pg_flows_enabled())) {
+    // and Incoming e-mail's actions read the team, the flows and the
+    // conversations from the Workspace's tables.
+    if (!ws_action_switch_allows($action, $request, ws_enabled(), ws_ready() && pg_flows_enabled(), ws_ready() && ws_mail_on())) {
         return ws_action_error(lang('The workspace is not switched on.'));
     }
 
@@ -483,9 +514,10 @@ function ws_handle_action($action, $request)
         // claude.ai may take seconds).
         case 'ws_tick':
             // With the Workspace off the Flows screen's look moves only the
-            // flows on (ws_scheduled_run() keeps to their anchors there).
+            // flows on (ws_scheduled_run() keeps to their anchors there);
+            // Incoming e-mail's look, on a site without flows, nothing.
             if (!ws_enabled()) {
-                if (function_exists('ws_scheduled_run')) {
+                if (pg_flows_enabled() && function_exists('ws_scheduled_run')) {
                     ws_scheduled_run();
                 }
 
@@ -2726,7 +2758,8 @@ function ws_handle_action($action, $request)
                 $form = ws_mail_answer_form($viewer, $conversation_id);
 
                 return $form['ok']
-                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'others' => $form['others'], 'file_field' => ws_mail_file_field('ws-mail-reply-file')))
+                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'others' => $form['others'], 'file_field' => ws_mail_file_field('ws-mail-reply-file'),
+                        'box' => $form['box'], 'writer' => ws_person_name((int) $viewer['id']), 'own_signature' => ws_mail_own_signature((int) $viewer['id'])))
                     : ws_action_error(ws_mail_reply_error_text($form['error']));
             }
 
@@ -2806,6 +2839,28 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('state' => $result['state']));
 
+        // My e-mail settings: the person's own signature, which stands in
+        // place of their name in every mail they send (mail_signature.php).
+        // People only; whoever may open the E-mails screen keeps their own.
+        case 'ws_mail_my_settings':
+        case 'ws_mail_my_settings_save':
+            if (!function_exists('ws_mail_own_signature_ready') || !ws_mail_own_signature_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if (empty($viewer['member'])) {
+                return ws_action_error(lang('Only team members have e-mail settings.'));
+            }
+
+            if ($action === 'ws_mail_my_settings') {
+                return ws_action_ok(array('signature' => ws_mail_own_signature((int) $viewer['id']), 'writer' => ws_person_name((int) $viewer['id']),
+                    'max' => WS_MAIL_SIGNATURE_MAX, 'lines' => WS_MAIL_SIGNATURE_LINES));
+            }
+
+            $saved = ws_mail_own_signature_save($viewer, $request['signature'] ?? '');
+
+            return $saved['ok'] ? ws_action_ok(array('signature' => $saved['signature'])) : ws_action_error($saved['error'], 'signature');
+
         // New e-mail: the mailboxes the person may send from with their
         // channels and Signatures, and the form sent through the queue
         // (mail_compose.php, ws_mail_send()). People only; a guest has no
@@ -2822,7 +2877,7 @@ function ws_handle_action($action, $request)
 
             if ($action === 'ws_mail_compose') {
                 return ws_action_ok(array('boxes' => ws_mail_compose_boxes(ws_mail_send_boxes($viewer)), 'writer' => ws_person_name((int) $viewer['id']),
-                    'file_field' => ws_mail_file_field('ws-mail-new-file')));
+                    'own_signature' => ws_mail_own_signature((int) $viewer['id']), 'file_field' => ws_mail_file_field('ws-mail-new-file')));
             }
 
             $files = ws_mail_compose_files($_FILES['files'] ?? null);
@@ -2877,6 +2932,7 @@ function ws_handle_action($action, $request)
             return ws_action_ok(array(
                 'boxes'   => ws_mail_compose_boxes(ws_mail_send_boxes($viewer)),
                 'writer'  => ws_person_name((int) $viewer['id']),
+                'own_signature' => ws_mail_own_signature((int) $viewer['id']),
                 'forward' => ws_mail_forward_fill($source),
             ));
 
@@ -2905,6 +2961,18 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('items' => ws_mail_suggest($viewer, $request['q'] ?? '')));
+
+        // Block sender, from a mail of the E-mails screen's pane
+        // (mail_blocks.php): the address or its domain, for this box or
+        // every box.
+        case 'ws_mail_block':
+            if (!function_exists('ws_mail_block_add')) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $result = ws_mail_block_add($viewer, (int) ($request['item_id'] ?? 0), $request, (string) ($_SESSION['sessionusername'] ?? ''));
+
+            return $result['ok'] ? ws_action_ok(array('text' => $result['text'])) : ws_action_error($result['error']);
 
         // Check e-mail: the person's IMAP boxes read now (mail_check.php);
         // when mail came, the list is drawn again with the screen's filters.
@@ -2969,7 +3037,7 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array_merge(ws_mail_pane_tools($pane, $viewer), array(
-                'html'   => ws_mail_pane_html($pane, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/'),
+                'html'   => ws_mail_pane_html($pane, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', '', ws_enabled()),
                 'unread' => ws_mail_unread_count($viewer),
             )));
 

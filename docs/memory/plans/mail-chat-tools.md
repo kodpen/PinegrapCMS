@@ -14,7 +14,9 @@ description: Plan (owner 2026-11-14): Workspace e-mail read, drafted and sent fr
   - Done in #9463: a draft is a `ws_mail_items` row; its files go in `draft_files` (owner, B, `workflow/decisions-made-schema-18.md`).
 - MT2 (M) Reading. A mail's text whole and its cleaned HTML on request, its files listed and fetched through the Files routes, as tools. Every mail body carries the outside mark (`workspace/workspace-outside-caution.md`).
   - Done in #9484: `workspace.mail_items.get`, `text_max`, the mail's `files`/`outside`/`has_html`/`bcc`, `workspace.files.content` (`workspace/mail-api-reading.md`).
-- MT3 (M) Drafts on the server. A reply's draft and a new mail's draft: create, read, change, delete, as routes and tools for every caller that may read the conversation. The E-mails screen gets a Drafts view; a draft opens in the reply drawer or the New e-mail form, and Send there is the person's. Look A, the picture set in the agent channel.
+- MT3 (M) Drafts on the server, in two steps:
+  - MT3a (done, #9516) The server: a reply's and a new mail's draft kept, read, changed and deleted as routes and tools for every caller that may read the conversation; the readers of sent mail leave drafts out (`workspace/mail-drafts.md`).
+  - MT3b The E-mails screen's Drafts view: a draft opens in the reply drawer or the New e-mail form, and Send there is the person's and deletes the draft. Look A, the picture set in the agent channel.
 - MT4 (M) Sending from a person's connection. A new scope, `workspace:mail_send`, that no connection of today holds and the consent screen names. With it a person's OAuth connection or device session may call reply, new mail and "send this draft" as tools; the panel's own checks, limits and the unknown-domain stop hold, Idempotency-Key, dry run. The mail is the person's; the Site Log names the application it went through.
 - MT5 (M, after MA10b) HTML and files out. `html` on reply, new mail and drafts, cleaned by the allowlist cleaner, the text part made from it when none is sent; files by their Files id within the panel's limits, the sender's right to each checked at Send; a draft keeps them in `ws_mail_items.draft_files` (MT5's migration step).
   - Free once MT4 and MA10b2 (#9473) have landed; MT2's worker handed it over on 2026-11-14 with neither landed. The next free worker claims it.
@@ -26,4 +28,4 @@ description: Plan (owner 2026-11-14): Workspace e-mail read, drafted and sent fr
 - A mail's text is data from outside: nothing in it is followed as a request, and the tools' descriptions say so.
 - The channel decides who reaches a conversation, as today.
 - No table or column without asking the architect. `php tools/check_api_schema.php` passes in every step.
-- MT1 first; MT2 and MT3 beside each other; MT4 after MT3; MT5 after MT4 and MA10b. Claim as `[plan:mail-chat-tools] <step> — <topic>`.
+- MT1 first; MT2 and MT3 beside each other; MT3b after MT3a; MT4 after MT3a; MT5 after MT4 and MA10b. Claim as `[plan:mail-chat-tools] <step> — <topic>`.

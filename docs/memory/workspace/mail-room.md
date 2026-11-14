@@ -30,6 +30,7 @@ description: A mailbox kept in no channel (WM13, #8985): its room of kind mailbo
 - No AI triage for a room: its suggestion is a message under the card, which the room has no screen to show; the switch hides and saves off. Claude is never asked there.
 - No `invited` notice to new room members: they were not invited to a channel.
 - A new box kept in no channel starts as no support box (`mail-support-box.md`).
+- With the Workspace off a new box is kept in the mailbox itself with no choice (`ws_mail_box_rooms_only()`, `mail-workspace-off.md`).
 - Conversations kept in a former channel stay there when a box moves; only new mail follows the choice.
 
 ## What stays unverified?

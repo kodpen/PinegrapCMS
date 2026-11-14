@@ -127,7 +127,7 @@ function test_workspace_my_calendar_screen_is_for_team_members_and_reads_only_th
 function test_workspace_my_calendar_ways_in()
 {
 	pg_assert_contains('href="workspace_my_calendar.php"', ws_mail_list_my_calendar_html(), 'the E-mails toolbar');
-	pg_assert_contains('ws_mail_list_my_calendar_html()', file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_list.php'));
+	pg_assert_contains('ws_mail_list_my_calendar_html($calendar)', file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_list.php'));
 
 	$groups = ws_nav_groups(array('role' => 3, 'settings' => false), array('base' => '/pg/'));
 	$urls = array_column($groups['tools'], 'url', 'key');

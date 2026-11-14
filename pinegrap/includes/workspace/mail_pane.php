@@ -63,6 +63,7 @@ function ws_mail_pane($viewer, $conversation_id)
     }
 
     $items = array_reverse((array) db_items("SELECT " . ws_mail_pane_columns(ws_mail_html_ready()) . " FROM ws_mail_items WHERE conversation_id = '" . (int) $conversation['id'] . "'
+        AND " . ws_mail_drafts_excluded_sql() . "
         ORDER BY id DESC LIMIT " . WS_MAIL_PANE_MAX));
     $ids = array();
     $sent = array();
@@ -129,6 +130,8 @@ function ws_mail_pane_open($viewer, $conversation_id)
 
     ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
 
+    // Block sender (mail_blocks.php), then Forward.
+    $pane = ws_mail_block_pane($pane, $viewer);
     // Add to my calendar on each mail (personal_plan_mail.php).
     $pane = function_exists('ws_personal_plan_mail_pane') ? ws_personal_plan_mail_pane($pane, !empty($viewer['member']) && ws_personal_plans_ready(), ws_personal_plan_mail_plans((int) $viewer['id'])) : $pane;
 
@@ -141,12 +144,13 @@ function ws_mail_pane_open($viewer, $conversation_id)
  * list. The script reads the pane again and adds the answer and the status
  * controls (workspace_mail.js).
  *
- * @param array|null $pane  ws_mail_pane_open(), null when it cannot be opened
- * @param string     $base  the panel's address, ending in /
- * @param string     $close the list's address without the conversation
+ * @param array|null $pane     ws_mail_pane_open(), null when it cannot be opened
+ * @param string     $base     the panel's address, ending in /
+ * @param string     $close    the list's address without the conversation
+ * @param bool       $channels the Workspace is on (ws_enabled()), so a channel opens
  * @return string HTML
  */
-function ws_mail_pane_page_html($pane, $base, $close)
+function ws_mail_pane_page_html($pane, $base, $close, $channels = true)
 {
     $shut = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($close) . '" data-ws-mail-close>'
         . '<i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Close')) . '</a>';
@@ -155,27 +159,29 @@ function ws_mail_pane_page_html($pane, $base, $close)
         return '<div class="ws-mail-pane-tools">' . $shut . '</div><p class="ws-empty">' . h(lang('This conversation cannot be opened.')) . '</p>';
     }
 
-    return ws_mail_pane_html($pane, $base, $shut);
+    return ws_mail_pane_html($pane, $base, $shut, $channels);
 }
 
 /**
  * The pane: the conversation's heading and its mails. Pure but for the
  * words and the time labels. A conversation of a mailbox kept in no channel
  * names its mailbox only and has no "Open in channel": this screen is the
- * one place it opens.
+ * one place it opens. With the Workspace off ($channels false) no channel
+ * opens either, so no conversation has the link, and none names a channel.
  *
- * @param array  $pane  ws_mail_pane()
- * @param string $base  the panel's address, ending in /
- * @param string $tools more of the heading's tools, HTML
+ * @param array  $pane     ws_mail_pane()
+ * @param string $base     the panel's address, ending in /
+ * @param string $tools    more of the heading's tools, HTML
+ * @param bool   $channels the Workspace is on (ws_enabled()), so a channel opens
  * @return string HTML
  */
-function ws_mail_pane_html($pane, $base, $tools = '')
+function ws_mail_pane_html($pane, $base, $tools = '', $channels = true)
 {
     $conversation = $pane['conversation'];
     $subject = (trim((string) $conversation['subject']) !== '') ? (string) $conversation['subject'] : lang('(no subject)');
     $customer = trim((string) $conversation['customer_name'] . ' <' . (string) $conversation['customer_email'] . '>');
     $url = $base . 'workspace.php?channel=' . (int) $conversation['channel_id'] . '&message=' . (int) $conversation['message_id'];
-    $room = ws_channel_is_mailbox($pane['channel']);
+    $room = ws_channel_is_mailbox($pane['channel']) || !$channels;
 
     $html = '<header class="ws-mail-pane-head"><h2 class="h5 mb-1" tabindex="-1">' . h($subject) . '</h2>'
         . '<div class="small fg-secondary">' . h($customer)
@@ -256,23 +262,21 @@ function ws_mail_pane_item_html($item, $base = '')
             . ((trim((string) $bounce['body_text']) !== '') ? ' ' . h((string) $bounce['body_text']) : '') . '</div>';
     }
 
-    // Forward as e-mail (mail_forward.php, ws_mail_forward_pane()) and Add
-    // to my calendar (personal_plan_mail.php, ws_personal_plan_mail_pane()).
-    $tools = '';
-
-    if (!empty($item['forward'])) {
-        $tools .= '<button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-forward="' . (int) $item['id'] . '">'
-            . '<i class="bi bi-envelope-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Forward')) . '</button>';
-    }
+    // Forward as e-mail (mail_forward.php, ws_mail_forward_pane()), Block
+    // sender (mail_blocks.php, ws_mail_block_pane()) and Add to my calendar
+    // (personal_plan_mail.php, ws_personal_plan_mail_pane()).
+    $tools = !empty($item['forward']) ? '<button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-forward="' . (int) $item['id'] . '">'
+        . '<i class="bi bi-envelope-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Forward')) . '</button>' : '';
+    $tools .= (!empty($item['block']) && function_exists('ws_mail_block_item_html')) ? ws_mail_block_item_html($item) : '';
 
     // A mail whose invitation has its card carries the button there.
     if (!empty($item['calendar']) && !(function_exists('ws_mail_invitation_of') && ws_mail_invitation_of($item))) {
-        $tools .= '<button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-calendar="' . (int) $item['id'] . '">'
+        $tools .= '<button type="button" class="btn btn-sm btn-text theme-secondary px-0' . (($tools !== '') ? ' ms-3' : '') . '" data-ws-mail-calendar="' . (int) $item['id'] . '">'
             . '<i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>' . h(lang('Add to my calendar')) . '</button>';
     }
 
     if ($tools !== '') {
-        $html .= '<div class="ws-mail-item-tools mt-2 d-flex flex-wrap gap-3">' . $tools . '</div>';
+        $html .= '<div class="ws-mail-item-tools mt-2">' . $tools . '</div>';
     }
 
     return $html . '</article>';

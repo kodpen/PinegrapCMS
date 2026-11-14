@@ -192,6 +192,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_phone();           // 11.0.199
 	upgrade_2026_11_0_ws_mail_sent_folder();     // 11.0.200
 	upgrade_2026_11_0_ws_personal_plans();       // 11.0.201
+	upgrade_2026_11_0_ws_mail_blocks();          // 11.0.202
+	upgrade_2026_11_0_ws_mail_own_signature();   // 11.0.203
 	upgrade_2026_11_0_ws_mail_invitation();      // 11.0.205
 
 }
@@ -6496,6 +6498,59 @@ function upgrade_2026_11_0_ws_personal_plans() {
 	}
 
 	install_note('Workspace: a person can add their own private plans to My calendar.');
+
+}
+
+// A mailbox's block list (includes/workspace/mail_blocks.php): an address or
+// a whole domain, for one box or, with box_id 0, for every box. A mail from
+// a blocked sender is kept as an item with blocked_at set, outside every
+// conversation, and swept with its .eml after 30 days. The value is stored in
+// lower case; the unique key takes its first 191 characters so a utf8mb4 key
+// stays inside the 767-byte limit of older InnoDB row formats.
+function upgrade_2026_11_0_ws_mail_blocks() {
+
+	if (!install_table_exists('ws_mail_items')) {
+
+		install_skipped('ws_mail_items does not exist, skipped');
+
+		return;
+
+	}
+
+	install_create_table('ws_mail_blocks', "CREATE TABLE ws_mail_blocks (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		box_id            INT UNSIGNED NOT NULL DEFAULT 0,
+		kind              ENUM('address','domain') NOT NULL DEFAULT 'address',
+		value             VARCHAR(255) NOT NULL DEFAULT '',
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_block (box_id, kind, value(191))
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_mail_items', 'blocked_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: a mailbox can block a sender\'s address or domain; their e-mail waits 30 days outside the conversations.');
+
+}
+
+// A person's own e-mail signature (My e-mail settings on the E-mails screen):
+// plain text that stands in place of the writer's name under every mail they
+// send from a mailbox, the box's Signature under it. NULL is "none", so the
+// mail keeps the writer's name as before.
+function upgrade_2026_11_0_ws_mail_own_signature() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'mail_signature', "TEXT NULL");
+
+	install_note('Workspace: a person can set their own e-mail signature under My e-mail settings.');
 
 }
 

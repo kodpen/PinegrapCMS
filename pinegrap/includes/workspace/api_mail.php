@@ -507,8 +507,9 @@ function ws_api_mail_box_transports()
  */
 function ws_api_mail_conversation_answer($conversation, $text_max = 0)
 {
+    // A draft is not a mail of the conversation (workspace.mail_drafts.*).
     $items = (array) db_items("SELECT * FROM ws_mail_items
-        WHERE conversation_id = '" . (int) $conversation['id'] . "'
+        WHERE conversation_id = '" . (int) $conversation['id'] . "' AND " . ws_mail_drafts_excluded_sql() . "
         ORDER BY id DESC LIMIT " . WS_API_MAIL_ITEMS_MAX);
 
     // A delivery failure stays out of the conversation; it names the answer
@@ -749,7 +750,7 @@ function ws_api_mail_items_get($params)
 
     ws_api_mail_ready();
 
-    $item = db_item("SELECT * FROM ws_mail_items WHERE id = '" . (int) $params['id'] . "'");
+    $item = db_item("SELECT * FROM ws_mail_items WHERE id = '" . (int) $params['id'] . "' AND " . ws_mail_drafts_excluded_sql());
     $conversation_id = (is_array($item) && $item) ? ws_api_mail_item_conversation_id($item) : 0;
     $conversation = ($conversation_id > 0) ? db_item("SELECT channel_id FROM ws_mail_conversations WHERE id = '" . $conversation_id . "'") : null;
 
@@ -984,7 +985,7 @@ function ws_api_mail_phone_reply($viewer, $conversation, $text)
 
     // The answer just written: the writer's newest in this conversation.
     $item = db_item("SELECT * FROM ws_mail_items WHERE conversation_id = '" . (int) $conversation['id'] . "' AND direction = 'out'
-        AND user_id = '" . (int) $viewer['id'] . "' ORDER BY id DESC LIMIT 1");
+        AND " . ws_mail_drafts_excluded_sql() . " AND user_id = '" . (int) $viewer['id'] . "' ORDER BY id DESC LIMIT 1");
 
     if (!is_array($item) || !$item) {
         api_fail(500, 'server_error', lang('The answer could not be sent.'));
@@ -1005,7 +1006,7 @@ function ws_api_mail_conversations_read($params)
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
     }
 
-    $newest = (int) db_value("SELECT MAX(id) FROM ws_mail_items WHERE conversation_id = '" . (int) $conversation['id'] . "'");
+    $newest = (int) db_value("SELECT MAX(id) FROM ws_mail_items WHERE conversation_id = '" . (int) $conversation['id'] . "' AND " . ws_mail_drafts_excluded_sql());
 
     api_dry_run_stop('updated', 'workspace_mail_conversation', array('id' => (int) $conversation['id'], 'fields' => array('unread')));
 

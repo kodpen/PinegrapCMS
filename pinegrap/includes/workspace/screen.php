@@ -850,7 +850,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
     // Approval requests, the people outside the team they ask, read
     // receipts and answers by e-mail (approvals.php, approval_guests.php,
     // acks.php, mail_reply.php, mail_send.php, mail_compose.php, mail_forward.php).
-    $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings(), ws_mail_js_strings(), ws_mail_status_js_strings(), ws_mail_send_js_strings(), ws_mail_compose_js_strings(), ws_mail_forward_js_strings(), ws_mail_phone_js_strings());
+    $strings = array_merge($strings, ws_approvals_js_strings(), ws_approval_guests_js_strings(), ws_acks_js_strings(), ws_mail_js_strings(), ws_mail_status_js_strings(), ws_mail_send_js_strings(), ws_mail_compose_js_strings(), ws_mail_signature_js_strings(), ws_mail_forward_js_strings(), ws_mail_phone_js_strings());
     // Add to my calendar on a mail (personal_plan_mail.php).
     $strings = array_merge($strings, ws_personal_plan_mail_js_strings());
     // Voice messages: the recording row and the player (voice.php,
@@ -1179,14 +1179,16 @@ function ws_record_loader($urls, $fields = '')
 /**
  * Stops a workspace screen for somebody who is not in the team, or when the
  * module is off or not installed yet. The Flows screen ($flows) opens with
- * the module off too, once flows run on the site (pg_flows_enabled()): the
- * same team, the same rights.
+ * the module off too, once flows run on the site (pg_flows_enabled()), and
+ * Incoming e-mail ($mail) once mail is on (ws_mail_on()): the same team, the
+ * same rights.
  *
  * @param array $user  validate_user()
  * @param bool  $flows the Flows screen (workspace_flows.php)
+ * @param bool  $mail  Incoming e-mail (messages_mail.php)
  * @return array the viewer
  */
-function ws_screen_gate($user, $flows = false)
+function ws_screen_gate($user, $flows = false, $mail = false)
 {
     $settings_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('features', 'pgset-features');
 
@@ -1194,7 +1196,7 @@ function ws_screen_gate($user, $flows = false)
         output_error(lang('The workspace is not installed yet: the database has to be updated first.'));
     }
 
-    if (!ws_enabled() && !($flows && pg_flows_enabled())) {
+    if (!ws_enabled() && !($flows && pg_flows_enabled()) && !($mail && ws_mail_on())) {
         output_error(lang('The workspace is not switched on.') . ' <a href="' . h($settings_url) . '">' . lang('Settings') . '</a>');
     }
 

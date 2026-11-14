@@ -704,8 +704,10 @@ function ws_mail_html_from_eml($item_id, $relative)
  */
 function ws_mail_eml_sweep($limit = 500)
 {
+    // A blocked mail's .eml goes with its row (ws_mail_block_sweep()).
+    $blocks = function_exists('ws_mail_blocks_ready') && ws_mail_blocks_ready();
     $rows = db_items("SELECT id, raw_path FROM ws_mail_items
-        WHERE raw_path <> '' AND created_at < '" . (time() - (WS_MAIL_EML_DAYS * 86400)) . "'
+        WHERE raw_path <> '' AND created_at < '" . (time() - (WS_MAIL_EML_DAYS * 86400)) . "'" . ($blocks ? ' AND blocked_at = 0' : '') . "
         ORDER BY id
         LIMIT " . max(1, (int) $limit));
 
@@ -771,7 +773,8 @@ function ws_mail_find_conversation($box, $parsed, $from_email)
         // The customer is let in without reading the mails; anyone else by
         // the newest 200 of them.
         $mails = ws_mail_sender_took_part($from_email, (string) $row['customer_email'], array()) ? array()
-            : db_items("SELECT " . $columns . " FROM ws_mail_items WHERE conversation_id = '" . $conversation_id . "' ORDER BY id DESC LIMIT 200");
+            : db_items("SELECT " . $columns . " FROM ws_mail_items WHERE conversation_id = '" . $conversation_id . "'
+                AND " . ws_mail_drafts_excluded_sql() . " ORDER BY id DESC LIMIT 200");
 
         if (ws_mail_sender_took_part($from_email, (string) $row['customer_email'], (array) $mails)) {
             return $row;
@@ -867,6 +870,8 @@ function ws_mail_message_write($channel_id, $parent_id, $item_id, $body, $file_i
  * - loop:      our own, automatic or bulk mail (reason); nothing kept.
  * - bounce:    a delivery failure of one of the box's answers, kept as a
  *              line under its conversation (ws_mail_bounce_store()).
+ * - blocked:   the sender is on the block list (mail_blocks.php); only the
+ *              item's head and the .eml are kept, outside every conversation.
  * - held:      the sender passed WS_MAIL_SENDER_HOURLY this hour; nothing
  *              kept, so a reader leaves it in the mailbox for a later run.
  * - refused:   no sender, too large to read, or no channel to write in
@@ -924,9 +929,19 @@ function ws_mail_ingest($raw, $box)
     }
 
     $now = time();
+    $blocks = function_exists('ws_mail_blocks_ready') && ws_mail_blocks_ready();
 
+    // A blocked sender's mail is kept outside every conversation, its head
+    // and .eml only, so no card, notice, flow or automatic answer follows
+    // (mail_blocks.php); the fetch takes it as done.
+    if ($blocks && ws_mail_block_find($box_id, $from_email)) {
+        return ws_mail_block_store($raw, $box, $parsed, $hash, $from_email, $now);
+    }
+
+    // Blocked mail kept for the sender does not count toward the hold.
     if ((int) db_value("SELECT COUNT(*) FROM ws_mail_items
-        WHERE box_id = '" . $box_id . "' AND from_email = '" . e($from_email) . "' AND created_at > '" . ($now - 3600) . "'") >= WS_MAIL_SENDER_HOURLY) {
+        WHERE box_id = '" . $box_id . "' AND from_email = '" . e($from_email) . "' AND created_at > '" . ($now - 3600) . "'"
+        . ($blocks ? ' AND blocked_at = 0' : '')) >= WS_MAIL_SENDER_HOURLY) {
         return array_merge($result, array('status' => 'held'));
     }
 
@@ -1111,8 +1126,9 @@ function ws_mail_ingest($raw, $box)
     }
 
     // Pinegrap AI's suggestion on a new conversation, where the box switched
-    // it on (mail_triage.php): made after the response, never here.
-    if (function_exists('ws_mail_triage_due') && ws_mail_triage_due($box, $opened, ws_mail_triage_ai_ready())) {
+    // it on (mail_triage.php): made after the response, never here. It is a
+    // message under the card, which nobody sees with the Workspace off.
+    if (function_exists('ws_mail_triage_due') && ws_enabled() && ws_mail_triage_due($box, $opened, ws_mail_triage_ai_ready())) {
         ws_mail_triage_queue($conversation_id);
     }
 
@@ -1198,6 +1214,7 @@ function ws_mail_items_map($rows)
         if ($answered && function_exists('ws_person_name')) {
             foreach ((array) db_items("SELECT conversation_id, user_id FROM ws_mail_items
                 WHERE conversation_id IN (" . implode(',', $answered) . ") AND direction = 'out' AND user_id > 0
+                    AND " . ws_mail_drafts_excluded_sql() . "
                 ORDER BY id DESC") as $writer) {
                 if (!isset($writers[(int) $writer['conversation_id']])) {
                     $writers[(int) $writer['conversation_id']] = ws_person_name((int) $writer['user_id']);

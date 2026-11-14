@@ -64,7 +64,7 @@ function test_workspace_mail_send_body_signature()
 {
 	pg_assert_same("Hello\n\n-- \nAyşe\nSupport", ws_mail_send_body("Hello\r\n", 'Ayşe', 'Support', ''), 'no Signature: the box\'s name');
 	pg_assert_same("Hello\n\n-- \nAyşe\nKodpen Support\n+90 212", ws_mail_send_body('Hello', 'Ayşe', 'Support', "Kodpen Support\n+90 212"), 'the Signature in the name\'s place');
-	pg_assert_contains("'body'               => ws_mail_answer_body((string) \$item['body_text'], (string) \$item['from_name'], \$box,",
+	pg_assert_contains("'body'               => ws_mail_answer_body((string) \$item['body_text'], \$writer, \$box,",
 		workspace_mail_compose_test_source('includes/workspace/mail_send.php'), 'the mail is built with it');
 	pg_assert_contains("ws_mail_send_body(\$text, \$writer, (string) \$box['name'], ws_mail_box_signature(\$box));",
 		workspace_mail_compose_test_source('includes/workspace/mail_reply.php'), 'an answer takes it too');

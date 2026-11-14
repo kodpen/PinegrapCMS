@@ -131,6 +131,15 @@
         box.appendChild(body.node);
         form.appendChild(h.formRow(t('mail_reply_text'), box, t('mail_reply_hint')));
 
+        // The writer's lines and the mailbox's Signature, as the answer carries them.
+        if (data.box) {
+            var signature = el('div', 'ws-mail-new-signature small fg-secondary');
+
+            signature.appendChild(el('div', '', t('mail_new_signature')));
+            signature.appendChild(el('div', 'ws-mail-new-signature-text', signatureLines(data.writer, data.own_signature, data.box)));
+            box.parentNode.appendChild(signature);
+        }
+
         // The writing box offers them itself; the text area's own list.
         if (!body.rich) {
             savedReplies(text, box, view, h);
@@ -1565,8 +1574,52 @@
             });
         }
 
+        // Block sender's form under a mail (mail_blocks.php): each of its two
+        // choices keeps one pressed button; Block sender posts them.
+        pane.addEventListener('submit', function (event) {
+            var form = event.target.closest('[data-ws-mail-block]');
+
+            if (!form) {
+                return;
+            }
+
+            event.preventDefault();
+
+            var data = { item_id: parseInt(form.getAttribute('data-ws-mail-block'), 10) };
+            var send = form.querySelector('[type="submit"]');
+
+            Array.prototype.forEach.call(form.querySelectorAll('[data-ws-mail-block-choice]'), function (group) {
+                var chosen = group.querySelector('[aria-pressed="true"]');
+
+                data[group.getAttribute('data-ws-mail-block-choice')] = chosen ? chosen.getAttribute('data-value') : '';
+            });
+
+            send.disabled = true;
+
+            h.api('ws_mail_block', data).then(function (result) {
+                h.toast(result.text, 'success');
+
+                if (current > 0) {
+                    open(current);
+                }
+            }).catch(function (error) {
+                send.disabled = false;
+                h.fail(error);
+            });
+        });
+
         // The mail's own buttons, in the pane however it was drawn.
         pane.addEventListener('click', function (event) {
+            var choice = event.target.closest('[data-ws-mail-block-choice] .pg-seg-item');
+
+            if (choice) {
+                Array.prototype.forEach.call(choice.parentNode.querySelectorAll('.pg-seg-item'), function (item) {
+                    item.setAttribute('aria-pressed', item === choice ? 'true' : 'false');
+                });
+
+                return;
+            }
+
             var target = event.target.closest('[data-ws-mail-plain], [data-ws-mail-show-pictures]');
 
             if (!target) {
@@ -1598,7 +1651,7 @@
         });
 
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -1609,6 +1662,8 @@
 
             if (target.hasAttribute('data-ws-mail-check')) {
                 check(target);
+            } else if (target.hasAttribute('data-ws-mail-my-settings')) {
+                mySettings(h);
             } else if (target.hasAttribute('data-ws-mail-new')) {
                 // The new conversation opens in the pane once sent.
                 compose(h, { sent: function (data) { open(data.conversation_id); } });
@@ -1815,11 +1870,87 @@
 
     // options.channel: the channel the form was opened from; its first
     // mailbox is chosen. options.sent(data) runs after a send.
+    // The lines under "-- " as the mail will carry them: the writer's own
+    // signature in place of their name, then the mailbox's Signature or its
+    // name (ws_mail_writer_lines(), ws_mail_send_body()).
+    function signatureLines(writer, own, box) {
+        var lines = String(own || '').replace(/\r\n?/g, '\n').replace(/^[\n ]+|[\n ]+$/g, '') || String(writer || '').trim();
+        var under = String(box.signature || '').trim() || String(box.name || '').trim();
+
+        return '-- \n' + [lines, under].filter(function (line) { return line !== ''; }).join('\n');
+    }
+
+    // My e-mail settings: the person's own signature in a drawer, with the
+    // lines a mail will carry under it as it is typed.
+    function mySettings(h) {
+        var t = h.t;
+        var el = h.el;
+
+        h.api('ws_mail_my_settings').then(function (data) {
+            var node = h.offcanvas('ws-mail-my-settings', t('mail_my_settings'));
+            var body = h.clear(node.querySelector('.drawer-body'));
+            var footer = h.clear(node.querySelector('.drawer-footer'));
+            var form = el('form', 'ws-mail-my-settings');
+            var field = el('textarea', 'form-control');
+            var preview = el('div', 'ws-mail-new-signature small fg-secondary');
+            var lines = el('div', 'ws-mail-new-signature-text');
+            // The box's Signature differs by mailbox: a stand-in under the
+            // person's own lines, drawn apart so it never reads as their text.
+            var standIn = el('span', 'fst-italic', '[' + t('mail_my_signature_box') + ']');
+            var save = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_my_settings_save'), 'bi-check2');
+
+            node.querySelector('.drawer-title').textContent = t('mail_my_settings');
+            footer.classList.remove('d-none');
+            form.noValidate = true;
+            field.id = h.nextId('ws-mail-my-signature-');
+            field.name = 'signature';
+            field.rows = 6;
+            field.maxLength = data.max || 1000;
+            field.value = data.signature || '';
+
+            function draw() {
+                lines.textContent = signatureLines(data.writer, field.value, { name: '', signature: '' }) + '\n';
+                lines.appendChild(standIn);
+            }
+
+            form.appendChild(h.formRow(t('mail_my_signature'), field, t('mail_my_signature_hint') + ' ' + t('mail_my_signature_limits')));
+            preview.appendChild(el('div', '', t('mail_my_signature_preview')));
+            preview.appendChild(lines);
+            form.appendChild(preview);
+            body.appendChild(form);
+            footer.appendChild(save);
+            draw();
+            field.addEventListener('input', draw);
+
+            function submit() {
+                save.disabled = true;
+
+                h.api('ws_mail_my_settings_save', { signature: field.value }).then(function () {
+                    h.hideOffcanvas(node);
+                    h.toast(t('mail_my_settings_saved'), 'success');
+                }).catch(function (error) {
+                    h.fail(error);
+                }).then(function () {
+                    save.disabled = false;
+                });
+            }
+
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                submit();
+            });
+            save.addEventListener('click', submit);
+            h.showOffcanvas(node);
+        }).catch(function (error) {
+            h.fail(error);
+        });
+    }
+
     function compose(h, options) {
         options = options || {};
 
         h.api('ws_mail_compose').then(function (data) {
-            newForm(h, data.boxes || [], data.writer || '', options, data.file_field || '');
+            newForm(h, data.boxes || [], data.writer || '', Object.assign({}, options, { own: data.own_signature || '' }), data.file_field || '');
         }).catch(function (error) {
             h.fail(error);
         });
@@ -1837,7 +1968,8 @@
             newForm(h, data.boxes || [], data.writer || '', {
                 channel: options.channel || (fill ? fill.channel_id : 0),
                 sent: options.sent,
-                fill: fill
+                fill: fill,
+                own: data.own_signature || ''
             });
         }).catch(function (error) {
             h.fail(error);
@@ -1987,7 +2119,7 @@
 
             h.clear(signature);
             signature.appendChild(el('div', '', t('mail_new_signature')));
-            signature.appendChild(el('div', 'ws-mail-new-signature-text', '-- \n' + (writer ? writer + '\n' : '') + (box.signature || box.name)));
+            signature.appendChild(el('div', 'ws-mail-new-signature-text', signatureLines(writer, options.own, box)));
         }
 
         function current() {

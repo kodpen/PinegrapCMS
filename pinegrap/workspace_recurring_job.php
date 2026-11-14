@@ -123,13 +123,20 @@ if (ws_enabled() && function_exists('ws_memory_sweep')) {
 // The HTML of mail that came in before it was kept, read again from its
 // .eml while that is still there: before the sweep below deletes it
 // (includes/workspace/mail.php).
-if (ws_enabled() && function_exists('ws_mail_html_fill')) {
+if (ws_ready() && ws_mail_on() && function_exists('ws_mail_html_fill')) {
     ws_mail_html_fill();
+}
+
+// Blocked senders' mail past its 30 days, row and .eml together, before
+// the .eml sweep below, which leaves blocked mail alone
+// (includes/workspace/mail_blocks.php).
+if (ws_enabled() && function_exists('ws_mail_block_sweep')) {
+    ws_mail_block_sweep();
 }
 
 // Original .eml files of incoming mail past their 30 days
 // (includes/workspace/mail.php).
-if (ws_enabled() && function_exists('ws_mail_eml_sweep')) {
+if (ws_ready() && ws_mail_on() && function_exists('ws_mail_eml_sweep')) {
     ws_mail_eml_sweep();
 }
 

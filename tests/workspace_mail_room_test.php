@@ -107,8 +107,8 @@ function test_workspace_mail_room_notice_of_a_channel_leads_to_its_card()
 	$source = pg_test_function_source('ws_mail_notice_url');
 
 	pg_assert_contains('ws_mail_room_url($base, ws_mail_room_conversation_id(', $source, 'a room\'s line opens the conversation on the E-mails screen');
-	pg_assert_contains('ws_mail_notice_url($base, (int) $row[\'channel_id\'], (int) $row[\'message_id\'], $channel)', pg_test_function_source('ws_mail_inbox_describe'), 'given to you, and the customer wrote again');
-	pg_assert_contains('ws_mail_notice_url($base, (int) $row[\'channel_id\'], (int) $row[\'message_id\'], $channel)', pg_test_function_source('ws_mail_unsent_describe'), 'could not be sent');
+	pg_assert_contains('ws_mail_notice_url($base, (int) $row[\'channel_id\'], (int) $row[\'message_id\'], $channel, ws_enabled())', pg_test_function_source('ws_mail_inbox_describe'), 'given to you, and the customer wrote again');
+	pg_assert_contains('ws_mail_notice_url($base, (int) $row[\'channel_id\'], (int) $row[\'message_id\'], $channel, ws_enabled())', pg_test_function_source('ws_mail_unsent_describe'), 'could not be sent');
 }
 
 function test_workspace_mail_room_notice_names_the_mailbox()
