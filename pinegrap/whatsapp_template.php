@@ -475,7 +475,7 @@ $output_offer_card =
                 : lang('The offer code is this site\'s own setting, so it can be changed while WhatsApp keeps the template as it is.')) . '</p>
             <p class="pg-text-meta mb-0"><b>' . h(lang('Key for each person:')) . '</b> ' . h(lang('a single-use key of the offer is made for each recipient when the message is queued; the order shows who used it.'))
                 . ' <b>' . h(lang('Shared code:')) . '</b> ' . h(lang('everyone gets the offer\'s own code.')) . '</p>
-            <div class="alert theme-secondary mt-2 mb-0" role="note"><p class="mb-0"><i class="bi bi-shield-check" aria-hidden="true"></i> ' . h(lang('A message with an offer code goes only to people who gave marketing consent for SMS and WhatsApp.')) . '</p></div>
+            <div class="alert theme-secondary mt-2 mb-0" role="note"><p class="mb-0 pg-text-meta"><i class="bi bi-shield-check" aria-hidden="true"></i> ' . h(lang('A message with an offer code goes only to people who gave marketing consent for SMS and WhatsApp.')) . '</p></div>
             ' . ((!$editable && $id) ? '<div class="mt-2"><button type="submit" name="submit_offer" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-check-circle" aria-hidden="true"></i>' . h(lang('Save offer code')) . '</button></div>' : '') . '
         </div>
     </section>';
