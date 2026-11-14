@@ -43,6 +43,12 @@
     }
 
     function answerForm(conversation, data, view, h, draft, all) {
+        // A draft kept on the server fills the answer and its copies; Send
+        // then deletes it (mail_drafts_screen.php).
+        var kept = (draft && typeof draft === 'object') ? draft : null;
+
+        draft = kept ? kept.text : draft;
+
         var t = h.t;
         var el = h.el;
         var node = h.offcanvas('ws-mail-reply', t('mail_reply'));
@@ -168,6 +174,10 @@
 
             var post = { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: body.value() };
 
+            if (kept) {
+                post.draft_id = kept.id;
+            }
+
             if (library.length) {
                 post.file_ids = library.map(function (file) { return file.id; }).join(',');
             }
@@ -201,7 +211,16 @@
         });
 
         footer.appendChild(send);
-        setCopies(false);
+
+        if (kept) {
+            cc.field.value = kept.cc || '';
+            bcc.field.value = kept.bcc || '';
+            footer.insertBefore(draftSave(h, kept, function () {
+                return { cc: cc.field.value, bcc: bcc.field.value, text: body.value() };
+            }), send);
+        }
+
+        setCopies(!!(cc.field.value || bcc.field.value));
 
         if (all && everyone) {
             everyone.checked = true;
@@ -1453,6 +1472,73 @@
             }
         }
 
+        // The Drafts view (mail_drafts_screen.php): Open fills the reply
+        // drawer, beside its conversation, or the New e-mail form; Delete
+        // removes the draft. A sent draft leaves the list.
+        function draftAction(button) {
+            var opens = button.hasAttribute('data-ws-mail-draft-open');
+            var id = parseInt(button.getAttribute(opens ? 'data-ws-mail-draft-open' : 'data-ws-mail-draft-remove'), 10);
+            var row = button.closest('[data-ws-mail-draft-row]');
+
+            function gone() {
+                if (row && row.parentNode) {
+                    row.parentNode.removeChild(row);
+                }
+            }
+
+            if (!opens) {
+                // Asked first with the panel's confirm dialog: nothing brings a
+                // deleted draft back.
+                var asked = (typeof window.pgConfirm === 'function')
+                    ? window.pgConfirm({ title: w('delete'), message: w('draft_delete'), confirmText: w('delete'), variant: 'danger' })
+                    : Promise.resolve(window.confirm(w('draft_delete')));
+
+                asked.then(function (agreed) {
+                    if (!agreed) {
+                        return;
+                    }
+
+                    button.disabled = true;
+
+                    h.api('ws_mail_draft_remove', { draft_id: id }).then(function () {
+                        gone();
+                        h.toast(w('draft_deleted'), 'success');
+                    }).catch(function (error) {
+                        button.disabled = false;
+                        h.fail(error);
+                    });
+                });
+
+                return;
+            }
+
+            button.disabled = true;
+
+            h.api('ws_mail_draft_open', { draft_id: id }).then(function (data) {
+                var draft = data.draft;
+
+                draft.labels = { save: w('draft_save'), saved: w('draft_saved') };
+                button.disabled = false;
+
+                if (draft.kind === 'new') {
+                    compose(h, { draft: draft, sent: function (sent) { gone(); open(sent.conversation_id); } });
+                    return;
+                }
+
+                open(draft.conversation_id);
+                replyForm({ mail_reply: draft.conversation_id }, {
+                    channel: { id: draft.channel_id, members: [] },
+                    sync: function () {
+                        gone();
+                        open(draft.conversation_id);
+                    }
+                }, h, draft);
+            }).catch(function (error) {
+                button.disabled = false;
+                h.fail(error);
+            });
+        }
+
         function open(id) {
             var row = root.querySelector('[data-ws-mail-row="' + id + '"]');
             var again = (current === id);
@@ -1671,7 +1757,7 @@
         }
 
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-unblock], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-unblock], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close], [data-ws-mail-draft-open], [data-ws-mail-draft-remove]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -1680,7 +1766,9 @@
 
             event.preventDefault();
 
-            if (target.hasAttribute('data-ws-mail-check')) {
+            if (target.hasAttribute('data-ws-mail-draft-open') || target.hasAttribute('data-ws-mail-draft-remove')) {
+                draftAction(target);
+            } else if (target.hasAttribute('data-ws-mail-check')) {
                 check(target);
             } else if (target.hasAttribute('data-ws-mail-unblock')) {
                 unblock(target);
@@ -1968,6 +2056,27 @@
         });
     }
 
+    // Save draft, beside Send in a form opened from a draft kept on the
+    // server: the form's fields written back to it, so a change is never
+    // lost by closing the form (mail_drafts_screen.php).
+    function draftSave(h, draft, fields) {
+        var save = h.button('btn btn-outline theme-secondary rounded-pill px-5 me-2', draft.labels.save, 'bi-floppy');
+
+        save.addEventListener('click', function () {
+            save.disabled = true;
+
+            h.api('ws_mail_draft_save', Object.assign({ draft_id: draft.id }, fields())).then(function () {
+                save.disabled = false;
+                h.toast(draft.labels.saved, 'success');
+            }).catch(function (error) {
+                save.disabled = false;
+                h.fail(error);
+            });
+        });
+
+        return save;
+    }
+
     function compose(h, options) {
         options = options || {};
 
@@ -2006,9 +2115,12 @@
         var node = h.offcanvas('ws-mail-compose', title);
         var body = h.clear(node.querySelector('.drawer-body'));
         var footer = h.clear(node.querySelector('.drawer-footer'));
+        // A draft kept on the server fills the form; the browser's kept
+        // form is neither read nor written for it (mail_drafts_screen.php).
+        var server = options.draft || null;
         // A forward keeps its unsent form apart, and only for its source.
         var key = newDraftKey(h.cfg.api_url, h.cfg.me) + (fill ? '|fwd' : '');
-        var kept = newDraftRead(key);
+        var kept = server ? null : newDraftRead(key);
         var files = [];
         // The source's files the forward carries; each can be taken out.
         var carried = fill ? fill.files.slice() : [];
@@ -2049,7 +2161,7 @@
             })[0] || null;
         }
 
-        start = start || (kept && boxOf(kept.box)) || boxes[0];
+        start = start || (server && boxOf(server.box_id)) || (kept && boxOf(kept.box)) || boxes[0];
 
         var from = h.select(boxes.map(function (box) {
             return [String(box.id), box.name + ' <' + box.address + '>'];
@@ -2172,6 +2284,10 @@
 
         // Saved 400 ms after typing pauses; an empty form drops the slot.
         function keep() {
+            if (server) {
+                return;
+            }
+
             window.clearTimeout(timer);
             timer = window.setTimeout(function () {
                 var value = current();
@@ -2191,6 +2307,12 @@
             bcc.field.value = kept.bcc;
             subject.field.value = kept.subject;
             body.set(kept.text);
+        } else if (server) {
+            to.field.value = server.to || '';
+            cc.field.value = server.cc || '';
+            bcc.field.value = server.bcc || '';
+            subject.field.value = server.subject || '';
+            body.set(server.text || '');
         } else if (fill) {
             filled();
         }
@@ -2274,6 +2396,10 @@
                 post.send_anyway = 1;
             }
 
+            if (server) {
+                post.draft_id = server.id;
+            }
+
             if (fill) {
                 post.forward_kind = fill.kind;
                 post.forward_ids = fill.ids.join(',');
@@ -2309,6 +2435,14 @@
         send.addEventListener('click', function () {
             sendNew(false);
         });
+
+        if (server) {
+            footer.appendChild(draftSave(h, server, function () {
+                var fields = current();
+
+                return { to: fields.to, cc: fields.cc, bcc: fields.bcc, subject: fields.subject, text: fields.text };
+            }));
+        }
 
         footer.appendChild(send);
         h.showOffcanvas(node);

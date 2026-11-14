@@ -57,7 +57,7 @@ function ws_mail_transport_kind($box_transport)
 /**
  * The list's filters as asked in the address, each a known word. Pure.
  *
- * @param array $query view (incoming | sent | unsent | all), status (open |
+ * @param array $query view (incoming | sent | unsent | drafts | all), status (open |
  *                     waiting | closed | all; open in Incoming, else all by
  *                     default), holder (all | me | none), overdue (1), box
  *                     (a mailbox id), transport (email | whatsapp | sms,
@@ -73,7 +73,7 @@ function ws_mail_list_filters($query)
         return in_array($value, $known, true) ? $value : $default;
     };
 
-    $view = $word('view', array('incoming', 'sent', 'unsent', 'blocked', 'all'), 'incoming');
+    $view = $word('view', array('incoming', 'sent', 'unsent', 'blocked', 'drafts', 'all'), 'incoming');
     $search = is_scalar($query['q'] ?? null) ? trim(mb_substr(trim((string) $query['q']), 0, WS_MAIL_LIST_QUERY_MAX)) : '';
 
     return array(
@@ -372,7 +372,9 @@ function ws_mail_list_visible($viewer)
 function ws_mail_list($viewer, $filters, $now)
 {
     $charset = function_exists('pg_list_search_connection_charset') ? pg_list_search_connection_charset() : '';
-    $where = ws_mail_list_where($filters, (int) $viewer['id'], ws_mail_list_channels($viewer), $charset, ws_mail_plain_box_ids());
+    // Drafts lists kept drafts, not conversations (mail_drafts_screen.php).
+    $where = (($filters['view'] ?? '') === 'drafts') ? ''
+        : ws_mail_list_where($filters, (int) $viewer['id'], ws_mail_list_channels($viewer), $charset, ws_mail_plain_box_ids());
 
     if ($where === '') {
         return array('rows' => array(), 'next' => '');
@@ -636,8 +638,9 @@ function ws_mail_list_more_html($filters, $next)
  */
 function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false, $support = true, $transports = array(), $can_check = false, $calendar = true, $blocked = false)
 {
-    // Blocked mail has no conversation, so no status, holder or kind.
-    if ($filters['view'] === 'blocked') {
+    // Blocked mail and drafts have no conversation of their own, so no
+    // status, holder, kind or first-answer filter.
+    if (in_array($filters['view'], array('blocked', 'drafts'), true)) {
         $support = false;
         $transports = array();
     }
@@ -692,6 +695,11 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
     // Blocked mail is kept outside the conversations (mail_blocks.php).
     if ($blocked || ($filters['view'] === 'blocked')) {
         $view_list += array('blocked' => array(lang('Blocked e-mail'), 'slash-circle'));
+    }
+
+    // Drafts kept on the server, for whoever writes mail (mail_drafts_screen.php).
+    if ($can_send || ($filters['view'] === 'drafts')) {
+        $view_list += array('drafts' => array(lang('Drafts'), 'file-earmark-text'));
     }
 
     foreach ($view_list as $view => $label) {

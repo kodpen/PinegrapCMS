@@ -234,7 +234,7 @@ function test_workspace_mail_forward_reply_drawer_keeps_its_name()
 
 	pg_assert_same(1, substr_count($mail, 'function compose('), 'one compose()');
 	pg_assert_same(1, substr_count($mail, 'function replyForm(message, view, h, draft, all) {'), 'the drawer');
-	pg_assert_same(4, substr_count($mail, 'replyForm(') - 1, 'the card, the AI draft and the pane\'s Reply and Reply to all open it');
+	pg_assert_same(5, substr_count($mail, 'replyForm(') - 1, 'the card, the AI draft, the pane\'s Reply and Reply to all, and a reply\'s draft from the Drafts view open it');
 
 	$out = array();
 	$code = 1;
