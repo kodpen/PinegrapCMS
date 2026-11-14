@@ -4,8 +4,10 @@ description: How an HTML campaign body is drawn from a page: an e-mail render wi
 ---
 
 ## How is an HTML campaign's body drawn?
-- `pg_email_campaign_page_body($page_id)` (`includes/fn/email_campaign_create.php`), called by `add_email_campaign.php`: `get_page_content(..., 'preview', $email = true)`, then `pg_email_campaign_without_token()` cuts every copy of the sender's session token (a long random hex string) from the HTML.
+- `pg_email_campaign_page_body($page_id)` (`includes/fn/email_campaign_create.php`), called by `add_email_campaign.php` and Edit Campaign's "Take the design again": `get_page_content(..., 'preview', $email = true)`, then `pg_email_campaign_without_token()` cuts every copy of the sender's session token (a long random hex string) from the HTML.
 - The page is drawn inside the sender's panel request, but the e-mail goes to the recipients. Before, the stored body held the admin's address book rows, `remove_recipient.php?...&token=<admin token>` links and `var software_token = "<token>"`, and every recipient got them.
+
+- Then `pg_email_campaign_prepare_html_body($body, $tracking_name, $with_footer)` (since MA5b #9426): base and absolute addresses, the `t=` tracking code on links to this site, the fixed footer before `</body>`. Pasted HTML goes through it too.
 
 ## What does an e-mail render leave out?
 - `get_page_content()` writes `software_token` blank when `$email` is true (every e-mail render: campaigns, comment and form mails, campaign profiles).

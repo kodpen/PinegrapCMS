@@ -15,6 +15,9 @@ description: An assistant asked in a discussion: what it reads about it (Claude'
 - A registry agent: by name where the channel allows it and the discussion has no row of its own (#8600): `agent-discussion-reach.md`.
 - Being asked there is kept in `ws_threads.assistants` for the line under the channel message (`ws_thread_assistant_asked()`).
 
+## May it conclude the discussion?
+- A registry agent (application or model) when a person in it asks, and unasked it may only offer a Conclude button: `agent-conclude-discussion.md`.
+
 ## Does it answer without its @name?
 - Yes, in a discussion that follows it (PR #2924): workspace-discussion-follow.md; Stop / Follow again and the API field: workspace-discussion-follow-screen.md (PR #2997).
 
