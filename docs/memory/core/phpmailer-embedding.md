@@ -1,6 +1,6 @@
 ---
 name: phpmailer-embedding
-description: Which PHPMailer the product loads (6.12.0 from includes/phpmailer/src), the unloaded 5.2.22 files beside it, and why both are quiet on PHP 8.5 (#PRNUM)
+description: Which PHPMailer the product loads (6.12.0 from includes/phpmailer/src), the unloaded 5.2.22 files beside it, and why both are quiet on PHP 8.5 (#9470)
 module: mail
 ---
 
