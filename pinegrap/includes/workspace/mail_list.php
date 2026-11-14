@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace: the E-mails list (workspace_mail.php). The e-mail
+ * Workspace: the E-mails list (messages_mail.php, Communication › Incoming e-mail). The e-mail
  * conversations of every channel the reader may read, newest mail first,
  * in three views (Incoming, Sent, Not sent), narrowed by status, holder, an
  * overdue first answer, the mailbox and a search, a page at a time; each
@@ -435,7 +435,7 @@ function ws_mail_list_page_url($filters, $conversation_id = 0)
     $before = $filters['before'] ? (int) $filters['before'][0] . '-' . (int) $filters['before'][1] : '';
     $query = ws_mail_list_query($filters, array('before' => $before, 'conversation' => ((int) $conversation_id > 0) ? (int) $conversation_id : ''));
 
-    return 'workspace_mail.php' . (($query !== '') ? '?' . $query : '');
+    return 'messages_mail.php' . (($query !== '') ? '?' . $query : '');
 }
 
 /**
@@ -515,7 +515,7 @@ function ws_mail_list_more_html($filters, $next)
         return '';
     }
 
-    return '<div class="ws-mail-more"><a class="btn btn-sm btn-outline theme-secondary" data-ws-mail-more href="workspace_mail.php?'
+    return '<div class="ws-mail-more"><a class="btn btn-sm btn-outline theme-secondary" data-ws-mail-more href="messages_mail.php?'
         . h(ws_mail_list_query($filters, array('before' => $next))) . '">' . h(lang('Load more')) . '</a></div>';
 }
 
@@ -538,7 +538,7 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
     $keep = array('view', 'status', 'holder', 'overdue', 'box', 'q');
 
     $overdue = '<a class="btn btn-sm btn-text theme-secondary' . ($filters['overdue'] ? ' active' : '') . '" aria-pressed="' . ($filters['overdue'] ? 'true' : 'false') . '"'
-        . ' href="workspace_mail.php?' . h(ws_mail_list_query($filters, array('overdue' => $filters['overdue'] ? '' : '1'))) . '"><i class="bi bi-alarm me-1" aria-hidden="true"></i>' . h(lang('First answer overdue')) . '</a>';
+        . ' href="messages_mail.php?' . h(ws_mail_list_query($filters, array('overdue' => $filters['overdue'] ? '' : '1'))) . '"><i class="bi bi-alarm me-1" aria-hidden="true"></i>' . h(lang('First answer overdue')) . '</a>';
 
     $search = $support ? array(
         pg_filter_select('status', $statuses, $filters['status'], array('label' => lang('Status'), 'icon' => 'inbox', 'keep' => $keep)),
@@ -576,7 +576,7 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
         $query = ws_mail_list_query(array_merge($filters, array('view' => $view, 'status' => ($view === 'incoming') ? 'open' : 'all')), array('overdue' => ''));
         $active = ($filters['view'] === $view);
         $views .= '<a class="btn btn-sm btn-text theme-secondary' . ($active ? ' active' : '') . '"' . ($active ? ' aria-current="page"' : '')
-            . ' href="workspace_mail.php' . (($query !== '') ? '?' . h($query) : '') . '"><i class="bi bi-' . $label[1] . ' me-1" aria-hidden="true"></i>' . h($label[0]) . '</a>';
+            . ' href="messages_mail.php' . (($query !== '') ? '?' . h($query) : '') . '"><i class="bi bi-' . $label[1] . ' me-1" aria-hidden="true"></i>' . h($label[0]) . '</a>';
     }
 
     // New e-mail opens its form in a drawer (workspace_mail.js); without a

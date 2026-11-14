@@ -480,6 +480,7 @@ function get_help_url($properties = array())
         'workspace_flows'         => 'workspace-cont#flows',
         'workspace_wtables'       => 'workspace-cont#workflow-tables',
         'workspace_mail'          => 'workspace-cont#e-mails',
+        'messages_mail'           => 'workspace-cont#e-mails',
         'workspace_calendar_feed' => 'workspace#work-calendar-subscription',
         'workspace_mcp'           => 'api#mcp',
 

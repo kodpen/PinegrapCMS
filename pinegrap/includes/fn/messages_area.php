@@ -144,6 +144,23 @@ function pg_messages_mail_visible($user)
 }
 
 /**
+ * The open e-mail conversations unread for the signed-in person: the number
+ * on the Communication row of the menu (it was the Workspace's E-mails
+ * tile's). 0 for anybody who may not open Incoming e-mail.
+ *
+ * @param array $user validate_user()
+ * @return int
+ */
+function pg_messages_mail_unread($user)
+{
+    if (!pg_messages_mail_visible($user) || !function_exists('ws_mail_unread_count')) {
+        return 0;
+    }
+
+    return ws_mail_unread_count(ws_viewer($user));
+}
+
+/**
  * Where the Workspace's old E-mails address (workspace_mail.php) leads:
  * Incoming e-mail with the same words (conversation, view, filters, page).
  * Only plain words are carried; a list in the address is dropped. Pure.

@@ -142,7 +142,7 @@ function test_workspace_mail_compose_toolbar_and_menu()
 	$filters = ws_mail_list_filters(array());
 	pg_assert_contains('data-ws-mail-new', ws_mail_list_filters_html($filters, array(), true), 'the button for whoever may send');
 	pg_assert_true(strpos(ws_mail_list_filters_html($filters, array(), false), 'data-ws-mail-new') === false, 'none otherwise');
-	pg_assert_contains('ws_mail_send_ready() && (bool) ws_mail_send_boxes($viewer)', workspace_mail_compose_test_source('workspace_mail.php'), 'the screen asks');
+	pg_assert_contains('ws_mail_send_ready() && (bool) ws_mail_send_boxes($viewer)', workspace_mail_compose_test_source('messages_mail.php'), 'the screen asks');
 
 	pg_assert_contains("\$brief['mail_new'] = function_exists('ws_mail_send_ready') && ws_mail_send_ready() && !empty(\$viewer['member'])",
 		workspace_mail_compose_test_source('includes/workspace/channels.php'), 'the channel says whether its menu has the entry');
