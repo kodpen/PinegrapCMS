@@ -1137,8 +1137,8 @@ function pg_privacy_export_collect(array $found)
     }
 
     // Workspace: the channels kept about the person (by reference), the
-    // approvals they were asked for by e-mail and the workflow table cells
-    // naming them.
+    // approvals they were asked for by e-mail, the workflow table cells
+    // naming them and the whole-team plans made for them.
     $workspace = array();
 
     if (pg_schema_has('ws_channels', 'contact_id')) {
@@ -1186,6 +1186,16 @@ function pg_privacy_export_collect(array $found)
         }
 
         $workspace[] = array('rows' => $table_rows, 'truncated' => $read['truncated']);
+    }
+
+    // A person's own plans naming the person's contacts, only those shared
+    // with the whole team (includes/workspace/personal_plan_contact.php).
+    if (is_file(PG_FUNCTIONS_DIR . '/includes/workspace/personal_plan_contact.php')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/personal_plans.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/personal_plan_steps.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/personal_plan_contact.php');
+
+        $workspace[] = ws_personal_plans_export($contact_ids, $limit);
     }
 
     $sections['workspace'] = pg_privacy_export_join($workspace);

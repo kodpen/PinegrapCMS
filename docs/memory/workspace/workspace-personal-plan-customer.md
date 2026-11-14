@@ -22,7 +22,7 @@ description: A person's own plan made for a customer (PC6): contact_id, the draw
 
 ## Merge, erasure and export?
 - `pg_contact_holders()` row `ws_personal_plans` (merge `move`, erase `find`); the erasure sets `contact_id` 0 (`pg_privacy_erase_tables()`, label "Roadmaps"); the plan stays its owner's.
-- Export: a customer's export lists nothing of a plan (architect, channel 3328). Whether it should list plans opened to the whole team, title and days, is with the owner; a yes is a step of its own.
+- Export: a customer's export lists the plans naming them that are shared with the whole team, never others (PC6b, owner 3361, `workspace-personal-plan-export.md`).
 
 - The card's actions (New cart quote, Remind me, New roadmap) stand as one group under the card's title, wrapping from the left (architect, 3345).
 - Erasure does not touch the mail (owner, channel 3364).
