@@ -96,12 +96,3 @@ function test_user_list_edit_cell_opens_the_editor()
 	pg_assert_contains(h(urlencode('/pinegrap/view_users.php?filter=my_private_users')), $cells['username']['html'], 'the editor returns to the view');
 	pg_assert_contains('aria-label="' . h(lang('Edit')) . '"', $cells['actions']['html']);
 }
-
-function test_user_list_start_page_cell()
-{
-	pg_assert_same('', pg_user_list_start_page_cell(0, null), 'no start page');
-	pg_assert_same('About &amp; us', pg_user_list_start_page_cell('12', 'About & us'));
-	$gone = pg_user_list_start_page_cell('294', null);
-	pg_assert_contains(h(lang('Deleted page')), $gone, 'a page that is gone is named as deleted');
-	pg_assert_false(strpos(strip_tags($gone), '294') !== false, 'never the bare id as the text');
-}

@@ -294,9 +294,6 @@ function pg_delete_page_record($page_id, $user)
 
     pg_audit_record('delete', 'page', (int) $page_id, $audit_before);
 
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_home.php');
-    pg_page_start_page_forget((int) $page_id);
-
     // Stored SEO findings for this page; links matter in both directions.
     if (pg_schema_has('seo_issue')) {
         db("DELETE FROM seo_issue WHERE (entity_type = 'page') AND (entity_id = '" . (int) $page_id . "')");

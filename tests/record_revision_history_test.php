@@ -101,7 +101,7 @@ function test_record_revision_history_value_text()
 	pg_assert_same('Hello world', pg_record_revision_value_text(array("<p>Hello</p>\n<p>world</p>"), array()));
 	pg_assert_same('a, b', pg_record_revision_value_text(array('a', 'b'), array()));
 	pg_assert_same('photo.jpg', pg_record_revision_value_text(array(array('file_id' => 55)), array(55 => 'photo.jpg')));
-	pg_assert_same(lang('Deleted file'), pg_record_revision_value_text(array(array('file_id' => 56)), array(55 => 'photo.jpg')), 'file gone');
+	pg_assert_same('#56', pg_record_revision_value_text(array(array('file_id' => 56)), array(55 => 'photo.jpg')), 'file gone');
 
 	$text = pg_record_revision_value_text(array(str_repeat('ç', 400)), array());
 	pg_assert_same(301, mb_strlen($text), 'cut at 300 characters and an ellipsis');

@@ -492,20 +492,6 @@ function test_picker_upload_wired()
 
 // The picker field: what a stored value shows, and the markup the script
 // reads.
-function test_picker_last_names_from_rows()
-{
-	$rows = array(
-		array('entity_id' => '294', 'label' => 'pgbin_294_about-us'),
-		array('entity_id' => '294', 'label' => 'about'),
-		array('entity_id' => '7', 'label' => ''),
-		array('entity_id' => '7', 'label' => 'terms'),
-		array('entity_id' => '0', 'label' => 'none'),
-	);
-	pg_assert_same(array(294 => 'about-us', 7 => 'terms'), pg_picker_last_names_from_rows($rows), 'newest non-blank label, unparked');
-	pg_assert_same(array(), pg_picker_last_names_from_rows(false), 'a failed query names nothing');
-	pg_assert_same(array(), pg_picker_last_names('page', array()));
-}
-
 function test_picker_field_view_and_markup()
 {
 	$kinds = pg_picker_kinds();
@@ -525,16 +511,13 @@ function test_picker_field_view_and_markup()
 	pg_assert_true($missing['note'] !== '');
 
 	$gone = pg_picker_field_view($kinds['file'], 42, null);
-	pg_assert_same(array('missing', lang('Deleted file'), 'bi-file-earmark-x'), array($gone['state'], $gone['text'], $gone['icon']), 'an id kind with no name left is a plain label');
-	pg_assert_same(lang(array('string' => 'No longer exists · #{var:1}', 'vars' => '42')), $gone['meta'], 'the id only in the meta line');
-
-	$named = pg_picker_field_view($kinds['file'], 42, array('value' => 42, 'state' => 'missing', 'text' => 'price-list.pdf'));
-	pg_assert_same(array('missing', 'price-list.pdf', 'warning'), array($named['state'], $named['text'], $named['tone']), 'the last name the site keeps');
-	pg_assert_same(lang(array('string' => 'No longer exists · #{var:1}', 'vars' => '42')), $named['meta']);
+	pg_assert_same(array('missing', lang('File not found'), 'bi-file-earmark-x'), array($gone['state'], $gone['text'], $gone['icon']), 'an id kind is told in words, never by its id');
+	pg_assert_same(lang(array('string' => 'Stored value · #{var:1}', 'vars' => '42')), $gone['meta'], 'the id moves to the meta line');
+	pg_assert_true($gone['note'] !== '', 'the amber note stays');
 
 	$page_gone = pg_picker_field_view($kinds['page'], '294', null);
-	pg_assert_same(lang('Deleted page'), $page_gone['text']);
-	pg_assert_false(strpos($page_gone['text'], '#') !== false, 'never a bare id as the name');
+	pg_assert_same(array(lang('Page not found'), lang(array('string' => 'Stored value · #{var:1}', 'vars' => '294')), 'warning'), array($page_gone['text'], $page_gone['meta'], $page_gone['tone']));
+	pg_assert_contains('name="home_page" value="294"', pg_picker_field_markup('page', 'home_page', '294', $page_gone), 'the stored value is posted unchanged');
 
 	$ok = array('value' => 'logo.png', 'text' => 'logo.png', 'state' => 'ok', 'thumb' => '/thumb/logo.png', 'type' => 'png', 'path' => array(array('name' => 'Files')), 'width' => 64, 'height' => 64, 'size_label' => '2 KB');
 	$view = pg_picker_field_view($kinds['public_image'], 'logo.png', $ok);

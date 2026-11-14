@@ -6,8 +6,7 @@
  * page.page_home and the step that takes the flag from every other page
  * when a page becomes the home page. Edit Page (edit_page.php) and the
  * visual designer's saves (includes/fn/designer.php) both use it, so the
- * site root (get_page.php) always finds a single row. A page deleted for
- * good also leaves the users' start pages (pg_page_start_page_forget()).
+ * site root (get_page.php) always finds a single row.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -71,44 +70,4 @@ function pg_page_home_claim($page_id)
     }
 
     return $names;
-}
-
-/**
- * The statement that takes deleted pages off every user's start page
- * (user.user_home), as a design template install does with the pages it
- * replaces. A user with no start page signs in to the site's default page,
- * so 0 is what "[None]" was. Pure.
- *
- * @param int[] $page_ids
- * @return string '' when no id is left
- */
-function pg_page_start_page_forget_sql($page_ids)
-{
-    $ids = array();
-
-    foreach ((array) $page_ids as $id) {
-        $id = (int) $id;
-
-        if (($id > 0) && !in_array($id, $ids, true)) {
-            $ids[] = $id;
-        }
-    }
-
-    return $ids ? "UPDATE user SET user_home = 0 WHERE user_home IN (" . implode(', ', $ids) . ")" : '';
-}
-
-/**
- * Takes a page that is deleted for good off every user's start page, so
- * Edit User and the users list never keep an id with no page behind it.
- *
- * @param int|int[] $page_ids
- * @return void
- */
-function pg_page_start_page_forget($page_ids)
-{
-    $sql = pg_page_start_page_forget_sql(is_array($page_ids) ? $page_ids : array($page_ids));
-
-    if ($sql !== '') {
-        db($sql);
-    }
 }

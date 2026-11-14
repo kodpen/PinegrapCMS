@@ -50,16 +50,3 @@ function test_page_home_writers_keep_one_home_page()
 	pg_assert_true(preg_match("/page_home\\s*=\\s*''/", $designer) === 0, 'the designer never writes an empty page_home');
 	pg_assert_true(strpos($designer, "'yes' : ''") === false, 'the designer writes no for a page that is not the home page');
 }
-
-function test_page_start_page_forget_sql()
-{
-	pg_assert_same('UPDATE user SET user_home = 0 WHERE user_home IN (294, 7)', pg_page_start_page_forget_sql(array('294', 7, 294, 0, -3)));
-	pg_assert_same('', pg_page_start_page_forget_sql(array()), 'no id, no statement');
-}
-
-function test_page_deletes_forget_start_pages()
-{
-	foreach (array('/edit_page.php', '/edit_pages.php', '/includes/explorer/recycle_bin.php') as $file) {
-		pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . $file), 'pg_page_start_page_forget(') !== false, $file . ' takes a deleted page off the start pages');
-	}
-}

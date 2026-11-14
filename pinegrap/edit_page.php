@@ -1231,8 +1231,6 @@ if (!$_POST) {
         if (function_exists('pg_recycle_forget')) {
             pg_recycle_forget('page', $page_id);
         }
-
-        pg_page_start_page_forget($page_id);
         
         // delete regions
         $query = "DELETE FROM pregion WHERE pregion_page = ?";

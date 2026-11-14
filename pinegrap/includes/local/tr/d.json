@@ -481,7 +481,6 @@
     "Deleted by {var:1}, {var:2} · deleted for good on {var:3}": "Silen: {var:1}, {var:2} · kalıcı silinme: {var:3}",
     "Deleted contact": "Silinmiş kişi",
     "Deleted customer": "Silinmiş müşteri",
-    "Deleted file": "Silinmiş dosya",
     "Deleted folders, pages and files wait here instead of disappearing, and restoring one puts it back where it came from. Anything still here after 30 days is removed for good.": "Silinen klasör, sayfa ve dosyalar kaybolmak yerine burada bekler; geri yüklediğinizde geldiği yere döner. 30 gün sonra burada kalanlar kalıcı olarak silinir.",
     "Deleted for good in": "Kalıcı silinmeye",
     "Deleted for good on": "Kalıcı silinme tarihi",

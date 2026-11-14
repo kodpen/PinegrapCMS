@@ -18,7 +18,6 @@
 include('init.php');
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_bulk.php');
-require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_home.php');
 $liveform = new liveform('view_pages');
 $user = validate_user();
 validate_area_access($user, 'user');
@@ -341,8 +340,6 @@ if (!$_POST) {
                         if (function_exists('pg_recycle_forget')) {
                             pg_recycle_forget('page', $page_id);
                         }
-
-                        pg_page_start_page_forget($page_id);
 
                         // Stored SEO findings for this page. The single-page
                         // delete in edit_page.php clears these; this screen

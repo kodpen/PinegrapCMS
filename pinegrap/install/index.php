@@ -6004,11 +6004,7 @@ else {
 		} else {
 
 			// add administrator user
-			// The start page is the starter's "staff-home" page, looked up by
-			// name so a starter without it leaves no start page rather than an
-			// id with no page behind it.
-			$install_admin_home = (int) db_value("SELECT page_id FROM page WHERE page_name = 'staff-home' LIMIT 1");
-
+			// We are setting the user's start page to the 294 page which is "staff-home".
 			$result = db_q(
 
 			"INSERT INTO user (
@@ -6025,13 +6021,12 @@ else {
 
 					user_timestamp)
 
-				VALUES (?, ?, ?, '0', ?, UNIX_TIMESTAMP())",
+				VALUES (?, ?, ?, '0', '294', UNIX_TIMESTAMP())",
 
 			array(
 				(string) $liveform->get_field_value('admin_username'),
 				(string) $liveform->get_field_value('admin_email_address'),
-				md5($liveform->get_field_value('admin_password')),
-				(string) $install_admin_home)) or exit(mysqli_error(db::$con));
+				md5($liveform->get_field_value('admin_password')))) or exit(mysqli_error(db::$con));
 
 			$user_id = mysqli_insert_id(db::$con);
 
@@ -9195,6 +9190,7 @@ function get_tables() {
 		'watchers',
 		'whatsapp_outbox',
 		'whatsapp_templates',
+		'whatsapp_inbox',
 		'wishlist_items',
 		'zones',
 		'zones_countries_xref',

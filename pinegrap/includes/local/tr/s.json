@@ -5149,6 +5149,7 @@
     "Store, shipping, gift cards, payment and affiliates.": "Mağaza, kargo, hediye kartları, ödeme ve satış ortaklığı.",
     "Store, shipping, gift cards, payment, product feeds and affiliates.": "Mağaza, kargo, hediye kartları, ödeme, ürün akışları ve satış ortaklığı.",
     "Stored encrypted and never shown again. Leave empty to keep the saved key.": "Şifreli saklanır ve bir daha gösterilmez. Kayıtlı anahtarı korumak için boş bırakın.",
+    "Stored value · #{var:1}": "Kayıtlı değer · #{var:1}",
     "Stored value · file not found": "Kayıtlı değer · dosya bulunamadı",
     "Stored value · page not found": "Kayıtlı değer · sayfa bulunamadı",
     "Stored-card renewals allowed by iyzico": "iyzico'nun izin verdiği kayıtlı kartla yenileme",
