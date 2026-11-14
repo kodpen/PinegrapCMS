@@ -2892,6 +2892,15 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok();
 
+        // Recipient suggestions for To, Cc and Bcc (mail_suggest.php): read
+        // only; a guest never reaches here (ws_handle_action()).
+        case 'ws_mail_suggest':
+            if (!function_exists('ws_mail_send') || !ws_mail_send_ready()) {
+                return ws_action_ok(array('items' => array()));
+            }
+
+            return ws_action_ok(array('items' => ws_mail_suggest($viewer, $request['q'] ?? '')));
+
         // Check e-mail: the person's IMAP boxes read now (mail_check.php);
         // when mail came, the list is drawn again with the screen's filters.
         case 'ws_mail_check':

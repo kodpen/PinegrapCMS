@@ -77,6 +77,9 @@
 
         var cc = addresses('cc', t('mail_new_cc'));
         var bcc = addresses('bcc', t('mail_new_bcc'));
+
+        suggest(h, cc.field);
+        suggest(h, bcc.field);
         var copies = el('div', 'ws-mail-new-copies');
         var showCopies = h.button('btn btn-sm btn-text theme-secondary ws-mail-new-cc-toggle', t('mail_new_cc_bcc'), 'bi-plus-lg');
 
@@ -198,6 +201,156 @@
 
         h.showOffcanvas(node);
         text.focus();
+    }
+
+    // Recipient suggestions under an address field: the word after the last
+    // comma (two characters at least) is asked of the server, which answers
+    // the contacts the person may open and the addresses their mailboxes
+    // know, a bounced one marked. Arrow keys move, Enter or a click takes
+    // the address in place of the word, Escape closes.
+    function suggest(h, field) {
+        var t = h.t;
+        var el = h.el;
+        var host = el('div', 'ws-mail-suggest-host');
+        var picker = el('div', 'ws-picker ws-mail-suggest');
+        var list = el('div', 'ws-picker-list');
+        var items = [];
+        var index = -1;
+        var timer = 0;
+        var asked = 0;
+        var id = 'ws-mail-suggest-' + field.name + '-' + Math.random().toString(36).slice(2, 8);
+
+        field.parentNode.insertBefore(host, field);
+        host.appendChild(field);
+        host.appendChild(picker);
+        picker.appendChild(list);
+        picker.id = id;
+        picker.hidden = true;
+        picker.setAttribute('role', 'listbox');
+        picker.setAttribute('aria-label', t('mail_suggest_label'));
+        field.setAttribute('role', 'combobox');
+        field.setAttribute('aria-autocomplete', 'list');
+        field.setAttribute('aria-controls', id);
+        field.setAttribute('aria-expanded', 'false');
+
+        function close() {
+            picker.hidden = true;
+            items = [];
+            index = -1;
+            field.setAttribute('aria-expanded', 'false');
+            field.removeAttribute('aria-activedescendant');
+        }
+
+        function mark(next) {
+            index = next;
+            Array.prototype.forEach.call(list.children, function (row, at) {
+                row.classList.toggle('active', at === index);
+                row.setAttribute('aria-selected', at === index ? 'true' : 'false');
+
+                if (at === index) {
+                    field.setAttribute('aria-activedescendant', row.id);
+                }
+            });
+        }
+
+        // The typed word gives way to the address, and the next one may follow.
+        function take(item) {
+            var value = field.value;
+            var cut = Math.max(value.lastIndexOf(','), value.lastIndexOf(';'));
+            var head = (cut === -1) ? '' : value.slice(0, cut + 1) + ' ';
+
+            field.value = head + item.address + ', ';
+            close();
+            field.focus();
+            field.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        function draw(found) {
+            h.clear(list);
+            items = found;
+
+            if (!items.length) {
+                close();
+                return;
+            }
+
+            items.forEach(function (item, at) {
+                var row = el('div', 'ws-picker-item');
+                var text = el('span', 'ws-picker-text');
+
+                row.id = id + '-' + at;
+                row.setAttribute('role', 'option');
+                text.appendChild(el('span', 'ws-picker-label', item.name || item.address));
+
+                if (item.name) {
+                    text.appendChild(el('span', 'ws-picker-detail', item.address));
+                }
+
+                row.appendChild(text);
+
+                if (item.bounced) {
+                    row.appendChild(el('span', 'pg-pill pg-tone-rose', t('mail_suggest_bounced')));
+                }
+
+                // Taken before the field loses its focus.
+                row.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                    take(item);
+                });
+                list.appendChild(row);
+            });
+
+            picker.hidden = false;
+            field.setAttribute('aria-expanded', 'true');
+            mark(0);
+        }
+
+        field.addEventListener('input', function (event) {
+            if (event.isTrusted === false) {
+                return;
+            }
+
+            window.clearTimeout(timer);
+
+            var value = field.value;
+            var word = value.split(/[,;]/).pop().trim();
+
+            if (word.length < 2) {
+                close();
+                return;
+            }
+
+            timer = window.setTimeout(function () {
+                var mine = ++asked;
+
+                h.api('ws_mail_suggest', { q: value }).then(function (data) {
+                    // Only the answer to the latest word is drawn.
+                    if (mine === asked && field.value === value) {
+                        draw(data.items || []);
+                    }
+                }).catch(close);
+            }, 200);
+        });
+
+        field.addEventListener('keydown', function (event) {
+            if (picker.hidden || !items.length) {
+                return;
+            }
+
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                mark((index + (event.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length);
+            } else if (event.key === 'Enter' && index > -1) {
+                event.preventDefault();
+                take(items[index]);
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                close();
+            }
+        });
+
+        field.addEventListener('blur', close);
     }
 
     // The files a form sends, each group's in order, each with a button that
@@ -1665,6 +1818,9 @@
 
         copies.appendChild(cc.row);
         copies.appendChild(bcc.row);
+        suggest(h, to.field);
+        suggest(h, cc.field);
+        suggest(h, bcc.field);
 
         var subject = input('subject', t('mail_new_subject'));
         var text = el('textarea', 'form-control');
