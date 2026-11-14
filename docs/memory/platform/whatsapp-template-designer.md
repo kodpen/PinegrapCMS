@@ -5,7 +5,7 @@ module: whatsapp_design
 ---
 
 ## Where is it?
-- `whatsapp_template.php` (new: no id; a template: `?id=`), role <= 2 as the WhatsApp card. Functions in `includes/fn/whatsapp_design.php`, script `assets/js/whatsapp_template.js` (served as written, no twin), CSS block "Look A: WhatsApp template designer" in `backend.src.css`. Drawn after `plans/whatsapp-channel/template-designer.html`.
+- `whatsapp_template.php` (new: no id; a template: `?id=`), role <= 2 as the WhatsApp card. Functions in `includes/fn/whatsapp_design.php`, script `assets/js/whatsapp_template.js` (served as written, no twin), CSS block "Look A: WhatsApp template designer" in `backend.src.css`. Drawn after `platform/whatsapp-look/template-designer.html`.
 - No link leads to it yet: the WhatsApp list of Communication › Templates (WA3b) links New template and each row to it. Breadcrumb and Cancel go to `messages_templates.php`.
 
 ## What does a draft hold?
@@ -34,4 +34,4 @@ module: whatsapp_design
 ## How was it verified?
 - `tests/whatsapp_design_test.php`. On the sandbox: new draft, a missing sample, saved, a taken name; pictures dark and light, wide and phone. No Meta account: the test send was not run against Meta.
 
-Related: docs/memory/platform/whatsapp-templates.md, docs/memory/platform/whatsapp-connection.md, docs/memory/plans/whatsapp-channel-storage.md
+Related: docs/memory/platform/whatsapp-templates.md, docs/memory/platform/whatsapp-connection.md, docs/memory/workflow/decisions-made-schema-17.md

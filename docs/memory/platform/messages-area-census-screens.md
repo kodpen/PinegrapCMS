@@ -26,6 +26,6 @@ description: MA0 census (2026-11-13): today's campaign, campaign profile, SMS ca
 
 ## Which Communication settings cards are there?
 - Site Settings category `contact`, "Communication" (İletişim), `includes/settings/contact.php`: Campaigns (Opt-In Label, Plain Text Footer), Chat, MailChimp, SMS (provider, sender, test message), SMS Messages (order and back-in-stock texts), İYS.
-- The e-mail sender is SMTP Settings (`smtp_settings.php`, System row). WhatsApp's card comes with WA1 (`plans/whatsapp-channel-steps.md`).
+- The e-mail sender is SMTP Settings (`smtp_settings.php`, System row). WhatsApp's card: `whatsapp-connection.md`.
 
 Related: [[messages-area-census-tabs]], [[messages-area-census-addresses]], [[messages-area-census-sends]]
