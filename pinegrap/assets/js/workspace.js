@@ -3258,6 +3258,25 @@
         return out;
     }
 
+    // The "Who has seen it" drawer's parts from ws_message_seen's answer:
+    // people and agents seen, people and woken agents not seen yet, the
+    // agents the message did not wake, and whether nobody but the writer
+    // is there at all. Pure (tests/workspace_message_seen_agents_test.php).
+    function seenByParts(data) {
+        var parts = {
+            seen: data.seen || [],
+            unseen: data.unseen || [],
+            agentsSeen: data.agents_seen || [],
+            agentsWaiting: data.agents_waiting || [],
+            quiet: data.agents_quiet || []
+        };
+
+        parts.alone = !parts.seen.length && !parts.unseen.length && !parts.agentsSeen.length && !parts.agentsWaiting.length;
+        parts.everyone = !parts.unseen.length && !parts.agentsWaiting.length;
+
+        return parts;
+    }
+
     // An agent's face: a rounded square in its tone with the agent mark, so
     // it is never taken for a person's round face.
     function agentFace(agent) {
@@ -11745,47 +11764,88 @@
             }
         },
 
-        // Who of the channel has read as far as the message, and who not yet.
+        // Who of the channel has read as far as the message, and who not yet:
+        // its people, then its agents as Channel info draws them, counted
+        // from what the message made them do (ws_message_seen_agents()).
         seenBy: function (message) {
             api('ws_message_seen', { message_id: message.id }).then(function (data) {
                 var node = offcanvas('ws-seen', t('seen_by'));
                 var body = clear(node.querySelector('.drawer-body'));
+                var parts = seenByParts(data);
 
                 node.querySelector('.drawer-footer').classList.add('d-none');
 
-                function group(title, people, iconName, emptyText) {
+                function personRow(member) {
+                    var row = el('div', 'ws-seen-row');
+
+                    row.appendChild(personLink(avatar(member, '1.6rem'), member));
+                    row.appendChild(personLink(el('span', '', member.name), member));
+
+                    return row;
+                }
+
+                // An agent's row: the square face, its name with the badge,
+                // what it did with the message and when.
+                function agentRow(agent) {
+                    var row = el('div', 'ws-seen-row ws-seen-agent');
+                    var text = el('div', 'ws-seen-agent-text');
+                    var name = el('div', 'ws-seen-agent-name', agent.name);
+
+                    name.appendChild(el('span', 'badge badge-subtle theme-accent ws-info-badge', t(agent.assistant ? 'cm_assistant' : 'cm_agent')));
+                    text.appendChild(name);
+
+                    if (agent.line) {
+                        text.appendChild(el('div', 'small fg-secondary', agent.line));
+                    }
+
+                    row.appendChild(agentFace(agent));
+                    row.appendChild(text);
+
+                    return row;
+                }
+
+                function group(title, people, agents, iconName, emptyText) {
                     var head = el('div', 'ws-record-title mt-3');
+
                     head.appendChild(icon(iconName, 'me-1'));
-                    head.appendChild(document.createTextNode(title + ' · ' + people.length));
+                    head.appendChild(document.createTextNode(title + ' · ' + (people.length + agents.length)));
                     body.appendChild(head);
 
-                    if (!people.length) {
+                    if (!people.length && !agents.length) {
                         body.appendChild(el('div', 'small fg-secondary mb-3', emptyText));
                         return;
                     }
 
                     var list = el('div', 'ws-seen-list');
 
-                    people.forEach(function (member) {
-                        var row = el('div', 'ws-seen-row');
-                        row.appendChild(personLink(avatar(member, '1.6rem'), member));
-                        row.appendChild(personLink(el('span', '', member.name), member));
-                        list.appendChild(row);
-                    });
-
+                    people.forEach(function (member) { list.appendChild(personRow(member)); });
+                    agents.forEach(function (agent) { list.appendChild(agentRow(agent)); });
                     body.appendChild(list);
                 }
 
                 // Nobody but the writer in the channel: one line, not two
                 // empty groups whose texts contradict each other.
-                if (!(data.seen || []).length && !(data.unseen || []).length) {
+                if (parts.alone) {
                     body.appendChild(el('div', 'small fg-secondary mt-3', t('seen_by_alone')));
                 } else {
-                    group(t('seen_by_read'), data.seen || [], 'bi-check2-all', t('seen_by_none'));
-                    group(t('seen_by_not_yet'), data.unseen || [], 'bi-clock', t('seen_by_everyone'));
+                    group(t('seen_by_read'), parts.seen, parts.agentsSeen, 'bi-check2-all', t('seen_by_none'));
+                    group(t('seen_by_not_yet'), parts.unseen, parts.agentsWaiting, 'bi-clock', t('seen_by_everyone'));
+                }
+
+                // The agents the message woke nothing for, muted and apart:
+                // never counted as seen.
+                if (parts.quiet.length) {
+                    body.appendChild(el('div', 'small fg-secondary ws-seen-quiet mt-3', t('seen_by_quiet', parts.quiet.map(function (agent) {
+                        return agent.handle ? '@' + agent.handle : agent.name;
+                    }).join(', '))));
                 }
 
                 body.appendChild(el('div', 'small fg-secondary mt-5', t('seen_by_help')));
+
+                if (parts.agentsSeen.length || parts.agentsWaiting.length || parts.quiet.length) {
+                    body.appendChild(el('div', 'small fg-secondary mt-2', t('seen_by_agents_help')));
+                }
+
                 showOffcanvas(node);
             }).catch(fail);
         },

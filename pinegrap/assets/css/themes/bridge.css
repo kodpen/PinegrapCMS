@@ -5,8 +5,9 @@
  * .btn-primary, the checked checkbox, the active page link and the rest stay
  * Bootstrap blue whatever --bs-primary says. This file points them at the
  * variables instead, so a colour palette (palettes/<name>.css, or a custom
- * palette) reaches every component. It adds no colour of its own: without a
- * palette every fallback below is Bootstrap's own value.
+ * palette) reaches every component. Without a palette every fallback below
+ * is Bootstrap's own value; the one colour it adds is a readable danger
+ * text shade in dark mode (end of the file).
  *
  * Variables a palette sets besides Bootstrap's:
  *   --pg-on-primary / --pg-on-secondary      text on the colour
@@ -274,4 +275,31 @@
 
 .accordion-button:not(.collapsed)::after {
     background-image: none;
+}
+
+/* ── Danger in dark mode ─────────────────────────────────────────────────── */
+
+/* Bootstrap keeps its light red (#dc3545) for .text-danger and the outline
+   danger button under data-bs-theme="dark", 3.4:1 on the dark body. Both
+   take Bootstrap's own dark danger text shade (#ea868f: 6.1:1 on #212529,
+   5.3:1 on bg-body-tertiary) from the nearest colour mode, so a light
+   section inside a dark page keeps the red. Fills (.bg-danger, .btn-danger
+   and the outline button's hover) keep the red their white text reads on. */
+[data-bs-theme=dark] {
+    --pg-danger-fg-rgb: 234, 134, 143;
+}
+
+[data-bs-theme=light] {
+    --pg-danger-fg-rgb: 220, 53, 69;
+}
+
+.text-danger {
+    color: rgba(var(--pg-danger-fg-rgb, var(--bs-danger-rgb)), var(--bs-text-opacity)) !important;
+}
+
+.btn-outline-danger {
+    --bs-btn-color: rgb(var(--pg-danger-fg-rgb, var(--bs-danger-rgb)));
+    --bs-btn-border-color: rgb(var(--pg-danger-fg-rgb, var(--bs-danger-rgb)));
+    --bs-btn-disabled-color: rgb(var(--pg-danger-fg-rgb, var(--bs-danger-rgb)));
+    --bs-btn-disabled-border-color: rgb(var(--pg-danger-fg-rgb, var(--bs-danger-rgb)));
 }

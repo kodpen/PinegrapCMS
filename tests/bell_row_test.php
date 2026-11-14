@@ -57,6 +57,7 @@ function test_bell_row_module_of_every_known_action()
 		'order_return'     => 'shop',
 		'out_stock'        => 'shop',
 		'booking_refused'  => 'shop',
+		'whatsapp_message' => 'shop',
 		'erp_overdue'      => 'erp',
 		'erp_money'        => 'erp',
 		'erp_low_stock'    => 'erp',

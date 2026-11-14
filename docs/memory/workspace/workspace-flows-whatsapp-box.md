@@ -23,8 +23,8 @@ description: Flows' Send a WhatsApp message box (kind whatsapp, WA7 #9372): an a
 
 ## Where is it offered?
 - Canvas palette and quick setup Message group only while `pg_whatsapp_ready()`; `FL.steps.whatsapp.templates` from `ws_step_whatsapp_offered()` (approved, text-fillable). Tier irreversible; an outbound kind on the flow card; not a role-3 member's kind.
-- Each variable is a row "Variable N" with where it sits, never Meta's `{{1}}` (owner, #2222). Rows carry `data-wa-var` / `data-wa-part` for WA8b's chip piece (WA8, #9350).
+- Each variable is a row "Variable N" with where it sits, never Meta's `{{1}}` (owner, #2222). Rows carry `data-wa-var` / `data-wa-part` for WA8b's chip piece (#9376), which had not landed when the box was built.
 
 ## What is the event "A WhatsApp message arrived"?
 - `whatsapp.received` in `ws_events_catalog()`: record contact, right contacts. Payload `pg_whatsapp_received_event()` (`includes/fn/events.php`): id (inbox row), from, profile_name, type, body (1000), contact_id; never the media or wamid. Also an API webhook event.
-- Announced by the webhook receiver (`includes/fn/whatsapp_webhook.php`) for each new customer message kept in `whatsapp_inbox`.
+- Announced by `pg_whatsapp_inbox_receive()` (`includes/fn/whatsapp_webhook.php`) for each new customer message kept in `whatsapp_inbox`, after its bell notice; a retried wamid is not announced again.

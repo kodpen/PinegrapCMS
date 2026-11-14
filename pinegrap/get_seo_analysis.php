@@ -16,15 +16,15 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
-// HTML fragment for the SEO detail panel on the list screens. Fetched into
-// an offcanvas, so it renders no page frame - only the heading, the score
-// checklist and an edit link.
+// HTML fragment of a record's SEO analysis: the heading, the score checklist
+// and an edit link, or with fragment=checklist the checklist alone (a list's
+// Details panel and the run buttons). It renders no page frame.
 
 include('init.php');
 require_once(dirname(__FILE__) . '/seo.php');
 require_once(dirname(__FILE__) . '/seo_structure.php');
 
-// The panel is fetched into a drawer, so a refusal is a short fragment with a
+// The panel is fetched into the page, so a refusal is a short fragment with a
 // status the callers check. validate_user() would redirect to the sign-in page
 // and validate_token_field() would draw the site's designed error page with
 // its stylesheets; fetch() follows the one and both would land in the panel.

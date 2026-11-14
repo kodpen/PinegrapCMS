@@ -559,6 +559,8 @@
         this.prefs = prefsClean(this.readPrefs());
         this.columns = columnsView(this.model, this.prefs);
         this.current = null;
+        // The fragment a cell's link loaded into the details: { id, key, box }.
+        this.loaded = null;
         // The details sheet below 1024 px: pressed on this page, never kept.
         this.sheet = false;
         this.narrowQuery = (typeof window.matchMedia === 'function') ? window.matchMedia('(max-width: 1023.98px)') : null;
@@ -703,6 +705,15 @@
 
         this.tbody.addEventListener('click', function (event) {
             var row = event.target.closest('tr[data-pg-id]');
+            var loader = row ? event.target.closest('[data-pg-details-load]') : null;
+
+            // A cell's link that names a fragment opens it in the details
+            // panel (the SEO score), not in a dialog of its own.
+            if (loader) {
+                event.preventDefault();
+                self.detailsFrom(row, loader);
+                return;
+            }
 
             // A link, button or field inside a row does its own job.
             if (!row || event.target.closest('a, button, input, select, textarea, label')) {
@@ -971,6 +982,12 @@
         }
 
         var body = this.detailsBody;
+        var loaded = this.loaded;
+
+        // A fragment loaded for one row goes once another row is shown.
+        if (loaded && (!row || (loaded.id !== row.getAttribute('data-pg-id')))) {
+            loaded = this.loaded = null;
+        }
 
         body.textContent = '';
 
@@ -1032,12 +1049,87 @@
                 value.innerHTML = markup(key);
                 list.appendChild(term);
                 list.appendChild(value);
+
+                // The fragment a cell's link loaded, the width of the panel,
+                // right under its column's line.
+                if (loaded && (loaded.key === key)) {
+                    list.appendChild(loaded.box);
+                }
             });
 
             body.appendChild(list);
         }
 
         block('pg-list-table-details-actions', sections.actions);
+    };
+
+    /**
+     * A cell's link with data-pg-details-load (the SEO score): the row is
+     * selected, the details panel opens and the URL's HTML fragment is
+     * loaded under that column's line. Only an answer that is ok and not a
+     * followed redirect (the sign-in page) is put in; anything else is a
+     * translated alert. The box keeps its content while the panel is
+     * redrawn for the same row; the event pg-details-loaded tells the page
+     * that a fragment arrived.
+     */
+    Driver.prototype.detailsFrom = function (row, trigger) {
+        var cell = trigger.closest('td[data-pg-col]');
+        var box = document.createElement('dd');
+        var texts = this.texts;
+        var self = this;
+
+        if (!cell || !this.details) {
+            return;
+        }
+
+        box.className = 'pg-list-table-details-more';
+        box.setAttribute('aria-busy', 'true');
+        box.innerHTML = '<div class="text-center py-3"><span class="spinner-border spinner-border-sm fg-secondary" role="status"></span></div>';
+
+        this.pick(row, {});
+        this.loaded = { id: row.getAttribute('data-pg-id'), key: cell.getAttribute('data-pg-col'), box: box };
+
+        if (this.detailsPressed()) {
+            this.showDetails();
+        } else {
+            this.setDetails(true);
+        }
+
+        if (typeof box.scrollIntoView === 'function') {
+            box.scrollIntoView({ block: 'nearest' });
+        }
+
+        var failed = function (error) {
+            var alert = document.createElement('div');
+
+            alert.className = 'alert theme-danger small mb-0';
+            alert.setAttribute('role', 'alert');
+            alert.textContent = (error && ((error.status === 401) || (error.status === 403) || error.redirected)) ? (texts.sessionExpired || '') : (texts.loadFailed || '');
+            box.replaceChildren(alert);
+            box.removeAttribute('aria-busy');
+        };
+
+        if (!window.fetch) {
+            failed(null);
+            return;
+        }
+
+        window.fetch(trigger.getAttribute('data-pg-details-load'), { credentials: 'same-origin' })
+            .then(function (response) {
+                if (!response.ok || response.redirected) {
+                    throw response;
+                }
+                return response.text();
+            })
+            .then(function (html) {
+                box.innerHTML = html;
+                box.removeAttribute('aria-busy');
+
+                if (self.loaded && (self.loaded.box === box) && (typeof CustomEvent === 'function')) {
+                    box.dispatchEvent(new CustomEvent('pg-details-loaded', { bubbles: true }));
+                }
+            })
+            .catch(failed);
     };
 
     /**

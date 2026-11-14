@@ -11200,6 +11200,17 @@
 
     // The settings a new box of this kind starts with; a table, a server or
     // an agent is taken when there is only one to take.
+    // The channel a new message, check-in or approval box starts at: the
+    // flow's home when it is a channel the person may post in (one of
+    // theirs, not archived, as channelPick() offers), else none.
+    function homeChannelId() {
+        var home = (state.flow && state.flow.channel_id) || 0;
+
+        return (BOOT.channels || []).some(function (channel) {
+            return home && (channel.id === home) && ((channel.kind === 'public') || (channel.kind === 'private')) && !channel.archived;
+        }) ? home : 0;
+    }
+
     function newConfig(kind) {
         var config = {};
 
@@ -11208,7 +11219,7 @@
         } else if (kind === 'manual') {
             config = { subject: '' };
         } else if (kind === 'post') {
-            config = { channel_id: 0, body: '' };
+            config = { channel_id: homeChannelId(), body: '' };
         } else if (kind === 'email') {
             config = { to: '', subject: '', body: '', page_id: 0, recipient: 'typed', purpose: 'info' };
         } else if (kind === 'sms') {
@@ -11228,7 +11239,7 @@
         } else if (kind === 'report') {
             config = { title: '', metrics: [], channel_id: 0, to: '' };
         } else if (kind === 'checkin') {
-            config = { channel_id: 0, question: '' };
+            config = { channel_id: homeChannelId(), question: '' };
         } else if (kind === 'start_action') {
             config = { target_id: 0, delay: 0 };
         } else if (kind === 'change') {
@@ -11259,7 +11270,7 @@
 
             config = { for_each: (open.length === 1) ? open[0] : '', collect: '' };
         } else if (kind === 'approval') {
-            config = { channel_id: 0, title: '', text: '', approvers: [], rule: 'any', closes_in: '' };
+            config = { channel_id: homeChannelId(), title: '', text: '', approvers: [], rule: 'any', closes_in: '' };
         } else if (kind === 'schedule') {
             config = { date: new Date().toISOString().slice(0, 10), time: '09:00', repeat: 'none', every: 1, days: [], until: '' };
         } else if (kind === 'event') {

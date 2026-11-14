@@ -6,14 +6,14 @@ description: Steps TW1-TW5 of the channel-item-tags-wake plan: file caption, edi
 ## Which steps are there?
 - Each about 1,000 product lines at most, in this order; a step starts when the one before it has landed. Function and file names are the worker's call. Tests in `tests/` for the helper's pure parts (tags added, which path asks).
 
-- TW1 The helper; a message with a file; an edit; note and decision. Census: helper ~150 lines, sites ~200.
+- TW1 The helper; a message with a file; an edit; note and decision. Done: #9359 (`workspace/channel-item-tags.md`).
   - The helper above, with its pure tag-diff function.
   - A message with any file, not only a recording: the panel upload (`ws_message_send_file_bytes()` files.php, with `ws_voice_posted()` still holding a queued recording until transcribed), the file-manager attach (`ws_library_send()` library.php), the API's files.create (`ws_api_files_create()` api_resources.php).
   - An edit (`ws_message_edit()` messages.php, panel and API): only the tags it adds, beside `ws_message_notify_mentions()`'s diff of people.
   - /note and /decision (`ws_command_run()` commands.php), the API kinds note and decision (api_resources.php, its comment "kept, not asked" changed), meeting decisions (`ws_meeting_note_transfer()` meetings.php).
   - Memory: `workspace-voice-asks.md` ("any other file still asks nobody" corrected), `agent-words-wake.md`, a new file for the helper.
   - After: a picture with `@agent` beside it, an edit adding `@agent`, a /decision naming `@agent` each make one request; an edit that keeps the tag makes none.
-- TW2 The other messages written for a person or an application. Census: ~10 sites, ~300 lines.
+- TW2 The other messages written for a person or an application. Done: #9378.
   - Forward with a comment (`ws_forward_to_channel()` forward.php), approval request (`ws_approval_create()` approvals.php), status update and check-in question (`ws_status_post()`, `ws_checkin_start()` status.php), template welcome and pinned text (`ws_template_apply()` templates.php), the scheduled action and flow "Post a message" box (`ws_scheduled_do()` scheduled.php).
   - After: each of them naming `@agent` makes one request; an application's approval or check-in wakes only by mention or reply.
 - TW3 (agent channels, owner or channel manager only; #9341) Polls, check-ins, forwards, tasks. Census: ~400 lines.

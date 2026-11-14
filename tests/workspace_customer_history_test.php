@@ -90,14 +90,14 @@ function workspace_customer_history_test_data()
 function test_ws_customer_history_rights()
 {
 	pg_assert_same(
-		array('orders' => true, 'cart_quotes' => true, 'invoices' => false, 'sales_quotes' => false, 'forms' => false, 'workspace' => true),
+		array('orders' => true, 'cart_quotes' => true, 'invoices' => false, 'sales_quotes' => false, 'forms' => false, 'workspace' => true, 'whatsapp' => false),
 		ws_customer_history_rights(array('member' => true, 'ecommerce' => true, 'erp' => false, 'forms' => false)),
 		'the ecommerce right'
 	);
 	pg_assert_same(
-		array('orders' => false, 'cart_quotes' => false, 'invoices' => true, 'sales_quotes' => true, 'forms' => true, 'workspace' => false),
-		ws_customer_history_rights(array('member' => false, 'ecommerce' => false, 'erp' => true, 'forms' => true)),
-		'the ERP and forms rights'
+		array('orders' => false, 'cart_quotes' => false, 'invoices' => true, 'sales_quotes' => true, 'forms' => true, 'workspace' => false, 'whatsapp' => true),
+		ws_customer_history_rights(array('member' => false, 'ecommerce' => false, 'erp' => true, 'forms' => true, 'contacts' => true)),
+		'the ERP, forms and contacts rights'
 	);
 }
 

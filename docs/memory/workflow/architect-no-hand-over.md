@@ -9,7 +9,7 @@ description: The architect session does not hand over to a fresh session at a to
 - A hand-over note is written only when the owner asks for a fresh architect.
 
 ## What does it read after a compaction?
-- The state from GitHub and memory, not from the summary: `CLAUDE.md` and `architect.md`, the open `architect` issues, the open PRs with a `## Decision question` section or a `Decision: #` / `Approval: #` line, its own open PR, and `GET /workspace/agent-requests`.
+- The state from GitHub and memory, not from the summary: `CLAUDE.md` and `architect.md`, its request queue in the agent channel, the open PRs with a `## Decision question` section or a `Decision:` / `Approval:` line, its own open PR, and `GET /workspace/agent-requests`.
 - Its schedules by name (`list_triggers`): one pending "Mimar: 45-minute tick" and the hourly "Mimar: hourly re-arm". The channel waiter is started again when none runs (`agent-channel-wake.md`).
 
 Related: docs/memory/workflow/architect.md, docs/memory/workflow/coordinator.md

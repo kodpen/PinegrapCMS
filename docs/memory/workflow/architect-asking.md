@@ -12,7 +12,8 @@ description: How a session asks a decision question or the owner's approval of s
 
 ## How is the owner's approval of a PR asked?
 - A PR whose plan says the owner approves its screens before merge: once green, the pictures go straight into the agent channel (dark and light, 1440 and 390 px) with the PR and the step named; the owner looks and answers there (`owner-contact-channel.md`). Pictures kept on the PR's branch for it (`docs/memory/plans/<plan>/<step>/`) are removed before the PR goes ready.
-- Until step AQ1 of `plans/architect-channel-approvals.md` lands the gate is still an issue: the session opens an `architect` issue `Approval: #<pr> — <topic>` (a `## Türkçe özet`: what changes on screen, the channel message of the pictures), writes `Approval: #<issue>` in the PR body, keeps `ready` and ends. Without it the PR lands before his answer (B10/B11 on 2026-11-01, #8222 on 2026-11-08).
-- PR MERGE carries his channel answer as the `Karar` comment on that issue, quoting him, takes the PR only after it and closes the issue on landing. `tools/merge_train.php` leaves the PR out (`--list` names it, `--build` too) while the issue is open with no `Karar`/`Decision` comment saying Onaylıyorum/Approved.
+- The session writes `Approval: channel` in the PR body, keeps `ready` and ends; no approval issue is opened. Without the line the PR lands before his answer (B10/B11 on 2026-11-01, #8222 on 2026-11-08).
+- PR MERGE writes his channel answer as a comment on that PR, quoting him: a first line opening with `Karar` or `Decision`, and Onaylıyorum, Onaylandı or Approved (or "Değişiklik istiyorum" for a change). `tools/merge_train.php` leaves the PR out (`--list` and `--build` name it, "waits on the owner's approval in this PR") until such a comment exists from an account with write access (`author_association` OWNER, MEMBER or COLLABORATOR).
+- A PR opened before 2026-11-13 with `Approval: #<issue>` still waits on that issue: the `Karar` comment goes there and the issue is closed on landing.
 
 Related: docs/memory/workflow/architect.md, docs/memory/workflow/session-lifecycle.md, docs/memory/workflow/owner-contact-channel.md

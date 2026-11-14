@@ -104,3 +104,59 @@ function test_workspace_flow_whatsapp_received_event()
 	pg_assert_same(array('', 0), ws_events_record_of('whatsapp.received', array('contact_id' => 0)), 'a number no contact has');
 	pg_assert_same(array('from', 'profile_name', 'type', 'body', 'contact_id'), array_column(ws_flow_event_outputs()['whatsapp.received'], 'key'), 'what a start box reads');
 }
+
+// An approved template with a text header, two message variables and a
+// button whose link takes one.
+function workspace_flow_whatsapp_box_test_template($status = 'APPROVED')
+{
+	return array('id' => 4, 'name' => 'order_ready', 'language' => 'tr', 'category' => 'UTILITY', 'status' => $status, 'parameter_format' => 'POSITIONAL', 'components' => array(
+		array('type' => 'HEADER', 'format' => 'TEXT', 'text' => 'Order {{1}}'),
+		array('type' => 'BODY', 'text' => 'Hello {{1}}, your order {{2}} is ready.'),
+		array('type' => 'BUTTONS', 'buttons' => array(array('type' => 'URL', 'text' => 'Track', 'url' => 'https://example.com/t/{{1}}'))),
+	));
+}
+
+function test_workspace_flow_whatsapp_box_template_problem()
+{
+	$filled = array('v1' => 'A', 'v2' => 'B', 'v3' => 'C', 'v4' => 'D');
+	$template = workspace_flow_whatsapp_box_test_template();
+
+	pg_assert_same('', ws_step_whatsapp_template_problem($filled, $template, 'B'));
+	pg_assert_true(ws_step_whatsapp_template_problem($filled, null, 'B') !== '', 'a template the account no longer has');
+	pg_assert_true(ws_step_whatsapp_template_problem($filled, workspace_flow_whatsapp_box_test_template('PAUSED'), 'B') !== '', 'not approved');
+	pg_assert_contains('4', ws_step_whatsapp_template_problem(array('v4' => '') + $filled, $template, 'B'), 'names the empty variable');
+
+	$image = $template;
+	$image['components'][0] = array('type' => 'HEADER', 'format' => 'IMAGE');
+	pg_assert_true(ws_step_whatsapp_template_problem($filled, $image, 'B') !== '', 'a media header takes no text value');
+}
+
+function test_workspace_flow_whatsapp_box_components()
+{
+	$built = ws_step_whatsapp_components(workspace_flow_whatsapp_box_test_template(), array('v1' => '438', 'v2' => 'Ayşe', 'v3' => '438', 'v4' => 'a b'));
+
+	pg_assert_true($built['ok']);
+	pg_assert_same(array('header', 'body', 'button'), array_column($built['components'], 'type'), 'in the template\'s order');
+	pg_assert_same(array('Ayşe', '438'), array_column($built['components'][1]['parameters'], 'text'), 'v2 and v3 fill the message');
+	pg_assert_same('a%20b', $built['components'][2]['parameters'][0]['text'], 'a link\'s value is encoded');
+
+	$rows = ws_step_whatsapp_offered_rows(pg_whatsapp_message_offered(array(workspace_flow_whatsapp_box_test_template())));
+
+	pg_assert_same('order_ready|tr', $rows[0]['key']);
+	pg_assert_same(array(1, 2, 3, 4), array_column($rows[0]['vars'], 'n'));
+	pg_assert_same(array('header', 'body', 'body', 'button'), array_column($rows[0]['vars'], 'part'));
+
+	foreach ($rows[0]['vars'] as $var) {
+		pg_assert_false(strpos($var['label'], '{{') !== false, 'a variable is never named by its placeholder');
+	}
+}
+
+// The webhook receiver announces each new customer message once, after it
+// is kept and the bell is told.
+function test_workspace_flow_whatsapp_received_is_announced()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
+
+	pg_assert_true((bool) preg_match('~function pg_whatsapp_inbox_receive\(.*?mysqli_insert_id.*?create_notification\(.*?pg_announce\(\'whatsapp\.received\', pg_whatsapp_received_event\(\$inbox_id,~s', $source), 'announced after the row is written and the bell told');
+	pg_assert_same(1, substr_count($source, "pg_announce('whatsapp.received'"), 'from one place');
+}

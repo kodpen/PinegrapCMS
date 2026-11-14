@@ -7,7 +7,7 @@ description: SEO detail panel and SEO card: Refresh score / Analyze HTML run the
 - `pg_seo_analyze_record()` (`seo_structure.php`) loads `seo_links.php` itself, so the page and catalog passes resolve the links, write `seo_link`, store the `links` findings and (pages) `seo_link_score`, as the nightly batch does. Before, the `function_exists('pg_seo_process_links')` guard skipped the step silently for the panel button and every save-time call (#5845).
 
 ## Which screens print the buttons' click handler?
-- `pg_seo_render_checklist()` draws the buttons only; the handler is `pg_seo_render_run_script()` (printed once per page). List screens get it through `pg_seo_render_detail_offcanvas()`; Edit Page, `edit_product_group.php` and `product_builder.php` print it beside the checklist. The product screens did not, and the buttons did nothing (#5846).
+- `pg_seo_render_checklist()` draws the buttons only; the handler is `pg_seo_render_run_script()` (printed once per page). The Pages and Products lists print it for the analysis in their Details panel (the SEO drawer is gone, #9367); Edit Page, `edit_product_group.php` and `product_builder.php` print it beside the checklist. The product screens did not, and the buttons did nothing (#5846).
 
 ## How does a refresh update the other scores on the screen?
 - With `fragment=checklist`, `get_seo_analysis.php` also sends `pg_seo_render_fresh_indicators()`: two inert `<template data-pg-seo-fresh="badge|bar" data-pg-seo-key="type:id">` holding the new badge and list bar.

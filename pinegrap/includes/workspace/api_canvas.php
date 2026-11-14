@@ -487,6 +487,12 @@ function ws_api_canvases_create($params)
 
     $row = ws_message($result['message_id']);
 
+    // The words posted with it ask as a message's do: a person's, or an
+    // application's, which wake only the registry's agents.
+    if (function_exists('ws_message_ask_written')) {
+        ws_api_assistants_carry_on(ws_message_ask_written($viewer, $channel, $row['id'], (string) $row['body'], ws_message_by_app($app_id)));
+    }
+
     // The version keeps the document beside the blank picture, which the
     // server draws at once where it can.
     if (pg_image_editor_canvas_keep((int) $row['file_id'], $doc, (int) $viewer['id'], 'agent')) {

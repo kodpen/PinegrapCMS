@@ -211,6 +211,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/voice_text.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_prompts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_messages.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_messages.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_codes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mailchimp_key.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/address_autocomplete.php');

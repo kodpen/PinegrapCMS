@@ -121,6 +121,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
     // Same order and reason as the SMS account: a changed account is asked
     // about at Meta before MailChimp can create anything.
     $whatsapp_settings_post = pg_whatsapp_settings_check($_POST, $liveform);
+    $whatsapp_messages_post = pg_whatsapp_message_settings_check($_POST, $liveform);
 
     // ── İYS ──
     //
@@ -281,4 +282,5 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
     pg_sms_settings_save($sms_settings_post, USER_ID, $liveform);
     pg_sms_message_settings_save($sms_messages_post, USER_ID);
     pg_whatsapp_settings_save($whatsapp_settings_post, USER_ID, $liveform);
+    pg_whatsapp_message_settings_save($whatsapp_messages_post, USER_ID);
     pg_iys_settings_save($iys_settings_post, USER_ID, $liveform);

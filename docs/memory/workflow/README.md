@@ -8,7 +8,9 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 <!-- key-rules:start -->
 - Before changing or removing a behaviour, and before writing any audit finding or proposing a cleanup, search `workflow/DECISIONS.md` (`grep -i 'word' docs/memory/workflow/DECISIONS.md`); an index line ending in `[decision: …]` names the part that binds the file. A listed place is not a finding, and an entry you doubt is asked about, never changed (`decisions-made.md`).
-- Work in the working mode: claim a task with a draft PR and never an issue (issues only for decision questions, labelled `architect`: `architect.md`, and for `bug` reports of the test coordinator, which wait for the owner: `test-coordinator.md`, `coordinator-no-plans.md`), one open PR per session, no stacked branches, light checks, no review chains (`working-mode.md`, `session-checks.md`). When CI is green put the `ready` label on, wait subscribed, never merge `development` into the PR after that, and take the plan's next step once it is merged (`session-lifecycle.md`). Only the merging session merges, in merge trains landed by one fast-forward push (`merge-train.md`, `merge-train-landing.md`); a coordinator per account starts the workers (`coordinator.md`); the architect session decides every question together with the owner and records it (`architect.md`).
+- Work in the working mode: claim a task with a draft PR and never an issue; issues are only decision questions (`architect.md`) and the test coordinator's `bug` reports, given out like plan steps (`test-coordinator.md`).
+- One open PR per session, no stacked branches, light checks, no review chains (`working-mode.md`, `session-checks.md`). When CI is green put the `ready` label on, wait subscribed, never merge `development` into the PR after that, and take the plan's next step once it is merged (`session-lifecycle.md`).
+- Only the merging session merges, in merge trains landed by one fast-forward push (`merge-train.md`, `merge-train-landing.md`); a coordinator per account starts the workers (`coordinator.md`); the architect session decides every question together with the owner and records it (`architect.md`).
 - Owner decisions are about the product's behaviour and carry their reason (`decisions-made.md`); a working rule is never written as the owner's decision (`CLAUDE.md`, Fixed rules 6).
 - Never edit `changelog.txt` (name the `[NEW]` line or `[SCHEME]` item in the PR body), add translation keys only with `php tools/tr_add.php` (sorted shards in `includes/local/tr/`, never edited by hand), and only append to the open migration file and `init.php`; merge `origin/development` once before the PR goes up (`working-mode.md`, `git-branches-and-shared-files.md`).
 - Keep PHP 7.1 working: raising the minimum is the owner's call, and a library may never raise it as a side effect (`project-overview.md`).
@@ -19,6 +21,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 ## Clusters
 
+- `agent-channel-*`: 6 files.
 - `decisions-made-*`: 110 files; start at `decisions-made.md`.
 
 ## Files

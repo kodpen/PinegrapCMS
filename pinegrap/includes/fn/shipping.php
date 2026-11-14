@@ -811,6 +811,7 @@ function pg_shipment_delivered($ship_to_id, $time, $opts = array())
         ));
 
         pg_sms_order_delivered((int) $recipient['order_id'], $ship_to_id);
+        pg_whatsapp_order_delivered((int) $recipient['order_id'], $ship_to_id);
 
     }
 
