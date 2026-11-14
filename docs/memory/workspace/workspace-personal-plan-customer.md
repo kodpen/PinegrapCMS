@@ -13,15 +13,18 @@ description: A person's own plan made for a customer (PC6): contact_id, the draw
 
 ## Where does it show?
 - Customer card (`ws_customer_card()`): section "Roadmaps", the latest 5 plans naming the contact that the reader may see (`ws_personal_plans_of_contact()`, every row through `ws_personal_plan_can_see()`), with "Plan of <owner>" for somebody else's, the day and "2/5"; each opens My calendar on the plan.
-- History (`ws_customer_history()`, Workspace right): entry kind `plan` at the plan's start, detail "Roadmap" or "Plan of <owner>", status "2/5". Not in the API's history: `ws_api_channel_customer_history()` sets `history_plans` false, so no application reads a plan.
+- History (`ws_customer_history()`, Workspace right): entry kind `plan` at the plan's start, detail "Roadmap" or "Plan of <owner>", status "2/5"; an all-day plan says its day alone (`day_only`), and on a narrow screen its title gives way, not its kind. Not in the API's history: `ws_api_channel_customer_history()` sets `history_plans` false, so no application reads a plan.
 - A customer never sees a roadmap on the site (owner, 2026-11-14).
 
 ## What does "New roadmap" on the card do?
 - Offered (`ws_customer_card_roadmap_offer()`) to a team member who may open the customer's contact. "Empty roadmap" opens My calendar with `?new_plan=1&contact=<id>`: the New plan drawer with the customer filled in. "Copy one of my plans" lists the person's 5 latest own plans.
-- A copy (`ws_personal_plan_copy()`, `ws_personal_plan_copy_shift()` pure): starts today, keeps its length, time of day and each step's distance to the start; no step done, no task tied, no reminder, visibility Only me, the customer named. Then My calendar opens on it.
+- A copy writes nothing (architect, channel 3345): the plan's link opens My calendar with `&from=<plan>`, and the New plan drawer is filled by `ws_personal_plan_copy_draft()` (`ws_personal_plan_copy_shift()` pure): title, note, the customer, the steps; it starts today, keeps its length, time of day and each step's distance to the start; nothing done, no task tied, no reminder, Only me. The plan exists only after Save.
 
 ## Merge, erasure and export?
 - `pg_contact_holders()` row `ws_personal_plans` (merge `move`, erase `find`); the erasure sets `contact_id` 0 (`pg_privacy_erase_tables()`, label "Roadmaps"); the plan stays its owner's.
 - Export: a customer's export lists nothing of a plan (architect, channel 3328). Whether it should list plans opened to the whole team, title and days, is with the owner; a yes is a step of its own.
+
+- The card's actions (New cart quote, Remind me, New roadmap) stand as one group under the card's title, wrapping from the left (architect, 3345).
+- Erasure does not touch the mail (owner, channel 3364).
 
 Tests: `tests/workspace_personal_plan_contact_test.php`, `tests/contact_holders_test.php`, `tests/privacy_erase_test.php`.

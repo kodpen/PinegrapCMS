@@ -117,8 +117,8 @@ function ws_personal_plans_of_contact($viewer, $contact_id, $before, $limit)
  *
  * @param array   $viewer
  * @param array[] $plans rows the gate let through
- * @return array[] id, title, starts_at, owner (name, '' for the reader's
- *                 own), done, total
+ * @return array[] id, title, starts_at, all_day, owner (name, '' for the
+ *                 reader's own), done, total
  */
 function ws_personal_plans_listed($viewer, $plans)
 {
@@ -153,6 +153,7 @@ function ws_personal_plans_listed($viewer, $plans)
             'id'        => (int) $plan['id'],
             'title'     => (string) $plan['title'],
             'starts_at' => (int) $plan['starts_at'],
+            'all_day'   => ((int) $plan['all_day'] === 1),
             'owner'     => $mine ? '' : (string) ($names[(int) $plan['user_id']] ?? ''),
             'done'      => $progress['done'],
             'total'     => $progress['total'],
@@ -279,15 +280,16 @@ function ws_personal_plan_copy_shift($plan, $steps, $start)
 }
 
 /**
- * "New roadmap" from one of the viewer's own plans: a copy starting today,
- * naming the customer.
+ * "Copy one of my plans" under New roadmap: what the New plan drawer is
+ * filled with, a copy of the viewer's own plan moved to start today. Nothing
+ * is written: the plan exists only once the drawer is saved.
  *
  * @param array $viewer
- * @param int   $plan_id    the viewer's own plan
- * @param int   $contact_id the customer
- * @return array ok + plan_id + url, or error
+ * @param int   $plan_id the viewer's own plan
+ * @return array ok + draft (title, note, start, end, all_day, start_time,
+ *               end_time, steps of title and day), or error
  */
-function ws_personal_plan_copy($viewer, $plan_id, $contact_id)
+function ws_personal_plan_copy_draft($viewer, $plan_id)
 {
     $user_id = (int) $viewer['id'];
     $plan = ws_personal_plan($user_id, (int) $plan_id);
@@ -296,35 +298,20 @@ function ws_personal_plan_copy($viewer, $plan_id, $contact_id)
         return array('error' => lang('This plan cannot be found.'));
     }
 
-    if (((int) $contact_id <= 0) || !in_array((int) $contact_id, ws_viewer_contacts_open($viewer, array((int) $contact_id)), true)
-        || !db_value("SELECT id FROM contacts WHERE id = '" . (int) $contact_id . "'")) {
-        return array('error' => lang('That customer could not be found.'));
-    }
-
-    if ((int) db_value("SELECT COUNT(*) FROM ws_personal_plans WHERE user_id = '" . $user_id . "'") >= WS_PERSONAL_PLAN_MAX) {
-        return array('error' => lang('You have too many plans. Delete some first.'));
-    }
-
     $rows = ws_personal_plan_step_rows(array((int) $plan['id']))[(int) $plan['id']] ?? array();
     $copy = ws_personal_plan_copy_shift($plan, $rows, date('Y-m-d'));
-    $now = time();
+    $shown = ws_personal_plan_present(array('id' => 0, 'remind_at' => 0) + $copy['plan']);
 
-    db("INSERT INTO ws_personal_plans SET user_id = '" . $user_id . "', title = '" . e($copy['plan']['title']) . "',
-        note = '" . e($copy['plan']['note']) . "', starts_at = '" . $copy['plan']['starts_at'] . "', ends_at = '" . $copy['plan']['ends_at'] . "',
-        all_day = '" . $copy['plan']['all_day'] . "', remind_at = 0, visibility = 'me', contact_id = '" . (int) $contact_id . "',
-        created_at = '" . $now . "', updated_at = '" . $now . "'");
-    $new_id = (int) mysqli_insert_id(db::$con);
-
-    foreach ($copy['steps'] as $position => $step) {
-        db("INSERT INTO ws_personal_plan_steps SET plan_id = '" . $new_id . "', position = '" . (int) $position . "',
-            title = '" . e($step['title']) . "', day = '" . (($step['day'] === '') ? '0000-00-00' : e($step['day'])) . "', done_at = 0, task_id = 0");
-    }
-
-    return array(
-        'ok'      => true,
-        'plan_id' => $new_id,
-        'url'     => ws_personal_plan_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $new_id, $copy['plan']['starts_at']),
-    );
+    return array('ok' => true, 'draft' => array(
+        'title'      => $shown['title'],
+        'note'       => $shown['note'],
+        'start'      => $shown['start'],
+        'end'        => $shown['end'],
+        'all_day'    => $shown['all_day'] ? 1 : 0,
+        'start_time' => $shown['start_time'],
+        'end_time'   => $shown['end_time'],
+        'steps'      => $copy['steps'],
+    ));
 }
 
 /**

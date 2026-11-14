@@ -59,7 +59,7 @@ function test_workspace_personal_plan_copy_moves_to_the_new_day()
 function test_workspace_personal_plan_history_entry()
 {
 	$history = ws_customer_history_build(array('workspace' => true), array(
-		'plans' => array(array('id' => 9, 'title' => 'Onboarding', 'starts_at' => strtotime('2026-11-20 09:00'), 'owner' => '', 'done' => 1, 'total' => 4)),
+		'plans' => array(array('id' => 9, 'title' => 'Onboarding', 'starts_at' => strtotime('2026-11-20 00:00'), 'all_day' => true, 'owner' => '', 'done' => 1, 'total' => 4)),
 	), function () {
 		return '';
 	}, 'https://example.com/pinegrap/', 10);
@@ -67,6 +67,7 @@ function test_workspace_personal_plan_history_entry()
 	pg_assert_same(1, count($history['entries']));
 	pg_assert_same('plan', $history['entries'][0]['kind']);
 	pg_assert_same('1/4', $history['entries'][0]['status_label']);
+	pg_assert_true($history['entries'][0]['day_only'], 'an all-day roadmap says its day alone');
 	pg_assert_contains('workspace_my_calendar.php?view=list&date=2026-11-20&plan=9', $history['entries'][0]['url']);
 
 	$none = ws_customer_history_build(array('workspace' => false), array('plans' => array(array('id' => 9, 'title' => 'x', 'starts_at' => 1, 'owner' => '', 'done' => 0, 'total' => 0))), function () {
@@ -84,7 +85,8 @@ function test_workspace_personal_plan_contact_guards()
 
 	pg_assert_contains('if (ws_personal_plan_can_see($user_id, $plan, $team)) {', $module, 'the plans of a contact pass the gate');
 	pg_assert_same(2, substr_count($module, '!ws_personal_plan_can_edit($user_id, $plan)'), 'naming a customer and copying are the owner\'s');
-	pg_assert_same(3, substr_count($module, 'ws_viewer_contacts_open($viewer, array('), 'a customer the person may open: naming, offering, copying');
+	pg_assert_same(2, substr_count($module, 'ws_viewer_contacts_open($viewer, array('), 'a customer the person may open: naming and offering');
+	pg_assert_false(strpos($module, 'INSERT INTO ws_personal_plans') !== false, 'a copy writes nothing: the drawer saves it');
 
 	$history = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/customer_history.php');
 	pg_assert_contains("&& (\$viewer['history_plans'] ?? true)) {", $history, 'the history reads plans unless told not to');

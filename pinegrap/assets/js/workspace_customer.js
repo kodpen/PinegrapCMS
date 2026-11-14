@@ -206,8 +206,11 @@
                     var row = h.el('div', 'd-flex align-items-baseline gap-3 small py-1 border-bottom');
 
                     row.appendChild(h.icon(HISTORY_ICONS[entry.kind] || 'bi-dot', 'fg-secondary'));
-                    row.appendChild(named(h, 'text-truncate', entry.title, entry.url));
-                    row.appendChild(h.el('span', 'fg-secondary text-truncate flex-grow-1', [entry.status_label, entry.detail].filter(Boolean).join(' · ')));
+                    // A roadmap's kind is short and stays whole; its title gives way.
+                    var roadmap = entry.kind === 'plan';
+
+                    row.appendChild(named(h, 'text-truncate' + (roadmap ? ' flex-grow-1' : ''), entry.title, entry.url));
+                    row.appendChild(h.el('span', 'fg-secondary ' + (roadmap ? 'text-nowrap flex-shrink-0' : 'text-truncate flex-grow-1'), [entry.status_label, entry.detail].filter(Boolean).join(' · ')));
 
                     if (entry.amount_text) {
                         row.appendChild(h.el('span', 'fw-semibold text-nowrap', entry.amount_text));
@@ -406,18 +409,14 @@
             }
 
             part.appendChild(h.el('div', 'small fw-semibold mt-5 mb-1', h.t('cust_roadmap_copy')));
+            // A copy opens the New plan drawer filled; nothing is written
+            // before its Save.
             offer.copies.forEach(function (plan) {
-                var copy = h.button('btn btn-sm btn-link px-0 d-block text-start text-truncate', plan.title, 'bi-copy');
+                var copy = h.el('a', 'btn btn-sm btn-link px-0 d-block text-start text-truncate');
 
-                copy.addEventListener('click', function () {
-                    copy.disabled = true;
-                    h.api('ws_personal_plan_copy', { plan_id: plan.id, contact_id: offer.contact_id }).then(function (result) {
-                        window.location.href = result.url;
-                    }).catch(function (error) {
-                        copy.disabled = false;
-                        h.fail(error);
-                    });
-                });
+                copy.href = offer.new_url + '&from=' + plan.id;
+                copy.appendChild(h.icon('bi-copy', 'me-1'));
+                copy.appendChild(document.createTextNode(plan.title));
                 part.appendChild(copy);
             });
         });
@@ -428,7 +427,8 @@
     function card(channel, h) {
         var node = h.el('div', 'card ws-customer-card');
         var header = h.el('div', 'card-header d-flex flex-wrap justify-content-between align-items-center gap-3');
-        var actions = h.el('div', 'd-flex flex-wrap justify-content-end gap-3');
+        // The card's actions: one group under the title, wrapping from the left.
+        var actions = h.el('div', 'd-flex flex-wrap gap-3 w-100');
         var body = h.el('div', 'card-body');
 
         // The Workspace card title: as the overview cards draw theirs.

@@ -50,7 +50,9 @@
             // A reminder line opens its plan (?plan=N) once the days are drawn.
             plan: parseInt(query.get('plan') || 0, 10) || 0,
             // "New roadmap" on a customer's card: a new plan naming them.
-            contact: query.get('new_plan') ? (parseInt(query.get('contact') || 0, 10) || 0) : 0
+            contact: query.get('new_plan') ? (parseInt(query.get('contact') || 0, 10) || 0) : 0,
+            // ... filled from one of the person's own plans (from=N).
+            from: parseInt(query.get('from') || 0, 10) || 0
         };
         var data = null;
         var plans = planKit(h, S, function () { load(); });
@@ -155,8 +157,18 @@
                     plans.open(state.plan);
                     state.plan = 0;
                 } else if (state.contact && result.plans) {
-                    plans.drawer(null, { start: result.today, contact_id: state.contact });
+                    var contact = state.contact;
+
                     state.contact = 0;
+
+                    if (state.from) {
+                        h.api('ws_personal_plan_copy_draft', { plan_id: state.from }).then(function (copied) {
+                            plans.drawer(null, Object.assign({}, copied.draft, { contact_id: contact }));
+                        }).catch(h.fail);
+                        state.from = 0;
+                    } else {
+                        plans.drawer(null, { start: result.today, contact_id: contact });
+                    }
                 }
             }).catch(h.fail);
         }
@@ -695,6 +707,8 @@
 
             // The roadmap: dated steps and the plan's progress.
             var roadmap = window.PGWsRoadmap ? window.PGWsRoadmap.section(h, s, plan, {
+                // A copy's steps, for a new plan filled from another.
+                steps: plan ? null : (defaults.steps || null),
                 range: function () { return { start: first.value, end: last.value || first.value }; },
                 saveAll: function () {
                     return submit().then(function (saved) {

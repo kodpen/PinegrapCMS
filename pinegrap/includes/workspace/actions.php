@@ -3432,8 +3432,11 @@ function ws_handle_action($action, $request)
                 ? ws_customer_history($viewer, $channel, $identity, (int) ($request['before'] ?? 0), ws_customer_history_limit($request['limit'] ?? null))
                 : array('entries' => array(), 'more' => false, 'before' => 0);
 
+            // An all-day roadmap says its day alone.
             foreach ($history['entries'] as $index => $entry) {
-                $history['entries'][$index]['at_text'] = ws_time_label($entry['at']);
+                $history['entries'][$index]['at_text'] = empty($entry['day_only'])
+                    ? ws_time_label($entry['at'])
+                    : date((date('Y', (int) $entry['at']) === date('Y')) ? 'd.m' : 'd.m.Y', (int) $entry['at']);
             }
 
             return ws_action_ok(array('history' => $history));
@@ -4780,10 +4783,10 @@ function ws_handle_action($action, $request)
 
             return isset($result['error']) ? ws_action_error($result['error'], $result['field'] ?? '') : ws_action_ok(array('contact' => $result['contact']));
 
-        case 'ws_personal_plan_copy':
-            $result = ws_personal_plan_copy($viewer, (int) ($request['plan_id'] ?? 0), (int) ($request['contact_id'] ?? 0));
+        case 'ws_personal_plan_copy_draft':
+            $result = ws_personal_plan_copy_draft($viewer, (int) ($request['plan_id'] ?? 0));
 
-            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('plan_id' => $result['plan_id'], 'url' => $result['url']));
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('draft' => $result['draft']));
 
         case 'ws_conflicts':
             $from = ws_date_or_null($request['from'] ?? '') ?: date('Y-m-d');

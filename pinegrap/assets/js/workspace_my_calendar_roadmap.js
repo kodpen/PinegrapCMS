@@ -285,6 +285,10 @@
             h.api('ws_personal_plan_roadmap', { plan_id: plan.id }).then(function (result) {
                 take(result.roadmap);
             }).catch(h.fail);
+        } else if (hooks.steps) {
+            take({ can_edit: true, steps: hooks.steps.map(function (step) {
+                return { id: 0, title: step.title, day: step.day, done: false, follows: false, task_id: 0 };
+            }) });
         } else {
             take(null);
         }

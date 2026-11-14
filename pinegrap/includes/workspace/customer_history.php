@@ -299,7 +299,7 @@ function ws_customer_history_build($rights, $data, $money, $base, $limit)
         // A roadmap made for the customer, at the time it starts; one of
         // somebody else's says whose it is.
         foreach ((array) ($data['plans'] ?? array()) as $row) {
-            $entries[] = $entry('plan', $row['id'], $row['starts_at'] ?? 0, (string) $row['title'],
+            $entries[] = array('day_only' => !empty($row['all_day'])) + $entry('plan', $row['id'], $row['starts_at'] ?? 0, (string) $row['title'],
                 (($row['owner'] ?? '') !== '') ? lang(array('string' => 'Plan of {var:1}', 'vars' => $row['owner'])) : lang('Roadmap'),
                 (($row['total'] ?? 0) > 0) ? $row['done'] . '/' . $row['total'] : '', null, '',
                 $base . 'workspace_my_calendar.php?view=list&date=' . date('Y-m-d', (int) ($row['starts_at'] ?? 0)) . '&plan=' . (int) $row['id']);
