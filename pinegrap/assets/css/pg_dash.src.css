@@ -5257,15 +5257,28 @@
     gap: .5rem;
   }
 
+  /* A link-coloured button, like the lines' "Open it", so it reads as
+     something to press; 40px high on a phone for the finger. */
   .pg-dash-ai-new {
-    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 .25rem;
     font-size: .75rem;
-    color: var(--pgd-soft);
-    text-decoration: none;
+    color: var(--pgd-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
-  .pg-dash-ai-new:hover,
-  .pg-dash-ai-new:focus-visible { color: var(--pgd-accent); }
+  .pg-dash-ai-new:hover { text-decoration-thickness: 2px; }
+
+  .pg-dash-ai-new:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 639.98px) {
+    .pg-dash-ai-new { min-height: 2.5rem; }
+  }
 
   .pg-dash-ai-pick {
     display: flex;
