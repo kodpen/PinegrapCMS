@@ -2892,6 +2892,36 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok();
 
+        // Check e-mail: the person's IMAP boxes read now (mail_check.php);
+        // when mail came, the list is drawn again with the screen's filters.
+        case 'ws_mail_check':
+            if (!function_exists('ws_mail_reads_ready') || !ws_mail_reads_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $result = ws_mail_check_run($viewer, (int) ($request['box_id'] ?? 0));
+
+            if ($result['error'] === 'demo') {
+                return ws_action_error(lang('A demonstration site reads no mailbox.'));
+            }
+
+            if ($result['error'] === 'limit') {
+                return ws_action_error(lang('You checked for e-mail several times this minute. Try again in a minute.'));
+            }
+
+            if ($result['error'] === 'no_box') {
+                return ws_action_error(lang('None of your mailboxes is read from a server.'));
+            }
+
+            $answer = array('stored' => $result['stored'], 'html' => ws_mail_check_line_html($result));
+
+            if ($result['stored'] > 0) {
+                $filters = ws_mail_list_filters($request);
+                $answer['list'] = ws_mail_list_html(ws_mail_list($viewer, $filters, time()), $filters, time(), (int) ($request['conversation'] ?? 0));
+            }
+
+            return ws_action_ok($answer);
+
         // The E-mails screen: the next page of the list, a conversation in
         // the reading pane (read from then on), Mark all as read
         // (mail_list.php, mail_pane.php, mail_reads.php).

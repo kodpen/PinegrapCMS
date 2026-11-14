@@ -4,6 +4,7 @@
 
 - agent-activity.md: The Agents card's activity per app and model agent: counts of 7 and 30 days, next wake, door failures, waiting and failed requests with Cancel, Ask again, Knock now; token counts [decision: decisions-made-schema-14.md, decisions-made-workspace-10.md]
 - agent-canvas-assistants.md: Pinegrap AI and model assistants draw, read and edit Workspace canvases as ws_ai_step() tools (canvas_ai.php): when offered, who the version names, what the model reads
+- agent-canvas-chart.md: The chart canvas operation (canvas_chart.php): kinds, data, boards, how the server draws it by the guide, the channel's colour for one series, the refusals, create and draw_canvas [decision: here]
 - agent-canvas-edit.md: An agent edits any canvas of its channel in place (POST|PATCH messages/{id}/canvas): operations, 409 when stale, the agent version, the inbox line, the "Edited by @handle" mark and Undo
 - agent-canvas-guide.md: The drawing guide an agent reads before drawing a canvas (canvas_guide.php): one set of values, its text, GET workspace/canvas/guide, the MCP resource and prompt
 - agent-canvas-layer-writes.md: An agent writes a canvas's layers one by one (canvas_layer_write.php): add a text, picture, shape or icon, style, order, name, lock, a layer by its name, GET workspace/canvas/fonts
@@ -23,7 +24,7 @@
 - agent-discussion-reach.md: A channel's registry agent asked in the channel's discussions by name (A4b3 #8600): ws_agent_reach_rows(), the merged row, its readers, what stays the discussion's own [decision: decisions-made-workspace-12.md]
 - agent-door-knock-trial.md: Push door trial (dev, 2026-11-13): the site's knock reached a signed receiver in the same second; what a session on a personal computer still needs; a routine's fire address answered HTTP 400
 - agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (agent:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
-- agent-drawing-guides-census.md: DG1 census and proposal: what today's agent charts lack, and the guide's proposed boards, grid, type, spacing, two board palettes, marks and seven chart kinds
+- agent-drawing-guides-census.md: DG1 census and proposal: what today's agent charts lack, and the guide's proposed boards, grid, type, spacing, two board palettes, marks and seven chart kinds [decision: here]
 - agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869) [decision: decisions-made-schema-16.md, decisions-made-workspace-14.md]
 - agent-emoji.md: The one fitting emoji an agent leaves on the message that asked it (#8932): the brief, the answer route's emoji, a model assistant's answer tool, what is refused [decision: decisions-made-workspace-19.md]
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier
@@ -78,6 +79,7 @@
 - mail-card-answered.md: The conversation's mail card in a channel since MA10b (#9453): "Answered · who · time" with no column, the Open e-mail link to Communication, what left the card, the touch after an answer [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - mail-card-quote.md: What a reply's quote line says of a mail card in a channel (plain() and quoteText() in workspace.js): the head, Show all and refused files left out, blocks read apart (#9011)
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(): first lines, Answered, Open e-mail; sender like a guest) and the Mailboxes card with the .eml upload (mail_settings.php)
+- mail-check.md: Check e-mail on Communication › Incoming e-mail (IB2): which boxes a press reads, the fetch's lock and budget, the 15-second gap, presses a minute, the line over the list [decision: here]
 - mail-compose.md: New e-mail in the Workspace (WM5, #8719): the form and its fields, where it opens, the panel actions, who may send, the unsent form kept in the browser, a mailbox's Signature and where it goes
 - mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified [decision: decisions-made-workspace-13.md, decisions-made-workspace-17.md, decisions-made-workspace-21.md, decisions-made-workspace-26.md]
 - mail-domain-warning.md: The warning before a Workspace e-mail goes to a domain that does not exist: Send anyway, Change the address, "Did you mean …?", the API's 409 unknown_domain [decision: decisions-made-workspace-23.md]
@@ -95,6 +97,7 @@
 - mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it [decision: decisions-made-schema-15.md, decisions-made-schema-16.md, decisions-made-workspace-13.md, decisions-made-workspace-17.md]
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
 - mail-phone-conversations.md: A customer's WhatsApp message as a Workspace conversation (WA13, #9389, step 11.0.199): the WhatsApp box and its Channel field, threading by number, the card, what stays mail-only [decision: decisions-made-workspace-23.md]
+- mail-phone-decisions.md: Why a customer's WhatsApp message and SMS are Workspace conversations like e-mail (owner #9151), where they are kept (#9286), the rules every part keeps, the drawer's owner rules, what was left out [decision: decisions-made-product-49.md, decisions-made-workspace-23.md]
 - mail-phone-list-event-api.md: WhatsApp and SMS conversations in the E-mails list (Kind filter), the workspace.mail.received event (transport, number, How it came) and the API (#9420, #9455)
 - mail-phone-media.md: A customer's WhatsApp picture, video, voice message or document fetched by the general job into the conversation card's files (WA14c, #9480), no new column; what is given up and why
 - mail-phone-reply-files.md: A WhatsApp answer's file and template (WA14b, #9446): Meta's kinds and sizes before the queue, the upload at the send, templates with typed values after the 24 hours, Send again

@@ -53,7 +53,7 @@ function gLine(o, P, area) {
   o.labels.forEach(function (lab, i) { if (i % (o.every || 1) === 0 || i === n - 1) s += gText(X(i), bot + 32, lab, 18, 400, P.ink3, 'middle'); });
   o.series.forEach(function (r, j) { var c = P.series[j], d = r.map(function (v, i) { return (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + ax.y(v).toFixed(1); }).join('');
     if (area) s += '<path d="' + d + 'L' + X(n - 1) + ' ' + bot + 'L' + X(0) + ' ' + bot + 'Z" fill="' + gMix(c, P.bg, 0.14) + '"/>';
-    s += '<path d="' + d + '" fill="none" stroke="' + c + '" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>';
+    s += '<path d="' + d + '" fill="none" stroke="' + c + '" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>';
     var ly = ax.y(r[n - 1]); s += '<circle cx="' + X(n - 1) + '" cy="' + ly + '" r="9" fill="' + P.bg + '"/><circle cx="' + X(n - 1) + '" cy="' + ly + '" r="6" fill="' + c + '"/>' + gText(X(n - 1) + 18, ly + 6, gNum(r[n - 1]), 20, 600, P.ink); });
   return gBoard(t, s, P);
 }

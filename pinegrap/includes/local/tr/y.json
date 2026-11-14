@@ -341,6 +341,7 @@
     "You cannot write in this channel.": "Bu kanala yazamazsınız.",
     "You cannot write in this conversation's channel.": "Bu konuşmanın kanalına yazamazsınız.",
     "You changed this note meanwhile on another screen or device.": "Bu notu bu arada başka bir ekranda ya da cihazda değiştirdiniz.",
+    "You checked for e-mail several times this minute. Try again in a minute.": "Bu dakika içinde birkaç kez e-posta denetlediniz. Bir dakika sonra yeniden deneyin.",
     "You chose {var:1} on this site before, so you would be sent to it.": "Bu sitede daha önce {var:1} seçtiniz; bu yüzden oraya gönderilirdiniz.",
     "You closed {var:1} task{suffix:1} this week, and {var:2} on your list {suffix:2} still past due.": "Bu hafta {var:1} görev kapattın; listende son tarihi geçmiş {var:2} görev hâlâ duruyor.",
     "You confirm the time, or ask for another, on the same page.": "Saati aynı sayfada onaylarsınız ya da başka bir saat istersiniz.",

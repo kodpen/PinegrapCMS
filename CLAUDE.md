@@ -118,8 +118,8 @@ PR that gives its reason (Fixed rules 6). Details: `workflow/working-mode.md`,
    (`workflow/design-template-owner-line.md`).
 7. **Shared hot files.** A PR never edits `changelog.txt`: its body names the
    `[NEW]` line or the `[SCHEME]` item. Translation keys only with
-   `php tools/tr_add.php`. Generated memory lists: never in a PR; `.min.js`
-   bundles: append only. A new `includes/fn/` module is named in its memory file's `module:`.
+   `php tools/tr_add.php`. Generated memory lists and the built `.min.js` /
+   `.min.css` bundles: never in a PR. A new `includes/fn/` module is named in its memory file's `module:`.
 8. **Queue limit.** While more than 25 PRs are open (drafts and
    `merge-train/*` not counted) nobody starts a new task; finished work is
    still marked ready. A PR waiting on a decision goes back to draft. Each
@@ -175,10 +175,13 @@ PR that gives its reason (Fixed rules 6). Details: `workflow/working-mode.md`,
 7. **Four silent traps:** table names are singular (`page`, `style`,
    `pregion`, `forms`) and a failed query returns `false` without throwing
    (keep `mysqli_report(MYSQLI_REPORT_OFF)`); prices are integer minor units,
-   round with `round()`, never truncate with `(int)`; edit `.src.js` **and**
-   serve `.min.js`: after editing a bundled script (`pg_js_bundles()`,
-   `workspace*.js`, `backend.src.js` and `style_designer.src.js` included) run `php tools/build_js.php`,
-   after editing `backend.src.css` run `php tools/build_css.php`; in the role
+   round with `round()`, never truncate with `(int)`; a bundled script
+   (`pg_js_bundles()`: `workspace*.js`, `backend.src.js`,
+   `style_designer.src.js`) or stylesheet (`backend.src.css`) is edited in
+   its source and the landing builds its `.min.js` / `.min.css`: a PR never
+   commits them (`tools/check_pr.php`); to try one, run
+   `php tools/build_js.php` / `build_css.php`, then `git checkout` the
+   bundles; in the role
    hierarchy Designer (1) is above Manager (2).
 8. Talk to the owner in Turkish. One task is one small PR. User documentation
    is never written in the repo (`workflow/owner-rules.md`).
@@ -195,7 +198,7 @@ database; run the ones your change touches and the tests of your area:
 `php tools/test.php [filter]` (`tests/*_test.php`), `lint.php`,
 `check_lang.php`, `check_bindings.php`, `check_api_schema.php`,
 `check_audit_rules.php`, `check_copies.php`, `check_bs6.php --strict`, `check_look.php`,
-`build_js.php --check`, `build_css.php --check`,
+`build_js.php` and `build_css.php` (to try, never committed),
 `build_code_editor.php --check`, `memory_index.php --files` (all under
 `tools/`, run with `php`), and `bash tools/static_analysis.sh` (PHPStan
 level 0 + PHP 7.1 compatibility; a guarded newer API gets a `phpcs:ignore`

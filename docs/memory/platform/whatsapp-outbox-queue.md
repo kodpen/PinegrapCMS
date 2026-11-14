@@ -29,4 +29,4 @@ module: whatsapp
 ## How was it verified?
 - `tests/whatsapp_queue_test.php` (row, refusals, refusal at send, outcome, wiring), `privacy_erase_test.php`. No database and no Meta call in the cloud session: the step, the enqueue and the run were not run against MySQL.
 
-Related: docs/memory/platform/sms-outbox-queue.md, docs/memory/platform/whatsapp-connection.md, docs/memory/plans/whatsapp-channel-storage.md
+Related: docs/memory/platform/sms-outbox-queue.md, docs/memory/platform/whatsapp-connection.md, docs/memory/workflow/decisions-made-schema-17.md
