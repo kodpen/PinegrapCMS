@@ -31,6 +31,6 @@ description: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14
 - Chat ignores a server whose URL holds a `${user_config.*}` reference; Cowork ignores it when the option has no default and never prompts.
 - `"url": ""` is accepted ("no fixed endpoint"); Claude Code shows it as not configured.
 - So in chat and Cowork the person adds the site themselves under Customize > Connectors as a custom connector (`https://site/mcp.php`); the bundle's skills still load and use its tools.
-- Tool names reach Claude as `mcp__plugin_<plugin>_<server>__<tool>`, limit 128 there; skills should name the bare tool (`pages_list`).
+- Architect (2026-11-14, msg 2493): `${user_config}` URL; chat and Cowork users add the site by hand (plan, CB3).
 
 Related: docs/memory/api/claude-plugin-tool-check.md, docs/memory/api/api-mcp-server.md

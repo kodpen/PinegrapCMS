@@ -84,8 +84,8 @@
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
 - api-webhook-stock-events.md: pg_product_stock_changed(): rules, callers, quiet writers, the out_of_stock flag; panel writers announcing product.updated
 - application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs [decision: here]
-- claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address
-- claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope
+- claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address [decision: here]
+- claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope [decision: here]
 - external-api-authorization.md: External API authorization: app scopes x owner scopes, write implies read, where a new scope goes, what failed sign-ins do, the removed apps.php model; role-3 rows in api-user-role-rows
 - external-api-iis-environment.md: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, the webhooks exception, first-match routing [decision: decisions-made-product-13.md]
 - forms-api-request-checks.md: get_forms / get_form panel actions refuse a malformed limit, offset, fields, filter or sort value with a JSON error before any query

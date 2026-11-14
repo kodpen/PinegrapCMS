@@ -6,6 +6,7 @@ description: The site's MCP tools checked against Claude's directory rules (2026
 ## Do our tool names fit 64 characters?
 - Yes. `pg_mcp_tool_name()` turns the route id's dots into underscores and cuts at 64; the longest route id is 39 characters (`store.ship_date_adjustments.delete_post`, itself no tool), so nothing is cut today.
 - No two route ids become the same tool name. A future id over 64 would be cut in silence and `pg_mcp_routes_for()` keeps the first route of a name: CB2's test should fail on any offered id over 64 or any duplicate name.
+- Tool names reach Claude as `mcp__plugin_<plugin>_<server>__<tool>`, limit 128 there; skills should name the bare tool (`pages_list`).
 
 ## Do our tools carry the annotations?
 - Every tool has `title`, `readOnlyHint` (GET) and `destructiveHint` (a write that is not a `create` or `propose`), from `pg_mcp_tool_from_route()`.
@@ -26,9 +27,9 @@ description: The site's MCP tools checked against Claude's directory rules (2026
 - The person grants scopes at the OAuth screen; `dry_run` on writes; Claude's apps can ask the person before each call of a tool whose `readOnlyHint` is false.
 - Workspace change cards (`propose`) where the site proposes instead of writing.
 
-## What is open?
-- The plugin's scope set and how refunds and labels stay out are architect questions (CB1 PR body); CB2 builds the answer.
-- Policy 3F (the developer controls every endpoint): each site is its owner's, not Kodpen's. Whether a bundle pointing at customer sites passes review is asked too.
+## How is it settled?
+- Architect (2026-11-14, msg 2493): the plugin's scope set holds no route that moves money or makes a cost; such routes carry a mark a test reads (CB2); dry run alone is no wall.
+- Policy 3F (the developer controls every endpoint) against sites that are their owners': the owner's, asked before CB3.
 
 ## Where were the rules read?
 - `claude.com/docs/directory/publish`, `/plugins/pre-submission-checklist`, `/plugins/platform-support`, `/plugins/build`, `/plugins/overview`; `code.claude.com/docs/en/plugins-reference`, `/mcp`; Anthropic Software Directory Policy (support article 13145358).
