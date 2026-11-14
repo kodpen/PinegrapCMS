@@ -4295,6 +4295,7 @@
     "Customers line up before the doors open. Some come for a loaf; some come to watch the last trays leave the oven through the window, the steam rising off them like breath.": "Müşteriler kapılar açılmadan sıraya giriyor. Kimi bir somun için geliyor; kimi de son tepsilerin fırından çıkışını, üstlerinden nefes gibi yükselen buharla birlikte vitrinden izlemek için.",
     "Customers outside the team": "Ekip dışından müşteriler",
     "Customers who share a membership number are extended together.": "Aynı üyelik numarasını paylaşan müşteriler birlikte uzatılır.",
+    "Customers' SMS could not be read from {var:1}: {var:2}": "Müşteri SMS'leri {var:1} üzerinden okunamadı: {var:2}",
     "Customs: Contents Type": "Gümrük: İçerik türü",
     "Customs: Default Country of Origin": "Gümrük: Varsayılan menşe ülkesi",
     "Customs: Default HS Code": "Gümrük: Varsayılan GTİP/HS kodu",

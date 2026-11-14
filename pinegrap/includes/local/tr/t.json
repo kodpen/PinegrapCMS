@@ -10485,6 +10485,7 @@
     "Twilio could not read the recipient number.": "Twilio alıcı numarasını okuyamadı.",
     "Twilio found no account with this Account SID.": "Twilio bu Account SID ile bir hesap bulamadı.",
     "Twilio is receiving too many requests from this account. Try again later.": "Twilio bu hesaptan çok fazla istek alıyor. Daha sonra yeniden deneyin.",
+    "Twilio posts customers' messages to the address shown with its account; for Netgsm and İleti Merkezi the scheduled general job reads the messages sent to the account's receiving number (an 0850 number or a keyword on a short number, bought from the provider) every two minutes.": "Twilio müşteri mesajlarını hesabının yanında gösterilen adrese gönderir; Netgsm ve İleti Merkezi için zamanlanmış genel iş, hesabın alıcı numarasına (sağlayıcıdan alınan bir 0850 numarası ya da kısa numaradaki bir anahtar kelime) gönderilen mesajları iki dakikada bir okur.",
     "Twilio refused the Account SID or Auth Token.": "Twilio, Account SID ya da Auth Token bilgisini reddetti.",
     "Twilio refused the message text: it is empty or too long.": "Twilio ileti metnini reddetti: metin boş ya da çok uzun.",
     "Twilio refused the recipient number.": "Twilio alıcı numarasını reddetti.",

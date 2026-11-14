@@ -1006,6 +1006,12 @@ if (pg_sms_queue_ready()) {
 
 }
 
+// Customers' SMS read from a provider that is asked rather than posting
+// them (Netgsm, İleti Merkezi), every two minutes while its box takes SMS
+// into a channel (pg_sms_inbox_job() in includes/fn/sms_inbox.php).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_inbox.php');
+pg_sms_inbox_job();
+
 // Queued WhatsApp messages (pg_whatsapp_queue_run() in includes/fn/whatsapp.php),
 // on the SMS pass's terms: a request only queues, this pass sends. The module
 // is loaded only when the table exists; an empty queue costs one read.

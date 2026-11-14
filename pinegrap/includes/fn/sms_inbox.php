@@ -7,8 +7,8 @@
  * message brought into the channel the SMS settings name, as a
  * conversation by number in the mail tables (includes/workspace/
  * mail_phone.php). Twilio posts each message to sms_webhook.php, signed with
- * the account's auth token; the providers that are asked by poll come
- * later. Nothing is kept from a number when no channel takes SMS: an
+ * the account's auth token; Netgsm and İleti Merkezi are asked by the
+ * general job (pg_sms_inbox_job()). Nothing is kept from a number when no channel takes SMS: an
  * incoming SMS is stored only as a conversation's item.
  *
  * @author      Erdal Güral (Kodpen)
@@ -27,15 +27,21 @@ define('PG_SMS_WEBHOOK_PER_MINUTE', 120);
 /** The largest post sms_webhook.php reads. */
 define('PG_SMS_WEBHOOK_MAX_BODY', 65536);
 
+/** Seconds between two asks of a polled provider's inbox. */
+define('PG_SMS_INBOX_EVERY', 120);
+
+/** How far back each ask reaches, so a missed run loses nothing: two days. */
+define('PG_SMS_INBOX_REACH', 172800);
+
 /**
  * How each provider brings a customer's SMS: webhook (it posts to
- * sms_webhook.php), or none yet.
+ * sms_webhook.php) or poll (the general job asks its inbox).
  *
- * @return array provider => webhook|''
+ * @return array provider => webhook|poll
  */
 function pg_sms_incoming_ways()
 {
-    return array('twilio' => 'webhook', 'netgsm' => '', 'iletimerkezi' => '');
+    return array('twilio' => 'webhook', 'netgsm' => 'poll', 'iletimerkezi' => 'poll');
 }
 
 /**
@@ -250,8 +256,9 @@ function pg_sms_incoming_receive($message, $now)
         }
     }
 
-    // A message the provider sends again is the same stop: one refusal.
-    if (($out['status'] !== 'duplicate') && pg_sms_is_stop_word($message['text'])) {
+    // A message the provider sends again is the same stop: one refusal. A
+    // provider that took the message as an unsubscribe itself says so (stop).
+    if (($out['status'] !== 'duplicate') && (!empty($message['stop']) || pg_sms_is_stop_word($message['text']))) {
         $out['stopped'] = pg_sms_stop_refusal($message['from'], $now);
     }
 
@@ -323,17 +330,38 @@ function pg_sms_webhook_throttled()
 }
 
 /**
- * The SMS settings' "Customers' messages" part: the address to give the
- * provider and the Channel field, '' for a provider that cannot receive or
+ * The address a provider that posts customers' SMS is given, drawn in its
+ * own block of the SMS settings; '' for a provider that is asked instead or
  * with the Workspace off.
  *
- * @param string $provider the chosen provider
- * @param int    $user_id
+ * @param string $provider
  * @return string HTML
  */
-function pg_sms_channel_field($provider, $user_id)
+function pg_sms_webhook_field($provider)
 {
-    if (!pg_sms_incoming_supported($provider) || !defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+    if (((pg_sms_incoming_ways()[(string) $provider] ?? '') !== 'webhook') || !defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+        return '';
+    }
+
+    return '
+                                                        <div class="pg-f-md">
+                                                            <label for="sms_webhook_url_' . h($provider) . '" class="form-label">' . lang('Address for customers\' messages') . '</label>
+                                                            <input type="text" id="sms_webhook_url_' . h($provider) . '" class="form-control" value="' . h(pg_sms_webhook_url($provider)) . '" readonly>
+                                                            <div class="form-text">' . lang('In Twilio, paste it as the number\'s "A message comes in" webhook (HTTP POST).') . '</div>
+                                                        </div>';
+}
+
+/**
+ * The SMS settings' Channel field, drawn once below the providers' blocks:
+ * where customers' SMS open their conversations, whichever provider brings
+ * them; '' with the Workspace off.
+ *
+ * @param int $user_id
+ * @return string HTML
+ */
+function pg_sms_channel_field($user_id)
+{
+    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
         return '';
     }
 
@@ -341,16 +369,8 @@ function pg_sms_channel_field($provider, $user_id)
 
     $field = ws_mail_phone_card_field((int) $user_id, 'sms');
 
-    if ($field === '') {
-        return '';
-    }
-
-    return '
-                                                        <div class="pg-f-md">
-                                                            <label for="sms_webhook_url" class="form-label">' . lang('Address for customers\' messages') . '</label>
-                                                            <input type="text" id="sms_webhook_url" class="form-control" value="' . h(pg_sms_webhook_url($provider)) . '" readonly>
-                                                            <div class="form-text">' . lang('In Twilio, paste it as the number\'s "A message comes in" webhook (HTTP POST).') . '</div>
-                                                        </div>' . $field;
+    return ($field === '') ? '' : $field . '
+                                                        <div class="col-12 form-text">' . lang('Twilio posts customers\' messages to the address shown with its account; for Netgsm and İleti Merkezi the scheduled general job reads the messages sent to the account\'s receiving number (an 0850 number or a keyword on a short number, bought from the provider) every two minutes.') . '</div>';
 }
 
 /**
@@ -394,4 +414,115 @@ function pg_sms_channel_save($decision, $user_id)
     $app = pg_sms_app($provider);
 
     ws_mail_phone_box_write('sms', ws_mail_phone_sms_box_values($provider, $app['sender'], (int) $decision['channel_id']), (int) $user_id);
+}
+
+/**
+ * The time window an ask of a polled inbox covers, and whether it is due:
+ * every PG_SMS_INBOX_EVERY seconds, reaching PG_SMS_INBOX_REACH back so a
+ * missed run loses nothing (what was already kept is a duplicate). Pure.
+ *
+ * @param int $checked when the inbox was last asked, 0 never
+ * @param int $now
+ * @return array due, from, to
+ */
+function pg_sms_inbox_window($checked, $now)
+{
+    return array(
+        'due'  => ((int) $checked <= 0) || ((int) $now - (int) $checked >= PG_SMS_INBOX_EVERY),
+        'from' => (int) $now - PG_SMS_INBOX_REACH,
+        'to'   => (int) $now,
+    );
+}
+
+/**
+ * Asks a polled provider's inbox (one call; İleti Merkezi's pages up to
+ * five).
+ *
+ * @param string $provider netgsm or iletimerkezi
+ * @param array  $app      pg_sms_app()
+ * @param array  $window   pg_sms_inbox_window()
+ * @return array ok, messages, error
+ */
+function pg_sms_inbox_fetch($provider, $app, $window)
+{
+    pg_sms_driver($provider);
+
+    if ($provider === 'netgsm') {
+        $response = pg_sms_http('GET', pg_sms_netgsm_inbox_request($app, $window['from'], $window['to']));
+
+        return pg_sms_netgsm_inbox_parse($response['status'], $response['body'], $response['error']);
+    }
+
+    $messages = array();
+
+    for ($page = 1; $page <= 5; $page++) {
+        $response = pg_sms_http('POST', pg_sms_iletimerkezi_inbox_request($app, $window['from'], $window['to'], $page));
+        $read = pg_sms_iletimerkezi_inbox_parse($response['status'], $response['body'], $response['error'], $page);
+
+        if (!$read['ok']) {
+            return array('ok' => false, 'messages' => $messages, 'error' => $read['error']);
+        }
+
+        $messages = array_merge($messages, $read['messages']);
+
+        if (!$read['more']) {
+            break;
+        }
+    }
+
+    return array('ok' => true, 'messages' => $messages, 'error' => '');
+}
+
+/**
+ * The general job's pass: while the site's SMS provider is one that is
+ * asked and its box takes SMS into a channel, its inbox is read every two
+ * minutes and each message taken as a posted one is (pg_sms_incoming_receive()).
+ * The last ask is noted in its own connect_apps row (sms_inbox), not in the
+ * provider's account, which the settings write whole. A failed ask writes
+ * an activity-log line, once an hour at most.
+ */
+function pg_sms_inbox_job()
+{
+    $provider = pg_sms_provider();
+
+    if (((pg_sms_incoming_ways()[$provider] ?? '') !== 'poll') || !defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED
+        || (function_exists('pg_demo') && pg_demo()) || !function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready()) {
+        return;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    $box = ws_enabled() && ws_mail_phone_ready() ? ws_mail_phone_box('sms') : null;
+    $settings = is_array($box) ? json_decode((string) $box['settings'], true) : null;
+
+    if (!is_array($box) || empty($box['enabled']) || !is_array($settings) || (($settings['provider'] ?? '') !== $provider)) {
+        return;
+    }
+
+    $note = pg_connect_app('sms_inbox');
+    $options = (is_array($note) && is_array($note['options'] ?? null)) ? $note['options'] : array();
+    $now = time();
+    $window = pg_sms_inbox_window((int) ($options['checked'] ?? 0), $now);
+
+    if (!$window['due']) {
+        return;
+    }
+
+    $read = pg_sms_inbox_fetch($provider, pg_sms_app($provider), $window);
+    $logged = (int) ($options['logged'] ?? 0);
+
+    if (!$read['ok'] && ($now - $logged >= 3600) && function_exists('log_activity')) {
+        log_activity(lang(array('string' => 'Customers\' SMS could not be read from {var:1}: {var:2}', 'vars' => array(pg_sms_providers()[$provider]['label'] ?? $provider, $read['error']))));
+        $logged = $now;
+    }
+
+    foreach ($read['messages'] as $message) {
+        pg_sms_incoming_receive($message, $now);
+    }
+
+    $json = e(json_encode(array('checked' => $now, 'ok' => (bool) $read['ok'], 'logged' => $logged)));
+
+    db("INSERT INTO connect_apps
+        SET provider = 'sms_inbox', options = '" . $json . "', enabled = 1, updated_timestamp = UNIX_TIMESTAMP()
+        ON DUPLICATE KEY UPDATE options = VALUES(options), updated_timestamp = VALUES(updated_timestamp)");
 }
