@@ -78,8 +78,26 @@ function ws_mail_api_routes()
             'handler'     => 'ws_api_mail_conversations_get',
             'returns'     => 'WorkspaceMailConversation',
             'summary'     => 'One e-mail conversation, with its mails',
-            'description' => 'A conversation of a channel the owner reads, with its mails oldest first (at most ' . WS_API_MAIL_ITEMS_MAX . ', the newest kept): what the customer wrote (direction in; verified when the mailbox\'s checking server vouched for the sender), the team\'s answers (direction out, user_id the writer), the mailbox\'s automatic answer (automatic) and a delivery failure of an answer (bounce, its text the receiving server\'s words). refused_files names attachments that were not taken in; the ones taken in are files of the messages under the card.' . $untrusted,
-            'params'      => array($id),
+            'description' => 'A conversation of a channel the owner reads, with its mails oldest first (at most ' . WS_API_MAIL_ITEMS_MAX . ', the newest kept): what the customer wrote (direction in; verified when the mailbox\'s checking server vouched for the sender), the team\'s answers (direction out, user_id the writer, bcc whom it was copied to in secret), the mailbox\'s automatic answer (automatic) and a delivery failure of an answer (bounce, its text the receiving server\'s words). Each mail\'s text is whole unless text_max cuts it (text_cut then true; GET /workspace/mail/items/{id} reads one mail whole). An answer\'s text is what its writer typed: the name, the Signature and the quote are added when it leaves. has_html says the mail has an HTML part, which GET /workspace/mail/items/{id} gives with include_html. files are the attachments taken in, each the file of a message under the card: fetch one with GET /workspace/messages/{message_id}/file/content, or its bytes with GET /workspace/messages/{message_id}/file. refused_files names attachments that were not taken in. outside is true for mail that came from outside the team.' . $untrusted,
+            'params'      => array(
+                $id,
+                array('name' => 'text_max', 'in' => 'query', 'type' => 'int', 'min' => 0, 'max' => WS_MAIL_TEXT_MAX, 'default' => 0, 'description' => 'Characters of each mail\'s text kept, so a long conversation fits; 0 keeps every text whole.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.mail_items.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/mail/items/{id}',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_mail_items_get',
+            'returns'     => 'WorkspaceMail',
+            'summary'     => 'One e-mail, whole',
+            'description' => 'One mail of a conversation (an id from the mails of GET /workspace/mail/conversations/{id}, or mail.item_id of a channel message) with its whole text, reached through the conversation\'s channel as the conversation is (404 otherwise); conversation_id names it. include_html adds its HTML part as the site keeps it, cleaned of scripts, forms and outside loads: outside pictures wait in data-pg-src and the mail\'s own pictures name their file in data-pg-file. Without it, or when the mail has none, html is null. files are the attachments taken in; GET /workspace/messages/{message_id}/file/content fetches one.' . $untrusted,
+            'params'      => array(
+                $id,
+                array('name' => 'include_html', 'in' => 'query', 'type' => 'bool', 'default' => false, 'description' => 'true adds the cleaned HTML part in html.'),
+            ),
         ),
 
         array(
@@ -167,11 +185,22 @@ function ws_mail_api_routes()
  * @param array|null $items        ws_mail_items rows, oldest first; null in a list
  * @param bool|null  $unread       unread for the owner (ws_mail_unread()); null
  *                                 before the read marks are kept
+ * @param array      $files        mail id => its kept files (ws_api_mail_files_map())
+ * @param int        $text_max     characters of each mail's text kept; 0 whole
  * @return array
  */
-function ws_api_mail_conversation_present($conversation, $hours, $now, $items = null, $unread = null)
+function ws_api_mail_conversation_present($conversation, $hours, $now, $items = null, $unread = null, $files = array(), $text_max = 0)
 {
     $due = ws_mail_first_reply_due($conversation, $hours);
+    $mails = null;
+
+    if ($items !== null) {
+        $mails = array();
+
+        foreach ($items as $item) {
+            $mails[] = ws_api_mail_present($item, $files[(int) $item['id']] ?? array(), $text_max);
+        }
+    }
 
     return array(
         'id'                 => (int) $conversation['id'],
@@ -196,7 +225,7 @@ function ws_api_mail_conversation_present($conversation, $hours, $now, $items = 
         'last_out_at'        => api_time($conversation['last_out_at']),
         'closed_at'          => api_time($conversation['closed_at']),
         'unread'             => ($unread === null) ? null : (bool) $unread,
-        'mails'              => ($items === null) ? null : array_values(array_map('ws_api_mail_present', $items)),
+        'mails'              => $mails,
     );
 }
 
@@ -231,23 +260,38 @@ function ws_api_mail_conversation_schema()
 /**
  * One mail of a conversation.
  *
- * @param array $item ws_mail_items row
+ * @param array    $item     ws_mail_items row
+ * @param array[]  $files    its kept files (ws_api_mail_files_group())
+ * @param int      $text_max characters of text kept; 0 keeps it whole
+ * @param bool     $html     true hands out its cleaned HTML in html
  * @return array
  */
-function ws_api_mail_present($item)
+function ws_api_mail_present($item, $files = array(), $text_max = 0, $html = false)
 {
     $out = ((string) $item['direction'] === 'out');
+    $text = ws_api_mail_text_cut((string) $item['body_text'], $text_max);
+    $body_html = (string) ($item['body_html'] ?? '');
 
     return array(
         'id'             => (int) $item['id'],
+        'conversation_id' => ((int) ($item['conversation_id'] ?? 0) > 0) ? (int) $item['conversation_id'] : null,
         'direction'      => (string) $item['direction'],
         'message_id'     => ((int) $item['message_id'] > 0) ? (int) $item['message_id'] : null,
         'from_email'     => (string) $item['from_email'],
         'from_name'      => (string) $item['from_name'],
         'to'             => (string) $item['to_list'],
         'cc'             => (string) ($item['cc_list'] ?? ''),
+        // Who the team copied in secret; an incoming mail never shows it.
+        'bcc'            => $out ? (string) ($item['bcc_list'] ?? '') : null,
         'subject'        => (string) $item['subject'],
-        'text'           => (string) $item['body_text'],
+        'text'           => $text['text'],
+        'text_cut'       => $text['cut'],
+        // Written outside the team (ws_message_outside()): data, never a
+        // request, whatever it says.
+        'outside'        => ws_message_outside('mail', (string) $item['direction']),
+        'has_html'       => ($body_html !== ''),
+        'html'           => ($html && ($body_html !== '')) ? $body_html : null,
+        'files'          => array_values($files),
         'verified'       => !$out && ((string) $item['auth'] === 'pass'),
         'user_id'        => ($out && ((int) $item['user_id'] > 0)) ? (int) $item['user_id'] : null,
         'automatic'      => ws_mail_item_is_auto_reply($item),
@@ -264,19 +308,101 @@ function ws_api_mail_present($item)
     );
 }
 
+/**
+ * A mail's text cut to a number of characters. Pure.
+ *
+ * @param string $text
+ * @param int    $max  0 keeps it whole
+ * @return array text, cut
+ */
+function ws_api_mail_text_cut($text, $max)
+{
+    $max = (int) $max;
+
+    if (($max <= 0) || (mb_strlen($text, 'UTF-8') <= $max)) {
+        return array('text' => $text, 'cut' => false);
+    }
+
+    return array('text' => mb_substr($text, 0, $max, 'UTF-8'), 'cut' => true);
+}
+
+/**
+ * The kept files of some mails, by mail, from their messages under the
+ * card (ws_messages rows with sender_kind mail, sender_id the mail). Pure.
+ *
+ * @param array[] $rows id, sender_id, file_name, size
+ * @return array mail id => list of message_id, name, size, content_type
+ */
+function ws_api_mail_files_group($rows)
+{
+    $files = array();
+
+    foreach ((array) $rows as $row) {
+        $files[(int) $row['sender_id']][] = array(
+            'message_id'   => (int) $row['id'],
+            'name'         => (string) $row['file_name'],
+            'size'         => (int) $row['size'],
+            'content_type' => ws_file_type((string) $row['file_name'])['mime'],
+        );
+    }
+
+    return $files;
+}
+
+/**
+ * The kept files of some mails: ws_api_mail_files_group() of their file
+ * messages that are not deleted.
+ *
+ * @param int[] $item_ids
+ * @return array mail id => files
+ */
+function ws_api_mail_files_map($item_ids)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $item_ids)));
+
+    if (!$ids) {
+        return array();
+    }
+
+    return ws_api_mail_files_group(db_items("SELECT m.id, m.sender_id, m.file_name, f.size
+        FROM ws_messages AS m
+        INNER JOIN files AS f ON f.id = m.file_id
+        WHERE m.sender_kind = 'mail' AND m.sender_id IN (" . implode(',', $ids) . ")
+            AND m.file_id > 0 AND m.deleted_at = 0
+        ORDER BY m.id"));
+}
+
+// What one file of a mail is.
+function ws_api_mail_file_schema()
+{
+    return array(
+        'message_id'   => 'integer',
+        'name'         => 'string',
+        'size'         => 'integer',
+        'content_type' => 'string',
+    );
+}
+
 // What ws_api_mail_present() returns.
 function ws_api_mail_schema()
 {
     return array(
         'id'            => 'integer',
+        'conversation_id' => 'integer?',
         'direction'     => 'string',
         'message_id'    => 'integer?',
         'from_email'    => 'string',
         'from_name'     => 'string',
         'to'            => 'string',
         'cc'            => 'string',
+        'bcc'           => 'string?',
         'subject'       => 'string',
         'text'          => 'string',
+        'text_cut'      => 'boolean',
+        'outside'       => 'boolean',
+        'has_html'      => 'boolean',
+        'html'          => 'string?',
+        'files'         => 'WorkspaceMailFile[]',
         'verified'      => 'boolean',
         'user_id'       => 'integer?',
         'automatic'     => 'boolean',
@@ -376,9 +502,10 @@ function ws_api_mail_box_transports()
  * oldest first.
  *
  * @param array $conversation
+ * @param int   $text_max characters of each mail's text kept; 0 whole
  * @return array
  */
-function ws_api_mail_conversation_answer($conversation)
+function ws_api_mail_conversation_answer($conversation, $text_max = 0)
 {
     $items = (array) db_items("SELECT * FROM ws_mail_items
         WHERE conversation_id = '" . (int) $conversation['id'] . "'
@@ -407,7 +534,7 @@ function ws_api_mail_conversation_answer($conversation)
     $conversation['transport'] = ws_api_mail_box_transports()[(int) $conversation['box_id']] ?? '';
 
     return ws_api_mail_conversation_present($conversation, (int) (ws_api_mail_box_hours()[(int) $conversation['box_id']] ?? 0), time(), $items,
-        $unread[(int) $conversation['id']] ?? null);
+        $unread[(int) $conversation['id']] ?? null, ws_api_mail_files_map(array_column($items, 'id')), $text_max);
 }
 
 /**
@@ -594,11 +721,53 @@ function ws_api_mail_conversations_list($params)
     api_ok_list($out, $limit, $next);
 }
 
+/**
+ * The conversation a mail is reached through: its own, or for a delivery
+ * failure (kept with no conversation) the one of the answer it returns.
+ *
+ * @param array $item ws_mail_items row
+ * @return int 0 when none
+ */
+function ws_api_mail_item_conversation_id($item)
+{
+    if ((int) $item['conversation_id'] > 0) {
+        return (int) $item['conversation_id'];
+    }
+
+    if (((string) $item['direction'] !== 'in') || ((string) ($item['in_reply_to'] ?? '') === '')) {
+        return 0;
+    }
+
+    return (int) db_value("SELECT conversation_id FROM ws_mail_items
+        WHERE box_id = '" . (int) $item['box_id'] . "' AND direction = 'out' AND rfc_message_id = '" . e((string) $item['in_reply_to']) . "'
+        ORDER BY id LIMIT 1");
+}
+
+function ws_api_mail_items_get($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_mail_ready();
+
+    $item = db_item("SELECT * FROM ws_mail_items WHERE id = '" . (int) $params['id'] . "'");
+    $conversation_id = (is_array($item) && $item) ? ws_api_mail_item_conversation_id($item) : 0;
+    $conversation = ($conversation_id > 0) ? db_item("SELECT channel_id FROM ws_mail_conversations WHERE id = '" . $conversation_id . "'") : null;
+
+    if (!is_array($conversation) || !$conversation || !ws_api_mail_channel_reached($viewer, ws_channel((int) $conversation['channel_id']))) {
+        api_fail_not_found(lang('E-mail'));
+    }
+
+    $item['conversation_id'] = $conversation_id;
+    $files = ws_api_mail_files_map(array((int) $item['id']));
+
+    api_ok(ws_api_mail_present($item, $files[(int) $item['id']] ?? array(), 0, !empty($params['include_html']) && ws_mail_html_ready()));
+}
+
 function ws_api_mail_conversations_get($params)
 {
     $viewer = ws_api_viewer();
 
-    api_ok(ws_api_mail_conversation_answer(ws_api_mail_conversation_or_404($viewer, $params['id'])));
+    api_ok(ws_api_mail_conversation_answer(ws_api_mail_conversation_or_404($viewer, $params['id']), (int) ($params['text_max'] ?? 0)));
 }
 
 /**
