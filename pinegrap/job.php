@@ -1091,6 +1091,15 @@ if (
         ws_scheduled_run(WS_SCHEDULED_BATCH, WS_FLOW_BUDGET_JOB);
     }
 
+    // The followers of e-mail campaign profiles switched to flows
+    // (includes/fn/campaign_profile_switch.php): each stays on while a
+    // campaign above it still waits to go out, and is turned off once none
+    // is left. Every tenth minute: the campaigns go out over hours.
+    if (pg_flows_enabled() && (((int) date('i') % 10) === 0)) {
+        require_once(dirname(__FILE__) . '/includes/fn/campaign_profile_switch.php');
+        pg_profile_flow_followers_drain();
+    }
+
     // The agents' scheduled wakes (includes/workspace/agent_wake.php) on
     // every tick, for the same reason: "every 30m" or "at 21:00" must not
     // wait for the dispatcher's rotation. One small read when none is due.
