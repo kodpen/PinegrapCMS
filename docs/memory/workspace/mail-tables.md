@@ -11,7 +11,7 @@ description: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_
 ## What does ws_mail_boxes hold?
 - `name`, `address`, `transport` (imap | graph | gmail | push; whatsapp and sms since 11.0.199, `mail-phone-conversations.md`), `settings` TEXT (JSON: server, port, user, the password sealed with `pg_connect_seal()`, the move folder, a connection id), `folder` (default `INBOX`), `after_fetch` (seen | move), `channel_id`, `reply_via` (box | site | connection).
 - `auto_reply` (0 by default) and `auto_reply_text`: answer 8 (per box, off, editable), here so G5 needs no step.
-- IMAP position `uidvalidity` / `last_uid`; `checked_at`, `ok_at`, `last_error` for the box card and System status; `enabled`, `created_by`, `created_at`, `updated_at`.
+- IMAP position `uidvalidity` / `last_uid`; the Sent folder's own `sent_uidvalidity` / `sent_last_uid` (11.0.200, `mail-sent-folder.md`); `checked_at`, `ok_at`, `last_error` for the box card and System status; `enabled`, `created_by`, `created_at`, `updated_at`.
 
 ## What does ws_mail_conversations hold?
 - `box_id`, `channel_id`, `message_id` (the card in `ws_messages`; the thread is that message's replies by `parent_id`, so no thread column), `subject`, `customer_email` / `customer_name`, `contact_id` or `user_id` (only for a verified sender matching `contacts.email_address` / `user.user_email`).
