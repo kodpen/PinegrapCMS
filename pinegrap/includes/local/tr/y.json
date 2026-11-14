@@ -1284,6 +1284,7 @@
     "Your unsent e-mail was brought back.": "Gönderilmemiş e-postanız geri getirildi.",
     "Your updates have been <strong>canceled</strong>": "Güncellemeleriniz <strong>iptal edildi</strong>",
     "Your updates have been <strong>saved</strong>.": "Güncellemeleriniz <strong>kaydedildi</strong>.",
+    "Your user has no e-mail address: type one to send the test to.": "Kullanıcınızın e-posta adresi yok: denemenin gideceği bir adres yazın.",
     "Your user name, if you have one": "Varsa kullanıcı adınız",
     "Your username has been updated. Username: {var:1}": "Kullanıcı adınız güncellendi. Kullanıcı adı: {var:1}",
     "Your valuation requests, their status and your agent's messages, newest first.": "Değerleme talepleriniz, durumları ve danışmanınızın mesajları, en yenisi önce.",

@@ -499,6 +499,7 @@
     "[No title available]": "[Başlık yok]",
     "[Shared] ": "[Ortak] ",
     "[System] ": "[Sistem] ",
+    "[Test] {var:1}": "[Deneme] {var:1}",
     "[[text ^^field^^ text]] shows the text only when the field has a value.": "[[metin ^^alan^^ metin]] metni yalnız alanın bir değeri olduğunda gösterir.",
     "[encrypted text]": "[şifreli metin]",
     "[region] \"regionName\" cannot be empty for the \"{var:1}\" type [id: {var:2}]": "[region] \"{var:1}\" türü için \"regionName\" boş bırakılamaz [id: {var:2}]",
