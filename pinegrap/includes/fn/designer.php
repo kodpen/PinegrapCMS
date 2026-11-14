@@ -5104,6 +5104,9 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             // Apply data bindings — semantic <a>/<img>/<button> inside a system widget can
             // have text, href, src bound to feed fields (^^baslik^^, ^^href^^, ^^gorsel^^).
             $props = _apply_bindings($props);
+            // A mail block's look, written inline in front of its own style
+            // (pg_mail_block_inline(); the canvas twin is _sdMailInline()).
+            if (!empty($props['_mail'])) $props['inlineStyle'] = pg_mail_block_inline($props);
             $tag = !empty($props['tag']) ? $props['tag'] : 'div';
             if (!preg_match('/^[a-zA-Z][a-zA-Z0-9]*$/', $tag)) $tag = 'div';
             $tag_lc = strtolower($tag);

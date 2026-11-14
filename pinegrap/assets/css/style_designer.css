@@ -541,6 +541,18 @@
 }
 .sd-bp-bar .sd-bp-btn:hover { color:var(--sd-text); background:rgba(255,255,255,.05); }
 .sd-bp-bar .sd-bp-btn.active { color:var(--sd-accent); background:rgba(var(--sd-accent-rgb),.1); }
+/* An e-mail design (root props.pgEmail) has two widths: the 600 px mail and
+   the 375 px Phone view; the page widths are hidden while it is open. */
+.sd-bp-bar .sd-bp-btn.sd-bp-mail { display:none; }
+.sd-canvas-email .sd-bp-bar .sd-bp-btn:not(.sd-bp-mail) { display:none; }
+.sd-canvas-email .sd-bp-bar .sd-bp-btn.sd-bp-mail { display:flex; }
+/* What a mail cannot carry is not offered on an e-mail design: scripts,
+   animations, the prototype. The note says what reaches the sent mail. */
+body.sd-email-design #sd-vb-motion,
+body.sd-email-design #sd-vb-proto,
+body.sd-email-design #sd-as-sec-js { display:none !important; }
+.sd-as-mail-note { display:none; margin:.5rem .75rem; font-size:.72rem; line-height:1.4; color:var(--sd-text-muted); }
+body.sd-email-design .sd-as-mail-note { display:block; }
 
 /* View bar — zoom + outline + theme */
 .sd-vb-btn {

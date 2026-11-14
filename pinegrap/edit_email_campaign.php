@@ -539,7 +539,7 @@ if (!$_POST) {
             output_error(lang('You are not authorized to send that page for the body of the campaign.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
 
-        $sql_body = "body = '" . escape(pg_email_campaign_prepare_html_body(pg_email_campaign_page_body($row['page_id']), get_page_name($row['page_id']))) . "',";
+        $sql_body = "body = '" . escape(pg_email_campaign_design_body($row['page_id'])) . "',";
         $took_design = true;
     }
 
