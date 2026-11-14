@@ -498,7 +498,7 @@ function pg_profile_flow_box_line($node)
             $from = implode(', ', array_filter(array($config['from_name'], $config['from_email'], ($config['reply_to'] !== '') ? 'Reply-to ' . $config['reply_to'] : '', ($config['bcc'] !== '') ? 'BCC ' . $config['bcc'] : '')));
 
             return lang(array('string' => 'Send an e-mail “{var:1}” to the record\'s person, {var:2}, {var:3}', 'vars' => array($config['subject'], ($config['purpose'] === 'marketing') ? lang('marketing') : lang('information'), $what)))
-                . (($from !== '') ? ' · ' . lang(array('string' => 'from {var:1}', 'vars' => $from)) : '');
+                . (($from !== '') ? ' · ' . lang(array('string' => 'sender: {var:1}', 'vars' => $from)) : '');
     }
 
     return (string) $node['kind'];

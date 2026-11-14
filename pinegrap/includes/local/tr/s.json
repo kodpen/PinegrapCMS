@@ -5834,6 +5834,7 @@
     "send-a-prescription-request": "recete-talebi-gonder",
     "send-a-tip": "ipucu-gonder",
     "send-an-assignment": "odev-gonder",
+    "sender: {var:1}": "gönderen: {var:1}",
     "sent": "gönderildi",
     "sent a test notification to one device of user ({var:1})": "({var:1}) kullanıcısının bir cihazına deneme bildirimi gönderdi",
     "seo, meta, robots, sitemap, title, description, canonical, indexnow": "seo, meta, robots, site haritası, başlık, açıklama, kanonik, indexnow, sitemap, title, description, canonical",
