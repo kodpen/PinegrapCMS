@@ -27,7 +27,7 @@ pg_page_shell([
         'extra classes' => 'workspace workspace_my_calendar',
         'icon' => 'workspace',
         'heading' => lang('My calendar'),
-        'heading_description' => lang('Your tasks, the plan items you are in, your bookings and your own calendars. Only you see this screen.'),
+        'heading_description' => lang('Only your own work and plans; nobody else sees them.'),
         'cancel' => false,
     ]) . '
 <main id="content" class="container-fluid p-0">

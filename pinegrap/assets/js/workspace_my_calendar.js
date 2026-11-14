@@ -96,6 +96,11 @@
             item.appendChild(h.icon(option[1], 'me-1'));
             item.appendChild(document.createTextNode(s(option[0])));
             item.addEventListener('click', function () {
+                // The list starts on today; earlier days are one step back.
+                if (option[0] === 'list' && state.view !== 'list') {
+                    state.date = '';
+                }
+
                 state.view = option[0];
                 keepView(state.view);
                 load();
@@ -205,34 +210,6 @@
 
         // ── month and week: the grid ──
 
-        function lanesFor(week) {
-            var weekFrom = week[0].date;
-            var weekTo = week[week.length - 1].date;
-            var lanes = [];
-
-            (data.spans || []).filter(function (task) {
-                return task.span_start <= weekTo && task.span_end >= weekFrom;
-            }).sort(function (a, b) {
-                return a.span_start < b.span_start ? -1 : (a.span_start > b.span_start ? 1 : (a.span_end > b.span_end ? -1 : (a.span_end < b.span_end ? 1 : a.id - b.id)));
-            }).forEach(function (task) {
-                var from = task.span_start < weekFrom ? weekFrom : task.span_start;
-                var lane = 0;
-
-                while (lane < lanes.length && lanes[lane].end >= from) {
-                    lane++;
-                }
-
-                if (lane === lanes.length) {
-                    lanes.push({ end: '', tasks: [] });
-                }
-
-                lanes[lane].end = task.span_end;
-                lanes[lane].tasks.push(task);
-            });
-
-            return lanes;
-        }
-
         function drawGrid(box) {
             var head = el('div', 'ws-cal-head');
 
@@ -251,7 +228,7 @@
             }
 
             weeks.forEach(function (week) {
-                var lanes = lanesFor(week);
+                var lanes = h.calendarLanes(data.spans || [], week[0].date, week[week.length - 1].date);
 
                 week.forEach(function (day, column) {
                     var cell = el('div', 'ws-cal-day' + (day.in_range ? '' : ' ws-cal-out') + (day.today ? ' ws-cal-today' : '') + (day.weekend ? ' ws-cal-weekend' : ''));
@@ -354,7 +331,8 @@
 
             main.appendChild(head);
 
-            if (sub) {
+            // A line whose title is its kind (a leave day) is written once.
+            if (sub && sub !== titleText) {
                 main.appendChild(el('div', 'pg-list-row-text', sub));
             }
 
@@ -386,7 +364,14 @@
                 any = true;
 
                 var section = el('section', 'ws-mycal-day' + (day.today ? ' is-today' : ''));
-                section.appendChild(el('h3', 'pg-group-label ws-mycal-day-label', day.label));
+                var label = el('h3', 'pg-group-label ws-mycal-day-label', day.label);
+
+                if (day.today) {
+                    label.appendChild(el('span', 'pg-pill pg-tone-blue', h.t('today')));
+                    label.setAttribute('aria-current', 'date');
+                }
+
+                section.appendChild(label);
 
                 day.events.forEach(function (event) {
                     section.appendChild(listRow(el('span', 'ws-cal-event-dot ws-kind-' + event.kind), event.title,

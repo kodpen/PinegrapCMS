@@ -18165,6 +18165,9 @@ button.ws-cal-more {
   margin-top: 8px;
 }
 .ws-mycal-day-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   padding: 10px 12px 4px;
 }
