@@ -445,10 +445,10 @@ class WsCanvasChartDraw
         $this->parts[] = '<rect id="' . $this->id($name) . '" x="' . $this->n($x) . '" y="' . $this->n($y) . '" width="' . $this->n($w) . '" height="' . $this->n(max(0, $h)) . '" fill="' . $fill . '"/>';
     }
 
-    private function path($name, $d, $fill, $stroke = '')
+    private function path($name, $d, $fill, $stroke = '', $width = 0)
     {
         $this->parts[] = '<path id="' . $this->id($name) . '" d="' . $d . '" fill="' . $fill . '"'
-            . (($stroke !== '') ? ' stroke="' . $stroke . '" stroke-width="' . $this->v['marks']['line'] . '" stroke-linejoin="round" stroke-linecap="round"' : '') . '/>';
+            . (($stroke !== '') ? ' stroke="' . $stroke . '" stroke-width="' . ($width ?: $this->v['marks']['line']) . '" stroke-linejoin="round" stroke-linecap="round"' : '') . '/>';
     }
 
     private function dot($name, $x, $y, $colour)
@@ -518,6 +518,11 @@ class WsCanvasChartDraw
         $m = $this->v['marks'];
         $step = ws_canvas_chart_step($max, $m['ticks_max']);
         $n = max(1, (int) ceil($max / $step - 1e-9));
+
+        // The largest value carries its label above it: leave a step free when it would end near the top gridline.
+        if ($max > $step * ($n - 0.25)) {
+            $n++;
+        }
 
         for ($i = 0; $i <= $n; $i++) {
             $y = $bot - ($bot - $top) * $i / $n;
@@ -723,7 +728,7 @@ class WsCanvasChartDraw
         }
 
         $this->path('trend-area', $d . 'L' . $this->n($x + $w) . ' ' . $this->n($y + $h) . 'L' . $this->n($x) . ' ' . $this->n($y + $h) . 'Z', $this->wash($colour));
-        $this->path('trend', $d, 'none', $colour);
+        $this->path('trend', $d, 'none', $colour, $this->v['marks']['trend_line']);
         $last = $values[$n - 1];
         $this->dot('trend-end', $x + $w, $y + $h - $h * ($last - $lo) / (($hi - $lo) ?: 1), $colour);
     }

@@ -283,3 +283,29 @@ function test_workspace_canvas_chart_channel_tone_of_a_row()
 	pg_assert_same(ws_palette_hex(11), ws_canvas_chart_channel_tone(array('color' => '11')), 'its place in the palette');
 	pg_assert_same('#6b5ca5', ws_canvas_chart_channel_tone(array('color' => '#6B5CA5')), 'a colour code');
 }
+
+function test_workspace_canvas_chart_leaves_room_above_the_top_value()
+{
+	$op = workspace_canvas_chart_ops()['bar'];
+	$op['values'][6] = 40000;
+	$svg = ws_canvas_chart_svg(ws_canvas_chart_check($op)['chart'])['svg'];
+
+	pg_assert_contains('>50K</text>', $svg, 'a step above a top value of 40K');
+
+	$op['values'][6] = 15900;
+	$svg = ws_canvas_chart_svg(ws_canvas_chart_check($op)['chart'])['svg'];
+
+	pg_assert_contains('>40K</text>', $svg, '31.2K keeps its axis to 40K');
+	pg_assert_false(strpos($svg, '>50K</text>') !== false, 'with no step to spare');
+}
+
+function test_workspace_canvas_chart_line_widths()
+{
+	$v = ws_canvas_guide_values();
+	$line = ws_canvas_chart_svg(ws_canvas_chart_check(workspace_canvas_chart_ops()['line'])['chart'])['svg'];
+	$tile = ws_canvas_chart_svg(ws_canvas_chart_check(workspace_canvas_chart_ops()['figure_tile'])['chart'])['svg'];
+
+	pg_assert_contains('stroke-width="' . $v['marks']['line'] . '"', $line, 'a line on a card board');
+	pg_assert_contains('stroke-width="' . $v['marks']['trend_line'] . '"', $tile, 'a tile\'s trend on its own board');
+	pg_assert_true($v['marks']['line'] === 2 * $v['marks']['trend_line'], 'a card shown at half size reads as wide as the tile\'s trend');
+}
