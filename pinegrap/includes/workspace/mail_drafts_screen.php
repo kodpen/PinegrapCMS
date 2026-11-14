@@ -125,11 +125,15 @@ function ws_mail_drafts_view_html($rows)
 /**
  * Save draft in an opened draft's form: its changed fields written back,
  * as the API's change does (a reply's To and subject stay its
- * conversation's), by whoever may change it.
+ * conversation's), by whoever may change it. The HTML a draft keeps stays
+ * while its text is unchanged; a changed text takes the writing box's HTML
+ * (format markup) or none, so body_html never says other words than the
+ * text. The form's Files list (file_ids) replaces the draft's, each file
+ * checked as at Send.
  *
  * @param array $viewer
  * @param int   $id
- * @param array $request to, cc, bcc, subject, text
+ * @param array $request to, cc, bcc, subject, text, format, file_ids
  * @return array ok, error
  */
 function ws_mail_draft_save($viewer, $id, $request)
@@ -140,21 +144,130 @@ function ws_mail_draft_save($viewer, $id, $request)
         return array('ok' => false, 'error' => lang('This draft cannot be opened.'));
     }
 
-    $input = ws_mail_draft_input(array_intersect_key((array) $request, array_flip(array('to', 'cc', 'bcc', 'subject', 'text'))));
+    $request = ws_mail_draft_save_request($viewer, $draft, (array) $request);
+    $input = ws_mail_draft_input(array_intersect_key($request, array_flip(array('to', 'cc', 'bcc', 'subject', 'text', 'html', 'file_ids'))));
 
     if (!$input['ok']) {
         return array('ok' => false, 'error' => ws_mail_draft_error_text($input['error']));
     }
 
     $merged = ws_mail_draft_merge($draft, $input['fields']);
+    $body = array_intersect_key($input['fields'], array('html' => 1, 'file_ids' => 1));
+    $words = array_merge($merged, array('html' => (string) ($draft['body_html'] ?? ''), 'file_ids' => ws_mail_draft_file_ids($draft)), $body);
 
-    if (!ws_mail_draft_has_words($merged)) {
+    if (!ws_mail_draft_has_words(((int) $draft['conversation_id'] > 0) ? ws_mail_draft_reply_words($words) : $words)) {
         return array('ok' => false, 'error' => ws_mail_draft_error_text('empty'));
     }
 
-    return ws_mail_draft_update($draft, $merged, time())
-        ? array('ok' => true, 'error' => '')
-        : array('ok' => false, 'error' => lang('The draft could not be saved.'));
+    $checked = ws_mail_draft_body_check($viewer, $body);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => ws_mail_draft_error_text($checked['error'], $checked['detail']));
+    }
+
+    if (!ws_mail_draft_update($draft, $merged, time())) {
+        return array('ok' => false, 'error' => lang('The draft could not be saved.'));
+    }
+
+    ws_mail_draft_keep_body((int) $draft['id'], $body);
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * The Save draft form's fields as the draft store takes them. An unchanged
+ * text is left out, so a draft kept with HTML keeps it and its own text; a
+ * changed one written in the writing box becomes its plain text and HTML
+ * (ws_mail_markup_parts()), else plain text with no HTML. file_ids is read
+ * only when the form sent it.
+ *
+ * @param array $viewer
+ * @param array $draft   ws_mail_items row
+ * @param array $request to, cc, bcc, subject, text, format, file_ids
+ * @return array to, cc, bcc, subject, text, html, file_ids (the keys that change)
+ */
+function ws_mail_draft_save_request($viewer, $draft, $request)
+{
+    $out = array_intersect_key($request, array_flip(array('to', 'cc', 'bcc', 'subject', 'file_ids')));
+
+    if (!array_key_exists('text', $request) || !ws_mail_draft_text_changed($draft, $request['text'])) {
+        return $out;
+    }
+
+    if ((string) ($request['format'] ?? '') === 'markup') {
+        $parts = ws_mail_markup_parts($viewer, (string) $request['text']);
+
+        return array_merge($out, array('text' => $parts['text'], 'html' => $parts['html']));
+    }
+
+    return array_merge($out, array('text' => (string) $request['text'], 'html' => ''));
+}
+
+/**
+ * The text a draft's form shows: its own, else its HTML's words. Pure.
+ *
+ * @param array $draft ws_mail_items row
+ * @return string
+ */
+function ws_mail_draft_form_text($draft)
+{
+    return ws_mail_text_or_html((string) ($draft['body_text'] ?? ''), (string) ($draft['body_html'] ?? ''));
+}
+
+/**
+ * Whether the form's text says other words than the draft's form text,
+ * spaces and line ends aside. Pure.
+ *
+ * @param array $draft ws_mail_items row
+ * @param mixed $text  the form's text
+ * @return bool
+ */
+function ws_mail_draft_text_changed($draft, $text)
+{
+    $even = function ($value) {
+        return trim(preg_replace('/\s+/u', ' ', (string) $value));
+    };
+
+    return $even(is_scalar($text) ? $text : '') !== $even(ws_mail_draft_form_text($draft));
+}
+
+/**
+ * The HTML a mail sent from a draft keeps: the draft's own while the form's
+ * text is still the draft's, so a draft kept with HTML is sent as it was
+ * kept; '' once the person changed the text. Pure.
+ *
+ * @param array $draft ws_mail_items row
+ * @param mixed $text  the form's text, before the writing box's markup is read
+ * @return string
+ */
+function ws_mail_draft_sent_html($draft, $text)
+{
+    $html = (string) ($draft['body_html'] ?? '');
+
+    return (($html !== '') && !ws_mail_draft_text_changed($draft, $text)) ? $html : '';
+}
+
+/**
+ * A mail the panel sends from a draft (draft_id in the form): the draft's
+ * HTML in place of the writing box's while its text is unchanged. Any
+ * other mail is left as it came.
+ *
+ * @param array $viewer
+ * @param array $mail    the mail ws_mail_send() takes
+ * @param array $request the form's request (draft_id, text)
+ * @return array
+ */
+function ws_mail_draft_sent_mail($viewer, $mail, $request)
+{
+    $draft = (!empty($request['draft_id']) && ws_mail_drafts_view_offered($viewer)) ? ws_mail_draft((int) $request['draft_id']) : null;
+
+    if (!$draft || !ws_mail_draft_reached($viewer, $draft, true)) {
+        return $mail;
+    }
+
+    $html = ws_mail_draft_sent_html($draft, $request['text'] ?? '');
+
+    return ($html !== '') ? array_merge($mail, array('html' => $html)) : $mail;
 }
 
 /**
@@ -177,17 +290,44 @@ function ws_mail_draft_open($viewer, $id)
     $conversation_id = (int) $draft['conversation_id'];
     $channel_id = ($conversation_id > 0) ? (int) db_value("SELECT channel_id FROM ws_mail_conversations WHERE id = '" . $conversation_id . "'") : 0;
 
-    return array('ok' => true, 'error' => '', 'draft' => ws_mail_draft_form_fields($draft, $channel_id));
+    return array('ok' => true, 'error' => '', 'draft' => ws_mail_draft_form_fields($draft, $channel_id, ws_mail_draft_form_files($viewer, $draft)));
 }
 
 /**
- * A draft's row as the forms take it. Pure.
+ * The files a draft keeps, as the form's Files list takes them (id, name):
+ * only those the person may send (ws_mail_send_file_reach()); Send checks
+ * them again.
  *
- * @param array $draft      ws_mail_items row
- * @param int   $channel_id the reply's conversation's channel, 0 for a new mail
+ * @param array $viewer
+ * @param array $draft ws_mail_items row
+ * @return array[] id, name
+ */
+function ws_mail_draft_form_files($viewer, $draft)
+{
+    $files = array();
+
+    foreach (ws_mail_draft_file_ids($draft) as $file_id) {
+        $reach = ws_mail_send_file_reach($viewer, $file_id);
+
+        if ($reach['ok']) {
+            $files[] = array('id' => (int) $file_id, 'name' => (string) $reach['file']['name']);
+        }
+    }
+
+    return $files;
+}
+
+/**
+ * A draft's row as the forms take it: its text (its HTML's words when it
+ * has none), its files for the Files list, and html_note when it keeps HTML
+ * that the form does not show. Pure but for the words.
+ *
+ * @param array   $draft      ws_mail_items row
+ * @param int     $channel_id the reply's conversation's channel, 0 for a new mail
+ * @param array[] $files      ws_mail_draft_form_files()
  * @return array
  */
-function ws_mail_draft_form_fields($draft, $channel_id)
+function ws_mail_draft_form_fields($draft, $channel_id, $files = array())
 {
     $reply = ((int) $draft['conversation_id'] > 0);
 
@@ -201,7 +341,10 @@ function ws_mail_draft_form_fields($draft, $channel_id)
         'cc'              => (string) $draft['cc_list'],
         'bcc'             => (string) ($draft['bcc_list'] ?? ''),
         'subject'         => $reply ? '' : (string) $draft['subject'],
-        'text'            => (string) $draft['body_text'],
+        'text'            => ws_mail_draft_form_text($draft),
+        'files'           => array_values((array) $files),
+        'html_note'       => ((string) ($draft['body_html'] ?? '') !== '')
+            ? lang('This draft has a formatted body. It is sent as kept while you leave the text as it is; a changed text is sent as you write it.') : '',
     );
 }
 

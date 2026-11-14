@@ -255,8 +255,27 @@ function ws_mail_later_cancel($viewer, $item_id)
 }
 
 /**
- * The badge of a waiting mail: when it leaves, in the reader's time. Pure
- * but for the words and the time label.
+ * A waiting mail's time as the panel writes dates: the site's date order
+ * and 12/24-hour clock, in the person's zone (get_absolute_time()), as
+ * plain text for a lang() var. Falls back to day.month.year where that
+ * function is not loaded.
+ *
+ * @param int $time
+ * @return string
+ */
+function ws_mail_later_time_text($time)
+{
+    if (function_exists('get_absolute_time')) {
+        return strip_tags((string) get_absolute_time(array('timestamp' => (int) $time, 'format' => 'plain_text')));
+    }
+
+    return date('d.m.Y H:i', (int) $time);
+}
+
+/**
+ * The badge of a waiting mail: when it leaves, in the site's date order and
+ * clock and the person's zone (ws_mail_later_time_text()). Pure but for the
+ * words and the time.
  *
  * @param array $item ws_mail_items row with send_at
  * @return string HTML
@@ -264,7 +283,7 @@ function ws_mail_later_cancel($viewer, $item_id)
 function ws_mail_later_badge_html($item)
 {
     return '<span class="badge theme-info"><i class="bi bi-clock me-1" aria-hidden="true"></i>'
-        . h(lang(array('string' => 'Sends at {var:1}', 'vars' => date('d.m.Y H:i', (int) ($item['send_at'] ?? 0))))) . '</span>';
+        . h(lang(array('string' => 'Sends at {var:1}', 'vars' => ws_mail_later_time_text((int) ($item['send_at'] ?? 0))))) . '</span>';
 }
 
 /**
@@ -301,7 +320,7 @@ function ws_mail_later_js_strings()
         'mail_later'        => lang('Send later'),
         'mail_later_at'     => lang('Send at'),
         'mail_later_hint'   => lang('In your own time zone. The e-mail waits under Not sent until then.'),
-        'mail_later_none'   => lang('Send at once'),
+        'mail_later_none'   => lang('Remove the time'),
         'mail_later_set'    => lang('The e-mail will be sent at the chosen time.'),
         'mail_later_now'    => lang('The e-mail is on its way.'),
         'mail_later_cancel' => lang('The e-mail will not be sent. It stays under Not sent, where Send again sends it.'),

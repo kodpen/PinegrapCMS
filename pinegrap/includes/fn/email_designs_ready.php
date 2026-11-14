@@ -273,12 +273,14 @@ function pg_email_ready_design_tree($key)
 
 /**
  * A ready design drawn as it would be sent: its tree drawn as a page body
- * and passed through the mail pass. For the Templates tab's previews.
+ * and passed through the mail pass, in the given palette's colours (a new
+ * design starts in the site's palette). For the Templates tab's previews.
  *
  * @param string $key
+ * @param array  $vars pg_email_palette_vars(); none: Bootstrap's colours
  * @return string '' for an unknown key
  */
-function pg_email_ready_design_html($key)
+function pg_email_ready_design_html($key, $vars = array())
 {
     $tree = pg_email_ready_design_tree($key);
 
@@ -286,7 +288,7 @@ function pg_email_ready_design_html($key)
         return '';
     }
 
-    $pass = pg_mail_pass(generate_style_code_from_tree($tree, ''));
+    $pass = pg_mail_pass(generate_style_code_from_tree($tree, ''), $vars);
 
     return pg_mail_preview_samples($pass['html']);
 }

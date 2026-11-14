@@ -236,3 +236,24 @@ function test_workspace_mail_later_wiring()
 	pg_assert_same(2, substr_count($js, 'post.send_later = later.value();'), 'both forms post the time');
 	pg_assert_contains('[data-ws-mail-later-send], [data-ws-mail-later-cancel]', $js, 'the pane\'s buttons');
 }
+
+function test_workspace_mail_later_look_conditions()
+{
+	$js = workspace_mail_later_test_source('assets/js/workspace_mail.js');
+	pg_assert_contains("relabel(h, send, on ? t('mail_later') : t('mail_reply_send'), on ? 'bi-clock' : 'bi-send');", $js, 'the drawer\'s Send says Send later while a time is set');
+	pg_assert_contains("relabel(h, send, on ? t('mail_later') : t('mail_new_send'), on ? 'bi-clock' : 'bi-send');", $js, 'and the New e-mail form\'s');
+	pg_assert_same('Remove the time', ws_mail_later_js_strings()['mail_later_none'], 'the link that closes the field names what it does');
+	pg_assert_contains("ws_mail_later_time_text((int) (\$item['send_at'] ?? 0))", workspace_mail_later_test_source('includes/workspace/mail_later.php'), 'the badge writes the time as the panel does');
+	pg_assert_true(strpos(ws_mail_later_time_text(gmmktime(9, 30, 0, 11, 20, 2026)), '2026') !== false, 'a date with its year');
+}
+
+function test_workspace_mail_later_row_alone_is_teal()
+{
+	$row = array('id' => 4, 'subject' => 'Offer', 'customer_name' => 'Ayşe', 'customer_email' => 'a@b.test', 'last_in_at' => 0, 'last_out_at' => time(),
+		'mails' => 1, 'snippet' => '', 'unread' => false, 'unsent' => 'later', 'box_name' => 'Support', 'channel_name' => '', 'support' => false,
+		'transport' => 'email', 'overdue' => false, 'assignee_name' => '', 'first_reply_hours' => 0, 'customer_phone' => '');
+	$html = ws_mail_list_rows_html(array($row), ws_mail_list_filters(array('view' => 'unsent')), time());
+
+	pg_assert_contains('<span class="badge theme-info">Sends later</span>', $html, 'a conversation whose only unsent mail waits carries the teal pill');
+	pg_assert_true(strpos($html, 'theme-danger') === false, 'never the red one');
+}

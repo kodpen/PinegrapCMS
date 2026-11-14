@@ -165,6 +165,9 @@
 
         fileRow.appendChild(list);
         form.appendChild(fileRow);
+        draftKept(h, kept, library, box, function () {
+            fileRows(h, list, [library, files]);
+        });
 
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_reply_send'), 'bi-send');
 
@@ -219,13 +222,18 @@
             sendAnswer(false);
         });
 
+        // While a time is set, Send says it sends later.
+        later.onChange(function (on) {
+            relabel(h, send, on ? t('mail_later') : t('mail_reply_send'), on ? 'bi-clock' : 'bi-send');
+        });
+
         footer.appendChild(send);
 
         if (kept) {
             cc.field.value = kept.cc || '';
             bcc.field.value = kept.bcc || '';
             footer.insertBefore(draftSave(h, kept, function () {
-                return { cc: cc.field.value, bcc: bcc.field.value, text: body.value() };
+                return { cc: cc.field.value, bcc: bcc.field.value, text: body.value(), format: body.rich ? 'markup' : '', file_ids: draftFileIds(library) };
             }), send);
         }
 
@@ -2102,6 +2110,14 @@
         var field = el('input', 'form-control form-control-sm');
         var close = h.button('btn btn-sm btn-text theme-secondary px-0', t('mail_later_none'), 'bi-x-lg');
         var row;
+        var heard = [];
+
+        // Whether a time is set, told to the form so its Send says what it does.
+        function tell() {
+            var on = !row.hidden && !!field.value;
+
+            heard.forEach(function (callback) { callback(on); });
+        }
 
         // The panel's own date-and-time control (pgDateField() in
         // workspace.js): the input stays the ISO store the post reads.
@@ -2120,19 +2136,69 @@
             open.hidden = true;
             row.hidden = false;
             field.focus();
+            tell();
         });
         close.addEventListener('click', function () {
             field.value = '';
             row.hidden = true;
             open.hidden = false;
+            tell();
         });
+        field.addEventListener('change', tell);
+        field.addEventListener('input', tell);
 
         return {
             node: wrap,
             value: function () {
                 return row.hidden ? '' : field.value;
+            },
+            onChange: function (callback) {
+                heard.push(callback);
             }
         };
+    }
+
+    // A button's words and icon changed in place.
+    function relabel(h, button, label, iconName) {
+        var fresh = h.button('', label, iconName);
+
+        while (button.firstChild) {
+            button.removeChild(button.firstChild);
+        }
+
+        while (fresh.firstChild) {
+            button.appendChild(fresh.firstChild);
+        }
+    }
+
+    // A draft kept on the server brings its files into the form's Files
+    // list, sent by id and checked again at Send, and, when it keeps a
+    // formatted body the form does not show, the server's note under the
+    // text (mail_drafts_screen.php).
+    function draftKept(h, draft, library, after, redraw) {
+        if (!draft) {
+            return;
+        }
+
+        (draft.files || []).forEach(function (file) {
+            if (!library.some(function (picked) { return picked.id === file.id; })) {
+                library.push({ id: file.id, name: file.name });
+            }
+        });
+
+        redraw();
+
+        if (draft.html_note && after && after.parentNode) {
+            var note = h.el('p', 'pg-field-help mt-2 mb-0', draft.html_note);
+
+            note.setAttribute('data-ws-mail-draft-html', '');
+            after.parentNode.insertBefore(note, after.nextSibling);
+        }
+    }
+
+    // The Files ids of a form's list, as Save draft keeps them.
+    function draftFileIds(library) {
+        return library.map(function (file) { return file.id; }).join(',');
     }
 
     // Save draft, beside Send in a form opened from a draft kept on the
@@ -2318,6 +2384,7 @@
         form.appendChild(later.node);
         fileRow.appendChild(list);
         form.appendChild(fileRow);
+        draftKept(h, server, library, body.node, drawFiles);
 
         function drawBox(channelId) {
             var box = boxOf(parseInt(from.value, 10)) || boxes[0];
@@ -2522,11 +2589,16 @@
             sendNew(false);
         });
 
+        // While a time is set, Send says it sends later.
+        later.onChange(function (on) {
+            relabel(h, send, on ? t('mail_later') : t('mail_new_send'), on ? 'bi-clock' : 'bi-send');
+        });
+
         if (server) {
             footer.appendChild(draftSave(h, server, function () {
                 var fields = current();
 
-                return { to: fields.to, cc: fields.cc, bcc: fields.bcc, subject: fields.subject, text: fields.text };
+                return { to: fields.to, cc: fields.cc, bcc: fields.bcc, subject: fields.subject, text: fields.text, format: body.rich ? 'markup' : '', file_ids: draftFileIds(library) };
             }));
         }
 

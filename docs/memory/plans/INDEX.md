@@ -43,7 +43,6 @@
 - panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860, #9070), the list rules, what is only a placeholder
 - panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
 - personal-calendar-more.md: Plan (owner 2026-11-14, polls 3359 and 3363): My calendar gains the export of whole-team plans, repeating plans, team roadmap templates, Google or Outlook writing; steps PC6b, PC10 to PC14
-- personal-calendar-plans.md: Plan (owner 2026-11-14): "My calendar" beside e-mail and a person's own plans, private unless shared, as a reminder or a job's roadmap, usable for a customer; steps PC1 to PC9
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
 - poll-agent-questions.md: Plan (owner 2026-11-14): the poll gains described, pictured and linked options, "Other", taking back and asking again; a poll an agent asks is an agent question, answered in its box; AQ1 to AQ6
 - report-screens-steps.md: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out

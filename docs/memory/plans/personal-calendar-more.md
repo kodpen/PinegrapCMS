@@ -4,7 +4,7 @@ description: Plan (owner 2026-11-14, polls 3359 and 3363): My calendar gains the
 ---
 
 ## What is asked?
-- The owner ticked three additions to `plans/personal-calendar-plans.md` and answered the export question of its PC6 (`workflow/decisions-made-workspace-29.md`, `-28.md`).
+- The owner ticked three additions to the closed personal calendar plan (`workspace/workspace-personal-calendar-rules.md`) and answered the export question of its PC6 (`workflow/decisions-made-workspace-29.md`, `-28.md`).
 
 ## Which steps?
 - PC6b (S, after PC6) A contact's data export lists the plans that name the contact and are shared with "The whole team": title, days, the owner's name, a roadmap's steps. A plan kept "Only me" or for chosen team members is never listed, whoever runs the export. A test holds the rule.

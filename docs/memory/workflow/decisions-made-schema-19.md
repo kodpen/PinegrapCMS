@@ -7,7 +7,7 @@ description: Decisions list, schema part 19 (2026-11-14 on): ws_mail_items.invit
 - `decisions-made.md`; the generated `DECISIONS.md` lists every part's entries. Entries name the issue, the date and the migration shape.
 
 ## Does a mail keep what its invitation said in a column of ws_mail_items? (owner, 2026-11-14, in the architect's window)
-- Asked by step PC7 of `plans/personal-calendar-plans.md` (agent channel message 3218): the invitation card of a mail needs what the mail's calendar part said, and the raw `.eml` is kept only `WS_MAIL_EML_DAYS` (30) days.
+- Asked by step PC7 of the personal calendar plan (`workspace/workspace-personal-calendar-rules.md`) (agent channel message 3218): the invitation card of a mail needs what the mail's calendar part said, and the raw `.eml` is kept only `WS_MAIL_EML_DAYS` (30) days.
 - The owner, asked "Davet kartı için e-posta tablosuna "invitation" sütunu eklensin mi?", answered: "Evet, eklensin". Told to the step in channel message 3220.
 - Not chosen: no column, the card drawn only while the `.eml` exists. An invitation is mostly for a day ahead: the card of a meeting six weeks away would go before the meeting, and "Add to my calendar" would then put the plan on the mail's day.
 - Shape: `ws_mail_items.invitation` TEXT NULL, added by PC7's step of the open version with `install_add_column()`. Filled at ingest from the mail's `text/calendar` part, named or not, read with `ws_ical_vevents()`: the first VEVENT only, as JSON with `uid`, `method`, `summary`, `start`, `end`, `all_day`, `location`, `organizer` (name and address), text fields cut to 255 characters.

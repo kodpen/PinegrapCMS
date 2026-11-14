@@ -28683,7 +28683,7 @@ const StyleDesigner = (function () {
         heading: 'margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.3;font-weight:bold;color:var(--bs-emphasis-color,#000000)',
         text: 'margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:var(--bs-body-color,#212529)',
         button_row: 'margin:0 0 16px;text-align:center',
-        button: 'display:inline-block;padding:12px 24px;border-radius:6px;background-color:var(--bs-primary,#0d6efd);color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;line-height:1.2;text-decoration:none',
+        button: 'display:inline-block;padding:12px 24px;border-radius:6px;background-color:var(--bs-primary,#0d6efd);color:var(--pg-on-primary,#ffffff);font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;line-height:1.2;text-decoration:none',
         picture: 'display:block;width:100%;max-width:100%;height:auto;border:0',
         divider: 'height:0;margin:24px 0;border:0;border-top:1px solid var(--bs-border-color,#dee2e6)',
         space: 'height:24px;line-height:24px;font-size:0',

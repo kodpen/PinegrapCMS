@@ -28119,6 +28119,44 @@ body.pg-measure-report #content {
 .pg-messages-row-pill {
   align-self: center;
 }
+/* A row's button (Make a copy) at its end, centred on the row. */
+.pg-messages-row-action {
+  align-self: center;
+  flex-shrink: 0;
+}
+/* The card's parts (one's own designs, the ready designs, the copies) are
+   split by the card's line, each the same way. */
+.pg-email-part + .pg-email-part {
+  border-top: 1px solid var(--pg-border-color-translucent);
+  padding-top: 8px;
+}
+/* The copies past the first five of each kind: the summary is the button,
+   gone once the rest is open. */
+.pg-email-copies-more > summary {
+  margin: 4px 12px 8px 51px;
+  list-style: none;
+}
+.pg-email-copies-more > summary::-webkit-details-marker {
+  display: none;
+}
+.pg-email-copies-more[open] > summary {
+  display: none;
+}
+.pg-email-copies > .pg-card-sub {
+  margin: 0 12px 4px;
+}
+/* A phone: the button goes under the name and its line, in line with
+   them (the 28 px tile and the row's 11 px gap), so the name keeps the
+   row's width. */
+@media (max-width: 575.98px) {
+  .pg-email-copies .pg-list-row {
+    flex-wrap: wrap;
+  }
+  .pg-email-copies .pg-messages-row-action {
+    flex-basis: 100%;
+    padding-left: 39px;
+  }
+}
 .pg-messages-card-head > form {
   margin: 0;
 }

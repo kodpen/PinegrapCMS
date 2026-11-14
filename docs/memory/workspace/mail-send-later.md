@@ -4,9 +4,9 @@ description: Send later (IB6): a time on the New e-mail form and the reply drawe
 ---
 
 ## What does the person see?
-- "Send later" (Sonra gönder) on the New e-mail form and in the Reply by e-mail drawer opens "Send at", a `datetime-local` field read in the person's own time zone (`USER_TIMEZONE`, else the site's); "Send at once" closes and clears it.
+- "Send later" (Sonra gönder) on the New e-mail form and in the Reply by e-mail drawer opens "Send at" on the panel's date-and-time control (`h.dateField`), read in the person's own time zone (`USER_TIMEZONE`, else the site's); "Remove the time" (Zamanı kaldır) closes and clears it. While a time is set, Send reads "Send later" with the clock (architect's look, 3499).
 - A time must be at least 5 minutes ahead (`WS_MAIL_LATER_MIN`) and at most 60 days (`WS_MAIL_LATER_MAX_DAYS`); a date or an hour the zone skips is refused, never moved (`ws_mail_later_parse()`, pure).
-- The mail is written at once as any mail (conversation, card, files) but waits: badge "Sends at …" in the pane and the card, "Sends later" on the list row, listed under Not sent. Under it, for whoever may answer there: "Send now" and "Cancel sending".
+- The mail is written at once as any mail (conversation, card, files) but waits: badge "Sends at …" (teal, the site's date order and clock through `get_absolute_time()`) in the pane and the card, "Sends later" on the list row, listed under Not sent. Under it, for whoever may answer there: "Send now" and "Cancel sending".
 - Cancel leaves it unsent (`failed`, "Cancelled before its time; not sent.") under Not sent, where Send again sends it.
 
 ## How is it kept and sent?

@@ -121,7 +121,7 @@ function test_workspace_mail_compose_who_may_send()
 	pg_assert_same('not_ready', ws_mail_send_check(array('id' => 4, 'member' => true), array('box_id' => 1))['error'], 'nothing without the database');
 
 	$actions = workspace_mail_compose_test_source('includes/workspace/actions.php');
-	$case = substr($actions, (int) strpos($actions, "case 'ws_mail_compose':"), 2000);
+	$case = substr($actions, (int) strpos($actions, "case 'ws_mail_compose':"), 2800);
 
 	pg_assert_contains("case 'ws_mail_new':", $case, 'the send action');
 	pg_assert_contains("if (empty(\$viewer['member'])) {\n                return ws_action_error(ws_mail_send_error_text('no_box'));", $case, 'a guest is refused');

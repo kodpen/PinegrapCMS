@@ -84,7 +84,7 @@ function test_ws_api_mail_routes()
 		$send[$param['name']] = $param;
 	}
 
-	pg_assert_same(array('box_id', 'channel_id', 'to', 'cc', 'bcc', 'subject', 'text', 'send_anyway'), array_keys($send), 'the New e-mail form\'s fields and Send anyway, no files');
+	pg_assert_same(array('box_id', 'channel_id', 'to', 'cc', 'bcc', 'subject', 'text', 'html', 'file_ids', 'send_anyway'), array_keys($send), 'the New e-mail form\'s fields, HTML, files by Files id and Send anyway');
 	pg_assert_same(WS_MAIL_REPLY_MAX, $send['text']['max_length'], 'the panel\'s limit');
 	pg_assert_true(!empty($send['box_id']['required']) && !empty($send['to']['required']) && empty($send['channel_id']['required']), 'a box and To; the channel may be left out');
 
@@ -147,7 +147,7 @@ function test_ws_api_mail_writes_check_before_the_rehearsal()
 	// no second way out.
 	$send = ws_api_mail_test_source('ws_api_mail_messages_send');
 	pg_assert_true(strpos($send, 'ws_api_mail_send_gate(') < strpos($send, 'ws_api_mail_send_checked('), 'the person\'s before anything');
-	pg_assert_contains('ws_mail_compose_mail($params, array())', ws_api_mail_test_source('ws_api_mail_new_mail'), 'the New e-mail form\'s fields, no files');
+	pg_assert_contains('ws_mail_compose_mail($params, $files)', ws_api_mail_test_source('ws_api_mail_new_mail'), 'the New e-mail form\'s fields with the files read for the sender');
 	$checked = ws_api_mail_test_source('ws_api_mail_send_checked');
 	pg_assert_true(strpos($checked, 'email(') === false && strpos($checked, 'pg_mail_enqueue(') === false, 'no other way out');
 	pg_assert_contains('ws_api_log(', $checked, 'the activity log names the application');
@@ -290,7 +290,7 @@ function test_ws_api_mail_reading_fields()
 	$in = array('id' => 10, 'direction' => 'in', 'message_id' => 90, 'conversation_id' => 4, 'from_email' => 'ayse@example.com', 'from_name' => 'Ayşe', 'to_list' => 'support@shop.test',
 		'cc_list' => '', 'bcc_list' => 'hidden@shop.test', 'subject' => 'Late', 'body_text' => 'Şöyle uzun bir metin', 'body_html' => '<p>Hi</p>', 'auth' => 'pass', 'user_id' => 0,
 		'refused_files' => '', 'sent_at' => 999, 'created_at' => 1000);
-	$file = array('message_id' => 91, 'name' => 'a.pdf', 'size' => 10, 'content_type' => 'application/pdf');
+	$file = array('message_id' => 91, 'file_id' => 300, 'name' => 'a.pdf', 'size' => 10, 'content_type' => 'application/pdf');
 	$mail = ws_api_mail_present($in, array($file));
 
 	pg_assert_true($mail['outside'], 'mail that came in is from outside');
@@ -324,13 +324,13 @@ function test_ws_api_mail_reading_fields()
 function test_ws_api_mail_files_group()
 {
 	$group = ws_api_mail_files_group(array(
-		array('id' => 91, 'sender_id' => 10, 'file_name' => 'a.pdf', 'size' => '120'),
+		array('id' => 91, 'sender_id' => 10, 'file_id' => '300', 'file_name' => 'a.pdf', 'size' => '120'),
 		array('id' => 92, 'sender_id' => 10, 'file_name' => 'image-1.png', 'size' => 5),
 		array('id' => 95, 'sender_id' => 12, 'file_name' => 'b.docx', 'size' => 7),
 	));
 
 	pg_assert_same(array(10, 12), array_keys($group));
-	pg_assert_same(array('message_id' => 91, 'name' => 'a.pdf', 'size' => 120, 'content_type' => 'application/pdf'), $group[10][0]);
+	pg_assert_same(array('message_id' => 91, 'file_id' => 300, 'name' => 'a.pdf', 'size' => 120, 'content_type' => 'application/pdf'), $group[10][0]);
 	pg_assert_same('image/png', $group[10][1]['content_type']);
 	pg_assert_same('application/octet-stream', $group[12][0]['content_type']);
 	pg_assert_same(array(), ws_api_mail_files_group(array()));

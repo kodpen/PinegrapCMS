@@ -7,7 +7,7 @@ description: MT3's exact scope (mail-chat-tools plan): where a draft lives in ws
 - A `ws_mail_items` row: `direction` out, `send_state` `draft` (VARCHAR(8)), `box_id` set, `message_id` 0, `user_id` the caller's owner (`api_current_app()['owner']`, never 0: an out row with `user_id` 0 is an automatic answer), `created_at` moved on every change.
 - `rfc_message_hash` is unique per box (`uq_box_message`): a draft takes the hash of a random id of its own, never ''.
 - A reply's draft: `conversation_id` the conversation, To the customer as the answer takes it. A new mail's draft: `conversation_id` 0; "Kept in" has no column and is chosen when it is sent (the box's own channel by default).
-- HTML in `body_html`, files in `draft_files` (owner, `mail-chat-tools-steps.md`): both come with MT5; MT3's drafts are text only.
+- HTML in `body_html`, files in `draft_files` (owner, `mail-chat-tools-steps.md`): both since MT5 (`workspace/mail-api-html-files.md`).
 
 ## Who reads and changes one?
 - A reply's draft: whoever reads the conversation (`ws_api_mail_conversation_or_404()`); it is written, changed and deleted by whoever may answer there (`ws_mail_reply_check()` without sending).
