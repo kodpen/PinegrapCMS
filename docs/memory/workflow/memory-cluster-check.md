@@ -16,5 +16,5 @@ description: The memory index tool refuses a cluster of ten memory files or more
 - A plan is deleted when it is finished; its files are no lasting topic, and a plan cut into many step files would stop every push.
 
 ## What do I do when it fails?
-- The PR that adds a cluster's tenth file writes its overview from the cluster's files, then runs `php tools/memory_index.php`; the README then names the start.
+- The PR that adds a cluster's tenth file writes its overview from the cluster's files, and the landing's run of `php tools/memory_index.php` then names the start in the README.
 - The overviews of 2026-11-11 (#8738, #8740, #8743) gave every cluster of ten a start before the check came.

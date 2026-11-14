@@ -8,6 +8,7 @@
 - agent-canvas-guide.md: The drawing guide an agent reads before drawing a canvas (canvas_guide.php): one set of values, its text, GET workspace/canvas/guide, the MCP resource and prompt
 - agent-canvas-layer-writes.md: An agent writes a canvas's layers one by one (canvas_layer_write.php): add a text, picture, shape or icon, style, order, name, lock, a layer by its name, GET workspace/canvas/fonts
 - agent-canvas-layers.md: An agent's SVG taken apart into a layer per element on the server (layers "split", canvas_split.php): placement, names, definitions, the bounding boxes, the browser fixture both sides read
+- agent-canvas-layouts.md: Ready layouts (DG4): four canvas templates shipped with Pinegrap, drawn from the drawing guide in light or dark, listed beside people's templates and filled by layout, theme, fill and chart_values [decision: here]
 - agent-canvas-overview.md: Start file of the agent-canvas-* cluster: an agent designs on a Workspace canvas through the API, MCP and the assistants' tools; the binding decisions, the parts and which file holds each [decision: decisions-made-workspace-16.md]
 - agent-canvas-picture.md: How an agent's canvas gets its picture: the server draws it where it can (mark server), else a member's browser posts it once (canvas_picture); the takes, the ?v= address
 - agent-canvas-save.md: An agent saves a canvas's picture into Files (POST messages/{id}/canvas/save, canvas_save.php): a file create of the change catalogue, tier 2 at once, tier 1 a card, the formats, the pending refusal
@@ -94,7 +95,8 @@
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
 - mail-phone-conversations.md: A customer's WhatsApp message as a Workspace conversation (WA13, #9389, step 11.0.199): the WhatsApp box and its Channel field, threading by number, the card, what stays mail-only [decision: decisions-made-workspace-23.md]
 - mail-phone-list-event-api.md: WhatsApp and SMS conversations in the E-mails list (Kind filter), the workspace.mail.received event (transport, number, How it came) and the API (#9420, #9455)
-- mail-phone-reply.md: Reply by WhatsApp from a Workspace conversation (WA14a, #9405): free text inside the customer's 24 hours, queued in whatsapp_outbox as kind reply, its outcome on the item, Send again, the drawer
+- mail-phone-reply-files.md: A WhatsApp answer's file and template (WA14b, #9446): Meta's kinds and sizes before the queue, the upload at the send, templates with typed values after the 24 hours, Send again
+- mail-phone-reply.md: Reply by WhatsApp from a Workspace conversation (WA14a #9405, WA14b #9446): text or a file inside the 24 hours, a template after them, the queue row, its outcome, Send again, the drawer
 - mail-reply.md: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc, Bcc, files, Reply to all, the drawer, route, headers and subject, the API's answer sent at once
 - mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test [decision: decisions-made-workspace-17.md]
 - mail-routing.md: Routing incoming Workspace e-mail (G6, mail_route.php): box routes by address or +tag to a channel, recipients read, the known customer's line in their channels
@@ -114,6 +116,11 @@
 - model-assistants-anthropic.md: Anthropic (Claude) as a provider of model assistants: why it was added, how the Messages API is translated to and from Pinegrap AI's chat completions loop, what its reference said (2026-11-12) [decision: decisions-made-workspace-15.md]
 - model-assistants.md: Model assistants (ws_agents kind 'model'): providers and their data terms, the card, how ws_ai_step() answers a model:<id> request with the assistant's address, key, model and application
 - note-media.md: A note line linking only to a file of this site is drawn as the file in the read view (ws_render_body, note_media.php) and as a media card in the writing box (workspace_editor.js)
+- personal-calendar-census-mail.md: PC1 census (2026-11-14): pg_mail_parse() keeps a mail's calendar part as an attachment entry; the Workspace mail ingest drops it today; what PC7 can reuse
+- personal-calendar-census-privacy.md: PC1 census (2026-11-14): export, erasure, account deletion and leaving the team today, and what each does with private plans (architect's answer) [decision: here]
+- personal-calendar-census-readers.md: PC1 census (2026-11-14): every reader of the Work Calendar's rows (ws_events) and of Today, which one asks whose row it is, and what each must do with a person's private plan
+- personal-calendar-census-tables.md: PC1 proposal (2026-11-14), shaped by the architect and waiting for the owner's yes: the tables and columns a person's private plans need, each with its reason and step [decision: here]
+- personal-calendar-census-words.md: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Planning Board, /workspace/plan, "#plan") and the names proposed for a private plan [decision: here]
 - plan-board-grid.md: Plan board (workspace_board.php) grid columns and why .ws-board's min-width equals the grid minimum (#3815)
 - voice-browser-to-text.md: "Convert to text" for a voice message by the browser's own model (pg_voice_text.js, owner request 2026-10-29): where it shows, Prompt API with audio input, pieces of 30 s, nothing sent or kept
 - workflow-table-board.md: Board view of a workflow table (T2, #2994): rows as cards by a status column via the channel board's mountSource(); a move writes the status cell with ws_wtable_row_update()

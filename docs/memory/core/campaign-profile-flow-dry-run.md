@@ -7,7 +7,7 @@ description: The dry-run report of turning e-mail campaign profiles into flows (
 - Per chain: the head's name and state, the flow it becomes as one line per box (start and its filter, Condition, Wait, Send an e-mail with To, Why, page or text, sender), the owner and why it changed.
 - Per profile left: its name, action, state and the reason in words: no start for its action, a field no start value fills, a wait too long, the flow's limits, a chain partner that stays ([[campaign-profile-flow-gaps]]).
 - Counts per profile: the campaigns it made in the last 30 days and its busiest hour, the runs it would hold open (starts × wait), its ready and paused campaigns that stay with the campaign job ([[campaign-profile-flow-switch]]); for a marketing chain the recipients of those 30 days that no contact holds, who would no longer be mailed.
-- Nothing is written to work it out: the converter's pure functions (MA9d) give it from the rows; the update step (MA9e) writes the same lines into its result in the panel. The owner sees it on a copy of a running site before MA9e lands (`plans/messages-area-steps.md`).
+- Nothing is written to work it out: the converter's pure functions (MA9d, done #9458, [[campaign-profile-flow-converter]]) give it from the rows; the update step (MA9e) writes the same lines into its result in the panel. The owner sees it on a copy of a running site before MA9e lands (`plans/messages-area-steps.md`).
 
 ## The starting sites by hand (2026-11-13)?
 - `english_default`: "Order Assistance" (off; order abandoned; page `order-assistance-email`; From, Reply-to and BCC info@kodpen.com; 10:00; commercial) stays: no start covers an abandoned order, and no Wait box keeps a send time yet.
