@@ -206,7 +206,7 @@ function test_workspace_mail_forward_wiring()
 
 	$new = substr($actions, (int) strpos($actions, "case 'ws_mail_new':"), 2000);
 	pg_assert_contains("\$forward = ws_mail_forward_request(\$viewer, \$request);", $new, 'a forward is read again when sent');
-	pg_assert_contains("ws_mail_compose_mail(\$request, array_merge(\$forward['files'], \$files['files']));", $new, 'its files go with the mail, through the one send path');
+	pg_assert_contains("ws_mail_compose_mail(\$request, array_merge(\$forward['files'], \$files['files'])), \$request);", $new, 'its files go with the mail, through the one send path');
 	pg_assert_contains("ws_mail_forward_line(\$viewer, \$forward['source'], (int) \$result['item_id']);", $new, 'the line under the source once sent');
 	pg_assert_contains("return ws_mail_forward_pane(\$pane, ws_mail_forward_may(\$viewer));", workspace_mail_forward_test_source('includes/workspace/mail_pane.php'), 'the pane marks its mails');
 
