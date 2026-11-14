@@ -1164,6 +1164,42 @@ function ws_ai_answer_takes_emoji($row)
 }
 
 /**
+ * Does a request's answer tool take conclude? A model assistant's answer
+ * that takes an emoji (ws_ai_answer_takes_emoji()), asked in a discussion
+ * that is still open. Who asked is checked when it concludes
+ * (ws_thread_close_for_agent()).
+ *
+ * @param array $row ws_ai_requests
+ * @return bool
+ */
+function ws_ai_answer_takes_conclude($row)
+{
+    if (!ws_ai_answer_takes_emoji($row) || ((int) ($row['channel_id'] ?? 0) <= 0)) {
+        return false;
+    }
+
+    $channel = ws_channel((int) $row['channel_id']);
+    $thread = ws_channel_is_thread($channel) ? ws_thread($channel['id']) : null;
+
+    return $thread && ((int) $thread['closed_at'] === 0);
+}
+
+/**
+ * Concludes the discussion a model assistant was asked in, once its answer
+ * (or its emoji alone, or nothing) closed the request: the same rules and
+ * lines as an application agent's conclude.
+ *
+ * @param array $row ws_ai_requests
+ * @return array ok, error
+ */
+function ws_model_conclude_after($row)
+{
+    $agent = ws_model_agent_row((int) substr((string) $row['agent'], strlen('model:')));
+
+    return ws_thread_close_for_agent($row, $agent ? (string) $agent['handle'] : 'assistant', false);
+}
+
+/**
  * The emoji a model assistant's answer leaves on the asking message, '' when
  * it gave none or one it may not leave (ws_agent_emoji_problem()): a wrong
  * one is dropped, never a reason to fail the answer.
@@ -1186,7 +1222,8 @@ function ws_model_answer_emoji($row, $emoji)
 /**
  * Closes a model assistant's request with an emoji alone, as no_answer with
  * an emoji closes an application agent's: answered with no reply, the eye
- * kept on the asking message and the emoji beside it.
+ * kept on the asking message and the emoji beside it. With no emoji (an
+ * answer that only concludes the discussion) the eye alone stays.
  *
  * @param array  $row   ws_ai_requests
  * @param string $emoji checked by ws_model_answer_emoji()
@@ -1203,7 +1240,10 @@ function ws_model_close_with_emoji($row, $emoji)
     }
 
     ws_ai_react((int) $row['message_id'], '👀', true);
-    ws_ai_react((int) $row['message_id'], (string) $emoji, true);
+
+    if ((string) $emoji !== '') {
+        ws_ai_react((int) $row['message_id'], (string) $emoji, true);
+    }
 
     // A flow's agent box waiting on this request goes on (flow_agent_box.php).
     if (function_exists('ws_step_agent_request_closed')) {

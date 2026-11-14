@@ -443,18 +443,130 @@ function ws_thread_close($viewer, $channel)
         return array('ok' => true, 'error' => '');
     }
 
+    ws_thread_conclude($channel, $thread, (int) $viewer['id'], function ($purge) use ($viewer) {
+        return lang(array('string' => '{var:1} concluded the discussion. It is kept until {var:2}, then deleted; its decisions and tasks stay in the channel.', 'vars' => array(
+            '<@user:' . (int) $viewer['id'] . '>', date('d.m.Y', $purge))));
+    });
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * The write of concluding a discussion, shared by a person's Conclude and
+ * an agent's answer: read only from now, deleted after WS_THREAD_KEEP_DAYS
+ * days. Only an open discussion is concluded, so two at once write one line.
+ *
+ * @param array    $channel   the discussion
+ * @param array    $thread    its ws_threads row
+ * @param int      $closed_by the person who concluded it, or asked for it
+ * @param callable $line      the system line, given the purge time
+ * @return bool concluded now
+ */
+function ws_thread_conclude($channel, $thread, $closed_by, $line)
+{
     $now = time();
     $purge = strtotime('+' . WS_THREAD_KEEP_DAYS . ' days', $now);
 
-    ws_message_system($channel['id'], lang(array('string' => '{var:1} concluded the discussion. It is kept until {var:2}, then deleted; its decisions and tasks stay in the channel.', 'vars' => array(
-        '<@user:' . (int) $viewer['id'] . '>', date('d.m.Y', $purge)))));
+    db("UPDATE ws_threads SET closed_at = '" . $now . "', closed_by = '" . (int) $closed_by . "', purge_at = '" . $purge . "'
+        WHERE channel_id = '" . (int) $channel['id'] . "' AND closed_at = 0");
 
-    db("UPDATE ws_threads SET closed_at = '" . $now . "', closed_by = '" . (int) $viewer['id'] . "', purge_at = '" . $purge . "' WHERE channel_id = '" . (int) $channel['id'] . "'");
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return false;
+    }
+
+    ws_message_system($channel['id'], $line($purge));
     db("UPDATE ws_channels SET archived_at = '" . $now . "' WHERE id = '" . (int) $channel['id'] . "'");
 
     ws_message_touch((int) $thread['message_id']);
 
-    return array('ok' => true, 'error' => '');
+    return true;
+}
+
+/**
+ * The one sentence an agent is told about concluding a discussion: the app
+ * agent's brief and the model assistant's answer tool both read it. Pure.
+ *
+ * @return string
+ */
+function ws_thread_agent_close_sentence()
+{
+    return 'When a person in this discussion asks you to conclude (close) it, answer with conclude true: your answer, or no_answer, is written first and the discussion is then concluded at their request; never conclude it unasked.';
+}
+
+/**
+ * Why an agent may not conclude a discussion for a request, '' when it may:
+ * the request was asked in an open discussion, by a message of the person
+ * the request names, written by that person (not a guest, an application,
+ * a mail or an OAuth connection), who is in the discussion. Pure.
+ *
+ * @param array|null $thread   ws_threads row of the request's channel, null for a channel
+ * @param array      $row      ws_ai_requests
+ * @param array|null $message  the asking message
+ * @param bool       $asker_in the person who asked is in the discussion
+ * @return string
+ */
+function ws_thread_agent_close_problem($thread, $row, $message, $asker_in)
+{
+    if (!is_array($thread)) {
+        return lang('Only a request asked in a discussion can conclude it.');
+    }
+
+    if ((int) ($thread['closed_at'] ?? 0) > 0) {
+        return lang('The discussion is already concluded.');
+    }
+
+    if (!is_array($message) || ((int) ($message['id'] ?? 0) <= 0) || ((int) ($message['deleted_at'] ?? 0) > 0)
+        || ((int) $message['channel_id'] !== (int) $thread['channel_id'])) {
+        return lang('No message in the discussion asked for it.');
+    }
+
+    if (!ws_message_by_person($message) || ((int) $message['sender_id'] !== (int) ($row['requested_by'] ?? 0)) || ((int) ($row['requested_by'] ?? 0) <= 0)) {
+        return lang('Only a person in the discussion can ask an agent to conclude it.');
+    }
+
+    if (!$asker_in) {
+        return lang('The person who asked is not in the discussion, so it cannot be concluded at their request.');
+    }
+
+    return '';
+}
+
+/**
+ * Concludes the discussion an agent was asked in, after its answer was
+ * written: closed_by is the person who asked, and the system line names the
+ * agent and that person. Refused (with the reason, and a line in the open
+ * discussion saying so) unless ws_thread_agent_close_problem() allows it.
+ *
+ * @param array  $row    ws_ai_requests: the request the agent answers
+ * @param string $handle the agent's handle, without @
+ * @param bool   $check  only check, write nothing (a dry run)
+ * @return array ok, error
+ */
+function ws_thread_close_for_agent($row, $handle, $check = false)
+{
+    $channel = ((int) ($row['channel_id'] ?? 0) > 0) ? ws_channel((int) $row['channel_id']) : null;
+    $thread = ws_channel_is_thread($channel) ? ws_thread($channel['id']) : null;
+    $message = ((int) ($row['message_id'] ?? 0) > 0) ? ws_message((int) $row['message_id']) : null;
+    $asker = (int) ($row['requested_by'] ?? 0);
+    $parent = $thread ? ws_thread_parent_channel($channel) : null;
+    $reader = ($asker > 0) ? ws_change_viewer_for_id($asker) : null;
+    $asker_in = $thread && $parent && $reader && ws_channel_membership($channel['id'], $asker) && ws_can_read_channel($reader, $parent);
+    $problem = ws_thread_agent_close_problem($thread, $row, $message, $asker_in);
+    $who = '@' . trim((string) $handle);
+
+    if (($problem === '') && !$check) {
+        ws_thread_conclude($channel, $thread, $asker, function ($purge) use ($who, $asker) {
+            return lang(array('string' => '{var:1} concluded the discussion at {var:2}\'s request. It is kept until {var:3}, then deleted; its decisions and tasks stay in the channel.', 'vars' => array(
+                $who, '<@user:' . $asker . '>', date('d.m.Y', $purge))));
+        });
+    }
+
+    // Told in the open discussion, so the people in it see why it stays open.
+    if (($problem !== '') && !$check && $thread && ((int) $thread['closed_at'] === 0)) {
+        ws_message_system($channel['id'], lang(array('string' => '{var:1} did not conclude the discussion: {var:2}', 'vars' => array($who, $problem))));
+    }
+
+    return array('ok' => ($problem === ''), 'error' => $problem);
 }
 
 /**

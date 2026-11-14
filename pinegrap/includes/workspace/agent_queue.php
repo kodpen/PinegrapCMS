@@ -994,6 +994,12 @@ function ws_agent_brief($agent, $row, $scopes)
     } else {
         $parent = ($channel && ws_channel_is_thread($channel)) ? ws_thread_parent_channel($channel) : null;
         $lines[] = $parent ? ws_ai_agent_place('thread', (string) $parent['name']) : ws_ai_agent_place('channel', $channel ? (string) $channel['name'] : '');
+
+        // Asked in a discussion: it may conclude it when a person in it asks.
+        if ($parent) {
+            $lines[] = ws_thread_agent_close_sentence();
+        }
+
         $message = ws_message($row['message_id']);
 
         if ($message && ((int) $message['deleted_at'] === 0)) {
