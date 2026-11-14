@@ -2103,7 +2103,12 @@
         var close = h.button('btn btn-sm btn-text theme-secondary px-0', t('mail_later_none'), 'bi-x-lg');
         var row;
 
-        field.type = 'datetime-local';
+        // The panel's own date-and-time control (pgDateField() in
+        // workspace.js): the input stays the ISO store the post reads.
+        if (h.dateField) {
+            h.dateField(field, 'datetime-local');
+        }
+
         field.name = 'send_later';
         row = h.formRow(t('mail_later_at'), field, t('mail_later_hint'));
         row.appendChild(close);
