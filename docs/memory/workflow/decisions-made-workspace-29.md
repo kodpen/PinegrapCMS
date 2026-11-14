@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-29
-description: Decisions made, workspace part 29 (2026-11-14 on): the nine additions the owner ticked for the mail, My calendar and Communication plans; the poll stays as it is
+description: Decisions made, workspace part 29 (2026-11-14 on): the nine additions the owner ticked for the mail, My calendar and Communication plans; an agent asks a person with a widened poll
 ---
 
 ## Where are the rules and the earlier parts?
@@ -14,8 +14,12 @@ description: Decisions made, workspace part 29 (2026-11-14 on): the nine additio
 - Not ticked: "Add to my calendar" on tasks, orders, quotes and bookings; it stays e-mail's alone.
 - A table or column one of these needs is asked of him when its census shows the shape.
 
-## Is the poll changed for agents' questions? (owner, 2026-11-14, in the architect's window)
-- No. He ticked the tenth addition (text under an option, an answer in his own words, a mark on the recommended option), then said: "biz oylamaya ek ajan sorusu için bir özellik yapalım ne dersin oylama olayı karıştırıyor." and "ihtiyaç olabilecek seçenekleri değerlendirelim oylamayı dokunmadan sisteme ekleyelim."
-- So the poll stays as it is and agents get a question card of their own. His rules for it: "bu soru sorma yolu sadece kanala bağlanan ajanlar erişebilsin (+ düğmesi ile kullanıcılar ekleyemesin)", "ajan soruyu geri alabilsin veya değişiklik yapabilsin, daha sonra tekrar sorabilsin", "ajan sorusu yanıtlandığında soran ajan uyandırılsın".
-- He asked for a drawing first ("önce bir çizim yap görelim olur mu? her perspektiften düşünerek yap.") and named the shapes he liked: half picture and half options, a picture on every row, options told in text.
-- The architect's, not the owner's words: the plan is `plans/agent-question-card.md`. He saw the draft drawing in the window and gave no word on it; step AQ3 shows him the real card to approve.
+## How does an agent ask a person: a card of its own or the poll? (owner, 2026-11-14, in the architect's window)
+- The poll, widened. He first asked for a question area beside the poll ("oylama olayı karıştırıyor"), saw a draft drawing, then dropped the separate card.
+- Owner: "vaz geçtim şöyle olsun. oylama yine dursun, ajan sorusu sütunu ekleyelim ajan sorusu olarak seçiliyse(yine bunu sadece ajan ve asistanlar sorduğunda otomatik işaretlenir yapalım) oylamanın görünüşü değişsin. özellikleri değil."
+- Owner: "genişletmeyi direkt oylamaya yapalım, özellik kazansın. bir önceki söylediğim özelliklerin hepsi oylama da yine olsun, ajan sorusu ise daha sade özelliklerle çalışsın"
+- Owner: "oylama sonucu olarak kanala yazmak yerine seçimler claude.ai deki gibi direkt soru kutusu içinde çıksın. (ajan sorusunda oylama için ek kapatma sorusu da gelmesin, seçildiğinde otomatik kabul sayılsın)"
+- The features he had named for it: more options, options with pictures and links ("daha fazla seçenekli ve görselli ve bağlantılı"), a box half picture and half options, a picture on every row, options told in text or a drawing.
+- Still his rules: "ajan soruyu geri alabilsin veya değişiklik yapabilsin, daha sonra tekrar sorabilsin", "ajan sorusu yanıtlandığında soran ajan uyandırılsın".
+- This takes in the tenth addition of poll 3363 (text under an option, an own-words answer, a recommended mark). Plan: `plans/poll-agent-questions.md`; the flag: `decisions-made-schema-19.md`.
+- The architect's, not the owner's words: the asked person or the channel's owners answer, several answers or "Other" are sent with one Send, an answered agent question counts as a decision in the channel's memory.
