@@ -1,6 +1,6 @@
 ---
 name: designer-assistant-unreadable-answer
-description: The designer Assistant panel (designer_ai.js) when an answer cannot be read: its own translated sentence once per click, never the browser's parse text; a failed Apply keeps the proposal
+description: The designer Assistant panel (designer_ai.js, #9112) when an answer cannot be read: its own translated sentence once per click, never the browser's parse text; a failed Apply keeps the proposal
 ---
 
 ## What does the panel say when an answer cannot be read?
@@ -19,3 +19,5 @@ description: The designer Assistant panel (designer_ai.js) when an answer cannot
 
 ## Tests?
 - `tests/designer_ai_unreadable_answer_test.php` runs the whole panel in Node against a stand-in editor and page: a parse failure, `{}`, `null`, a bare string, a tree that is not JSON, a network error, a JSON error, the first read failing; and that every `t('…')` word of the script is configured under `lang()`.
+
+Related: docs/memory/designer/designer-assistant-apply-answers.md (the cause of #8970 and the server's JSON guard)
