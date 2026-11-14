@@ -11,8 +11,8 @@ module: messages_area
 
 ## Who sees it?
 - Gate `mail` of `pg_messages_gate_allows()`: `ws_mail_list_visible()` only, not the campaigns' right (`plans/messages-area-decided-2.md`). Somebody who reads a mailbox without campaign rights gets the Communication row with this tab alone.
-- `pg_messages_mail_visible($user)`: the Workspace on and installed, the person on its team, a box writing where they read; asked once a request, the Workspace's files loaded only when it is on. MA10c moves it to `ws_mail_on()`.
-- The screen itself: `ws_screen_gate()`, `ws_mail_reads_ready()`, then `ws_mail_list_visible()` ("Access denied" otherwise).
+- `pg_messages_mail_visible($user)`: mail on (`ws_mail_on()`, whatever the Workspace's switch, MA10c `workspace/mail-workspace-off.md`), the person on the team, a box writing where they read; asked once a request.
+- The screen itself: `ws_screen_gate($user, false, true)`, `ws_mail_reads_ready()`, then `ws_mail_list_visible()` ("Access denied" otherwise).
 
 ## Where do the old addresses lead?
 - `workspace_mail.php` is a door (`pg_messages_mail_door()`: the address's plain words kept, a list dropped). `ws_mail_room_url()` names the tab, so inbox lines, a room's redirect from `workspace.php` and the card's Open e-mail land there.
@@ -22,7 +22,7 @@ module: messages_area
 - On row 9's badge (`pg_messages_mail_unread()` = `ws_mail_unread_count()`), counted when the person may open the tab; the screen's script no longer finds a tile to update, so the badge changes on the next page.
 
 ## What comes next?
-- MA10b2 (#9473): an HTML body for a written e-mail (`workspace/mail-html-written.md`). MA10c: mail with the Workspace off (`plans/messages-area-steps-2.md`).
+- MA10b2 (#9473): an HTML body for a written e-mail (`workspace/mail-html-written.md`). Mail with the Workspace off: `workspace/mail-workspace-off.md`.
 - The list and pane keep the Workspace's look; the move did not redraw them to look A.
 
 Tests: `tests/messages_area_test.php`, `tests/workspace_mail_list_test.php`, `tests/workspace_mail_card_test.php`.
