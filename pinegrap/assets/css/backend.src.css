@@ -1910,7 +1910,7 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 #menu .pg-mi-statistics { --pg-mi-a: var(--pg-mi-pink); }
 #menu .pg-mi-contacts { --pg-mi-a: var(--pg-mi-amber); }
 #menu .pg-mi-users { --pg-mi-a: var(--pg-mi-sky); }
-#menu .pg-mi-campaigns { --pg-mi-a: var(--pg-mi-sky); }
+#menu .pg-mi-communication { --pg-mi-a: var(--pg-mi-sky); }
 #menu .pg-mi-erp { --pg-mi-a: var(--pg-mi-teal); }
 #menu .pg-mi-orders { --pg-mi-a: var(--pg-mi-orange); }
 #menu .pg-mi-products { --pg-mi-a: var(--pg-mi-amber); }
@@ -2130,16 +2130,13 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
     animation: pg-mi-bob 0.55s 0.1s ease-out;
   }
 
-  /* Campaigns: the megaphone kicks back and the sound rolls out twice. */
-  #menu .pg-mi-campaigns .pg-mi-horn { transform-origin: 4px 12px; }
-  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-campaigns .pg-mi-horn {
-    animation: pg-mi-jolt 0.6s ease-in-out;
+  /* Communication: the outgoing arrow slides out, the incoming one slides in
+     after it, and both settle back. */
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-communication .pg-mi-out {
+    animation: pg-mi-send 0.6s ease-out;
   }
-  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-campaigns .pg-mi-waves path {
-    animation: pg-mi-emit 0.5s ease-out 2;
-  }
-  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-campaigns .pg-mi-waves path + path {
-    animation-delay: 0.12s;
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-communication .pg-mi-in {
+    animation: pg-mi-receive 0.6s 0.12s ease-out;
   }
 
   /* ERP: a wave of key presses runs across the calculator and the screen
@@ -2235,8 +2232,8 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
 @keyframes pg-mi-grow { from { transform: scaleY(0.1); } 60% { transform: scaleY(1.18); } 80% { transform: scaleY(0.94); } }
 @keyframes pg-mi-flip { 45% { transform: scaleX(0.08); } 70% { transform: scaleX(1.06); } }
 @keyframes pg-mi-bob { 40% { transform: translateY(-1.6px); } 70% { transform: translateY(0.4px); } }
-@keyframes pg-mi-jolt { 20% { transform: rotate(-15deg) scale(1.06); } 45% { transform: rotate(9deg); } 70% { transform: rotate(-4deg); } 88% { transform: rotate(1.5deg); } }
-@keyframes pg-mi-emit { 50% { opacity: 0; transform: translateX(2px); } 51% { opacity: 0; transform: translateX(-1.5px); } }
+@keyframes pg-mi-send { 40% { transform: translateX(2px); } 70% { transform: translateX(-0.4px); } }
+@keyframes pg-mi-receive { 40% { transform: translateX(-2px); } 70% { transform: translateX(0.4px); } }
 @keyframes pg-mi-press { 50% { transform: scale(0.35); } }
 @keyframes pg-mi-glow { 40% { fill-opacity: 0.95; } }
 @keyframes pg-mi-carry { 25% { transform: translateY(-2.6px) rotate(-11deg); } 50% { transform: translateY(-2.6px) rotate(8deg); } 72% { transform: translateY(-1.2px) rotate(-4deg); } 90% { transform: rotate(1.5deg); } }

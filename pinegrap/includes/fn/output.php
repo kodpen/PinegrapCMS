@@ -3792,17 +3792,16 @@ function pg_menu_icon($name, $color_class = '', $space = 'me-3')
                 '</g>';
             break;
 
-        case 'campaigns':
-            $horn = 'M4 9h3l8.5-4.5v15L7 15H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1z';
+        case 'communication':
+            // A speech bubble with one arrow going out and one coming in:
+            // messages sent and received, whatever the channel.
+            $bubble = 'M6 3.5h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-6.5L7 21v-3.5H6a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3z';
             $body =
-                '<g class="pg-mi-horn">' .
-                '<path' . $d . ' d="' . $horn . '"/>' .
-                '<path d="' . $horn . 'M7 9v6"/>' .
-                '<path d="M7.6 15l1.2 4.2a1 1 0 0 0 1 .7h.5a.8.8 0 0 0 .8-1l-.8-3" stroke-width="1.5"/>' .
-                '</g>' .
-                '<g class="pg-mi-a pg-mi-waves" stroke-width="1.7">' .
-                '<path d="M18.4 9.6a3.3 3.3 0 0 1 0 4.8"/>' .
-                '<path d="M20.4 7.4a6 6 0 0 1 0 9.2"/>' .
+                '<path' . $d . ' d="' . $bubble . '"/>' .
+                '<path d="' . $bubble . '"/>' .
+                '<g class="pg-mi-a" stroke-width="1.9">' .
+                '<path class="pg-mi-out" d="M7.5 8.2h9M14.2 5.9l2.3 2.3-2.3 2.3"/>' .
+                '<path class="pg-mi-in" d="M16.5 12.8h-9M9.8 10.5l-2.3 2.3 2.3 2.3"/>' .
                 '</g>';
             break;
 
@@ -4184,7 +4183,7 @@ function output_menu($properties = false)
         $messages_tab_list = pg_messages_area_tabs();
         $menu_items[9]['id'] = 9;
         $menu_items[9]['href'] = $messages_tab_list[$messages_tabs[0]]['file'];
-        $menu_items[9]['menu_icon'] = 'campaigns';
+        $menu_items[9]['menu_icon'] = 'communication';
         $menu_items[9]['color_class'] = 'campaigns-color';
         $menu_items[9]['title'] = 'Communication';
         $menu_items[9]['context'] = true;
