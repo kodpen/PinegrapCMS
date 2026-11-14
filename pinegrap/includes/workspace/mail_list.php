@@ -459,7 +459,8 @@ function ws_mail_list_mails($viewer_id, $rows)
     foreach ((array) db_items("SELECT conversation_id, COUNT(*) AS mails, MAX(id) AS last_id,
             MAX(CASE WHEN direction = 'in' THEN id ELSE 0 END) AS last_in_id"
             . ($reads ? ", MAX(send_state = 'failed') AS failed, MAX(send_state = 'queued') AS queued" : '') . "
-        FROM ws_mail_items WHERE conversation_id IN (" . implode(',', $ids) . ") GROUP BY conversation_id") as $stat) {
+        FROM ws_mail_items WHERE conversation_id IN (" . implode(',', $ids) . ") AND " . ws_mail_drafts_excluded_sql() . "
+        GROUP BY conversation_id") as $stat) {
         $stats[(int) $stat['conversation_id']] = $stat;
     }
 

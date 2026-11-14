@@ -190,7 +190,8 @@ function test_ws_mail_draft_writes_check_before_the_rehearsal_stops()
 
 function test_ws_mail_drafts_stay_out_of_the_readers_of_sent_mail()
 {
-	foreach (array('ws_api_mail_conversation_answer', 'ws_api_mail_items_get', 'ws_api_mail_conversations_read', 'ws_mail_pane') as $reader) {
+	foreach (array('ws_api_mail_conversation_answer', 'ws_api_mail_items_get', 'ws_api_mail_conversations_read', 'ws_mail_pane',
+		'ws_mail_list_mails', 'ws_mail_items_map', 'ws_mail_find_conversation') as $reader) {
 		pg_assert_contains('ws_mail_drafts_excluded_sql(', ws_mail_drafts_test_source($reader), $reader . ' leaves drafts out');
 	}
 }
