@@ -51,6 +51,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_commands.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mail.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mail_drafts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_saved_replies.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_note_groups.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_agents.php');
@@ -279,6 +280,7 @@ function ws_openapi_objects()
         'WorkspaceMail'             => 'ws_api_mail_schema',
         'WorkspaceMailFile'         => 'ws_api_mail_file_schema',
         'WorkspaceFileContent'      => 'ws_api_file_content_schema',
+        'WorkspaceMailDraft'        => 'ws_api_mail_draft_schema',
     );
 }
 
@@ -2679,12 +2681,12 @@ function ws_api_routes()
 
     // Asking Claude in a channel (api_claude.php), the changes an
     // application proposes (api_proposals.php), workflow tables
-    // (api_wtables.php), e-mail conversations (api_mail.php), saved
+    // (api_wtables.php), e-mail conversations (api_mail.php) and drafts (api_mail_drafts.php), saved
     // replies (api_saved_replies.php), note groups (api_note_groups.php),
     // the agents of a channel (api_agents.php), a channel's memory with the
     // decision mark (api_memory.php), the agents' requests
     // (api_agent_requests.php), the agents' canvases (api_canvas.php) and
     // live pages (api_page.php), and the canvas as one thing with its
     // parts (api_canvases.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_saved_reply_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes());
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes());
 }
