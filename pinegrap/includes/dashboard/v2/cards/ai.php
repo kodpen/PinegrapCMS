@@ -358,10 +358,12 @@ function pg_dashboard_v2_ai_chat_options($assistants, $channels, $askable, $mess
  * The chat box: the assistants to pick from and its texts, or the line
  * saying there is nobody to ask. Pure.
  *
- * @param array $options pg_dashboard_v2_ai_chat_options()
+ * @param array  $options pg_dashboard_v2_ai_chat_options()
+ * @param string $store   pg_dashboard_v2_ai_chat_store(): where the browser
+ *                        keeps the talk's ids
  * @return array
  */
-function pg_dashboard_v2_ai_chat($options)
+function pg_dashboard_v2_ai_chat($options, $store = '')
 {
     if (empty($options)) {
         return array(
@@ -380,10 +382,26 @@ function pg_dashboard_v2_ai_chat($options)
         'send'        => lang('Send'),
         'wait'        => lang('Waiting for the answer…'),
         'late'        => lang('No answer yet. It will be in the channel when it comes.'),
-        'open'        => lang('Open'),
+        'open'        => lang('Open it'),
         'failed'      => lang('That could not be sent. Please try again.'),
         'you'         => lang('You'),
+        'new'         => lang('New chat'),
+        'store'       => (string) $store,
     );
+}
+
+/**
+ * The browser storage key under which the chat box keeps a talk's ids, one
+ * per site and person: the site's path tells sites on one host apart (the
+ * browser already keeps hosts apart). Pure.
+ *
+ * @param string $path    the site's path (PATH)
+ * @param int    $user_id
+ * @return string
+ */
+function pg_dashboard_v2_ai_chat_store($path, $user_id)
+{
+    return 'pg_dash_ai_chat_' . substr(sha1((string) $path . '|' . (int) $user_id), 0, 16);
 }
 
 /**
@@ -518,7 +536,7 @@ function pg_dashboard_v2_ai_summary($viewer)
         'title' => lang('Daily summary'),
         'lines' => $lines,
         'when'  => get_relative_time(array('timestamp' => (int) $message['created_at'], 'format' => 'plain_text')),
-        'open'  => lang('Open'),
+        'open'  => lang('Open it'),
     );
 }
 
@@ -583,7 +601,7 @@ function pg_dashboard_v2_card_ai($user, $period, $compare)
             'send'        => lang('Send'),
             'note'        => lang(array('string' => 'The answer comes to the #{var:1} channel in the Workspace and may take a few minutes. Claude asks for your approval before it changes anything.', 'vars' => $channel['name'])),
             'sent'        => lang(array('string' => 'Sent to #{var:1}. Claude answers there in a few minutes.', 'vars' => $channel['name'])),
-            'open'        => lang('Open'),
+            'open'        => lang('Open it'),
             'failed'      => lang('That could not be sent. Please try again.'),
         );
     }
@@ -603,6 +621,7 @@ function pg_dashboard_v2_card_ai($user, $period, $compare)
         'job'       => $job,
         'no_job'    => $job ? '' : lang('There is no channel where you may ask Claude. Somebody who manages a channel can allow it from the channel menu.'),
         'chat'      => pg_dashboard_v2_ai_chat(pg_dashboard_v2_ai_chat_options($assistants, $chat_channels,
-            pg_dashboard_v2_ai_chat_askable($assistants, $chat_channels), defined('WS_MESSAGE_MAX') ? WS_MESSAGE_MAX : 4000)),
+            pg_dashboard_v2_ai_chat_askable($assistants, $chat_channels), defined('WS_MESSAGE_MAX') ? WS_MESSAGE_MAX : 4000),
+            pg_dashboard_v2_ai_chat_store(defined('PATH') ? PATH : '/', (int) $user['id'])),
     ));
 }

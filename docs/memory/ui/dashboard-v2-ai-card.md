@@ -24,7 +24,7 @@ description: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant
 - Where: per assistant the first channel of `pg_dashboard_v2_ai_channels()` (the one the person last asked any assistant in, then the oldest public ones; unarchived, may post) where it may be asked. The note says everybody who reads the channel sees the talk. Its note keeps the job box's 8 px under the field: `.pg-dash-ai-talk` has no flex gap to absorb the job box's -.375rem pull-up, so `.pg-dash-ai-chat-form + .pg-dash-ai-status` sets .5rem (#8625).
 - How: the first line is a new message `<tag> text` through `ws_send`, the next ones reply to it (`parent_id`), each with the tag; then the kick the answer names (`claude`, `ai`, `agent`). Text limit `pg_dashboard_v2_ai_chat_max()`: 2000, or `WS_MESSAGE_MAX` less the tag.
 - Answers: `ws_sync` (`since_id`, `panel`) every 8 s for 10 minutes after the last line; a message replying to one of the chain joins it and shows as plain text (DOMParser) with an Open link. Only what the person may read comes back. Then "No answer yet…".
-- Not done: the chat when Claude is not connected (the card shows its offline view); keeping the talk after a reload.
+- Not done: the chat when Claude is offline. After a reload, "Open it": `dashboard-v2-ai-chat-keep.md`.
 
 ## Where is the daily summary?
 - Above the proposals when it is on (question 3: a setting with an hour, off by default; #5080): `workspace/workspace-claude-daily-summary.md`.

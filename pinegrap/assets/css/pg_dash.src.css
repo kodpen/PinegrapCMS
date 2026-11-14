@@ -5249,6 +5249,24 @@
     border-top: 1px solid var(--pgd-line);
   }
 
+  /* The section's title, and "New chat" beside it while a talk is kept. */
+  .pg-dash-ai-talk-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .5rem;
+  }
+
+  .pg-dash-ai-new {
+    padding: 0;
+    font-size: .75rem;
+    color: var(--pgd-soft);
+    text-decoration: none;
+  }
+
+  .pg-dash-ai-new:hover,
+  .pg-dash-ai-new:focus-visible { color: var(--pgd-accent); }
+
   .pg-dash-ai-pick {
     display: flex;
     flex-wrap: wrap;
