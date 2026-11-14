@@ -25,5 +25,15 @@ description: How the visual designer's speed is measured (the ?sd_perf=1 probe, 
 
 - So the serialising is a few ms per edit even on this page; the cost an operator feels is the DOM: the whole canvas rebuilt by `renderCanvas()` and the eight panels redrawn by `render()`. Browser numbers of the probe on the fixture were not taken yet (no running instance in the measuring session); D2 (#8048, `designer-incremental-canvas.md`) made a one-node edit redraw only that element; its browser `edit` numbers are still to be taken with the probe, and so is the `open` before and after the parts (D5, `designer-parts-on-demand.md`).
 
+## What does selecting an element cost in the browser?
+- Store template home page (142 nodes), sandbox Chromium 1440x900, real mouse clicks on canvas text, 47 selections per run, two runs, median (#9498). Event Timing's click processing; the naming microtask timed by a wrapped `Promise.prototype.then`. The sandbox is about 4.5x slower than the issue's machine (72-84 ms a click there).
+
+| | before #9498 | after |
+|---|---|---|
+| click on a canvas text | 340-400 ms | 182-187 ms |
+| naming pass (microtask) | 102-132 ms | 2.5 ms |
+
+- The pass walked the whole Properties panel (about 2,700 elements, mostly in closed sections) and read `ctrl.labels`, whose first read scans the document. It now names only what is on show (`designer-options-panel-names.md`). The `?sd_perf=1` probe does not count a selection (it is no `render()`); its `edit`, `open` and `tab switch` stayed within noise.
+
 ## What did the speed work (D1-D7) leave as it was?
 - The save path and its checks (`pg_designer_save_page()`) and its lock, the drafts model (`page-drafts.md`), the canvas's Bootstrap 5.3.8 output and the three places of a widget's default layout (`system-widget-change-checklist.md`). A change to one of them is a question for the architect, not part of a speed step.
