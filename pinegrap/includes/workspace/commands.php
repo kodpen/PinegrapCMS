@@ -1690,6 +1690,8 @@ function ws_command_task($viewer, $channel, $text, $options)
 
     if ($sent['ok']) {
         db("UPDATE ws_tasks SET source_message_id = '" . (int) $sent['message_id'] . "' WHERE id = '" . (int) $result['task_id'] . "'");
+        $made = ws_task($result['task_id']);
+        ws_task_ask_tags($viewer, $made, '', ws_task_tag_text($made));
     }
 
     return array('type' => 'done', 'task_id' => $result['task_id'], 'message_id' => $sent['message_id'] ?? 0);

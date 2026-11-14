@@ -736,9 +736,10 @@ function ws_task_update_check($viewer, $task, $data)
  * @param array $viewer
  * @param array $task
  * @param array $data
+ * @param int   $app_id an application writing for its owner (0 = the person)
  * @return array ok, error, field, added (people newly on it)
  */
-function ws_task_update($viewer, $task, $data)
+function ws_task_update($viewer, $task, $data, $app_id = 0)
 {
     $check = ws_task_update_check($viewer, $task, $data);
 
@@ -810,7 +811,50 @@ function ws_task_update($viewer, $task, $data)
         ws_task_set_status($viewer, ws_task($task['id']), $clean['status']);
     }
 
+    // A tag the title or the description adds wakes as on the task's card.
+    if (array_key_exists('title', $clean) || array_key_exists('description', $clean)) {
+        $now = ws_task($task['id']);
+        ws_task_ask_tags($viewer, $now, ws_task_tag_text($task), ws_task_tag_text($now), ws_message_by_app($app_id));
+    }
+
     return array('ok' => true, 'error' => '', 'field' => '', 'added' => $added);
+}
+
+/**
+ * A task's words as one text, for its tags: the title, then the
+ * description. Pure.
+ *
+ * @param array|null $task title, description
+ * @return string
+ */
+function ws_task_tag_text($task)
+{
+    return (string) ($task['title'] ?? '') . "\n" . (string) ($task['description'] ?? '');
+}
+
+/**
+ * After a task's words or a note on it were written: the tags they add
+ * wake in an agent channel when its manager wrote them
+ * (ws_message_ask_item()), hung on the task's card in its channel. A task
+ * with no card in its channel asks nobody.
+ *
+ * @param array  $viewer
+ * @param array  $task
+ * @param string $old        the text before ('' for a new one)
+ * @param string $new        the text now
+ * @param bool   $by_app     ws_message_by_app()
+ * @param bool   $assistants false: the registry's agents alone (a note)
+ * @return array ws_message_ask_assistants()'s shape
+ */
+function ws_task_ask_tags($viewer, $task, $old, $new, $by_app = false, $assistants = true)
+{
+    $message = (is_array($task) && ((int) $task['channel_id'] > 0) && ((int) ($task['source_message_id'] ?? 0) > 0)) ? ws_message((int) $task['source_message_id']) : null;
+
+    if (!is_array($message) || ((int) $message['deleted_at'] > 0) || ((int) $message['channel_id'] !== (int) $task['channel_id'])) {
+        return ws_message_asked_none();
+    }
+
+    return ws_message_ask_item($viewer, ws_channel($message['channel_id']), (int) $message['id'], $old, $new, $by_app, $assistants);
 }
 
 /**

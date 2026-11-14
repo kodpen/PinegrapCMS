@@ -1,6 +1,6 @@
 ---
 name: channel-item-tags
-description: A tag in a channel item asks the tagged assistant or wakes the tagged agent as a text message does: file messages, edits, notes, decisions, forwards, approvals, check-ins, flow posts
+description: A tag in a channel item asks the tagged assistant or wakes the tagged agent; outside a message body (polls, check-in answers, forwards, tasks) only in agent channels, by managers
 ---
 
 ## What is the rule?
@@ -22,4 +22,10 @@ description: A tag in a channel item asks the tagged assistant or wakes the tagg
 
 ## Which other messages ask? (TW2, #9378)
 - Forward with a comment (`ws_forward_to_channel()`: the comment only, an application's as an application), approval request (`ws_approval_create()`, after its row), status update (`ws_status_post()`), check-in question (`ws_checkin_start()`), template welcome and pinned text (`ws_template_apply()`), a flow's or scheduled action's "Post a message" (`ws_scheduled_do()`, as the flow owner; the brakes hold a flow answering its own wake).
-- Not yet: TW3 and TW4 in `plans/channel-item-tags-wake-steps.md`.
+## Which tags outside a message's body wake? (TW3)
+- Owner (2026-11-13, #9341): only in an agent channel, only when its owner or a manager wrote them, never in a canvas. The writer's check is `ws_message_item_tags_writer($viewer, $channel)` (messages.php; a discussion follows its channel), over the pure `ws_message_item_tags_may()`; TW4 uses it too.
+- `ws_message_ask_item()`: that check, then `ws_message_ask_added()` on the item's message.
+- Poll question and options (`ws_poll_tag_text()`); a check-in answer (against the earlier one); a forward's copies (tags the comment lacks).
+- Task title and description (`ws_task_tag_text()`, `ws_task_ask_tags()` tasks.php): on the task's card (`source_message_id` in its channel), after the card is written and on `ws_task_update()`. A task with no card in its channel asks nobody.
+- A task note and its edit: the registry's agents only (Claude, AI and MCP through delegation.php); Pinegrap AI's own note wakes nobody.
+- Not yet: TW4 in `plans/channel-item-tags-wake-steps.md`.
