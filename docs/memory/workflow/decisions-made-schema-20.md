@@ -1,6 +1,6 @@
 ---
 name: decisions-made-schema-20
-description: Decisions list, schema part 20 (2026-11-14 on): ws_mail_items.send_at for Send later; the repeat columns of ws_personal_plans with ws_personal_plan_skips; the two roadmap template tables
+description: Decisions list, schema part 20 (2026-11-14 on): ws_mail_items.send_at; the repeat columns and ws_personal_plan_skips; the two roadmap template tables; the widened poll's columns
 ---
 
 ## Where are the rules and the earlier parts?
@@ -21,3 +21,10 @@ description: Decisions list, schema part 20 (2026-11-14 on): ws_mail_items.send_
 - PC12, table `ws_roadmap_template_steps`: `id`, `template_id`, `position` SMALLINT UNSIGNED, `title` VARCHAR(255), `day_offset` SMALLINT UNSIGNED, `has_day` TINYINT(1); key `template_id`.
 - A template keeps no note, customer or people. PC13 (plans written to Google or Outlook) needs no column: its switch and calendar id are keys of the sealed `ws_calsync` entry.
 - Running sites: no backfill; a plan made before repeats nothing.
+
+## Which columns does the widened poll get? (owner, 2026-11-14, agent channel poll 3459)
+- Asked by the census AQ1 (#9557) for the drawing he approved (`plans/poll-agent-questions.md`). The owner voted "Evet, sütunlar eklensin" over "Hayır, eklenmesin"; no new table.
+- `ws_poll_options`: `description` VARCHAR(500), `file_id` INT UNSIGNED (a channel file), `links` TEXT NULL (JSON), `recommended` TINYINT, `other` TINYINT (the "Other" row).
+- `ws_poll_votes`: `other_text` VARCHAR(255). `ws_polls`: `withdrawn_at`, `withdrawn_by`, `again_of` with a key (the poll this one asks again), beside `agent_question` (`decisions-made-schema-19.md`).
+- All NOT NULL with defaults but `links`; added by the steps of AQ2 and AQ4 with the idempotent helpers, no backfill.
+- No column for who is asked: the people the question mentions, else the channel's owners.
