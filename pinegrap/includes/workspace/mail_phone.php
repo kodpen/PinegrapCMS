@@ -518,8 +518,8 @@ function ws_mail_phone_card_check($post, $user_id, $liveform, $transport = 'what
 }
 
 /* ---------------------------------------------------------------------------
-   Reply by WhatsApp (free text inside the customer's 24 hours) and by SMS
-   (within 7 days of the number's last SMS), from the same drawer
+   Reply by WhatsApp (inside the customer's 24 hours, a template after them)
+   and by SMS (text within 7 days of the number's last SMS), one drawer
    --------------------------------------------------------------------------- */
 
 /**
@@ -529,6 +529,7 @@ function ws_mail_phone_card_check($post, $user_id, $liveform, $transport = 'what
 function ws_mail_phone_load()
 {
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_messages.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_reply.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_reply.php');
@@ -602,11 +603,17 @@ function ws_mail_phone_window($conversation, $now, $transport = 'whatsapp')
  * The sentence for a refused WhatsApp answer.
  *
  * @param string $error
+ * @param string $detail the reason of file_refused and template
  * @return string
  */
-function ws_mail_phone_reply_error_text($error)
+function ws_mail_phone_reply_error_text($error, $detail = '')
 {
     ws_mail_phone_load();
+
+    // A file Files refuses and a template that cannot be filled say why.
+    if (((string) $detail !== '') && in_array($error, array('file_refused', 'template'), true)) {
+        return (string) $detail;
+    }
 
     $texts = array(
         'no_access' => lang('You cannot answer in this conversation\'s channel.'),
@@ -619,6 +626,14 @@ function ws_mail_phone_reply_error_text($error)
         'demo'      => lang('No WhatsApp message is sent from a demonstration site.'),
         'not_ready' => lang('The database has not been upgraded yet.'),
         'not_failed' => lang('This message is not waiting to be sent again.'),
+        'one_file'   => lang('A WhatsApp message carries one file.'),
+        'file_type'  => lang('WhatsApp takes a JPG or PNG picture, an MP4 or 3GP video, or a PDF, Word, Excel, PowerPoint or text document.'),
+        'file_size'  => lang('WhatsApp takes a picture up to 5 MB, a video or a document up to 16 MB.'),
+        'caption_long' => lang(array('string' => 'The words beside a file hold at most {var:1} characters.', 'vars' => array(1024))),
+        'file_not_kept' => lang('The file could not be kept.'),
+        'consent'    => lang('This number has no marketing consent for WhatsApp messages.'),
+        'no_template' => lang('Choose an approved template.'),
+        'resend_offer' => lang('An answer carrying a single-use offer code is not sent again: send the template anew.'),
         'not_sms'    => lang('This conversation is not an SMS conversation.'),
         'sms_off'    => lang('SMS is not set up.'),
         'sms_receive' => lang('The SMS provider set up does not receive customers\' messages, so it cannot answer them.'),
@@ -631,18 +646,22 @@ function ws_mail_phone_reply_error_text($error)
 }
 
 /**
- * Whether this person may answer this phone conversation now: they may
- * write in its channel, it is the box of the transport asked, that
- * transport is set up (for SMS, with a provider that receives) and its
- * window is open (WhatsApp's 24 hours, SMS's 7 days).
+ * Whether this person may answer this WhatsApp conversation now: they may
+ * write in its channel, it is the WhatsApp box's, WhatsApp is set up and,
+ * for text or a file, the customer's 24 hours are open (a template goes
+ * after them too).
+ *
+ * An SMS conversation (transport sms) needs SMS set up with a provider
+ * that receives, and the 7 days after the number's last SMS open.
  *
  * @param array  $viewer
  * @param int    $conversation_id
  * @param int    $now
+ * @param bool   $window    whether the answer needs the window open
  * @param string $transport whatsapp | sms
  * @return array ok, error, conversation, box, channel, seconds (left of the window)
  */
-function ws_mail_phone_reply_target($viewer, $conversation_id, $now, $transport = 'whatsapp')
+function ws_mail_phone_reply_target($viewer, $conversation_id, $now, $window = true, $transport = 'whatsapp')
 {
     $out = array('ok' => false, 'error' => '', 'conversation' => null, 'box' => null, 'channel' => null, 'seconds' => 0);
 
@@ -678,7 +697,7 @@ function ws_mail_phone_reply_target($viewer, $conversation_id, $now, $transport 
 
         $seconds = pg_sms_reply_window_left((int) $conversation['last_in_at'], $now);
 
-        if ($seconds <= 0) {
+        if ($window && ($seconds <= 0)) {
             return array_merge($out, array('error' => 'sms_window'));
         }
 
@@ -691,11 +710,48 @@ function ws_mail_phone_reply_target($viewer, $conversation_id, $now, $transport 
 
     $seconds = pg_whatsapp_window_left((int) $conversation['last_in_at'], $now);
 
-    if ($seconds <= 0) {
+    if ($window && ($seconds <= 0)) {
         return array_merge($out, array('error' => 'window'));
     }
 
     return array('ok' => true, 'error' => '', 'conversation' => $conversation, 'box' => $box, 'channel' => $channel, 'seconds' => $seconds);
+}
+
+/**
+ * The file of a drawer's answer, checked as Files and Meta take it before
+ * anything is written. Pure apart from the upload check.
+ *
+ * @param array[] $files ws_mail_compose_files()'s (name, bytes)
+ * @return array ok, error, detail, file (name, extension, bytes, type, mime;
+ *               null for none)
+ */
+function ws_mail_phone_reply_file($files)
+{
+    $files = array_values(array_filter((array) $files, 'is_array'));
+
+    if (!$files) {
+        return array('ok' => true, 'error' => '', 'detail' => '', 'file' => null);
+    }
+
+    if (count($files) > 1) {
+        return array('ok' => false, 'error' => 'one_file', 'detail' => '', 'file' => null);
+    }
+
+    $bytes = (isset($files[0]['bytes']) && is_string($files[0]['bytes'])) ? $files[0]['bytes'] : false;
+    $inspected = ws_upload_inspect((string) ($files[0]['name'] ?? ''), $bytes);
+
+    if (!$inspected['ok']) {
+        return array('ok' => false, 'error' => 'file_refused', 'detail' => (string) ($files[0]['name'] ?? '') . ': ' . $inspected['error'], 'file' => null);
+    }
+
+    $media = pg_whatsapp_reply_media($inspected['name'], strlen((string) $bytes));
+
+    if ($media['error'] !== '') {
+        return array('ok' => false, 'error' => $media['error'], 'detail' => '', 'file' => null);
+    }
+
+    return array('ok' => true, 'error' => '', 'detail' => '', 'file' => array('name' => $inspected['name'], 'extension' => $inspected['extension'],
+        'bytes' => (string) $bytes, 'type' => $media['type'], 'mime' => $media['mime']));
 }
 
 /**
@@ -725,31 +781,42 @@ function ws_mail_phone_sms_text($text)
 /**
  * Queues an answer and writes it under the conversation's card, as an
  * e-mail answer is written: Waiting to be sent until the queue has sent it.
- * The conversation then waits for the customer.
+ * The conversation then waits for the customer. Inside the 24 hours the
+ * answer is text, or one file with its words as the caption; a template
+ * (request template 'name|language', values slot key => value) goes at any
+ * time, its filled text kept on the card. An SMS answer is text only,
+ * within the 7 days, queued in sms_outbox as the kind reply.
  *
- * @param array  $viewer
- * @param int    $conversation_id
- * @param string $text
- * @param string $transport whatsapp | sms
- * @return array ok, error, message_id, state (queued | failed)
+ * @param array   $viewer
+ * @param int     $conversation_id
+ * @param array   $request   text, file_id (a file of Files), template, values
+ *                           (an array or its JSON)
+ * @param array[] $files     ws_mail_compose_files()'s, when no file_id
+ * @param string  $transport whatsapp | sms
+ * @return array ok, error, detail, message_id, state (queued | failed)
  */
-function ws_mail_phone_reply_send($viewer, $conversation_id, $text, $transport = 'whatsapp')
+function ws_mail_phone_reply_send($viewer, $conversation_id, $request, $files = array(), $transport = 'whatsapp')
 {
     $now = time();
-    $sms = ($transport === 'sms');
-    $target = ws_mail_phone_reply_target($viewer, $conversation_id, $now, $sms ? 'sms' : 'whatsapp');
-    $refuse = function ($error) {
-        return array('ok' => false, 'error' => $error, 'message_id' => 0, 'state' => '');
+    $refuse = function ($error, $detail = '') {
+        return array('ok' => false, 'error' => $error, 'detail' => $detail, 'message_id' => 0, 'state' => '');
     };
+
+    $request = is_array($request) ? $request : array('text' => (string) $request);
+    $text = is_scalar($request['text'] ?? null) ? (string) $request['text'] : '';
+    $sms = ($transport === 'sms');
+    // An SMS answer takes no template and no file.
+    $key = (!$sms && is_scalar($request['template'] ?? null)) ? trim((string) $request['template']) : '';
+    $target = ws_mail_phone_reply_target($viewer, $conversation_id, $now, $key === '', $sms ? 'sms' : 'whatsapp');
 
     if (!$target['ok']) {
         return $refuse($target['error']);
     }
 
     $conversation = $target['conversation'];
-    $box = $target['box'];
-    $channel = $target['channel'];
     $number = (string) $conversation['customer_phone'];
+    $send = array();
+    $file = null;
 
     if ($sms) {
         if (pg_sms_number('+' . $number) === '') {
@@ -763,15 +830,84 @@ function ws_mail_phone_reply_send($viewer, $conversation_id, $text, $transport =
         }
 
         $text = $checked['text'];
+        $send['sms'] = true;
+    } elseif ($key !== '') {
+        list($name, $language) = array_pad(explode('|', $key, 2), 2, '');
+        $template = pg_whatsapp_template_find($name, $language);
+
+        if (!$template) {
+            return $refuse('no_template');
+        }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_messages.php');
+
+        $values = $request['values'] ?? array();
+        $values = is_string($values) ? json_decode($values, true) : $values;
+        $filled = pg_whatsapp_reply_template_fill($template, is_array($values) ? $values : array());
+
+        if (!$filled['ok']) {
+            return $refuse('template', $filled['error']);
+        }
+
+        // A marketing template or an offer code goes only with marketing
+        // consent: asked here so nothing is written when it cannot go.
+        $offer = pg_whatsapp_offer_read($template['offer'] ?? '');
+
+        if (((strtoupper((string) $template['category']) === 'MARKETING') || ($offer['mode'] !== '')) && (pg_sms_marketing_permission($number) !== '')) {
+            return $refuse('consent');
+        }
+
+        $text = $filled['text'];
+        $send['template'] = array('id' => (int) $template['id'], 'name' => $template['name'], 'language' => $template['language'],
+            'category' => $template['category'], 'components' => $filled['components']);
     } else {
-        $checked = pg_whatsapp_reply_row($number, $text, array('window_ends' => $now + $target['seconds']), $now);
+        // A file from Files (the drawer's picker field), read as the
+        // writing box's "From the file manager" reads one.
+        $file_id = (int) ($request['file_id'] ?? 0);
+
+        if ($file_id > 0) {
+            $library = ws_library_file($viewer, $file_id);
+            $path = $library['ok'] ? pg_file_local_copy($file_id) : '';
+            $bytes = ($path !== '') ? @file_get_contents($path) : false;
+
+            if (!$library['ok'] || !is_string($bytes)) {
+                return $refuse('file_refused', $library['ok'] ? lang('Sorry, we could not find the file.') : (string) $library['error']);
+            }
+
+            $files = array(array('name' => (string) $library['file']['name'], 'bytes' => $bytes));
+        }
+
+        $picked = ws_mail_phone_reply_file($files);
+
+        if (!$picked['ok']) {
+            return $refuse($picked['error'], $picked['detail']);
+        }
+
+        $file = $picked['file'];
+        // The row is checked with a stand-in id: the file is kept only once it may go.
+        $checked = pg_whatsapp_reply_row($number, $text, array('window_ends' => $now + $target['seconds'],
+            'file' => $file ? array('id' => 1, 'name' => $file['name'], 'type' => $file['type']) : null), $now);
 
         if (isset($checked['error'])) {
             return $refuse($checked['error']);
         }
 
         $body = json_decode($checked['payload'], true);
-        $text = (string) $body['text'];
+        $text = (string) ($file ? $body['caption'] : $body['text']);
+    }
+
+    $box = $target['box'];
+    $channel = $target['channel'];
+    $stored = array('ok' => true, 'file_id' => 0, 'name' => '');
+
+    if ($file) {
+        $stored = ws_store_file_bytes($channel, $file['name'], $file['extension'], $file['bytes'], (int) $viewer['id']);
+
+        if (!$stored['ok']) {
+            return $refuse('file_not_kept');
+        }
+
+        $send['file'] = array('id' => (int) $stored['file_id'], 'name' => $file['name'], 'type' => $file['type']);
     }
 
     $writer = ws_person_name((int) $viewer['id']);
@@ -785,12 +921,17 @@ function ws_mail_phone_reply_send($viewer, $conversation_id, $text, $transport =
     $item_id = $written ? (int) mysqli_insert_id(db::$con) : 0;
 
     if ($item_id <= 0) {
+        if ($stored['file_id'] > 0) {
+            ws_upload_discard($stored['file_id']);
+        }
+
         return $refuse('not_sent');
     }
 
+    // One message for one WhatsApp message: its words and its file together.
     $card = ws_message((int) $conversation['message_id']);
     $parent_id = ($card && ((int) $card['channel_id'] === (int) $channel['id']) && ((int) $card['deleted_at'] === 0)) ? (int) $card['id'] : 0;
-    $message_id = ws_mail_message_write($channel['id'], $parent_id, $item_id, ws_mail_message_body($text), 0, '', $now);
+    $message_id = ws_mail_message_write($channel['id'], $parent_id, $item_id, ws_mail_message_body($text), (int) $stored['file_id'], (string) $stored['name'], $now);
 
     if ($parent_id > 0) {
         ws_message_touch($parent_id);
@@ -802,9 +943,9 @@ function ws_mail_phone_reply_send($viewer, $conversation_id, $text, $transport =
             first_reply_at = IF(first_reply_at = 0, '" . (int) $now . "', first_reply_at), updated_at = '" . (int) $now . "'
         WHERE id = '" . (int) $conversation['id'] . "'");
 
-    $state = ws_mail_phone_dispatch(array('id' => $item_id, 'send_state' => 'queued', 'outbox_id' => 0), $conversation, 0, $now, $sms ? 'sms' : 'whatsapp');
+    $state = ws_mail_phone_dispatch(array('id' => $item_id, 'send_state' => 'queued', 'outbox_id' => 0, 'body_text' => $text), $conversation, 0, $now, $send);
 
-    return array('ok' => true, 'error' => '', 'message_id' => (int) $message_id, 'state' => $state);
+    return array('ok' => true, 'error' => '', 'detail' => '', 'message_id' => (int) $message_id, 'state' => $state);
 }
 
 /**
@@ -812,14 +953,16 @@ function ws_mail_phone_reply_send($viewer, $conversation_id, $text, $transport =
  * sms_outbox as the kind reply) and names the row on it; a refusal marks it
  * Not sent at once with the reason.
  *
- * @param array  $item         ws_mail_items row (id, send_state, outbox_id, body_text)
- * @param array  $conversation ws_mail_conversations row
- * @param int    $previous     the queue row of the attempt before, 0 for the first
- * @param int    $now
- * @param string $transport    whatsapp | sms
+ * @param array $item         ws_mail_items row (id, send_state, outbox_id, body_text)
+ * @param array $conversation ws_mail_conversations row
+ * @param int   $previous     the queue row of the attempt before, 0 for the first
+ * @param int   $now
+ * @param array $send         file (id, name, type) or template
+ *                            (pg_whatsapp_enqueue()'s); text when neither;
+ *                            sms true for an SMS answer
  * @return string queued | failed
  */
-function ws_mail_phone_dispatch($item, $conversation, $previous, $now, $transport = 'whatsapp')
+function ws_mail_phone_dispatch($item, $conversation, $previous, $now, $send = array())
 {
     ws_mail_phone_load();
 
@@ -827,14 +970,14 @@ function ws_mail_phone_dispatch($item, $conversation, $previous, $now, $transpor
         : (string) db_value("SELECT body_text FROM ws_mail_items WHERE id = '" . (int) $item['id'] . "'");
     $ref = pg_whatsapp_reply_ref((int) $item['id'], (int) $previous);
 
-    if ($transport === 'sms') {
+    if (!empty($send['sms'])) {
         $queued = pg_sms_enqueue_reply((string) $conversation['customer_phone'], $text, array(
             'reference'   => $ref,
             'window_ends' => (int) $now + pg_sms_reply_window_left((int) $conversation['last_in_at'], $now),
         ));
 
         if (!$queued['ok']) {
-            pg_sms_reply_outcome(0, $ref, 'failed', $queued['error']);
+            pg_sms_reply_outcome(0, $ref, 'failed', (string) $queued['error']);
 
             return 'failed';
         }
@@ -845,14 +988,27 @@ function ws_mail_phone_dispatch($item, $conversation, $previous, $now, $transpor
         return 'queued';
     }
 
-    $queued = pg_whatsapp_enqueue_reply((string) $conversation['customer_phone'], $text, array(
-        'reference'   => $ref,
-        'contact_id'  => (int) $conversation['contact_id'],
-        'window_ends' => (int) $now + pg_whatsapp_window_left((int) $conversation['last_in_at'], $now),
-    ));
+    if (isset($send['template'])) {
+        // A template goes as the queue's other templates do; its consent is
+        // asked again by the queue.
+        $queued = pg_whatsapp_enqueue((string) $conversation['customer_phone'], $send['template'], array(
+            'kind'       => 'reply',
+            'reference'  => $ref,
+            'contact_id' => (int) $conversation['contact_id'],
+        ));
+        $reason = (string) $queued['error'];
+    } else {
+        $queued = pg_whatsapp_enqueue_reply((string) $conversation['customer_phone'], $text, array(
+            'reference'   => $ref,
+            'contact_id'  => (int) $conversation['contact_id'],
+            'window_ends' => (int) $now + pg_whatsapp_window_left((int) $conversation['last_in_at'], $now),
+            'file'        => $send['file'] ?? null,
+        ));
+        $reason = ws_mail_phone_reply_error_text($queued['error']);
+    }
 
     if (!$queued['ok']) {
-        pg_whatsapp_reply_outcome(0, $ref, 'failed', ws_mail_phone_reply_error_text($queued['error']));
+        pg_whatsapp_reply_outcome(0, $ref, 'failed', $reason);
 
         return 'failed';
     }
@@ -864,8 +1020,52 @@ function ws_mail_phone_dispatch($item, $conversation, $previous, $now, $transpor
 }
 
 /**
- * Send again for a WhatsApp or SMS answer that could not leave: only while
- * its window is still open, and only one press counts.
+ * What an answer sent again carries: the template of its last queue row
+ * (sent at any time), else the file of its message, else its text; the
+ * last two only inside the 24 hours.
+ *
+ * @param array $item ws_mail_items row
+ * @return array send (ws_mail_phone_dispatch()), window (whether it needs
+ *               the 24 hours), error
+ */
+function ws_mail_phone_resend_send($item)
+{
+    $row = ((int) $item['outbox_id'] > 0)
+        ? db_item("SELECT template_id, template_name, template_language, category, payload, key_code_id FROM whatsapp_outbox WHERE id = '" . (int) $item['outbox_id'] . "'")
+        : null;
+
+    if (is_array($row) && ((string) $row['template_name'] !== '')) {
+        // A single-use key made for that row was switched off when it failed.
+        if ((int) $row['key_code_id'] > 0) {
+            return array('send' => array(), 'window' => false, 'error' => 'resend_offer');
+        }
+
+        $components = json_decode((string) $row['payload'], true);
+
+        return array('send' => array('template' => array('id' => (int) $row['template_id'], 'name' => (string) $row['template_name'],
+            'language' => (string) $row['template_language'], 'category' => (string) $row['category'],
+            'components' => is_array($components) ? $components : array())), 'window' => false, 'error' => '');
+    }
+
+    $file = ((int) $item['message_id'] > 0)
+        ? db_item("SELECT m.file_id, m.file_name, f.size FROM ws_messages m INNER JOIN files f ON f.id = m.file_id
+            WHERE m.id = '" . (int) $item['message_id'] . "' AND m.file_id > 0")
+        : null;
+
+    if (is_array($file)) {
+        $media = pg_whatsapp_reply_media((string) $file['file_name'], (int) $file['size']);
+
+        return array('send' => array('file' => array('id' => (int) $file['file_id'], 'name' => (string) $file['file_name'], 'type' => $media['type'])),
+            'window' => true, 'error' => '');
+    }
+
+    return array('send' => array(), 'window' => true, 'error' => '');
+}
+
+/**
+ * Send again for a WhatsApp answer that could not leave: text and a file
+ * only while the customer's 24 hours are still open, a template at any
+ * time; an SMS answer only within its 7 days; only one press counts.
  *
  * @param array $viewer
  * @param array $item ws_mail_items row, failed
@@ -878,9 +1078,17 @@ function ws_mail_phone_resend($viewer, $item)
     };
 
     $now = time();
+    ws_mail_phone_load();
     $box = ws_mail_box((int) $item['box_id']);
-    $transport = ($box && ((string) $box['transport'] === 'sms')) ? 'sms' : 'whatsapp';
-    $target = ws_mail_phone_reply_target($viewer, (int) $item['conversation_id'], $now, $transport);
+    $sms = $box && ((string) $box['transport'] === 'sms');
+    // An SMS answer's row is in sms_outbox: it goes again as text.
+    $again = $sms ? array('send' => array('sms' => true), 'window' => true, 'error' => '') : ws_mail_phone_resend_send($item);
+
+    if ($again['error'] !== '') {
+        return $refuse($again['error']);
+    }
+
+    $target = ws_mail_phone_reply_target($viewer, (int) $item['conversation_id'], $now, $again['window'], $sms ? 'sms' : 'whatsapp');
 
     if (!$target['ok']) {
         return $refuse($target['error']);
@@ -900,23 +1108,32 @@ function ws_mail_phone_resend($viewer, $item)
     $item['send_state'] = 'queued';
 
     return array('ok' => true, 'error' => '', 'detail' => '',
-        'state' => ws_mail_phone_dispatch($item, $target['conversation'], (int) $item['outbox_id'], $now, $transport));
+        'state' => ws_mail_phone_dispatch($item, $target['conversation'], (int) $item['outbox_id'], $now, $again['send']));
 }
 
 /**
  * What the drawer shows before it is opened: whom the answer goes to and
- * the time left; or why it cannot be written.
+ * the time left; after the 24 hours the approved templates; or why it
+ * cannot be written.
+ *
+ * An SMS conversation's drawer has no templates and no file field.
  *
  * @param array  $viewer
  * @param int    $conversation_id
  * @param string $transport whatsapp | sms
- * @return array ok, error, to, name, seconds, window (the sentence), max
+ * @return array ok, error, to, name, seconds, window (the sentence),
+ *               templates (pg_whatsapp_reply_templates(), after the 24 hours),
+ *               file_field (the picker field's markup, inside them), max
  *               (the longest text)
  */
 function ws_mail_phone_reply_form($viewer, $conversation_id, $transport = 'whatsapp')
 {
     $sms = ($transport === 'sms');
-    $target = ws_mail_phone_reply_target($viewer, $conversation_id, time(), $sms ? 'sms' : 'whatsapp');
+    $target = ws_mail_phone_reply_target($viewer, $conversation_id, time(), $sms, $sms ? 'sms' : 'whatsapp');
+
+    if (!function_exists('pg_picker_field')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/picker.php');
+    }
 
     if (!$target['ok']) {
         return array('ok' => false, 'error' => $target['error']);
@@ -929,6 +1146,10 @@ function ws_mail_phone_reply_form($viewer, $conversation_id, $transport = 'whats
         'name'    => (string) $target['conversation']['customer_name'],
         'seconds' => (int) $target['seconds'],
         'window'  => $sms ? pg_sms_reply_window_text($target['seconds']) : pg_whatsapp_window_text($target['seconds']),
+        'templates' => ($sms || ($target['seconds'] > 0)) ? array() : pg_whatsapp_reply_templates(),
+        // The panel's file field: a file of Files the writer may open.
+        'file_field' => (!$sms && ($target['seconds'] > 0) && function_exists('pg_picker_field'))
+            ? pg_picker_field('channel_file', 'file_id', '', array('id' => 'ws-wa-file')) : '',
         'max'     => $sms ? PG_SMS_ANSWER_MAX : PG_WHATSAPP_TEXT_MAX,
     );
 }
@@ -945,6 +1166,15 @@ function ws_mail_phone_js_strings()
         'wa_reply_to'     => ws_js_template('To {var:1}', 1),
         'wa_reply_text'   => lang('Answer'),
         'wa_reply_hint'   => lang('Plain text, at most 4096 characters. It goes from the site\'s WhatsApp number; the conversation then waits for the customer.'),
+        'wa_reply_file'   => lang('File'),
+        'wa_reply_file_hint' => lang('One file: a JPG or PNG picture up to 5 MB, an MP4 or 3GP video or a document (PDF, Word, Excel, PowerPoint, text) up to 16 MB. The answer then goes beside it, at most 1024 characters.'),
+        'wa_reply_preview' => lang('As the customer reads it'),
+        'wa_reply_offer'  => lang('offer code'),
+        'wa_reply_template' => lang('Template'),
+        'wa_reply_template_pick' => lang('Choose an approved template'),
+        'wa_reply_template_hint' => lang('After the 24 hours WhatsApp takes only a template Meta approved. Fill each value; the customer reads the text below with them.'),
+        'wa_reply_marketing' => lang('A marketing template goes only to a customer who agreed to marketing messages.'),
+        'wa_reply_no_templates' => lang('No approved template can be chosen yet. Templates are read from Meta every six hours and after the WhatsApp card is saved; one with an image, video or document header or a copy-code button cannot be used here.'),
         'wa_reply_send'   => lang('Send by WhatsApp'),
         'wa_reply_closed' => lang('The 24 hours after the customer\'s last message have passed: WhatsApp takes only an approved template now.'),
         'wa_reply_sent'   => lang('The answer is waiting to be sent by WhatsApp.'),

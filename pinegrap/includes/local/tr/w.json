@@ -1684,6 +1684,8 @@
     "WhatsApp messages received": "Alınan WhatsApp mesajları",
     "WhatsApp rejected this template. Change it and send it for approval again; its name and language stay.": "WhatsApp bu şablonu reddetti. Değiştirip yeniden onaya gönderin; adı ve dili aynı kalır.",
     "WhatsApp settings": "WhatsApp ayarları",
+    "WhatsApp takes a JPG or PNG picture, an MP4 or 3GP video, or a PDF, Word, Excel, PowerPoint or text document.": "WhatsApp JPG veya PNG resim, MP4 veya 3GP video ya da PDF, Word, Excel, PowerPoint veya metin belgesi alır.",
+    "WhatsApp takes a picture up to 5 MB, a video or a document up to 16 MB.": "WhatsApp en çok 5 MB resim, en çok 16 MB video veya belge alır.",
     "WhatsApp takes a written answer for {var:1} h {var:2} min more.": "WhatsApp yazılı bir yanıtı {var:1} sa {var:2} dk daha kabul eder.",
     "WhatsApp takes a written answer for {var:1} min more.": "WhatsApp yazılı bir yanıtı {var:1} dk daha kabul eder.",
     "WhatsApp takes only templates it approved. A marketing template goes only to a number whose person agreed to marketing messages.": "WhatsApp yalnızca onayladığı şablonları kabul eder. Pazarlama şablonu yalnızca sahibi pazarlama mesajlarına izin vermiş bir numaraya gider.",

@@ -412,8 +412,8 @@
     // customer's 24 hours, or 7 days after their last SMS), asked of the
     // server first (ws_whatsapp_reply_form, ws_sms_reply_form); the answer
     // then waits in its queue (mail_phone.php) and reads Waiting to be sent
-    // or Not sent until it left. An SMS answer takes no files and counts the
-    // messages its text makes.
+    // or Not sent until it left. An SMS answer is text only and counts the
+    // messages it makes.
     function whatsappForm(message, view, h, sms) {
         var conversation = sms ? message.sms_reply : message.whatsapp_reply;
 
@@ -424,6 +424,9 @@
         });
     }
 
+    // Inside the 24 hours: the answer and one file of Files (its words the
+    // caption); after them: an approved template, its preview and a field per
+    // variable. Both go through ws_whatsapp_reply as a form.
     function whatsappAnswer(conversation, data, view, h, sms) {
         var t = h.t;
         var el = h.el;
@@ -432,6 +435,10 @@
         var body = h.clear(node.querySelector('.drawer-body'));
         var footer = h.clear(node.querySelector('.drawer-footer'));
         var form = el('form', 'ws-wa-answer');
+        var open = data.seconds > 0;
+        var templates = data.templates || [];
+        var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t(sms ? 'sms_reply_send' : 'wa_reply_send'), sms ? 'bi-chat-dots' : 'bi-whatsapp');
+        var post;
 
         node.querySelector('.drawer-title').textContent = title;
         footer.classList.remove('d-none');
@@ -443,7 +450,49 @@
         form.appendChild(el('div', 'small fg-secondary mb-1', t('wa_reply_to', data.name ? data.name + ' (' + data.to + ')' : data.to)));
         form.appendChild(el('div', 'small fg-secondary mb-3', data.window));
 
+        if (open) {
+            post = whatsappText(form, data, view, h, sms);
+        } else if (templates.length) {
+            post = whatsappTemplate(form, templates, h);
+        } else {
+            form.appendChild(el('p', 'small mb-0', t('wa_reply_no_templates')));
+            h.showOffcanvas(node);
+            return;
+        }
+
+        send.addEventListener('click', function () {
+            var request = post();
+
+            if (!request) {
+                return;
+            }
+
+            send.disabled = true;
+            request.fields.conversation_id = conversation;
+
+            formPost(h, sms ? 'ws_sms_reply' : 'ws_whatsapp_reply', request.fields, request.files).then(function (result) {
+                h.hideOffcanvas(node);
+                h.toast(result.state === 'failed' ? t('wa_reply_failed') : t(sms ? 'sms_reply_sent' : 'wa_reply_sent'), result.state === 'failed' ? 'warning' : 'success');
+                view.sync();
+            }).catch(function (error) {
+                send.disabled = false;
+                h.fail(error);
+            });
+        });
+
+        footer.appendChild(send);
+        h.showOffcanvas(node);
+    }
+
+    // The answer's words, the saved replies and one file of Files in the
+    // panel's file field (pg_picker_field(), its markup from the server).
+    // An SMS answer has no file field and counts its length and parts.
+    // Returns what the send posts, or null after pointing at what is missing.
+    function whatsappText(form, data, view, h, sms) {
+        var t = h.t;
+        var el = h.el;
         var text = el('textarea', 'form-control');
+
         text.id = h.nextId('ws-wa-reply-');
         text.name = 'text';
         text.rows = 8;
@@ -472,29 +521,194 @@
             counted();
         }
 
-        var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t(sms ? 'sms_reply_send' : 'wa_reply_send'), sms ? 'bi-chat-dots' : 'bi-whatsapp');
+        var value = null;
 
-        send.addEventListener('click', function () {
-            if (!text.value.trim()) {
+        if (data.file_field) {
+            var field = el('div');
+
+            field.innerHTML = data.file_field;
+            form.appendChild(h.formRow(t('wa_reply_file'), field, t('wa_reply_file_hint')));
+            value = field.querySelector('[data-pg-picker-value]');
+        }
+
+        setTimeout(function () {
+            text.focus();
+        }, 0);
+
+        return function () {
+            var file = value ? value.value : '';
+
+            if (!text.value.trim() && !file) {
                 text.focus();
+                return null;
+            }
+
+            return { fields: { text: text.value, file_id: file }, files: [] };
+        };
+    }
+
+    // A template's text as WhatsApp draws it: *bold*, _italic_, ~strike~,
+    // each variable as its typed value, or its name while it is empty, in a
+    // mark.
+    function whatsappFormat(source, part, values, names, offer) {
+        var marks = [];
+        var html = String(source || '').replace(/\{\{\s*([a-z0-9_]+)\s*\}\}/g, function (all, key) {
+            var slot = part + ':' + key;
+            var typed = values[slot] && values[slot].trim();
+
+            marks.push(typed || names[slot] || offer);
+            return '\u0001' + (marks.length - 1) + '\u0002';
+        });
+
+        html = html.replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+        html = html.replace(/\*([^*\n]+)\*/g, '<b>$1</b>').replace(/_([^_\n]+)_/g, '<i>$1</i>').replace(/~([^~\n]+)~/g, '<s>$1</s>');
+
+        return html.replace(/\u0001([0-9]+)\u0002/g, function (all, index) {
+            return '<mark>' + String(marks[index]).replace(/[&<>"']/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+            }) + '</mark>';
+        }).replace(/\n/g, '<br>');
+    }
+
+    // The chosen template as the customer reads it: the template designer's
+    // WhatsApp message (.pg-wa-msg in its own colours), redrawn as the values
+    // are typed.
+    function whatsappPreview(item, values, h) {
+        var el = h.el;
+        var names = {};
+        var shell = el('div', 'pg-wa-designer mb-5');
+        var chat = el('div', 'pg-wa-chat rounded');
+        var message = el('div', 'pg-wa-msg');
+        var offer = h.t('wa_reply_offer');
+
+        item.slots.forEach(function (slot) {
+            names[slot.key] = slot.label;
+        });
+
+        chat.style.background = 'var(--pg-wa-chat-bg)';
+        chat.style.minHeight = '0';
+
+        if (item.header) {
+            var head = el('div', 'pg-wa-msg-head');
+
+            head.innerHTML = whatsappFormat(item.header, 'header', values, names, offer);
+            message.appendChild(head);
+        }
+
+        var body = el('div', 'pg-wa-msg-body');
+
+        body.innerHTML = whatsappFormat(item.body, 'body', values, names, offer);
+        message.appendChild(body);
+
+        if (item.footer) {
+            message.appendChild(el('div', 'pg-wa-msg-footer', item.footer));
+        }
+
+        var time = el('time', '', new Date().toTimeString().slice(0, 5));
+
+        message.appendChild(time);
+        (item.buttons || []).forEach(function (label) {
+            message.appendChild(el('div', 'pg-wa-msg-button', label));
+        });
+
+        chat.appendChild(message);
+        shell.appendChild(el('div', 'form-label', h.t('wa_reply_preview')));
+        shell.appendChild(chat);
+
+        return shell;
+    }
+
+    // The approved templates, the chosen one as the customer reads it and a
+    // field per variable, named as the template designer named it.
+    function whatsappTemplate(form, templates, h) {
+        var t = h.t;
+        var el = h.el;
+        var choice = h.select([['', t('wa_reply_template_pick')]].concat(templates.map(function (item) {
+            return [item.key, item.name + ' (' + item.language + ')'];
+        })), '');
+        var holder = el('div');
+        var inputs = [];
+
+        form.appendChild(h.formRow(t('wa_reply_template'), choice, t('wa_reply_template_hint')));
+        form.appendChild(holder);
+
+        function chosen() {
+            return templates.filter(function (item) {
+                return item.key === choice.value;
+            })[0] || null;
+        }
+
+        function typed() {
+            var values = {};
+
+            inputs.forEach(function (input) {
+                values[input.dataset.slot] = input.value;
+            });
+
+            return values;
+        }
+
+        choice.addEventListener('change', function () {
+            var item = chosen();
+            var preview = null;
+
+            h.clear(holder);
+            inputs = [];
+
+            if (!item) {
                 return;
             }
 
-            send.disabled = true;
+            function redraw() {
+                var next = whatsappPreview(item, typed(), h);
 
-            h.api(sms ? 'ws_sms_reply' : 'ws_whatsapp_reply', { conversation_id: conversation, text: text.value }).then(function (result) {
-                h.hideOffcanvas(node);
-                h.toast(result.state === 'failed' ? t('wa_reply_failed') : t(sms ? 'sms_reply_sent' : 'wa_reply_sent'), result.state === 'failed' ? 'warning' : 'success');
-                view.sync();
-            }).catch(function (error) {
-                send.disabled = false;
-                h.fail(error);
+                holder.replaceChild(next, preview);
+                preview = next;
+            }
+
+            preview = whatsappPreview(item, {}, h);
+            holder.appendChild(preview);
+
+            if (item.marketing) {
+                holder.appendChild(el('p', 'small fg-secondary mb-5', t('wa_reply_marketing')));
+            }
+
+            item.slots.forEach(function (slot) {
+                var input = el('input', 'form-control');
+
+                input.type = 'text';
+                input.maxLength = 1000;
+                input.dataset.slot = slot.key;
+                input.addEventListener('input', redraw);
+                holder.appendChild(h.formRow(slot.label, input));
+                inputs.push(input);
             });
         });
 
-        footer.appendChild(send);
-        h.showOffcanvas(node);
-        text.focus();
+        return function () {
+            var item = chosen();
+            var empty = null;
+
+            if (!item) {
+                choice.focus();
+                return null;
+            }
+
+            inputs.forEach(function (input) {
+                if (!empty && !input.value.trim()) {
+                    empty = input;
+                }
+            });
+
+            if (empty) {
+                empty.focus();
+                return null;
+            }
+
+            return { fields: { template: item.key, values: JSON.stringify(typed()) }, files: [] };
+        };
     }
 
     // Under a conversation's card: Reply, Forward, Send again, the status
@@ -504,29 +718,31 @@
     function node(message, view, h) {
         var row = h.el('div', 'ws-mail-reply mt-1');
 
+        // After the 24 hours the drawer offers the approved templates.
         if (message.whatsapp_reply) {
-            if (message.whatsapp_window > 0) {
-                var answer = h.button('btn btn-sm btn-outline theme-success py-0', h.t('wa_reply'), 'bi-whatsapp');
+            var answer = h.button('btn btn-sm btn-outline theme-success py-0', h.t('wa_reply'), 'bi-whatsapp');
 
-                answer.addEventListener('click', function (event) {
-                    event.stopPropagation();
-                    whatsappForm(message, view, h);
-                });
-                row.appendChild(answer);
-            } else {
-                row.appendChild(h.el('span', 'small fg-secondary', h.t('wa_reply_closed')));
+            answer.addEventListener('click', function (event) {
+                event.stopPropagation();
+                whatsappForm(message, view, h);
+            });
+            row.appendChild(answer);
+
+            if (!(message.whatsapp_window > 0)) {
+                row.appendChild(h.el('span', 'small fg-secondary ms-2', h.t('wa_reply_closed')));
             }
         }
 
+        // An SMS goes only within 7 days of the number's last SMS.
         if (message.sms_reply) {
             if (message.sms_window > 0) {
-                var text = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('sms_reply'), 'bi-chat-dots');
+                var sms = h.button('btn btn-sm btn-outline theme-primary py-0', h.t('sms_reply'), 'bi-chat-dots');
 
-                text.addEventListener('click', function (event) {
+                sms.addEventListener('click', function (event) {
                     event.stopPropagation();
                     whatsappForm(message, view, h, true);
                 });
-                row.appendChild(text);
+                row.appendChild(sms);
             } else {
                 row.appendChild(h.el('span', 'small fg-secondary', h.t('sms_reply_closed')));
             }

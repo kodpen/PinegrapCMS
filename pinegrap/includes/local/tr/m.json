@@ -1014,6 +1014,7 @@
     "Meta did not accept the access token: it is wrong, expired or was revoked.": "Meta erişim anahtarını kabul etmedi: anahtar yanlış, süresi dolmuş ya da iptal edilmiş.",
     "Meta did not accept this App ID and App secret.": "Meta bu Uygulama Kimliği ile Uygulama Gizli Anahtarı'nı kabul etmedi.",
     "Meta did not confirm the change to the template.": "Meta şablondaki değişikliği onaylamadı.",
+    "Meta did not take the file.": "Meta dosyayı kabul etmedi.",
     "Meta did not take the header's sample file.": "Meta başlığın örnek dosyasını almadı.",
     "Meta error {var:1}": "Meta hatası {var:1}",
     "Meta keywords": "Meta anahtar kelimeleri",

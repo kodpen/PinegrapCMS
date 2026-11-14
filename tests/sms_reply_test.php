@@ -121,5 +121,5 @@ function test_sms_reply_wiring()
 	$script = $read('assets/js/workspace_mail.js');
 	pg_assert_contains("whatsappForm(message, view, h, true);", $script, 'the same drawer');
 	pg_assert_contains('function smsParts(text) {', $script, 'the counter\'s twin');
-	pg_assert_contains("h.api(sms ? 'ws_sms_reply' : 'ws_whatsapp_reply'", $script, 'sent by its own action');
+	pg_assert_contains("formPost(h, sms ? 'ws_sms_reply' : 'ws_whatsapp_reply'", $script, 'sent by its own action');
 }
