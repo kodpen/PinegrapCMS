@@ -7679,7 +7679,7 @@
             vars.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_wa_vars')));
             chosen.vars.forEach(function (variable) {
                 var key = 'v' + variable.n;
-                var row = valueField(node, t('fl_wa_var', variable.n) + ' · ' + variable.label, config[key], 1000, function (value) {
+                var row = valueField(node, variable.label, config[key], 1000, function (value) {
                     config[key] = value;
                     refreshNode(node);
                 });
@@ -7691,6 +7691,17 @@
                         control.removeAttribute('aria-describedby');
                     });
                     hint.remove();
+                }
+
+                // The variable as a chip naming what it stands for, before
+                // where it sits; never Meta's {{n}}.
+                var caption = row.querySelector('label');
+
+                if (caption && window.pgVarChips) {
+                    caption.insertBefore(document.createTextNode(' '), caption.firstChild);
+                    caption.insertBefore(window.pgVarChips.chip(variable.chip || t('fl_wa_var', variable.n)), caption.firstChild);
+                } else if (caption) {
+                    caption.textContent = (variable.chip || t('fl_wa_var', variable.n)) + ' · ' + variable.label;
                 }
 
                 row.classList.replace('mb-5', 'mb-3');

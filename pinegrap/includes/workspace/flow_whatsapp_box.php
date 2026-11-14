@@ -537,25 +537,60 @@ function ws_step_whatsapp_offered()
         return array();
     }
 
-    $rows = db_items("SELECT name, language, category, status, parameter_format, components FROM whatsapp_templates WHERE status = 'APPROVED' ORDER BY name, language");
+    $rows = db_items("SELECT name, language, category, status, parameter_format, components, samples FROM whatsapp_templates WHERE status = 'APPROVED' ORDER BY name, language");
+    $rows = is_array($rows) ? $rows : array();
+    $names = array();
 
-    return ws_step_whatsapp_offered_rows(pg_whatsapp_message_offered(is_array($rows) ? $rows : array()));
+    foreach ($rows as $row) {
+        $names[ws_step_whatsapp_template_key($row['name'], $row['language'])] = ws_step_whatsapp_sample_labels($row['samples'] ?? '');
+    }
+
+    return ws_step_whatsapp_offered_rows(pg_whatsapp_message_offered($rows), $names);
+}
+
+/**
+ * What the template designer named the message's variables (its samples
+ * column, {"body":[{"label","value"}]} in the body's order), by the
+ * variable's number; a template read from Meta has none. Pure.
+ *
+ * @param mixed $samples the column's JSON, or decoded
+ * @return array number (string) => label
+ */
+function ws_step_whatsapp_sample_labels($samples)
+{
+    $samples = is_string($samples) ? json_decode($samples, true) : $samples;
+    $labels = array();
+
+    foreach ((is_array($samples) && isset($samples['body']) && is_array($samples['body'])) ? array_values($samples['body']) : array() as $i => $sample) {
+        $label = (is_array($sample) && isset($sample['label']) && is_scalar($sample['label'])) ? trim((string) $sample['label']) : '';
+
+        if ($label !== '') {
+            $labels[(string) ($i + 1)] = mb_substr($label, 0, 200, 'UTF-8');
+        }
+    }
+
+    return $labels;
 }
 
 /**
  * The canvas's list from pg_whatsapp_message_offered(): a template with
  * more variables than the box holds is left out; each variable says where
- * it sits (message, header, a button's link) and its place. Pure but for
- * lang().
+ * it sits (message, header, a button's link), its place, and its chip's
+ * name: the designer's name of a message variable, else "Variable N", never
+ * Meta's {{n}}. Pure but for lang().
  *
  * @param array $offered pg_whatsapp_message_offered()
- * @return array rows: key, name, language, category, vars (n, part, label)
+ * @param array $names   template key => ws_step_whatsapp_sample_labels()
+ * @return array rows: key, name, language, category, vars (n, part, name,
+ *               label, chip)
  */
-function ws_step_whatsapp_offered_rows($offered)
+function ws_step_whatsapp_offered_rows($offered, $names = array())
 {
     $out = array();
 
     foreach ((array) $offered as $template) {
+        $key = ws_step_whatsapp_template_key($template['name'], $template['language']);
+
         if (count($template['slots']) > WS_STEP_WHATSAPP_VARS) {
             continue;
         }
@@ -565,11 +600,13 @@ function ws_step_whatsapp_offered_rows($offered)
         foreach (array_values($template['slots']) as $i => $slot) {
             $where = ($slot['part'] === 'header') ? lang('In the header')
                 : (($slot['part'] === 'button') ? lang(array('string' => 'In the link of button {var:1}', 'vars' => (int) $slot['index'] + 1)) : lang('In the message'));
-            $vars[] = array('n' => $i + 1, 'part' => (string) $slot['part'], 'name' => (string) $slot['name'], 'label' => $where);
+            $named = ($slot['part'] === 'body') ? ($names[$key][(string) $slot['name']] ?? '') : '';
+            $vars[] = array('n' => $i + 1, 'part' => (string) $slot['part'], 'name' => (string) $slot['name'], 'label' => $where,
+                'chip' => ($named !== '') ? $named : lang(array('string' => 'Variable {var:1}', 'vars' => $i + 1)));
         }
 
         $out[] = array(
-            'key'      => ws_step_whatsapp_template_key($template['name'], $template['language']),
+            'key'      => $key,
             'name'     => (string) $template['name'],
             'language' => (string) $template['language'],
             'category' => (string) $template['category'],

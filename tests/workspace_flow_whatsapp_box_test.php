@@ -160,3 +160,18 @@ function test_workspace_flow_whatsapp_received_is_announced()
 	pg_assert_true((bool) preg_match('~function pg_whatsapp_inbox_receive\(.*?mysqli_insert_id.*?create_notification\(.*?pg_announce\(\'whatsapp\.received\', pg_whatsapp_received_event\(\$inbox_id,~s', $source), 'announced after the row is written and the bell told');
 	pg_assert_same(1, substr_count($source, "pg_announce('whatsapp.received'"), 'from one place');
 }
+
+// A variable's chip names what it stands for: the designer's name of a
+// message variable, else "Variable N"; never Meta's {{n}}.
+function test_workspace_flow_whatsapp_box_chip_names()
+{
+	pg_assert_same(array('1' => 'Order number', '3' => 'Customer\'s name'), ws_step_whatsapp_sample_labels('{"body":[{"label":"Order number","value":"438"},{"label":" ","value":"x"},{"label":"Customer\'s name","value":"Ayşe"}]}'));
+	pg_assert_same(array(), ws_step_whatsapp_sample_labels(null), 'a template read from Meta has no names');
+	pg_assert_same(array(), ws_step_whatsapp_sample_labels('{"body":"x"}'));
+
+	$offered = pg_whatsapp_message_offered(array(workspace_flow_whatsapp_box_test_template()));
+	$rows = ws_step_whatsapp_offered_rows($offered, array('order_ready|tr' => array('1' => 'Customer\'s name', '2' => 'Order number')));
+
+	pg_assert_same(array('Variable 1', 'Customer\'s name', 'Order number', 'Variable 4'), array_column($rows[0]['vars'], 'chip'), 'the header and the button take no designer name');
+	pg_assert_same(array('Variable 1', 'Variable 2', 'Variable 3', 'Variable 4'), array_column(ws_step_whatsapp_offered_rows($offered)[0]['vars'], 'chip'));
+}
