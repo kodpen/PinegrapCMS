@@ -122,7 +122,9 @@ function test_email_designs_mail_blocks_family()
 	}
 	pg_assert_same('mail-', $got['prefix'], 'the family\'s prefix');
 	pg_assert_same('E-mail', $got['group'], 'its own palette group');
-	pg_assert_same(array('mail-frame', 'mail-intro', 'mail-button', 'mail-picture', 'mail-break', 'mail-columns'), array_keys($got['blocks']), 'the six blocks');
+	pg_assert_same(array('mail-frame', 'mail-intro', 'mail-button', 'mail-picture', 'mail-break', 'mail-header', 'mail-greeting', 'mail-product', 'mail-footer', 'mail-columns'), array_keys($got['blocks']), 'the ten blocks');
+	pg_assert_contains('Hello ^^first_name^^,', implode('|', $got['blocks']['mail-greeting']['texts']), 'the greeting carries a merge field');
+	pg_assert_same(array(array('name' => 'data-pg-mail-footer', 'value' => '')), $got['blocks']['mail-footer']['attrs'], 'the footer is marked for the mail pass');
 	pg_assert_same(null, $got['unknown'], 'an unknown type draws nothing');
 	pg_assert_same(array('semantic', 'table'), $got['blocks']['mail-frame']['root'], 'the frame is a table');
 	pg_assert_same(array('semantic', 'div'), $got['blocks']['mail-intro']['root'], 'a part is one group');
@@ -164,4 +166,35 @@ function test_email_designs_offer_nothing_a_mail_cannot_carry()
 	pg_assert_contains('pg-campaign-phone disabled" aria-disabled="true"', $card, 'no phone preview before a page is chosen');
 	pg_assert_contains('id="body_preview_phone" disabled>', $card, 'its switch waits too');
 	pg_assert_false(strpos(pg_campaign_content_card(array('mode' => 'add', 'preview' => 'x.html')), 'aria-disabled="true"') !== false, 'a chosen page has it');
+}
+
+function test_email_designs_footer_is_filled_when_stored()
+{
+	$html = '<div data-pg-mail-footer=""><p><a style="color:#6c757d" href="https://shop.example/#pgmail-web">Web</a></p>'
+		. '<p class="x" data-pg-mail-address="">Your address</p>'
+		. '<p><a href="https://shop.example/?t=abc#pgmail-preferences">Preferences</a> <a href=\'#pgmail-unsubscribe\'>Unsubscribe</a></p></div>'
+		. '<a href="https://shop.example/sale">Sale</a>';
+	$out = pg_mail_footer_fill($html, 'https://shop.example/v?r=<reference_code></reference_code>', 'https://shop.example/p?id=<email_address_id></email_address_id>', 'Acme & Co, Main St 1');
+
+	pg_assert_contains('href="https://shop.example/v?r=<reference_code></reference_code>">Web', $out, 'the web version');
+	pg_assert_contains('href="https://shop.example/p?id=<email_address_id></email_address_id>">Preferences', $out, 'preferences, its tracking code gone');
+	pg_assert_contains('href="https://shop.example/p?id=<email_address_id></email_address_id>">Unsubscribe', $out, 'unsubscribe');
+	pg_assert_contains('<p class="x" data-pg-mail-address="">Acme &amp; Co, Main St 1</p>', $out, 'the address, escaped');
+	pg_assert_contains('href="https://shop.example/sale"', $out, 'other links stay');
+	pg_assert_same('plain', pg_mail_footer_fill('plain', 'a', 'b', 'c'), 'nothing to fill');
+}
+
+function test_email_designs_footer_address_skips_empty_parts()
+{
+	pg_assert_same('Acme, Main St 1, Ankara 06000 Türkiye', pg_mail_footer_address(array('name' => 'Acme', 'address_1' => 'Main St 1', 'city' => 'Ankara', 'zip_code' => '06000', 'country' => 'Türkiye')), 'the empty parts left out');
+	pg_assert_same('', pg_mail_footer_address(null), 'nothing');
+}
+
+function test_email_designs_check_line_for_ordinary_blocks()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains('_sdMailCheckIssues(root).forEach(function (mi) { issues.push(mi); });', $js, 'the validation runs it');
+	pg_assert_contains("if (!root || !root.props || !root.props.pgEmail) return out;", $js, 'only in an e-mail design');
+	pg_assert_contains("rule: 'mail_block',", $js, 'its own rule');
 }

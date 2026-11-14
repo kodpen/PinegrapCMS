@@ -111,6 +111,62 @@ StyleDesigner.registerBlockFamily(function (kit) {
                 text()
             ]);
         },
+        // The sender's logo and one line under it.
+        'mail-header': function () {
+            return mail('div', 'header', _sdT('E-mail header'), [
+                mail('img', 'logo', _sdT('Logo'), [], {
+                    src: 'https://picsum.photos/seed/pglogo/320/96', alt: _sdT('Your logo'),
+                    _attrs: [{ name: 'width', value: '160' }]
+                }),
+                mail('p', 'text', _sdT('Text'), [], { text: _sdT('News from our shop') }),
+                mail('hr', 'divider', _sdT('Divider'))
+            ]);
+        },
+        // A greeting with the recipient's name as a merge field, filled per
+        // recipient when the campaign is sent (replace_variables()).
+        'mail-greeting': function () {
+            return group(_sdT('Greeting'), [
+                mail('p', 'text', _sdT('Greeting'), [], { text: _sdT('Hello ^^first_name^^,') }),
+                text(),
+                text()
+            ]);
+        },
+        // A product the designer fills in: picture, name, price, a button.
+        'mail-product': function () {
+            return mail('div', 'product', _sdT('Product card'), [
+                mail('img', 'picture', _sdT('Product picture'), [], {
+                    src: 'https://picsum.photos/seed/pgproduct/600/600', alt: _sdT('Product name'),
+                    _attrs: [{ name: 'width', value: '240' }]
+                }),
+                mail('h2', 'heading', _sdT('Product name'), [], { text: _sdT('Product name') }),
+                mail('p', 'price', _sdT('Price'), [], { text: _sdT('Price') }),
+                mail('p', 'button_row', _sdT('Button'), [
+                    mail('a', 'button', _sdT('Button link'), [], { text: _sdT('See the product'), href: '/', target: '' })
+                ])
+            ]);
+        },
+        // The footer every campaign needs: the web version, the sender's
+        // address and the preferences and unsubscribe links. Its links and
+        // the address are filled when the campaign is stored
+        // (pg_mail_footer_fill()); with it the fixed footer is left out.
+        'mail-footer': function () {
+            var link = function (name, label, anchor) {
+                return mail('a', 'footer_link', name, [], { text: label, href: '#' + anchor, target: '' });
+            };
+            return mail('div', 'footer', _sdT('E-mail footer'), [
+                mail('p', 'footer_text', _sdT('Web version'), [
+                    link(_sdT('Web version link'), _sdT('View this email at our site'), 'pgmail-web')
+                ]),
+                mail('p', 'footer_text', _sdT('Address'), [], {
+                    text: _sdT('Your organization\'s name and address are written here when the campaign is saved.'),
+                    _attrs: [{ name: 'data-pg-mail-address', value: '' }]
+                }),
+                mail('p', 'footer_text', _sdT('Preferences'), [
+                    link(_sdT('Preferences link'), _sdT('Update email preferences'), 'pgmail-preferences'),
+                    link(_sdT('Unsubscribe link'), _sdT('Unsubscribe'), 'pgmail-unsubscribe')
+                ])
+            ], { _attrs: [{ name: 'data-pg-mail-footer', value: '' }] });
+        },
         'mail-columns': function () {
             return mail('table', 'columns', _sdT('Two columns'), [
                 plain('tbody', [plain('tr', [column(1), column(2)])])
@@ -134,6 +190,14 @@ StyleDesigner.registerBlockFamily(function (kit) {
               desc: _sdT('A picture the width of the frame, with a text read in its place while pictures are held back, then a heading and text.') },
             { label: _sdT('E-mail: Section Break'), type: 'component', icon: 'bi-dash-lg', extra: { componentType: 'mail-break' },
               desc: _sdT('A thin line, then the heading and text of the next part of the e-mail.') },
+            { label: _sdT('E-mail: Header'), type: 'component', icon: 'bi-window', extra: { componentType: 'mail-header' },
+              desc: _sdT('The sender\'s logo with one line and a thin line under it.') },
+            { label: _sdT('E-mail: Greeting'), type: 'component', icon: 'bi-person-raised-hand', extra: { componentType: 'mail-greeting' },
+              desc: _sdT('Hello and the recipient\'s first name, filled for each recipient when the campaign is sent, then two paragraphs.') },
+            { label: _sdT('E-mail: Product Card'), type: 'component', icon: 'bi-bag', extra: { componentType: 'mail-product' },
+              desc: _sdT('A product\'s picture, name, price and a button to its page, written in by hand.') },
+            { label: _sdT('E-mail: Footer'), type: 'component', icon: 'bi-layout-text-window', extra: { componentType: 'mail-footer' },
+              desc: _sdT('The web version link, your address and the unsubscribe links, filled when the campaign is saved in place of the fixed footer.') },
             { label: _sdT('E-mail: Two Columns'), type: 'component', icon: 'bi-layout-split', extra: { componentType: 'mail-columns' },
               desc: _sdT('Two columns side by side that stack on a phone.') }
         ],
@@ -143,6 +207,10 @@ StyleDesigner.registerBlockFamily(function (kit) {
             if (ctype === 'mail-button') return builders['mail-button']();
             if (ctype === 'mail-picture') return builders['mail-picture']();
             if (ctype === 'mail-break') return builders['mail-break']();
+            if (ctype === 'mail-header') return builders['mail-header']();
+            if (ctype === 'mail-greeting') return builders['mail-greeting']();
+            if (ctype === 'mail-product') return builders['mail-product']();
+            if (ctype === 'mail-footer') return builders['mail-footer']();
             if (ctype === 'mail-columns') return builders['mail-columns']();
             return null;
         }

@@ -6,7 +6,7 @@ module: audit_rules
 
 ## What is it?
 - `pg_audit_rules()`: concept → `seo` code, `a11y` code, `severity` per scope (`seo`, `a11y`), WCAG `criterion` and `level` (with an a11y code only), `editor` rule ids of `validateTree()` in `style_designer.src.js`, `document` (the scopes in which only a whole page is judged), `browser` (only a browser measures it in full: contrast, target size).
-- Accessibility rows come first, in the report's checklist order; then SEO-only rows, then editor-only rows (`dup_id`, `nested_interactive`, `form_no_submit`, `form_no_action`, `cf_field_unnamed`, `redundant_entry`).
+- Accessibility rows come first, in the report's checklist order; then SEO-only rows, then editor-only rows (`dup_id`, `nested_interactive`, `form_no_submit`, `form_no_action`, `cf_field_unnamed`, `redundant_entry`, `mail_block`).
 - One editor id may serve two concepts: `empty_btn` is `link_name` and `button_name`.
 - Lookups: `pg_audit_rule_concept($scope, $code)`, `pg_audit_rule_concepts_of_editor($id)`.
 
