@@ -28117,11 +28117,23 @@ body.pg-measure-report #content {
   align-self: center;
   flex-shrink: 0;
 }
-/* The pages offered as copies, under the ready designs; split from them by
-   the card's line. */
-.pg-email-copies {
+/* The card's parts (one's own designs, the ready designs, the copies) are
+   split by the card's line, each the same way. */
+.pg-email-part + .pg-email-part {
   border-top: 1px solid var(--pg-border-color-translucent);
   padding-top: 8px;
+}
+/* The copies past the first five of each kind: the summary is the button,
+   gone once the rest is open. */
+.pg-email-copies-more > summary {
+  margin: 4px 12px 8px 51px;
+  list-style: none;
+}
+.pg-email-copies-more > summary::-webkit-details-marker {
+  display: none;
+}
+.pg-email-copies-more[open] > summary {
+  display: none;
 }
 .pg-email-copies > .pg-card-sub {
   margin: 0 12px 4px;

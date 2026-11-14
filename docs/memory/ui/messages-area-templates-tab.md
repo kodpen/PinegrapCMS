@@ -13,6 +13,7 @@ module: messages_templates
 - Its line: not upgraded, a demo site, WhatsApp not set up, or "Read from Meta every six hours, last …". A failed last read is a rose row with Meta's error. Refresh (role <= 2, set up, not demo) posts `templates_action=whatsapp_refresh` to the tab: `pg_whatsapp_templates_refresh()`, at most 30 an hour per site; a notice counts added, updated, removed. Without Refresh, role <= 2 gets "WhatsApp settings".
 - "E-mail designs" card (MA5d): the five ready designs with previews and "Use this design", then the site's own designs (`designer/email-designs-ready.md`).
 - For role <= 1, under the ready designs, "Copy an e-mail you have": the template's e-mail pages and earlier campaigns' pages, each a row with "From the template" or "From a campaign" and "Make a copy" (`designer/email-designs-copies.md`, MA5d2 #9542). A row's button is the `action` of `pg_messages_template_row()`.
+- Five copies of each kind show, the rest behind "Show all (n)". The card's parts (own designs, ready designs, copies) are each a `.pg-email-part`, split by the same line (architect, channel 3386).
 - `.pg-messages-card` (padding, head with the button at its right, rows split by a line) in `backend.src.css` only places the recipes; `.pg-card` has no padding of its own, so a card without it puts its title on the border (one of #9295's faults).
 
 ## What is still to come?

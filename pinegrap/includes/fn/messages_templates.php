@@ -318,6 +318,17 @@ function pg_messages_template_email_rows(array $pages)
 }
 
 /**
+ * How many copies of each kind (template, campaign) the E-mail designs card
+ * shows before "Show all (n)".
+ *
+ * @return int
+ */
+function pg_messages_template_copies_shown()
+{
+    return 5;
+}
+
+/**
  * The E-mail designs card: the ready designs, each with a preview of the
  * mail as it is sent and, for a designer, "Use this design", which opens
  * it as a new e-mail design; then the site's own designs.
@@ -359,11 +370,16 @@ function pg_messages_template_email_card(array $own, $designs, $self, array $cop
     }
 
     $grid = '<div class="pg-email-ready-grid">' . $ready . '</div>';
+    $copies_part = '';
 
     // The template's e-mail pages and earlier campaigns' pages, each opened
-    // as a copy: a new e-mail design, the page itself left as it is.
+    // as a copy: a new e-mail design, the page itself left as it is. The
+    // newest five of each kind show; the rest wait behind "Show all (n)", so
+    // a site with many campaigns keeps the card short.
     if ($designs && $copies) {
-        $list = '';
+        $shown = '';
+        $more = '';
+        $per_kind = array();
 
         foreach ($copies as $copy) {
             $from = ($copy['kind'] === 'template') ? lang('From the template') : lang('From a campaign');
@@ -372,7 +388,7 @@ function pg_messages_template_email_card(array $own, $designs, $self, array $cop
                 $from .= ' · ' . get_relative_time(array('timestamp' => (int) $copy['stamp'], 'format' => 'plain_text'));
             }
 
-            $list .= pg_messages_template_row(array(
+            $row = pg_messages_template_row(array(
                 'icon' => ($copy['kind'] === 'template') ? 'bi-palette' : 'bi-send',
                 'tone' => ($copy['kind'] === 'template') ? 'violet' : 'teal',
                 'title' => (string) $copy['title'],
@@ -385,35 +401,56 @@ function pg_messages_template_email_card(array $own, $designs, $self, array $cop
                 'pill_tone' => 'gray',
                 'action' => '<a class="pg-button pg-button-quiet pg-button-sm" target="_blank" rel="noopener" href="add_system_style.php?start=email&amp;copy=' . (int) $copy['page_id'] . '"><i class="bi bi-copy" aria-hidden="true"></i>' . h(lang('Make a copy')) . '</a>',
             ));
+            $kind = (string) $copy['kind'];
+            $per_kind[$kind] = isset($per_kind[$kind]) ? $per_kind[$kind] + 1 : 1;
+
+            if ($per_kind[$kind] <= pg_messages_template_copies_shown()) {
+                $shown .= $row;
+            } else {
+                $more .= $row;
+            }
         }
 
-        $grid .= '<div class="pg-email-copies">'
+        if ($more !== '') {
+            $shown .= '<details class="pg-email-copies-more">'
+                . '<summary class="pg-button pg-button-quiet pg-button-sm">' . h(lang(array('string' => 'Show all ({var:1})', 'vars' => array(count($copies))))) . '</summary>'
+                . $more . '</details>';
+        }
+
+        $copies_part = '<div class="pg-email-part pg-email-copies">'
             . '<h3 class="pg-field-label pg-email-own-title">' . h(lang('Copy an e-mail you have')) . '</h3>'
             . '<p class="pg-card-sub">' . h(lang('A copy opens as a new e-mail design in your site\'s colours; the page it comes from stays as it is.')) . '</p>'
-            . $list . '</div>';
+            . $shown . '</div>';
     }
 
-    // None of one's own yet: the ready designs, then the line saying so.
+    // None of one's own yet: the ready designs and the copies, then the line
+    // saying so. The card's parts are split by the same line.
     if ($rows === '') {
         return pg_messages_template_card(
             lang('E-mail designs'),
             lang('Start a campaign\'s e-mail from a ready design; your own designs follow.'),
             '',
-            $grid
+            '<div class="pg-email-part">' . $grid . '</div>'
+                . $copies_part
+                . '<div class="pg-email-part">'
                 . '<h3 class="pg-field-label pg-email-own-title">' . h(lang('Your e-mail designs')) . '</h3>'
                 . '<p class="pg-card-sub pg-email-ready-none">' . h(lang('No e-mail designs of your own yet: start one from a ready design.')) . '</p>'
+                . '</div>'
         );
     }
 
     // With designs of one's own, those come first: they are what a campaign
-    // is sent with; the ready designs follow to start a new one.
+    // is sent with; the ready designs and the copies follow to start a new one.
     return pg_messages_template_card(
         lang('E-mail designs'),
         lang('Your own designs first, then the ready designs to start a new one from.'),
         '',
-        '<h3 class="pg-field-label pg-email-own-title">' . h(lang('Your e-mail designs')) . '</h3>'
-            . $rows
+        '<div class="pg-email-part">'
+            . '<h3 class="pg-field-label pg-email-own-title">' . h(lang('Your e-mail designs')) . '</h3>'
+            . $rows . '</div>'
+            . '<div class="pg-email-part">'
             . '<h3 class="pg-field-label pg-email-own-title pg-email-ready-title">' . h(lang('Ready designs')) . '</h3>'
-            . $grid
+            . $grid . '</div>'
+            . $copies_part
     );
 }

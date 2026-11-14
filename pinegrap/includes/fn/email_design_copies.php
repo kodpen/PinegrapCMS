@@ -169,7 +169,7 @@ function pg_email_design_copy_source($page_id)
  * @param int $limit at most this many of each kind
  * @return array of page_id, title, kind (template, campaign), stamp
  */
-function pg_email_design_copy_list($limit = 8)
+function pg_email_design_copy_list($limit = 20)
 {
     $out = array();
     $seen = array();

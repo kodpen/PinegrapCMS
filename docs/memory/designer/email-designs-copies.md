@@ -5,7 +5,7 @@ module: email_design_copies
 ---
 
 ## Which pages are offered?
-- `pg_email_design_copy_list()` (`includes/fn/email_design_copies.php`), at most eight of each kind, on the Templates tab's E-mail designs card for role <= 1 (`ui/messages-area-templates-tab.md`).
+- `pg_email_design_copy_list()` (`includes/fn/email_design_copies.php`), at most twenty of each kind, on the Templates tab's E-mail designs card for role <= 1 (`ui/messages-area-templates-tab.md`). The card shows the newest five of each kind (`pg_messages_template_copies_shown()`), the rest behind "Show all (n)", a `<details>` in the same list (architect, channel 3386).
 - The template's: for each design with `style.style_template` (the ten newest), the template's e-mail pages (`pg_design_template_email_pages()`) found among the design's pages by the name the template gives, or that name numbered when it was taken (`pg_email_design_template_matches()`, pure). The name is the template's in the current language: a site installed in another language finds none.
 - The campaigns': the pages of manual campaigns (`email_campaigns.page_id > 0`), the latest used first, each once under its latest campaign's subject.
 
