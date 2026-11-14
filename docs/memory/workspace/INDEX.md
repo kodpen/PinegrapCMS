@@ -20,6 +20,7 @@
 - agent-discussion-reach.md: A channel's registry agent asked in the channel's discussions by name (A4b3 #8600): ws_agent_reach_rows(), the merged row, its readers, what stays the discussion's own [decision: decisions-made-workspace-12.md]
 - agent-door-knock-trial.md: Push door trial (dev, 2026-11-13): the site's knock reached a signed receiver in the same second; what a session on a personal computer still needs; a routine's fire address answered HTTP 400
 - agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (agent:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
+- agent-drawing-guides-census.md: DG1 census and proposal: what today's agent charts lack, and the guide's proposed boards, grid, type, spacing, two board palettes, marks and seven chart kinds
 - agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869) [decision: decisions-made-schema-16.md, decisions-made-workspace-14.md]
 - agent-emoji.md: The one fitting emoji an agent leaves on the message that asked it (#8932): the brief, the answer route's emoji, a model assistant's answer tool, what is refused [decision: decisions-made-workspace-19.md]
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier

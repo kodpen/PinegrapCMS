@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>agent drawing guides: the guide sheet (boards, grid, type, spacing, palette, marks)</title>
+<script>if (location.search.indexOf('light') > -1) document.documentElement.setAttribute('data-theme', 'light');</script>
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js"></script>
+</head>
+<body>
+<div class="stage" style="width:1340px">
+  <div class="cap" style="margin-bottom:24px"><b>Ajanın çizim rehberi (öneri)</b>Ajanın okuduğu tek metin bu değerlerden yazılır; grafik işlemi (DG3) ve hazır düzenler (DG4) de aynı değerlerle çizer. Değerler panelin kendi ölçülerinden ve renklerinden gelir.</div>
+
+  <div class="sect">1 · Tahta boyları<small>Varsayılan: Kart 1200 × 675. Ölçek = kısa kenar ÷ 675; aşağıdaki bütün piksel ölçüleri (yazı, boşluk, çizgi) bu ölçekle çarpılır. Kutucuk ve şerit kendi değerleriyle çizilir.</small></div>
+  <div class="card"><div class="presets" id="presets"></div></div>
+
+  <div class="sect">2 · Izgara ve bölgeler<small>12 sütun, kenar boşluğu 48, sütun arası 24, taban birimi 8. Başlık sol üstte, alt başlık altında, lejant onun altında; çizim alanı kalan yer; kaynak notu en altta. Her şey sola yaslı, ortalanmış başlık yok.</small></div>
+  <div style="display:flex;gap:32px;align-items:flex-start">
+    <div class="board" style="width:720px" id="gridboard"></div>
+    <div class="card" style="flex:1"><table class="vals" id="gridvals"></table></div>
+  </div>
+
+  <div class="sect">3 · Yazı ölçeği<small>Tek yazı ailesi: Inter (<code>g:Inter</code>, yoksa <code>sans</code>). Editör kalınlığı 300 · 400 · 600 · 700 · 900'e yuvarlar; panelin 550/650'si burada 600/700 olur. Kart tahtası kanalda yarı boyda görünür: en küçük yazı 16 (ekranda 8 değil, 9 px ve üstü olsun diye eksen 18).</small></div>
+  <div class="card"><table class="vals" id="type" style="width:100%"></table></div>
+
+  <div class="sect">4 · Boşluk<small>Yalnız 8'in katları. Başlık–alt başlık 8, alt başlık–lejant 24, lejant–çizim 40, çizim–kaynak 24, kutucuklar arası 24.</small></div>
+  <div class="card"><div id="space" style="display:flex;gap:28px;align-items:flex-end"></div></div>
+
+  <div class="sect">5 · Renkler: koyu ve açık tahta<small>Seri renkleri panelin tonlarından (mavi, deniz yeşili, mor, kehribar, gül) sırası sabit; koyu tahtada aynı tonlar parlaklığı eşitlenerek bir adım yumuşatıldı. İki takım da renk körlüğü ve karşıtlık denetiminden geçti (ΔE ≥ 10, yüzeye karşı ≥ 3:1). Yazı hiçbir zaman seri renginde değil; yukarı/aşağı yalnız değişim rakamında, okla birlikte.</small></div>
+  <div style="display:flex;gap:32px" id="pal"></div>
+
+  <div class="sect">6 · İşaretler<small>Veri tek gürültülü şey; ızgara ve eksen geri planda.</small></div>
+  <div class="card"><table class="vals" id="marks" style="width:100%"></table></div>
+</div>
+<script>
+var dark = document.documentElement.getAttribute('data-theme') !== 'light', P = dark ? G.dark : G.light;
+var pr = [['Kart', 1200, 675, 'Kanalda grafik, rapor kartı', 1], ['Slayt', 1920, 1080, 'Sunum, geniş rapor'], ['Kare', 1080, 1080, 'Gönderi görseli'], ['Dikey', 1080, 1350, 'Gönderi 4:5'], ['Hikâye', 1080, 1920, '9:16'], ['Kutucuk', 600, 360, 'Tek rakam'], ['Şerit', 600, 120, 'Kıvılcım satırı']];
+document.getElementById('presets').innerHTML = pr.map(function (p) { return '<div class="preset"><i class="' + (p[4] ? 'on' : '') + '" style="width:' + p[1] / 9 + 'px;height:' + p[2] / 9 + 'px"></i><span><b>' + p[0] + '</b>' + p[1] + ' × ' + p[2] + ' · ' + p[3] + '<br>ölçek ' + (Math.min(p[1], p[2]) / 675).toFixed(2).replace('.', ',') + '</span></div>'; }).join('');
+
+(function () { var w = 1200, h = 675, m = 48, g = 24, cw = (w - 2 * m - 11 * g) / 12, a = dark ? '#6aa5ff' : '#2f6fed', s = '<rect width="' + w + '" height="' + h + '" fill="' + P.bg + '"/>';
+  for (var i = 0; i < 12; i++) s += '<rect x="' + (m + i * (cw + g)) + '" y="' + m + '" width="' + cw + '" height="' + (h - 2 * m) + '" fill="' + gMix(a, P.bg, 0.07) + '"/>';
+  var z = [['Başlık 44/700', m, m, 1104, 48], ['Alt başlık 24/400', m, m + 56, 1104, 28], ['Lejant 20/600', m, m + 108, 1104, 24], ['Çizim alanı', m, 212, 1104, 371], ['Kaynak 16/400', m, 607, 1104, 20]];
+  z.forEach(function (r) { s += '<rect x="' + r[1] + '" y="' + r[2] + '" width="' + r[3] + '" height="' + r[4] + '" fill="none" stroke="' + a + '" stroke-width="2" stroke-dasharray="8 6"/>' + gText(r[1] + 12, r[2] + Math.min(r[4], 30) / 2 + 9, r[0], 20, 600, a); });
+  s += '<rect x="0" y="0" width="' + m + '" height="' + h + '" fill="' + gMix(a, P.bg, 0.16) + '"/>' + gText(24, 340, '48', 18, 600, P.ink2, 'middle');
+  s += gText(m + cw + g / 2, 650, '24', 16, 600, P.ink2, 'middle') + gText(m + cw / 2, 650, Math.round(cw) + '', 16, 600, P.ink2, 'middle');
+  document.getElementById('gridboard').innerHTML = gBoard({ w: w, h: h, dw: 720 }, s, P);
+  document.getElementById('gridvals').innerHTML = '<tr><th>Ölçü</th><th>Kart (ölçek 1)</th><th>Slayt (1,6)</th></tr>' + [['Kenar boşluğu', 48], ['Sütun arası', 24], ['Sütun', 70], ['Taban birimi', 8], ['Eksen yazı payı', 64], ['Köşe (çubuk ucu)', 6], ['Çizgi', 3], ['Yüzey boşluğu', 2]].map(function (r) { return '<tr><td>' + r[0] + '</td><td class="n">' + r[1] + '</td><td class="n">' + Math.round(r[1] * 1.6) + '</td></tr>'; }).join(''); })();
+
+var ty = [['Başlık', 44, 700, 'ink', 'Bu haftanın satışları'], ['Büyük rakam', 72, 700, 'ink', '₺159.400'], ['Alt başlık', 24, 400, 'ink2', 'Günlük ciro, ₺'], ['Etiket, lejant, değer', 20, 600, 'ink2', 'Kredi kartı · 31,2 B'], ['Eksen', 18, 400, 'ink3', '0   10 B   20 B   30 B'], ['Kaynak notu', 16, 400, 'ink3', 'Kaynak: Siparişler · 8–14 Kasım']];
+document.getElementById('type').innerHTML = '<tr><th>Rol</th><th>Boy / kalınlık</th><th>Renk</th><th>Örnek (yarı boyda, kanalda göründüğü gibi)</th></tr>' + ty.map(function (t) { return '<tr><td>' + t[0] + '</td><td class="n">' + t[1] + ' / ' + t[2] + '</td><td class="n"><span class="gsw" style="background:' + P[t[3]] + '"></span>' + t[3] + '</td><td style="font-size:' + t[1] / 2 + 'px;font-weight:' + t[2] + ';color:' + P[t[3]] + ';background:' + P.bg + ';line-height:1.3">' + t[4] + '</td></tr>'; }).join('');
+
+document.getElementById('space').innerHTML = [8, 16, 24, 32, 40, 48, 64].map(function (v) { return '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;color:var(--fg2)"><i style="display:block;width:' + v + 'px;height:' + v + 'px;border-radius:4px;background:color-mix(in srgb,var(--accent) 28%,transparent);box-shadow:inset 0 0 0 1px var(--accent)"></i>' + v + '</div>'; }).join('');
+
+document.getElementById('pal').innerHTML = [['Koyu tahta', G.dark], ['Açık tahta', G.light]].map(function (b) { var Q = b[1], rows = [['Yüzey', Q.bg], ['Yazı 1', Q.ink], ['Yazı 2', Q.ink2], ['Yazı 3', Q.ink3], ['Izgara', Q.grid], ['Taban çizgisi', Q.base]].concat(Q.series.map(function (c, i) { return ['Seri ' + (i + 1), c]; })).concat([['Diğer', Q.other], ['Yukarı', Q.up], ['Aşağı', Q.down]]);
+  var chart = gBars({ dw: 620, title: 'Kanala göre siparişler', sub: 'Beş seri, yığılmış', legend: ['Site', 'Trendyol', 'Hepsiburada', 'Amazon', 'Mağaza'], labels: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'], series: [[42, 51, 47, 58, 66, 61, 38], [18, 22, 25, 21, 30, 34, 26], [12, 14, 10, 16, 19, 15, 12], [8, 9, 11, 10, 13, 12, 9], [6, 5, 7, 9, 8, 11, 6]], mark: 4 }, Q, true);
+  return '<div class="fig" style="flex:1"><div class="cap"><b>' + b[0] + '</b></div><div class="board" style="width:620px">' + chart + '</div><div class="card"><table class="vals" style="width:100%">' + rows.map(function (r) { return '<tr><td><span class="gsw" style="background:' + r[1] + '"></span>' + r[0] + '</td><td class="n">' + r[1] + '</td></tr>'; }).join('') + '</table></div></div>'; }).join('');
+
+document.getElementById('marks').innerHTML = '<tr><th>İşaret</th><th>Kural (Kart ölçeğinde)</th></tr>' + [
+  ['Çubuk', 'En çok 40 kalın ve bandın %56\'sı; veri ucu 6 yuvarlak, taban düz; tek tabandan büyür'],
+  ['Yan yana / yığılmış çubuk', 'Seriler arası 4; yığında parçalar arası 2 yüzey boşluğu; çevre çizgisi yok'],
+  ['Çizgi', '3 kalın, yuvarlak birleşim; uçta 6 yarıçaplı nokta, 3 yüzey halkası, yanında son değer'],
+  ['Alan', 'Seri renginin %14\'ü yüzeyle karışık düz renk (saydamlık yok)'],
+  ['Halka', 'Dış 190, iç 128; dilimler arası ince boşluk; ortada toplam; en çok beş dilim, artanı "Diğer"'],
+  ['Izgara ve eksen', 'Yalnız yatay, 1 kalın, düz (kesikli değil); taban çizgisi 2; 4–5 yuvarlak adım (0 · 10 B · 20 B)'],
+  ['Değer yazısı', 'Seçerek: öne çıkan çubuk, çizginin ucu; her noktaya sayı yok'],
+  ['Lejant', 'İki ve üstü seride her zaman; tek seride yok (başlık söyler)'],
+  ['Sayılar', 'Türkçe biçim: 31.200 · 31,2 B · 12,4 %; ₺ önde']
+].map(function (r) { return '<tr><td>' + r[0] + '</td><td style="white-space:normal;color:var(--fg2)">' + r[1] + '</td></tr>'; }).join('');
+</script>
+</body>
+</html>
