@@ -6,7 +6,7 @@ module: campaign_profile_flow
 
 ## Where is it?
 - `includes/fn/campaign_profile_flow.php`: pure `pg_profile_flow_*()` functions; `pg_profile_flow_facts()` and `pg_profile_flow_dry_run()` read the rows (nothing written) and need the Workspace's flow modules loaded.
-- `php tools/campaign_profile_flow_report.php [--json]`: prints the report of the site its checkout's `data/config.php` names (a copy of a running site for the owner's look). MA9e writes the same lines into its result in the panel.
+- `php tools/campaign_profile_flow_report.php [--json]`: prints the report of the site its checkout's `data/config.php` names (a copy of a running site for the owner's look). Starts like `job.php`, `HTTP_HOST` unset: set, a Secure Mode site redirected it and nothing printed (MA9d2). MA9e writes the same lines into its result in the panel.
 - Tests: `tests/campaign_profile_flow_test.php` (each built graph passes `ws_flow_graph_check()`; the starting sites' profiles as worked out by hand).
 
 ## Which box does a profile become?
@@ -21,9 +21,11 @@ module: campaign_profile_flow
 - A follower of a gone profile, or followers in a ring, send nothing today: listed, never converted.
 
 ## Owner and limits?
-- `pg_profile_flow_owner()`: the head's creator while enabled, role 0-2 and holding the event's right (`ws_events_catalog()` right), else the first enabled role 0 account, with the reason.
+- `pg_profile_flow_owner()`: the head's creator while enabled and an administrator (role 0, no reason given), or role 1-2 holding the event's right (`ws_events_catalog()` right), else the first enabled role 0 account, with the reason.
+- The right is read from `ws_change_viewer_for_id()` (`ws_viewer()`: ecommerce, contacts…), never `ws_rights_for_id()` (workspace rights only: every creator read "lacks the right the start needs", MA9d2).
 - `pg_profile_flow_limit_reason()`: the head's busiest hour of 30 days over 80% of min(`WS_FLOW_STARTS_HOURLY`, `WS_SCHEDULED_CHAIN_HOURLY`), or open runs (`pg_profile_flow_open_runs()`: 30 days' campaigns spread per minute × the chain's waits added up, a send time counted as a day) over 80% of `WS_FLOW_MAX_OPEN_RUNS`.
 
 ## What does the report say?
 - `pg_profile_flow_report_lines()`: counts; per flow its name, state (a disabled head: paused), owner and why it changed, one line per box (`pg_profile_flow_box_line()`), per profile its last 30 days (automatic campaigns, busiest hour, ready or paused ones left to the campaign job, for commercial the recipients no contact holds); per profile left its name, action, state and reason.
+- A box line names the start by its `ws_events_catalog()` label, as the flow screen does (facts `events`); a Wait length as "1 day", "3 days", "1 hour" (`pg_profile_flow_length_text()`, the flow screen's keys).
 - Sandbox check (2026-11-14, `turkish_default`): "Kargo Yola Çıktı" becomes a paused flow, "Sipariş Yardımı" stays (no start), as [[campaign-profile-flow-dry-run]] worked out by hand.
