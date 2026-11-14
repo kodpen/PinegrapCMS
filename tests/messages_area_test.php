@@ -44,6 +44,13 @@ function test_messages_area_tabs_by_role()
 	pg_assert_same(array('campaigns', 'automatic', 'templates', 'sends'), pg_messages_tabs_for_user(array('role' => '3', 'manage_emails' => '1')), 'a database row');
 }
 
+function test_messages_area_mail_door_keeps_the_words()
+{
+	pg_assert_same('messages_mail.php', pg_messages_mail_door(array()), 'the bare address');
+	pg_assert_same('messages_mail.php?view=all&box=3&conversation=12', pg_messages_mail_door(array('view' => 'all', 'box' => '3', 'conversation' => '12')), 'a conversation of a box');
+	pg_assert_same('messages_mail.php?q=a%20b', pg_messages_mail_door(array('q' => 'a b', 'x' => array('1'), 'e' => '')), 'a list and an empty word are dropped');
+}
+
 function test_messages_area_unknown_gate_refuses()
 {
 	pg_assert_false(pg_messages_gate_allows('other', 0, true), 'an unknown gate admits nobody');

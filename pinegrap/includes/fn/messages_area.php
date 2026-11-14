@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The Communication area of the panel (main menu row 9 under Marketing):
- * its five tabs, who may open each, the tab strip every tab screen prints
+ * its tabs (Incoming e-mail and the five of the messages), who may open each, the tab strip every tab screen prints
  * under its heading, the menu row's panel and the rows that lead from a tab
  * to the screen where its job is done today.
  *
@@ -25,15 +25,18 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The five tabs in their order. 'gate' names the rule the tab's screen asks:
- * 'email' is validate_email_access() (role <= 2 or the Campaign Manager
- * right), 'manager' is role <= 2. Labels are English; the strip translates.
+ * The tabs in their order. 'gate' names the rule the tab's screen asks:
+ * 'mail' is ws_mail_list_visible() (a mailbox writes where the person reads,
+ * whatever their campaign rights), 'email' is validate_email_access() (role
+ * <= 2 or the Campaign Manager right), 'manager' is role <= 2. Labels are
+ * English; the strip translates.
  *
  * @return array key => array(file, label, icon, gate)
  */
 function pg_messages_area_tabs()
 {
     return array(
+        'mail'      => array('file' => 'messages_mail.php', 'label' => 'Incoming e-mail', 'icon' => 'bi-envelope', 'gate' => 'mail'),
         'campaigns' => array('file' => 'view_email_campaigns.php', 'label' => 'Campaigns', 'icon' => 'bi-megaphone', 'gate' => 'email'),
         'automatic' => array('file' => 'messages_automatic.php', 'label' => 'Automatic sends', 'icon' => 'bi-diagram-3', 'gate' => 'email'),
         'templates' => array('file' => 'messages_templates.php', 'label' => 'Templates', 'icon' => 'bi-card-text', 'gate' => 'email'),
@@ -45,14 +48,19 @@ function pg_messages_area_tabs()
 /**
  * Whether a person passes a tab's gate.
  *
- * @param string $gate          'email' or 'manager'
+ * @param string $gate          'mail', 'email' or 'manager'
  * @param int    $role          0 administrator to 3 user
  * @param bool   $manage_emails the Campaign Manager right
+ * @param bool   $mail          the person reads a mailbox (ws_mail_list_visible())
  * @return bool
  */
-function pg_messages_gate_allows($gate, $role, $manage_emails)
+function pg_messages_gate_allows($gate, $role, $manage_emails, $mail = false)
 {
     $role = (int) $role;
+
+    if ($gate === 'mail') {
+        return (bool) $mail;
+    }
 
     if ($gate === 'manager') {
         return $role <= 2;
@@ -70,14 +78,15 @@ function pg_messages_gate_allows($gate, $role, $manage_emails)
  *
  * @param int  $role
  * @param bool $manage_emails
+ * @param bool $mail          the person reads a mailbox
  * @return array
  */
-function pg_messages_tabs_for($role, $manage_emails)
+function pg_messages_tabs_for($role, $manage_emails, $mail = false)
 {
     $keys = array();
 
     foreach (pg_messages_area_tabs() as $key => $tab) {
-        if (pg_messages_gate_allows($tab['gate'], $role, $manage_emails)) {
+        if (pg_messages_gate_allows($tab['gate'], $role, $manage_emails, $mail)) {
             $keys[] = $key;
         }
     }
@@ -88,15 +97,71 @@ function pg_messages_tabs_for($role, $manage_emails)
 /**
  * The same for a signed-in user row (validate_user()).
  *
- * @param array $user
+ * @param array     $user
+ * @param bool|null $mail whether they read a mailbox; null asks
+ *                        pg_messages_mail_visible()
  * @return array
  */
-function pg_messages_tabs_for_user($user)
+function pg_messages_tabs_for_user($user, $mail = null)
 {
     $role = isset($user['role']) ? (int) $user['role'] : 3;
     $manage_emails = !empty($user['manage_emails']);
 
-    return pg_messages_tabs_for($role, $manage_emails);
+    if ($mail === null) {
+        $mail = pg_messages_mail_visible($user);
+    }
+
+    return pg_messages_tabs_for($role, $manage_emails, $mail);
+}
+
+/**
+ * Whether the signed-in person may open Incoming e-mail: the Workspace is on
+ * and installed, they are on its team and a mailbox writes where they read
+ * (ws_mail_list_visible(), the rule the Workspace's E-mails entry asked).
+ * Asked once a request; the Workspace's files load only when it is on.
+ *
+ * @param array $user validate_user()
+ * @return bool
+ */
+function pg_messages_mail_visible($user)
+{
+    static $seen = array();
+
+    $id = isset($user['id']) ? (int) $user['id'] : 0;
+
+    if ($id <= 0 || !defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
+        return false;
+    }
+
+    if (!isset($seen[$id])) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+        $seen[$id] = ws_ready() && ws_enabled() && function_exists('ws_mail_list_visible')
+            && ws_mail_list_visible(ws_viewer($user));
+    }
+
+    return $seen[$id];
+}
+
+/**
+ * Where the Workspace's old E-mails address (workspace_mail.php) leads:
+ * Incoming e-mail with the same words (conversation, view, filters, page).
+ * Only plain words are carried; a list in the address is dropped. Pure.
+ *
+ * @param array $query the old address's words ($_GET)
+ * @return string relative to the panel
+ */
+function pg_messages_mail_door($query)
+{
+    $keep = array();
+
+    foreach ((array) $query as $key => $value) {
+        if (is_string($key) && is_scalar($value) && ((string) $value !== '')) {
+            $keep[$key] = (string) $value;
+        }
+    }
+
+    return 'messages_mail.php' . ($keep ? '?' . http_build_query($keep, '', '&', PHP_QUERY_RFC3986) : '');
 }
 
 /**
