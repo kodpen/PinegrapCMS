@@ -14,11 +14,11 @@ description: Plan (owner 2026-11-14): what the canvas side gives an agent's draw
 - DG1 (S) Done (#9400). Census, guide sheet and chart kinds drawn (`workspace/agent-drawing-guides-census.md`).
 - DG2 (M) Done (#9457). The guide an agent reads (`workspace/agent-canvas-guide.md`).
 - DG3 (M) Done (#9467). A chart as an operation (`workspace/agent-canvas-chart.md`).
-  - DG3's channel trial changes the data of the chart in message 2725 of channel 25 through the new `chart` operation (that canvas, not a new one): the last bar to 40 and the title marked "düzenlenmiş"; the canvas link and before/after pictures as a reply to 2736 (owner, message 2736).
+  - DG3's channel trial done: the chart in message 2725 of channel 25 redrawn through the `chart` operation (version 2 of that canvas): last bar 40, title "(düzenlenmiş)", bars in the channel's Indigo; reply 3062 under the owner's 2736.
   - Owner (2026-11-14, to the coordinator): "chartlarda birden fazla renk kullanılmayacaksa chart göstergeleri kanalın rengini alabilir mi?" A one-series chart takes the channel's colour, at a tone that reads; several keep the palette; confirmed, decisions list workspace part 27 (`workspace/agent-canvas-chart.md`).
 - DG4 (M) Done (#9464). Ready layouts (`workspace/agent-canvas-layouts.md`): templates shipped with the software (a row of figures with a chart, a report page, a comparison, a slide), listed beside a person's templates and filled by the agent.
 - DG5 (S) Done (#9469). Live pages: Chart.js charts take the guide's palette and type by the preset `chart_guide` (`workspace/agent-page-libraries.md`); one series in its channel's colour (owner, 2026-11-14: "chartlarda birden fazla renk kullanılmayacaksa chart göstergeleri kanalın rengini alabilir mi?"; record `workflow/decisions-made-workspace-27.md`); the line the guide's × 2/3 (owner, message 2955).
-- DG6 (S) Close-out: the rules into `workspace/agent-canvas-*.md`, this plan deleted. One channel-colour contrast check for DG3 and DG5 (`ws_page_chart_guide_tone()`).
+- DG6 (S) Next free step, after DG3, DG4 and DG5 landed. Close-out: the rules into `workspace/agent-canvas-*.md`, this plan and its picture folder deleted. One channel-colour contrast check for DG3 and DG5 (`ws_page_chart_guide_tone()`).
 
 ## What does every step keep?
 - No second tool beside the canvas (owner, 2026-11-11, `workflow/decisions-made-workspace-16.md`); a new operation goes into the route, the MCP tool and `edit_canvas` alike; the limits stay (20 operations a call, a document of 1 MB): a chart is one operation.
