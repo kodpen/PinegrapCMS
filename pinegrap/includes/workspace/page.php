@@ -323,18 +323,239 @@ function ws_page_versions_read($rows, $time = null)
  * site ships, put into the page by the site (ws_page_with_libraries()); a
  * page never loads one from an address. Pure.
  *
- * @return array[] name => path (under the software directory), title
+ * @return array[] name => path (a file under the software directory) or
+ *                 build (a function writing the script), needs (names
+ *                 put in ahead of it), title
  */
 function ws_page_libraries()
 {
     return array(
-        'chartjs' => array('path' => 'assets/lib/chartjs/chart.umd.min.js', 'title' => 'Chart.js 4.4.7'),
+        'chartjs'     => array('path' => 'assets/lib/chartjs/chart.umd.min.js', 'title' => 'Chart.js 4.4.7'),
+        'chart_guide' => array(
+            'build' => 'ws_page_chart_guide_script',
+            'needs' => array('chartjs'),
+            'title' => 'the drawing guide\'s look for Chart.js: series colours (a chart of one series in the channel\'s colour), type, bars, lines, donuts and gridlines in a dark and a light set, the set following the reader\'s colour scheme or <html data-theme="dark|light">; it brings chartjs, leave the charts\' colours and fonts unset, use var(--pg-bg), var(--pg-ink), var(--pg-ink2), var(--pg-font) for the page around them and PgChartGuide.series(i) for a colour by hand',
+        ),
     );
 }
 
 /**
+ * A colour mixed into another, as #rrggbb: $share percent of $colour over
+ * $base. Pure.
+ *
+ * @param string $colour #rrggbb
+ * @param string $base   #rrggbb
+ * @param int    $share  0-100
+ * @return string
+ */
+function ws_page_chart_guide_mix($colour, $base, $share)
+{
+    $out = '#';
+
+    for ($i = 1; $i < 7; $i += 2) {
+        $a = hexdec(substr($colour, $i, 2));
+        $b = hexdec(substr($base, $i, 2));
+        $out .= sprintf('%02x', (int) round(($a * $share + $b * (100 - $share)) / 100));
+    }
+
+    return $out;
+}
+
+/**
+ * The WCAG contrast ratio of two #rrggbb colours. Pure.
+ *
+ * @param string $a
+ * @param string $b
+ * @return float
+ */
+function ws_page_chart_guide_contrast($a, $b)
+{
+    $lum = function ($hex) {
+        $l = array();
+
+        for ($i = 1; $i < 7; $i += 2) {
+            $v = hexdec(substr($hex, $i, 2)) / 255;
+            $l[] = ($v <= 0.03928) ? $v / 12.92 : pow(($v + 0.055) / 1.055, 2.4);
+        }
+
+        return 0.2126 * $l[0] + 0.7152 * $l[1] + 0.0722 * $l[2];
+    };
+
+    $la = $lum($a);
+    $lb = $lum($b);
+
+    return (max($la, $lb) + 0.05) / (min($la, $lb) + 0.05);
+}
+
+/**
+ * A channel's colour as a mark on a board: as it is when it reads at 3:1
+ * on the board's background, else the nearest tone of it that does (mixed
+ * towards white on a dark board, towards black on a light one, in steps of
+ * 10 % up to 60 %), else '' (the caller keeps the guide's colour). Pure.
+ *
+ * @param string $hex        the channel's colour, #rrggbb, or ''
+ * @param string $background the board's background, #rrggbb
+ * @return string
+ */
+function ws_page_chart_guide_tone($hex, $background)
+{
+    if (!preg_match('/^#[0-9a-f]{6}$/i', (string) $hex)) {
+        return '';
+    }
+
+    $hex = strtolower($hex);
+    $towards = (ws_page_chart_guide_contrast($background, '#000000') < ws_page_chart_guide_contrast($background, '#ffffff')) ? '#ffffff' : '#000000';
+
+    for ($share = 0; $share <= 60; $share += 10) {
+        $tone = ws_page_chart_guide_mix($towards, $hex, $share);
+
+        if (ws_page_chart_guide_contrast($tone, $background) >= 3) {
+            return $tone;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * The Chart.js preset's values, taken from the drawing guide
+ * (ws_canvas_guide_values()) so a live page's chart and a drawn one share
+ * one palette and one type scale. The guide's pixels are for a 1200-wide
+ * board a channel shows at about half size; a live page is read at its own
+ * size, so its type and marks are the guide's times 2/3 (the line keeps the
+ * guide's width), never under 12 for text. A chart of one series takes the page's channel colour, in the tone
+ * that reads on the board (ws_page_chart_guide_tone()), else the guide's
+ * first series colour. Pure.
+ *
+ * @param string $channel_hex the page's channel colour, #rrggbb, or ''
+ * @return array
+ */
+function ws_page_chart_guide_values($channel_hex = '')
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_guide.php');
+
+    $g = ws_canvas_guide_values();
+    $m = $g['marks'];
+    $px = function ($value, $least = 1) {
+        return max($least, (int) round($value * 2 / 3));
+    };
+
+    $sets = array();
+
+    foreach ($g['palettes'] as $mode => $p) {
+        $single = ws_page_chart_guide_tone($channel_hex, $p['background']) ?: $p['series'][0];
+        $sets[$mode] = array(
+            'bg'       => $p['background'],
+            'ink'      => $p['ink'],
+            'ink2'     => $p['ink2'],
+            'ink3'     => $p['ink3'],
+            'grid'     => $p['grid'],
+            'baseline' => $p['baseline'],
+            'series'   => $p['series'],
+            'area'     => array_map(function ($c) use ($p, $m) {
+                return ws_page_chart_guide_mix($c, $p['background'], $m['area_mix']);
+            }, $p['series']),
+            'single'   => $single,
+            'single_area' => ws_page_chart_guide_mix($single, $p['background'], $m['area_mix']),
+            'other'    => $p['other'],
+            'up'       => $p['up'],
+            'down'     => $p['down'],
+        );
+    }
+
+    $type = array();
+
+    foreach ($g['type'] as $role => $row) {
+        $type[$role] = array('size' => $px($row['size'], 12), 'weight' => $row['weight']);
+    }
+
+    return array(
+        'font'  => 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        'type'  => $type,
+        'sets'  => $sets,
+        'marks' => array(
+            'bar_max'    => $m['bar_max'],
+            'bar_band'   => $m['bar_band'],
+            'bar_radius' => $px($m['bar_radius']),
+            'line'       => $m['line'],
+            'dot'        => $px($m['dot'], 3),
+            'ring'       => $px($m['ring'], 2),
+            'grid'       => $m['grid'],
+            'baseline'   => $m['baseline'],
+            'cutout'     => (int) round($m['donut_inner'] / $m['donut_outer'] * 100),
+            'slice_gap'  => $m['stack_gap'],
+            'ticks_max'  => $m['ticks_max'] + 1,
+            'series_max' => $m['series_max'],
+            'padding'    => $px($g['grid']['margin'] / 2),
+        ),
+    );
+}
+
+/**
+ * The preset's script, put into a page that names chart_guide after
+ * Chart.js. It sets Chart.defaults to the guide's look, gives a dataset
+ * that names no colour its series colour (a donut's slices one each, past
+ * the fifth the guide's other), writes the set's colours as CSS variables
+ * on <html>, and follows the reader's colour scheme or the page's own
+ * data-theme, recolouring the charts when either changes. Without Chart.js
+ * it only writes the variables. A chart of one series (not a donut or a
+ * pie, whose slices are the series) takes the set's single colour: the
+ * page's channel colour when it has one.
+ *
+ * @param array $context channel_hex: the page's channel colour or ''
+ * @return string
+ */
+function ws_page_chart_guide_script($context = array())
+{
+    $values = json_encode(ws_page_chart_guide_values(isset($context['channel_hex']) ? (string) $context['channel_hex'] : ''), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
+
+    return '(function(){"use strict";var G=' . $values . ',root=document.documentElement,mode="light",auto="_pgGuide";'
+        . 'function pick(){var t=root.getAttribute("data-theme");if(t==="dark"||t==="light"){return t;}'
+        . 'return (window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches)?"dark":"light";}'
+        . 'function set(){return G.sets[mode];}'
+        . 'function series(i){var s=set();return i<G.marks.series_max?s.series[i%s.series.length]:s.other;}'
+        . 'function area(i){var s=set();return i<G.marks.series_max?s.area[i%s.area.length]:s.other;}'
+        . 'function vars(){var s=set(),k={bg:s.bg,ink:s.ink,ink2:s.ink2,ink3:s.ink3,grid:s.grid,baseline:s.baseline,up:s.up,down:s.down};'
+        . 'for(var n in k){root.style.setProperty("--pg-"+n,k[n]);}root.style.setProperty("--pg-font",G.font);root.style.colorScheme=mode;}'
+        . 'function font(role){return {family:G.font,size:G.type[role].size,weight:G.type[role].weight};}'
+        . 'function defaults(C){var s=set(),d=C.defaults,m=G.marks;'
+        . 'd.font.family=G.font;d.font.size=G.type.axis.size;d.color=s.ink2;d.borderColor=s.grid;d.backgroundColor=s.series[0];'
+        . 'if(root.lang){d.locale=root.lang;}d.layout.padding=m.padding;'
+        . 'd.plugins.colors&&(d.plugins.colors.enabled=false);d.plugins.filler&&(d.plugins.filler.drawTime="beforeDatasetsDraw");'
+        . 'd.plugins.title.align="start";d.plugins.title.color=s.ink;d.plugins.title.font=font("label");d.plugins.title.font.size=G.type.subtitle.size;d.plugins.title.font.weight=700;'
+        . 'd.plugins.subtitle.align="start";d.plugins.subtitle.color=s.ink2;d.plugins.subtitle.font=font("axis");'
+        . 'var l=d.plugins.legend;l.align="start";l.labels.color=s.ink2;l.labels.font=font("label");l.labels.usePointStyle=true;l.labels.pointStyle="rectRounded";l.labels.boxWidth=G.type.label.size*0.7;l.labels.boxHeight=G.type.label.size*0.7;'
+        . 'var t=d.plugins.tooltip;t.backgroundColor=s.ink;t.titleColor=s.bg;t.bodyColor=s.bg;t.footerColor=s.bg;t.titleFont=font("label");t.bodyFont=font("axis");t.cornerRadius=m.bar_radius;t.padding=10;t.boxPadding=4;t.usePointStyle=true;'
+        . 'var sc=d.scale;sc.grid.color=s.grid;sc.grid.lineWidth=m.grid;sc.grid.drawTicks=false;sc.border.color=s.baseline;sc.border.width=m.baseline;sc.ticks.color=s.ink3;sc.ticks.font=font("axis");sc.ticks.padding=8;'
+        . 'var ss=d.scales;ss.linear&&(ss.linear.ticks.maxTicksLimit=m.ticks_max,ss.linear.border={display:false});'
+        . '["category","time","timeseries"].forEach(function(k){ss[k]&&(ss[k].grid={display:false});});'
+        . 'var e=d.elements;e.bar.borderRadius=m.bar_radius;e.bar.borderSkipped="start";e.bar.borderWidth=0;'
+        . 'e.line.borderWidth=m.line;e.line.borderCapStyle="round";e.line.borderJoinStyle="round";e.line.tension=0;'
+        . 'e.point.radius=0;e.point.hoverRadius=m.dot;e.point.hitRadius=m.dot*2;e.point.borderWidth=m.ring;e.point.hoverBorderWidth=m.ring;e.point.borderColor=s.bg;'
+        . 'e.arc.borderWidth=m.slice_gap;e.arc.borderColor=s.bg;e.arc.hoverBorderColor=s.bg;'
+        . 'var ds=d.datasets;ds.bar.maxBarThickness=m.bar_max;ds.bar.categoryPercentage=0.8;ds.bar.barPercentage=m.bar_band/80;'
+        . 'ds.doughnut.cutout=m.cutout+"%";}'
+        . 'function own(o,k){return o[k]!==undefined&&!(o[auto]&&o[auto][k]);}'
+        . 'function paint(o,k,v){if(!own(o,k)){o[k]=v;o[auto]=o[auto]||{};o[auto][k]=true;}}'
+        . 'function colour(chart){var data=chart.config.data||{},type=chart.config.type,all=data.datasets||[],one=all.length===1;all.forEach(function(x,i){'
+        . 'var t=x.type||type;if(t==="doughnut"||t==="pie"||t==="polarArea"){var n=(x.data||[]).length,c=[];for(var j=0;j<n;j++){c.push(series(j));}paint(x,"backgroundColor",c);paint(x,"hoverBackgroundColor",c);return;}'
+        . 'var s=one?set().single:series(i),a=one?set().single_area:area(i),f=(t==="line"||t==="radar")?a:s;'
+        . 'paint(x,"borderColor",s);paint(x,"pointBackgroundColor",s);paint(x,"pointHoverBackgroundColor",s);'
+        . 'paint(x,"backgroundColor",f);paint(x,"hoverBackgroundColor",f);});}'
+        . 'function rescale(c,was){var now=set(),map={};["grid","baseline","ink3","ink2"].forEach(function(k){map[was[k]]=now[k];});'
+        . 'var sc=(c.config.options&&c.config.options.scales)||{};for(var k in sc){["grid","border","ticks","title"].forEach(function(p){var o=sc[k][p];if(o&&typeof o.color==="string"&&map[o.color]){o.color=map[o.color];}});}}'
+        . 'function apply(){var was=G.sets[mode];mode=pick();vars();var C=window.Chart;if(!C||!C.defaults){return;}defaults(C);'
+        . 'if(C.instances){for(var id in C.instances){var c=C.instances[id];colour(c);was!==set()&&rescale(c,was);c.update();}}}'
+        . 'apply();var C=window.Chart;if(C&&C.register){C.register({id:"pgGuide",beforeInit:colour,beforeUpdate:colour});}'
+        . 'if(window.matchMedia){var q=window.matchMedia("(prefers-color-scheme: dark)");q.addEventListener?q.addEventListener("change",apply):q.addListener&&q.addListener(apply);}'
+        . 'if(window.MutationObserver){new MutationObserver(apply).observe(root,{attributes:true,attributeFilter:["data-theme"]});}'
+        . 'window.PgChartGuide={values:G,mode:function(){return mode;},palette:function(){return set();},series:series,area:area,'
+        . 'use:function(m){if(m==="dark"||m==="light"){root.setAttribute("data-theme",m);}else{root.removeAttribute("data-theme");}apply();}};})();';
+}
+
+/**
  * The libraries a call names, checked: known names only, each once, in the
- * order given. Pure.
+ * order given, a name's needs put in ahead of it. Pure.
  *
  * @param mixed $names
  * @return array names, error ('' or the unknown name)
@@ -357,6 +578,12 @@ function ws_page_libraries_check($names)
 
         if (!isset($known[$name])) {
             return array('names' => array(), 'error' => ($name !== '') ? $name : '?');
+        }
+
+        foreach (isset($known[$name]['needs']) ? $known[$name]['needs'] : array() as $need) {
+            if (!in_array($need, $picked, true)) {
+                $picked[] = $need;
+            }
         }
 
         if (!in_array($name, $picked, true)) {
@@ -419,17 +646,21 @@ function ws_page_inline_scripts($html, $sources)
  * it names.
  *
  * @param string   $html
- * @param string[] $names checked by ws_page_libraries_check()
+ * @param string[] $names   checked by ws_page_libraries_check()
+ * @param array    $context what a written library may take from the page's
+ *                          place: channel_hex, the channel's colour
  * @return string
  */
-function ws_page_with_libraries($html, $names)
+function ws_page_with_libraries($html, $names, $context = array())
 {
     $known = ws_page_libraries();
     $sources = array();
 
     foreach ($names as $name) {
         if (isset($known[$name])) {
-            $code = @file_get_contents(PG_FUNCTIONS_DIR . '/' . $known[$name]['path']);
+            $code = isset($known[$name]['build'])
+                ? call_user_func($known[$name]['build'], $context)
+                : @file_get_contents(PG_FUNCTIONS_DIR . '/' . $known[$name]['path']);
 
             if (is_string($code)) {
                 $sources[] = $code;

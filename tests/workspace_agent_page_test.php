@@ -131,19 +131,116 @@ function test_workspace_agent_page_html_is_never_an_upload()
 
 function test_workspace_agent_page_libraries_are_the_sites_own()
 {
-	foreach (ws_page_libraries() as $name => $library) {
-		pg_assert_true((bool) preg_match('/^[a-z0-9]+$/', $name), $name);
-		pg_assert_same(0, strpos($library['path'], 'assets/lib/'), $name . ' is a copy the site ships');
-		pg_assert_false(strpos($library['path'], '://') !== false, $name . ' is no address');
-		pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/' . $library['path']), $name . ' is there');
+	$known = ws_page_libraries();
 
-		$code = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $library['path']);
+	foreach ($known as $name => $library) {
+		pg_assert_true((bool) preg_match('/^[a-z0-9_]+$/', $name), $name);
 
+		if (isset($library['build'])) {
+			pg_assert_true(is_callable($library['build']), $name . ' is written by the site');
+			$code = (string) call_user_func($library['build']);
+		} else {
+			pg_assert_same(0, strpos($library['path'], 'assets/lib/'), $name . ' is a copy the site ships');
+			pg_assert_false(strpos($library['path'], '://') !== false, $name . ' is no address');
+			pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/' . $library['path']), $name . ' is there');
+			$code = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $library['path']);
+		}
+
+		pg_assert_true($code !== '', $name . ' has code');
 		pg_assert_false(stripos($code, '</script') !== false, $name . ' cannot end its element');
 		pg_assert_false(strpos($code, '<!--') !== false, $name . ' cannot open a comment');
+		pg_assert_false((bool) preg_match('#https?://#', $code) && !isset($library['path']), $name . ' names no address');
+
+		foreach (isset($library['needs']) ? $library['needs'] : array() as $need) {
+			pg_assert_true(isset($known[$need]), $name . ' needs a library the site has');
+		}
 	}
 
-	pg_assert_true(isset(ws_page_libraries()['chartjs']), 'Chart.js first');
+	pg_assert_true(isset($known['chartjs']), 'Chart.js first');
+	pg_assert_same(array('chartjs'), $known['chart_guide']['needs'], 'the preset brings Chart.js');
+}
+
+// The preset takes its colours and type from the drawing guide, so a live
+// page's chart and a drawn one never disagree.
+function test_workspace_agent_page_chart_guide_is_the_guides_look()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_guide.php');
+
+	$guide = ws_canvas_guide_values();
+	$preset = ws_page_chart_guide_values();
+
+	foreach (array('dark', 'light') as $mode) {
+		$p = $guide['palettes'][$mode];
+		$s = $preset['sets'][$mode];
+
+		pg_assert_same($p['series'], $s['series'], $mode . ' series in the guide\'s order');
+		pg_assert_same(array($p['background'], $p['ink'], $p['ink2'], $p['ink3'], $p['grid'], $p['baseline'], $p['other'], $p['up'], $p['down']),
+			array($s['bg'], $s['ink'], $s['ink2'], $s['ink3'], $s['grid'], $s['baseline'], $s['other'], $s['up'], $s['down']), $mode . ' roles');
+		pg_assert_same(count($p['series']), count($s['area']), $mode . ' an area colour per series');
+	}
+
+	pg_assert_same('#e2ebfc', ws_page_chart_guide_mix('#2f6fed', '#ffffff', 14), 'the area mix is solid');
+	pg_assert_same('#ffffff', ws_page_chart_guide_mix('#2f6fed', '#ffffff', 0));
+	pg_assert_same('#2f6fed', ws_page_chart_guide_mix('#2f6fed', '#ffffff', 100));
+	pg_assert_same(ws_page_chart_guide_mix($guide['palettes']['light']['series'][0], '#ffffff', $guide['marks']['area_mix']), $preset['sets']['light']['area'][0]);
+
+	foreach ($guide['type'] as $role => $row) {
+		pg_assert_same($row['weight'], $preset['type'][$role]['weight'], $role . ' weight');
+		pg_assert_true($preset['type'][$role]['size'] >= 12, $role . ' never under 12');
+		pg_assert_true($preset['type'][$role]['size'] <= $row['size'], $role . ' scaled from the board');
+	}
+
+	pg_assert_same(0, strpos($preset['font'], 'Inter,'), 'the guide\'s family first');
+	pg_assert_same($guide['marks']['bar_max'], $preset['marks']['bar_max']);
+	pg_assert_same($guide['marks']['line'], $preset['marks']['line'], 'the line is the sheet\'s width');
+	pg_assert_same($guide['marks']['series_max'], $preset['marks']['series_max']);
+	pg_assert_same((int) round($guide['marks']['donut_inner'] / $guide['marks']['donut_outer'] * 100), $preset['marks']['cutout']);
+
+	$script = ws_page_chart_guide_script();
+
+	pg_assert_contains(json_encode($guide['palettes']['dark']['series']), $script, 'the values go in as they are');
+	pg_assert_contains('window.PgChartGuide=', $script);
+	pg_assert_contains('prefers-color-scheme: dark', $script, 'it follows the reader');
+}
+
+// A chart of one series takes its channel's colour where it reads on the
+// board, else a tone of it that does, else the guide's first colour.
+function test_workspace_agent_page_chart_guide_channel_colour()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_guide.php');
+
+	$guide = ws_canvas_guide_values();
+	$dark = $guide['palettes']['dark']['background'];
+	$light = $guide['palettes']['light']['background'];
+
+	pg_assert_same('#6b5ca5', ws_page_chart_guide_tone('#6B5CA5', $light), 'a colour that reads stays');
+	pg_assert_same('#6b5ca5', ws_page_chart_guide_tone('#6b5ca5', $dark));
+
+	$lifted = ws_page_chart_guide_tone('#3f4a5a', $dark);
+	pg_assert_false(in_array($lifted, array('', '#3f4a5a'), true), 'too dark on the dark board: a lighter tone of it');
+	pg_assert_true(ws_page_chart_guide_contrast($lifted, $dark) >= 3, 'the tone reads');
+	pg_assert_same('#3f4a5a', ws_page_chart_guide_tone('#3f4a5a', $light));
+
+	pg_assert_same('', ws_page_chart_guide_tone('', $dark), 'no channel colour');
+	pg_assert_same('', ws_page_chart_guide_tone('red', $dark), 'not a colour');
+	pg_assert_same('#808080', ws_page_chart_guide_tone('#ffffff', $light), 'white on white: its first tone that reads');
+	pg_assert_true(abs(ws_page_chart_guide_contrast('#000000', '#ffffff') - 21) < 0.01);
+
+	foreach (array('dark', 'light') as $mode) {
+		$p = $guide['palettes'][$mode];
+		$none = ws_page_chart_guide_values('')['sets'][$mode];
+		$indigo = ws_page_chart_guide_values('#6b5ca5')['sets'][$mode];
+
+		pg_assert_same($p['series'][0], $none['single'], $mode . ': no channel colour, the guide\'s first');
+		pg_assert_same('#6b5ca5', $indigo['single'], $mode . ': the channel colour');
+		pg_assert_same($p['series'], $indigo['series'], $mode . ': several series keep the guide\'s palette');
+		pg_assert_same(ws_page_chart_guide_mix('#6b5ca5', $p['background'], $guide['marks']['area_mix']), $indigo['single_area'], $mode . ': its area');
+	}
+
+	pg_assert_same('#ffffff', ws_page_chart_guide_values('#ffffff')['sets']['dark']['single'], 'white reads on the dark board');
+	pg_assert_contains('"single":"#6b5ca5"', ws_page_chart_guide_script(array('channel_hex' => '#6b5ca5')), 'the page\'s channel colour goes into its script');
+	pg_assert_contains('PgChartGuide', ws_page_with_libraries('<p>x</p>', array('chartjs', 'chart_guide'), array('channel_hex' => '#6b5ca5')));
+	pg_assert_contains('"single":"#6b5ca5"', ws_page_with_libraries('<p>x</p>', array('chart_guide'), array('channel_hex' => '#6b5ca5')));
 }
 
 function test_workspace_agent_page_libraries_check()
@@ -156,6 +253,8 @@ function test_workspace_agent_page_libraries_check()
 	pg_assert_same('?', ws_page_libraries_check('chartjs')['error'], 'a list, not a word');
 	pg_assert_same('?', ws_page_libraries_check(array(array('chartjs')))['error'], 'a list inside is refused');
 	pg_assert_same('?', ws_page_libraries_check(array(''))['error'], 'an empty name is refused');
+	pg_assert_same(array('chartjs', 'chart_guide'), ws_page_libraries_check(array('chart_guide'))['names'], 'the preset brings Chart.js ahead of it');
+	pg_assert_same(array('chartjs', 'chart_guide'), ws_page_libraries_check(array('chart_guide', 'chartjs'))['names'], 'once, ahead');
 }
 
 function test_workspace_agent_page_libraries_go_in_ahead_of_the_page()
@@ -177,6 +276,12 @@ function test_workspace_agent_page_no_address_reaches_a_page()
 	pg_assert_same(2, substr_count(strtolower($shown), '<script'), 'the library\'s element and the page\'s own');
 	pg_assert_false((bool) preg_match('/<(script|link|img|iframe)[^>]*\s(src|href)\s*=/i', $shown), 'no element loads from an address');
 	pg_assert_same(0, strpos($shown, '<!DOCTYPE html>'), 'the page keeps its doctype first');
+
+	$guided = ws_page_with_libraries($page, ws_page_libraries_check(array('chart_guide'))['names']);
+
+	pg_assert_same(3, substr_count(strtolower($guided), '<script'), 'Chart.js, the preset and the page\'s own');
+	pg_assert_true(strpos($guided, 'Chart.js v4.4.7') < strpos($guided, 'PgChartGuide'), 'the preset after Chart.js');
+	pg_assert_false((bool) preg_match('/<(script|link|img|iframe)[^>]*\s(src|href)\s*=/i', $guided), 'no element loads from an address');
 
 	$policy = pg_guarded_frame_policy('script', '');
 	pg_assert_contains("script-src 'unsafe-inline';", $policy, 'and the frame would refuse one');
