@@ -1,10 +1,10 @@
 ---
 name: campaign-email-body-way
-description: MA4 proposal (2026-11-13, open on #9083): a campaign's e-mail body as an e-mail design page (600 px canvas, mail blocks), the mail pass, ready designs, pasted HTML, test send
+description: MA4 proposal (2026-11-13, kept on #9083): a campaign's e-mail body as an e-mail design page (600 px canvas, mail blocks), the mail pass, ready designs, pasted HTML, test send
 ---
 
 ## Is this settled?
-- No: step MA4's proposal of 2026-11-13, waiting for the architect on #9083. MA5 (after MA3) builds what the answer keeps. Facts: [[campaign-email-body-today]], rules: [[campaign-email-body-mail-programs]].
+- Yes: the architect kept it on #9083 (`plans/messages-area-decided.md`); MA5a to MA5e build it (`plans/messages-area-steps.md`). Built so far: [[campaign-email-body-mail-pass]]. Facts: [[campaign-email-body-today]], rules: [[campaign-email-body-mail-programs]].
 
 ## What would an e-mail design be?
 - A page, as today's e-mail pages: in a private folder "E-mail designs" made on first use (its id in `config_text` `email_designs_folder_id`, `data/config-table-no-varchar.md`), no search, no sitemap, noindex. No schema.
