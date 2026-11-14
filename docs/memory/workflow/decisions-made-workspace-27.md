@@ -14,4 +14,9 @@ description: Decisions made, workspace part 27: Check e-mail, a person's own sig
 - "ayrıca müşteri için yol haritası çıkarılırken bu takvim planları kullanılabilir iyi olur. ben kabaca anlattım uyarlayıp iyi, işe yarar plana çevirmek sende."
 - So: the calendar stays the Workspace's. "My calendar" shows the reader alone and is reached from the e-mail area. A person adds plans; a plan is closed to everybody else until its owner opens it to chosen people or the team. A plan is a reminder or a roadmap with steps, and a customer's roadmap is built from plans. Plan: `plans/personal-calendar-plans.md`.
 - The architect's reading: a plan is never a row of the team's plan items, because their readers do not ask whose row it is. "Closed" holds for an administrator too. An invitation in a mail and "Add to my calendar" are how e-mail meets the calendar.
-- Not decided: whether the customer sees their roadmap on the site. The tables are asked of the owner after the census (PC1).
+- The tables are asked of the owner after the census (PC1).
+
+## Does the customer see their roadmap on the site? (owner, 2026-11-14, in the architect's window)
+- Asked: "Müşteri kendi yol haritasını sitede görebilsin mi?" The owner: "Şimdilik ekip içi".
+- So: a roadmap made for a customer is seen by the team members its owner opens it to, on the customer's card and history. Nothing of it is drawn on the site or sent to the customer by the plan's steps.
+- "Şimdilik" leaves it open: showing it to the customer is a later decision of his, not a step somebody adds.

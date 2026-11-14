@@ -20,7 +20,7 @@ description: Plan (owner 2026-11-14): "My calendar" beside e-mail and a person's
 - PC6 (M) For a customer: a plan names a contact (the pick of `workspace/workspace-visit-contact.md`) and shows on the customer's card and history to those who may see the plan. "New roadmap" on the card starts empty or from the person's own plans, copied. Merge and erasure as visits.
 - PC7 (M) E-mail and calendar: "Add to my calendar" in a mail's menu makes a plan tied to the conversation; an invitation in a mail is drawn as a card with the same button. No answer goes to the organiser.
 - PC8 (M) API and MCP: a person's own plans listed, added and changed by that person's connection under a scope of its own. An application key and a channel agent never read a private plan; an assistant hears of a plan only when its owner asks.
-- PC9 (S) Close-out: the memory files, this plan deleted. Later, outside this plan: plans written into the person's Google or Outlook calendar; a roadmap shown to the customer on the site (the owner's decision, asked).
+- PC9 (S) Close-out: the memory files, this plan deleted. Later: plans written into the person's Google or Outlook calendar. A roadmap is not shown to the customer on the site (owner, 2026-11-14).
 
 ## What does every step keep?
 - Private is the rule: only its owner and those it names see a plan; no administrator, search, other person's export or assistant shows it.
