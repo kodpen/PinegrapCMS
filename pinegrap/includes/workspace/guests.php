@@ -1157,7 +1157,7 @@ function ws_guest_agent_apps()
         foreach ((array) db_items("SELECT app_id, handle, name FROM ws_agents WHERE app_id > 0 AND kind IN ('app', 'model') ORDER BY id") as $row) {
             if (!isset($apps[(int) $row['app_id']])) {
                 $name = trim((string) $row['name']);
-                $apps[(int) $row['app_id']] = array('name' => ($name !== '') ? $name : '@' . $row['handle'], 'tag' => '@' . $row['handle'], 'badge' => lang('Agent'));
+                $apps[(int) $row['app_id']] = array('name' => ($name !== '') ? $name : '@' . $row['handle'], 'tag' => '@' . $row['handle'], 'badge' => lang('AI agent'));
             }
         }
     }

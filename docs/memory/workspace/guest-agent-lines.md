@@ -9,7 +9,7 @@ description: The guest page lists the agents' and assistants' messages beside pe
 - `ws_guest_line_sender()` (pure) says person, guest, agent or ''; `ws_guest_lines_sql()` (pure) is the WHERE part; `ws_guest_agent_apps()` gives each application's name, `@tag` and badge.
 
 ## How is an agent's line drawn?
-- By the staff's engine (`ws_render_body()`), under the agent's name with a badge: "Agent", "AI assistant" or "MCP agent" (`pg-guest-badge` in `workspace_guest.css`). An MCP answer loses its first line naming the tool.
+- By the staff's engine (`ws_render_body()`), under the agent's name with a badge: "AI agent", "AI assistant" or "MCP agent" (`pg-guest-badge` in `workspace_guest.css`). An MCP answer loses its first line naming the tool.
 - A tag `<@app:N>` reads as `@handle` (`@Claude`, `@ai`), never a link; any other application's tag as "@Application".
 
 ## What may a guest do on an agent's line?
