@@ -84,6 +84,7 @@
 - mail-compose.md: New e-mail in the Workspace (WM5, #8719): the form and its fields, where it opens, the panel actions, who may send, the unsent form kept in the browser, a mailbox's Signature and where it goes
 - mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified [decision: decisions-made-workspace-13.md, decisions-made-workspace-17.md, decisions-made-workspace-21.md, decisions-made-workspace-26.md]
 - mail-domain-warning.md: The warning before a Workspace e-mail goes to a domain that does not exist: Send anyway, Change the address, "Did you mean …?", the API's 409 unknown_domain [decision: decisions-made-workspace-23.md]
+- mail-drafts-app-pill.md: The Drafts view names the application an e-mail draft was kept through (MT5b): the violet pill, where its name is read, "an assistant" for a deleted application
 - mail-drafts.md: E-mail drafts kept on the server (MT3a #9516, MT3b): the ws_mail_items row, who reads and changes one, the routes and tools, the readers that leave drafts out, the E-mails screen's Drafts view
 - mail-email-fields.md: What email() gained for Workspace mail (G3a #2846, #8646): cc and bcc, the threading headers it lets through, a box's own SMTP server, and the site's mark every mail carries for the loop gate
 - mail-fetch.md: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records, the System status tile
@@ -111,6 +112,7 @@
 - mail-routing.md: Routing incoming Workspace e-mail (G6, mail_route.php): box routes by address or +tag to a channel, recipients read, the known customer's line in their channels
 - mail-screen-pane-wrap.md: Long file names and addresses without spaces wrap inside a mail of the E-mails reading pane (text-break on each mail, #9009)
 - mail-screen-pane.md: The Workspace E-mails reading pane (mail_pane.php) and the per-person unread marks (mail_reads.php): the unread rule, the floor, where marks are written, the menu count
+- mail-send-later.md: Send later (IB6): a time on the New e-mail form and the reply drawer, send_state later and ws_mail_items.send_at, the job that hands due mail to the queue, Send now and Cancel, the step 11.0.207 [decision: here]
 - mail-send-outcome.md: How the queue's outcome reaches a Workspace mail (ws_mail_send_outcome(), #8646): sent is final, only the current attempt fails it, the unwritten row id race, a deleted queue row
 - mail-send-scope.md: Sending Workspace e-mail in a person's name over the API and MCP: the workspace:mail_send scope, who holds it, the gate that refuses a key, the send tools, the log line [decision: here]
 - mail-send.md: Sending Workspace mail through the mail queue (mail_send.php, WM3 #8646): functions, the flow, send states and the card, Send again, limits, mail_unsent, the outcome handler's rules [decision: decisions-made-workspace-13.md]
@@ -452,7 +454,9 @@
 - workspace-personal-calendar-rules.md: My calendar and a person's own plans (PC1-PC9, closed 2026-11-14): what the owner asked, the rules every change keeps, where each part is written up, what comes next [decision: decisions-made-schema-18.md, decisions-made-schema-19.md, decisions-made-workspace-27.md]
 - workspace-personal-ical-days.md: On which days and Today lines a person's own iCal events are drawn (ws_personal_ical_touches(), end exclusive), how a repeating all-day event ends across a clock change, the gzip unpack limit
 - workspace-personal-ical.md: A person's own secret iCal address as a read-only layer on their Work Calendar: ws_holiday_feeds.user_id, the sealed payload, the sync path, who sees it (#3254, decided in #3180) [decision: decisions-made-product-5.md, decisions-made-workspace-6.md]
+- workspace-personal-overview.md: A person's own calendar layers as a whole: own iCal calendars and own plans on My calendar; the rules that bind them and which workspace-personal-* file holds each part
 - workspace-personal-plan-customer.md: A person's own plan made for a customer (PC6): contact_id, the drawer field, Roadmaps on the card and history, New roadmap, merge and erasure, not in the API [decision: here]
+- workspace-personal-plan-export.md: A contact's data export lists the person's own plans naming them only when shared with the whole team (PC6b, owner 3361): title, days, owner, roadmap steps [decision: here]
 - workspace-personal-plan-mail.md: Add to my calendar on a mail (PC7): the button, the filled New plan drawer, one plan a person, the invitation column 11.0.204 and its card states [decision: here]
 - workspace-personal-plan-roadmap.md: The roadmap of a person's own plan (PC5): dated steps in ws_personal_plan_steps, the bar and its progress, "Make a task" and a step that follows its task
 - workspace-personal-plan-sharing.md: Who can see a person's plan (PC4): Only me, chosen team members, the whole team; what the others see and may not do
