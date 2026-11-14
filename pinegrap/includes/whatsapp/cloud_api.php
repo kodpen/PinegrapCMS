@@ -702,3 +702,134 @@ function pg_whatsapp_cloud_send_text($app, $number, $text)
         $response['connect'],
         $response['request_size']));
 }
+
+/**
+ * The request that uploads a file for a message (POST /<phone id>/media):
+ * a multipart form of WhatsApp's name, the file's MIME type and its bytes.
+ * The answer's id names the file in the message sent next.
+ *
+ * @param array  $app
+ * @param string $name     the file's name
+ * @param string $mime     its MIME type (pg_whatsapp_reply_media())
+ * @param string $bytes
+ * @param string $boundary the form's boundary; random when ''
+ * @return array url, headers, body
+ */
+function pg_whatsapp_cloud_media_upload_request($app, $name, $mime, $bytes, $boundary = '')
+{
+    $boundary = ($boundary !== '') ? (string) $boundary : 'pg' . bin2hex(random_bytes(12));
+    // A quote or a line break in a name would end the part's header early.
+    $name = preg_replace('/["\r\n\\\\]/', '_', (string) $name);
+    $body = '';
+
+    foreach (array('messaging_product' => 'whatsapp', 'type' => (string) $mime) as $field => $value) {
+        $body .= '--' . $boundary . "\r\n" . 'Content-Disposition: form-data; name="' . $field . '"' . "\r\n\r\n" . $value . "\r\n";
+    }
+
+    $body .= '--' . $boundary . "\r\n" . 'Content-Disposition: form-data; name="file"; filename="' . $name . '"' . "\r\n"
+        . 'Content-Type: ' . $mime . "\r\n\r\n" . (string) $bytes . "\r\n" . '--' . $boundary . '--' . "\r\n";
+
+    $headers = pg_whatsapp_cloud_headers($app['token']);
+    $headers[] = 'Content-Type: multipart/form-data; boundary=' . $boundary;
+
+    return array(
+        'url'     => pg_whatsapp_cloud_url(rawurlencode($app['phone_number_id']) . '/media', array('appsecret_proof' => pg_whatsapp_cloud_proof($app['token'], $app['app_secret']))),
+        'headers' => $headers,
+        'body'    => $body,
+    );
+}
+
+/**
+ * Reads the answer to a media upload: the uploaded file's id.
+ *
+ * @param array $answer pg_whatsapp_cloud_answer()
+ * @return array ok, id, error
+ */
+function pg_whatsapp_cloud_media_id_parse($answer)
+{
+    if ($answer['error'] !== '') {
+        return array('ok' => false, 'id' => '', 'error' => $answer['error']);
+    }
+
+    $id = (isset($answer['data']['id']) && is_scalar($answer['data']['id'])) ? trim((string) $answer['data']['id']) : '';
+
+    if (!preg_match('/^[0-9]{1,32}$/D', $id)) {
+        return array('ok' => false, 'id' => '', 'error' => lang('Meta did not take the file.'));
+    }
+
+    return array('ok' => true, 'id' => $id, 'error' => '');
+}
+
+/**
+ * The request of a message carrying an uploaded file: a picture, a video
+ * or a document (which keeps its name), its words as the caption. Free
+ * like text, so only inside the customer's 24 hours.
+ *
+ * @param array  $app
+ * @param string $number   E.164 digits
+ * @param string $type     image | video | document
+ * @param string $media_id pg_whatsapp_cloud_media_id_parse()
+ * @param string $caption  '' for none
+ * @param string $name     the file's name
+ * @return array url, headers, body
+ */
+function pg_whatsapp_cloud_media_request($app, $number, $type, $media_id, $caption, $name)
+{
+    $media = array('id' => (string) $media_id);
+
+    if ((string) $caption !== '') {
+        $media['caption'] = (string) $caption;
+    }
+
+    if ($type === 'document') {
+        $media['filename'] = (string) $name;
+    }
+
+    $body = array(
+        'messaging_product' => 'whatsapp',
+        'recipient_type'    => 'individual',
+        'to'                => '+' . $number,
+        'type'              => (string) $type,
+        (string) $type      => $media,
+    );
+
+    return array(
+        'url'     => pg_whatsapp_cloud_url(rawurlencode($app['phone_number_id']) . '/messages', array('appsecret_proof' => pg_whatsapp_cloud_proof($app['token'], $app['app_secret']))),
+        'headers' => pg_whatsapp_cloud_headers($app['token'], true),
+        'body'    => json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    );
+}
+
+/**
+ * Uploads a file and sends it in one message; read as a template send is.
+ * A refused or failed upload sent nothing, so it may be tried again by the
+ * rules of Meta's code; only the message itself can be uncertain.
+ *
+ * @param array  $app
+ * @param string $number
+ * @param string $type
+ * @param string $mime
+ * @param string $name
+ * @param string $bytes
+ * @param string $caption
+ * @return array pg_whatsapp_cloud_send_parse()
+ */
+function pg_whatsapp_cloud_send_media($app, $number, $type, $mime, $name, $bytes, $caption)
+{
+    $response = pg_whatsapp_http('POST', pg_whatsapp_cloud_media_upload_request($app, $name, $mime, $bytes));
+    $answer = pg_whatsapp_cloud_answer($response['status'], $response['body'], $response['error']);
+    $upload = pg_whatsapp_cloud_media_id_parse($answer);
+
+    if (!$upload['ok']) {
+        $retry = ((int) $response['status'] === 0) || (($answer['code'] !== '') && pg_whatsapp_cloud_code_retries($answer['code']));
+
+        return array('ok' => false, 'id' => '', 'code' => $answer['code'], 'error' => $upload['error'], 'retry' => $retry, 'uncertain' => false);
+    }
+
+    $response = pg_whatsapp_http('POST', pg_whatsapp_cloud_media_request($app, $number, $type, $upload['id'], $caption, $name));
+
+    return pg_whatsapp_cloud_send_parse($response['status'], $response['body'], $response['error'], pg_sms_http_never_sent(
+        $response['errno'],
+        $response['connect'],
+        $response['request_size']));
+}
