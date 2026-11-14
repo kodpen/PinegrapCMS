@@ -4,7 +4,7 @@ description: Plan (owner 2026-11-14, poll 3363): the E-mails screen gains remind
 ---
 
 ## What is asked?
-- The owner ticked four additions to the mailbox plan (`workflow/decisions-made-workspace-29.md`). They widen what `plans/mail-inbox-features.md` builds and start when its IB6 has landed or beside it, as each line says.
+- The owner ticked four additions to the mailbox plan (`workflow/decisions-made-workspace-29.md`). They widen what the closed plan IB1-IB8 built (`workspace/mail-overview.md`) and start after its IB6 (#9547) or beside it, as each line says.
 
 ## Which steps?
 - IB9 (S, no product code) Census: where a conversation's state per person and "My e-mail settings" are kept, what Send later (IB6) keeps for a mail that waits, what routing and the block list do at ingest, whether a conversation carries labels. It names the column or table each step needs; the architect asks the owner before any is built.
@@ -16,7 +16,7 @@ description: Plan (owner 2026-11-14, poll 3363): the E-mails screen gains remind
 - IB14 (S) Close-out: the memory files of the steps, `workspace/mail-overview.md`, this plan deleted.
 
 ## What does every step keep?
-- What the mailbox plan keeps: team accounts only, the channel decides who reaches a conversation, a running site reads and sends as before until a button is pressed or a setting written.
+- What the closed mailbox plan keeps (`workspace/mail-decisions.md`): team accounts only, the channel decides who reaches a conversation, a running site reads and sends as before until a button is pressed or a setting written.
 - An automatic answer and a rule never answer a mail the loop gate or the hold would stop (`workspace/mail-ingest.md`).
 - Times are the person's time zone; the general job does the waking, no new job.
 - Look A (`ui/look-design-examples.md`), the whole picture set in the agent channel at once. Texts through `lang()`, Turkish by `tools/tr_add.php`.
