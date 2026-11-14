@@ -32,6 +32,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/var_chips.php');
 
 // Meta's limits for a template's parts, in characters.
 define('PG_WHATSAPP_DESIGN_BODY_MAX', 1024);
@@ -725,11 +726,37 @@ function pg_whatsapp_design_own_number()
    --------------------------------------------------------------------------- */
 
 /**
- * One row of the sample values: the variable, what it stands for and its
- * sample. whatsapp_template.js builds the same row as the message changes.
+ * What each variable of a design is called on the screen, by number: its
+ * label, "Value 2" for one without, and a label two variables share made
+ * apart, since the chips' editor takes one label for one variable.
+ *
+ * @param array $design
+ * @return array number => label
+ */
+function pg_whatsapp_design_chip_labels($design)
+{
+    $names = array();
+
+    foreach (pg_whatsapp_design_variables($design['body']) as $key) {
+        $label = (isset($design['labels'][$key]) && (trim((string) $design['labels'][$key]) !== '')) ? trim((string) $design['labels'][$key]) : lang(array('string' => 'Value {var:1}', 'vars' => array($key)));
+
+        if (in_array($label, $names, true)) {
+            $label .= ' (' . $key . ')';
+        }
+
+        $names[$key] = $label;
+    }
+
+    return $names;
+}
+
+/**
+ * One row of the sample values: the variable's chip and its sample.
+ * whatsapp_template.js builds the same row as chips come and go, and names
+ * its fields by the number the variable has in the message then.
  *
  * @param string $key      the variable's number
- * @param string $label
+ * @param string $label    pg_whatsapp_design_chip_labels()
  * @param string $sample
  * @param bool   $editable
  * @param array  $errors   pg_whatsapp_design_check()
@@ -752,11 +779,10 @@ function pg_whatsapp_design_sample_row($key, $label, $sample, $editable, $errors
         $invalid = ' aria-invalid="true" aria-describedby="sample_' . h($key) . '_error"';
     }
 
-    return '<div class="pg-wa-sample" data-pg-wa-key="' . h($key) . '">'
-        . '<code class="pg-wa-sample-key">{{' . h($key) . '}}</code>'
-        . '<div class="pg-wa-sample-fields">'
-        . '<input type="text" class="pg-input pg-input-sm" name="label_' . h($key) . '" value="' . h($label) . '" maxlength="' . PG_WHATSAPP_DESIGN_SAMPLE_MAX . '" placeholder="' . h(lang('What it stands for')) . '" aria-label="' . h(lang(array('string' => 'What {var:1} stands for', 'vars' => array('{{' . $key . '}}')))) . '"' . $disabled . '>'
-        . '<input type="text" class="pg-input pg-input-sm" name="sample_' . h($key) . '" value="' . h($sample) . '" maxlength="' . PG_WHATSAPP_DESIGN_SAMPLE_MAX . '" placeholder="' . h(lang('Sample value')) . '" aria-label="' . h(lang(array('string' => 'Sample value of {var:1}', 'vars' => array('{{' . $key . '}}')))) . '"' . $invalid . $disabled . '>'
+    return '<div class="pg-wa-sample" data-pg-wa-label="' . h($label) . '" data-pg-wa-number="' . h($key) . '">'
+        . pg_var_chip_html($label)
+        . '<input type="hidden" data-pg-wa-label-field name="label_' . h($key) . '" value="' . h($label) . '"' . $disabled . '>'
+        . '<input type="text" class="pg-input pg-input-sm" data-pg-wa-sample name="sample_' . h($key) . '" value="' . h($sample) . '" maxlength="' . PG_WHATSAPP_DESIGN_SAMPLE_MAX . '" placeholder="' . h(lang('Sample value')) . '" aria-label="' . h(lang(array('string' => 'Sample value of {var:1}', 'vars' => array($label)))) . '"' . $invalid . $disabled . '>'
         . $error
-        . '</div></div>';
+        . '</div>';
 }

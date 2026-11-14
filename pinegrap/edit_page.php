@@ -1507,7 +1507,7 @@ if (!$_POST) {
         // A number box out of its range would be cut by its column without a
         // word; read only when this save writes the type's fields.
         if ($may_save_page_type) {
-            pg_page_form_refuse($liveform, pg_page_form_number_errors($_POST['type'], $_POST), $form_url);
+            pg_page_form_refuse($liveform, pg_page_form_number_errors($_POST['type'], $_POST) + pg_whatsapp_form_errors($_POST['type'], (int) $_POST['id'], $_POST), $form_url);
         }
 
         // The comments moderator is one address, checked while comments are

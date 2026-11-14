@@ -169,26 +169,54 @@ function ws_wtable_list_count_text($count)
 /**
  * A segmented control whose segments are addresses (look A's .pg-seg): the
  * chosen one is the current page, a count sits beside a label that has one.
+ * Segments with an icon make the control .pg-seg-icons: below 576 px only
+ * the chosen one shows its label, the others their icon, the label kept
+ * for screen readers and as the tooltip.
  *
  * @param string $label the control's accessible name
  * @param array  $items list of array('label', 'url', 'current' (bool),
- *                      'count' (left out for a segment without one))
+ *                      'count' (left out for a segment without one),
+ *                      'icon' (a Bootstrap icon name, optional))
  * @return string
  */
 function ws_wtable_list_segments($label, array $items)
 {
     $html = '';
+    $icons = false;
 
     foreach ($items as $item) {
         $current = !empty($item['current']);
+        $text = h((string) $item['label'])
+            . (isset($item['count']) ? ' <span class="pg-seg-count">' . (int) $item['count'] . '</span>' : '');
 
-        $html .= '<a class="pg-seg-item' . ($current ? ' is-active' : '') . '" href="' . h((string) $item['url']) . '"' . ($current ? ' aria-current="page"' : '') . '>'
-            . h((string) $item['label'])
-            . (isset($item['count']) ? ' <span class="pg-seg-count">' . (int) $item['count'] . '</span>' : '')
-            . '</a>';
+        if (!empty($item['icon'])) {
+            $icons = true;
+            $text = '<i class="bi ' . h((string) $item['icon']) . '" aria-hidden="true"></i><span class="pg-seg-label">' . $text . '</span>';
+        }
+
+        $html .= '<a class="pg-seg-item' . ($current ? ' is-active' : '') . '" href="' . h((string) $item['url']) . '"'
+            . (!empty($item['icon']) ? ' title="' . h((string) $item['label']) . '"' : '')
+            . ($current ? ' aria-current="page"' : '') . '>' . $text . '</a>';
     }
 
-    return '<span class="pg-seg" role="group" aria-label="' . h((string) $label) . '">' . $html . '</span>';
+    return '<span class="pg-seg' . ($icons ? ' pg-seg-icons' : '') . '" role="group" aria-label="' . h((string) $label) . '">' . $html . '</span>';
+}
+
+/**
+ * The icon of each scope of the list and of its two views.
+ *
+ * @return array scope or view => Bootstrap icon name
+ */
+function ws_wtable_list_segment_icons()
+{
+    return array(
+        'all'      => 'bi-grid',
+        'mine'     => 'bi-person',
+        'channels' => 'bi-hash',
+        'shared'   => 'bi-people',
+        'tables'   => 'bi-table',
+        'deleted'  => 'bi-trash3',
+    );
 }
 
 /**

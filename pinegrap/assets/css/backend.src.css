@@ -20732,6 +20732,14 @@ html[data-bs-theme="dark"] .ws-cb-chip.active {
     font-size: .8125rem;
 }
 .ws-pane .ws-cb-picker,
+/* The Data list's New table on a phone (workspace_wtables.php): the filled
+   button floating at the bottom right, above the page. */
+.ws-wt-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 1010;
+}
 .ws-wt-board .ws-cb-picker {
     display: none;
 }
@@ -26455,6 +26463,24 @@ textarea.pg-input {
   font-size: var(--pg-text-meta);
   color: var(--pg-fg-3);
 }
+/* A control of icon segments (.pg-seg-icons): each segment has its icon
+   and a .pg-seg-label; below 576 px only the chosen one shows its label,
+   the others their icon, the label kept for screen readers. */
+.pg-seg-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+@media (max-width: 575.98px) {
+  .pg-seg-icons .pg-seg-item:not(.is-active, [aria-pressed="true"], [aria-current]) .pg-seg-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
 
 /* Tones: a class sets --pg-tone, the pill and the tile read it. */
 .pg-tone-blue { --pg-tone: var(--pg-tone-blue); }
@@ -27861,16 +27887,32 @@ body.pg-measure-report #content {
   padding: 5px 8px;
   border-bottom: 1px solid var(--pg-border-color-translucent);
 }
-.pg-wa-add {
-  width: auto;
-  margin-left: auto;
-}
-.pg-wa-editor > .pg-wa-body {
+.pg-wa-editor > .pg-wa-body,
+.pg-wa-editor > .pg-var-editor {
   border: 0;
   box-shadow: none;
   background: transparent;
   line-height: 1.6;
   resize: vertical;
+}
+.pg-wa-palette-box {
+  padding: 8px 12px 10px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.pg-wa-palette {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.pg-wa-own {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pg-wa-own > .pg-input {
+  width: 12rem;
 }
 .pg-wa-count {
   display: flex;
@@ -27896,10 +27938,17 @@ body.pg-measure-report #content {
 }
 .pg-wa-sample {
   display: grid;
-  grid-template-columns: 50px 1fr;
+  grid-template-columns: minmax(0, 45%) 1fr;
   gap: 10px;
-  align-items: start;
+  align-items: center;
   margin-top: 8px;
+}
+.pg-wa-sample > .pg-var-chip {
+  justify-self: start;
+  max-width: 100%;
+}
+.pg-wa-sample > .pg-field-error {
+  grid-column: 2;
 }
 .pg-wa-sample:first-child {
   margin-top: 0;
@@ -28087,6 +28136,84 @@ body.pg-measure-report #content {
   font-size: 14px;
   color: var(--pg-wa-on-green);
   background: var(--pg-wa-green);
+}
+
+}
+
+/* ==========================================================================
+   Look A: variable chips.
+   A message's variable as a chip naming what it stands for, in the accent's
+   tint (pg_var_chips.js, includes/fn/var_chips.php): in a palette to drag or
+   click into a message, inside the message editor (with its remove button),
+   and as a plain chip beside a variable's settings.
+   ========================================================================== */
+@layer custom {
+
+.pg-var-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+  line-height: 22px;
+  color: var(--pg-accent);
+  background: color-mix(in srgb, var(--pg-accent) 14%, transparent);
+  vertical-align: 1px;
+  white-space: nowrap;
+  user-select: none;
+}
+.pg-var-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pg-var-chip[draggable="true"] {
+  cursor: grab;
+}
+.pg-var-chip[draggable="true"]:active {
+  cursor: grabbing;
+}
+button.pg-var-chip:hover,
+button.pg-var-chip:focus-visible {
+  background: color-mix(in srgb, var(--pg-accent) 24%, transparent);
+}
+button.pg-var-chip:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 1px;
+}
+.pg-var-chip-remove {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-right: -4px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.pg-var-chip-remove:hover {
+  background: color-mix(in srgb, var(--pg-accent) 24%, transparent);
+}
+
+.pg-var-editor {
+  min-height: 9rem;
+  padding: 10px 12px 12px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  outline: 0;
+}
+.pg-var-editor[contenteditable="false"] {
+  color: var(--pg-fg-2);
+}
+.pg-wa-editor:focus-within {
+  box-shadow: inset 0 0 0 1px var(--pg-accent), 0 0 0 3px color-mix(in srgb, var(--pg-accent) 18%, transparent);
 }
 
 }

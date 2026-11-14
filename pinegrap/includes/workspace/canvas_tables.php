@@ -423,7 +423,9 @@ function ws_canvas_uses($viewer, array $table_ids)
  */
 function ws_canvas_name($message)
 {
-    return (string) preg_replace('/\.html?$/i', '', (string) ($message['file_name'] ?? ''));
+    // A canvas whose message carries its drawing has a .png file name
+    // (ws_canvas_file_name()); one that carries its page an .html one.
+    return (string) preg_replace('/\.(html?|png)$/i', '', (string) ($message['file_name'] ?? ''));
 }
 
 /**

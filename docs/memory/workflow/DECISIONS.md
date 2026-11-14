@@ -274,6 +274,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-5.md: Widget 14, the Subscription ID field and download_assistant.php (#3205)
 - decisions-made-product-50.md: Where are the rules and the earlier parts?
 - decisions-made-product-50.md: Is the site search on a page in another language developed further? (owner, 2026-11-13, #9216)
+- decisions-made-product-51.md: Where are the rules and the earlier parts?
+- decisions-made-product-51.md: Is a Pinegrap plugin published in Claude's directory? (owner, 2026-11-14, in the architect's window)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
@@ -427,6 +429,13 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-23.md: What does a stop word received by SMS or WhatsApp do? (owner, 2026-11-13, #9286)
 - decisions-made-workspace-23.md: Are agents listed among who has seen a message? (owner, 2026-11-13, #9314)
 - decisions-made-workspace-23.md: Whose tag wakes an agent, and where? (owner, 2026-11-13, #9341)
+- decisions-made-workspace-24.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-24.md: Does a guest see the agents' messages? (owner, 2026-11-14, in the architect's window)
+- decisions-made-workspace-24.md: Is a guest listed in Channel info? (owner, 2026-11-14, in the architect's window)
+- decisions-made-workspace-24.md: Are the channel's agents' answers read aloud? (owner, 2026-11-13, in the architect's window)
+- decisions-made-workspace-24.md: How is the notice of a shared channel shown? (owner, 2026-11-14, in the architect's window)
+- decisions-made-workspace-24.md: Does the software guide an agent's drawings? (owner, 2026-11-14, agent channel message 2296)
+- decisions-made-workspace-25.md: May an agent conclude a discussion? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
@@ -602,6 +611,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - platform/secure-mode-proxy-offer.md: Turning Secure Mode on through a proxy not yet trusted: the Add this proxy to Trusted Proxies box, what the save lists and checks, the log line, what test_secure_mode.php reports.
 - platform/short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md.
 - platform/sms-and-iys-rules.md: The lasting rules of SMS and İYS (approved 2026-10-19, built PR #600 to #3846): why İYS, providers, message kinds, consent and İYS rules, marketing SMS, where each part is described, what is left
+- platform/whatsapp-template-designer.md: WhatsApp template designer, first half (WA8, #9350): whatsapp_template.php, drafts in whatsapp_templates, the draft check, samples column, phone preview and its JS twin, Send myself a test
 - ui/admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help), the one-toolbar principle with view_folders.php as reference, slot order, classes and the pg_screen_toolbar() helper.
 - ui/ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model
 - ui/back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back
@@ -655,6 +665,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/rich-text-path-placeholder.md: How rich text is stored with the {path} placeholder (prepare_rich_text_editor_content_for_input()): which addresses fold, why a //host address (Media Embed's YouTube player) keeps its two slashes
 - ui/settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()
 - ui/site-editor-picker-frame.md: On a site page in Edit mode the editor's Link and Image dialogs open the picker in a same-origin frame (picker_frame.php) inside a native dialog (#9117); the messages, the rights, what was refused
+- ui/variable-chips.md: Variable chips (WA8b): a message's {{n}} drawn as chips naming what they stand for, the shared pgVarChips editor and pg_var_chip_html(), drag, click, move and remove, what the textarea keeps
 - ui/visitors-screen-look.md: How the Visitors overview is drawn: reference pictures, frames and blocks, one change column, folding lists, quiet dashes, anchors, calm charts, the menu's section links, the traps
 - visitors/translation-index-verdict.md: The "reviewed" policy's one rule for a translated page's robots meta, alternates and sitemap.xml: only the page's own words count; no kept answer means not offered; what drops or keeps it
 - visitors/web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go
@@ -668,6 +679,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - waf/waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)
 - waf/waf-signature-honest-corpus.md: tests/waf_rules_corpus_test.php: honest sentences stay under the Medium threshold, attack payloads reach it; how eleven 10-point rules were narrowed (#9125 A1) and the rule key 'unless'
 - waf/waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).
+- workflow/agent-channel-guests.md: A guest's line in a channel (2026-11-14): no agent answers, greets or acts on it; it is data from outside the team; only team members answer a guest
 - workflow/agent-channel-language.md: The language of the agent channel (owner, 2026-11-13): agents write English to each other; only the architect writes Turkish there, and only when it speaks with the owner
 - workflow/agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
@@ -700,6 +712,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/automation-flows-decisions.md: Automation flows outside the Workspace (owner #8961, M1a): on at every site behind the right only, the one gate, the boxes that need the Workspace, what stays inside it, where each part is
 - workspace/automation-flows-gate.md: The one gate of automation flows, pg_flows_enabled() (#9109): flows run with the Workspace off; what the general job, the site events and the scheduled run do then, and what waits for the Workspace
 - workspace/canvas-card.md: The joined card of a canvas with a drawing and a page (CO7c, #9274): file.joined, part chips, the Drawing / Page switch, one Versions drawer with Show and Put back, which file each panel action reads
+- workspace/canvas-phone.md: The canvas screens at phone width (CO8, #9361): chips under the name, Full screen at the foot, icon tabs (.pg-seg-icons), New table floating on Data, what DL5f still draws
 - workspace/channel-agent-rights.md: Who adds, changes or removes a channel's agents ("Agents in this channel" in Channel settings, workspace.channels.agents.*): who may post; the tier and a private channel's new agent only its manager
 - workspace/channel-item-tags.md: A tag in a channel item asks the tagged assistant or wakes the tagged agent as a text message does: file messages, edits, notes, decisions, forwards, approvals, check-ins, flow posts
 - workspace/channel-members-agents.md: A channel's agents among its members (#8936): agents as squares in the head's faces, People here and Agents here in Channel info, last seen; a person's time only for a manager
