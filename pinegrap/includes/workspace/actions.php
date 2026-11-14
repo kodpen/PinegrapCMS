@@ -4768,7 +4768,12 @@ function ws_handle_action($action, $request)
 
         // The customer a plan is made for (personal_plan_contact.php).
         case 'ws_personal_plan_contact':
-            return ws_action_ok(array('contact' => ws_personal_plan_contact($viewer, (int) ($request['plan_id'] ?? 0))));
+            // A plan's customer, or (no plan yet) the one "New roadmap" names.
+            $contact = ((int) ($request['plan_id'] ?? 0) > 0)
+                ? ws_personal_plan_contact($viewer, (int) $request['plan_id'])
+                : ws_event_contact_of($viewer, array('contact_id' => (int) ($request['contact_id'] ?? 0)));
+
+            return ws_action_ok(array('contact' => $contact));
 
         case 'ws_personal_plan_contact_save':
             $result = ws_personal_plan_contact_save($viewer, (int) ($request['plan_id'] ?? 0), (int) ($request['contact_id'] ?? 0));

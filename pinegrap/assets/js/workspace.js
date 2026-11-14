@@ -6395,6 +6395,8 @@
             // The task drawer and the plan item form, each calling done()
             // after a save, for a screen that draws them again (My calendar).
             taskDrawer: function (taskId, defaults, done) { taskDrawer.open(taskId, defaults || null, done); },
+            // A visit's customer field, for a person's own plan too.
+            customerPicker: eventCustomerPicker,
             planItem: featurePlanItem,
             statusName: function (status) { return BOOT.statuses[status] || ''; },
             dmy: dmy,
