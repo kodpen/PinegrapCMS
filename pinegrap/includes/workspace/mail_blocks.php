@@ -31,7 +31,7 @@ define('WS_MAIL_BLOCK_DAYS', 30);
 define('WS_MAIL_BLOCK_LIST_MAX', 500);
 
 /**
- * Whether the block list's table and column are there (step 11.0.200).
+ * Whether the block list's table and column are there (step 11.0.202).
  *
  * @return bool
  */

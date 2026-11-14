@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for a mailbox's block list (includes/workspace/mail_blocks.php): the
- * 2026.11.0 step 11.0.200 run twice against an in-memory schema, the value a
+ * 2026.11.0 step 11.0.202 run twice against an in-memory schema, the value a
  * block stores, the domains an address falls under, the match, who may block
  * and where, the Site Log lines, the pane's offer and its form, the list on
  * the Mailboxes card, and the wiring into the ingest, the sweeps, the pane,
@@ -31,7 +31,7 @@ function test_workspace_mail_blocks_step_is_called_once_under_a_label_of_its_own
 {
 	$source = workspace_mail_blocks_test_source('includes/migrations/2026.11.0.php');
 
-	pg_assert_same(1, substr_count($source, "\tupgrade_2026_11_0_ws_mail_blocks();          // 11.0.200\n"), 'called once under 11.0.200');
+	pg_assert_same(1, substr_count($source, "\tupgrade_2026_11_0_ws_mail_blocks();          // 11.0.202\n"), 'called once under 11.0.202');
 
 	preg_match('/function upgrade_to_2026_11_0\(\) \{(.*?)\n\}\n/s', $source, $entry);
 	preg_match_all('#// (11\.0\.\d+)\n#', isset($entry[1]) ? $entry[1] : '', $labels);
