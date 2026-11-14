@@ -1,6 +1,6 @@
 ---
 name: channel-members-agents
-description: A channel's agents and guests among its members (#8936, GV2): agents as squares in the head's faces, People here, Agents here and Guests in Channel info, last seen; a person's and a guest's time only for a manager
+description: A channel's agents and guests among its members (#8936, GV2): agent faces in the head; People, Agents and Guests in Channel info; last seen, a person's and a guest's only for a manager
 ---
 
 ## Where do a channel's agents show beside its people?
