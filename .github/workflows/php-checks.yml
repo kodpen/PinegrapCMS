@@ -3,11 +3,12 @@
 # external API schema, the unit tests under tests/, the function copies in
 # get_file.php, static analysis (PHPStan level 0) and PHP 7.1+ compatibility
 # (PHPCompatibility) of the product tree against their baselines, a
-# JavaScript syntax check of the large panel scripts, whether every .min.js
-# and the code editor bundle still match their sources and whether the memory
-# files are valid and, on a merge train and a push, whether the memory index
-# (docs/memory/README.md) matches the files it lists, and on a pull
-# request the guards on its branch's commits, changelog and size. None of them
+# JavaScript syntax check of the large panel scripts, whether the code editor
+# bundle still matches its sources, whether the memory files are valid, on a
+# merge train and a push whether every .min.js and .min.css matches its
+# sources and the memory index (docs/memory/README.md) the files it lists (a
+# pull request carries neither and builds its bundles before the tests), and
+# on a pull request the guards on its branch's commits, changelog and size. None of them
 # needs a database. tools/pre_push.sh runs the fast ones before a push
 # (docs/memory/workflow/pre-push-checks.md): a step or a node --check file
 # added here that takes seconds is added there too.
@@ -51,6 +52,23 @@ jobs:
           extensions: mbstring, mysqli, gd, intl, xml, zip
           coverage: none
           tools: none
+
+      # The syntax check, terser (npx, tools/build_js.php) and npm ci + esbuild
+      # (tools/build_code_editor.php) all run on this Node, an LTS line.
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      # A pull request carries no bundle (tools/check_pr.php): they are built
+      # from its sources before the tests, which read some of them. A merge
+      # train and a push carry the bundles their landing built
+      # (tools/merge_train.php), and the steps further down compare them.
+      - name: Build the bundles (a pull request)
+        if: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'merge-train/') && hashFiles('tools/build_js.php') != '' }}
+        run: |
+          php tools/build_js.php
+          php tools/build_css.php
 
       - name: Syntax check (php -l over the product tree)
         if: ${{ hashFiles('tools/lint.php') != '' }}
@@ -103,25 +121,18 @@ jobs:
         if: ${{ hashFiles('tools/static_analysis.sh') != '' }}
         run: bash tools/static_analysis.sh phpcompat
 
-      # The syntax check, terser (npx, tools/build_js.php) and npm ci + esbuild
-      # (tools/build_code_editor.php) all run on this Node, an LTS line.
-      - name: Set up Node
-        uses: actions/setup-node@v7
-        with:
-          node-version: "24"
-
       - name: JavaScript syntax (node --check)
         run: |
           node --check pinegrap/assets/js/style_designer.src.js
           node --check pinegrap/assets/js/workspace.js
           node --check pinegrap/assets/js/backend.src.js
 
-      - name: Minified scripts match their sources (tools/build_js.php --check)
-        if: ${{ hashFiles('tools/build_js.php') != '' }}
+      - name: Minified scripts match their sources (tools/build_js.php --check, a train and a push)
+        if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'merge-train/')) && hashFiles('tools/build_js.php') != '' }}
         run: php tools/build_js.php --check
 
-      - name: Minified stylesheets match their sources (tools/build_css.php --check)
-        if: ${{ hashFiles('tools/build_css.php') != '' }}
+      - name: Minified stylesheets match their sources (tools/build_css.php --check, a train and a push)
+        if: ${{ (github.event_name != 'pull_request' || startsWith(github.head_ref, 'merge-train/')) && hashFiles('tools/build_css.php') != '' }}
         run: php tools/build_css.php --check
 
       - name: Code editor bundle matches its sources (tools/build_code_editor.php --check)
@@ -203,6 +214,19 @@ jobs:
           extensions: mbstring, mysqli, gd, intl, xml, zip, pdo_mysql
           coverage: none
           tools: none
+
+      # The tests read some bundles, which a pull request does not carry.
+      - name: Set up Node (a pull request)
+        if: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'merge-train/') && hashFiles('tools/build_js.php') != '' }}
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Build the bundles (a pull request)
+        if: ${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'merge-train/') && hashFiles('tools/build_js.php') != '' }}
+        run: |
+          php tools/build_js.php
+          php tools/build_css.php
 
       - name: Syntax check, bundled libraries included (php tools/lint.php --vendored)
         if: ${{ hashFiles('tools/lint.php') != '' }}
