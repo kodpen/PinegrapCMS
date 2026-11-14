@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel-8
-description: Decisions list, panel part 8 (2026-11-12 on): look A's report page as reference (#8955); a switch keeps its thumb (#9070); Design Canvas icon in one colour (#9250); cards in the form column (#9271)
+description: Decisions list, panel part 8 (2026-11-12 on): report page reference (#8955); switch thumb (#9070); Design Canvas icon in one colour (#9250); form column cards (#9271); the Communication row's drawing
 ---
 
 ## Where are the rules and the earlier parts?
@@ -25,3 +25,8 @@ description: Decisions list, panel part 8 (2026-11-12 on): look A's report page 
 - The measure alone: a card stays one per row and its fields keep the 12-column grid, so they widen with the form column up to 1300 px (way A of #9269, `ui/look-page-widths.md`). Not chosen: fields two abreast with each input capped at about 480 px (C).
 - Owner (2026-11-13): "A olsun"; told that a full-row input becomes about 1270 px against the field sentence of #9070: "C çok salkım saçak olacak ya A ya B olsun".
 - The architect's, not the owner's words: he left A or B open and the architect takes A, his first answer; two cards abreast (B) is what to come back to if stretched fields look wrong on the real screens. It narrows #9070 (`decisions-made-panel-7.md`): an input may run the width of the form column, never of the window. The architect did not see the pictures.
+
+## Which drawing does the Communication row of the main menu carry? (owner, 2026-11-14, in the architect's window)
+- A speech bubble with one arrow out and one arrow in: the bubble in the module's colour, the two arrows in the accent, each arrow sliding once on hover. It replaces the megaphone the row kept from the e-mail campaigns row. The work order: agent channel message 3203.
+- Owner (2026-11-14): "iletişim ikonu değiştirelim istiyorum", "megafon kampanya odaklı bir ikon. bize iletişimi simgeleyen birşey lazım"; a person is out, Contacts and Users draw one. Of the drafts shown he chose "6b: Balon ve oklar".
+- Not chosen: an envelope, a paper plane, an @ sign, a handshake, the two arrows in a circle or under an envelope.
