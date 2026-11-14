@@ -569,6 +569,63 @@ function api_assistant_scopes_left_out() {
 
 }
 
+// The scopes an assistant plugin installed in a chat application (Claude's
+// plugin bundle) is meant to hold: the read of every group but those an
+// assistant's key is made without, and the writes below. No write whose
+// routes move money or make a cost is among them (orders, gift cards and
+// store credit, cash, commissions, customers with their subscriptions):
+// tests/api_plugin_scopes_test.php fails when a route marked 'moves_money'
+// sits under one of these scopes. The consent screen still ticks no write;
+// the person ticks the ones they want. $groups is api_scope_groups(); a
+// group the site lacks adds nothing.
+function api_plugin_scopes(array $groups) {
+
+	$writes = api_plugin_writes();
+
+	$leave_out = api_assistant_scopes_left_out();
+
+	$scopes = array();
+
+	foreach ($groups as $group) {
+
+		$read  = isset($group['read']) ? (string)$group['read'] : '';
+		$write = isset($group['write']) ? (string)$group['write'] : '';
+
+		if (($read !== '') && !in_array($read, $leave_out, true)) {
+
+			$scopes[] = $read;
+
+		}
+
+		if (($write !== '') && in_array($write, $writes, true)) {
+
+			$scopes[] = $write;
+
+		}
+
+	}
+
+	$scopes = array_values(array_unique($scopes));
+
+	sort($scopes);
+
+	return $scopes;
+
+}
+
+// The writes of api_plugin_scopes(): records a person edits through an
+// assistant, none of which moves money.
+function api_plugin_writes() {
+
+	return array(
+		'bookings:write', 'calendars:write', 'campaigns:write', 'comments:write',
+		'contact_groups:write', 'erp:write', 'files:write', 'forms:write',
+		'inventory:write', 'offers:write', 'pages:write', 'products:write',
+		'store:write', 'tasks:write', 'translations:write', 'workspace:write'
+	);
+
+}
+
 // What of an assistant key's scopes ($scopes, api_assistant_scopes()) the
 // person making it may hand on ($owner_scopes, api_owner_scopes() of that
 // person): the scopes both lists hold, in the key's order. An empty list when
