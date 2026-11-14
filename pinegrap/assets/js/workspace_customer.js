@@ -404,24 +404,72 @@
             empty.appendChild(document.createTextNode(h.t('cust_roadmap_empty')));
             part.appendChild(empty);
 
-            if (!offer.copies.length) {
-                return;
+            if (offer.copies.length) {
+                part.appendChild(h.el('div', 'small fw-semibold mt-5 mb-1', h.t('cust_roadmap_copy')));
+                // A copy opens the New plan drawer filled; nothing is written
+                // before its Save.
+                offer.copies.forEach(function (plan) {
+                    var copy = h.el('a', 'btn btn-sm btn-link px-0 d-block text-start text-truncate');
+
+                    copy.href = offer.new_url + '&from=' + plan.id;
+                    copy.appendChild(h.icon('bi-copy', 'me-1'));
+                    copy.appendChild(document.createTextNode(plan.title));
+                    part.appendChild(copy);
+                });
             }
 
-            part.appendChild(h.el('div', 'small fw-semibold mt-5 mb-1', h.t('cust_roadmap_copy')));
-            // A copy opens the New plan drawer filled; nothing is written
-            // before its Save.
-            offer.copies.forEach(function (plan) {
-                var copy = h.el('a', 'btn btn-sm btn-link px-0 d-block text-start text-truncate');
-
-                copy.href = offer.new_url + '&from=' + plan.id;
-                copy.appendChild(h.icon('bi-copy', 'me-1'));
-                copy.appendChild(document.createTextNode(plan.title));
-                part.appendChild(copy);
-            });
+            templatesPart(h, offer, part);
         });
 
         return { button: open, part: part };
+    }
+
+    // The team's roadmap templates under "New roadmap": each fills the New
+    // plan drawer, the first step today; its maker (or a manager, once the
+    // maker's account is gone) may delete it here.
+    function templatesPart(h, offer, part) {
+        var templates = offer.templates || [];
+
+        if (!templates.length) {
+            return;
+        }
+
+        part.appendChild(h.el('div', 'small fw-semibold mt-5 mb-1', h.t('cust_roadmap_templates')));
+
+        templates.forEach(function (template) {
+            var row = h.el('div', 'd-flex align-items-center gap-2 ws-roadmap-template');
+            var use = h.el('a', 'btn btn-sm btn-link px-0 text-start text-truncate flex-grow-1');
+
+            use.href = offer.new_url + '&template=' + template.id;
+            use.appendChild(h.icon('bi-signpost-2', 'me-1'));
+            use.appendChild(document.createTextNode(template.title));
+            row.appendChild(use);
+            row.appendChild(h.el('span', 'pg-text-meta text-nowrap', h.t('cust_template_meta', template.steps, template.maker)));
+
+            if (template.can_delete) {
+                var remove = h.el('button', 'pg-icon-button pg-icon-button-sm');
+
+                remove.type = 'button';
+                remove.title = h.t('cust_template_delete');
+                remove.setAttribute('aria-label', h.t('cust_template_delete'));
+                remove.appendChild(h.icon('bi-trash'));
+                remove.addEventListener('click', function () {
+                    h.ask(h.t('cust_template_delete_ask', template.title), h.t('cust_template_delete'), true).then(function (yes) {
+                        if (!yes) {
+                            return;
+                        }
+
+                        h.api('ws_roadmap_template_delete', { template_id: template.id }).then(function () {
+                            offer.templates = templates.filter(function (one) { return one.id !== template.id; });
+                            row.remove();
+                        }).catch(h.fail);
+                    });
+                });
+                row.appendChild(remove);
+            }
+
+            part.appendChild(row);
+        });
     }
 
     function card(channel, h) {

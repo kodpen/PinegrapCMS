@@ -209,7 +209,8 @@ function ws_customer_card_roadmaps($listed, $base)
  * @param array  $viewer
  * @param array  $identity ws_customer_identity()
  * @param string $base
- * @return array|null contact_id, new_url, copies (id, title); null when
+ * @return array|null contact_id, new_url, copies (id, title), templates
+ *                    (ws_roadmap_templates_list()); null when
  *                    nothing is offered
  */
 function ws_customer_card_roadmap_offer($viewer, $identity, $base)
@@ -234,6 +235,7 @@ function ws_customer_card_roadmap_offer($viewer, $identity, $base)
         'contact_id' => $contact_id,
         'new_url'    => $base . 'workspace_my_calendar.php?view=list&new_plan=1&contact=' . $contact_id,
         'copies'     => $copies,
+        'templates'  => ws_roadmap_templates_list($viewer),
     );
 }
 
@@ -324,5 +326,5 @@ function ws_personal_plan_contact_js_strings()
     return array(
         'plan_customer'      => lang('Customer (optional)'),
         'plan_customer_help' => lang('The plan shows on the customer\'s card and history, only to those who may see the plan.'),
-    );
+    ) + ws_roadmap_template_js_strings();
 }

@@ -18374,6 +18374,28 @@ button.ws-cal-more {
 .ws-roadmap-empty {
   padding: 4px 0;
 }
+/* Under the steps: "Move the following steps too", then Add a step and
+   "Save as team template" on one line, and the template chooser. */
+.ws-roadmap-move {
+  margin-bottom: 8px;
+}
+.ws-roadmap-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ws-roadmap-keep {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ws-roadmap-keep .form-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 .ws-roadmap-count {
   margin-left: 4px;
   color: var(--pg-fg-2);

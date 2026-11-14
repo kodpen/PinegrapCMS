@@ -4,7 +4,9 @@
  * Workspace - the roadmap of a person's own plan, inside the plan drawer of
  * My calendar (workspace_my_calendar.js): dated steps, a bar with each step
  * on its day and the progress, "Make a task" on a step. The steps are read
- * and saved by includes/workspace/personal_plan_steps.php.
+ * and saved by includes/workspace/personal_plan_steps.php. "Save as team
+ * template" keeps the roadmap for the team (roadmap_templates.php), and
+ * "Move the following steps too" shifts the later steps with a changed day.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -25,6 +27,40 @@
         var parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || '');
 
         return parts ? Date.UTC(+parts[1], +parts[2] - 1, +parts[3]) / 86400000 : null;
+    }
+
+    function dayOf(number) {
+        return new Date(number * 86400000).toISOString().slice(0, 10);
+    }
+
+    /**
+     * "Move the following steps too": the steps after the one at index whose
+     * day went from before to after move by the same number of calendar
+     * days; a step with no day keeps none. Pure: a new list is returned.
+     *
+     * @param {Object[]} steps  the steps in order, each with a day (Y-m-d or '')
+     * @param {number} index    the step whose day changed
+     * @param {string} before   its old day
+     * @param {string} after    its new day
+     * @return {Object[]}
+     */
+    function shiftFollowing(steps, index, before, after) {
+        var from = dayNumber(before);
+        var to = dayNumber(after);
+        var moved = (from === null || to === null) ? 0 : to - from;
+
+        return steps.map(function (step, at) {
+            var copy = Object.assign({}, step);
+            var own = dayNumber(step.day);
+
+            if (at === index) {
+                copy.day = after;
+            } else if (at > index && moved && own !== null) {
+                copy.day = dayOf(own + moved);
+            }
+
+            return copy;
+        });
     }
 
     /**
@@ -50,6 +86,11 @@
         var marks = el('div', 'ws-roadmap-marks');
         var list = el('ol', 'ws-roadmap-steps');
         var add = el('button', 'pg-button pg-button-quiet pg-button-sm', '');
+        var foot = el('div', 'ws-roadmap-foot');
+        var moveRow = el('label', 'ws-plan-switch ws-roadmap-move');
+        var move = el('input', 'pg-switch');
+        var keep = el('button', 'pg-button pg-button-quiet pg-button-sm', '');
+        var chooser = el('div', 'ws-roadmap-keep d-none');
 
         head.appendChild(el('h3', 'pg-group-label', s('roadmap')));
         head.appendChild(count);
@@ -78,8 +119,83 @@
             }
         });
 
-        if (editable) {
-            root.appendChild(add);
+        move.type = 'checkbox';
+        moveRow.appendChild(move);
+        moveRow.appendChild(document.createTextNode(s('steps_move_following')));
+        root.appendChild(moveRow);
+
+        // "Save as team template": the owner's saved plan only.
+        keep.type = 'button';
+        keep.appendChild(h.icon('bi-signpost-2', 'me-1'));
+        keep.appendChild(document.createTextNode(s('template_save')));
+        keep.addEventListener('click', function () {
+            keep.disabled = true;
+            h.api('ws_roadmap_templates', {}).then(function (result) {
+                var mine = (result.templates || []).filter(function (one) { return one.mine; });
+
+                keep.disabled = false;
+
+                if (!mine.length) {
+                    keepAs(0);
+                } else {
+                    choose(mine);
+                }
+            }).catch(function (error) {
+                keep.disabled = false;
+                h.fail(error);
+            });
+        });
+
+        foot.appendChild(add);
+        foot.appendChild(keep);
+        root.appendChild(foot);
+        root.appendChild(chooser);
+
+        // ── the team template ──
+
+        function keepAs(templateId) {
+            hooks.saveAll().then(function (roadmap) {
+                if (!roadmap) {
+                    return;
+                }
+
+                return h.api('ws_roadmap_template_save', { plan_id: roadmap.plan_id, template_id: templateId }).then(function () {
+                    h.toast(s('template_saved'), 'success');
+                    hooks.reopen(roadmap.plan_id);
+                });
+            }).catch(h.fail);
+        }
+
+        // A maker with templates keeps a new one or puts this roadmap in
+        // place of one of theirs.
+        function choose(mine) {
+            var pick = el('select', 'form-control form-control-sm');
+            var go = el('button', 'pg-button pg-button-primary pg-button-sm', s('template_save'));
+
+            h.clear(chooser);
+            pick.setAttribute('aria-label', s('template_save'));
+            pick.appendChild(new Option(s('template_save_new'), '0'));
+            mine.forEach(function (one) {
+                pick.appendChild(new Option(fill(s('template_save_over'), [one.title]), String(one.id)));
+            });
+            go.type = 'button';
+            go.addEventListener('click', function () {
+                go.disabled = true;
+                keepAs(parseInt(pick.value, 10) || 0);
+            });
+            chooser.appendChild(pick);
+            chooser.appendChild(go);
+            chooser.classList.remove('d-none');
+            pick.focus();
+        }
+
+        function drawFoot() {
+            var dated = steps.filter(function (step) { return dayNumber(step.day) !== null; }).length;
+
+            add.classList.toggle('d-none', !editable);
+            moveRow.classList.toggle('d-none', !editable || dated < 2);
+            keep.classList.toggle('d-none', !editable || !plan || !plan.id || !steps.length);
+            foot.classList.toggle('d-none', !editable);
         }
 
         // ── the bar: the plan's days, each dated step on its day ──
@@ -208,8 +324,20 @@
             day.disabled = !editable;
             day.setAttribute('aria-label', s('step_day'));
             day.addEventListener('change', function () {
+                var before = step.day;
+
                 step.day = day.value;
+
+                if (move.checked && before && day.value && index < steps.length - 1) {
+                    steps = shiftFollowing(steps, index, before, day.value);
+                    drawSteps();
+                    list.querySelectorAll('.ws-roadmap-day')[index].focus();
+
+                    return;
+                }
+
                 drawBar();
+                drawFoot();
             });
             row.appendChild(day);
 
@@ -272,12 +400,12 @@
             }
 
             drawBar();
+            drawFoot();
         }
 
         function take(roadmap) {
             steps = (roadmap && roadmap.steps) || [];
             editable = editable && !!(roadmap ? roadmap.can_edit : true);
-            add.classList.toggle('d-none', !editable);
             drawSteps();
         }
 
@@ -337,5 +465,5 @@
         return event && event.steps_total ? fill(s('step_progress'), [event.steps_done, event.steps_total]) : '';
     }
 
-    window.PGWsRoadmap = { section: section, progress: progress, label: label };
+    window.PGWsRoadmap = { section: section, progress: progress, label: label, shiftFollowing: shiftFollowing };
 })();

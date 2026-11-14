@@ -52,7 +52,9 @@
             // "New roadmap" on a customer's card: a new plan naming them.
             contact: query.get('new_plan') ? (parseInt(query.get('contact') || 0, 10) || 0) : 0,
             // ... filled from one of the person's own plans (from=N).
-            from: parseInt(query.get('from') || 0, 10) || 0
+            from: parseInt(query.get('from') || 0, 10) || 0,
+            // ... or from one of the team's roadmap templates (template=N).
+            template: parseInt(query.get('template') || 0, 10) || 0
         };
         var data = null;
         var plans = planKit(h, S, function () { load(); });
@@ -161,11 +163,13 @@
 
                     state.contact = 0;
 
-                    if (state.from) {
-                        h.api('ws_personal_plan_copy_draft', { plan_id: state.from }).then(function (copied) {
+                    if (state.from || state.template) {
+                        h.api(state.template ? 'ws_roadmap_template_draft' : 'ws_personal_plan_copy_draft',
+                            state.template ? { template_id: state.template } : { plan_id: state.from }).then(function (copied) {
                             plans.drawer(null, Object.assign({}, copied.draft, { contact_id: contact }));
                         }).catch(h.fail);
                         state.from = 0;
+                        state.template = 0;
                     } else {
                         plans.drawer(null, { start: result.today, contact_id: contact });
                     }

@@ -523,6 +523,7 @@
     "{1} changes": "{1} değişiklik",
     "{1} paragraph(s) changed.": "{1} paragraf değişti.",
     "{1} picture(s) could not be shown.": "{1} resim gösterilemedi.",
+    "{1} steps · {2}": "{1} adım · {2}",
     "{codec} 128 kbps": "{codec} 128 kbps",
     "{codec} · 128 kbps · stereo": "{codec} · 128 kbps · stereo",
     "{count} image(s) optimized on upload: {before} -> {after}.": "{count} görsel yüklenirken optimize edildi: {before} -> {after}.",
