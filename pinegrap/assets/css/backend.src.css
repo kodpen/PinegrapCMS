@@ -12376,6 +12376,10 @@ body.workspace .ws-shell-main > #button_bar {
 .ws-info-add {
   margin-top: .5rem;
 }
+/* A guest's line (access, who shared and when) wraps: its date is the point. */
+.ws-info-guests .ws-info-person-role {
+  white-space: normal;
+}
 /* Channel info's agents and last seen: an agent's face is a rounded square
    with its mark, a person's stays round; the last seen sits at the right. */
 .avatar.ws-agent-face {

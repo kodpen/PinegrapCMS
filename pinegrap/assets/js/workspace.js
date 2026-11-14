@@ -9892,6 +9892,33 @@
                 }
             }
 
+            // The guests with an open share (ws_channel_info_guests()): read
+            // only or read and write, who shared and when; their last seen
+            // only for a manager, as a person's.
+            var guests = channel.guests || [];
+
+            if (guests.length) {
+                section(t('cm_guests') + ' · ' + guests.length);
+
+                var guestList = el('div', 'ws-info-people ws-info-guests');
+
+                guests.forEach(function (guest) {
+                    var name = el('div', 'ws-info-person-name', guest.name);
+
+                    name.appendChild(el('span', 'badge badge-subtle theme-warning ws-info-badge', t('guest_badge')));
+
+                    var row = personRow(avatar(guest), name, guest.line, guestList);
+
+                    row.setAttribute('data-guest-id', guest.id);
+
+                    if (guest.seen) {
+                        row.appendChild(seenNode(guest.seen, guest.seen_state));
+                    }
+                });
+
+                body.appendChild(guestList);
+            }
+
             // The reader's notifications from this channel, the menu's three
             // choices side by side.
             if (channel.joined) {
