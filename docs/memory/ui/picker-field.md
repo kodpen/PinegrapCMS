@@ -6,29 +6,30 @@ module: picker
 
 ## What is the field?
 - `pg_picker_field($kind, $name, $value, $options)` (`includes/fn/picker.php`), the dialog's other face (`picker-dialog.md`). PR #8751 (`picker-overview.md`); it replaced a "Choose from File Manager" button.
-- A row: a box with the chosen value's picture (2.25rem), its name and a meta line (folder path, W × H, size), clear (×) and a caret; Browse… beside it opens the dialog on the value, or on the typed text.
+- A row: a box with the value's picture (2.25rem), name and meta line (folder path, W × H, size), clear (×), a caret; Browse… opens the dialog on the value or the typed text.
 - The value is posted from a hidden input with the field's name (`data-pg-picker-value`); the text input carries the id the label names (`role="combobox"`); a pick fires its `change`.
 
 ## Which options does it take?
 - `id` (default the name), `title` (the dialog's), `placeholder` (default "Type to search…"), `describedby` (the help text's id), `invalid` (refused: red box, `aria-invalid`), `user` (id, role) where the request has no `USER_ID`/`USER_ROLE` (an AJAX handler), `value_attributes` (hidden input).
 - An unknown kind prints ''. The stored value is resolved by `pg_picker_resolve_answer()` with the user's access.
-- It uses `is-error`, never `is-invalid`: the feedback injector (`pgInjectAriaAndRequiredMarkers`) would add text to an `.is-invalid` wrapper.
+- It uses `is-error`, never `is-invalid`: `pgInjectAriaAndRequiredMarkers` adds text to an `.is-invalid` wrapper.
 
 ## How is a stored value marked?
-- `pg_picker_field_view()` (pure): missing (a name kept, "Stored value · file not found"; an id as "Page not found" / "File not found", meta "Stored value · #42", #9386; amber note "This file is no longer in Files; choose another."); hidden ("A file in a folder you cannot open", lock icon); binned (red note, restore or choose); offline (amber note, choose a picture everyone may see).
+- Owner (2026-11-14): a page or file field shows the name, never leads with the id; with no name left it reads "Page not found" / "File not found", the id on the small line. Fields outside the picker: `picker-overview.md`.
+- `pg_picker_field_view()` (pure): missing (a name kept, "Stored value · file not found"; else meta "Stored value · #42", #9386; amber note "This file is no longer in Files; choose another."); hidden ("A file in a folder you cannot open", lock icon); binned (red note, restore or choose); offline (amber note, choose a picture everyone may see).
 - The note is a `.form-text` under the row; a pick removes it. The value is posted unchanged; the saves keep their checks (`settings-public-image-pickers.md`, `commerce/short-link-recycle-bin.md`).
 
 ## How does typing search?
-- After 250 ms the kind's `search` request (8 rows) fills a list under the box: picture, name with the match highlighted, meta. The last row is "All results for “…” in Browse" (or "Browse…"), Alt+↓ too. A stale answer is dropped by a sequence number.
+- After 250 ms the kind's `search` (8 rows) fills a list under the box: picture, highlighted name, meta. The last row is "All results for “…” in Browse" (or "Browse…"), Alt+↓ too. A stale answer is dropped by a sequence number.
 - Keys: ↓/↑ open and move, Enter chooses the active or first row (never submits the form), Escape restores the stored value and closes the list. The keydown listener sits on the document in the capture phase, or Bootstrap's Escape would close a settings dialog.
 - Leaving the field restores the chosen text. A page kind's archived or binned match is marked and refused (`picker-pages.md`).
 
 ## What is drawn on a phone?
-- Below 576 px a tap on the box opens a half sheet (`.pg-pfield-sheet`, a `pgUI.dialog`) with its own search input and list; the box input is read-only so no keyboard pops up. Browse shows only its icon.
+- Below 576 px a tap on the box opens a half sheet (`.pg-pfield-sheet`, a `pgUI.dialog`) with its own search and list; the box is read-only (no keyboard). Browse shows only its icon.
 
 ## Who prints the script?
-- The screen prints `pg_picker_script()` (once per request); `pg_picker_field()` never does. `includes/settings/prep.php` runs before every settings category, so never prints it: `seo.php`, `general.php` and `fediverse.php` print it with their cards.
-- Its listeners sit on the document, so injected markup (Settings cards, File Manager window) works as printed.
+- The screen prints `pg_picker_script()` (once per request); `pg_picker_field()` never does. `includes/settings/prep.php` never prints it: `seo.php`, `general.php` and `fediverse.php` print it with their cards.
+- Its listeners sit on the document, so injected markup works as printed.
 
 ## Which screens use it?
 - Settings › SEO: Site Icon (`site_icon`), Application Icon, Default Share Image (`public_image`); General: Organization Logo; Fediverse: Avatar (`public_image`, empty = the organization logo).
