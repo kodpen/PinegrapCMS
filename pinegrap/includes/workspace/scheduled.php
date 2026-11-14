@@ -1303,12 +1303,14 @@ function ws_scheduled_rule_input($viewer, $rule)
                 $out['status'] = ($group === '') ? '' : (string) (int) $group;
             }
 
-            // The status an order or a task moves to, or how an approval
-            // request ended; empty for any.
+            // The status an order or a task moves to, how an approval
+            // request ended, or how a conversation's message came; empty
+            // for any.
             $filter_values = array(
                 'status'      => ws_events_order_statuses(),
                 'task_status' => ws_task_statuses(),
                 'outcome'     => function_exists('ws_events_approval_outcomes') ? ws_events_approval_outcomes() : array(),
+                'transport'   => function_exists('ws_mail_transport_labels') ? ws_mail_transport_labels() : array(),
             );
 
             if (isset($filter_values[$info['filter']])) {
@@ -2354,6 +2356,10 @@ function ws_scheduled_rule_text($viewer, $rule)
 
                     case 'outcome':
                         $text = lang(array('string' => 'When an approval request ends: {var:1}', 'vars' => ws_events_approval_outcomes()[$status] ?? $status));
+                        break;
+
+                    case 'transport':
+                        $text = lang(array('string' => 'When a message is received by {var:1}', 'vars' => ws_mail_transport_labels()[$status] ?? $status));
                         break;
 
                     case 'group':

@@ -46,20 +46,24 @@ if ($open > 0) {
 
 $list = ws_mail_list($viewer, $filters, $now);
 $boxes = ws_mail_list_boxes($viewer);
+$transports = ws_mail_list_transports($viewer);
 
 echo pg_page_shell(array(
     'title'               => lang('E-mails'),
     'extra classes'       => 'workspace workspace_mail',
     'icon'                => 'workspace',
     'heading'             => lang('E-mails'),
-    'heading_description' => lang('The e-mail conversations of the channels you can read. Open one to read it, answer it or change its status and holder.'),
+    // A customer's WhatsApp messages and SMS are listed here too, once any came.
+    'heading_description' => (count($transports) > 1)
+        ? lang('The e-mail, WhatsApp and SMS conversations of the channels you can read. Open one to read it, answer it or change its status and holder.')
+        : lang('The e-mail conversations of the channels you can read. Open one to read it, answer it or change its status and holder.'),
 )) . '
 
 <main id="content" class="container-fluid p-0">
 <div class="ws-shell">
 <div class="ws-shell-main">
     <div id="ws-root" class="ws-mail-screen' . (($pane !== '') ? ' ws-mail-reading' : '') . '">
-        ' . ws_mail_list_filters_html($filters, $boxes, ws_mail_send_ready() && (bool) ws_mail_send_boxes($viewer), ws_mail_list_support($boxes, ws_mail_plain_box_ids())) . '
+        ' . ws_mail_list_filters_html($filters, $boxes, ws_mail_send_ready() && (bool) ws_mail_send_boxes($viewer), ws_mail_list_support($boxes, ws_mail_plain_box_ids()), $transports) . '
         <div class="ws-mail-columns">
             <div class="ws-mail-list">' . ws_mail_list_html($list, $filters, $now, $open) . '</div>
             <section class="ws-mail-pane" data-ws-mail-pane aria-label="' . h(lang('E-mail conversation')) . '"' . (($pane !== '') ? '' : ' hidden') . '>' . $pane . '</section>
