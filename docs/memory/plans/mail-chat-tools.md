@@ -11,11 +11,11 @@ description: Plan (owner 2026-11-14): Workspace e-mail read, drafted and sent fr
 
 ## Which steps?
 - MT1 (S, no product code) Census. Per route: what a chat needs and does not get (the whole text, the HTML, the files of a mail, the quote). Where a draft lives (a reply's as an item with `send_state` `draft`; a new mail's has no conversation yet) and who reads it. The callers apart (`api/api-device-sessions.md`). The tools against `api/claude-plugin-tool-check.md`. Written into this file; a needed column is asked first.
-  - Done in #9463: no column for drafts; a draft's files asked of the architect (`mail-chat-tools-steps.md`).
+  - Done in #9463: a draft is a `ws_mail_items` row; its files go in `draft_files` (owner, B, `workflow/decisions-made-schema-18.md`).
 - MT2 (M) Reading. A mail's text whole and its cleaned HTML on request, its files listed and fetched through the Files routes, as tools. Every mail body carries the outside mark (`workspace/workspace-outside-caution.md`).
 - MT3 (M) Drafts on the server. A reply's draft and a new mail's draft: create, read, change, delete, as routes and tools for every caller that may read the conversation. The E-mails screen gets a Drafts view; a draft opens in the reply drawer or the New e-mail form, and Send there is the person's. Look A, the picture set in the agent channel.
 - MT4 (M) Sending from a person's connection. A new scope, `workspace:mail_send`, that no connection of today holds and the consent screen names. With it a person's OAuth connection or device session may call reply, new mail and "send this draft" as tools; the panel's own checks, limits and the unknown-domain stop hold, Idempotency-Key, dry run. The mail is the person's; the Site Log names the application it went through.
-- MT5 (M, after MA10b) HTML and files out. `html` on reply, new mail and drafts, cleaned by the allowlist cleaner, the text part made from it when none is sent; files within the panel's limits, named by the messages carrying them (the census: `/files` does not reach a channel's folder).
+- MT5 (M, after MA10b) HTML and files out. `html` on reply, new mail and drafts, cleaned by the allowlist cleaner, the text part made from it when none is sent; files by their Files id within the panel's limits, the sender's right to each checked at Send; a draft keeps them in `ws_mail_items.draft_files` (MT5's migration step).
 - MT6 (S) Close-out: `workspace/mail-api.md` and `mail-decisions.md` brought up to date, the plugin's e-mail skill named for `plans/claude-plugin-bundle.md`, this plan and its three census files deleted.
 
 ## What does every step keep?

@@ -1,6 +1,6 @@
 ---
 name: mail-chat-tools-steps
-description: Exact scope of MT2, MT4, MT5 (mail-chat-tools plan): a mail read whole with HTML and files, the workspace:mail_send scope, HTML and files out, the draft files question
+description: Exact scope of MT2, MT4, MT5 (mail-chat-tools plan): a mail read whole with HTML and files, the workspace:mail_send scope, HTML and files out, where a draft's files are kept
 ---
 
 ## MT2: what does reading add?
@@ -16,7 +16,7 @@ description: Exact scope of MT2, MT4, MT5 (mail-chat-tools plan): a mail read wh
 
 ## MT5: what goes out as HTML and files?
 - `html` on reply, new mail and drafts: `pg_mail_html_clean()`, kept in `body_html`; the text part made from it when no `text` is sent (MA10b's sending path).
-- Files: `file_message_ids` (as forward takes `message_ids`), messages carrying a file in channels the caller reads, within `WS_MAIL_SEND_FILES` and `WS_MAIL_SEND_FILES_BYTES`. A chat posts a file first with `workspace.files.create` (1 MB as a tool).
+- Files: `file_ids` (`files.id`), within `WS_MAIL_SEND_FILES` and `WS_MAIL_SEND_FILES_BYTES`. The caller's right to each file is checked again at Send: `/files` does not reach a channel's folder, so a file of a message in a channel the caller reads counts too. A chat posts a file first with `workspace.files.create` (1 MB as a tool).
 
-## Where would a draft's files be kept?
-- Nowhere today: `ws_mail_items` has no column for it, and a draft has no message under a card. Asked of the architect before MT5 (A: a draft keeps no files, they are named when it is sent; B: `ws_mail_items.draft_files` TEXT NULL with the message ids, added by MT5's migration step). Answer: see the plan.
+## Where are a draft's files kept?
+- Owner (2026-11-14, channel message 2787, `workflow/decisions-made-schema-18.md`): `ws_mail_items.draft_files` TEXT NULL, the ids (`files.id`) of the draft's files, added by MT5's migration step with `install_add_column()`. At Send the sender's right to each file is checked again and the column emptied. Refused: a draft that keeps no files.
