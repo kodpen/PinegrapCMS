@@ -2291,6 +2291,7 @@
     "Runs the tool {var:1} of @{var:2} and keeps its answer.": "@{var:2} sunucusunun {var:1} aracını çalıştırır ve yanıtını saklar.",
     "Runs the workshop and tells you what a car needs, and what it does not.": "Servisi yönetir; bir aracın neye ihtiyacı olduğunu ve olmadığını söyler.",
     "Runs the youth theatre, the school workshops and the family shows.": "Gençlik tiyatrosunu, okul atölyelerini ve aile gösterilerini yürütür.",
+    "Runs today": "Bugünkü çalışmalar",
     "Runs until": "Bitiş",
     "Runs until:": "Bitiş:",
     "Runs with the site's account, as you have not connected your own.": "Kendi hesabınızı bağlamadığınız için sitenin hesabıyla çalışır.",

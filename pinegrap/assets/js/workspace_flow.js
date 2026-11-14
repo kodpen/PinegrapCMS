@@ -870,7 +870,10 @@
         return {
             flow: parseInt((/[?&]flow=([0-9]+)/.exec(search || '') || [])[1], 10) || 0,
             box: (/[?&]box=([a-z0-9_]+)(&|$)/.exec(search || '') || [])[1] || '',
-            run: parseInt((/[?&]run=([0-9]+)/.exec(search || '') || [])[1], 10) || 0
+            run: parseInt((/[?&]run=([0-9]+)/.exec(search || '') || [])[1], 10) || 0,
+            // ?quick=1 opens the quick setup on its first stage, ?quick=<key>
+            // on that recipe (Communication › Automatic sends).
+            quick: (/[?&]quick=([a-z0-9_]{1,64})(&|$)/.exec(search || '') || [])[1] || ''
         };
     }
 
@@ -962,6 +965,7 @@
         var asked = parseInt(options.flow, 10) || 0;
         var askedBox = String(options.box || '');
         var askedRun = parseInt(options.run, 10) || 0;
+        var askedQuick = String(options.quick || '');
 
         // The flow asked for opens with its box or its run; one that cannot
         // be opened (deleted, out of reach) shows the list instead (a
@@ -1022,6 +1026,13 @@
                 openAsked();
             } else {
                 showNone();
+
+                // The address asked for the quick setup: it opens over the
+                // list once, and the address forgets it.
+                if (askedQuick && quickOffered()) {
+                    setAddress('');
+                    openQuick(null, (askedQuick === '1') ? '' : askedQuick);
+                }
             }
         }).catch(function (error) {
             if (!state.mounted || (state.mounted.instance !== instance)) {
@@ -2857,13 +2868,16 @@
         return button;
     }
 
-    function openQuick(opener) {
+    // recipe: a recipe's key to open on, its start chosen and its steps
+    // added ('' or none: the first stage).
+    function openQuick(opener, recipe) {
         leaveFlow().then(function (go) {
             if (!go) {
                 return;
             }
 
             window.PGWsFlowQuick.open(K, FL.quick, {
+                recipe: recipe || '',
                 operators: stepLists().operators,
                 home: newHome().channel_id || 0,
                 onDone: quickMade,

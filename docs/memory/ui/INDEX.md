@@ -419,6 +419,7 @@
 - menu-item-shared-form.md: The menu item create and edit screens share includes/forms/menu_item_form.php
 - menu-items-sort-order.md: The menu screen's Save Order (sort_menu_items): the posted tree is checked against the menu as it is now before any row is written; stale or looping trees are refused
 - menu-shared-form.md: The menu create and edit screens share includes/forms/menu_form.php: what it holds, the underscore name rule, what stays in the screens
+- messages-area-automatic-tab.md: Communication › Automatic sends (MA8): the flows that send a message on the table driver, its gate, runs today, the ready recipes and ?quick= into the quick setup, the profiles note
 - messages-area-campaigns-tab.md: Communication › Campaigns (MA3, #9215): e-mail and SMS campaigns in one list, the channel and state filters, the merged row ids and Delete Selected, New campaign's channel menu
 - messages-area-look.md: Communication area look (MA12 #9363): pill tab strip, filter segments, notices under the strip, Sends figures and pills, Channels grid, old screens left inside [decision: here]
 - messages-area-shell.md: The Communication area (MA1 #9182, MA7 #9200): menu row 9, five tabs and gates, the tab strip, doors, the interim tabs, the Channels cards
