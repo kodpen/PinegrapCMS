@@ -1020,6 +1020,14 @@ function ws_agent_brief($agent, $row, $scopes)
             $lines[] = '';
             $lines = array_merge($lines, ws_item_brief_lines($item));
         }
+
+        // Asked to approve a request (approval_agents.php).
+        $asked = function_exists('ws_approval_agent_request_of') ? ws_approval_agent_request_of($row) : null;
+
+        if ($asked) {
+            $lines[] = '';
+            $lines = array_merge($lines, ws_approval_agent_brief_lines($asked));
+        }
     }
 
     if (trim($request) !== '') {

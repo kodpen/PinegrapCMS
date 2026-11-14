@@ -2082,6 +2082,7 @@
     "The agent did not take it within a day.": "Ajan bunu bir gün içinde almadı.",
     "The agent gave no answer within {var:1} hours.": "Ajan {var:1} saat içinde cevap vermedi.",
     "The agent gave no answer.": "Ajan cevap vermedi.",
+    "The agent may no longer answer in that channel.": "Ajan artık o kanalda yanıt veremez.",
     "The agent was asked again.": "Ajana yeniden soruldu.",
     "The agent was deleted.": "Ajan silindi.",
     "The agent was saved.": "Ajan kaydedildi.",

@@ -2636,9 +2636,12 @@ function ws_handle_action($action, $request)
                 'title'     => (string) ($request['title'] ?? ''),
                 'text'      => (string) ($request['text'] ?? ''),
                 'approvers' => (array) ($request['approvers'] ?? array()),
+                'agents'    => (array) ($request['agents'] ?? array()),
                 'guests'    => (array) ($request['guests'] ?? array()),
                 'rule'      => (string) ($request['rule'] ?? 'any'),
                 'closes_at' => $closes_at,
+                // The form is a person's own: it may ask the channel's agents.
+                'may_ask_agents' => true,
             ));
 
             return $result['ok']
