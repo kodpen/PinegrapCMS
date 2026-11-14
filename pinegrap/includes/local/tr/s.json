@@ -1822,6 +1822,7 @@
     "Send an e-mail": "E-posta gönder",
     "Send an e-mail to the customer.": "Müşteriye e-posta gönder.",
     "Send an e-mail when there is no number or it fails": "Numara yoksa ya da gönderilemezse e-posta gönder",
+    "Send an e-mail “{var:1}” to the record's person, {var:2}, {var:3}": "Kaydın kişisine “{var:1}” e-postasını gönder, {var:2}, {var:3}",
     "Send an enquiry and we answer with a proposal, or write to our sponsorship team.": "Bir talep gönderin, teklifle yanıtlayalım; ya da sponsorluk ekibimize yazın.",
     "Send an enquiry for another film; your details are filled in for you.": "Başka bir film için proje talebi gönderin; bilgileriniz sizin için doldurulur.",
     "Send an enquiry from the work's page; we answer with the price, its condition and how it can reach you.": "Eserin sayfasından bilgi isteyin; fiyatını, durumunu ve size nasıl ulaşabileceğini yanıtlarız.",
