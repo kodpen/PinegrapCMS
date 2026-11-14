@@ -26,7 +26,7 @@ description: Steps WA12-WA18 of plans/whatsapp-channel.md (owner 2026-11-13, #91
 
 ## In which order?
 - WA12 first, its questions answered before WA13 and WA16. WA13 after WA4; WA14 after WA13, WA2 and WA3; WA15 after WA13.
-- WA16 after WA13 has landed (they share the conversation code), WA17 after WA16. Claim as `[plan:whatsapp-channel] <step> — <topic>`.
+- WA16 after WA13 has landed (they share the conversation code), WA17 after WA16 and after WA14's drawer has landed (#9405): WA17 answers in that drawer, through the same `workspace/mail_send.php`, `mail_phone.php` and `workspace_mail.js`. Claim as `[plan:whatsapp-channel] <step> — <topic>`.
 
 ## What is asked of the owner along the way?
 - WA12's storage: decided (#9286). WA14's drawer on a real panel, shown by the architect before the step lands.
