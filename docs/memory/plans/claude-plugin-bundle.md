@@ -13,7 +13,7 @@ description: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's dire
 
 ## Which steps?
 - CB1 (S) Done #9398: the census, `api/claude-plugin-census.md` and `api/claude-plugin-tool-check.md`.
-- CB2 (M) Done #PRNUM: the tool-name test, the `moves_money` mark and `api_plugin_scopes()` (`api/api-plugin-scopes.md`); architect (2026-11-14, msg 2493): no consent-screen opt-in. The panel's connection guide names the plugin once it is listed: moved to CB4.
+- CB2 (M) Done #9429: the tool-name test, the `moves_money` mark and `api_plugin_scopes()` (`api/api-plugin-scopes.md`); architect (2026-11-14, msg 2493): no consent-screen opt-in. The panel's connection guide names the plugin once it is listed: moved to CB4.
 - CB3 (M) The bundle, in the plugin's repository: the manifest, the MCP server reference taking the person's site address, as `${user_config}`, a first set of skills (find your way round a site, pages, products, orders read, a blog post draft, form records, Workspace channels) and commands. Each skill is written from what `docs/memory` says and tried with real calls on a throwaway install (`workflow/sandbox-on-windows.md`).
   - Architect (2026-11-14, msg 2493): skills name no fixed server; with no Pinegrap tool they tell the person to add `https://<site>/mcp.php` as a custom connector and stop; CB3 tries the bundle in every app before CB4, and the listing names only apps where it worked.
 - CB4 (S) The panel's connection guide (`api_settings_oauth_guide()`) names the listed plugin. The listing: name, one line, description, categories, use cases, the answers of the compliance step, prepared for the owner, who submits.
