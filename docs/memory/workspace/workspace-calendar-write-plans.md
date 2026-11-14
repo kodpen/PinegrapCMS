@@ -4,7 +4,9 @@ description: A person's own plans written one way to their Google or Outlook cal
 ---
 
 ## What does the person get?
-- Under My calendar (`workspace_my_calendar.php`) a Look A card row "Write my plans to my calendar" with a switch (`ws_calsync_plans_card()`, post `my_calendar_action=calsync_plans`, `ws_calsync_plans_post()`). Off until switched on. Shown only when the site offers a provider (`ws_calsync_offered()`).
+- Under My calendar (`workspace_my_calendar.php`) a Look A card row with a switch (`ws_calsync_plans_card()`, post `my_calendar_action=calsync_plans`, `ws_calsync_plans_post()`). Off until switched on. Shown only when the site offers a provider (`ws_calsync_offered()`).
+- Architect (2026-11-14): the title names the outside calendar, "Write my plans to Google Calendar" / "... to Outlook", or "Write my plans to my Google or Outlook calendar" without an account: "my calendar" read as the screen itself.
+- The meta line: on, a fact line (calendar, plan count, last write); a failed last run, an amber "Last write failed" pill, the error and a link to Calendar subscription; just switched off, "Your plans calendar in X is removed at the next run; your plans here stay." until that run; off, what is written and what never is.
 - Switching on needs a connected `calendar_sync` account: the one tasks are written with, else the first offered provider connected (`ws_calsync_plans_account()`). Without one the switch is disabled and the row links to Calendar subscription. On writes at once; Site Log "turned on/off writing their own plans to their own calendar" (no plan named).
 
 ## Where do plans go?

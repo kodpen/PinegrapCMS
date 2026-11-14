@@ -1762,28 +1762,32 @@ function ws_calsync_plans_card($user_id)
     $state = ws_calsync_state($user_id);
     $on = $state && $state['plans'];
     $account = ws_calsync_plans_account($user_id, $state);
-    $error = false;
+    $calendar = $account ? $names[$account['provider']]['name'] : '';
+    $failed = $on && (!$account || ($state['error'] !== ''));
+    $link = ' <a href="workspace_calendar_feed.php#ws-calendar-sync">' . h(lang('Calendar subscription')) . '</a>';
+    $meta = '<div class="pg-text-meta" id="ws-calsync-plans-text">';
 
-    if (!$account) {
-        $text = lang('Connect your Google or Microsoft account under Calendar subscription first.');
-    } elseif ($on && ($state['error'] !== '')) {
-        $text = $state['error'];
-        $error = true;
+    if ($failed) {
+        // The last run for this account did not write: said in the warning
+        // tone, never an old "written" time.
+        $meta .= '<span class="pg-pill pg-tone-amber me-2">' . h(lang('Last write failed')) . '</span>'
+            . h(($state['error'] !== '') ? $state['error'] : lang('The account has to be connected again.')) . $link;
+    } elseif (!$on && $state && ($state['plans_calendar_id'] !== '')) {
+        // Switched off, the plans calendar still in the account until the next run.
+        $meta .= h(lang(array('string' => 'Your plans calendar in {var:1} is removed at the next run; your plans here stay.', 'vars' => $calendar)));
     } elseif ($on && ($state['synced_at'] > 0)) {
-        $text = lang(array('string' => '{var:1} · {var:2} plans · written {var:3}', 'vars' => array(
-            $names[$account['provider']]['name'], count($state['plans_written']), date('d.m.Y H:i', $state['synced_at']),
-        )));
+        $meta .= h(lang(array('string' => '{var:1} · {var:2} plans · written {var:3}', 'vars' => array(
+            $calendar, count($state['plans_written']), date('d.m.Y H:i', $state['synced_at']),
+        ))));
+    } elseif (!$account) {
+        $meta .= h(lang('Connect your Google or Microsoft account under Calendar subscription first.')) . $link;
     } else {
-        $text = lang(array('string' => 'Your own plans go to a calendar of their own in {var:1}: title, days and times only. Plans shared with you are never written.', 'vars' => $names[$account['provider']]['name']));
+        $meta .= h(lang(array('string' => 'Your own plans go to a calendar of their own in {var:1}: title, days and times only. Plans shared with you are never written.', 'vars' => $calendar)));
     }
 
-    $title = lang('Write my plans to my calendar');
-    $meta = '<div class="pg-text-meta' . ($error ? ' fg-danger' : '') . '" id="ws-calsync-plans-text">' . h($text);
-
-    if (!$account) {
-        $meta .= ' <a href="workspace_calendar_feed.php#ws-calendar-sync">' . h(lang('Calendar subscription')) . '</a>';
-    }
-
+    $title = $account
+        ? lang(array('string' => 'Write my plans to {var:1}', 'vars' => $calendar))
+        : lang('Write my plans to my Google or Outlook calendar');
     $meta .= '</div>';
 
     return '
