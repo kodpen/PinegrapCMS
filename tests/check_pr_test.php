@@ -214,3 +214,29 @@ function test_check_pr_memory_list_problem()
 	pg_assert_true(check_pr_memory_list_problem('docs/memory/old/INDEX.md', "- one\n", null, $base) !== '');
 	pg_assert_same(null, check_pr_without_key_rules(null));
 }
+
+// A built bundle in the change fails with the commit to restore it from; a
+// hand-made .min.js beside it and a source pass.
+function test_check_pr_bundle_problems()
+{
+	$bundles = array('pinegrap/assets/css/backend.min.css', 'pinegrap/assets/js/workspace.min.js');
+	$base = str_repeat('c', 40);
+	$files = array('pinegrap/assets/css/backend.src.css' => 4, 'pinegrap/assets/css/backend.min.css' => 2, 'pinegrap/assets/js/lazy.min.js' => 1);
+	$problems = check_pr_bundle_problems($files, $bundles, $base);
+
+	pg_assert_same(1, count($problems));
+	pg_assert_true(strpos($problems[0], 'git checkout cccccccccccc -- pinegrap/assets/css/backend.min.css') !== false);
+	pg_assert_same(array(), check_pr_bundle_problems(array('pinegrap/assets/js/workspace.js' => 3), $bundles, $base));
+	pg_assert_same(array(), check_pr_bundle_problems($files, array(), $base));
+}
+
+// The bundle list comes from pg_js_bundles() and pg_css_bundles() of this
+// tree, as paths from the repository root.
+function test_check_pr_bundles()
+{
+	$bundles = check_pr_bundles();
+
+	pg_assert_true(in_array('pinegrap/assets/css/backend.min.css', $bundles, true));
+	pg_assert_true(in_array('pinegrap/assets/js/workspace.min.js', $bundles, true));
+	pg_assert_true(!in_array('pinegrap/assets/js/lazy.min.js', $bundles, true));
+}

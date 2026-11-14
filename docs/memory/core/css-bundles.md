@@ -6,7 +6,7 @@ description: The panel stylesheet served minified (pg_css_bundles(), tools/build
 ## Which stylesheet is minified, and from what?
 - `pg_css_bundles()` (`includes/fn/output.php`) maps each `.min.css` under `assets/css/` to its source: today `backend.min.css` from `backend.src.css` (#2054: 596 KB to 386 KB, 132 to 64 KB gzipped).
 - `pg_default_control_panel_stylesheet_url()` answers with the `.min.css` when the site runs minified (`ENVIRONMENT_SUFFIX` `min`) and the file is there, else with the source, so `src` mode and an update that left the copy out still work. A private-label stylesheet (`CONTROL_PANEL_STYLESHEET_URL` in config) is not touched.
-- After editing `backend.src.css`, run `php tools/build_css.php` (PHP only, no Node). CI and `tools/pre_push.sh` run `--check`; a stale `.min.css` fails the PR. The cache clear of System Status touches both files.
+- A PR commits `backend.src.css`, never the `.min.css` (`tools/check_pr.php` refuses it): the landing runs `php tools/build_css.php` (PHP only), and CI and `git push` build it before a PR's tests; `--check` runs on a train and on `development`. The cache clear of System Status touches both files.
 
 ## What does the minifier take out, and what does it keep?
 - `pg_css_minify()` (`tools/css_minify.php`, `tests/css_minify_test.php`): comments go; a whitespace run becomes one space; the space beside `{`, `}` and `;` goes. Quoted strings, escapes and an escape's closing space stay. Nothing is reordered or merged.

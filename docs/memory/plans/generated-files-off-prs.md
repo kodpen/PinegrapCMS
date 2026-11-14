@@ -18,7 +18,8 @@ description: Plan (owner accepted 2026-11-14): generated files (memory indexes, 
   - Done (#9462): numbers in `plans/generated-files-off-prs-census.md`. Chosen: the PRs stop committing the files and the landing produces them (a merge driver leaves GitHub's dirty state as it is). GF3 is needed: bundles are in 47 of the 55 PR merges dirty on generated files alone and in 37 of the 54 such train merges.
 - GF2 (M) Memory indexes. A PR no longer changes the generated memory files; on a PR, CI checks the PR's own memory files (frontmatter, size, line length) and not the lists. The train, and the landing of a PR alone, runs `php tools/memory_index.php` after its merges and commits the result inside the same fast-forward push. `tools/pre_push.sh` follows.
   - Done (#9476): `memory_index.php --files` on a PR, `--check` on a train and `development`; `check_pr.php` refuses a changed list (a README's key rules aside); `merge_train.php --build` and `--indexes` commit "Regenerate the memory indexes" (PR Merge, 2854).
-- GF3 (M) Bundles, only when GF1's numbers ask for it: the same for `.min.js` and `.min.css`. A worker's sandbox builds its own bundle; `development` holds fresh ones after every landing.
+- GF3 (M) Bundles, if GF1's numbers ask: the same for `.min.js` and `.min.css`; a sandbox builds its own, `development` holds fresh ones after each landing.
+  - Done (#GF3PR): as GF2 for the bundles, built before a PR's tests (PR Merge, 2963).
 - GF4 (S) Close-out: the rules into `workflow/git-branches-and-shared-files.md` and `workflow/merge-train-tool.md`, the lines of `CLAUDE.md` they change (Working mode 7, "When a task is done") by that PR with its reason, this plan deleted.
 
 ## What does every step keep?
