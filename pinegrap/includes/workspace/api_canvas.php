@@ -31,6 +31,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_layer_write.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_save.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_template_fill.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_draw.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_guide.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_layouts.php');
 
 /**
  * The canvas routes, merged into ws_api_routes().
@@ -50,12 +52,14 @@ function ws_canvas_api_routes()
             'status'      => 201,
             'returns'     => array('message' => 'WorkspaceMessage', 'canvas' => ws_api_canvas_returns()),
             'summary'     => 'Draw a canvas in a channel from SVG',
-            'description' => 'Posts a canvas into a channel as a message of the application: the SVG becomes a picture people see and open in the image editor, its layers editable. Only an agent of the channel draws one: an application with a row in GET /workspace/channels/{id}/agents (or Claude, where Claude may be asked), in a channel the owner may post in. The SVG is sanitized (scripts, outside addresses and events go), at most 1 MB; the artboard is its root\'s width and height (the view box when they are missing, 300 x 150 when both are), each side 16 to 8000 pixels, the drawing one layer covering it, or with layers split a layer per top-level element as the image editor\'s Break apart makes them (each where it was drawn, named by its element\'s id; a group stays one layer; definitions and style rules kept for the layers that use them): a text becomes a text layer when the editor can hold it (one colour, no outline, a font the editor offers, lines as tspans under one another), a picture whose address is a file of the site - one a message of the channel carries, or with files:read one any visitor may fetch - a picture layer; anything else stays an svg layer. A picture inside it must be an address, not data. The canvas\'s picture is blank in the background colour until a member\'s browser draws it: canvas.picture is pending until then. Where the server\'s ImageMagick draws the whole canvas as the image editor would (shapes, SVG through librsvg, pictures of the site\'s files, icons, text in a font the server holds), it is drawn at once and canvas.picture answers drawn; a member\'s browser that shows it draws it again. Or, instead of svg, template: a copy of a canvas template a person marked in Files (GET /workspace/canvas/templates), with fill giving the words and pictures of its named layers; background and layers are ignored then. Refusals: nothing left to draw, over 1 MB, a picture as data or a background that is no colour 422 validation_failed on svg or background; neither svg nor template, or both, 422 on svg; a template that is not one 422 on template; a fill that does not fit 422 on fill; not an agent of the channel 403 forbidden.',
+            'description' => 'Posts a canvas into a channel as a message of the application: the SVG becomes a picture people see and open in the image editor, its layers editable. Only an agent of the channel draws one: an application with a row in GET /workspace/channels/{id}/agents (or Claude, where Claude may be asked), in a channel the owner may post in. The SVG is sanitized (scripts, outside addresses and events go), at most 1 MB; the artboard is its root\'s width and height (the view box when they are missing, 300 x 150 when both are), each side 16 to 8000 pixels, the drawing one layer covering it, or with layers split a layer per top-level element as the image editor\'s Break apart makes them (each where it was drawn, named by its element\'s id; a group stays one layer; definitions and style rules kept for the layers that use them): a text becomes a text layer when the editor can hold it (one colour, no outline, a font the editor offers, lines as tspans under one another), a picture whose address is a file of the site - one a message of the channel carries, or with files:read one any visitor may fetch - a picture layer; anything else stays an svg layer. A picture inside it must be an address, not data. The canvas\'s picture is blank in the background colour until a member\'s browser draws it: canvas.picture is pending until then. Where the server\'s ImageMagick draws the whole canvas as the image editor would (shapes, SVG through librsvg, pictures of the site\'s files, icons, text in a font the server holds), it is drawn at once and canvas.picture answers drawn; a member\'s browser that shows it draws it again. Or, instead of svg, template: a copy of a canvas template a person marked in Files (GET /workspace/canvas/templates), with fill giving the words and pictures of its named layers; background and layers are ignored then. Or layout: a ready layout shipped with Pinegrap (figures_chart, report_page, comparison, slide; listed under layouts of GET /workspace/canvas/templates) drawn by the drawing guide in theme light or dark, with fill giving the words of its named text layers and chart_values the numbers of its bars. Refusals: nothing left to draw, over 1 MB, a picture as data or a background that is no colour 422 validation_failed on svg or background; not exactly one of svg, template and layout 422 on svg; a template that is not one 422 on template; a fill that does not fit 422 on fill; not an agent of the channel 403 forbidden. ' . ws_canvas_guide_short(),
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'svg', 'in' => 'body', 'type' => 'string', 'max_length' => 1048576, 'description' => 'The drawing, a whole <svg> element with the SVG namespace. Required unless template is given.'),
                 array('name' => 'template', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Instead of svg: the file id of a canvas template (GET /workspace/canvas/templates); the canvas is a copy of it, its size, background and layers.'),
-                array('name' => 'fill', 'in' => 'body', 'type' => 'object', 'description' => 'With template: the words and pictures for its named layers, as name => value: words for a text layer (at most 2000 letters), a file for a picture layer (its id, its address, or {file_id} or {file}: a file of this channel, or with files:read a public file of the site). A name the template does not have, or a layer that is neither text nor a picture, is refused with 422 on fill naming the template\'s layers.'),
+                array('name' => 'layout', 'in' => 'body', 'type' => 'enum', 'values' => array_keys(ws_canvas_layouts()), 'description' => 'Instead of svg or template: a ready layout shipped with Pinegrap, drawn by the drawing guide: figures_chart (three figures over a bar chart, 1200 x 675), report_page (two figures, a summary and a bar chart, 1080 x 1350), comparison (two things side by side, 1200 x 675), slide (a title, three points and a bar chart, 1920 x 1080). Its named layers are listed under layouts of GET /workspace/canvas/templates; fill them with fill.'),
+                array('name' => 'theme', 'in' => 'body', 'type' => 'enum', 'values' => ws_canvas_layout_themes(), 'description' => 'With layout: the board palette of the drawing guide, light (the default) or dark.'),
+                array('name' => 'fill', 'in' => 'body', 'type' => 'object', 'description' => 'With template or layout: the words and pictures for its named layers, as name => value: words for a text layer (at most 2000 letters), a file for a picture layer (its id, its address, or {file_id} or {file}: a file of this channel, or with files:read a public file of the site). A name the template does not have, or a layer that is neither text nor a picture, is refused with 422 on fill naming the template\'s layers. With a layout, chart_values is a list of numbers, one a bar from the left (as many as the layout\'s chart_values says): the bars, the value axis and the last value are drawn from them.'),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'Words beside the canvas. Tags are written as tokens, as in a message.'),
                 array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 120, 'description' => 'The name of the canvas\'s file; Canvas when left out. Always a PNG.'),
                 array('name' => 'background', 'in' => 'body', 'type' => 'string', 'max_length' => 11, 'description' => 'The artboard\'s colour as #rrggbb, or transparent; white when left out.'),
@@ -88,7 +92,7 @@ function ws_canvas_api_routes()
             'dry_run'      => true,
             'returns'      => ws_api_canvas_returns(),
             'summary'      => 'Edit a canvas in place',
-            'description'  => 'Changes a canvas of the channel - an agent\'s or a person\'s - with operations applied in order to its newest version, all or none: add (svg; x, y, w, h, rot optional: a new layer on top, its own size made to fit and centred when no box is given; layers split: a layer per top-level element, placed where that one layer would have been), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional: a text layer\'s words), box (layer; any of x, y, w, h, rot: move, resize or turn a layer), svg (svg; background and layers optional: the whole canvas anew), style (layer and the look to change: a text\'s font, size, weight, italic, align, color, bg, lineHeight, spacing; a shape\'s color, fill none, solid or soft, stroke, dash solid, dashed or dotted, radius; an icon\'s color; any layer\'s opacity 0 to 1), order (layer, to front, back, above or below, target for above and below), name (layer, name: 1 to 80 letters no other layer has) and lock (layer, locked true or false; the only change a locked layer takes besides its name); size (preset square 1080 x 1080, portrait 1080 x 1350, story 1080 x 1920, share 1200 x 630 or banner 1920 x 600, or width and height of 16 to 8000: the board keeps its middle, every layer of every scene stays where it is on it), background (background #rrggbb or transparent: the open scene\'s) and scene (action add with copy, name and duration optional: a new scene after the open one, empty or a copy of it, opened; choose (scene): open it; remove (scene), never the only one; transition (scene optional, the open one; kind none, fade, slide, zoom or wipe; ms 100 to 2000): the move into the next scene; duration (scene optional; duration 1000 to 60000 ms)). A canvas holds at most 30 scenes; a scene is named by its id or its name; the layer operations work on the open scene. add also takes type: text (text; font from GET /workspace/canvas/fonts, size, weight, italic, align, color, bg, lineHeight, spacing), picture (file_id or file, the address of a file of this channel, or with files:read of a public file), shape (shape rectangle or ellipse with x, y, w, h, or line with x1, y1, x2, y2; color, fill, stroke, dash, radius) or icon (icon, a Bootstrap Icons name such as bar-chart; color); the look\'s defaults are the image editor\'s, a layer without x and y is centred; and name and lock for any type. A layer is named by its id, or by its name when one layer alone has it. Layer ids and the version come from GET /workspace/messages/{id}/canvas. version is the newest version you read: when somebody saved since, the call answers 409 conflict; read again and redo. The edit is a new version made by the agent, kept with the original and the last ten; its picture is pending again until a member\'s browser draws it, or drawn at once where the server draws it. The message counts as changed, so changed_since on GET /workspace/channels/{id}/messages and changed in GET /workspace/sync bring it again with file.canvas at the new version, and once more each time its picture is drawn. A person whose canvas an agent edited is told. Only an agent of the channel edits, as for POST /workspace/channels/{id}/canvases (403 forbidden). A refused operation answers 422 validation_failed on operations, its message naming the operation by its place (from 0); a locked layer is not changed. PATCH is accepted as well.',
+            'description'  => 'Changes a canvas of the channel - an agent\'s or a person\'s - with operations applied in order to its newest version, all or none: add (svg; x, y, w, h, rot optional: a new layer on top, its own size made to fit and centred when no box is given; layers split: a layer per top-level element, placed where that one layer would have been), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional: a text layer\'s words), box (layer; any of x, y, w, h, rot: move, resize or turn a layer), svg (svg; background and layers optional: the whole canvas anew), style (layer and the look to change: a text\'s font, size, weight, italic, align, color, bg, lineHeight, spacing; a shape\'s color, fill none, solid or soft, stroke, dash solid, dashed or dotted, radius; an icon\'s color; any layer\'s opacity 0 to 1), order (layer, to front, back, above or below, target for above and below), name (layer, name: 1 to 80 letters no other layer has) and lock (layer, locked true or false; the only change a locked layer takes besides its name); size (preset square 1080 x 1080, portrait 1080 x 1350, story 1080 x 1920, share 1200 x 630 or banner 1920 x 600, or width and height of 16 to 8000: the board keeps its middle, every layer of every scene stays where it is on it), background (background #rrggbb or transparent: the open scene\'s) and scene (action add with copy, name and duration optional: a new scene after the open one, empty or a copy of it, opened; choose (scene): open it; remove (scene), never the only one; transition (scene optional, the open one; kind none, fade, slide, zoom or wipe; ms 100 to 2000): the move into the next scene; duration (scene optional; duration 1000 to 60000 ms)). A canvas holds at most 30 scenes; a scene is named by its id or its name; the layer operations work on the open scene. add also takes type: text (text; font from GET /workspace/canvas/fonts, size, weight, italic, align, color, bg, lineHeight, spacing), picture (file_id or file, the address of a file of this channel, or with files:read of a public file), shape (shape rectangle or ellipse with x, y, w, h, or line with x1, y1, x2, y2; color, fill, stroke, dash, radius) or icon (icon, a Bootstrap Icons name such as bar-chart; color); the look\'s defaults are the image editor\'s, a layer without x and y is centred; and name and lock for any type. A layer is named by its id, or by its name when one layer alone has it. Layer ids and the version come from GET /workspace/messages/{id}/canvas. version is the newest version you read: when somebody saved since, the call answers 409 conflict; read again and redo. The edit is a new version made by the agent, kept with the original and the last ten; its picture is pending again until a member\'s browser draws it, or drawn at once where the server draws it. The message counts as changed, so changed_since on GET /workspace/channels/{id}/messages and changed in GET /workspace/sync bring it again with file.canvas at the new version, and once more each time its picture is drawn. A person whose canvas an agent edited is told. Only an agent of the channel edits, as for POST /workspace/channels/{id}/canvases (403 forbidden). A refused operation answers 422 validation_failed on operations, its message naming the operation by its place (from 0); a locked layer is not changed. PATCH is accepted as well. ' . ws_canvas_guide_short(),
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'version', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The newest version you read.'),
@@ -127,9 +131,24 @@ function ws_canvas_api_routes()
             'path'        => '/workspace/canvas/templates',
             'scope'       => 'workspace:read',
             'handler'     => 'ws_api_canvas_templates',
-            'returns'     => array('templates' => array(array('id' => 'integer', 'name' => 'string', 'width' => 'integer', 'height' => 'integer', 'background' => 'string', 'layers' => array(array('name' => 'string', 'kind' => 'string', 'text' => 'string?'))))),
-            'summary'     => 'List the canvas templates',
-            'description' => 'The canvases people marked as templates in Files (Save as template in the image editor): each with its file id (the template to give to POST /workspace/channels/{id}/canvases), its file name, its size and background, and its named layers from the bottom up - name, kind (text, picture, shape, icon, svg or another of the editor\'s kinds) and a text layer\'s words. Only text and picture layers are filled; the rest stay as drawn.',
+            'returns'     => array(
+                'templates' => array(array('id' => 'integer', 'name' => 'string', 'width' => 'integer', 'height' => 'integer', 'background' => 'string', 'layers' => array(array('name' => 'string', 'kind' => 'string', 'text' => 'string?')))),
+                'layouts'   => array(array('name' => 'string', 'title' => 'string', 'use' => 'string', 'themes' => array('string'), 'width' => 'integer', 'height' => 'integer', 'chart_values' => 'integer', 'layers' => array(array('name' => 'string', 'kind' => 'string', 'text' => 'string?')))),
+            ),
+            'summary'     => 'List the canvas templates and ready layouts',
+            'description' => 'The canvases people marked as templates in Files (Save as template in the image editor): each with its file id (the template to give to POST /workspace/channels/{id}/canvases), its file name, its size and background, and its named layers from the bottom up - name, kind (text, picture, shape, icon, svg or another of the editor\'s kinds) and a text layer\'s words. Only text and picture layers are filled; the rest stay as drawn. Beside them, layouts: the ready layouts shipped with Pinegrap, drawn by the drawing guide (GET /workspace/canvas/guide) - each with its name (the layout to give to the same route), its title in the site\'s language (the canvas file\'s name when none is given), what it is for, its themes (light, dark), its size, how many chart_values its bar chart takes (0: no chart) and its named layers with their words.',
+            'params'      => array(),
+        ),
+
+        array(
+            'id'          => 'workspace.canvas.guide',
+            'method'      => 'GET',
+            'path'        => '/workspace/canvas/guide',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_canvas_guide',
+            'returns'     => array('text' => 'string', 'values' => 'object'),
+            'summary'     => 'Read the drawing guide for canvases',
+            'description' => 'The guide to follow before drawing a canvas: board sizes, the grid, the type scale, spacing, a dark and a light board palette with the colours of a chart series, and the rules of each chart kind (bar, stacked bar, line, area, donut, sparkline, figure tile). text is the guide to read; values holds the same numbers and colours as data. The same for every site and caller.',
             'params'      => array(),
         ),
 
@@ -423,12 +442,16 @@ function ws_api_canvases_create($params)
 
     $public = api_has_scope(api_current_scopes(), 'files:read');
     $template = (int) ($params['template'] ?? 0);
+    $layout = (string) ($params['layout'] ?? '');
+    $given = (int) ($template > 0) + (int) ($layout !== '') + (int) (isset($params['svg']) && ((string) $params['svg'] !== ''));
 
-    if (($template > 0) === (isset($params['svg']) && ((string) $params['svg'] !== ''))) {
-        api_fail_validation(lang('Give svg or template, one of them.'), 'svg');
+    if ($given !== 1) {
+        api_fail_validation(lang('Give svg, template or layout, one of them.'), 'svg');
     }
 
-    if ($template > 0) {
+    if ($layout !== '') {
+        $doc = ws_api_canvas_from_layout($layout, (string) ($params['theme'] ?? 'light'), $params['fill'] ?? null);
+    } elseif ($template > 0) {
         $doc = ws_api_canvas_from_template($template, $params['fill'] ?? null, (int) $channel['id'], $public);
     } else {
         $mode = ws_canvas_split_mode($params['layers'] ?? null);
@@ -448,7 +471,7 @@ function ws_api_canvases_create($params)
 
     $text = (string) ($params['text'] ?? '');
     $app_id = ws_api_writer_app_id();
-    $name = ws_canvas_file_name($params['name'] ?? '');
+    $name = ws_canvas_file_name((($layout !== '') && ((string) ($params['name'] ?? '') === '')) ? ws_canvas_layout_words($layout)['title'] : ($params['name'] ?? ''));
     $png = ws_canvas_blank_png($doc->artboard->width, $doc->artboard->height, $doc->artboard->background);
 
     // The checks ws_message_send_file_bytes() makes, made first so that a
@@ -535,6 +558,37 @@ function ws_api_canvas_from_template($template, $fill, $channel_id, $public)
     return $made;
 }
 
+/**
+ * A canvas document from a ready layout with its fill, marked pending for
+ * a browser to draw, or the refusal.
+ *
+ * @param string $layout a key of ws_canvas_layouts()
+ * @param string $theme
+ * @param mixed  $fill
+ * @return object decoded as objects
+ */
+function ws_api_canvas_from_layout($layout, $theme, $fill)
+{
+    if (!isset(ws_canvas_layouts()[$layout])) {
+        api_fail_validation(lang('That is not a ready layout: see layouts of GET /workspace/canvas/templates.'), 'layout');
+    }
+
+    if (!in_array($theme, ws_canvas_layout_themes(), true)) {
+        api_fail_validation(lang('theme is light or dark.'), 'theme');
+    }
+
+    $filled = ws_canvas_layout_fill($layout, $theme, $fill);
+
+    if ($filled['error'] !== '') {
+        api_fail_validation(ws_canvas_layout_fill_error_text($filled), 'fill');
+    }
+
+    $made = json_decode(json_encode($filled['doc']));
+    $made->picture = 'pending';
+
+    return $made;
+}
+
 function ws_api_canvas_templates($params)
 {
     ws_api_viewer();
@@ -545,7 +599,14 @@ function ws_api_canvas_templates($params)
         $list[] = array('id' => $row['id'], 'name' => $row['name']) + $row['summary'];
     }
 
-    api_ok(array('templates' => $list));
+    api_ok(array('templates' => $list, 'layouts' => ws_canvas_layouts_list()));
+}
+
+function ws_api_canvas_guide($params)
+{
+    ws_api_viewer();
+
+    api_ok(array('text' => ws_canvas_guide_text(), 'values' => ws_canvas_guide_values()));
 }
 
 function ws_api_canvas_fonts($params)

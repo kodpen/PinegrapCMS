@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the Workspace E-mails screen (includes/workspace/mail_list.php,
- * mail_pane.php, mail_reads.php, workspace_mail.php): the filters read from
+ * mail_pane.php, mail_reads.php, messages_mail.php): the filters read from
  * the address, the query's conditions, the rows, Load more, the toolbar,
  * the reading pane, the unread rule and the wiring. Reading the
  * conversations, the channels and the marks needs the database and is not
@@ -91,23 +91,23 @@ function workspace_mail_list_test_row($changes = array())
 
 function test_workspace_mail_list_page_url()
 {
-	pg_assert_same('workspace_mail.php?conversation=4', ws_mail_list_page_url(workspace_mail_list_test_filters(array('view' => 'incoming', 'status' => 'open')), 4), 'a row of the first page');
-	pg_assert_same('workspace_mail.php', ws_mail_list_page_url(workspace_mail_list_test_filters(array('view' => 'incoming', 'status' => 'open'))), 'Close: the list as it was');
+	pg_assert_same('messages_mail.php?conversation=4', ws_mail_list_page_url(workspace_mail_list_test_filters(array('view' => 'incoming', 'status' => 'open')), 4), 'a row of the first page');
+	pg_assert_same('messages_mail.php', ws_mail_list_page_url(workspace_mail_list_test_filters(array('view' => 'incoming', 'status' => 'open'))), 'Close: the list as it was');
 
 	$filters = ws_mail_list_filters(array('view' => 'sent', 'q' => 'kargo', 'box' => '2', 'before' => '500-9'));
-	pg_assert_same('workspace_mail.php?view=sent&box=2&q=kargo&before=500-9&conversation=11', ws_mail_list_page_url($filters, 11), 'the filters and the page the row is on');
-	pg_assert_same('workspace_mail.php?view=sent&box=2&q=kargo&before=500-9', ws_mail_list_page_url($filters, 0));
+	pg_assert_same('messages_mail.php?view=sent&box=2&q=kargo&before=500-9&conversation=11', ws_mail_list_page_url($filters, 11), 'the filters and the page the row is on');
+	pg_assert_same('messages_mail.php?view=sent&box=2&q=kargo&before=500-9', ws_mail_list_page_url($filters, 0));
 }
 
 function test_workspace_mail_list_rows_html()
 {
 	$html = ws_mail_list_rows_html(array(workspace_mail_list_test_row()), workspace_mail_list_test_filters(array('view' => 'incoming', 'status' => 'open')), 100000);
 
-	pg_assert_contains('<a href="workspace_mail.php?conversation=4" class="ws-mail-row ws-mail-unread ws-mail-overdue" data-ws-mail-row="4">', $html, 'opens the mail on this screen');
+	pg_assert_contains('<a href="messages_mail.php?conversation=4" class="ws-mail-row ws-mail-unread ws-mail-overdue" data-ws-mail-row="4">', $html, 'opens the mail on this screen');
 	pg_assert_same(false, strpos($html, 'workspace.php?channel='), 'never a channel');
 	pg_assert_contains('class="ws-mail-row ws-mail-unread ws-mail-overdue" aria-current="true" data-ws-mail-row="4">',
 		ws_mail_list_rows_html(array(workspace_mail_list_test_row()), workspace_mail_list_test_filters(), 100000, 4), 'the row whose mail is open');
-	pg_assert_contains('href="workspace_mail.php?view=sent&amp;before=500-9&amp;conversation=4"',
+	pg_assert_contains('href="messages_mail.php?view=sent&amp;before=500-9&amp;conversation=4"',
 		ws_mail_list_rows_html(array(workspace_mail_list_test_row()), ws_mail_list_filters(array('view' => 'sent', 'before' => '500-9')), 100000), 'a row read by Load more keeps its page');
 	pg_assert_contains('Order &lt;late&gt;', $html, 'the subject as text');
 	pg_assert_contains('Where is &lt;it&gt;?', $html, 'the newest mail\'s words');
@@ -134,7 +134,7 @@ function test_workspace_mail_list_html_and_more()
 
 	$html = ws_mail_list_html(array('rows' => array(workspace_mail_list_test_row()), 'next' => '500-9'), $filters, 1000);
 	pg_assert_contains('<div class="ws-mail-rows" data-ws-mail-rows>', $html);
-	pg_assert_contains('data-ws-mail-more href="workspace_mail.php?view=sent&amp;q=kargo&amp;before=500-9">' . h(lang('Load more')) . '</a>', $html, 'the next page keeps the view and search');
+	pg_assert_contains('data-ws-mail-more href="messages_mail.php?view=sent&amp;q=kargo&amp;before=500-9">' . h(lang('Load more')) . '</a>', $html, 'the next page keeps the view and search');
 	pg_assert_same('', ws_mail_list_more_html($filters, ''), 'the last page');
 }
 
@@ -153,12 +153,12 @@ function test_workspace_mail_list_filter_links()
 	pg_assert_contains('<input type="hidden" name="holder" value="me">', $html, 'a status keeps the holder');
 	pg_assert_contains('<input type="hidden" name="status" value="waiting">', $html, 'a holder keeps the status');
 	pg_assert_same(false, strpos($html, 'name="box"'), 'one mailbox: no mailbox filter');
-	pg_assert_contains('aria-pressed="false" href="workspace_mail.php?status=waiting&amp;holder=me&amp;overdue=1"', $html, 'overdue switched on');
+	pg_assert_contains('aria-pressed="false" href="messages_mail.php?status=waiting&amp;holder=me&amp;overdue=1"', $html, 'overdue switched on');
 
 	// The views: each starts with its own status and keeps the holder.
-	pg_assert_contains('active" aria-current="page" href="workspace_mail.php?holder=me">', $html, 'Incoming is the view');
-	pg_assert_contains('href="workspace_mail.php?view=sent&amp;holder=me">', $html, 'Sent');
-	pg_assert_contains('href="workspace_mail.php?view=unsent&amp;holder=me">', $html, 'Not sent');
+	pg_assert_contains('active" aria-current="page" href="messages_mail.php?holder=me">', $html, 'Incoming is the view');
+	pg_assert_contains('href="messages_mail.php?view=sent&amp;holder=me">', $html, 'Sent');
+	pg_assert_contains('href="messages_mail.php?view=unsent&amp;holder=me">', $html, 'Not sent');
 
 	// The search keeps the other words; Mark all as read is a button for the script.
 	pg_assert_contains('<input type="search" class="form-ghost" name="q" value=""', $html);
@@ -166,7 +166,7 @@ function test_workspace_mail_list_filter_links()
 
 	$_GET = array('status' => 'waiting', 'holder' => 'me', 'overdue' => '1', 'box' => '2');
 	$html = ws_mail_list_filters_html(ws_mail_list_filters($_GET), array(1 => 'Sales', 2 => 'Support'));
-	pg_assert_contains('aria-pressed="true" href="workspace_mail.php?status=waiting&amp;holder=me&amp;box=2"', $html, 'overdue switched off');
+	pg_assert_contains('aria-pressed="true" href="messages_mail.php?status=waiting&amp;holder=me&amp;box=2"', $html, 'overdue switched off');
 	pg_assert_contains('<input type="hidden" name="overdue" value="1">', $html, 'a select keeps overdue');
 	pg_assert_contains('<option value="2" selected>Support</option>', $html, 'two mailboxes: the filter');
 	pg_assert_contains('<input type="hidden" name="box" value="2">', $html, 'the search keeps the mailbox');
@@ -227,14 +227,14 @@ function test_workspace_mail_pane_html()
 	pg_assert_same(false, strpos($html, 'data-ws-mail-close'), 'the script draws its own Close');
 
 	// The pane the server draws for the screen's address (?conversation=).
-	$page = ws_mail_pane_page_html($pane, '/pg/', 'workspace_mail.php?view=sent');
+	$page = ws_mail_pane_page_html($pane, '/pg/', 'messages_mail.php?view=sent');
 	pg_assert_contains('<h2 class="h5 mb-1" tabindex="-1">Order &lt;late&gt;</h2>', $page, 'the same pane');
 	pg_assert_contains('href="/pg/workspace.php?channel=3&amp;message=90"', $page, 'Open in channel stays');
-	pg_assert_contains('<a class="btn btn-sm btn-text theme-secondary" href="workspace_mail.php?view=sent" data-ws-mail-close>', $page, 'Close leads back to the list');
+	pg_assert_contains('<a class="btn btn-sm btn-text theme-secondary" href="messages_mail.php?view=sent" data-ws-mail-close>', $page, 'Close leads back to the list');
 
-	$missing = ws_mail_pane_page_html(null, '/pg/', 'workspace_mail.php');
+	$missing = ws_mail_pane_page_html(null, '/pg/', 'messages_mail.php');
 	pg_assert_contains('<p class="ws-empty">' . h(lang('This conversation cannot be opened.')) . '</p>', $missing, 'one it may not read');
-	pg_assert_contains('href="workspace_mail.php" data-ws-mail-close', $missing);
+	pg_assert_contains('href="messages_mail.php" data-ws-mail-close', $missing);
 }
 
 function test_workspace_mail_side_count()
@@ -251,12 +251,13 @@ function test_workspace_mail_side_count()
 	$mail = array_values(array_filter($groups['tools'], function ($item) {
 		return $item['key'] === 'mail';
 	}));
-	pg_assert_same(5, $mail[0]['count']);
+	pg_assert_same(array(), $mail, 'E-mail left the Workspace list: its count is on the Communication row');
+	pg_assert_contains("\$menu_items[9]['badge'] = pg_messages_mail_unread(\$user);", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php'), 'the menu row carries the number');
 }
 
 function test_workspace_mail_list_wiring()
 {
-	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_mail.php');
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/messages_mail.php');
 	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_list.php');
 	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
 	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js');
@@ -274,7 +275,7 @@ function test_workspace_mail_list_wiring()
 	pg_assert_contains("if (pane.querySelector('h2')) {\n                current = start;", str_replace("\r\n", "\n", $script), 'the script takes over the drawn pane without a loading line');
 	pg_assert_contains("target.hasAttribute('data-ws-mail-close')", $script, 'the server\'s Close closes in place');
 	pg_assert_contains('if ($channel && ws_can_read_channel($viewer, $channel)) {', $list, 'a channel decides, not a box');
-	pg_assert_same('mail', ws_side_screen('/pinegrap/workspace_mail.php'));
+	pg_assert_same('', ws_side_screen('/pinegrap/workspace_mail.php'), 'E-mail is read in Communication, not a Workspace screen');
 
 	pg_assert_contains("case 'ws_mail_pane':", $actions);
 	pg_assert_contains("case 'ws_mail_rows':", $actions);

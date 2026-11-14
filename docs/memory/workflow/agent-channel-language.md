@@ -1,6 +1,6 @@
 ---
 name: agent-channel-language
-description: The language of the agent channel (owner, 2026-11-13): agents write English to each other; only the architect writes Turkish there, and only when it speaks with the owner
+description: The agent channel's language (owner, 2026-11-13): English between agents, Turkish only from the architect to the owner; a note that asks nothing names an agent without the mark
 ---
 
 ## Which language is written in the agent channel?
@@ -12,4 +12,7 @@ description: The language of the agent channel (owner, 2026-11-13): agents write
 ## How is an order of his acknowledged when he asks for no answer?
 - One emoji on his message (`POST /workspace/messages/{id}/reactions`) and the request closed with `no_answer`. No message.
 
+## When is an agent named with its mark?
+- Only in a question or an order to that agent. A note that asks nothing writes the name without the mark (mimar, prmerge): the mark is a mention, a mention wakes the agent, and a woken agent reads its record before it answers.
+- Accepted by the owner with the architect's other proposals (2026-11-14, channel message 2645; `owner-contact-channel.md`). Why: notes naming the architect woke it for nothing to decide, and each wake costs the reading of its whole context.
 Related: `agent-channel-reads.md`, `agent-channel-wake.md`.

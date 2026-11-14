@@ -1,6 +1,6 @@
 ---
 name: mail-phone-list-event-api
-description: WhatsApp and SMS conversations in the E-mails list (Kind filter), the workspace.mail.received event (transport, number, How it came) and the API (#9420)
+description: WhatsApp and SMS conversations in the E-mails list (Kind filter), the workspace.mail.received event (transport, number, How it came) and the API (#9420, #9455)
 ---
 
 ## How does the list show a phone conversation?
@@ -16,9 +16,10 @@ description: WhatsApp and SMS conversations in the E-mails list (Kind filter), t
 
 ## What does the API give?
 - `WorkspaceMailConversation` has `transport` and `customer_phone` (null for e-mail); the list takes `transport` (all | email | whatsapp | sms). Each handler adds the box's transport to the row (`ws_api_mail_box_transports()`).
-- Answering a phone conversation over the API is not open yet: `POST …/{id}/reply` refuses it with 409 cannot_send (no address). It goes through `whatsapp_outbox` once WA14a (#9405) has landed: step WA15b.
+- `POST …/{id}/reply` on a WhatsApp conversation answers by WhatsApp (#9455): `ws_api_mail_phone_reply()` after the own-words gate, `ws_api_mail_phone_reply_check()` (the card's `ws_mail_phone_reply_target()`, the queue's `pg_whatsapp_reply_row()`, no demo site), then `api_dry_run_stop()`, then the card's `ws_mail_phone_reply_send()`: only through `whatsapp_outbox`.
+- It answers 201 `WorkspaceMail` with `send_state` queued (or failed), `copy_kept` null. Refusals (`ws_api_mail_phone_reply_refusal()`): 422 text (empty, over 4096), 403, 503 not upgraded, 409 cannot_send (the 24 hours passed, WhatsApp off, no number, demo). An SMS conversation is still refused with 409 cannot_send (no address).
 
 ## Tests?
-- `tests/workspace_mail_transport_test.php`; parity lines for the filter and the emitter in `tests/workspace_flows_parity_test.php`. Nothing was run against a database in the cloud session.
+- `tests/workspace_mail_transport_test.php`, `tests/workspace_api_mail_phone_test.php`; parity lines for the filter and the emitter in `tests/workspace_flows_parity_test.php`. Nothing was run against a database in the cloud session.
 
 Related: docs/memory/workspace/mail-phone-conversations.md, docs/memory/workspace/mail-list.md, docs/memory/workspace/mail-api.md

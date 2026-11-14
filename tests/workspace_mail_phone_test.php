@@ -261,5 +261,5 @@ function test_workspace_mail_phone_box_stays_out_of_the_mailbox_settings()
 	$settings = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php');
 	pg_assert_contains("return !ws_mail_box_is_phone(\$box);", $settings, 'left out of the list');
 	pg_assert_contains("\$box = ws_mail_box_is_phone(\$box) ? null : \$box;", $settings, 'not edited or fed an .eml by id');
-	pg_assert_contains("\$ws_box = ws_mail_box_is_phone(\$ws_box) ? null : \$ws_box;", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/workspace_channels.save.php'), 'not saved by id');
+	pg_assert_contains("\$ws_box = ws_mail_box_is_phone(\$ws_box) ? null : \$ws_box;", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/mailboxes.save.php'), 'not saved by id');
 }

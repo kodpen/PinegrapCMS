@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="tr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>agent drawing guides: DG2, the guide an agent reads and the canvas drawn by it</title>
+<script>if (location.search.indexOf('light') > -1) document.documentElement.setAttribute('data-theme', 'light');</script>
+<link rel="stylesheet" href="../panel-design-language/sheet.css">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js"></script>
+<style>
+.gtext { white-space: pre-wrap; font: 400 12.5px/1.55 ui-monospace, "SF Mono", Menlo, monospace; color: var(--fg2); margin: 0; }
+</style>
+</head>
+<body>
+<div class="stage" style="width:1500px">
+  <div class="cap" style="margin-bottom:22px"><b>DG2 · Ajanın okuduğu rehber ve onunla çizilen tuval</b>Solda GET /workspace/canvas/guide (MCP: pinegrap://workspace/canvas-guide, canvas_chart istemi) metni, sunucunun kullandığı değerlerden yazılmış hâliyle. Sağda bu değerlerle API üzerinden ajan kanalına (25, ileti 2725) çizilen tuvalin SVG'si; tahta bu sayfanın temasıyla.</div>
+  <div style="display:flex;gap:32px;align-items:flex-start">
+    <div class="card" style="width:640px"><pre class="gtext">Drawing guide for canvases
+
+Follow it for every chart, report card, slide or post you draw, so your drawings look like the rest of the panel. Pixel values are for the card board; on another board multiply them by its scale, its shorter side / 675 (the figure tile and the sparkline strip use them as they are).
+
+Boards (width x height):
+- card 1200 x 675: a chart or report card in a channel (the default).
+- slide 1920 x 1080: a slide or a wide report.
+- square 1080 x 1080: a social post.
+- portrait 1080 x 1350: a 4:5 post.
+- story 1080 x 1920: a 9:16 story.
+- figure_tile 600 x 360: one figure with its trend.
+- sparkline_strip 600 x 120: a name, a figure and a sparkline in one row.
+
+Grid: 12 columns, margin 48, gutter 24, base unit 8; a value axis takes 64 at the left of the plot. Everything is left aligned, never a centred title: the title at the top left, the subtitle under it, the legend under that, the plot in the space left, a source note at the bottom.
+
+Type: one family, font g:Inter (sans when it is not offered). Weights 300, 400, 600, 700, 900 only.
+- title: size 44, weight 700, colour ink.
+- figure: size 72, weight 700, colour ink.
+- subtitle: size 24, weight 400, colour ink2.
+- label: size 20, weight 600, colour ink2.
+- axis: size 18, weight 400, colour ink3.
+- note: size 16, weight 400, colour ink3.
+Nothing smaller than 16 on a card board: a channel shows it at half size.
+
+Spacing: multiples of 8 only (8, 16, 24, 32, 40, 48, 64). Title to subtitle 8, subtitle to legend 24, legend to plot 40, plot to note 24.
+
+Colours: choose a dark or a light board and keep to its set; give the board its background colour.
+- dark: background #14161c, ink #eef0f3 / #a4a9b1 / #6d737c, grid #262930, baseline #3a3e47, series in this order #5892ea, #00ac86, #9580e0, #be8700, #d46d83, other #5d636c, up #3fd0a8, down #f58aa0.
+- light: background #ffffff, ink #12151a / #58606a / #8a919b, grid #eceef1, baseline #c9cdd3, series in this order #2f6fed, #0e9a74, #7150e6, #b7791f, #d43d6b, other #a3a9b1, up #0e9a74, down #d43d6b.
+Series take their colours in the order given and keep them when a series is filtered out; at most 5 series, the rest folds into other. Text never wears a series colour: titles, labels, values and legends use ink, ink2 and ink3. Up and down colour only a change figure, always with an arrow. Use solid colours, no transparency, so every part stays a layer people can edit.
+
+Marks:
+- Bar: at most 40 thick and 56% of its band; the data end rounded 6, square at the baseline; all bars grow from one baseline. 4 between bars of a group; a gap of 2 in the background colour between the parts of a stack; no outlines.
+- Line: 3 thick, round joins and caps; a dot of radius 6 at its end with a ring of 3 in the background colour, and the last value beside it.
+- Area: the line over a fill of its series colour mixed 14% into the background, as one solid colour.
+- Donut: outer radius 190, inner 128, a thin gap between slices, the total in the middle, the legend at the right with each name, count and share.
+- Grid and axes: horizontal gridlines only, 1 thick and solid (never dashed), in grid; the baseline 2 thick in baseline; 4 to 5 round steps (0, 10K, 20K).
+- Values: label only what the story is about (the highlighted bar, the end of a line), never a number on every point. A legend from two series up; one series needs none, the title says what it is.
+- Numbers as the channel&#039;s language writes them, with the unit in the subtitle.
+
+Chart kinds: bar, stacked_bar, line, area, donut, sparkline, figure_tile. A bar chart compares amounts, a stacked bar the parts of each amount, a line or an area a change over time, a donut the parts of one whole, a figure tile one number with its change and a sparkline of its trend, a sparkline strip a trend in one row. Two measures of a different scale are two charts, never a second axis.</pre></div>
+    <div class="fig"><div class="cap"><b>Kanala çizilen grafik</b>16 yazı katmanı (Inter) ve 13 SVG katmanı (ızgara, çubuklar); her parça Design Canvas'ta ayrı katman.</div><div class="board" style="width:820px" id="trial"></div></div>
+  </div>
+</div>
+<script>
+var P = document.documentElement.getAttribute('data-theme') === 'light' ? G.light : G.dark;
+document.getElementById('trial').innerHTML = gBars({ dw: 820, title: 'Bu haftanın satışları', sub: 'Günlük ciro, ₺ · örnek veri', labels: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'], series: [[18400, 22100, 19800, 24600, 31200, 27400, 15900]], mark: 4, note: 'Rehber denemesi (DG2) · örnek veri' }, P);
+</script>
+</body>
+</html>

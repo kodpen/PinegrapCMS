@@ -25,6 +25,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_svg.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_edit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_split.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_draw.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_guide.php');
 
 /**
  * The names of the canvas tools.
@@ -159,7 +160,7 @@ function ws_canvas_ai_offered($row, $asker)
 function ws_canvas_ai_tools($tool)
 {
     return array(
-        $tool('draw_canvas', 'Post a picture into the channel, drawn as SVG, only when the request asks for a drawing, a diagram, a chart or another picture. It is posted under the request as a canvas people open in the image editor with its layers. Still call answer at the end.', array(
+        $tool('draw_canvas', 'Post a picture into the channel, drawn as SVG, only when the request asks for a drawing, a diagram, a chart or another picture. It is posted under the request as a canvas people open in the image editor with its layers. Still call answer at the end. Draw it by this guide:' . "\n\n" . ws_canvas_guide_text(), array(
             'svg'        => array('type' => 'string', 'description' => 'A whole <svg> element with xmlns="http://www.w3.org/2000/svg", width and height (16 to 8000 pixels) or a viewBox. No scripts, no outside addresses, no pictures as data. At most 1 MB.'),
             'background' => array('type' => 'string', 'description' => 'The artboard\'s colour as #rrggbb, or transparent; white when left out.'),
             'text'       => array('type' => 'string', 'description' => 'Words beside the canvas, optional.'),

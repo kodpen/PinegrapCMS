@@ -237,6 +237,26 @@ function pg_settings_categories()
             ),
         ),
 
+        // Incoming e-mail's boxes, read in Communication › Incoming e-mail.
+        // Opened by a holder of the Workspace settings right whatever the
+        // Workspace's switch says (gate 'mail', pg_settings_mail_settings_allowed()).
+        'mailboxes' => array(
+            'label' => lang('Mailboxes'),
+            'group' => 'site',
+            'gate'  => 'mail',
+            'icon'  => 'bi-envelope',
+            'description' => lang('The mailboxes whose e-mail is read in Communication › Incoming e-mail.'),
+            'sections' => array(
+                'pgset-ws-mail' => lang('Mailboxes'),
+            ),
+            'keywords' => array(
+                'pgset-ws-mail' => pg_settings_keywords(lang('workspace, mailbox, mailboxes, e-mail')),
+            ),
+            'lists' => array(
+                'ws_mail' => 3,
+            ),
+        ),
+
         'security' => array(
             'label' => lang('Accounts and sign-in'),
             'group' => 'security',
@@ -514,22 +534,19 @@ function pg_settings_categories()
             'group' => 'workspace',
             'gate'  => 'workspace',
             'icon'  => 'bi-chat-square-text',
-            'description' => lang('Channel templates, mailboxes, voice transcripts and GitHub links.'),
+            'description' => lang('Channel templates, voice transcripts and GitHub links.'),
             'sections' => array(
                 'pgset-ws-templates'       => lang('Channel templates'),
-                'pgset-ws-mail'            => lang('Mailboxes'),
                 'pgset-ws-voice'           => lang('Voice message transcripts'),
                 'pgset-ws-github'          => lang('GitHub repositories'),
             ),
             'keywords' => array(
                 'pgset-ws-templates'       => pg_settings_keywords(lang('workspace, channel template, templates, archive')),
-                'pgset-ws-mail'            => pg_settings_keywords(lang('workspace, mailbox, mailboxes, e-mail')),
                 'pgset-ws-voice'           => pg_settings_keywords(lang('workspace, voice, transcript, speech, spoken answers, key')),
                 'pgset-ws-github'          => pg_settings_keywords(lang('workspace, github, repository, webhook, pull request')),
             ),
             'lists' => array(
                 'ws_github' => 2,
-                'ws_mail'   => 3,
             ),
         ),
 
@@ -593,7 +610,8 @@ function pg_settings_groups()
  * Whether a reader may open a category.
  *
  * A category gated 'workspace' opens for a holder of the Workspace settings
- * right and for nobody else: a manager kept out of the team is refused it,
+ * right while the Workspace is on, one gated 'mail' (Mailboxes) for that
+ * holder whatever the switch, and for nobody else: a manager kept out of the team is refused it,
  * and a basic user holding the right opens it without being a manager. Every
  * other category opens for a manager (role 0-2) alone. The dialog's list, its
  * search, the page path and both save paths ask this one question. Pure.
@@ -604,6 +622,10 @@ function pg_settings_groups()
  */
 function pg_settings_category_open($category, $reader)
 {
+    if (isset($category['gate']) && ($category['gate'] === 'mail')) {
+        return !empty($reader['mail']);
+    }
+
     if (pg_settings_category_is_workspace($category)) {
         return !empty($reader['workspace']);
     }
@@ -617,13 +639,14 @@ function pg_settings_category_open($category, $reader)
  * Workspace settings right (pg_settings_workspace_settings_allowed()).
  *
  * @param array $user the row validate_user() returned
- * @return array manager, workspace (bool)
+ * @return array manager, workspace, mail (bool)
  */
 function pg_settings_reader($user)
 {
     return array(
         'manager'   => isset($user['role']) && ((int) $user['role'] <= 2),
         'workspace' => is_array($user) && pg_settings_workspace_settings_allowed($user),
+        'mail'      => is_array($user) && pg_settings_mail_settings_allowed($user),
     );
 }
 
@@ -685,7 +708,7 @@ function pg_settings_may_open($key, $user, $reader = null)
  */
 function pg_settings_category_is_workspace($category)
 {
-    return is_array($category) && isset($category['gate']) && ($category['gate'] === 'workspace');
+    return is_array($category) && isset($category['gate']) && in_array($category['gate'], array('workspace', 'mail'), true);
 }
 
 
@@ -974,7 +997,7 @@ function pg_settings_legacy_anchors()
         'ws-ai'            => array('workspace_assistants', 'pgset-ws-ai'),
         'ws-mcp'           => array('workspace_assistants', 'pgset-ws-mcp'),
         'ws-templates'     => array('workspace_channels', 'pgset-ws-templates'),
-        'ws-mail'          => array('workspace_channels', 'pgset-ws-mail'),
+        'ws-mail'          => array('mailboxes', 'pgset-ws-mail'),
         'ws-voice'         => array('workspace_channels', 'pgset-ws-voice'),
         'ws-github'        => array('workspace_channels', 'pgset-ws-github'),
     );
@@ -1043,6 +1066,33 @@ function pg_settings_workspace_settings_allowed($user)
     require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 
     if (!ws_ready() || !ws_enabled()) {
+        return false;
+    }
+
+    $rights = ws_rights($user);
+
+    return !empty($rights['member']) && !empty($rights['settings']);
+}
+
+
+/**
+ * Whether a person may open the Mailboxes category: the Workspace's tables
+ * are installed and they hold its settings right as their account reads,
+ * whatever the Workspace's switch says, so a box stays reachable from Site
+ * Settings with the Workspace off.
+ *
+ * @param array $user
+ * @return bool
+ */
+function pg_settings_mail_settings_allowed($user)
+{
+    if (!defined('PG_FUNCTIONS_DIR') || !is_file(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php')) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+    if (!ws_ready() || !function_exists('ws_mail_ready') || !ws_mail_ready()) {
         return false;
     }
 

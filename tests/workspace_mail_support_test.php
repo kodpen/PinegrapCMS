@@ -160,6 +160,6 @@ function test_workspace_mail_support_wiring()
 	pg_assert_contains("'support' => ws_mail_box_is_support(\$box)", $read('includes/workspace/mail_pane.php'), 'the pane offers no state for a plain box');
 	pg_assert_contains("\$charset, ws_mail_plain_box_ids());", $read('includes/workspace/mail_list.php'), 'the list');
 	pg_assert_contains("'', ws_mail_plain_box_ids());", $read('includes/workspace/mail_reads.php'), 'the menu\'s count');
-	pg_assert_contains("ws_mail_list_support(\$boxes, ws_mail_plain_box_ids())", $read('workspace_mail.php'), 'the toolbar');
+	pg_assert_contains("ws_mail_list_support(\$boxes, ws_mail_plain_box_ids())", $read('messages_mail.php'), 'the toolbar');
 	pg_assert_contains("ws_mail_box_is_support(\$box) ? ws_mail_statuses() : array()", $read('includes/workspace/mail_triage.php'), 'the suggestion');
 }

@@ -4,7 +4,8 @@ description: MCP resources (pinegrap://workspace/my-day, channels/{id}/context a
 ---
 
 ## Which resources are there, and how is one read?
-- `pg_mcp_resource_kinds()` (`includes/mcp/resources.php`): `pinegrap://workspace/my-day` (GET /workspace/my-day), templates `…/channels/{id}/context` (GET /workspace/channels/{id}/context), `…/channels/{id}/customer` (GET …/customer, #1970) `…/refs/{type}/{id}` (GET /workspace/refs?type=&id=) and `pinegrap://forms/{id}/fields` (`mcp-form-guidance.md`). A template variable is the route parameter of that name, path or query.
+- `pg_mcp_resource_kinds()` (`includes/mcp/resources.php`): `pinegrap://workspace/my-day` (GET /workspace/my-day), templates `…/channels/{id}/context` (GET /workspace/channels/{id}/context), `…/channels/{id}/customer` (GET …/customer, #1970) `…/refs/{type}/{id}` (GET /workspace/refs?type=&id=) and `pinegrap://forms/{id}/fields` (`mcp-form-guidance.md`).
+- `pinegrap://workspace/canvas-guide` over GET /workspace/canvas/guide, and its prompt: `workspace/agent-canvas-guide.md`. A template variable is the route parameter of that name, path or query.
 - A read runs the route through `pg_mcp_route_run()`, the runner of tools/call (scope, `api_validate_input()`, handler, `api_send_hook()`): scope, OAuth ceiling, rights, channel membership and Claude's channel gate are the tool's (record refs too: workspace/workspace-claude-key-reads.md). Result: one text item, `application/json`, the route's JSON body, `uri` as sent.
 - A new resource is a row there over a GET route; `test_mcp_resources_templates_match_their_routes` checks its variables are route parameters and the required ones come from the URI.
 
@@ -21,10 +22,9 @@ description: MCP resources (pinegrap://workspace/my-day, channels/{id}/context a
 - Nothing is paged (no `nextCursor`), so a cursor (other than null or '') on any list is -32602 "Invalid params: unknown cursor." in both generations (`pg_mcp_list_answer()`); before, the whole list came back.
 
 ## Which prompts are there?
-- `includes/mcp/prompts.php`: `channel_summary` (channel_id required), `weekly_report` (channel_id optional), `blog_post` (`mcp-form-guidance.md`), offered while the resources they need are readable (`needs`).
+- `includes/mcp/prompts.php`: `channel_summary` (channel_id required), `weekly_report` (channel_id optional), `blog_post` (`mcp-form-guidance.md`), `canvas_chart`, offered while the resources they need are readable (`needs`).
 - channel_summary runs the context route: on a 2xx that is JSON the context follows as a second message, an embedded resource; otherwise text only, alike for a missing or unreadable channel. weekly_report names my-day and, with channel_id and the context readable, the channel; it embeds nothing.
 - English texts that name each resource and its tool and end with `pg_ai_prompt_rules('assistant')`. Unknown prompt or argument, a missing one, an id that is not a positive whole number: -32602.
 
 ## Where is it tested?
 - `tests/mcp_resources_test.php`. The decisions are pure functions it runs: `pg_mcp_list_answer()`, `pg_mcp_resource_target()` (before the route), `pg_mcp_resource_answer()` (after it), `pg_mcp_prompt_embedded()` (2xx only); the request functions only write what they return (`pg_mcp_answer()`).
-- End to end on a scratch install with an app key (both generations, a private channel the owner left, a key without workspace:read).

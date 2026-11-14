@@ -5,7 +5,8 @@
 # (PHPCompatibility) of the product tree against their baselines, a
 # JavaScript syntax check of the large panel scripts, whether every .min.js
 # and the code editor bundle still match their sources and whether the memory
-# index (docs/memory/README.md) matches the files it lists, and on a pull
+# files are valid and, on a merge train and a push, whether the memory index
+# (docs/memory/README.md) matches the files it lists, and on a pull
 # request the guards on its branch's commits, changelog and size. None of them
 # needs a database. tools/pre_push.sh runs the fast ones before a push
 # (docs/memory/workflow/pre-push-checks.md): a step or a node --check file
@@ -131,13 +132,18 @@ jobs:
       # change starts from: the pull request's base, or the branch head before
       # a push. The checkout is one commit deep, so that commit is fetched; a
       # base that cannot be fetched fails the step, never skips the rule.
-      - name: Memory index matches its files (tools/memory_index.php --check)
+      # A pull request carries no generated memory list (tools/check_pr.php):
+      # its own memory files are checked (--files) and the lists are compared
+      # on a merge train and on development, whose landing wrote them
+      # (tools/merge_train.php).
+      - name: Memory files and index (tools/memory_index.php --files on a pull request, --check on a train and a push)
         if: ${{ hashFiles('tools/memory_index.php') != '' }}
         env:
           MEMORY_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          MEMORY_MODE: ${{ (github.event_name == 'pull_request' && !startsWith(github.head_ref, 'merge-train/')) && '--files' || '--check' }}
         run: |
           git fetch --no-tags --depth=1 origin "$MEMORY_BASE"
-          php tools/memory_index.php --check "--base=$MEMORY_BASE"
+          php tools/memory_index.php "$MEMORY_MODE" "--base=$MEMORY_BASE"
 
   # What the pull request's branch carries (tools/check_pr.php): no commit
   # with a Co-Authored-By: or Claude-Session: trailer, Erdal Güral as every

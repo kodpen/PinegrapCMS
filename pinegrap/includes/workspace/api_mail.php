@@ -110,8 +110,8 @@ function ws_mail_api_routes()
             'mcp'         => false,
             'returns'     => 'WorkspaceMail',
             'status'      => 201,
-            'summary'     => 'Answer an e-mail conversation by e-mail',
-            'description' => 'Sends text to the conversation\'s customer from its mailbox\'s address, with the person\'s name under it and the customer\'s last mail quoted, as "Reply by e-mail" on the card does; the answer is drawn under the card and the conversation waits for the customer. Only the person\'s own team devices session (POST /auth/login) may: an application key or an OAuth connection is refused with 403, and it is no MCP tool, since an assistant never writes to a customer. 403 also when the person may not write in the channel. 409 cannot_send when the mailbox cannot send (switched off, no sending server, the site\'s mail settings for another domain, no address to answer, as for a WhatsApp or SMS conversation; the reason in the message); 409 not_sent when the sending server refused it. Send an Idempotency-Key: a retry after a timeout must not mail the customer twice. copy_kept is false when the mailbox\'s sent folder kept no copy (null on a mail read back). id is 0 in the rare case the mail left but its record could not be written.',
+            'summary'     => 'Answer a conversation by e-mail or WhatsApp',
+            'description' => 'Sends text to the conversation\'s customer from its mailbox\'s address, with the person\'s name under it and the customer\'s last mail quoted, as "Reply by e-mail" on the card does; the answer is drawn under the card and the conversation waits for the customer. Only the person\'s own team devices session (POST /auth/login) may: an application key or an OAuth connection is refused with 403, and it is no MCP tool, since an assistant never writes to a customer. 403 also when the person may not write in the channel. 409 cannot_send when the mailbox cannot send (switched off, no sending server, the site\'s mail settings for another domain, no address to answer, as for a WhatsApp or SMS conversation; the reason in the message); 409 not_sent when the sending server refused it. Send an Idempotency-Key: a retry after a timeout must not mail the customer twice. copy_kept is false when the mailbox\'s sent folder kept no copy (null on a mail read back). id is 0 in the rare case the mail left but its record could not be written. A WhatsApp conversation (transport whatsapp) is answered by WhatsApp instead, as "Reply by WhatsApp" on the card does: plain text of at most 4096 characters, only inside the 24 hours after the customer\'s last message (WhatsApp takes free text only then; after them 409 cannot_send). The answer is queued for the general job and comes back with send_state queued (failed when the queue refused it, with send_error) and copy_kept null; GET the conversation later for its outcome. 409 cannot_send also while WhatsApp is not set up, and on a demonstration site.',
             'params'      => array($id, array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_REPLY_MAX, 'required' => true, 'description' => 'The answer as plain text.')),
         ),
 
@@ -689,6 +689,12 @@ function ws_api_mail_conversations_reply($params)
 
     $conversation = ws_api_mail_conversation_or_404($viewer, $params['id']);
     $text = (string) $params['text'];
+
+    // A WhatsApp conversation is answered by WhatsApp, never by e-mail.
+    if (ws_mail_transport_kind(ws_api_mail_box_transports()[(int) $conversation['box_id']] ?? '') === 'whatsapp') {
+        ws_api_mail_phone_reply($viewer, $conversation, $text);
+    }
+
     $checked = ws_mail_reply_check($viewer, (int) $conversation['id'], $text);
 
     if (!$checked['ok']) {
@@ -720,6 +726,102 @@ function ws_api_mail_conversations_reply($params)
     $answer['copy_kept'] = ((string) ($sent['copy'] ?? '') !== 'failed');
 
     api_ok($answer, 201);
+}
+
+/**
+ * How a refused WhatsApp answer is told (ws_mail_phone_reply_target() and
+ * pg_whatsapp_reply_row() errors). Pure.
+ *
+ * @param string $error
+ * @return array status, code, field
+ */
+function ws_api_mail_phone_reply_refusal($error)
+{
+    switch ((string) $error) {
+        case 'empty':
+        case 'too_long':
+            return array('status' => 422, 'code' => 'validation_failed', 'field' => 'text');
+
+        case 'no_access':
+            return array('status' => 403, 'code' => 'forbidden', 'field' => null);
+
+        case 'not_ready':
+            return array('status' => 503, 'code' => 'service_unavailable', 'field' => null);
+    }
+
+    return array('status' => 409, 'code' => 'cannot_send', 'field' => null);
+}
+
+/**
+ * Whether this person may answer this WhatsApp conversation with this text
+ * now, by the card's own rules (rights, WhatsApp set up, the customer's 24
+ * hours) and the queue's (the number, the length); a demo site sends
+ * nothing. Writes nothing.
+ *
+ * @param array  $viewer
+ * @param array  $conversation ws_mail_conversations row
+ * @param string $text
+ * @param int    $now
+ * @return array ok, error
+ */
+function ws_api_mail_phone_reply_check($viewer, $conversation, $text, $now)
+{
+    $target = ws_mail_phone_reply_target($viewer, (int) $conversation['id'], $now);
+
+    if (!$target['ok']) {
+        return array('ok' => false, 'error' => $target['error']);
+    }
+
+    $row = pg_whatsapp_reply_row((string) $target['conversation']['customer_phone'], $text, array('window_ends' => $now + (int) $target['seconds']), $now);
+
+    if (isset($row['error'])) {
+        return array('ok' => false, 'error' => $row['error']);
+    }
+
+    if (function_exists('pg_demo') && pg_demo()) {
+        return array('ok' => false, 'error' => 'demo');
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Answers a WhatsApp conversation through the WhatsApp queue, as the card's
+ * Reply by WhatsApp does (ws_mail_phone_reply_send()), and ends the request
+ * with the answer: 201 with send_state queued, or failed when the queue
+ * refused it.
+ *
+ * @param array  $viewer
+ * @param array  $conversation ws_mail_conversations row
+ * @param string $text
+ */
+function ws_api_mail_phone_reply($viewer, $conversation, $text)
+{
+    $checked = ws_api_mail_phone_reply_check($viewer, $conversation, $text, time());
+
+    if (!$checked['ok']) {
+        $refusal = ws_api_mail_phone_reply_refusal($checked['error']);
+        api_fail($refusal['status'], $refusal['code'], ws_mail_phone_reply_error_text($checked['error']), $refusal['field']);
+    }
+
+    api_dry_run_stop('created', 'workspace_mail', array('conversation_id' => (int) $conversation['id'], 'to' => '+' . (string) $conversation['customer_phone'], 'transport' => 'whatsapp'));
+
+    $sent = ws_mail_phone_reply_send($viewer, (int) $conversation['id'], $text);
+
+    if (!$sent['ok']) {
+        $refusal = ws_api_mail_phone_reply_refusal($sent['error']);
+        api_fail($refusal['status'], $refusal['code'], ws_mail_phone_reply_error_text($sent['error']), $refusal['field']);
+    }
+
+    // The answer just written: the writer's newest in this conversation.
+    $item = db_item("SELECT * FROM ws_mail_items WHERE conversation_id = '" . (int) $conversation['id'] . "' AND direction = 'out'
+        AND user_id = '" . (int) $viewer['id'] . "' ORDER BY id DESC LIMIT 1");
+
+    if (!is_array($item) || !$item) {
+        api_fail(500, 'server_error', lang('The answer could not be sent.'));
+    }
+
+    api_ok(ws_api_mail_present($item), 201);
 }
 
 function ws_api_mail_conversations_read($params)
