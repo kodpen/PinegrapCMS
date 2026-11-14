@@ -149,8 +149,7 @@ function ws_mail_drafts_view_html($rows)
             . (($words !== '') ? '<span class="ws-mail-snippet">' . h(mb_substr($words, 0, 160)) . '</span>' : '')
             . '<span class="ws-mail-row-meta"><span>' . h((string) $row['box_name']) . '</span>'
             . ((trim((string) ($row['app_name'] ?? '')) !== '')
-                ? '<span class="pg-pill pg-tone-violet" data-ws-mail-draft-app><span class="bi bi-stars" aria-hidden="true"></span> '
-                    . h(lang(array('string' => 'Kept by {var:1}', 'vars' => (string) $row['app_name']))) . '</span>'
+                ? '<span class="pg-pill pg-tone-violet" data-ws-mail-draft-app>' . h(lang(array('string' => 'Kept by {var:1}', 'vars' => (string) $row['app_name']))) . '</span>'
                 : '')
             . '<span class="ms-auto d-inline-flex gap-2">'
             . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-ws-mail-draft-open="' . $id . '">' . h(lang('Open draft')) . '</button>'
