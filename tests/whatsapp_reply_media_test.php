@@ -155,9 +155,9 @@ function test_whatsapp_reply_media_wiring()
 	};
 
 	pg_assert_contains("pg_whatsapp_reply_send_media(\$app, \$row['recipient'], \$payload)", $read('includes/fn/whatsapp.php'), 'a file payload goes as media');
-	pg_assert_contains("ws_mail_phone_reply_send(\$viewer, \$conversation_id, \$request, \$files['files'])", $read('includes/workspace/actions.php'), 'the drawer\'s file and template');
+	pg_assert_contains("ws_mail_phone_reply_send(\$viewer, \$conversation_id, \$request, \$files['files'], \$transport)", $read('includes/workspace/actions.php'), 'the drawer\'s file and template');
 	$script = $read('assets/js/workspace_mail.js');
-	pg_assert_contains("formPost(h, 'ws_whatsapp_reply', request.fields, request.files)", $script, 'the drawer sends the answer');
+	pg_assert_contains("formPost(h, sms ? 'ws_sms_reply' : 'ws_whatsapp_reply', request.fields, request.files)", $script, 'the drawer sends the answer');
 	pg_assert_contains("[data-pg-picker-value]", $script, 'the file comes from the panel\'s file field');
 	pg_assert_contains("pg_picker_field('channel_file', 'file_id'", $read('includes/workspace/mail_phone.php'), 'a file of Files');
 	pg_assert_contains("ws_library_file(\$viewer, \$file_id)", $read('includes/workspace/mail_phone.php'), 'read as the writing box reads one');

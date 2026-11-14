@@ -18,7 +18,7 @@ module: whatsapp_reply
 - `ws_mail_phone_resend_send()`: the last queue row's template (at any time; a row holding a single-use offer key is refused, its key was switched off when it failed), else the message's file, else the text; the last two only inside the 24 hours. A template row already swept (30 days) falls back to the text.
 
 ## What is left?
-- A received picture, voice message or document fetched into the card's files: WA14c (`plans/whatsapp-channel-steps-2.md`).
+- A received picture, voice message or document fetched into the card's files: `mail-phone-media.md`.
 - `tests/whatsapp_reply_media_test.php`: kinds and sizes, the file row, the upload and media requests, template fill and list, wiring. No Meta account: a file or template answer was never delivered.
 
 Related: docs/memory/workspace/mail-phone-reply.md, docs/memory/platform/whatsapp-template-approval.md

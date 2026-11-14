@@ -96,6 +96,7 @@
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
 - mail-phone-conversations.md: A customer's WhatsApp message as a Workspace conversation (WA13, #9389, step 11.0.199): the WhatsApp box and its Channel field, threading by number, the card, what stays mail-only [decision: decisions-made-workspace-23.md]
 - mail-phone-list-event-api.md: WhatsApp and SMS conversations in the E-mails list (Kind filter), the workspace.mail.received event (transport, number, How it came) and the API (#9420, #9455)
+- mail-phone-media.md: A customer's WhatsApp picture, video, voice message or document fetched by the general job into the conversation card's files (WA14c, #9480), no new column; what is given up and why
 - mail-phone-reply-files.md: A WhatsApp answer's file and template (WA14b, #9446): Meta's kinds and sizes before the queue, the upload at the send, templates with typed values after the 24 hours, Send again
 - mail-phone-reply.md: Reply by WhatsApp from a Workspace conversation (WA14a #9405, WA14b #9446): text or a file inside the 24 hours, a template after them, the queue row, its outcome, Send again, the drawer
 - mail-reply.md: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc, Bcc, files, Reply to all, the drawer, route, headers and subject, the API's answer sent at once
@@ -106,6 +107,7 @@
 - mail-send-outcome.md: How the queue's outcome reaches a Workspace mail (ws_mail_send_outcome(), #8646): sent is final, only the current attempt fails it, the unwritten row id race, a deleted queue row
 - mail-send.md: Sending Workspace mail through the mail queue (mail_send.php, WM3 #8646): functions, the flow, send states and the card, Send again, limits, mail_unsent, the outcome handler's rules [decision: decisions-made-workspace-13.md]
 - mail-sent-and-bounces.md: After a Workspace e-mail answer leaves (G3c): the copy APPENDed to the box's sent folder, email()'s keep_mime, and a delivery failure (DSN) drawn as a "Not delivered" line under the conversation
+- mail-sms-reply.md: Reply by SMS from a Workspace conversation (WA17, #9450): 7 days after the number's last SMS, the kind reply in sms_outbox, the drawer's length and parts counter, only with a provider that receives [decision: decisions-made-workspace-23.md]
 - mail-status.md: State of a Workspace e-mail conversation (G5a, G5b, mail_status.php): open/waiting/closed, the holder, the first-response target, the card's controls, the automatic answer
 - mail-support-box.md: A mailbox's "Support box" switch (WM14, #9061): what a plain box leaves out (status, holder, first-answer time, automatic answer), how lists count its conversations, the default [decision: decisions-made-workspace-17.md]
 - mail-tables-sending.md: What step 11.0.185 (WM2, #8634) adds for sending and reading Workspace mail: ws_mail_items bcc_list, send_state, send_error, outbox_id and table ws_mail_reads; types and why [decision: decisions-made-workspace-13.md]
