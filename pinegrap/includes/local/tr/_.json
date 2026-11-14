@@ -1464,6 +1464,7 @@
     "{var:1} of {var:2} sections shown": "{var:2} bölümden {var:1} tanesi gösteriliyor",
     "{var:1} of {var:2} selected": "{var:2} seçenekten {var:1} tanesi seçili",
     "{var:1} of {var:2} shown": "{var:1} / {var:2} gösteriliyor",
+    "{var:1} of {var:2} steps done": "{var:2} adımdan {var:1} tanesi bitti",
     "{var:1} of {var:2} styles done": "{var:2} stilden {var:1} tanesi bitti",
     "{var:1} of {var:2} tools on": "{var:2} araçtan {var:1} açık",
     "{var:1} off everything in {var:2}": "{var:2} grubundaki her üründe {var:1} indirim",

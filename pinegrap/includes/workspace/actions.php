@@ -4659,6 +4659,23 @@ function ws_handle_action($action, $request)
 
             return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok();
 
+        // A plan's roadmap (personal_plan_steps.php): read through the plan's
+        // gate, changed by its owner alone.
+        case 'ws_personal_plan_roadmap':
+            $roadmap = ws_personal_plan_roadmap($viewer, (int) ($request['plan_id'] ?? 0));
+
+            return $roadmap ? ws_action_ok(array('roadmap' => $roadmap)) : ws_action_error(lang('This plan cannot be found.'));
+
+        case 'ws_personal_plan_steps_save':
+            $result = ws_personal_plan_steps_save($viewer, (int) ($request['plan_id'] ?? 0), $request['steps'] ?? array());
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('roadmap' => $result['roadmap']));
+
+        case 'ws_personal_plan_step_task':
+            $result = ws_personal_plan_step_task($viewer, (int) ($request['plan_id'] ?? 0), (int) ($request['step_id'] ?? 0), (int) ($request['task_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('roadmap' => $result['roadmap']));
+
         case 'ws_conflicts':
             $from = ws_date_or_null($request['from'] ?? '') ?: date('Y-m-d');
             $to = ws_date_or_null($request['to'] ?? '') ?: date('Y-m-d', strtotime('+13 days'));

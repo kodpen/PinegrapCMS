@@ -12782,7 +12782,7 @@ html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="mai
   background: var(--pg-bg-2);
 }
 .ws-group-chevron {
-  font-size: .65rem;
+  font-size: 11px;
   opacity: .7;
 }
 .ws-group-icon {
@@ -15033,7 +15033,7 @@ a.ws-person-link:hover .avatar {
   vertical-align: baseline;
 }
 .ws-msg-edited .bi {
-  font-size: .65rem;
+  font-size: 11px;
 }
 /* The messages a reply answers, lit up for a moment when it is followed. */
 @keyframes ws-msg-flash {
@@ -18252,6 +18252,105 @@ button.ws-cal-more {
   margin: 0;
   padding: 32px 16px;
   text-align: center;
+}
+/* A plan's roadmap in its drawer: the bar of its days with each dated step
+   on its day, the share done filled in the violet of a plan, then the steps. */
+.ws-roadmap {
+  border-top: 1px solid var(--pg-border-color-translucent);
+  margin-top: 8px;
+  padding-top: 16px;
+}
+.ws-roadmap-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.ws-roadmap-head .pg-group-label {
+  margin: 0;
+}
+.ws-roadmap-bar {
+  position: relative;
+  height: 8px;
+  margin: 6px 6px 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pg-tone-violet) 14%, transparent);
+}
+.ws-roadmap-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--pg-tone-violet);
+  transition: width .2s ease;
+}
+.ws-roadmap-marks {
+  position: absolute;
+  inset: 0;
+}
+.ws-roadmap-mark {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--pg-tone-violet);
+  border-radius: 50%;
+  background: var(--pg-bg-body);
+  transform: translate(-50%, -50%);
+}
+.ws-roadmap-mark.is-done {
+  background: var(--pg-tone-violet);
+}
+.ws-roadmap-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+.ws-roadmap-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 9.5rem;
+  align-items: center;
+  gap: 8px;
+}
+.ws-roadmap-step.is-done .ws-roadmap-title {
+  color: var(--pg-fg-2);
+  text-decoration: line-through;
+}
+.ws-roadmap-tools {
+  display: flex;
+  grid-column: 2 / -1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 0;
+}
+.ws-roadmap-tools:empty {
+  display: none;
+}
+.ws-roadmap-task {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  margin-right: auto;
+}
+.ws-roadmap-empty {
+  padding: 4px 0;
+}
+.ws-roadmap-count {
+  margin-left: 4px;
+  color: var(--pg-fg-2);
+  font-size: 11px;
+}
+@media (max-width: 575.98px) {
+  .ws-roadmap-step {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .ws-roadmap-day {
+    grid-column: 2;
+  }
 }
 .ws-cal-side .card {
   border: 1px solid var(--pg-border-color-translucent);
