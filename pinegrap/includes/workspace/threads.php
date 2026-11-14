@@ -1630,6 +1630,10 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
         // decisions they wrote stay in the channel as copies.
         if (function_exists('ws_approvals_ready') && ws_approvals_ready()) {
             db("DELETE FROM ws_approval_people WHERE approval_id IN (SELECT id FROM ws_approvals WHERE channel_id = '" . $thread_id . "')");
+
+            if (function_exists('ws_approval_agents_ready') && ws_approval_agents_ready()) {
+                db("DELETE FROM ws_approval_agents WHERE approval_id IN (SELECT id FROM ws_approvals WHERE channel_id = '" . $thread_id . "')");
+            }
             db("DELETE FROM ws_approvals WHERE channel_id = '" . $thread_id . "'");
         }
 

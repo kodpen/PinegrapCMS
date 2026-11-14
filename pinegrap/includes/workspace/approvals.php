@@ -203,7 +203,10 @@ function ws_approval_people($approval_id)
  *
  * @param array $viewer
  * @param array $channel
- * @param array $data   title, text, approvers (user ids), rule (any | all), closes_at (timestamp, 0 = none)
+ * @param array $data   title, text, approvers (user ids), agents (agent:<id> |
+ *                      model:<id>, only with may_ask_agents true), rule (any | all),
+ *                      closes_at (timestamp, 0 = none), may_ask_agents (the panel's
+ *                      form, or the API in the person's own session)
  * @param int   $app_id an application asking for its owner (0 = the person)
  * @param bool  $strict false drops the people who may not be asked rather than refusing (a scheduled action)
  * @return array ok, error, field, message_id, approval_id
@@ -214,7 +217,7 @@ function ws_approval_create($viewer, $channel, $data, $app_id = 0, $strict = tru
         return array('ok' => false, 'error' => $error, 'field' => $field, 'message_id' => 0, 'approval_id' => 0);
     };
 
-    $checked = ws_approval_input($viewer, $channel, $data, $strict);
+    $checked = ws_approval_input($viewer, $channel, $data, $strict, $app_id);
 
     if (!$checked['ok']) {
         return $fail($checked['error'], $checked['field']);
@@ -266,6 +269,12 @@ function ws_approval_create($viewer, $channel, $data, $app_id = 0, $strict = tru
         db("INSERT IGNORE INTO ws_approval_people (approval_id, user_id) VALUES ('" . $approval_id . "', '" . (int) $user_id . "')");
     }
 
+    // The agents asked are woken at once, the request in their brief
+    // (approval_agents.php).
+    if (!empty($checked['agents'])) {
+        ws_approval_agents_ask($viewer, $channel, ws_approval($approval_id), $checked['agents']);
+    }
+
     // People outside the team get their links by e-mail (approval_guests.php).
     if (!empty($checked['guests'])) {
         $approval = ws_approval($approval_id);
@@ -293,6 +302,7 @@ function ws_approval_create($viewer, $channel, $data, $app_id = 0, $strict = tru
             'title'       => $title,
             'rule'        => $checked['rule'],
             'approvers'   => $checked['approvers'],
+            'agents'      => $checked['agents'],
             'guests'      => array_map(function ($guest) {
                 return array('name' => (string) $guest['name']);
             }, $checked['guests']),
@@ -319,9 +329,10 @@ function ws_approval_create($viewer, $channel, $data, $app_id = 0, $strict = tru
  * @param array $channel
  * @param array $data
  * @param bool  $strict
- * @return array ok, error, field, title, text, approvers, guests, rule, closes_at
+ * @param int   $app_id an application asking (0 = the person)
+ * @return array ok, error, field, title, text, approvers, agents, guests, rule, closes_at
  */
-function ws_approval_input($viewer, $channel, $data, $strict = true)
+function ws_approval_input($viewer, $channel, $data, $strict = true, $app_id = 0)
 {
     $fail = function ($error, $field = '') {
         return array('ok' => false, 'error' => $error, 'field' => $field);
@@ -369,7 +380,32 @@ function ws_approval_input($viewer, $channel, $data, $strict = true)
         }
     }
 
-    if (empty($given) && empty($guests)) {
+    // The channel's agents, only on a request a person makes by hand
+    // (approval_agents.php): a flow's, a scheduled action's and an
+    // application's ask people only.
+    $agents = function_exists('ws_approval_agents_clean') ? ws_approval_agents_clean($data['agents'] ?? array()) : array();
+
+    if (!empty($agents)) {
+        if (!ws_approval_agents_allowed(($data['may_ask_agents'] ?? false) === true, $app_id)) {
+            return $fail(lang('Only a request a person makes by hand can ask agents to approve.'), 'agents');
+        }
+
+        if (!ws_approval_agents_ready()) {
+            return $fail(lang('The workspace is not installed yet: the database has to be updated first.'), 'agents');
+        }
+
+        $allowed = array_column(ws_approval_agent_options($channel), 'value');
+
+        if (count(array_intersect($agents, $allowed)) !== count($agents)) {
+            return $fail(lang('Only the channel\'s active agents can be asked to approve.'), 'agents');
+        }
+
+        if (count($agents) > WS_APPROVAL_MAX_PEOPLE) {
+            return $fail(lang(array('string' => 'At most {var:1} agents can be asked to approve.', 'vars' => WS_APPROVAL_MAX_PEOPLE)), 'agents');
+        }
+    }
+
+    if (empty($given) && empty($guests) && empty($agents)) {
         return $fail(lang('Choose who is to approve it.'), 'approvers');
     }
 
@@ -379,7 +415,7 @@ function ws_approval_input($viewer, $channel, $data, $strict = true)
         return $fail(lang('Only people in the channel who may write in it can be asked to approve.'), 'approvers');
     }
 
-    if (empty($approvers) && empty($guests)) {
+    if (empty($approvers) && empty($guests) && empty($agents)) {
         return $fail(lang('Choose who is to approve it.'), 'approvers');
     }
 
@@ -394,7 +430,7 @@ function ws_approval_input($viewer, $channel, $data, $strict = true)
         return $fail(lang('The deadline has to be later than now.'), 'closes_at');
     }
 
-    return array('ok' => true, 'error' => '', 'field' => '', 'title' => $title, 'text' => $text, 'approvers' => $approvers, 'guests' => $guests, 'rule' => $rule, 'closes_at' => $closes_at);
+    return array('ok' => true, 'error' => '', 'field' => '', 'title' => $title, 'text' => $text, 'approvers' => $approvers, 'agents' => $agents, 'guests' => $guests, 'rule' => $rule, 'closes_at' => $closes_at);
 }
 
 /**
@@ -486,6 +522,7 @@ function ws_approvals_map($message_ids, $viewer)
         }
     }
 
+    $agent_entries = function_exists('ws_approval_agents_card') ? ws_approval_agents_card($ids) : array();
     $people = ws_people($user_ids);
     $refs = empty($tokens) ? array() : ws_refs_resolve($viewer, $tokens);
     // What Approve asks for, of the open requests a flow's box waits on.
@@ -556,6 +593,12 @@ function ws_approvals_map($message_ids, $viewer)
                 'time'        => ((int) $answer['decided_at'] > 0) ? ws_time_label($answer['decided_at']) : '',
                 'can_resend'  => $open && $can_post && ($decision === 'pending') && ws_approval_can_ask_guests($viewer),
             );
+        }
+
+        // The agents asked, after the people (approval_agents.php).
+        foreach ($agent_entries[$approval_id] ?? array() as $entry) {
+            $counts[$entry['decision']] = ($counts[$entry['decision']] ?? 0) + 1;
+            $list[] = $entry;
         }
 
         $record = null;
@@ -809,18 +852,11 @@ function ws_approval_decide_check($viewer, $approval, $decision, $note = null)
 
     // The answers as they would stand, the way ws_approval_evaluate() reads
     // them after the answer is written.
-    $decisions = array();
-
-    foreach (ws_approval_people($approval['id']) as $row) {
-        $decisions[] = ((int) $row['user_id'] === (int) $viewer['id']) ? (($decision === 'approve') ? 'approved' : 'rejected') : (string) $row['decision'];
-    }
-
-    foreach (function_exists('ws_approval_guests_of') ? ws_approval_guests_of($approval['id']) : array() as $row) {
-        $decisions[] = (string) $row['decision'];
-    }
+    $decisions = ws_approval_decisions($approval['id']);
+    $decisions['user:' . (int) $viewer['id']] = ($decision === 'approve') ? 'approved' : 'rejected';
 
     return array('ok' => true, 'error' => '', 'expired' => false,
-        'outcome' => ws_approval_outcome($approval['rule'], $decisions, time(), (int) $approval['closes_at']));
+        'outcome' => ws_approval_outcome($approval['rule'], array_values($decisions), time(), (int) $approval['closes_at']));
 }
 
 /**
@@ -865,6 +901,33 @@ function ws_approval_decide($viewer, $approval, $decision, $note = '')
 }
 
 /**
+ * Every answer to one request, keyed by who gave it: user:<id> for the
+ * team, guest:<id> for somebody outside it, agent:<value> for an agent
+ * (approval_agents.php). The rule counts them alike.
+ *
+ * @param int $approval_id
+ * @return array key => pending | approved | rejected
+ */
+function ws_approval_decisions($approval_id)
+{
+    $out = array();
+
+    foreach (ws_approval_people($approval_id) as $row) {
+        $out['user:' . (int) $row['user_id']] = (string) $row['decision'];
+    }
+
+    foreach (function_exists('ws_approval_guests_of') ? ws_approval_guests_of($approval_id) : array() as $row) {
+        $out['guest:' . (int) $row['id']] = (string) $row['decision'];
+    }
+
+    foreach (function_exists('ws_approval_agents_of') ? ws_approval_agents_of($approval_id) : array() as $row) {
+        $out['agent:' . (string) $row['agent']] = (string) $row['decision'];
+    }
+
+    return $out;
+}
+
+/**
  * Settles a request whose rule is met or whose deadline passed; leaves an
  * open one as it is.
  *
@@ -874,17 +937,7 @@ function ws_approval_decide($viewer, $approval, $decision, $note = '')
  */
 function ws_approval_evaluate($approval, $actor_id = 0)
 {
-    $decisions = array();
-
-    foreach (ws_approval_people($approval['id']) as $row) {
-        $decisions[] = (string) $row['decision'];
-    }
-
-    foreach (function_exists('ws_approval_guests_of') ? ws_approval_guests_of($approval['id']) : array() as $row) {
-        $decisions[] = (string) $row['decision'];
-    }
-
-    $outcome = ws_approval_outcome($approval['rule'], $decisions, time(), (int) $approval['closes_at']);
+    $outcome = ws_approval_outcome($approval['rule'], array_values(ws_approval_decisions($approval['id'])), time(), (int) $approval['closes_at']);
 
     if ($outcome !== 'open') {
         ws_approval_settle($approval, $outcome, $actor_id);
@@ -948,6 +1001,7 @@ function ws_approval_settle($approval, $outcome, $actor_id = 0)
     $channel = ws_channel($approval['channel_id']);
     $answers = ws_approval_people($approval['id']);
     $outsiders = function_exists('ws_approval_guests_of') ? ws_approval_guests_of($approval['id']) : array();
+    $agents = function_exists('ws_approval_agents_of') ? ws_approval_agents_of($approval['id']) : array();
     $people = ws_people(array_map(function ($row) { return (int) $row['user_id']; }, $answers));
 
     // Everybody asked, the team first, as the sentence names them: a person
@@ -955,6 +1009,10 @@ function ws_approval_settle($approval, $outcome, $actor_id = 0)
     $name = function ($row) use ($people) {
         if (isset($row['approval_guest'])) {
             return lang(array('string' => '{var:1} (customer)', 'vars' => (string) $row['name']));
+        }
+
+        if (isset($row['approval_agent'])) {
+            return ws_approval_agent_label($row['agent']);
         }
 
         return (string) ($people[(int) $row['user_id']]['name'] ?? ws_person_name($row['user_id']));
@@ -968,6 +1026,10 @@ function ws_approval_settle($approval, $outcome, $actor_id = 0)
 
     foreach ($outsiders as $row) {
         $by[(string) $row['decision']][] = $row + array('approval_guest' => true);
+    }
+
+    foreach ($agents as $row) {
+        $by[(string) $row['decision']][] = $row + array('approval_agent' => true);
     }
 
     $body = '';
@@ -1056,6 +1118,12 @@ function ws_approval_settle($approval, $outcome, $actor_id = 0)
             $guests[] = array('name' => (string) $row['name'], 'decision' => (string) $row['decision'], 'note' => (string) $row['note']);
         }
 
+        $asked_agents = array();
+
+        foreach ($agents as $row) {
+            $asked_agents[] = array('agent' => (string) $row['agent'], 'decision' => (string) $row['decision'], 'note' => (string) $row['note']);
+        }
+
         pg_announce('workspace.approval.decided', array(
             'id'                => (int) $approval['id'],
             'message_id'        => (int) $approval['message_id'],
@@ -1066,6 +1134,7 @@ function ws_approval_settle($approval, $outcome, $actor_id = 0)
             'outcome'           => $outcome,
             'people'            => $list,
             'guests'            => $guests,
+            'agents'            => $asked_agents,
             'closed_by'         => (int) $actor_id,
             'result_message_id' => (int) $result_id,
         ));
