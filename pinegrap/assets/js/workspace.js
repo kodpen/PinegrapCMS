@@ -10786,6 +10786,12 @@
                 main.appendChild(card);
             }
 
+            // An agent's offer to conclude the discussion: the button only
+            // the people in it see, on the newest offer, while it is open.
+            if (message.conclude_offer && (typeof self.conclude === 'function')) {
+                main.appendChild(self.concludeOfferNode());
+            }
+
             if (message.drafts && message.drafts.length) {
                 main.appendChild(self.draftsNode(message));
             }
@@ -13371,6 +13377,25 @@
                 control.disabled = false;
                 fail(error);
             });
+        },
+
+        // The button under an agent's offer to conclude the discussion: the
+        // discussion's own Conclude, asked and done in the reader's name.
+        concludeOfferNode: function () {
+            var self = this;
+            var row = el('div', 'ws-conclude-offer mt-2');
+            var button = el('button', 'btn btn-sm btn-outline theme-primary');
+
+            button.type = 'button';
+            button.appendChild(icon('bi-check2-circle', 'me-1'));
+            button.appendChild(document.createTextNode(t('th_conclude')));
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                self.conclude();
+            });
+            row.appendChild(button);
+
+            return row;
         },
 
         // Undo on an application's binding line (ws_canvas_binding_undo):
