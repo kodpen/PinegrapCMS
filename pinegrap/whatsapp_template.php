@@ -159,21 +159,30 @@ $output_basics =
         </div></div>
     </section>';
 
-// Message: the formatting buttons, Add variable, the text, the footer.
-$output_presets = '<option value="">' . h(lang('Add variable')) . '</option>';
+// Message: the formatting buttons, the variables to drag in, the text
+// (an editor of text and chips over the body field), the footer.
+$chip_labels = pg_whatsapp_design_chip_labels($design);
+$output_palette = '';
 
-foreach (pg_whatsapp_design_variable_presets() as $preset) {
-    $output_presets .= '<option value="' . h($preset) . '">' . h($preset) . '</option>';
+foreach (array_unique(array_merge(pg_whatsapp_design_variable_presets(), array_values($chip_labels))) as $preset) {
+    $output_palette .= pg_var_chip_html($preset, true);
 }
-
-$output_presets .= '<option value="-">' . h(lang('Other value')) . '</option>';
 
 $output_tools = $editable
     ? '<div class="pg-wa-tools" role="toolbar" aria-label="' . h(lang('Formatting')) . '" aria-controls="body">
             <button type="button" class="pg-icon-button pg-icon-button-sm" data-pg-wa-wrap="*" title="' . h(lang('Bold')) . '" aria-label="' . h(lang('Bold')) . '"><i class="bi bi-type-bold" aria-hidden="true"></i></button>
             <button type="button" class="pg-icon-button pg-icon-button-sm" data-pg-wa-wrap="_" title="' . h(lang('Italic')) . '" aria-label="' . h(lang('Italic')) . '"><i class="bi bi-type-italic" aria-hidden="true"></i></button>
             <button type="button" class="pg-icon-button pg-icon-button-sm" data-pg-wa-wrap="~" title="' . h(lang('Strikethrough')) . '" aria-label="' . h(lang('Strikethrough')) . '"><i class="bi bi-type-strikethrough" aria-hidden="true"></i></button>
-            <select class="pg-input pg-input-sm pg-wa-add" id="pg_wa_add" aria-label="' . h(lang('Add variable')) . '">' . $output_presets . '</select>
+        </div>
+        <div class="pg-wa-palette-box">
+            <span class="pg-text-meta" id="pg_wa_palette_label">' . h(lang('Drag a variable into the message, or click it to add it where the cursor is:')) . '</span>
+            <div class="pg-wa-palette" id="pg_wa_palette" role="group" aria-labelledby="pg_wa_palette_label">'
+                . $output_palette . '
+                <span class="pg-wa-own">
+                    <input type="text" class="pg-input pg-input-sm" id="pg_wa_own" maxlength="' . PG_WHATSAPP_DESIGN_SAMPLE_MAX . '" placeholder="' . h(lang('Another variable')) . '" aria-label="' . h(lang('Name of another variable')) . '">
+                    <button type="button" class="pg-button pg-button-quiet pg-button-sm" id="pg_wa_own_add"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add')) . '</button>
+                </span>
+            </div>
         </div>'
     : '';
 
@@ -184,7 +193,7 @@ $output_message =
         <div class="pg-wa-editor">
             ' . $output_tools . '
             <label class="visually-hidden" for="body">' . h(lang('Message')) . '</label>
-            <textarea class="pg-input pg-wa-body" id="body" name="body" rows="7" data-pg-wa-max="' . PG_WHATSAPP_DESIGN_BODY_MAX . '"' . $invalid('body') . $disabled . '>' . h($design['body']) . '</textarea>
+            <textarea class="pg-input pg-wa-body" id="body" name="body" rows="7" aria-label="' . h(lang('Message')) . '" data-pg-wa-max="' . PG_WHATSAPP_DESIGN_BODY_MAX . '"' . $invalid('body') . $disabled . '>' . h($design['body']) . '</textarea>
         </div>
         ' . $field_error('body') . '
         <div class="pg-wa-count pg-text-meta"><span>' . h(lang('Variables are filled for each person when the message is sent. *bold*, _italic_ and ~strikethrough~ are shown as WhatsApp shows them.')) . '</span><span class="pg-tabular" id="body_count" aria-live="polite"></span></div>
@@ -213,7 +222,7 @@ if (!$editable) {
 $output_samples = '';
 
 foreach (pg_whatsapp_design_variables($design['body']) as $key) {
-    $output_samples .= pg_whatsapp_design_sample_row($key, isset($design['labels'][$key]) ? $design['labels'][$key] : '', isset($design['samples'][$key]) ? $design['samples'][$key] : '', $editable, $errors);
+    $output_samples .= pg_whatsapp_design_sample_row($key, $chip_labels[$key], isset($design['samples'][$key]) ? $design['samples'][$key] : '', $editable, $errors);
 }
 
 // The phone: the header, the message, the footer and the buttons as
@@ -299,10 +308,10 @@ $script_data = array(
     'max'      => PG_WHATSAPP_DESIGN_BODY_MAX,
     'variables' => PG_WHATSAPP_DESIGN_VARIABLES_MAX,
     'help'     => $category_help,
-    'label'    => lang('What it stands for'),
     'sample'   => lang('Sample value'),
-    'labelOf'  => lang('What {var:1} stands for'),
     'sampleOf' => lang('Sample value of {var:1}'),
+    'remove'   => lang('Remove {var:1}'),
+    'fallback' => lang('Value {var:1}'),
     'editable' => $editable,
 );
 
@@ -335,6 +344,7 @@ pg_page_shell(
         </div>
     </form>
 </main>
+' . pg_var_chips_script() . '
 <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/whatsapp_template.js?v=' . (int) @filemtime(dirname(__FILE__) . '/assets/js/whatsapp_template.js') . '"></script>' .
 output_footer();
 

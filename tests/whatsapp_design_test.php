@@ -181,3 +181,18 @@ function test_whatsapp_design_lists()
 		pg_assert_true((bool) preg_match('/^[A-Za-z0-9_]{2,16}$/D', $code), 'a code the templates table takes: ' . $code);
 	}
 }
+
+function test_whatsapp_design_chip_labels()
+{
+	$design = pg_whatsapp_design_new();
+	$design['body'] = 'Hi {{1}}, order {{2}} on {{3}} and {{4}}.';
+	$design['labels'] = array('1' => 'Customer', '2' => '', '3' => 'Customer', '4' => ' Date ');
+
+	pg_assert_same(array('1' => 'Customer', '2' => 'Value 2', '3' => 'Customer (3)', '4' => 'Date'), pg_whatsapp_design_chip_labels($design), 'labels, a fallback and a shared label made apart');
+}
+
+function test_var_chip_html()
+{
+	pg_assert_same('<span class="pg-var-chip" data-pg-var-label="A &amp; &lt;b&gt;"><span class="pg-var-chip-text">A &amp; &lt;b&gt;</span></span>', pg_var_chip_html('A & <b>'), 'plain chip, escaped');
+	pg_assert_contains('<button type="button" class="pg-var-chip" draggable="true" data-pg-var-label="Date">', pg_var_chip_html('Date', true), 'palette chip');
+}
