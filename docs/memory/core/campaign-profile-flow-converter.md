@@ -6,7 +6,7 @@ module: campaign_profile_flow
 
 ## Where is it?
 - `includes/fn/campaign_profile_flow.php`: pure `pg_profile_flow_*()` functions; `pg_profile_flow_facts()` and `pg_profile_flow_dry_run()` read the rows (nothing written) and need the Workspace's flow modules loaded.
-- `php tools/campaign_profile_flow_report.php [--json]`: prints the report of the site its checkout's `data/config.php` names (a copy of a running site for the owner's look). Starts like `job.php`, `HTTP_HOST` unset: set, a Secure Mode site redirected it and nothing printed (MA9d2). MA9e writes the same lines into its result in the panel.
+- `php tools/campaign_profile_flow_report.php [--json]`: prints the report of the site its checkout's `data/config.php` names (a copy of a running site for the owner's look). Starts like `job.php`, `HTTP_HOST` unset: set, a Secure Mode site redirected it and nothing printed (MA9e #9490). MA9e2 writes the same lines into its result in the panel.
 - Tests: `tests/campaign_profile_flow_test.php` (each built graph passes `ws_flow_graph_check()`; the starting sites' profiles as worked out by hand).
 
 ## Which box does a profile become?
@@ -22,7 +22,7 @@ module: campaign_profile_flow
 
 ## Owner and limits?
 - `pg_profile_flow_owner()`: the head's creator while enabled and an administrator (role 0, no reason given), or role 1-2 holding the event's right (`ws_events_catalog()` right), else the first enabled role 0 account, with the reason.
-- The right is read from `ws_change_viewer_for_id()` (`ws_viewer()`: ecommerce, contacts…), never `ws_rights_for_id()` (workspace rights only: every creator read "lacks the right the start needs", MA9d2).
+- The right is read from `ws_change_viewer_for_id()` (`ws_viewer()`: ecommerce, contacts…), never `ws_rights_for_id()` (workspace rights only: every creator read "lacks the right the start needs", MA9e #9490).
 - `pg_profile_flow_limit_reason()`: the head's busiest hour of 30 days over 80% of min(`WS_FLOW_STARTS_HOURLY`, `WS_SCHEDULED_CHAIN_HOURLY`), or open runs (`pg_profile_flow_open_runs()`: 30 days' campaigns spread per minute × the chain's waits added up, a send time counted as a day) over 80% of `WS_FLOW_MAX_OPEN_RUNS`.
 
 ## What does the report say?
