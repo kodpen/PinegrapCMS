@@ -49,7 +49,6 @@
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
-- visitor-table-shrink.md: Plan (owner report 2026-11-13, was issue #9130): the visitor table that never gets smaller by itself where PHP cannot read the database disk, and the faults of the Visitor records card
 - whatsapp-channel-census.md: WA12's census (2026-11-13): what a WhatsApp or SMS conversation shares with the e-mail one (card, state, holder, list, notices, event, AI draft, rights) and what stays mail-only
 - whatsapp-channel-conversation-storage.md: WhatsApp and SMS conversations in the mail tables with a transport, an incoming SMS kept as a mail item, the answer's SMS kind, stop words (owner 2026-11-13, #9286)
 - whatsapp-channel-incoming-sms.md: Incoming SMS per provider (Netgsm, İleti Merkezi, Twilio), the WhatsApp message kinds shown, stop words, the SMS kind and consent of an answer (WA12; decided #9286)

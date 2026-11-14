@@ -19,6 +19,7 @@ Visitor statistics, page and article views, search engine index flags.
 - Never assume a page renders an HTML document: a new splice or document rule first checks that the output is one (`seo-structure-non-html-output.md`).
 - Give every action link (login, register, reset, subscribe, remove from cart) `rel="nofollow"`, stamped by the server in system widgets (`action-links-rel-nofollow.md`).
 - Offer a translated address in sitemap.xml or hreflang only by `pg_tr_index_decide()`; no kept answer means not offered, only a reviewed write keeps one, and the verdict counts only the page's own words, never a list's records or the catalog (`translation-index-verdict.md`).
+- Never hold the visitor split or rebuild on an unreadable disk alone: `pg_visitor_blind_ok()` lets a copy small against the file go ahead, one failed blind try stops the next, and the room asked for is the copy's (`visitor-disk-unknown.md`).
 <!-- key-rules:end -->
 
 ## Files
