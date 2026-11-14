@@ -5,7 +5,7 @@ module: campaign_content
 ---
 
 ## What does the content card hold?
-- `pg_campaign_content_card()` (`includes/fn/campaign_content.php`) replaces the old E-Mail Message card on `add_email_campaign.php` and `edit_email_campaign.php`, drawn from `plans/messages-area/messages-area.html`: subject and the mail on the left, how the body is made on the right (one column under 992 px, the body part first).
+- `pg_campaign_content_card()` (`includes/fn/campaign_content.php`) replaces the old E-Mail Message card on `add_email_campaign.php` and `edit_email_campaign.php`, drawn from `plans/messages-area/messages-area.html`: subject and the mail on the left, how the body is made on the right (one column under 992 px: the subject first, then how the body is made, then the mail; architect, channel 2978).
 - Body kinds: Design (a page drawn as an e-mail), Paste HTML, Plain text. On New campaign a segmented control chooses; after create the stored kind is shown, never changed (`pg_campaign_content_kind()`: plain_text is text, html with a page a design, html with page_id 0 pasted).
 - The kind radios and the phone switch sit before the card's grid, so CSS shows the chosen kind's parts; the only script makes the frame and "Edit the design" follow the picked page (`pg_campaign_content_script()`).
 - Page is the page picker field, kind `page_view`, as the campaign profile's Page (architect, channel message 2647; `picker-page-fields-screens.md`); no list of every page is read. Its hidden input (`data-pg-campaign-page`) fires change; the frame's address is `data-base` plus the picked name, "Edit the design" is `edit_page.php?id=`, which forwards a designer page and refuses one the user may not edit.

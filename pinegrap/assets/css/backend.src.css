@@ -27930,11 +27930,25 @@ textarea.pg-campaign-text {
   background: color-mix(in srgb, var(--pg-tone-amber) 10%, transparent);
 }
 @media (max-width: 991.98px) {
+  /* One column: the subject first, as the form's first field at every
+     width, then how the body is made, then the mail itself. The two
+     columns step aside so their parts can be put in that order. */
   .pg-campaign-grid {
     grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
   }
+  .pg-campaign-main,
   .pg-campaign-side {
-    order: -1;
+    display: contents;
+  }
+  .pg-campaign-main > .pg-campaign-field {
+    order: 0;
+  }
+  .pg-campaign-side > * {
+    order: 1;
+  }
+  .pg-campaign-main > .pg-campaign-part {
+    order: 2;
   }
   .pg-campaign-frame {
     height: 480px;
