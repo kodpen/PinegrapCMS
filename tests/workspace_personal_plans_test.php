@@ -138,7 +138,7 @@ function test_workspace_personal_plan_reminder_line_and_api()
 
 	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
 	pg_assert_contains("if (\$row['kind'] === 'plan_reminder') {", $api, 'no application reads the plan\'s words');
-	pg_assert_contains("=== 'plan_reminder')) {", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/account.php'), 'nor its bell row through GET /notifications');
+	pg_assert_contains("=== 'plan_reminder');", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/account.php'), 'nor its bell row through GET /notifications');
 
 	pg_assert_contains('ws_personal_plans_user_deleted((int) $user_id);', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php'), 'deleted with the account');
 	pg_assert_contains("'ws_personal_plans',", (string) file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php'), 'get_tables()');
