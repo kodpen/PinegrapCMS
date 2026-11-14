@@ -17,6 +17,7 @@
 - designer-closed-blocks.md: Plan (owner 2026-11-13, #9076): the components the designer canvas still draws as one closed block are listed, then opened into editable element trees; steps CB0-CB2
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), the queue worker, incoming e-invoices; where to start
+- generated-files-off-prs-census.md: Census of plan generated-files-off-prs: how often generated memory lists and bundles made a PR dirty or a train regenerate them, who reads them, the two ways and their cost
 - generated-files-off-prs.md: Plan (owner accepted 2026-11-14): generated files (memory indexes, minified bundles) leave the PRs and are produced when a train lands; first a census of what conflicts
 - github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
