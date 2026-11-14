@@ -142,7 +142,7 @@
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - design-template-owner-line.md: Owner (2026-11-11): during the template pause his own line polishes the shipped templates, bolder and with motion, appstudio and dealership first; two workers of one more coordinator take the rest [decision: here]
 - dev-machine-testing.md: Testing on dev.pinegrap.com (the owner's PC): what may be written, the shared sign-in and page lock, the shared checkout, asking for a page as a visitor, logs and the job's heartbeat, browser traps
-- git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
+- git-branches-and-shared-files.md: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files [decision: here]
 - github-rest-without-gh.md: GitHub from the owner's machine, where gh is not installed: the token from git credential fill, a REST helper, GraphQL for draft and ready, the ready label, reading CI, mergeable_state unstable
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing
 - memory-cluster-check.md: The memory index tool refuses a cluster of ten memory files or more with no start file (<prefix>-overview.md or <prefix>.md); plans left out; what to do when it fails
