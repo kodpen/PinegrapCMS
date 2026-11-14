@@ -26,6 +26,7 @@ description: A person's private plans on My calendar (PC3): step 11.0.201, the g
 - Lead times: at the start, 15 min, 1 h, 1 day; an all-day plan reminds from 09:00 of its first day.
 - The line is inbox kind `plan_reminder` with `plan_id` ("Reminder: <title>", the day and time, opens My calendar on the plan); `ws_inbox_row_visible()` reads it back through the gate.
 - An application never reads the plan's words: GET /workspace/inbox and GET /notifications say only "A reminder of your own plan" for such a line.
+- The person's own device or OAuth connection lists and changes their plans over the API and MCP: `workspace-personal-plans-api.md`.
 
 ## What happens when an account is deleted?
 - `pg_user_delete()` calls `ws_personal_plans_user_deleted()`: the plans, their steps, people and inbox lines go, and the account is taken off plans shared with it.
