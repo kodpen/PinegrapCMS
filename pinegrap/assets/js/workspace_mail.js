@@ -1574,6 +1574,19 @@
             });
         }
 
+        // Move to the inbox, in the Blocked view (mail_blocks.php): the mail becomes
+        // a conversation, which opens in Incoming.
+        function unblock(button) {
+            button.disabled = true;
+
+            h.api('ws_mail_unblock', { item_id: parseInt(button.getAttribute('data-ws-mail-unblock'), 10) }).then(function (result) {
+                window.location.href = 'messages_mail.php' + (result.conversation_id ? '?conversation=' + parseInt(result.conversation_id, 10) : '');
+            }).catch(function (error) {
+                button.disabled = false;
+                h.fail(error);
+            });
+        }
+
         // Block sender's form under a mail (mail_blocks.php): each of its two
         // choices keeps one pressed button; Block sender posts them.
         pane.addEventListener('submit', function (event) {
@@ -1650,8 +1663,15 @@
             }
         });
 
+        // On a phone the views scroll sideways: the chosen one is brought into sight.
+        var chosenView = root.querySelector('.pg-toolbar .btn-group [aria-current="page"]');
+
+        if (chosenView && chosenView.parentNode.scrollWidth > chosenView.parentNode.clientWidth) {
+            chosenView.parentNode.scrollLeft = chosenView.offsetLeft - chosenView.parentNode.offsetLeft;
+        }
+
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-unblock], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -1662,6 +1682,8 @@
 
             if (target.hasAttribute('data-ws-mail-check')) {
                 check(target);
+            } else if (target.hasAttribute('data-ws-mail-unblock')) {
+                unblock(target);
             } else if (target.hasAttribute('data-ws-mail-my-settings')) {
                 mySettings(h);
             } else if (target.hasAttribute('data-ws-mail-new')) {

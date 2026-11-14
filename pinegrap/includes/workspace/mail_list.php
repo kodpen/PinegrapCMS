@@ -73,7 +73,7 @@ function ws_mail_list_filters($query)
         return in_array($value, $known, true) ? $value : $default;
     };
 
-    $view = $word('view', array('incoming', 'sent', 'unsent', 'all'), 'incoming');
+    $view = $word('view', array('incoming', 'sent', 'unsent', 'blocked', 'all'), 'incoming');
     $search = is_scalar($query['q'] ?? null) ? trim(mb_substr(trim((string) $query['q']), 0, WS_MAIL_LIST_QUERY_MAX)) : '';
 
     return array(
@@ -631,10 +631,17 @@ function ws_mail_list_more_html($filters, $next)
  * @param string[] $transports ws_mail_list_transports()
  * @param bool     $can_check  the person reads a mailbox with a server (Check e-mail)
  * @param bool     $calendar   the Workspace is on, so My calendar opens (ws_enabled())
+ * @param bool     $blocked    the person may see blocked mail (ws_mail_blocked_box_ids())
  * @return string HTML
  */
-function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false, $support = true, $transports = array(), $can_check = false, $calendar = true)
+function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false, $support = true, $transports = array(), $can_check = false, $calendar = true, $blocked = false)
 {
+    // Blocked mail has no conversation, so no status, holder or kind.
+    if ($filters['view'] === 'blocked') {
+        $support = false;
+        $transports = array();
+    }
+
     $statuses = ws_mail_statuses() + array('all' => lang('All'));
     $holders = array('all' => lang('Anybody'), 'me' => lang('Held by me'), 'none' => lang('Held by nobody'));
     $keep = array('view', 'status', 'holder', 'overdue', 'box', 'transport', 'q');
@@ -680,7 +687,14 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
 
     $views = '';
 
-    foreach (array('incoming' => array(lang('Incoming'), 'inbox'), 'sent' => array(lang('Sent'), 'send'), 'unsent' => array(lang('Not sent'), 'exclamation-circle')) as $view => $label) {
+    $view_list = array('incoming' => array(lang('Incoming'), 'inbox'), 'sent' => array(lang('Sent'), 'send'), 'unsent' => array(lang('Not sent'), 'exclamation-circle'));
+
+    // Blocked mail is kept outside the conversations (mail_blocks.php).
+    if ($blocked || ($filters['view'] === 'blocked')) {
+        $view_list += array('blocked' => array(lang('Blocked e-mail'), 'slash-circle'));
+    }
+
+    foreach ($view_list as $view => $label) {
         // A view starts with its own default status.
         $query = ws_mail_list_query(array_merge($filters, array('view' => $view, 'status' => ($view === 'incoming') ? 'open' : 'all')), array('overdue' => ''));
         $active = ($filters['view'] === $view);
@@ -701,7 +715,7 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
         'secondary' => $check . '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-read-all><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Mark all as read')) . '</button>'
             . ws_mail_list_my_calendar_html($calendar) . ws_mail_list_my_settings_html($can_send),
         'search'    => $search,
-        'view'      => '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
+        'view'      => '<span class="ws-mail-toolbar-break" aria-hidden="true"></span><div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
     ));
 }
 

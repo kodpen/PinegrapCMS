@@ -878,10 +878,12 @@ function ws_mail_message_write($channel_id, $parent_id, $item_id, $body, $file_i
  *              (missing or archived; reason); nothing kept.
  *
  * @param string $raw
- * @param array  $box ws_mail_boxes row
+ * @param array  $box     ws_mail_boxes row
+ * @param array  $options past_block: true takes the mail in although its
+ *                        sender is blocked ("Move to the inbox", mail_blocks.php)
  * @return array status, reason, item_id, conversation_id, message_id
  */
-function ws_mail_ingest($raw, $box)
+function ws_mail_ingest($raw, $box, $options = array())
 {
     $result = array('status' => 'refused', 'reason' => '', 'item_id' => 0, 'conversation_id' => 0, 'message_id' => 0);
     $raw = (string) $raw;
@@ -934,7 +936,7 @@ function ws_mail_ingest($raw, $box)
     // A blocked sender's mail is kept outside every conversation, its head
     // and .eml only, so no card, notice, flow or automatic answer follows
     // (mail_blocks.php); the fetch takes it as done.
-    if ($blocks && ws_mail_block_find($box_id, $from_email)) {
+    if ($blocks && empty($options['past_block']) && ws_mail_block_find($box_id, $from_email)) {
         return ws_mail_block_store($raw, $box, $parsed, $hash, $from_email, $now);
     }
 

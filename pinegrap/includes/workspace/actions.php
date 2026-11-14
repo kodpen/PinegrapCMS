@@ -406,7 +406,7 @@ function ws_mail_actions_without_workspace()
         'ws_bootstrap', 'ws_tick',
         'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_conversation', 'ws_mail_check',
         'ws_mail_reply_form', 'ws_mail_reply', 'ws_mail_resend',
-        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block',
+        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock',
         'ws_mail_my_settings', 'ws_mail_my_settings_save',
         'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
     );
@@ -2973,6 +2973,22 @@ function ws_handle_action($action, $request)
             $result = ws_mail_block_add($viewer, (int) ($request['item_id'] ?? 0), $request, (string) ($_SESSION['sessionusername'] ?? ''));
 
             return $result['ok'] ? ws_action_ok(array('text' => $result['text'])) : ws_action_error($result['error']);
+
+        // Move to the inbox: a blocked mail brought in as a conversation, its
+        // sender left on the list (mail_blocks.php). A demonstration site
+        // takes no mail in.
+        case 'ws_mail_unblock':
+            if (!function_exists('ws_mail_unblock')) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if (pg_demo()) {
+                return ws_action_error(lang('A demonstration site reads no mailbox.'));
+            }
+
+            $result = ws_mail_unblock($viewer, (int) ($request['item_id'] ?? 0), (string) ($_SESSION['sessionusername'] ?? ''));
+
+            return $result['ok'] ? ws_action_ok(array('conversation_id' => $result['conversation_id'])) : ws_action_error($result['error']);
 
         // Check e-mail: the person's IMAP boxes read now (mail_check.php);
         // when mail came, the list is drawn again with the screen's filters.
