@@ -155,7 +155,7 @@ description: Generated from the module field of the memory files: each includes/
 - `menu_list_edit`: [[list-table-quick-edit-menus]]
 - `merchant_center`: [[merchant-center]], [[merchant-center-issues]]
 - `merchant_center_push`: [[merchant-center-push]]
-- `messages_area`: [[messages-area-look]], [[messages-area-shell]]
+- `messages_area`: [[messages-area-look]], [[messages-area-mail-tab]], [[messages-area-shell]]
 - `messages_campaigns`: [[messages-area-campaigns-tab]]
 - `messages_sends`: [[messages-area-sends]]
 - `messages_templates`: [[messages-area-templates-tab]]

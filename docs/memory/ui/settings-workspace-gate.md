@@ -4,7 +4,7 @@ description: The Workspace heading of the Site Settings dialog and its gate: who
 ---
 
 ## Which categories sit under the Workspace heading?
-- `workspace_team` (Team and working hours), `workspace_assistants` (Assistants and agents), `workspace_channels` (Channels, mail and voice): heading `workspace`, the fifth, after Running the site. Start file `workspace/workspace-settings-overview.md`; owner's choice in `workflow/decisions-made-workspace-13.md`.
+- `workspace_team` (Team and working hours), `workspace_assistants` (Assistants and agents), `workspace_channels` (Channels, mail and voice): heading `workspace`, the fifth, after Running the site. Mailboxes (`mailboxes`, gate `mail`) sits under Site and opens for the same right whatever the Workspace's switch (MA10b, `workspace/workspace-mail-settings-dialog.md`). Start file `workspace/workspace-settings-overview.md`; owner's choice in `workflow/decisions-made-workspace-13.md`.
 - Each has `includes/settings/<key>.php`, `<key>.save.php`, `settings_<key>.php`, a `case` in `output_menu()` lighting the Workspace row (23, as the old `workspace_settings.php` address) and a help row `workspace#workspace-settings`.
 
 ## Who opens them?

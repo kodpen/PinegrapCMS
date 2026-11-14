@@ -1,12 +1,12 @@
 ---
 name: messages-area-shell
-description: The Communication area (MA1 #9182, MA7 #9200): menu row 9, five tabs and gates, the tab strip, doors, the interim tabs, the Channels cards
+description: The Communication area (MA1 #9182, MA7 #9200, MA10b #9453): menu row 9, Incoming e-mail and the five tabs with their gates, the tab strip, doors, the interim tabs, the Channels cards
 module: messages_area
 ---
 
 ## What is the shell?
-- Main menu row 9 under Marketing is "Communication" (İletişim), slot and icon kept, gate as before: role <= 2 or the Campaign Manager right. Its panel lists the tabs the person may open, then "New campaign" (`add_email_campaign.php`); history and profile entries left the panel.
-- Five tabs, each its own screen and gate (`pg_messages_area_tabs()` in `includes/fn/messages_area.php`): Campaigns `view_email_campaigns.php`, Automatic sends `messages_automatic.php`, Templates `messages_templates.php`, Sends `messages_sends.php` (all `validate_email_access()`), Channels `messages_channels.php` (role <= 2).
+- Main menu row 9 under Marketing is "Communication" (İletişim), slot and icon kept; shown to whoever may open one of its tabs (role <= 2, the Campaign Manager right, or a reader of a mailbox), leading to the first of them. Its panel lists the tabs the person may open, then "New campaign" (`add_email_campaign.php`); history and profile entries left the panel.
+- Six tabs, each its own screen and gate (`pg_messages_area_tabs()` in `includes/fn/messages_area.php`): Incoming e-mail `messages_mail.php` (gate `mail`, `ws_mail_list_visible()`; `messages-area-mail-tab.md`), Campaigns `view_email_campaigns.php`, Automatic sends `messages_automatic.php`, Templates `messages_templates.php`, Sends `messages_sends.php` (all `validate_email_access()`), Channels `messages_channels.php` (role <= 2).
 - Architect's ruling behind it: `plans/messages-area-decided.md` (#9081).
 
 ## How is the tab strip drawn?

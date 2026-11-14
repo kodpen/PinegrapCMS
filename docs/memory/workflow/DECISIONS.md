@@ -659,6 +659,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/main-menu-automation-flows-row.md: Main menu row 26, Automation flows (#9169): its place at the top, its gate (the Flows screen's), the quiet count of flows running, the screen it lights, icon A and its motion
 - ui/main-menu-overview.md: The panel's main menu as a whole: rows in categories, panels and second-level panels, states and the drawer, gates, the decisions that bind it, and which main-menu file holds each part
 - ui/messages-area-look.md: Communication area look (MA12 #9363): pill tab strip, filter segments, notices under the strip, Sends figures and pills, Channels grid, old screens left inside
+- ui/messages-area-mail-tab.md: Communication › Incoming e-mail (MA10b #9453): the tab and its gate, the moved list and pane, the door from workspace_mail.php, the menu row and its unread badge, what MA10b2 and MA10c add
 - ui/messages-area-templates-tab.md: Communication › Templates (MA6 #9294, WA3b #9355): SMS texts edited on their card, WhatsApp templates with state, reason and Refresh, e-mail designs as Soon
 - ui/notifications-menu.md: The bell's drawer #notifications at the right edge: opened by the bell, Ctrl+Q, pgBellOpen(); head, events, focus; only the list scrolls; the poll redraws only on a rise
 - ui/notifications-one-inbox.md: The bell as the one inbox (#3817): module chips, Asked of me, Unread only, the search (BP3), the kept choice, a flow's runs folded, pgBellOpen() for the old inbox address, the Workspace count
@@ -726,9 +727,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable
 - workspace/mail-area-proposals.md: Incoming e-mail in the messages area as decided after MA10a (#9077, #9203): mail with the Workspace off, the tab's gate, who reads, what the mail card keeps beside its link, the steps
 - workspace/mail-bounce-dev-check.md: Why conversation 48 on dev seemed to get no "Not delivered" line after an answer to a mistyped domain, and why mail_bounces has no row for a Workspace bounce (checked 2026-11-13)
+- workspace/mail-card-answered.md: The conversation's mail card in a channel since MA10b (#9453): "Answered · who · time" with no column, the Open e-mail link to Communication, what left the card, the touch after an answer
 - workspace/mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified
 - workspace/mail-domain-warning.md: The warning before a Workspace e-mail goes to a domain that does not exist: Send anyway, Change the address, "Did you mean …?", the API's 409 unknown_domain
-- workspace/mail-list.md: The Workspace E-mails list (workspace_mail.php, mail_list.php): which conversations, the views Incoming, Sent and Not sent, the filters, mailbox, search, Load more, the row, the menu entry
+- workspace/mail-list.md: The list of Communication › Incoming e-mail (messages_mail.php, mail_list.php): which conversations, views, filters, mailbox, search, Load more, the row, the menu
 - workspace/mail-not-delivered-rows.md: A sent Workspace mail whose delivery failure came back reads "Not delivered" with the server's words on its Sends row and mail queue row, read at list time for the page's rows only (MW2)
 - workspace/mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it
 - workspace/mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test
