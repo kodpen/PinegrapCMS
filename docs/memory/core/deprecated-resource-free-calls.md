@@ -6,7 +6,7 @@ description: Handles are freed with unset(), not curl_close()/finfo_close()/open
 ## How is a cURL or finfo handle freed?
 - `unset($ch)` / `unset($finfo)`. `curl_close()`, `finfo_close()` and `openssl_x509_free()` do nothing since PHP 8.0 (the handles are objects freed with their last reference) and are deprecated in 8.5 (`openssl_x509_free()` in 8.4). On PHP 7 `unset()` drops the last reference to the resource, which frees it as the close call did, so behaviour is the same on 7.1-8.5.
 - A call kept on purpose sits behind `if (PHP_VERSION_ID < 80000)` with a `phpcs:ignore` naming the guard (`captcha.php`, `auth.php`). New code just unsets.
-- Vendored libraries (`includes/stripe`, `includes/iyzipay-php`, `includes/dompdf`) keep their own calls; they are not analysed.
+- Vendored libraries (`includes/stripe`, `includes/iyzipay-php`, `includes/dompdf`, `includes/phpmailer`) keep their own calls; they are not analysed. dompdf and PHPMailer 6 guard theirs upstream (`dompdf-embedding.md`, `phpmailer-embedding.md`).
 
 ## How does db_connect() tell a reused connection is alive?
 - It runs `SELECT 1` on `db::$con` inside `try`/`catch (Throwable)` and frees the result. `mysqli_ping()` is deprecated in 8.4, and on a closed connection PHP 8 throws instead of returning `false`; either failure falls through to a new connection.
