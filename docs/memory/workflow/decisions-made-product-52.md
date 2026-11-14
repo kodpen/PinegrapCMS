@@ -19,3 +19,7 @@ description: Decisions made, product part 52: deleting a user ends the account's
 - So: both come next once the running plans are done. With the hook system the architect writes steps for core improvements and for dead-code clean-up, by the audit rules of `workflow/` (a place listed as reviewed stays).
 - Asked whether the hook system may start before 2026.11.0 ships (his answer of 2026-10-30, #3344, said after it) and shown the risks (a contract frozen early, zip upload tied to release signing, files moved in the first release), he chose: "Bölerek başla".
 - Before the release: the design note (hook list and manifest, his look), the registry and the hooks for the core's own use, core improvements and dead-code clean-up. After it ships: zip upload with its signature check, the shipped drivers moved into add-on folders, the add-on contract opened to others. The `addons` table is asked of him when its step comes.
+
+## Does the add-on system cover custom changes on a customer's copy? (owner, 2026-11-14, in the architect's window)
+- His case and question: `plans/addon-hook-system-site.md`. Offered UI slots on core screens, a site's own add-on that updates never touch and an add-on prepared from the panel, he answered: "Evet, ekle".
+- So the plan gains all three. Slots and the site's own add-on come in the part before 2026.11.0 ships, preparing from the panel after it (the architect's order).
