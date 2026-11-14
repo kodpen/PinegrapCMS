@@ -8,7 +8,7 @@ description: New e-mail in the Workspace (WM5, #8719): the form and its fields, 
 - From a channel the form starts on the first box keeping mail there and on that channel. After a send the screen opens the new conversation in the pane; the channel syncs and shows the card.
 
 ## Which fields, in which order?
-- From (a box, "name <address>"), Kept in (that box's channels: its own first, "The mailbox itself" for a box kept in no channel (`mail-room.md`), then its routes' channels the person may post in), To, "Cc and Bcc" (a link that opens both; open at once when a kept form has them), Subject, Text (plain, 50,000), the Signature preview under the text, Files (several, removable before sending).
+- From (a box, "name <address>"), Kept in (that box's channels: its own first, "The mailbox itself" for a box kept in no channel (`mail-room.md`), then its routes' channels the person may post in), To, "Cc and Bcc" (a link that opens both; open at once when a kept form has them), Subject, Text (50,000; formatted since MA10b2, [[mail-html-written]]), the Signature preview under the text, Files (several, removable before sending).
 - Addresses are separated by commas; every check is the server's (`ws_mail_send_input()`).
 
 ## Which actions, and who may send?
@@ -26,4 +26,4 @@ description: New e-mail in the Workspace (WM5, #8719): the form and its fields, 
 - Answers take it too (WM7): `ws_mail_answer_body()` for the panel's and the API's answer, the quote under it (`mail-reply.md`).
 
 ## Tests?
-- `tests/workspace_mail_compose_test.php` (pure parts, Node for the kept form, wiring). PR #8719 ran it on a sandbox; never against a mail server.
+- `tests/workspace_mail_compose_test.php` (pure parts, Node, wiring); never run against a mail server.

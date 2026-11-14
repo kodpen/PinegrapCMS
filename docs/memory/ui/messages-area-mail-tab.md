@@ -22,7 +22,7 @@ module: messages_area
 - On row 9's badge (`pg_messages_mail_unread()` = `ws_mail_unread_count()`), counted when the person may open the tab; the screen's script no longer finds a tile to update, so the badge changes on the next page.
 
 ## What comes next?
-- MA10b2: an HTML body for a written e-mail. MA10c: mail with the Workspace off (`plans/messages-area-steps-2.md`).
+- MA10b2 (#9473): an HTML body for a written e-mail (`workspace/mail-html-written.md`). MA10c: mail with the Workspace off (`plans/messages-area-steps-2.md`).
 - The list and pane keep the Workspace's look; the move did not redraw them to look A.
 
 Tests: `tests/messages_area_test.php`, `tests/workspace_mail_list_test.php`, `tests/workspace_mail_card_test.php`.

@@ -224,7 +224,8 @@ function ws_mail_compose_mail($request, $files)
  * highlighted, code, links, lists, a quote, a table: the light markup of
  * includes/workspace/render.php) as the two parts it leaves with: the plain
  * text (ws_plain_text()) that search, the card and a quote read, and the HTML
- * the renderer draws. Mail programs read no class rules, so the quote and a
+ * the renderer draws, a chip picked with @ or # as its plain words. Mail
+ * programs read no class rules, so the quote and a
  * table carry their look inline. The HTML is cleaned again by
  * ws_mail_send_input().
  *
@@ -240,7 +241,13 @@ function ws_mail_markup_parts($viewer, $markup)
         return array('text' => '', 'html' => '');
     }
 
-    $html = strtr(ws_render_body($markup, array()), array(
+    // A person or a record picked with @ or # is a chip nobody outside can
+    // open: in the mail it is their plain words.
+    $words = preg_replace_callback('/<[@#][a-z_]+:[0-9]{1,10}>/', function ($token) use ($viewer) {
+        return ws_plain_text($viewer, $token[0]);
+    }, $markup);
+
+    $html = strtr(ws_render_body($words, array()), array(
         ' class="ws-quote"'             => ' style="margin: 0 0 0 .5em; padding-left: .75em; border-left: 3px solid #d0d7de; color: #57606a;"',
         ' class="table table-sm ws-table"' => ' border="1" cellpadding="6" style="border-collapse: collapse; border-color: #d0d7de;"',
     ));

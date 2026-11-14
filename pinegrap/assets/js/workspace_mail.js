@@ -120,17 +120,18 @@
             cc.field.focus();
         });
 
-        var text = el('textarea', 'form-control');
+        var body = mailText(h, view, draft || '', t('mail_reply_text'), false);
+        var text = body.input;
         text.id = h.nextId('ws-mail-reply-');
-        text.name = 'text';
-        text.rows = 10;
-        text.maxLength = 50000;
-        text.value = draft || '';
 
         var box = el('div', 'ws-mail-reply-box position-relative');
-        box.appendChild(text);
+        box.appendChild(body.node);
         form.appendChild(h.formRow(t('mail_reply_text'), box, t('mail_reply_hint')));
-        savedReplies(text, box, view, h);
+
+        // The writing box offers them itself; the text area's own list.
+        if (!body.rich) {
+            savedReplies(text, box, view, h);
+        }
 
         // Files, as New e-mail takes them.
         var picker = el('input', 'form-control form-control-sm');
@@ -154,15 +155,19 @@
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_reply_send'), 'bi-send');
 
         function sendAnswer(anyway) {
-            if (!text.value.trim()) {
-                text.focus();
+            if (!body.value().trim()) {
+                body.focus();
                 return;
             }
 
             send.disabled = true;
             domainWarningClear(footer);
 
-            var post = { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: text.value };
+            var post = { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: body.value() };
+
+            if (body.rich) {
+                post.format = 'markup';
+            }
 
             if (anyway) {
                 post.send_anyway = 1;
@@ -197,7 +202,7 @@
         }
 
         h.showOffcanvas(node);
-        text.focus();
+        body.focus();
     }
 
     // The files a form sends, each group's in order, each with a button that
@@ -230,6 +235,52 @@
         return String(item.text || item.body || '').replace(/<[@#][a-z_]+:[0-9]{1,10}>/g, function (token) {
             return labels[token] || '';
         });
+    }
+
+    // The text of a written mail: the Workspace's writing box (bold, italic,
+    // links, lists and a quote, ";" for a saved reply, @ and # as in a
+    // channel), posted as its markup with format "markup", which the server
+    // turns into the mail's HTML and text parts (ws_mail_markup_parts()).
+    // Where the box is missing (plain), a text area as before.
+    function mailText(h, view, value, label, plain) {
+        var wrap = h.el('div', 'ws-mail-rich');
+        var field = (!plain && h.richField && window.PGWsEditor) ? h.richField(wrap, {}) : null;
+
+        if (!field) {
+            var area = h.el('textarea', 'form-control');
+
+            area.name = 'text';
+            area.rows = 10;
+            area.maxLength = 50000;
+            area.value = value || '';
+            wrap.appendChild(area);
+
+            return {
+                node: wrap, input: area, rich: false,
+                value: function () { return area.value; },
+                set: function (text) { area.value = text || ''; },
+                focus: function () { area.focus(); }
+            };
+        }
+
+        // The channel's ";" saved replies, read for the channel the mail is in.
+        field.savedReplies = true;
+        field.channel = (view && view.channel) ? view.channel : null;
+        field.input.setAttribute('aria-label', label);
+        field.input.classList.add('form-control');
+        wrap.appendChild(field.input);
+        wrap.appendChild(window.PGWsEditor.toolbar(field.rich, ['bold', 'italic', 'link', 'bullets', 'numbers', 'quote'], { className: 'ws-mail-rich-tools' }));
+
+        if (value) {
+            field.set(value);
+        }
+
+        return {
+            node: wrap, input: field.input, rich: true,
+            value: function () { return field.value(); },
+            set: function (text) { field.set(text || ''); },
+            focus: function () { field.input.focus(); }
+        };
     }
 
     // The ; list of the person's saved replies under the answer, as in the
@@ -1322,17 +1373,15 @@
         copies.appendChild(bcc.row);
 
         var subject = input('subject', t('mail_new_subject'));
-        var text = el('textarea', 'form-control');
+        // A forward's quote is plain text, so it keeps the text area.
+        var body = mailText(h, null, '', t('mail_new_text'), !!fill);
 
-        text.name = 'text';
-        text.rows = 10;
-        text.maxLength = 50000;
-        form.appendChild(h.formRow(t('mail_new_text'), text));
+        form.appendChild(h.formRow(t('mail_new_text'), body.node));
 
         // The mailbox's Signature (or its name), as the mail will carry it.
         var signature = el('div', 'ws-mail-new-signature small fg-secondary');
 
-        text.parentNode.appendChild(signature);
+        body.node.parentNode.appendChild(signature);
 
         var picker = el('input', 'form-control form-control-sm');
         var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
@@ -1385,7 +1434,7 @@
                 cc: cc.field.value,
                 bcc: bcc.field.value,
                 subject: subject.field.value,
-                text: text.value,
+                text: body.value(),
                 at: Date.now()
             };
 
@@ -1399,8 +1448,8 @@
         // The forward's subject and quote, the person's words to go above.
         function filled() {
             subject.field.value = fill.subject;
-            text.value = fill.text;
-            text.setSelectionRange(0, 0);
+            body.set(fill.text);
+            body.input.setSelectionRange(0, 0);
         }
 
         // Saved 400 ms after typing pauses; an empty form drops the slot.
@@ -1423,7 +1472,7 @@
             cc.field.value = kept.cc;
             bcc.field.value = kept.bcc;
             subject.field.value = kept.subject;
-            text.value = kept.text;
+            body.set(kept.text);
         } else if (fill) {
             filled();
         }
@@ -1459,6 +1508,7 @@
                 window.clearTimeout(timer);
                 newDraftStore(key, null);
                 form.reset();
+                body.set('');
                 files = [];
                 carried = fill ? fill.files.slice() : [];
 
@@ -1480,7 +1530,7 @@
 
         function sendNew(anyway) {
             var fields = current();
-            var empty = [[to.field, fields.to], [subject.field, fields.subject], [text, fields.text]].filter(function (pair) {
+            var empty = [[to.field, fields.to], [subject.field, fields.subject], [body.input, fields.text]].filter(function (pair) {
                 return !pair[1].trim();
             })[0];
 
@@ -1496,6 +1546,10 @@
                 box_id: fields.box, channel_id: fields.channel, to: fields.to, cc: fields.cc, bcc: fields.bcc,
                 subject: fields.subject, text: fields.text
             };
+
+            if (body.rich) {
+                post.format = 'markup';
+            }
 
             if (anyway) {
                 post.send_anyway = 1;
@@ -1535,7 +1589,7 @@
 
         footer.appendChild(send);
         h.showOffcanvas(node);
-        (to.field.value ? text : to.field).focus();
+        (to.field.value ? body.input : to.field).focus();
     }
 
     window.PGWsMail = {
