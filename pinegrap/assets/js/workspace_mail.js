@@ -1690,7 +1690,9 @@
             var field = el('textarea', 'form-control');
             var preview = el('div', 'ws-mail-new-signature small fg-secondary');
             var lines = el('div', 'ws-mail-new-signature-text');
-            var example = { name: '', signature: t('mail_my_signature_box') };
+            // The box's Signature differs by mailbox: a stand-in under the
+            // person's own lines, drawn apart so it never reads as their text.
+            var standIn = el('span', 'fst-italic', '[' + t('mail_my_signature_box') + ']');
             var save = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_my_settings_save'), 'bi-check2');
 
             node.querySelector('.drawer-title').textContent = t('mail_my_settings');
@@ -1703,7 +1705,8 @@
             field.value = data.signature || '';
 
             function draw() {
-                lines.textContent = signatureLines(data.writer, field.value, example);
+                lines.textContent = signatureLines(data.writer, field.value, { name: '', signature: '' }) + '\n';
+                lines.appendChild(standIn);
             }
 
             form.appendChild(h.formRow(t('mail_my_signature'), field, t('mail_my_signature_hint') + ' ' + t('mail_my_signature_limits')));
