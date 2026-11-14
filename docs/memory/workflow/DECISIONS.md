@@ -322,6 +322,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-17.md: Which tables and columns were approved?
 - decisions-made-schema-18.md: Where are the rules and the earlier parts?
 - decisions-made-schema-18.md: Which tables and columns were approved?
+- decisions-made-schema-18.md: May a mail draft keep its files in a column of ws_mail_items? (owner, 2026-11-14, in the architect's window)
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
