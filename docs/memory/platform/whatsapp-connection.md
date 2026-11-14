@@ -22,6 +22,6 @@ module: whatsapp
 
 ## What does whatsapp_webhook.php answer?
 - A root machine endpoint without a session, in waf.php's API and country-exempt lists. GET is Meta's verify call: the challenge with 200 only for the stored verify token, else 403 (an offence for the firewall). POST: 403 without a stored App secret, 413 over 3 MB, 401 without a valid `X-Hub-Signature-256` (an offence), else 200 `{"ok":true}`; other methods 405; 600 calls a minute per address, then 429.
-- Its events are not read yet: WA4 adds delivery states, template changes and customers' messages.
+- A signed post's events are read: `whatsapp-webhook-events.md`.
 
 Related: docs/memory/platform/whatsapp-cloud-api-facts.md, docs/memory/platform/whatsapp-cloud-api-webhooks.md, docs/memory/platform/sms-provider-layer.md

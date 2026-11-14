@@ -639,6 +639,7 @@ function api_notifications_rights($owner, $scopes = null) {
 		'manage_forms'     => (($role < 3) || !empty($owner['manage_forms'])),
 		'manage_erp'       => (($role < 3) || !empty($owner['manage_erp'])),
 		'manage_erp_cash'  => (($role < 3) || !empty($owner['manage_erp_cash'])),
+		'manage_contacts'  => (($role < 3) || !empty($owner['manage_contacts'])),
 		'orders_read'      => api_has_scope($scopes, 'orders:read')
 	);
 

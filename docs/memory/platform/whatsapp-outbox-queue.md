@@ -17,7 +17,7 @@ module: whatsapp
 
 ## What does the table hold?
 - `sms_outbox`'s columns without body and provider, plus contact_id, template_id, template_name, template_language, category, payload (MEDIUMTEXT JSON), key_code_id, wamid (indexed), delivery, delivered_at, read_at, error_code. Approved by the owner as WA0 proposed (#9085, `workflow/decisions-made-schema-17.md`). In `get_tables()`.
-- `delivery`, `delivered_at`, `read_at` are WA4's (the webhook's statuses by wamid); `key_code_id` WA10's.
+- `delivery`, `delivered_at`, `read_at` are written by the webhook's statuses by wamid (`whatsapp-webhook-events.md`); `key_code_id` is WA10's.
 
 ## Who is it erased and merged with?
 - A contact holder (`pg_contact_holders()`: merge move, erase find); `pg_privacy_erase_tables()` deletes rows by recipient (the person's phones) or contact_id, listed as "WhatsApp messages".
