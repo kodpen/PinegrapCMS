@@ -20,9 +20,12 @@ if (PHP_SAPI !== 'cli') {
     exit;
 }
 
+// Started like job.php, without HTTP_HOST: init.php then takes the run for a
+// scheduled one, reads the hostname and path from the site's settings and
+// skips the web request's Secure Mode redirect, which would end a run on a
+// site with Secure Mode on before a line is printed.
 chdir(dirname(__DIR__) . '/pinegrap');
-$_SERVER['REQUEST_URI'] = '/';
-$_SERVER['HTTP_HOST'] = '127.0.0.1';
+unset($_SERVER['HTTP_HOST']);
 require './init.php';
 require_once PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php';
 require_once PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_flow.php';
