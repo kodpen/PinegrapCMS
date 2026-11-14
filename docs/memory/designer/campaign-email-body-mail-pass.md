@@ -9,7 +9,7 @@ module: mail_pass, mail_html
 - Every `var(--x, fallback)` becomes its fallback, the innermost first; a `var()` without one stays. No mail program knows the page's custom properties.
 - One head style goes in (`pg_mail_pass_head_style()`): under 620 px `.pg-mail-frame` takes the width, `.pg-mail-col` stacks, `.pg-mail-wide-only` hides. A program that drops it still shows the inline look.
 - It answers `html`, `has_footer` (the design has a block marked `data-pg-mail-footer`: the fixed campaign footer is then left out), `bytes` and `clipped` (over 102 KB, where Gmail cuts a mail, `pg_mail_pass_clip_bytes()`).
-- Writing frame and column rows as presentation tables waits for the mail blocks (MA5c): their markup is decided there.
+- It writes no tables: the mail blocks' frame and columns are presentation tables already (`email-designs.md`). It runs only on an e-mail design's body (`pg_email_campaign_design_body()`).
 
 ## What does the outgoing mode keep?
 - `pg_mail_html_clean_outgoing($html)` cleans HTML pasted as a campaign's body with the incoming lists (`pg_mail_html_elements()`): no scripts, forms, frames, event attributes, `javascript:` links, `@import` or `@font-face`.

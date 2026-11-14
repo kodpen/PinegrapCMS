@@ -5,7 +5,7 @@ module: mail_html
 ---
 
 ## Where is a mail's HTML kept?
-- `ws_mail_items.body_html` MEDIUMTEXT NULL: the HTML part after `pg_mail_html_clean()` (`includes/fn/mail_html.php`). NULL: no HTML part, nothing left to read, or over 1 MB (`pg_mail_html_max_bytes()`) before or after cleaning. `body_text` stays what search, the card and the answer quote read.
+- `ws_mail_items.body_html` MEDIUMTEXT NULL: the HTML part after `pg_mail_html_clean()` (`includes/fn/mail_html.php`). NULL: no HTML part, nothing left to read, or over 1 MB (`pg_mail_html_max_bytes()`) before or after cleaning. `body_text` stays what search, the card and the answer quote read. A written mail's HTML is kept here too since MA10b2 ([[mail-html-written]]).
 - Step `upgrade_2026_11_0_ws_mail_html()` (11.0.188) also widens `ws_channels.kind` by `mailbox` (the room of a box kept in no channel, WM13), only when the value is missing. Owner approved it 2026-11-11 (#8765).
 
 ## What does the cleaner keep?

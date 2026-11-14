@@ -2726,19 +2726,20 @@ function ws_handle_action($action, $request)
                 $form = ws_mail_answer_form($viewer, $conversation_id);
 
                 return $form['ok']
-                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'others' => $form['others']))
+                    ? ws_action_ok(array('to' => $form['to'], 'name' => $form['name'], 'others' => $form['others'], 'file_field' => ws_mail_file_field('ws-mail-reply-file')))
                     : ws_action_error(ws_mail_reply_error_text($form['error']));
             }
 
             $files = ws_mail_compose_files($_FILES['files'] ?? null);
+            $library = $files['ok'] ? ws_mail_compose_library_files($viewer, $request) : $files;
 
-            if (!$files['ok']) {
-                return ws_action_error($files['error'], 'files');
+            if (!$library['ok']) {
+                return ws_action_error($library['error'], 'files');
             }
 
-            $mail = ws_mail_compose_mail($request, $files['files']);
+            $mail = ws_mail_markup_apply($viewer, ws_mail_compose_mail($request, array_merge($library['files'], $files['files'])), $request);
             $result = ws_mail_send($viewer, array('conversation_id' => $conversation_id, 'cc' => $mail['cc'], 'bcc' => $mail['bcc'],
-                'text' => $mail['text'], 'files' => $mail['files'], 'send_anyway' => $mail['send_anyway']));
+                'text' => $mail['text'], 'html' => $mail['html'] ?? '', 'files' => $mail['files'], 'send_anyway' => $mail['send_anyway']));
 
             if (!$result['ok']) {
                 return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), in_array($result['error'], array('empty', 'too_long'), true) ? 'text' : '')
@@ -2820,14 +2821,18 @@ function ws_handle_action($action, $request)
             }
 
             if ($action === 'ws_mail_compose') {
-                return ws_action_ok(array('boxes' => ws_mail_compose_boxes(ws_mail_send_boxes($viewer)), 'writer' => ws_person_name((int) $viewer['id'])));
+                return ws_action_ok(array('boxes' => ws_mail_compose_boxes(ws_mail_send_boxes($viewer)), 'writer' => ws_person_name((int) $viewer['id']),
+                    'file_field' => ws_mail_file_field('ws-mail-new-file')));
             }
 
             $files = ws_mail_compose_files($_FILES['files'] ?? null);
+            $library = $files['ok'] ? ws_mail_compose_library_files($viewer, $request) : $files;
 
-            if (!$files['ok']) {
-                return ws_action_error($files['error'], 'files');
+            if (!$library['ok']) {
+                return ws_action_error($library['error'], 'files');
             }
+
+            $files['files'] = array_merge($library['files'], $files['files']);
 
             // A forward's source is read again; its files go first (mail_forward.php).
             $forward = ws_mail_forward_request($viewer, $request);
@@ -2836,7 +2841,7 @@ function ws_handle_action($action, $request)
                 return ws_action_error($forward['error']);
             }
 
-            $mail = ws_mail_compose_mail($request, array_merge($forward['files'], $files['files']));
+            $mail = ws_mail_markup_apply($viewer, ws_mail_compose_mail($request, array_merge($forward['files'], $files['files'])), $request);
             $result = ws_mail_send($viewer, $mail);
 
             if (!$result['ok']) {
@@ -4636,6 +4641,23 @@ function ws_handle_action($action, $request)
         case 'ws_my_calendar':
             // Always the reader's own: no person is taken from the request.
             return ws_action_ok(ws_my_calendar($viewer, $request['view'] ?? '', $request['date'] ?? ''));
+
+        // A person's own plans (personal_plans.php): theirs alone, so no
+        // other id than the plan's is taken from the request.
+        case 'ws_personal_plan_get':
+            $plan = ws_personal_plan((int) $viewer['id'], (int) ($request['plan_id'] ?? 0));
+
+            return $plan ? ws_action_ok(array('plan' => ws_personal_plan_present($plan))) : ws_action_error(lang('This plan cannot be found.'));
+
+        case 'ws_personal_plan_save':
+            $result = ws_personal_plan_save($viewer, $request, (int) ($request['plan_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('plan' => $result['plan']));
+
+        case 'ws_personal_plan_delete':
+            $result = ws_personal_plan_delete($viewer, (int) ($request['plan_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok();
 
         case 'ws_conflicts':
             $from = ws_date_or_null($request['from'] ?? '') ?: date('Y-m-d');

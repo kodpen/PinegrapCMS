@@ -286,6 +286,12 @@ function ws_my_calendar($viewer, $view, $anchor = '')
         }
     }
 
+    // ── Their own plans, through the plans' gate ──
+
+    if (function_exists('ws_personal_plans_between')) {
+        $days = ws_personal_plans_place($days, ws_personal_plans_between($me, $from_ts, $to_ts + 1));
+    }
+
     foreach ($days as $date => $day) {
         $days[$date]['events'] = ws_my_calendar_sort_events($day['events']);
     }
@@ -303,6 +309,7 @@ function ws_my_calendar($viewer, $view, $anchor = '')
         'spans'    => $spans,
         'weekdays' => array_values(ws_weekday_short_names()),
         'layers'   => array_values(array_filter(array_keys($layers), 'strlen')),
+        'plans'    => function_exists('ws_personal_plans_ready') && ws_personal_plans_ready(),
     );
 }
 

@@ -19,6 +19,7 @@ description: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in j
 - Headers first: `UID FETCH (UID RFC822.SIZE BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)])`; a Message-ID whose `ws_mail_hash()` is already in `ws_mail_items` is not downloaded (it is still marked or moved). Over 25 MB stays in the box, untouched, and the box notes `too_large`. Up to 25 mails a run are downloaded with `BODY.PEEK[]` into `ws_mail_ingest()`.
 - `ws_mail_fetch_outcome()`: stored, duplicate, loop and other refusals are taken; `held` is left as it is; `no_channel` / `not_saved` end the run with that error (the box itself is wrong).
 - Taken mail is marked `\Seen` or moved to `settings.move_folder` (`after_fetch`), in one command at the end.
+- Then, when switched on and time is left, the box's Sent folder in the same session (`mail-sent-folder.md`).
 
 ## Where does the position stop?
 - `ws_mail_fetch_cursor()`: `last_uid` moves over a row of finished UIDs only; a held or not reached mail keeps it before that mail, so the next run reads it again (cheap: headers, and what is known is skipped). A fresh position starts before the first candidate, or at UIDNEXT − 1 when the date search found nothing.

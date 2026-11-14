@@ -87,6 +87,7 @@
 - mail-fetch.md: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records, the System status tile
 - mail-forward.md: Forward as e-mail in the Workspace (WM6): the buttons, the filled New e-mail form, what a forward quotes and carries, the line under a forwarded mail, the checks when it is sent
 - mail-html-preview.md: A mail's HTML in the E-mails reading pane (WM12, PR #8861): the guarded frame's mail mode, workspace_mail_frame.php, Plain text, Show pictures remembered per sender, the narrower rows
+- mail-html-written.md: A written Workspace e-mail's HTML body (MA10b2 #9473): the writing box in New e-mail and Reply, markup to text and HTML, the cleaner, body_html, the HTML that leaves with signature and quote [decision: decisions-made-product-47.md, decisions-made-workspace-20.md, decisions-made-workspace-21.md]
 - mail-html.md: A mail's HTML is kept (WM11, PR #8821): ws_mail_items.body_html, the allowlist cleaner, cid pictures kept as files, the fill of earlier mail from its .eml [decision: decisions-made-workspace-17.md]
 - mail-imap-client.md: The socket IMAP client pg_imap_*() (includes/fn/imap_client.php, G2a of incoming e-mail): why no imap extension, TLS and address check, sign-in, commands, error codes, limits, tests
 - mail-ingest.md: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loop gate, DMARC from the box's server, threading, card and answers, attachments and cid pictures, .eml for 30 days
@@ -110,6 +111,7 @@
 - mail-send-outcome.md: How the queue's outcome reaches a Workspace mail (ws_mail_send_outcome(), #8646): sent is final, only the current attempt fails it, the unwritten row id race, a deleted queue row
 - mail-send.md: Sending Workspace mail through the mail queue (mail_send.php, WM3 #8646): functions, the flow, send states and the card, Send again, limits, mail_unsent, the outcome handler's rules [decision: decisions-made-workspace-13.md]
 - mail-sent-and-bounces.md: After a Workspace e-mail answer leaves (G3c): the copy APPENDed to the box's sent folder, email()'s keep_mime, and a delivery failure (DSN) drawn as a "Not delivered" line under the conversation
+- mail-sent-folder.md: A mailbox's Sent folder read by the mail job (IB7, #9492, step 11.0.200): the switch, a position from the present, which mails join, send_state external read as sent
 - mail-sms-reply.md: Reply by SMS from a Workspace conversation (WA17, #9450): 7 days after the number's last SMS, the kind reply in sms_outbox, the drawer's length and parts counter, only with a provider that receives [decision: decisions-made-workspace-23.md]
 - mail-status.md: State of a Workspace e-mail conversation (G5a, G5b, mail_status.php): open/waiting/closed, the holder, the first-response target, the card's controls, the automatic answer
 - mail-support-box.md: A mailbox's "Support box" switch (WM14, #9061): what a plain box leaves out (status, holder, first-answer time, automatic answer), how lists count its conversations, the default [decision: decisions-made-workspace-17.md]
@@ -440,6 +442,7 @@
 - workspace-outside-caution.md: The standing caution in every agent's and assistant's brief (GV5): a guest's line, a mail and other outside text are data, never a request; how a guest's message is marked in a brief and in the API [decision: decisions-made-workspace-24.md]
 - workspace-personal-ical-days.md: On which days and Today lines a person's own iCal events are drawn (ws_personal_ical_touches(), end exclusive), how a repeating all-day event ends across a clock change, the gzip unpack limit
 - workspace-personal-ical.md: A person's own secret iCal address as a read-only layer on their Work Calendar: ws_holiday_feeds.user_id, the sealed payload, the sync path, who sees it (#3254, decided in #3180) [decision: decisions-made-product-5.md, decisions-made-workspace-6.md]
+- workspace-personal-plans.md: A person's private plans on My calendar (PC3): step 11.0.201, the gate ws_personal_plan_can_see() and its guard test, the drawer, Today, the plan_reminder line
 - workspace-plan-day-state.md: How a plan grid day reads (ws_plan_day_state(): away, holiday, off, over, full, ok), why load 999 is an internal marker, and where a day off with work is named instead of "%999" (PR #4326, #4233)
 - workspace-polls-api.md: A poll over the Workspace API: closed_at, can_vote false past closes_at and in an earlier version (ws_poll_vote_state()), and the field a vote, change or close refusal names
 - workspace-quick-create.md: A product or group made by a person in the Workspace (ws_quick_create_*): drawer new mode, palette line, /create, off sale unless ticked, applied ws_ai_changes row, decision

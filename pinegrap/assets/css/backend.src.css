@@ -15953,6 +15953,14 @@ a.ws-chip:hover {
 /* The ; list of saved replies in the e-mail reply drawer
    (workspace_mail.js), under the answer: above it the drawer's top would
    cut it off. */
+/* A written mail's writing box (workspace_mail.js mailText()): the
+   height of the text area it replaces, its tools under it. */
+.ws-mail-rich .ws-rich {
+  min-height: 12rem;
+}
+.ws-mail-rich .ws-mail-rich-tools {
+  margin-top: var(--ws-space-1, .25rem);
+}
 .ws-mail-reply-box .ws-picker {
   top: 100%;
   bottom: auto;
@@ -18146,6 +18154,15 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
 .ws-cal-event-dot.ws-kind-booking {
   background: var(--pg-success);
 }
+/* A person's own plan (includes/workspace/personal_plans.php), on My calendar
+   alone: look A's violet tone. */
+.ws-cal-event.ws-kind-personal {
+  background: color-mix(in srgb, var(--pg-tone-violet) 16%, transparent);
+  color: var(--pg-fg-body);
+}
+.ws-cal-event-dot.ws-kind-personal {
+  background: var(--pg-tone-violet);
+}
 .ws-cal-channel {
   color: var(--ws-accent);
   background: transparent;
@@ -18194,6 +18211,29 @@ button.ws-cal-more {
 .ws-mycal-row > .ws-cal-event-dot,
 .ws-mycal-row > .bi {
   flex: none;
+}
+/* The New plan drawer: look A's fields, two to a row where they pair. */
+.ws-plan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.ws-plan-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.ws-plan-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.ws-plan-private {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
 }
 .ws-mycal-empty {
   margin: 0;
@@ -18728,6 +18768,10 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   }
   .ws-cal-event.ws-kind-visit {
     background: color-mix(in srgb, var(--pg-warning) 70%, transparent);
+  }
+  /* A plan of the reader's own: its violet as strong as the list's dot. */
+  .ws-cal-event.ws-kind-personal {
+    background: color-mix(in srgb, var(--pg-tone-violet) 80%, transparent);
   }
   .ws-cal-channel {
     background: rgba(var(--ws-accent-rgb), .25);
@@ -27986,11 +28030,25 @@ textarea.pg-campaign-text {
   background: color-mix(in srgb, var(--pg-tone-amber) 10%, transparent);
 }
 @media (max-width: 991.98px) {
+  /* One column: the subject first, as the form's first field at every
+     width, then how the body is made, then the mail itself. The two
+     columns step aside so their parts can be put in that order. */
   .pg-campaign-grid {
     grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
   }
+  .pg-campaign-main,
   .pg-campaign-side {
-    order: -1;
+    display: contents;
+  }
+  .pg-campaign-main > .pg-campaign-field {
+    order: 0;
+  }
+  .pg-campaign-side > * {
+    order: 1;
+  }
+  .pg-campaign-main > .pg-campaign-part {
+    order: 2;
   }
   .pg-campaign-frame {
     height: 480px;

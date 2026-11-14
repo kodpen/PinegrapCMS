@@ -571,7 +571,14 @@ function pg_user_delete($user_id)
         db("DELETE FROM ws_saved_replies WHERE user_id = '" . $user_id . "'");
     }
 
-    if (pg_schema_has('users_shared_components_xref')) {
+    // A person's own plans go with the account, with the lines naming them,
+    // and the account is taken off plans shared with it (personal_plans.php).
+    if (is_file(PG_FUNCTIONS_DIR . '/includes/workspace/personal_plans.php')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/personal_plans.php');
+        ws_personal_plans_user_deleted((int) $user_id);
+    }
+
+        if (pg_schema_has('users_shared_components_xref')) {
         db("DELETE FROM users_shared_components_xref WHERE user_id = '" . $user_id . "'");
     }
 }

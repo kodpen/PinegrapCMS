@@ -19,7 +19,7 @@ description: Plan (owner 2026-11-14): the E-mails screen gains Check e-mail, a p
 - IB4 (M) Block list: "Block sender" in a mail's menu (the address or its whole domain, for this box or every box) and the list with "Allow again" on the Mailboxes card. A blocked sender's mail opens no card, tells nobody, starts no flow and gets no automatic answer; it waits 30 days in a "Blocked" view, where "Not blocked" brings it back as a conversation. Who may answer in the box blocks for that box; the list of every box is the Workspace settings right's. Each block is a Site Log line.
 - IB5 (S) Recipient suggestions in To, Cc and Bcc: the contacts the person may see and the addresses the box has heard from or written to; an address on the bounce list is marked. Done #9509.
 - IB6 (M, after MT3) Send later: a time on the New e-mail form and the reply drawer, in the person's time zone; the mail waits under "Not sent" with "Send now" and "Cancel".
-- IB7 (M) A box's Sent folder: an answer written from a mail program shows in its conversation as a sent mail, read by the same job and limits, never sent again.
+- IB7 (M) done #9492 (`workspace/mail-sent-folder.md`). A box's Sent folder: an answer written from a mail program shows in its conversation as a sent mail, read by the same job and limits, never sent again.
 - IB8 (S) Close-out: `workspace/mail-overview.md`, `mail-decisions.md`'s later list and the files of the steps brought up to date, this plan deleted.
 
 ## What does every step keep?

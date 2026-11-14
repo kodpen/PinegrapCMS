@@ -123,49 +123,49 @@
             cc.field.focus();
         });
 
-        var text = el('textarea', 'form-control');
+        var body = mailText(h, view, draft || '', t('mail_reply_text'), false);
+        var text = body.input;
         text.id = h.nextId('ws-mail-reply-');
-        text.name = 'text';
-        text.rows = 10;
-        text.maxLength = 50000;
-        text.value = draft || '';
 
         var box = el('div', 'ws-mail-reply-box position-relative');
-        box.appendChild(text);
+        box.appendChild(body.node);
         form.appendChild(h.formRow(t('mail_reply_text'), box, t('mail_reply_hint')));
-        savedReplies(text, box, view, h);
 
-        // Files, as New e-mail takes them.
-        var picker = el('input', 'form-control form-control-sm');
+        // The writing box offers them itself; the text area's own list.
+        if (!body.rich) {
+            savedReplies(text, box, view, h);
+        }
+
+        // Files, as New e-mail takes them: from Files or the computer.
         var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
-
-        picker.type = 'file';
-        picker.multiple = true;
-
-        var fileRow = h.formRow(t('mail_new_files'), picker, t('mail_new_files_hint'));
+        var library = [];
+        var fileRow = h.formRow(t('mail_new_files'), filesField(h, data.file_field, library, files, function () {
+            fileRows(h, list, [library, files]);
+        }), t('mail_new_files_hint'));
 
         fileRow.appendChild(list);
         form.appendChild(fileRow);
-        picker.addEventListener('change', function () {
-            Array.prototype.forEach.call(picker.files || [], function (file) {
-                files.push(file);
-            });
-            picker.value = '';
-            fileRows(h, list, [files]);
-        });
 
         var send = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_reply_send'), 'bi-send');
 
         function sendAnswer(anyway) {
-            if (!text.value.trim()) {
-                text.focus();
+            if (!body.value().trim()) {
+                body.focus();
                 return;
             }
 
             send.disabled = true;
             domainWarningClear(footer);
 
-            var post = { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: text.value };
+            var post = { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: body.value() };
+
+            if (library.length) {
+                post.file_ids = library.map(function (file) { return file.id; }).join(',');
+            }
+
+            if (body.rich) {
+                post.format = 'markup';
+            }
 
             if (anyway) {
                 post.send_anyway = 1;
@@ -200,7 +200,7 @@
         }
 
         h.showOffcanvas(node);
-        text.focus();
+        body.focus();
     }
 
     // Recipient suggestions under an address field: the word after the last
@@ -383,6 +383,123 @@
         return String(item.text || item.body || '').replace(/<[@#][a-z_]+:[0-9]{1,10}>/g, function (token) {
             return labels[token] || '';
         });
+    }
+
+    // The Files field of a mail's forms: the panel's picker field over Files
+    // (the server's file_field, as WhatsApp's answer has it), each pick
+    // joining the list under it and the field emptied for the next; "Upload
+    // from your computer" opens the browser's chooser without drawing its
+    // own control. picked: { id, name } of Files; uploads: File objects.
+    function filesField(h, markup, picked, uploads, redraw) {
+        var wrap = h.el('div', 'ws-mail-files');
+
+        if (markup) {
+            var field = h.el('div', 'ws-mail-files-pick');
+
+            field.innerHTML = markup;
+            wrap.appendChild(field);
+
+            var value = field.querySelector('[data-pg-picker-value]');
+            var root = field.querySelector('[data-pg-picker-field]');
+
+            if (value) {
+                value.addEventListener('change', function () {
+                    var id = parseInt(value.value, 10) || 0;
+                    var input = field.querySelector('.pg-pfield-input');
+
+                    if (id <= 0) {
+                        return;
+                    }
+
+                    if (!picked.some(function (file) { return file.id === id; })) {
+                        picked.push({ id: id, name: (input && input.value) || ('#' + id) });
+                        redraw();
+                    }
+
+                    // The field's own clear, else by hand: the next pick starts empty.
+                    if (root && root.pgPickerField) {
+                        root.pgPickerField.set(null);
+                    } else {
+                        value.value = '';
+
+                        if (input) {
+                            input.value = '';
+                        }
+
+                        if (root) {
+                            root.classList.add('is-empty');
+                        }
+                    }
+                });
+            }
+        }
+
+        var chooser = h.el('input');
+        var upload = h.button('pg-button pg-button-quiet pg-button-sm mt-2', h.t('mail_upload'), 'bi-upload');
+
+        chooser.type = 'file';
+        chooser.multiple = true;
+        chooser.hidden = true;
+        upload.addEventListener('click', function () {
+            chooser.click();
+        });
+        chooser.addEventListener('change', function () {
+            Array.prototype.forEach.call(chooser.files || [], function (file) {
+                uploads.push(file);
+            });
+            chooser.value = '';
+            redraw();
+        });
+        wrap.appendChild(chooser);
+        wrap.appendChild(upload);
+
+        return wrap;
+    }
+
+    // The text of a written mail: the Workspace's writing box (bold, italic,
+    // links, lists and a quote, ";" for a saved reply, @ and # as in a
+    // channel), posted as its markup with format "markup", which the server
+    // turns into the mail's HTML and text parts (ws_mail_markup_parts()).
+    // Where the box is missing (plain), a text area as before.
+    function mailText(h, view, value, label, plain) {
+        var wrap = h.el('div', 'ws-mail-rich');
+        var field = (!plain && h.richField && window.PGWsEditor) ? h.richField(wrap, {}) : null;
+
+        if (!field) {
+            var area = h.el('textarea', 'form-control');
+
+            area.name = 'text';
+            area.rows = 10;
+            area.maxLength = 50000;
+            area.value = value || '';
+            wrap.appendChild(area);
+
+            return {
+                node: wrap, input: area, rich: false,
+                value: function () { return area.value; },
+                set: function (text) { area.value = text || ''; },
+                focus: function () { area.focus(); }
+            };
+        }
+
+        // The channel's ";" saved replies, read for the channel the mail is in.
+        field.savedReplies = true;
+        field.channel = (view && view.channel) ? view.channel : null;
+        field.input.setAttribute('aria-label', label);
+        field.input.classList.add('form-control');
+        wrap.appendChild(field.input);
+        wrap.appendChild(window.PGWsEditor.toolbar(field.rich, ['bold', 'italic', 'link', 'bullets', 'numbers', 'quote'], { className: 'ws-mail-rich-tools' }));
+
+        if (value) {
+            field.set(value);
+        }
+
+        return {
+            node: wrap, input: field.input, rich: true,
+            value: function () { return field.value(); },
+            set: function (text) { field.set(text || ''); },
+            focus: function () { field.input.focus(); }
+        };
     }
 
     // The ; list of the person's saved replies under the answer, as in the
@@ -1695,7 +1812,7 @@
         options = options || {};
 
         h.api('ws_mail_compose').then(function (data) {
-            newForm(h, data.boxes || [], data.writer || '', options);
+            newForm(h, data.boxes || [], data.writer || '', options, data.file_field || '');
         }).catch(function (error) {
             h.fail(error);
         });
@@ -1720,7 +1837,7 @@
         });
     }
 
-    function newForm(h, boxes, writer, options) {
+    function newForm(h, boxes, writer, options, fileField) {
         var t = h.t;
         var el = h.el;
         var fill = options.fill || null;
@@ -1823,41 +1940,29 @@
         suggest(h, bcc.field);
 
         var subject = input('subject', t('mail_new_subject'));
-        var text = el('textarea', 'form-control');
+        // A forward's quote is plain text, so it keeps the text area.
+        var body = mailText(h, null, '', t('mail_new_text'), !!fill);
 
-        text.name = 'text';
-        text.rows = 10;
-        text.maxLength = 50000;
-        form.appendChild(h.formRow(t('mail_new_text'), text));
+        form.appendChild(h.formRow(t('mail_new_text'), body.node));
 
         // The mailbox's Signature (or its name), as the mail will carry it.
         var signature = el('div', 'ws-mail-new-signature small fg-secondary');
 
-        text.parentNode.appendChild(signature);
+        body.node.parentNode.appendChild(signature);
 
-        var picker = el('input', 'form-control form-control-sm');
         var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
-
-        picker.type = 'file';
-        picker.multiple = true;
-
-        var fileRow = h.formRow(t('mail_new_files'), picker, t('mail_new_files_hint'));
-
-        fileRow.appendChild(list);
-        form.appendChild(fileRow);
+        // Files picked from Files, posted by id (file_ids).
+        var library = [];
 
         // The forward's carried files first, then the person's own.
         function drawFiles() {
-            fileRows(h, list, [carried, files]);
+            fileRows(h, list, [carried, library, files]);
         }
 
-        picker.addEventListener('change', function () {
-            Array.prototype.forEach.call(picker.files || [], function (file) {
-                files.push(file);
-            });
-            picker.value = '';
-            drawFiles();
-        });
+        var fileRow = h.formRow(t('mail_new_files'), filesField(h, fileField, library, files, drawFiles), t('mail_new_files_hint'));
+
+        fileRow.appendChild(list);
+        form.appendChild(fileRow);
 
         function drawBox(channelId) {
             var box = boxOf(parseInt(from.value, 10)) || boxes[0];
@@ -1886,7 +1991,7 @@
                 cc: cc.field.value,
                 bcc: bcc.field.value,
                 subject: subject.field.value,
-                text: text.value,
+                text: body.value(),
                 at: Date.now()
             };
 
@@ -1900,8 +2005,8 @@
         // The forward's subject and quote, the person's words to go above.
         function filled() {
             subject.field.value = fill.subject;
-            text.value = fill.text;
-            text.setSelectionRange(0, 0);
+            body.set(fill.text);
+            body.input.setSelectionRange(0, 0);
         }
 
         // Saved 400 ms after typing pauses; an empty form drops the slot.
@@ -1924,7 +2029,7 @@
             cc.field.value = kept.cc;
             bcc.field.value = kept.bcc;
             subject.field.value = kept.subject;
-            text.value = kept.text;
+            body.set(kept.text);
         } else if (fill) {
             filled();
         }
@@ -1960,8 +2065,10 @@
                 window.clearTimeout(timer);
                 newDraftStore(key, null);
                 form.reset();
+                body.set('');
                 files = [];
                 carried = fill ? fill.files.slice() : [];
+                library.length = 0;
 
                 if (fill) {
                     filled();
@@ -1981,7 +2088,7 @@
 
         function sendNew(anyway) {
             var fields = current();
-            var empty = [[to.field, fields.to], [subject.field, fields.subject], [text, fields.text]].filter(function (pair) {
+            var empty = [[to.field, fields.to], [subject.field, fields.subject], [body.input, fields.text]].filter(function (pair) {
                 return !pair[1].trim();
             })[0];
 
@@ -1998,6 +2105,10 @@
                 subject: fields.subject, text: fields.text
             };
 
+            if (body.rich) {
+                post.format = 'markup';
+            }
+
             if (anyway) {
                 post.send_anyway = 1;
             }
@@ -2006,6 +2117,10 @@
                 post.forward_kind = fill.kind;
                 post.forward_ids = fill.ids.join(',');
                 post.forward_files = carried.map(function (file) { return file.id; }).join(',');
+            }
+
+            if (library.length) {
+                post.file_ids = library.map(function (file) { return file.id; }).join(',');
             }
 
             formPost(h, 'ws_mail_new', post, files).then(function (data) {
@@ -2036,7 +2151,7 @@
 
         footer.appendChild(send);
         h.showOffcanvas(node);
-        (to.field.value ? text : to.field).focus();
+        (to.field.value ? body.input : to.field).focus();
     }
 
     window.PGWsMail = {

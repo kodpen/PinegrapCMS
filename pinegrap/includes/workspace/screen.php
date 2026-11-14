@@ -1019,8 +1019,9 @@ function ws_screen_assets($viewer, $mode, $extra = array())
     }
 
     // The picker (assets/js/pg_picker.js): the paperclip's "From the file
-    // manager" in a channel.
-    if (($mode === 'channels') && function_exists('pg_picker_script')) {
+    // manager" in a channel, and the Files field of a mail's forms on
+    // Incoming e-mail.
+    if ((($mode === 'channels') || ($mode === 'mail')) && function_exists('pg_picker_script')) {
         $lightbox .= pg_picker_script();
     }
 

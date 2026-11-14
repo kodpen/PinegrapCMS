@@ -156,6 +156,8 @@ if (!$_POST) {
                             'edit_url'     => $output_edit_url,
                             'text'         => $output_body,
                             'preview'      => $output_preview,
+                            // Making a design is a designer's job (add_system_style.php).
+                            'new_design'   => ((int) $user['role'] <= 1),
                         )) . pg_email_campaign_card(
                             lang('E-Mail Message To My Contact Groups'),
                             '<div class="col-12 my-3">
@@ -314,9 +316,7 @@ if (!$_POST) {
     } else {
         // The page as its recipients may read it: nothing of the sender's
         // session (token, account widgets) goes into the e-mail.
-        $body = pg_email_campaign_page_body($_POST['page_id']);
-        
-        $body = pg_email_campaign_prepare_html_body($body, get_page_name($_POST['page_id']));
+        $body = pg_email_campaign_design_body($_POST['page_id']);
     }
 
     $email_campaign_id = pg_email_campaign_insert(array(

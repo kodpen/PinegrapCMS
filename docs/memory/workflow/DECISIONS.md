@@ -749,6 +749,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/mail-check.md: Check e-mail on Communication › Incoming e-mail (IB2): which boxes a press reads, the fetch's lock and budget, the 15-second gap, presses a minute, the line over the list
 - workspace/mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified
 - workspace/mail-domain-warning.md: The warning before a Workspace e-mail goes to a domain that does not exist: Send anyway, Change the address, "Did you mean …?", the API's 409 unknown_domain
+- workspace/mail-html-written.md: A written Workspace e-mail's HTML body (MA10b2 #9473): the writing box in New e-mail and Reply, markup to text and HTML, the cleaner, body_html, the HTML that leaves with signature and quote
 - workspace/mail-list.md: The list of Communication › Incoming e-mail (messages_mail.php, mail_list.php): which conversations, views, filters, mailbox, search, Load more, the row, the menu
 - workspace/mail-not-delivered-rows.md: A sent Workspace mail whose delivery failure came back reads "Not delivered" with the server's words on its Sends row and mail queue row, read at list time for the page's rows only (MW2)
 - workspace/mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it

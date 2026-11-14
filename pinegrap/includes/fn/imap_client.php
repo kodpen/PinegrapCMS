@@ -1086,13 +1086,17 @@ function pg_imap_authenticate_plain(&$session, $response, $initial)
  * Opens a folder: SELECT, or EXAMINE when $read_only (nothing marked).
  *
  * @param array  $session
- * @param string $folder UTF-8
+ * @param string $folder    UTF-8, or the server's own spelling when $encoded
  * @param bool   $read_only
+ * @param bool   $encoded   whether $folder is already modified UTF-7 (from
+ *                          LIST, pg_imap_sent_folder()): encoding it again
+ *                          would turn its "&" into "&-"
  * @return array ok, exists, uidvalidity, uidnext
  */
-function pg_imap_select(&$session, $folder, $read_only = false)
+function pg_imap_select(&$session, $folder, $read_only = false, $encoded = false)
 {
-    $reply = pg_imap_command($session, array($read_only ? 'EXAMINE' : 'SELECT', pg_imap_astring(pg_imap_utf7_encode($folder))));
+    $name = $encoded ? (string) $folder : pg_imap_utf7_encode($folder);
+    $reply = pg_imap_command($session, array($read_only ? 'EXAMINE' : 'SELECT', pg_imap_astring($name)));
     $out = pg_imap_select_result($reply);
 
     if (!$out['ok'] && ($session['error'] === '')) {

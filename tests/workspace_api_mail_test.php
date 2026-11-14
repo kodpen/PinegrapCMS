@@ -255,7 +255,7 @@ function test_ws_api_mail_list_filters()
 
 	$where = ws_mail_list_where($asked, 7, array(4));
 	pg_assert_contains("box_id = '3'", $where, 'the mailbox');
-	pg_assert_contains("send_state IN ('', 'sent')", $where, 'the Sent view');
+	pg_assert_contains("send_state IN ('', 'sent', 'external')", $where, 'the Sent view');
 
 	$source = ws_api_mail_test_source('ws_api_mail_conversations_list');
 	pg_assert_contains('ws_mail_unread_sql((int) $viewer[\'id\'], ws_mail_read_floor((int) $viewer[\'id\']))', $source, 'the screen\'s unread rule');

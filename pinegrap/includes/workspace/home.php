@@ -335,6 +335,24 @@ function ws_home_calendar($viewer, $today)
         $items[] = $event;
     }
 
+    // The person's own plans (personal_plans.php), through their gate.
+    if (function_exists('ws_personal_plans_between')) {
+        $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
+
+        foreach (ws_personal_plans_between($me, $start, $end + 1) as $plan) {
+            $items[] = array(
+                'id'        => (int) $plan['id'],
+                'title'     => (string) $plan['title'],
+                'kind'      => 'personal',
+                'all_day'   => (int) $plan['all_day'],
+                'starts_at' => (int) $plan['starts_at'],
+                'ends_at'   => (int) $plan['ends_at'],
+                'layer'     => lang('My plan'),
+                'url'       => $base . 'workspace_my_calendar.php?view=list&plan=' . (int) $plan['id'],
+            );
+        }
+    }
+
     return ws_home_calendar_rows($items, $start, $end, time());
 }
 

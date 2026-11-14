@@ -190,6 +190,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_whatsapp_templates();      // 11.0.197
 	upgrade_2026_11_0_whatsapp_inbox();          // 11.0.198
 	upgrade_2026_11_0_ws_mail_phone();           // 11.0.199
+	upgrade_2026_11_0_ws_mail_sent_folder();     // 11.0.200
+	upgrade_2026_11_0_ws_personal_plans();       // 11.0.201
 
 }
 
@@ -6413,3 +6415,86 @@ function upgrade_2026_11_0_ws_mail_phone() {
 	install_note('Workspace: a customer\'s WhatsApp message can open a conversation in a channel, as an e-mail does.');
 
 }
+
+// A mailbox's Sent folder read by the mail job: its own UID position,
+// apart from the box's folder (uidvalidity, last_uid), so mail written in a
+// mail program reaches its conversation. 0 means "not read yet": the first
+// read starts at the folder's newest mail, never with old sent mail.
+function upgrade_2026_11_0_ws_mail_sent_folder() {
+
+	if (!install_table_exists('ws_mail_boxes')) {
+
+		install_skipped('ws_mail_boxes does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_mail_boxes', 'sent_uidvalidity', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_mail_boxes', 'sent_last_uid', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: a mailbox can read its Sent folder, so an answer written in a mail program shows in its conversation. It stays off until "Read the Sent folder" is switched on for the box.');
+
+}
+
+// A person's own plans on My calendar (includes/workspace/personal_plans.php):
+// closed to everybody else, never rows of ws_events (whose readers do not ask
+// whose row it is). Every column the plan's later steps need is added here at
+// once; ws_personal_plans_ready() is the one probe. visibility, contact_id,
+// mail_conversation_id, the steps and the people stay unused until those steps.
+// ws_inbox.plan_id names the plan of a reminder line, as event_id names a
+// meeting's.
+function upgrade_2026_11_0_ws_personal_plans() {
+
+	install_create_table('ws_personal_plans', "CREATE TABLE ws_personal_plans (
+		id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id              INT UNSIGNED NOT NULL DEFAULT 0,
+		title                VARCHAR(255) NOT NULL DEFAULT '',
+		note                 TEXT NULL,
+		starts_at            INT UNSIGNED NOT NULL DEFAULT 0,
+		ends_at              INT UNSIGNED NOT NULL DEFAULT 0,
+		all_day              TINYINT(1) NOT NULL DEFAULT 0,
+		remind_at            INT UNSIGNED NOT NULL DEFAULT 0,
+		reminded_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		visibility           VARCHAR(16) NOT NULL DEFAULT 'me',
+		contact_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		mail_conversation_id INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user_start (user_id, starts_at),
+		KEY idx_remind (reminded_at, remind_at),
+		KEY idx_contact (contact_id),
+		KEY idx_mail_conversation (mail_conversation_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_personal_plan_steps', "CREATE TABLE ws_personal_plan_steps (
+		id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		plan_id              INT UNSIGNED NOT NULL DEFAULT 0,
+		position             SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		title                VARCHAR(255) NOT NULL DEFAULT '',
+		day                  DATE NOT NULL DEFAULT '0000-00-00',
+		done_at              INT UNSIGNED NOT NULL DEFAULT 0,
+		task_id              INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_plan (plan_id),
+		KEY idx_task (task_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_personal_plan_people', "CREATE TABLE ws_personal_plan_people (
+		plan_id              INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id              INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (plan_id, user_id),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	if (install_table_exists('ws_inbox')) {
+		install_add_column('ws_inbox', 'plan_id', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER event_id");
+	} else {
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'ws_inbox')));
+	}
+
+	install_note('Workspace: a person can add their own private plans to My calendar.');
+
+}
+
