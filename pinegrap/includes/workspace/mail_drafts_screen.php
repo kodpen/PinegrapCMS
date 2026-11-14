@@ -66,7 +66,21 @@ function ws_mail_drafts_view($viewer)
         }
     }
 
+    // The applications drafts were kept through (draft_app_id, 11.0.205),
+    // named from their rows now, so a renamed one reads as it is called.
+    $app_ids = array_values(array_unique(array_filter(array_map(function ($row) {
+        return (int) ($row['draft_app_id'] ?? 0);
+    }, $rows))));
+    $apps = array();
+
+    if ($app_ids) {
+        foreach ((array) db_items("SELECT id, name FROM api_apps WHERE id IN (" . implode(',', $app_ids) . ")") as $app) {
+            $apps[(int) $app['id']] = (string) $app['name'];
+        }
+    }
+
     foreach ($rows as $index => $row) {
+        $rows[$index]['app_name'] = ws_mail_draft_app_label((int) ($row['draft_app_id'] ?? 0), $apps);
         $conversation = $conversations[(int) $row['conversation_id']] ?? null;
         $rows[$index]['box_name'] = (string) ($boxes[(int) $row['box_id']] ?? '');
         $rows[$index]['conversation_subject'] = $conversation ? (string) $conversation['subject'] : '';
@@ -79,9 +93,44 @@ function ws_mail_drafts_view($viewer)
 }
 
 /**
+ * Whom a draft's pill names: the application it was kept through, by its
+ * name; "an assistant" for one since deleted; '' for a draft written in the
+ * panel or by the person's own device or connection. Pure but for the words.
+ *
+ * @param int   $app_id draft_app_id
+ * @param array $apps   api_apps id => name
+ * @return string
+ */
+function ws_mail_draft_app_label($app_id, $apps)
+{
+    if ((int) $app_id <= 0) {
+        return '';
+    }
+
+    $name = trim((string) ($apps[(int) $app_id] ?? ''));
+
+    return ($name !== '') ? $name : lang('an assistant');
+}
+
+/**
+ * The pill of a draft an application kept: one translated sentence, cut
+ * with an ellipsis inside the row's width when the name is long, the whole
+ * sentence in its title. Pure.
+ *
+ * @param string $text "Kept by <application>", translated
+ * @return string HTML
+ */
+function ws_mail_draft_app_pill($text)
+{
+    return '<span class="pg-pill pg-tone-violet ws-mail-draft-app" data-ws-mail-draft-app title="' . h($text) . '">'
+        . '<span class="ws-mail-draft-app-text">' . h($text) . '</span></span>';
+}
+
+/**
  * The Drafts view: each draft as a row of the screen's list, with its kind,
  * whom it goes to and the time; its subject and first words; a meta line
- * with the mailbox, Open draft and Delete. Pure but for the words.
+ * with the mailbox, the application it was kept through, Open draft and
+ * Delete. Pure but for the words.
  *
  * @param array[] $rows ws_mail_drafts_view()
  * @return string HTML
@@ -113,6 +162,9 @@ function ws_mail_drafts_view_html($rows)
             . '<span class="ws-mail-subject">' . h($subject) . '</span>'
             . (($words !== '') ? '<span class="ws-mail-snippet">' . h(mb_substr($words, 0, 160)) . '</span>' : '')
             . '<span class="ws-mail-row-meta"><span>' . h((string) $row['box_name']) . '</span>'
+            . ((trim((string) ($row['app_name'] ?? '')) !== '')
+                ? ws_mail_draft_app_pill(lang(array('string' => 'Kept by {var:1}', 'vars' => (string) $row['app_name'])))
+                : '')
             . '<span class="ms-auto d-inline-flex gap-2">'
             . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-ws-mail-draft-open="' . $id . '">' . h(lang('Open draft')) . '</button>'
             . '<button type="button" class="pg-button pg-button-ghost pg-button-sm" data-ws-mail-draft-remove="' . $id . '">' . h(lang('Delete')) . '</button>'
