@@ -120,7 +120,7 @@ function ws_mcp_auth_kinds()
  */
 function ws_mcp_reserved_aliases()
 {
-    return array('ai', 'claude', 'pinegrap', 'mcp', 'all', 'everyone', 'here', 'channel', 'herkes', 'kanal', 'burada', 'system', 'admin');
+    return array('ai', 'claude', 'pinegrap', 'mcp', 'all', 'everyone', 'here', 'channel', 'herkes', 'kanal', 'burada', 'hepsi', 'system', 'admin');
 }
 
 /**
