@@ -279,6 +279,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-52.md: What does deleting a user do with the account's open store credit? (owner, 2026-11-14, channel message 2638)
 - decisions-made-product-52.md: May a store credit card whose account is gone be voided on Edit Gift Card? (architect, 2026-11-14, the owner's #6688 applied)
 - decisions-made-product-52.md: When do the add-on hook system and the mobile API work start? (owner, 2026-11-14, in the architect's window)
+- decisions-made-product-52.md: Does the add-on system cover custom changes on a customer's copy? (owner, 2026-11-14, in the architect's window)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
@@ -321,6 +322,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-17.md: Which tables and columns were approved?
 - decisions-made-schema-18.md: Where are the rules and the earlier parts?
 - decisions-made-schema-18.md: Which tables and columns were approved?
+- decisions-made-schema-18.md: May a mail draft keep its files in a column of ws_mail_items? (owner, 2026-11-14, in the architect's window)
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
@@ -442,6 +444,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-26.md: Does a place where a template is chosen show a preview? (owner, 2026-11-14, channel message 2709)
 - decisions-made-workspace-26.md: Which components does a new part inside a channel use? (owner, 2026-11-14, channel message 2709)
 - decisions-made-workspace-26.md: May a connected chat send a Workspace e-mail? (owner, 2026-11-14, channel message 2714)
+- decisions-made-workspace-27.md: Does the E-mails screen get a button that reads the boxes now, and a mailbox's features? (owner, 2026-11-14, in the architect's window)
+- decisions-made-workspace-27.md: Does a person get a calendar of their own beside e-mail, with private plans? (owner, 2026-11-14, in the architect's window)
+- decisions-made-workspace-27.md: Does the customer see their roadmap on the site? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
