@@ -1029,6 +1029,11 @@ pg_whatsapp_templates_job();
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_webhook.php');
 pg_whatsapp_inbox_sweep(time());
 
+// A customer's WhatsApp pictures and documents into their conversation's
+// card (includes/fn/whatsapp_media.php).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_media.php');
+pg_whatsapp_media_run(5, 20);
+
 // Workspace task reminders, and the notice that a task went overdue
 // (includes/workspace/reminders.php). Each look is one read; the workspace is
 // loaded only when one of them is due, so the general job stays as light as

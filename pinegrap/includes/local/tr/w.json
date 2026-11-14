@@ -56,6 +56,8 @@
     "Wait days": "Gün",
     "Wait hours": "Saat",
     "Wait until {var:1} less {var:2} {var:3}; if it has passed, end the run": "{var:1} anından {var:2} {var:3} öncesine kadar bekle; geçmişse çalıştırmayı bitir",
+    "Wait until {var:1} less {var:2}; if it has passed, end the run": "{var:1} anından {var:2} öncesine kadar bekle; geçmişse çalıştırmayı bitir",
+    "Wait {var:1}": "{var:1} bekle",
     "Wait {var:1} {var:2}": "{var:1} {var:2} bekle",
     "Waited until": "Beklenen zaman",
     "Waited until {var:1}.": "{var:1} saatine kadar beklendi.",
