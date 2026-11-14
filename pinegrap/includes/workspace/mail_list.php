@@ -200,14 +200,15 @@ function ws_mail_list_where($filters, $viewer_id, $channel_ids, $charset = '', $
         $where[] = "box_id NOT IN (SELECT b.id FROM ws_mail_boxes b WHERE b.transport IN ('whatsapp', 'sms'))";
     }
 
-    // An answer written before the send state is sent ('').
+    // An answer written before the send state is sent (''), as is one read
+    // from the box's Sent folder (external).
     $out = "EXISTS (SELECT 1 FROM ws_mail_items i WHERE i.conversation_id = ws_mail_conversations.id AND i.direction = 'out' AND i.send_state IN ";
     $view = (string) ($filters['view'] ?? 'all');
 
     if ($view === 'incoming') {
         $where[] = 'last_in_at > 0';
     } elseif ($view === 'sent') {
-        $where[] = $out . "('', 'sent'))";
+        $where[] = $out . "('', 'sent', 'external'))";
     } elseif ($view === 'unsent') {
         $where[] = $out . "('queued', 'failed'))";
     }

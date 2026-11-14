@@ -67,7 +67,7 @@ function test_workspace_mail_list_where()
 	pg_assert_same("channel_id IN (3) AND message_id > 0 AND box_id = '2'", ws_mail_list_where(workspace_mail_list_test_filters(array('box' => 2)), 7, array(3)), 'one mailbox');
 
 	$sent = ws_mail_list_where(workspace_mail_list_test_filters(array('view' => 'sent')), 7, array(3));
-	pg_assert_contains("i.direction = 'out' AND i.send_state IN ('', 'sent'))", $sent, 'Sent: an answer that left, or one from before the send state');
+	pg_assert_contains("i.direction = 'out' AND i.send_state IN ('', 'sent', 'external'))", $sent, 'Sent: an answer that left, one from before the send state, or one read from the Sent folder');
 	pg_assert_contains("i.send_state IN ('queued', 'failed'))", ws_mail_list_where(workspace_mail_list_test_filters(array('view' => 'unsent')), 7, array(3)), 'Not sent: one waiting or refused');
 
 	$search = ws_mail_list_where(workspace_mail_list_test_filters(array('q' => "kar'go")), 7, array(3), '');

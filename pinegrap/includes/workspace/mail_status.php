@@ -610,14 +610,17 @@ function ws_mail_auto_reply($box, $item_id)
 }
 
 /**
- * Whether an outgoing item is the box's automatic answer: no writer.
+ * Whether an outgoing item is the box's automatic answer: no writer, and
+ * not a mail read from the box's Sent folder (send_state external), which
+ * has no writer either.
  *
  * @param array|null $item ws_mail_items row
  * @return bool
  */
 function ws_mail_item_is_auto_reply($item)
 {
-    return is_array($item) && ((string) ($item['direction'] ?? 'in') === 'out') && ((int) ($item['user_id'] ?? 0) === 0);
+    return is_array($item) && ((string) ($item['direction'] ?? 'in') === 'out') && ((int) ($item['user_id'] ?? 0) === 0)
+        && ((string) ($item['send_state'] ?? '') !== 'external');
 }
 
 /**
