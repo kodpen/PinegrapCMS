@@ -29,4 +29,4 @@ description: IB1 census (2026-11-14) of plans/mail-inbox-features.md: a read on 
 - No schema: contacts by `validate_contacts_access()` / `users_contact_groups_xref` (role 3), `ws_mail_items.from_email` by `idx_sender (box_id, from_email(191), …)` for the boxes of `ws_mail_send_boxes()`, recent `to_list` / `cc_list` (no index: bounded rows), the mark by `pg_mail_bounce_blocked_among()`.
 
 ## Which questions went to the architect?
-- IB3 signature column, IB4 list table and blocked mark, IB7 Sent position and mark: channel message 2860; each answer is written here before its step starts.
+- Channel message 2860, answered in 2863: the shapes are in `plans/mail-inbox-features-scopes.md`; each column or table waits for the owner's yes.
