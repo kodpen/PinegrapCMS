@@ -17,7 +17,8 @@ module: sms_inbox
 - `ws_mail_phone_ingest()` as WhatsApp's (`workspace/mail-phone-conversations.md`): the hash is SHA-256 of `sms:<MessageSid>`, the contact the first one whose mobile is the number, the card's badge "SMS" (`bi-chat-dots`), the customer line "An SMS from …". Nothing is kept with the Workspace off, without a channel, or on a demo site: the SMS lives only as a conversation's item (owner, #9286).
 
 ## What does a stop word do?
-- The whole message alone (STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT, IPTAL, RET, DUR; any case, Turkish letters folded, a closing dot or ! ignored): `pg_sms_stop_refusal()` writes an `sms`/`marketing`/`refused` consent row with source `message` for each contact of the number; the İYS push sends it on. A number no contact has records nothing (the log needs a person). The conversation still opens. The refusal is written after the ingest and not for a duplicate, so a message the provider sends again is refused once.
+- The whole message alone (STOP, STOPALL, UNSUBSCRIBE, CANCEL, END, QUIT, IPTAL, RET, DUR; any case, Turkish letters folded, a closing dot or ! ignored): `pg_sms_stop_refusal()` writes an `sms`/`marketing`/`refused` consent row with source `message` for each contact of the number; the İYS push sends it on. A number no contact has records nothing (the log needs a person).
+- The conversation still opens. The refusal is written after the ingest and not for a duplicate, so a message the provider sends again is refused once.
 
 ## How was it verified?
 - `tests/sms_inbox_test.php` (providers, stop words, signature, message, box values, field, wiring), `waf_subjects_test.php`. On the sandbox (MySQL): a message stored as a conversation, "İptal" from a contact's number wrote one refusal, its retry none; the settings field and the card shot. No Twilio account: no real signed post was received.
