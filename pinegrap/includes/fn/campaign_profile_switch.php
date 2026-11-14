@@ -10,6 +10,14 @@
  * stay on while campaigns of a profile above them still wait, and are turned
  * off once none is left. A chain already switched is never switched again.
  *
+ * The update step only marks the conversion due, in a file of data/ named
+ * after the database (pg_profile_flow_switch_file()), with the highest
+ * profile id of that moment; the general job converts chain by chain within
+ * its time budget and keeps the result there for the E-mail Campaign
+ * Profiles screen. What is converted stays where the switch writes it (the
+ * flow's start box, the head turned off): a lost file converts nothing
+ * more, and the profiles keep sending.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -158,15 +166,17 @@ function pg_profile_flow_graph_profile($graph)
 
 /**
  * The flows profiles became, head profile id => flow id, read from the
- * drafts of flows not deleted: a chain listed here is never switched again.
+ * drafts of every flow, deleted ones included: a chain listed here is never
+ * switched again, even after its flow was deleted.
  *
  * @return int[]
  */
 function pg_profile_flow_switched()
 {
     $switched = array();
+    $rows = db_items("SELECT id, draft FROM ws_flows WHERE draft LIKE '%\"profile_id\"%'");
 
-    foreach ((array) db_items("SELECT id, draft FROM ws_flows WHERE status <> 'binned' AND draft LIKE '%\"profile_id\"%'") as $row) {
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
         $profile_id = pg_profile_flow_graph_profile((array) json_decode((string) $row['draft'], true));
 
         if ($profile_id > 0) {
@@ -230,9 +240,12 @@ function pg_profile_flow_switch_chain($head, $flow)
     $published = is_array($row) ? ws_flow_publish($owner, $row) : array('ok' => false, 'error' => lang('The flow could not be published.'));
 
     if (empty($published['ok'])) {
-        // The draft stays, carrying the profile, so the chain is not
-        // switched twice; the profile keeps sending until it is published.
-        return array('ok' => false, 'flow_id' => $flow_id, 'paused' => false, 'reason' => (string) $published['error']);
+        // A draft carrying the profile would count as switched while the
+        // profile still sends; the never-published draft goes, and the
+        // chain stays a profile with the reason.
+        db("DELETE FROM ws_flows WHERE id = '" . $flow_id . "' AND version_id = 0");
+
+        return array('ok' => false, 'flow_id' => 0, 'paused' => false, 'reason' => (string) $published['error']);
     }
 
     db("UPDATE email_campaign_profiles SET enabled = 0 WHERE id = '" . (int) $head . "' AND enabled = 1");
@@ -342,37 +355,298 @@ function pg_profile_flow_followers_drain()
 }
 
 /**
- * Switches every chain that converts and was not switched before, from the
- * rows as they are now, and gives the report: the dry run's lines with each
- * flow made, each chain whose flow could not be published and why.
+ * The file that marks the conversion due and keeps its result: in data/,
+ * not data/temp (the clean-up sweeps that), named after the database as the
+ * upgrade lock is, since sites may share one software directory. A PHP file
+ * that exits first, so the web server never serves what it holds.
+ *
+ * @return string
+ */
+function pg_profile_flow_switch_file()
+{
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value("SELECT DATABASE()");
+
+    return PG_FUNCTIONS_DIR . '/data/campaign_profile_flows_' . md5($database) . '.php';
+}
+
+/**
+ * The guard line the file starts with.
+ *
+ * @return string
+ */
+function pg_profile_flow_switch_guard()
+{
+    return "<?php exit; ?>\n";
+}
+
+/**
+ * The state the file holds, from its text, null for a file that is not
+ * one. Pure.
+ *
+ * @param string $text
+ * @return array|null status (due, running, done), ceiling, due_at,
+ *                    done_at, switched (head => flow id), failed (head =>
+ *                    reason), report (plan, profiles, stats; once done)
+ */
+function pg_profile_flow_switch_parse($text)
+{
+    $guard = pg_profile_flow_switch_guard();
+
+    if (strpos((string) $text, $guard) !== 0) {
+        return null;
+    }
+
+    $state = json_decode(substr((string) $text, strlen($guard)), true);
+
+    return (is_array($state) && in_array(($state['status'] ?? ''), array('due', 'running', 'done'), true)) ? $state : null;
+}
+
+/**
+ * The state of the conversion, null when none was marked due here.
+ *
+ * @return array|null pg_profile_flow_switch_parse()
+ */
+function pg_profile_flow_switch_state()
+{
+    $file = pg_profile_flow_switch_file();
+
+    return is_file($file) ? pg_profile_flow_switch_parse((string) @file_get_contents($file)) : null;
+}
+
+/**
+ * Writes the state: beside the file and renamed, so a cut request never
+ * leaves half of it.
+ *
+ * @param array $state
+ * @return bool
+ */
+function pg_profile_flow_switch_write($state)
+{
+    $file = pg_profile_flow_switch_file();
+    $text = pg_profile_flow_switch_guard() . json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);
+
+    if (@file_put_contents($file . '.tmp', $text) === false) {
+        return false;
+    }
+
+    return @rename($file . '.tmp', $file);
+}
+
+/**
+ * The state a conversion starts from. Pure.
+ *
+ * @param int $ceiling the highest profile id at the update
+ * @param int $now
+ * @return array
+ */
+function pg_profile_flow_switch_due($ceiling, $now)
+{
+    return array('status' => 'due', 'ceiling' => (int) $ceiling, 'due_at' => (int) $now, 'done_at' => 0,
+        'switched' => array(), 'failed' => array(), 'report' => null);
+}
+
+/**
+ * The update step's part: marks the conversion due, once. Nothing is marked
+ * when a file is there already, when a flow's start box already carries a
+ * profile (a conversion ran), or when the site has no profile; a run of the
+ * upgrade steps again never opens a second conversion.
  *
  * @param int $now
- * @return array switched (head => flow id), failed (head => reason), lines
+ * @return array marked (bool), profiles (how many the job will look at),
+ *               error ('' or why nothing could be marked)
  */
-function pg_profile_flow_switch($now)
+function pg_profile_flow_switch_mark($now)
 {
-    require_once PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_flow.php';
+    $none = array('marked' => false, 'profiles' => 0, 'error' => '');
+    $ceiling = (int) db_value("SELECT MAX(id) FROM email_campaign_profiles");
 
-    $run = pg_profile_flow_dry_run($now, pg_profile_flow_switched());
-    $switched = array();
-    $failed = array();
+    if (($ceiling <= 0) || is_file(pg_profile_flow_switch_file()) || !empty(pg_profile_flow_switched())) {
+        return $none;
+    }
+
+    if (!pg_profile_flow_switch_write(pg_profile_flow_switch_due($ceiling, $now))) {
+        return array('error' => 'data/ cannot be written') + $none;
+    }
+
+    return array('marked' => true, 'profiles' => (int) db_value("SELECT COUNT(*) FROM email_campaign_profiles"), 'error' => '');
+}
+
+/**
+ * The plan the report is drawn from once the conversion is done: the
+ * chains switched as done, a chain whose flow could not be published left
+ * with its reason, its partners naming it. Pure.
+ *
+ * @param array $plan     pg_profile_flow_convert() with the switched chains done
+ * @param array $failed   head => reason
+ * @param array $profiles id => row
+ * @return array
+ */
+function pg_profile_flow_switch_final($plan, $failed, $profiles)
+{
+    foreach ($plan['flows'] as $head => $flow) {
+        if (!isset($failed[$head])) {
+            continue;
+        }
+
+        foreach ($flow['members'] as $id) {
+            $plan['left'][$id] = ((int) $id === (int) $head) ? (string) $failed[$head]
+                : lang(array('string' => 'A profile of its chain stays: {var:1}.', 'vars' => (string) ($profiles[$head]['name'] ?? '')));
+        }
+
+        unset($plan['flows'][$head]);
+    }
+
+    return $plan;
+}
+
+/**
+ * A pass of the general job: switches the chains still to switch within the
+ * budget, one Site Log line each; with none left, writes the result and
+ * rings the administrators' bell once.
+ *
+ * @param float $budget seconds
+ * @return int chains switched in this pass
+ */
+function pg_profile_flow_switch_tick($budget)
+{
+    $state = pg_profile_flow_switch_state();
+
+    if (!is_array($state) || ($state['status'] === 'done')) {
+        return 0;
+    }
+
+    if (!is_file(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php')) {
+        return 0;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_flow.php');
+
+    if (!function_exists('ws_flows_ready') || !ws_flows_ready()) {
+        return 0;
+    }
+
+    $started = microtime(true);
+    $now = time();
+    $state['status'] = 'running';
+    $run = pg_profile_flow_dry_run($now, pg_profile_flow_switched(), (int) $state['ceiling']);
+    $turned = 0;
+    $pending = false;
 
     foreach ($run['plan']['flows'] as $head => $flow) {
+        if (isset($state['failed'][$head])) {
+            continue;
+        }
+
+        if ((microtime(true) - $started) >= (float) $budget) {
+            $pending = true;
+            break;
+        }
+
         $result = pg_profile_flow_switch_chain((int) $head, $flow);
 
         if ($result['ok']) {
-            $switched[$head] = (int) $result['flow_id'];
+            $state['switched'][$head] = (int) $result['flow_id'];
+            $turned++;
+            log_activity(lang(array('string' => 'e-mail campaign profile ({var:1}) was turned into flow #{var:2}', 'vars' => array($flow['name'], (int) $result['flow_id']))), 'UNKNOWN');
         } else {
-            $failed[$head] = (string) $result['reason'];
+            $state['failed'][$head] = (string) $result['reason'];
+            log_activity(lang(array('string' => 'e-mail campaign profile ({var:1}) could not be turned into a flow: {var:2}', 'vars' => array($flow['name'], (string) $result['reason']))), 'UNKNOWN');
         }
+
+        // Written after every chain: a pass cut short keeps what it did.
+        pg_profile_flow_switch_write($state);
     }
 
-    $lines = $run['lines'];
+    if ($pending) {
+        pg_profile_flow_switch_write($state);
 
-    foreach ($failed as $head => $reason) {
-        $lines[] = '';
-        $lines[] = lang(array('string' => '“{var:1}” could not become a flow and keeps running as a profile: {var:2}', 'vars' => array((string) $run['plan']['flows'][$head]['name'], $reason)));
+        return $turned;
     }
 
-    return array('switched' => $switched, 'failed' => $failed, 'lines' => $lines);
+    $final = pg_profile_flow_dry_run($now, pg_profile_flow_switched(), (int) $state['ceiling']);
+    $profiles = array();
+
+    foreach ($final['profiles'] as $id => $row) {
+        $profiles[$id] = array('name' => (string) $row['name'], 'action' => (string) $row['action'], 'enabled' => (int) $row['enabled'], 'purpose' => (string) $row['purpose']);
+    }
+
+    $state['status'] = 'done';
+    $state['done_at'] = time();
+    $state['report'] = array('plan' => pg_profile_flow_switch_final($final['plan'], $state['failed'], $profiles), 'profiles' => $profiles, 'stats' => $final['stats']);
+
+    if (pg_profile_flow_switch_write($state)) {
+        create_notification(array('action' => 'profile_flows', 'type' => 'info', 'title' => (string) count($state['switched']), 'user' => 'UNKNOWN'));
+    }
+
+    return $turned;
+}
+
+/**
+ * The notice of the E-mail Campaign Profiles screen: while the conversion is
+ * due or running, that it is under way; once done, "Profiles turned into
+ * flows on <date>" opening to the report (the flows made, each linked; the
+ * profiles left with their reasons), drawn in the reader's language. '' when
+ * no conversion was marked here.
+ *
+ * @param array|null $state   pg_profile_flow_switch_state()
+ * @param string     $date    the day it was done, as the reader reads it
+ * @param string[]   $actions action => its name on the screen; a key
+ *                            missing is shown as it is
+ * @return string HTML
+ */
+function pg_profile_flow_switch_notice($state, $date, $actions = array())
+{
+    if (!is_array($state)) {
+        return '';
+    }
+
+    $open = function ($tone, $icon) {
+        return '<div id="profile-flows" class="alert theme-' . $tone . ' d-flex align-items-start gap-3" role="status">'
+            . '<i class="bi ' . $icon . '" aria-hidden="true"></i><div class="flex-grow-1 min-w-0">';
+    };
+
+    if ($state['status'] !== 'done') {
+        return $open('info', 'bi-arrow-repeat')
+            . '<strong>' . h(lang('Profiles are being turned into flows')) . '</strong>'
+            . '<p class="mb-0">' . h(lang(array('string' => 'The general job turns these profiles into flows over its next runs; the report shows here when it is done. Flows made so far: {var:1}.', 'vars' => count((array) $state['switched'])))) . '</p>'
+            . '</div></div>';
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_flow.php');
+
+    $report = is_array($state['report'] ?? null) ? $state['report'] : array();
+    $plan = (array) ($report['plan'] ?? array()) + array('flows' => array(), 'left' => array(), 'orphans' => array(), 'done' => array());
+    $profiles = (array) ($report['profiles'] ?? array());
+    $made = '';
+
+    foreach ($profiles as $id => $profile) {
+        $profiles[$id]['action'] = (string) ($actions[(string) ($profile['action'] ?? '')] ?? ($profile['action'] ?? ''));
+    }
+
+    foreach ((array) $plan['done'] as $head => $flow_id) {
+        $made .= '<li><a href="workspace_flows.php?flow=' . (int) $flow_id . '">' . h((string) ($profiles[$head]['name'] ?? '')) . '</a></li>';
+    }
+
+    // The profiles left, as the dry-run report words them; its first line
+    // counts what is drawn here as two lists.
+    $left = '';
+    $lines = pg_profile_flow_report_lines(array('flows' => array(), 'left' => $plan['left'], 'done' => array()), $profiles, (array) ($report['stats'] ?? array()));
+
+    foreach (array_slice($lines, 1) as $line) {
+        if (trim($line) === '') {
+            continue;
+        }
+
+        // An indented line (a profile's counts) sits under its name.
+        $under = (strlen($line) > strlen(ltrim($line)));
+        $left .= '<div' . ($under ? ' class="ps-3 fg-secondary"' : '') . '>' . h(trim($line)) . '</div>';
+    }
+
+    return $open('success', 'bi-diagram-3')
+        . '<strong>' . h(lang(array('string' => 'Profiles turned into flows on {var:1}', 'vars' => $date))) . '</strong>'
+        . '<details class="mt-2"><summary>' . h(lang(array('string' => 'Flows made: {var:1}; profiles left: {var:2}', 'vars' => array(count((array) $plan['done']), count((array) $plan['left']))))) . '</summary>'
+        . (($made !== '') ? '<h3 class="h6 mt-3">' . h(lang('Flows made')) . '</h3><ul class="mb-0">' . $made . '</ul>' : '')
+        . (($left !== '') ? '<h3 class="h6 mt-3">' . h(lang('Profiles left')) . '</h3>' . $left : '')
+        . '</details></div></div>';
 }

@@ -1001,6 +1001,14 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
         return ws_step_agent_check($viewer, $config);
     }
 
+    // An e-mail to the person of the run's record has no address until it
+    // runs (ws_flow_mail_person()): the rest of it is checked now with a
+    // stand-in address, the person as the box runs, where the run has put
+    // their address in before this check.
+    if (($kind === 'email') && (($config['recipient'] ?? '') === 'record_person') && (trim((string) ($config['to'] ?? '')) === '')) {
+        $config['to'] = 'person@example.com';
+    }
+
     // A change box whose record is a value of its run names no record
     // until it runs: the rest of the change is checked now, the record as
     // the box runs (ws_step_change_id()).

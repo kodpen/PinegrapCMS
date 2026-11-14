@@ -1116,6 +1116,16 @@ if (
 
 }
 
+// E-mail campaign profiles turned into flows (includes/fn/campaign_profile_switch.php):
+// the update marks the conversion due in a file of data/, and each tick
+// switches the chains it can within its budget, the Workspace on or off. With
+// nothing due, or the conversion done, it is one small file read.
+require_once(dirname(__FILE__) . '/includes/fn/campaign_profile_switch.php');
+
+if (is_file(pg_profile_flow_switch_file())) {
+    pg_profile_flow_switch_tick(pg_cron_time_left(20));
+}
+
 // Workspace mailboxes read over IMAP (includes/workspace/mail_fetch.php), on
 // every tick for the same reason as the scheduled actions above: the
 // dispatcher's rotation would leave a customer's mail waiting its turn. One

@@ -2384,6 +2384,7 @@
     "“We saw six houses in one morning and Leyla had checked every title deed before we asked.”": "“Bir sabahta altı ev gezdik; Leyla biz sormadan her tapuyu kontrol etmişti.”",
     "“{var:1}” ({var:2}) becomes a flow, {var:3}": "“{var:1}” ({var:2}) bir akış olur, {var:3}",
     "“{var:1}” ({var:2}, {var:3}) stays a profile: {var:4}": "“{var:1}” ({var:2}, {var:3}) profil olarak kalır: {var:4}",
+    "“{var:1}” became flow #{var:2}": "“{var:1}” #{var:2} numaralı akış oldu",
     "“{var:1}” could not become a flow and keeps running as a profile: {var:2}": "“{var:1}” akışa dönüştürülemedi ve profil olarak çalışmaya devam ediyor: {var:2}",
     "“{var:1}” from the box “{var:2}”": "“{var:2}” kutusundan “{var:1}”",
     "“{var:1}” is already flow #{var:2}": "“{var:1}” zaten #{var:2} numaralı akış",

@@ -1340,6 +1340,14 @@ function ws_scheduled_rule_input($viewer, $rule)
                 $out['channel_id'] = $event_channel;
             }
 
+            // A flow an e-mail campaign profile became keeps the profile and
+            // the second it was switched off (ws_flow_anchor_normalize()),
+            // read by ws_events_start() around that second.
+            if (((int) ($rule['profile_id'] ?? 0) > 0) && ((int) ($rule['switched_at'] ?? 0) > 0)) {
+                $out['profile_id'] = (int) $rule['profile_id'];
+                $out['switched_at'] = (int) $rule['switched_at'];
+            }
+
             return array('ok' => true, 'error' => '', 'rule' => $out);
 
         case 'workday':
