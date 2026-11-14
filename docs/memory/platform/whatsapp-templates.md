@@ -29,4 +29,4 @@ module: whatsapp
 ## How was it verified?
 - `tests/whatsapp_templates_test.php` (request, parse, plan, due, labels, wiring). No database and no Meta account in the cloud session.
 
-Related: docs/memory/platform/whatsapp-outbox-queue.md, docs/memory/platform/whatsapp-cloud-api-facts.md, docs/memory/plans/whatsapp-channel-storage.md
+Related: docs/memory/platform/whatsapp-outbox-queue.md, docs/memory/platform/whatsapp-cloud-api-facts.md, docs/memory/workflow/decisions-made-schema-17.md

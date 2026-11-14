@@ -8,8 +8,8 @@ description: tools/merge_train.php (#2002): --start (the lock), --list (train or
 - `--list`: open, non-draft PRs to `development`, not from a fork ([[merge-train-forks]]), that no open train carries (its title's `#n` and its merge commits' `(#n)`), green on their head and labelled `ready` or quiet for an hour (the first check run's start). Printed as docs-only PRs landing alone, the train and a later train, in the order and limits of [[merge-train-order]].
   - Green: every check run completed as success, neutral or skipped, but the channel report jobs of [[merge-train]], which move no time either.
 - `--build [<n> …] [--no-push]`: on the current train branch (clean tree, no merge open, identity Erdal Güral), each PR (the `--list` train when none is named): `git fetch origin refs/pull/<n>/head`, skipped when already in the branch, `git merge --no-ff --no-commit`, conflicts settled, changelog written, `git commit -m "<title> (#n)"`.
-  - After the last one, `php tools/memory_index.php`, any change committed as "Regenerate the memory indexes" (`tools/check_pr.php` keeps the lists out of PRs). Then `git push -u origin <train>` and the draft PR "Merge train <time>: #a #b" opened, or retitled.
-- `--indexes`: the same regeneration for a PR landing alone, before the fast-forward (PR Merge, 2854).
+  - After the last one, `php tools/memory_index.php`, a change committed as "Regenerate the memory indexes", then `build_js.php` and `build_css.php` as "Rebuild the bundles" (PR Merge, 2963): PRs carry neither. Then `git push -u origin <train>` and the draft PR "Merge train <time>: #a #b" opened, or retitled.
+- `--indexes`: the same two commits for a PR landing alone, before the fast-forward (PR Merge, 2854).
 - `--land`: HEAD must be the pushed `origin/<train>`, `origin/development` its ancestor and its check runs green; then `git push origin <sha>:refs/heads/development`, a fast-forward ([[merge-train-landing]]).
 
 ## Which conflicts does it settle?
@@ -18,8 +18,8 @@ description: tools/merge_train.php (#2002): --start (the lock), --list (train or
 
 ## How is changelog.txt written?
 - From the `## Changelog` section of the PR body (any heading level, up to the next heading): every `[NEW] Added …` (up to a backtick or the line end) goes after the open version's `[NEW]` lines; a mention of `[FIX]` or `[SECURITY]` adds that catch-all line once; a section starting with "none" adds only those. Order kept: `[NEW]`, `[FIX]`, `[SECURITY]`, `[SCHEME]` (`release/upgrade-changelog-rules.md`).
-- A `[SCHEME]` item stops the run with the merge open: the version's one `[SCHEME]` sentence is widened by hand, then commit and `--build` again. Only an item under a `Changelog` heading stops it (#2095 named it elsewhere and went through), so a train touching `includes/migrations/` is checked for the sentence before CI.
+- A `[SCHEME]` item stops the run with the merge open: the version's one `[SCHEME]` sentence is widened by hand, then commit and `--build` again. Only an item under a `Changelog` heading stops it (#2095): a train touching `includes/migrations/` is checked for the sentence before CI.
 
 ## What does it not do?
-- Review (`merge-review.md`), the PR body cleanup and footer (`pr-footer-and-trailers.md`), a bot PR's `--squash` merge and closing comment, landing a docs-only PR alone ([[merge-train]]). It pushes only its train branch and, in `--land`, `development`; GitHub goes through `gh api` (REST).
+- Review (`merge-review.md`), the PR body cleanup (`pr-footer-and-trailers.md`), a bot PR's `--squash` merge, landing a docs-only PR alone ([[merge-train]]). It pushes only its train branch and, in `--land`, `development`; GitHub goes through `gh api` (REST).
 - The pure parts (order, eligibility, product lines, the changelog parser and writer, the union of a conflict, Windows quoting: `merge_train_windows_arg()` since #2193, as `escapeshellarg()` there turns `%`, `!` and `"` into spaces) are tested in `tests/merge_train_test.php`, product lines and quoting against `check_pr.php` (`branch-guards.md`).

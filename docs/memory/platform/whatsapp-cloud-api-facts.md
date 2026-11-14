@@ -33,4 +33,4 @@ description: Meta's WhatsApp Cloud API on 2026-11-12: Graph version, ids and per
 - A header sample goes through the Resumable Upload API (`/<app id>/uploads`: needs the App ID); message media through `POST /<phone id>/media`: JPEG/PNG 5 MB, MP4/3GPP 16 MB, document 100 MB; ids last 30 days.
 - Unique users reached outside windows in 24 h, per business portfolio: 250 new, 2,000 once verified, then automatic. 80 messages a second per number (130429).
 
-Related: docs/memory/platform/whatsapp-cloud-api-webhooks.md, docs/memory/plans/whatsapp-channel.md
+Related: docs/memory/platform/whatsapp-cloud-api-webhooks.md, docs/memory/platform/whatsapp-overview.md

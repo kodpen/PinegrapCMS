@@ -14,7 +14,7 @@ description: Decisions list, workspace part 23 (2026-11-13 on): missing-domain m
 ## Who can be answered by SMS from a channel? (owner, 2026-11-13, #9286)
 - Only the conversation's number, within 7 days of its last SMS, as a transactional kind of its own (`reply`); no consent is asked, since it answers what the customer wrote.
 - Owner (2026-11-13), asked "Kanaldan SMS ile yanıt kime gidebilsin?": "Yazana, 7 gün içinde (Önerilen)". Not chosen: only to a number with SMS marketing consent; no SMS answer at all.
-- Step WA12 of `plans/whatsapp-channel` asked; where the conversation is kept: `decisions-made-schema-18.md`.
+- Step WA12 of the plan `whatsapp-channel` asked; where the conversation is kept: `decisions-made-schema-18.md`.
 
 ## What does a stop word received by SMS or WhatsApp do? (owner, 2026-11-13, #9286)
 - STOP, IPTAL, RET, DUR and the others write an SMS, and so WhatsApp, marketing refusal to the consent log and İYS.

@@ -6,7 +6,7 @@ description: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, 
 ## What does it check?
 - On the commits of a branch that `origin/development` does not reach: no `Co-Authored-By:` or `Claude-Session:` line (any case, at the start of a line), author `Erdal Güral <erdaltyy@gmail.com>` (name and address exactly), committer the same or `GitHub <noreply@github.com>`.
 - On the change since the merge base: no change of any kind to `pinegrap/data/config.php` (edit, deletion, mode, rename to or from it; the diff is `--no-renames`), whose tracked content stays `<?php ?>`; no edit to `pinegrap/changelog.txt` (`working-mode.md`); above 1,000 product lines (under `pinegrap/`, `.min.js` and `includes/local/` not counted) a warning annotation, never a failure (`working-mode.md`, PR size).
-- No change to a memory list `memory_index.php` generates but inside a README's key rules (`check_pr_memory_list()`): the landing writes them.
+- No change to a memory list `memory_index.php` generates but inside a README's key rules, nor to a built bundle (`check_pr_bundles()`): the landing writes them.
 - Why config.php (#2386, PR #2845): a sandbox's generated config.php (database login, `ENCRYPTION_KEY`) was committed in #2342; `tools/setup_sandbox.sh` marks the file skip-worktree, which is local only, so the check backs it up.
 - Why the rest: on 2026-10-26 a PR was sent back because a merge commit carried Claude's default author; the rules were text only and broke (#1878).
 
