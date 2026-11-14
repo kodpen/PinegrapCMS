@@ -3841,6 +3841,7 @@
     "The file is in the press kit.": "Dosya basın kitinde.",
     "The file is large; only its first part was counted. The import reads all of it.": "Dosya büyük; yalnızca ilk kısmı sayıldı. İçe aktarma dosyanın tamamını okur.",
     "The file is larger than 1 MB. Please upload it in parts.": "Dosya 1 MB'tan büyük. Lütfen parçalar halinde yükleyin.",
+    "The file is larger than 1 MB: fetch its bytes from GET /workspace/messages/{id}/file.": "Dosya 1 MB'tan büyük: baytlarını GET /workspace/messages/{id}/file ile alın.",
     "The file is larger than 5 MB.": "Dosya 5 MB'tan büyük.",
     "The file is larger than an upload may be.": "Dosya, bir yüklemenin olabileceğinden büyük.",
     "The file is larger than the server accepts.": "Dosya sunucunun kabul ettiğinden büyük.",

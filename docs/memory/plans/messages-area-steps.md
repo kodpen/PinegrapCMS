@@ -35,4 +35,4 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - The shell, the doors and the tabs so far: `ui/messages-area-shell.md`, `ui/messages-area-campaigns-tab.md`.
 
 ## What is asked of the owner along the way?
-- The dry-run report on a real site's profiles before the update step (MA9e) lands.
+- The dry-run report on a real site's profiles before the update step (MA9e2) lands.

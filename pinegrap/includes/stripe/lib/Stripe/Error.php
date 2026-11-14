@@ -2,6 +2,10 @@
 
 class Stripe_Error extends Exception
 {
+  public $httpStatus;
+  public $httpBody;
+  public $jsonBody;
+
   public function __construct($message, $httpStatus=null,
       $httpBody=null, $jsonBody=null
   )

@@ -254,17 +254,18 @@ function pg_profile_flow_chains($profiles)
 }
 
 /**
- * Who owns the flow a chain becomes: the head's creator while on the staff
- * and holding the start's right, else the first active administrator. Pure.
+ * Who owns the flow a chain becomes: the head's creator while an
+ * administrator, or on the staff and holding the start's right, else the
+ * first active administrator. Pure.
  *
- * @param array|null $creator  id, name, staff (bool), right (bool); null
- *                             when the account is gone
+ * @param array|null $creator  id, name, admin (bool, role 0), staff (bool),
+ *                             right (bool); null when the account is gone
  * @param array      $admin    id, name of the first active administrator
  * @return array id, name, changed (bool), reason ('' when the creator keeps it)
  */
 function pg_profile_flow_owner($creator, $admin)
 {
-    if (is_array($creator) && !empty($creator['staff']) && !empty($creator['right'])) {
+    if (is_array($creator) && (!empty($creator['admin']) || (!empty($creator['staff']) && !empty($creator['right'])))) {
         return array('id' => (int) $creator['id'], 'name' => (string) $creator['name'], 'changed' => false, 'reason' => '');
     }
 
@@ -469,10 +470,13 @@ function pg_profile_flow_convert($profiles, $facts)
 /**
  * One line in words of a box of a converted flow. Pure.
  *
- * @param array $node a graph node
+ * @param array    $node   a graph node
+ * @param string[] $events event key => the name the flow screen shows for it
+ *                         (ws_events_catalog() label); a key missing is
+ *                         shown as it is
  * @return string
  */
-function pg_profile_flow_box_line($node)
+function pg_profile_flow_box_line($node, $events = array())
 {
     $config = $node['config'];
 
@@ -481,15 +485,16 @@ function pg_profile_flow_box_line($node)
             $filter = ((int) $config['page_id'] > 0) ? ' · ' . lang(array('string' => 'form #{var:1}', 'vars' => (int) $config['page_id']))
                 : (($config['status'] !== '') ? ' · ' . lang(array('string' => 'contact group #{var:1}', 'vars' => $config['status'])) : '');
 
-            return lang(array('string' => 'When something happens: {var:1}', 'vars' => $config['event'])) . $filter;
+            return lang(array('string' => 'When something happens: {var:1}', 'vars' => (string) ($events[$config['event']] ?? $config['event']))) . $filter;
 
         case 'condition':
             return lang(array('string' => 'Condition: {var:1} {var:2} {var:3}', 'vars' => array($config['rule']['ref'], $config['rule']['op'], $config['rule']['value'])));
 
         case 'delay':
+            $length = pg_profile_flow_length_text($config['amount'], $config['unit']);
             $line = ($config['mode'] === 'until')
-                ? lang(array('string' => 'Wait until {var:1} less {var:2} {var:3}; if it has passed, end the run', 'vars' => array($config['at'], $config['amount'], $config['unit'])))
-                : lang(array('string' => 'Wait {var:1} {var:2}', 'vars' => array($config['amount'], $config['unit'])));
+                ? lang(array('string' => 'Wait until {var:1} less {var:2}; if it has passed, end the run', 'vars' => array($config['at'], $length)))
+                : lang(array('string' => 'Wait {var:1}', 'vars' => $length));
 
             return $line . (($config['time'] !== '') ? ' · ' . lang(array('string' => 'then at {var:1}', 'vars' => $config['time'])) : '');
 
@@ -505,6 +510,25 @@ function pg_profile_flow_box_line($node)
 }
 
 /**
+ * A Wait box's length in words, in the forms the flow screen uses: "1 day",
+ * "3 days", "1 hour", "5 hours". Pure.
+ *
+ * @param int    $amount
+ * @param string $unit   days or hours
+ * @return string
+ */
+function pg_profile_flow_length_text($amount, $unit)
+{
+    $amount = (int) $amount;
+
+    if ($unit === 'hours') {
+        return ($amount === 1) ? lang('1 hour') : lang(array('string' => '{var:1} hours', 'vars' => $amount));
+    }
+
+    return ($amount === 1) ? lang('1 day') : lang(array('string' => '{var:1} days', 'vars' => $amount));
+}
+
+/**
  * The dry-run report as lines of text: per flow its name and state, owner,
  * boxes and counts; per profile left its name, action, state and reason with
  * its counts. Pure.
@@ -512,9 +536,11 @@ function pg_profile_flow_box_line($node)
  * @param array $plan     pg_profile_flow_convert()
  * @param array $profiles id => row
  * @param array $stats    id => made, busiest, waiting, no_contact (marketing)
+ * @param array $events   event key => its name on the flow screen
+ *                        (pg_profile_flow_box_line())
  * @return string[]
  */
-function pg_profile_flow_report_lines($plan, $profiles, $stats)
+function pg_profile_flow_report_lines($plan, $profiles, $stats, $events = array())
 {
     $counts = function ($id) use ($stats, $profiles) {
         $row = $stats[$id] ?? array();
@@ -537,7 +563,7 @@ function pg_profile_flow_report_lines($plan, $profiles, $stats)
         $lines[] = '  ' . lang(array('string' => 'Owner: {var:1}', 'vars' => $flow['owner']['name'])) . ($flow['owner']['changed'] ? ' (' . $flow['owner']['reason'] . ')' : '');
 
         foreach ($flow['graph']['nodes'] as $node) {
-            $lines[] = '  - ' . pg_profile_flow_box_line($node);
+            $lines[] = '  - ' . pg_profile_flow_box_line($node, $events);
         }
 
         foreach ($flow['members'] as $id) {
@@ -568,7 +594,7 @@ function pg_profile_flow_report_lines($plan, $profiles, $stats)
 function pg_profile_flow_facts($profiles, $now)
 {
     $since = (int) $now - 30 * 86400;
-    $facts = array('texts' => array(), 'stats' => array(), 'outputs' => array(), 'owners' => array(), 'limits' => array(
+    $facts = array('texts' => array(), 'stats' => array(), 'outputs' => array(), 'owners' => array(), 'events' => array(), 'limits' => array(
         'delay_max'     => WS_FLOW_DELAY_MAX,
         'max_nodes'     => WS_FLOW_MAX_NODES,
         'starts_hourly' => min(WS_FLOW_STARTS_HOURLY, WS_SCHEDULED_CHAIN_HOURLY),
@@ -602,6 +628,8 @@ function pg_profile_flow_facts($profiles, $now)
             continue;
         }
 
+        $facts['events'][$event] = (string) ($catalog[$event]['label'] ?? $event);
+
         if (!isset($facts['outputs'][$event])) {
             $facts['outputs'][$event] = array_map(function ($output) {
                 return (string) $output['key'];
@@ -610,8 +638,12 @@ function pg_profile_flow_facts($profiles, $now)
 
         $user = db_item("SELECT user_id AS id, user_username AS name, user_role AS role FROM user WHERE user_id = '" . (int) $profile['created_user_id'] . "'" . pg_user_enabled_sql());
         $right = (string) ($catalog[$event]['right'] ?? '');
-        $creator = is_array($user) ? array('id' => (int) $user['id'], 'name' => (string) $user['name'], 'staff' => ((int) $user['role'] <= 2),
-            'right' => ($right !== '') && !empty(ws_rights_for_id((int) $user['id'])[$right])) : null;
+        // The start's right is a module right (ecommerce, contacts, forms,
+        // calendars, ...): ws_viewer() holds those, ws_rights() only the
+        // workspace's own.
+        $viewer = is_array($user) ? ws_change_viewer_for_id((int) $user['id']) : null;
+        $creator = is_array($user) ? array('id' => (int) $user['id'], 'name' => (string) $user['name'], 'admin' => ((int) $user['role'] === 0),
+            'staff' => ((int) $user['role'] <= 2), 'right' => ($right !== '') && !empty($viewer[$right])) : null;
         $facts['owners'][$id] = pg_profile_flow_owner($creator, is_array($admin) ? $admin : array());
     }
 
@@ -642,5 +674,5 @@ function pg_profile_flow_dry_run($now)
     $facts = pg_profile_flow_facts($profiles, $now);
     $plan = pg_profile_flow_convert($profiles, $facts);
 
-    return array('plan' => $plan, 'lines' => pg_profile_flow_report_lines($plan, $profiles, $facts['stats']));
+    return array('plan' => $plan, 'lines' => pg_profile_flow_report_lines($plan, $profiles, $facts['stats'], $facts['events']));
 }

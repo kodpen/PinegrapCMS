@@ -15,12 +15,13 @@ description: includes/iyzipay-php (iyzico SDK 2.0.59, asks for PHP 7.4) patched 
 
 ## What was left as shipped?
 - Classes the product never loads: the `object` parameter of 7 other mappers (subscription list and customer delete, plus installment payment and resource, C2C sub-merchant, scroll transactions, Iyzilink product search) and the covariant return type of `PlusInstallmentPaymentMapper::create()` (fatal on 7.1-7.3 when loaded). Patch them the same way before a driver uses them.
-- PHP 8.4/8.5 deprecations (implicitly nullable parameters in `IyzipayResource`, `JsonBuilder`, `RequestStringBuilder`, `IyziAuthV2Generator`; `curl_close()` in `Curl.php`): hidden by init.php's error_reporting, let through by the test runner. A test that sets its own error handler around SDK code collects only warnings and notices and passes the rest to the runner's handler (`tests/iyzipay_installment_table_test.php`); collecting every level failed it on 8.4+ only (#4151).
+- The PHP 8.4/8.5 deprecations of the SDK's loaded code are patched too: `iyzipay-sdk-php85-patch.md`.
+- A test that sets its own error handler around SDK code collects only warnings and notices and passes the rest to the runner's handler (`tests/iyzipay_installment_table_test.php`); collecting every level failed it on 8.4+ only (#4151).
 
 ## What does an SDK update need?
-- Both changes again; `test_payment_iyzico_sdk_keeps_to_php_7_1` (tests/payment_iyzico_test.php) fails until they are in. Then on PHP 7.1: `php -l` on every file, phpcs with PHPCompatibility and `--runtime-set testVersion 7.1-` on the folder (tools/static_analysis.sh fetches both), and every class the drivers use loaded once.
+- Both changes again, and those of `iyzipay-sdk-php85-patch.md`; `test_payment_iyzico_sdk_keeps_to_php_7_1` (tests/payment_iyzico_test.php) fails until they are in. Then on PHP 7.1: `php -l` on every file, phpcs with PHPCompatibility and `--runtime-set testVersion 7.1-` on the folder (tools/static_analysis.sh fetches both), and every class the drivers use loaded once.
 
 ## How was it verified?
 - PHP 7.1, 7.2, 7.3, 7.4, 8.3 and 8.5: the refund's request body and the mapped answer (success, refusal, cURL body, `{}`, HTML page, empty, `null`, array, number) are the same on all; the payment tests pass on 7.1, 7.2, 7.3, 8.3 and 8.5. No iyzico sandbox was used.
 
-Related: docs/memory/commerce/payment-driver-iyzico.md, docs/memory/commerce/payment-unclear-answers.md, docs/memory/core/file-header-and-embedded-libraries.md
+Related: docs/memory/commerce/iyzipay-sdk-php85-patch.md, docs/memory/commerce/payment-driver-iyzico.md, docs/memory/commerce/payment-unclear-answers.md, docs/memory/core/file-header-and-embedded-libraries.md

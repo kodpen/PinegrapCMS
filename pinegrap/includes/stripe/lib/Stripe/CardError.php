@@ -2,6 +2,8 @@
 
 class Stripe_CardError extends Stripe_Error
 {
+  public $param;
+
   public function __construct($message, $param, $code, $httpStatus, 
       $httpBody, $jsonBody
   )

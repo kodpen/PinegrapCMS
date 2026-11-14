@@ -2,6 +2,8 @@
 
 class Stripe_InvalidRequestError extends Stripe_Error
 {
+  public $param;
+
   public function __construct($message, $param, $httpStatus=null,
       $httpBody=null, $jsonBody=null
   )

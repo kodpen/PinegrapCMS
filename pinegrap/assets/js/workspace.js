@@ -6371,6 +6371,19 @@
     // What the feature files draw with (workspace_approvals.js,
     // workspace_acks.js, workspace_voice.js): the screen's own helpers, so
     // their parts look like the rest of it.
+    // A plan item's form: a new one with defaults (id 0), or the saved one
+    // read first; done() after a save.
+    function featurePlanItem(eventId, defaults, done) {
+        if (!eventId) {
+            eventForm(null, defaults || {}, done);
+            return;
+        }
+
+        api('ws_event_get', { event_id: eventId }).then(function (result) {
+            eventForm(result.event, {}, done);
+        }).catch(fail);
+    }
+
     function featureHelpers() {
         return {
             api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, avatarStack: avatarStack, clear: clear,
@@ -6378,7 +6391,16 @@
             formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
             richField: richField, peoplePicker: peoplePicker, touchScreen: touchScreen,
             cfg: CFG, dateField: pgDateField,
-            openTask: function (taskId) { taskDrawer.open(taskId, null, taskDrawer.onSaved); }
+            openTask: function (taskId) { taskDrawer.open(taskId, null, taskDrawer.onSaved); },
+            // The task drawer and the plan item form, each calling done()
+            // after a save, for a screen that draws them again (My calendar).
+            taskDrawer: function (taskId, defaults, done) { taskDrawer.open(taskId, defaults || null, done); },
+            planItem: featurePlanItem,
+            statusName: function (status) { return BOOT.statuses[status] || ''; },
+            dmy: dmy,
+            calendarLanes: calendarLanes,
+            pressKeys: pressKeys,
+            onContext: onContext
         };
     }
 
@@ -20327,6 +20349,35 @@
     // Month calendar
     // ═══════════════════════════════════════════════════════════════════
 
+    // The tasks running across days (span_start, span_end) that touch one
+    // week of a calendar grid, each given a lane so its pieces line up into
+    // one bar: the earliest and longest first, a lane reused once free.
+    function calendarLanes(spans, weekFrom, weekTo) {
+        var lanes = [];
+
+        spans.filter(function (task) {
+            return task.span_start <= weekTo && task.span_end >= weekFrom;
+        }).sort(function (a, b) {
+            return a.span_start < b.span_start ? -1 : (a.span_start > b.span_start ? 1 : (a.span_end > b.span_end ? -1 : (a.span_end < b.span_end ? 1 : a.id - b.id)));
+        }).forEach(function (task) {
+            var from = task.span_start < weekFrom ? weekFrom : task.span_start;
+            var lane = 0;
+
+            while (lane < lanes.length && lanes[lane].end >= from) {
+                lane++;
+            }
+
+            if (lane === lanes.length) {
+                lanes.push({ end: '', tasks: [] });
+            }
+
+            lanes[lane].end = task.span_end;
+            lanes[lane].tasks.push(task);
+        });
+
+        return lanes;
+    }
+
     function startCalendar(root) {
         clear(root);
 
@@ -20537,31 +20588,7 @@
             data.weeks.forEach(function (week) {
                 // The tasks that run across days, each given a lane of its
                 // own for the week so its pieces line up into one bar.
-                var weekFrom = week[0].date;
-                var weekTo = week[week.length - 1].date;
-                var lanes = [];
-
-                if (state.show.tasks) {
-                    (data.spans || []).filter(function (task) {
-                        return task.span_start <= weekTo && task.span_end >= weekFrom && taskShown(task);
-                    }).sort(function (a, b) {
-                        return a.span_start < b.span_start ? -1 : (a.span_start > b.span_start ? 1 : (a.span_end > b.span_end ? -1 : (a.span_end < b.span_end ? 1 : a.id - b.id)));
-                    }).forEach(function (task) {
-                        var from = task.span_start < weekFrom ? weekFrom : task.span_start;
-                        var lane = 0;
-
-                        while (lane < lanes.length && lanes[lane].end >= from) {
-                            lane++;
-                        }
-
-                        if (lane === lanes.length) {
-                            lanes.push({ end: '', tasks: [] });
-                        }
-
-                        lanes[lane].end = task.span_end;
-                        lanes[lane].tasks.push(task);
-                    });
-                }
+                var lanes = state.show.tasks ? calendarLanes((data.spans || []).filter(taskShown), week[0].date, week[week.length - 1].date) : [];
 
                 week.forEach(function (day, column) {
                     var cell = el('div', 'ws-cal-day' + (day.in_month ? '' : ' ws-cal-out') + (day.today ? ' ws-cal-today' : '') + (day.weekend ? ' ws-cal-weekend' : ''));
@@ -26749,6 +26776,9 @@
                 startBoard(root);
             } else if (CFG.mode === 'calendar' && root) {
                 startCalendar(root);
+            } else if (CFG.mode === 'my_calendar' && root && window.PGWsMyCalendar) {
+                // The reader's own calendar (workspace_my_calendar.js).
+                window.PGWsMyCalendar.screen(root, featureHelpers());
             } else if (CFG.mode === 'timeline' && root) {
                 startTimeline(root);
             } else if (CFG.mode === 'notes' && root) {

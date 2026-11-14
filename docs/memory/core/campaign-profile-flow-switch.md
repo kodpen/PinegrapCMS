@@ -13,7 +13,7 @@ description: How e-mail campaign profiles become flows with no mail lost or sent
 - An automatic campaign a profile made is a whole `email_campaigns` row (body, time, recipient): the campaign job sends it as today, the flow never takes it.
 - Its follow-ups still come from the follower profiles: they stay enabled after the switch and fire only on campaigns made before it (the head makes no more). A job pass turns a follower off once no ready or paused campaign of a profile above it is left.
 
-## The switch moment? (decided; step MA9e)
+## The switch moment? (decided; step MA9e2)
 - Per chain, one request: the flow is published; the head is turned off by `UPDATE email_campaign_profiles SET enabled = 0 WHERE id = ? AND enabled = 1` (its affected row says this run did it) at second S; the flow's event start box keeps `profile_id` and `switched_at` = S in its settings (no column).
 - A `ws_events_in` row created before S − 60 s never starts that flow: the profile served its action. After S + 60 s it always does. In between it starts only when the profile made no automatic campaign to the event's person from the event's second less 60 s on (`email_campaigns.email_campaign_profile_id`, its recipient).
 - Why the window: one request may run `create_auto_email_campaigns()` before or after `pg_event_record()` (a booking announces first, an order calls the profiles first), so a boundary on either alone loses or doubles the mail of a request caught at S.
