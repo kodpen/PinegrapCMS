@@ -20,4 +20,12 @@ module: picker
 - `pg_user_list_start_page_cell()` (`includes/fn/user_list.php`, pure): the page name, nothing for 0, a muted italic "Deleted page" with the id in its title for an older dangling id.
 - Its quick edit cell stays closed for such a row (the stored page is not among the choices).
 
+## What do the other screens show for a gone id?
+- Designer page pickers (`_swMissingPageOption()`): "Loading…" until the full page list arrives, then "Deleted page" for an id with no page; a binned page keeps its name with "(deleted)". A page with no name is "Untitled page", never `#id`.
+- Workspace scheduled action summary: "E-mail a deleted page to …". Record revision history: a gone file is "Deleted file".
+
+## What is left for a follow-up?
+- `#id` fallbacks for a nameless record: designer form labels (`_swFormLabels`), shared component usage (`_sharedUsageText`, `designer_screen.php` usage cell), Workspace proposal header (`workspace.js`), File Manager page and file usage rows.
+- `select_page()` lists (picker fields off, product builder): a stored id that is gone has no option, so a save writes the empty one.
+
 Tests: `tests/picker_test.php`, `tests/page_home_test.php`, `tests/user_list_test.php`, `tests/page_form_page_fields_test.php`.

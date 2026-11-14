@@ -2531,8 +2531,11 @@ function ws_scheduled_action_text($viewer, $action)
             if ((int) $action['page_id'] > 0) {
                 $page = db_item("SELECT page_name FROM page WHERE page_id = '" . (int) $action['page_id'] . "'");
 
-                return lang(array('string' => 'E-mail the page {var:1} to {var:2}', 'vars' => array(
-                    is_array($page) ? '“' . $page['page_name'] . '”' : '#' . (int) $action['page_id'], $to)));
+                if (!is_array($page)) {
+                    return lang(array('string' => 'E-mail a deleted page to {var:1}', 'vars' => $to));
+                }
+
+                return lang(array('string' => 'E-mail the page {var:1} to {var:2}', 'vars' => array('“' . $page['page_name'] . '”', $to)));
             }
 
             return lang(array('string' => 'E-mail “{var:1}” to {var:2}', 'vars' => array($action['subject'], $to)));

@@ -704,7 +704,7 @@ function pg_record_revision_value_text($list, $file_names)
     foreach ((array) $list as $value) {
         if (is_array($value)) {
             $file_id = isset($value['file_id']) ? (int) $value['file_id'] : 0;
-            $parts[] = isset($file_names[$file_id]) ? (string) $file_names[$file_id] : '#' . $file_id;
+            $parts[] = isset($file_names[$file_id]) ? (string) $file_names[$file_id] : lang('Deleted file');
             continue;
         }
 

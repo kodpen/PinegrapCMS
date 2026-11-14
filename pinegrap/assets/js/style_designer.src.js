@@ -59772,7 +59772,7 @@ const StyleDesigner = (function () {
             if (!has) {
                 var opt = document.createElement('option');
                 opt.value = val;
-                opt.textContent = item.text || ('#' + val);
+                opt.textContent = item.text || _sdT('Untitled page');
                 sel.appendChild(opt);
             }
             sel.value = val;
@@ -59823,7 +59823,7 @@ const StyleDesigner = (function () {
                 var binned = _swPageBinned(p);
                 if (binned && String(pid) !== cur) return;
                 listed[String(pid)] = true;
-                var lbl = p.page_name || ('#' + pid);
+                var lbl = p.page_name || _sdT('Untitled page');
                 var pt  = (p.page_title && ('' + p.page_title).trim()) ? ('' + p.page_title).trim() : '';
                 if (pt && pt !== lbl) lbl += ' — ' + pt;
                 if (binned) lbl += ' ' + _sdT('(deleted)');
@@ -59906,16 +59906,22 @@ const StyleDesigner = (function () {
         var tab = null, hit = null;
         ((typeof _pages !== 'undefined' && _pages) ? _pages : []).forEach(function (p) { if (String(p.page_id) === cur) tab = p; });
         if (tab) {
-            return '<option value="' + esc(cur) + '" selected>' + esc((tab.page_name || ('#' + cur)) + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
+            return '<option value="' + esc(cur) + '" selected>' + esc((tab.page_name || _sdT('Untitled page')) + ' ' + _sdT('(incompatible — choose again)')) + '</option>';
         }
         if (_allPagesCache) {
             _allPagesCache.forEach(function (p) { if (String(parseInt(p.page_id, 10)) === cur) hit = p; });
         } else {
             _fetchAllPages(function () { renderProperties(); });
         }
-        var lbl = (hit && hit.page_name) ? hit.page_name : ('#' + cur);
-        if (_allPagesCache) {
-            lbl += ' ' + ((!hit || _swPageBinned(hit)) ? _sdT('(deleted)') : _sdT('(incompatible — choose again)'));
+        // A page with no row left is never told by its bare id: the full
+        // list may not have arrived yet, or it holds no such page.
+        var lbl;
+        if (!_allPagesCache) {
+            lbl = _sdT('Loading…');
+        } else if (!hit) {
+            lbl = _sdT('Deleted page');
+        } else {
+            lbl = (hit.page_name || _sdT('Deleted page')) + ' ' + (_swPageBinned(hit) ? _sdT('(deleted)') : _sdT('(incompatible — choose again)'));
         }
         return '<option value="' + esc(cur) + '" selected>' + esc(lbl) + '</option>';
     }
