@@ -19,6 +19,7 @@ description: A person's own calendar layers as a whole: own iCal calendars and o
 - A plan made for a customer (the card's Roadmaps, "New roadmap", history, merge and erasure): `workspace-personal-plan-customer.md`.
 - A contact's data export of whole-team plans: `workspace-personal-plan-export.md`.
 - "Add to my calendar" on a mail and invitations: `workspace-personal-plan-mail.md`.
+- Repeating plans (Repeat, This one / This and the following, a reminder each time): `workspace-personal-plan-repeat.md`.
 - The external API and MCP: `workspace-personal-plans-api.md`.
 - Own iCal calendars: `workspace-personal-ical.md`, which days they touch: `workspace-personal-ical-days.md`.
 

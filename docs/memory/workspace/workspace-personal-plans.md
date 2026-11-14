@@ -7,6 +7,7 @@ description: A person's private plans on My calendar (PC3): step 11.0.201, the g
 - Step 11.0.201 of 2026.11.0 (`upgrade_2026_11_0_ws_personal_plans()`): `ws_personal_plans` (owner `user_id`, title, note, `starts_at`/`ends_at` end exclusive, `all_day`, `remind_at`/`reminded_at`, `visibility`, `contact_id`, `mail_conversation_id`), `ws_personal_plan_steps`, `ws_personal_plan_people`, and `ws_inbox.plan_id`. One probe: `ws_personal_plans_ready()`. Shape and reasons: `personal-calendar-census-tables.md`.
 - `contact_id` names the customer a plan is made for (PC6, `workspace-personal-plan-customer.md`, a contact holder); the steps are the roadmap (PC5, `workspace-personal-plan-roadmap.md`); `mail_conversation_id` is written by Add to my calendar (`workspace-personal-plan-mail.md`).
 - Never a `ws_events` row: its readers do not ask whose row it is (`personal-calendar-census-readers.md`).
+- A plan may repeat (step 11.0.209): its times are worked out on every read, `workspace-personal-plan-repeat.md`.
 
 ## Who may see a plan?
 - `ws_personal_plan_can_see($user_id, $plan)` in `includes/workspace/personal_plans.php`, the one gate: its owner, and those it is opened to (PC4), while reader and owner are on the team. An administrator is no exception; a guest and a leaver read nothing; a leaver's plans stay but nobody reads them and they do not remind.

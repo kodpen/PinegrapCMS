@@ -9311,6 +9311,7 @@ function get_tables() {
 		'ws_personal_plan_people',
 		'ws_roadmap_templates',
 		'ws_roadmap_template_steps',
+		'ws_personal_plan_skips',
 		'ws_flow_templates',
 		'cron_runs',
 		'recycle_bin',

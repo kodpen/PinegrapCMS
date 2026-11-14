@@ -142,6 +142,7 @@ function test_ws_personal_plans_api_scopes()
 	pg_assert_same(array_keys(ws_api_personal_plan_schema()), array_keys(array(
 		'id' => 1, 'title' => '', 'note' => '', 'start' => '', 'end' => '', 'start_time' => '', 'end_time' => '',
 		'all_day' => false, 'remind' => '', 'visibility' => '', 'owner_id' => 0, 'mine' => true, 'people' => array(), 'owner_name' => '',
+		'time_day' => '', 'repeat' => '', 'repeat_every' => 1, 'repeat_end' => '', 'repeat_until' => '', 'repeat_count' => '',
 	)), 'the schema names what ws_personal_plan_for_reader() gives');
 }
 
