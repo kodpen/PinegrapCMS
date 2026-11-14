@@ -1,0 +1,33 @@
+---
+name: agent-approvers-everyone
+description: Plan (owner 2026-11-14): an approval request can ask a channel's agents and assistants, and the tag @herkes mentions everyone in the room but the writer; steps AE1 to AE6
+---
+
+## What is asked?
+- Owner (2026-11-14, in the architect's window): "Ask for approval" also offers the channel's agents and assistants as approvers, with API routes where they are missing; and a tag `@herkes` that mentions everyone in the room but the writer, in the agent channel every agent, assistants left out. His words: `workflow/decisions-made-workspace-30.md`.
+- Today: approvers are team members who may write in the channel (`ws_approval_eligible()`), answers are people's only (`workspace/agent-questions.md`); a roll call is a checklist that wakes nobody (`workspace/agent-checklist-questions.md`); `@hepsi` is a working habit caught by text waiters (`workflow/agent-channel-wake.md`).
+
+## What changes for approvers?
+- The Approvers field lists, under the people, the channel's active agents and the assistants that can be asked there. A paused agent is not offered.
+- An agent asked is woken at once: one request row and the knock, its brief carrying the request. It answers Approve or Reject with an optional note through its own key; an assistant answers when the site carries it on. The card names it with its badge.
+- "Any one of them", "All of them" and the deadline count an agent as they count a person.
+- The bound: only a request a person makes by hand may ask an agent or an assistant. A flow's request (its approval box, a write that asks first, a member's change) and an agent's request ask people only, and no agent answers a request it made.
+
+## What is @herkes?
+- "Everyone" on top of the mention menu; typed `@herkes` or `@everyone` does the same. No agent takes `herkes`, `everyone` or `hepsi` as its handle.
+- People: every member of the channel but the writer gets a mention line, whatever their notify level. A guest of a customer room is never counted and gets no mail from it.
+- Agents: every active application agent of the channel is woken, under today's brakes. Claude, Pinegrap AI and a model assistant are left out.
+- Only a person's `@herkes` wakes agents; an agent's or an application's rings the people and wakes no agent.
+
+## Which steps?
+- AE1 (S, no product code) Census: `ws_approval_people` and its readers (the card, Today, the flows' waits, the export, the guest link), how the mention menu and `ws_agent_wake_matches()` read a tag, how a department mention rings. It names the column an agent approver needs; the architect asks the owner.
+- AE2 (M, schema) Agent approvers on the server: who may be asked, the wake, the answer of an asked agent, the bound with its tests (a flow's request refuses an agent, an agent's own request refuses it).
+- AE3 (S) The form and the card: agents under the people, the badge on the card. Look A, the pictures in the agent channel.
+- AE4 (S) API: `approvers` takes agents on create; `POST /workspace/approvals/{id}/decide` opens to the asked application agent's own key and stays closed to MCP; the dry run; `php tools/check_api_schema.php` passes.
+- AE5 (M) `@herkes`: the tag and the menu, the mention lines, the wake, the reserved handles, tests of the two bounds.
+- AE6 (S) Close-out: the memory files; `workflow/agent-channel-wake.md` drops `@hepsi` and its text waiters; this plan deleted.
+
+## What does every step keep?
+- A request made before, and a request that asks people only, works as today. A poll's votes and read receipts stay people's.
+- No table or column without asking the architect. Texts through `lang()`, Turkish by `tools/tr_add.php`.
+- AE1 first; AE2 after the owner's answer on the column, AE3 and AE4 after AE2; AE5 after AE1, beside the rest. Claim as `[plan:agent-approvers-everyone] <step> — <topic>`.
