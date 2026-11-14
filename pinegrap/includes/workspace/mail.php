@@ -1279,8 +1279,7 @@ function ws_mail_card_html($row, $item)
     // An answer names whom it went to; a mail, who sent it.
     $html = '<div class="ws-mail-card">'
         . '<div class="ws-mail-card-head small fg-secondary mb-1">' . $badge . ' <span class="ms-1">'
-        . h($out ? lang(array('string' => 'To {var:1}', 'vars' => (string) $item['to_list']))
-            : ($phone ? trim((string) $item['from_name'] . ' ' . (string) $item['from_email']) : (string) $item['from_email'])) . '</span>'
+        . h($out ? lang(array('string' => 'To {var:1}', 'vars' => (string) $item['to_list'])) : (string) $item['from_email']) . '</span>'
         . (($card && ($item['support'] ?? true) && function_exists('ws_mail_status_html'))
             ? ws_mail_status_html($conversation, ((int) ($conversation['assignee_id'] ?? 0) > 0) ? ws_person_name((int) $conversation['assignee_id']) : '',
                 (int) ($item['first_reply_hours'] ?? 0), time())

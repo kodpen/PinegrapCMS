@@ -213,7 +213,7 @@ function test_workspace_mail_phone_items()
 
 	$html = ws_mail_card_html($row, $item);
 	pg_assert_contains('bi-whatsapp', $html, 'the WhatsApp badge');
-	pg_assert_contains('Ayşe +905321234567', $html, 'the name and the number for the address');
+	pg_assert_contains('<span class="ms-1">+905321234567</span>', $html, 'the number in place of the address');
 	pg_assert_false(strpos($html, lang('Sender not verified')) !== false, 'Meta vouches for the number');
 
 	pg_assert_same(0, ws_mail_forward_offer($row, $item, array('member' => true)), 'no Forward as e-mail');
