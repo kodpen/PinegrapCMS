@@ -208,6 +208,7 @@
 - workspace-calendar-month-days.md: Which days of the Work Calendar a plan item is drawn on (ws_calendar_plan_place()): the end is exclusive, so a meeting until midnight draws no 00:00 line on the next day
 - workspace-calendar-read.md: Reading a person's Google/Outlook calendar back (calendar_sync.php, #4490): syncToken and delta, what is a move, the drawer's check, refused moves written back, calendar_refused [decision: decisions-made-workspace-6.md]
 - workspace-calendar-side-cards.md: Work calendar side cards at laptop width (#5189): ws_minutes_label() uses no-break spaces, the "who carries the work" row puts the task count under the whole name
+- workspace-calendar-write-plans.md: A person's own plans written one way to their Google or Outlook calendar (calendar_sync.php, PC13): the My calendar switch, the second calendar, which plans, the body, off and deleted [decision: here]
 - workspace-calendar-write.md: A person's Workspace tasks written to their own Google or Outlook calendar (calendar_sync.php, #4387, #4420): app-made calendar, derived ids, sealed state per person, the hourly job [decision: decisions-made-workspace-6.md]
 - workspace-card-long-words.md: Task card in a channel and template card in the New channel drawer wrap a long word or link (overflow-wrap anywhere)
 - workspace-cart-quote-tag.md: The cart quote's Workspace tag (cart_quote, #3256): prefixes, the ecommerce right, orders:read, what the chip shows, the search, view_cart_quotes.php?id= and its Workspace button
