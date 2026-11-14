@@ -1,29 +1,35 @@
 ---
 name: git-branches-and-shared-files
-description: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
+description: Branch policy (development vs main), who does git, commit author, the PR footer (pointer), shared files without conflicts, generated files a PR leaves out, API vs ERP files
 ---
 
 ## Which branch?
-- Work branches start from `development`; PRs target `development`. `main` carries released versions only: never open a PR to `main`, never merge or rebase `main`. The release PR is the owner's.
-- Only the merging session lands PRs on `development`, in merge trains pushed fast-forward (`merge-train.md`, `merge-train-landing.md`); releases to `main` and version numbers stay the owner's.
+- Branches start from `development`; PRs target it. `main` carries released versions only: no PR to it, never merge or rebase it; the release PR is the owner's.
+- Only the merging session lands PRs on `development`, by fast-forward (`merge-train.md`); releases and version numbers are the owner's.
 
 ## Who does git?
-- One hand does all repo actions (branch, commit, push, PR): the session with git and GitHub access. An agent that only edits code leaves its change in the working tree.
+- The session with git and GitHub access does every repo action; an agent that only edits code leaves its change in the working tree.
 
 ## Commit author and messages?
-- Author `Erdal Güral <erdaltyy@gmail.com>`. Messages describe the change and its technical reason only, with no AI or session trace (`CLAUDE.md`, Fixed rules 2). Branch commits reach `development` as they are (the train lands by fast-forward, `merge-train-landing.md`): set the identity in the clone before the first commit (`git config user.name 'Erdal Güral' && git config user.email erdaltyy@gmail.com`) and fix a wrong one on your own branch (`git commit --amend --reset-author`) before the PR goes up. A PR with another author or a trailer goes back to its session (`merge-train.md`).
+- Author `Erdal Güral <erdaltyy@gmail.com>`. Messages: the change and its technical reason, no AI or session trace (`CLAUDE.md`, Fixed rules 2). Commits reach `development` as they are (fast-forward): set the identity before the first commit (`git config user.name`/`user.email`) and fix a wrong one with `git commit --amend --reset-author` before the PR goes up. A PR with another author or a trailer goes back to its session (`merge-train.md`).
 
 ## What about the PR footer and commit trailers?
 - Where they come from and who removes them: pr-footer-and-trailers.md.
 
 ## How do I edit shared files?
 - Shared files: the open version's migration file, `init.php`. `pinegrap/changelog.txt` is not edited by a PR: its body names the `[NEW]` line or the `[SCHEME]` area and the merging session writes it (`working-mode.md`).
-- The Turkish wording is no shared file any more: the shards in `includes/local/tr/` (`a.json` … `z.json`, `0.json`, `_.json`) are sorted by key, so branches adding different keys merge without a conflict. Add keys only with `php tools/tr_add.php "English" "Türkçe"`, never by hand; a conflict in a shard is settled with `php tools/tr_resolve.php` (`core/lang-files.md`).
+- The Turkish shards in `includes/local/tr/` are sorted by key and merge cleanly: keys only with `php tools/tr_add.php`, a conflict settled with `php tools/tr_resolve.php` (`core/lang-files.md`).
 - Migration file and `init.php`: append only, in your own section; never rewrite the whole file.
-- A file a draft PR holds (`CLAUDE.md`, Claim work): another PR may add one additive line to a declaration registry in it (`api_error_catalogue()`, route rows in `api_schema()`, the event catalogue) when the holder's hunks do not touch those lines and the architect allowed it on an issue (#3824); its PR body names the holding PR. Anything more waits for the holder.
+- A file a draft PR holds: another PR may add one line to a registry in it (`api_error_catalogue()`, `api_schema()` routes, the event catalogue) when the holder's hunks do not touch it and the architect allowed it (#3824); its body names the holder. Anything more waits.
 - Merge `origin/development` once before the PR goes up, keeping both sides' sections on conflict. After the hand-over only the merging session brings the PR up to date (`session-lifecycle.md`).
-- `docs/memory/README.md`, the folder READMEs, their `INDEX.md` files, `workflow/DECISIONS.md` and `core/fn-modules.md` are generated, and only the landing writes them (`merge-train-tool.md`): a PR never commits them, and `tools/check_pr.php` refuses one that does. Check your memory files with `php tools/memory_index.php --files`. Only a folder README's key-rules block is hand-written and may change in a PR; a conflict inside it is merged by hand (`memory-index-key-rules.md`).
-- The top index's folder lines carry no file count (#1081): two branches adding a file to one folder merged into a count matching neither, and the merged tree failed CI's `--check` on other PRs.
+
+## Which generated files does a PR leave out?
+- The memory lists (`docs/memory/README.md`, folder READMEs, `INDEX.md` files, `workflow/DECISIONS.md`, `core/fn-modules.md`) and every `.min.js` / `.min.css` of `pg_js_bundles()` / `pg_css_bundles()`.
+- A PR commits sources and its own memory files; `tools/check_pr.php` refuses a changed list or bundle, naming the commit to restore it from. A README's key-rules block is hand-written and may change (`memory-index-key-rules.md`); hand-made `.min.js` files (`lazy.min.js`, `chat_backend.min.js`) are no bundles.
+- The landing writes them, in its own commits inside the fast-forward push (`merge-train-tool.md`).
+- CI on a PR: `memory_index.php --files`, and the bundles built from its sources before the unit tests. On a train and on `development`/`main`: `--check` of the lists and both bundle builds. `git push` does the same (`pre-push-checks.md`).
+- To try a bundle in a sandbox or a local run: `php tools/build_js.php` (Node, npx) or `build_css.php`, then `git checkout` the bundles before committing.
+- Why: in the census of #9462, 55 merges of `development` into PRs and 54 train merges conflicted on these files alone; accepted by the owner 2026-11-14 (channel message 2645).
 
 ## Which files belong to the API and which to ERP?
 - The external API: `includes/api/**` (webhook delivery is `includes/api/outbound/webhooks.php`), `integration.php`, `api_settings.php`, `api_docs.php`, the jobs `api_webhook_job.php` and `api_sync_job.php` (`api.php` is the panel's action endpoint, not the API). ERP: `includes/erp/**` and the root `*erp*.php` screens. ERP reaches the API only through `includes/erp/api.php` (`erp/erp-api-seam.md`) and edits no API file; what one side needs from the other is asked of that side.

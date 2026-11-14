@@ -37,4 +37,4 @@ description: Start file for the custom-form-* files: what a designed form is, th
 2. Read it in `_pg_cf_controls()` and in its client twin `_cfFieldsOf()`; a new input type goes into `_pg_cf_type_by_input()` and `CF_TYPE_BY_INPUT`, and a palette control into `CF_PALETTE`.
 3. A stored setting needs a column (a migration step, asked first) or a key of `form_fields.rules` (no schema; cleaned by `pg_cf_rules_clean()`).
 4. Draw it in `pg_cf_apply_field_bindings()`; a site check goes in `custom_form.php`. Staff paths, the API and MCP stay exempt unless decided otherwise.
-5. Labels as `_sdT('…')`, Turkish via `php tools/tr_add.php`; `php tools/build_js.php`; `system-widget-change-checklist.md`; a `tests/custom_form_<topic>_test.php`, with a parity case for a form that does not use it.
+5. Labels as `_sdT('…')`, Turkish via `php tools/tr_add.php`; `system-widget-change-checklist.md`; a `tests/custom_form_<topic>_test.php`, with a parity case for a form that does not use it.

@@ -4,7 +4,7 @@ description: Rules for a Visitors overview section (includes/visitors/<name>.php
 ---
 
 ## What does a section own?
-- Its `includes/visitors/<name>.php`, its labelled block in `assets/css/pg_visitors.src.css` (then `php tools/build_css.php`), `tests/visitors_<name>_test.php` and its topic (`visitors/visitors-<name>.md` or `ui/visitors-<name>-section.md`). Contract and loader: `visitors-screen.md`.
+- Its `includes/visitors/<name>.php`, its labelled block in `assets/css/pg_visitors.src.css`, `tests/visitors_<name>_test.php` and its topic (`visitors/visitors-<name>.md` or `ui/visitors-<name>-section.md`). Contract and loader: `visitors-screen.md`.
 - A change to one section never edits `visitors.php`, `shell.php`, `pg_visitors.src.js`, the figures module or another section. A helper only it needs stays in its file (or its own `includes/fn/` module, as `visitor_pages`); one a second section needs moves into `shell.php` or `visitor_figures.php`.
 - A new section: a name and heading in `pg_visitors_sections()` (screen order) and the file; the menu anchor follows by itself.
 

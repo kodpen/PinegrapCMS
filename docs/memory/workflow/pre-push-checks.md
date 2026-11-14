@@ -7,11 +7,11 @@ description: git push runs tools/pre_push.sh first (installed when a cloud sessi
 - A failed workflow run on a pull request branch sends a "Run failed" e-mail to the account that pushed, and cloud sessions push under the owner's account. From 2026-10-21 08:00 to 2026-10-23 06:00 (UTC) 16 runs failed on PR branches: 7 at `tools/memory_index.php --check` (an index not regenerated, a file too long), 4 in the unit tests, 3 from one parse error (three workflows), 1 PHPCompatibility finding, 1 pecl.php.net outage. 12 of them fail on the pushed commit in a session too.
 
 ## What does it run, and when?
-- In a temporary worktree of the commit being pushed (about a second to make; edits, ignored files and a sparse checkout do not count). What runs follows from what the branch changes since it left `origin/development`, as CI checks the whole pull request:
+- In a temporary worktree of the commit being pushed (about a second; edits, ignored files and a sparse checkout do not count). What runs follows from what the branch changes since it left `origin/development`, as CI checks the whole pull request:
   - every push: the memory files (`--files`; `--check` on `development` and trains) and, with a base, the branch's commits and changelog (`tools/check_pr.php`, `branch-guards.md`);
-  - any change outside `docs/`, `.github/`, `.claude/`, the root `*.md` files and `license.txt`: `php -l` of the changed PHP files, `check_lang`, `check_bindings`, `check_api_schema`, `check_audit_rules`, `check_copies`, `check_bs6 --strict`, `build_css` (`--check` on `development` and trains), the unit tests;
-  - a change under `pinegrap/assets/js/`, to `pg_js_bundles()`'s file or to `tools/build_js.php`: `node --check` of the three panel scripts CI checks and `tools/build_js.php --check`; skipped with a note when node, npx or the npm registry is missing.
-- A documentation-only push takes under two seconds, a code push as long as its unit tests (2026-11: 2 minutes on CI, 4-5 on Windows). Without `origin/development` it runs everything, the whole-tree `tools/lint.php` too. Deletions and tags are not checked.
+  - any change outside `docs/`, `.github/`, `.claude/`, the root `*.md` files and `license.txt`: `php -l` of the changed PHP files, `check_lang`, `check_bindings`, `check_api_schema`, `check_audit_rules`, `check_copies`, `check_bs6 --strict`, `build_css` before the unit tests (`--check` on `development` and trains);
+  - a change under `pinegrap/assets/js/`, to `pg_js_bundles()`'s file or to `tools/build_js.php`: `node --check` of the three panel scripts CI checks and `tools/build_js.php` (`--check` likewise); skipped with a note when node, npx or the npm registry is missing.
+- A docs-only push takes under two seconds, a code push as long as its unit tests (2026-11: 2 minutes on CI, 4-5 on Windows). Without `origin/development` it runs everything, the whole-tree `tools/lint.php` too. Deletions and tags are not checked.
 - CI alone runs PHPStan and PHPCompatibility (minutes), the code editor bundle (`npm ci`), the install check and the Docker check. A fast step added to `php-checks.yml` is added to the script too.
 
 ## What can it not see?

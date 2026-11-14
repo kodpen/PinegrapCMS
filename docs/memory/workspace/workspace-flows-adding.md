@@ -25,7 +25,7 @@ description: Recipe for a new flow box or start event, never one example: is it 
 - `ws_flow_kinds_not_offered()` if no new box may be made of it.
 - `fl_kind_<kind>` in `ws_flow_js_strings()` (`flows.php`); each new label through `php tools/tr_add.php`.
 - Pinegrap AI: `ws_flow_kind_catalogue()` reads the kinds and settings by itself; a setting whose type does not say enough gets a line in `ws_flow_ai_catalogue_hints()` (`flow_draft.php`) or a type override in `ws_flow_kind_settings()` (`flow_catalogue.php`).
-- Canvas `assets/js/workspace_flow.js`: `KINDS` (group, into, out), `PALETTE`, its default settings in `addItem()`, its `…Fields(box, node)` form and its call by kind, `VALUE_FIELDS` for value settings, meta text; its line icon in `FLOW_ICONS` of `assets/js/workspace.js`. Then `php tools/build_js.php` (`workspace_flow.min.js`, `workspace.min.js`).
+- Canvas `assets/js/workspace_flow.js`: `KINDS` (group, into, out), `PALETTE`, its default settings in `addItem()`, its `…Fields(box, node)` form and its call by kind, `VALUE_FIELDS` for value settings, meta text; its line icon in `FLOW_ICONS` of `assets/js/workspace.js`.
 - Memory: its topic file, a line in `workspace-flows-overview.md`.
 
 ## Where is a new start event named?
@@ -33,4 +33,4 @@ description: Recipe for a new flow box or start event, never one example: is it 
 - A new start box (not an event) is an anchor kind in `ws_flow_anchor_kinds()` with its case in `ws_flow_anchor_normalize()` (`workspace-flows-anchors.md`).
 
 ## Which tests run?
-- `php tools/test.php workspace_flow` (catalogue, outputs, tiers, the box's own test), `php tools/build_js.php --check`, `php tools/check_lang.php`, `node --check` on the changed scripts.
+- `php tools/test.php workspace_flow` (catalogue, outputs, tiers, the box's own test), `php tools/check_lang.php`, `node --check` on the changed scripts.

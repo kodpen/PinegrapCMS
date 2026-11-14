@@ -28,4 +28,4 @@ description: Start file for the widget-default-* files: default parts drawing a 
 2. Write `pg_sw_part_<name>()` and its twin `_sdPart<Name>()`; add the token to `pg_sw_default_part_tokens()` and `SW_DEFAULT_PARTS`, or to the tail or lead parts.
 3. Change the default layout in the PHP tree, the JS starter and the server fallback; move the renderer's check to `pg_sw_placed()`; drop the retired token from `pg_sw_raw_token_keys()` and `SW_ATTR_MARKUP`.
 4. A control gets a value binding the system wires; a required one comes back when deleted.
-5. A test of old block against part, the e-mail output, the twin under Node; `php tools/build_js.php`, `php tools/check_bindings.php`; a `widget-default-parts-<name>.md`, then a line here.
+5. A test of old block against part, the e-mail output, the twin under Node; `php tools/check_bindings.php`; a `widget-default-parts-<name>.md`, then a line here.

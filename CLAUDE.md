@@ -178,11 +178,10 @@ PR that gives its reason (Fixed rules 6). Details: `workflow/working-mode.md`,
    round with `round()`, never truncate with `(int)`; a bundled script
    (`pg_js_bundles()`: `workspace*.js`, `backend.src.js`,
    `style_designer.src.js`) or stylesheet (`backend.src.css`) is edited in
-   its source and the landing builds its `.min.js` / `.min.css`: a PR never
-   commits them (`tools/check_pr.php`); to try one, run
-   `php tools/build_js.php` / `build_css.php`, then `git checkout` the
-   bundles; in the role
-   hierarchy Designer (1) is above Manager (2).
+   its source and the landing builds its `.min.js` / `.min.css`, never a PR;
+   to try one, run `php tools/build_js.php` / `build_css.php`, then
+   `git checkout` the bundles; in the role hierarchy Designer (1) is above
+   Manager (2).
 8. Talk to the owner in Turkish. One task is one small PR. User documentation
    is never written in the repo (`workflow/owner-rules.md`).
 9. **`pinegrap/changelog.txt` is English and lists only major features:** a
