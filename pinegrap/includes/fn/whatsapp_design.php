@@ -42,6 +42,14 @@ define('PG_WHATSAPP_DESIGN_NAME_MAX', 512);
 // The longest sample value and variable label the designer keeps.
 define('PG_WHATSAPP_DESIGN_SAMPLE_MAX', 200);
 
+// Meta's limits for a header text and a button's text, in characters.
+define('PG_WHATSAPP_DESIGN_HEADER_MAX', 60);
+define('PG_WHATSAPP_DESIGN_BUTTON_MAX', 25);
+
+// Buttons a template designed here holds (Meta takes ten; more than three
+// show as a list behind "See all options").
+define('PG_WHATSAPP_DESIGN_BUTTONS_MAX', 3);
+
 // Variables one body may hold: more is refused by Meta as too dense long
 // before this, which only bounds what is read from a form.
 define('PG_WHATSAPP_DESIGN_VARIABLES_MAX', 20);
@@ -164,6 +172,7 @@ function pg_whatsapp_design_new()
         'status' => 'DRAFT', 'reason' => '', 'parameter_format' => 'POSITIONAL',
         'header' => array(), 'body' => '', 'footer' => '', 'buttons' => array(),
         'labels' => array(), 'samples' => array(), 'components' => array(),
+        'header_file' => array(), 'header_link' => '',
     );
 }
 
@@ -217,8 +226,18 @@ function pg_whatsapp_design_from_row($row)
         }
     }
 
+    foreach ($design['buttons'] as $index => $button) {
+        if (is_array($button) && isset($button['type'], $button['url']) && (strtoupper((string) $button['type']) === 'URL') && (strpos((string) $button['url'], '{{') !== false)) {
+            $design['buttons'][$index]['sample'] = pg_whatsapp_design_url_sample($button);
+        }
+    }
+
     $samples = isset($row['samples']) ? json_decode((string) $row['samples'], true) : null;
     $kept = (is_array($samples) && isset($samples['body']) && is_array($samples['body'])) ? array_values($samples['body']) : array();
+
+    if (is_array($samples) && isset($samples['header_file']['id'], $samples['header_file']['name'])) {
+        $design['header_file'] = array('id' => (int) $samples['header_file']['id'], 'name' => (string) $samples['header_file']['name'], 'size' => 0);
+    }
 
     foreach (pg_whatsapp_design_variables($design['body']) as $index => $key) {
         $item = isset($kept[$index]) && is_array($kept[$index]) ? $kept[$index] : array();
@@ -241,12 +260,17 @@ function pg_whatsapp_design_from_row($row)
  * database. A field posted as a list counts as not given.
  *
  * @param array $post   $_POST: name, language, category, body, footer,
- *                      label_<n>, sample_<n>
+ *                      label_<n>, sample_<n>, header_format (NONE, TEXT,
+ *                      IMAGE, VIDEO, DOCUMENT), header_text, header_file
+ *                      (a file's id), and per button row button_type[],
+ *                      button_text[], button_value[], button_sample[]
  * @param array $design the design the screen was opened with
  * @return array
  */
 function pg_whatsapp_design_posted($post, $design)
 {
+    $stored = array('name' => $design['name'], 'language' => $design['language']);
+
     $text = function ($name) use ($post) {
         return (isset($post[$name]) && is_scalar($post[$name])) ? str_replace(array("\r\n", "\r"), "\n", (string) $post[$name]) : '';
     };
@@ -262,6 +286,64 @@ function pg_whatsapp_design_posted($post, $design)
     foreach (array_slice(pg_whatsapp_design_variables($design['body']), 0, PG_WHATSAPP_DESIGN_VARIABLES_MAX) as $key) {
         $design['labels'][$key] = trim($text('label_' . $key));
         $design['samples'][$key] = trim($text('sample_' . $key));
+    }
+
+    // A template Meta already knows keeps its name and language: an edit
+    // can change only its category and components.
+    if (($design['meta_id'] !== '') && isset($stored)) {
+        $design['name'] = $stored['name'];
+        $design['language'] = $stored['language'];
+    }
+
+    $format = strtoupper(trim($text('header_format')));
+    $design['header'] = array();
+    $design['header_file'] = array();
+
+    if ($format === 'TEXT') {
+        $design['header'] = array('type' => 'HEADER', 'format' => 'TEXT', 'text' => trim($text('header_text')));
+    } elseif (in_array($format, array('IMAGE', 'VIDEO', 'DOCUMENT'), true)) {
+        $design['header'] = array('type' => 'HEADER', 'format' => $format);
+        $design['header_file'] = array('id' => (int) trim($text('header_file')), 'name' => '', 'size' => 0);
+    }
+
+    // The buttons come as lists, one entry per row; a row left wholly empty
+    // is no button.
+    $list = function ($name) use ($post) {
+        return (isset($post[$name]) && is_array($post[$name])) ? array_values($post[$name]) : array();
+    };
+    $types = $list('button_type');
+    $texts = $list('button_text');
+    $values = $list('button_value');
+    $samples = $list('button_sample');
+    $design['buttons'] = array();
+
+    foreach (array_slice($types, 0, 10) as $index => $type) {
+        $cell = function ($from) use ($index) {
+            return (isset($from[$index]) && is_scalar($from[$index])) ? trim(str_replace(array("\r", "\n"), ' ', (string) $from[$index])) : '';
+        };
+        $type = strtoupper(is_scalar($type) ? trim((string) $type) : '');
+        $label = $cell($texts);
+        $value = $cell($values);
+
+        if (($label === '') && ($value === '')) {
+            continue;
+        }
+
+        $button = array('type' => $type, 'text' => $label);
+
+        if ($type === 'URL') {
+            $button['url'] = $value;
+            $sample = $cell($samples);
+
+            if (preg_match('/\{\{\s*1\s*\}\}$/', $value)) {
+                $button['example'] = array(preg_replace('/\{\{\s*1\s*\}\}$/', '', $value) . $sample);
+                $button['sample'] = $sample;
+            }
+        } elseif ($type === 'PHONE_NUMBER') {
+            $button['phone_number'] = preg_replace('/[\s().-]+/', '', $value);
+        }
+
+        $design['buttons'][] = $button;
     }
 
     return $design;
@@ -334,6 +416,9 @@ function pg_whatsapp_design_check($design)
         }
     }
 
+    $errors += pg_whatsapp_design_check_header($design);
+    $errors += pg_whatsapp_design_check_buttons($design['buttons']);
+
     if ($length($design['footer']) > PG_WHATSAPP_DESIGN_FOOTER_MAX) {
         $errors['footer'] = lang(array('string' => 'The footer may hold at most {var:1} characters.', 'vars' => array(PG_WHATSAPP_DESIGN_FOOTER_MAX)));
     } elseif ((strpos($design['footer'], '{{') !== false) || (strpos($design['footer'], '}}') !== false)) {
@@ -379,7 +464,22 @@ function pg_whatsapp_design_components($design)
     }
 
     if ($design['buttons']) {
-        $components[] = array('type' => 'BUTTONS', 'buttons' => array_values($design['buttons']));
+        // Meta wants quick replies next to each other: the others first, in
+        // their order, then the quick replies in theirs.
+        $others = array();
+        $replies = array();
+
+        foreach ($design['buttons'] as $button) {
+            unset($button['sample']);
+
+            if (isset($button['type']) && ($button['type'] === 'QUICK_REPLY')) {
+                $replies[] = $button;
+            } else {
+                $others[] = $button;
+            }
+        }
+
+        $components[] = array('type' => 'BUTTONS', 'buttons' => array_merge($others, $replies));
     }
 
     return $components;
@@ -403,19 +503,174 @@ function pg_whatsapp_design_samples_json($design)
         );
     }
 
-    return json_encode(array('body' => $body), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $samples = array('body' => $body);
+
+    if (!empty($design['header_file']['id'])) {
+        $samples['header_file'] = array('id' => (int) $design['header_file']['id'], 'name' => (string) $design['header_file']['name']);
+    }
+
+    return json_encode($samples, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 
 /**
- * Whether a template can still be changed in the designer: a draft only.
- * Editing a template Meta rejected is the designer's second half.
+ * Whether a template can be changed in the designer: a draft, or one Meta
+ * rejected (sent again as an edit of the same template).
  *
  * @param array $design
  * @return bool
  */
 function pg_whatsapp_design_editable($design)
 {
-    return ($design['meta_id'] === '') && ($design['status'] === 'DRAFT');
+    return (($design['meta_id'] === '') && ($design['status'] === 'DRAFT'))
+        || (($design['meta_id'] !== '') && ($design['status'] === 'REJECTED'));
+}
+
+/**
+ * The files a header of a format may take: their extensions, MIME types and
+ * the largest size. Meta takes a document of up to 100 MB; a sample is read
+ * into memory to be sent, so the designer stops at 16 MB.
+ *
+ * @return array format => extensions (extension => MIME type), max (bytes)
+ */
+function pg_whatsapp_design_header_formats()
+{
+    return array(
+        'IMAGE'    => array('types' => array('jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png'), 'max' => 5242880),
+        'VIDEO'    => array('types' => array('mp4' => 'video/mp4', '3gp' => 'video/3gpp'), 'max' => 16777216),
+        'DOCUMENT' => array('types' => array('pdf' => 'application/pdf'), 'max' => 16777216),
+    );
+}
+
+/**
+ * Whether a header can be kept; no database (the chosen file's name and
+ * size are in header_file).
+ *
+ * @param array $design
+ * @return array field => message
+ */
+function pg_whatsapp_design_check_header($design)
+{
+    if (!$design['header']) {
+        return array();
+    }
+
+    $format = isset($design['header']['format']) ? $design['header']['format'] : '';
+
+    if ($format === 'TEXT') {
+        $text = isset($design['header']['text']) ? (string) $design['header']['text'] : '';
+
+        if ($text === '') {
+            return array('header_text' => lang('Write the header, or choose None.'));
+        }
+
+        if ((function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : strlen($text)) > PG_WHATSAPP_DESIGN_HEADER_MAX) {
+            return array('header_text' => lang(array('string' => 'The header may hold at most {var:1} characters.', 'vars' => array(PG_WHATSAPP_DESIGN_HEADER_MAX))));
+        }
+
+        if ((strpos($text, '{{') !== false) || (strpos($text, '}}') !== false)) {
+            return array('header_text' => lang('The header cannot hold a variable here; put it in the message.'));
+        }
+
+        return array();
+    }
+
+    $formats = pg_whatsapp_design_header_formats();
+    $file = $design['header_file'];
+
+    if (!isset($formats[$format])) {
+        return array('header_file' => lang('Choose the header type.'));
+    }
+
+    if (empty($file['id']) || ((string) $file['name'] === '')) {
+        return array('header_file' => lang('Choose the header\'s file from Files.'));
+    }
+
+    $extension = strtolower((string) pathinfo((string) $file['name'], PATHINFO_EXTENSION));
+
+    if (!isset($formats[$format]['types'][$extension])) {
+        return array('header_file' => lang(array('string' => 'This header takes a file of type {var:1}.', 'vars' => array(strtoupper(implode(', ', array_keys($formats[$format]['types'])))))));
+    }
+
+    if ((int) $file['size'] > $formats[$format]['max']) {
+        return array('header_file' => lang(array('string' => 'The file may be at most {var:1} MB.', 'vars' => array((int) ($formats[$format]['max'] / 1048576)))));
+    }
+
+    return array();
+}
+
+/**
+ * Whether the buttons can be kept; no database.
+ *
+ * @param array $buttons pg_whatsapp_design_posted() buttons
+ * @return array 'button_<row>' => message
+ */
+function pg_whatsapp_design_check_buttons($buttons)
+{
+    $errors = array();
+    $count = array('URL' => 0, 'PHONE_NUMBER' => 0);
+
+    if (count($buttons) > PG_WHATSAPP_DESIGN_BUTTONS_MAX) {
+        return array('button_0' => lang(array('string' => 'A template may have at most {var:1} buttons.', 'vars' => array(PG_WHATSAPP_DESIGN_BUTTONS_MAX))));
+    }
+
+    foreach (array_values($buttons) as $row => $button) {
+        $type = $button['type'];
+        $text = (string) $button['text'];
+        $field = 'button_' . $row;
+
+        if (!in_array($type, array('URL', 'PHONE_NUMBER', 'QUICK_REPLY'), true)) {
+            $errors[$field] = lang('Choose the button\'s kind.');
+        } elseif ($text === '') {
+            $errors[$field] = lang('Give the button a text.');
+        } elseif ((function_exists('mb_strlen') ? mb_strlen($text, 'UTF-8') : strlen($text)) > PG_WHATSAPP_DESIGN_BUTTON_MAX) {
+            $errors[$field] = lang(array('string' => 'A button\'s text may hold at most {var:1} characters.', 'vars' => array(PG_WHATSAPP_DESIGN_BUTTON_MAX)));
+        } elseif ($type === 'URL') {
+            $url = (string) $button['url'];
+            $rest = preg_replace('/\{\{\s*1\s*\}\}$/', '', $url);
+
+            if (!preg_match('#^https?://[^\s{}]+$#i', $rest) || (strlen($url) > 2000)) {
+                $errors[$field] = lang('Write the link as https://… ; a variable may stand only at its end, as {{1}}.');
+            } elseif (($rest !== $url) && (!isset($button['sample']) || !preg_match('/^[^\s{}]{1,200}$/', (string) $button['sample']))) {
+                $errors[$field] = lang('Give the link\'s variable a sample value without spaces.');
+            } elseif (++$count['URL'] > 2) {
+                $errors[$field] = lang('A template may have at most two link buttons.');
+            }
+        } elseif ($type === 'PHONE_NUMBER') {
+            if (!preg_match('/^\+?[0-9]{7,20}$/', (string) $button['phone_number'])) {
+                $errors[$field] = lang('Write the phone number with its country code, such as +90 212 555 01 02.');
+            } elseif (++$count['PHONE_NUMBER'] > 1) {
+                $errors[$field] = lang('A template may have only one phone button.');
+            }
+        }
+    }
+
+    return $errors;
+}
+
+/**
+ * The template as it is sent to Meta for review; no database. A picture,
+ * video or document header names the handle of its uploaded sample.
+ *
+ * @param array  $design checked
+ * @param string $handle the header sample's handle ('' without one)
+ * @return array name, language, category, components
+ */
+function pg_whatsapp_design_submission($design, $handle)
+{
+    $components = pg_whatsapp_design_components($design);
+
+    foreach ($components as $index => $component) {
+        if (($component['type'] === 'HEADER') && ($component['format'] !== 'TEXT')) {
+            $components[$index]['example'] = array('header_handle' => array((string) $handle));
+        }
+    }
+
+    return array(
+        'name'       => $design['name'],
+        'language'   => $design['language'],
+        'category'   => $design['category'],
+        'components' => $components,
+    );
 }
 
 
@@ -459,10 +714,12 @@ function pg_whatsapp_design_format_html($text, $samples)
 
 /**
  * The parameters a test send fills an approved template with: each variable
- * of its header text and body with its sample; no database.
+ * of its header text and body with its sample, a picture, video or document
+ * header by the public address of its file (header_link), a link button's
+ * variable by its sample; no database.
  *
- * A template whose header is a picture, video or document, or with a button
- * that takes a value, cannot be sent from the designer's first half.
+ * A template with a copy-code or one-time-code button, or a media header
+ * whose file is not open to everyone, cannot be sent as a test.
  *
  * @param array $design pg_whatsapp_design_from_row()
  * @return array ok, components, error
@@ -497,12 +754,20 @@ function pg_whatsapp_design_send_components($design)
     if ($design['header']) {
         $format = isset($design['header']['format']) ? strtoupper((string) $design['header']['format']) : '';
 
-        if ($format !== 'TEXT') {
+        if (in_array($format, array('IMAGE', 'VIDEO', 'DOCUMENT'), true)) {
+            if ((string) $design['header_link'] === '') {
+                return array('ok' => false, 'components' => array(), 'error' => lang('The header\'s file is not in Files or not open to everyone, so WhatsApp cannot fetch it for a test.'));
+            }
+
+            $kind = strtolower($format);
+            $components[] = array('type' => 'header', 'parameters' => array(array('type' => $kind, $kind => array('link' => (string) $design['header_link']))));
+            $format = 'MEDIA';
+        } elseif ($format !== 'TEXT') {
             return array('ok' => false, 'components' => array(), 'error' => lang('A template with a picture, video or document at its top cannot be sent as a test yet.'));
         }
 
         $text = isset($design['header']['text']) ? (string) $design['header']['text'] : '';
-        $keys = pg_whatsapp_design_variables($text);
+        $keys = ($format === 'TEXT') ? pg_whatsapp_design_variables($text) : array();
 
         if ($keys) {
             $example = array();
@@ -546,16 +811,46 @@ function pg_whatsapp_design_send_components($design)
         $components[] = array('type' => 'body', 'parameters' => $list);
     }
 
-    foreach ($design['buttons'] as $button) {
+    foreach (array_values($design['buttons']) as $index => $button) {
         $type = isset($button['type']) ? strtoupper((string) $button['type']) : '';
         $url = isset($button['url']) ? (string) $button['url'] : '';
 
-        if (($type === 'COPY_CODE') || (($type === 'URL') && (strpos($url, '{{') !== false)) || ($type === 'OTP')) {
+        if (($type === 'COPY_CODE') || ($type === 'OTP')) {
             return array('ok' => false, 'components' => array(), 'error' => lang('A template with a button that takes a value cannot be sent as a test yet.'));
+        }
+
+        if (($type === 'URL') && (strpos($url, '{{') !== false)) {
+            $sample = pg_whatsapp_design_url_sample($button);
+
+            if ($sample === '') {
+                return array('ok' => false, 'components' => array(), 'error' => lang('Give the link\'s variable a sample value without spaces.'));
+            }
+
+            $components[] = array('type' => 'button', 'sub_type' => 'url', 'index' => (string) $index, 'parameters' => array(array('type' => 'text', 'text' => $sample)));
         }
     }
 
     return array('ok' => true, 'components' => $components, 'error' => '');
+}
+
+
+/**
+ * A link button's sample: the end of its example after the fixed part of
+ * its address.
+ *
+ * @param array $button url, example (a list of one full address), sample
+ * @return string
+ */
+function pg_whatsapp_design_url_sample($button)
+{
+    if (isset($button['sample']) && is_scalar($button['sample']) && ((string) $button['sample'] !== '')) {
+        return (string) $button['sample'];
+    }
+
+    $prefix = preg_replace('/\{\{\s*[a-z0-9_]+\s*\}\}$/', '', isset($button['url']) ? (string) $button['url'] : '');
+    $example = (isset($button['example'][0]) && is_scalar($button['example'][0])) ? (string) $button['example'][0] : '';
+
+    return (($prefix !== '') && (strpos($example, $prefix) === 0)) ? (string) substr($example, strlen($prefix)) : '';
 }
 
 
@@ -584,6 +879,16 @@ function pg_whatsapp_design_load($id)
 }
 
 /**
+ * The rows the designer may change, as pg_whatsapp_design_editable() says.
+ *
+ * @return string an SQL condition
+ */
+function pg_whatsapp_design_editable_sql()
+{
+    return "(((meta_id IS NULL) AND (status = 'DRAFT')) OR ((meta_id IS NOT NULL) AND (status = 'REJECTED')))";
+}
+
+/**
  * Keeps a design as a draft: a new row, or the draft it was opened from.
  *
  * @param array $design  checked (pg_whatsapp_design_check() empty)
@@ -602,25 +907,29 @@ function pg_whatsapp_design_save($design, $user_id)
         return array('ok' => false, 'id' => $id, 'field' => 'name', 'error' => lang('A template with this name and language exists already. Choose another name.'));
     }
 
-    $columns = "name = '" . e($design['name']) . "',
-        language = '" . e($design['language']) . "',
-        category = '" . e($design['category']) . "',
-        parameter_format = 'POSITIONAL',
-        components = '" . e(json_encode(pg_whatsapp_design_components($design), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) . "',
-        samples = '" . e(pg_whatsapp_design_samples_json($design)) . "',
-        updated_user_id = '" . (int) $user_id . "',
-        updated_at = UNIX_TIMESTAMP()";
+    // Values bound to placeholders: db_q() reads every ? of its SQL as one,
+    // and a message ("Is your order ready?") or a link holds them.
+    $columns = "name = ?, language = ?, category = ?, parameter_format = 'POSITIONAL',
+        components = ?, samples = ?, updated_user_id = ?, updated_at = UNIX_TIMESTAMP()";
+    $values = array(
+        $design['name'],
+        $design['language'],
+        $design['category'],
+        json_encode(pg_whatsapp_design_components($design), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        pg_whatsapp_design_samples_json($design),
+        (int) $user_id,
+    );
 
     if ($id) {
-        // Only while it is still a draft: a refresh or "Send for approval"
-        // that gave it Meta's id since the screen read it wins.
-        $saved = db_q("UPDATE whatsapp_templates SET " . $columns . " WHERE (id = '" . $id . "') AND (meta_id IS NULL) AND (status = 'DRAFT')");
+        // Only while it can still be changed: a refresh or "Send for
+        // approval" that moved it on since the screen read it wins.
+        $saved = db_q("UPDATE whatsapp_templates SET " . $columns . " WHERE (id = '" . $id . "') AND " . pg_whatsapp_design_editable_sql(), $values);
 
         if ($saved === false) {
             return array('ok' => false, 'id' => $id, 'field' => '', 'error' => lang('The draft could not be saved.'));
         }
 
-        if ((mysqli_affected_rows(db::$con) < 1) && !db_value("SELECT id FROM whatsapp_templates WHERE (id = '" . $id . "') AND (meta_id IS NULL) AND (status = 'DRAFT')")) {
+        if ((mysqli_affected_rows(db::$con) < 1) && !db_value("SELECT id FROM whatsapp_templates WHERE (id = '" . $id . "') AND " . pg_whatsapp_design_editable_sql())) {
             return array('ok' => false, 'id' => $id, 'field' => '', 'error' => lang('This template is no longer a draft, so it was not changed.'));
         }
 
@@ -632,13 +941,164 @@ function pg_whatsapp_design_save($design, $user_id)
         status = 'DRAFT',
         offer = '',
         created_user_id = '" . (int) $user_id . "',
-        created_at = UNIX_TIMESTAMP()");
+        created_at = UNIX_TIMESTAMP()", $values);
 
     if ($saved === false) {
         return array('ok' => false, 'id' => 0, 'field' => '', 'error' => lang('The draft could not be saved.'));
     }
 
     return array('ok' => true, 'id' => (int) mysqli_insert_id(db::$con), 'field' => '', 'error' => '');
+}
+
+/**
+ * The files of Files a header of a format can take, newest first.
+ *
+ * @param string $format IMAGE, VIDEO or DOCUMENT
+ * @return array rows: id, name, size
+ */
+function pg_whatsapp_design_header_files($format)
+{
+    $formats = pg_whatsapp_design_header_formats();
+
+    if (!isset($formats[$format])) {
+        return array();
+    }
+
+    // files.type is cut at four characters (data/files-type-column-width.md):
+    // the name's ending decides.
+    $endings = array();
+
+    foreach (array_keys($formats[$format]['types']) as $extension) {
+        $endings[] = "(name LIKE '%." . e($extension) . "')";
+    }
+
+    $rows = array();
+
+    foreach ((array) db_items(
+        "SELECT id, name, size FROM files
+        WHERE (design = '0') AND (" . implode(' OR ', $endings) . ") AND (size <= '" . (int) $formats[$format]['max'] . "')
+        ORDER BY timestamp DESC
+        LIMIT 200") as $row) {
+        if (!pg_file_withheld($row['name'])) {
+            $rows[] = array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'size' => (int) $row['size']);
+        }
+    }
+
+    return $rows;
+}
+
+/**
+ * Fills a design's header file from Files: its name and size, and the
+ * public address a test send gives WhatsApp when the file is open to
+ * everyone. A file that is gone leaves the name empty, which the check
+ * refuses.
+ *
+ * @param array $design
+ * @return array the design
+ */
+function pg_whatsapp_design_resolve_file($design)
+{
+    $design['header_link'] = '';
+
+    if (empty($design['header_file']['id'])) {
+        return $design;
+    }
+
+    $row = db_item("SELECT id, name, size FROM files WHERE (id = '" . (int) $design['header_file']['id'] . "') AND (design = '0')");
+
+    if (!is_array($row) || pg_file_withheld($row['name'])) {
+        $design['header_file'] = array('id' => (int) $design['header_file']['id'], 'name' => '', 'size' => 0);
+        return $design;
+    }
+
+    $design['header_file'] = array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'size' => (int) $row['size']);
+
+    if (function_exists('pg_file_open_to_everyone') && pg_file_open_to_everyone($row['id'])) {
+        $design['header_link'] = URL_SCHEME . HOSTNAME_SETTING . PATH . rawurlencode((string) $row['name']);
+    }
+
+    return $design;
+}
+
+/**
+ * Sends a saved draft or rejected template to Meta for review: a media
+ * header's sample is uploaded first, then the template is created (or the
+ * rejected one edited), and the row takes Meta's id and state.
+ *
+ * @param array $design the saved design, checked and resolved
+ * @param int   $user_id
+ * @return array ok, message
+ */
+function pg_whatsapp_design_submit($design, $user_id)
+{
+    $refused = function ($why) {
+        return array('ok' => false, 'message' => lang(array('string' => 'The template was not sent for approval: {var:1}', 'vars' => array($why))));
+    };
+
+    if (!pg_whatsapp_design_editable($design)) {
+        return $refused(lang('it is with WhatsApp already.'));
+    }
+
+    $refusal = pg_whatsapp_settings_refusal();
+
+    if ($refusal !== '') {
+        return $refused($refusal);
+    }
+
+    $app = pg_whatsapp_app();
+
+    if (!$app['enabled'] || !pg_whatsapp_app_complete($app)) {
+        return $refused(lang('WhatsApp is not set up.'));
+    }
+
+    pg_whatsapp_driver();
+    require_once(PG_FUNCTIONS_DIR . '/includes/whatsapp/cloud_templates.php');
+
+    $handle = '';
+
+    if ($design['header'] && ($design['header']['format'] !== 'TEXT')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/file_storage.php');
+
+        $formats = pg_whatsapp_design_header_formats();
+        $name = (string) $design['header_file']['name'];
+        $path = pg_file_reader_path($name);
+        $bytes = ($path !== '') ? @file_get_contents($path) : false;
+
+        if (($bytes === false) || (strlen($bytes) > $formats[$design['header']['format']]['max'])) {
+            return $refused(lang('the header\'s file could not be read.'));
+        }
+
+        $extension = strtolower((string) pathinfo($name, PATHINFO_EXTENSION));
+        $upload = pg_whatsapp_cloud_upload($app, $name, $formats[$design['header']['format']]['types'][$extension], $bytes);
+
+        if (!$upload['ok']) {
+            return $refused($upload['error']);
+        }
+
+        $handle = $upload['handle'];
+    }
+
+    $template = pg_whatsapp_design_submission($design, $handle);
+    $sent = pg_whatsapp_cloud_template_submit($app, $template, $design['meta_id']);
+
+    if (!$sent['ok']) {
+        return $refused($sent['error']);
+    }
+
+    db_q("UPDATE whatsapp_templates
+        SET meta_id = ?, status = ?, category = ?, reason = '', components = ?, updated_user_id = ?, updated_at = UNIX_TIMESTAMP()
+        WHERE id = ?", array(
+        $sent['id'],
+        $sent['status'],
+        ($sent['category'] !== '') ? $sent['category'] : $design['category'],
+        json_encode($template['components'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        (int) $user_id,
+        (int) $design['id'],
+    ));
+
+    return array('ok' => true, 'message' => ($sent['status'] === 'APPROVED')
+        ? lang('WhatsApp approved the template at once. It can be used now.')
+        : lang('The template was sent to WhatsApp for approval. The review takes up to 24 hours; its state is read again every six hours.'));
 }
 
 /**

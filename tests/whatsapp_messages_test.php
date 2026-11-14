@@ -210,3 +210,24 @@ function test_whatsapp_messages_wiring()
 	pg_assert_contains('pg_whatsapp_message_settings_check($_POST, $liveform)', $save);
 	pg_assert_contains('pg_whatsapp_message_settings_save($whatsapp_messages_post, USER_ID)', $save);
 }
+
+function test_whatsapp_message_slot_chips()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/var_chips.php');
+
+	$names = pg_whatsapp_message_slot_names('{"body":[{"label":"Customer\'s name","value":"Ayşe"},{"label":"","value":"1042"}]}');
+	pg_assert_same(array('body:1' => 'Customer\'s name'), $names, 'the designer\'s names; an empty one left out');
+	pg_assert_same(array(), pg_whatsapp_message_slot_names(''), 'a template made at Meta');
+
+	$html = pg_whatsapp_message_slot_chip(array('key' => 'body:1', 'part' => 'body', 'name' => '1', 'index' => 0), $names);
+	pg_assert_contains('data-pg-var-label="Customer&#039;s name"', $html, 'a chip with its name');
+	pg_assert_contains('in the message', $html, 'where it sits');
+	pg_assert_false(strpos($html, '{{') !== false, 'no {{n}} shown');
+
+	pg_assert_contains('>Value 2<', pg_whatsapp_message_slot_chip(array('key' => 'body:2', 'part' => 'body', 'name' => '2', 'index' => 0), $names), 'a variable without a name');
+	pg_assert_contains('in the link of button 2', pg_whatsapp_message_slot_chip(array('key' => 'button:1', 'part' => 'button', 'name' => '1', 'index' => 1), $names), 'a button\'s variable');
+
+	$offered = pg_whatsapp_message_offered(array(array('name' => 'n', 'language' => 'tr', 'category' => 'UTILITY', 'status' => 'APPROVED',
+		'components' => '[{"type":"BODY","text":"Hi {{1}} there"}]', 'samples' => '{"body":[{"label":"Name","value":"Jo"}]}')));
+	pg_assert_same(array('body:1' => 'Name'), $offered['n|tr']['labels'], 'labels offered with the template');
+}
