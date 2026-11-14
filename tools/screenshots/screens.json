@@ -34,6 +34,7 @@
 		{"name": "forgot_password", "path": "forgot_password.php", "signed_out": true},
 		{"name": "designer_home", "path": "view_system_styles.php"},
 		{"name": "visual_editor", "path": "add_system_style.php"},
+		{"name": "email_design", "path": "add_system_style.php?start=email"},
 		{"name": "messages_templates", "path": "messages_templates.php"},
 		{"name": "view_email_campaigns", "path": "view_email_campaigns.php"},
 		{"name": "messages_automatic", "path": "messages_automatic.php"},
