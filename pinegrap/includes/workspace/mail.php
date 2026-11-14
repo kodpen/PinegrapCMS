@@ -1078,7 +1078,9 @@ function ws_mail_ingest($raw, $box)
             'new'             => $opened,
             'customer'        => ($from_name !== '') ? $from_name : $from_email,
             'customer_email'  => $from_email,
+            'customer_phone'  => '',
             'subject'         => $subject,
+            'transport'       => 'email',
             'verified'        => ($auth === 'pass'),
         ));
     }
@@ -1090,6 +1092,7 @@ function ws_mail_ingest($raw, $box)
         'message_id'      => (int) $message_id,
         'box_id'          => $box_id,
         'new'             => $opened,
+        'transport'       => 'email',
         'verified'        => ($auth === 'pass'),
     ));
 

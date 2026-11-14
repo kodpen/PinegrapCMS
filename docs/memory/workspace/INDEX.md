@@ -88,6 +88,7 @@
 - mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it [decision: decisions-made-schema-15.md, decisions-made-schema-16.md, decisions-made-workspace-13.md, decisions-made-workspace-17.md]
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
 - mail-phone-conversations.md: A customer's WhatsApp message as a Workspace conversation (WA13, #9389, step 11.0.199): the WhatsApp box and its Channel field, threading by number, the card, what stays mail-only [decision: decisions-made-workspace-23.md]
+- mail-phone-list-event-api.md: WhatsApp and SMS conversations in the E-mails list (Kind filter), the workspace.mail.received event (transport, number, How it came) and the API (#9420)
 - mail-reply.md: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc, Bcc, files, Reply to all, the drawer, route, headers and subject, the API's answer sent at once
 - mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test [decision: decisions-made-workspace-17.md]
 - mail-routing.md: Routing incoming Workspace e-mail (G6, mail_route.php): box routes by address or +tag to a channel, recipients read, the known customer's line in their channels

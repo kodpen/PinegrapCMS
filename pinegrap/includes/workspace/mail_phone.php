@@ -346,12 +346,62 @@ function ws_mail_phone_ingest($box, $message, $now)
         ws_notify((int) $conversation['assignee_id'], 'mail_customer', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $message_id, 'actor_id' => 0));
     }
 
+    ws_mail_phone_received_event($box, $conversation_id, (int) $channel['id'], (int) $message_id, $opened, ($name !== '') ? $name : $number, $number);
+
     return array_merge($result, array(
         'status'          => 'stored',
         'item_id'         => $item_id,
         'conversation_id' => $conversation_id,
         'message_id'      => (int) $message_id,
     ));
+}
+
+/**
+ * The received event of a phone message, as an e-mail's (ws_mail_ingest()):
+ * the scheduled actions and flows hear the conversation, its transport and
+ * number; webhook subscribers hear ids and the transport only. The message's
+ * text stays out: it is untrusted, and the card carries it.
+ *
+ * @param array  $box             the phone box
+ * @param int    $conversation_id
+ * @param int    $channel_id
+ * @param int    $message_id
+ * @param bool   $opened          it opened the conversation
+ * @param string $customer        the sender's name, or the number
+ * @param string $number          E.164 with its plus
+ */
+function ws_mail_phone_received_event($box, $conversation_id, $channel_id, $message_id, $opened, $customer, $number)
+{
+    $transport = ws_mail_transport_kind($box['transport'] ?? '');
+
+    if (function_exists('ws_event')) {
+        ws_event('workspace.mail.received', array(
+            'id'              => (int) $conversation_id,
+            'conversation_id' => (int) $conversation_id,
+            'channel_id'      => (int) $channel_id,
+            'message_id'      => (int) $message_id,
+            'box_id'          => (int) $box['id'],
+            'new'             => (bool) $opened,
+            'customer'        => (string) $customer,
+            'customer_email'  => '',
+            'customer_phone'  => (string) $number,
+            'subject'         => '',
+            'transport'       => $transport,
+            'verified'        => true,
+        ));
+    }
+
+    if (function_exists('pg_announce')) {
+        pg_announce('workspace.mail.received', array(
+            'conversation_id' => (int) $conversation_id,
+            'channel_id'      => (int) $channel_id,
+            'message_id'      => (int) $message_id,
+            'box_id'          => (int) $box['id'],
+            'new'             => (bool) $opened,
+            'transport'       => $transport,
+            'verified'        => true,
+        ));
+    }
 }
 
 /**
