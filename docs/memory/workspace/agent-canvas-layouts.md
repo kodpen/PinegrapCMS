@@ -19,7 +19,7 @@ description: Ready layouts (DG4): four canvas templates shipped with Pinegrap, d
 - The MCP prompt `canvas_chart` tells the agent to send a layout when one fits. The assistants' tools do not offer templates or layouts.
 
 ## What could change later?
-- DG3's `chart` operation can replace the fixed chart layers; DG4 did not use it, as it had not landed.
+- The layouts' charts are fixed shape and text layers, not the `chart` operation (`agent-canvas-chart.md`), which had not landed when they were built (#9464); a later step can draw them through it.
 - Axis and value numbers are grouped with a dot (31.200) whatever the channel's language; the agent can overwrite them through fill.
 
 ## Tests?

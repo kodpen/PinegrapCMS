@@ -29,4 +29,4 @@ description: Decisions list, workspace part 24 (2026-11-14 on): a guest sees the
 - While a share is open the row stays and may stand out more. Owner: "paylaşım devam ederken daha geniş ve dikkat edici olabilir". Step GV6 (#9439): `workspace/workspace-channel-identity-motion.md`.
 
 ## Does the software guide an agent's drawings? (owner, 2026-11-14, agent channel message 2296)
-- Yes. Owner, on an agent-made board: "panoda chartlar aşırı basit olmamış mı? ajanın çizimlerinde yardımcı olacak guide leri yazılım tarafı sağlayabilirse sağlayalım. arayüz tasarımı olarak biraz daha iyileşme şart". Plan: `plans/agent-drawing-guides.md`.
+- Yes. Owner, on an agent-made board: "panoda chartlar aşırı basit olmamış mı? ajanın çizimlerinde yardımcı olacak guide leri yazılım tarafı sağlayabilirse sağlayalım. arayüz tasarımı olarak biraz daha iyileşme şart". Built as the drawing guide (`workspace/agent-canvas-guide.md`), the chart operation, ready layouts and the live pages' Chart.js preset (#9400 to #9469).

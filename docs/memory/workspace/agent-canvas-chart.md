@@ -4,7 +4,7 @@ description: The chart canvas operation (canvas_chart.php): kinds, data, boards,
 ---
 
 ## What does the chart operation take?
-- `{op: chart}` in a canvas edit (route, MCP tool, `edit_canvas`), or `chart` instead of svg on POST `/workspace/channels/{id}/canvases`, or `draw_canvas`'s `chart` (a JSON object in a string). Built in DG3 of `plans/agent-drawing-guides.md`.
+- `{op: chart}` in a canvas edit (route, MCP tool, `edit_canvas`), or `chart` instead of svg on POST `/workspace/channels/{id}/canvases`, or `draw_canvas`'s `chart` (a JSON object in a string). Built in #9467.
 - kind (bar, stacked_bar, line, area, donut, sparkline, figure_tile), theme dark or light (light by default), board card (default), slide, square, portrait or story; title, subtitle, note; labels and values, or series of up to five {name, values}; highlight; format en or tr (31.2K / 31,2 B).
 - A figure tile and a sparkline have their own boards (600 x 360, 600 x 120) and take label, value, values; a tile also delta and vs.
 
@@ -15,7 +15,7 @@ description: The chart canvas operation (canvas_chart.php): kinds, data, boards,
 - The test opens every kind's document with the editor's `M.canvasOpenDoc()` in Node (`tests/workspace_canvas_chart_test.php`).
 
 ## Which colour does a chart take?
-- Owner (2026-11-14, to the coordinator): "chartlarda birden fazla renk kullanılmayacaksa chart göstergeleri kanalın rengini alabilir mi?" A one-series chart (bar or line of one series, area, sparkline, figure tile) takes the colour of the channel it is drawn in (`ws_canvas_chart_channel_tone()`). Confirmed to the architect ("Evet, alsın"): decisions list, workspace part 27.
+- Owner (2026-11-14, to the coordinator): "chartlarda birden fazla renk kullanılmayacaksa chart göstergeleri kanalın rengini alabilir mi?" A one-series chart (bar or line of one series, area, sparkline, figure tile) takes the colour of the channel it is drawn in (`ws_canvas_chart_channel_tone()`). Confirmed to the architect ("Evet, alsın"): `workflow/decisions-made-workspace-27.md`. Live pages follow the same rule through `ws_canvas_chart_tone()` (`agent-page-libraries.md`).
 - `ws_canvas_chart_tone()`: the channel colour when it reaches 3:1 on the board, else its own hue lightened (dark board) or darkened (light) in OKLab until it does, else the guide's first series colour; no channel colour gives the guide's first too.
 - Several series and the donut keep the guide's palette. The colour is written into the layers: a later change of the channel's colour does not repaint an old canvas; drawing it again does.
 

@@ -4,8 +4,13 @@ description: The drawing guide an agent reads before drawing a canvas (canvas_gu
 ---
 
 ## Where do the guide's values live?
-- `ws_canvas_guide_values()` in `includes/workspace/canvas_guide.php`: boards, scale base, grid, font, type, spacing, a dark and a light palette, marks, chart kinds. Built in DG2 of `plans/agent-drawing-guides.md` from the owner-approved DG1 sheet (`agent-drawing-guides-census.md`).
-- Change a value there only: the text (`ws_canvas_guide_text()`), the short form (`ws_canvas_guide_short()`) and the chart operation (`agent-canvas-chart.md`) read it, and `tests/workspace_canvas_guide_test.php` checks every value appears in the text.
+- `ws_canvas_guide_values()` in `includes/workspace/canvas_guide.php`: boards, scale base, grid, font, type, spacing, a dark and a light palette, marks, chart kinds. Built in #9457 from the guide sheet of #9400.
+- Change a value there only: the text (`ws_canvas_guide_text()`), the short form (`ws_canvas_guide_short()`), the chart operation (`agent-canvas-chart.md`), the ready layouts (`agent-canvas-layouts.md`) and the live pages' Chart.js preset (`agent-page-libraries.md`) read it, and `tests/workspace_canvas_guide_test.php` checks every value appears in the text.
+
+## Why is there a guide?
+- Owner (2026-11-14, agent channel message 2296, on an agent-made board): "panoda chartlar aşırı basit olmamış mı? ajanın çizimlerinde yardımcı olacak guide leri yazılım tarafı sağlayabilirse sağlayalım. arayüz tasarımı olarak biraz daha iyileşme şart" (`workflow/decisions-made-workspace-24.md`).
+- Before it, agents drew from hand SVG with no axis, values or units, a serif fallback or 12 px Arial read at half size, colours not the panel's and none for dark; Chart.js on a live page kept its defaults.
+- Owner (2026-11-14, message 2660): the guide sheet (boards, grid, type, palettes, marks, chart kinds) approved as drawn; the values above are that sheet. Owner (message 2955): a line is 6 on the Card, not 3.
 
 ## Who reads the guide, and where?
 - `GET /workspace/canvas/guide` (`workspace:read`, `ws_api_canvas_guide()`): `text` (English) and `values`.
