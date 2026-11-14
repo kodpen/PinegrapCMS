@@ -10,7 +10,7 @@ description: The chart canvas operation (canvas_chart.php): kinds, data, boards,
 
 ## How is it drawn?
 - `ws_canvas_chart_check()` checks and fills the defaults; `ws_canvas_chart_svg()` writes SVG by `ws_canvas_guide_values()` (`agent-canvas-guide.md`), in base units under a viewBox scaled to the board, each part a top-level element with an id.
-- Lines are 6 on a scaled board, so a card shown at half size reads as wide as a tile's or sparkline's trend of 3; the axis takes one more step when the top value would end near the top gridline, so its label has room.
+- Owner (2026-11-14, message 2955, asked which line width): "Kalın: 6". Lines are 6 on a scaled board (3 px at the channel's half size), a tile's or sparkline's trend 3 on its own board; the axis takes one more step when the top value would end near the top gridline, so its label has room.
 - It is laid in as the svg operation with layers split: the whole canvas anew, texts as text layers in `g:Inter`, marks as svg layers. Redrawing with changed data is the same operation again.
 - The test opens every kind's document with the editor's `M.canvasOpenDoc()` in Node (`tests/workspace_canvas_chart_test.php`).
 
