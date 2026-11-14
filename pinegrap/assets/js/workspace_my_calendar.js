@@ -51,6 +51,7 @@
             plan: parseInt(query.get('plan') || 0, 10) || 0
         };
         var data = null;
+        var plans = planKit(h, S, function () { load(); });
 
         function s(key) {
             return Object.prototype.hasOwnProperty.call(S, key) ? S[key] : key;
@@ -119,7 +120,7 @@
         newPlan.setAttribute('data-ws-new-plan', '');
         newPlan.appendChild(h.icon('bi-plus-lg'));
         newPlan.appendChild(document.createTextNode(s('new_plan')));
-        newPlan.addEventListener('click', function () { planDrawer(null, { start: (data && data.today) || h.cfg.today }); });
+        newPlan.addEventListener('click', function () { plans.drawer(null, { start: (data && data.today) || h.cfg.today }); });
 
         var work = el('a', 'pg-button pg-button-quiet pg-button-sm');
         work.href = h.cfg.urls.calendar;
@@ -149,7 +150,7 @@
                 newPlan.classList.toggle('d-none', !result.plans);
 
                 if (state.plan) {
-                    openPlan(state.plan);
+                    plans.open(state.plan);
                     state.plan = 0;
                 }
             }).catch(h.fail);
@@ -186,7 +187,7 @@
 
         function openEvent(event) {
             if (event.plan_id) {
-                openPlan(event.plan_id);
+                plans.open(event.plan_id);
             } else if (event.url) {
                 window.location.href = event.url;
             } else if (!event.readonly) {
@@ -228,7 +229,7 @@
             var items = [{ header: day.label }];
 
             if (data.plans) {
-                items.push({ icon: 'bi-journal-plus', label: s('new_plan'), action: function () { planDrawer(null, { start: day.date }); } });
+                items.push({ icon: 'bi-journal-plus', label: s('new_plan'), action: function () { plans.drawer(null, { start: day.date }); } });
             }
 
             return items.concat([
@@ -427,7 +428,39 @@
             box.appendChild(body);
         }
 
-        // ── the person's own plan: the New plan drawer ──
+        function draw() {
+            title.textContent = data.label;
+            Object.keys(segItems).forEach(function (key) {
+                segItems[key].setAttribute('aria-pressed', key === data.view ? 'true' : 'false');
+            });
+
+            var box = h.clear(card);
+
+            card.classList.toggle('ws-mycal-week', data.view === 'week');
+            card.classList.toggle('ws-mycal-as-list', data.view === 'list');
+
+            if (data.view === 'list') {
+                drawList(box);
+            } else {
+                drawGrid(box);
+            }
+        }
+
+        load();
+    }
+
+    // ── the person's own plan: the New plan drawer ──
+    //
+    // Opened by My calendar and by Add to my calendar on a mail
+    // (fromMail()); done() runs after a save or a delete.
+
+    function planKit(h, S, done) {
+        var el = h.el;
+
+        function s(key) {
+            return Object.prototype.hasOwnProperty.call(S, key) ? S[key] : key;
+        }
+
 
         function openPlan(planId) {
             h.api('ws_personal_plan_get', { plan_id: planId }).then(function (result) {
@@ -482,14 +515,23 @@
             lock.appendChild(lockText);
             body.appendChild(lock);
 
-            var name = input('text', plan ? plan.title : '');
+            // A plan made from a mail opens its conversation on the E-mails screen.
+            if (plan && plan.mine && plan.mail_conversation_id && h.cfg.urls.mail) {
+                var mailLink = el('a', 'ws-plan-mail pg-text-meta d-block mb-3');
+                mailLink.href = h.cfg.urls.mail + '?conversation=' + plan.mail_conversation_id;
+                mailLink.appendChild(h.icon('bi-envelope', 'me-1'));
+                mailLink.appendChild(document.createTextNode(s('plan_mail')));
+                body.appendChild(mailLink);
+            }
+
+            var name = input('text', plan ? plan.title : (defaults.title || ''));
             name.maxLength = 255;
             name.required = true;
             body.appendChild(field(s('plan_title'), name));
 
             var days = el('div', 'ws-plan-pair');
             var first = input('date', plan ? plan.start : (defaults.start || h.cfg.today));
-            var last = input('date', plan ? plan.end : (defaults.start || h.cfg.today));
+            var last = input('date', plan ? plan.end : (defaults.end || defaults.start || h.cfg.today));
             days.appendChild(field(s('plan_first_day'), first));
             days.appendChild(field(s('plan_last_day'), last));
             body.appendChild(days);
@@ -509,8 +551,8 @@
             body.appendChild(wholeRow);
 
             var times = el('div', 'ws-plan-pair');
-            var from = input('time', plan && plan.start_time ? plan.start_time : '09:00');
-            var until = input('time', plan && plan.end_time ? plan.end_time : '10:00');
+            var from = input('time', plan && plan.start_time ? plan.start_time : (defaults.start_time || '09:00'));
+            var until = input('time', plan && plan.end_time ? plan.end_time : (defaults.end_time || '10:00'));
             times.appendChild(field(s('plan_from'), from));
             times.appendChild(field(s('plan_until'), until));
             body.appendChild(times);
@@ -637,7 +679,7 @@
                         h.api('ws_personal_plan_delete', { plan_id: plan.id }).then(function () {
                             h.hideOffcanvas(node);
                             h.toast(s('plan_deleted'), 'success');
-                            load();
+                            done();
                         }).catch(h.fail);
                     });
                 });
@@ -669,12 +711,14 @@
                     remind: remind.value,
                     note: note.value,
                     visibility: whoValue,
+                    // Add to my calendar: the mail the new plan is tied to.
+                    mail_item: plan ? 0 : (defaults.mail_item || 0),
                     people: whoValue === 'people' ? picker.value() : []
                 }).then(function () {
                     save.disabled = false;
                     h.hideOffcanvas(node);
                     h.toast(s('plan_saved'), 'success');
-                    load();
+                    done();
                 }).catch(function (error) {
                     save.disabled = false;
                     h.fail(error);
@@ -690,27 +734,16 @@
             h.showOffcanvas(node);
             window.setTimeout(function () { name.focus(); }, 200);
         }
-
-        function draw() {
-            title.textContent = data.label;
-            Object.keys(segItems).forEach(function (key) {
-                segItems[key].setAttribute('aria-pressed', key === data.view ? 'true' : 'false');
-            });
-
-            var box = h.clear(card);
-
-            card.classList.toggle('ws-mycal-week', data.view === 'week');
-            card.classList.toggle('ws-mycal-as-list', data.view === 'list');
-
-            if (data.view === 'list') {
-                drawList(box);
-            } else {
-                drawGrid(box);
-            }
-        }
-
-        load();
+        return { open: openPlan, drawer: planDrawer };
     }
 
-    window.PGWsMyCalendar = { screen: screen };
+    // Add to my calendar on a mail (workspace.js, workspace_mail.js): the
+    // New plan drawer filled from the mail, its words sent with the fill.
+    function fromMail(h, itemId) {
+        h.api('ws_personal_plan_mail', { item_id: itemId }).then(function (result) {
+            planKit(h, result.strings || {}, function () {}).drawer(null, result.fill || {});
+        }).catch(h.fail);
+    }
+
+    window.PGWsMyCalendar = { screen: screen, fromMail: fromMail };
 })();

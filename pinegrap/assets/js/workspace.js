@@ -11089,6 +11089,13 @@
                 } });
             }
 
+            // Add to my calendar: the New plan drawer filled from the mail.
+            if (message.mail_calendar && window.PGWsMyCalendar && !message.deleted) {
+                items.push({ icon: 'bi-calendar-plus', label: t('mail_calendar'), action: function () {
+                    window.PGWsMyCalendar.fromMail(featureHelpers(), message.mail_calendar);
+                } });
+            }
+
             items.push('-');
             items.push({ icon: 'bi-link-45deg', label: t('copy_link'), action: function () {
                 copyText(absoluteUrl(CFG.urls.workspace + '?channel=' + self.channel.id + '&message=' + message.id));

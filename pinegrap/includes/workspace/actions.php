@@ -4654,6 +4654,12 @@ function ws_handle_action($action, $request)
 
             return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('plan' => $result['plan']));
 
+        // Add to my calendar: the drawer filled from a mail the reader may read.
+        case 'ws_personal_plan_mail':
+            $result = ws_personal_plan_mail_draft($viewer, (int) ($request['item_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok($result);
+
         case 'ws_personal_plan_delete':
             $result = ws_personal_plan_delete($viewer, (int) ($request['plan_id'] ?? 0));
 

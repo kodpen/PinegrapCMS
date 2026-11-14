@@ -127,6 +127,9 @@ function ws_mail_pane_open($viewer, $conversation_id)
 
     ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
 
+    // Add to my calendar on each mail (personal_plan_mail.php).
+    $pane = function_exists('ws_personal_plan_mail_pane') ? ws_personal_plan_mail_pane($pane, !empty($viewer['member']) && ws_personal_plans_ready()) : $pane;
+
     return ws_mail_forward_pane($pane, ws_mail_forward_may($viewer));
 }
 
@@ -249,10 +252,22 @@ function ws_mail_pane_item_html($item, $base = '')
             . ((trim((string) $bounce['body_text']) !== '') ? ' ' . h((string) $bounce['body_text']) : '') . '</div>';
     }
 
-    // Forward as e-mail (mail_forward.php, ws_mail_forward_pane()).
+    // Forward as e-mail (mail_forward.php, ws_mail_forward_pane()) and Add
+    // to my calendar (personal_plan_mail.php, ws_personal_plan_mail_pane()).
+    $tools = '';
+
     if (!empty($item['forward'])) {
-        $html .= '<div class="ws-mail-item-tools mt-2"><button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-forward="' . (int) $item['id'] . '">'
-            . '<i class="bi bi-envelope-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Forward')) . '</button></div>';
+        $tools .= '<button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-forward="' . (int) $item['id'] . '">'
+            . '<i class="bi bi-envelope-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Forward')) . '</button>';
+    }
+
+    if (!empty($item['calendar'])) {
+        $tools .= '<button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-calendar="' . (int) $item['id'] . '">'
+            . '<i class="bi bi-calendar-plus me-1" aria-hidden="true"></i>' . h(lang('Add to my calendar')) . '</button>';
+    }
+
+    if ($tools !== '') {
+        $html .= '<div class="ws-mail-item-tools mt-2 d-flex flex-wrap gap-3">' . $tools . '</div>';
     }
 
     return $html . '</article>';

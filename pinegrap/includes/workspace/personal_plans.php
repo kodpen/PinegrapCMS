@@ -333,6 +333,15 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
             return array('error' => lang('You have too many plans. Delete some first.'));
         }
 
+        // Add to my calendar: a new plan made from a mail the person may
+        // read is tied to its conversation (personal_plan_mail.php).
+        $mail = ((int) ($data['mail_item'] ?? 0) > 0) ? ws_personal_plan_mail_item($viewer, (int) $data['mail_item']) : null;
+
+        if (((int) ($data['mail_item'] ?? 0) > 0) && !$mail) {
+            return array('error' => lang('This e-mail cannot be found.'));
+        }
+
+        $values .= $mail ? ", mail_conversation_id = '" . (int) $mail['item']['conversation_id'] . "'" : '';
         db("INSERT INTO ws_personal_plans SET user_id = '" . $user_id . "', created_at = '" . $now . "', " . $values);
         $plan_id = (int) mysqli_insert_id(db::$con);
     }
@@ -464,6 +473,8 @@ function ws_personal_plan_for_reader($user_id, $plan)
     $out['mine'] = $mine;
     $out['people'] = ($mine && ($out['visibility'] === 'people')) ? ws_personal_plan_people_ids((int) $plan['id']) : array();
     $out['owner_name'] = $mine ? '' : (string) ($owner[(int) $plan['user_id']]['name'] ?? '');
+    // The mail conversation a plan was made from (Add to my calendar), the owner's alone.
+    $out['mail_conversation_id'] = $mine ? (int) ($plan['mail_conversation_id'] ?? 0) : 0;
 
     if (!$mine) {
         $out['remind'] = '';
@@ -632,6 +643,7 @@ function ws_personal_plan_js_strings()
         'plan_people_hint'  => lang('Choose the team members who may see this plan.'),
         'plan_people_error' => lang('Choose who may see the plan.'),
         'plan_team'      => lang('The whole team'),
+        'plan_mail'      => lang('Open the e-mail'),
         'remind_options' => array(
             '0'    => lang('At the start'),
             '15'   => lang('15 minutes before'),

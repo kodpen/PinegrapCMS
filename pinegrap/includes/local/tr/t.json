@@ -8546,6 +8546,7 @@
     "This driver has no connection test.": "Bu sürücünün bağlantı testi yok.",
     "This e-invoice cannot be taken in as it stands": "Bu e-fatura bu hâliyle ERP'ye alınamaz",
     "This e-mail cannot be forwarded.": "Bu e-posta iletilemez.",
+    "This e-mail cannot be found.": "Bu e-posta bulunamadı.",
     "This e-mail is already in the mailbox.": "Bu e-posta kutuda zaten var.",
     "This e-mail is no longer available.": "Bu e-posta artık yok.",
     "This e-mail is not waiting to be sent again.": "Bu e-posta yeniden gönderilmeyi beklemiyor.",

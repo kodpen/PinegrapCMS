@@ -71,6 +71,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/library.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calendar.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/my_calendar.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/personal_plans.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/personal_plan_mail.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calendar_feed.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calendar_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/briefing.php');

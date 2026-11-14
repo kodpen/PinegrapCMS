@@ -1598,7 +1598,7 @@
         });
 
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-forward], [data-ws-mail-close]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -1615,6 +1615,11 @@
             } else if (target.hasAttribute('data-ws-mail-forward')) {
                 // A mail of the pane forwarded; the new conversation opens.
                 forward(h, { kind: 'mail', ids: [parseInt(target.getAttribute('data-ws-mail-forward'), 10)] }, { sent: function (data) { open(data.conversation_id); } });
+            } else if (target.hasAttribute('data-ws-mail-calendar')) {
+                // Add to my calendar (workspace_my_calendar.js).
+                if (window.PGWsMyCalendar) {
+                    window.PGWsMyCalendar.fromMail(h, parseInt(target.getAttribute('data-ws-mail-calendar'), 10));
+                }
             } else if (target.hasAttribute('data-ws-mail-more')) {
                 more(target);
             } else if (target.hasAttribute('data-ws-mail-row')) {
