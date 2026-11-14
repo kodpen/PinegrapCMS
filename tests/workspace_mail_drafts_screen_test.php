@@ -61,7 +61,7 @@ function test_workspace_mail_drafts_screen_form_fields()
 {
 	$fields = ws_mail_draft_form_fields(workspace_mail_drafts_screen_test_row(array('cc_list' => 'a@b.test', 'bcc_list' => 'c@d.test')), 0);
 	pg_assert_same(array('id' => 4, 'kind' => 'new', 'conversation_id' => 0, 'channel_id' => 0, 'box_id' => 2, 'to' => 'ali@example.com', 'cc' => 'a@b.test', 'bcc' => 'c@d.test',
-		'subject' => 'Price list', 'text' => "Hello,\n\nthe list is attached."), $fields, 'a new mail\'s form');
+		'subject' => 'Price list', 'text' => "Hello,\n\nthe list is attached.", 'files' => array(), 'html_note' => ''), $fields, 'a new mail\'s form');
 
 	$fields = ws_mail_draft_form_fields(workspace_mail_drafts_screen_test_row(array('conversation_id' => 9)), 3);
 	pg_assert_same(array('reply', 9, 3, '', ''), array($fields['kind'], $fields['conversation_id'], $fields['channel_id'], $fields['to'], $fields['subject']),

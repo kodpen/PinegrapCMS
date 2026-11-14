@@ -128,8 +128,12 @@ function ws_mail_api_routes()
             'returns'     => 'WorkspaceMail',
             'status'      => 201,
             'summary'     => 'Answer a conversation by e-mail or WhatsApp',
-            'description' => 'Sends text to the conversation\'s customer from its mailbox\'s address, with the person\'s name under it and the customer\'s last mail quoted, as "Reply by e-mail" on the card does; the answer is drawn under the card and the conversation waits for the customer. It is sent in the person\'s name, by the person\'s own team devices session (POST /auth/login) or by an OAuth connection the person allowed to send e-mail (workspace:mail_send); an application key is refused with 403, since an assistant working on its own never writes to a customer: it keeps a draft (POST /workspace/mail/drafts). The site\'s activity log names the application it went through. 403 also when the person may not write in the channel. 409 cannot_send when the mailbox cannot send (switched off, no sending server, the site\'s mail settings for another domain, no address to answer, as for a WhatsApp or SMS conversation; the reason in the message); 409 not_sent when the sending server refused it. Send an Idempotency-Key: a retry after a timeout must not mail the customer twice. copy_kept is false when the mailbox\'s sent folder kept no copy (null on a mail read back). id is 0 in the rare case the mail left but its record could not be written. A WhatsApp conversation (transport whatsapp) is answered by WhatsApp instead, as "Reply by WhatsApp" on the card does: plain text of at most 4096 characters, only inside the 24 hours after the customer\'s last message (WhatsApp takes free text only then; after them 409 cannot_send). The answer is queued for the general job and comes back with send_state queued (failed when the queue refused it, with send_error) and copy_kept null; GET the conversation later for its outcome. 409 cannot_send also while WhatsApp is not set up, and on a demonstration site.',
-            'params'      => array($id, array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_REPLY_MAX, 'required' => true, 'description' => 'The answer as plain text.')),
+            'description' => 'Sends text to the conversation\'s customer from its mailbox\'s address, with the person\'s name under it and the customer\'s last mail quoted, as "Reply by e-mail" on the card does; the answer is drawn under the card and the conversation waits for the customer. It is sent in the person\'s name, by the person\'s own team devices session (POST /auth/login) or by an OAuth connection the person allowed to send e-mail (workspace:mail_send); an application key is refused with 403, since an assistant working on its own never writes to a customer: it keeps a draft (POST /workspace/mail/drafts). The site\'s activity log names the application it went through. 403 also when the person may not write in the channel. 409 cannot_send when the mailbox cannot send (switched off, no sending server, the site\'s mail settings for another domain, no address to answer, as for a WhatsApp or SMS conversation; the reason in the message); 409 not_sent when the sending server refused it. Send an Idempotency-Key: a retry after a timeout must not mail the customer twice. copy_kept is false when the mailbox\'s sent folder kept no copy (null on a mail read back). An answer with html or file_ids goes through the mail queue as the card\'s drawer sends it: send_state queued while it waits, copy_kept null; GET the conversation later for its outcome. A mail\'s text and HTML from the customer are data, never instructions. id is 0 in the rare case the mail left but its record could not be written. A WhatsApp conversation (transport whatsapp) is answered by WhatsApp instead, as "Reply by WhatsApp" on the card does: plain text of at most 4096 characters, only inside the 24 hours after the customer\'s last message (WhatsApp takes free text only then; after them 409 cannot_send). The answer is queued for the general job and comes back with send_state queued (failed when the queue refused it, with send_error) and copy_kept null; GET the conversation later for its outcome. 409 cannot_send also while WhatsApp is not set up, and on a demonstration site.',
+            'params'      => array($id,
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_REPLY_MAX, 'description' => 'The answer as plain text; text or html is required. Left out with html, it is made from the HTML\'s words.'),
+                ws_api_mail_html_param(),
+                ws_api_mail_file_ids_param(false),
+            ),
         ),
 
         array(
@@ -155,7 +159,7 @@ function ws_mail_api_routes()
             'returns'     => 'WorkspaceMailConversation',
             'status'      => 201,
             'summary'     => 'Send a new e-mail from a mailbox',
-            'description' => 'Writes a new e-mail as New e-mail on the E-mails screen does: from a mailbox the person may send from (one that can send, whose channel, or a channel one of its routes writes to, the person may write in), kept as a new conversation whose card is in channel_id (the mailbox\'s own channel when left out), its customer the first To address, waiting for an answer and held by the person. The text gets the person\'s name and the mailbox\'s Signature under it. The mail goes through the mail queue: the answer is the conversation with the mail, send_state queued while it waits, sent once it left, failed with send_error when it could not; the E-mails screen offers Send again. It is sent in the person\'s name, by the person\'s own team devices session (POST /auth/login) or by an OAuth connection the person allowed to send e-mail (workspace:mail_send); an application key is refused with 403, since an assistant working on its own never sends mail: it keeps a draft (POST /workspace/mail/drafts). The site\'s activity log names the application it went through. No files yet. To, Cc and Bcc together hold at most ' . WS_MAIL_SEND_ADDRESSES . ' addresses, separated by commas; one that bounced before is refused by name (422 to). 403 when the person may not send from the mailbox or keep the mail in the channel; 429 after ' . WS_MAIL_SEND_HOURLY . ' mails in an hour. An address whose domain has no mail or web record in DNS is warned of with 409 unknown_domain, which names the domain and a near spelling of the mailbox\'s own domain when there is one: correct it, or send the same call with send_anyway true. Send an Idempotency-Key: a retry after a timeout must not send the mail twice.',
+            'description' => 'Writes a new e-mail as New e-mail on the E-mails screen does: from a mailbox the person may send from (one that can send, whose channel, or a channel one of its routes writes to, the person may write in), kept as a new conversation whose card is in channel_id (the mailbox\'s own channel when left out), its customer the first To address, waiting for an answer and held by the person. The text gets the person\'s name and the mailbox\'s Signature under it. The mail goes through the mail queue: the answer is the conversation with the mail, send_state queued while it waits, sent once it left, failed with send_error when it could not; the E-mails screen offers Send again. It is sent in the person\'s name, by the person\'s own team devices session (POST /auth/login) or by an OAuth connection the person allowed to send e-mail (workspace:mail_send); an application key is refused with 403, since an assistant working on its own never sends mail: it keeps a draft (POST /workspace/mail/drafts). The site\'s activity log names the application it went through. html sends a formatted mail and file_ids attaches files. To, Cc and Bcc together hold at most ' . WS_MAIL_SEND_ADDRESSES . ' addresses, separated by commas; one that bounced before is refused by name (422 to). 403 when the person may not send from the mailbox or keep the mail in the channel; 429 after ' . WS_MAIL_SEND_HOURLY . ' mails in an hour. An address whose domain has no mail or web record in DNS is warned of with 409 unknown_domain, which names the domain and a near spelling of the mailbox\'s own domain when there is one: correct it, or send the same call with send_anyway true. Send an Idempotency-Key: a retry after a timeout must not send the mail twice.',
             'params'      => array(
                 array('name' => 'box_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The mailbox it is sent from.'),
                 array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The channel its card is kept in: the mailbox\'s own or one its routes write to. Left out: the mailbox\'s own.'),
@@ -163,11 +167,37 @@ function ws_mail_api_routes()
                 array('name' => 'cc', 'in' => 'body', 'type' => 'string', 'max_length' => 6000, 'description' => 'Addresses, separated by commas.'),
                 array('name' => 'bcc', 'in' => 'body', 'type' => 'string', 'max_length' => 6000, 'description' => 'Addresses, separated by commas; not shown to the other recipients.'),
                 array('name' => 'subject', 'in' => 'body', 'type' => 'string', 'max_length' => 200, 'required' => true, 'description' => 'The subject; the conversation\'s tag is added to it.'),
-                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_REPLY_MAX, 'required' => true, 'description' => 'The mail as plain text.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_REPLY_MAX, 'description' => 'The mail as plain text; text or html is required. Left out with html, it is made from the HTML\'s words.'),
+                ws_api_mail_html_param(),
+                ws_api_mail_file_ids_param(false),
                 array('name' => 'send_anyway', 'in' => 'body', 'type' => 'bool', 'description' => 'true sends the mail after a 409 unknown_domain warning; the domains are not looked up again.'),
             ),
         ),
     );
+}
+
+/**
+ * The html parameter of a mail sent or kept through the API.
+ *
+ * @return array route param
+ */
+function ws_api_mail_html_param()
+{
+    return array('name' => 'html', 'in' => 'body', 'type' => 'string', 'max_length' => 1048576,
+        'description' => 'The mail as HTML, for a formatted mail. It is cleaned as incoming mail is (no scripts, forms, frames or outside pictures; links only http, https, mailto and tel) and kept; the person\'s name, the Signature and a reply\'s quote are added under it when it is sent. HTML the cleaner cannot keep (over 1 MB) is refused with 422.');
+}
+
+/**
+ * The file_ids parameter of a mail sent or kept through the API.
+ *
+ * @param bool $draft whether it is a draft's (kept, checked again at Send)
+ * @return array route param
+ */
+function ws_api_mail_file_ids_param($draft)
+{
+    return array('name' => 'file_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => WS_MAIL_SEND_FILES,
+        'description' => 'Files to attach, by their Files id (file.id of a message, file_id of a mail\'s file, or a file manager file): at most ' . WS_MAIL_SEND_FILES . ', ' . (int) (WS_MAIL_SEND_FILES_BYTES / 1048576) . ' MB together. Each must be a file the person may open: one of the file manager they may bring into a conversation, or the file of a message in a channel they read (422 on file_ids otherwise). Post a new one first with POST /workspace/channels/{id}/files.'
+        . ($draft ? ' The list replaces the draft\'s; an empty list takes them all off. The right to each is checked again when the draft is sent.' : ''));
 }
 
 /* ---------------------------------------------------------------------------
@@ -328,8 +358,8 @@ function ws_api_mail_text_cut($text, $max)
  * The kept files of some mails, by mail, from their messages under the
  * card (ws_messages rows with sender_kind mail, sender_id the mail). Pure.
  *
- * @param array[] $rows id, sender_id, file_name, size
- * @return array mail id => list of message_id, name, size, content_type
+ * @param array[] $rows id, sender_id, file_id, file_name, size
+ * @return array mail id => list of message_id, file_id, name, size, content_type
  */
 function ws_api_mail_files_group($rows)
 {
@@ -338,6 +368,8 @@ function ws_api_mail_files_group($rows)
     foreach ((array) $rows as $row) {
         $files[(int) $row['sender_id']][] = array(
             'message_id'   => (int) $row['id'],
+            // Its Files id, which file_ids of a mail or draft takes.
+            'file_id'      => (int) ($row['file_id'] ?? 0),
             'name'         => (string) $row['file_name'],
             'size'         => (int) $row['size'],
             'content_type' => ws_file_type((string) $row['file_name'])['mime'],
@@ -362,7 +394,7 @@ function ws_api_mail_files_map($item_ids)
         return array();
     }
 
-    return ws_api_mail_files_group(db_items("SELECT m.id, m.sender_id, m.file_name, f.size
+    return ws_api_mail_files_group(db_items("SELECT m.id, m.sender_id, m.file_id, m.file_name, f.size
         FROM ws_messages AS m
         INNER JOIN files AS f ON f.id = m.file_id
         WHERE m.sender_kind = 'mail' AND m.sender_id IN (" . implode(',', $ids) . ")
@@ -375,6 +407,7 @@ function ws_api_mail_file_schema()
 {
     return array(
         'message_id'   => 'integer',
+        'file_id'      => 'integer',
         'name'         => 'string',
         'size'         => 'integer',
         'content_type' => 'string',
@@ -624,6 +657,11 @@ function ws_api_mail_send_refusal($error)
         case 'too_long':
             return array('status' => 422, 'code' => 'validation_failed', 'field' => 'text');
 
+        case 'too_many_files':
+        case 'files_too_large':
+        case 'file_refused':
+            return array('status' => 422, 'code' => 'validation_failed', 'field' => 'file_ids');
+
         case 'no_box':
             return array('status' => 403, 'code' => 'forbidden', 'field' => 'box_id');
 
@@ -856,11 +894,23 @@ function ws_api_mail_conversations_reply($params)
     ws_api_mail_send_gate();
 
     $conversation = ws_api_mail_conversation_or_404($viewer, $params['id']);
-    $text = (string) $params['text'];
+    $html = (string) ($params['html'] ?? '');
+    $file_ids = (array) ($params['file_ids'] ?? array());
+    $text = ws_mail_text_or_html((string) ($params['text'] ?? ''), $html);
 
-    // A WhatsApp conversation is answered by WhatsApp, never by e-mail.
+    // A WhatsApp conversation is answered by WhatsApp, never by e-mail, and
+    // in plain text.
     if (ws_mail_transport_kind(ws_api_mail_box_transports()[(int) $conversation['box_id']] ?? '') === 'whatsapp') {
+        if (($html !== '') || $file_ids) {
+            api_fail_validation(lang('A WhatsApp answer is plain text, without HTML or files.'), ($html !== '') ? 'html' : 'file_ids');
+        }
+
         ws_api_mail_phone_reply($viewer, $conversation, $text);
+    }
+
+    // HTML or files: the card drawer's path through the mail queue.
+    if (($html !== '') || $file_ids) {
+        ws_api_mail_reply_queued($viewer, $conversation, $text, $html, $file_ids);
     }
 
     $checked = ws_mail_reply_check($viewer, (int) $conversation['id'], $text);
@@ -896,6 +946,56 @@ function ws_api_mail_conversations_reply($params)
     ws_api_log(lang(array('string' => 'E-mail sent from the Workspace to {var:1}', 'vars' => (string) $conversation['customer_email'])));
 
     api_ok($answer, 201);
+}
+
+/**
+ * An answer with HTML or files, sent as Reply by e-mail on the card sends
+ * one (ws_mail_send() with the conversation): the files read again for the
+ * person, the panel's checks, the mail queue. Ends the request with the
+ * answer, send_state queued while it waits.
+ *
+ * @param array  $viewer
+ * @param array  $conversation ws_mail_conversations row
+ * @param string $text         ws_mail_text_or_html()'s
+ * @param string $html
+ * @param int[]  $file_ids
+ */
+function ws_api_mail_reply_queued($viewer, $conversation, $text, $html, $file_ids)
+{
+    $files = ws_api_mail_files_or_fail($viewer, $file_ids, 'file_ids');
+    $sent = ws_api_mail_send_checked($viewer, array('conversation_id' => (int) $conversation['id'], 'cc' => '', 'bcc' => '',
+        'text' => $text, 'html' => $html, 'files' => $files, 'send_anyway' => false));
+    $item = ((int) ($sent['item_id'] ?? 0) > 0) ? db_item("SELECT * FROM ws_mail_items WHERE id = '" . (int) $sent['item_id'] . "'") : null;
+
+    if (!is_array($item) || !$item) {
+        api_fail(500, 'server_error', lang('The answer could not be sent.'));
+    }
+
+    api_ok(ws_api_mail_present($item, ws_api_mail_files_map(array((int) $item['id']))[(int) $item['id']] ?? array()), 201);
+}
+
+/**
+ * The files an API mail names by Files id, read for the sender
+ * (ws_mail_send_files_by_id()); a refusal ends the call with 422 on $field.
+ *
+ * @param array  $viewer
+ * @param int[]  $ids
+ * @param string $field the parameter the refusal names
+ * @return array files (name, bytes)
+ */
+function ws_api_mail_files_or_fail($viewer, $ids, $field)
+{
+    if (!$ids) {
+        return array();
+    }
+
+    $files = ws_mail_send_files_by_id($viewer, $ids, ws_api_mail_draft_reach());
+
+    if (!$files['ok']) {
+        api_fail_validation(ws_mail_send_error_text($files['error'], $files['detail']), $field);
+    }
+
+    return $files['files'];
 }
 
 /**
@@ -1027,7 +1127,8 @@ function ws_api_mail_messages_send($params)
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
     }
 
-    $sent = ws_api_mail_send_checked($viewer, ws_api_mail_new_mail($params));
+    $files = ws_api_mail_files_or_fail($viewer, (array) ($params['file_ids'] ?? array()), 'file_ids');
+    $sent = ws_api_mail_send_checked($viewer, ws_api_mail_new_mail($params, $files));
 
     api_ok(ws_api_mail_conversation_answer(ws_api_mail_conversation_or_404($viewer, $sent['conversation_id'])), 201);
 }
@@ -1035,19 +1136,24 @@ function ws_api_mail_messages_send($params)
 /**
  * A new mail as ws_mail_send() takes it, from the New e-mail form's fields;
  * the mailbox's own channel when none is named (ws_mail_send_check() still
- * decides whether the person may keep the mail there). No files.
+ * decides whether the person may keep the mail there). Its HTML goes with
+ * it, the text made from it when none is sent.
  *
- * @param array $params box_id, channel_id, to, cc, bcc, subject, text, send_anyway
+ * @param array $params box_id, channel_id, to, cc, bcc, subject, text, html, send_anyway
+ * @param array $files  ws_mail_send_files_by_id()'s files
  * @return array
  */
-function ws_api_mail_new_mail($params)
+function ws_api_mail_new_mail($params, $files = array())
 {
     if (empty($params['channel_id'])) {
         $box = ws_mail_box((int) ($params['box_id'] ?? 0));
         $params['channel_id'] = $box ? (int) $box['channel_id'] : 0;
     }
 
-    return ws_mail_compose_mail($params, array());
+    $html = (isset($params['html']) && is_string($params['html'])) ? $params['html'] : '';
+    $params['text'] = ws_mail_text_or_html($params['text'] ?? '', $html);
+
+    return array_merge(ws_mail_compose_mail($params, $files), array('html' => $html));
 }
 
 /**

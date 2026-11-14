@@ -78,8 +78,8 @@ function ws_mail_drafts_excluded_sql($alias = '', $ready = null)
  * unfinished: an address field is kept as typed, the subject and text may be
  * empty, but not everything at once. Pure.
  *
- * @param array $draft to, cc, bcc, subject, text (only the keys sent are read)
- * @return array ok, error (empty | too_long | addresses | subject), fields (the keys sent, cleaned)
+ * @param array $draft to, cc, bcc, subject, text, html, file_ids (only the keys sent are read)
+ * @return array ok, error (too_long | addresses | subject | html | too_many_files), fields (the keys sent, cleaned)
  */
 function ws_mail_draft_input($draft)
 {
@@ -118,24 +118,122 @@ function ws_mail_draft_input($draft)
         $fields['text'] = $text;
     }
 
+    // The HTML body, cleaned as a sent mail's is (pg_mail_html_clean());
+    // HTML the cleaner refuses (over its size) is refused, not kept bare.
+    if (array_key_exists('html', $draft)) {
+        $html = is_string($draft['html']) ? trim($draft['html']) : '';
+
+        if ($html !== '') {
+            $html = function_exists('pg_mail_html_clean') ? pg_mail_html_clean($html) : '';
+
+            if ($html === '') {
+                return array('ok' => false, 'error' => 'html', 'field' => 'html', 'fields' => array());
+            }
+        }
+
+        $fields['html'] = $html;
+    }
+
+    // Files by their Files id (files.id), a list or a comma list; whether
+    // the writer may send each is the caller's check.
+    if (array_key_exists('file_ids', $draft)) {
+        $ids = ws_mail_compose_file_ids(is_array($draft['file_ids']) ? implode(',', array_filter($draft['file_ids'], 'is_scalar')) : $draft['file_ids']);
+
+        if (count($ids) > WS_MAIL_SEND_FILES) {
+            return array('ok' => false, 'error' => 'too_many_files', 'field' => 'file_ids', 'fields' => array());
+        }
+
+        $fields['file_ids'] = $ids;
+    }
+
     return array('ok' => true, 'error' => '', 'field' => null, 'fields' => $fields);
+}
+
+/**
+ * Whether a draft's files can be kept: ws_mail_items.draft_files (11.0.205).
+ *
+ * @return bool
+ */
+function ws_mail_draft_files_ready()
+{
+    return function_exists('pg_schema_has') && pg_schema_has('ws_mail_items', 'draft_files');
+}
+
+/**
+ * The file ids a draft keeps (draft_files, a comma list of files.id). Pure.
+ *
+ * @param array $draft ws_mail_items row
+ * @return int[]
+ */
+function ws_mail_draft_file_ids($draft)
+{
+    return ws_mail_compose_file_ids((string) ($draft['draft_files'] ?? ''));
+}
+
+/**
+ * Keeps a draft's HTML and files, only the keys given: body_html ('' keeps
+ * NULL) and draft_files (none keeps NULL). The columns come in steps of
+ * their own, so each is written only once it is there.
+ *
+ * @param int   $id
+ * @param array $fields html, file_ids (ws_mail_draft_input()'s)
+ * @return bool
+ */
+function ws_mail_draft_keep_body($id, $fields)
+{
+    $sets = array();
+
+    if (array_key_exists('html', $fields) && function_exists('ws_mail_html_ready') && ws_mail_html_ready()) {
+        $sets[] = 'body_html = ' . (((string) $fields['html'] === '') ? 'NULL' : "'" . e((string) $fields['html']) . "'");
+    }
+
+    if (array_key_exists('file_ids', $fields) && ws_mail_draft_files_ready()) {
+        $ids = array_map('intval', (array) $fields['file_ids']);
+        $sets[] = 'draft_files = ' . ($ids ? "'" . e(implode(',', $ids)) . "'" : 'NULL');
+    }
+
+    if (!$sets) {
+        return true;
+    }
+
+    return (bool) db("UPDATE ws_mail_items SET " . implode(', ', $sets) . "
+        WHERE id = '" . (int) $id . "' AND send_state = '" . WS_MAIL_DRAFT_STATE . "'");
+}
+
+/**
+ * Keeps the application a draft was kept through (draft_app_id, 11.0.205):
+ * written once, when the draft is created; a later change by anyone leaves
+ * it. Nothing before the column is there, nor for 0.
+ *
+ * @param int $id
+ * @param int $app_id ws_api_writer_app_id()
+ * @return bool
+ */
+function ws_mail_draft_keep_app($id, $app_id)
+{
+    if (((int) $app_id <= 0) || !function_exists('pg_schema_has') || !pg_schema_has('ws_mail_items', 'draft_app_id')) {
+        return true;
+    }
+
+    return (bool) db("UPDATE ws_mail_items SET draft_app_id = '" . (int) $app_id . "'
+        WHERE id = '" . (int) $id . "' AND send_state = '" . WS_MAIL_DRAFT_STATE . "'");
 }
 
 /**
  * Whether a draft, once its changes are made, still holds anything. Pure.
  *
- * @param array $fields to, cc, bcc, subject, text
+ * @param array $fields to, cc, bcc, subject, text, html, file_ids
  * @return bool
  */
 function ws_mail_draft_has_words($fields)
 {
-    foreach (array('to', 'cc', 'bcc', 'subject', 'text') as $key) {
+    foreach (array('to', 'cc', 'bcc', 'subject', 'text', 'html') as $key) {
         if (trim((string) ($fields[$key] ?? '')) !== '') {
             return true;
         }
     }
 
-    return false;
+    return !empty($fields['file_ids']);
 }
 
 /**
@@ -207,6 +305,50 @@ function ws_mail_drafts_count($user_id)
 }
 
 /**
+ * The fields that make a reply's draft more than nothing: its To and
+ * subject are the conversation's, so they do not count. Pure.
+ *
+ * @param array $fields
+ * @return array text, cc, bcc, html, file_ids
+ */
+function ws_mail_draft_reply_words($fields)
+{
+    return array('text' => $fields['text'] ?? '', 'cc' => $fields['cc'] ?? '', 'bcc' => $fields['bcc'] ?? '',
+        'html' => $fields['html'] ?? '', 'file_ids' => $fields['file_ids'] ?? array());
+}
+
+/**
+ * Whether a draft's HTML and files can be kept: their columns are there,
+ * and the writer may send each file (ws_mail_send_files_by_id(), sizes
+ * only; Send reads them again with the sender's rights).
+ *
+ * @param array    $viewer
+ * @param array    $fields ws_mail_draft_input()'s fields
+ * @param callable $reached as ws_mail_draft_reached()
+ * @return array ok, error (not_ready | too_many_files | files_too_large | file_refused), detail, field
+ */
+function ws_mail_draft_body_check($viewer, $fields, $reached = null)
+{
+    $ok = array('ok' => true, 'error' => '', 'detail' => '', 'field' => null);
+
+    if (((string) ($fields['html'] ?? '') !== '') && !(function_exists('ws_mail_html_ready') && ws_mail_html_ready())) {
+        return array('ok' => false, 'error' => 'not_ready', 'detail' => '', 'field' => null);
+    }
+
+    if (empty($fields['file_ids'])) {
+        return $ok;
+    }
+
+    if (!ws_mail_draft_files_ready()) {
+        return array('ok' => false, 'error' => 'not_ready', 'detail' => '', 'field' => null);
+    }
+
+    $files = ws_mail_send_files_by_id($viewer, $fields['file_ids'], $reached, false);
+
+    return $files['ok'] ? $ok : array('ok' => false, 'error' => $files['error'], 'detail' => $files['detail'], 'field' => 'file_ids');
+}
+
+/**
  * Whether this person may keep this new draft: the conversation of a reply
  * (whoever may answer in its channel), or a box they may send from for a
  * new mail; the fields; the number they keep. Writes nothing.
@@ -214,11 +356,11 @@ function ws_mail_drafts_count($user_id)
  * @param array    $viewer
  * @param array    $draft   conversation_id, or box_id; to, cc, bcc, subject, text
  * @param callable $reached as ws_mail_draft_reached()
- * @return array ok, error (not_ready | conversation | no_access | box_id | too_many | empty | the input's), field, kind (reply | new), conversation, box, fields
+ * @return array ok, error (not_ready | conversation | no_access | box_id | too_many | empty | the input's | ws_mail_draft_body_check()'s), detail, field, kind (reply | new), conversation, box, fields
  */
 function ws_mail_draft_create_check($viewer, $draft, $reached = null)
 {
-    $out = array('ok' => false, 'error' => '', 'field' => null, 'kind' => '', 'conversation' => null, 'box' => null, 'fields' => array());
+    $out = array('ok' => false, 'error' => '', 'detail' => '', 'field' => null, 'kind' => '', 'conversation' => null, 'box' => null, 'fields' => array());
 
     if (!ws_mail_drafts_ready()) {
         return array_merge($out, array('error' => 'not_ready'));
@@ -272,8 +414,14 @@ function ws_mail_draft_create_check($viewer, $draft, $reached = null)
         $out = array_merge($out, array('kind' => 'new', 'box' => $box));
     }
 
-    if (!ws_mail_draft_has_words($out['kind'] === 'reply' ? array('text' => $fields['text'], 'cc' => $fields['cc'], 'bcc' => $fields['bcc']) : $fields)) {
+    if (!ws_mail_draft_has_words($out['kind'] === 'reply' ? ws_mail_draft_reply_words($fields) : $fields)) {
         return array_merge($out, array('error' => 'empty', 'field' => 'text', 'kind' => '', 'conversation' => null, 'box' => null));
+    }
+
+    $body = ws_mail_draft_body_check($viewer, $fields, $reached);
+
+    if (!$body['ok']) {
+        return array_merge($out, array('error' => $body['error'], 'detail' => $body['detail'], 'field' => $body['field'], 'kind' => '', 'conversation' => null, 'box' => null));
     }
 
     if (ws_mail_drafts_count((int) $viewer['id']) >= WS_MAIL_DRAFTS_MAX) {
@@ -325,7 +473,8 @@ function ws_mail_draft_merge($draft, $fields)
     );
 
     foreach ($fields as $key => $value) {
-        if ((int) ($draft['conversation_id'] ?? 0) > 0 && in_array($key, array('to', 'subject'), true)) {
+        // The HTML and the files are kept apart (ws_mail_draft_keep_body()).
+        if (!array_key_exists($key, $merged) || ((int) ($draft['conversation_id'] ?? 0) > 0 && in_array($key, array('to', 'subject'), true))) {
             continue;
         }
 
@@ -428,10 +577,11 @@ function ws_mail_drafts_list($viewer, $filters, $limit, $cursor = null, $reached
 /**
  * What a refused draft is told.
  *
- * @param string $error ws_mail_draft_create_check() / ws_mail_draft_input() error
+ * @param string $error  ws_mail_draft_create_check() / ws_mail_draft_input() error
+ * @param string $detail a refused file's words
  * @return string
  */
-function ws_mail_draft_error_text($error)
+function ws_mail_draft_error_text($error, $detail = '')
 {
     $texts = array(
         'not_ready'    => lang('The database has to be updated first.'),
@@ -443,7 +593,12 @@ function ws_mail_draft_error_text($error)
         'too_long'     => lang(array('string' => 'An answer is at most {var:1} characters.', 'vars' => pg_format_number(WS_MAIL_REPLY_MAX, 0))),
         'addresses'    => lang(array('string' => 'An address field is at most {var:1} characters.', 'vars' => WS_MAIL_DRAFT_ADDRESSES_MAX)),
         'subject'      => lang(array('string' => 'A subject is at most {var:1} characters.', 'vars' => WS_MAIL_DRAFT_SUBJECT_MAX)),
+        'html'         => lang('The HTML is too large to keep.'),
     );
+
+    if (in_array($error, array('too_many_files', 'files_too_large', 'file_refused'), true)) {
+        return ws_mail_send_error_text($error, $detail);
+    }
 
     return $texts[$error] ?? $texts['conversation'];
 }

@@ -4,7 +4,7 @@ description: E-mail drafts kept on the server (MT3a #9516, MT3b): the ws_mail_it
 ---
 
 ## Where is a draft kept?
-- A `ws_mail_items` row: `direction` out, `send_state` `draft` (`WS_MAIL_DRAFT_STATE`), `message_id` 0, `user_id` the writer (`api_current_app()['owner']` through the API), `created_at` moved on every change. No column of its own (`includes/workspace/mail_drafts.php`).
+- A `ws_mail_items` row: `direction` out, `send_state` `draft` (`WS_MAIL_DRAFT_STATE`), `message_id` 0, `user_id` the writer (`api_current_app()['owner']` through the API), `created_at` moved on every change (`includes/workspace/mail_drafts.php`). Its HTML in `body_html`, its files in `draft_files` (`mail-api-html-files.md`).
 - `rfc_message_hash` is a random hash (`ws_mail_draft_hash()`): the table is unique on (box_id, rfc_message_hash), so two drafts may never share ''.
 - A reply's draft has the conversation's id, its To and subject the conversation's (`ws_mail_draft_merge()` keeps them). A new mail's has `conversation_id` 0 and a box from `ws_mail_send_boxes()`; "Kept in" is chosen when it is sent.
 

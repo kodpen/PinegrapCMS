@@ -31,7 +31,9 @@ function ws_mail_draft_api_routes()
         array('name' => 'cc', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_DRAFT_ADDRESSES_MAX, 'description' => 'Addresses, separated by commas.'),
         array('name' => 'bcc', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_DRAFT_ADDRESSES_MAX, 'description' => 'Addresses, separated by commas; not shown to the other recipients.'),
         array('name' => 'subject', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_DRAFT_SUBJECT_MAX, 'description' => 'A new mail\'s subject. A reply keeps its conversation\'s: subject is not kept for it.'),
-        array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_REPLY_MAX, 'description' => 'The mail as plain text, without a greeting from the person\'s name or a Signature: the name, the mailbox\'s Signature and, for a reply, the customer\'s last mail quoted are added when it is sent.'),
+        array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_REPLY_MAX, 'description' => 'The mail as plain text, without a greeting from the person\'s name or a Signature: the name, the mailbox\'s Signature and, for a reply, the customer\'s last mail quoted are added when it is sent. Left empty with html, it is made from the HTML\'s words when the draft is sent.'),
+        ws_api_mail_html_param(),
+        ws_api_mail_file_ids_param(true),
     );
 
     return array(
@@ -161,6 +163,9 @@ function ws_api_mail_draft_present($draft)
         'bcc'             => (string) ($draft['bcc_list'] ?? ''),
         'subject'         => (string) $draft['subject'],
         'text'            => (string) $draft['body_text'],
+        // The cleaned HTML body and the Files ids it keeps (MT5).
+        'html'            => ((string) ($draft['body_html'] ?? '') !== '') ? (string) $draft['body_html'] : null,
+        'file_ids'        => ws_mail_draft_file_ids($draft),
         'user_id'         => ((int) $draft['user_id'] > 0) ? (int) $draft['user_id'] : null,
         'updated_at'      => api_time($draft['created_at']),
     );
@@ -179,6 +184,8 @@ function ws_api_mail_draft_schema()
         'bcc'             => 'string',
         'subject'         => 'string',
         'text'            => 'string',
+        'html'            => 'string?',
+        'file_ids'        => array('integer'),
         'user_id'         => 'integer?',
         'updated_at'      => 'string?',
     );
@@ -203,6 +210,7 @@ function ws_api_mail_draft_refusal($error)
             return array('status' => 403, 'code' => 'forbidden');
     }
 
+    // Every other refusal, a file's too, is the caller's to correct.
     return array('status' => 422, 'code' => 'validation_failed');
 }
 
@@ -295,13 +303,20 @@ function ws_api_mail_drafts_create($params)
 
     if (!$checked['ok']) {
         $refusal = ws_api_mail_draft_refusal($checked['error']);
-        api_fail($refusal['status'], $refusal['code'], ws_mail_draft_error_text($checked['error']), $checked['field']);
+        api_fail($refusal['status'], $refusal['code'], ws_mail_draft_error_text($checked['error'], $checked['detail']), $checked['field']);
     }
 
     api_dry_run_stop('created', 'workspace_mail_draft', array('kind' => $checked['kind'], 'box_id' => (int) $checked['box']['id'],
         'conversation_id' => (int) ($checked['conversation']['id'] ?? 0)));
 
     $id = ws_mail_draft_insert($viewer, $checked, time());
+
+    if ($id > 0) {
+        ws_mail_draft_keep_body($id, array_intersect_key($checked['fields'], array('html' => 1, 'file_ids' => 1)));
+        // The application it came through, once; the Drafts view names it.
+        ws_mail_draft_keep_app($id, ws_api_writer_app_id());
+    }
+
     $draft = ($id > 0) ? ws_mail_draft($id) : null;
 
     if (!$draft) {
@@ -322,14 +337,26 @@ function ws_api_mail_drafts_update($params)
     }
 
     $merged = ws_mail_draft_merge($draft, $input['fields']);
+    // The HTML and the files it keeps, as they are after the change.
+    $body = array_merge(array('html' => (string) ($draft['body_html'] ?? ''), 'file_ids' => ws_mail_draft_file_ids($draft)),
+        array_intersect_key($input['fields'], array('html' => 1, 'file_ids' => 1)));
+    $words = array_merge($merged, $body);
 
-    if (!ws_mail_draft_has_words(((int) $draft['conversation_id'] > 0) ? array('text' => $merged['text'], 'cc' => $merged['cc'], 'bcc' => $merged['bcc']) : $merged)) {
+    if (!ws_mail_draft_has_words(((int) $draft['conversation_id'] > 0) ? ws_mail_draft_reply_words($words) : $words)) {
         api_fail_validation(ws_mail_draft_error_text('empty'), 'text');
+    }
+
+    $checked = ws_mail_draft_body_check($viewer, array_intersect_key($input['fields'], array('html' => 1, 'file_ids' => 1)), ws_api_mail_draft_reach());
+
+    if (!$checked['ok']) {
+        $refusal = ws_api_mail_draft_refusal($checked['error']);
+        api_fail($refusal['status'], $refusal['code'], ws_mail_draft_error_text($checked['error'], $checked['detail']), $checked['field']);
     }
 
     api_dry_run_stop('updated', 'workspace_mail_draft', array('id' => (int) $draft['id'], 'fields' => array_keys($input['fields'])));
 
     ws_mail_draft_update($draft, $merged, time());
+    ws_mail_draft_keep_body((int) $draft['id'], array_intersect_key($input['fields'], array('html' => 1, 'file_ids' => 1)));
 
     api_ok(ws_api_mail_draft_present(ws_mail_draft((int) $draft['id']) ?: $draft));
 }
@@ -348,23 +375,28 @@ function ws_api_mail_drafts_delete($params)
 
 /**
  * The mail a draft sends, as ws_mail_send() takes it: an answer in its
- * conversation, or a new mail from its box. Pure.
+ * conversation, or a new mail from its box, with its HTML (the text made
+ * from it when the draft has none) and the files read for the sender. Pure.
  *
  * @param array $draft  ws_mail_items row
  * @param array $params channel_id, send_anyway
+ * @param array $files  ws_mail_send_files_by_id()'s files
  * @return array
  */
-function ws_api_mail_draft_mail($draft, $params)
+function ws_api_mail_draft_mail($draft, $params, $files = array())
 {
     $anyway = !empty($params['send_anyway']);
+    $html = (string) ($draft['body_html'] ?? '');
+    $text = ws_mail_text_or_html((string) $draft['body_text'], $html);
 
     if ((int) $draft['conversation_id'] > 0) {
         return array(
             'conversation_id' => (int) $draft['conversation_id'],
             'cc'              => (string) ($draft['cc_list'] ?? ''),
             'bcc'             => (string) ($draft['bcc_list'] ?? ''),
-            'text'            => (string) $draft['body_text'],
-            'files'           => array(),
+            'text'            => $text,
+            'html'            => $html,
+            'files'           => array_values((array) $files),
             'send_anyway'     => $anyway,
         );
     }
@@ -376,9 +408,10 @@ function ws_api_mail_draft_mail($draft, $params)
         'cc'          => (string) ($draft['cc_list'] ?? ''),
         'bcc'         => (string) ($draft['bcc_list'] ?? ''),
         'subject'     => (string) $draft['subject'],
-        'text'        => (string) $draft['body_text'],
+        'text'        => $text,
+        'html'        => $html,
         'send_anyway' => $anyway ? '1' : '',
-    ));
+    ), $files);
 }
 
 function ws_api_mail_drafts_send($params)
@@ -387,9 +420,12 @@ function ws_api_mail_drafts_send($params)
 
     $viewer = ws_api_viewer();
     $draft = ws_api_mail_draft_or_404($viewer, $params['id'], true);
-    $sent = ws_api_mail_send_checked($viewer, ws_api_mail_draft_mail($draft, $params));
+    // The sender's right to each kept file is checked again now: a file may
+    // have moved, or the draft been kept by someone else.
+    $files = ws_api_mail_files_or_fail($viewer, ws_mail_draft_file_ids($draft), 'file_ids');
+    $sent = ws_api_mail_send_checked($viewer, ws_api_mail_draft_mail($draft, $params, $files));
 
-    // The mail is stored; the draft it came from goes.
+    // The mail is stored; the draft it came from goes, its file list with it.
     ws_mail_draft_delete((int) $draft['id']);
 
     api_ok(ws_api_mail_conversation_answer(ws_api_mail_conversation_or_404($viewer, $sent['conversation_id'])), 201);

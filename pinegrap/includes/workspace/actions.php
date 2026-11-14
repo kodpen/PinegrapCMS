@@ -2771,6 +2771,8 @@ function ws_handle_action($action, $request)
             }
 
             $mail = ws_mail_markup_apply($viewer, ws_mail_compose_mail($request, array_merge($library['files'], $files['files'])), $request);
+            // Sent from a draft: its own HTML while the text is unchanged.
+            $mail = function_exists('ws_mail_draft_sent_mail') ? ws_mail_draft_sent_mail($viewer, $mail, $request) : $mail;
             $result = ws_mail_send($viewer, array('conversation_id' => $conversation_id, 'cc' => $mail['cc'], 'bcc' => $mail['bcc'],
                 'text' => $mail['text'], 'html' => $mail['html'] ?? '', 'files' => $mail['files'], 'send_anyway' => $mail['send_anyway']));
 
@@ -2902,6 +2904,8 @@ function ws_handle_action($action, $request)
             }
 
             $mail = ws_mail_markup_apply($viewer, ws_mail_compose_mail($request, array_merge($forward['files'], $files['files'])), $request);
+            // Sent from a draft: its own HTML while the text is unchanged.
+            $mail = function_exists('ws_mail_draft_sent_mail') ? ws_mail_draft_sent_mail($viewer, $mail, $request) : $mail;
             $result = ws_mail_send($viewer, $mail);
 
             if (!$result['ok']) {

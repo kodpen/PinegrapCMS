@@ -435,6 +435,7 @@
     "File stat cache": "Dosya istatistik önbelleği",
     "File type": "Dosya türü",
     "File upload": "Dosya yükleme",
+    "File {var:1} was not found, or you cannot open it.": "{var:1} numaralı dosya bulunamadı ya da onu açamazsınız.",
     "File: {var:1}": "Dosya: {var:1}",
     "Files": "Dosyalar",
     "Files List": "Dosya Listesi",

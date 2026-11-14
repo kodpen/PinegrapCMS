@@ -931,6 +931,8 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
 
         if (is_array($stored) && ((string) $stored['name'] !== '')) {
             $file = array(
+                // The Files id, which file_ids of an e-mail takes.
+                'id'      => (int) $row['file_id'],
                 'name'    => (string) $row['file_name'],
                 'kind'    => ws_file_kind($row['file_name']),
                 'size'    => (int) $stored['size'],
@@ -1046,7 +1048,7 @@ function ws_api_message_sender_schema()
 
 function ws_api_message_file_schema()
 {
-    return array('name' => 'string', 'kind' => 'string', 'size' => 'integer', 'url' => 'string', 'api_url' => 'string', 'voice' => 'WorkspaceMessageVoice?', 'canvas' => 'WorkspaceMessageCanvas?');
+    return array('id' => 'integer', 'name' => 'string', 'kind' => 'string', 'size' => 'integer', 'url' => 'string', 'api_url' => 'string', 'voice' => 'WorkspaceMessageVoice?', 'canvas' => 'WorkspaceMessageCanvas?');
 }
 
 // A canvas's picture inside its message's file (ws_api_message_canvas()).

@@ -86,6 +86,7 @@
     "A Twilio trial account sends only to verified numbers: verify the number in the Twilio Console or upgrade the account.": "Twilio deneme hesabı yalnızca doğrulanmış numaralara gönderir: numarayı Twilio Console'da doğrulayın ya da hesabı yükseltin.",
     "A VKN has 10 digits and a TCKN 11.": "VKN 10, TCKN 11 hanelidir.",
     "A VKN is ten digits and a TCKN is eleven.": "VKN on hane, TCKN on bir hanedir.",
+    "A WhatsApp answer is plain text, without HTML or files.": "WhatsApp yanıtı HTML ve dosya içermeyen düz metindir.",
     "A WhatsApp message arrived": "Bir WhatsApp mesajı geldi",
     "A WhatsApp message carries one file.": "Bir WhatsApp mesajı tek dosya taşır.",
     "A WhatsApp message from {var:1} came into {var:2}: {var:3}": "{var:1} kişisinden {var:2} kanalına bir WhatsApp mesajı geldi: {var:3}",

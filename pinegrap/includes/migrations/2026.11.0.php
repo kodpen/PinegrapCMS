@@ -195,6 +195,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_blocks();          // 11.0.202
 	upgrade_2026_11_0_ws_mail_own_signature();   // 11.0.203
 	upgrade_2026_11_0_ws_mail_invitation();      // 11.0.204
+	upgrade_2026_11_0_ws_mail_draft_files();     // 11.0.205
 
 }
 
@@ -6572,5 +6573,29 @@ function upgrade_2026_11_0_ws_mail_invitation() {
 	install_add_column('ws_mail_items', 'invitation', "TEXT NULL");
 
 	install_note('Workspace: an invitation that comes by e-mail is drawn as a card under the mail, with Add to my calendar. Mail that came before the upgrade shows no card.');
+
+}
+
+// The files of an e-mail draft kept on the server: a comma list of files.id
+// (a file taken from the File Manager has no message, so message ids would
+// not do). NULL on every row that is not a draft with files; Send checks the
+// sender's right to each file again and the sent draft goes. draft_app_id is
+// the application that kept the draft through the API (ws_api_writer_app_id()),
+// written when it is created; 0 for one written in the panel and for every
+// row before this step (includes/workspace/mail_drafts.php).
+function upgrade_2026_11_0_ws_mail_draft_files() {
+
+	if (!install_table_exists('ws_mail_items')) {
+
+		install_skipped('ws_mail_items does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_mail_items', 'draft_files', "TEXT NULL");
+	install_add_column('ws_mail_items', 'draft_app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: an e-mail draft kept on the server can hold files until it is sent.');
 
 }
