@@ -196,6 +196,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_own_signature();   // 11.0.203
 	upgrade_2026_11_0_ws_mail_invitation();      // 11.0.204
 	upgrade_2026_11_0_ws_mail_draft_files();     // 11.0.205
+	upgrade_2026_11_0_ws_roadmap_templates();    // 11.0.208
 
 }
 
@@ -6597,5 +6598,39 @@ function upgrade_2026_11_0_ws_mail_draft_files() {
 	install_add_column('ws_mail_items', 'draft_app_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: an e-mail draft kept on the server can hold files until it is sent.');
+
+}
+
+// The team's roadmap templates (includes/workspace/roadmap_templates.php): a
+// roadmap's title, its time of day and length, and its steps with each day
+// counted from the first step's day. A template keeps no note, customer or
+// people; user_id is its maker, the only account that changes it.
+function upgrade_2026_11_0_ws_roadmap_templates() {
+
+	install_create_table('ws_roadmap_templates', "CREATE TABLE ws_roadmap_templates (
+		id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id              INT UNSIGNED NOT NULL DEFAULT 0,
+		title                VARCHAR(255) NOT NULL DEFAULT '',
+		all_day              TINYINT(1) NOT NULL DEFAULT 1,
+		start_minute         SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		length_minutes       INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at           INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_roadmap_template_steps', "CREATE TABLE ws_roadmap_template_steps (
+		id                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		template_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		position             SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		title                VARCHAR(255) NOT NULL DEFAULT '',
+		day_offset           SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		has_day              TINYINT(1) NOT NULL DEFAULT 1,
+		PRIMARY KEY (id),
+		KEY idx_template (template_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a roadmap can be saved as a template the whole team can use.');
 
 }
