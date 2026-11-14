@@ -65,6 +65,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-8.md: Is a settings switch without a thumb approved? (owner, 2026-11-12, #9070)
 - decisions-made-panel-8.md: Where is the Design Canvas icon drawn in one colour? (owner, 2026-11-13, #9250)
 - decisions-made-panel-8.md: How do cards use the form column of an add or edit screen? (owner, 2026-11-13, #9271)
+- decisions-made-panel-8.md: Which drawing does the Communication row of the main menu carry? (owner, 2026-11-14, in the architect's window)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -325,6 +326,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-18.md: May a mail draft keep its files in a column of ws_mail_items? (owner, 2026-11-14, in the architect's window)
 - decisions-made-schema-18.md: Which tables hold a person's own plans? (owner, 2026-11-14, in the architect's window)
 - decisions-made-schema-18.md: Which columns do the mailbox features get? (owner, 2026-11-14, in the architect's window)
+- decisions-made-schema-19.md: Where are the rules and the earlier parts?
+- decisions-made-schema-19.md: Does a mail keep what its invitation said in a column of ws_mail_items? (owner, 2026-11-14, in the architect's window)
+- decisions-made-schema-19.md: Does a later mail of the same invitation change the plan? (architect, 2026-11-14)
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
@@ -766,8 +770,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/mail-workspace-off.md: Incoming e-mail with the Workspace off (MA10c): the gate ws_mail_on(), who asks it (tab, actions, jobs, frame, API, bell), a new box kept in the mailbox itself, the test
 - workspace/model-assistant-channel-rule.md: Where a model assistant is asked (its own ws_channel_agents row; a channel closed to Pinegrap AI on purpose keeps it out too) and how the shared loop's failure sentences name it (PR #8413)
 - workspace/model-assistants-anthropic.md: Anthropic (Claude) as a provider of model assistants: why it was added, how the Messages API is translated to and from Pinegrap AI's chat completions loop, what its reference said (2026-11-12)
+- workspace/personal-calendar-census-mail.md: PC1 census (2026-11-14): pg_mail_parse() keeps a mail's calendar part as an attachment entry; the Workspace mail ingest drops it today; what PC7 can reuse
 - workspace/personal-calendar-census-privacy.md: PC1 census (2026-11-14): export, erasure, account deletion and leaving the team today, and what each does with private plans (architect's answer)
-- workspace/personal-calendar-census-tables.md: PC1 proposal (2026-11-14), shaped by the architect and waiting for the owner's yes: the tables and columns a person's private plans need, each with its reason and step
+- workspace/personal-calendar-census-tables.md: PC1 proposal (2026-11-14), shaped by the architect and approved by the owner (decisions-made-schema-18): the tables and columns a person's private plans need, each with its reason and step
 - workspace/personal-calendar-census-words.md: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Planning Board, /workspace/plan, "#plan") and the names proposed for a private plan
 - workspace/workflow-table-channel.md: A workflow table of a channel (ws_wtables.channel_id, 11.0.191): rights from the channel, made in or moved to a channel, lists, bin, screen card, API, webhooks
 - workspace/workflow-table-key-column.md: The key column of a workflow table (wtable_keys.php, PR #8509): text or number, filled in and unique, refusals, the lock, by: key, the API ?key=, the import matching by key

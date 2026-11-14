@@ -36,7 +36,7 @@
 - decisions-made-panel-5.md: Decisions list, panel part 5 (2026-11-11 on): the dashboard's notes card as a My Notes shortcut, last online times, the world map without city names (#8672); the report screens' renewal (#8673)
 - decisions-made-panel-6.md: Decisions list, panel part 6 (2026-11-12 on): the panel's design language from look A (#8842); the names Design Canvas and Page Design Studio, the design menu with Other (#8849)
 - decisions-made-panel-7.md: Decisions list, panel part 7 (2026-11-12 on): look A's second pass and dialogs page as reference (#8860); add, edit, list widths, no pager; Design Canvas icon (#8903); dashboard keeps its look (#8938)
-- decisions-made-panel-8.md: Decisions list, panel part 8 (2026-11-12 on): look A's report page as reference (#8955); a switch keeps its thumb (#9070); Design Canvas icon in one colour (#9250); cards in the form column (#9271)
+- decisions-made-panel-8.md: Decisions list, panel part 8 (2026-11-12 on): report page reference (#8955); switch thumb (#9070); Design Canvas icon in one colour (#9250); form column cards (#9271); the Communication row's drawing
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
@@ -99,6 +99,7 @@
 - decisions-made-schema-16.md: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_html, kind mailbox on ws_channels, ws_agents.seen_at, ws_checks.app_id, ws_ai_requests.held_until for the edit hold
 - decisions-made-schema-17.md: Decisions list, schema part 17 (2026-11-12 on): canvas-one's ws_canvas_parts, ws_canvas_tables, ws_canvas_consents, via_message_id, ws_wtables.channel_id; WhatsApp's tables; ws_agents' role and report
 - decisions-made-schema-18.md: Decisions list, schema part 18 (2026-11-13 on): whatsapp and sms transport, customer_phone (#9286); ws_mail_items.draft_files; personal plan tables; signature, block list, Sent folder columns
+- decisions-made-schema-19.md: Decisions list, schema part 19 (2026-11-14 on): ws_mail_items.invitation, what a mail's calendar part said, kept for the invitation card of a personal plan
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
