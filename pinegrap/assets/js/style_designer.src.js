@@ -843,6 +843,35 @@ const StyleDesigner = (function () {
         return { _id: gid(), type: type, props: p, children: children || [] };
     }
 
+    // The inline look of every mail block kind (props._mail), twin of
+    // pg_mail_block_styles() in includes/fn/email_designs.php: one line per
+    // kind, the same declarations (tests/email_designs_test.php compares).
+    /* @pg-site-output */
+    var _SD_MAIL_STYLES = {
+        frame: 'width:100%;max-width:600px;margin:0 auto;border-collapse:collapse;background-color:var(--bs-body-bg,#ffffff)',
+        cell: 'padding:24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:var(--bs-body-color,#212529)',
+        heading: 'margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.3;font-weight:bold;color:var(--bs-emphasis-color,#000000)',
+        text: 'margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:var(--bs-body-color,#212529)',
+        button_row: 'margin:0 0 16px;text-align:center',
+        button: 'display:inline-block;padding:12px 24px;border-radius:6px;background-color:var(--bs-primary,#0d6efd);color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;line-height:1.2;text-decoration:none',
+        picture: 'display:block;width:100%;max-width:100%;height:auto;border:0',
+        divider: 'height:0;margin:24px 0;border:0;border-top:1px solid var(--bs-border-color,#dee2e6)',
+        space: 'height:24px;line-height:24px;font-size:0',
+        columns: 'width:100%;border-collapse:collapse',
+        column: 'width:50%;padding:0 8px;vertical-align:top'
+    };
+
+    // A node's inline style with its mail block look in front, twin of
+    // pg_mail_block_inline(): the style given in the designer comes after
+    // it and wins on a repeat.
+    /* @pg-site-output */
+    function _sdMailInline(props) {
+        var own = (props && props.inlineStyle) ? String(props.inlineStyle).replace(/[;\s]+$/, '') : '';
+        var kind = (props && typeof props._mail === 'string') ? props._mail : '';
+        if (!kind || !Object.prototype.hasOwnProperty.call(_SD_MAIL_STYLES, kind)) return own;
+        return _SD_MAIL_STYLES[kind] + (own ? ';' + own : '');
+    }
+
     /* @pg-site-output */
     function colProps(xs) {
         return { xs: xs || '12', sm: '', md: '', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '' };
@@ -11425,7 +11454,7 @@ const StyleDesigner = (function () {
                 if (a.name && a.name.trim()) el.setAttribute(a.name.trim(), _sdResolveAttrTokens(a.value || '', false, node));
             });
         }
-        var inlineStyle = node.props.inlineStyle || '';
+        var inlineStyle = _sdMailInline(node.props);
         if (inlineStyle) el.setAttribute('style', inlineStyle);
 
         var tag = (node.props.tag || '').toLowerCase();
@@ -13506,7 +13535,7 @@ const StyleDesigner = (function () {
         if (node.props.id) { _attrEl.id = node.props.id; }
         if (node.props.title) { _attrEl.title = node.props.title; }
         // Merge inlineStyle + _attrs.style so both Styles panel and Attrs panel coexist
-        var _inlineBase = node.props.inlineStyle || '';
+        var _inlineBase = node.type === 'semantic' ? _sdMailInline(node.props) : (node.props.inlineStyle || '');
         var _attrStyle  = '';
         if (node.props.fontFamily) {
             // Single-quote the family name + sans-serif fallback so
@@ -66220,7 +66249,7 @@ const StyleDesigner = (function () {
                     if (n.props._bindings[k] && P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); }
                 });
                 var sattrs = _sdNodeExtraAttrs(n.props, P._attrs, ['id'].concat(sbuilt));
-                var _semStyle = _sdNodeStyle({ fontFamily: n.props.fontFamily, inlineStyle: n.props.inlineStyle, _attrs: P._attrs }, '', getNodeExtraStyle(n));
+                var _semStyle = _sdNodeStyle({ fontFamily: n.props.fontFamily, inlineStyle: _sdMailInline(n.props), _attrs: P._attrs }, '', getNodeExtraStyle(n));
                 if (_semStyle) sattrs += ' style="' + esc(_semStyle) + '"';
                 var _semVoidTags = ['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr'];
                 var _semIsVoid = _semVoidTags.indexOf(stg.toLowerCase()) !== -1;
