@@ -843,35 +843,6 @@ const StyleDesigner = (function () {
         return { _id: gid(), type: type, props: p, children: children || [] };
     }
 
-    // The inline look of every mail block kind (props._mail), twin of
-    // pg_mail_block_styles() in includes/fn/email_designs.php: one line per
-    // kind, the same declarations (tests/email_designs_test.php compares).
-    /* @pg-site-output */
-    var _SD_MAIL_STYLES = {
-        frame: 'width:100%;max-width:600px;margin:0 auto;border-collapse:collapse;background-color:var(--bs-body-bg,#ffffff)',
-        cell: 'padding:24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:var(--bs-body-color,#212529)',
-        heading: 'margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.3;font-weight:bold;color:var(--bs-emphasis-color,#000000)',
-        text: 'margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:var(--bs-body-color,#212529)',
-        button_row: 'margin:0 0 16px;text-align:center',
-        button: 'display:inline-block;padding:12px 24px;border-radius:6px;background-color:var(--bs-primary,#0d6efd);color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;line-height:1.2;text-decoration:none',
-        picture: 'display:block;width:100%;max-width:100%;height:auto;border:0',
-        divider: 'height:0;margin:24px 0;border:0;border-top:1px solid var(--bs-border-color,#dee2e6)',
-        space: 'height:24px;line-height:24px;font-size:0',
-        columns: 'width:100%;border-collapse:collapse',
-        column: 'width:50%;padding:0 8px;vertical-align:top'
-    };
-
-    // A node's inline style with its mail block look in front, twin of
-    // pg_mail_block_inline(): the style given in the designer comes after
-    // it and wins on a repeat.
-    /* @pg-site-output */
-    function _sdMailInline(props) {
-        var own = (props && props.inlineStyle) ? String(props.inlineStyle).replace(/[;\s]+$/, '') : '';
-        var kind = (props && typeof props._mail === 'string') ? props._mail : '';
-        if (!kind || !Object.prototype.hasOwnProperty.call(_SD_MAIL_STYLES, kind)) return own;
-        return _SD_MAIL_STYLES[kind] + (own ? ';' + own : '');
-    }
-
     /* @pg-site-output */
     function colProps(xs) {
         return { xs: xs || '12', sm: '', md: '', lg: '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: '' };
@@ -7194,6 +7165,9 @@ const StyleDesigner = (function () {
             '<button type="button" class="sd-bp-btn" data-w="992" title="' + esc(_sdT('Laptop (LG)')) + '"><span class="bi bi-laptop"></span></button>' +
             '<button type="button" class="sd-bp-btn" data-w="1200" title="' + esc(_sdT('Desktop (XL)')) + '"><span class="bi bi-display"></span></button>' +
             '<button type="button" class="sd-bp-btn active" data-w="0" title="' + esc(_sdT('Full Width')) + '"><span class="bi bi-arrows-fullscreen"></span></button>' +
+            // An e-mail design's two widths (_sdEmailCanvasSync()).
+            '<button type="button" class="sd-bp-btn sd-bp-mail" data-w="600" title="' + esc(_sdT('E-mail, 600 px wide')) + '"><span class="bi bi-envelope"></span><span>' + esc(_sdT('E-mail')) + '</span></button>' +
+            '<button type="button" class="sd-bp-btn sd-bp-mail" data-w="375" title="' + esc(_sdT('Phone view, 375 px wide')) + '"><span class="bi bi-phone"></span><span>' + esc(_sdT('Phone view')) + '</span></button>' +
             '<span class="sd-bp-label" id="sd-bp-label">—</span>' +
             '</div>' +
             '<div class="sd-bp-bar-right">' +
@@ -9598,6 +9572,7 @@ const StyleDesigner = (function () {
         // never through the tree (see "Toggleable open state").
         _syncToggleableShowStateFromDom();
         renderCanvas();
+        _sdEmailCanvasSync();
         renderProperties();
         renderStatusBar();
         _sdTreeRefresh(_scope);
@@ -28696,6 +28671,36 @@ const StyleDesigner = (function () {
             else if (p.placeholderAnim === 'wave') classes.push('placeholder-wave');
         }
         return classes.join(' ');
+    }
+
+    // The inline look of every mail block kind (props._mail), twin of
+    // pg_mail_block_styles() in includes/fn/email_designs.php: one line per
+    // kind, the same declarations (tests/email_designs_test.php compares).
+    /* @pg-site-output */
+    var _SD_MAIL_STYLES = {
+        frame: 'width:100%;max-width:600px;margin:0 auto;border-collapse:collapse;background-color:var(--bs-body-bg,#ffffff)',
+        cell: 'padding:24px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:var(--bs-body-color,#212529)',
+        heading: 'margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:24px;line-height:1.3;font-weight:bold;color:var(--bs-emphasis-color,#000000)',
+        text: 'margin:0 0 16px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:var(--bs-body-color,#212529)',
+        button_row: 'margin:0 0 16px;text-align:center',
+        button: 'display:inline-block;padding:12px 24px;border-radius:6px;background-color:var(--bs-primary,#0d6efd);color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;line-height:1.2;text-decoration:none',
+        picture: 'display:block;width:100%;max-width:100%;height:auto;border:0',
+        divider: 'height:0;margin:24px 0;border:0;border-top:1px solid var(--bs-border-color,#dee2e6)',
+        space: 'height:24px;line-height:24px;font-size:0',
+        group: 'margin:0;padding:0',
+        columns: 'width:100%;border-collapse:collapse',
+        column: 'padding:0 8px;vertical-align:top'
+    };
+
+    // A node's inline style with its mail block look in front, twin of
+    // pg_mail_block_inline(): the style given in the designer comes after
+    // it and wins on a repeat.
+    /* @pg-site-output */
+    function _sdMailInline(props) {
+        var own = (props && props.inlineStyle) ? String(props.inlineStyle).replace(/[;\s]+$/, '') : '';
+        var kind = (props && typeof props._mail === 'string') ? props._mail : '';
+        if (!kind || !Object.prototype.hasOwnProperty.call(_SD_MAIL_STYLES, kind)) return own;
+        return _SD_MAIL_STYLES[kind] + (own ? ';' + own : '');
     }
 
     // ========================= TREE VIEW & HTML GEN =========================
@@ -66143,6 +66148,20 @@ const StyleDesigner = (function () {
         handle.style.top  = y + 'px';
     }
 
+    // An e-mail design (its root carries props.pgEmail) is drawn 600 px
+    // wide, with a 375 px Phone view beside it in place of the page widths;
+    // the canvas goes back to full width when a page that is no e-mail is
+    // drawn. Called after every canvas draw, it acts only on a change.
+    function _sdEmailCanvasSync() {
+        var wrapper = document.getElementById('sd-canvas');
+        if (!wrapper) return;
+        var on = !!(tree && tree.props && tree.props.pgEmail);
+        if (wrapper.classList.contains('sd-canvas-email') === on) return;
+        wrapper.classList.toggle('sd-canvas-email', on);
+        var pick = wrapper.querySelector(on ? '.sd-bp-mail[data-w="600"]' : '.sd-bp-btn[data-w="0"]');
+        if (pick) pick.click();
+    }
+
     function updateBpLabel() {
         var wrap = document.getElementById('sd-iframe-wrap');
         var lbl = document.getElementById('sd-bp-label');
@@ -75388,7 +75407,12 @@ const StyleDesigner = (function () {
             (home || other).items.push(it);
         });
 
-        var out = groups.filter(function (g) { return g.items.length; });
+        // The mail blocks show only in an e-mail design, and first there.
+        var isMail = (typeof tree !== 'undefined') && !!(tree && tree.props && tree.props.pgEmail);
+        var out = groups.filter(function (g) {
+            return g.items.length && (isMail || g.match.indexOf('mail-') === -1);
+        });
+        if (isMail) out.sort(function (a, b) { return (b.match.indexOf('mail-') !== -1) - (a.match.indexOf('mail-') !== -1); });
         if (other.items.length) out.push(other);
         return out;
     }

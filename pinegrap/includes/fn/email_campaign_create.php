@@ -240,6 +240,30 @@ function pg_email_campaign_page_body($page_id)
 }
 
 /**
+ * A page drawn as a campaign's body and made ready to send. An e-mail
+ * design (its root carries props.pgEmail) goes through the mail pass first:
+ * the page's style sheets out, the var() colours written as their hex, the
+ * phone style in the head, and no fixed footer when the design draws its
+ * own (pg_mail_pass()). Any other page is stored as before.
+ *
+ * @param int|string $page_id
+ * @return string
+ */
+function pg_email_campaign_design_body($page_id)
+{
+    $body = pg_email_campaign_page_body($page_id);
+    $with_footer = true;
+
+    if (pg_email_design_tree_is(json_decode(pg_page_tree_json($page_id), true))) {
+        $pass = pg_mail_pass($body);
+        $body = $pass['html'];
+        $with_footer = !$pass['has_footer'];
+    }
+
+    return pg_email_campaign_prepare_html_body($body, get_page_name($page_id), $with_footer);
+}
+
+/**
  * The HTML without the given session token. A token is a long random hex
  * string, so it is cut wherever it appears (a link's token= parameter, a
  * hidden field, an inline script); a blank or short value cuts nothing.

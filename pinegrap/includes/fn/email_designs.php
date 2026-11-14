@@ -56,8 +56,9 @@ function pg_mail_block_styles()
         'picture'    => 'display:block;width:100%;max-width:100%;height:auto;border:0',
         'divider'    => 'height:0;margin:24px 0;border:0;border-top:1px solid var(--bs-border-color,#dee2e6)',
         'space'      => 'height:24px;line-height:24px;font-size:0',
+        'group'      => 'margin:0;padding:0',
         'columns'    => 'width:100%;border-collapse:collapse',
-        'column'     => 'width:50%;padding:0 8px;vertical-align:top',
+        'column'     => 'padding:0 8px;vertical-align:top',
     );
 }
 

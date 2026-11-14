@@ -127,6 +127,8 @@ if (!$_POST) {
         'template'       => $template ? pg_design_template_summary($template) : null,
         // ?folder= from the design chooser: the first page's folder.
         'start_action'   => pg_designer_start_action($user, 0),
+        // ?start=email: an e-mail design, its folder made on first use.
+        'email_folder_id' => ($start === 'email') ? pg_email_designs_folder_id(true) : 0,
     ));
 
     $liveform->remove_form();

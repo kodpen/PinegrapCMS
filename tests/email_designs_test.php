@@ -100,3 +100,42 @@ function test_email_designs_new_page_stays_out_of_search()
 	pg_assert_true(pg_email_design_tree_is($page['tree']), 'the starter tree');
 	pg_assert_same(1, $page['converted'], 'the tab starts unsaved');
 }
+
+function test_email_designs_mail_blocks_family()
+{
+	require_once(__DIR__ . '/helpers/designer_family_run.php');
+
+	// Every kind the family names has its look in the map.
+	$file = pg_test_designer_family_file('mail');
+	preg_match_all("/mail\\('[a-z0-9]+', '([a-z_]+)'/", $file, $m);
+	pg_assert_true(count($m[1]) >= 10, 'the blocks name their kinds');
+	foreach (array_unique($m[1]) as $kind) {
+		pg_assert_true(array_key_exists($kind, pg_mail_block_styles()), $kind . ' has a look');
+	}
+	pg_assert_contains("cssClass: 'pg-mail-col'", $file, 'columns stack through the mail pass\'s head style');
+	pg_assert_contains('.pg-mail-col', pg_mail_pass_head_style(), 'the head style knows the column');
+
+	$got = pg_test_designer_family_run('mail');
+	if ($got === null) {
+		pg_assert_true(true, 'Node is not installed: the run is skipped');
+		return;
+	}
+	pg_assert_same('mail-', $got['prefix'], 'the family\'s prefix');
+	pg_assert_same('E-mail', $got['group'], 'its own palette group');
+	pg_assert_same(array('mail-frame', 'mail-intro', 'mail-button', 'mail-picture', 'mail-break', 'mail-columns'), array_keys($got['blocks']), 'the six blocks');
+	pg_assert_same(null, $got['unknown'], 'an unknown type draws nothing');
+	pg_assert_same(array('semantic', 'table'), $got['blocks']['mail-frame']['root'], 'the frame is a table');
+	pg_assert_same(array('semantic', 'div'), $got['blocks']['mail-intro']['root'], 'a part is one group');
+	pg_assert_same(array('td:', 'td:'), $got['blocks']['mail-columns']['cells'], 'two cells');
+}
+
+function test_email_designs_palette_and_canvas_follow_the_root()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains("var isMail = (typeof tree !== 'undefined') && !!(tree && tree.props && tree.props.pgEmail);", $js, 'the palette asks the root');
+	pg_assert_contains("return g.items.length && (isMail || g.match.indexOf('mail-') === -1);", $js, 'the mail group only in an e-mail design');
+	pg_assert_contains("renderCanvas();\n        _sdEmailCanvasSync();", $js, 'the canvas width follows every draw');
+	pg_assert_contains('data-w="600" title="\' + esc(_sdT(\'E-mail, 600 px wide\'))', $js, 'a 600 px width');
+	pg_assert_contains('data-w="375" title="\' + esc(_sdT(\'Phone view, 375 px wide\'))', $js, 'a 375 px Phone view');
+}
