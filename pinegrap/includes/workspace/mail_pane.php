@@ -420,6 +420,10 @@ function ws_mail_screen_js_strings()
         'loading'    => lang('Loading…'),
         'read_all'   => lang('All e-mails are marked as read.'),
         'draft_deleted' => lang('The draft was deleted.'),
+        'draft_saved'   => lang('The draft was saved.'),
+        'draft_save'    => lang('Save draft'),
+        'draft_delete'  => lang('Delete this draft? It is not sent and cannot be brought back.'),
+        'delete'        => lang('Delete'),
         'checking'   => lang('Checking e-mail…'),
         'not_found'  => lang('This conversation cannot be opened.'),
     );

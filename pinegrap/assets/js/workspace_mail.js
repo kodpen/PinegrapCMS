@@ -215,6 +215,9 @@
         if (kept) {
             cc.field.value = kept.cc || '';
             bcc.field.value = kept.bcc || '';
+            footer.insertBefore(draftSave(h, kept, function () {
+                return { cc: cc.field.value, bcc: bcc.field.value, text: body.value() };
+            }), send);
         }
 
         setCopies(!!(cc.field.value || bcc.field.value));
@@ -1483,23 +1486,38 @@
                 }
             }
 
-            button.disabled = true;
-
             if (!opens) {
-                h.api('ws_mail_draft_remove', { draft_id: id }).then(function () {
-                    gone();
-                    h.toast(w('draft_deleted'), 'success');
-                }).catch(function (error) {
-                    button.disabled = false;
-                    h.fail(error);
+                // Asked first with the panel's confirm dialog: nothing brings a
+                // deleted draft back.
+                var asked = (typeof window.pgConfirm === 'function')
+                    ? window.pgConfirm({ title: w('delete'), message: w('draft_delete'), confirmText: w('delete'), variant: 'danger' })
+                    : Promise.resolve(window.confirm(w('draft_delete')));
+
+                asked.then(function (agreed) {
+                    if (!agreed) {
+                        return;
+                    }
+
+                    button.disabled = true;
+
+                    h.api('ws_mail_draft_remove', { draft_id: id }).then(function () {
+                        gone();
+                        h.toast(w('draft_deleted'), 'success');
+                    }).catch(function (error) {
+                        button.disabled = false;
+                        h.fail(error);
+                    });
                 });
 
                 return;
             }
 
+            button.disabled = true;
+
             h.api('ws_mail_draft_open', { draft_id: id }).then(function (data) {
                 var draft = data.draft;
 
+                draft.labels = { save: w('draft_save'), saved: w('draft_saved') };
                 button.disabled = false;
 
                 if (draft.kind === 'new') {
@@ -1642,6 +1660,19 @@
             });
         }
 
+        // Move to the inbox, in the Blocked view (mail_blocks.php): the mail becomes
+        // a conversation, which opens in Incoming.
+        function unblock(button) {
+            button.disabled = true;
+
+            h.api('ws_mail_unblock', { item_id: parseInt(button.getAttribute('data-ws-mail-unblock'), 10) }).then(function (result) {
+                window.location.href = 'messages_mail.php' + (result.conversation_id ? '?conversation=' + parseInt(result.conversation_id, 10) : '');
+            }).catch(function (error) {
+                button.disabled = false;
+                h.fail(error);
+            });
+        }
+
         // Block sender's form under a mail (mail_blocks.php): each of its two
         // choices keeps one pressed button; Block sender posts them.
         pane.addEventListener('submit', function (event) {
@@ -1718,8 +1749,15 @@
             }
         });
 
+        // On a phone the views scroll sideways: the chosen one is brought into sight.
+        var chosenView = root.querySelector('.pg-toolbar .btn-group [aria-current="page"]');
+
+        if (chosenView && chosenView.parentNode.scrollWidth > chosenView.parentNode.clientWidth) {
+            chosenView.parentNode.scrollLeft = chosenView.offsetLeft - chosenView.parentNode.offsetLeft;
+        }
+
         root.addEventListener('click', function (event) {
-            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close], [data-ws-mail-draft-open], [data-ws-mail-draft-remove]');
+            var target = event.target.closest('[data-ws-mail-more], [data-ws-mail-read-all], [data-ws-mail-check], [data-ws-mail-row], [data-ws-mail-new], [data-ws-mail-my-settings], [data-ws-mail-unblock], [data-ws-mail-forward], [data-ws-mail-calendar], [data-ws-mail-close], [data-ws-mail-draft-open], [data-ws-mail-draft-remove]');
 
             // A new tab or window keeps the link's own way.
             if (!target || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -1732,6 +1770,8 @@
                 draftAction(target);
             } else if (target.hasAttribute('data-ws-mail-check')) {
                 check(target);
+            } else if (target.hasAttribute('data-ws-mail-unblock')) {
+                unblock(target);
             } else if (target.hasAttribute('data-ws-mail-my-settings')) {
                 mySettings(h);
             } else if (target.hasAttribute('data-ws-mail-new')) {
@@ -2014,6 +2054,27 @@
         }).catch(function (error) {
             h.fail(error);
         });
+    }
+
+    // Save draft, beside Send in a form opened from a draft kept on the
+    // server: the form's fields written back to it, so a change is never
+    // lost by closing the form (mail_drafts_screen.php).
+    function draftSave(h, draft, fields) {
+        var save = h.button('btn btn-outline theme-secondary rounded-pill px-5 me-2', draft.labels.save, 'bi-floppy');
+
+        save.addEventListener('click', function () {
+            save.disabled = true;
+
+            h.api('ws_mail_draft_save', Object.assign({ draft_id: draft.id }, fields())).then(function () {
+                save.disabled = false;
+                h.toast(draft.labels.saved, 'success');
+            }).catch(function (error) {
+                save.disabled = false;
+                h.fail(error);
+            });
+        });
+
+        return save;
     }
 
     function compose(h, options) {
@@ -2374,6 +2435,14 @@
         send.addEventListener('click', function () {
             sendNew(false);
         });
+
+        if (server) {
+            footer.appendChild(draftSave(h, server, function () {
+                var fields = current();
+
+                return { to: fields.to, cc: fields.cc, bcc: fields.bcc, subject: fields.subject, text: fields.text };
+            }));
+        }
 
         footer.appendChild(send);
         h.showOffcanvas(node);

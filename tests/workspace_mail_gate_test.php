@@ -221,5 +221,5 @@ function test_workspace_mail_gate_tab_without_channels()
 
 	pg_assert_contains("'heading_description' => ws_enabled()", $page, 'the heading line follows the switch');
 	pg_assert_contains("lang('The e-mail conversations of the mailboxes you read.", $page, 'the mailboxes you read');
-	pg_assert_contains(", ws_enabled()) . '", $page, 'the toolbar is told the switch');
+	pg_assert_contains("(bool) ws_mail_check_boxes(\$viewer, \$filters['box']), ws_enabled()", $page, 'the toolbar is told the switch');
 }
