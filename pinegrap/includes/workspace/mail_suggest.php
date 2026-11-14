@@ -205,8 +205,13 @@ function ws_mail_suggest_heard($viewer, $prefix)
     $like = e(escape_like($prefix)) . '%';
     $out = array();
 
+    // A draft is not mail the box wrote (a new mail's draft is its writer's
+    // alone), and a blocked sender's mail is outside every conversation.
+    $kept = ' AND ' . ws_mail_drafts_excluded_sql()
+        . ((function_exists('ws_mail_blocks_ready') && ws_mail_blocks_ready()) ? ' AND blocked_at = 0' : '');
+
     foreach ((array) db_items("SELECT from_email, from_name FROM ws_mail_items
-        WHERE box_id IN (" . $in . ") AND (from_email LIKE '" . $like . "' OR from_name LIKE '" . $like . "' OR from_name LIKE '" . e('% ' . escape_like($prefix)) . "%')
+        WHERE box_id IN (" . $in . ")" . $kept . " AND (from_email LIKE '" . $like . "' OR from_name LIKE '" . $like . "' OR from_name LIKE '" . e('% ' . escape_like($prefix)) . "%')
         ORDER BY created_at DESC LIMIT 50") as $row) {
         $address = mb_strtolower(trim((string) $row['from_email']), 'UTF-8');
 
@@ -215,7 +220,7 @@ function ws_mail_suggest_heard($viewer, $prefix)
         }
     }
 
-    foreach ((array) db_items("SELECT to_list, cc_list FROM ws_mail_items WHERE box_id IN (" . $in . ")
+    foreach ((array) db_items("SELECT to_list, cc_list FROM ws_mail_items WHERE box_id IN (" . $in . ")" . $kept . "
         ORDER BY id DESC LIMIT " . WS_MAIL_SUGGEST_ITEMS) as $row) {
         $out += ws_mail_suggest_list_addresses($row['to_list'] . ', ' . $row['cc_list'], $prefix);
     }

@@ -217,8 +217,12 @@ function ws_mail_list_where($filters, $viewer_id, $channel_ids, $charset = '', $
     $search = (string) ($filters['q'] ?? '');
 
     if ($search !== '') {
+        // A draft kept on the server is not found by its words (mail_drafts.php).
+        $drafts_out = function_exists('ws_mail_drafts_excluded_sql') ? ws_mail_drafts_excluded_sql('i') : '1 = 1';
+        $drafts_out = ($drafts_out === '1 = 1') ? '' : $drafts_out . ' AND ';
         $where[] = '(' . ws_search_like_sql($search, array('subject', 'customer_name', 'customer_email'), $charset)
             . ' OR EXISTS (SELECT 1 FROM ws_mail_items i WHERE i.conversation_id = ws_mail_conversations.id AND '
+            . $drafts_out
             . ws_search_like_sql($search, array('i.from_name', 'i.from_email', 'i.to_list', 'i.cc_list', 'i.body_text'), $charset) . '))';
     }
 
@@ -455,7 +459,8 @@ function ws_mail_list_mails($viewer_id, $rows)
     foreach ((array) db_items("SELECT conversation_id, COUNT(*) AS mails, MAX(id) AS last_id,
             MAX(CASE WHEN direction = 'in' THEN id ELSE 0 END) AS last_in_id"
             . ($reads ? ", MAX(send_state = 'failed') AS failed, MAX(send_state = 'queued') AS queued" : '') . "
-        FROM ws_mail_items WHERE conversation_id IN (" . implode(',', $ids) . ") GROUP BY conversation_id") as $stat) {
+        FROM ws_mail_items WHERE conversation_id IN (" . implode(',', $ids) . ") AND " . ws_mail_drafts_excluded_sql() . "
+        GROUP BY conversation_id") as $stat) {
         $stats[(int) $stat['conversation_id']] = $stat;
     }
 

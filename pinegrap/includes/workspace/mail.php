@@ -773,7 +773,8 @@ function ws_mail_find_conversation($box, $parsed, $from_email)
         // The customer is let in without reading the mails; anyone else by
         // the newest 200 of them.
         $mails = ws_mail_sender_took_part($from_email, (string) $row['customer_email'], array()) ? array()
-            : db_items("SELECT " . $columns . " FROM ws_mail_items WHERE conversation_id = '" . $conversation_id . "' ORDER BY id DESC LIMIT 200");
+            : db_items("SELECT " . $columns . " FROM ws_mail_items WHERE conversation_id = '" . $conversation_id . "'
+                AND " . ws_mail_drafts_excluded_sql() . " ORDER BY id DESC LIMIT 200");
 
         if (ws_mail_sender_took_part($from_email, (string) $row['customer_email'], (array) $mails)) {
             return $row;
@@ -1204,6 +1205,7 @@ function ws_mail_items_map($rows)
         if ($answered && function_exists('ws_person_name')) {
             foreach ((array) db_items("SELECT conversation_id, user_id FROM ws_mail_items
                 WHERE conversation_id IN (" . implode(',', $answered) . ") AND direction = 'out' AND user_id > 0
+                    AND " . ws_mail_drafts_excluded_sql() . "
                 ORDER BY id DESC") as $writer) {
                 if (!isset($writers[(int) $writer['conversation_id']])) {
                     $writers[(int) $writer['conversation_id']] = ws_person_name((int) $writer['user_id']);

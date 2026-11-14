@@ -35,7 +35,8 @@ function ws_api_mail_test_routes()
 	$routes = array();
 
 	foreach (ws_api_routes() as $route) {
-		if (strpos($route['id'], 'workspace.mail_') === 0) {
+		// Drafts have their own test (workspace_mail_drafts_test.php).
+		if ((strpos($route['id'], 'workspace.mail_') === 0) && (strpos($route['id'], 'workspace.mail_drafts.') !== 0)) {
 			$routes[$route['id']] = $route;
 		}
 	}

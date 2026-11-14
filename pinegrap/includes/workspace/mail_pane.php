@@ -61,6 +61,7 @@ function ws_mail_pane($viewer, $conversation_id)
     }
 
     $items = array_reverse((array) db_items("SELECT " . ws_mail_pane_columns(ws_mail_html_ready()) . " FROM ws_mail_items WHERE conversation_id = '" . (int) $conversation['id'] . "'
+        AND " . ws_mail_drafts_excluded_sql() . "
         ORDER BY id DESC LIMIT " . WS_MAIL_PANE_MAX));
     $ids = array();
     $sent = array();

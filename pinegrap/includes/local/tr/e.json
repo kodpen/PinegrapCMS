@@ -65,6 +65,7 @@
     "E-mail designs": "E-posta tasarımları",
     "E-mail designs and message texts to start a send from.": "Gönderime başlamak için e-posta tasarımları ve ileti metinleri.",
     "E-mail designs for campaigns will be listed here.": "Kampanyaların e-posta tasarımları burada listelenecek.",
+    "E-mail draft": "E-posta taslağı",
     "E-mail each issued invoice to the customer": "Kesilen her faturayı müşteriye e-postala",
     "E-mail each person their tasks ({var:1}{var:2}) · {var:3}": "Herkese kendi görevlerini e-postayla gönder ({var:1}{var:2}) · {var:3}",
     "E-mail footer": "E-posta alt bilgisi",
