@@ -32373,15 +32373,24 @@ const StyleDesigner = (function () {
 
     // Whether a panel control already has an accessible name: its own
     // aria-label / aria-labelledby, or a <label> (for= or wrapping) with text.
-    // A placeholder or title is not counted.
-    function _sdPropsHasName(ctrl) {
+    // A placeholder or title is not counted. forIds holds the ids that a
+    // label[for] with text names (_sdPropsLabelFors()): reading ctrl.labels
+    // costs a scan of the whole document on the first read after a redraw.
+    function _sdPropsHasName(ctrl, forIds) {
         if ((ctrl.getAttribute('aria-label') || '').trim() !== '') return true;
         if ((ctrl.getAttribute('aria-labelledby') || '').trim() !== '') return true;
-        var labels = ctrl.labels || [];
-        for (var i = 0; i < labels.length; i++) {
-            if ((labels[i].textContent || '').trim() !== '') return true;
-        }
-        return false;
+        var wrap = ctrl.closest('label');
+        if (wrap && (wrap.textContent || '').trim() !== '') return true;
+        return !!(ctrl.id && forIds && forIds.has(ctrl.id));
+    }
+
+    // The ids named by a label[for] with text inside the panel.
+    function _sdPropsLabelFors(panel) {
+        var ids = new Set();
+        panel.querySelectorAll('label[for]').forEach(function (lbl) {
+            if ((lbl.textContent || '').trim() !== '') ids.add(lbl.getAttribute('for'));
+        });
+        return ids;
     }
 
     var _sdPropsLabelSeq = 0;
@@ -32411,32 +32420,54 @@ const StyleDesigner = (function () {
         return row ? _sdPropsChild(row, 'sd-sp-label') : null;
     }
 
-    // Names the controls of the options and appearance panels. The row
+    // Whether el, or an ancestor of it below stop, is folded away by an
+    // inline display:none: a closed section body, a closed per-size box, a
+    // row the property search hid.
+    function _sdPropsFolded(el, stop) {
+        for (; el && el !== stop; el = el.parentElement) {
+            if (el.style && el.style.display === 'none') return true;
+        }
+        return false;
+    }
+
+    // The controls and per-size chevrons under root that are on show. A
+    // subtree folded by an inline display:none is skipped whole: the panel
+    // holds a few thousand elements, most of them in closed sections, and
+    // walking them all on every selection cost tens of ms.
+    function _sdPropsShownControls(root) {
+        var out = [];
+        var walker = document.createTreeWalker(root, 1 /* NodeFilter.SHOW_ELEMENT */, {
+            acceptNode: function (el) {
+                if (el.style && el.style.display === 'none') return 2; // FILTER_REJECT
+                var tag = el.tagName;
+                if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return 1; // FILTER_ACCEPT
+                if (tag === 'OPTION' || tag === 'OPTGROUP') return 2;
+                if (el.classList && el.classList.contains('sd-sp-toggle') && el.hasAttribute('data-sp-target')) return 1;
+                return 3; // FILTER_SKIP
+            }
+        });
+        for (var el = walker.nextNode(); el; el = walker.nextNode()) out.push(el);
+        return out;
+    }
+
+    // Names the controls of the options and appearance panels that are on
+    // show under root (the whole panel when root is left out). The row
     // helpers print the label beside the control, not around it or with a
     // for=, so every unnamed input, select and textarea is pointed at its
     // row label; a per-screen-size control at the row label plus its size
     // label ("Display SM"). The chevron that opens the per-size rows gets a
     // name, aria-controls and aria-expanded. Labels keep their text and
     // classes: the property search and the modified marking read them.
-    function _sdNamePropsPanel(panel) {
-        panel.querySelectorAll('input, select, textarea').forEach(function (ctrl) {
-            if (ctrl.type === 'hidden' || _sdPropsHasName(ctrl)) return;
-            var ids = [];
-            var item = ctrl.closest('.sd-sp-bp-item');
-            if (item && panel.contains(item)) {
-                var rowLbl = _sdPropsBpsRowLabel(panel, item.closest('.sd-sp-bps'));
-                if (rowLbl) ids.push(_sdPropsLabelId(rowLbl));
-                var bpLbl = item.querySelector('.sd-sp-bp-lbl');
-                if (bpLbl) ids.push(_sdPropsLabelId(bpLbl));
-            } else {
-                var row = ctrl.closest('.sd-prop-row, .sd-sp-row');
-                if (!row || !panel.contains(row)) return;
-                var lbl = _sdPropsChild(row, 'sd-prop-label') || _sdPropsChild(row, 'sd-sp-label');
-                if (lbl && (lbl.textContent || '').trim() !== '') ids.push(_sdPropsLabelId(lbl));
+    // A folded section is named when it opens (_sdPropsA11yInit()).
+    function _sdNamePropsPanel(panel, root) {
+        var forIds = null;
+        _sdPropsShownControls(root || panel).forEach(function (ctrl) {
+            if (ctrl.tagName === 'INPUT' || ctrl.tagName === 'SELECT' || ctrl.tagName === 'TEXTAREA') {
+                if (!forIds) forIds = _sdPropsLabelFors(panel);
+                _sdNamePropsControl(panel, ctrl, forIds);
+                return;
             }
-            if (ids.length) ctrl.setAttribute('aria-labelledby', ids.join(' '));
-        });
-        panel.querySelectorAll('.sd-sp-toggle[data-sp-target]').forEach(function (btn) {
+            var btn = ctrl;
             var target = document.getElementById(btn.dataset.spTarget);
             btn.setAttribute('aria-controls', btn.dataset.spTarget);
             btn.setAttribute('aria-expanded', target && target.style.display !== 'none' ? 'true' : 'false');
@@ -32447,25 +32478,77 @@ const StyleDesigner = (function () {
         });
     }
 
+    function _sdNamePropsControl(panel, ctrl, forIds) {
+        if (ctrl.type === 'hidden' || _sdPropsHasName(ctrl, forIds)) return;
+        var ids = [];
+        var item = ctrl.closest('.sd-sp-bp-item');
+        if (item && panel.contains(item)) {
+            var rowLbl = _sdPropsBpsRowLabel(panel, item.closest('.sd-sp-bps'));
+            if (rowLbl) ids.push(_sdPropsLabelId(rowLbl));
+            var bpLbl = item.querySelector('.sd-sp-bp-lbl');
+            if (bpLbl) ids.push(_sdPropsLabelId(bpLbl));
+        } else {
+            var row = ctrl.closest('.sd-prop-row, .sd-sp-row');
+            if (!row || !panel.contains(row)) return;
+            var lbl = _sdPropsChild(row, 'sd-prop-label') || _sdPropsChild(row, 'sd-sp-label');
+            if (lbl && (lbl.textContent || '').trim() !== '') ids.push(_sdPropsLabelId(lbl));
+        }
+        if (ids.length) ctrl.setAttribute('aria-labelledby', ids.join(' '));
+    }
+
+    // The parts of the panel a batch of mutations put on show: the nodes
+    // added and the elements whose style changed (a section or per-size box
+    // opened, a search row shown again), less those inside another of them
+    // or still folded.
+    function _sdPropsMutatedRoots(panel, records) {
+        var seen = [];
+        records.forEach(function (r) {
+            if (r.type === 'attributes') {
+                if (r.target.style && r.target.style.display !== 'none') seen.push(r.target);
+                return;
+            }
+            for (var i = 0; i < r.addedNodes.length; i++) {
+                if (r.addedNodes[i].nodeType === 1) seen.push(r.addedNodes[i]);
+            }
+        });
+        if (!seen.length) return [];
+        var set = new Set(seen);
+        var roots = [];
+        set.forEach(function (el) {
+            if (!el.isConnected || !panel.contains(el)) return;
+            for (var a = el.parentElement; a && a !== panel; a = a.parentElement) {
+                if (set.has(a)) return;
+            }
+            if (_sdPropsFolded(el, panel)) return;
+            roots.push(el);
+        });
+        return roots;
+    }
+
     // Installed once on #sd-properties: the naming pass follows every redraw
     // (renderProperties, the multi-selection panel, sections filled later)
     // through one observer, and Enter / Space open or close a section
-    // header (role=button) the way a click does.
+    // header (role=button) the way a click does. The pass covers only what
+    // a batch of mutations put on show; a section opened later is named
+    // then, from the change of its style.
     function _sdPropsA11yInit(panel) {
         if (panel._sdA11y) return;
         panel._sdA11y = true;
-        var queued = false;
+        var pending = [];
         var run = function () {
-            queued = false;
-            _sdNamePropsPanel(panel);
-            _swPageBrowseDecorate(panel);
+            var records = pending;
+            pending = [];
+            _sdPropsMutatedRoots(panel, records).forEach(function (root) {
+                _sdNamePropsPanel(panel, root);
+                _swPageBrowseDecorate(root);
+            });
         };
         if (typeof MutationObserver === 'function') {
-            new MutationObserver(function () {
-                if (queued) return;
-                queued = true;
-                Promise.resolve().then(run);
-            }).observe(panel, { childList: true, subtree: true });
+            new MutationObserver(function (records) {
+                var first = !pending.length;
+                for (var i = 0; i < records.length; i++) pending.push(records[i]);
+                if (first) Promise.resolve().then(run);
+            }).observe(panel, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
         }
         panel.addEventListener('keydown', function (e) {
             if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -59742,11 +59825,13 @@ const StyleDesigner = (function () {
     // design's unsaved tabs among its own entries (`tab:<key>`). A pick the
     // select does not list is added to it, then chosen, with the change the
     // panel listens to.
-    function _swPageBrowseDecorate(panel) {
-        if (!window.pgPicker || !window.pgUI || !panel) return;
-        panel.querySelectorAll('option[data-sw-page-none]').forEach(function (none) {
+    // root is the part of the panel on show (_sdPropsA11yInit()); a select
+    // folded inside it gets Browse when its section opens.
+    function _swPageBrowseDecorate(root) {
+        if (!window.pgPicker || !window.pgUI || !root) return;
+        root.querySelectorAll('option[data-sw-page-none]').forEach(function (none) {
             var sel = none.closest('select');
-            if (!sel || sel.multiple || sel._swBrowse) return;
+            if (!sel || sel.multiple || sel._swBrowse || _sdPropsFolded(sel, root.parentElement)) return;
             sel._swBrowse = true;
             var btn = document.createElement('button');
             btn.type = 'button';
