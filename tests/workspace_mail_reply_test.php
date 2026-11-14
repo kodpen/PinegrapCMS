@@ -205,7 +205,7 @@ function test_workspace_mail_reply_reaches_the_screen()
 	pg_assert_contains("case 'ws_mail_reply':", $actions, 'the action');
 	pg_assert_contains('$result = ws_mail_send($viewer, array(\'conversation_id\' => $conversation_id,', $actions, 'checked and sent by the server, through the queue');
 	pg_assert_contains('window.PGWsMail.node(message, self, featureHelpers())', $screen, 'drawn under the card');
-	pg_assert_contains('(message.mail_reply || message.mail_resend) && window.PGWsMail', $screen, 'and under an answer that could not leave');
+	pg_assert_contains('(message.mail_reply || message.mail_resend || message.whatsapp_reply) && window.PGWsMail', $screen, 'and under an answer that could not leave, and under a WhatsApp card');
 	pg_assert_contains("h.api('ws_mail_reply_form', { conversation_id: message.mail_reply })", $script, 'whom it goes to, asked first');
 	pg_assert_contains("var post = { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: text.value };", $script);
 	pg_assert_contains("formPost(h, 'ws_mail_reply', post, files)", $script);

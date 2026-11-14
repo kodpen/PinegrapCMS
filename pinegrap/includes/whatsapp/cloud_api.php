@@ -657,3 +657,48 @@ function pg_whatsapp_cloud_templates($app, $pages = 10)
 
     return array('ok' => false, 'error' => lang('The account has more templates than are read at once.'), 'templates' => $templates);
 }
+
+/**
+ * The request of a free-text message: an answer inside the 24 hours after
+ * the customer's own message, the only time WhatsApp takes one. Links are
+ * not previewed.
+ *
+ * @param array  $app
+ * @param string $number E.164 digits
+ * @param string $text
+ * @return array url, headers, body
+ */
+function pg_whatsapp_cloud_text_request($app, $number, $text)
+{
+    $body = array(
+        'messaging_product' => 'whatsapp',
+        'recipient_type'    => 'individual',
+        'to'                => '+' . $number,
+        'type'              => 'text',
+        'text'              => array('preview_url' => false, 'body' => (string) $text),
+    );
+
+    return array(
+        'url'     => pg_whatsapp_cloud_url(rawurlencode($app['phone_number_id']) . '/messages', array('appsecret_proof' => pg_whatsapp_cloud_proof($app['token'], $app['app_secret']))),
+        'headers' => pg_whatsapp_cloud_headers($app['token'], true),
+        'body'    => json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    );
+}
+
+/**
+ * Sends one free-text message; read as a template send is.
+ *
+ * @param array  $app
+ * @param string $number E.164 digits
+ * @param string $text
+ * @return array pg_whatsapp_cloud_send_parse()
+ */
+function pg_whatsapp_cloud_send_text($app, $number, $text)
+{
+    $response = pg_whatsapp_http('POST', pg_whatsapp_cloud_text_request($app, $number, $text));
+
+    return pg_whatsapp_cloud_send_parse($response['status'], $response['body'], $response['error'], pg_sms_http_never_sent(
+        $response['errno'],
+        $response['connect'],
+        $response['request_size']));
+}
