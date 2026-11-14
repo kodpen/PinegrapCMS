@@ -18,5 +18,5 @@ description: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Plan
 
 ## What is decided in code and API?
 - Architect (2026-11-14): prefix `ws_personal_plan_` (tables and functions), gate `ws_personal_plan_can_see()` (not `ws_plan_*`, the board's), reference type `personal_plan`.
-- API path /workspace/personal-plans, scope `workspace.personal_plans` (PC8), webhook none.
+- API path /workspace/personal-plans, scope `workspace:personal_plans` (PC8, `workspace-personal-plans-api.md`), webhook none.
 - The reference is never `plan`; it is not offered in "#" search to others (`personal-calendar-census-readers.md`).

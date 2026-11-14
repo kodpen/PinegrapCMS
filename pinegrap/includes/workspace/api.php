@@ -53,6 +53,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mail.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mail_drafts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_saved_replies.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_personal_plans.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_note_groups.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_agents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_memory.php');
@@ -100,6 +101,15 @@ function ws_scope_groups()
             'read'        => 'tasks:read',
             'write'       => 'tasks:write',
         ),
+        // A person's own plans: only their own device or OAuth connection
+        // reaches them (api_personal_plans.php), an application key never.
+        'personal_plans' => array(
+            'label'       => lang('My plans'),
+            'description' => lang('Your own plans on My calendar, for your own devices and connections only'),
+            'icon'        => 'bi-calendar-heart',
+            'read'        => '',
+            'write'       => 'workspace:personal_plans',
+        ),
     );
 }
 
@@ -122,7 +132,7 @@ function ws_owner_scopes($owner)
 
     // Which mailbox a person may send from is checked when the mail is sent
     // (ws_mail_send_check()).
-    return array('workspace:read', 'workspace:write', 'workspace:commands', 'workspace:mail_send', 'tasks:read', 'tasks:write');
+    return array('workspace:read', 'workspace:write', 'workspace:commands', 'workspace:mail_send', 'tasks:read', 'tasks:write', 'workspace:personal_plans');
 }
 
 /**
@@ -218,6 +228,7 @@ function ws_openapi_objects()
         'WorkspaceCommandArgument' => 'ws_api_command_argument_schema',
         'WorkspaceAppCommand'      => 'ws_api_app_command_schema',
         'WorkspaceSavedReply'      => 'ws_api_saved_reply_schema',
+        'WorkspacePersonalPlan'    => 'ws_api_personal_plan_schema',
         'WorkspaceChannelAgent'        => 'ws_api_channel_agent_schema',
         'WorkspaceChannelAgentRemoval' => 'ws_api_channel_agent_removal_schema',
         'WorkspaceMemoryIndexEntry'    => 'ws_api_memory_index_entry_schema',
@@ -2694,11 +2705,12 @@ function ws_api_routes()
     // Asking Claude in a channel (api_claude.php), the changes an
     // application proposes (api_proposals.php), workflow tables
     // (api_wtables.php), e-mail conversations (api_mail.php) and drafts (api_mail_drafts.php), saved
-    // replies (api_saved_replies.php), note groups (api_note_groups.php),
+    // replies (api_saved_replies.php), a person's own plans
+    // (api_personal_plans.php), note groups (api_note_groups.php),
     // the agents of a channel (api_agents.php), a channel's memory with the
     // decision mark (api_memory.php), the agents' requests
     // (api_agent_requests.php), the agents' canvases (api_canvas.php) and
     // live pages (api_page.php), and the canvas as one thing with its
     // parts (api_canvases.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes());
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes());
 }

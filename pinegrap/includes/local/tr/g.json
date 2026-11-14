@@ -334,6 +334,7 @@
     "Give the carrier this return code:": "Kargo şubesine bu iade kodunu verin:",
     "Give the cells as an object of column ids.": "Hücreleri sütun kimlikleriyle bir nesne olarak verin.",
     "Give the copy-code button a sample code of at most {var:1} letters and digits, without spaces.": "Kodu kopyala düğmesine boşluksuz, en çok {var:1} harf ve rakamdan oluşan bir örnek kod verin.",
+    "Give the days as YYYY-MM-DD.": "Günleri YYYY-AA-GG biçiminde verin.",
     "Give the element an id to use it.": "Kullanmak için öğeye bir id verin.",
     "Give the experiment a name of up to 100 characters.": "Deneye en çok 100 karakterlik bir ad verin.",
     "Give the group a name.": "Gruba bir ad verin.",

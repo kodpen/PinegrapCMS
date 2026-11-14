@@ -406,7 +406,7 @@ function ws_mail_actions_without_workspace()
         'ws_bootstrap', 'ws_tick',
         'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_conversation', 'ws_mail_check',
         'ws_mail_reply_form', 'ws_mail_reply', 'ws_mail_resend',
-        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block',
+        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock', 'ws_mail_draft_open', 'ws_mail_draft_save', 'ws_mail_draft_remove',
         'ws_mail_my_settings', 'ws_mail_my_settings_save',
         'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
     );
@@ -2779,6 +2779,11 @@ function ws_handle_action($action, $request)
                     + array('code' => $result['error']);
             }
 
+            // The draft this answer was written from goes once it is stored.
+            if (!empty($request['draft_id']) && function_exists('ws_mail_draft_remove')) {
+                ws_mail_draft_remove($viewer, (int) $request['draft_id'], $conversation_id);
+            }
+
             return ws_action_ok(array('message_id' => $result['message_id'], 'state' => $result['state']));
 
         // Send again: an outgoing mail that could not leave (mail_send.php).
@@ -2905,6 +2910,11 @@ function ws_handle_action($action, $request)
 
             ws_mail_forward_line($viewer, $forward['source'], (int) $result['item_id']);
 
+            // The new mail's draft goes once the mail is stored.
+            if (!empty($request['draft_id']) && function_exists('ws_mail_draft_remove')) {
+                ws_mail_draft_remove($viewer, (int) $request['draft_id'], 0);
+            }
+
             return ws_action_ok(array(
                 'conversation_id' => $result['conversation_id'],
                 'message_id'      => $result['message_id'],
@@ -2973,6 +2983,46 @@ function ws_handle_action($action, $request)
             $result = ws_mail_block_add($viewer, (int) ($request['item_id'] ?? 0), $request, (string) ($_SESSION['sessionusername'] ?? ''));
 
             return $result['ok'] ? ws_action_ok(array('text' => $result['text'])) : ws_action_error($result['error']);
+
+        // Move to the inbox: a blocked mail brought in as a conversation, its
+        // sender left on the list (mail_blocks.php). A demonstration site
+        // takes no mail in.
+        case 'ws_mail_unblock':
+            if (!function_exists('ws_mail_unblock')) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if (pg_demo()) {
+                return ws_action_error(lang('A demonstration site reads no mailbox.'));
+            }
+
+            $result = ws_mail_unblock($viewer, (int) ($request['item_id'] ?? 0), (string) ($_SESSION['sessionusername'] ?? ''));
+
+            return $result['ok'] ? ws_action_ok(array('conversation_id' => $result['conversation_id'])) : ws_action_error($result['error']);
+
+        // The Drafts view (mail_drafts_screen.php): a draft opened into its
+        // form, its changes saved there, or deleted without being sent.
+        case 'ws_mail_draft_open':
+        case 'ws_mail_draft_save':
+        case 'ws_mail_draft_remove':
+            if (!function_exists('ws_mail_draft_open')) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            if ($action === 'ws_mail_draft_open') {
+                $opened = ws_mail_draft_open($viewer, (int) ($request['draft_id'] ?? 0));
+
+                return $opened['ok'] ? ws_action_ok(array('draft' => $opened['draft'])) : ws_action_error($opened['error']);
+            }
+
+            if ($action === 'ws_mail_draft_save') {
+                $saved = ws_mail_draft_save($viewer, (int) ($request['draft_id'] ?? 0), $request);
+
+                return $saved['ok'] ? ws_action_ok() : ws_action_error($saved['error']);
+            }
+
+            return ws_mail_draft_remove($viewer, (int) ($request['draft_id'] ?? 0))
+                ? ws_action_ok() : ws_action_error(lang('This draft cannot be deleted.'));
 
         // Check e-mail: the person's IMAP boxes read now (mail_check.php);
         // when mail came, the list is drawn again with the screen's filters.

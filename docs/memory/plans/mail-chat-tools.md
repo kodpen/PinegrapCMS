@@ -16,7 +16,7 @@ description: Plan (owner 2026-11-14): Workspace e-mail read, drafted and sent fr
   - Done in #9484: `workspace.mail_items.get`, `text_max`, the mail's `files`/`outside`/`has_html`/`bcc`, `workspace.files.content` (`workspace/mail-api-reading.md`).
 - MT3 (M) Drafts on the server, in two steps:
   - MT3a (done, #9516) The server: a reply's and a new mail's draft kept, read, changed and deleted as routes and tools for every caller that may read the conversation; the readers of sent mail leave drafts out (`workspace/mail-drafts.md`).
-  - MT3b The E-mails screen's Drafts view: a draft opens in the reply drawer or the New e-mail form, and Send there is the person's and deletes the draft. Look A, the picture set in the agent channel.
+  - MT3b (done, #9543) The E-mails screen's Drafts view: a draft opens in the reply drawer or the New e-mail form, and Send there is the person's and deletes the draft. Look A, the picture set in the agent channel.
 - MT4 (M, done #9533) Sending from a person's connection under `workspace:mail_send` (`workspace/mail-send-scope.md`).
 - MT5 (M, after MA10b) HTML and files out. `html` on reply, new mail and drafts, cleaned by the allowlist cleaner, the text part made from it when none is sent; files by their Files id within the panel's limits, the sender's right to each checked at Send; a draft keeps them in `ws_mail_items.draft_files` (MT5's migration step).
   - Done in #9541: `html` and `file_ids` on reply, new mail and drafts, `draft_files` and `draft_app_id` by 11.0.206 (`workspace/mail-api-html-files.md`).

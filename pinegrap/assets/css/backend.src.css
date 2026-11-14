@@ -15982,6 +15982,13 @@ a.ws-chip:hover {
 /* The E-mails screen (workspace_mail.php): the list, and the reading pane
    beside it once a row is open; on a phone the pane takes the list's
    place. */
+.ws-mail-toolbar-break {
+  /* The toolbar's views start a line of their own: a filter or the search
+     that wraps stays on the line above them. A break in the markup, not
+     `order`, so the keyboard meets them where they are drawn. */
+  flex: 0 0 100%;
+  height: 0;
+}
 .ws-mail-columns {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
