@@ -4,6 +4,7 @@
 
 - addon-hook-system-site.md: Add-on hook system, the owner's additions of 2026-11-14: the start in two parts, UI slots on core screens, a site's own add-on that updates never touch, an add-on prepared from the panel
 - addon-hook-system.md: Plan (approved 2026-10-19; not to be started before the running plans end, owner 2026-11-14): add-on packages under includes/addons/ with manifest and hooks, so drivers add without forking
+- agent-approvers-everyone.md: Plan (owner 2026-11-14): an approval request can ask a channel's agents and assistants, and the tag @herkes mentions everyone in the room but the writer; steps AE1 to AE6
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
@@ -28,6 +29,7 @@
 - mail-inbox-features-census.md: IB1 census (2026-11-14) of plans/mail-inbox-features.md: a read on request, a person's own setting, a blocked mail, a later send, a box's Sent folder, phone numbers; the questions asked
 - mail-inbox-features-scopes.md: Exact scope of IB3-IB7 of plans/mail-inbox-features.md after the IB1 census: the functions each step changes, what waits on a schema answer, what stays out
 - mail-inbox-features.md: Plan (owner 2026-11-14): the E-mails screen gains Check e-mail, a person's own signature, a block list, recipient suggestions, Send later and the Sent folder; steps IB1 to IB8
+- mail-inbox-more.md: Plan (owner 2026-11-14, poll 3363): the E-mails screen gains remind later, a reminder when no answer comes, incoming mail rules, "I am away" and undo send; steps IB9 to IB14
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
 - messages-area-decided-2.md: The architect's decisions on the proposals of MA9a and MA10a (#9077): campaign profiles into flows (boxes first, what stays, one flow per chain, the switch, the owner), incoming e-mail in the area
 - messages-area-decided.md: The architect's decisions on the proposals of MA0 and MA4 (#9081, #9083): the shell, the Sends list as a union with its measure, e-mail source, rights, the e-mail design page
@@ -40,8 +42,10 @@
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
 - panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860, #9070), the list rules, what is only a placeholder
 - panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
+- personal-calendar-more.md: Plan (owner 2026-11-14, polls 3359 and 3363): My calendar gains the export of whole-team plans, repeating plans, team roadmap templates, Google or Outlook writing; steps PC6b, PC10 to PC14
 - personal-calendar-plans.md: Plan (owner 2026-11-14): "My calendar" beside e-mail and a person's own plans, private unless shared, as a reminder or a job's roadmap, usable for a customer; steps PC1 to PC9
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
+- poll-agent-questions.md: Plan (owner 2026-11-14): the poll gains described, pictured and linked options, "Other", taking back and asking again; a poll an agent asks is an agent question, answered in its box; AQ1 to AQ6
 - report-screens-steps.md: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out
 - report-screens.md: Plan (owner 2026-11-11, #8673): the order, visitor, shipping and ERP VAT report screens drawn as the dashboard: figures, a chart, the table, settings in a drawer, ready reports; steps RS1-RS8
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions

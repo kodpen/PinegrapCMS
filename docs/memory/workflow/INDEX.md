@@ -37,6 +37,7 @@
 - decisions-made-panel-6.md: Decisions list, panel part 6 (2026-11-12 on): the panel's design language from look A (#8842); the names Design Canvas and Page Design Studio, the design menu with Other (#8849)
 - decisions-made-panel-7.md: Decisions list, panel part 7 (2026-11-12 on): look A's second pass and dialogs page as reference (#8860); add, edit, list widths, no pager; Design Canvas icon (#8903); dashboard keeps its look (#8938)
 - decisions-made-panel-8.md: Decisions list, panel part 8 (2026-11-12 on): report page reference (#8955); switch thumb (#9070); Design Canvas icon in one colour (#9250); form column cards (#9271); the Communication row's drawing
+- decisions-made-panel-9.md: Decisions list, panel part 9 (2026-11-14 on): the dashboard's assistant chat keeps its last lines after a reload; a link that opens reads "Aç", not "Açık"
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log
@@ -99,7 +100,7 @@
 - decisions-made-schema-16.md: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_html, kind mailbox on ws_channels, ws_agents.seen_at, ws_checks.app_id, ws_ai_requests.held_until for the edit hold
 - decisions-made-schema-17.md: Decisions list, schema part 17 (2026-11-12 on): canvas-one's ws_canvas_parts, ws_canvas_tables, ws_canvas_consents, via_message_id, ws_wtables.channel_id; WhatsApp's tables; ws_agents' role and report
 - decisions-made-schema-18.md: Decisions list, schema part 18 (2026-11-13 on): whatsapp and sms transport, customer_phone (#9286); ws_mail_items.draft_files; personal plan tables; signature, block list, Sent folder columns
-- decisions-made-schema-19.md: Decisions list, schema part 19 (2026-11-14 on): ws_mail_items.invitation, what a mail's calendar part said, kept for the invitation card of a personal plan
+- decisions-made-schema-19.md: Decisions list, schema part 19 (2026-11-14 on): ws_mail_items.invitation for a plan's invitation card; ws_mail_items.draft_app_id, who wrote a draft; ws_polls.agent_question
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
@@ -132,8 +133,10 @@
 - decisions-made-workspace-25.md: Decisions made, Workspace part 25: when an agent may conclude a discussion (asked by a person in it; unasked it only offers a button a person presses)
 - decisions-made-workspace-26.md: Decisions made, workspace part 26: a template is chosen with a preview; new parts inside a channel use look A's components; a person's connected chat may send Workspace e-mail
 - decisions-made-workspace-27.md: Decisions made, workspace part 27: Check e-mail, own signature and block list; "My calendar" and private plans; a customer's roadmap inside the team; one-series charts in the channel colour
-- decisions-made-workspace-28.md: Decisions made, workspace part 28 (2026-11-14 on): the line of a chart in an agent's drawing is 6 on the Card, a change of the approved guide sheet's 3
+- decisions-made-workspace-28.md: Decisions made, workspace part 28 (2026-11-14 on): a chart's line in an agent's drawing is 6 on the Card; an export lists only whole-team plans; erasure leaves mail conversations
+- decisions-made-workspace-29.md: Decisions made, workspace part 29 (2026-11-14 on): the nine additions the owner ticked for the mail, My calendar and Communication plans; an agent asks a person with a widened poll
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
+- decisions-made-workspace-30.md: Decisions made, workspace part 30 (2026-11-14 on): an approval request can ask a channel's agents and assistants, within a bound; the tag @herkes mentions everyone in a room but the writer
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
