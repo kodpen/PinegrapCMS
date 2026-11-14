@@ -4594,6 +4594,10 @@ function ws_handle_action($action, $request)
         case 'ws_calendar':
             return ws_action_ok(ws_calendar($viewer, (string) ($request['month'] ?? ''), (int) ($request['person_id'] ?? 0), (int) ($request['department_id'] ?? 0)));
 
+        case 'ws_my_calendar':
+            // Always the reader's own: no person is taken from the request.
+            return ws_action_ok(ws_my_calendar($viewer, $request['view'] ?? '', $request['date'] ?? ''));
+
         case 'ws_conflicts':
             $from = ws_date_or_null($request['from'] ?? '') ?: date('Y-m-d');
             $to = ws_date_or_null($request['to'] ?? '') ?: date('Y-m-d', strtotime('+13 days'));
