@@ -26,6 +26,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/whatsapp_offer.php');
+
 // The longest value a header variable and any other variable take; Meta's
 // header text is at most 60 characters with its variable filled.
 define('PG_WHATSAPP_MESSAGE_HEADER_VALUE', 60);
@@ -176,18 +178,41 @@ function pg_whatsapp_message_text_variables($text)
 
 /**
  * The variables a template needs filled, and why it cannot be sent by an
- * event when it cannot (pure). A media or location header, a copy-code
- * button and Meta's other interactive buttons need more than a text value:
- * those wait for the template designer and the offer codes.
+ * event when it cannot (pure). A media or location header and Meta's other
+ * interactive buttons need more than a text value. The template's offer
+ * code (includes/fn/whatsapp_offer.php) fills its body variable and a
+ * copy-code button when the message is queued: those are no sender's
+ * choice, so they are left out of the slots; a copy-code button without an
+ * offer cannot be filled.
  *
  * @param array $components the template's components as Meta reads them
+ * @param mixed $offer      the template's offer column (JSON or array)
  * @return array slots (key, part: header|body|button, name, index (a
  *               button's position)), unsupported ('' or the reason)
  */
-function pg_whatsapp_message_slots($components)
+function pg_whatsapp_message_slots($components, $offer = '')
+{
+    $read = pg_whatsapp_message_slots_all($components, $offer);
+    $read['slots'] = array_values(array_filter($read['slots'], function ($slot) {
+        return empty($slot['offer']);
+    }));
+
+    return $read;
+}
+
+/**
+ * Every place of a template a send fills, in order, the offer code's places
+ * marked offer (part body or copy_code). Pure.
+ *
+ * @param array $components
+ * @param mixed $offer the template's offer column
+ * @return array slots, unsupported
+ */
+function pg_whatsapp_message_slots_all($components, $offer = '')
 {
     $slots = array();
     $unsupported = '';
+    $offer = pg_whatsapp_offer_read($offer);
 
     foreach ((is_array($components) ? $components : array()) as $component) {
         if (!is_array($component) || !isset($component['type']) || !is_string($component['type'])) {
@@ -209,7 +234,8 @@ function pg_whatsapp_message_slots($components)
             }
         } elseif ($type === 'BODY') {
             foreach (pg_whatsapp_message_text_variables(isset($component['text']) ? $component['text'] : '') as $name) {
-                $slots[] = array('key' => 'body:' . $name, 'part' => 'body', 'name' => $name, 'index' => 0);
+                $slots[] = array('key' => 'body:' . $name, 'part' => 'body', 'name' => $name, 'index' => 0,
+                    'offer' => ($offer['mode'] !== '') && ($offer['variable'] === (string) $name));
             }
         } elseif (($type === 'BUTTONS') && isset($component['buttons']) && is_array($component['buttons'])) {
             foreach (array_values($component['buttons']) as $index => $button) {
@@ -219,8 +245,12 @@ function pg_whatsapp_message_slots($components)
                     foreach (pg_whatsapp_message_text_variables(isset($button['url']) ? $button['url'] : '') as $name) {
                         $slots[] = array('key' => 'button:' . $index, 'part' => 'button', 'name' => $name, 'index' => $index);
                     }
+                } elseif (($kind === 'COPY_CODE') && ($offer['mode'] !== '')) {
+                    $slots[] = array('key' => 'button:' . $index, 'part' => 'copy_code', 'name' => 'code', 'index' => $index, 'offer' => true);
+                } elseif ($kind === 'COPY_CODE') {
+                    $unsupported = lang('It has a copy-code button but no offer code is set on the template.');
                 } elseif (!in_array($kind, array('QUICK_REPLY', 'PHONE_NUMBER'), true)) {
-                    $unsupported = lang('It has a copy-code or another button that needs more than a text value.');
+                    $unsupported = lang('It has a button that needs more than a text value.');
                 }
             }
         }
@@ -320,7 +350,7 @@ function pg_whatsapp_message_components($template, $vars, $values)
         return $fail(lang('The template is not approved on WhatsApp.'));
     }
 
-    $read = pg_whatsapp_message_slots(isset($template['components']) ? $template['components'] : array());
+    $read = pg_whatsapp_message_slots_all(isset($template['components']) ? $template['components'] : array(), isset($template['offer']) ? $template['offer'] : '');
 
     if ($read['unsupported'] !== '') {
         return $fail($read['unsupported']);
@@ -332,6 +362,24 @@ function pg_whatsapp_message_components($template, $vars, $values)
     $buttons = array();
 
     foreach ($read['slots'] as $slot) {
+        // The offer code's places: filled by the queue (pg_whatsapp_enqueue()).
+        if (!empty($slot['offer'])) {
+            if ($slot['part'] === 'copy_code') {
+                $buttons[$slot['index']] = array('sub_type' => 'copy_code', 'parameter' => array('type' => 'coupon_code', 'coupon_code' => PG_WHATSAPP_OFFER_PLACEHOLDER));
+            } else {
+                $parameter = array('type' => 'text');
+
+                if ($named) {
+                    $parameter['parameter_name'] = $slot['name'];
+                }
+
+                $parameter['text'] = PG_WHATSAPP_OFFER_PLACEHOLDER;
+                $body[] = $parameter;
+            }
+
+            continue;
+        }
+
         if (!isset($vars[$slot['key']]) || !is_string($vars[$slot['key']]) || ($vars[$slot['key']] === '')) {
             return $fail(lang(array('string' => 'Nothing is chosen to fill {var:1}.', 'vars' => array('{{' . $slot['name'] . '}}'))));
         }
@@ -350,7 +398,7 @@ function pg_whatsapp_message_components($template, $vars, $values)
         } elseif ($slot['part'] === 'body') {
             $body[] = $parameter;
         } else {
-            $buttons[$slot['index']] = $parameter;
+            $buttons[$slot['index']] = array('sub_type' => 'url', 'parameter' => $parameter);
         }
     }
 
@@ -366,8 +414,8 @@ function pg_whatsapp_message_components($template, $vars, $values)
 
     ksort($buttons);
 
-    foreach ($buttons as $index => $parameter) {
-        $components[] = array('type' => 'button', 'sub_type' => 'url', 'index' => (string) $index, 'parameters' => array($parameter));
+    foreach ($buttons as $index => $button) {
+        $components[] = array('type' => 'button', 'sub_type' => $button['sub_type'], 'index' => (string) $index, 'parameters' => array($button['parameter']));
     }
 
     return array('ok' => true, 'components' => $components, 'error' => '');
@@ -392,7 +440,7 @@ function pg_whatsapp_message_offered($rows)
 
         $components = isset($row['components']) ? $row['components'] : array();
         $components = is_string($components) ? json_decode($components, true) : $components;
-        $read = pg_whatsapp_message_slots($components);
+        $read = pg_whatsapp_message_slots($components, isset($row['offer']) ? $row['offer'] : '');
 
         if ($read['unsupported'] !== '') {
             continue;
@@ -546,7 +594,7 @@ function pg_whatsapp_message_templates()
     }
 
     return pg_whatsapp_message_offered((array) db_items(
-        "SELECT name, language, category, status, parameter_format, components, samples
+        "SELECT name, language, category, status, parameter_format, components, samples, offer
         FROM whatsapp_templates
         WHERE status = 'APPROVED'
         ORDER BY name, language"));

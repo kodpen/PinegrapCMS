@@ -784,7 +784,7 @@ function pg_consent_sms_checkout_row($form)
     return
         '<tr>
             <td>&nbsp;</td>
-            <td>' . $form->output_field(array('type' => 'checkbox', 'name' => 'opt_in_sms', 'id' => 'opt_in_sms', 'value' => '1', 'class' => 'software_input_checkbox')) . '<label for="opt_in_sms"> ' . h(lang('I want to receive campaign and offer messages by SMS.')) . '</label><input type="hidden" name="opt_in_sms_shown" value="1"></td>
+            <td>' . $form->output_field(array('type' => 'checkbox', 'name' => 'opt_in_sms', 'id' => 'opt_in_sms', 'value' => '1', 'class' => 'software_input_checkbox')) . '<label for="opt_in_sms"> ' . h(pg_sms_opt_in_label()) . '</label><input type="hidden" name="opt_in_sms_shown" value="1"></td>
         </tr>';
 }
 

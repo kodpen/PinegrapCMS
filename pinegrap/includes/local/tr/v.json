@@ -55,6 +55,7 @@
     "Valid": "Geçerli",
     "Valid JSON-LD; it goes on the page with the next save.": "Geçerli JSON-LD; bir sonraki kayıtla sayfaya yazılır.",
     "Valid for": "Geçerlilik süresi",
+    "Valid for (days after sending)": "Geçerlilik (gönderimden sonra gün)",
     "Valid for a year": "Bir yıl geçerli",
     "Valid for a year; name the code in your booking request or at the reception.": "Bir yıl geçerlidir; kodu rezervasyon talebinizde ya da resepsiyonda belirtin.",
     "Valid for a year; name the code in your reservation request or give it to your waiter.": "Bir yıl geçerlidir; kodu rezervasyon talebinize yazın ya da garsonunuza verin.",

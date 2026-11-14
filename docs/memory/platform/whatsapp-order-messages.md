@@ -14,7 +14,7 @@ module: whatsapp_messages
 - Every event is off by default; on without a template is refused on save.
 
 ## Which templates can be chosen?
-- Approved ones in `whatsapp_templates` whose variables a text can fill (`pg_whatsapp_message_offered()`): no image, video, document or location header, and no copy-code or other button but URL, quick reply and phone. Those wait for WA9 and WA10.
+- Approved ones in `whatsapp_templates` whose variables a text can fill (`pg_whatsapp_message_offered()`): no image, video, document or location header, buttons URL, quick reply and phone, and copy code when the template has an offer code. The offer code's places are filled by the queue, not chosen here (`whatsapp-offer-codes.md`).
 - A template no longer approved stays stored while its event is off, listed as "(not approved)"; switching it on then is refused. At send a template not approved is skipped with an activity-log line.
 - Category is Meta's, read at send: a marketing template goes only with marketing consent (`pg_whatsapp_enqueue()`), so the card asks for a utility one.
 

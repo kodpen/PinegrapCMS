@@ -154,8 +154,13 @@ function test_whatsapp_design_from_meta_row()
 	pg_assert_false(pg_whatsapp_design_send_components($design)['ok'], 'a picture header is not tested yet');
 
 	$design['header'] = array();
-	$design['buttons'] = array(array('type' => 'COPY_CODE', 'example' => 'X'));
-	pg_assert_false(pg_whatsapp_design_send_components($design)['ok'], 'a button that takes a value is not tested yet');
+	$design['buttons'] = array(array('type' => 'OTP', 'otp_type' => 'COPY_CODE'));
+	pg_assert_false(pg_whatsapp_design_send_components($design)['ok'], 'a one-time-code button is not tested yet');
+
+	$design['buttons'] = array(array('type' => 'COPY_CODE', 'example' => array('X25')));
+	$send = pg_whatsapp_design_send_components($design);
+	$last = end($send['components']);
+	pg_assert_same('X25', $last['parameters'][0]['coupon_code'], 'a copy-code button from Meta sends its example');
 
 	$design['buttons'] = array();
 	$design['samples']['2'] = '';
@@ -274,7 +279,8 @@ function test_whatsapp_design_check_buttons()
 	pg_assert_true(isset(pg_whatsapp_design_check_buttons(array($link('https://example.com/{{1}}', '')))['button_0']), 'no sample');
 	pg_assert_true(isset(pg_whatsapp_design_check_buttons(array($link('example.com')))['button_0']), 'not a web address');
 	pg_assert_true(isset(pg_whatsapp_design_check_buttons(array(array('type' => 'QUICK_REPLY', 'text' => str_repeat('a', 26))))['button_0']), 'text over 25');
-	pg_assert_true(isset(pg_whatsapp_design_check_buttons(array(array('type' => 'COPY_CODE', 'text' => 'Copy')))['button_0']), 'a kind not offered');
+	pg_assert_true(isset(pg_whatsapp_design_check_buttons(array(array('type' => 'OTP', 'text' => 'Copy')))['button_0']), 'a kind not offered');
+	pg_assert_true(isset(pg_whatsapp_design_check_buttons(array(array('type' => 'COPY_CODE')))['button_0']), 'a copy-code button without a sample code');
 	pg_assert_true(isset(pg_whatsapp_design_check_buttons(array(array('type' => 'PHONE_NUMBER', 'text' => 'Call', 'phone_number' => '12')))['button_0']), 'a short number');
 
 	$phone = array('type' => 'PHONE_NUMBER', 'text' => 'Call', 'phone_number' => '+902125550102');

@@ -216,6 +216,7 @@
 - whatsapp-cloud-api-webhooks.md: Meta's WhatsApp webhooks and error codes on 2026-11-12: verify call, X-Hub-Signature-256, retries, fields, delivery and template states, BSUIDs, which codes may be retried
 - whatsapp-connection.md: WhatsApp account (WA1, #9067): the Communication › WhatsApp card and its five steps, connect_apps storage, the save check with Meta, the test message, whatsapp_webhook.php verify and signature
 - whatsapp-form-messages.md: A custom form's WhatsApp message to its sender (WA6, #9374): number field, template, a field per variable, connect_apps whatsapp_forms, sent with the e-mails, off by default
+- whatsapp-offer-codes.md: WhatsApp offer codes (WA10, #9414): the offer column, shared code or a key per recipient made at enqueue, copy-code button, consent gate at queue and send, SMS box naming WhatsApp [decision: decisions-made-product-48.md]
 - whatsapp-order-messages.md: WhatsApp order moments (WA5, #9347): the WhatsApp Messages card, one approved template per event and a value per variable, connect_apps whatsapp_messages, where each is queued, off by default
 - whatsapp-outbox-queue.md: WhatsApp queue (whatsapp_outbox, step 11.0.196, WA2): pg_whatsapp_enqueue() and its refusals, the general job's pass on the SMS queue's rules, consent asked again at the send, erasure [decision: decisions-made-product-48.md]
 - whatsapp-template-approval.md: WhatsApp template designer, second half (WA9, #9395): header from Files, buttons, Send for approval with the sample upload, a rejected template edited, test send with media

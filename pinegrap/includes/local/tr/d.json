@@ -1370,6 +1370,7 @@
     "Drag the mesh points on the picture to shape it.": "Biçim vermek için resim üzerindeki ağ noktalarını sürükleyin.",
     "Drag the repeated template here (card, col, heading\\2026)": "Yinelenen şablonu buraya sürükleyin (card, col, heading\\2026)",
     "Drag the repeated template here (tr, td…)": "Yinelenen şablonu buraya sürükleyin (tr, td…)",
+    "Drag the variable {var:1} into the message where the code goes; a copy-code button carries it too.": "{var:1} değişkenini mesajda kodun gideceği yere sürükleyin; kodu kopyala düğmesi de kodu taşır.",
     "Drag to a field, or double-click and choose the field": "Bir alana sürükleyin ya da çift tıklayıp alanı seçin",
     "Drag to a page or an address to change where this link goes": "Bu bağlantının gittiği yeri değiştirmek için bir sayfaya ya da adrese sürükleyin",
     "Drag to change the order": "Sırayı değiştirmek için sürükleyin",
