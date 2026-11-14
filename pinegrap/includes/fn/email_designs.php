@@ -231,11 +231,12 @@ function pg_email_design_free_page_name($words)
  *
  * @param int    $folder_id
  * @param string $page_name the tab's and the page's name
+ * @param array|null $tree  the tree to start from (a ready design); the starter when null
  * @return array a page descriptor as pg_designer_blank_page() gives
  */
-function pg_email_design_new_page($folder_id, $page_name = '')
+function pg_email_design_new_page($folder_id, $page_name = '', $tree = null)
 {
-    $page = pg_designer_blank_page(0, pg_email_design_starter_tree());
+    $page = pg_designer_blank_page(0, is_array($tree) ? $tree : pg_email_design_starter_tree());
     // The tab carries the design's own words, not the editor's "New Page".
     $page['page_name']     = (string) $page_name;
     $page['page_folder']   = (int) $folder_id;

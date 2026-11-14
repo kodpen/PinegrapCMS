@@ -28029,6 +28029,66 @@ body.pg-measure-report #content {
   border-top: 1px solid var(--pg-border-color-translucent);
   border-radius: 0;
 }
+/* The E-mail designs card: the ready designs as small previews of the
+   mail (a 640 px frame, wider than the mail pass's 620 px phone rule, drawn
+   at 37.5 %; nothing in them takes a click), each with its
+   name, line and button; the site's own designs as rows under them. */
+.pg-email-ready-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+  padding: 0 12px 12px;
+}
+.pg-email-ready {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+.pg-email-ready-shot {
+  width: 240px;
+  height: 220px;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.pg-email-ready-shot iframe {
+  width: 640px;
+  height: 587px;
+  border: 0;
+  transform: scale(0.375);
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+/* A phone: the preview takes the tile's width and at most 200 px of height,
+   so the five fit in about three screens; the frame is drawn at half size
+   and centred in the tile. */
+@media (max-width: 575.98px) {
+  .pg-email-ready-shot {
+    width: 100%;
+    height: 200px;
+  }
+  .pg-email-ready-shot iframe {
+    height: 400px;
+    margin-left: calc(50% - 320px);
+    transform: scale(0.5);
+    transform-origin: 50% 0;
+  }
+}
+.pg-email-ready figcaption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.pg-email-own-title {
+  margin: 4px 12px 4px;
+}
+.pg-email-ready-none {
+  margin: 0 12px 10px;
+}
 .pg-messages-row-link {
   color: inherit;
   text-decoration: none;

@@ -85,7 +85,7 @@ function pg_messages_template_card($title, $sub, $button, $rows)
  * One row of a card: a tile, the title (a link when an address is given)
  * with a meta word at its right, at most two lines of text, a pill.
  *
- * @param array $row icon, tone, title, url, meta, text (markup), pill, pill_tone
+ * @param array $row icon, tone, title, url, meta, text (markup), pill ('' for none), pill_tone
  * @return string
  */
 function pg_messages_template_row(array $row)
@@ -104,7 +104,7 @@ function pg_messages_template_row(array $row)
         . '</div>'
         . (((string) ($row['text'] ?? '') !== '') ? '<div class="pg-list-row-text">' . $row['text'] . '</div>' : '')
         . '</div>'
-        . '<span class="pg-pill pg-tone-' . h((string) $row['pill_tone']) . ' pg-messages-row-pill">' . h((string) $row['pill']) . '</span>'
+        . (((string) $row['pill'] !== '') ? '<span class="pg-pill pg-tone-' . h((string) $row['pill_tone']) . ' pg-messages-row-pill">' . h((string) $row['pill']) . '</span>' : '')
         . '</div>';
 }
 
@@ -294,22 +294,89 @@ function pg_messages_template_whatsapp_card(array $rows, array $state)
 }
 
 /**
- * The card of the templates still to come: e-mail designs.
+ * The site's own e-mail designs as rows: name, when it was changed and
+ * its address in the editor. Pure: the caller reads the pages.
  *
+ * @param array $pages page_id, page_name, page_style, page_timestamp
+ * @return array title, url, meta
+ */
+function pg_messages_template_email_rows(array $pages)
+{
+    $rows = array();
+
+    foreach ($pages as $page) {
+        $rows[] = array(
+            'title' => (string) $page['page_name'],
+            'url'   => 'edit_system_style.php?id=' . (int) $page['page_style'] . '&page=' . (int) $page['page_id'],
+            'stamp' => (int) $page['page_timestamp'],
+        );
+    }
+
+    return $rows;
+}
+
+/**
+ * The E-mail designs card: the ready designs, each with a preview of the
+ * mail as it is sent and, for a designer, "Use this design", which opens
+ * it as a new e-mail design; then the site's own designs.
+ *
+ * @param array  $own     pg_messages_template_email_rows()
+ * @param bool   $designs whether the user may make a design (role <= 1)
+ * @param string $self    the tab's address, the previews' base
  * @return string
  */
-function pg_messages_template_coming_card()
+function pg_messages_template_email_card(array $own, $designs, $self)
 {
-    $rows = pg_messages_template_row(array(
-        'icon' => 'bi-envelope',
-        'tone' => 'blue',
-        'title' => lang('E-mail designs'),
-        'url' => '',
-        'meta' => '',
-        'text' => h(lang('The designs campaigns are sent with, ready ones beside your own.')),
-        'pill' => lang('Soon'),
-        'pill_tone' => 'gray',
-    ));
+    $ready = '';
 
-    return pg_messages_template_card(lang('Other templates'), '', '', $rows);
+    foreach (pg_email_ready_designs() as $key => $design) {
+        $title = lang($design['title']);
+        $ready .= '<figure class="pg-email-ready">'
+            . '<div class="pg-email-ready-shot"><iframe src="' . h($self . '?preview=' . rawurlencode($key)) . '" title="' . h($title) . '" sandbox="" tabindex="-1"></iframe></div>'
+            . '<figcaption><span class="pg-list-row-title">' . h($title) . '</span>'
+            . '<span class="pg-list-row-text">' . h(lang($design['text'])) . '</span>'
+            . ($designs ? '<a class="pg-button pg-button-quiet pg-button-sm" target="_blank" rel="noopener" href="add_system_style.php?start=email&amp;ready=' . h(rawurlencode($key)) . '"><i class="bi bi-envelope-plus" aria-hidden="true"></i>' . h(lang('Use this design')) . '</a>' : '')
+            . '</figcaption></figure>';
+    }
+
+    $rows = '';
+
+    foreach ($own as $row) {
+        $rows .= pg_messages_template_row(array(
+            'icon' => 'bi-envelope',
+            'tone' => 'blue',
+            'title' => $row['title'],
+            'url' => $row['url'],
+            'meta' => ($row['stamp'] > 0) ? get_relative_time(array('timestamp' => $row['stamp'], 'format' => 'plain_text')) : '',
+            'text' => '',
+            'pill' => '',
+            'pill_tone' => 'gray',
+        ));
+    }
+
+    $grid = '<div class="pg-email-ready-grid">' . $ready . '</div>';
+
+    // None of one's own yet: the ready designs, then the line saying so.
+    if ($rows === '') {
+        return pg_messages_template_card(
+            lang('E-mail designs'),
+            lang('Start a campaign\'s e-mail from a ready design; your own designs follow.'),
+            '',
+            $grid
+                . '<h3 class="pg-field-label pg-email-own-title">' . h(lang('Your e-mail designs')) . '</h3>'
+                . '<p class="pg-card-sub pg-email-ready-none">' . h(lang('No e-mail designs of your own yet: start one from a ready design.')) . '</p>'
+        );
+    }
+
+    // With designs of one's own, those come first: they are what a campaign
+    // is sent with; the ready designs follow to start a new one.
+    return pg_messages_template_card(
+        lang('E-mail designs'),
+        lang('Your own designs first, then the ready designs to start a new one from.'),
+        '',
+        '<h3 class="pg-field-label pg-email-own-title">' . h(lang('Your e-mail designs')) . '</h3>'
+            . $rows
+            . '<h3 class="pg-field-label pg-email-own-title pg-email-ready-title">' . h(lang('Ready designs')) . '</h3>'
+            . $grid
+    );
 }

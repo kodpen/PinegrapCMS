@@ -129,6 +129,8 @@ if (!$_POST) {
         'start_action'   => pg_designer_start_action($user, 0),
         // ?start=email: an e-mail design, its folder made on first use.
         'email_folder_id' => ($start === 'email') ? pg_email_designs_folder_id(true) : 0,
+        // ?ready=<key>: the new e-mail design starts as that ready design.
+        'email_tree'      => ($start === 'email') ? pg_email_ready_design_tree(isset($_GET['ready']) ? $_GET['ready'] : '') : null,
     ));
 
     $liveform->remove_form();
