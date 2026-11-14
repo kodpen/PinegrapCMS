@@ -160,3 +160,20 @@ function test_workspace_calendar_sync_plans_stay_out_of_the_subscription()
 	pg_assert_false(strpos($feed . $endpoint, 'ws-plan-') !== false, 'the outgoing iCal subscription never carries a plan');
 	pg_assert_false(strpos($feed . $endpoint, 'ws_calsync_plan_items') !== false, 'nor reads the plans writer');
 }
+
+// A repeating plan is written one event a time, each under its day, inside
+// the window; the writer reads the plan rows, not the calendar's times.
+function test_workspace_calendar_sync_plans_repeat_one_event_a_time()
+{
+	$weekly = ws_calsync_plans_test_plan(array(
+		'repeat_frequency' => 'weekly',
+		'repeat_interval'  => 1,
+		'repeat_until'     => mktime(11, 30, 0, 12, 4, 2026),
+		'repeat_count'     => 3,
+	));
+	$items = ws_calsync_plan_items(array($weekly), 3, array(3, 4), 'https://example.com/pinegrap/', mktime(0, 0, 0, 11, 25, 2026), mktime(0, 0, 0, 12, 31, 2026));
+
+	pg_assert_same(array('ws-plan-7-20261127', 'ws-plan-7-20261204'), array_column($items, 'uid'), 'the times in the window, each its own uid');
+	pg_assert_same(mktime(10, 0, 0, 12, 4, 2026), $items[1]['start'], 'at the plan\'s hour');
+	pg_assert_contains('ws_personal_plans_between((int) $viewer[\'id\'], $since_ts, $until_ts, false)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/calendar_sync.php'), 'one row a plan, laid out here');
+}
