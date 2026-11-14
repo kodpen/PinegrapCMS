@@ -141,7 +141,7 @@ description: Generated from the module field of the memory files: each includes/
 - `list_table_edit`: [[list-table-quick-edit-pages]], [[list-table-quick-edit-values]]
 - `local_order`: [[erp-counter-sale-completion]]
 - `look_examples`: [[look-design-examples]]
-- `mail`: [[auto-campaign-group-opt-out]], [[helper-fixes-2026-11]], [[mail-merge-values-once]], [[mail-transport-failure]], [[single-email-address-boxes]]
+- `mail`: [[auto-campaign-group-opt-out]], [[helper-fixes-2026-11]], [[mail-merge-values-once]], [[mail-transport-failure]], [[phpmailer-embedding]], [[single-email-address-boxes]]
 - `mail_bounce_report`: [[mail-bounce-screens]]
 - `mail_bounces`: [[mail-bounce-verp]], [[mail-bounces]]
 - `mail_domain_health`: [[mail-domain-health]]
