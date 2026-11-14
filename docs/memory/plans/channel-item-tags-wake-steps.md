@@ -16,7 +16,7 @@ description: Steps TW1-TW5 of the channel-item-tags-wake plan: file caption, edi
 - TW2 The other messages written for a person or an application. Done: #9378.
   - Forward with a comment (`ws_forward_to_channel()` forward.php), approval request (`ws_approval_create()` approvals.php), status update and check-in question (`ws_status_post()`, `ws_checkin_start()` status.php), template welcome and pinned text (`ws_template_apply()` templates.php), the scheduled action and flow "Post a message" box (`ws_scheduled_do()` scheduled.php).
   - After: each of them naming `@agent` makes one request; an application's approval or check-in wakes only by mention or reply.
-- TW3 (agent channels, owner or channel manager only; #9341) Polls, check-ins, forwards, tasks. Census: ~400 lines.
+- TW3 (agent channels, owner or channel manager only; #9341) Polls, check-ins, forwards, tasks. Done: #9390 (writer's check `ws_message_item_tags_writer()`).
   - Poll question and options (`ws_poll_create()`, `ws_poll_edit()` interact.php), check-in answers (`ws_checkin_answer()` status.php), forwarded text (`ws_message_forwards.body`), task title and description (`ws_tasks`), task notes (`ws_task_note_add()` task_work.php: registry agents too, beside Claude, AI and MCP through delegation.php).
   - The request hangs on the item's message (poll, check-in, forward, the task's card); an item with none is a question for the architect before the step starts.
   - The writer's check (agent switch on, owner or channel manager) is one function shared by TW3 and TW4.

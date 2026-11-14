@@ -26,4 +26,4 @@ description: Plan: a tag anywhere in a Workspace channel item (file caption, edi
 - `channel-item-tags-wake-steps.md`: TW1-TW5, each with its census and its After line.
 
 ## Where does the work stand?
-- TW1 (#9359) and TW2 (#9378) done; `workspace/channel-item-tags.md` holds the helpers. TW3 is free to claim, then TW4 and the close-out.
+- TW1 (#9359), TW2 (#9378) and TW3 (#9390) done; `workspace/channel-item-tags.md` holds the helpers and the writer's check. TW4 waits on the architect (which message a tag with no message of its own hangs on; a task with no card asks nobody until then), then the close-out.
