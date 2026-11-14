@@ -127,6 +127,9 @@ function ws_mail_pane_open($viewer, $conversation_id)
 
     ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
 
+    // Block sender (mail_blocks.php), then Forward.
+    $pane = ws_mail_block_pane($pane, $viewer);
+
     return ws_mail_forward_pane($pane, ws_mail_forward_may($viewer));
 }
 
@@ -249,10 +252,14 @@ function ws_mail_pane_item_html($item, $base = '')
             . ((trim((string) $bounce['body_text']) !== '') ? ' ' . h((string) $bounce['body_text']) : '') . '</div>';
     }
 
-    // Forward as e-mail (mail_forward.php, ws_mail_forward_pane()).
-    if (!empty($item['forward'])) {
-        $html .= '<div class="ws-mail-item-tools mt-2"><button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-forward="' . (int) $item['id'] . '">'
-            . '<i class="bi bi-envelope-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Forward')) . '</button></div>';
+    // Forward as e-mail (mail_forward.php, ws_mail_forward_pane()) and Block
+    // sender (mail_blocks.php, ws_mail_block_pane()).
+    $tools = !empty($item['forward']) ? '<button type="button" class="btn btn-sm btn-text theme-secondary px-0" data-ws-mail-forward="' . (int) $item['id'] . '">'
+        . '<i class="bi bi-envelope-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Forward')) . '</button>' : '';
+    $tools .= (!empty($item['block']) && function_exists('ws_mail_block_item_html')) ? ws_mail_block_item_html($item) : '';
+
+    if ($tools !== '') {
+        $html .= '<div class="ws-mail-item-tools mt-2">' . $tools . '</div>';
     }
 
     return $html . '</article>';

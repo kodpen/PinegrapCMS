@@ -5,8 +5,9 @@
  * Site Settings - what Mailboxes writes: a mailbox from its drawer
  * (ws_mail_box_save, value its id, 0 for a new one, the fields
  * ws_mail[<id>][...]), then the job of the card button that asked for the
- * save: a mailbox's Test connection (ws_mail_test) or .eml file
- * (ws_mail_eml, posted with ws_mail_eml_file by a form of its own).
+ * save: a mailbox's Test connection (ws_mail_test), .eml file
+ * (ws_mail_eml, posted with ws_mail_eml_file by a form of its own) or a
+ * blocked sender's Allow again (ws_mail_allow, value the block's id).
  *
  * Runs in the scope of includes/settings/screen.php or of
  * pg_settings_apply(), after the token check and after post_value() is
@@ -76,4 +77,17 @@ $ws_value = post_value('ws_mail_eml');
 
 if (($ws_value !== null) && is_scalar($ws_value)) {
     ws_mail_settings_post($ws_viewer, 'mail_eml', $liveform, array('box_id' => (int) $ws_value), $_FILES['ws_mail_eml_file'] ?? array(), $ws_warn);
+}
+
+// Allow again on the card's list of blocked senders (mail_blocks.php).
+$ws_value = post_value('ws_mail_allow');
+
+if (($ws_value !== null) && is_scalar($ws_value) && function_exists('ws_mail_block_allow')) {
+    $ws_allowed = ws_mail_block_allow($ws_viewer, (int) $ws_value, (string) ($_SESSION['sessionusername'] ?? ''));
+
+    if ($ws_allowed['ok']) {
+        $liveform->add_notice(lang('The sender is allowed again.'));
+    } else {
+        $ws_warn($ws_allowed['error']);
+    }
 }

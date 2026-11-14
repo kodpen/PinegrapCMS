@@ -192,6 +192,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_phone();           // 11.0.199
 	upgrade_2026_11_0_ws_mail_sent_folder();     // 11.0.200
 	upgrade_2026_11_0_ws_personal_plans();       // 11.0.201
+	upgrade_2026_11_0_ws_mail_blocks();          // 11.0.202
 
 }
 
@@ -6498,3 +6499,35 @@ function upgrade_2026_11_0_ws_personal_plans() {
 
 }
 
+// A mailbox's block list (includes/workspace/mail_blocks.php): an address or
+// a whole domain, for one box or, with box_id 0, for every box. A mail from
+// a blocked sender is kept as an item with blocked_at set, outside every
+// conversation, and swept with its .eml after 30 days. The value is stored in
+// lower case; the unique key takes its first 191 characters so a utf8mb4 key
+// stays inside the 767-byte limit of older InnoDB row formats.
+function upgrade_2026_11_0_ws_mail_blocks() {
+
+	if (!install_table_exists('ws_mail_items')) {
+
+		install_skipped('ws_mail_items does not exist, skipped');
+
+		return;
+
+	}
+
+	install_create_table('ws_mail_blocks', "CREATE TABLE ws_mail_blocks (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		box_id            INT UNSIGNED NOT NULL DEFAULT 0,
+		kind              ENUM('address','domain') NOT NULL DEFAULT 'address',
+		value             VARCHAR(255) NOT NULL DEFAULT '',
+		created_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_block (box_id, kind, value(191))
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_mail_items', 'blocked_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: a mailbox can block a sender\'s address or domain; their e-mail waits 30 days outside the conversations.');
+
+}
