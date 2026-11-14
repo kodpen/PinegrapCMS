@@ -1776,6 +1776,7 @@
     "{var:1} shared folder(s), {var:2} person(s)": "{var:1} paylaşılan klasör, {var:2} kişi",
     "{var:1} shared this channel with {var:2} ({var:3}), with a link valid until {var:4}": "{var:1} bu kanalı {var:4} tarihine kadar geçerli bir bağlantıyla {var:2} ile paylaştı ({var:3})",
     "{var:1} shared this channel with {var:2} ({var:3}), with a one-time link": "{var:1} bu kanalı tek seferlik bir bağlantıyla {var:2} ile paylaştı ({var:3})",
+    "{var:1} shared this plan with you. Only they can change it.": "{var:1} bu planı sizinle paylaştı. Yalnızca o değiştirebilir.",
     "{var:1} shipping label": "{var:1} kargo etiketi",
     "{var:1} shipping label(s) were created.": "{var:1} kargo etiketi oluşturuldu.",
     "{var:1} shipping method{suffix:1} will have no other zone and will never be offered.": "Başka bölgesi kalmayan {var:1} nakliye yöntemi hiç sunulmayacak.",

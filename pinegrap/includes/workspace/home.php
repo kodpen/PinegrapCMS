@@ -347,7 +347,7 @@ function ws_home_calendar($viewer, $today)
                 'all_day'   => (int) $plan['all_day'],
                 'starts_at' => (int) $plan['starts_at'],
                 'ends_at'   => (int) $plan['ends_at'],
-                'layer'     => lang('My plan'),
+                'layer'     => ((int) $plan['user_id'] === (int) $me) ? lang('My plan') : lang(array('string' => 'Plan of {var:1}', 'vars' => (string) (ws_people(array((int) $plan['user_id']))[(int) $plan['user_id']]['name'] ?? ''))),
                 'url'       => $base . 'workspace_my_calendar.php?view=list&plan=' . (int) $plan['id'],
             );
         }

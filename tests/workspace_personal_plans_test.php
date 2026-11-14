@@ -34,6 +34,37 @@ function test_workspace_personal_plan_gate_opens_to_its_owner_alone()
 	pg_assert_false(ws_personal_plan_can_edit(8, $plan, $team));
 }
 
+function test_workspace_personal_plan_gate_opens_as_its_owner_chose()
+{
+	$team = array(7, 8, 9, 1);
+	$people = array('id' => 4, 'user_id' => 7, 'visibility' => 'people');
+	$whole = array('id' => 5, 'user_id' => 7, 'visibility' => 'team');
+
+	pg_assert_true(ws_personal_plan_can_see(8, $people, $team, array(8)), 'a chosen member');
+	pg_assert_false(ws_personal_plan_can_see(9, $people, $team, array(8)), 'a member not chosen');
+	pg_assert_false(ws_personal_plan_can_see(8, $people, array(7, 9), array(8)), 'a chosen member who left');
+	pg_assert_true(ws_personal_plan_can_see(9, $whole, $team), 'the whole team');
+	pg_assert_false(ws_personal_plan_can_see(3, $whole, $team), 'a guest is no team member');
+	pg_assert_false(ws_personal_plan_can_see(9, $whole, array(9, 1)), 'nobody reads a leaver\'s plan');
+	pg_assert_false(ws_personal_plan_can_edit(8, $people, $team), 'a reader changes nothing');
+	pg_assert_false(ws_personal_plan_can_edit(9, $whole, $team));
+	pg_assert_false(ws_personal_plan_can_see(8, array('id' => 6, 'user_id' => 7, 'visibility' => 'odd'), $team, array(8)), 'an unknown value is closed');
+}
+
+function test_workspace_personal_plan_clean_reads_who_can_see()
+{
+	$base = array('title' => 'x', 'start' => '2026-11-20', 'all_day' => 1);
+
+	pg_assert_same('me', ws_personal_plan_clean($base)['visibility'], 'only me by default');
+	pg_assert_same('me', ws_personal_plan_clean($base + array('visibility' => 'all'))['visibility'], 'an unknown choice is only me');
+	pg_assert_same('team', ws_personal_plan_clean($base + array('visibility' => 'team', 'people' => array(3)))['visibility']);
+	pg_assert_same(array(), ws_personal_plan_clean($base + array('visibility' => 'team', 'people' => array(3)))['people'], 'people only with people');
+
+	$chosen = ws_personal_plan_clean($base + array('visibility' => 'people', 'people' => array('8', 8, '0', 'x', array(9), 12)));
+	pg_assert_same(array(8, 12), $chosen['people']);
+	pg_assert_true(isset(ws_personal_plan_clean($base + array('visibility' => 'people', 'people' => array()))['error']), 'nobody chosen');
+}
+
 function test_workspace_personal_plan_clean_reads_a_timed_plan()
 {
 	$clean = ws_personal_plan_clean(array('title' => '  Call the bank ', 'start' => '2026-11-20', 'start_time' => '10:00', 'end_time' => '10:30', 'remind' => '15', 'note' => 'IBAN'));
@@ -96,6 +127,12 @@ function test_workspace_personal_plans_place_on_the_days_they_touch()
 	pg_assert_same(array(6), array_column($days['2026-11-22']['events'], 'plan_id'));
 	pg_assert_same('personal', $days['2026-11-21']['events'][0]['kind']);
 	pg_assert_same('22:00', $days['2026-11-20']['events'][0]['time']);
+
+	$shared = ws_personal_plans_place(array('2026-11-20' => array('date' => '2026-11-20', 'events' => array())), array(
+		array('id' => 7, 'user_id' => 8, 'title' => 'Their plan', 'all_day' => 1, 'starts_at' => strtotime('2026-11-20 00:00'), 'ends_at' => strtotime('2026-11-21 00:00')),
+		array('id' => 8, 'user_id' => 3, 'title' => 'Mine', 'all_day' => 1, 'starts_at' => strtotime('2026-11-20 00:00'), 'ends_at' => strtotime('2026-11-21 00:00')),
+	), 3, array(8 => 'Ayşe'));
+	pg_assert_same(array('Ayşe', ''), array_column($shared['2026-11-20']['events'], 'owner'), 'another person\'s plan names its owner');
 }
 
 // The guard: the plan tables are read by the module alone, so every read goes
