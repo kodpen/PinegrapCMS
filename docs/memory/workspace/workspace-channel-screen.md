@@ -1,6 +1,6 @@
 ---
 name: workspace-channel-screen
-description: The Workspace channel screen as redrawn (C1–C8, 2026-10-31): what every change to it keeps, what must hold on a phone, who changes the design, where each part is described
+description: The Workspace channel screen as redrawn (C1–C8) and its card look (CL1-CL4, what it left alone): what every change keeps, the phone rules, who changes the design, where each part is
 ---
 
 ## Where is each part described?
@@ -27,4 +27,10 @@ description: The Workspace channel screen as redrawn (C1–C8, 2026-10-31): what
 
 ## Who changes the design?
 - The session the owner names in chat for the design, against the drawn design, checked at desktop and phone width, light and dark (`workflow/decisions-made-workspace-5.md`); coordinators do not hand such work out.
-- The channel look of `plans/workspace-channel-look.md` is the exception since 2026-11-11: coordinators hand its steps out, built against the picture the owner was shown (`workflow/decisions-made-workspace-13.md`).
+- The channel's card look (CL1-CL4, 2026-11-11) was the one exception: coordinators handed its steps out, built against the picture the owner was shown (`workflow/decisions-made-workspace-13.md`). It is done; its files are below.
+
+## What did the card look change, and what not?
+- Owner (2026-11-10): the screen was "line after line" (the colour stripe, the rule under the header, under the tabs, between rows), the channel's colour a stripe instead of in the header, the tabs' insides dated; redrawn in the dashboard's manner.
+- The shell (one card in the channel colour, pill tabs, day chip, writing box card): `workspace-channel-identity-motion.md`. Tasks, Decisions, Files and owner (2026-11-11) on using the width: `workspace-channel-panes.md`. Summary, Board, Memory, empty states: `workspace-channel-summary-board-memory.md`.
+- A channel pane fills the width: cards in a grid or in columns that flow top to bottom, never a centred max-width box.
+- Not changed: the conversation's messages (C4) and the side panels (C6) keep their drawing; no new feature, schema or right came with it.
