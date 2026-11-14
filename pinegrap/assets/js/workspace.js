@@ -6371,6 +6371,19 @@
     // What the feature files draw with (workspace_approvals.js,
     // workspace_acks.js, workspace_voice.js): the screen's own helpers, so
     // their parts look like the rest of it.
+    // A plan item's form: a new one with defaults (id 0), or the saved one
+    // read first; done() after a save.
+    function featurePlanItem(eventId, defaults, done) {
+        if (!eventId) {
+            eventForm(null, defaults || {}, done);
+            return;
+        }
+
+        api('ws_event_get', { event_id: eventId }).then(function (result) {
+            eventForm(result.event, {}, done);
+        }).catch(fail);
+    }
+
     function featureHelpers() {
         return {
             api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, avatarStack: avatarStack, clear: clear,
@@ -6378,7 +6391,15 @@
             formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
             richField: richField, peoplePicker: peoplePicker, touchScreen: touchScreen,
             cfg: CFG, dateField: pgDateField,
-            openTask: function (taskId) { taskDrawer.open(taskId, null, taskDrawer.onSaved); }
+            openTask: function (taskId) { taskDrawer.open(taskId, null, taskDrawer.onSaved); },
+            // The task drawer and the plan item form, each calling done()
+            // after a save, for a screen that draws them again (My calendar).
+            taskDrawer: function (taskId, defaults, done) { taskDrawer.open(taskId, defaults || null, done); },
+            planItem: featurePlanItem,
+            statusName: function (status) { return BOOT.statuses[status] || ''; },
+            dmy: dmy,
+            pressKeys: pressKeys,
+            onContext: onContext
         };
     }
 
@@ -26749,6 +26770,9 @@
                 startBoard(root);
             } else if (CFG.mode === 'calendar' && root) {
                 startCalendar(root);
+            } else if (CFG.mode === 'my_calendar' && root && window.PGWsMyCalendar) {
+                // The reader's own calendar (workspace_my_calendar.js).
+                window.PGWsMyCalendar.screen(root, featureHelpers());
             } else if (CFG.mode === 'timeline' && root) {
                 startTimeline(root);
             } else if (CFG.mode === 'notes' && root) {
