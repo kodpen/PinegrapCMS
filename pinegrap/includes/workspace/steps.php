@@ -460,7 +460,7 @@ function ws_step_config_normalize($kind, $config)
                 'page_id'   => $number($config['page_id'] ?? 0),
                 'recipient' => ($recipient === 'record_person') ? 'record_person' : 'typed',
                 'purpose'   => ($purpose === 'marketing') ? 'marketing' : 'info',
-            ) + ws_flow_mail_sender_normalize($config);
+            ) + (function_exists('ws_flow_mail_sender_normalize') ? ws_flow_mail_sender_normalize($config) : array());
 
         case 'sms':
             return ws_step_sms_normalize($config);
@@ -714,7 +714,7 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
                 $problems[] = lang(array('string' => 'The box {var:1} needs the subject and the text of the e-mail.', 'vars' => $name));
             }
 
-            $problems = array_merge($problems, ws_flow_mail_sender_problems($config, $name));
+            $problems = array_merge($problems, function_exists('ws_flow_mail_sender_problems') ? ws_flow_mail_sender_problems($config, $name) : array());
 
             break;
 

@@ -118,8 +118,7 @@ function ws_flow_mail_fields($start, $contact)
 
 /**
  * The run's record a page's PHP is given as data, under the name a campaign
- * profile's action gives it: order, form, booking, contact; a received
- * e-mail's conversation as conversation. Pure.
+ * profile's action gives it: order, form, booking, contact. Pure.
  *
  * @param string     $kind ws_flow_mail_person_source() kind
  * @param array|null $row  the record's row
@@ -127,15 +126,16 @@ function ws_flow_mail_fields($start, $contact)
  */
 function ws_flow_mail_record_data($kind, $row)
 {
-    $names = array('order' => 'order', 'form' => 'form', 'booking' => 'booking', 'contact' => 'contact', 'mail' => 'conversation');
+    $names = array('order' => 'order', 'form' => 'form', 'booking' => 'booking', 'contact' => 'contact');
 
     return (isset($names[$kind]) && is_array($row)) ? array($names[$kind] => $row) : array();
 }
 
 /**
  * The run's record for a page's PHP, read with the flow owner's rights as
- * they stand now; nothing when the run is about none or the owner may not
- * read it.
+ * they stand now; nothing when the run is about none (a received e-mail
+ * included: no campaign page was ever given one) or the owner may not read
+ * it.
  *
  * @param array $owner
  * @param array $run
@@ -144,17 +144,10 @@ function ws_flow_mail_record_data($kind, $row)
 function ws_flow_mail_record($owner, $run)
 {
     list($kind, $id) = ws_flow_mail_person_source((string) ($run['subject_type'] ?? ''), (int) ($run['subject_id'] ?? 0), ws_flow_run_context($run));
-    $tables = array('order' => 'orders', 'form' => 'forms', 'booking' => 'bookings', 'contact' => 'contacts', 'mail' => 'ws_mail_conversations');
+    $tables = array('order' => 'orders', 'form' => 'forms', 'booking' => 'bookings', 'contact' => 'contacts');
 
     if (!isset($tables[$kind])) {
         return array();
-    }
-
-    if ($kind === 'mail') {
-        $row = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . (int) $id . "'");
-        $channel = is_array($row) ? db_item("SELECT * FROM ws_channels WHERE id = '" . (int) $row['channel_id'] . "'") : null;
-
-        return (is_array($channel) && ws_can_read_channel(ws_rights_for_id((int) $owner['id']), $channel)) ? ws_flow_mail_record_data($kind, $row) : array();
     }
 
     if (!ws_step_record_get_read($owner, $kind, $id)) {
