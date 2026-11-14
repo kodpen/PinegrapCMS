@@ -731,6 +731,66 @@ function pg_picker_page_mark($archived, $binned)
 }
 
 /**
+ * The last name each id had, from audit_log lines read newest first: the
+ * first non-blank label of an id wins, a name the Recycle Bin parked
+ * ("pgbin_<id>_name") is told as it was before. Pure.
+ *
+ * @param array $rows entity_id, label; newest first
+ * @return array id => name
+ */
+function pg_picker_last_names_from_rows($rows)
+{
+    $names = array();
+
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $id = (int) ($row['entity_id'] ?? 0);
+        $label = trim((string) ($row['label'] ?? ''));
+
+        if (($id < 1) || ($label === '') || isset($names[$id])) {
+            continue;
+        }
+
+        $prefix = 'pgbin_' . $id . '_';
+
+        if ((strpos($label, $prefix) === 0) && (strlen($label) > strlen($prefix))) {
+            $label = substr($label, strlen($prefix));
+        }
+
+        $names[$id] = $label;
+    }
+
+    return $names;
+}
+
+/**
+ * The last names the audit trail keeps for deleted pages or files, so a
+ * stored id that no longer resolves is told by name. A site without the
+ * trail answers none.
+ *
+ * @param string $entity_type 'page' or 'file' (pg_audit_tables())
+ * @param int[]  $ids
+ * @return array id => name
+ */
+function pg_picker_last_names($entity_type, $ids)
+{
+    $ids = array_values(array_filter(pg_picker_ids($ids), function ($id) {
+        return $id > 0;
+    }));
+
+    if (!$ids || !function_exists('pg_audit_ready') || !pg_audit_ready()) {
+        return array();
+    }
+
+    $rows = db_items(
+        "SELECT entity_id, label
+        FROM audit_log
+        WHERE (entity_type = '" . e($entity_type) . "') AND (entity_id IN (" . implode(', ', $ids) . ")) AND (label != '')
+        ORDER BY created_at DESC, id DESC");
+
+    return pg_picker_last_names_from_rows($rows);
+}
+
+/**
  * A binned page's row as the dialog lists it: under the name it had before
  * the bin parked it, in the folder it came from (recycle_bin
  * .original_parent_id), flagged binned. Pure.
@@ -1420,6 +1480,21 @@ function pg_picker_resolve_answer($request, $user)
         }
     }
 
+    // A deleted id has no row left; the audit trail keeps the name it had.
+    $last_names = array();
+
+    if ($kind['value'] === 'id') {
+        $gone = array();
+
+        foreach ($request['values'] as $value) {
+            if (!isset($found[$value])) {
+                $gone[] = (int) $value;
+            }
+        }
+
+        $last_names = pg_picker_last_names(($kind['source'] === 'pages') ? 'page' : 'file', $gone);
+    }
+
     foreach ($request['values'] as $value) {
         $row = $found[$value] ?? null;
         $folder = ($row === null) ? 0 : (int) (($kind['source'] === 'pages') ? $row['page_folder'] : $row['folder']);
@@ -1428,7 +1503,7 @@ function pg_picker_resolve_answer($request, $user)
         $offline = ($row !== null) && (($kind['source'] === 'pages') ? ((string) ($row['folder_archived'] ?? '0') !== '0') : !empty($row['offline']));
         $state = pg_picker_value_state($row !== null, $visible, $binned, $offline);
 
-        $item = array('value' => $value, 'text' => ($kind['value'] === 'name') ? (string) $value : '', 'state' => $state);
+        $item = array('value' => $value, 'text' => ($kind['value'] === 'name') ? (string) $value : (string) ($last_names[(int) $value] ?? ''), 'state' => $state);
 
         if (in_array($state, array('ok', 'binned', 'offline'), true)) {
             // A page binned by itself is told in the folder it came from;

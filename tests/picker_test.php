@@ -492,6 +492,20 @@ function test_picker_upload_wired()
 
 // The picker field: what a stored value shows, and the markup the script
 // reads.
+function test_picker_last_names_from_rows()
+{
+	$rows = array(
+		array('entity_id' => '294', 'label' => 'pgbin_294_about-us'),
+		array('entity_id' => '294', 'label' => 'about'),
+		array('entity_id' => '7', 'label' => ''),
+		array('entity_id' => '7', 'label' => 'terms'),
+		array('entity_id' => '0', 'label' => 'none'),
+	);
+	pg_assert_same(array(294 => 'about-us', 7 => 'terms'), pg_picker_last_names_from_rows($rows), 'newest non-blank label, unparked');
+	pg_assert_same(array(), pg_picker_last_names_from_rows(false), 'a failed query names nothing');
+	pg_assert_same(array(), pg_picker_last_names('page', array()));
+}
+
 function test_picker_field_view_and_markup()
 {
 	$kinds = pg_picker_kinds();

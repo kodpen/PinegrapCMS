@@ -688,7 +688,7 @@ function pg_user_list_row($row, $view, $providers)
         $cells['site_designer'] = pg_user_list_mark($role <= 1);
     } else {
         $cells['email'] = pg_list_cell(h($row['email']));
-        $cells['start_page'] = pg_list_cell(($row['user_home'] != 0) ? h($row['user_start_page']) : '');
+        $cells['start_page'] = pg_list_cell(pg_user_list_start_page_cell($row['user_home'] ?? 0, $row['user_start_page'] ?? null));
     }
 
     // Hidden in the default view until the user shows it.
@@ -815,4 +815,26 @@ function pg_user_list_row($row, $view, $providers)
     $cells['last_online'] = pg_list_cell(($row['last_seen'] >= 1) ? get_relative_time(array('timestamp' => $row['last_seen'])) . ' ' : '[' . lang('Never') . ']');
 
     return array('id' => $id, 'class' => '', 'cells' => $cells);
+}
+
+/**
+ * The Start Page cell: the page's name, nothing for no start page, and a
+ * muted "Deleted page" for an id whose page is gone (its LEFT JOIN found no
+ * row), never the bare id. Pure.
+ *
+ * @param mixed       $user_home the stored page id
+ * @param string|null $page_name the joined page's name, null when none
+ * @return string HTML
+ */
+function pg_user_list_start_page_cell($user_home, $page_name)
+{
+    if ((int) $user_home <= 0) {
+        return '';
+    }
+
+    if (($page_name === null) || ((string) $page_name === '')) {
+        return '<span class="fg-secondary fst-italic" title="' . h(lang(array('string' => 'No longer exists · #{var:1}', 'vars' => (string) (int) $user_home))) . '">' . h(lang('Deleted page')) . '</span>';
+    }
+
+    return h($page_name);
 }

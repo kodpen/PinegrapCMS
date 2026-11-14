@@ -15,7 +15,7 @@ module: picker
 - It uses `is-error`, never `is-invalid`: the feedback injector (`pgInjectAriaAndRequiredMarkers`) would add text to an `.is-invalid` wrapper.
 
 ## How is a stored value marked?
-- `pg_picker_field_view()` (pure): missing (name kept, an id as `#42`, "Stored value · file not found", amber note "This file is no longer in Files; choose another."); hidden ("A file in a folder you cannot open", lock icon); binned (red note, restore or choose); offline (amber note, choose a picture everyone may see).
+- `pg_picker_field_view()` (pure): missing (a name as stored, an id by its last name, `picker-deleted-values.md`; amber note); hidden ("A file in a folder you cannot open", lock icon); binned (red note, restore or choose); offline (amber note, choose a picture everyone may see).
 - The note is a `.form-text` under the row; a pick removes it. The value is posted unchanged; the saves keep their checks (`settings-public-image-pickers.md`, `commerce/short-link-recycle-bin.md`).
 
 ## How does typing search?

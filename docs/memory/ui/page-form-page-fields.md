@@ -17,7 +17,7 @@ module: forms
 - A test (`tests/page_form_page_fields_test.php`) checks every `pg_page_form_page_field()` call names types some kind lists; `pg_picker_field()` prints nothing for an unknown kind.
 
 ## What happens to a stored archived or binned page?
-- It stays and is posted unchanged. The field shows it under its name with a note: archived folder amber ("visitors cannot open it", `get_page.php` serves it to editors only), Recycle Bin red (its name before the bin), gone `#id` amber, a role 3 user's closed folder unnamed with a lock (`pg_picker_field_view()`).
+- It stays and is posted unchanged. The field shows it under its name with a note: archived folder amber ("visitors cannot open it", `get_page.php` serves it to editors only), Recycle Bin red (its name before the bin), gone amber under its last name or "Deleted page", a role 3 user's closed folder unnamed with a lock (`pg_picker_field_view()`).
 - Browse opens on its folder, or the folder it was binned from, where it is listed marked and cannot be chosen (`picker-pages.md`).
 - Before, a role 3 user's select dropped a stored page in a folder they cannot edit, and a plain Save wrote the empty option over it.
 
@@ -28,4 +28,5 @@ module: forms
 ## Which other screens use the page field?
 - Edit Page: the two comment e-mail pages. Settings: Commerce (reward program e-mail page, Reorder/Retrieve Order Next Page), Privacy (KVKK Notice Page), Security (membership expiration warning page). Add User, Edit User, Import Users: User Start Page.
 - A cleared start page posts `''`, written as `(int)` 0 by `user_write.php` and `import_users.php`, as the old "[None]" option was.
+- A page deleted for good leaves every start page (`picker-deleted-values.md`).
 - The other screens: `picker-page-fields-screens.md`.
