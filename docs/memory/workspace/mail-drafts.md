@@ -21,8 +21,8 @@ description: E-mail drafts kept on the server (MT3a #9516, MT3b): the ws_mail_it
 - `ws_mail_send_state()` gives `draft`, never `sent`; `ws_mail_send_last_hour()` does not count drafts against the hourly limit. `tests/workspace_mail_drafts_test.php` names each.
 
 ## What does the E-mails screen show? (MT3b)
-- "Drafts" (Turkish "Taslaklar"), a view of the toolbar (`view=drafts`) offered with New e-mail: the drafts the person reads, newest change first, at most 100 (`includes/workspace/mail_drafts_screen.php`, `ws_mail_drafts_view()`); the conversation list returns nothing for it.
-- "Open draft" (action `ws_mail_draft_open`, only for whoever may change it) fills the Reply by e-mail drawer, with the conversation open in the pane, or the New e-mail form; the browser's kept form is neither read nor written for it. Delete (`ws_mail_draft_remove`) removes it unsent.
+- "Drafts" (Turkish "Taslaklar"), a view of the toolbar (`view=drafts`) offered with New e-mail: the drafts the person reads, newest change first, at most 100, as rows of the screen's own list (`.ws-mail-rows`), the mailbox on the meta line (`includes/workspace/mail_drafts_screen.php`). Status, holder, kind and the first-answer filter are left out, as in Blocked.
+- "Open draft" (action `ws_mail_draft_open`, only for whoever may change it) fills the Reply by e-mail drawer, with the conversation open in the pane, or the New e-mail form; the browser's kept form is neither read nor written for it. Delete (`ws_mail_draft_remove`) removes it unsent, asked first with `pgConfirm()`. An opened draft's form has "Save draft" beside Send (`ws_mail_draft_save`, `ws_mail_draft_save()`): a change is never lost by closing the form (architect's look, 3362).
 - Send posts `draft_id`; once the mail is stored the draft goes (`ws_mail_draft_remove()` with the sent mail's conversation: a reply's draft only with an answer in its conversation, a new mail's only with a new mail). A mail that is stored but fails to leave still deletes its draft: it waits under Not sent.
 - Tests: `tests/workspace_mail_drafts_screen_test.php`.
 
