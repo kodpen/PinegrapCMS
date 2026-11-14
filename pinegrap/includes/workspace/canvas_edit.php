@@ -22,6 +22,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_svg.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_layer_write.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_board.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_chart.php');
 
 /**
  * The operations an edit takes.
@@ -30,7 +31,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_board.php');
  */
 function ws_canvas_edit_ops()
 {
-    return array('add', 'replace', 'remove', 'text', 'box', 'svg', 'style', 'order', 'name', 'lock', 'size', 'background', 'scene');
+    return array('add', 'replace', 'remove', 'text', 'box', 'svg', 'style', 'order', 'name', 'lock', 'size', 'background', 'scene', 'chart');
 }
 
 /**
@@ -230,9 +231,11 @@ function ws_canvas_edit_split_mode($op)
  *                               file it names (ws_canvas_split_file())
  * @param callable|null $file    a picture add's file or file_id => the file
  *                               (ws_canvas_write_file_resolver())
+ * @param string        $tone    the channel's colour (#rrggbb, '' for none),
+ *                               which a one-series chart takes
  * @return array error ('' or the refusal), index (of the refused operation, -1), doc (array)
  */
-function ws_canvas_edit_apply($doc, $operations, $resolve = null, $file = null)
+function ws_canvas_edit_apply($doc, $operations, $resolve = null, $file = null, $tone = '')
 {
     $fail = function ($error, $index = -1) {
         return array('error' => $error, 'index' => $index, 'doc' => null);
@@ -257,6 +260,25 @@ function ws_canvas_edit_apply($doc, $operations, $resolve = null, $file = null)
 
         if ($mode === null) {
             return $fail('layers', $i);
+        }
+
+        // A chart is drawn by the guide and laid in as the whole canvas anew, its layers split.
+        if ($kind === 'chart') {
+            $checked = ws_canvas_chart_check($op);
+
+            if ($checked['error'] !== '') {
+                return $fail($checked['error'], $i);
+            }
+
+            $drawn = ws_canvas_chart_svg($checked['chart'], $tone);
+            $made = ws_canvas_from_svg($drawn['svg'], $drawn['background'], true, $resolve);
+
+            if ($made['error'] !== '') {
+                return $fail($made['error'], $i);
+            }
+
+            $doc = json_decode(json_encode($made['doc']), true);
+            continue;
         }
 
         if ($kind === 'svg') {
@@ -553,7 +575,7 @@ function ws_canvas_edit_error_text($error)
         case 'too_many':
             return lang(array('string' => 'At most {var:1} operations at once.', 'vars' => ws_canvas_edit_max_ops()));
         case 'op':
-            return lang('An operation is one of add, replace, remove, text, box, svg, style, order, name, lock, size, background or scene.');
+            return lang('An operation is one of add, replace, remove, text, box, svg, style, order, name, lock, size, background, scene or chart.');
         case 'layer':
             return lang('That layer is not on the canvas.');
         case 'locked':
@@ -594,6 +616,16 @@ function ws_canvas_edit_error_text($error)
             return lang('A scene operation is add, choose, remove, transition or duration, its scene named by its id or its name; a canvas of one scene has none to choose or remove.');
         case 'scenes':
             return lang(array('string' => 'A canvas holds at most {var:1} scenes.', 'vars' => ws_canvas_board_scene_max()));
+        case 'chart_kind':
+            return lang('A chart kind is bar, stacked_bar, line, area, donut, sparkline or figure_tile.');
+        case 'chart_theme':
+            return lang('theme is dark or light, and format en or tr.');
+        case 'chart_board':
+            return lang('A board is card, slide, square, portrait or story; a sparkline and a figure tile have their own.');
+        case 'chart_words':
+            return lang('A chart needs a title (a figure tile and a sparkline a label and a value); titles and words have to be short text.');
+        case 'chart_data':
+            return lang('The data does not fit the chart: labels, and series of at most five each with a value of 0 or more per label (a donut one series of at most six, a line or an area at least two labels).');
         case 'layers':
             return ws_canvas_from_svg_error_text('layers');
         default:
