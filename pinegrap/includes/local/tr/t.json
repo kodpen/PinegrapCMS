@@ -4039,6 +4039,7 @@
     "The flow ends here": "Akış burada biter",
     "The flow has no box that starts it.": "Akışta onu başlatan bir kutu yok.",
     "The flow has no boxes to keep as a template.": "Akışta şablon olarak saklanacak kutu yok.",
+    "The flow has no owner who could publish it.": "Akışın onu yayımlayabilecek bir sahibi yok.",
     "The flow is its owner's already.": "Akış zaten sahibinin.",
     "The flow is live again on the version it was paused at.": "Akış duraklatıldığı sürümle yeniden yayında.",
     "The flow is paused. Publishing it again makes it live.": "Akış duraklatıldı. Yeniden yayınlanınca tekrar yayına girer.",

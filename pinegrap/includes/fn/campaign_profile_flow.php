@@ -386,9 +386,12 @@ function pg_profile_flow_graph($chain, $profiles, $boxes)
  *                        the page's regions), stats (made, busiest, waiting);
  *                        outputs (event => start output keys), owners
  *                        (head id => pg_profile_flow_owner()), limits
- *                        (delay_max, max_nodes, starts_hourly, open_runs)
+ *                        (delay_max, max_nodes, starts_hourly, open_runs);
+ *                        switched (head id => flow id, optional: chains a
+ *                        flow was already made of, left out)
  * @return array flows (head id => graph, name, paused, owner, members),
- *               left (id => reason), orphans (ids)
+ *               left (id => reason), orphans (ids), done (head id =>
+ *               flow id of the chains already switched)
  */
 function pg_profile_flow_convert($profiles, $facts)
 {
@@ -396,12 +399,18 @@ function pg_profile_flow_convert($profiles, $facts)
     $limits = $facts['limits'];
     $flows = array();
     $left = array();
+    $done = array();
 
     foreach ($split['orphans'] as $id) {
         $left[$id] = lang('It follows a profile that is gone, so it sends nothing today.');
     }
 
     foreach ($split['chains'] as $head => $chain) {
+        if (isset($facts['switched'][$head])) {
+            $done[$head] = (int) $facts['switched'][$head];
+            continue;
+        }
+
         $start = pg_profile_flow_start($profiles[$head]);
         $event = is_array($start['start']) ? $start['start']['event'] : '';
         $boxes = array('start' => $start);
@@ -464,7 +473,7 @@ function pg_profile_flow_convert($profiles, $facts)
         );
     }
 
-    return array('flows' => $flows, 'left' => $left, 'orphans' => $split['orphans']);
+    return array('flows' => $flows, 'left' => $left, 'orphans' => $split['orphans'], 'done' => $done);
 }
 
 /**
@@ -556,6 +565,10 @@ function pg_profile_flow_report_lines($plan, $profiles, $stats, $events = array(
         return ((int) ($profiles[$id]['enabled'] ?? 0) === 1) ? lang('on') : lang('off');
     };
     $lines = array(lang(array('string' => 'Flows: {var:1}; profiles left: {var:2}', 'vars' => array(count($plan['flows']), count($plan['left'])))));
+
+    foreach ((array) ($plan['done'] ?? array()) as $head => $flow_id) {
+        $lines[] = lang(array('string' => '“{var:1}” is already flow #{var:2}', 'vars' => array((string) ($profiles[$head]['name'] ?? ''), (int) $flow_id)));
+    }
 
     foreach ($plan['flows'] as $head => $flow) {
         $lines[] = '';
@@ -654,10 +667,11 @@ function pg_profile_flow_facts($profiles, $now)
  * The dry-run report of turning this site's e-mail campaign profiles into
  * flows, from the rows as they are now; nothing is written.
  *
- * @param int $now
+ * @param int   $now
+ * @param int[] $switched head id => flow id of the chains already switched
  * @return array plan (pg_profile_flow_convert()), lines
  */
-function pg_profile_flow_dry_run($now)
+function pg_profile_flow_dry_run($now, $switched = array())
 {
     $profiles = array();
 
@@ -672,6 +686,7 @@ function pg_profile_flow_dry_run($now)
     }
 
     $facts = pg_profile_flow_facts($profiles, $now);
+    $facts['switched'] = (array) $switched;
     $plan = pg_profile_flow_convert($profiles, $facts);
 
     return array('plan' => $plan, 'lines' => pg_profile_flow_report_lines($plan, $profiles, $facts['stats'], $facts['events']));
