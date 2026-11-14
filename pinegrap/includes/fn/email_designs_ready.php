@@ -288,5 +288,30 @@ function pg_email_ready_design_html($key)
 
     $pass = pg_mail_pass(generate_style_code_from_tree($tree, ''));
 
-    return $pass['html'];
+    return pg_mail_preview_samples($pass['html']);
+}
+
+/**
+ * Merge fields written as a sample recipient's values, for a preview: a
+ * reader sees a name where the sent mail will have one. The stored design
+ * keeps the fields. A field with no sample is left out.
+ *
+ * @param string $html
+ * @return string
+ */
+function pg_mail_preview_samples($html)
+{
+    $samples = array(
+        'first_name'    => lang('Jane'),
+        'last_name'     => lang('Doe'),
+        'name'          => lang('Jane Doe'),
+        'nickname'      => lang('Jane'),
+        'email_address' => 'jane@example.com',
+    );
+
+    return (string) preg_replace_callback('/\^\^([a-z_]+)\^\^/i', function ($m) use ($samples) {
+        $key = strtolower($m[1]);
+
+        return isset($samples[$key]) ? h($samples[$key]) : '';
+    }, (string) $html);
 }

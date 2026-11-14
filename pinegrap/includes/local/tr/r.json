@@ -345,6 +345,7 @@
     "Reads the rows of the table “{var:1}” that meet its conditions, at most {var:2} in its list.": "“{var:1}” tablosunun koşullarına uyan satırlarını okur; listesinde en fazla {var:2} satır olur.",
     "Reads the rows that meet the conditions: how many they are, the sum, average, smallest and largest value of each number column, and the rows as a list for a For each box.": "Koşullara uyan satırları okur: kaç tane olduklarını, her sayı sütununun toplamını, ortalamasını, en küçük ve en büyük değerini, ve satırları bir Her biri için kutusuna liste olarak verir.",
     "Ready": "Hazır",
+    "Ready designs": "Hazır tasarımlar",
     "Ready for a few nights outdoors?": "Açık havada birkaç gece için hazır mısınız?",
     "Ready for a little time for yourself?": "Kendinize biraz zaman ayırmaya hazır mısınız?",
     "Ready for a new phone?": "Yeni bir telefona hazır mısınız?",

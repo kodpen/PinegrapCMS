@@ -354,16 +354,29 @@ function pg_messages_template_email_card(array $own, $designs, $self)
         ));
     }
 
+    $grid = '<div class="pg-email-ready-grid">' . $ready . '</div>';
+
+    // None of one's own yet: the ready designs, then the line saying so.
     if ($rows === '') {
-        $rows = '<p class="pg-card-sub pg-email-ready-none">' . h(lang('No e-mail designs of your own yet: start one from a ready design.')) . '</p>';
+        return pg_messages_template_card(
+            lang('E-mail designs'),
+            lang('Start a campaign\'s e-mail from a ready design; your own designs follow.'),
+            '',
+            $grid
+                . '<h3 class="pg-field-label pg-email-own-title">' . h(lang('Your e-mail designs')) . '</h3>'
+                . '<p class="pg-card-sub pg-email-ready-none">' . h(lang('No e-mail designs of your own yet: start one from a ready design.')) . '</p>'
+        );
     }
 
+    // With designs of one's own, those come first: they are what a campaign
+    // is sent with; the ready designs follow to start a new one.
     return pg_messages_template_card(
         lang('E-mail designs'),
-        lang('Start a campaign\'s e-mail from a ready design; your own designs follow.'),
+        lang('Your own designs first, then the ready designs to start a new one from.'),
         '',
-        '<div class="pg-email-ready-grid">' . $ready . '</div>'
-            . '<h3 class="pg-field-label pg-email-own-title">' . h(lang('Your e-mail designs')) . '</h3>'
+        '<h3 class="pg-field-label pg-email-own-title">' . h(lang('Your e-mail designs')) . '</h3>'
             . $rows
+            . '<h3 class="pg-field-label pg-email-own-title pg-email-ready-title">' . h(lang('Ready designs')) . '</h3>'
+            . $grid
     );
 }

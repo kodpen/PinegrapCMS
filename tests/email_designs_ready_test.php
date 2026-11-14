@@ -87,3 +87,13 @@ function test_email_designs_ready_preview_is_the_sent_html()
 	pg_assert_false(strpos($html, 'var(--') !== false, 'colours written as hex');
 	pg_assert_false(strpos($html, '<script') !== false, 'no script');
 }
+
+function test_email_designs_ready_preview_shows_sample_values()
+{
+	pg_assert_same('Hello ' . h(lang('Jane')) . ', ' . h(lang('Jane Doe')) . ' jane@example.com .', pg_mail_preview_samples('Hello ^^first_name^^, ^^name^^ ^^email_address^^ ^^unknown_field^^.'), 'samples, and an unknown field left out');
+
+	$html = pg_email_ready_design_html('welcome');
+	pg_assert_false(strpos($html, '^^') !== false, 'no raw field in the preview');
+	pg_assert_contains(h(lang('Jane')), $html, 'the greeting reads a name');
+	pg_assert_contains('^^first_name^^', json_encode(pg_email_ready_design_tree('welcome')), 'the design keeps the field');
+}

@@ -151,4 +151,7 @@ function test_messages_templates_email_designs_card()
 	$reader = pg_messages_template_email_card(array(), false, '/x.php');
 	pg_assert_false(strpos($reader, 'add_system_style.php') !== false, 'Use this design only for a designer');
 	pg_assert_contains(h(lang('No e-mail designs of your own yet: start one from a ready design.')), $reader, 'none of one\'s own');
+	pg_assert_true(strpos($reader, 'pg-email-ready-grid') < strpos($reader, 'pg-email-own-title'), 'with none: the ready designs first');
+	pg_assert_true(strpos($html, 'pg-email-own-title') < strpos($html, 'pg-email-ready-grid'), 'with some: one\'s own designs first');
+	pg_assert_contains(h(lang('Your own designs first, then the ready designs to start a new one from.')), $html, 'the line follows the order');
 }

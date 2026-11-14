@@ -27933,6 +27933,21 @@ body.pg-measure-report #content {
   transform-origin: 0 0;
   pointer-events: none;
 }
+/* A phone: the preview takes the tile's width and at most 200 px of height,
+   so the five fit in about three screens; the frame is drawn at half size
+   and centred in the tile. */
+@media (max-width: 575.98px) {
+  .pg-email-ready-shot {
+    width: 100%;
+    height: 200px;
+  }
+  .pg-email-ready-shot iframe {
+    height: 400px;
+    margin-left: calc(50% - 320px);
+    transform: scale(0.5);
+    transform-origin: 50% 0;
+  }
+}
 .pg-email-ready figcaption {
   display: flex;
   flex-direction: column;
