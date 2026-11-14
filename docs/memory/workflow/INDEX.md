@@ -102,6 +102,7 @@
 - decisions-made-schema-18.md: Decisions list, schema part 18 (2026-11-13 on): whatsapp and sms transport, customer_phone (#9286); ws_mail_items.draft_files; personal plan tables; signature, block list, Sent folder columns
 - decisions-made-schema-19.md: Decisions list, schema part 19 (2026-11-14 on): ws_mail_items.invitation for a plan's invitation card; ws_mail_items.draft_app_id, who wrote a draft; ws_polls.agent_question
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
+- decisions-made-schema-20.md: Decisions list, schema part 20 (2026-11-14 on): ws_mail_items.send_at for Send later; the repeat columns of ws_personal_plans with ws_personal_plan_skips; the two roadmap template tables
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
@@ -136,7 +137,7 @@
 - decisions-made-workspace-28.md: Decisions made, workspace part 28 (2026-11-14 on): a chart's line in an agent's drawing is 6 on the Card; an export lists only whole-team plans; erasure leaves mail conversations
 - decisions-made-workspace-29.md: Decisions made, workspace part 29 (2026-11-14 on): the nine additions the owner ticked for the mail, My calendar and Communication plans; an agent asks a person with a widened poll
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
-- decisions-made-workspace-30.md: Decisions made, workspace part 30 (2026-11-14 on): an approval request can ask a channel's agents and assistants, within a bound; the tag @herkes mentions everyone in a room but the writer
+- decisions-made-workspace-30.md: Decisions made, workspace part 30 (2026-11-14 on): agents and assistants as approvers, within a bound; the tag @herkes; plans go to a second calendar; an orphan roadmap template stays
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only

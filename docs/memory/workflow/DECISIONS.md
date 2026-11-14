@@ -337,6 +337,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
+- decisions-made-schema-20.md: Where are the rules and the earlier parts?
+- decisions-made-schema-20.md: Where is a later mail's time kept? (owner, 2026-11-14, agent channel poll 3416)
+- decisions-made-schema-20.md: Which columns and tables do repeating plans and roadmap templates get? (owner, 2026-11-14, agent channel poll 3429)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -472,6 +475,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-30.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-30.md: Can an approval request ask a channel's agents and assistants? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-30.md: Is there a mention of everyone in a room? (owner, 2026-11-14, in the architect's window)
+- decisions-made-workspace-30.md: Which calendar are a person's plans written to, and what becomes of an orphan template? (architect on the owner's word, 2026-11-14, agent channel message 3434)
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
