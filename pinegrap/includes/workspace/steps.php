@@ -937,6 +937,27 @@ function ws_step_action($kind, $config)
 }
 
 /**
+ * A box's settings as ws_step_check() checks them. An e-mail to the person
+ * of the run's record has no address until it runs (ws_flow_mail_person()):
+ * the rest of it is checked with a stand-in address; as the box runs, the
+ * person's address is put in before the check, and is kept. Pure.
+ *
+ * @param string $kind
+ * @param array  $config
+ * @return array
+ */
+function ws_step_check_stand_in($kind, $config)
+{
+    $config = (array) $config;
+
+    if (($kind === 'email') && (($config['recipient'] ?? '') === 'record_person') && (trim((string) ($config['to'] ?? '')) === '')) {
+        $config['to'] = 'person@example.com';
+    }
+
+    return $config;
+}
+
+/**
  * Checks a step box with somebody's rights, as a scheduled action's step is
  * checked: the owner as they publish, and again as the box runs.
  *
@@ -1000,6 +1021,8 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
     if ($kind === 'agent') {
         return ws_step_agent_check($viewer, $config);
     }
+
+    $config = ws_step_check_stand_in($kind, $config);
 
     // A change box whose record is a value of its run names no record
     // until it runs: the rest of the change is checked now, the record as

@@ -196,6 +196,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_own_signature();   // 11.0.203
 	upgrade_2026_11_0_ws_mail_invitation();      // 11.0.204
 	upgrade_2026_11_0_ws_mail_draft_files();     // 11.0.205
+	upgrade_2026_11_0_campaign_profile_flows();  // 11.0.206
+	upgrade_2026_11_0_ws_mail_send_later();      // 11.0.207
 	upgrade_2026_11_0_ws_approval_agents();      // 11.0.210
 
 }
@@ -6601,8 +6603,67 @@ function upgrade_2026_11_0_ws_mail_draft_files() {
 
 }
 
+// E-mail campaign profiles turned into flows (includes/fn/campaign_profile_switch.php).
+// No schema: the step only marks the conversion due, with the highest profile
+// id of this moment, in a file of data/ named after the database. The general
+// job converts chain by chain within its time budget (publishing a flow needs
+// the Workspace's flow code, which the upgrade request does not load) and
+// keeps the report there for the E-mail Campaign Profiles screen. The mark is
+// written once: with the file there, or a flow already carrying a profile, a
+// second run of the steps opens no second conversion.
+function upgrade_2026_11_0_campaign_profile_flows() {
+
+	if (!install_table_exists('email_campaign_profiles') || !install_table_exists('ws_flows')) {
+
+		install_skipped('email_campaign_profiles or ws_flows does not exist, skipped');
+
+		return;
+
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_switch.php');
+
+	$mark = pg_profile_flow_switch_mark(time());
+
+	if ($mark['error'] !== '') {
+
+		install_note(lang('E-mail campaign profiles: they keep sending as profiles, because the data folder cannot be written; make it writable and run the upgrade steps again to turn them into flows.'));
+
+	} elseif ($mark['marked']) {
+
+		install_note(lang(array('string' => 'E-mail campaign profiles: the general job turns the {var:1} profiles into flows over its next runs; the report is on the E-mail Campaign Profiles screen.', 'vars' => (int) $mark['profiles'])));
+
+	} else {
+
+		install_skipped('e-mail campaign profiles already turned into flows, or none, skipped');
+
+	}
+
+}
+
+// Send later (includes/workspace/mail_later.php): an outgoing mail written
+// with a time waits as send_state 'later' until send_at, and the general job
+// reads the due ones by idx_later. sent_at keeps its one meaning: the time a
+// mail left. No backfill: every mail written before this step left at once.
+function upgrade_2026_11_0_ws_mail_send_later() {
+
+	if (!install_table_exists('ws_mail_items')) {
+
+		install_skipped('ws_mail_items does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_mail_items', 'send_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_mail_items', 'idx_later', "INDEX idx_later (send_state, send_at)");
+
+	install_note('Workspace: an e-mail can be written now and sent at a chosen time.');
+
+}
+
 // Agents asked to approve (includes/workspace/approvals.php). A request a
-// person makes by hand may ask the channel's agents and assistants beside its
+// person makes by hand may ask the channel's application agents beside its
 // people; ws_approval_agents is one row per agent asked, beside
 // ws_approval_people's rows for the team and ws_approval_guests' for people
 // outside it, so no reader of the people's rows changes. agent is the value
@@ -6623,6 +6684,6 @@ function upgrade_2026_11_0_ws_approval_agents() {
 		KEY idx_agent (agent, decision)
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-	install_note('Workspace: an approval request asked by hand can ask the channel\'s agents and assistants beside its people.');
+	install_note('Workspace: an approval request asked by hand can ask the channel\'s agents beside its people.');
 
 }

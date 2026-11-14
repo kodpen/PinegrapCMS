@@ -234,7 +234,8 @@ function test_campaign_profile_flow_convert()
 	pg_assert_contains('“Shipped” (off) becomes a flow, paused', $lines);
 	pg_assert_contains('Wait 7 days · then at 10:00', $lines);
 	pg_assert_contains('“Left cart” (order_abandoned, on) stays a profile', $lines);
-	pg_assert_contains('2 ready or paused stay with the campaign job', $lines);
+	pg_assert_contains('2 of them ready or paused stay with the campaign job', $lines);
+	pg_assert_same(1, substr_count($lines, 'Last 30 days'), 'a profile whose numbers are all 0 has no counts line');
 	pg_assert_contains('When something happens: order.shipped', $lines, 'a key with no name is shown as it is');
 
 	$named = implode("\n", pg_profile_flow_report_lines($plan, $profiles, array(), array('order.shipped' => 'An order is shipped')));

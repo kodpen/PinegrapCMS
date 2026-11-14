@@ -202,6 +202,13 @@ function pg_notification_visible($notification, $rights)
 		return ($rights['role'] < 3);
 	}
 
+	// E-mail campaign profiles turned into flows at the update
+	// (includes/fn/campaign_profile_switch.php): one line for the
+	// administrators, leading to the report.
+	if ($action == 'profile_flows') {
+		return ((int) $rights['role'] === 0);
+	}
+
 	// An operations alert (includes/fn/ops_alerts.php) is for whoever sees
 	// System Status and may open the screens it points at: backups, the
 	// scheduled jobs, the software update - manager and above.
@@ -784,6 +791,16 @@ function pg_notification_display($notification, $reader_role = null)
 		$display['short']       = lang('New WhatsApp message');
 		$display['description'] = h($notification['title'] ?? '');
 		$display['url']         = ($contact_id > 0) ? 'edit_contact.php?id=' . $contact_id : 'view_contacts.php';
+		$display['icon']        = 'assets/images/notification-general.png';
+		$display['badge']       = 'assets/images/notification-general-badge.png';
+		$display['action']      = $action;
+
+	} elseif ($action == 'profile_flows') {
+
+		// title holds how many flows were made.
+		$display['title']       = h(lang('E-mail campaign profiles were turned into flows'));
+		$display['description'] = h(lang(array('string' => 'Flows made: {var:1}. The report is on the E-mail Campaign Profiles screen.', 'vars' => (int) ($notification['title'] ?? 0))));
+		$display['url']         = 'view_email_campaign_profiles.php#profile-flows';
 		$display['icon']        = 'assets/images/notification-general.png';
 		$display['badge']       = 'assets/images/notification-general-badge.png';
 		$display['action']      = $action;

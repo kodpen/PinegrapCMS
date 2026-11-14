@@ -210,7 +210,7 @@ function ws_mail_list_where($filters, $viewer_id, $channel_ids, $charset = '', $
     } elseif ($view === 'sent') {
         $where[] = $out . "('', 'sent', 'external'))";
     } elseif ($view === 'unsent') {
-        $where[] = $out . "('queued', 'failed'))";
+        $where[] = $out . "('queued', 'failed', 'later'))";
     }
 
     // The subject and customer, or the names, addresses and text of a mail.
@@ -442,7 +442,7 @@ function ws_mail_list($viewer, $filters, $now)
  *
  * @param int     $viewer_id
  * @param array[] $rows ws_mail_conversations rows
- * @return array[] the rows with mails, snippet, unread (bool), unsent ('' | waiting | failed)
+ * @return array[] the rows with mails, snippet, unread (bool), unsent ('' | waiting | failed | later)
  */
 function ws_mail_list_mails($viewer_id, $rows)
 {
@@ -460,7 +460,7 @@ function ws_mail_list_mails($viewer_id, $rows)
 
     foreach ((array) db_items("SELECT conversation_id, COUNT(*) AS mails, MAX(id) AS last_id,
             MAX(CASE WHEN direction = 'in' THEN id ELSE 0 END) AS last_in_id"
-            . ($reads ? ", MAX(send_state = 'failed') AS failed, MAX(send_state = 'queued') AS queued" : '') . "
+            . ($reads ? ", MAX(send_state = 'failed') AS failed, MAX(send_state = 'queued') AS queued, MAX(send_state = 'later') AS later" : '') . "
         FROM ws_mail_items WHERE conversation_id IN (" . implode(',', $ids) . ") AND " . ws_mail_drafts_excluded_sql() . "
         GROUP BY conversation_id") as $stat) {
         $stats[(int) $stat['conversation_id']] = $stat;
@@ -487,7 +487,7 @@ function ws_mail_list_mails($viewer_id, $rows)
             'mails'   => (int) ($stat['mails'] ?? 0),
             'snippet' => trim((string) preg_replace('/\s+/u', ' ', $newest[$id] ?? '')),
             'unread'  => ws_mail_unread((int) ($stat['last_in_id'] ?? 0), (int) ($marks[$id] ?? 0), $floor),
-            'unsent'  => !empty($stat['failed']) ? 'failed' : (!empty($stat['queued']) ? 'waiting' : ''),
+            'unsent'  => !empty($stat['failed']) ? 'failed' : (!empty($stat['queued']) ? 'waiting' : (!empty($stat['later']) ? 'later' : '')),
         );
     }
 
@@ -552,6 +552,7 @@ function ws_mail_list_rows_html($rows, $filters, $now, $open = 0)
             . ws_mail_list_transport_badge_html($transport)
             . (($unsent === 'failed') ? '<span class="badge theme-danger">' . h(lang('Not sent')) . '</span>' : '')
             . (($unsent === 'waiting') ? '<span class="badge theme-secondary">' . h(lang('Waiting to be sent')) . '</span>' : '')
+            . (($unsent === 'later') ? '<span class="badge theme-info">' . h(lang('Sends later')) . '</span>' : '')
             . (((string) $row['box_name'] !== '') ? '<span>' . h((string) $row['box_name']) . '</span>' : '')
             . (((string) $row['channel_name'] !== '') ? '<span>' . h('#' . (string) $row['channel_name']) . '</span>' : '')
             . (($row['support'] ?? true) ? '<span>' . ws_mail_status_html($row, (string) $row['assignee_name'], (int) $row['first_reply_hours'], $now) . '</span>' : '')

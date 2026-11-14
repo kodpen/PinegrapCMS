@@ -21,6 +21,7 @@ require_once(dirname(__FILE__) . '/includes/forms/email_campaign_form.php');
 require_once(dirname(__FILE__) . '/includes/fn/email_campaign_send.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_create.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_content.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_test_send.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -292,6 +293,15 @@ if (!$_POST) {
         }
     }
 
+    // "Send a test to me" while a manual campaign can still be saved; the
+    // stored body is what a test sends, sample photos in it are pointed out.
+    if (!$readonly && ($type == 'manual')) {
+        $content['test'] = array(
+            'own'     => (string) $user['email_address'],
+            'samples' => ($format == 'html') ? pg_campaign_test_sample_photos($body) : 0,
+        );
+    }
+
     // Prepare to area differently based on the type of campaign.
     switch ($type) {
         case 'manual':
@@ -409,7 +419,7 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-                ' . $edit_liveform->output_notices() . '
+                ' . $edit_liveform->get_warnings() . $edit_liveform->output_notices() . '
                 ' . $output_button_bar . '
                 ' . $output_form_start . '
                 ' . pg_email_campaign_layout(
@@ -511,6 +521,22 @@ if (!$_POST) {
         output_error(pg_email_campaign_field_errors_html($field_errors));
     }
 
+    // "Send a test to me": the addresses are checked before anything is
+    // saved; the test goes out once the campaign is saved, with the body as
+    // stored.
+    $send_test = !empty($_POST['send_test']) && ($type == 'manual');
+    $test_addresses = array();
+
+    if ($send_test) {
+        $test_check = pg_campaign_test_addresses(pg_email_campaign_posted_text($_POST, 'test_addresses'), (string) $user['email_address']);
+
+        if ($test_check['error'] !== '') {
+            output_error(h($test_check['error']) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        $test_addresses = $test_check['addresses'];
+    }
+
     $sql_body = "";
     $took_design = false;
 
@@ -581,6 +607,33 @@ if (!$_POST) {
 
     // Both campaign states are one list now (view_email_campaigns.php).
     $liveform = new liveform('view_email_campaigns');
+
+    // A test: the campaign as just saved, to the checked addresses, at most
+    // pg_campaign_test_hourly_limit() presses an hour per user (fails open
+    // without the firewall's rate buckets). The screen stays open.
+    if ($send_test) {
+        $edit_liveform = new liveform('edit_email_campaign');
+
+        if (function_exists('waf_rate_exceeded') && waf_rate_exceeded('campaign_test|' . (int) $user['id'], 'campaign_test', pg_campaign_test_hourly_limit(), 3600)) {
+            $edit_liveform->add_warning(lang(array('string' => 'The test was not sent: a user may send {var:1} tests an hour. The campaign was saved.', 'vars' => array(pg_campaign_test_hourly_limit()))));
+        } else {
+            $test_campaign = db_item("SELECT subject, body, format, purpose, from_name, from_email_address, reply_email_address FROM email_campaigns WHERE id = '" . (int) $_POST['id'] . "'");
+            $test_result = is_array($test_campaign) ? pg_campaign_test_send($test_campaign, $test_addresses, (int) $user['id']) : array('sent' => 0, 'failed' => $test_addresses);
+
+            if ($test_result['sent'] > 0) {
+                $edit_liveform->add_notice(lang(array('string' => 'The campaign was saved and a test was sent ({var:1}).', 'vars' => array(implode(', ', array_diff($test_addresses, $test_result['failed']))))));
+            }
+
+            if ($test_result['failed']) {
+                $edit_liveform->add_warning(lang(array('string' => 'The test could not be sent ({var:1}): check the campaign mail server in SMTP Settings.', 'vars' => array(implode(', ', $test_result['failed'])))));
+            }
+
+            log_activity(lang(array('string' => 'a test of campaign (subject: {var:1}) was sent', 'vars' => array($subject))), $_SESSION['sessionusername']);
+        }
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_email_campaign.php?id=' . (int) $_POST['id']);
+        exit;
+    }
 
     // After "Take the design again" the screen stays open on the new body.
     if ($took_design) {

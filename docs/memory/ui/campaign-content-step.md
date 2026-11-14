@@ -24,6 +24,6 @@ module: campaign_content
 
 ## What is known and left?
 - A page's header can put the sender's account bar (name, logout link) into the stored body: a widget outside the signed-out e-mail render (`core/email-campaign-html-body.md`), seen on the sandbox's home-1; the e-mail designs of MA5c draw no such header.
-- Ready designs (MA5d) and "Send a test to me" (MA5e) come later; the recipients, sender and schedule cards are still the old ones (DL5).
+- Ready designs: `designer/email-designs-ready.md`; "Send a test to me" and the sample photo warning: `campaign-test-send.md` (MA5e). The recipients, sender and schedule cards are still the old ones (DL5).
 
 Test: `tests/campaign_content_test.php`.

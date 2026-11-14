@@ -20,7 +20,7 @@ description: Plan (owner 2026-11-14): Workspace e-mail read, drafted and sent fr
 - MT4 (M, done #9533) Sending from a person's connection under `workspace:mail_send` (`workspace/mail-send-scope.md`).
 - MT5 (M, after MA10b) HTML and files out. `html` on reply, new mail and drafts, cleaned by the allowlist cleaner, the text part made from it when none is sent; files by their Files id within the panel's limits, the sender's right to each checked at Send; a draft keeps them in `ws_mail_items.draft_files` (MT5's migration step).
   - Done in #9541: `html` and `file_ids` on reply, new mail and drafts, `draft_files` and `draft_app_id` by 11.0.205 (`workspace/mail-api-html-files.md`).
-- MT5b (S, after MT5 and MT3b #9543) The application's pill on a Drafts row: the name of the `draft_app_id` application, read from its row when the row is drawn; a deleted one reads as "an assistant". Its own picture in the agent channel under 3346, naming the architect.
+- MT5b (S, done #9559) The application's pill on a Drafts row: the name of the `draft_app_id` application, read from its row when the row is drawn; a deleted one reads as "an assistant". Its own picture in the agent channel under 3346, naming the architect.
 - MT6 (S) Close-out: `workspace/mail-api.md` and `mail-decisions.md` brought up to date, the plugin's e-mail skill named for `plans/claude-plugin-bundle.md`, this plan and its three census files deleted.
 
 ## What does every step keep?

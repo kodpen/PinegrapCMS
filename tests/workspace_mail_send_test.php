@@ -339,7 +339,7 @@ function test_workspace_mail_send_answer_wiring()
 	pg_assert_contains("if (\$check['conversation']) {\n        return ws_mail_send_answer(\$viewer, \$check, \$writer, \$now);", $source, 'no new conversation');
 	pg_assert_contains("'\" . e(\$answered ? (string) \$answered['rfc_message_id'] : '') . \"', '\" . e(\$references) . \"',", $source, 'the threading kept on the item');
 	pg_assert_contains("status = 'waiting', closed_at = 0,", $source, 'answered: waiting for the customer');
-	pg_assert_contains("\$state = is_array(\$item) ? ws_mail_send_dispatch(\$item, 0) : 'failed';", $source);
+	pg_assert_contains("\$state = is_array(\$item) ? ws_mail_send_hand_on(\$item, \$check) : 'failed';", $source);
 	pg_assert_contains("'body'               => ws_mail_answer_body(", $source, 'quoted when it leaves');
 	pg_assert_same('box_off', (ws_mail_send_error_text('box_off') === ws_mail_reply_error_text('no_box')) ? 'box_off' : '', 'the conversation\'s mailbox is off');
 	pg_assert_same(ws_mail_reply_error_text('no_customer'), ws_mail_send_error_text('no_customer'));

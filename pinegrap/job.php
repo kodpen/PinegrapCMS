@@ -1091,6 +1091,15 @@ if (
         ws_scheduled_run(WS_SCHEDULED_BATCH, WS_FLOW_BUDGET_JOB);
     }
 
+    // The followers of e-mail campaign profiles switched to flows
+    // (includes/fn/campaign_profile_switch.php): each stays on while a
+    // campaign above it still waits to go out, and is turned off once none
+    // is left. Every tenth minute: the campaigns go out over hours.
+    if (pg_flows_enabled() && (((int) date('i') % 10) === 0)) {
+        require_once(dirname(__FILE__) . '/includes/fn/campaign_profile_switch.php');
+        pg_profile_flow_followers_drain();
+    }
+
     // The agents' scheduled wakes (includes/workspace/agent_wake.php) on
     // every tick, for the same reason: "every 30m" or "at 21:00" must not
     // wait for the dispatcher's rotation. One small read when none is due.
@@ -1105,6 +1114,16 @@ if (
         ws_ref_sources_backfill_run();
     }
 
+}
+
+// E-mail campaign profiles turned into flows (includes/fn/campaign_profile_switch.php):
+// the update marks the conversion due in a file of data/, and each tick
+// switches the chains it can within its budget, the Workspace on or off. With
+// nothing due, or the conversion done, it is one small file read.
+require_once(dirname(__FILE__) . '/includes/fn/campaign_profile_switch.php');
+
+if (is_file(pg_profile_flow_switch_file())) {
+    pg_profile_flow_switch_tick(pg_cron_time_left(20));
 }
 
 // Workspace mailboxes read over IMAP (includes/workspace/mail_fetch.php), on
@@ -1140,6 +1159,12 @@ if ((defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && ws_mail_on()) || ws_ma
 
     if (ws_ready() && function_exists('ws_mail_send_orphans_run')) {
         ws_mail_send_orphans_run(time());
+    }
+
+    // Mail written to be sent later whose time has come, read by its own
+    // index (includes/workspace/mail_later.php).
+    if (ws_ready() && function_exists('ws_mail_later_run')) {
+        ws_mail_later_run(time());
     }
 }
 

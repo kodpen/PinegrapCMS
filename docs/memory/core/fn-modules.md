@@ -44,6 +44,8 @@ description: Generated from the module field of the memory files: each includes/
 - `calendar_writes`: [[api-calendar-locations-reservations]], [[api-calendar-writes]], [[calendar-reserve-occurrence]]
 - `campaign_content`: [[campaign-content-step]]
 - `campaign_profile_flow`: [[campaign-profile-flow-converter]]
+- `campaign_profile_switch`: [[campaign-profile-switch-writer]]
+- `campaign_test_send`: [[campaign-test-send]]
 - `canvas_templates`: [[agent-canvas-templates]]
 - `carrier_labels`: [[carrier-label-drivers]], [[carrier-label-overview]], [[carrier-label-rate]], [[carrier-label-text-cuts]]
 - `carrier_webhook`: [[carrier-webhook]], [[carrier-webhook-basitkargo]], [[carrier-webhook-drivers]]

@@ -406,7 +406,7 @@ function ws_mail_actions_without_workspace()
         'ws_bootstrap', 'ws_tick',
         'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_conversation', 'ws_mail_check',
         'ws_mail_reply_form', 'ws_mail_reply', 'ws_mail_resend',
-        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock', 'ws_mail_draft_open', 'ws_mail_draft_save', 'ws_mail_draft_remove',
+        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock', 'ws_mail_draft_open', 'ws_mail_draft_save', 'ws_mail_draft_remove', 'ws_mail_later_send', 'ws_mail_later_cancel',
         'ws_mail_my_settings', 'ws_mail_my_settings_save',
         'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
     );
@@ -2773,11 +2773,19 @@ function ws_handle_action($action, $request)
                 return ws_action_error($library['error'], 'files');
             }
 
+            // Send later (mail_later.php): the time read in the writer's zone.
+            $later = ws_mail_later_request($request, time());
+
+            if (!$later['ok']) {
+                return ws_action_error($later['error'], 'send_later');
+            }
+
             $mail = ws_mail_markup_apply($viewer, ws_mail_compose_mail($request, array_merge($library['files'], $files['files'])), $request);
             // Sent from a draft: its own HTML while the text is unchanged.
             $mail = function_exists('ws_mail_draft_sent_mail') ? ws_mail_draft_sent_mail($viewer, $mail, $request) : $mail;
             $result = ws_mail_send($viewer, array('conversation_id' => $conversation_id, 'cc' => $mail['cc'], 'bcc' => $mail['bcc'],
-                'text' => $mail['text'], 'html' => $mail['html'] ?? '', 'files' => $mail['files'], 'send_anyway' => $mail['send_anyway']));
+                'text' => $mail['text'], 'html' => $mail['html'] ?? '', 'files' => $mail['files'], 'send_anyway' => $mail['send_anyway'],
+                'send_at' => $later['at']));
 
             if (!$result['ok']) {
                 return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), in_array($result['error'], array('empty', 'too_long'), true) ? 'text' : '')
@@ -2906,10 +2914,17 @@ function ws_handle_action($action, $request)
                 return ws_action_error($forward['error']);
             }
 
+            // Send later (mail_later.php): the time read in the writer's zone.
+            $later = ws_mail_later_request($request, time());
+
+            if (!$later['ok']) {
+                return ws_action_error($later['error'], 'send_later');
+            }
+
             $mail = ws_mail_markup_apply($viewer, ws_mail_compose_mail($request, array_merge($forward['files'], $files['files'])), $request);
             // Sent from a draft: its own HTML while the text is unchanged.
             $mail = function_exists('ws_mail_draft_sent_mail') ? ws_mail_draft_sent_mail($viewer, $mail, $request) : $mail;
-            $result = ws_mail_send($viewer, $mail);
+            $result = ws_mail_send($viewer, $mail + array('send_at' => $later['at']));
 
             if (!$result['ok']) {
                 return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail'])) + array('code' => $result['error']);
@@ -3006,6 +3021,20 @@ function ws_handle_action($action, $request)
             $result = ws_mail_unblock($viewer, (int) ($request['item_id'] ?? 0), (string) ($_SESSION['sessionusername'] ?? ''));
 
             return $result['ok'] ? ws_action_ok(array('conversation_id' => $result['conversation_id'])) : ws_action_error($result['error']);
+
+        // A mail that waits for its time (mail_later.php): Send now hands it
+        // to the queue at once, Cancel leaves it unsent under Not sent.
+        case 'ws_mail_later_send':
+        case 'ws_mail_later_cancel':
+            if (!function_exists('ws_mail_later_send_now')) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $result = ($action === 'ws_mail_later_send')
+                ? ws_mail_later_send_now($viewer, (int) ($request['item_id'] ?? 0))
+                : ws_mail_later_cancel($viewer, (int) ($request['item_id'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('state' => $result['state'] ?? 'failed')) : ws_action_error($result['error']);
 
         // The Drafts view (mail_drafts_screen.php): a draft opened into its
         // form, its changes saved there, or deleted without being sent.
