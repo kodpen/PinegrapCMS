@@ -222,10 +222,10 @@ function pg_sms_stop_refusal($number, $now)
 }
 
 /**
- * Takes one customer's SMS: a stop word is written to the consent log, then
- * the message joins or opens the conversation of its number in the SMS
- * box's channel (with the Workspace on). A demonstration site receives
- * nothing.
+ * Takes one customer's SMS: the message joins or opens the conversation of
+ * its number in the SMS box's channel (with the Workspace on), then a stop
+ * word is written to the consent log, unless the conversation already had
+ * this message. A demonstration site receives nothing.
  *
  * @param array $message pg_sms_twilio_message()
  * @param int   $now
@@ -240,23 +240,20 @@ function pg_sms_incoming_receive($message, $now)
         return $out;
     }
 
-    if (pg_sms_is_stop_word($message['text'])) {
+    if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+        if (ws_enabled() && ws_mail_phone_ready()) {
+            $contacts = pg_sms_number_contacts($message['from']);
+            $ingested = ws_mail_phone_ingest(ws_mail_phone_box('sms'), $message + array('contact_id' => $contacts ? $contacts[0] : 0), $now);
+            $out['status'] = (string) $ingested['status'];
+        }
+    }
+
+    // A message the provider sends again is the same stop: one refusal.
+    if (($out['status'] !== 'duplicate') && pg_sms_is_stop_word($message['text'])) {
         $out['stopped'] = pg_sms_stop_refusal($message['from'], $now);
     }
-
-    if (!defined('WORKSPACE_ENABLED') || !WORKSPACE_ENABLED) {
-        return $out;
-    }
-
-    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-
-    if (!ws_enabled() || !ws_mail_phone_ready()) {
-        return $out;
-    }
-
-    $contacts = pg_sms_number_contacts($message['from']);
-    $ingested = ws_mail_phone_ingest(ws_mail_phone_box('sms'), $message + array('contact_id' => $contacts ? $contacts[0] : 0), $now);
-    $out['status'] = (string) $ingested['status'];
 
     return $out;
 }

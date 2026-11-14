@@ -105,4 +105,7 @@ function test_sms_inbox_wiring()
 	pg_assert_contains("hash('sha256', \$transport . ':' . (string) \$message['wamid'])", $read('includes/workspace/mail_phone.php'), 'an SMS id and a wamid never meet');
 	pg_assert_contains("bi-chat-dots", $read('includes/workspace/mail.php'), 'an SMS card has its own badge');
 	pg_assert_true(in_array('sms_webhook.php', waf_country_api_scripts(), true), 'called from the provider\'s servers');
+
+	// A stop word sent again by the provider is not refused twice.
+	pg_assert_true((bool) preg_match("~ws_mail_phone_ingest\\(.*?\\(\\\$out\\['status'\\] !== 'duplicate'\\) && pg_sms_is_stop_word~s", $read('includes/fn/sms_inbox.php')), 'the refusal follows the ingest and skips a duplicate');
 }
