@@ -405,12 +405,23 @@ function ws_flow_anchor_normalize($kind, $config)
             );
 
         case 'event':
-            return array(
+            $event = array(
                 'event'      => ws_flow_token($config['event'] ?? '', 64),
                 'page_id'    => $number($config['page_id'] ?? 0),
                 'status'     => ws_flow_token($config['status'] ?? '', 32),
                 'channel_id' => $number($config['channel_id'] ?? 0),
             );
+
+            // A flow an e-mail campaign profile became keeps the profile and
+            // the second it was switched off: events around that second
+            // start it only where the profile did not serve them
+            // (pg_profile_flow_switch_starts()). Other flows carry neither.
+            if (($number($config['profile_id'] ?? 0) > 0) && ($number($config['switched_at'] ?? 0) > 0)) {
+                $event['profile_id'] = $number($config['profile_id']);
+                $event['switched_at'] = $number($config['switched_at']);
+            }
+
+            return $event;
 
         case 'join':
         case 'mention':

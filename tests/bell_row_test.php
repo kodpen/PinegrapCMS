@@ -69,6 +69,7 @@ function test_bell_row_module_of_every_known_action()
 		'software_update'  => 'system',
 		'mail_failed'      => 'system',
 		'ops'              => 'system',
+		'profile_flows'    => 'system',
 	);
 	$known = bell_row_known_actions();
 

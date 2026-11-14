@@ -386,9 +386,14 @@ function pg_profile_flow_graph($chain, $profiles, $boxes)
  *                        the page's regions), stats (made, busiest, waiting);
  *                        outputs (event => start output keys), owners
  *                        (head id => pg_profile_flow_owner()), limits
- *                        (delay_max, max_nodes, starts_hourly, open_runs)
+ *                        (delay_max, max_nodes, starts_hourly, open_runs);
+ *                        switched (head id => flow id, optional: chains a
+ *                        flow was already made of, left out); ceiling
+ *                        (optional: the highest profile id of the update, a
+ *                        profile above it stays a profile)
  * @return array flows (head id => graph, name, paused, owner, members),
- *               left (id => reason), orphans (ids)
+ *               left (id => reason), orphans (ids), done (head id =>
+ *               flow id of the chains already switched)
  */
 function pg_profile_flow_convert($profiles, $facts)
 {
@@ -396,17 +401,30 @@ function pg_profile_flow_convert($profiles, $facts)
     $limits = $facts['limits'];
     $flows = array();
     $left = array();
+    $done = array();
 
     foreach ($split['orphans'] as $id) {
         $left[$id] = lang('It follows a profile that is gone, so it sends nothing today.');
     }
 
     foreach ($split['chains'] as $head => $chain) {
+        if (isset($facts['switched'][$head])) {
+            $done[$head] = (int) $facts['switched'][$head];
+            continue;
+        }
+
         $start = pg_profile_flow_start($profiles[$head]);
         $event = is_array($start['start']) ? $start['start']['event'] : '';
         $boxes = array('start' => $start);
         $reasons = array();
         $held = array();
+
+        // A profile made after the update is not the update's to convert.
+        foreach ($chain as $place) {
+            if (((int) ($facts['ceiling'] ?? 0) > 0) && ((int) $place[0] > (int) $facts['ceiling'])) {
+                $reasons[$place[0]] = lang('It was made after the update.');
+            }
+        }
 
         if ($event === '') {
             $reasons[$head] = lang('No start box covers its action yet.');
@@ -464,7 +482,7 @@ function pg_profile_flow_convert($profiles, $facts)
         );
     }
 
-    return array('flows' => $flows, 'left' => $left, 'orphans' => $split['orphans']);
+    return array('flows' => $flows, 'left' => $left, 'orphans' => $split['orphans'], 'done' => $done);
 }
 
 /**
@@ -542,9 +560,17 @@ function pg_profile_flow_length_text($amount, $unit)
  */
 function pg_profile_flow_report_lines($plan, $profiles, $stats, $events = array())
 {
+    // A profile's last 30 days, '' when every number is 0: a line of zeros
+    // says nothing.
     $counts = function ($id) use ($stats, $profiles) {
         $row = $stats[$id] ?? array();
-        $line = '    ' . lang(array('string' => 'Last 30 days: {var:1} campaigns, at most {var:2} in an hour; {var:3} ready or paused stay with the campaign job', 'vars' => array((int) ($row['made'] ?? 0), (int) ($row['busiest'] ?? 0), (int) ($row['waiting'] ?? 0))));
+        $no_contact = ((($profiles[$id]['purpose'] ?? '') === 'commercial') ? (int) ($row['no_contact'] ?? 0) : 0);
+
+        if (((int) ($row['made'] ?? 0) + (int) ($row['busiest'] ?? 0) + (int) ($row['waiting'] ?? 0) + $no_contact) === 0) {
+            return '';
+        }
+
+        $line = '    ' . lang(array('string' => 'Last 30 days: {var:1} campaigns, at most {var:2} in an hour; {var:3} of them ready or paused stay with the campaign job', 'vars' => array((int) ($row['made'] ?? 0), (int) ($row['busiest'] ?? 0), (int) ($row['waiting'] ?? 0))));
 
         if ((($profiles[$id]['purpose'] ?? '') === 'commercial') && ((int) ($row['no_contact'] ?? 0) > 0)) {
             $line .= '; ' . lang(array('string' => '{var:1} recipients no contact holds would no longer be mailed', 'vars' => (int) $row['no_contact']));
@@ -557,6 +583,10 @@ function pg_profile_flow_report_lines($plan, $profiles, $stats, $events = array(
     };
     $lines = array(lang(array('string' => 'Flows: {var:1}; profiles left: {var:2}', 'vars' => array(count($plan['flows']), count($plan['left'])))));
 
+    foreach ((array) ($plan['done'] ?? array()) as $head => $flow_id) {
+        $lines[] = lang(array('string' => '“{var:1}” became flow #{var:2}', 'vars' => array((string) ($profiles[$head]['name'] ?? ''), (int) $flow_id)));
+    }
+
     foreach ($plan['flows'] as $head => $flow) {
         $lines[] = '';
         $lines[] = lang(array('string' => '“{var:1}” ({var:2}) becomes a flow, {var:3}', 'vars' => array($flow['name'], $state($head), $flow['paused'] ? lang('paused') : lang('live'))));
@@ -568,14 +598,18 @@ function pg_profile_flow_report_lines($plan, $profiles, $stats, $events = array(
 
         foreach ($flow['members'] as $id) {
             $lines[] = '  ' . lang(array('string' => 'Profile “{var:1}”', 'vars' => (string) $profiles[$id]['name']));
-            $lines[] = $counts($id);
+            if (($count = $counts($id)) !== '') {
+                $lines[] = $count;
+            }
         }
     }
 
     foreach ($plan['left'] as $id => $reason) {
         $lines[] = '';
         $lines[] = lang(array('string' => '“{var:1}” ({var:2}, {var:3}) stays a profile: {var:4}', 'vars' => array((string) $profiles[$id]['name'], (string) $profiles[$id]['action'], $state($id), $reason)));
-        $lines[] = $counts($id);
+        if (($count = $counts($id)) !== '') {
+            $lines[] = $count;
+        }
     }
 
     return $lines;
@@ -654,10 +688,14 @@ function pg_profile_flow_facts($profiles, $now)
  * The dry-run report of turning this site's e-mail campaign profiles into
  * flows, from the rows as they are now; nothing is written.
  *
- * @param int $now
- * @return array plan (pg_profile_flow_convert()), lines
+ * @param int   $now
+ * @param int[] $switched head id => flow id of the chains already switched
+ * @param int   $ceiling  the highest profile id the update converts, 0 for all
+ * @return array plan (pg_profile_flow_convert()), lines, profiles (id =>
+ *               row), stats, events (what pg_profile_flow_report_lines()
+ *               draws the plan from)
  */
-function pg_profile_flow_dry_run($now)
+function pg_profile_flow_dry_run($now, $switched = array(), $ceiling = 0)
 {
     $profiles = array();
 
@@ -672,7 +710,10 @@ function pg_profile_flow_dry_run($now)
     }
 
     $facts = pg_profile_flow_facts($profiles, $now);
+    $facts['switched'] = (array) $switched;
+    $facts['ceiling'] = (int) $ceiling;
     $plan = pg_profile_flow_convert($profiles, $facts);
 
-    return array('plan' => $plan, 'lines' => pg_profile_flow_report_lines($plan, $profiles, $facts['stats'], $facts['events']));
+    return array('plan' => $plan, 'lines' => pg_profile_flow_report_lines($plan, $profiles, $facts['stats'], $facts['events']),
+        'profiles' => $profiles, 'stats' => $facts['stats'], 'events' => $facts['events']);
 }

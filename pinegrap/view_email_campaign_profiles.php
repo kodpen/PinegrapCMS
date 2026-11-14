@@ -23,6 +23,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_schedule.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_switch.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -332,6 +333,11 @@ if (isset($_GET['export'])) {
         'rows' => $list_rows,
     ));
 
+    // The profiles turned into flows at the update: under way, or its report.
+    $profile_flows_state = pg_profile_flow_switch_state();
+    $profile_flows_notice = pg_profile_flow_switch_notice($profile_flows_state, is_array($profile_flows_state)
+        ? get_absolute_time(array('timestamp' => (int) $profile_flows_state['done_at'], 'type' => 'date', 'format' => 'plain_text')) : '', $action_names);
+
     print
     pg_page_shell(
         array(
@@ -351,6 +357,7 @@ if (isset($_GET['export'])) {
                 ' . $liveform->output_notices() . '
                
                 ' . pg_messages_tab_strip_for('automatic', $user) . '
+                ' . $profile_flows_notice . '
                 ' . pg_screen_toolbar(array(
                     'primary'   => array('label' => lang('Create'), 'url' => 'add_email_campaign_profile.php', 'icon' => 'bi-plus-circle'),
                     'secondary' => array(

@@ -988,6 +988,12 @@ function ws_events_start($event_id, $event, $payload)
             continue;
         }
 
+        // A flow an e-mail campaign profile became: an event the profile
+        // already served around the switch does not start it again.
+        if (((int) ($item['rule']['switched_at'] ?? 0) > 0) && !ws_events_switch_starts($item['rule'], $event_id, $event, $payload)) {
+            continue;
+        }
+
         $recent = (int) db_value("SELECT COUNT(*) FROM ws_scheduled_queue WHERE action_id = '" . (int) $action_id . "' AND created_at > '" . ($now - 3600) . "'");
 
         if ($recent >= WS_SCHEDULED_CHAIN_HOURLY) {
@@ -1000,6 +1006,24 @@ function ws_events_start($event_id, $event, $payload)
     }
 
     return $queued;
+}
+
+/**
+ * Whether an event starts a flow an e-mail campaign profile became
+ * (its start rule carries profile_id and switched_at), judged by the event's
+ * own second (pg_profile_flow_event_starts()).
+ *
+ * @param array  $rule
+ * @param int    $event_id ws_events_in id
+ * @param string $event
+ * @param array  $payload
+ * @return bool
+ */
+function ws_events_switch_starts($rule, $event_id, $event, $payload)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_switch.php');
+
+    return pg_profile_flow_event_starts($rule, (int) $event_id, (string) $event, (array) $payload);
 }
 
 /**
