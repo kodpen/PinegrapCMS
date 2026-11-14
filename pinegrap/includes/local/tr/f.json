@@ -480,6 +480,7 @@
     "Fill this in.": "Bunu doldurun.",
     "Fill with a colour": "Bir renkle doldur",
     "Fill your case": "Kolinizi doldurun",
+    "Fill {var:1}.": "{var:1} değerini doldurun.",
     "Filled": "Dolu",
     "Filled By": "Dolduran",
     "Filled by the server": "Sunucu doldurur",
