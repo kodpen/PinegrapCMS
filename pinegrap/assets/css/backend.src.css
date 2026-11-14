@@ -15969,7 +15969,7 @@ a.ws-chip:hover {
 }
 /* Recipient suggestions under To, Cc and Bcc of New e-mail and the reply
    drawer (workspace_mail.js suggest()): the Workspace picker's list,
-   opened under its field. */
+   opened under its field and as wide as it. */
 .ws-mail-suggest-host {
   position: relative;
 }
@@ -15977,7 +15977,7 @@ a.ws-chip:hover {
   top: calc(100% + .25rem);
   bottom: auto;
   left: 0;
-  width: min(26rem, 100%);
+  width: 100%;
 }
 .ws-mail-suggest .ws-picker-item {
   cursor: pointer;
