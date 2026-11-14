@@ -1042,6 +1042,11 @@ if (is_file(dirname(__FILE__) . '/includes/workspace/reminders.php')) {
 
     require_once(dirname(__FILE__) . '/includes/workspace/reminders.php');
 
+    // A person's own plans remind through the same run (personal_plans.php).
+    if (is_file(dirname(__FILE__) . '/includes/workspace/personal_plans.php')) {
+        require_once(dirname(__FILE__) . '/includes/workspace/personal_plans.php');
+    }
+
     $workspace_overdue_due = defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && ws_task_overdue_due();
 
     if (ws_task_reminders_waiting() || $workspace_overdue_due) {

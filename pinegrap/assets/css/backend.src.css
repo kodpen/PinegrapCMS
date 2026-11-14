@@ -18131,6 +18131,15 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
 .ws-cal-event-dot.ws-kind-booking {
   background: var(--pg-success);
 }
+/* A person's own plan (includes/workspace/personal_plans.php), on My calendar
+   alone: look A's violet tone. */
+.ws-cal-event.ws-kind-personal {
+  background: color-mix(in srgb, var(--pg-tone-violet) 16%, transparent);
+  color: var(--pg-fg-body);
+}
+.ws-cal-event-dot.ws-kind-personal {
+  background: var(--pg-tone-violet);
+}
 .ws-cal-channel {
   color: var(--ws-accent);
   background: transparent;
@@ -18179,6 +18188,29 @@ button.ws-cal-more {
 .ws-mycal-row > .ws-cal-event-dot,
 .ws-mycal-row > .bi {
   flex: none;
+}
+/* The New plan drawer: look A's fields, two to a row where they pair. */
+.ws-plan-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.ws-plan-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.ws-plan-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.ws-plan-private {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
 }
 .ws-mycal-empty {
   margin: 0;
@@ -18713,6 +18745,10 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   }
   .ws-cal-event.ws-kind-visit {
     background: color-mix(in srgb, var(--pg-warning) 70%, transparent);
+  }
+  /* A plan of the reader's own: its violet as strong as the list's dot. */
+  .ws-cal-event.ws-kind-personal {
+    background: color-mix(in srgb, var(--pg-tone-violet) 80%, transparent);
   }
   .ws-cal-channel {
     background: rgba(var(--ws-accent-rgb), .25);

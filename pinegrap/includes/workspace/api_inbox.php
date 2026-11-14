@@ -103,6 +103,13 @@ function ws_api_inbox_place($viewer, $row)
 function ws_api_inbox_present($viewer, $row)
 {
     $described = ws_inbox_describe($viewer, $row);
+
+    // A person's own plan is read by no application: its line says only that
+    // a reminder of theirs came, without the plan's words.
+    if ($row['kind'] === 'plan_reminder') {
+        $described = array('title' => lang('A reminder of your own plan'), 'body' => '', 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_my_calendar.php');
+    }
+
     $place = ws_api_inbox_place($viewer, $row);
 
     // A discussion is a channel of its own; the channel it was started in
