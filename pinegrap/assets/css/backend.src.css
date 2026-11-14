@@ -18310,7 +18310,7 @@ button.ws-cal-more {
 }
 .ws-roadmap-step {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 9.5rem;
+  grid-template-columns: auto minmax(0, 1fr) 9.5rem 4rem;
   align-items: center;
   gap: 8px;
 }
@@ -18320,21 +18320,22 @@ button.ws-cal-more {
 }
 .ws-roadmap-tools {
   display: flex;
-  grid-column: 2 / -1;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
-  min-height: 0;
+  gap: 2px;
 }
-.ws-roadmap-tools:empty {
-  display: none;
+.ws-roadmap-meta {
+  display: flex;
+  grid-column: 2 / -1;
+  align-items: center;
+  gap: 6px;
+  margin-top: -2px;
 }
 .ws-roadmap-task {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   border: 0;
-  margin-right: auto;
 }
 .ws-roadmap-empty {
   padding: 4px 0;
@@ -18346,10 +18347,19 @@ button.ws-cal-more {
 }
 @media (max-width: 575.98px) {
   .ws-roadmap-step {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) 4rem;
   }
   .ws-roadmap-day {
     grid-column: 2;
+    grid-row: 2;
+  }
+  .ws-roadmap-tools {
+    grid-row: 1;
+    grid-column: 3;
+  }
+  /* A plan's chip is a bar on a phone: no room for its count. */
+  .ws-cal-event .ws-roadmap-count {
+    display: none;
   }
 }
 .ws-cal-side .card {

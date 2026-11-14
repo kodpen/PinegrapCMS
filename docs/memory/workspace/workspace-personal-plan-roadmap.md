@@ -8,9 +8,9 @@ description: The roadmap of a person's own plan (PC5): dated steps in ws_persona
 - With `personal_plans.php` the only file naming the plan tables (`tests/workspace_personal_plans_test.php`). Every read starts from `ws_personal_plan()`, the gate; save and "Make a task" ask `ws_personal_plan_can_edit()` (the owner alone).
 
 ## What does the drawer show?
-- Under the note: "Roadmap" with "2 of 5 steps done", a violet bar filled by the share done, each dated step a dot on its day between the plan's first and last day (filled when done), then the steps: done mark, title, day, "Make a task", remove. "Add a step"; a row with no title is dropped on save. At most 50 steps (`WS_PERSONAL_PLAN_STEP_MAX`).
+- Under the note: "Roadmap" with "2 of 5 steps done", a violet bar filled by the share done, each dated step a dot on its day between the plan's first and last day (filled when done), then the steps: done mark, title, day, and the icon buttons "Make a task" and "Remove the step"; a tied task shows as a pill under the title. "Add a step"; a row with no title is dropped on save. At most 50 steps (`WS_PERSONAL_PLAN_STEP_MAX`).
 - Save writes the plan, then the steps (`ws_personal_plan_steps_save`, the list sent is the roadmap). A reader the plan is shared with (PC4) sees it all, unchangeable.
-- On the calendar a plan with steps shows "2/5" on its chip and "My plan · 2 of 5 steps done" in the list (`ws_personal_plans_progress_place()`).
+- On the calendar a plan with steps shows "2/5" on its chip (not on a phone, where the chip is a bar) and "My plan · 2 of 5 steps done" in the list (`ws_personal_plans_progress_place()`).
 - Script `assets/js/workspace_my_calendar_roadmap.js` (`window.PGWsRoadmap`), in the `workspace.min.js` bundle before `workspace_my_calendar.js`.
 
 ## How does a step follow a task?

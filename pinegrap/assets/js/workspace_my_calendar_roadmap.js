@@ -146,6 +146,7 @@
             var title = el('input', 'pg-input pg-input-sm ws-roadmap-title');
             var day = el('input', 'pg-input pg-input-sm ws-roadmap-day');
             var tools = el('div', 'ws-roadmap-tools');
+            var meta = el('div', 'ws-roadmap-meta');
 
             done.type = 'checkbox';
             done.checked = !!step.done;
@@ -184,17 +185,17 @@
                 var task = el('button', 'pg-pill pg-tone-blue ws-roadmap-task');
                 task.type = 'button';
                 task.title = s('step_open_task');
-                task.appendChild(el('span', 'ws-status-dot ws-s-' + step.task_status));
                 task.appendChild(document.createTextNode(step.task_number + ' · ' + h.statusName(step.task_status)));
                 task.addEventListener('click', function () { h.openTask(step.task_id); });
-                tools.appendChild(task);
+                meta.appendChild(task);
             } else if (step.follows) {
-                tools.appendChild(el('span', 'pg-text-meta', s('step_follows')));
+                meta.appendChild(el('span', 'pg-text-meta', s('step_follows')));
             } else if (editable && plan && plan.id) {
-                var make = el('button', 'pg-button pg-button-quiet pg-button-sm', '');
+                var make = el('button', 'pg-icon-button pg-icon-button-sm');
                 make.type = 'button';
-                make.appendChild(h.icon('bi-check2-square', 'me-1'));
-                make.appendChild(document.createTextNode(s('step_make_task')));
+                make.title = s('step_make_task');
+                make.setAttribute('aria-label', s('step_make_task'));
+                make.appendChild(h.icon('bi-check2-square'));
                 make.addEventListener('click', function () {
                     if (!step.title.trim()) {
                         title.focus();
@@ -220,6 +221,10 @@
             }
 
             row.appendChild(tools);
+
+            if (meta.firstChild) {
+                row.appendChild(meta);
+            }
 
             return row;
         }
