@@ -1370,7 +1370,64 @@ function ws_note_save($viewer, $data)
         ws_note_notify_change($viewer, $note);
     }
 
+    // A tag the save adds wakes on the note's cards in agent channels.
+    if (isset($sets['body'])) {
+        ws_note_ask_tags($viewer, array_merge($note, $sets), (string) $note['body'], (string) $sets['body']);
+    }
+
     return array('ok' => true, 'error' => '', 'note_id' => $note_id, 'conflict' => false);
+}
+
+/**
+ * After a shared note's text was saved, or the note shared in a channel:
+ * the tags it adds wake the agents they name, each once, on the oldest card
+ * of an agent channel the agent is in and the writer manages
+ * (ws_message_item_tags_writer()). The brief tells the note and where the
+ * tag sits (ws_item_brief_lines()).
+ *
+ * @param array  $viewer the writer
+ * @param array  $note   the note as saved
+ * @param string $old    the text before ('' for a share)
+ * @param string $new    the text now
+ * @param int    $only_channel_id 0 for every channel it is shared in
+ * @return string[] the agent values asked
+ */
+function ws_note_ask_tags($viewer, $note, $old, $new, $only_channel_id = 0)
+{
+    $added = ws_message_tags_added(ws_tokens_normalise((string) $old), ws_tokens_normalise((string) $new));
+
+    if ($added === '') {
+        return array();
+    }
+
+    $shares = (array) db_items("SELECT channel_id, message_id FROM ws_note_shares
+        WHERE note_id = '" . (int) $note['id'] . "' AND channel_id > 0 AND message_id > 0"
+        . (((int) $only_channel_id > 0) ? " AND channel_id = '" . (int) $only_channel_id . "'" : '') . "
+        ORDER BY id");
+
+    $item = array(
+        'kind'   => 'note',
+        'name'   => ws_note_title($viewer, $note),
+        'where'  => '',
+        'text'   => ws_item_tag_excerpt((string) $new, $added),
+        'writer' => ws_person_name($viewer['id']),
+        'route'  => 'GET /workspace/notes/' . (int) $note['id'],
+        'under'  => 'card',
+    );
+    $asked = array();
+
+    foreach ($shares as $share) {
+        $channel = ws_channel((int) $share['channel_id']);
+        $card = ws_message((int) $share['message_id']);
+
+        if (!is_array($channel) || !is_array($card) || ((int) $card['deleted_at'] > 0) || !ws_message_item_tags_writer($viewer, $channel)) {
+            continue;
+        }
+
+        $asked = array_merge($asked, ws_item_ask($viewer, $channel, (int) $card['id'], $added, $item, $asked));
+    }
+
+    return $asked;
 }
 
 /**
@@ -1758,6 +1815,9 @@ function ws_note_share_channel($viewer, $note, $channel)
         VALUES ('" . (int) $note['id'] . "', '" . (int) $channel['id'] . "', '" . (int) $sent['message_id'] . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
 
     ws_note_folder_sync($note);
+
+    // Shared into an agent channel by its manager: the note's tags wake there.
+    ws_note_ask_tags($viewer, $note, '', (string) $note['body'], (int) $channel['id']);
 
     return array('ok' => true, 'error' => '', 'message_id' => (int) $sent['message_id']);
 }

@@ -27,4 +27,4 @@ description: Plan: a tag anywhere in a Workspace channel item (file caption, edi
 
 ## Where does the work stand?
 - TW1 (#9359), TW2 (#9378) and TW3 (#9390) done; `workspace/channel-item-tags.md` holds the helpers and the writer's check (`ws_message_item_tags_writer()`).
-- TW4 is claimed and waits on the architect: which message a tag in a shared note or a table cell hangs on, and what the brief tells the agent of where the tag is (the question is in TW4's draft PR). A task with no card waits on the same answer. Then TW5, the close-out.
+- TW4 (#9402) done: shared notes and table cells, the architect's answer in `workspace/channel-item-tags.md`. TW5, the close-out, is next.
