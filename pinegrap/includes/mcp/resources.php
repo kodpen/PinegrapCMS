@@ -17,6 +17,7 @@
  *   pinegrap://workspace/channels/{id}/customer  GET /workspace/channels/{id}/customer
  *   pinegrap://workspace/refs/{type}/{id}        GET /workspace/refs?type=&id=
  *   pinegrap://forms/{id}/fields                 GET /forms/{id}/fields
+ *   pinegrap://workspace/canvas-guide            GET /workspace/canvas/guide
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -74,6 +75,14 @@ function pg_mcp_resource_kinds() {
 			'name'         => 'form_fields',
 			'title'        => 'Form fields',
 			'description'  => 'The fields of one form, to read before writing a submission or a collection record: each field\'s name (what an answer is addressed by), label, type, whether it is required and the option values of a choice field. A rich-text area (rich_text true) takes HTML: html_allowed lists the tags, attributes, style properties, address schemes and image hosts it keeps, and max_length its longest answer. id is the form\'s id, which is its page id.'
+		),
+
+		'canvas_guide' => array(
+			'uri'         => 'pinegrap://workspace/canvas-guide',
+			'route'       => 'workspace.canvas.guide',
+			'name'        => 'workspace_canvas_guide',
+			'title'       => 'Drawing guide for canvases',
+			'description' => 'The guide to follow before drawing a canvas in a channel: board sizes, the grid, the type scale, spacing, a dark and a light board palette with a chart series, and the rules of each chart kind.'
 		)
 
 	);

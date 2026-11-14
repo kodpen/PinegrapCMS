@@ -22,6 +22,7 @@ description: Start file of the agent-canvas-* cluster: an agent designs on a Wor
 - Layers written one by one (text, picture, shape, icon, style, order, name, lock, the fonts route): `agent-canvas-layer-writes.md`.
 - The board's size, background and scenes: `agent-canvas-scenes.md`.
 - Templates a person marks and an agent fills: `agent-canvas-templates.md`.
+- The drawing guide an agent reads before it draws (boards, grid, type, palettes, chart rules): `agent-canvas-guide.md`.
 - The picture, drawn by the server where it can, else by a browser: `agent-canvas-picture.md` (the server's drawing: `platform/image-server-draw.md`).
 - Saving the picture into Files under the risk tiers: `agent-canvas-save.md`.
 - The assistants' tools (`draw_canvas`, `read_canvas`, `edit_canvas`): `agent-canvas-assistants.md`.
