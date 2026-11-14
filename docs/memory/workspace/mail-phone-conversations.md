@@ -16,7 +16,7 @@ description: A customer's WhatsApp message as a Workspace conversation (WA13, #9
 - `pg_whatsapp_inbox_to_channel()` after WA4 kept the `whatsapp_inbox` row (bell and history stay): only with the Workspace on and the box on. `ws_mail_phone_ingest()`: duplicate by hash; `WS_MAIL_SENDER_HOURLY` (20) an hour per number (`held`); a user known only by a username (no number) is not threaded.
 - It joins the newest conversation of that number in the box that is not closed (status back to open, `mail_customer` to the holder), else opens one in the box's channel with the card as its first message. An archived channel refuses (`no_channel`).
 - A new conversation of a known contact writes "A WhatsApp message from {name} came into <#channel>: {first words}" into their channels (`ws_mail_customer_lines(..., 'whatsapp')`).
-- A message without text shows its kind ("[A picture]"); media is not fetched yet.
+- A message without text shows its kind ("[A picture]"); its file comes under the card by the general job (`mail-phone-media.md`).
 - An SMS takes the same way through the `sms` box (`platform/sms-incoming.md`): the hash prefix, the customer line and the card's badge follow the box's transport; `ws_mail_phone_box_write()`, `ws_mail_phone_card_field()` / `_check()` take the transport.
 
 ## What does the card show and offer?
