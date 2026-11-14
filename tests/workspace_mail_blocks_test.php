@@ -249,11 +249,11 @@ function test_workspace_mail_blocks_item_html()
 	$html = ws_mail_block_item_html(array('id' => 4, 'block' => array('address' => 'a@b.test', 'domain' => 'b.test', 'every' => false)));
 	pg_assert_contains('data-bs-target="#ws-mail-block-4"', $html, 'the button opens the form');
 	pg_assert_contains('data-ws-mail-block="4"', $html, 'the form names the mail');
-	pg_assert_contains('data-value="address">a@b.test</button>', $html, 'the address');
+	pg_assert_contains('data-value="address" title="a@b.test"><span class="text-truncate">a@b.test</span></button>', $html, 'the address');
 	pg_assert_contains('Everyone at b.test', $html, 'the domain');
 	pg_assert_contains('data-value="box"', $html, 'this box');
 	pg_assert_true(strpos($html, 'data-value="all"') === false, 'every box only with the settings right');
-	pg_assert_contains('class="pg-seg"', $html, 'look A: the segmented control');
+	pg_assert_contains('class="pg-seg flex-wrap max-w-100"', $html, 'look A: the segmented control, wrapping on a phone');
 
 	$html = ws_mail_block_item_html(array('id' => 4, 'block' => array('address' => '<x>@b.test', 'domain' => 'b.test', 'every' => true)));
 	pg_assert_contains('data-value="all"', $html, 'every box');

@@ -460,7 +460,7 @@ function ws_mail_blocks_html($blocks, $form)
 
     return '<div class="mt-7" id="pgset-ws-mail-blocks"><div class="pg-title-section">' . h(lang('Blocked senders')) . '</div>'
         . '<p class="pg-card-sub">' . h(lang('E-mail from these senders opens no conversation, tells nobody and is kept for 30 days.')) . '</p>'
-        . '<div class="pg-look-rows">' . $rows . '</div></div>';
+        . '<div>' . $rows . '</div></div>';
 }
 
 /**
@@ -508,11 +508,14 @@ function ws_mail_block_item_html($item)
     $id = (int) $item['id'];
     $block = $item['block'];
     $seg = function ($name, $choices, $label) {
-        $html = '<span class="pg-seg" role="group" aria-label="' . h($label) . '" data-ws-mail-block-choice="' . h($name) . '">';
+        // On a phone the choices wrap, and a long address is cut short with
+        // an ellipsis inside its button rather than widening the pane.
+        $html = '<span class="pg-seg flex-wrap max-w-100" role="group" aria-label="' . h($label) . '" data-ws-mail-block-choice="' . h($name) . '">';
         $first = true;
 
         foreach ($choices as $value => $text) {
-            $html .= '<button type="button" class="pg-seg-item text-break" aria-pressed="' . ($first ? 'true' : 'false') . '" data-value="' . h($value) . '">' . h($text) . '</button>';
+            $html .= '<button type="button" class="pg-seg-item max-w-100 min-w-0" aria-pressed="' . ($first ? 'true' : 'false') . '" data-value="' . h($value) . '" title="' . h($text) . '">'
+                . '<span class="text-truncate">' . h($text) . '</span></button>';
             $first = false;
         }
 
