@@ -132,7 +132,10 @@ function test_workspace_mail_drafts_screen_app_pill()
 		workspace_mail_drafts_screen_test_row(array('id' => 5, 'app_name' => '')),
 	));
 
-	pg_assert_contains('<span class="pg-pill pg-tone-violet" data-ws-mail-draft-app>', $html, 'a pill on the meta line');
+	pg_assert_contains('<span class="pg-pill pg-tone-violet ws-mail-draft-app" data-ws-mail-draft-app title="Kept by Claude &lt;bot&gt;">', $html, 'a pill on the meta line, the whole sentence in its title');
+	pg_assert_contains('<span class="ws-mail-draft-app-text">Kept by Claude &lt;bot&gt;</span>', $html, 'its text cut by the stylesheet when long');
+	pg_assert_contains("'Kept by {var:1}'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_drafts_screen.php'), 'one translated sentence with the name as a placeholder');
+	pg_assert_contains('text-overflow: ellipsis', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css'), 'a long name never widens the row');
 	pg_assert_contains('Kept by Claude &lt;bot&gt;', $html, 'its name, escaped');
 	pg_assert_same(1, substr_count($html, 'data-ws-mail-draft-app'), 'only the draft an application kept');
 	pg_assert_contains('api_apps', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_drafts_screen.php'), 'the name read from the application\'s row');

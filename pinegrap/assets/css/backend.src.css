@@ -16061,6 +16061,18 @@ a.ws-chip:hover {
   align-items: center;
   gap: .25rem .6rem;
 }
+/* A Drafts row's application pill: a long name is cut inside the row's
+   width, never widening it; the whole sentence is in its title. */
+.ws-mail-draft-app {
+  max-width: 100%;
+  min-width: 0;
+}
+.ws-mail-draft-app-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 /* Unread: the name and subject in bold, and a bar in the accent. */
 .ws-mail-unread {
   box-shadow: inset 3px 0 0 var(--ws-accent);

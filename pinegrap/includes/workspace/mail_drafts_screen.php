@@ -113,6 +113,20 @@ function ws_mail_draft_app_label($app_id, $apps)
 }
 
 /**
+ * The pill of a draft an application kept: one translated sentence, cut
+ * with an ellipsis inside the row's width when the name is long, the whole
+ * sentence in its title. Pure.
+ *
+ * @param string $text "Kept by <application>", translated
+ * @return string HTML
+ */
+function ws_mail_draft_app_pill($text)
+{
+    return '<span class="pg-pill pg-tone-violet ws-mail-draft-app" data-ws-mail-draft-app title="' . h($text) . '">'
+        . '<span class="ws-mail-draft-app-text">' . h($text) . '</span></span>';
+}
+
+/**
  * The Drafts view: each draft as a row of the screen's list, with its kind,
  * whom it goes to and the time; its subject and first words; a meta line
  * with the mailbox, the application it was kept through, Open draft and
@@ -149,7 +163,7 @@ function ws_mail_drafts_view_html($rows)
             . (($words !== '') ? '<span class="ws-mail-snippet">' . h(mb_substr($words, 0, 160)) . '</span>' : '')
             . '<span class="ws-mail-row-meta"><span>' . h((string) $row['box_name']) . '</span>'
             . ((trim((string) ($row['app_name'] ?? '')) !== '')
-                ? '<span class="pg-pill pg-tone-violet" data-ws-mail-draft-app>' . h(lang(array('string' => 'Kept by {var:1}', 'vars' => (string) $row['app_name']))) . '</span>'
+                ? ws_mail_draft_app_pill(lang(array('string' => 'Kept by {var:1}', 'vars' => (string) $row['app_name'])))
                 : '')
             . '<span class="ms-auto d-inline-flex gap-2">'
             . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-ws-mail-draft-open="' . $id . '">' . h(lang('Open draft')) . '</button>'
