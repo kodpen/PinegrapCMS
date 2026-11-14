@@ -26,4 +26,4 @@ description: A customer's WhatsApp message as a Workspace conversation (WA13, #9
 ## How was it verified?
 - `tests/workspace_mail_phone_test.php` (the step run twice in memory, box values, the Channel field, the card, offers, the customer line, wiring). No database write was run in the cloud session apart from the sandbox pictures.
 
-Related: docs/memory/workspace/mail-tables.md, docs/memory/platform/whatsapp-webhook-events.md, docs/memory/plans/whatsapp-channel-conversation-storage.md
+Related: docs/memory/workspace/mail-tables.md, docs/memory/platform/whatsapp-webhook-events.md, docs/memory/workspace/mail-phone-decisions.md

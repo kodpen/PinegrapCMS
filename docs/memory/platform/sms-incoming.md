@@ -5,7 +5,7 @@ module: sms_inbox
 ---
 
 ## Which providers receive?
-- `pg_sms_incoming_ways()` (`includes/fn/sms_inbox.php`): Twilio by webhook; Netgsm and İleti Merkezi by poll (WA16b). Facts: `plans/whatsapp-channel-incoming-sms.md`. One Channel field below the blocks (one posted `sms_channel`); only Twilio's block shows an address.
+- `pg_sms_incoming_ways()` (`includes/fn/sms_inbox.php`): Twilio by webhook; Netgsm and İleti Merkezi by poll (WA16b). Facts: `sms-incoming-providers.md`. One Channel field below the blocks (one posted `sms_channel`); only Twilio's block shows an address.
 
 ## How are Netgsm and İleti Merkezi asked?
 - `pg_sms_inbox_job()` in `job.php` after the SMS queue: only while the site's provider is a polled one, the Workspace on, the `sms` box on and its settings naming that provider; never on a demo site. Every 120 s (`PG_SMS_INBOX_EVERY`), reaching two days back (`PG_SMS_INBOX_REACH`); what was kept is a duplicate. The last ask is noted in the `connect_apps` row `sms_inbox` (checked, ok, logged); a failure logs one activity line an hour.

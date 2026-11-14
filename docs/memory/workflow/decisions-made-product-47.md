@@ -7,7 +7,7 @@ description: Decisions list, product part 47 (2026-11-12 on): WhatsApp as a chan
 - `decisions-made.md`; the generated `DECISIONS.md` lists every part's entries.
 
 ## Does WhatsApp become a message channel, and how far at first? (owner, 2026-11-12, #8950)
-- Yes, beside e-mail, for orders, forms and flows. Plan `plans/whatsapp-channel.md`.
+- Yes, beside e-mail, for orders, forms and flows. Plan `whatsapp-channel` (closed 2026-11-14; `platform/whatsapp-overview.md`).
 - Owner (2026-11-12): "sms türkiye için zorlayıcı oldu artık ilerişim eposta + whatsapp oldu o yüzden whatsapp entegrasyonunu geliştirelim sipariş ve formlar için olanak açalım".
 - Asked three questions by letters, the owner answered "W1a, W2a, W3a":
 - W1a: a site connects with its own Meta app and a permanent token, the card showing the steps. Not chosen: Kodpen's verified app in between; both.
