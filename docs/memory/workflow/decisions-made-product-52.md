@@ -7,7 +7,7 @@ description: Decisions made, product part 52: deleting a user ends the account's
 - What was wrong (#9016): `pg_user_delete()` left the account's cards open on a `user_id` that no longer exists. Such a card could not be voided (the customer's screen is gone) and Delete on it is refused (#6688, `decisions-made-product-27.md`).
 - Asked whether the delete should warn and void, refuse, or void without a word, the owner answered: "Mağaza sorusu hesap silindiginde kredi silinsin."
 - So: the open credit ends with the account. Deleting a user voids every card of the account that has a balance, at every door that deletes a user (Edit User, the users list's bulk delete, the API).
-- The architect's reading, told to him in the channel (message 2639): "silinsin" is the credit ending, not the row going. The card is voided through `pg_credit_void()` with the note "User deleted" and its audit line, and `user_id` is cleared before the user row goes, as privacy erasure does (`api/api-customer-credit.md`); the row is kept, as #6688 asks. No warning screen is added: he did not ask for one.
+- The architect's reading, told to him in the channel (message 2639): "silinsin" is the credit ending, not the row going. The card is voided through `pg_credit_void()` with the note "Account deleted" and its audit line, as privacy erasure does (`api/api-customer-credit.md`); the row is kept, as #6688 asks. As built: `commerce/user-delete-store-credit.md` (#9379). No warning screen is added: he did not ask for one.
 - Refused: refusing the delete while credit is open (bulk delete would stop on such accounts).
 
 ## May a store credit card whose account is gone be voided on Edit Gift Card? (architect, 2026-11-14, the owner's #6688 applied)
