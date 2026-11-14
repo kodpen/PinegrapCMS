@@ -1,6 +1,6 @@
 ---
 name: email-designs-ready
-description: The five ready e-mail designs (MA5d #9525): page trees in code, Use this design, the previews on the Templates tab drawn as sent, what MA5d2 adds
+description: The five ready e-mail designs (MA5d #9525): page trees in code, Use this design, the previews on the Templates tab drawn as sent in the site's colours (MA5d2)
 module: email_designs_ready
 ---
 
@@ -18,9 +18,10 @@ module: email_designs_ready
 - A preview is `messages_templates.php?preview=<key>`: `pg_email_ready_design_html()` draws the tree as a page body and runs the mail pass, so it shows what a campaign would store. Its frame is sandboxed (no script), a 640 px frame (wider than the phone rule) drawn at 37.5 %, taking no click (owner 2709: a design choice shows a preview). On a phone it fills the tile at half size, 200 px high.
 - The preview writes a sample recipient for merge fields (`pg_mail_preview_samples()`: Jane, Jane Doe, jane@example.com, translated; others left out); the design keeps the fields (channel 3238).
 
-## What does MA5d2 add?
-- The installed template's e-mail pages and earlier campaigns' designs offered as copies, and a ready design in the site's colours (the mail pass writes Bootstrap's hex for `var(--bs-primary,…)` today).
+## In which colours?
+- A new e-mail design (`?start=email`, a ready one or a copy) wears the site's palette, the one the home page's design wears (`pg_email_site_palette()`), unless `?palette=` is given; the previews are drawn in it too (MA5d2 #9542). The mail pass then writes that palette's colours (`email-designs.md`).
+- Copies of the template's e-mail pages and of earlier campaigns' pages: `email-designs-copies.md`.
 
 Test: `tests/email_designs_ready_test.php`, `tests/messages_templates_test.php`.
 
-Related: docs/memory/designer/email-designs.md, docs/memory/ui/messages-area-templates-tab.md
+Related: docs/memory/designer/email-designs.md, docs/memory/designer/email-designs-copies.md, docs/memory/ui/messages-area-templates-tab.md

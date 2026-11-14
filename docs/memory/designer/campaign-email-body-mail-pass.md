@@ -7,6 +7,7 @@ module: mail_pass, mail_html
 ## What does the mail pass do?
 - `pg_mail_pass($html)` (`includes/fn/mail_pass.php`, pure) runs on the e-mail render of an e-mail design before the body is stored. It takes out scripts, every `<style>` (the page CSS) and every `<link>`: mail programs drop linked sheets and most read no class rules, so a design carries its look inline.
 - Every `var(--x, fallback)` becomes its fallback, the innermost first; a `var()` without one stays. No mail program knows the page's custom properties.
+- `pg_mail_pass($html, $vars)`: a name given in `$vars` (the design's palette, `email-designs.md`) is written as that value instead, with or without a fallback; only a hex or a plain `rgb()`/`rgba()` value is written (`pg_mail_pass_value_ok()`), anything else keeps the fallback (MA5d2 #9542).
 - One head style goes in (`pg_mail_pass_head_style()`): under 620 px `.pg-mail-frame` takes the width, `.pg-mail-col` stacks, `.pg-mail-wide-only` hides. A program that drops it still shows the inline look.
 - It answers `html`, `has_footer` (the design has a block marked `data-pg-mail-footer`: the fixed campaign footer is then left out), `bytes` and `clipped` (over 102 KB, where Gmail cuts a mail, `pg_mail_pass_clip_bytes()`).
 - It writes no tables: the mail blocks' frame and columns are presentation tables already (`email-designs.md`). It runs only on an e-mail design's body (`pg_email_campaign_design_body()`).

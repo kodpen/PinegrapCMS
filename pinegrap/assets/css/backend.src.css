@@ -28112,6 +28112,20 @@ body.pg-measure-report #content {
 .pg-messages-row-pill {
   align-self: center;
 }
+/* A row's button (Make a copy) at its end, centred on the row. */
+.pg-messages-row-action {
+  align-self: center;
+  flex-shrink: 0;
+}
+/* The pages offered as copies, under the ready designs; split from them by
+   the card's line. */
+.pg-email-copies {
+  border-top: 1px solid var(--pg-border-color-translucent);
+  padding-top: 8px;
+}
+.pg-email-copies > .pg-card-sub {
+  margin: 0 12px 4px;
+}
 .pg-messages-card-head > form {
   margin: 0;
 }

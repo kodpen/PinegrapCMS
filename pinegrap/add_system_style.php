@@ -70,6 +70,9 @@ if (!$template && pg_design_framework_has($framework, 'legacy')) $framework = 'b
 $look = isset($_GET['look']) ? pg_design_look_key($_GET['look'])
                              : ($template ? pg_design_default_look() : '');
 $palette = isset($_GET['palette']) ? pg_design_palette_key($_GET['palette']) : '';
+// A new e-mail design wears the site's palette, so its canvas and the mail
+// it sends are in the site's colours.
+if ($start === 'email' && !isset($_GET['palette'])) $palette = pg_email_site_palette();
 
 // One of the template's assets ('css', 'js', 'fonts', 'head',
 // 'body_classes'), '' when it has none.
@@ -129,8 +132,14 @@ if (!$_POST) {
         'start_action'   => pg_designer_start_action($user, 0),
         // ?start=email: an e-mail design, its folder made on first use.
         'email_folder_id' => ($start === 'email') ? pg_email_designs_folder_id(true) : 0,
-        // ?ready=<key>: the new e-mail design starts as that ready design.
-        'email_tree'      => ($start === 'email') ? pg_email_ready_design_tree(isset($_GET['ready']) ? $_GET['ready'] : '') : null,
+        // ?ready=<key>: the new e-mail design starts as that ready design;
+        // ?copy=<page_id> as a copy of that page (a template's e-mail page or
+        // a campaign's), when it is offered as one.
+        'email_tree'      => ($start === 'email')
+            ? ((isset($_GET['copy']) && is_scalar($_GET['copy']) && (int) $_GET['copy'] > 0)
+                ? pg_email_design_copy_source((int) $_GET['copy'])
+                : pg_email_ready_design_tree(isset($_GET['ready']) ? $_GET['ready'] : ''))
+            : null,
     ));
 
     $liveform->remove_form();

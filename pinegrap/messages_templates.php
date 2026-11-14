@@ -7,8 +7,8 @@
  * listed with their state and text (includes/fn/messages_templates.php)
  * and still edited on the SMS Messages card. The WhatsApp templates are
  * listed as read from Meta, with their type, language, approval state and
- * a rejection's reason; Refresh reads them again. E-mail designs are
- * announced in a card of their own. The settings' texts, Refresh and the
+ * a rejection's reason; Refresh reads them again. The E-mail designs card
+ * shows the ready designs, the site's own and the pages to copy from. The settings' texts, Refresh and the
  * WhatsApp card are for role <= 2 only.
  *
  * @author      Erdal Güral (Kodpen)
@@ -27,8 +27,9 @@ include_once('liveform.class.php');
 $user = validate_user();
 validate_email_access($user);
 
-// A ready e-mail design's preview, drawn as it is sent, for the frames of
-// the E-mail designs card (sandboxed there: no script runs).
+// A ready e-mail design's preview, drawn as it is sent in the site's
+// colours (a new design starts in them), for the frames of the E-mail
+// designs card (sandboxed there: no script runs).
 if (isset($_GET['preview']) && is_string($_GET['preview'])) {
     if (!pg_email_ready_design_valid($_GET['preview'])) {
         http_response_code(404);
@@ -36,7 +37,7 @@ if (isset($_GET['preview']) && is_string($_GET['preview'])) {
     }
 
     header('Content-Type: text/html; charset=utf-8');
-    echo pg_email_ready_design_html($_GET['preview']);
+    echo pg_email_ready_design_html($_GET['preview'], pg_email_palette_vars(pg_email_site_palette()));
     exit;
 }
 
@@ -140,10 +141,15 @@ if ($templates_email_folder > 0) {
     );
 }
 
+// A designer also gets the template's e-mail pages and earlier campaigns'
+// pages to copy from.
+$templates_designer = ((int) $user['role'] <= 1);
+
 $body .= pg_messages_template_email_card(
     pg_messages_template_email_rows(is_array($templates_email_pages) ? $templates_email_pages : array()),
-    ((int) $user['role'] <= 1),
-    $templates_self
+    $templates_designer,
+    $templates_self,
+    $templates_designer ? pg_email_design_copy_list() : array()
 );
 
 echo pg_messages_tab_page('templates', $user, lang('E-mail designs and message texts to start a send from.'), $body);

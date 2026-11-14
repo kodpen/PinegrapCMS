@@ -155,3 +155,22 @@ function test_messages_templates_email_designs_card()
 	pg_assert_true(strpos($html, 'pg-email-own-title') < strpos($html, 'pg-email-ready-grid'), 'with some: one\'s own designs first');
 	pg_assert_contains(h(lang('Your own designs first, then the ready designs to start a new one from.')), $html, 'the line follows the order');
 }
+
+function test_messages_templates_email_copies()
+{
+	$own = pg_messages_template_email_rows(array());
+	$copies = array(
+		array('page_id' => 9, 'title' => 'Welcome <E-mail>', 'kind' => 'template', 'stamp' => 0),
+		array('page_id' => 21, 'title' => 'spring', 'kind' => 'campaign', 'stamp' => 0),
+	);
+	$html = pg_messages_template_email_card($own, true, '/x.php', $copies);
+	pg_assert_contains('href="add_system_style.php?start=email&amp;copy=9"', $html, 'a copy opens as a new e-mail design');
+	pg_assert_contains('Welcome &lt;E-mail&gt;', $html, 'its name, escaped');
+	pg_assert_contains(h(lang('From the template')), $html, 'where it comes from');
+	pg_assert_contains(h(lang('From a campaign')), $html, 'a campaign\'s design');
+	pg_assert_same(2, substr_count($html, h(lang('Make a copy'))), 'a button per page');
+	pg_assert_true(strpos($html, 'pg-email-ready-grid') < strpos($html, 'pg-email-copies'), 'after the ready designs');
+
+	pg_assert_false(strpos(pg_messages_template_email_card($own, true, '/x.php'), 'pg-email-copies') !== false, 'none: no list');
+	pg_assert_false(strpos(pg_messages_template_email_card($own, false, '/x.php', $copies), 'copy=') !== false, 'copies only for a designer');
+}

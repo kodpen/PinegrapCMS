@@ -198,3 +198,45 @@ function test_email_designs_check_line_for_ordinary_blocks()
 	pg_assert_contains("if (!root || !root.props || !root.props.pgEmail) return out;", $js, 'only in an e-mail design');
 	pg_assert_contains("rule: 'mail_block',", $js, 'its own rule');
 }
+
+function test_email_designs_palette_values()
+{
+	pg_assert_same(array(), pg_email_palette_vars_from('', ''), 'plain Bootstrap: nothing, the fallbacks stay');
+
+	$vars = pg_email_palette_vars_from('#047857', '#1f2937');
+	pg_assert_same('#047857', $vars['--bs-primary'], 'the primary');
+	pg_assert_same('#1f2937', $vars['--bs-secondary'], 'the secondary');
+	pg_assert_same('#ffffff', $vars['--pg-on-primary'], 'white text on a dark colour');
+	pg_assert_true(isset($vars['--bs-link-color']), 'the link colour');
+	foreach ($vars as $name => $value) {
+		pg_assert_true((bool) preg_match('/^--[a-z0-9-]+$/', $name), 'a name: ' . $name);
+		pg_assert_true((bool) preg_match('/^#[0-9a-f]{6}$/', $value), 'a hex colour only: ' . $name);
+	}
+
+	$pale = pg_email_palette_vars_from('#fde047', '#1f2937');
+	pg_assert_false($pale['--pg-on-primary'] === '#ffffff', 'dark text on a pale colour');
+	pg_assert_contains('color:var(--pg-on-primary,#ffffff)', pg_mail_block_styles()['button'], 'the button text follows the colour');
+}
+
+function test_email_designs_copy_tree()
+{
+	$tree = array('type' => 'root', 'props' => array('cssClass' => ''), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'p', 'text' => 'Hi'), 'children' => array()),
+		array('type' => 'shared_ref', 'props' => array('sharedId' => 4), 'children' => array()),
+	));
+	$copy = pg_email_design_copy_tree($tree);
+	pg_assert_same(1, $copy['props']['pgEmail'], 'the copy is an e-mail design');
+	pg_assert_same('', $copy['props']['cssClass'], 'the root keeps its props');
+	pg_assert_same($tree['children'], $copy['children'], 'the content as it was');
+	pg_assert_same(null, pg_email_design_copy_tree(array('type' => 'semantic')), 'not a page tree');
+	pg_assert_same(null, pg_email_design_copy_tree('x'), 'nothing');
+	pg_assert_same(array(4), pg_email_design_copy_shared_ids($tree), 'the shared components it places');
+
+	$pages = array(
+		array('page_id' => '9', 'page_name' => 'email-welcome'),
+		array('page_id' => '10', 'page_name' => 'email-welcome-2'),
+		array('page_id' => '11', 'page_name' => 'email-welcomer'),
+		array('page_id' => '12', 'page_name' => 'home'),
+	);
+	pg_assert_same(array(9 => 'Welcome E-mail', 10 => 'Welcome E-mail'), pg_email_design_template_matches(array('email-welcome' => 'Welcome E-mail'), $pages), 'a template page by its name, a taken name numbered');
+}

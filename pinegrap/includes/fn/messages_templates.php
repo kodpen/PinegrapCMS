@@ -83,9 +83,9 @@ function pg_messages_template_card($title, $sub, $button, $rows)
 
 /**
  * One row of a card: a tile, the title (a link when an address is given)
- * with a meta word at its right, at most two lines of text, a pill.
+ * with a meta word at its right, at most two lines of text, a pill, a button.
  *
- * @param array $row icon, tone, title, url, meta, text (markup), pill ('' for none), pill_tone
+ * @param array $row icon, tone, title, url, meta, text (markup), pill ('' for none), pill_tone, action (button markup, optional)
  * @return string
  */
 function pg_messages_template_row(array $row)
@@ -105,6 +105,8 @@ function pg_messages_template_row(array $row)
         . (((string) ($row['text'] ?? '') !== '') ? '<div class="pg-list-row-text">' . $row['text'] . '</div>' : '')
         . '</div>'
         . (((string) $row['pill'] !== '') ? '<span class="pg-pill pg-tone-' . h((string) $row['pill_tone']) . ' pg-messages-row-pill">' . h((string) $row['pill']) . '</span>' : '')
+        // A button at the row's end, HTML the caller built and escaped.
+        . (((string) ($row['action'] ?? '') !== '') ? '<span class="pg-messages-row-action">' . $row['action'] . '</span>' : '')
         . '</div>';
 }
 
@@ -323,9 +325,11 @@ function pg_messages_template_email_rows(array $pages)
  * @param array  $own     pg_messages_template_email_rows()
  * @param bool   $designs whether the user may make a design (role <= 1)
  * @param string $self    the tab's address, the previews' base
+ * @param array  $copies  pg_email_design_copy_list(): pages offered as
+ *                        copies, after the ready designs (designers only)
  * @return string
  */
-function pg_messages_template_email_card(array $own, $designs, $self)
+function pg_messages_template_email_card(array $own, $designs, $self, array $copies = array())
 {
     $ready = '';
 
@@ -355,6 +359,37 @@ function pg_messages_template_email_card(array $own, $designs, $self)
     }
 
     $grid = '<div class="pg-email-ready-grid">' . $ready . '</div>';
+
+    // The template's e-mail pages and earlier campaigns' pages, each opened
+    // as a copy: a new e-mail design, the page itself left as it is.
+    if ($designs && $copies) {
+        $list = '';
+
+        foreach ($copies as $copy) {
+            $from = ($copy['kind'] === 'template') ? lang('From the template') : lang('From a campaign');
+
+            if ($copy['stamp'] > 0) {
+                $from .= ' · ' . get_relative_time(array('timestamp' => (int) $copy['stamp'], 'format' => 'plain_text'));
+            }
+
+            $list .= pg_messages_template_row(array(
+                'icon' => ($copy['kind'] === 'template') ? 'bi-palette' : 'bi-send',
+                'tone' => ($copy['kind'] === 'template') ? 'violet' : 'teal',
+                'title' => (string) $copy['title'],
+                'url' => '',
+                'meta' => $from,
+                'text' => '',
+                'pill' => '',
+                'pill_tone' => 'gray',
+                'action' => '<a class="pg-button pg-button-quiet pg-button-sm" target="_blank" rel="noopener" href="add_system_style.php?start=email&amp;copy=' . (int) $copy['page_id'] . '"><i class="bi bi-copy" aria-hidden="true"></i>' . h(lang('Make a copy')) . '</a>',
+            ));
+        }
+
+        $grid .= '<div class="pg-email-copies">'
+            . '<h3 class="pg-field-label pg-email-own-title">' . h(lang('Copy an e-mail you have')) . '</h3>'
+            . '<p class="pg-card-sub">' . h(lang('A copy opens as a new e-mail design in your site\'s colours; the page it comes from stays as it is.')) . '</p>'
+            . $list . '</div>';
+    }
 
     // None of one's own yet: the ready designs, then the line saying so.
     if ($rows === '') {

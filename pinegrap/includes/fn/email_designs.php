@@ -13,7 +13,8 @@
  * (pg_mail_block_styles()). The canvas draws it from the same map's twin
  * (_SD_MAIL_STYLES in style_designer.src.js). Colours are written as
  * var(--x,#hex): the canvas follows the design's colours, and the mail pass
- * writes the hex (pg_mail_pass_var_fallbacks()).
+ * writes the colour of the design's palette, or else the hex
+ * (pg_mail_pass_var_fallbacks(), pg_email_palette_vars()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -52,7 +53,7 @@ function pg_mail_block_styles()
         'heading'    => 'margin:0 0 12px;' . $font . ';font-size:24px;line-height:1.3;font-weight:bold;color:var(--bs-emphasis-color,#000000)',
         'text'       => 'margin:0 0 16px;' . $font . ';font-size:16px;line-height:1.5;color:var(--bs-body-color,#212529)',
         'button_row' => 'margin:0 0 16px;text-align:center',
-        'button'     => 'display:inline-block;padding:12px 24px;border-radius:6px;background-color:var(--bs-primary,#0d6efd);color:#ffffff;' . $font . ';font-size:16px;font-weight:bold;line-height:1.2;text-decoration:none',
+        'button'     => 'display:inline-block;padding:12px 24px;border-radius:6px;background-color:var(--bs-primary,#0d6efd);color:var(--pg-on-primary,#ffffff);' . $font . ';font-size:16px;font-weight:bold;line-height:1.2;text-decoration:none',
         'picture'    => 'display:block;width:100%;max-width:100%;height:auto;border:0',
         'divider'    => 'height:0;margin:24px 0;border:0;border-top:1px solid var(--bs-border-color,#dee2e6)',
         'space'      => 'height:24px;line-height:24px;font-size:0',
@@ -333,4 +334,103 @@ function pg_mail_footer_fill($html, $web_url, $preferences_url, $address)
     return (string) preg_replace_callback('/(<([a-z0-9]+)\b[^>]*\sdata-pg-mail-address(?:=(["\'])[^"\']*\3)?[^>]*>).*?(<\/\2\s*>)/is', function ($m) use ($address) {
         return $m[1] . h($address) . $m[4];
     }, $html);
+}
+
+/**
+ * The colours of a palette as the mail pass writes them: the custom
+ * properties its stylesheet sets on a light page for the primary and the
+ * secondary colour (pg_design_palette_css()), hex values only. Empty for
+ * plain Bootstrap, so the blocks' fallbacks are written as before.
+ *
+ * @param string $primary   #rrggbb, '' for plain Bootstrap
+ * @param string $secondary #rrggbb
+ * @return array '--name' => '#rrggbb'
+ */
+function pg_email_palette_vars_from($primary, $secondary)
+{
+    $p = _pg_theme_rgb((string) $primary);
+    $s = _pg_theme_rgb((string) $secondary);
+
+    if (!$p || !$s) {
+        return array();
+    }
+
+    list($primary_vars) = _pg_theme_role('primary', $p);
+    list($secondary_vars) = _pg_theme_role('secondary', $s);
+    $vars = array();
+
+    foreach (array_merge($primary_vars, $secondary_vars) as $name => $value) {
+        if (preg_match('/^#[0-9a-f]{6}$/', strtolower((string) $value))) {
+            $vars[$name] = strtolower((string) $value);
+        }
+    }
+
+    return $vars;
+}
+
+/**
+ * The colours of a design's palette for the mail pass (none for plain
+ * Bootstrap or a design without a framework's theme).
+ *
+ * @param string $palette style.style_palette
+ * @return array pg_email_palette_vars_from()
+ */
+function pg_email_palette_vars($palette)
+{
+    $palette = pg_design_palette_key((string) $palette);
+
+    if ($palette === '') {
+        return array();
+    }
+
+    $colors = pg_design_palette_colors($palette);
+
+    return pg_email_palette_vars_from($colors['primary'], $colors['secondary']);
+}
+
+/**
+ * The palette of the site's own design, the one its home page wears: a new
+ * e-mail design starts in it and the ready designs are previewed in it.
+ * '' (plain Bootstrap) before the theme columns or without a home page.
+ *
+ * @return string
+ */
+function pg_email_site_palette()
+{
+    static $palette = null;
+
+    if ($palette !== null) {
+        return $palette;
+    }
+
+    $palette = '';
+
+    if (pg_design_look_ready()) {
+        $palette = pg_design_palette_key((string) db_value(
+            "SELECT style.style_palette FROM page
+            INNER JOIN style ON page.page_style = style.style_id
+            WHERE page.page_home = 'yes' ORDER BY page.page_id LIMIT 1"
+        ));
+    }
+
+    return $palette;
+}
+
+/**
+ * The palette a page's design wears, '' when none.
+ *
+ * @param int $page_id
+ * @return string
+ */
+function pg_email_page_palette($page_id)
+{
+    if (!pg_design_look_ready()) {
+        return '';
+    }
+
+    return pg_design_palette_key((string) db_value(
+        "SELECT style.style_palette FROM page
+        INNER JOIN style ON page.page_style = style.style_id
+        WHERE page.page_id = '" . (int) $page_id . "' LIMIT 1"
+    ));
 }
