@@ -12,7 +12,7 @@ description: Plan (owner 2026-11-14): an agent concludes a discussion when a per
 - An agent's answer is refused in a concluded discussion, so the answer is written first.
 
 ## Which steps?
-- AD1 (M) Concluding on request. The answer to a request asked in a discussion may say "conclude": the site posts the answer (or takes `no_answer`), then concludes the discussion. Only where the request's asker is a person in the discussion; any other request is refused with a reason and the answer is still written.
+- AD1 (M) — done, #9404: `ws_thread_close_for_agent()` (threads.php), `conclude` on the answer route and on the model's answer tool, the sentence `ws_thread_agent_close_sentence()`. Concluding on request. The answer to a request asked in a discussion may say "conclude": the site posts the answer (or takes `no_answer`), then concludes the discussion. Only where the request's asker is a person in the discussion; any other request is refused with a reason and the answer is still written.
   - One function beside `ws_thread_close()`; `closed_by` keeps the person who asked; the system line names the agent and that person ("… concluded the discussion at …'s request").
   - Reached alike by an application agent (the answer route, its MCP tool) and a model agent (its tool). The request's brief says in one sentence, from one source, that the agent may conclude when asked.
   - Tests: the asker a person in it, a person not in it, a guest, another agent; an already concluded discussion; `no_answer` with conclude.
