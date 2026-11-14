@@ -2850,6 +2850,7 @@
     "Show a pairing code": "Eşleştirme kodu göster",
     "Show address": "Adresi göster",
     "Show all": "Tümünü göster",
+    "Show all ({1})": "Tümünü göster ({1})",
     "Show all ({var:1})": "Tümünü göster ({var:1})",
     "Show all comments (featured filter only; the link drops otherwise)": "Tüm yorumları göster (yalnızca öne çıkanlar süzgecinde; yoksa bağlantı kaldırılır)",
     "Show all results before Visitor filters results by browsing or searching": "Ziyaretçi, sonuçlara göz atarak veya arayarak filtreleme yapmadan tüm sonuçları göster",

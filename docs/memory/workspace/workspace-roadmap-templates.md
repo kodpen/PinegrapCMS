@@ -18,14 +18,15 @@ description: Team roadmap templates (PC12, #9562): Save as team template, the tw
 - Deleted by the maker, or by a manager (roles 0 to 2; Designer 1 is above Manager 2) once the maker's account is gone (`ws_roadmap_template_can_delete()`, `ws_people()` gives `gone`). Owner (2026-11-14): the template stays for the team after the maker's account is deleted and nobody changes it; it never blocks an account's deletion (`pg_user_delete()` does not touch it). Its row shows "Former member".
 
 ## How is one made?
-- "Save as team template" under the roadmap of the person's own saved plan (`workspace_my_calendar_roadmap.js`): it saves the drawer first, then `ws_roadmap_template_save`. A maker who already has templates picks "As a new template" or "In place of: <title>" (one of their own) and "Save the template". Toast: "Saved as a team template. The team can use it under New roadmap on a customer's card."
+- "Save as team template" under the roadmap of the person's own saved plan (`workspace_my_calendar_roadmap.js`): it saves the drawer first, then `ws_roadmap_template_save`. A maker who already has templates picks "As a new template" or "In place of: <title>" (one of their own) and "Save the template". The toast names the template.
+- Architect (look, channel 3574): one template control at a time: while the chooser is open, "Save as team template" is hidden and the chooser has "Save the template" and "Cancel" (which brings the first button back).
 
 ## How is one used?
-- "New roadmap" on a customer's card lists "Team templates" after "Copy one of my plans": the 20 latest (`WS_ROADMAP_TEMPLATE_LIST_ROWS`), each with "<n> steps · <maker>" and, for whoever may delete it, a trash button ("Delete the template", asks first; the roadmaps made from it stay).
+- "New roadmap" on a customer's card lists "Team templates" after "Copy one of my plans": up to 100, the latest first (`WS_ROADMAP_TEMPLATE_LIST_ROWS`); the first five show, then "Show all (n)" (architect, 3574). Each row: "<n> steps · <maker>" (the name `ws_people()` gives) and, for whoever may delete it, a trash button ("Delete the template"). It asks first with the panel's confirm, naming the template and saying it is removed for the whole team; the roadmaps made from it stay.
 - A template's link opens My calendar with `&template=<id>`; `ws_roadmap_template_draft` fills the New plan drawer (`ws_roadmap_template_shift()`, pure): it starts today, the earliest step today and each other step its offset later, no note, the card's customer, Only me. Nothing is written until Save.
 - Not in the API or MCP (the test checks `api.php` names none).
 
 ## What does "Move the following steps too" do?
-- A switch under the steps (shown with two dated steps or more, off by default). While on, changing a step's day moves every later step (by position) with a day by the same calendar days; a step with no day keeps none. Pure `PGWsRoadmap.shiftFollowing()`, tested in Node. Nothing is stored: the steps are saved as before.
+- A switch under the steps (shown with two dated steps or more, off by default), with the muted line "Changing a step's day moves the later steps by the same number of days." While on, changing a step's day moves every later step (by position) with a day by the same calendar days; a step with no day keeps none. Pure `PGWsRoadmap.shiftFollowing()`, tested in Node. Nothing is stored: the steps are saved as before.
 
 Tests: `tests/workspace_roadmap_templates_test.php`.

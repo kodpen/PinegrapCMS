@@ -29,7 +29,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 const WS_ROADMAP_TEMPLATE_MAX = 200;
 
 /** How many of the team's templates "New roadmap" lists, the latest first. */
-const WS_ROADMAP_TEMPLATE_LIST_ROWS = 20;
+const WS_ROADMAP_TEMPLATE_LIST_ROWS = 100;
 
 /** The largest step distance a template keeps, in days (SMALLINT UNSIGNED). */
 const WS_ROADMAP_TEMPLATE_OFFSET_MAX = 65535;
@@ -341,7 +341,7 @@ function ws_roadmap_template_save($viewer, $plan_id, $template_id = 0)
 
     db("INSERT INTO ws_roadmap_template_steps (template_id, position, title, day_offset, has_day) VALUES " . implode(', ', $rows));
 
-    return array('ok' => true, 'template_id' => $template_id);
+    return array('ok' => true, 'template_id' => $template_id, 'title' => $t['title']);
 }
 
 /**
@@ -418,7 +418,9 @@ function ws_roadmap_template_js_strings()
         'template_save_new'    => lang('As a new template'),
         'template_keep'        => lang('Save the template'),
         'template_save_over'   => lang('In place of: {1}'),
-        'template_saved'       => lang('Saved as a team template. The team can use it under New roadmap on a customer\'s card.'),
+        'template_saved'       => lang('"{1}" is saved as a team template. The team can use it under New roadmap on a customer\'s card.'),
+        'template_cancel'      => lang('Cancel'),
+        'steps_move_help'      => lang('Changing a step\'s day moves the later steps by the same number of days.'),
         'steps_move_following' => lang('Move the following steps too'),
     );
 }

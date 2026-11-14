@@ -123,6 +123,8 @@
         moveRow.appendChild(move);
         moveRow.appendChild(document.createTextNode(s('steps_move_following')));
         root.appendChild(moveRow);
+        var moveHelp = el('div', 'pg-text-meta ws-roadmap-move-help', s('steps_move_help'));
+        root.appendChild(moveHelp);
 
         // "Save as team template": the owner's saved plan only.
         keep.type = 'button';
@@ -159,8 +161,8 @@
                     return;
                 }
 
-                return h.api('ws_roadmap_template_save', { plan_id: roadmap.plan_id, template_id: templateId }).then(function () {
-                    h.toast(s('template_saved'), 'success');
+                return h.api('ws_roadmap_template_save', { plan_id: roadmap.plan_id, template_id: templateId }).then(function (result) {
+                    h.toast(fill(s('template_saved'), [result.title]), 'success');
                     hooks.reopen(roadmap.plan_id);
                 });
             }).catch(h.fail);
@@ -178,14 +180,27 @@
             mine.forEach(function (one) {
                 pick.appendChild(new Option(fill(s('template_save_over'), [one.title]), String(one.id)));
             });
+            var cancel = el('button', 'pg-button pg-button-ghost pg-button-sm', s('template_cancel'));
+
             go.type = 'button';
             go.addEventListener('click', function () {
                 go.disabled = true;
                 keepAs(parseInt(pick.value, 10) || 0);
             });
+            // One save at a time: the first button gives way while the
+            // chooser is open, and Cancel brings it back.
+            cancel.type = 'button';
+            cancel.addEventListener('click', function () {
+                chooser.classList.add('d-none');
+                h.clear(chooser);
+                keep.classList.remove('d-none');
+                keep.focus();
+            });
             chooser.appendChild(pick);
             chooser.appendChild(go);
+            chooser.appendChild(cancel);
             chooser.classList.remove('d-none');
+            keep.classList.add('d-none');
             pick.focus();
         }
 
@@ -194,7 +209,8 @@
 
             add.classList.toggle('d-none', !editable);
             moveRow.classList.toggle('d-none', !editable || dated < 2);
-            keep.classList.toggle('d-none', !editable || !plan || !plan.id || !steps.length);
+            moveHelp.classList.toggle('d-none', !editable || dated < 2);
+            keep.classList.toggle('d-none', !editable || !plan || !plan.id || !steps.length || !chooser.classList.contains('d-none'));
             foot.classList.toggle('d-none', !editable);
         }
 

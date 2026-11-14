@@ -56,6 +56,7 @@
     "\"active\" on the current language, empty otherwise": "Geçerli dilde \"active\", diğerlerinde boş",
     "\"earlier\" or \"later\" is required.": "\"Önce\" veya \"sonra\" gereklidir.",
     "\"page\" on the current language, empty otherwise": "Geçerli dilde \"page\", diğerlerinde boş",
+    "\"{1}\" is saved as a team template. The team can use it under New roadmap on a customer's card.": "\"{1}\" ekip şablonu olarak kaydedildi. Ekip onu bir müşterinin kartında Yeni yol haritası altında kullanabilir.",
     "\"{var:1}\" has no {var:2} widget for this yet. Add one to that page, or the links open a page that does not show the record.": "\"{var:1}\" sayfasında bunun için henüz {var:2} widget'ı yok. O sayfaya bir tane ekleyin; yoksa linkler kaydı göstermeyen bir sayfa açar.",
     "\"{var:1}\" in the report column is neither key_code nor offer_code.": "Rapor sütunundaki \"{var:1}\" ne key_code ne offer_code.",
     "\"{var:1}\" in the {var:2} column is neither yes nor no.": "{var:2} sütunundaki \"{var:1}\" ne evet ne hayır.",

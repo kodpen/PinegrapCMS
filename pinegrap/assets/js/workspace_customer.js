@@ -427,6 +427,8 @@
     // The team's roadmap templates under "New roadmap": each fills the New
     // plan drawer, the first step today; its maker (or a manager, once the
     // maker's account is gone) may delete it here.
+    var TEMPLATE_ROWS = 5;
+
     function templatesPart(h, offer, part) {
         var templates = offer.templates || [];
 
@@ -436,8 +438,10 @@
 
         part.appendChild(h.el('div', 'small fw-semibold mt-5 mb-1', h.t('cust_roadmap_templates')));
 
-        templates.forEach(function (template) {
-            var row = h.el('div', 'd-flex align-items-center gap-2 ws-roadmap-template');
+        var rows = [];
+
+        templates.forEach(function (template, index) {
+            var row = h.el('div', 'd-flex align-items-center gap-2 ws-roadmap-template' + (index >= TEMPLATE_ROWS ? ' d-none' : ''));
             var use = h.el('a', 'btn btn-sm btn-link px-0 text-start text-truncate flex-grow-1');
 
             use.href = offer.new_url + '&template=' + template.id;
@@ -460,7 +464,7 @@
                         }
 
                         h.api('ws_roadmap_template_delete', { template_id: template.id }).then(function () {
-                            offer.templates = templates.filter(function (one) { return one.id !== template.id; });
+                            offer.templates = (offer.templates || []).filter(function (one) { return one.id !== template.id; });
                             row.remove();
                         }).catch(h.fail);
                     });
@@ -468,8 +472,20 @@
                 row.appendChild(remove);
             }
 
+            rows.push(row);
             part.appendChild(row);
         });
+
+        // The first five, then the rest on "Show all (n)".
+        if (templates.length > TEMPLATE_ROWS) {
+            var all = h.button('btn btn-sm btn-link px-0', h.t('cust_template_all', templates.length));
+
+            all.addEventListener('click', function () {
+                rows.forEach(function (row) { row.classList.remove('d-none'); });
+                all.remove();
+            });
+            part.appendChild(all);
+        }
     }
 
     function card(channel, h) {

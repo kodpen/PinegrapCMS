@@ -4833,7 +4833,7 @@ function ws_handle_action($action, $request)
         case 'ws_roadmap_template_save':
             $result = ws_roadmap_template_save($viewer, (int) ($request['plan_id'] ?? 0), (int) ($request['template_id'] ?? 0));
 
-            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('template_id' => $result['template_id']));
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('template_id' => $result['template_id'], 'title' => $result['title']));
 
         case 'ws_roadmap_template_delete':
             $result = ws_roadmap_template_delete($viewer, (int) ($request['template_id'] ?? 0));
