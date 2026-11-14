@@ -26,8 +26,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *
  * @param array      $viewer
  * @param array|null $flags  what the gates found, for a test (notes,
- *                           calendar_feed, actions, messages, flows, mcp, mail,
- *                           mail_unread, base);
+ *                           calendar_feed, actions, messages, flows, mcp, base);
  *                           null asks them
  * @return array[] head (the settings gear beside the search), top (Today,
  *                 the one place over the channels), tools (the tiles), more
@@ -54,12 +53,7 @@ function ws_nav_groups($viewer, $flags = null)
             // Each person's own accounts on the MCP servers and their tool
             // forms, while a server is on (mcp_form.php).
             'mcp'           => function_exists('ws_mcp_active_servers') && (bool) ws_mcp_active_servers(),
-            // A mailbox writes into a channel the person reads (mail_list.php).
-            'mail'          => function_exists('ws_mail_list_visible') && ws_mail_list_visible($viewer),
         );
-
-        // The tile's number: the open conversations unread for the person (mail_reads.php).
-        $flags['mail_unread'] = ($flags['mail'] && function_exists('ws_mail_unread_count')) ? ws_mail_unread_count($viewer) : 0;
     }
 
     $base = isset($flags['base']) ? (string) $flags['base'] : OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
@@ -95,10 +89,8 @@ function ws_nav_groups($viewer, $flags = null)
     $groups['tools'][] = array('key' => 'board', 'label' => lang('Planning Board'), 'short' => lang('Board'), 'icon' => 'bi-calendar-week', 'url' => $base . 'workspace_board.php');
     $groups['tools'][] = array('key' => 'timeline', 'label' => lang('Decision Timeline'), 'short' => lang('Decisions'), 'icon' => 'bi-clock-history', 'url' => $base . 'workspace_timeline.php');
 
-    if (!empty($flags['mail'])) {
-        $groups['tools'][] = array('key' => 'mail', 'label' => lang('E-mails'), 'icon' => 'bi-envelope', 'url' => $base . 'workspace_mail.php',
-            'count' => (int) ($flags['mail_unread'] ?? 0));
-    }
+    // E-mail is read in Communication › Incoming e-mail (messages_mail.php),
+    // so the list has no tile for it.
 
     // Behind More: the screens visited now and then. Scheduled actions are
     // staff's (scheduled.php); everybody else finds their own scheduled
@@ -165,7 +157,6 @@ function ws_side_screen($script)
         'workspace_timeline.php'      => 'timeline',
         'workspace_flows.php'         => 'flows',
         'workspace_mcp.php'           => 'mcp',
-        'workspace_mail.php'          => 'mail',
         'workspace_settings.php'      => 'settings',
         'settings_workspace_team.php'       => 'settings',
         'settings_workspace_assistants.php' => 'settings',

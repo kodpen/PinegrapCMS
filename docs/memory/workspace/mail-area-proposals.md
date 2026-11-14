@@ -20,5 +20,5 @@ description: Incoming e-mail in the messages area as decided after MA10a (#9077,
 - Its "Open e-mail" button is a plain link to the area's conversation address, so it works without the script.
 
 ## In which steps? (decided)
-- MA10b (Workspace on): the tab, list and conversation in the area; the Mailboxes card's move; the card as above; the Workspace menu's E-mails entry leaving, its redirects pointing at the area (`ws_mail_room_redirect()`, `ws_mail_room_url()`, `ws_mail_notice_url()`); an answer marking the card; an HTML body for a written e-mail.
+- MA10b (Workspace on, done #9453, `ui/messages-area-mail-tab.md`): the tab, list and conversation in the area; the Mailboxes category; the card as above; the Workspace menu's E-mails entry gone, `ws_mail_room_url()` (and so `ws_mail_room_redirect()`, `ws_mail_notice_url()`) naming the area; an answer marking the card. MA10b2: an HTML body for a written e-mail.
 - MA10c (after MA10b; the flows' gate (#9109, `automation-flows-gate.md`) is set the same way): `ws_mail_on()` and its callers, the job's passes, the room-only box form, the bell with the Workspace off, a test that every `ws_mail_*` entry asks `ws_mail_on()`.

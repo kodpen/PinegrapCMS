@@ -75,6 +75,7 @@ function get_help_url($properties = array())
         'settings_seo'        => 'site-settings#seo',
         'settings_languages'  => 'site-settings#languages',
         'settings_contact'    => 'site-settings#communication',
+        'settings_mailboxes'  => 'workspace-cont#e-mails',
         'settings_security'   => 'site-settings#security',
         'settings_firewall'   => 'site-settings#firewall',
         'settings_commerce'   => 'site-settings#commerce',
@@ -480,6 +481,7 @@ function get_help_url($properties = array())
         'workspace_flows'         => 'workspace-cont#flows',
         'workspace_wtables'       => 'workspace-cont#workflow-tables',
         'workspace_mail'          => 'workspace-cont#e-mails',
+        'messages_mail'           => 'workspace-cont#e-mails',
         'workspace_calendar_feed' => 'workspace#work-calendar-subscription',
         'workspace_mcp'           => 'api#mcp',
 

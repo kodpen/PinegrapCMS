@@ -93,9 +93,9 @@ function test_workspace_mail_room_plan()
 
 function test_workspace_mail_room_url()
 {
-	pg_assert_same('/panel/workspace_mail.php?view=all&conversation=12', ws_mail_room_url('/panel/', 12), 'one conversation, whatever its status');
-	pg_assert_same('/panel/workspace_mail.php?view=all&box=4', ws_mail_room_url('/panel/', 0, 4), 'the mail of one mailbox');
-	pg_assert_same('/panel/workspace_mail.php?view=all', ws_mail_room_url('/panel/'));
+	pg_assert_same('/panel/messages_mail.php?view=all&conversation=12', ws_mail_room_url('/panel/', 12), 'one conversation, whatever its status');
+	pg_assert_same('/panel/messages_mail.php?view=all&box=4', ws_mail_room_url('/panel/', 0, 4), 'the mail of one mailbox');
+	pg_assert_same('/panel/messages_mail.php?view=all', ws_mail_room_url('/panel/'));
 }
 
 function test_workspace_mail_room_notice_of_a_channel_leads_to_its_card()
