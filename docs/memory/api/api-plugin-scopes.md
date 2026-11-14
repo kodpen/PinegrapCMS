@@ -9,7 +9,7 @@ description: The 'moves_money' route mark and api_plugin_scopes(), the scopes an
 - Marked: `returns.update`, `orders.labels.create`, `orders.create`, `gift_cards.create/update/delete`, `customers.credit.issue/void`, `customers.subscriptions.resume`, `commissions.update`, `erp.cash_transfers.create`, `erp.cheques.create/step`, `erp.expenses.pay`, `erp.receipts.create/cancel`. The test pins this list, so a mark cannot be dropped in silence.
 
 ## What is `api_plugin_scopes()`?
-- In `includes/api/scopes.php`: every group's read except `api_assistant_scopes_left_out()`, plus the writes of `api_plugin_writes()` (bookings, calendars, campaigns, comments, contact groups, erp, files, forms, inventory, offers, pages, products, store, tasks, translations, workspace).
+- In `includes/api/scopes.php`: every group's read except `api_assistant_scopes_left_out()`, plus the writes of `api_plugin_writes()` (bookings, calendars, campaigns, comments, contact groups, erp, files, forms, inventory, offers, pages, products, store, tasks, translations, workspace, and `workspace:mail_send`).
 - Never in it: `orders:write`, `gift_cards:write`, `erp_cash:write`, `commissions:write`, `customers:write`, `webhooks:manage`, `account:write`, `users:write`.
 - The test fails when a marked route sits under a scope of the set; it builds the scope groups from the routes, so module scopes count without a database.
 

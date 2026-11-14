@@ -2077,6 +2077,7 @@
     "Sending to this country is not enabled on the Twilio account (Messaging › Settings › Geo permissions).": "Twilio hesabında bu ülkeye gönderim açık değil (Messaging › Settings › Geo permissions).",
     "Sending…": "Gönderiliyor…",
     "Sends": "Gönderimler",
+    "Sends e-mail from the Workspace mailboxes in your name": "Workspace e-posta kutularından sizin adınıza e-posta gönderir",
     "Sends one notification to this device now, so you can see whether it arrives.": "Bu cihaza hemen bir bildirim gönderir; ulaşıp ulaşmadığını böyle görürsünüz.",
     "Sends or writes outside the flow": "Akışın dışına gönderir veya yazar",
     "Sends page #{var:1} as its body, filled as a campaign fills it; the text above is not sent.": "Gövde olarak #{var:1} numaralı sayfayı, bir kampanyanın doldurduğu gibi doldurup gönderir; yukarıdaki metin gönderilmez.",

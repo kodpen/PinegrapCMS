@@ -15,7 +15,7 @@ description: The three external API callers (application key, team devices sessi
 
 ## Which scopes does each hold? (computed on every call, never stored)
 - Key: its scopes ∩ what the owner may delegate (`api_effective_scopes()`).
-- Device: the device app's ceiling ∩ owner, never `webhooks:manage`, always `account:read` and `account:write` (`api_device_scopes()`).
+- Device: the device app's ceiling ∩ owner, never `webhooks:manage`, always `account:read` and `account:write`, `workspace:mail_send` with `workspace:write` (`api_device_scopes()`).
 - Connection: consented ∩ OAuth ceiling ∩ owner (`pg_oauth_effective_scopes()`): no `webhooks:manage`, no automatic `account:*`.
 - A person's own endpoints (notifications, devices, push) ask `account:read`/`account:write`; a server application holds them only when the operator grants them.
 

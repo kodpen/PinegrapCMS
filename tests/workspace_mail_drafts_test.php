@@ -122,6 +122,7 @@ function test_ws_mail_draft_routes()
 		'workspace.mail_drafts.get'         => array('GET', '/workspace/mail/drafts/{id}', 'workspace:read'),
 		'workspace.mail_drafts.create'      => array('POST', '/workspace/mail/drafts', 'workspace:write'),
 		'workspace.mail_drafts.update'      => array('POST', '/workspace/mail/drafts/{id}', 'workspace:write'),
+		'workspace.mail_drafts.send'        => array('POST', '/workspace/mail/drafts/{id}/send', 'workspace:mail_send'),
 		'workspace.mail_drafts.delete'      => array('DELETE', '/workspace/mail/drafts/{id}', 'workspace:write'),
 		'workspace.mail_drafts.delete_post' => array('POST', '/workspace/mail/drafts/{id}/delete', 'workspace:write'),
 	);
@@ -143,7 +144,7 @@ function test_ws_mail_draft_routes()
 	foreach ($routes as $id => $route) {
 		pg_assert_same($id !== 'workspace.mail_drafts.delete_post', pg_mcp_route_is_offered($route), $id . ' as a tool');
 
-		if (strpos($id, '.delete') === false) {
+		if ((strpos($id, '.delete') === false) && ($id !== 'workspace.mail_drafts.send')) {
 			pg_assert_contains('never sent by itself', $route['description'], $id . ' says a draft is not sent');
 		}
 	}
@@ -202,4 +203,31 @@ function test_ws_mail_draft_is_never_read_as_sent()
 	pg_assert_same('sent', ws_mail_send_state(array('direction' => 'out', 'send_state' => '')), 'an answer from before the send state is still sent');
 	pg_assert_contains("send_state <> 'draft'", ws_mail_drafts_test_source('ws_mail_send_last_hour'), 'a draft does not count against the hourly limit');
 	pg_assert_contains('ws_mail_drafts_excluded_sql(', ws_mail_drafts_test_source('ws_mail_list_where'), 'the list\'s search does not find a draft');
+}
+
+function test_ws_mail_draft_send_is_the_persons()
+{
+	$source = ws_mail_drafts_test_source('ws_api_mail_drafts_send');
+	$gate = strpos($source, 'ws_api_mail_send_gate()');
+	$send = strpos($source, 'ws_api_mail_send_checked(');
+	$delete = strpos($source, 'ws_mail_draft_delete(');
+
+	pg_assert_true(($gate !== false) && ($send !== false) && ($delete !== false) && ($gate < $send) && ($send < $delete), 'the person\'s, the panel\'s send path, then the draft goes');
+	pg_assert_contains('true)', $source, 'only one who may change the draft sends it');
+}
+
+function test_ws_api_mail_draft_mail()
+{
+	$reply = ws_api_mail_draft_mail(array('conversation_id' => 7, 'box_id' => 2, 'to_list' => 'x@example.com', 'cc_list' => 'c@example.com',
+		'bcc_list' => '', 'subject' => 'S', 'body_text' => 'Thanks'), array('send_anyway' => true, 'channel_id' => 9));
+
+	pg_assert_same(array('conversation_id' => 7, 'cc' => 'c@example.com', 'bcc' => '', 'text' => 'Thanks', 'files' => array(), 'send_anyway' => true), $reply,
+		'an answer goes to its conversation\'s customer: To and subject are the conversation\'s');
+}
+
+function test_ws_mail_send_scope_is_offered_but_never_to_a_key()
+{
+	pg_assert_true(in_array('workspace:mail_send', array_column(ws_scope_groups(), 'write'), true), 'a row on the consent screen');
+	pg_assert_true(in_array('workspace:mail_send', api_plugin_writes(), true), 'in the assistant plugin\'s set');
+	pg_assert_contains("'workspace:mail_send'", ws_mail_drafts_test_source('api_device_scopes'), 'a devices session keeps sending as before');
 }

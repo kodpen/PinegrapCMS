@@ -122,14 +122,13 @@ function ws_mail_api_routes()
             'id'          => 'workspace.mail_conversations.reply',
             'method'      => 'POST',
             'path'        => '/workspace/mail/conversations/{id}/reply',
-            'scope'       => 'workspace:write',
+            'scope'       => 'workspace:mail_send',
             'handler'     => 'ws_api_mail_conversations_reply',
             'dry_run'     => true,
-            'mcp'         => false,
             'returns'     => 'WorkspaceMail',
             'status'      => 201,
             'summary'     => 'Answer a conversation by e-mail or WhatsApp',
-            'description' => 'Sends text to the conversation\'s customer from its mailbox\'s address, with the person\'s name under it and the customer\'s last mail quoted, as "Reply by e-mail" on the card does; the answer is drawn under the card and the conversation waits for the customer. Only the person\'s own team devices session (POST /auth/login) may: an application key or an OAuth connection is refused with 403, and it is no MCP tool, since an assistant never writes to a customer. 403 also when the person may not write in the channel. 409 cannot_send when the mailbox cannot send (switched off, no sending server, the site\'s mail settings for another domain, no address to answer, as for a WhatsApp or SMS conversation; the reason in the message); 409 not_sent when the sending server refused it. Send an Idempotency-Key: a retry after a timeout must not mail the customer twice. copy_kept is false when the mailbox\'s sent folder kept no copy (null on a mail read back). id is 0 in the rare case the mail left but its record could not be written. A WhatsApp conversation (transport whatsapp) is answered by WhatsApp instead, as "Reply by WhatsApp" on the card does: plain text of at most 4096 characters, only inside the 24 hours after the customer\'s last message (WhatsApp takes free text only then; after them 409 cannot_send). The answer is queued for the general job and comes back with send_state queued (failed when the queue refused it, with send_error) and copy_kept null; GET the conversation later for its outcome. 409 cannot_send also while WhatsApp is not set up, and on a demonstration site.',
+            'description' => 'Sends text to the conversation\'s customer from its mailbox\'s address, with the person\'s name under it and the customer\'s last mail quoted, as "Reply by e-mail" on the card does; the answer is drawn under the card and the conversation waits for the customer. It is sent in the person\'s name, by the person\'s own team devices session (POST /auth/login) or by an OAuth connection the person allowed to send e-mail (workspace:mail_send); an application key is refused with 403, since an assistant working on its own never writes to a customer: it keeps a draft (POST /workspace/mail/drafts). The site\'s activity log names the application it went through. 403 also when the person may not write in the channel. 409 cannot_send when the mailbox cannot send (switched off, no sending server, the site\'s mail settings for another domain, no address to answer, as for a WhatsApp or SMS conversation; the reason in the message); 409 not_sent when the sending server refused it. Send an Idempotency-Key: a retry after a timeout must not mail the customer twice. copy_kept is false when the mailbox\'s sent folder kept no copy (null on a mail read back). id is 0 in the rare case the mail left but its record could not be written. A WhatsApp conversation (transport whatsapp) is answered by WhatsApp instead, as "Reply by WhatsApp" on the card does: plain text of at most 4096 characters, only inside the 24 hours after the customer\'s last message (WhatsApp takes free text only then; after them 409 cannot_send). The answer is queued for the general job and comes back with send_state queued (failed when the queue refused it, with send_error) and copy_kept null; GET the conversation later for its outcome. 409 cannot_send also while WhatsApp is not set up, and on a demonstration site.',
             'params'      => array($id, array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_MAIL_REPLY_MAX, 'required' => true, 'description' => 'The answer as plain text.')),
         ),
 
@@ -150,14 +149,13 @@ function ws_mail_api_routes()
             'id'          => 'workspace.mail_messages.send',
             'method'      => 'POST',
             'path'        => '/workspace/mail/messages',
-            'scope'       => 'workspace:write',
+            'scope'       => 'workspace:mail_send',
             'handler'     => 'ws_api_mail_messages_send',
             'dry_run'     => true,
-            'mcp'         => false,
             'returns'     => 'WorkspaceMailConversation',
             'status'      => 201,
             'summary'     => 'Send a new e-mail from a mailbox',
-            'description' => 'Writes a new e-mail as New e-mail on the E-mails screen does: from a mailbox the person may send from (one that can send, whose channel, or a channel one of its routes writes to, the person may write in), kept as a new conversation whose card is in channel_id (the mailbox\'s own channel when left out), its customer the first To address, waiting for an answer and held by the person. The text gets the person\'s name and the mailbox\'s Signature under it. The mail goes through the mail queue: the answer is the conversation with the mail, send_state queued while it waits, sent once it left, failed with send_error when it could not; the E-mails screen offers Send again. Only the person\'s own team devices session (POST /auth/login) may: an application key or an OAuth connection is refused with 403, and it is no MCP tool, since an assistant never sends mail. No files yet. To, Cc and Bcc together hold at most ' . WS_MAIL_SEND_ADDRESSES . ' addresses, separated by commas; one that bounced before is refused by name (422 to). 403 when the person may not send from the mailbox or keep the mail in the channel; 429 after ' . WS_MAIL_SEND_HOURLY . ' mails in an hour. An address whose domain has no mail or web record in DNS is warned of with 409 unknown_domain, which names the domain and a near spelling of the mailbox\'s own domain when there is one: correct it, or send the same call with send_anyway true. Send an Idempotency-Key: a retry after a timeout must not send the mail twice.',
+            'description' => 'Writes a new e-mail as New e-mail on the E-mails screen does: from a mailbox the person may send from (one that can send, whose channel, or a channel one of its routes writes to, the person may write in), kept as a new conversation whose card is in channel_id (the mailbox\'s own channel when left out), its customer the first To address, waiting for an answer and held by the person. The text gets the person\'s name and the mailbox\'s Signature under it. The mail goes through the mail queue: the answer is the conversation with the mail, send_state queued while it waits, sent once it left, failed with send_error when it could not; the E-mails screen offers Send again. It is sent in the person\'s name, by the person\'s own team devices session (POST /auth/login) or by an OAuth connection the person allowed to send e-mail (workspace:mail_send); an application key is refused with 403, since an assistant working on its own never sends mail: it keeps a draft (POST /workspace/mail/drafts). The site\'s activity log names the application it went through. No files yet. To, Cc and Bcc together hold at most ' . WS_MAIL_SEND_ADDRESSES . ' addresses, separated by commas; one that bounced before is refused by name (422 to). 403 when the person may not send from the mailbox or keep the mail in the channel; 429 after ' . WS_MAIL_SEND_HOURLY . ' mails in an hour. An address whose domain has no mail or web record in DNS is warned of with 409 unknown_domain, which names the domain and a near spelling of the mailbox\'s own domain when there is one: correct it, or send the same call with send_anyway true. Send an Idempotency-Key: a retry after a timeout must not send the mail twice.',
             'params'      => array(
                 array('name' => 'box_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The mailbox it is sent from.'),
                 array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The channel its card is kept in: the mailbox\'s own or one its routes write to. Left out: the mailbox\'s own.'),
@@ -855,7 +853,7 @@ function ws_api_mail_conversations_reply($params)
 {
     $viewer = ws_api_viewer();
 
-    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can answer a customer by e-mail; an application key or an OAuth connection cannot do it for them.'));
+    ws_api_mail_send_gate();
 
     $conversation = ws_api_mail_conversation_or_404($viewer, $params['id']);
     $text = (string) $params['text'];
@@ -894,6 +892,8 @@ function ws_api_mail_conversations_reply($params)
 
     $answer = ws_api_mail_present($item);
     $answer['copy_kept'] = ((string) ($sent['copy'] ?? '') !== 'failed');
+
+    ws_api_log(lang(array('string' => 'E-mail sent from the Workspace to {var:1}', 'vars' => (string) $conversation['customer_email'])));
 
     api_ok($answer, 201);
 }
@@ -991,6 +991,8 @@ function ws_api_mail_phone_reply($viewer, $conversation, $text)
         api_fail(500, 'server_error', lang('The answer could not be sent.'));
     }
 
+    ws_api_log(lang(array('string' => 'WhatsApp answer sent from the Workspace to {var:1}', 'vars' => '+' . (string) $conversation['customer_phone'])));
+
     api_ok(ws_api_mail_present($item), 201);
 }
 
@@ -1019,21 +1021,46 @@ function ws_api_mail_messages_send($params)
 {
     $viewer = ws_api_viewer();
 
-    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can send an e-mail; an application key or an OAuth connection cannot do it for them.'));
+    ws_api_mail_send_gate();
 
     if (!ws_mail_send_ready()) {
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
     }
 
-    // The mailbox's own channel when none is named; ws_mail_send_check()
-    // still decides whether the person may keep the mail there.
+    $sent = ws_api_mail_send_checked($viewer, ws_api_mail_new_mail($params));
+
+    api_ok(ws_api_mail_conversation_answer(ws_api_mail_conversation_or_404($viewer, $sent['conversation_id'])), 201);
+}
+
+/**
+ * A new mail as ws_mail_send() takes it, from the New e-mail form's fields;
+ * the mailbox's own channel when none is named (ws_mail_send_check() still
+ * decides whether the person may keep the mail there). No files.
+ *
+ * @param array $params box_id, channel_id, to, cc, bcc, subject, text, send_anyway
+ * @return array
+ */
+function ws_api_mail_new_mail($params)
+{
     if (empty($params['channel_id'])) {
-        $box = ws_mail_box((int) $params['box_id']);
+        $box = ws_mail_box((int) ($params['box_id'] ?? 0));
         $params['channel_id'] = $box ? (int) $box['channel_id'] : 0;
     }
 
-    // The New e-mail form's fields, through the same send path; no files.
-    $mail = ws_mail_compose_mail($params, array());
+    return ws_mail_compose_mail($params, array());
+}
+
+/**
+ * Checks a mail, stops a dry run, sends it through the panel's send path and
+ * leaves the activity log's line naming the application; any refusal ends
+ * the call.
+ *
+ * @param array $viewer
+ * @param array $mail ws_mail_send()'s: a new mail, or an answer with conversation_id
+ * @return array ws_mail_send()'s answer
+ */
+function ws_api_mail_send_checked($viewer, $mail)
+{
     $checked = ws_mail_send_check($viewer, $mail);
 
     if (!$checked['ok']) {
@@ -1051,5 +1078,18 @@ function ws_api_mail_messages_send($params)
         api_fail($refusal['status'], $refusal['code'], ws_mail_send_error_text($sent['error'], $sent['detail']), $refusal['field']);
     }
 
-    api_ok(ws_api_mail_conversation_answer(ws_api_mail_conversation_or_404($viewer, $sent['conversation_id'])), 201);
+    ws_api_log(lang(array('string' => 'E-mail sent from the Workspace to {var:1}', 'vars' => implode(', ', $checked['input']['to']))));
+
+    return $sent;
+}
+
+/**
+ * Sending in the person's name: a device session, the person's own or an
+ * OAuth connection they allowed to send (the route's scope,
+ * workspace:mail_send). An application key never sends, whatever its scopes
+ * say: an assistant working on its own keeps a draft.
+ */
+function ws_api_mail_send_gate()
+{
+    ws_api_person_only(lang('Only the person, signed in on a device or through an application they allowed to send e-mail, can send it; an application key keeps a draft instead (POST /workspace/mail/drafts).'));
 }

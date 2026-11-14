@@ -53,6 +53,12 @@ function api_plugin_scopes_test_groups()
 
 		list($key, $half) = explode(':', $scope, 2);
 
+		// A scope beside a group's read and write (workspace:mail_send,
+		// workspace:commands) is a group of its own, as api_scope_groups() has it.
+		if (!in_array($half, array('read', 'write'), true)) {
+			$key .= '_' . $half;
+		}
+
 		if (!isset($groups[$key])) {
 			$groups[$key] = array('read' => '', 'write' => '');
 		}
@@ -145,8 +151,7 @@ function test_api_plugin_scopes_reads_and_chosen_writes()
 	$scopes = api_plugin_scopes($groups);
 
 	foreach (api_plugin_writes() as $write) {
-		$key = substr($write, 0, strpos($write, ':'));
-		pg_assert_true(isset($groups[$key]) && ($groups[$key]['write'] === $write), 'a route uses ' . $write);
+		pg_assert_true(in_array($write, array_column($groups, 'write'), true), 'a route uses ' . $write);
 		pg_assert_true(in_array($write, $scopes, true), $write . ' is offered');
 	}
 

@@ -91,6 +91,7 @@
     "E-mail preferences link": "E-posta tercihleri bağlantısı",
     "E-mail queue": "E-posta kuyruğu",
     "E-mail sender": "E-posta gönderici",
+    "E-mail sent from the Workspace to {var:1}": "Workspace'ten {var:1} adresine e-posta gönderildi",
     "E-mail subject": "E-posta konusu",
     "E-mail summary": "E-posta özeti",
     "E-mail the page {var:1} to {var:2}": "{var:1} sayfasını {var:2} adresine e-postala",

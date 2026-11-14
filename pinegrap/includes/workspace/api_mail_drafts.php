@@ -97,6 +97,24 @@ function ws_mail_draft_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.mail_drafts.send',
+            'method'      => 'POST',
+            'path'        => '/workspace/mail/drafts/{id}/send',
+            'scope'       => 'workspace:mail_send',
+            'handler'     => 'ws_api_mail_drafts_send',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMailConversation',
+            'status'      => 201,
+            'summary'     => 'Send an e-mail draft',
+            'description' => 'Sends a draft as the E-mails screen\'s Send does and deletes it once the mail is stored: an answer goes to its conversation\'s customer with the person\'s name, the mailbox\'s Signature and the customer\'s last mail quoted; a new mail becomes a new conversation whose card is in channel_id (the mailbox\'s own channel when left out). It is sent in the person\'s name, by the person\'s own team devices session (POST /auth/login) or by an OAuth connection the person allowed to send e-mail (workspace:mail_send); an application key is refused with 403. The panel\'s checks hold: the addresses (422 to), the mailbox and the channel (403), ' . WS_MAIL_SEND_HOURLY . ' mails an hour (429), and 409 unknown_domain for an address whose domain has no mail or web record, sent again with send_anyway true. The answer is the conversation with the mail, send_state queued while it waits. The site\'s activity log names the application it went through. Send an Idempotency-Key: a retry after a timeout must not send the mail twice.',
+            'params'      => array(
+                $id,
+                array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'For a new mail: the channel its card is kept in, the mailbox\'s own or one its routes write to. Left out: the mailbox\'s own.'),
+                array('name' => 'send_anyway', 'in' => 'body', 'type' => 'bool', 'description' => 'true sends the mail after a 409 unknown_domain warning.'),
+            ),
+        ),
+
+        array(
             'id'           => 'workspace.mail_drafts.delete',
             'method'       => 'DELETE',
             'path'         => '/workspace/mail/drafts/{id}',
@@ -326,4 +344,53 @@ function ws_api_mail_drafts_delete($params)
     ws_mail_draft_delete((int) $draft['id']);
 
     api_ok(ws_api_mail_draft_present($draft));
+}
+
+/**
+ * The mail a draft sends, as ws_mail_send() takes it: an answer in its
+ * conversation, or a new mail from its box. Pure.
+ *
+ * @param array $draft  ws_mail_items row
+ * @param array $params channel_id, send_anyway
+ * @return array
+ */
+function ws_api_mail_draft_mail($draft, $params)
+{
+    $anyway = !empty($params['send_anyway']);
+
+    if ((int) $draft['conversation_id'] > 0) {
+        return array(
+            'conversation_id' => (int) $draft['conversation_id'],
+            'cc'              => (string) ($draft['cc_list'] ?? ''),
+            'bcc'             => (string) ($draft['bcc_list'] ?? ''),
+            'text'            => (string) $draft['body_text'],
+            'files'           => array(),
+            'send_anyway'     => $anyway,
+        );
+    }
+
+    return ws_api_mail_new_mail(array(
+        'box_id'      => (int) $draft['box_id'],
+        'channel_id'  => (int) ($params['channel_id'] ?? 0),
+        'to'          => (string) ($draft['to_list'] ?? ''),
+        'cc'          => (string) ($draft['cc_list'] ?? ''),
+        'bcc'         => (string) ($draft['bcc_list'] ?? ''),
+        'subject'     => (string) $draft['subject'],
+        'text'        => (string) $draft['body_text'],
+        'send_anyway' => $anyway ? '1' : '',
+    ));
+}
+
+function ws_api_mail_drafts_send($params)
+{
+    ws_api_mail_send_gate();
+
+    $viewer = ws_api_viewer();
+    $draft = ws_api_mail_draft_or_404($viewer, $params['id'], true);
+    $sent = ws_api_mail_send_checked($viewer, ws_api_mail_draft_mail($draft, $params));
+
+    // The mail is stored; the draft it came from goes.
+    ws_mail_draft_delete((int) $draft['id']);
+
+    api_ok(ws_api_mail_conversation_answer(ws_api_mail_conversation_or_404($viewer, $sent['conversation_id'])), 201);
 }

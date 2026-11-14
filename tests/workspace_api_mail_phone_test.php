@@ -50,9 +50,9 @@ function test_workspace_api_mail_phone_refusal()
 function test_workspace_api_mail_phone_reply_order()
 {
 	$reply = workspace_api_mail_phone_test_source('ws_api_mail_conversations_reply');
-	$own = strpos($reply, 'ws_api_own_words_only(');
+	$own = strpos($reply, 'ws_api_mail_send_gate(');
 	$phone = strpos($reply, 'ws_api_mail_phone_reply(');
-	pg_assert_true(($own !== false) && ($phone !== false) && ($own < $phone), 'the person\'s own session before a WhatsApp answer');
+	pg_assert_true(($own !== false) && ($phone !== false) && ($own < $phone), 'the person\'s before a WhatsApp answer');
 	pg_assert_true($phone < strpos($reply, 'ws_mail_reply_check('), 'a WhatsApp conversation never reaches the e-mail path');
 
 	$source = workspace_api_mail_phone_test_source('ws_api_mail_phone_reply');
@@ -74,7 +74,7 @@ function test_workspace_api_mail_phone_route_text()
 		if ($route['id'] === 'workspace.mail_conversations.reply') {
 			pg_assert_contains('WhatsApp', $route['description']);
 			pg_assert_contains('24 hours', $route['description']);
-			pg_assert_same(false, $route['mcp'], 'still no tool');
+			pg_assert_same('workspace:mail_send', $route['scope'], 'sent only by a connection allowed to send');
 
 			return;
 		}
