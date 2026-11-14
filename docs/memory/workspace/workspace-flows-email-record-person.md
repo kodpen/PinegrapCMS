@@ -13,7 +13,7 @@ description: Flow e-mail box to the person of the run's record (B8): recipient r
 
 ## Consent and unsubscribe?
 - `ws_flow_mail_marketing_refusal()`: as a campaign's commercial mail at send time: a contact with the address and `opt_in = 1`, not refused in İYS (`pg_iys_email_refused()`), not blocked by bounces (`pg_mail_address_blocked()`). `contacts.opt_in` is the e-mail marketing flag (`core/consent-log-writers.md`); unsubscribing turns it off.
-- Marketing mail: `ws_scheduled_mail(..., true)` sends with `type campaign`, `purpose commercial` (List-Unsubscribe headers in `email()`) and `ws_flow_mail_unsubscribe_footer()` adds the `pg_email_preferences_url()` link (none without ENCRYPTION_KEY). The action key `email.marketing` has its parity line.
+- Marketing mail: `ws_scheduled_mail(..., true)` sends with `type campaign`, `purpose commercial` (List-Unsubscribe headers in `email()`) and `ws_flow_mail_unsubscribe_footer()` adds the organization's line and the `pg_email_preferences_url()` link (none without ENCRYPTION_KEY); a page body, fields, sender and a group's opt-out: [[workspace-flows-email-campaign]]. The action key `email.marketing` has its parity line.
 
 ## When it cannot write?
 - No record, a record the owner may not read, no valid address, or marketing without consent: the box settles done, outcome done, `sent` 0, the reason as its result; the boxes after it go on (a condition on `sent` can branch). Not failed: a person not to write to is no error.
