@@ -30,7 +30,7 @@ description: Start file of the agent-canvas-* cluster: an agent designs on a Wor
 - The assistants' tools (`draw_canvas`, `read_canvas`, `edit_canvas`): `agent-canvas-assistants.md`.
 
 ## What is not part of it?
-- Live pages an agent writes in HTML: `agent-page.md`.
+- Live pages an agent writes in HTML: `agent-page.md`; their Chart.js charts take the guide's look by the `chart_guide` preset (`agent-page-libraries.md`).
 - Translating the words in pictures in the background on the server's drawing (owner 2026-11-11, #8762): wanted, not planned yet; it would be a plan of its own.
 
 ## How is a new part added?

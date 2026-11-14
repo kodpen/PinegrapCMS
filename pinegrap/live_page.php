@@ -26,6 +26,7 @@ $user = validate_user();
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/page.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_chart.php');
 
 /**
  * Answers 404 with a short line and stops.
@@ -80,7 +81,7 @@ if (!is_string($html) || (strlen($html) > PG_GUARDED_FRAME_MAX_BYTES)) {
 // The site's own copy of each library the page names goes in ahead of it.
 // A written library may take the channel's colour (chart_guide).
 $html = ws_page_with_libraries($html, ws_page_libraries_of((int) $message['file_id']), array(
-    'channel_hex' => function_exists('ws_palette_hex') ? ws_palette_hex($channel['color'] ?? 0) : '',
+    'channel_hex' => ws_canvas_chart_channel_tone($channel),
 ));
 
 pg_guarded_frame_send($html, pg_guarded_frame_mode($_GET['mode'] ?? null), lang('Live page'));

@@ -362,77 +362,21 @@ function ws_page_chart_guide_mix($colour, $base, $share)
 }
 
 /**
- * The WCAG contrast ratio of two #rrggbb colours. Pure.
- *
- * @param string $a
- * @param string $b
- * @return float
- */
-function ws_page_chart_guide_contrast($a, $b)
-{
-    $lum = function ($hex) {
-        $l = array();
-
-        for ($i = 1; $i < 7; $i += 2) {
-            $v = hexdec(substr($hex, $i, 2)) / 255;
-            $l[] = ($v <= 0.03928) ? $v / 12.92 : pow(($v + 0.055) / 1.055, 2.4);
-        }
-
-        return 0.2126 * $l[0] + 0.7152 * $l[1] + 0.0722 * $l[2];
-    };
-
-    $la = $lum($a);
-    $lb = $lum($b);
-
-    return (max($la, $lb) + 0.05) / (min($la, $lb) + 0.05);
-}
-
-/**
- * A channel's colour as a mark on a board: as it is when it reads at 3:1
- * on the board's background, else the nearest tone of it that does (mixed
- * towards white on a dark board, towards black on a light one, in steps of
- * 10 % up to 60 %), else '' (the caller keeps the guide's colour). Pure.
- *
- * @param string $hex        the channel's colour, #rrggbb, or ''
- * @param string $background the board's background, #rrggbb
- * @return string
- */
-function ws_page_chart_guide_tone($hex, $background)
-{
-    if (!preg_match('/^#[0-9a-f]{6}$/i', (string) $hex)) {
-        return '';
-    }
-
-    $hex = strtolower($hex);
-    $towards = (ws_page_chart_guide_contrast($background, '#000000') < ws_page_chart_guide_contrast($background, '#ffffff')) ? '#ffffff' : '#000000';
-
-    for ($share = 0; $share <= 60; $share += 10) {
-        $tone = ws_page_chart_guide_mix($towards, $hex, $share);
-
-        if (ws_page_chart_guide_contrast($tone, $background) >= 3) {
-            return $tone;
-        }
-    }
-
-    return '';
-}
-
-/**
  * The Chart.js preset's values, taken from the drawing guide
  * (ws_canvas_guide_values()) so a live page's chart and a drawn one share
  * one palette and one type scale. The guide's pixels are for a 1200-wide
  * board a channel shows at about half size; a live page is read at its own
  * size, so its type and marks, the line included, are the guide's times
  * 2/3, never under 12 for text. A chart of one series takes the page's channel colour, in the tone
- * that reads on the board (ws_page_chart_guide_tone()), else the guide's
- * first series colour. Pure.
+ * that reads on the board, else the guide's first series colour: the
+ * canvas chart's rule (ws_canvas_chart_tone()), so both agree. Pure.
  *
  * @param string $channel_hex the page's channel colour, #rrggbb, or ''
  * @return array
  */
 function ws_page_chart_guide_values($channel_hex = '')
 {
-    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_guide.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_chart.php');
 
     $g = ws_canvas_guide_values();
     $m = $g['marks'];
@@ -443,7 +387,7 @@ function ws_page_chart_guide_values($channel_hex = '')
     $sets = array();
 
     foreach ($g['palettes'] as $mode => $p) {
-        $single = ws_page_chart_guide_tone($channel_hex, $p['background']) ?: $p['series'][0];
+        $single = ws_canvas_chart_tone($channel_hex, $p);
         $sets[$mode] = array(
             'bg'       => $p['background'],
             'ink'      => $p['ink'],
