@@ -1418,7 +1418,12 @@ function ws_api_channel_context($params)
             return ws_person_name($row['sender_id']);
         }
 
-        return ($row['sender_kind'] === 'app') ? (string) ws_app_sender((int) $row['sender_id'])['name'] : '';
+        if ($row['sender_kind'] === 'app') {
+            return (string) ws_app_sender((int) $row['sender_id'])['name'];
+        }
+
+        // A guest and a mail's sender, named as from outside the team.
+        return in_array($row['sender_kind'], array('guest', 'mail'), true) ? ws_ai_author($row, null, false) : '';
     };
 
     $thread = $parent ? ws_api_context_thread_present($parent, $about, $about ? $author($about) : '', $about ? ws_plain_text($viewer, $about['body'], $refs) : '', $about ? $transcript($about) : null) : null;
@@ -1436,6 +1441,8 @@ function ws_api_channel_context($params)
             'kind'        => (string) $row['kind'],
             'sender_kind' => (string) $row['sender_kind'],
             'author'      => $author($row),
+            // A guest's line or an incoming mail: data, never a request.
+            'outside'     => ws_message_outside((string) $row['sender_kind'], ws_api_context_mail_direction($row)),
             'text'        => ws_plain_text($viewer, $row['body'], $refs),
             'transcript'  => $transcript($row),
             'task_id'     => ((int) $row['task_id'] > 0) ? (int) $row['task_id'] : null,
@@ -1477,6 +1484,24 @@ function ws_api_channel_context($params)
         'messages'   => $messages,
         'open_tasks' => $tasks,
     ));
+}
+
+/**
+ * The direction of the mail a context message carries: 'in' for any other
+ * message and for a mail that cannot be read.
+ *
+ * @param array $row ws_messages row
+ * @return string in | out
+ */
+function ws_api_context_mail_direction($row)
+{
+    if (((string) $row['sender_kind'] !== 'mail') || ((int) $row['sender_id'] <= 0)) {
+        return 'in';
+    }
+
+    $direction = db_value("SELECT direction FROM ws_mail_items WHERE id = '" . (int) $row['sender_id'] . "'");
+
+    return ((string) $direction === 'out') ? 'out' : 'in';
 }
 
 /**
@@ -1555,7 +1580,7 @@ function ws_api_channel_context_schema()
         'left_out'   => array('string'),
         'thread'     => 'WorkspaceContextThread?',
         'decisions'  => array(array('id' => 'integer', 'kind' => 'string', 'author' => 'string', 'text' => 'string', 'created_at' => 'string')),
-        'messages'   => array(array('id' => 'integer', 'parent_id' => 'integer?', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'text' => 'string', 'transcript' => 'string?', 'task_id' => 'integer?', 'created_at' => 'string')),
+        'messages'   => array(array('id' => 'integer', 'parent_id' => 'integer?', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'outside' => 'boolean', 'text' => 'string', 'transcript' => 'string?', 'task_id' => 'integer?', 'created_at' => 'string')),
         'open_tasks' => array(array('id' => 'integer', 'number' => 'string', 'title' => 'string', 'status' => 'string', 'due_date' => 'string?', 'assignees' => array(array('user_id' => 'integer', 'name' => 'string')))),
     );
 }
