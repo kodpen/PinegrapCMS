@@ -1,6 +1,6 @@
 ---
 name: email-designs-parts
-description: The E-mail group's parts in the palette (MA5c, MA5c2): what each holds, the footer filled when a campaign is stored, the greeting's merge field, the product card written by hand
+description: The E-mail group's parts in the palette (MA5c, MA5c2 #9520): what each holds, the footer filled when a campaign is stored, the greeting's merge field, the product card written by hand
 ---
 
 ## Which parts does the E-mail group offer?
