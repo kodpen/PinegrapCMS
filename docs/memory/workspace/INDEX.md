@@ -471,7 +471,7 @@
 - workspace-voice-mcp-agents.md: A voice message that asks an MCP agent (VA6): the microphone on its messages, ws_mcp_agent_heard() reads the transcript, the ask after the transcript, discussions
 - workspace-voice-message-route.md: "Send a voice message" from a text (VA5): POST /workspace/messages/voice and its MCP tool, ws_voice_message_check() and _send(), refusal codes, Pinegrap AI tool, Claude rule
 - workspace-voice-overview.md: Workspace voice messages as a whole: the microphone, Reply with voice, the player and its transcript, Voice message transcripts card, spoken answers, assistants hearing it; which file holds each [decision: decisions-made-product-20.md]
-- workspace-voice-read-aloud.md: Assistants' answers read aloud (V5): the per-person browser switch in the channel menu, off by default, no schema; which answers are read, what is left out, when it stops
+- workspace-voice-read-aloud.md: Assistants' and channel agents' answers read aloud (V5, GV3): the per-person browser switch, off by default, no schema; which answers are read, what is left out, when it stops [decision: here]
 - workspace-voice-recording.md: Voice messages (workspace_voice.js): the mic in place of Send, a sound's reply mic, the 5-minute cap, .weba/.ogg/.m4a names, the player
 - workspace-voice-screen.md: Voice transcripts on the channel screen (V3c2): recorder waveform and length, the player's peaks and transcript, the panel kick, the channel menu switch
 - workspace-voice-speech.md: The speech service a spoken answer is made with (VA3): the card's Spoken answers part, config_text rows, ws_voice_speak() and ws_voice_speak_keep(), the 1,500-character cut, what VA4 and VA5 call

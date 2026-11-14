@@ -206,8 +206,8 @@ function test_ws_voice_speak_wiring()
 	$script = ws_voice_test_source('assets/js/workspace_voice.js');
 
 	pg_assert_contains("self.speakAnswer(message, self.pane.lastElementChild);", $screen);
-	pg_assert_contains('!parent || !parent.mine', $screen);
-	pg_assert_contains("(message.sender_kind !== 'app') || !(sender.claude || sender.ai || sender.mcp)", $screen);
+	pg_assert_contains('!speaksAnswer(message, parent, this.channel)', $screen);
+	pg_assert_contains("if (sender.claude || sender.ai || sender.mcp) {\n            return mine;", $screen);
 	pg_assert_contains('window.PGWsVoice.speakStop();', $screen);
 	pg_assert_contains("t('voice_speak')", $screen);
 	pg_assert_contains("audio.addEventListener('play', function () {\n            speakStop();", $script);

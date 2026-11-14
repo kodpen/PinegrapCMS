@@ -3329,6 +3329,31 @@
         return !!(file && window.PGWsVoice && window.PGWsVoice.isVoice(file.name));
     }
 
+    // Whether an answer is read aloud to the viewer (speakAnswer()): one of
+    // Claude, Pinegrap AI or an MCP agent that answers the viewer's own
+    // message, or one of a registry agent of this channel (channel.agents,
+    // by its application) that answers the viewer's own message or names
+    // them (mentions_me). Never a person's, a guest's, an application's that
+    // is no agent, or an agent's of another channel. Pure.
+    function speaksAnswer(message, parent, channel) {
+        var sender = (message && message.sender) || {};
+        var mine = !!(parent && parent.mine && message.parent_id && (parent.id === message.parent_id));
+
+        if (!message || message.deleted || (message.sender_kind !== 'app')) {
+            return false;
+        }
+
+        if (sender.claude || sender.ai || sender.mcp) {
+            return mine;
+        }
+
+        var ours = !!sender.agent && (sender.app_id > 0) && ((channel && channel.agents) || []).some(function (agent) {
+            return agent.app_id === sender.app_id;
+        });
+
+        return ours && (mine || !!message.mentions_me);
+    }
+
     // The application a message is a plain line of, 0 when it is anything
     // else: a one-line message of an application that is no agent, with
     // nothing on it a reader acts on (a file, a poll, an approval, a
@@ -9413,9 +9438,9 @@
             }
 
             // The viewer's own choice in this browser, not the channel's:
-            // assistants' answers to what they asked read aloud
-            // (speakAnswer()).
-            if (window.PGWsVoice && window.PGWsVoice.speakSupported() && (BOOT.claude || BOOT.ai || (BOOT.mcp || []).length)) {
+            // assistants' and the channel's agents' answers to what they
+            // asked read aloud (speakAnswer()).
+            if (window.PGWsVoice && window.PGWsVoice.speakSupported() && (BOOT.claude || BOOT.ai || (BOOT.mcp || []).length || (channel.agents || []).length)) {
                 var speaking = window.PGWsVoice.speakOn(CFG.api_url, CFG.me);
 
                 item(t('voice_speak'), speaking ? 'bi-volume-up' : 'bi-volume-mute', function () {
@@ -9898,7 +9923,7 @@
 
             // Assistants' answers read aloud: this browser's own choice, as in
             // the channel menu (speakAnswer()).
-            if (window.PGWsVoice && window.PGWsVoice.speakSupported() && (BOOT.claude || BOOT.ai || (BOOT.mcp || []).length)) {
+            if (window.PGWsVoice && window.PGWsVoice.speakSupported() && (BOOT.claude || BOOT.ai || (BOOT.mcp || []).length || (channel.agents || []).length)) {
                 var speak = el('div', 'form-field mb-0 ws-info-check');
                 var speakBox = el('input', 'check');
                 var speakLabel = el('label', '', t('voice_speak'));
@@ -14865,8 +14890,9 @@
         // recording is written out (includes/workspace/voice.php,
         // ws_voice_ask()); the agent reads the transcript as the others do
         // (ws_mcp_agent_heard()).
-        // An assistant's answer to the viewer's own message, come in while the
-        // conversation is open and in sight, read aloud for a person who
+        // An assistant's answer to the viewer's own message, or a channel
+        // agent's that answers or names them (speaksAnswer()), come in while
+        // the conversation is open and in sight, read aloud for a person who
         // switched it on in this browser (the channel menu). An answer to the
         // viewer's own recording is heard whatever the switch says: the sound
         // the site made with its speech service is played, else this browser
@@ -14874,21 +14900,19 @@
         // of what is read.
         speakAnswer: function (message, node) {
             var voice = window.PGWsVoice;
-            var sender = message.sender || {};
 
-            if (!voice || document.hidden || !node
-                || (message.sender_kind !== 'app') || !(sender.claude || sender.ai || sender.mcp) || !message.parent_id) {
+            if (!voice || document.hidden || !node) {
                 return;
             }
 
-            var parent = this.findMessage(message.parent_id);
+            var parent = message.parent_id ? this.findMessage(message.parent_id) : null;
             var body = node.querySelector('.ws-msg-body');
 
-            if (!parent || !parent.mine || !body) {
+            if (!body || !speaksAnswer(message, parent, this.channel)) {
                 return;
             }
 
-            var asked = this.answersRecording(parent);
+            var asked = !!(parent && parent.mine) && this.answersRecording(parent);
 
             if (asked && message.file && (message.file.kind === 'audio')) {
                 var audio = node.querySelector('audio');
