@@ -751,6 +751,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/mail-list.md: The list of Communication › Incoming e-mail (messages_mail.php, mail_list.php): which conversations, views, filters, mailbox, search, Load more, the row, the menu
 - workspace/mail-not-delivered-rows.md: A sent Workspace mail whose delivery failure came back reads "Not delivered" with the server's words on its Sends row and mail queue row, read at list time for the page's rows only (MW2)
 - workspace/mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it
+- workspace/mail-phone-decisions.md: Why a customer's WhatsApp message and SMS are Workspace conversations like e-mail (owner #9151), where they are kept (#9286), the rules every part keeps, the drawer's owner rules, what was left out
 - workspace/mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test
 - workspace/mail-support-box.md: A mailbox's "Support box" switch (WM14, #9061): what a plain box leaves out (status, holder, first-answer time, automatic answer), how lists count its conversations, the default
 - workspace/model-assistant-channel-rule.md: Where a model assistant is asked (its own ws_channel_agents row; a channel closed to Pinegrap AI on purpose keeps it out too) and how the shared loop's failure sentences name it (PR #8413)
