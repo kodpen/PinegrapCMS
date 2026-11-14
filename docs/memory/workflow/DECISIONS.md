@@ -447,6 +447,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-27.md: Does the E-mails screen get a button that reads the boxes now, and a mailbox's features? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-27.md: Does a person get a calendar of their own beside e-mail, with private plans? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-27.md: Does the customer see their roadmap on the site? (owner, 2026-11-14, in the architect's window)
+- decisions-made-workspace-27.md: Does a chart of one series take its channel's colour? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
