@@ -72,7 +72,8 @@ echo pg_page_shell(array(
 <div class="ws-shell">
 <div class="ws-shell-main">
     <div id="ws-root" class="ws-mail-screen' . (($pane !== '') ? ' ws-mail-reading' : '') . '">
-        ' . ws_mail_list_filters_html($filters, $boxes, ws_mail_send_ready() && (bool) ws_mail_send_boxes($viewer), ws_mail_list_support($boxes, ws_mail_plain_box_ids()), $transports) . '
+        ' . ws_mail_list_filters_html($filters, $boxes, ws_mail_send_ready() && (bool) ws_mail_send_boxes($viewer), ws_mail_list_support($boxes, ws_mail_plain_box_ids()), $transports, !pg_demo() && (bool) ws_mail_check_boxes($viewer, $filters['box'])) . '
+        <div class="ws-mail-check-line" data-ws-mail-check-line role="status" aria-live="polite" hidden></div>
         <div class="ws-mail-columns">
             <div class="ws-mail-list">' . ws_mail_list_html($list, $filters, $now, $open) . '</div>
             <section class="ws-mail-pane" data-ws-mail-pane aria-label="' . h(lang('E-mail conversation')) . '"' . (($pane !== '') ? '' : ' hidden') . '>' . $pane . '</section>

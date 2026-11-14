@@ -183,6 +183,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_compose.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_forward.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_route.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_status.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_check.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_triage.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_list.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_reads.php');
