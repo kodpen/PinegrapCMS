@@ -105,7 +105,7 @@ function test_whatsapp_reply_wiring()
 	pg_assert_contains('ws_mail_phone_js_strings());', $read('includes/workspace/screen.php'), 'the drawer\'s texts');
 
 	$script = $read('assets/js/workspace_mail.js');
-	pg_assert_contains("h.api('ws_whatsapp_reply_form', { conversation_id: message.whatsapp_reply })", $script, 'whom and how long, asked first');
-	pg_assert_contains("data.conversation_id = message.mail_reply || message.whatsapp_reply;", $script, 'status and holder on a WhatsApp card');
-	pg_assert_contains('(message.mail_reply || message.mail_resend || message.whatsapp_reply) && window.PGWsMail', $read('assets/js/workspace.js'), 'drawn under a WhatsApp card');
+	pg_assert_contains("h.api(sms ? 'ws_sms_reply_form' : 'ws_whatsapp_reply_form', { conversation_id: conversation })", $script, 'whom and how long, asked first');
+	pg_assert_contains("data.conversation_id = message.mail_reply || message.whatsapp_reply || message.sms_reply;", $script, 'status and holder on a WhatsApp card');
+	pg_assert_contains('(message.mail_reply || message.mail_resend || message.whatsapp_reply || message.sms_reply) && window.PGWsMail', $read('assets/js/workspace.js'), 'drawn under a WhatsApp card');
 }

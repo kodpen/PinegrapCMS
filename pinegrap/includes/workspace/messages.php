@@ -404,6 +404,13 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'whatsapp_reply'  => ($mail && !$deleted && function_exists('ws_mail_phone_reply_offer')) ? ws_mail_phone_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post) : 0,
         'whatsapp_window' => ($mail && !$deleted && function_exists('ws_mail_phone_reply_offer') && ws_mail_phone_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post))
             ? ws_mail_phone_window($extra['mail'][(int) $row['sender_id']]['conversation'] ?? null, time()) : 0,
+        // Reply by SMS: only on an SMS card, and only while the provider receives.
+        'sms_reply'       => ($mail && !$deleted && function_exists('ws_mail_phone_reply_offer')
+                && ws_mail_phone_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post, 'sms') && ws_mail_phone_sms_offered())
+            ? ws_mail_phone_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post, 'sms') : 0,
+        'sms_window'      => ($mail && !$deleted && function_exists('ws_mail_phone_reply_offer')
+                && ws_mail_phone_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post, 'sms') && ws_mail_phone_sms_offered())
+            ? ws_mail_phone_window($extra['mail'][(int) $row['sender_id']]['conversation'] ?? null, time(), 'sms') : 0,
         // An outgoing mail that could not leave, offered to send again (mail_send.php), 0 for none.
         'mail_resend' => ($mail && !$deleted && function_exists('ws_mail_resend_offer')) ? ws_mail_resend_offer($extra['mail'][(int) $row['sender_id']] ?? null, $can_post, $viewer, $row) : 0,
         // The mail its text offers to forward as e-mail (mail_forward.php), 0 for none.
