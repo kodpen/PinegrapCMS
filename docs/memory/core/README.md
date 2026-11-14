@@ -21,6 +21,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 ## Clusters
 
 - `audit-trail-*`: 9 files.
+- `campaign-profile-*`: 6 files.
 - `code-editor-*`: 6 files.
 - `content-translation-*`: 6 files.
 

@@ -43,6 +43,7 @@ description: Generated from the module field of the memory files: each includes/
 - `calendar`: [[calendar-event-exception-endpoint]], [[calendar-event-ics]], [[calendar-location-availability]], [[calendar-view-date]]
 - `calendar_writes`: [[api-calendar-locations-reservations]], [[api-calendar-writes]], [[calendar-reserve-occurrence]]
 - `campaign_content`: [[campaign-content-step]]
+- `campaign_profile_flow`: [[campaign-profile-flow-converter]]
 - `canvas_templates`: [[agent-canvas-templates]]
 - `carrier_labels`: [[carrier-label-drivers]], [[carrier-label-overview]], [[carrier-label-rate]], [[carrier-label-text-cuts]]
 - `carrier_webhook`: [[carrier-webhook]], [[carrier-webhook-basitkargo]], [[carrier-webhook-drivers]]
