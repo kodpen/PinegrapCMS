@@ -28,7 +28,7 @@ description: The site's MCP tools checked against Claude's directory rules (2026
 - Workspace change cards (`propose`) where the site proposes instead of writing.
 
 ## How is it settled?
-- Architect (2026-11-14, msg 2493): the plugin's scope set holds no route that moves money or makes a cost; such routes carry a mark a test reads (CB2); dry run alone is no wall.
+- Architect (2026-11-14, msg 2493): the plugin's scope set holds no route that moves money or makes a cost; such routes carry a mark a test reads; dry run alone is no wall. Built in CB2: `api-plugin-scopes.md` (it also marks cheques and `customers.subscriptions.resume`).
 - Policy 3F (the developer controls every endpoint) against sites that are their owners': the owner's, asked before CB3.
 
 ## Where were the rules read?

@@ -6237,7 +6237,7 @@ function get_express_order($properties) {
             'opt_in' => $opt_in,
             'opt_in_label' => $opt_in_label,
             'opt_in_sms' => $opt_in_sms,
-            'opt_in_sms_label' => lang('I want to receive campaign and offer messages by SMS.'),
+            'opt_in_sms_label' => pg_sms_opt_in_label(),
             'po_number' => $po_number,
             'referral_source' => $referral_source,
             'update_contact' => $update_contact,

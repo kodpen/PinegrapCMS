@@ -1998,7 +1998,7 @@ function _eo_default_designer_tree()
                                 // permission-based, default off.
                                 $check_row('opt_in', lang('I want to subscribe to the campaign and offer newsletter'), 'pg-eo-opt-in mb-3'),
                                 // The SMS box beside it, only while it is offered.
-                                $check_row('opt_in_sms', lang('I want to receive campaign and offer messages by SMS.'), 'pg-eo-opt-in-sms mb-3', 'shows_opt_in_sms'),
+                                $check_row('opt_in_sms', pg_sms_opt_in_label(), 'pg-eo-opt-in-sms mb-3', 'shows_opt_in_sms'),
 
                                 // Real <button> elements. eo_action binding
                                 // forces type/name/value attrs at render.

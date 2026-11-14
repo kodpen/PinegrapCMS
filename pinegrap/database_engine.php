@@ -704,6 +704,20 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
                         <div>' . h(pg_visitor_shrink_reason_text('failed', $visitor_shrink)) . '</div>
                     </div>';
 
+        } elseif (($visitor_shrink['state'] === 'done') && ($visitor_shrink['finished_at'] > (time() - 30 * 86400))
+            && !pg_visitor_shrink_gave_room($visitor_shrink['file_before'], $visitor_shrink['file_after'])) {
+
+            // A rebuild of a file with little free space in it: saying it
+            // was made smaller would not be true.
+            $visitor_alert .= '
+                    <div class="alert theme-secondary d-flex gap-3 align-items-start">
+                        <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                        <div>' . h(lang(array(
+                            'string' => 'The visitors table was rebuilt on {var:1}; its file stayed about the same size: there was little free space in it to give back.',
+                            'vars' => array(get_absolute_time(array('timestamp' => $visitor_shrink['finished_at'], 'type' => 'date', 'format' => 'plain_text'))),
+                        ))) . '</div>
+                    </div>';
+
         } elseif (($visitor_shrink['state'] === 'done') && ($visitor_shrink['finished_at'] > (time() - 30 * 86400))) {
 
             $visitor_alert .= '
@@ -819,7 +833,17 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
             ),
         ));
     } else {
-        $visitor_will = lang(array('string' => 'No record is older than {var:1} days.', 'vars' => array($visitor_settings['days'])));
+        $visitor_will = pg_visitor_inside_period_text($visitor_settings['days'], ($visitor_layout['state'] === 'monthly'), $visitor_catalog['engine']);
+    }
+
+    // Why the button cannot be pressed, where the sentence above does not
+    // say it already.
+    $visitor_disabled_reason = pg_visitor_cleanup_disabled_reason($engine_tools, $visitor_settings['days'], $visitor_preview['rows']);
+
+    if ($visitor_disabled_reason === 'busy') {
+        $visitor_will .= ' ' . lang('"Clean up visitor records now" waits while another job of this screen is running.');
+    } elseif ($visitor_disabled_reason === 'no_period') {
+        $visitor_will .= ' ' . lang('Set a period under Visitor Tracking for "Clean up visitor records now" to have something to remove.');
     }
 
     $visitor_confirm = lang(array(
@@ -835,6 +859,9 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
 
     $visitor_enabled = ($engine_tools && ($visitor_settings['days'] > 0) && ($visitor_preview['rows'] > 0));
 
+    // "Shrink now" only where a rebuild has room to give back.
+    $visitor_shrink_offered = $visitor_innodb && pg_visitor_shrink_offered($visitor_shrink_facts['gain']);
+
     $visitor_card = $visitor_alert . '
                     <dl class="row small mb-5">' . $visitor_fact_list . '
                     </dl>
@@ -842,10 +869,10 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
                     <div class="d-flex flex-wrap gap-3 align-items-center">
                         <button type="button" id="pg_visitor_cleanup" class="btn btn-sm btn-outline theme-danger text-nowrap" data-confirm="' . h($visitor_confirm) . '"' . ($visitor_enabled ? '' : ' disabled') . '><i class="bi bi-trash3 me-1" aria-hidden="true"></i>' . h(lang('Clean up visitor records now')) . '</button>
                         ' . ($visitor_innodb
-                            ? $engine_button('visitor_shrink', 'visitors', lang('Shrink now'), 'bi-arrows-collapse', $visitor_shrink_facts['worth'] ? 'btn-outline theme-warning' : 'btn-outline theme-secondary', lang(array(
+                            ? (!$visitor_shrink_offered ? '' : $engine_button('visitor_shrink', 'visitors', lang('Shrink now'), 'bi-arrows-collapse', $visitor_shrink_facts['worth'] ? 'btn-outline theme-warning' : 'btn-outline theme-secondary', lang(array(
                                 'string' => 'Rebuild the visitors table now to make its file smaller? The site keeps running meanwhile; the database server needs about {var:1} of free disk until the rebuild ends, which takes minutes on a large table.',
                                 'vars' => array(pg_innodb_size_label($visitor_shrink_facts['needed'])),
-                            )), ($engine_tools && ($visitor_shrink_reason !== 'shared_tablespace') && !$visitor_moving))
+                            )), ($engine_tools && ($visitor_shrink_reason !== 'shared_tablespace') && !$visitor_moving)))
                             : $engine_button('optimize', 'visitors', lang('Optimize table'), 'bi-arrow-repeat', isset($engine_candidates['visitors']) ? 'btn-outline theme-warning' : 'btn-outline theme-secondary', lang('Optimize {var:1} now? The whole table is rewritten: it needs free disk space about the size of the table and takes minutes on a large one. Do it at a quiet hour, after a backup.'), ($engine_tools && ($visitor_catalog['engine'] !== '') && !$visitor_moving))) . (($visitor_catalog['engine'] === 'myisam') && !$visitor_moving ? '
                         ' . $engine_button('visitor_move', 'visitors', lang('Move to InnoDB now'), 'bi-database-gear', 'btn-outline theme-warning', lang(array(
                             'string' => 'Move the visitors table to InnoDB now? A copy is built next to it a few thousand records at a time while the site keeps running, so the database server needs about {var:1} of free disk until the old table is removed. The general job carries the move on.',
@@ -858,9 +885,11 @@ if (($visitor_settings === false) || ($visitor_catalog === null)) {
                     </div>
                     <div id="pg_visitor_cleanup_progress" class="small mt-3" role="status" aria-live="polite"></div>
                     <div class="small fg-secondary mt-3">' . h(($visitor_layout['state'] === 'monthly')
-                        ? lang('Records are kept in one partition per month. Once all of a month is older than the period, the general job drops it in a moment and its file goes back to the disk; the records of the month the period ends in are removed a chunk at a time. Shrink now rebuilds the table at once.')
+                        ? lang('Records are kept in one partition per month. Once all of a month is older than the period, the general job drops it in a moment and its file goes back to the disk; the records of the month the period ends in are removed a chunk at a time.')
+                            . ($visitor_shrink_offered ? ' ' . lang('Shrink now rebuilds the table at once.') : '')
                         : ($visitor_innodb
-                        ? lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Once much of the file is free, the general job rebuilds the table at the quietest hour of the day while the site keeps running, which gives the room back to the disk; Shrink now does it at once.')
+                        ? lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Once much of the file is free, the general job rebuilds the table at the quietest hour of the day while the site keeps running, which gives the room back to the disk.')
+                            . ($visitor_shrink_offered ? ' ' . lang('Shrink now does it at once.') : '')
                         : lang('Removing records does not make the file on disk smaller by itself: the room is reused by new visits. Optimize table gives it back to the disk; that is a separate, optional step.'))) . '</div>';
 }
 

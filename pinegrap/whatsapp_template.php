@@ -7,7 +7,10 @@
  * variables and their sample values and footer, previewed as a phone shows
  * it, and kept as a draft. A template WhatsApp already holds is shown
  * read-only; an approved one can be sent to the signed-in person's own
- * WhatsApp with its sample values. Settings and templates of WhatsApp are a
+ * WhatsApp with its sample values. The offer code card sets the offer whose
+ * code the message carries (shared, or a key made for each person); it is
+ * the site's own setting, so it can be changed on any template. Settings
+ * and templates of WhatsApp are a
  * manager's (role <= 2), as the WhatsApp settings card is.
  *
  * The functions are includes/fn/whatsapp_design.php.
@@ -71,11 +74,35 @@ if ($_POST) {
         go($self);
     }
 
+    // The offer code of a template WhatsApp holds: the site's own setting,
+    // kept apart from the template, which cannot change.
+    if (isset($_POST['submit_offer']) && !$editable && $id) {
+        $offer = pg_whatsapp_offer_posted($_POST);
+        $errors = pg_whatsapp_offer_check($offer, $design['components']);
+
+        if (!$errors && ($offer['mode'] !== '') && !pg_whatsapp_offer_enabled($offer['code'])) {
+            $errors['offer_code'] = lang('Choose an offer that is switched on.');
+        }
+
+        if (!$errors && pg_whatsapp_offer_save($id, $offer)) {
+            log_activity(lang(array('string' => 'WhatsApp template offer code saved: {var:1}', 'vars' => array($design['name']))), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang('The offer code was saved.'));
+            go($self);
+        }
+
+        $design['offer'] = $offer;
+        $errors += array('_form' => lang('The offer code was not saved. Correct the marked fields.'));
+    }
+
     // Save draft, and Send for approval, which saves first: what is sent
     // is always what is kept.
     if ((isset($_POST['submit_save']) || isset($_POST['submit_approval'])) && $editable) {
         $design = pg_whatsapp_design_resolve_file(pg_whatsapp_design_posted($_POST, $design));
         $errors = pg_whatsapp_design_check($design);
+
+        if (!$errors && ($design['offer']['mode'] !== '') && !pg_whatsapp_offer_enabled($design['offer']['code'])) {
+            $errors['offer_code'] = lang('Choose an offer that is switched on.');
+        }
 
         if (!$errors) {
             $saved = pg_whatsapp_design_save($design, $user['id']);
@@ -268,7 +295,8 @@ $button_icons = array('URL' => 'bi-box-arrow-up-right', 'PHONE_NUMBER' => 'bi-te
 
 foreach ($design['buttons'] as $button) {
     $type = isset($button['type']) ? strtoupper((string) $button['type']) : '';
-    $output_buttons_preview .= '<div class="pg-wa-msg-button"><i class="bi ' . (isset($button_icons[$type]) ? $button_icons[$type] : 'bi-reply') . '" aria-hidden="true"></i>' . h(isset($button['text']) ? (string) $button['text'] : '') . '</div>';
+    $text = ($type === 'COPY_CODE') ? lang('Copy offer code') : (isset($button['text']) ? (string) $button['text'] : '');
+    $output_buttons_preview .= '<div class="pg-wa-msg-button"><i class="bi ' . (isset($button_icons[$type]) ? $button_icons[$type] : 'bi-reply') . '" aria-hidden="true"></i>' . h($text) . '</div>';
 }
 
 $output_buttons_preview = '<div id="pg_wa_preview_buttons">' . $output_buttons_preview . '</div>';
@@ -327,12 +355,17 @@ $output_header_card =
 
 // The buttons card: up to three rows; the script adds and removes rows
 // from the template row.
-$button_kinds = array('URL' => lang('Link'), 'PHONE_NUMBER' => lang('Phone call'), 'QUICK_REPLY' => lang('Quick reply'));
+$button_kinds = array('URL' => lang('Link'), 'PHONE_NUMBER' => lang('Phone call'), 'QUICK_REPLY' => lang('Quick reply'), 'COPY_CODE' => lang('Copy code'));
 
 $button_row = function ($button, $row) use ($button_kinds, $errors, $editable) {
     $type = isset($button['type']) ? strtoupper((string) $button['type']) : 'URL';
     $value = ($type === 'URL') ? (isset($button['url']) ? (string) $button['url'] : '') : (($type === 'PHONE_NUMBER') ? (isset($button['phone_number']) ? (string) $button['phone_number'] : '') : '');
     $sample = isset($button['sample']) ? (string) $button['sample'] : '';
+
+    if ($type === 'COPY_CODE') {
+        $sample = isset($button['example']) ? (is_array($button['example']) ? (string) reset($button['example']) : (string) $button['example']) : '';
+    }
+
     $kinds = $button_kinds;
 
     if (!isset($kinds[$type])) {
@@ -350,9 +383,9 @@ $button_row = function ($button, $row) use ($button_kinds, $errors, $editable) {
 
     return '<div class="pg-wa-button-row" data-pg-wa-button>'
         . '<select class="pg-input pg-input-sm" name="button_type[]" aria-label="' . h(lang('Button kind')) . '"' . $off . '>' . $options . '</select>'
-        . '<input type="text" class="pg-input pg-input-sm" name="button_text[]" maxlength="' . PG_WHATSAPP_DESIGN_BUTTON_MAX . '" value="' . h(isset($button['text']) ? (string) $button['text'] : '') . '" placeholder="' . h(lang('Button text')) . '" aria-label="' . h(lang('Button text')) . '"' . (isset($errors[$field]) ? ' aria-invalid="true"' : '') . $off . '>'
-        . '<input type="text" class="pg-input pg-input-sm" name="button_value[]" maxlength="2000" value="' . h($value) . '" data-pg-wa-placeholder-url="' . h(lang('https://… , {{1}} at the end for a value')) . '" data-pg-wa-placeholder-phone="' . h(lang('+90 212 555 01 02')) . '" aria-label="' . h(lang('Link or phone number')) . '"' . (($type === 'QUICK_REPLY') ? ' hidden' : '') . $off . '>'
-        . '<input type="text" class="pg-input pg-input-sm" name="button_sample[]" maxlength="200" value="' . h($sample) . '" placeholder="' . h(lang('Sample for {{1}}')) . '" aria-label="' . h(lang('Sample for the link\'s variable')) . '"' . (($type === 'URL') ? '' : ' hidden') . $off . '>'
+        . '<input type="text" class="pg-input pg-input-sm" name="button_text[]" maxlength="' . PG_WHATSAPP_DESIGN_BUTTON_MAX . '" value="' . h(isset($button['text']) ? (string) $button['text'] : '') . '" placeholder="' . h(lang('Button text')) . '" aria-label="' . h(lang('Button text')) . '"' . (isset($errors[$field]) ? ' aria-invalid="true"' : '') . (($type === 'COPY_CODE') ? ' hidden' : '') . $off . '>'
+        . '<input type="text" class="pg-input pg-input-sm" name="button_value[]" maxlength="2000" value="' . h($value) . '" data-pg-wa-placeholder-url="' . h(lang('https://… , {{1}} at the end for a value')) . '" data-pg-wa-placeholder-phone="' . h(lang('+90 212 555 01 02')) . '" aria-label="' . h(lang('Link or phone number')) . '"' . (in_array($type, array('QUICK_REPLY', 'COPY_CODE'), true) ? ' hidden' : '') . $off . '>'
+        . '<input type="text" class="pg-input pg-input-sm" name="button_sample[]" maxlength="200" value="' . h($sample) . '" data-pg-wa-placeholder-url="' . h(lang('Sample for {{1}}')) . '" data-pg-wa-placeholder-code="' . h(lang('Sample code, such as NOV10')) . '" placeholder="' . h(($type === 'COPY_CODE') ? lang('Sample code, such as NOV10') : lang('Sample for {{1}}')) . '" aria-label="' . h(lang('Sample for the link\'s variable or the code')) . '"' . (in_array($type, array('URL', 'COPY_CODE'), true) ? '' : ' hidden') . $off . '>'
         . ($editable ? '<button type="button" class="pg-icon-button pg-icon-button-sm" data-pg-wa-button-remove aria-label="' . h(lang('Remove button')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>' : '')
         . (isset($errors[$field]) ? '<div class="pg-field-help pg-field-error">' . h($errors[$field]) . '</div>' : '')
         . '</div>';
@@ -371,7 +404,79 @@ $output_buttons_card =
             <div id="pg_wa_buttons">' . $output_button_rows . '</div>
             ' . ($editable ? '<template id="pg_wa_button_template">' . $button_row(array('type' => 'URL'), 99) . '</template>
             <button type="button" class="pg-button pg-button-ghost pg-button-sm" id="pg_wa_button_add"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('Add a button')) . '</button>
-            <span class="pg-text-meta">' . h(lang('Link, phone call or quick reply. A quick reply\'s answer can start a flow.')) . '</span>' : '') . '
+            <span class="pg-text-meta">' . h(lang('Link, phone call, quick reply or copy code. A quick reply\'s answer can start a flow; a copy-code button copies the offer code.')) . '</span>' : '') . '
+        </div>
+    </section>';
+
+// The offer code card: none, the offer's shared code or a key made for each
+// person; the offer and a key's validity. In a design the code goes where
+// the chip "Offer code" is; a template WhatsApp holds names its variable
+// here and has its own Save, as only this setting can change on it.
+$offer = $design['offer'];
+$offer_modes = array('' => lang('None'), 'shared' => lang('Shared code'), 'key' => lang('Key for each person'));
+$output_offer_modes = '';
+
+foreach ($offer_modes as $value => $label) {
+    $output_offer_modes .= '<button type="button" class="pg-seg-item" data-pg-wa-offer="' . h($value) . '" aria-pressed="' . (($offer['mode'] === $value) ? 'true' : 'false') . '">' . h($label) . '</button>';
+}
+
+$output_offer_options = '<option value="">' . h(lang('Choose an offer')) . '</option>';
+$offer_found = false;
+
+foreach (pg_whatsapp_offer_offers() as $row) {
+    $offer_found = $offer_found || ($row['code'] === $offer['code']);
+    $output_offer_options .= '<option value="' . h($row['code']) . '"' . (($row['code'] === $offer['code']) ? ' selected' : '') . '>'
+        . h($row['code'] . (((string) $row['description'] !== '') ? ' · ' . $row['description'] : '') . (($row['status'] !== 'enabled') ? ' (' . lang('off') . ')' : '')) . '</option>';
+}
+
+if (($offer['code'] !== '') && !$offer_found) {
+    $output_offer_options .= '<option value="' . h($offer['code']) . '" selected>' . h($offer['code'] . ' (' . lang('no longer an offer') . ')') . '</option>';
+}
+
+$output_offer_variable = '';
+
+if (!$editable) {
+    $variable_options = '<option value="">' . h(lang('Only the copy-code button')) . '</option>';
+
+    foreach ($chip_labels as $key => $label) {
+        $variable_options .= '<option value="' . h($key) . '"' . (((string) $key === $offer['variable']) ? ' selected' : '') . '>' . h($label) . '</option>';
+    }
+
+    $output_offer_variable =
+        '<div>
+            <label class="pg-field-label" for="offer_variable">' . h(lang('The code goes in')) . '</label>
+            <select class="pg-input" id="offer_variable" name="offer_variable"' . $invalid('offer_variable') . '>' . $variable_options . '</select>
+            ' . $field_error('offer_variable') . '
+        </div>';
+}
+
+$output_offer_card =
+    '<section class="card pg-wa-card">
+        <h2 class="card-header bg-reset border-0 pg-title-section pg-wa-offer-head">' . h(lang('Offer code')) . ' <span class="pg-field-label-note">· ' . h(lang('optional')) . '</span>
+            <span class="pg-seg pg-wa-seg-wrap" role="group" aria-label="' . h(lang('Offer code')) . '">' . $output_offer_modes . '</span></h2>
+        <div class="card-body pt-0">
+            <input type="hidden" name="offer_mode" id="offer_mode" value="' . h($offer['mode']) . '">
+            ' . $field_error('offer_mode') . '
+            <div class="pg-wa-offer" id="pg_wa_offer"' . (($offer['mode'] === '') ? ' hidden' : '') . '>
+                <div>
+                    <label class="pg-field-label" for="offer_code">' . h(lang('Offer')) . '</label>
+                    <select class="pg-input" id="offer_code" name="offer_code"' . $invalid('offer_code') . '>' . $output_offer_options . '</select>
+                    ' . ($field_error('offer_code') ?: '<div class="pg-field-help"><a href="view_offers.php">' . h(lang('Offers')) . '</a></div>') . '
+                </div>
+                <div data-pg-wa-offer-part="key"' . (($offer['mode'] === 'key') ? '' : ' hidden') . '>
+                    <label class="pg-field-label" for="offer_days">' . h(lang('Valid for (days after sending)')) . '</label>
+                    <input type="number" class="pg-input" id="offer_days" name="offer_days" min="1" max="' . PG_WHATSAPP_OFFER_DAYS_MAX . '" value="' . h($offer['days'] ? (string) $offer['days'] : '14') . '"' . $invalid('offer_days') . '>
+                    ' . $field_error('offer_days') . '
+                </div>
+                ' . $output_offer_variable . '
+            </div>
+            <p class="pg-text-meta mt-2 mb-0">' . h($editable
+                ? lang(array('string' => 'Drag the variable {var:1} into the message where the code goes; a copy-code button carries it too.', 'vars' => array(pg_whatsapp_offer_label())))
+                : lang('The offer code is this site\'s own setting, so it can be changed while WhatsApp keeps the template as it is.')) . '</p>
+            <p class="pg-text-meta mb-0"><b>' . h(lang('Key for each person:')) . '</b> ' . h(lang('a single-use key of the offer is made for each recipient when the message is queued; the order shows who used it.'))
+                . ' <b>' . h(lang('Shared code:')) . '</b> ' . h(lang('everyone gets the offer\'s own code.')) . '</p>
+            <div class="alert theme-secondary mt-2 mb-0" role="note"><p class="mb-0 pg-text-meta"><i class="bi bi-shield-check" aria-hidden="true"></i> ' . h(lang('A message with an offer code goes only to people who gave marketing consent for SMS and WhatsApp.')) . '</p></div>
+            ' . ((!$editable && $id) ? '<div class="mt-2"><button type="submit" name="submit_offer" value="1" class="pg-button pg-button-quiet pg-button-sm"><i class="bi bi-check-circle" aria-hidden="true"></i>' . h(lang('Save offer code')) . '</button></div>' : '') . '
         </div>
     </section>';
 
@@ -446,6 +551,7 @@ $script_data = array(
     'buttons'  => PG_WHATSAPP_DESIGN_BUTTONS_MAX,
     'icons'    => $button_icons,
     'media'    => $media_icons,
+    'copyText' => lang('Copy offer code'),
 );
 
 echo
@@ -471,7 +577,7 @@ pg_page_shell(
     <form name="form" action="' . h($self) . '" method="post" id="pg_wa_form" data-pg-wa="' . h(json_encode($script_data, JSON_UNESCAPED_UNICODE)) . '">
         ' . get_token_field() . '
         <div class="row">
-            <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $output_basics . $output_header_card . $output_message . $output_buttons_card . '</div>
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $output_basics . $output_header_card . $output_message . $output_buttons_card . $output_offer_card . '</div>
             <div class="col-12 lg:col-4 2xl:col-3 order-2">' . $output_side . '</div>
             ' . ($output_actions !== '' ? '<div class="col-12 order-3 position-sticky"><nav class="buttons navigation" aria-label="' . h(lang('Actions')) . '">' . $output_actions . '</nav></div>' : '') . '
         </div>
