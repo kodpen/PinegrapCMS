@@ -3466,8 +3466,11 @@ function ws_handle_action($action, $request)
                 ? ws_customer_history($viewer, $channel, $identity, (int) ($request['before'] ?? 0), ws_customer_history_limit($request['limit'] ?? null))
                 : array('entries' => array(), 'more' => false, 'before' => 0);
 
+            // An all-day roadmap says its day alone.
             foreach ($history['entries'] as $index => $entry) {
-                $history['entries'][$index]['at_text'] = ws_time_label($entry['at']);
+                $history['entries'][$index]['at_text'] = empty($entry['day_only'])
+                    ? ws_time_label($entry['at'])
+                    : date((date('Y', (int) $entry['at']) === date('Y')) ? 'd.m' : 'd.m.Y', (int) $entry['at']);
             }
 
             return ws_action_ok(array('history' => $history));
@@ -4799,6 +4802,25 @@ function ws_handle_action($action, $request)
             $result = ws_personal_plan_step_task($viewer, (int) ($request['plan_id'] ?? 0), (int) ($request['step_id'] ?? 0), (int) ($request['task_id'] ?? 0));
 
             return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('roadmap' => $result['roadmap']));
+
+        // The customer a plan is made for (personal_plan_contact.php).
+        case 'ws_personal_plan_contact':
+            // A plan's customer, or (no plan yet) the one "New roadmap" names.
+            $contact = ((int) ($request['plan_id'] ?? 0) > 0)
+                ? ws_personal_plan_contact($viewer, (int) $request['plan_id'])
+                : ws_event_contact_of($viewer, array('contact_id' => (int) ($request['contact_id'] ?? 0)));
+
+            return ws_action_ok(array('contact' => $contact));
+
+        case 'ws_personal_plan_contact_save':
+            $result = ws_personal_plan_contact_save($viewer, (int) ($request['plan_id'] ?? 0), (int) ($request['contact_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error'], $result['field'] ?? '') : ws_action_ok(array('contact' => $result['contact']));
+
+        case 'ws_personal_plan_copy_draft':
+            $result = ws_personal_plan_copy_draft($viewer, (int) ($request['plan_id'] ?? 0));
+
+            return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok(array('draft' => $result['draft']));
 
         case 'ws_conflicts':
             $from = ws_date_or_null($request['from'] ?? '') ?: date('Y-m-d');

@@ -940,6 +940,11 @@ function pg_privacy_erase_tables()
         'ws_events' => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'anonymise', 'fields' => array(
             'contact_id' => 0,
         )),
+        // A person's own plan made for the customer stays its owner's; it no
+        // longer names the person.
+        'ws_personal_plans' => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'anonymise', 'fields' => array(
+            'contact_id' => 0,
+        )),
         'cart_quotes' => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'anonymise', 'fields' => array(
             'contact_id' => 0,
         )),
@@ -1076,6 +1081,7 @@ function pg_privacy_erase_labels()
         'consent_log'                  => lang('Consents'),
         'ws_approval_guests'           => lang('Workspace approvals'),
         'ws_events'                    => lang('Customer visits'),
+        'ws_personal_plans'            => lang('Roadmaps'),
         'cart_quotes'                  => lang('Cart quotes'),
         'audit_log'                    => lang('Audit trail'),
         'record_revisions'             => lang('Item revisions'),

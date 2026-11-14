@@ -48,7 +48,11 @@
             view: query.get('view') || readView() || 'month',
             date: /^\d{4}-\d{2}-\d{2}$/.test(query.get('date') || '') ? query.get('date') : '',
             // A reminder line opens its plan (?plan=N) once the days are drawn.
-            plan: parseInt(query.get('plan') || 0, 10) || 0
+            plan: parseInt(query.get('plan') || 0, 10) || 0,
+            // "New roadmap" on a customer's card: a new plan naming them.
+            contact: query.get('new_plan') ? (parseInt(query.get('contact') || 0, 10) || 0) : 0,
+            // ... filled from one of the person's own plans (from=N).
+            from: parseInt(query.get('from') || 0, 10) || 0
         };
         var data = null;
         var plans = planKit(h, S, function () { load(); });
@@ -152,6 +156,19 @@
                 if (state.plan) {
                     plans.open(state.plan);
                     state.plan = 0;
+                } else if (state.contact && result.plans) {
+                    var contact = state.contact;
+
+                    state.contact = 0;
+
+                    if (state.from) {
+                        h.api('ws_personal_plan_copy_draft', { plan_id: state.from }).then(function (copied) {
+                            plans.drawer(null, Object.assign({}, copied.draft, { contact_id: contact }));
+                        }).catch(h.fail);
+                        state.from = 0;
+                    } else {
+                        plans.drawer(null, { start: result.today, contact_id: contact });
+                    }
                 }
             }).catch(h.fail);
         }
@@ -663,8 +680,35 @@
             note.value = plan ? plan.note : (defaults.note || '');
             body.appendChild(field(s('plan_note'), note));
 
+            // The customer the plan is made for: the visit's field, read for
+            // this reader (hidden when they may not open the contact) and
+            // saved only once it was changed here.
+            var customer = null;
+            var customerRow = el('div', 'ws-plan-field');
+
+            if (h.customerPicker && (plan ? plan.id : true)) {
+                customerRow.appendChild(el('span', 'pg-field-label', s('plan_customer')));
+                body.appendChild(customerRow);
+
+                var contactAsked = plan ? { plan_id: plan.id } : { contact_id: defaults.contact_id || 0 };
+
+                (plan || defaults.contact_id ? h.api('ws_personal_plan_contact', contactAsked) : Promise.resolve({ contact: null })).then(function (result) {
+                    customer = h.customerPicker(result.contact, !mine);
+
+                    // A new roadmap from the card names its customer at once.
+                    if (!plan && result.contact && !result.contact.hidden) {
+                        customer.changed = true;
+                    }
+
+                    customerRow.appendChild(customer.node);
+                    customerRow.appendChild(el('div', 'pg-text-meta', s('plan_customer_help')));
+                }).catch(h.fail);
+            }
+
             // The roadmap: dated steps and the plan's progress.
             var roadmap = window.PGWsRoadmap ? window.PGWsRoadmap.section(h, s, plan, {
+                // A copy's steps, for a new plan filled from another.
+                steps: plan ? null : (defaults.steps || null),
                 range: function () { return { start: first.value, end: last.value || first.value }; },
                 saveAll: function () {
                     return submit().then(function (saved) {
@@ -738,6 +782,16 @@
                 }).then(function (result) {
                     plan = plan || result.plan;
 
+                    if (!customer || !customer.changed) {
+                        return result;
+                    }
+
+                    return h.api('ws_personal_plan_contact_save', { plan_id: result.plan.id, contact_id: customer.id }).then(function () {
+                        customer.changed = false;
+
+                        return result;
+                    });
+                }).then(function (result) {
                     return roadmap ? roadmap.save(result.plan.id) : null;
                 });
             }

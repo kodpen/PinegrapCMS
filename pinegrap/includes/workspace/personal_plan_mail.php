@@ -277,7 +277,7 @@ function ws_personal_plan_mail_draft($viewer, $item_id, $mode = '')
 
     $fill = ws_personal_plan_mail_fill($found['item'], $found['conversation']);
     // The drawer's words, its roadmap's included (personal_plan_steps.php).
-    $strings = ws_personal_plan_js_strings() + ws_personal_plan_steps_js_strings();
+    $strings = ws_personal_plan_js_strings() + ws_personal_plan_steps_js_strings() + ws_personal_plan_contact_js_strings();
 
     if ($row) {
         $plan = ws_personal_plan_for_reader((int) $viewer['id'], $row, $viewer);

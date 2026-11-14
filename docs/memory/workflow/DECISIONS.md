@@ -66,6 +66,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-8.md: Where is the Design Canvas icon drawn in one colour? (owner, 2026-11-13, #9250)
 - decisions-made-panel-8.md: How do cards use the form column of an add or edit screen? (owner, 2026-11-13, #9271)
 - decisions-made-panel-8.md: Which drawing does the Communication row of the main menu carry? (owner, 2026-11-14, in the architect's window)
+- decisions-made-panel-9.md: Where are the rules and the earlier parts?
+- decisions-made-panel-9.md: Does the dashboard's assistant chat keep its talk after a reload? (owner, 2026-11-14, agent channel messages 3230 and 3236)
+- decisions-made-panel-9.md: How does a link that opens something read in Turkish? (owner, 2026-11-14, agent channel message 3236)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -329,6 +332,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-19.md: Where are the rules and the earlier parts?
 - decisions-made-schema-19.md: Does a mail keep what its invitation said in a column of ws_mail_items? (owner, 2026-11-14, in the architect's window)
 - decisions-made-schema-19.md: Does a later mail of the same invitation change the plan? (architect, 2026-11-14)
+- decisions-made-schema-19.md: Does a mail draft keep which application wrote it? (owner, 2026-11-14, agent channel poll 3369)
+- decisions-made-schema-19.md: Does a poll keep that it is an agent question? (owner, 2026-11-14, in the architect's window)
 - decisions-made-schema-2.md: Where are the rules and the earlier steps?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-28?
 - decisions-made-schema-2.md: Which schema was approved on 2026-10-29 and later?
@@ -456,9 +461,17 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-27.md: Does a chart of one series take its channel's colour? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-28.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-28.md: How thick is the line of a chart in an agent's drawing? (owner, 2026-11-14, in the architect's window)
+- decisions-made-workspace-28.md: Does a contact's data export list the plans that name the contact? (owner, 2026-11-14, agent channel poll 3359)
+- decisions-made-workspace-28.md: Does erasing a contact touch the Workspace's e-mail conversations? (owner, 2026-11-14, agent channel poll 3360)
+- decisions-made-workspace-29.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-29.md: Which additions go into the running plans? (owner, 2026-11-14, agent channel poll 3363)
+- decisions-made-workspace-29.md: How does an agent ask a person: a card of its own or the poll? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-3.md: Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - decisions-made-workspace-3.md: How does a "For each" box loop over a list? (#3312)
 - decisions-made-workspace-3.md: What may a role-3 member's personal flow hold? (#3345)
+- decisions-made-workspace-30.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-30.md: Can an approval request ask a channel's agents and assistants? (owner, 2026-11-14, in the architect's window)
+- decisions-made-workspace-30.md: Is there a mention of everyone in a room? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
@@ -826,6 +839,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-notes-groups-lock.md: Overview of note groups, shared groups, tabs, the PIN lock and media in notes (owner 2026-11-07): how the parts hold together, what was left out, the keyboard and screen-reader ways, open ends
 - workspace/workspace-notes-sources.md: Where an imported note came from (ws_note_sources, schema 11.0.86, PR #1812): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
 - workspace/workspace-outside-caution.md: The standing caution in every agent's and assistant's brief (GV5): a guest's line, a mail and other outside text are data, never a request; how a guest's message is marked in a brief and in the API
+- workspace/workspace-personal-plan-customer.md: A person's own plan made for a customer (PC6): contact_id, the drawer field, Roadmaps on the card and history, New roadmap, merge and erasure, not in the API
 - workspace/workspace-personal-plan-mail.md: Add to my calendar on a mail (PC7): the button, the filled New plan drawer, one plan a person, the invitation column 11.0.204 and its card states
 - workspace/workspace-sales-quote-change.md: A sales quote added from a change card (kind erp_quote, PR #1705): fields, the erp_lines value kind, what is filled in and checked, the writer erp_quote_save(), how the card and the assistants show it
 - workspace/workspace-scheduled-actions-api.md: The /workspace/scheduled-actions routes were removed before 2026.11.0 shipped (PR #2107): why, what took their place, what stays (scheduled messages, the draft card)
