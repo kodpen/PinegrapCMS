@@ -27777,6 +27777,143 @@ body.pg-measure-report #content {
   margin: 4px 12px 10px;
 }
 
+/* A campaign's content card (New campaign, Edit Campaign): the subject and
+   the mail on the left, how the body is made on the right. The body kind
+   radios and the phone switch come before the grid, so the chosen kind's
+   parts and segment follow from them without a script. */
+.pg-campaign-content {
+  padding: 18px 20px 20px;
+}
+.pg-campaign-kind,
+.pg-campaign-phone-switch {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.pg-campaign-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
+  gap: 24px;
+  margin-top: 12px;
+}
+.pg-campaign-main,
+.pg-campaign-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.pg-campaign-side .pg-button {
+  justify-content: flex-start;
+  width: 100%;
+}
+.pg-campaign-field .pg-input {
+  width: 100%;
+}
+.pg-campaign-part {
+  display: none;
+}
+.pg-campaign-kind[value="design"]:checked ~ .pg-campaign-grid .pg-campaign-part.is-design,
+.pg-campaign-kind[value="html"]:checked ~ .pg-campaign-grid .pg-campaign-part.is-html,
+.pg-campaign-kind[value="text"]:checked ~ .pg-campaign-grid .pg-campaign-part.is-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.pg-campaign-kind[value="text"]:checked ~ .pg-campaign-grid .pg-campaign-phone {
+  display: none;
+}
+.pg-campaign-kind[value="design"]:checked ~ .pg-campaign-grid label[for="body_kind_design"],
+.pg-campaign-kind[value="html"]:checked ~ .pg-campaign-grid label[for="body_kind_html"],
+.pg-campaign-kind[value="text"]:checked ~ .pg-campaign-grid label[for="body_kind_text"] {
+  background: var(--pg-thumb);
+  color: var(--pg-fg-body);
+  box-shadow: var(--pg-thumb-shadow);
+}
+.pg-campaign-kind:focus-visible ~ .pg-campaign-grid .pg-campaign-kinds,
+.pg-campaign-phone-switch:focus-visible ~ .pg-campaign-grid .pg-campaign-phone {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+.pg-campaign-kinds {
+  display: flex;
+  margin-bottom: 4px;
+}
+.pg-campaign-kinds > .pg-seg-item {
+  flex: 1 1 auto;
+}
+.pg-campaign-preview {
+  display: flex;
+  justify-content: center;
+  padding: 12px;
+  border-radius: var(--pg-radius-card);
+  background: var(--pg-surface-inset);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.pg-campaign-frame {
+  display: block;
+  width: 100%;
+  height: 560px;
+  border: 0;
+  border-radius: 10px;
+  background: #fff;
+  transition: width 0.2s ease;
+}
+.pg-campaign-phone-switch:checked ~ .pg-campaign-grid .pg-campaign-frame {
+  width: 375px;
+  max-width: 100%;
+}
+.pg-campaign-phone-switch:checked ~ .pg-campaign-grid .pg-campaign-phone {
+  background: var(--pg-thumb);
+  box-shadow: var(--pg-thumb-shadow);
+}
+.pg-campaign-preview-empty {
+  margin: 40px 0;
+  color: var(--pg-fg-3);
+  text-align: center;
+}
+textarea.pg-campaign-code,
+textarea.pg-campaign-text {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 360px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+.pg-campaign-code {
+  font-family: var(--bs-font-monospace);
+  font-size: var(--pg-text-2);
+}
+.pg-campaign-hint {
+  margin: 4px 0 0;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-campaign-changed {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--pg-tone-amber) 10%, transparent);
+}
+@media (max-width: 991.98px) {
+  .pg-campaign-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pg-campaign-side {
+    order: -1;
+  }
+  .pg-campaign-frame {
+    height: 480px;
+  }
+}
+
 /* The area's tab strip: the segmented control, one line at any width. Under
    576 px only the open tab shows its label, the others their icon. */
 .pg-messages-tabs {
