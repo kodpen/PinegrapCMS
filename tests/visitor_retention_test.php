@@ -160,6 +160,18 @@ function test_visitor_rows_room()
 	pg_assert_same(1000.0, pg_visitor_rows_room(array('engine' => 'innodb', 'data' => 900.0, 'free' => 700.0, 'index' => 100.0)), 'InnoDB free space is outside the data figure');
 }
 
+// After a large delete InnoDB's data figure keeps the emptied pages; the
+// record count at 384 bytes each caps it.
+function test_visitor_rows_room_estimate()
+{
+	$megabyte = 1048576.0;
+
+	pg_assert_same(0.0, pg_visitor_rows_room_estimate(array()), 'nothing known');
+	pg_assert_same(5000000 * 384.0, pg_visitor_rows_room_estimate(array('engine' => 'innodb', 'rows' => 5000000, 'data' => 2370 * $megabyte, 'index' => 570 * $megabyte, 'free' => 524 * $megabyte)), 'the sandbox table after half of 10 million visits went');
+	pg_assert_same(30 * $megabyte, pg_visitor_rows_room_estimate(array('engine' => 'innodb', 'rows' => 200000, 'data' => 25 * $megabyte, 'index' => 5 * $megabyte)), 'statistics below the cap');
+	pg_assert_same(300.0, pg_visitor_rows_room_estimate(array('engine' => 'myisam', 'rows' => 0, 'data' => 900.0, 'free' => 700.0, 'index' => 100.0)), 'no count: the statistics');
+}
+
 // What is asked to be free for the move: what the copy holds, half again for
 // InnoDB pages and the server's logs, and 256 MB for the rest of the server.
 function test_visitor_move_disk_needed()
@@ -173,6 +185,7 @@ function test_visitor_move_disk_needed()
 	// Rows that fit in 30 MB no longer ask for about 1.2 GB.
 	$needed = pg_visitor_move_disk_needed(array('engine' => 'innodb', 'data' => 25.0 * 1048576, 'free' => 210.0 * 1048576, 'index' => 5.0 * 1048576));
 	pg_assert_true($needed < 400.0 * 1048576, 'about 300 MB for 30 MB of rows');
+	pg_assert_same(1.5 * 1000000 * 384.0 + $margin, pg_visitor_move_disk_needed(array('engine' => 'innodb', 'rows' => 1000000, 'data' => 1400.0 * 1048576, 'index' => 130.0 * 1048576)), 'the emptied pages a large delete leaves are not asked for');
 }
 
 // The bound under which a copy goes ahead without the free disk space read:
@@ -307,6 +320,21 @@ function test_visitor_shrink_disk_needed()
 
 	pg_assert_same($margin, pg_visitor_shrink_disk_needed(array()), 'nothing known');
 	pg_assert_same(300.0 + 100.0 + 100.0 + $margin, pg_visitor_shrink_disk_needed(array('engine' => 'innodb', 'data' => 300.0, 'free' => 900.0, 'index' => 100.0)));
+	pg_assert_same(2 * 1000000 * 384.0 + $margin, pg_visitor_shrink_disk_needed(array('engine' => 'innodb', 'rows' => 1000000, 'data' => 1400.0 * 1048576, 'index' => 1000.0 * 1048576)), 'sort files at most the size of the rows');
+}
+
+// A rebuild is worth it too when the rows left take at most half the file and
+// it gives 128 MB or more back, whatever the server says is free.
+function test_visitor_shrink_worth_by_file()
+{
+	$megabyte = 1048576.0;
+
+	pg_assert_true(pg_visitor_shrink_worth_by_file(1830 * $megabyte, 3516 * $megabyte + 200 * $megabyte));
+	pg_assert_true(pg_visitor_shrink_worth_by_file(128 * $megabyte, 256 * $megabyte), 'exactly half, exactly 128 MB back');
+	pg_assert_false(pg_visitor_shrink_worth_by_file(1290 * $megabyte, 1300 * $megabyte), 'every record kept');
+	pg_assert_false(pg_visitor_shrink_worth_by_file(20 * $megabyte, 100 * $megabyte), 'less than 128 MB back');
+	pg_assert_false(pg_visitor_shrink_worth_by_file(0.0, 100 * $megabyte), 'nothing known');
+	pg_assert_false(pg_visitor_shrink_worth_by_file(20 * $megabyte, 0.0), 'file size unknown');
 }
 
 // The hour with the fewest page views; a missing hour had none; a tie goes
