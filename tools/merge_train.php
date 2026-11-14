@@ -31,12 +31,14 @@
  *             same command goes on. It stops, with the merge left open, on a
  *             conflict it cannot settle or a [SCHEME] item, which is worded
  *             by hand. After the last merge it runs tools/memory_index.php
- *             and commits what changed as "Regenerate the memory indexes":
- *             a PR carries no generated memory list (tools/check_pr.php).
+ *             and commits what changed as "Regenerate the memory indexes",
+ *             then tools/build_js.php and tools/build_css.php as "Rebuild
+ *             the bundles" (Node with npx needed): a PR carries no
+ *             generated memory list and no bundle (tools/check_pr.php).
  *             Then pushes the branch and opens or retitles its draft PR,
  *             unless --no-push.
  *         php tools/merge_train.php --indexes
- *             The same regeneration and commit on the current branch, for a
+ *             The same regeneration and commits on the current branch, for a
  *             PR that lands alone: run after its merge commit and before
  *             the fast-forward push to development.
  *         php tools/merge_train.php --land
@@ -73,6 +75,7 @@ define('MERGE_TRAIN_SECURITY_LINE', '[SECURITY] Implemented various security fix
 define('MERGE_TRAIN_MODULE_LIST', 'docs/memory/core/fn-modules.md');
 define('MERGE_TRAIN_DECISION_LIST', 'docs/memory/workflow/DECISIONS.md');
 define('MERGE_TRAIN_INDEX_COMMIT', 'Regenerate the memory indexes');
+define('MERGE_TRAIN_BUNDLE_COMMIT', 'Rebuild the bundles');
 
 // The product lines of a change, path => changed lines: lines in files under
 // pinegrap/, minified bundles and the language files under includes/local/
@@ -1010,34 +1013,51 @@ function merge_train_source_of($path)
 	return (substr($path, -4) === '.css') ? 'style' : '';
 }
 
-// Runs tools/memory_index.php on the current branch and commits what it
-// changed as MERGE_TRAIN_INDEX_COMMIT: a pull request no longer carries the
-// generated memory lists (tools/check_pr.php), so every landing writes them
-// in the commits it pushes. No commit when nothing changed. Stops on a file
-// the tool refuses or a commit that fails.
-function merge_train_regenerate_indexes()
+// Runs the generators of $kinds ('index', 'script', 'style', as in
+// merge_train_generated()) on the current branch and commits the files of
+// those kinds they changed as $message: a pull request carries no generated
+// memory list and no bundle (tools/check_pr.php), so every landing writes
+// them in the commits it pushes. No commit when nothing changed. Stops on a
+// generator that fails or a commit that fails.
+function merge_train_regenerate(array $kinds, $message)
 {
-	if (merge_train_run(array(PHP_BINARY, 'tools/memory_index.php'), $out) !== 0) {
-		fwrite(STDOUT, $out);
-		merge_train_fail('tools/memory_index.php refused the merged memory files; fix them on the branch and run the command again.');
+	$tools = array('index' => 'tools/memory_index.php', 'script' => 'tools/build_js.php', 'style' => 'tools/build_css.php');
+
+	foreach ($kinds as $kind) {
+		if (merge_train_run(array(PHP_BINARY, $tools[$kind]), $out) !== 0) {
+			fwrite(STDOUT, $out);
+			merge_train_fail($tools[$kind] . ' failed on the merged files; fix them on the branch and run the command again.');
+		}
 	}
 
 	merge_train_run(array('git', 'status', '--porcelain', '--untracked-files=all'), $status);
-	$paths = merge_train_generated_changed((string) $status, 'index');
+	$paths = array();
+
+	foreach ($kinds as $kind) {
+		$paths = array_merge($paths, merge_train_generated_changed((string) $status, $kind));
+	}
 
 	if (!$paths) {
-		fwrite(STDOUT, "The memory indexes are current.\n");
+		fwrite(STDOUT, "$message: nothing changed.\n");
 
 		return false;
 	}
 
 	merge_train_git(array_merge(array('add', '--'), $paths));
 
-	if (!merge_train_git_shown(array('commit', '-m', MERGE_TRAIN_INDEX_COMMIT))) {
-		merge_train_fail('The commit of the regenerated memory indexes failed.');
+	if (!merge_train_git_shown(array('commit', '-m', $message))) {
+		merge_train_fail("The commit \"$message\" failed.");
 	}
 
 	return true;
+}
+
+// The memory indexes and then the bundles, each in a commit of its own when
+// it changed: what a landing adds after its merges.
+function merge_train_regenerate_all()
+{
+	merge_train_regenerate(array('index'), MERGE_TRAIN_INDEX_COMMIT);
+	merge_train_regenerate(array('script', 'style'), MERGE_TRAIN_BUNDLE_COMMIT);
 }
 
 // The PRs a train branch carries since its start, from its merge commits'
@@ -1154,7 +1174,7 @@ function merge_train_build(array $numbers, array $options)
 	$carried = merge_train_carried($branch);
 
 	if ($carried) {
-		merge_train_regenerate_indexes();
+		merge_train_regenerate_all();
 	}
 
 	if (in_array('--no-push', $options, true) || !$carried) {
@@ -1181,7 +1201,8 @@ function merge_train_build(array $numbers, array $options)
 
 // --indexes: the landing of a pull request alone (docs/memory/workflow/
 // merge-train.md): on the branch holding its merge commit, before the
-// fast-forward push, the memory indexes are regenerated and committed.
+// fast-forward push, the memory indexes and the bundles are regenerated and
+// committed.
 function merge_train_indexes()
 {
 	merge_train_require_identity();
@@ -1199,7 +1220,7 @@ function merge_train_indexes()
 		merge_train_fail('The working tree has changes; commit or stash them first.');
 	}
 
-	merge_train_regenerate_indexes();
+	merge_train_regenerate_all();
 }
 
 function merge_train_land()
