@@ -419,6 +419,7 @@ function ws_mail_screen_js_strings()
         'close'      => lang('Close'),
         'loading'    => lang('Loading…'),
         'read_all'   => lang('All e-mails are marked as read.'),
+        'draft_deleted' => lang('The draft was deleted.'),
         'checking'   => lang('Checking e-mail…'),
         'not_found'  => lang('This conversation cannot be opened.'),
     );

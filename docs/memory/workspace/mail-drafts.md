@@ -1,6 +1,6 @@
 ---
 name: mail-drafts
-description: E-mail drafts kept on the server (MT3a): a ws_mail_items row with send_state draft, who reads and changes one, the workspace.mail_drafts.* routes and tools, the readers that leave drafts out
+description: E-mail drafts kept on the server (MT3a #9516, MT3b): the ws_mail_items row, who reads and changes one, the routes and tools, the readers that leave drafts out, the E-mails screen's Drafts view
 ---
 
 ## Where is a draft kept?
@@ -19,5 +19,11 @@ description: E-mail drafts kept on the server (MT3a): a ws_mail_items row with s
 ## Which readers leave drafts out?
 - `ws_mail_drafts_excluded_sql()` ('1 = 1' before the send state is kept): the pane (`ws_mail_pane()`), the API's conversation, one mail and read mark, the E-mails list's search (`ws_mail_list_where()`) and its count and snippet (`ws_mail_list_mails()`), the card's "Answered · who" (`ws_mail_items_map()`), who took part when a mail is threaded (`ws_mail_find_conversation()`), the recipient suggestions (`ws_mail_suggest_heard()`, which also leaves blocked mail out).
 - `ws_mail_send_state()` gives `draft`, never `sent`; `ws_mail_send_last_hour()` does not count drafts against the hourly limit. `tests/workspace_mail_drafts_test.php` names each.
+
+## What does the E-mails screen show? (MT3b)
+- "Drafts" (Turkish "Taslaklar"), a view of the toolbar (`view=drafts`) offered with New e-mail: the drafts the person reads, newest change first, at most 100 (`includes/workspace/mail_drafts_screen.php`, `ws_mail_drafts_view()`); the conversation list returns nothing for it.
+- "Open draft" (action `ws_mail_draft_open`, only for whoever may change it) fills the Reply by e-mail drawer, with the conversation open in the pane, or the New e-mail form; the browser's kept form is neither read nor written for it. Delete (`ws_mail_draft_remove`) removes it unsent.
+- Send posts `draft_id`; once the mail is stored the draft goes (`ws_mail_draft_remove()` with the sent mail's conversation: a reply's draft only with an answer in its conversation, a new mail's only with a new mail). A mail that is stored but fails to leave still deletes its draft: it waits under Not sent.
+- Tests: `tests/workspace_mail_drafts_screen_test.php`.
 
 Related: docs/memory/plans/mail-chat-tools-drafts.md, docs/memory/workspace/mail-api.md

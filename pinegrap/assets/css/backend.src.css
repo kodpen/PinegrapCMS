@@ -16118,6 +16118,11 @@ a.ws-chip:hover {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+/* A draft's recipient and kind in the Drafts view read whole on a phone. */
+.ws-mail-drafts .pg-list-row-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .ws-mail-item-head {
   display: flex;
   flex-wrap: wrap;

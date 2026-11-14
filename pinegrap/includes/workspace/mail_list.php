@@ -57,7 +57,7 @@ function ws_mail_transport_kind($box_transport)
 /**
  * The list's filters as asked in the address, each a known word. Pure.
  *
- * @param array $query view (incoming | sent | unsent | all), status (open |
+ * @param array $query view (incoming | sent | unsent | drafts | all), status (open |
  *                     waiting | closed | all; open in Incoming, else all by
  *                     default), holder (all | me | none), overdue (1), box
  *                     (a mailbox id), transport (email | whatsapp | sms,
@@ -73,7 +73,7 @@ function ws_mail_list_filters($query)
         return in_array($value, $known, true) ? $value : $default;
     };
 
-    $view = $word('view', array('incoming', 'sent', 'unsent', 'all'), 'incoming');
+    $view = $word('view', array('incoming', 'sent', 'unsent', 'drafts', 'all'), 'incoming');
     $search = is_scalar($query['q'] ?? null) ? trim(mb_substr(trim((string) $query['q']), 0, WS_MAIL_LIST_QUERY_MAX)) : '';
 
     return array(
@@ -372,7 +372,9 @@ function ws_mail_list_visible($viewer)
 function ws_mail_list($viewer, $filters, $now)
 {
     $charset = function_exists('pg_list_search_connection_charset') ? pg_list_search_connection_charset() : '';
-    $where = ws_mail_list_where($filters, (int) $viewer['id'], ws_mail_list_channels($viewer), $charset, ws_mail_plain_box_ids());
+    // Drafts lists kept drafts, not conversations (mail_drafts_screen.php).
+    $where = (($filters['view'] ?? '') === 'drafts') ? ''
+        : ws_mail_list_where($filters, (int) $viewer['id'], ws_mail_list_channels($viewer), $charset, ws_mail_plain_box_ids());
 
     if ($where === '') {
         return array('rows' => array(), 'next' => '');
@@ -680,7 +682,14 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
 
     $views = '';
 
-    foreach (array('incoming' => array(lang('Incoming'), 'inbox'), 'sent' => array(lang('Sent'), 'send'), 'unsent' => array(lang('Not sent'), 'exclamation-circle')) as $view => $label) {
+    $view_labels = array('incoming' => array(lang('Incoming'), 'inbox'), 'sent' => array(lang('Sent'), 'send'), 'unsent' => array(lang('Not sent'), 'exclamation-circle'));
+
+    // Drafts kept on the server, for whoever writes mail (mail_drafts_screen.php).
+    if ($can_send) {
+        $view_labels['drafts'] = array(lang('Drafts'), 'file-earmark-text');
+    }
+
+    foreach ($view_labels as $view => $label) {
         // A view starts with its own default status.
         $query = ws_mail_list_query(array_merge($filters, array('view' => $view, 'status' => ($view === 'incoming') ? 'open' : 'all')), array('overdue' => ''));
         $active = ($filters['view'] === $view);
@@ -701,7 +710,7 @@ function ws_mail_list_filters_html($filters, $boxes = array(), $can_send = false
         'secondary' => $check . '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-mail-read-all><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Mark all as read')) . '</button>'
             . ws_mail_list_my_calendar_html($calendar) . ws_mail_list_my_settings_html($can_send),
         'search'    => $search,
-        'view'      => '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
+        'view'      => '<div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="' . h(lang('View')) . '">' . $views . '</div>',
     ));
 }
 
