@@ -19,7 +19,7 @@ description: Plan (owner 2026-11-14): the E-mails screen gains Check e-mail, a p
 - IB4 (M) done #9518. Block list (`workspace/mail-blocks.md`): "Block sender" under a mail (the address or its whole domain, this box or every box), the list with "Allow again" on the Mailboxes card, a blocked mail kept 30 days outside the conversations, no card, notice, flow or automatic answer. Who may answer in the box blocks for that box; every box needs the Workspace settings right. Each block is a Site Log line.
 - IB4b (S, after IB4) done #9531. The "Blocked" view and "Move to the inbox" (`workspace/mail-blocks.md`): the row deleted, its `.eml` taken through `ws_mail_ingest()` past the block check.
 - IB5 (S) Recipient suggestions in To, Cc and Bcc: the contacts the person may see and the addresses the box has heard from or written to; an address on the bounce list is marked. Done #9509.
-- IB6 (M, after MT3) Send later: a time on the New e-mail form and the reply drawer, in the person's time zone; the mail waits under "Not sent" with "Send now" and "Cancel".
+- IB6 (M) done #9547 (`workspace/mail-send-later.md`). Send later: a time on the New e-mail form and the reply drawer, in the person's time zone; the mail waits under "Not sent" with "Send now" and "Cancel".
 - IB7 (M) done #9492 (`workspace/mail-sent-folder.md`). A box's Sent folder: an answer written from a mail program shows in its conversation as a sent mail, read by the same job and limits, never sent again.
 - IB8 (S) Close-out: `workspace/mail-overview.md`, `mail-decisions.md`'s later list and the files of the steps brought up to date, this plan deleted.
 

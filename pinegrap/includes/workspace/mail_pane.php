@@ -36,6 +36,8 @@ function ws_mail_pane_columns($html)
 {
     return 'id, box_id, conversation_id, message_id, direction, rfc_message_id, in_reply_to, from_email, from_name, to_list, cc_list,'
         . ' subject, body_text, auth, refused_files, user_id, sent_at, created_at, send_state, send_error, '
+        // When a later mail leaves (mail_later.php), once the column is there.
+        . ((function_exists('ws_mail_later_ready') && ws_mail_later_ready()) ? 'send_at, ' : '')
         . ($html
             ? "(body_html IS NOT NULL AND body_html <> '') AS has_html,"
                 . " (LOCATE(' data-pg-src=\"http', body_html) > 0 OR LOCATE(' data-pg-background=\"http', body_html) > 0) AS outside_pictures"
@@ -132,6 +134,11 @@ function ws_mail_pane_open($viewer, $conversation_id)
 
     // Block sender (mail_blocks.php), then Forward.
     $pane = ws_mail_block_pane($pane, $viewer);
+
+    // Who may send a waiting mail now or cancel it (mail_later.php).
+    foreach ($pane['items'] as $index => $item) {
+        $pane['items'][$index]['later_can'] = !empty($pane['can_post']) && !empty($viewer['member']);
+    }
     // Add to my calendar on each mail (personal_plan_mail.php).
     $pane = function_exists('ws_personal_plan_mail_pane') ? ws_personal_plan_mail_pane($pane, !empty($viewer['member']) && ws_personal_plans_ready(), ws_personal_plan_mail_plans((int) $viewer['id'])) : $pane;
 
@@ -234,8 +241,13 @@ function ws_mail_pane_item_html($item, $base = '')
 
     // A mail that left needs no word here; one that waits or failed gets
     // the card's badge (includes/workspace/mail_send.php).
-    if (in_array(ws_mail_send_state($item), array('queued', 'failed'), true)) {
+    if (in_array(ws_mail_send_state($item), array('queued', 'failed', 'later'), true)) {
         $html .= '<div class="mt-1 small">' . ws_mail_send_badge_html($item) . '</div>';
+    }
+
+    // Send now and Cancel under a mail that waits for its time.
+    if (function_exists('ws_mail_later_tools_html')) {
+        $html .= ws_mail_later_tools_html($item, !empty($item['later_can']));
     }
 
     if (ws_mail_item_is_auto_reply($item)) {

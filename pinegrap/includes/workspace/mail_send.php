@@ -578,7 +578,8 @@ function ws_mail_send_state($item)
 
     // A draft kept on the server (mail_drafts.php) is its own state, never
     // read as sent.
-    return in_array($state, array('queued', 'failed', 'external', 'draft'), true) ? $state : 'sent';
+    // A mail that waits for its time (mail_later.php) is later, never sent.
+    return in_array($state, array('queued', 'failed', 'external', 'draft', 'later'), true) ? $state : 'sent';
 }
 
 /**
@@ -925,6 +926,38 @@ function ws_mail_send_keep_files($channel, $parent_id, $item_id, $files, $user_i
 }
 
 /**
+ * The state an outgoing item is written in: queued, or later when a time
+ * was given and the column is there (mail_later.php). Pure but for the
+ * readiness probe.
+ *
+ * @param array $check ws_mail_send_check()'s, with send_at
+ * @return string
+ */
+function ws_mail_send_first_state($check)
+{
+    return (((int) ($check['send_at'] ?? 0) > 0) && function_exists('ws_mail_later_ready') && ws_mail_later_ready()) ? WS_MAIL_LATER_STATE : 'queued';
+}
+
+/**
+ * After the write: a mail sent at once goes to the queue; a later one keeps
+ * its time and waits for ws_mail_later_run().
+ *
+ * @param array $item  ws_mail_items row
+ * @param array $check with send_at
+ * @return string queued | sent | failed | later
+ */
+function ws_mail_send_hand_on($item, $check)
+{
+    if ((string) $item['send_state'] === 'later') {
+        db("UPDATE ws_mail_items SET send_at = '" . (int) $check['send_at'] . "' WHERE id = '" . (int) $item['id'] . "'");
+
+        return 'later';
+    }
+
+    return ws_mail_send_dispatch($item, 0);
+}
+
+/**
  * Sends a new mail: checks it, writes the conversation (its customer the
  * first To, waiting, held by the writer), its card in the channel, the
  * outgoing item (queued) and its files, then hands it to the mail. With a
@@ -942,6 +975,9 @@ function ws_mail_send($viewer, $mail)
     if (!$check['ok']) {
         return array('ok' => false, 'error' => $check['error'], 'detail' => $check['detail'], 'conversation_id' => 0, 'item_id' => 0, 'message_id' => 0, 'state' => '');
     }
+
+    // Send later (mail_later.php): the time is carried to the write.
+    $check['send_at'] = max(0, (int) ($mail['send_at'] ?? 0));
 
     $box = $check['box'];
     $channel = $check['channel'];
@@ -971,7 +1007,7 @@ function ws_mail_send($viewer, $mail)
             '" . e((string) $box['address']) . "', '" . e($writer) . "', '" . e(implode(', ', $input['to'])) . "',
             '" . e(implode(', ', $input['cc'])) . "', '" . e(implode(', ', $input['bcc'])) . "',
             '" . e(ws_mail_send_subject($input['subject'], $conversation_id)) . "', '" . e($input['text']) . "', 'pass', '" . (int) $viewer['id'] . "',
-            'queued', '" . $now . "')");
+            '" . ws_mail_send_first_state($check) . "', '" . $now . "')");
 
     $item_id = (int) mysqli_insert_id(db::$con);
 
@@ -988,7 +1024,7 @@ function ws_mail_send($viewer, $mail)
     db("UPDATE ws_mail_items SET message_id = '" . (int) $card . "', refused_files = '" . e(implode("\n", $refused)) . "' WHERE id = '" . $item_id . "'");
 
     $item = db_item("SELECT * FROM ws_mail_items WHERE id = '" . $item_id . "'");
-    $state = is_array($item) ? ws_mail_send_dispatch($item, 0) : 'failed';
+    $state = is_array($item) ? ws_mail_send_hand_on($item, $check) : 'failed';
 
     return array('ok' => true, 'error' => '', 'detail' => '', 'conversation_id' => $conversation_id, 'item_id' => $item_id, 'message_id' => (int) $card, 'state' => $state);
 }
@@ -1044,7 +1080,7 @@ function ws_mail_send_answer($viewer, $check, $writer, $now)
             '" . e((string) $box['address']) . "', '" . e($writer) . "', '" . e(implode(', ', $input['to'])) . "',
             '" . e(implode(', ', $input['cc'])) . "', '" . e(implode(', ', $input['bcc'])) . "',
             '" . e(ws_mail_send_subject($input['subject'], $conversation_id)) . "', '" . e($input['text']) . "', 'pass', '" . (int) $viewer['id'] . "',
-            'queued', '" . (int) $now . "')");
+            '" . ws_mail_send_first_state($check) . "', '" . (int) $now . "')");
 
     $item_id = (int) mysqli_insert_id(db::$con);
 
@@ -1072,7 +1108,7 @@ function ws_mail_send_answer($viewer, $check, $writer, $now)
         WHERE id = '" . $conversation_id . "'");
 
     $item = db_item("SELECT * FROM ws_mail_items WHERE id = '" . $item_id . "'");
-    $state = is_array($item) ? ws_mail_send_dispatch($item, 0) : 'failed';
+    $state = is_array($item) ? ws_mail_send_hand_on($item, $check) : 'failed';
 
     return array('ok' => true, 'error' => '', 'detail' => '', 'conversation_id' => $conversation_id, 'item_id' => $item_id, 'message_id' => (int) $message, 'state' => $state);
 }
@@ -1180,6 +1216,10 @@ function ws_mail_send_badge_html($item)
 
     if ($state === 'queued') {
         return '<span class="badge theme-secondary"><i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>' . h(lang('Waiting to be sent')) . '</span>';
+    }
+
+    if (($state === 'later') && function_exists('ws_mail_later_badge_html')) {
+        return ws_mail_later_badge_html($item);
     }
 
     if ($state === 'failed') {

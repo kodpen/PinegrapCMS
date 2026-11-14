@@ -151,6 +151,11 @@
             savedReplies(text, box, view, h);
         }
 
+        // Send later (mail_later.php).
+        var later = laterField(h);
+
+        form.appendChild(later.node);
+
         // Files, as New e-mail takes them: from Files or the computer.
         var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
         var library = [];
@@ -174,6 +179,10 @@
 
             var post = { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: body.value() };
 
+            if (later.value()) {
+                post.send_later = later.value();
+            }
+
             if (kept) {
                 post.draft_id = kept.id;
             }
@@ -192,7 +201,7 @@
 
             formPost(h, 'ws_mail_reply', post, files).then(function (result) {
                 h.hideOffcanvas(node);
-                h.toast(result.state === 'failed' ? t('mail_new_failed') : t('mail_new_sent'), result.state === 'failed' ? 'warning' : 'success');
+                h.toast(result.state === 'failed' ? t('mail_new_failed') : (result.state === 'later' ? t('mail_later_set') : t('mail_new_sent')), result.state === 'failed' ? 'warning' : 'success');
                 view.sync();
             }).catch(function (error) {
                 send.disabled = false;
@@ -1707,6 +1716,32 @@
             });
         });
 
+        // Send now and Cancel under a mail that waits for its time
+        // (mail_later.php); the pane is read again after either.
+        pane.addEventListener('click', function (event) {
+            var later = event.target.closest('[data-ws-mail-later-send], [data-ws-mail-later-cancel]');
+
+            if (!later) {
+                return;
+            }
+
+            var now = later.hasAttribute('data-ws-mail-later-send');
+
+            later.disabled = true;
+            h.api(now ? 'ws_mail_later_send' : 'ws_mail_later_cancel', {
+                item_id: parseInt(later.getAttribute(now ? 'data-ws-mail-later-send' : 'data-ws-mail-later-cancel'), 10)
+            }).then(function () {
+                h.toast(h.t(now ? 'mail_later_now' : 'mail_later_cancel'), 'success');
+
+                if (current > 0) {
+                    open(current);
+                }
+            }).catch(function (error) {
+                later.disabled = false;
+                h.fail(error);
+            });
+        });
+
         // The mail's own buttons, in the pane however it was drawn.
         pane.addEventListener('click', function (event) {
             var choice = event.target.closest('[data-ws-mail-block-choice] .pg-seg-item');
@@ -2056,6 +2091,45 @@
         });
     }
 
+    // Send later (mail_later.php): a link that opens a time field, typed in
+    // the writer's own zone; Send at once closes and clears it. The server
+    // reads the time and refuses one that is past or too far.
+    function laterField(h) {
+        var t = h.t;
+        var el = h.el;
+        var wrap = el('div', 'ws-mail-later mb-3');
+        var open = h.button('btn btn-sm btn-text theme-secondary px-0', t('mail_later'), 'bi-clock');
+        var field = el('input', 'form-control form-control-sm');
+        var close = h.button('btn btn-sm btn-text theme-secondary px-0', t('mail_later_none'), 'bi-x-lg');
+        var row;
+
+        field.type = 'datetime-local';
+        field.name = 'send_later';
+        row = h.formRow(t('mail_later_at'), field, t('mail_later_hint'));
+        row.appendChild(close);
+        row.hidden = true;
+        wrap.appendChild(open);
+        wrap.appendChild(row);
+
+        open.addEventListener('click', function () {
+            open.hidden = true;
+            row.hidden = false;
+            field.focus();
+        });
+        close.addEventListener('click', function () {
+            field.value = '';
+            row.hidden = true;
+            open.hidden = false;
+        });
+
+        return {
+            node: wrap,
+            value: function () {
+                return row.hidden ? '' : field.value;
+            }
+        };
+    }
+
     // Save draft, beside Send in a form opened from a draft kept on the
     // server: the form's fields written back to it, so a change is never
     // lost by closing the form (mail_drafts_screen.php).
@@ -2233,7 +2307,10 @@
         }
 
         var fileRow = h.formRow(t('mail_new_files'), filesField(h, fileField, library, files, drawFiles), t('mail_new_files_hint'));
+        // Send later (mail_later.php).
+        var later = laterField(h);
 
+        form.appendChild(later.node);
         fileRow.appendChild(list);
         form.appendChild(fileRow);
 
@@ -2400,6 +2477,10 @@
                 post.draft_id = server.id;
             }
 
+            if (later.value()) {
+                post.send_later = later.value();
+            }
+
             if (fill) {
                 post.forward_kind = fill.kind;
                 post.forward_ids = fill.ids.join(',');
@@ -2415,7 +2496,7 @@
                 newDraftStore(key, null);
                 send.disabled = false;
                 h.hideOffcanvas(node);
-                h.toast(data.state === 'failed' ? t('mail_new_failed') : t('mail_new_sent'), data.state === 'failed' ? 'warning' : 'success');
+                h.toast(data.state === 'failed' ? t('mail_new_failed') : (data.state === 'later' ? t('mail_later_set') : t('mail_new_sent')), data.state === 'failed' ? 'warning' : 'success');
 
                 if (options.sent) {
                     options.sent(data);

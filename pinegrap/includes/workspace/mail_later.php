@@ -101,3 +101,209 @@ function ws_mail_later_error_text($error)
 
     return $texts[$error] ?? $texts['format'];
 }
+
+/**
+ * Whether a later time can be kept (step 11.0.207: ws_mail_items.send_at).
+ *
+ * @return bool
+ */
+function ws_mail_later_ready()
+{
+    return function_exists('ws_mail_send_ready') && ws_mail_send_ready() && pg_schema_has('ws_mail_items', 'send_at');
+}
+
+/**
+ * Send later as a form posted it: no time asked (at 0), or the time read in
+ * the writer's own time zone, else the site's.
+ *
+ * @param array $request send_later (the form's datetime-local value)
+ * @param int   $now
+ * @return array ok, error (a sentence), at (0 for at once)
+ */
+function ws_mail_later_request($request, $now)
+{
+    $value = $request['send_later'] ?? '';
+
+    if (!is_scalar($value) || (trim((string) $value) === '')) {
+        return array('ok' => true, 'error' => '', 'at' => 0);
+    }
+
+    if (!ws_mail_later_ready()) {
+        return array('ok' => false, 'error' => lang('The database has not been upgraded yet.'), 'at' => 0);
+    }
+
+    $zone = (defined('USER_TIMEZONE') && (USER_TIMEZONE !== '')) ? USER_TIMEZONE : (string) date_default_timezone_get();
+    $parsed = ws_mail_later_parse($value, $zone, $now);
+
+    return $parsed['ok'] ? $parsed : array('ok' => false, 'error' => ws_mail_later_error_text($parsed['error']), 'at' => 0);
+}
+
+/**
+ * Hands one waiting mail to the mail queue: it is claimed first (later to
+ * queued, so a second runner or a second Send now leaves it alone), then
+ * dispatched as a mail sent at once is (ws_mail_send_dispatch()).
+ *
+ * @param array $item ws_mail_items row
+ * @return string queued | sent | failed, '' when another runner took it
+ */
+function ws_mail_later_release($item)
+{
+    db("UPDATE ws_mail_items SET send_state = 'queued', send_at = 0
+        WHERE id = '" . (int) $item['id'] . "' AND send_state = '" . WS_MAIL_LATER_STATE . "'");
+
+    if (mysqli_affected_rows(db::$con) !== 1) {
+        return '';
+    }
+
+    $item['send_state'] = 'queued';
+    $item['send_at'] = 0;
+
+    return ws_mail_send_dispatch($item, 0);
+}
+
+/**
+ * The general job's part: the mails whose time has come, oldest first, read
+ * by idx_later (send_state, send_at), each handed to the queue.
+ *
+ * @param int $now
+ * @param int $limit
+ * @return int how many were handed on
+ */
+function ws_mail_later_run($now, $limit = 50)
+{
+    if (!ws_mail_later_ready()) {
+        return 0;
+    }
+
+    $done = 0;
+
+    foreach ((array) db_items("SELECT * FROM ws_mail_items WHERE send_state = '" . WS_MAIL_LATER_STATE . "' AND send_at <= '" . (int) $now . "'
+        ORDER BY send_at, id LIMIT " . max(1, (int) $limit)) as $item) {
+        if (ws_mail_later_release($item) !== '') {
+            $done++;
+        }
+    }
+
+    return $done;
+}
+
+/**
+ * A waiting mail the person may send now or cancel: whoever may answer in
+ * its conversation's channel. Null for any other row.
+ *
+ * @param array $viewer
+ * @param int   $item_id
+ * @return array|null ws_mail_items row
+ */
+function ws_mail_later_reached($viewer, $item_id)
+{
+    if (empty($viewer['member']) || !ws_mail_later_ready()) {
+        return null;
+    }
+
+    $item = db_item("SELECT * FROM ws_mail_items WHERE id = '" . (int) $item_id . "' AND direction = 'out' AND send_state = '" . WS_MAIL_LATER_STATE . "'");
+    $conversation = $item ? db_item("SELECT channel_id FROM ws_mail_conversations WHERE id = '" . (int) $item['conversation_id'] . "'") : null;
+    $channel = $conversation ? ws_channel((int) $conversation['channel_id']) : null;
+
+    return ($channel && ws_can_read_channel($viewer, $channel) && ws_mail_can_answer($viewer, $channel)) ? $item : null;
+}
+
+/**
+ * Send now, under a waiting mail.
+ *
+ * @param array $viewer
+ * @param int   $item_id
+ * @return array ok, error, state
+ */
+function ws_mail_later_send_now($viewer, $item_id)
+{
+    $item = ws_mail_later_reached($viewer, $item_id);
+
+    if (!$item) {
+        return array('ok' => false, 'error' => lang('This e-mail no longer waits to be sent.'), 'state' => '');
+    }
+
+    $state = ws_mail_later_release($item);
+
+    return ($state === '')
+        ? array('ok' => false, 'error' => lang('This e-mail no longer waits to be sent.'), 'state' => '')
+        : array('ok' => true, 'error' => '', 'state' => $state);
+}
+
+/**
+ * Cancel, under a waiting mail: it is not sent and stays under Not sent,
+ * where Send again sends it as any mail that did not leave.
+ *
+ * @param array $viewer
+ * @param int   $item_id
+ * @return array ok, error
+ */
+function ws_mail_later_cancel($viewer, $item_id)
+{
+    $item = ws_mail_later_reached($viewer, $item_id);
+
+    if ($item) {
+        db("UPDATE ws_mail_items SET send_state = 'failed', send_at = 0, send_error = '" . e(lang('Cancelled before its time; not sent.')) . "'
+            WHERE id = '" . (int) $item['id'] . "' AND send_state = '" . WS_MAIL_LATER_STATE . "'");
+
+        if (mysqli_affected_rows(db::$con) === 1) {
+            return array('ok' => true, 'error' => '');
+        }
+    }
+
+    return array('ok' => false, 'error' => lang('This e-mail no longer waits to be sent.'));
+}
+
+/**
+ * The badge of a waiting mail: when it leaves, in the reader's time. Pure
+ * but for the words and the time label.
+ *
+ * @param array $item ws_mail_items row with send_at
+ * @return string HTML
+ */
+function ws_mail_later_badge_html($item)
+{
+    return '<span class="badge theme-info"><i class="bi bi-clock me-1" aria-hidden="true"></i>'
+        . h(lang(array('string' => 'Sends at {var:1}', 'vars' => date('d.m.Y H:i', (int) ($item['send_at'] ?? 0))))) . '</span>';
+}
+
+/**
+ * Send now and Cancel under a waiting mail of the pane, for whoever may
+ * answer there. Pure but for the words.
+ *
+ * @param array $item     ws_mail_items row
+ * @param bool  $can_post the pane's can_post
+ * @return string HTML, '' for any other mail
+ */
+function ws_mail_later_tools_html($item, $can_post)
+{
+    if (!$can_post || ((string) ($item['send_state'] ?? '') !== WS_MAIL_LATER_STATE)) {
+        return '';
+    }
+
+    $id = (int) $item['id'];
+
+    return '<div class="ws-mail-item-tools mt-2 d-flex flex-wrap gap-2">'
+        . '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-ws-mail-later-send="' . $id . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . h(lang('Send now')) . '</button>'
+        . '<button type="button" class="pg-button pg-button-ghost pg-button-sm" data-ws-mail-later-cancel="' . $id . '">' . h(lang('Cancel sending')) . '</button>'
+        . '</div>';
+}
+
+/**
+ * The words of Send later in the New e-mail form, the reply drawer and the
+ * pane (workspace_mail.js).
+ *
+ * @return array key => text
+ */
+function ws_mail_later_js_strings()
+{
+    return array(
+        'mail_later'        => lang('Send later'),
+        'mail_later_at'     => lang('Send at'),
+        'mail_later_hint'   => lang('In your own time zone. The e-mail waits under Not sent until then.'),
+        'mail_later_none'   => lang('Send at once'),
+        'mail_later_set'    => lang('The e-mail will be sent at the chosen time.'),
+        'mail_later_now'    => lang('The e-mail is on its way.'),
+        'mail_later_cancel' => lang('The e-mail will not be sent. It stays under Not sent, where Send again sends it.'),
+    );
+}

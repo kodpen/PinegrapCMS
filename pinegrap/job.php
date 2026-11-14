@@ -1141,6 +1141,12 @@ if ((defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && ws_mail_on()) || ws_ma
     if (ws_ready() && function_exists('ws_mail_send_orphans_run')) {
         ws_mail_send_orphans_run(time());
     }
+
+    // Mail written to be sent later whose time has come, read by its own
+    // index (includes/workspace/mail_later.php).
+    if (ws_ready() && function_exists('ws_mail_later_run')) {
+        ws_mail_later_run(time());
+    }
 }
 
 // The visitor location database (includes/fn/geo.php): this month's list,
