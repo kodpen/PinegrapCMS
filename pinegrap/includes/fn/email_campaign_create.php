@@ -260,7 +260,28 @@ function pg_email_campaign_design_body($page_id)
         $with_footer = !$pass['has_footer'];
     }
 
-    return pg_email_campaign_prepare_html_body($body, get_page_name($page_id), $with_footer);
+    $body = pg_email_campaign_prepare_html_body($body, get_page_name($page_id), $with_footer);
+
+    // The design's own footer: its links and the sender's address, as the
+    // fixed footer has them.
+    if (!$with_footer) {
+        $body = pg_mail_footer_fill(
+            $body,
+            URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign.php?r=<reference_code></reference_code>',
+            URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/email_preferences.php?id=<email_address_id></email_address_id>',
+            pg_mail_footer_address(array(
+                'name'      => ORGANIZATION_NAME,
+                'address_1' => ORGANIZATION_ADDRESS_1,
+                'address_2' => ORGANIZATION_ADDRESS_2,
+                'city'      => ORGANIZATION_CITY,
+                'state'     => ORGANIZATION_STATE,
+                'zip_code'  => ORGANIZATION_ZIP_CODE,
+                'country'   => ORGANIZATION_COUNTRY,
+            ))
+        );
+    }
+
+    return $body;
 }
 
 /**

@@ -28689,7 +28689,14 @@ const StyleDesigner = (function () {
         space: 'height:24px;line-height:24px;font-size:0',
         group: 'margin:0;padding:0',
         columns: 'width:100%;border-collapse:collapse',
-        column: 'padding:0 8px;vertical-align:top'
+        column: 'padding:0 8px;vertical-align:top',
+        header: 'padding:0 0 16px;text-align:center',
+        logo: 'display:inline-block;width:160px;max-width:100%;height:auto;border:0',
+        product: 'margin:0 0 16px;padding:16px;border:1px solid var(--bs-border-color,#dee2e6);border-radius:8px;text-align:center',
+        price: 'margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:18px;line-height:1.3;font-weight:bold;color:var(--bs-emphasis-color,#000000)',
+        footer: 'padding:16px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#6c757d;text-align:center',
+        footer_text: 'margin:0 0 8px;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.5;color:#6c757d',
+        footer_link: 'color:#6c757d;text-decoration:underline'
     };
 
     // A node's inline style with its mail block look in front, twin of
@@ -78826,7 +78833,32 @@ const StyleDesigner = (function () {
             });
         });
         _sdCanvasAuditIssues(root).forEach(function (ci) { issues.push(ci); });
+        _sdMailCheckIssues(root).forEach(function (mi) { issues.push(mi); });
         return issues;
+    }
+
+    // In an e-mail design (root props.pgEmail), the outermost element that
+    // is no mail block (props._mail) and no part of a table's frame gets a
+    // check line: its look comes from classes and the page's style sheets,
+    // which the mail pass takes out, so a mail program draws it bare.
+    function _sdMailCheckIssues(root) {
+        var out = [];
+        if (!root || !root.props || !root.props.pgEmail) return out;
+        (function walk(n) {
+            (n.children || []).forEach(function (k) {
+                var tag = String((k.props && k.props.tag) || '').toLowerCase();
+                if ((k.props && k.props._mail) || (k.type === 'semantic' && (tag === 'tbody' || tag === 'tr'))) {
+                    walk(k);
+                    return;
+                }
+                out.push({
+                    rule: 'mail_block',
+                    label: _sdT('Not an e-mail block: mail programs draw it without its look. Use a block of the E-mail group.'),
+                    node: k, nodeLabel: getNodeLabel(k), seo: ''
+                });
+            });
+        })(root);
+        return out;
     }
 
     // ── Canvas badges ─────────────────────────────────────────────────

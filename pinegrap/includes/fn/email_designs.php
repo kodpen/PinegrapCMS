@@ -59,6 +59,13 @@ function pg_mail_block_styles()
         'group'      => 'margin:0;padding:0',
         'columns'    => 'width:100%;border-collapse:collapse',
         'column'     => 'padding:0 8px;vertical-align:top',
+        'header'     => 'padding:0 0 16px;text-align:center',
+        'logo'       => 'display:inline-block;width:160px;max-width:100%;height:auto;border:0',
+        'product'    => 'margin:0 0 16px;padding:16px;border:1px solid var(--bs-border-color,#dee2e6);border-radius:8px;text-align:center',
+        'price'      => 'margin:0 0 12px;' . $font . ';font-size:18px;line-height:1.3;font-weight:bold;color:var(--bs-emphasis-color,#000000)',
+        'footer'     => 'padding:16px 0 0;' . $font . ';font-size:12px;line-height:1.5;color:#6c757d;text-align:center',
+        'footer_text' => 'margin:0 0 8px;' . $font . ';font-size:12px;line-height:1.5;color:#6c757d',
+        'footer_link' => 'color:#6c757d;text-decoration:underline',
     );
 }
 
@@ -277,4 +284,52 @@ function pg_email_designs_folder_id($create = false)
     log_activity(lang(array('string' => 'folder ({var:1}) was created', 'vars' => array($name))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
 
     return $id;
+}
+
+/**
+ * The sender's organization as one line of text: name, address lines,
+ * then city, state, postal code and country, the empty parts left out.
+ *
+ * @param array $org name, address_1, address_2, city, state, zip_code, country
+ * @return string
+ */
+function pg_mail_footer_address($org)
+{
+    $org = (is_array($org) ? $org : array()) + array('name' => '', 'address_1' => '', 'address_2' => '', 'city' => '', 'state' => '', 'zip_code' => '', 'country' => '');
+    $place = trim(preg_replace('/\s+/', ' ', $org['city'] . ' ' . $org['state'] . ' ' . $org['zip_code'] . ' ' . $org['country']));
+    $parts = array();
+
+    foreach (array(trim((string) $org['name']), trim((string) $org['address_1']), trim((string) $org['address_2']), $place) as $part) {
+        if ($part !== '') {
+            $parts[] = $part;
+        }
+    }
+
+    return implode(', ', $parts);
+}
+
+/**
+ * The footer block of an e-mail design filled in a stored campaign body:
+ * its links (#pgmail-web, #pgmail-preferences, #pgmail-unsubscribe,
+ * which the body's preparation may have made absolute or given a tracking
+ * code) point at the web version and the preferences page, and the element
+ * marked data-pg-mail-address holds the organization's address. The
+ * addresses keep the tags the senders fill per recipient.
+ *
+ * @param string $html
+ * @param string $web_url         the web version, with <reference_code></reference_code>
+ * @param string $preferences_url the preferences page, with <email_address_id></email_address_id>
+ * @param string $address         plain text
+ * @return string
+ */
+function pg_mail_footer_fill($html, $web_url, $preferences_url, $address)
+{
+    $urls = array('web' => $web_url, 'preferences' => $preferences_url, 'unsubscribe' => $preferences_url);
+    $html = (string) preg_replace_callback('/href=(["\'])[^"\']*#pgmail-(web|preferences|unsubscribe)\b[^"\']*\1/i', function ($m) use ($urls) {
+        return 'href="' . $urls[strtolower($m[2])] . '"';
+    }, (string) $html);
+
+    return (string) preg_replace_callback('/(<([a-z0-9]+)\b[^>]*\sdata-pg-mail-address(?:=(["\'])[^"\']*\3)?[^>]*>).*?(<\/\2\s*>)/is', function ($m) use ($address) {
+        return $m[1] . h($address) . $m[4];
+    }, $html);
 }
