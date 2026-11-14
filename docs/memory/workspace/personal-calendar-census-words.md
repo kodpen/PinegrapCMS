@@ -13,10 +13,10 @@ description: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Plan
 ## What is proposed on screen?
 - "Plan" stays the owner's word for the new record, always "My plans" / "New plan" / "Plan" in the drawer, never alone in a list beside plan items.
 - A plan with steps is shown as "Roadmap" (Yol haritası); its rows "Steps" (Adımlar).
-- The team's record keeps "Plan item" on screen; the two Turkish names of the board are made one ("Planlama panosu") by a translation change only. Both asked, as they change words the team already reads.
+- Architect (2026-11-14): the team's record keeps "Plan item"; the board's Turkish name becomes "Planlama panosu" everywhere, through `tools/tr_add.php`, in a step of its own.
 - "My calendar" (Takvimim), "Who can see" (Kimler görebilir), "Only me", "Chosen team members" (Seçtiğim ekip üyeleri), "The whole team" (Tüm ekip).
 
-## What is proposed in code and API?
-- Prefix `ws_personal_plan_` (tables and functions), gate `ws_personal_plan_can_see()`, not the plan file's `ws_plan_can_see()`, which would sit beside the board's `ws_plan_*`.
+## What is decided in code and API?
+- Architect (2026-11-14): prefix `ws_personal_plan_` (tables and functions), gate `ws_personal_plan_can_see()` (not `ws_plan_*`, the board's), reference type `personal_plan`.
 - API path /workspace/personal-plans, scope `workspace.personal_plans` (PC8), webhook none.
-- Reference type `personal_plan`, never `plan`; it is not offered in "#" search to others (`personal-calendar-census-readers.md`).
+- The reference is never `plan`; it is not offered in "#" search to others (`personal-calendar-census-readers.md`).
