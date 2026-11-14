@@ -16,10 +16,8 @@ description: PC10 census (2026-11-14) for PC13: own plans written to Google or O
 ## Where is the switch kept?
 - "Write my plans to my calendar" in My calendar, off until switched on: a key `plans` (bool) in the same sealed entry, kept by `ws_calsync_state_clean()`. No column. Switching it on needs a connected account as the task writer does (`ws_calsync_offered()`, `ws_calsync_start()`); turning it off deletes the plan events at the next run (they leave the list).
 
-## What is a question for the owner?
-- One calendar or two: plans in the same "Workspace tasks (host)" calendar, or a second calendar the site makes (its id then a second key, e.g. `plans_calendar_id`, in the entry; still no column).
-- A plan's event moved or deleted in Google or Outlook: one way means it is not read back (`ws_calsync_moves()` takes only tasks). Proposed: written back as it is on the site at the next change, like a refused task move, with no bell line.
-- Tasks off and plans on: whether the writer may run for plans alone.
+## How did the owner answer?
+- Two calendars (`plans_calendar_id`), one way with no bell line, the plans switch running alone with tasks off: `workspace-calendar-write-plans.md`.
 
 ## What must PC13 not change?
 - The task writer's behaviour for tasks and bookings, the read-back of task moves, the outgoing iCal subscription, the Work Calendar, the planning board and capacity.

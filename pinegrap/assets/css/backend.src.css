@@ -18215,6 +18215,14 @@ button.ws-cal-more {
   border: 0;
   background: none;
 }
+/* The plans switch under the calendar: the text takes the row's width. */
+.ws-calsync-plans {
+  margin-top: 16px;
+}
+.ws-calsync-plans-text {
+  flex: 1;
+  min-width: 0;
+}
 .ws-mycal-steps {
   display: flex;
   align-items: center;
