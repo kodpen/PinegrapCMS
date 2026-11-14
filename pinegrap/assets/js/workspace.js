@@ -11092,7 +11092,10 @@
             // Add to my calendar: the New plan drawer filled from the mail.
             if (message.mail_calendar && window.PGWsMyCalendar && !message.deleted) {
                 items.push({ icon: 'bi-calendar-plus', label: t('mail_calendar'), action: function () {
-                    window.PGWsMyCalendar.fromMail(featureHelpers(), message.mail_calendar);
+                    // One plan a person: the menu opens the one made already; its card reads as it now is.
+                    window.PGWsMyCalendar.fromMail(featureHelpers(), message.mail_calendar, '', function () {
+                        self.mailCalendarRefresh();
+                    });
                 } });
             }
 
@@ -13290,22 +13293,49 @@
             });
         },
 
+        // Fills an invitation card's place with its buttons; a change made
+        // through them reads the buttons again.
+        mailCalendarTools: function (place, html) {
+            var self = this;
+
+            setHtml(place, html);
+            Array.prototype.forEach.call(place.querySelectorAll('[data-ws-mail-calendar]'), function (button) {
+                button.addEventListener('click', function (event) {
+                    var itemId = parseInt(button.getAttribute('data-ws-mail-calendar'), 10);
+
+                    event.preventDefault();
+                    event.stopPropagation();
+                    window.PGWsMyCalendar.fromMail(featureHelpers(), itemId, button.getAttribute('data-ws-mail-calendar-mode') || '', function () {
+                        self.mailCalendarRefresh();
+                    });
+                });
+            });
+        },
+
+        // After a plan changed: every invitation card on the screen reads
+        // its buttons again (the later mails of the same invitation too).
+        mailCalendarRefresh: function () {
+            var self = this;
+
+            Array.prototype.forEach.call(document.querySelectorAll('[data-ws-mail-invite-tools]'), function (place) {
+                api('ws_personal_plan_mail', { item_id: parseInt(place.getAttribute('data-ws-mail-invite-tools'), 10), mode: 'tools' }).then(function (result) {
+                    self.mailCalendarTools(place, result.tools || '');
+                }).catch(fail);
+            });
+        },
+
         bindChecks: function (body, message) {
             var self = this;
 
-            // An invitation's Add to my calendar (workspace_my_calendar.js),
-            // for a reader it is offered to.
-            Array.prototype.forEach.call(body.querySelectorAll('[data-ws-mail-calendar]'), function (button) {
-                if (!message.mail_calendar || !window.PGWsMyCalendar) {
-                    button.remove();
+            // An invitation card's buttons for this reader (mail_invite_tools),
+            // read again after a change (workspace_my_calendar.js).
+            Array.prototype.forEach.call(body.querySelectorAll('[data-ws-mail-invite-tools]'), function (place) {
+                if (!message.mail_invite_tools || !window.PGWsMyCalendar) {
+                    place.remove();
                     return;
                 }
 
-                button.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    window.PGWsMyCalendar.fromMail(featureHelpers(), message.mail_calendar);
-                });
+                self.mailCalendarTools(place, message.mail_invite_tools);
             });
 
             Array.prototype.forEach.call(body.querySelectorAll('[data-ws-item-task]'), function (button) {

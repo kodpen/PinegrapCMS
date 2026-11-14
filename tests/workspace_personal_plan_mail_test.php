@@ -68,7 +68,7 @@ function test_workspace_personal_plan_mail_pane_marks_mails()
 		array('id' => 2, 'message_id' => 0, 'direction' => 'in', 'subject' => 'B', 'from_email' => 'b@example.com', 'body_text' => 'x'),
 	));
 
-	$marked = ws_personal_plan_mail_pane($pane, true);
+	$marked = ws_personal_plan_mail_pane($pane, true, array());
 	pg_assert_true($marked['items'][0]['calendar']);
 	pg_assert_false($marked['items'][1]['calendar'], 'a mail without its message');
 	pg_assert_false(ws_personal_plan_mail_pane($pane, false)['items'][0]['calendar'], 'not for a guest or before the plan tables');
@@ -144,15 +144,16 @@ function test_workspace_mail_invitation_fill_and_card()
 		'start' => strtotime('2026-11-24 00:00:00'), 'end' => strtotime('2026-11-26 00:00:00'))))));
 	pg_assert_same(array('2026-11-24', '2026-11-25'), array($all_day['start'], $all_day['end']), 'an all-day event\'s last day');
 
-	$card = ws_mail_invitation_card_html($item, true);
+	$card = ws_mail_invitation_card_html($item, ws_mail_invitation_tools_html(12, 'add'));
 	pg_assert_contains('data-ws-mail-calendar="12"', $card);
 	pg_assert_contains('Room &lt;4&gt;', $card, 'escaped');
 	pg_assert_contains('ayse@example.com', $card, 'the organiser');
-	pg_assert_false(strpos(ws_mail_invitation_card_html($item, false), 'data-ws-mail-calendar') !== false, 'no button when not offered');
-	pg_assert_same('', ws_mail_invitation_card_html(array('id' => 1, 'invitation' => ''), true), 'a mail without an invitation');
-	pg_assert_same('', ws_mail_invitation_card_html(array('id' => 1, 'invitation' => '{bad'), true), 'an unreadable column');
-	pg_assert_contains(h(lang('Changed invitation')), ws_mail_invitation_card_html(array_merge($item, array('invitation' => json_encode(array_merge($invitation, array('changed' => true))))), true));
-	pg_assert_contains(h(lang('Cancelled invitation')), ws_mail_invitation_card_html(array_merge($item, array('invitation' => json_encode(array_merge($invitation, array('method' => 'CANCEL'))))), true));
+	pg_assert_false(strpos(ws_mail_invitation_card_html($item, ''), 'data-ws-mail-calendar') !== false, 'no button when not offered');
+	pg_assert_contains('data-ws-mail-invite-tools="12"', ws_mail_invitation_card_html($item, null), 'the place a channel fills for each reader');
+	pg_assert_same('', ws_mail_invitation_card_html(array('id' => 1, 'invitation' => ''), ''), 'a mail without an invitation');
+	pg_assert_same('', ws_mail_invitation_card_html(array('id' => 1, 'invitation' => '{bad'), ''), 'an unreadable column');
+	pg_assert_contains(h(lang('Changed invitation')), ws_mail_invitation_card_html(array_merge($item, array('invitation' => json_encode(array_merge($invitation, array('changed' => true))))), ''));
+	pg_assert_contains(h(lang('Cancelled invitation')), ws_mail_invitation_card_html(array_merge($item, array('invitation' => json_encode(array_merge($invitation, array('method' => 'CANCEL'))))), ''));
 }
 
 function test_workspace_mail_invitation_wiring()
@@ -161,9 +162,59 @@ function test_workspace_mail_invitation_wiring()
 		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
 	};
 
-	pg_assert_contains("ws_mail_invitation_keep(\$item_id, \$box_id, \$parsed['attachments']);", $read('includes/workspace/mail.php'), 'kept at ingest');
-	pg_assert_contains('ws_mail_invitation_card_html($item, ws_personal_plans_ready())', $read('includes/workspace/mail.php'), 'the card in the channel');
-	pg_assert_contains("ws_mail_invitation_card_html(\$item, !empty(\$item['calendar']))", $read('includes/workspace/mail_pane.php'), 'the card in the pane');
+	pg_assert_contains("ws_mail_invitation_keep(\$item_id, \$box_id, \$parsed['attachments'])", $read('includes/workspace/mail.php'), 'kept at ingest');
+	pg_assert_contains('array_splice($refused, $invitation_at, 1);', $read('includes/workspace/mail.php'), 'a part read into the card is not named among the refused');
+	pg_assert_contains('ws_mail_invitation_card_html($item, null)', $read('includes/workspace/mail.php'), 'the card in the channel');
+	pg_assert_contains("'mail_invite_tools' =>", $read('includes/workspace/messages.php'), 'each reader\'s buttons');
+	pg_assert_contains("ws_mail_invitation_card_html(\$item, (string) (\$item['calendar_tools'] ?? ''))", $read('includes/workspace/mail_pane.php'), 'the card in the pane');
+	pg_assert_contains('This e-mail is already in your calendar.', $read('includes/workspace/personal_plans.php'), 'one plan a person');
 	pg_assert_contains("install_add_column('ws_mail_items', 'invitation', \"TEXT NULL\");", $read('includes/migrations/2026.11.0.php'));
 	pg_assert_contains("querySelectorAll('[data-ws-mail-calendar]')", $read('assets/js/workspace.js'), 'the channel card\'s button, taken away for a reader not offered it');
+}
+
+function test_workspace_mail_invitation_states_and_words()
+{
+	$invitation = array('uid' => 'u', 'method' => 'REQUEST', 'summary' => 'Kick-off', 'start' => strtotime('2026-11-20 10:00:00'), 'end' => strtotime('2026-11-20 11:30:00'),
+		'all_day' => false, 'location' => '', 'organizer' => array('name' => 'Ayşe', 'email' => 'ayse@example.org'));
+	$plan = array('title' => 'Kick-off', 'starts_at' => strtotime('2026-11-20 10:00:00'), 'ends_at' => strtotime('2026-11-20 11:30:00'));
+	$changed = array_merge($invitation, array('changed' => true, 'start' => strtotime('2026-11-21 10:00:00'), 'end' => strtotime('2026-11-21 11:00:00')));
+	$cancel = array_merge($invitation, array('method' => 'CANCEL'));
+
+	pg_assert_same('add', ws_personal_plan_mail_state($invitation, null));
+	pg_assert_same('in', ws_personal_plan_mail_state($invitation, $plan), 'one plan a person');
+	pg_assert_same('update', ws_personal_plan_mail_state($changed, $plan));
+	pg_assert_same('in', ws_personal_plan_mail_state($changed, array_merge($plan, array('starts_at' => $changed['start'], 'ends_at' => $changed['end']))), 'the plan follows it already');
+	pg_assert_same('', ws_personal_plan_mail_state($changed, null), 'nothing to change');
+	pg_assert_same('remove', ws_personal_plan_mail_state($cancel, $plan));
+	pg_assert_same('', ws_personal_plan_mail_state($cancel, null), 'nothing to remove');
+
+	pg_assert_contains(h(lang('In your calendar')), ws_mail_invitation_tools_html(3, 'in'));
+	pg_assert_contains('data-ws-mail-calendar-mode="open"', ws_mail_invitation_tools_html(3, 'in'), 'a link that opens the plan');
+	pg_assert_contains('data-ws-mail-calendar-mode="update"', ws_mail_invitation_tools_html(3, 'update'));
+	pg_assert_contains('data-ws-mail-calendar-mode="remove"', ws_mail_invitation_tools_html(3, 'remove'));
+	pg_assert_false(strpos(ws_mail_invitation_tools_html(3, ''), 'data-ws-mail-calendar') !== false);
+	pg_assert_contains(h(lang('No answer is sent to the organiser.')), ws_mail_invitation_tools_html(3, ''));
+
+	// Words: the year when not this year's; days without hours.
+	pg_assert_false(strpos(ws_mail_invitation_when($invitation, '2026'), '2026') !== false, 'this year without its number');
+	pg_assert_contains('20.11.2026', ws_mail_invitation_when($invitation, '2027'));
+	pg_assert_contains('10:00–11:30', ws_mail_invitation_when($invitation, '2026'));
+	pg_assert_false(strpos(ws_mail_invitation_when(array_merge($invitation, array('end' => strtotime('2026-11-22 09:00:00'))), '2026'), ':') !== false, 'many days read as days');
+	pg_assert_false(strpos(ws_mail_invitation_when(array_merge($invitation, array('all_day' => true, 'start' => strtotime('2026-11-20'), 'end' => strtotime('2026-11-21'))), '2026'), ':') !== false, 'all day without hours');
+
+	// The organiser's address beside the name when it is not the sender's; plain text.
+	$item = array('id' => 4, 'subject' => 'S', 'from_email' => 'ayse@example.org', 'invitation' => json_encode(array_merge($invitation, array('location' => '<a href="http://x">x</a> https://example.org'))));
+	$card = ws_mail_invitation_card_html($item, '');
+	pg_assert_false(strpos($card, 'ayse@example.org') !== false, 'the sender\'s own address is not repeated');
+	pg_assert_contains('Ayşe &lt;office@example.org&gt;', ws_mail_invitation_card_html(array_merge($item, array('from_email' => 'other@example.org',
+		'invitation' => json_encode(array_merge($invitation, array('organizer' => array('name' => 'Ayşe', 'email' => 'office@example.org')))))), ''));
+	pg_assert_false(strpos($card, '<a ') !== false, 'nothing from outside is a link');
+	pg_assert_contains('&lt;a href=', $card);
+}
+
+function test_workspace_mail_invitation_part_and_refused()
+{
+	$parts = array(array('content_type' => 'text/plain', 'filename' => 'a.txt'), array('content_type' => 'text/calendar', 'filename' => '', 'content' => 'x'));
+	pg_assert_same('text/calendar', ws_mail_invitation_part($parts)['content_type']);
+	pg_assert_same(null, ws_mail_invitation_part(array(array('content_type' => 'text/plain', 'filename' => 'a.txt'))));
 }

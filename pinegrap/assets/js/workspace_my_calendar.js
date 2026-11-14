@@ -515,12 +515,14 @@
             lock.appendChild(lockText);
             body.appendChild(lock);
 
-            // A plan made from a mail opens its conversation on the E-mails screen.
-            if (plan && plan.mine && plan.mail_conversation_id && h.cfg.urls.mail) {
+            // A plan made from a mail: a quiet line with its subject opening
+            // the conversation, sent only to a reader who may read it.
+            if (plan && plan.mail && h.cfg.urls.mail) {
                 var mailLink = el('a', 'ws-plan-mail pg-text-meta d-block mb-3');
-                mailLink.href = h.cfg.urls.mail + '?conversation=' + plan.mail_conversation_id;
+                mailLink.href = h.cfg.urls.mail + '?conversation=' + plan.mail.conversation_id;
+                mailLink.title = s('plan_mail');
                 mailLink.appendChild(h.icon('bi-envelope', 'me-1'));
-                mailLink.appendChild(document.createTextNode(s('plan_mail')));
+                mailLink.appendChild(document.createTextNode(plan.mail.subject));
                 body.appendChild(mailLink);
             }
 
@@ -738,11 +740,32 @@
     }
 
     // Add to my calendar on a mail (workspace.js, workspace_mail.js): the
-    // New plan drawer filled from the mail, its words sent with the fill.
-    function fromMail(h, itemId) {
-        h.api('ws_personal_plan_mail', { item_id: itemId }).then(function (result) {
-            // An invitation already made a plan of: that plan, as the mail says it now.
-            planKit(h, result.strings || {}, function () {}).drawer(result.plan || null, result.fill || {});
+    // New plan drawer filled from the mail, or the person's plan of it (one
+    // a person), its words sent with it. mode: '' (the menu, Add to my
+    // calendar), open, update (a changed invitation filled in), remove (a
+    // cancelled one: deleted after a confirmation). done() after a change.
+    function fromMail(h, itemId, mode, done) {
+        done = done || function () {};
+
+        h.api('ws_personal_plan_mail', { item_id: itemId, mode: mode || '' }).then(function (result) {
+            var strings = result.strings || {};
+
+            if (result.remove && result.plan) {
+                h.ask(strings.plan_delete_q || '', strings.delete || '', true).then(function (yes) {
+                    if (!yes) {
+                        return;
+                    }
+
+                    h.api('ws_personal_plan_delete', { plan_id: result.plan.id }).then(function () {
+                        h.toast(strings.plan_deleted || '', 'success');
+                        done();
+                    }).catch(h.fail);
+                });
+
+                return;
+            }
+
+            planKit(h, strings, done).drawer(result.plan || null, result.fill || {});
         }).catch(h.fail);
     }
 

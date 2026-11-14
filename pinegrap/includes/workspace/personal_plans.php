@@ -176,8 +176,38 @@ function ws_personal_plans_between($user_id, $from_ts, $to_ts)
 }
 
 /**
- * The reader's own newest plan made from a mail conversation (Add to my
- * calendar), through the gate.
+ * The reader's own plans made from mail conversations (Add to my calendar),
+ * conversation id => plan row, through the gate. Read once a request: a
+ * page of mail cards asks it for each card.
+ *
+ * @param int  $user_id
+ * @param bool $fresh   read again (after a save)
+ * @return array[]
+ */
+function ws_personal_plan_mail_plans($user_id, $fresh = false)
+{
+    static $plans = array();
+
+    if (!ws_personal_plans_ready() || ((int) $user_id <= 0)) {
+        return array();
+    }
+
+    if ($fresh || !isset($plans[(int) $user_id])) {
+        $plans[(int) $user_id] = array();
+
+        foreach ((array) db_items("SELECT * FROM ws_personal_plans
+            WHERE user_id = '" . (int) $user_id . "' AND mail_conversation_id > 0 ORDER BY id LIMIT 5000") as $plan) {
+            if (ws_personal_plan_can_see($user_id, $plan)) {
+                $plans[(int) $user_id][(int) $plan['mail_conversation_id']] = $plan;
+            }
+        }
+    }
+
+    return $plans[(int) $user_id];
+}
+
+/**
+ * The reader's own plan made from a mail conversation: one a person.
  *
  * @param int $user_id
  * @param int $conversation_id
@@ -185,14 +215,9 @@ function ws_personal_plans_between($user_id, $from_ts, $to_ts)
  */
 function ws_personal_plan_of_mail($user_id, $conversation_id)
 {
-    if (!ws_personal_plans_ready() || ((int) $user_id <= 0) || ((int) $conversation_id <= 0)) {
-        return null;
-    }
+    $plans = ws_personal_plan_mail_plans($user_id);
 
-    $plan = db_item("SELECT * FROM ws_personal_plans
-        WHERE user_id = '" . (int) $user_id . "' AND mail_conversation_id = '" . (int) $conversation_id . "' ORDER BY id DESC LIMIT 1");
-
-    return ws_personal_plan_can_see($user_id, $plan) ? $plan : null;
+    return $plans[(int) $conversation_id] ?? null;
 }
 
 /**
@@ -361,9 +386,15 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
             return array('error' => lang('This e-mail cannot be found.'));
         }
 
+        // One plan a person for a conversation: a second press opens the first.
+        if ($mail && ws_personal_plan_of_mail($user_id, (int) $mail['item']['conversation_id'])) {
+            return array('error' => lang('This e-mail is already in your calendar.'));
+        }
+
         $values .= $mail ? ", mail_conversation_id = '" . (int) $mail['item']['conversation_id'] . "'" : '';
         db("INSERT INTO ws_personal_plans SET user_id = '" . $user_id . "', created_at = '" . $now . "', " . $values);
         $plan_id = (int) mysqli_insert_id(db::$con);
+        ws_personal_plan_mail_plans($user_id, true);
     }
 
     db("DELETE FROM ws_personal_plan_people WHERE plan_id = '" . $plan_id . "'");
@@ -374,7 +405,7 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
         }, $people)));
     }
 
-    return array('ok' => true, 'plan' => ws_personal_plan_for_reader($user_id, ws_personal_plan($user_id, $plan_id)));
+    return array('ok' => true, 'plan' => ws_personal_plan_for_reader($user_id, ws_personal_plan($user_id, $plan_id), $viewer));
 }
 
 /**
@@ -480,11 +511,13 @@ function ws_personal_plan_present($plan)
  * anybody it is opened to reads it under the owner's name, without the
  * owner's reminder or the list of the others it is opened to.
  *
- * @param int   $user_id the reader
- * @param array $plan    a row the gate let through
+ * @param int        $user_id the reader
+ * @param array      $plan    a row the gate let through
+ * @param array|null $viewer  the reader, for the mail line of a plan made
+ *                            from a mail (drawn only for whoever may read it)
  * @return array
  */
-function ws_personal_plan_for_reader($user_id, $plan)
+function ws_personal_plan_for_reader($user_id, $plan, $viewer = null)
 {
     $out = ws_personal_plan_present($plan);
     $mine = ((int) $plan['user_id'] === (int) $user_id);
@@ -493,8 +526,10 @@ function ws_personal_plan_for_reader($user_id, $plan)
     $out['mine'] = $mine;
     $out['people'] = ($mine && ($out['visibility'] === 'people')) ? ws_personal_plan_people_ids((int) $plan['id']) : array();
     $out['owner_name'] = $mine ? '' : (string) ($owner[(int) $plan['user_id']]['name'] ?? '');
-    // The mail conversation a plan was made from (Add to my calendar), the owner's alone.
-    $out['mail_conversation_id'] = $mine ? (int) ($plan['mail_conversation_id'] ?? 0) : 0;
+    // The mail a plan was made from (Add to my calendar): its subject and
+    // conversation, for a reader who may read that conversation.
+    $out['mail'] = (is_array($viewer) && ((int) ($plan['mail_conversation_id'] ?? 0) > 0) && function_exists('ws_personal_plan_mail_line'))
+        ? ws_personal_plan_mail_line($viewer, (int) $plan['mail_conversation_id']) : null;
 
     if (!$mine) {
         $out['remind'] = '';

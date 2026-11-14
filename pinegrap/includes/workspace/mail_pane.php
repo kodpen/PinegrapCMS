@@ -130,7 +130,7 @@ function ws_mail_pane_open($viewer, $conversation_id)
     ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
 
     // Add to my calendar on each mail (personal_plan_mail.php).
-    $pane = function_exists('ws_personal_plan_mail_pane') ? ws_personal_plan_mail_pane($pane, !empty($viewer['member']) && ws_personal_plans_ready()) : $pane;
+    $pane = function_exists('ws_personal_plan_mail_pane') ? ws_personal_plan_mail_pane($pane, !empty($viewer['member']) && ws_personal_plans_ready(), ws_personal_plan_mail_plans((int) $viewer['id'])) : $pane;
 
     return ws_mail_forward_pane($pane, ws_mail_forward_may($viewer));
 }
@@ -237,7 +237,7 @@ function ws_mail_pane_item_html($item, $base = '')
     }
 
     // An invitation's card above its words (personal_plan_mail.php).
-    $html .= function_exists('ws_mail_invitation_card_html') ? ws_mail_invitation_card_html($item, !empty($item['calendar'])) : '';
+    $html .= function_exists('ws_mail_invitation_card_html') ? ws_mail_invitation_card_html($item, (string) ($item['calendar_tools'] ?? '')) : '';
     $html .= ws_mail_pane_body_html($item, $name, $base);
 
     foreach ($item['files'] as $file) {

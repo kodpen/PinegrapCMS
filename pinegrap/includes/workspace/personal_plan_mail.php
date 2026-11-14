@@ -43,17 +43,25 @@ function ws_personal_plan_mail_offer($row, $item, $viewer, $ready)
 
 /**
  * The reading pane's mails, each marked whether it may be added to the
- * reader's calendar. Pure.
+ * reader's calendar, and an invitation's card buttons for this reader. Pure
+ * but for the words.
  *
- * @param array $pane  ws_mail_pane()
- * @param bool  $may   a team member, with the plan tables there
+ * @param array   $pane  ws_mail_pane()
+ * @param bool    $may   a team member, with the plan tables there
+ * @param array[] $plans ws_personal_plan_mail_plans() of the reader
  * @return array the pane
  */
-function ws_personal_plan_mail_pane($pane, $may)
+function ws_personal_plan_mail_pane($pane, $may, $plans = array())
 {
     foreach ($pane['items'] as $index => $item) {
-        $pane['items'][$index]['calendar'] = $may && ((int) $item['message_id'] > 0)
+        $may_item = $may && ((int) $item['message_id'] > 0)
             && !(function_exists('ws_mail_item_is_bounce') && ws_mail_item_is_bounce($item));
+        $invitation = $may_item ? ws_mail_invitation_of($item) : null;
+
+        $pane['items'][$index]['calendar'] = $may_item;
+        $pane['items'][$index]['calendar_tools'] = $invitation
+            ? ws_mail_invitation_tools_html((int) $item['id'], ws_personal_plan_mail_state($invitation, $plans[(int) ($item['conversation_id'] ?? 0)] ?? null))
+            : '';
     }
 
     return $pane;
@@ -157,16 +165,98 @@ function ws_personal_plan_mail_item($viewer, $item_id)
 }
 
 /**
- * Add to my calendar: the drawer's fill and its words, for a mail the
- * person may read. An invitation the person already made a plan from opens
- * that plan, with what this mail says filled in when it changed it; a
- * cancelled one opens it to be deleted. Nothing changes until they save.
+ * What an invitation's card offers this person (one plan a person for an
+ * invitation): add (no plan yet), in (their plan has it), update (a changed
+ * invitation their plan does not follow yet), remove (a cancelled one with
+ * their plan), or nothing (a changed or cancelled one without a plan).
+ * Pure but for the site's time zone.
  *
- * @param array $viewer
- * @param int   $item_id
- * @return array fill + strings, or plan + strings, or error
+ * @param array      $invitation ws_mail_invitation_of()
+ * @param array|null $plan       the person's plan row of the
+ *                               conversation, or null
+ * @return string add | in | update | remove | ''
  */
-function ws_personal_plan_mail_draft($viewer, $item_id)
+function ws_personal_plan_mail_state($invitation, $plan)
+{
+    if (($invitation['method'] ?? '') === 'CANCEL') {
+        return $plan ? 'remove' : '';
+    }
+
+    if (!$plan) {
+        return empty($invitation['changed']) ? 'add' : '';
+    }
+
+    if (empty($invitation['changed'])) {
+        return 'in';
+    }
+
+    $clean = ws_personal_plan_clean(ws_personal_plan_mail_fill(array('invitation' => json_encode($invitation))));
+    $same = !isset($clean['error']) && ((int) $clean['starts_at'] === (int) $plan['starts_at']) && ((int) $clean['ends_at'] === (int) $plan['ends_at'])
+        && ((string) $clean['title'] === (string) $plan['title']);
+
+    return $same ? 'in' : 'update';
+}
+
+/**
+ * The buttons of an invitation's card for one person (ws_personal_plan_mail_state()),
+ * and the line that no answer goes to the organiser.
+ *
+ * @param int    $item_id
+ * @param string $state
+ * @return string HTML
+ */
+function ws_mail_invitation_tools_html($item_id, $state)
+{
+    $button = function ($mode, $icon, $label) use ($item_id) {
+        return '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-ws-mail-calendar="' . (int) $item_id . '" data-ws-mail-calendar-mode="' . h($mode) . '">'
+            . '<i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . h($label) . '</button>';
+    };
+    $tools = array(
+        'add'    => $button('', 'bi-calendar-plus', lang('Add to my calendar')),
+        'in'     => '<span class="small"><i class="bi bi-calendar-check me-1" aria-hidden="true"></i>' . h(lang('In your calendar')) . '</span>'
+            . '<button type="button" class="btn btn-sm btn-text theme-primary px-0" data-ws-mail-calendar="' . (int) $item_id . '" data-ws-mail-calendar-mode="open">' . h(lang('Open the plan')) . '</button>',
+        'update' => $button('update', 'bi-calendar2-week', lang('Update my plan')),
+        'remove' => $button('remove', 'bi-calendar-x', lang('Remove from my calendar')),
+    );
+
+    return '<div class="ws-mail-invite-tools mt-2">' . ($tools[$state] ?? '')
+        . '<span class="small fg-secondary">' . h(lang('No answer is sent to the organiser.')) . '</span></div>';
+}
+
+/**
+ * The card buttons of a channel's mail message for one reader, '' for none.
+ *
+ * @param array      $row    ws_messages row
+ * @param array|null $item   ws_mail_items_map() entry
+ * @param array      $viewer
+ * @return string HTML
+ */
+function ws_personal_plan_mail_tools_for($row, $item, $viewer)
+{
+    $invitation = is_array($item) ? ws_mail_invitation_of($item) : null;
+
+    if (!$invitation || !ws_personal_plan_mail_offer($row, $item, $viewer, ws_personal_plans_ready())) {
+        return '';
+    }
+
+    return ws_mail_invitation_tools_html((int) $item['id'],
+        ws_personal_plan_mail_state($invitation, ws_personal_plan_of_mail((int) $viewer['id'], (int) ($item['conversation_id'] ?? 0))));
+}
+
+/**
+ * Add to my calendar: the drawer's fill and its words, for a mail the
+ * person may read. One plan a person for a conversation: once they have
+ * one, the mail opens it (open), a changed invitation opens it with what
+ * this mail says filled in (update), a cancelled one hands it over to be
+ * deleted after a confirmation (remove). Nothing changes until they save or
+ * confirm. tools gives the card's buttons as they now stand.
+ *
+ * @param array  $viewer
+ * @param int    $item_id
+ * @param string $mode '' | open | update | remove | tools
+ * @return array fill + strings, plan + strings (+ remove), tools, or error
+ */
+function ws_personal_plan_mail_draft($viewer, $item_id, $mode = '')
 {
     if (!ws_personal_plans_ready()) {
         return array('error' => lang('Access denied'));
@@ -178,23 +268,57 @@ function ws_personal_plan_mail_draft($viewer, $item_id)
         return array('error' => lang('This e-mail cannot be found.'));
     }
 
-    $fill = ws_personal_plan_mail_fill($found['item'], $found['conversation']);
     $invitation = ws_mail_invitation_of($found['item']);
-    $plan = $invitation ? ws_personal_plan_of_mail((int) $viewer['id'], (int) $found['item']['conversation_id']) : null;
-    $strings = ws_personal_plan_js_strings();
+    $row = ws_personal_plan_of_mail((int) $viewer['id'], (int) $found['item']['conversation_id']);
 
-    if ($plan) {
-        $plan = ws_personal_plan_for_reader((int) $viewer['id'], $plan);
-
-        return array('plan' => (($invitation['method'] ?? '') === 'CANCEL') ? $plan
-            : array_merge($plan, array_intersect_key($fill, array_flip(array('title', 'start', 'end', 'all_day', 'start_time', 'end_time')))), 'strings' => $strings);
+    if ($mode === 'tools') {
+        return array('tools' => $invitation ? ws_mail_invitation_tools_html((int) $found['item']['id'], ws_personal_plan_mail_state($invitation, $row)) : '');
     }
 
-    if (($invitation['method'] ?? '') === 'CANCEL') {
+    $fill = ws_personal_plan_mail_fill($found['item'], $found['conversation']);
+    $strings = ws_personal_plan_js_strings();
+
+    if ($row) {
+        $plan = ws_personal_plan_for_reader((int) $viewer['id'], $row, $viewer);
+
+        if ($mode === 'remove') {
+            return array('plan' => $plan, 'remove' => true, 'strings' => $strings);
+        }
+
+        if (($mode === 'update') && $invitation && (($invitation['method'] ?? '') !== 'CANCEL')) {
+            $plan = array_merge($plan, array_intersect_key($fill, array_flip(array('title', 'start', 'end', 'all_day', 'start_time', 'end_time'))));
+        }
+
+        return array('plan' => $plan, 'strings' => $strings);
+    }
+
+    if (($mode !== '') || (($invitation['method'] ?? '') === 'CANCEL')) {
         return array('error' => lang('No plan of yours was made from this invitation.'));
     }
 
     return array('fill' => $fill, 'strings' => $strings);
+}
+
+/**
+ * The mail line of a saved plan: the conversation's subject, for a reader
+ * who may read the conversation's channel.
+ *
+ * @param array $viewer
+ * @param int   $conversation_id
+ * @return array|null conversation_id, subject
+ */
+function ws_personal_plan_mail_line($viewer, $conversation_id)
+{
+    $conversation = ((int) $conversation_id > 0) ? db_item("SELECT id, channel_id, subject FROM ws_mail_conversations WHERE id = '" . (int) $conversation_id . "'") : null;
+    $channel = $conversation ? ws_channel((int) $conversation['channel_id']) : null;
+
+    if (empty($viewer['member']) || !$channel || !ws_can_read_channel($viewer, $channel)) {
+        return null;
+    }
+
+    $subject = trim((string) $conversation['subject']);
+
+    return array('conversation_id' => (int) $conversation['id'], 'subject' => ($subject !== '') ? $subject : lang('E-mail'));
 }
 
 /**
@@ -215,6 +339,27 @@ function ws_mail_invitation_ready()
 }
 
 /**
+ * A mail's first calendar part: text/calendar or application/ics, named or
+ * not, or a part named *.ics. Pure.
+ *
+ * @param array[] $attachments pg_mail_parse() attachments
+ * @return array|null
+ */
+function ws_mail_invitation_part($attachments)
+{
+    foreach ((array) $attachments as $attachment) {
+        $type = strtolower(trim((string) ($attachment['content_type'] ?? '')));
+        $name = strtolower((string) ($attachment['filename'] ?? ''));
+
+        if (in_array($type, array('text/calendar', 'application/ics'), true) || (substr($name, -4) === '.ics')) {
+            return $attachment;
+        }
+    }
+
+    return null;
+}
+
+/**
  * What a mail's invitation says: its first calendar part (text/calendar or
  * application/ics, named or not) and that part's first VEVENT. No attendee
  * list, description or alarm is read; text is cut to 255 characters. Pure
@@ -227,17 +372,8 @@ function ws_mail_invitation_ready()
  */
 function ws_mail_invitation_read($attachments)
 {
-    $text = null;
-
-    foreach ((array) $attachments as $attachment) {
-        $type = strtolower(trim((string) ($attachment['content_type'] ?? '')));
-        $name = strtolower((string) ($attachment['filename'] ?? ''));
-
-        if (in_array($type, array('text/calendar', 'application/ics'), true) || (substr($name, -4) === '.ics')) {
-            $text = (string) ($attachment['content'] ?? '');
-            break;
-        }
-    }
+    $part = ws_mail_invitation_part($attachments);
+    $text = $part ? (string) ($part['content'] ?? '') : null;
 
     $events = ($text !== null) ? ws_ical_vevents($text) : array();
     $event = $events ? $events[0] : null;
@@ -290,11 +426,14 @@ function ws_mail_invitation_read($attachments)
  * @param int     $box_id      its mailbox: an earlier invitation of the same
  *                             event there marks this one changed
  * @param array[] $attachments pg_mail_parse() attachments, with content
+ * @return string the type of a nameless calendar part read into the card,
+ *                which ws_mail_attachments_sort() named among the refused;
+ *                '' otherwise
  */
 function ws_mail_invitation_keep($item_id, $box_id, $attachments)
 {
     if (((int) $item_id <= 0) || !ws_mail_invitation_ready()) {
-        return;
+        return '';
     }
 
     $invitation = ws_mail_invitation_read($attachments);
@@ -307,9 +446,14 @@ function ws_mail_invitation_keep($item_id, $box_id, $attachments)
             AND id < '" . (int) $item_id . "' AND invitation LIKE '%" . e(addcslashes($uid, '%_\\')) . "%'") > 0);
     }
 
-    if ($invitation) {
-        db("UPDATE ws_mail_items SET invitation = '" . e((string) json_encode($invitation, JSON_UNESCAPED_UNICODE)) . "' WHERE id = '" . (int) $item_id . "'");
+    if (!$invitation) {
+        return '';
     }
+
+    db("UPDATE ws_mail_items SET invitation = '" . e((string) json_encode($invitation, JSON_UNESCAPED_UNICODE)) . "' WHERE id = '" . (int) $item_id . "'");
+    $part = ws_mail_invitation_part($attachments);
+
+    return ((string) ($part['filename'] ?? '') === '') ? (string) ($part['content_type'] ?? '') : '';
 }
 
 /**
@@ -326,31 +470,51 @@ function ws_mail_invitation_of($item)
 }
 
 /**
- * When a kept invitation is, in words: its day (and last day), and its
- * times when it is not all day. Pure but for the site's time zone.
+ * A day in words: weekday and day.month, and the year when it is not this
+ * year's. Pure but for the clock.
  *
- * @param array $invitation ws_mail_invitation_of()
+ * @param string $date Y-m-d
+ * @param string $year this year (Y)
  * @return string
  */
-function ws_mail_invitation_when($invitation)
+function ws_mail_invitation_day($date, $year)
 {
-    $fill = ws_personal_plan_mail_fill(array('invitation' => json_encode($invitation)));
-    $days = ws_day_label($fill['start']) . (($fill['end'] !== $fill['start']) ? ' – ' . ws_day_label($fill['end']) : '');
+    $label = ws_day_label($date);
 
-    return $fill['all_day'] ? $days . ' · ' . lang('All day') : $days . ' · ' . $fill['start_time'] . '–' . $fill['end_time'];
+    return (substr((string) $date, 0, 4) !== (string) $year) ? $label . '.' . substr((string) $date, 0, 4) : $label;
+}
+
+/**
+ * When a kept invitation is, in words, in the site's time zone: its day and
+ * hours, or its days without hours when it is all day or runs over several
+ * days. Pure but for the site's time zone.
+ *
+ * @param array  $invitation ws_mail_invitation_of()
+ * @param string $year       this year (Y)
+ * @return string
+ */
+function ws_mail_invitation_when($invitation, $year = '')
+{
+    $year = ($year !== '') ? $year : date('Y');
+    $fill = ws_personal_plan_mail_fill(array('invitation' => json_encode($invitation)));
+    $days = ws_mail_invitation_day($fill['start'], $year) . (($fill['end'] !== $fill['start']) ? ' – ' . ws_mail_invitation_day($fill['end'], $year) : '');
+
+    return ($fill['all_day'] || ($fill['end'] !== $fill['start'])) ? $days : $days . ' · ' . $fill['start_time'] . '–' . $fill['end_time'];
 }
 
 /**
  * A mail's invitation drawn as a card: whether it invites, changes or
- * cancels, its title, when, where and who sent it, and Add to my calendar.
- * No answer goes to the organiser, and the card says so. Pure but for the
- * words.
+ * cancels, its title, when, where and who sent it (their address beside the
+ * name when it is not the mail's sender), and the reader's buttons. Every
+ * word from outside is plain escaped text. Pure but for the words.
  *
- * @param array $item  ws_mail_items row
- * @param bool  $offer whether Add to my calendar is drawn
+ * @param array       $item  ws_mail_items row
+ * @param string|null $tools ws_mail_invitation_tools_html(), '' for none, or
+ *                           null for the place a channel's script fills
+ *                           for each reader
  * @return string HTML, '' for a mail without an invitation
  */
-function ws_mail_invitation_card_html($item, $offer)
+function ws_mail_invitation_card_html($item, $tools)
 {
     $invitation = ws_mail_invitation_of($item);
 
@@ -361,7 +525,10 @@ function ws_mail_invitation_card_html($item, $offer)
     $cancel = (($invitation['method'] ?? '') === 'CANCEL');
     $state = $cancel ? lang('Cancelled invitation') : (!empty($invitation['changed']) ? lang('Changed invitation') : lang('Invitation'));
     $organizer = (array) ($invitation['organizer'] ?? array());
-    $who = trim((string) ($organizer['name'] ?? '')) !== '' ? (string) $organizer['name'] : (string) ($organizer['email'] ?? '');
+    $name = trim((string) ($organizer['name'] ?? ''));
+    $email = (string) ($organizer['email'] ?? '');
+    $who = ($name === '') ? $email
+        : ((($email !== '') && ($email !== strtolower(trim((string) ($item['from_email'] ?? ''))))) ? $name . ' <' . $email . '>' : $name);
     $html = '<div class="ws-mail-invite mt-2' . ($cancel ? ' ws-mail-invite-cancel' : '') . '">'
         . '<div class="ws-mail-invite-head small fg-secondary mb-1"><i class="bi ' . ($cancel ? 'bi-calendar-x' : 'bi-calendar-event') . ' me-1" aria-hidden="true"></i>' . h($state) . '</div>'
         . '<div class="fw-semibold' . ($cancel ? ' text-decoration-line-through' : '') . '">' . h(((string) $invitation['summary'] !== '') ? (string) $invitation['summary'] : (string) ($item['subject'] ?? '')) . '</div>'
@@ -375,11 +542,7 @@ function ws_mail_invitation_card_html($item, $offer)
         $html .= '<div class="small fg-secondary">' . h(lang(array('string' => 'Organiser: {var:1}', 'vars' => $who))) . '</div>';
     }
 
-    if ($offer) {
-        $html .= '<div class="ws-mail-invite-tools mt-2"><button type="button" class="pg-button pg-button-quiet pg-button-sm" data-ws-mail-calendar="' . (int) ($item['id'] ?? 0) . '">'
-            . '<i class="bi ' . ($cancel ? 'bi-calendar-x' : 'bi-calendar-plus') . ' me-1" aria-hidden="true"></i>' . h($cancel ? lang('Open my plan') : lang('Add to my calendar')) . '</button>'
-            . '<span class="small fg-secondary">' . h(lang('No answer is sent to the organiser.')) . '</span></div>';
-    }
+    $html .= ($tools === null) ? '<div data-ws-mail-invite-tools="' . (int) ($item['id'] ?? 0) . '"></div>' : (string) $tools;
 
     return $html . '</div>';
 }

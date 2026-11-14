@@ -1618,7 +1618,9 @@
             } else if (target.hasAttribute('data-ws-mail-calendar')) {
                 // Add to my calendar (workspace_my_calendar.js).
                 if (window.PGWsMyCalendar) {
-                    window.PGWsMyCalendar.fromMail(h, parseInt(target.getAttribute('data-ws-mail-calendar'), 10));
+                    // The pane is drawn again after a change: the card then reads as the plan is.
+                    window.PGWsMyCalendar.fromMail(h, parseInt(target.getAttribute('data-ws-mail-calendar'), 10),
+                        target.getAttribute('data-ws-mail-calendar-mode') || '', function () { open(current); });
                 }
             } else if (target.hasAttribute('data-ws-mail-more')) {
                 more(target);
