@@ -5,16 +5,17 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 
 ## Which steps? (rules: `messages-area.md`)
 - Every step that builds or changes a screen here builds from the drawing (`messages-area/messages-area.html`) with look A's recipes and posts real screenshots in the agent channel for the owner's approval before it goes ready; an old screen is never moved in as it is (#9295, `workflow/architect-asking.md`).
-- MA0 (S, done #9074) The census (`platform/messages-area-census-*.md`); its proposals were answered on #9081.
+- MA0 (S, done #9074) The census (`platform/messages-area-census-*.md`), answered on #9081.
 - MA1 (M, done #9182) The shell: the menu row, the five tabs with their gates, old addresses leading in.
 - MA2 (M, done #9252) Sends: the list, tiles, filters, row buttons and e-mail sources built behind `pg_messages_sends_list_open()` (`platform/messages-area-sends.md`).
 - MA2b (M, done #9275) The list table driver puts a source's keyset bound and batch limit into each branch and counts per branch; then the Sends list opens, `mail_queue.php` becomes a door (`pg_messages_sends_queue_door()`) and automatic campaigns leave the Campaigns list.
 - MA3 (M, done #9215) Campaigns: one list for e-mail and SMS campaigns; "New campaign" asks the channel first, then recipients, content, time.
-- MA4 (S, done #9074) E-mail body as a page: a proposed way for MA5 (`designer/campaign-email-body-*.md`), answered on #9083.
+- MA4 (S, done #9074) E-mail body as a page: the way MA5 builds (`designer/campaign-email-body-*.md`), #9083.
 - MA5 The campaign's content step (`plans/messages-area-decided.md`), in five PRs:
   - MA5a (S, done #9413, `designer/campaign-email-body-mail-pass.md`) The mail pass and the outgoing mode of `mail_html.php`.
   - MA5b (M, done #9426, `ui/campaign-content-step.md`) The content step, drawn anew: design, pasted HTML or plain text; "Take the design again"; wide and phone preview.
-  - MA5c (M) E-mail designs: the folder, `props.pgEmail`, 600/375 px canvas, mail blocks with PHP maps and canvas twins.
+  - MA5c (M, done #9465, `designer/email-designs.md`) E-mail designs: folder, `props.pgEmail`, 600/375 px canvas, six mail parts, the mail pass on their body.
+  - MA5c2 (S) The other mail blocks (header, footer, product card, merge fields) and the check line: `designer/email-designs.md`.
   - MA5d (M) Five ready designs, the template's and earlier campaigns' as copies; e-mail designs in Templates.
   - MA5e (S) "Send a test to me": to oneself and up to five addresses, never counted, a limit per user.
 - MA6 (M, SMS texts done #9294, WhatsApp templates #9355 (WA3b), `ui/messages-area-templates-tab.md`) Templates: e-mail designs (with MA5), SMS texts and WhatsApp templates in one tab.
@@ -30,8 +31,8 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - Claim as `[plan:messages-area] <step> — <topic>`.
 
 ## What is left for the next session? (2026-11-14, after #9363)
-- MA5c next, then MA5d and MA5e in order; MA8 is #9431.
-- Left open by MA2b (#9275): Sends' search (3.2 s) and sorts other than Date or Channel (2 s) at 500,000 rows per queue a week (`platform/messages-area-sends.md`); asked only if a real site gets there.
+- MA5c2 after MA5c, then MA5d and MA5e in order.
+- Left open by MA2b (#9275): Sends' slow search and sorts at 500,000 rows a queue (`platform/messages-area-sends.md`).
 - The shell, the doors and the tabs so far: `ui/messages-area-shell.md`, `ui/messages-area-campaigns-tab.md`.
 
 ## What is asked of the owner along the way?

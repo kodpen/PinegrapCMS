@@ -140,7 +140,7 @@ function pg_campaign_content_preview($src, $empty)
  */
 function pg_campaign_content_card($o)
 {
-    $o += array('mode' => 'add', 'kind' => 'design', 'subject' => '', 'page_field' => '', 'page_name' => '', 'edit_url' => '', 'html' => '', 'text' => '', 'preview' => '', 'changed' => false);
+    $o += array('mode' => 'add', 'kind' => 'design', 'subject' => '', 'page_field' => '', 'page_name' => '', 'edit_url' => '', 'html' => '', 'text' => '', 'preview' => '', 'changed' => false, 'new_design' => false);
     $mode = $o['mode'];
     $kinds = pg_campaign_content_kinds();
     $kind = array_key_exists($o['kind'], $kinds) ? $o['kind'] : 'design';
@@ -196,6 +196,12 @@ function pg_campaign_content_card($o)
 
         if ($mode === 'add') {
             $side .= '<label class="pg-field-label" for="page_id">' . h(lang('Page')) . '</label>' . $o['page_field'];
+
+            // A new e-mail design opens in the visual editor beside this
+            // screen; once saved it is picked here like any page.
+            if ($o['new_design']) {
+                $side .= '<a class="pg-button pg-button-quiet pg-button-sm pg-campaign-new-design" target="_blank" rel="noopener" href="add_system_style.php?start=email"><i class="bi bi-envelope-plus" aria-hidden="true"></i>' . h(lang('New e-mail design')) . '</a>';
+            }
         } else {
             $side .= '<p class="pg-text-2 mb-0"><span class="pg-text-meta">' . h(lang('Page')) . '</span><br>' . h($o['page_name']) . '</p>';
         }

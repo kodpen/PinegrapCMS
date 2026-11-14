@@ -541,6 +541,11 @@
 }
 .sd-bp-bar .sd-bp-btn:hover { color:var(--sd-text); background:rgba(255,255,255,.05); }
 .sd-bp-bar .sd-bp-btn.active { color:var(--sd-accent); background:rgba(var(--sd-accent-rgb),.1); }
+/* An e-mail design (root props.pgEmail) has two widths: the 600 px mail and
+   the 375 px Phone view; the page widths are hidden while it is open. */
+.sd-bp-bar .sd-bp-btn.sd-bp-mail { display:none; }
+.sd-canvas-email .sd-bp-bar .sd-bp-btn:not(.sd-bp-mail) { display:none; }
+.sd-canvas-email .sd-bp-bar .sd-bp-btn.sd-bp-mail { display:flex; gap:.3rem; font-size:.75rem; white-space:nowrap; }
 
 /* View bar — zoom + outline + theme */
 .sd-vb-btn {

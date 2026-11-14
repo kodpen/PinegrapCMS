@@ -186,10 +186,14 @@ function pg_designer_screen_render($ctx)
         if (!empty($ctx['classic_frame_tree'])) {
             $blank_tree = pg_designer_tree_decode((string)$ctx['classic_frame_tree']);
         }
-        $js_pages[] = pg_designer_blank_page(
-            ($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready()) ? 1 : 0,
-            $blank_tree
-        );
+        // A new e-mail design (add_system_style.php?start=email): its one
+        // tab starts with the mail frame, in the e-mail designs folder.
+        $js_pages[] = !empty($ctx['email_folder_id'])
+            ? pg_email_design_new_page((int)$ctx['email_folder_id'])
+            : pg_designer_blank_page(
+                ($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready()) ? 1 : 0,
+                $blank_tree
+            );
         $active = 0;
     }
     // One shared component opened on its own (edit_system_style.php
