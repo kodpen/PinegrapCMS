@@ -12,7 +12,7 @@ description: Plan (owner 2026-11-14): a guest sees the agents' messages on the g
 - `ws_guest_messages()` (`includes/workspace/guests.php`) lists messages of `sender_kind` `user` and `guest` only, so a guest sees no agent line. A guest's message makes no request for an agent, and while a share is open Claude, Pinegrap AI and model agents are not asked in the channel (`ws_channel_share_open()`).
 
 ## Which steps?
-- GV1 (M) The guest page lists the messages of the channel's agents and of the assistants beside people's, in a guest's room and in every channel shared with a guest, earlier ones included. Drawn by the guest page's engine with the sender's name and its badge; a tag is read as a name, never a link into the panel.
+- GV1 (M) Done (#9401). The guest page lists the messages of the channel's agents and of the assistants beside people's, in a guest's room and in every channel shared with a guest, earlier ones included. Drawn by the guest page's engine with the sender's name and its badge; a tag is read as a name, never a link into the panel.
   - Left out: change cards, buttons, tool and "Waiting for" lines, and lines of applications that are not agents (CI, integrations).
   - Nothing a guest does makes a request: a tag, an answer to an agent's message (the "replies to its messages" rule too), an emoji, a vote, a tick. A unit test for each.
 - GV2 (S) Guests in Channel info: a "Guests · n" group under People and Agents (`workspace/channel-members-agents.md`) for every guest with an open share: name, the Guest badge, read only or read and write, who shared and when. A guest's last seen only for a channel manager, as a person's.
