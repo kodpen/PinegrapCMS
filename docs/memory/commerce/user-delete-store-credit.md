@@ -9,12 +9,15 @@ module: store_credit
 - Every card with a balance is voided through `pg_credit_void()` with the reason "Account deleted": balance 0, the note line, audit `revoke` on `store_credit`. Then cards at 0 get `user_id = 0`, since MySQL may hand the deleted id to a new account.
 - A card whose void lost a race with a spend keeps its balance and its `user_id`: clearing it would make a plain gift card that pays for anyone holding the code.
 
+## Who decided it?
+- Owner (2026-11-14): "Mağaza sorusu hesap silindiginde kredi silinsin." Read by the architect as: the open credit is voided with the account, as above; no warning screen; the card row stays (#6688).
+
 ## Why?
 - Before, the delete left the card open with the deleted id. Edit Gift Card shows no Delete for a customer's card (#6688) and Edit User answered 404, so the only way left was typing 0 into Balance, with no void note and no audit line (#9016).
 - Same treatment as erasure (`api/api-customer-credit.md`): void, then clear the account.
 
 ## What is not covered?
-- Cards already left behind by a delete before this change: still open with the old id; Edit Gift Card offers no void for them.
+- Cards already left behind by a delete before this change: still open with the old id; a Void button on Edit Gift Card for them is a separate follow-up.
 - The delete confirmation does not mention open credit.
 
 ## Tests?
