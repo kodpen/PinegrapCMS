@@ -107,10 +107,10 @@ function test_workspace_people_content_start_events_outputs_are_single_values()
 	pg_assert_same(array('id', 'channel', 'type'), $keys('campaign.sent'));
 	pg_assert_same(array('name'), $keys('page.created'));
 	pg_assert_same(array('name'), $keys('page.updated'));
-	pg_assert_same(array('recurrence_number', 'quantity', 'order_id', 'order_number', 'contact_id'), $keys('calendar_event.reserved'));
+	pg_assert_same(array('recurrence_number', 'quantity', 'order_id', 'order_number', 'contact_id', 'start_at'), $keys('calendar_event.reserved'));
 
 	foreach (array('credit.issued', 'credit.expired') as $event) {
-		pg_assert_same(array('customer_id', 'account_id', 'kind', 'reason', 'expires_at'), $keys($event));
+		pg_assert_same(array('customer_id', 'account_id', 'kind', 'reason', 'expires_at', 'amount', 'balance', 'source', 'name'), $keys($event));
 	}
 }
 

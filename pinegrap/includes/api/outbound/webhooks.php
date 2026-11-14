@@ -73,8 +73,9 @@ function api_webhook_events() {
 		// A store-run subscription (includes/fn/subscription_renewal.php,
 		// pg_subscription_announce()). id is the subscription's; customer_id,
 		// product_id, status, previous_status, kind (the history event),
-		// order_id (the renewal order), amount, currency, next_charge_at and
-		// retry_count follow, never the card. Announced once per written
+		// order_id (the renewal order), amount, currency, next_charge_at,
+		// retry_count, product_name and order_number (the renewal order's)
+		// follow, never the card or its links. Announced once per written
 		// event, whoever made the move: the renewal job, a payment service's
 		// message, the customer in My Account, staff on the panel or the API.
 		// A bounce or a spam complaint recorded for an address
@@ -90,8 +91,8 @@ function api_webhook_events() {
 		'mail.complained'  => 'A recipient marked a message as spam: mail to the address is stopped and its e-mail marketing consent withdrawn',
 		// A booking (includes/fn/booking_messages.php, pg_booking_changed()).
 		// id is the booking's; service_id, staff_id, user_id, name, email,
-		// start_at, end_at (UTC), status and source follow, never the manage
-		// link. A visitor's hold is not announced, nor a reminder.
+		// start_at, end_at (UTC), status, source, service_name and
+		// staff_name follow, never the manage link. A visitor's hold is not announced, nor a reminder.
 		'booking.created'     => 'A booking was made: a request, or a booking confirmed at once (booking.confirmed follows then); a visitor\'s hold of a slot is not announced',
 		'booking.confirmed'   => 'A booking was confirmed, at once or after it was requested',
 		'booking.rescheduled' => 'A booking was moved to another time; start_at and end_at are the new times',
@@ -103,7 +104,8 @@ function api_webhook_events() {
 		'subscription.resumed'   => 'A paused subscription was resumed and is charged again from next_charge_at',
 		// A customer's store credit (includes/fn/store_credit_events.php): id is
 		// the card's (GET /gift-cards/{id}); account_id, customer_id, kind,
-		// reason, amount, balance and expires_at follow, never the code.
+		// reason, amount, balance, expires_at, source (the kind's name) and
+		// name (the customer's) follow, never the code.
 		'credit.issued'  => 'Store credit was given to a customer: reward points converted, a refund paid as credit, or issued by staff on the customer\'s screen or through the API; GET /customers/{id}/credit lists the cards',
 		'credit.used'    => 'An order spent a customer\'s store credit card; order_id and amount_used name the order and what it took, balance what is left (giving it back when the order is cancelled is not announced)',
 		'credit.expired' => 'A store credit card reached its end with money left and was closed by the scheduled job; expired_amount is what was left (a card voided by staff, through the API or by an erasure is not announced)',
@@ -225,8 +227,8 @@ function api_webhook_events() {
 		// An order line that reserved a calendar event, once its order is
 		// placed (includes/fn/order_completion.php,
 		// pg_order_complete_line_reservation()): id is the event's;
-		// recurrence_number, quantity, order_item_id, order_id, order_number
-		// and contact_id follow. GET /calendars/events/{id}/reservations lists
+		// recurrence_number, quantity, order_item_id, order_id, order_number,
+		// contact_id and start_at (the reserved repeat's start, UTC) follow. GET /calendars/events/{id}/reservations lists
 		// them. A cancellation does not give the spots back and is not
 		// announced here (order.cancelled is).
 		'calendar_event.reserved' => 'A placed order reserved spots on a calendar event (a cart that is not ordered yet is not announced)',

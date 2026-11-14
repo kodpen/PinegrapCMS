@@ -2050,6 +2050,7 @@
     "{var:1}, and what they missed": "{var:1}, kaçırdıklarıyla birlikte",
     "{var:1}, and what they missed, summed up by Pinegrap AI": "{var:1}, kaçırdıklarıyla birlikte (Pinegrap AI özetiyle)",
     "{var:1}, ascending": "{var:1}, artan",
+    "{var:1}, at {var:2}": "{var:1}, saat {var:2}",
     "{var:1}, before": "{var:1}, önce",
     "{var:1}, by {var:2}": "{var:1}, {var:2} tarafından",
     "{var:1}, descending": "{var:1}, azalan",

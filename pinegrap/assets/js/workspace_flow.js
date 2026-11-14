@@ -8422,9 +8422,21 @@
     }
 
     // How long a delay box waits, in words: "2 hours", or that none is set;
-    // in until mode "until <date>", with the time before it.
+    // in until mode "until <date>", with the time before it; a time of day
+    // follows as ", at 09:00", alone as "until the next 09:00".
     function delayText(config) {
         var amount = parseInt(config.amount, 10);
+        var clock = String(config.time || '');
+
+        if (clock) {
+            var plain = Object.assign({}, config, { time: '' });
+
+            if ((config.mode !== 'until') && !(amount > 0)) {
+                return t('fl_delay_next_time', clock);
+            }
+
+            return t('fl_delay_at_time', delayText(plain), clock);
+        }
 
         if (config.mode === 'until') {
             var at = String(config.at || '').trim();
@@ -8475,7 +8487,7 @@
         }
 
         amount.type = 'number';
-        amount.min = until ? '0' : '1';
+        amount.min = (until || config.time) ? '0' : '1';
         amount.max = '129600';
         amount.value = (config.amount === '' || config.amount === undefined) ? '' : String(config.amount);
         amount.addEventListener('input', function () {
@@ -8486,8 +8498,35 @@
             config.unit = unit.value;
             refreshNode(node);
         });
-        box.appendChild(field(t(until ? 'fl_delay_before' : 'fl_delay_amount'), amount, until ? '' : t('fl_delay_help')));
+        box.appendChild(field(t(until ? 'fl_delay_before' : 'fl_delay_amount'), amount, until ? '' : t(config.time ? 'fl_delay_help_time' : 'fl_delay_help')));
         box.appendChild(field(t('fl_delay_unit'), unit));
+
+        // A time of day the wait's end moves on to, in the site's zone
+        // (ws_flow_delay_at_time()); empty for none.
+        var clock = dateInput('time', config.time, function (typed) {
+            var was = !!config.time;
+
+            config.time = /^([01]?\d|2[0-3]):[0-5]\d$/.test(typed) ? typed : '';
+            refreshNode(node);
+
+            if (was !== !!config.time) {
+                drawSettings();
+            }
+        });
+
+        box.appendChild(field(t('fl_delay_time'), clock, t('fl_delay_time_help')));
+
+        // Until a date: whether a moment already passed lets the boxes
+        // after it start (the default, as boxes drawn before) or ends the run.
+        if (until) {
+            var passed = K.select([['go', t('fl_delay_passed_go')], ['end', t('fl_delay_passed_end')]], (config.passed === 'end') ? 'end' : 'go');
+
+            passed.addEventListener('change', function () {
+                config.passed = passed.value;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_delay_passed'), passed));
+        }
     }
 
     // How many times a step box tries again on its own after a failure,

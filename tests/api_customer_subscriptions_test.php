@@ -162,4 +162,9 @@ function test_subscription_webhook_data()
 	$paid = pg_subscription_webhook_data(api_customer_subscriptions_test_row(), 0, 'renewed', 'active', 812);
 	pg_assert_same(812, $paid['order_id'], 'the renewal order');
 	pg_assert_same(null, $paid['customer_id'], 'an account with no customer record');
+	pg_assert_same('', $paid['order_number'], 'no number read');
+
+	$named = pg_subscription_webhook_data(api_customer_subscriptions_test_row(array('product_name' => 'Tea box', 'order_number' => '1093')), 0, 'renewed', 'active', 812);
+	pg_assert_same('Tea box', $named['product_name'], 'the product a subscription mail names');
+	pg_assert_same('1093', $named['order_number'], 'the renewal order\'s number');
 }
