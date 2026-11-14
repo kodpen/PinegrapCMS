@@ -983,7 +983,7 @@ function ws_message_send($viewer, $channel, $body, $options = array())
     if (function_exists('ws_blocks_index') && (strpos($body, ':::') !== false)) {
         ws_blocks_index('message', $message_id, $body, ($app_id > 0) ? 0 : (int) $viewer['id'], (int) $channel['id']);
     }
-    ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $app_id);
+    ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $app_id, ws_message_everyone($body));
 
     // An application asking with a checklist rings the people it asks
     // (interact.php).
@@ -1597,26 +1597,65 @@ function ws_message_mention_invite($viewer, $message, $user_ids = null)
 }
 
 /**
- * Tells the people a message mentions - by name or through their
- * department - provided they can read the channel it is in and have not
- * silenced it completely.
+ * Does a text mention everyone in the room: @herkes or @everyone as a
+ * word, in any case, as an agent's handle is matched. Pure.
+ *
+ * @param string $text
+ * @return bool
+ */
+function ws_message_everyone($text)
+{
+    return (bool) preg_match('/(^|[^\w@.-])@(herkes|everyone)(?![\w-])/iu', (string) $text);
+}
+
+/**
+ * Is a mention line written to one person: a team member (a guest of a
+ * room never is) who may read the channel and, unless @herkes named them,
+ * has not silenced it completely. Pure.
+ *
+ * @param bool   $team     a team member
+ * @param bool   $reads    may read the channel
+ * @param string $notify   their notify level in the channel ('' for no membership)
+ * @param bool   $everyone only @herkes named them
+ * @return bool
+ */
+function ws_mention_line_due($team, $reads, $notify, $everyone)
+{
+    return $team && $reads && ($everyone || ((string) $notify !== 'none'));
+}
+
+/**
+ * Tells the people a message mentions - by name, through their department
+ * or, with @herkes, as every member of the channel - provided they can read
+ * the channel it is in and, unless @herkes named them, have not silenced it
+ * completely (ws_mention_line_due()). One line each.
  *
  * @param array $viewer
  * @param array $channel
  * @param int   $message_id
  * @param array $tokens
+ * @param int   $app_id   the writing application, 0 for a person
+ * @param bool  $everyone the message mentions everyone (ws_message_everyone())
  */
-function ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $app_id = 0)
+function ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $app_id = 0, $everyone = false)
 {
     $people = array();
 
     foreach ($tokens as $token) {
         if ($token['type'] === 'user') {
-            $people[(int) $token['id']] = true;
+            $people[(int) $token['id']] = false;
         } elseif ($token['type'] === 'dept') {
             foreach (ws_department_member_ids($token['id']) as $user_id) {
-                $people[(int) $user_id] = true;
+                $people[(int) $user_id] = false;
             }
+        }
+    }
+
+    // @herkes: every member of the room, a discussion's people in a
+    // discussion; a named member is rung once, as one of everyone.
+    if ($everyone) {
+        foreach ((array) db_values("SELECT user_id FROM ws_channel_members WHERE channel_id = '" . (int) $channel['id'] . "'") as $user_id) {
+            $people[(int) $user_id] = true;
         }
     }
 
@@ -1627,20 +1666,14 @@ function ws_message_notify_mentions($viewer, $channel, $message_id, $tokens, $ap
         unset($people[(int) $viewer['id']]);
     }
 
-    foreach (array_keys($people) as $user_id) {
+    foreach ($people as $user_id => $by_everyone) {
         if (!ws_is_team_member($user_id)) {
-            continue;
-        }
-
-        $rights = ws_rights_for_id($user_id);
-
-        if (!ws_can_read_channel($rights, $channel)) {
             continue;
         }
 
         $membership = ws_channel_membership($channel['id'], $user_id);
 
-        if ($membership && ($membership['notify'] === 'none')) {
+        if (!ws_mention_line_due(true, ws_can_read_channel(ws_rights_for_id($user_id), $channel), $membership ? (string) $membership['notify'] : '', $by_everyone)) {
             continue;
         }
 
@@ -2214,7 +2247,8 @@ function ws_message_edit($viewer, $message, $body, $as_app = 0)
         }
     }
 
-    ws_message_notify_mentions($viewer, $channel, $message['id'], $new);
+    // @herkes rings the room only when the edit adds it.
+    ws_message_notify_mentions($viewer, $channel, $message['id'], $new, 0, ws_message_everyone($body) && !ws_message_everyone($message['body']));
 
     // So are the applications it mentions for the first time.
     $apps = ws_message_tell_apps($channel, $message['id'], $new, true);

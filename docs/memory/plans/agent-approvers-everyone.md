@@ -5,7 +5,7 @@ description: Plan (owner 2026-11-14): an approval request can ask a channel's ag
 
 ## What is asked?
 - Owner (2026-11-14, in the architect's window): "Ask for approval" also offers the channel's agents and assistants as approvers, with API routes where they are missing; and a tag `@herkes` that mentions everyone in the room but the writer, in the agent channel every agent, assistants left out. His words: `workflow/decisions-made-workspace-30.md`.
-- Today: approvers are team members who may write in the channel (`ws_approval_eligible()`), answers are people's only (`workspace/agent-questions.md`); a roll call is a checklist that wakes nobody (`workspace/agent-checklist-questions.md`); `@hepsi` is a working habit caught by text waiters (`workflow/agent-channel-wake.md`).
+- Before: approvers were team members who may write in the channel (`ws_approval_eligible()`); a roll call is a checklist that wakes nobody; `@hepsi` a habit caught by text waiters (`workflow/agent-channel-wake.md`).
 
 ## What changes for approvers?
 - The Approvers field lists, under the people, the channel's active agents and the assistants that can be asked there. A paused agent is not offered.
@@ -24,10 +24,11 @@ description: Plan (owner 2026-11-14): an approval request can ask a channel's ag
 - AE2 (M, schema) Agent approvers on the server: who may be asked, the wake, the answer of an asked agent, the bound with its tests (a flow's request refuses an agent, an agent's own request refuses it). Exact scope: `-census-steps.md`.
 - AE3 (S) The form and the card: agents under the people, the badge on the card (workspace_approvals.js, `ws_approvals_map()`). Look A, the pictures in the agent channel.
 - AE4 (S) API: `approvers` takes agents on create; `POST /workspace/approvals/{id}/decide` opens to the asked application agent's own key and stays closed to MCP; the dry run; `php tools/check_api_schema.php` passes. Exact scope: `-census-steps.md`.
-- AE5 (M) `@herkes`: the tag and the menu, the mention lines, the wake, the reserved handles, tests of the two bounds; `hepsi` is not reserved yet. Exact scope: `-census-mentions.md`.
+- AE5 (M) `@herkes` on the server: tag, lines, wake, reserved handles. Done (#9571): `workspace/workspace-everyone-mention.md`.
+- AE5b (S) The @ menu's "Everyone" entry (`-census-mentions.md`). Look A, pictures in the agent channel.
 - AE6 (S) Close-out: the memory files; `workflow/agent-channel-wake.md` drops `@hepsi` and its text waiters; this plan deleted.
 
 ## What does every step keep?
 - A request made before, and a request that asks people only, works as today. A poll's votes and read receipts stay people's.
 - No table or column without asking the architect. Texts through `lang()`, Turkish by `tools/tr_add.php`.
-- AE1 first; AE2 after the owner's answer on the column, AE3 and AE4 after AE2; AE5 after AE1, beside the rest. Claim as `[plan:agent-approvers-everyone] <step> — <topic>`.
+- AE1 first; AE2 after the owner's answer on the column, AE3 and AE4 after AE2; AE5 after AE1, beside the rest; AE5b after AE5. Claim as `[plan:agent-approvers-everyone] <step> — <topic>`.

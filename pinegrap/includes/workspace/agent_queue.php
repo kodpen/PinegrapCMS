@@ -60,22 +60,33 @@ function ws_agent_request_value($agent)
  * answer to its own message: all and prefix never match them, so a line
  * that names nobody wakes nobody.
  *
- * @param array  $row         wake_rule, wake_prefix, handle, app_id
- * @param string $body        the message, tags normalised
- * @param bool   $replies_own the message answers one of the agent's messages
- * @param bool   $by_app      an application wrote it
+ * A person's @herkes (or @everyone, ws_message_everyone()) mentions every
+ * application agent of the room under any rule; an application's never
+ * wakes an agent. A model agent is not woken by it, nor an agent a
+ * discussion reaches through its channel (asked by its name only).
+ *
+ * @param array     $row         kind, wake_rule, wake_prefix, handle, app_id, reach_from
+ * @param string    $body        the message, tags normalised
+ * @param bool      $replies_own the message answers one of the agent's messages
+ * @param bool      $by_app      an application wrote it, or only its mentions ask (an edit)
+ * @param bool|null $by_person   a person wrote it, so @herkes counts; null reads it as !$by_app
  * @return bool
  */
-function ws_agent_wake_matches($row, $body, $replies_own, $by_app = false)
+function ws_agent_wake_matches($row, $body, $replies_own, $by_app = false, $by_person = null)
 {
     $body = (string) $body;
     $handle = (string) ($row['handle'] ?? '');
     $app_id = (int) ($row['app_id'] ?? 0);
+    $by_person = ($by_person === null) ? !$by_app : (bool) $by_person;
 
     $mentioned = (($handle !== '') && preg_match('/(^|[^\w@.-])@' . preg_quote($handle, '/') . '(?![\w-])/iu', $body))
         || (($app_id > 0) && (strpos($body, '<@app:' . $app_id . '>') !== false));
 
     if ($mentioned) {
+        return true;
+    }
+
+    if ($by_person && ((string) ($row['kind'] ?? '') === 'app') && empty($row['reach_from']) && ws_message_everyone($body)) {
         return true;
     }
 
@@ -504,7 +515,7 @@ function ws_agent_after_send($viewer, $channel, $message_id, $body, $followed = 
         $replies_own = $parent && ($own_app > 0) && ($parent['sender_kind'] === 'app') && ($parent['sender_id'] === $own_app);
 
         // Only a mention matches an application's words (ws_agent_wake_matches()).
-        if (($followed === '') && !ws_agent_wake_matches($row, $body, $replies_own && !$mentions_only, $by_app || $mentions_only)) {
+        if (($followed === '') && !ws_agent_wake_matches($row, $body, $replies_own && !$mentions_only, $by_app || $mentions_only, !$by_app)) {
             continue;
         }
 
