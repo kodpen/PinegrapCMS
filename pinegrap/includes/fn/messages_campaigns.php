@@ -20,6 +20,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
+
 /**
  * The statuses each state shows, per channel. Active: still to send or
  * sending; finished: done or cancelled.
@@ -77,6 +79,37 @@ function pg_messages_campaign_channels($channel, $sms)
     }
 
     return $sms ? array('email', 'sms') : array('email');
+}
+
+/**
+ * An e-mail campaign's send time as a timestamp, 0 when it has none: an
+ * empty value, the zero date, the API's "no time" marker (1000-01-01) or
+ * anything strtotime() cannot read or reads before 1970.
+ *
+ * @param mixed $value the start_time column
+ * @return int
+ */
+function pg_messages_campaign_start_time($value)
+{
+    $value = trim((string) $value);
+
+    if (($value === '') || (strpos($value, '0000-00-00') === 0) || (strpos($value, '1000-01-01') === 0)) {
+        return 0;
+    }
+
+    $time = strtotime($value);
+
+    return (($time === false) || ($time <= 0)) ? 0 : (int) $time;
+}
+
+/**
+ * The list's mark for a campaign without a send time.
+ *
+ * @return string
+ */
+function pg_messages_campaign_no_time()
+{
+    return '<span class="pg-text-meta" title="' . h(lang('Not scheduled')) . '">—</span>';
 }
 
 /**
@@ -234,11 +267,14 @@ function pg_messages_campaign_email_rows(array $statuses, array $user)
         $to = h(lang(array('string' => '{var:1} Contact{suffix:1}', 'vars' => pg_format_number($total, 0), 'suffix' => ($total == 1) ? '' : 's')));
 
         $subject = ((string) $campaign['subject'] !== '') ? h($campaign['subject']) : '[' . h(lang('No name')) . ']';
-        $start = ($campaign['start_time'] == '0000-00-00 00:00:00') ? 0 : (int) strtotime($campaign['start_time']);
+        $start = pg_messages_campaign_start_time($campaign['start_time']);
         $percentage = ($total > 0) ? $done / $total * 100 : 100;
-        $result = lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($percentage, 0))))
-            . ' (' . lang(array('string' => '{var:1} of {var:2}', 'vars' => array(pg_format_number($done, 0), pg_format_number($total, 0)))) . ')'
-            . '<div class="small fg-secondary">' . pg_mail_bounce_campaign_cell($delivery[$id] ?? array()) . '</div>';
+        $result = pg_messages_progress_html(
+            $done,
+            $total,
+            pg_format_number($done, 0) . ' / ' . pg_format_number($total, 0) . ' · ' . lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($percentage, 0)))),
+            pg_mail_bounce_campaign_cell($delivery[$id] ?? array())
+        );
 
         $rows[] = array(
             'id' => pg_messages_campaign_row_id('email', $id),
@@ -248,7 +284,7 @@ function pg_messages_campaign_email_rows(array $statuses, array $user)
                 'channel' => pg_list_cell(h(lang('E-mail'))),
                 'to' => pg_list_cell($to, 'align-middle', array('data-pg-sort-value' => $total)),
                 'status' => pg_list_cell(get_email_campaign_status_name($campaign['status'])),
-                'send_time' => pg_list_cell($start ? get_relative_time(array('timestamp' => $start)) : '', 'align-middle', array('data-pg-sort-value' => $start)),
+                'send_time' => pg_list_cell($start ? get_relative_time(array('timestamp' => $start)) : pg_messages_campaign_no_time(), 'align-middle', array('data-pg-sort-value' => $start)),
                 'result' => pg_list_cell($result, 'align-middle', array('data-pg-sort-value' => round($percentage, 2))),
                 'last_modified' => pg_list_table_when_cell($campaign['last_modified_timestamp'], (string) $campaign['last_modified_username']),
             ),
@@ -303,18 +339,23 @@ function pg_messages_campaign_sms_rows(array $statuses, array $user)
 
         // What the queue still knows, then the counts kept on the campaign.
         if ($campaign['status'] === 'queued') {
-            $result = lang(array('string' => '{var:1} queued, {var:2} refused', 'vars' => array(pg_format_number($campaign['queued_count'], 0), pg_format_number($campaign['refused_count'], 0))));
+            $refused = lang(array('string' => '{var:1} queued, {var:2} refused', 'vars' => array(pg_format_number($campaign['queued_count'], 0), pg_format_number($campaign['refused_count'], 0))));
             $outbox = pg_sms_campaign_outbox_counts($id);
 
             if ($outbox) {
-                $result .= '<div class="small fg-secondary">' . lang(array(
+                // The bar is the share of the queued texts the provider took.
+                $sent = (int) ($outbox['sent'] ?? 0);
+                $queued = (int) $campaign['queued_count'];
+                $result = pg_messages_progress_html($sent, $queued, pg_format_number($sent, 0) . ' / ' . pg_format_number($queued, 0), h($refused) . ' · ' . h(lang(array(
                     'string' => 'In the SMS queue: {var:1} sent, {var:2} waiting, {var:3} failed',
                     'vars'   => array(
-                        pg_format_number($outbox['sent'] ?? 0, 0),
+                        pg_format_number($sent, 0),
                         pg_format_number(($outbox['queued'] ?? 0) + ($outbox['sending'] ?? 0), 0),
                         pg_format_number(($outbox['failed'] ?? 0) + ($outbox['uncertain'] ?? 0), 0),
                     ),
-                )) . '</div>';
+                ))));
+            } else {
+                $result = h($refused);
             }
         }
 
@@ -326,7 +367,7 @@ function pg_messages_campaign_sms_rows(array $statuses, array $user)
                 'channel' => pg_list_cell(h(lang('SMS'))),
                 'to' => pg_list_cell(''),
                 'status' => pg_list_cell(h($names[$campaign['status']] ?? $campaign['status'])),
-                'send_time' => pg_list_cell($start_at > 0 ? get_relative_time(array('timestamp' => $start_at)) : '', 'align-middle', array('data-pg-sort-value' => $start_at)),
+                'send_time' => pg_list_cell($start_at > 0 ? get_relative_time(array('timestamp' => $start_at)) : pg_messages_campaign_no_time(), 'align-middle', array('data-pg-sort-value' => $start_at)),
                 'result' => pg_list_cell($result, 'align-middle', array('data-pg-sort-value' => (int) $campaign['queued_count'])),
                 'last_modified' => pg_list_table_when_cell($campaign['updated_at'], (string) $campaign['updated_username']),
             ),

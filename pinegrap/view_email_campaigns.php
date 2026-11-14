@@ -68,13 +68,15 @@ $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 $list_state = pg_list_state('view_email_campaigns', $sort_columns, $sort_default);
 $list = pg_messages_campaign_list($filters, $user, $list_state['sorts'], $sms);
 
+// The two filters are segmented controls on one row (look A).
 $filter_forms = array();
 
 if ($sms) {
-    $filter_forms[] = pg_filter_select('channel', array('all' => lang('All channels'), 'email' => lang('E-mail'), 'sms' => lang('SMS')), $filters['channel'], array('keep' => array('state'), 'label' => lang('Channel'), 'icon' => 'broadcast'));
+    $filter_forms[] = pg_messages_seg_filter('channel', array('all' => lang('All channels'), 'email' => lang('E-mail'), 'sms' => lang('SMS')), $filters['channel'], 'all', $self, array('state' => $self_params['state'] ?? ''), lang('Channel'));
 }
 
-$filter_forms[] = pg_filter_select('state', array('active' => lang('Active'), 'finished' => lang('Finished')), $filters['state'], array('keep' => array('channel'), 'label' => lang('State'), 'icon' => 'funnel'));
+$filter_forms[] = pg_messages_seg_filter('state', array('active' => lang('Active'), 'finished' => lang('Finished')), $filters['state'], 'active', $self, array('channel' => $self_params['channel'] ?? ''), lang('Status'));
+$filter_forms = '<div class="pg-messages-filters">' . implode('', $filter_forms) . '</div>';
 
 // The Campaigns card of Site Settings (Opt-In Label, Plain Text Footer) is
 // reached from here by who may open the settings.
@@ -87,7 +89,7 @@ if ($user['role'] < 3) {
 $warning = '';
 
 if ($sms && ($filters['channel'] !== 'email') && !pg_sms_ready()) {
-    $warning = '<div class="alert theme-warning" role="status"><p class="mb-0">' . lang('SMS is not set up: a campaign is kept, but every number is refused until a provider is set up under Settings, Communication.') . '</p></div>';
+    $warning = pg_messages_note(lang('SMS is not set up: a campaign is kept, but every number is refused until a provider is set up under Settings, Communication.'), ($user['role'] < 3) ? lang('Set up SMS') : '', pg_settings_link('contact', 'pgset-sms'));
 }
 
 echo
@@ -106,8 +108,8 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            ' . $warning . '
             ' . pg_messages_tab_strip_for('campaigns', $user) . '
+            ' . $warning . '
             ' . pg_screen_toolbar(array(
                 'primary'   => pg_messages_new_campaign_button($sms),
                 'secondary' => $secondary,

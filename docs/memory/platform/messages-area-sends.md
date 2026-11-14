@@ -24,7 +24,7 @@ module: messages_sends
 - Since MA2b the tab shows the list, `mail_queue.php` is a door (`?tab=sms` becomes `channel=sms`), and the Campaigns tab lists manual campaigns only.
 
 ## What did the old queue screen keep on the way?
-- The PHP mail() warning with Open SMTP Settings, the Permanent badge, Run now (both queues, 10 messages and 20 seconds each), the e-mail queue's active line and last run. An e-mail Retry names the general job or mail_job.php, a text's the general job only.
+- The PHP mail() warning with Open SMTP Settings (a `pg_messages_note()` row since MA12), the Permanent pill, Run now (both queues, 10 messages and 20 seconds each), the e-mail queue's active line and last run. An e-mail Retry names the general job or mail_job.php, a text's the general job only.
 
 Test: `tests/messages_sends_test.php`.
 

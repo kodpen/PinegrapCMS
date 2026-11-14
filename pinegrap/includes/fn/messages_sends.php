@@ -111,6 +111,69 @@ function pg_messages_sends_channels()
 }
 
 /**
+ * A state as look A's pill: the badge class the state list names maps to a
+ * tone (secondary gray, info violet, success teal, danger rose, warning
+ * amber); anything else is gray.
+ *
+ * @param string $label plain text
+ * @param string $class a theme-* class of pg_messages_sends_states()
+ * @return string
+ */
+function pg_messages_sends_pill($label, $class)
+{
+    $tones = array('theme-info' => 'violet', 'theme-success' => 'teal', 'theme-danger' => 'rose', 'theme-warning' => 'amber');
+    $tone = isset($tones[$class]) ? $tones[$class] : 'gray';
+
+    return '<span class="pg-pill pg-tone-' . $tone . '">' . h((string) $label) . '</span>';
+}
+
+/**
+ * A row's channel: its tone tile with the channel's icon, then its name.
+ *
+ * @param string $channel email, sms or whatsapp
+ * @param string $name    the shown name
+ * @return string
+ */
+function pg_messages_sends_channel_cell($channel, $name)
+{
+    $tiles = array('email' => array('bi-envelope', 'blue'), 'sms' => array('bi-chat-dots', 'amber'), 'whatsapp' => array('bi-whatsapp', 'teal'));
+    $tile = isset($tiles[$channel]) ? $tiles[$channel] : array('bi-send', 'gray');
+
+    return '<span class="pg-messages-channel-cell"><span class="pg-icon-tile pg-tone-' . $tile[1] . '" aria-hidden="true"><span class="bi ' . $tile[0] . '"></span></span>' . h($name) . '</span>';
+}
+
+/**
+ * The figures above the list as look A's figure cards (the report screens'
+ * recipe): the name beside its tone tile, the figure, a note under it.
+ *
+ * Each figure: label, icon (bi-…), tone, value (shown text), note ('' none).
+ *
+ * @param array $figures
+ * @return string '' when there is none
+ */
+function pg_messages_sends_figures_html(array $figures)
+{
+    $html = '';
+
+    foreach ($figures as $figure) {
+        $note = isset($figure['note']) ? (string) $figure['note'] : '';
+        $html .= '<div class="pg-card pg-report-fig">'
+            . '<dt class="pg-report-fig-name"><span class="pg-icon-tile pg-tone-' . h((string) $figure['tone']) . '" aria-hidden="true"><span class="bi ' . h((string) $figure['icon']) . '"></span></span>' . h((string) $figure['label']) . '</dt>'
+            . '<dd class="pg-report-fig-value">' . h((string) $figure['value']) . '</dd>'
+            . (($note !== '') ? '<dd class="pg-report-fig-note">' . h($note) . '</dd>' : '')
+            . '</div>';
+    }
+
+    if ($html === '') {
+        return '';
+    }
+
+    $columns = min(5, count($figures));
+
+    return '<dl class="pg-report-figs pg-messages-figs" style="--pg-report-figs: ' . $columns . '">' . $html . '</dl>';
+}
+
+/**
  * The states a row shows, with the badge each is drawn with. Queue rows
  * take the first six, campaign rows the rest and their own Sending.
  *
@@ -448,7 +511,7 @@ function pg_messages_sends_columns()
         'recipient' => array('heading' => lang('To'), 'width' => '14rem', 'sort' => 'recipient'),
         'channel' => array('heading' => lang('Channel'), 'width' => '7rem', 'sort' => pg_list_label_order('channel', pg_messages_sends_channels())),
         'source' => array('heading' => lang('Source'), 'width' => '10rem', 'sort' => pg_list_label_order('source', pg_messages_sends_sources())),
-        'state' => array('heading' => lang('State'), 'width' => '9rem', 'kind' => 'badge', 'sort' => pg_list_label_order('state', $states)),
+        'state' => array('heading' => lang('Status'), 'width' => '9rem', 'kind' => 'badge', 'sort' => pg_list_label_order('state', $states)),
         'result' => array('heading' => lang('Result'), 'width' => '16rem'),
         'at' => array('heading' => lang('Date'), 'width' => '11rem', 'kind' => 'date', 'sort' => 'at'),
         'actions' => array('heading' => lang('Action'), 'width' => '6rem', 'kind' => 'actions'),
@@ -573,7 +636,7 @@ function pg_messages_sends_row(array $record, $now)
 
     if ((string) $record['row_kind'] === 'campaign') {
         $recipient = h(lang(array('string' => '{var:1} Contact{suffix:1}', 'vars' => pg_format_number($total, 0), 'suffix' => ($total == 1) ? '' : 's')));
-        $result = h(lang(array('string' => '{var:1} of {var:2}', 'vars' => array(pg_format_number((int) $record['done'], 0), pg_format_number($total, 0)))));
+        $result = pg_messages_progress_html((int) $record['done'], $total, pg_format_number((int) $record['done'], 0) . ' / ' . pg_format_number($total, 0));
     } else {
         $recipient = (($branch === 'sms') ? '+' : '') . h((string) $record['recipient']);
         $result = '';
@@ -587,7 +650,7 @@ function pg_messages_sends_row(array $record, $now)
         // Given up at once: what is wrong is in the message itself, so the
         // queue does not try it again by itself (Retry stays).
         if (($branch === 'mail') && pg_mail_failed_permanently($record['state'], $record['attempts'])) {
-            $result .= ' <span class="badge theme-inverse" title="' . h(lang('The queue does not try it again by itself: sent again before its cause is fixed, it would fail the same way.')) . '">' . h(lang('Permanent')) . '</span>';
+            $result .= ' <span class="pg-pill pg-tone-gray" title="' . h(lang('The queue does not try it again by itself: sent again before its cause is fixed, it would fail the same way.')) . '">' . h(lang('Permanent')) . '</span>';
         }
 
         if ((int) $record['attempts'] > 0) {
@@ -605,12 +668,12 @@ function pg_messages_sends_row(array $record, $now)
 
     foreach (pg_messages_sends_buttons($record, $expired) as $button) {
         if ($button === 'delete') {
-            $buttons .= '<button type="submit" name="sends_action" value="delete:' . $sid . '" class="no-submit btn btn-sm btn-outline theme-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(pg_messages_sends_delete_question($record)) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
+            $buttons .= '<button type="submit" name="sends_action" value="delete:' . $sid . '" class="no-submit pg-icon-button pg-icon-button-sm" title="' . h(lang('Delete')) . '" aria-label="' . h(lang('Delete')) . '" data-confirm-content="' . h(pg_messages_sends_delete_question($record)) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
         } else {
             $confirm = ($button === 'retry_confirm')
                 ? ' data-confirm-content="' . h(lang('The provider may already have delivered this message, and sent again it would arrive twice. Check the provider\'s report first.')) . '"'
                 : '';
-            $buttons .= '<button type="submit" name="sends_action" value="retry:' . $sid . '" class="no-submit btn btn-sm btn-outline theme-secondary me-1" title="' . h(lang('Retry')) . '"' . $confirm . '><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>';
+            $buttons .= '<button type="submit" name="sends_action" value="retry:' . $sid . '" class="no-submit pg-icon-button pg-icon-button-sm me-1" title="' . h(lang('Retry')) . '" aria-label="' . h(lang('Retry')) . '"' . $confirm . '><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>';
         }
     }
 
@@ -619,9 +682,9 @@ function pg_messages_sends_row(array $record, $now)
     return array('id' => $sid, 'class' => '', 'cells' => array(
         'what' => pg_list_cell($what_html, 'align-middle'),
         'recipient' => pg_list_cell($recipient, 'align-middle text-nowrap'),
-        'channel' => pg_list_cell(h(isset($channels[$record['channel']]) ? $channels[$record['channel']] : (string) $record['channel']), 'align-middle'),
+        'channel' => pg_list_cell(pg_messages_sends_channel_cell((string) $record['channel'], isset($channels[$record['channel']]) ? $channels[$record['channel']] : (string) $record['channel']), 'align-middle text-nowrap'),
         'source' => pg_list_cell(h(isset($sources[$source]) ? $sources[$source] : $source), 'align-middle'),
-        'state' => pg_list_cell('<span class="badge ' . h($state[1]) . '">' . h($state[0]) . '</span>', 'align-middle text-nowrap'),
+        'state' => pg_list_cell(pg_messages_sends_pill($state[0], $state[1]), 'align-middle text-nowrap'),
         'result' => pg_list_cell($result, 'align-middle'),
         'at' => pg_list_cell(((int) $record['at'] > 0) ? pg_mail_queue_list_time($record['at']) : '', 'align-middle text-nowrap'),
         'actions' => pg_list_cell($buttons, 'align-middle text-nowrap'),
@@ -865,7 +928,7 @@ function pg_messages_sends_recipients_html(array $user, $sid)
 
     foreach ($lines as $line) {
         $state = isset($states[$line[1]]) ? $states[$line[1]] : array($line[1], 'bg-1 fg-body');
-        $html .= '<li>' . h($line[0]) . ' <span class="badge ' . h($state[1]) . '">' . h($state[0]) . '</span>'
+        $html .= '<li>' . h($line[0]) . ' ' . pg_messages_sends_pill($state[0], $state[1])
             . (($line[2] !== '') ? ' <span class="fg-danger">' . h($line[2]) . '</span>' : '') . '</li>';
     }
 

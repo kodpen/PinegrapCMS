@@ -170,3 +170,29 @@ function test_mail_queue_kinds_name_every_source_kind()
 		pg_assert_true(isset(pg_mail_queue_list_types()[$kind]), $kind . ' has a label on the mail queue');
 	}
 }
+
+function test_messages_sends_pill_tones()
+{
+	pg_assert_same('<span class="pg-pill pg-tone-teal">Sent</span>', pg_messages_sends_pill('Sent', 'theme-success'), 'success is teal');
+	pg_assert_contains('pg-tone-rose', pg_messages_sends_pill('Failed', 'theme-danger'), 'danger is rose');
+	pg_assert_contains('pg-tone-violet', pg_messages_sends_pill('Sending', 'theme-info'), 'info is violet');
+	pg_assert_contains('pg-tone-gray">a&lt;b', pg_messages_sends_pill('a<b', 'bg-1 fg-body'), 'anything else is gray, escaped');
+}
+
+function test_messages_sends_channel_cell()
+{
+	pg_assert_contains('pg-tone-amber" aria-hidden="true"><span class="bi bi-chat-dots">', pg_messages_sends_channel_cell('sms', 'SMS'), 'SMS has its amber tile');
+	pg_assert_contains('bi-send', pg_messages_sends_channel_cell('fax', 'Fax'), 'an unknown channel gets the plain icon');
+}
+
+function test_messages_sends_figures_html()
+{
+	pg_assert_same('', pg_messages_sends_figures_html(array()), 'no figure draws nothing');
+	$html = pg_messages_sends_figures_html(array(
+		array('label' => 'Queued', 'icon' => 'bi-hourglass-split', 'tone' => 'blue', 'value' => '3.288', 'note' => 'soon'),
+		array('label' => 'Failed', 'icon' => 'bi-x-octagon', 'tone' => 'rose', 'value' => '9'),
+	));
+	pg_assert_contains('style="--pg-report-figs: 2"', $html, 'as many columns as figures');
+	pg_assert_contains('<dd class="pg-report-fig-value">3.288</dd><dd class="pg-report-fig-note">soon</dd>', $html, 'figure and note');
+	pg_assert_same(1, substr_count($html, 'pg-report-fig-note'), 'a figure without a note has none');
+}

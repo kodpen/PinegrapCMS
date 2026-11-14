@@ -100,9 +100,12 @@ function pg_messages_tabs_for_user($user)
 }
 
 /**
- * The tab strip under a tab screen's heading: links between screens, so the
+ * The tab strip under a tab screen's heading, drawn as the segmented control
+ * the flow window has for Canvas and List: links between screens, so the
  * open one carries aria-current="page" (not role=tab: each tab is its own
- * address). Empty when the viewer may open fewer than two tabs.
+ * address). It stays one line at a phone's width: there only the open tab
+ * shows its label, the others their icon (the label kept for screen readers
+ * and as the title). Empty when the viewer may open fewer than two tabs.
  *
  * @param string $active a key of pg_messages_area_tabs(), or '' for none
  * @param array  $keys   the viewer's tabs (pg_messages_tabs_for_user())
@@ -121,21 +124,101 @@ function pg_messages_tab_strip($active, $keys, $prefix = '')
         }
 
         $tab = $tabs[$key];
+        $label = h(lang($tab['label']));
         $current = ($key === $active);
         $count++;
 
-        $items .= '<li class="nav-item">'
-            . '<a class="nav-link' . ($current ? ' active' : '') . '"' . ($current ? ' aria-current="page"' : '')
-            . ' href="' . h($prefix . $tab['file']) . '">'
-            . '<i class="bi ' . h($tab['icon']) . ' me-3" aria-hidden="true"></i>' . h(lang($tab['label'])) . '</a>'
-            . '</li>';
+        $items .= '<a class="pg-seg-item' . ($current ? ' is-active' : '') . '"' . ($current ? ' aria-current="page"' : '')
+            . ' href="' . h($prefix . $tab['file']) . '" title="' . $label . '">'
+            . '<i class="bi ' . h($tab['icon']) . '" aria-hidden="true"></i><span class="pg-messages-tab-label">' . $label . '</span></a>';
     }
 
     if ($count < 2) {
         return '';
     }
 
-    return '<ul class="nav nav-tabs mb-5 pg-messages-tabs" aria-label="' . h(lang('Communication')) . '">' . $items . '</ul>';
+    return '<nav class="pg-messages-tabs" aria-label="' . h(lang('Communication')) . '"><div class="pg-seg">' . $items . '</div></nav>';
+}
+
+/**
+ * A filter of an area list as a segmented control of links (look A): each
+ * choice an address keeping the other filters, the chosen one raised. A
+ * choice equal to $default leaves its parameter out of the address.
+ *
+ * @param string $name    the query parameter
+ * @param array  $options value => label (plain text)
+ * @param string $current the chosen value
+ * @param string $default the value the screen takes without the parameter
+ * @param string $file    the screen's address
+ * @param array  $keep    the other filters, name => value ('' left out)
+ * @param string $label   the group's accessible name
+ * @return string
+ */
+function pg_messages_seg_filter($name, $options, $current, $default, $file, $keep, $label)
+{
+    $items = '';
+
+    foreach ($options as $value => $text) {
+        $value = (string) $value;
+        $params = $keep;
+        $params[$name] = ($value === (string) $default) ? '' : $value;
+        $query = http_build_query(array_filter($params, 'strlen'));
+        $chosen = ($value === (string) $current);
+
+        $items .= '<a class="pg-seg-item' . ($chosen ? ' is-active" aria-current="true"' : '"')
+            . ' href="' . h($file . (($query !== '') ? '?' . $query : '')) . '">' . h((string) $text) . '</a>';
+    }
+
+    return '<div class="pg-seg" role="group" aria-label="' . h($label) . '">' . $items . '</div>';
+}
+
+/**
+ * A notice of an area screen as the drawing has it: an inner card row with
+ * a tone tile, the sentence, and the way to fix it as a quiet button at the
+ * right. Under the tab strip, never above it.
+ *
+ * @param string $text   the sentence (plain text)
+ * @param string $button the button's label ('' for none)
+ * @param string $url    its address
+ * @param string $tone   a .pg-tone-* name
+ * @param string $role   'status' or 'alert'
+ * @return string
+ */
+function pg_messages_note($text, $button = '', $url = '', $tone = 'amber', $role = 'status')
+{
+    return '<div class="pg-card-inner pg-messages-note" role="' . h($role) . '"><div class="pg-card-inner-row">'
+        . '<span class="pg-icon-tile pg-tone-' . h($tone) . '" aria-hidden="true"><span class="bi bi-exclamation-triangle"></span></span>'
+        . '<div class="pg-text-2 flex-grow-1 min-w-0">' . h($text) . '</div>'
+        . ((($button !== '') && ($url !== '')) ? '<a class="pg-button pg-button-quiet pg-button-sm" href="' . h($url) . '">' . h($button) . '</a>' : '')
+        . '</div></div>';
+}
+
+/**
+ * A campaign's progress as the drawing has it: a slim bar of the done share
+ * with its figure beside it, a note under them. The bar is a progressbar for
+ * screen readers. Nothing done of nothing draws an empty bar.
+ *
+ * @param int    $done
+ * @param int    $total
+ * @param string $figure    the figure beside the bar (plain text)
+ * @param string $note_html the line under it, markup ('' for none)
+ * @return string
+ */
+function pg_messages_progress_html($done, $total, $figure, $note_html = '')
+{
+    $done = max(0, (int) $done);
+    $total = max(0, (int) $total);
+    $share = ($total > 0) ? min(100, round($done / $total * 100, 1)) : 0;
+    $full = ($total > 0) && ($done >= $total);
+
+    return '<div class="pg-messages-progress">'
+        . '<div class="pg-messages-progress-line">'
+        . '<span class="pg-messages-progress-track' . ($full ? ' is-full' : '') . '" role="progressbar" aria-valuemin="0" aria-valuemax="' . $total . '" aria-valuenow="' . min($done, $total) . '" aria-label="' . h((string) $figure) . '">'
+        . '<span class="pg-messages-progress-fill" style="width: ' . $share . '%"></span></span>'
+        . '<span class="pg-messages-progress-figure">' . h((string) $figure) . '</span>'
+        . '</div>'
+        . (((string) $note_html !== '') ? '<div class="pg-messages-progress-note">' . $note_html . '</div>' : '')
+        . '</div>';
 }
 
 /**
@@ -366,8 +449,9 @@ function pg_messages_channel_card($key, $title, $icon, $tone, $ready, $started, 
 }
 
 /**
- * The cards as markup: two to a row from md up, each a link to its
- * settings with its state as a pill.
+ * The cards as markup: a padded section card holding a grid of inner cards,
+ * two to a row from md up and all as high as the highest, each card a link
+ * to its settings with its state as a pill.
  *
  * @param array $cards pg_messages_channel_cards()
  * @return string
@@ -380,17 +464,18 @@ function pg_messages_channel_cards_html($cards)
     foreach ($cards as $card) {
         $tone = isset($pill_tones[$card['state']]) ? $pill_tones[$card['state']] : 'gray';
 
-        $html .= '<div class="col-12 md:col-6"><div class="pg-card-inner h-100"><div class="pg-card-inner-row">'
+        $html .= '<a class="pg-card-inner pg-messages-channel" href="' . h($card['url']) . '"><div class="pg-card-inner-row">'
             . '<span class="pg-icon-tile pg-icon-tile-lg pg-tone-' . h($card['tone']) . '" aria-hidden="true"><span class="bi ' . h($card['icon']) . '"></span></span>'
             . '<div class="flex-grow-1 min-w-0">'
-            . '<a class="pg-list-row-title" href="' . h($card['url']) . '">' . h($card['title']) . '</a>'
+            . '<div class="pg-messages-channel-head"><span class="pg-list-row-title">' . h($card['title']) . '</span>'
+            . '<span class="pg-pill pg-tone-' . $tone . '">' . h($card['state_label']) . '</span></div>'
             . '<div class="pg-text-meta text-break">' . h($card['line']) . '</div>'
             . '</div>'
-            . '<span class="pg-pill pg-tone-' . $tone . '">' . h($card['state_label']) . '</span>'
-            . '</div></div></div>';
+            . '</div></a>';
     }
 
-    return '<section class="pg-card mb-12"><h2 class="pg-title-section">' . h(lang('Channels')) . '</h2><div class="row g-7">' . $html . '</div></section>';
+    return '<section class="pg-card pg-messages-card"><div class="pg-messages-card-head"><div class="pg-messages-card-heading"><h2 class="pg-title-section">' . h(lang('Channels')) . '</h2></div></div>'
+        . '<div class="pg-messages-channels">' . $html . '</div></section>';
 }
 
 /**

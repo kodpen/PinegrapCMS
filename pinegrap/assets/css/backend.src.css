@@ -24344,7 +24344,10 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     box-shadow: var(--pg-shadow-float);
   }
 }
-/* Below 768 px a row is a card: every shown cell under its column's name. */
+/* Below 768 px a row is a block of the frame's one surface, rows split by
+   a line (no rounded card inside the rounded frame): every shown cell is a
+   line with its column's name at the left and its value in one column at
+   the right, however many pieces the value is made of. */
 @media (max-width: 767.98px) {
   .pg-list-table-grid > thead {
     position: absolute;
@@ -24361,28 +24364,39 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     width: 100%;
   }
   .pg-list-table-grid > tbody > tr {
-    margin: 0.5rem 0;
-    border: 1px solid var(--pg-list-table-line);
-    border-radius: var(--pg-radius-card);
-    overflow: hidden;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--pg-list-table-line);
+    background: linear-gradient(var(--pg-list-table-row-tint), var(--pg-list-table-row-tint));
+  }
+  .pg-list-table-grid > tbody > tr:last-child {
+    border-bottom: 0;
   }
   .pg-list-table-grid > tbody > tr > td {
-    display: flex;
-    gap: 0.75rem;
+    position: relative;
     height: auto;
+    min-height: 32px;
     max-width: none;
-    padding: 6px 14px;
+    padding: 6px 14px 6px calc(14px + var(--pg-list-table-label) + 0.75rem);
     text-align: start;
     white-space: normal;
     overflow-wrap: anywhere;
     border: 0;
+    background: none;
   }
   .pg-list-table-grid > tbody > tr > td[hidden] {
     display: none;
   }
+  /* A number or a row's buttons start in the value column too; the
+     unlayered .text-end utility is beaten only by an important rule. */
+  .pg-list-table-grid > tbody > tr > td:is(.text-end, [data-pg-col]) {
+    text-align: start !important;
+  }
   .pg-list-table-grid > tbody > tr > td::before {
     content: attr(data-pg-label);
-    flex: 0 0 var(--pg-list-table-label);
+    position: absolute;
+    top: 8px;
+    left: 14px;
+    width: var(--pg-list-table-label);
     font-size: var(--pg-text-meta);
     text-align: start;
     font-weight: var(--pg-weight-strong);
@@ -27761,6 +27775,138 @@ body.pg-measure-report #content {
 }
 .pg-messages-card-empty {
   margin: 4px 12px 10px;
+}
+
+/* The area's tab strip: the segmented control, one line at any width. Under
+   576 px only the open tab shows its label, the others their icon. */
+.pg-messages-tabs {
+  margin-bottom: 20px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+/* A notice under the strip. */
+.pg-messages-note {
+  margin-bottom: 16px;
+}
+/* Channels: inner cards two to a row, every row as high as the highest;
+   the whole card is the link to its settings. */
+.pg-messages-channels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.pg-messages-channel {
+  display: flex;
+  color: inherit;
+  text-decoration: none;
+}
+.pg-messages-channel > .pg-card-inner-row {
+  flex: 1;
+}
+.pg-messages-channel:hover {
+  background: var(--pg-hover);
+}
+.pg-messages-channel:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+@media (max-width: 767.98px) {
+  .pg-messages-channels {
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-rows: auto;
+  }
+}
+.pg-messages-channel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+/* Sends: the figures and the queue's state line above the list, a row's
+   channel as its tile beside the name. */
+.pg-messages-figs {
+  margin-bottom: 12px;
+}
+.pg-messages-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 14px;
+  color: var(--pg-fg-2);
+}
+.pg-messages-channel-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* A campaign's progress: a slim bar of the done share, its figure beside
+   it, a note under them (the drawing's Sends rows). */
+.pg-messages-progress {
+  min-width: 11rem;
+}
+.pg-messages-progress-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pg-messages-progress-track {
+  flex: 0 1 120px;
+  min-width: 48px;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--pg-quiet);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.pg-messages-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--pg-accent-1), var(--pg-accent-2));
+}
+.pg-messages-progress-track.is-full .pg-messages-progress-fill {
+  background: var(--pg-tone-teal);
+}
+.pg-messages-progress-figure {
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-medium);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pg-messages-progress-note {
+  margin-top: 3px;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+/* A list's filters: segmented controls side by side, wrapping as a row. */
+.pg-messages-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.pg-messages-filters .pg-seg {
+  max-width: 100%;
+  overflow-x: auto;
+}
+@media (max-width: 575.98px) {
+  .pg-messages-tabs .pg-seg {
+    display: flex;
+  }
+  .pg-messages-tabs .pg-seg-item {
+    flex: 1 1 auto;
+  }
+  .pg-messages-tabs .pg-seg-item:not(.is-active) .pg-messages-tab-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 }

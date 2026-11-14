@@ -17,17 +17,16 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - MA8 (M) Automatic sends: the flows that send a message, their recipes, the way into the quick setup; the Flows screen opens with the Workspace off since #9154.
 - MA9 Profiles into flows (M2b), MA9a to MA9f, and MA10 Incoming e-mail, MA10a to MA10c: `messages-area-steps-2.md`.
 - MA11 (S) Close-out: the lasting rules into `platform/` and `ui/`, an overview file, this plan deleted.
-- MA12 (M) The look of what is built (#9295): the tab strip as the pill switch the flow window has for Canvas and List (owner: "tablar boyle olsa ya"; today three lines at 390 px), Campaigns, Sends and Channels redone against the drawing. It lists the old screens still inside the area (campaign add and edit, SMS campaign, profiles) for MA5 and step DL5 of `panel-design-language-steps.md`.
-  - Seen on dev: a card heading on its card's border, the Campaigns toolbar's two filters stacked, the SMS warning above the strip, Channels cards of uneven height.
+- MA12 (M, done #9363, `ui/messages-area-look.md`) The look of what is built (#9295): the tab strip as the pill switch, Campaigns, Sends and Channels redone against the drawing, the phone list as one surface (#2255); the old screens left inside the area are listed for MA5 and DL5.
 
 ## In which order?
 - MA0 first, then MA1; MA2, MA3, MA6, MA7 after MA1 in any order; MA2b after MA2. MA4 may run beside MA1; MA5 after MA4, MA3 and MA12.
-- MA12 is next; MA8 after MA12; MA10b after MA1, MA10c after MA10b; MA9b and MA9c side by side, MA9d after both, MA9e after MA9d and the owner's look at its report, MA9f after MA9e.
+- MA8 after MA12; MA10b after MA1, MA10c after MA10b; MA9b and MA9c side by side, MA9d after both, MA9e after MA9d and the owner's look at its report, MA9f after MA9e.
 - Where WhatsApp's card, template list and queue sit follows this area once MA1 has landed; before that they sit beside the SMS ones.
 - Claim as `[plan:messages-area] <step> — <topic>`.
 
 ## What is left for the next session? (2026-11-13, after #9294)
-- Free now: MA12. MA5 (it also lists the e-mail designs in the Templates tab) and MA8 wait for MA12.
+- Free once #9363 lands: MA5 (it also lists the e-mail designs in the Templates tab), then MA8.
 - Left open by MA2b (#9275): Sends' search (3.2 s) and sorts other than Date or Channel (2 s) at 500,000 rows per queue a week (`platform/messages-area-sends.md`); asked only if a real site gets there.
 - The shell, the doors and the tabs so far: `ui/messages-area-shell.md`, `ui/messages-area-campaigns-tab.md`.
 
