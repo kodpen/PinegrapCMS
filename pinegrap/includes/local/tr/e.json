@@ -52,6 +52,7 @@
     "E-mail and SMS": "E-posta ve SMS",
     "E-mail and SMS campaigns sent once to many.": "Bir kez çok kişiye gönderilen e-posta ve SMS kampanyaları.",
     "E-mail bounces and complaints": "E-posta geri dönmeleri ve şikâyetleri",
+    "E-mail campaign": "E-posta kampanyası",
     "E-mail campaign profiles were turned into flows": "E-posta kampanya profilleri akışlara dönüştürüldü",
     "E-mail campaign profiles: the general job turns the {var:1} profiles into flows over its next runs; the report is on the E-mail Campaign Profiles screen.": "E-posta kampanya profilleri: genel görev {var:1} profili sonraki çalışmalarında akışlara dönüştürür; rapor E-posta Kampanya Profilleri ekranındadır.",
     "E-mail campaign profiles: they keep sending as profiles, because the data folder cannot be written; make it writable and run the upgrade steps again to turn them into flows.": "E-posta kampanya profilleri: veri klasörüne yazılamadığı için profil olarak göndermeye devam ediyorlar; akışlara dönüştürmek için klasörü yazılabilir yapıp yükseltme adımlarını yeniden çalıştırın.",

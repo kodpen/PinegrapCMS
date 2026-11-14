@@ -8,7 +8,8 @@
  * state and period filters, Run now, and each row's Retry and Delete under
  * its own queue's rules. The queue rows are for role <= 2 (they hold
  * password resets and receipts); a role 3 campaign maker sees their own
- * campaigns.
+ * campaigns. ?view=calendar draws what waits to be sent by day and hour
+ * instead (includes/fn/messages_calendar.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -20,6 +21,7 @@ include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_area.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_sends.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/messages_calendar.php');
 
 $user = validate_user();
 validate_email_access($user);
@@ -81,6 +83,29 @@ if ($_POST) {
 }
 
 $sends_now = time();
+
+// The calendar view: what waits to be sent, by day and hour. It only reads.
+if (isset($_GET['view']) && ($_GET['view'] === 'calendar')) {
+    echo
+    pg_page_shell(array(
+            'title'               => lang('Sending calendar'),
+            'extra classes'       => 'campaign messages-area',
+            'icon'                => 'campaign',
+            'heading'             => lang('Communication'),
+            'heading_description' => lang('What waits to be sent, by day and hour.'),
+        )) . '
+<main id="content" class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            ' . pg_messages_tab_strip_for('sends', $user) . '
+            ' . pg_messages_calendar_body($user, $_GET, $sends_now) . '
+        </div>
+    </div>
+</main>
+' .
+    output_footer();
+    exit();
+}
 $sends_source = pg_messages_sends_list_source($user, array('filters' => $sends_filters), $sends_now);
 $sends_page = ($sends_source !== null) ? pg_list_table_page($sends_source, array(), null) : false;
 
@@ -119,6 +144,7 @@ foreach ($sends_keep as $sends_key) {
 }
 
 $sends_filters_html = '<div class="pg-messages-filters">'
+    . pg_messages_calendar_switch_html(false)
     . pg_messages_seg_filter('channel', array('' => lang('All')) + pg_messages_sends_channels(), $sends_filters['channel'], '', 'messages_sends.php', $sends_keep_values, lang('Channel'))
     . pg_filter_select('source', array('' => lang('All sources')) + pg_messages_sends_sources(), $sends_filters['source'], array('keep' => $sends_keep, 'label' => lang('Source')))
     . pg_filter_select('state', array('' => lang('All states')) + pg_mail_queue_list_status_labels(pg_messages_sends_states()), $sends_filters['state'], array('keep' => $sends_keep, 'label' => lang('Status')))

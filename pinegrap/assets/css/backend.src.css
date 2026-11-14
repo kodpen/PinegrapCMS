@@ -28511,6 +28511,125 @@ textarea.pg-campaign-text {
   align-items: center;
   gap: 8px;
 }
+/* The Sends tab's calendar (includes/fn/messages_calendar.php): the Work
+   Calendar's grid and chips; each kind's chip tinted with its tone, a send
+   sharing a group with another in the same hour ringed in amber. */
+.pg-sendcal-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.pg-sendcal-range {
+  margin-left: 4px;
+  white-space: nowrap;
+}
+.pg-sendcal {
+  margin-top: 12px;
+}
+.pg-sendcal .ws-cal-num {
+  color: inherit;
+  text-decoration: none;
+}
+.pg-sendcal .ws-cal-today .ws-cal-num {
+  color: var(--pg-on-accent);
+}
+.pg-sendcal-day {
+  cursor: default;
+}
+.pg-sendcal-week .pg-sendcal-day {
+  min-height: 16rem;
+}
+.pg-sendcal-day-name {
+  display: none;
+}
+.pg-sendcal-hour + .pg-sendcal-hour {
+  margin-top: 6px;
+}
+.pg-sendcal-hour-label {
+  margin-bottom: 2px;
+}
+.ws-cal-event.pg-sendcal-item {
+  background: color-mix(in srgb, var(--pg-tone) 14%, transparent);
+  color: var(--pg-fg-body);
+}
+.ws-cal-event.pg-sendcal-item:hover {
+  background: color-mix(in srgb, var(--pg-tone) 24%, transparent);
+}
+.pg-sendcal-icon {
+  flex-shrink: 0;
+  color: var(--pg-tone);
+}
+.pg-sendcal-time {
+  color: var(--pg-fg-2);
+}
+.ws-cal-event.pg-sendcal-item.is-clash {
+  box-shadow: inset 0 0 0 1px var(--pg-tone-amber);
+}
+.pg-sendcal-clash-mark {
+  flex-shrink: 0;
+  color: var(--pg-tone-amber);
+}
+.pg-sendcal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+}
+.pg-sendcal-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pg-sendcal-empty {
+  margin: 12px 0 0;
+}
+/* On a phone the week and the month become one column of the days that
+   hold a send (and today), each named in full. */
+@media (max-width: 767.98px) {
+  .pg-sendcal .ws-cal-head {
+    display: none;
+  }
+  .pg-sendcal .ws-cal-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pg-sendcal .pg-sendcal-day {
+    min-height: 0;
+    padding: 8px 10px;
+    border-right: 0;
+  }
+  .pg-sendcal .pg-sendcal-day.is-empty,
+  .pg-sendcal .pg-sendcal-day.ws-cal-out {
+    display: none;
+  }
+  .pg-sendcal .pg-sendcal-day-name {
+    display: inline;
+    flex: 1 1 auto;
+    margin-left: 8px;
+  }
+  .pg-sendcal .ws-cal-day-top {
+    justify-content: flex-start;
+  }
+  .pg-sendcal .ws-cal-task-title {
+    white-space: normal;
+  }
+  /* The Work Calendar draws a phone's chips as bare bars; a send keeps its
+     words and its link. */
+  .pg-sendcal .ws-cal-event.pg-sendcal-item {
+    height: auto;
+    padding: 4px 8px;
+    margin-bottom: 4px;
+    font-size: 12px;
+    border-radius: var(--ws-radius-xs);
+    pointer-events: auto;
+  }
+  .pg-sendcal .ws-cal-event.pg-sendcal-item > * {
+    display: inline;
+  }
+  .pg-sendcal .ws-cal-more,
+  .pg-sendcal .ws-cal-event.pg-sendcal-item .ws-cal-task-title {
+    font-size: 12px;
+  }
+}
 .pg-messages-filters .pg-seg {
   max-width: 100%;
   overflow-x: auto;
