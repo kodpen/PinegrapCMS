@@ -172,3 +172,45 @@ function test_check_pr_windows_arg()
 	pg_assert_same('"C:\\dir\\\\"', check_pr_windows_arg('C:\\dir\\'));
 	pg_assert_same("\"a\\\nb\"", check_pr_windows_arg("a\\\nb"));
 }
+
+// The memory lists tools/memory_index.php writes, and nothing a session
+// writes by hand.
+function test_check_pr_memory_list()
+{
+	pg_assert_true(check_pr_memory_list('docs/memory/README.md'));
+	pg_assert_true(check_pr_memory_list('docs/memory/ui/README.md'));
+	pg_assert_true(check_pr_memory_list('docs/memory/plans/INDEX.md'));
+	pg_assert_true(check_pr_memory_list('docs/memory/workflow/DECISIONS.md'));
+	pg_assert_true(check_pr_memory_list('docs/memory/core/fn-modules.md'));
+	pg_assert_true(!check_pr_memory_list('docs/memory/workflow/decisions-made.md'));
+	pg_assert_true(!check_pr_memory_list('docs/memory/ui/look-edit-screens.md'));
+	pg_assert_true(!check_pr_memory_list('docs/README.md'));
+	pg_assert_true(!check_pr_memory_list('docs/memory/ui/sub/INDEX.md'));
+	pg_assert_true(!check_pr_memory_list('README.md'));
+}
+
+// A change inside a folder README's key rules passes; any other change to a
+// list fails and names the commit to restore it from.
+function test_check_pr_memory_list_problem()
+{
+	$readme = "# x\n\n<!-- key-rules:start -->\n- a rule\n<!-- key-rules:end -->\n\n## Files\n\n- one\n";
+	$rules = str_replace('- a rule', "- a rule\n- another rule", $readme);
+	$files = str_replace('- one', "- one\n- two", $readme);
+	$base = str_repeat('b', 40);
+
+	pg_assert_same('', check_pr_memory_list_problem('docs/memory/ui/README.md', $readme, $readme, $base));
+	pg_assert_same('', check_pr_memory_list_problem('docs/memory/ui/README.md', $readme, $rules, $base));
+	pg_assert_same('', check_pr_memory_list_problem('docs/memory/ui/README.md', $readme, str_replace("\n", "\r\n", $readme), $base));
+
+	$problem = check_pr_memory_list_problem('docs/memory/ui/README.md', $readme, $files, $base);
+	pg_assert_true(strpos($problem, 'git checkout bbbbbbbbbbbb -- docs/memory/ui/README.md') !== false);
+	pg_assert_true(strpos($problem, 'key rules change again by hand') !== false);
+
+	$problem = check_pr_memory_list_problem('docs/memory/ui/INDEX.md', "- one\n", "- one\n- two\n", $base);
+	pg_assert_true(strpos($problem, 'docs/memory/ui/INDEX.md') !== false);
+	pg_assert_true(strpos($problem, 'by hand') === false);
+
+	pg_assert_true(check_pr_memory_list_problem('docs/memory/new/README.md', null, $readme, $base) !== '');
+	pg_assert_true(check_pr_memory_list_problem('docs/memory/old/INDEX.md', "- one\n", null, $base) !== '');
+	pg_assert_same(null, check_pr_without_key_rules(null));
+}

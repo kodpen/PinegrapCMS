@@ -29,9 +29,10 @@ needs. The detail is in memory files, opened when a task needs them.
   public.
 - Plans are files in `docs/memory/plans/`. A finished plan moves its lasting
   decisions to the topic folder and is deleted.
-- READMEs and `INDEX.md` files are generated: after adding, renaming or
-  deleting a file run `php tools/memory_index.php` and commit the result (CI
-  runs `--check`). Only the key-rules block between `key-rules:start` /
+- READMEs, `INDEX.md` files, `DECISIONS.md` and `core/fn-modules.md` are
+  generated when a PR lands: a PR never commits them (`tools/check_pr.php`
+  refuses it); check your memory files with `php tools/memory_index.php
+  --files`. Only the key-rules block between `key-rules:start` /
   `key-rules:end` is written by hand.
 
 ## Memory folders — read before the matching work
@@ -117,8 +118,8 @@ PR that gives its reason (Fixed rules 6). Details: `workflow/working-mode.md`,
    (`workflow/design-template-owner-line.md`).
 7. **Shared hot files.** A PR never edits `changelog.txt`: its body names the
    `[NEW]` line or the `[SCHEME]` item. Translation keys only with
-   `php tools/tr_add.php`. Generated indexes and `.min.js` bundles: append
-   only. A new `includes/fn/` module is named in its memory file's `module:`.
+   `php tools/tr_add.php`. Generated memory lists: never in a PR; `.min.js`
+   bundles: append only. A new `includes/fn/` module is named in its memory file's `module:`.
 8. **Queue limit.** While more than 25 PRs are open (drafts and
    `merge-train/*` not counted) nobody starts a new task; finished work is
    still marked ready. A PR waiting on a decision goes back to draft. Each
@@ -195,7 +196,7 @@ database; run the ones your change touches and the tests of your area:
 `check_lang.php`, `check_bindings.php`, `check_api_schema.php`,
 `check_audit_rules.php`, `check_copies.php`, `check_bs6.php --strict`, `check_look.php`,
 `build_js.php --check`, `build_css.php --check`,
-`build_code_editor.php --check`, `memory_index.php --check` (all under
+`build_code_editor.php --check`, `memory_index.php --files` (all under
 `tools/`, run with `php`), and `bash tools/static_analysis.sh` (PHPStan
 level 0 + PHP 7.1 compatibility; a guarded newer API gets a `phpcs:ignore`
 with the reason, never a baseline entry).

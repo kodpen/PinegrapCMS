@@ -11,12 +11,12 @@ description: Plan (owner 2026-11-14): what the canvas side gives an agent's draw
 - A live page an agent writes may name Chart.js from the site's own copy (`workspace/agent-page-libraries.md`), with the library's default look.
 
 ## Which steps?
-- DG1 (S) Done (#9400). Census and proposal, no code: three of today's agent charts as pictures; a drawn guide sheet (artboard presets, grid, type scale, palette with a chart series readable in dark and light, spacing) and the chart kinds proposed, each drawn. Written as `workspace/agent-drawing-guides-census.md`.
+- DG1 (S) Done (#9400). Census and proposal, no code: three of today's agent charts as pictures; a drawn guide sheet and the chart kinds proposed, each drawn. Written as `workspace/agent-drawing-guides-census.md`.
 - DG2 (M) Done (#9457). The guide an agent reads: one text from one source, given as an MCP resource and prompt, shortly in the canvas tools' descriptions and in the assistants' draw tool (`agent-canvas-assistants.md`). Tests pin the text to the values the server uses.
 - DG3 (M) A chart as an operation: `chart` in the one set of canvas operations (API route, MCP tool, `edit_canvas`): kind (bar, stacked bar, line, area, donut, sparkline, a figure tile), data, labels, size. The server writes the layers in the guide's style; they stay layers a person edits in the Design Canvas. A model test in Node per kind.
   - DG3's channel trial changes the data of the chart in message 2725 of channel 25 through the new `chart` operation (an edit of that canvas, not a new one): the last bar to 40 and the title marked "düzenlenmiş"; the canvas link and before/after pictures as a reply to 2736 (owner, 2026-11-14, message 2736: he opened 2725 in the Design Canvas and edited it).
-- DG4 (M) Ready layouts: templates shipped with the software (a row of figures with a chart, a report page, a comparison, a slide), listed beside a person's templates and filled by the agent.
-- DG5 (S) Done (#9469). Live pages: Chart.js charts take the guide's palette and type by the preset `chart_guide` (`workspace/agent-page-libraries.md`); one series in its channel's colour (owner, 2026-11-14: "chartlarda birden fazla renk kullanılmayacaksa chart göstergeleri kanalın rengini alabilir mi?"; record `workflow/decisions-made-workspace-27.md`).
+- DG4 (M) Done (#9464). Ready layouts (`workspace/agent-canvas-layouts.md`): templates shipped with the software (a row of figures with a chart, a report page, a comparison, a slide), listed beside a person's templates and filled by the agent.
+- DG5 (S) Done (#9469). Live pages: Chart.js charts take the guide's palette and type by the preset `chart_guide` (`workspace/agent-page-libraries.md`); one series in its channel's colour (owner, 2026-11-14: "chartlarda birden fazla renk kullanılmayacaksa chart göstergeleri kanalın rengini alabilir mi?"; record `workflow/decisions-made-workspace-27.md`); the line the guide's × 2/3 (owner, message 2955).
 - DG6 (S) Close-out: the rules into `workspace/agent-canvas-*.md`, this plan deleted. One channel-colour contrast check for DG3 and DG5 (`ws_page_chart_guide_tone()`).
 
 ## What does every step keep?

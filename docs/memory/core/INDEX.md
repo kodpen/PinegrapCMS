@@ -28,6 +28,7 @@
 - auto-campaign-group-opt-out.md: A commercial "joined a contact group" campaign profile skips a contact whose opt_in row for that subscription group is 0, as a manual campaign to the group does (#7596)
 - auto-registration-set-password-link.md: Accounts a form auto-registers or an administrator creates (add user, import) get a single-use set password link, not the password; who sees it, what $auto_registration_password holds.
 - build-url-host-parts.md: build_url() keeps the port and user information of the URL it is given unless a hostname property replaces the host.
+- campaign-profile-flow-converter.md: Campaign profiles into flows, the converter and dry-run report (MA9d, #9458): profile to boxes, when a chain stays, owner, limits, tools/campaign_profile_flow_report.php
 - campaign-profile-flow-dry-run.md: The dry-run report of turning e-mail campaign profiles into flows (MA9a, #9077): what it lists per chain and per profile left, where it is shown, the starting sites' profiles by hand
 - campaign-profile-flow-email.md: An e-mail campaign profile's purpose, consent, recipient, fields, HTML page and sender laid against the flow's e-mail box (MA9a, #9077): what each does today and where they differ
 - campaign-profile-flow-gaps.md: What no flow box covers of an e-mail campaign profile (MA9a, #9077), and what is decided: the e-mail box, the Wait box and the events gain it first (MA9b, MA9c); the profiles that keep running, listed
@@ -68,7 +69,7 @@
 - currency-symbol-as-text.md: A stored currency symbol is HTML (&#8378;): raw into HTML, decoded (pg_money_text(), html_entity_decode()) before h(), .text(), a canvas or a script; fixed spots, the guard test
 - custom-form-private-access-expiry.md: A custom form's private access expiry is today plus N calendar days (pg_cf_private_expiry_date()), never N * 86400 seconds, so a clock change does not end it a day early (PR #7039)
 - db-legacy-and-magic-quotes.md: PHP 5 remnants removed (PR #3149, #3195): the DB_LEGACY mysql_* connection in db_connect() and router.php, the magic quotes strip of init.php and the installer; a config that still sets DB_LEGACY [decision: decisions-made-product-3.md]
-- deprecated-resource-free-calls.md: Handles are freed with unset(), not curl_close()/finfo_close()/openssl_x509_free(); db_connect() checks a reused connection with SELECT 1, not mysqli_ping() (PR #1744)
+- deprecated-resource-free-calls.md: Handles are freed with unset(), not curl_close()/finfo_close(); a test keeps own code free of what PHP 8.1-8.5 deprecates; db_connect() checks a connection with SELECT 1, not mysqli_ping()
 - designer-i18n-audit-tool.md: The designer text audit tool docs/_tools/designer_i18n.php (not in the repository): check/extract/apply workflow, how Turkish is detected, and the three classes allowed in skip.
 - device-limit-and-session-sign-out.md: Which sessions the device limit signs out, what ends with a session (notifications), and the Sessions screen's confirmations and wording
 - dom-node-html.md: pg_dom_html() instead of $document->saveHTML($node): one DOM node's HTML the same on every PHP version (7.1-7.2 pretty-printed it), its callers and its test
@@ -143,6 +144,7 @@
 - personal-data-erasure.md: privacy_erase.php (PR #1706): erasing one person after a dry run; whose records are taken, what is deleted and what is kept with personal fields replaced, the checks, the audit lines [decision: decisions-made-product.md]
 - personal-data-export.md: privacy_export.php (PR #938): one person's data as JSON and a PDF summary, how the person is found, what each section reads and masks, the role rule, the audit line
 - php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules. [decision: decisions-made-product-39.md]
+- phpmailer-embedding.md: Which PHPMailer the product loads (6.12.0 from includes/phpmailer/src), the unloaded 5.2.22 files beside it, and why both are quiet on PHP 8.5 (#9470)
 - preg-replace-replacement-escaping.md: Text put into a page through preg_replace() goes through pg_regex_replacement(): $NN and \N in it are back references, "$400'dan" printed as "0'dan"; where it applies and the guard test
 - privacy-log-retention.md: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
 - push-disabled-account.md: The device push queue drops a disabled or deleted account's queued rows and browsers instead of waking them (pg_push_account_wakeable())

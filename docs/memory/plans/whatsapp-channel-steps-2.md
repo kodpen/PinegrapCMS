@@ -17,16 +17,17 @@ description: Steps WA12-WA18 of plans/whatsapp-channel.md (owner 2026-11-13, #91
 
 ## Which steps?
 - WA12 (S, no product code) Census and proposal. Done in #9281: `whatsapp-channel-census.md`, `-incoming-sms.md`, `-conversation-storage.md` (decided #9286, all as proposed).
-- WA13 (M) WhatsApp into a channel. Done in #9389: `workspace/mail-phone-conversations.md`. Media fetching into the card's files is left for WA14b.
+- WA13 (M) WhatsApp into a channel. Done in #9389: `workspace/mail-phone-conversations.md`. Media fetching: WA14c.
 - WA14a (M) Answering by WhatsApp, text. Done in #9405: `workspace/mail-phone-reply.md`.
-- WA14b (M), the next free step of this file. Answering by WhatsApp, the rest: a file from Files inside the 24 hours; after them the approved templates with their variables; a received picture, voice message or document fetched into the card's files.
+- WA14b (M) Done in #9446: a file from Files, templates after the 24 hours (`workspace/mail-phone-reply-files.md`).
+- WA14c (S), the next free step: a received picture, voice message or document fetched from Meta into the card's files, as a mail's attachments.
 - WA15 (M) The list, the event and the API, in two parts. WA15a done in #9420: the list's Kind filter, the event's transport and number, reading over the API (`workspace/mail-phone-list-event-api.md`). WA15b done in #9455: answering a WhatsApp conversation over the API through `whatsapp_outbox`, free text only inside the 24 hours, as `workspace/mail-api.md`.
 - WA16 (M) Done in #9412 (Twilio webhook, Channel field, stop words) and #9425 (the Netgsm and İleti Merkezi polls): `platform/sms-incoming.md`. SMS into a channel, for the providers WA12 found able: the receiver (webhook or the general job's poll), the number's channel in the SMS settings, the conversation by number, an opt-out word written to the consent log.
 - WA17 (S) Answering by SMS: the drawer counts the length and the messages it makes, no files; a provider without incoming SMS offers nothing.
 - WA18 (S) Close-out: the lasting rules into `workspace/` and `platform/`, `workspace/mail-decisions.md` brought up to date, the plan deleted.
 
 ## In which order?
-- WA12 first, its questions answered before WA13 and WA16. WA13 after WA4; WA14a after WA13, WA2 and WA3; WA14b after WA14a; WA15 after WA13.
+- WA12 first, its questions answered before WA13 and WA16. WA13 after WA4; WA14a after WA13, WA2 and WA3; WA14b after WA14a; WA14c after WA14b; WA15 after WA13.
 - WA16 after WA13 has landed (they share the conversation code), WA17 after WA16 and after WA14a's drawer has landed (#9405): WA17 answers in that drawer, through the same `workspace/mail_send.php`, `mail_phone.php` and `workspace_mail.js`. Claim as `[plan:whatsapp-channel] <step> — <topic>`.
 
 ## What is asked of the owner along the way?

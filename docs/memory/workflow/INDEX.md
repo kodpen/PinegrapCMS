@@ -98,7 +98,7 @@
 - decisions-made-schema-15.md: Decisions list, schema part 15 (2026-11-10 on): ws_messages.via_client_id, ws_ai_requests.claimed_device_id, the Workspace mail screen's columns and ws_mail_reads, the image editor's largest upload
 - decisions-made-schema-16.md: Decisions list, schema part 16 (2026-11-11 on): ws_mail_items.body_html, kind mailbox on ws_channels, ws_agents.seen_at, ws_checks.app_id, ws_ai_requests.held_until for the edit hold
 - decisions-made-schema-17.md: Decisions list, schema part 17 (2026-11-12 on): canvas-one's ws_canvas_parts, ws_canvas_tables, ws_canvas_consents, via_message_id, ws_wtables.channel_id; WhatsApp's tables; ws_agents' role and report
-- decisions-made-schema-18.md: Decisions list, schema part 18 (2026-11-13 on): phone conversations in the mail conversation tables: ws_mail_boxes.transport gains whatsapp and sms, ws_mail_conversations.customer_phone (#9286)
+- decisions-made-schema-18.md: Decisions list, schema part 18 (2026-11-13 on): ws_mail_boxes.transport gains whatsapp and sms, ws_mail_conversations.customer_phone (#9286); ws_mail_items.draft_files for a draft's files
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
@@ -130,6 +130,7 @@
 - decisions-made-workspace-24.md: Decisions list, workspace part 24 (2026-11-14 on): a guest sees the agents' messages and wakes none; guests in Channel info; agents' answers read aloud; the shared-channel notice
 - decisions-made-workspace-25.md: Decisions made, Workspace part 25: when an agent may conclude a discussion (asked by a person in it; unasked it only offers a button a person presses)
 - decisions-made-workspace-26.md: Decisions made, workspace part 26: a template is chosen with a preview; new parts inside a channel use look A's components; a person's connected chat may send Workspace e-mail
+- decisions-made-workspace-27.md: Decisions made, workspace part 27: Check e-mail, own signature and block list; "My calendar" and private plans; a customer's roadmap inside the team; one-series charts in the channel colour
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page

@@ -4,7 +4,8 @@ description: Site Settings dialog list: the five group headings (four decided #3
 ---
 
 ## Which headings sit over the category list?
-- Five, from `pg_settings_groups()` in `includes/settings/registry.php`: Site (General, Appearance, Features, SEO and sharing, Visitors and privacy, Languages and translation, Communication), Security (Accounts and sign-in, Firewall and HTTPS), Selling (Ecommerce, Accounting, Bookings), Running the site (Integrations, Fediverse, Updates and maintenance, then the System tools row), Workspace (Team and working hours, Assistants and agents, Channels, mail and voice; `settings-workspace-gate.md`).
+- Five, from `pg_settings_groups()` in `includes/settings/registry.php`: Site (General, Appearance, Features, SEO and sharing, Visitors and privacy, Languages and translation, Communication, Mailboxes), then:
+- Security (Accounts and sign-in, Firewall and HTTPS), Selling (Ecommerce, Accounting, Bookings), Running the site (Integrations, Fediverse, Updates and maintenance, then the System tools row), Workspace (Team and working hours, Assistants and agents, Channels, mail and voice (templates, voice, GitHub); `settings-workspace-gate.md`).
 - Why: thirteen rows and a link without landmarks were hard to scan, most of all in the phone drawer (decided #3879, built #4118).
 
 ## How are they drawn?

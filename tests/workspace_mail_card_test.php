@@ -5,8 +5,8 @@
  * Tests for the mail card in a Workspace channel and the mailboxes card of
  * the settings screen (includes/workspace/mail.php, mail_settings.php): the
  * card draws mail as plain text with the verified badge, the subject only on
- * the conversation's card, "Show all" when the message holds less than the
- * mail, the attachments not taken in; the sender drawn like a guest; the
+ * the conversation's card, the text's first lines, "Answered · who · time"
+ * and the Open e-mail link to Communication; the sender drawn like a guest; the
  * message payload uses them; a mailbox form is checked; an .eml brought in
  * by hand is answered for every outcome of ws_mail_ingest().
  *
@@ -60,8 +60,8 @@ function test_workspace_mail_card_unverified_cut_refused_and_missing()
 
 	pg_assert_contains('theme-warning', $html, 'an unverified sender');
 	pg_assert_contains(h(lang('Sender not verified')), $html, 'says so');
-	pg_assert_contains('<details class="mt-1"><summary class="small">' . h(lang('Show all')) . '</summary><div class="mt-1">full &lt;text&gt; here</div></details>', $html, 'the whole mail behind Show all, escaped');
-	pg_assert_contains(h(lang(array('string' => 'Not taken in: {var:1}', 'vars' => 'setup.exe, page.html'))), $html, 'the refused files by name');
+	pg_assert_true(strpos($html, '<details') === false, 'no Show all: the whole mail is read in Communication');
+	pg_assert_true(strpos($html, 'ws-mail-card-refused') === false, 'no Not taken in: read in Communication');
 
 	pg_assert_same('', ws_mail_card_html(array('id' => 102, 'file_id' => 9, 'body' => ''), $item), 'a message carrying only an attachment shows its file alone');
 	pg_assert_contains(h(lang('This e-mail is no longer available.')), ws_mail_card_html(array('id' => 103, 'file_id' => 0, 'body' => 'x'), null), 'the mail row gone');
@@ -296,13 +296,13 @@ function test_workspace_mail_card_parts_a_quote_leaves_out()
 	$html = ws_mail_card_html(array('id' => 100, 'file_id' => 0, 'body' => 'full…'), $item);
 
 	pg_assert_contains('<div class="ws-mail-card-head small fg-secondary mb-1"><span class="badge theme-warning">', $html, 'the head: the sender check, the address, the status');
-	pg_assert_contains('<div class="ws-mail-card-refused small fg-secondary mt-1">', $html, 'the files not taken in');
+	pg_assert_contains('<div class="ws-mail-card-open', $html, 'the Open e-mail link');
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 	$start = strpos($js, 'plain: function (markup) {');
 	$plain = substr($js, $start, strpos($js, 'quoteText: function', $start) - $start);
 
-	pg_assert_contains("'.ws-form-card, .ws-mail-card-head, .ws-mail-card details, .ws-mail-card-refused'", $plain, 'a reply\'s quote leaves them out');
+	pg_assert_contains("'.ws-form-card, .ws-mail-card-head, .ws-mail-card details, .ws-mail-card-refused, .ws-mail-card-open, .ws-mail-card-answered'", $plain, 'a reply\'s quote leaves them out');
 	pg_assert_contains("block.appendChild(document.createTextNode(' '));", $plain, 'the subject and the text are read apart');
 }
 
@@ -316,4 +316,42 @@ function test_workspace_mail_sent_answer_is_drawn_as_sent()
 	pg_assert_true(strpos($html, h(lang('Sender not verified'))) === false);
 
 	pg_assert_same('Ayşe Yılmaz', ws_mail_sender(workspace_mail_card_test_item(array('direction' => 'out', 'user_id' => 0)))['name'], 'a writer gone: the name kept on the mail');
+}
+
+function test_workspace_mail_card_excerpt_keeps_eight_lines_or_600_characters()
+{
+	pg_assert_same("a\nb", ws_mail_card_excerpt("a\nb"), 'a short text as it is');
+	pg_assert_same("1\n2\n3\n4\n5\n6\n7\n8…", ws_mail_card_excerpt("1\n2\n3\n4\n5\n6\n7\n8\n9\n10"), 'eight lines');
+	pg_assert_same("a\nb", ws_mail_card_excerpt("a\r\n\n\n\nb"), 'runs of empty lines read as one break');
+
+	$words = trim(str_repeat('word ', 200));
+	$cut = ws_mail_card_excerpt($words);
+	pg_assert_true(mb_strlen($cut) <= 601, '600 characters and the mark');
+	pg_assert_same('word…', mb_substr($cut, -5), 'cut on a word');
+	pg_assert_same(str_repeat('x', 600) . '…', ws_mail_card_excerpt(str_repeat('x', 700)), 'one long word is cut where it must');
+}
+
+function test_workspace_mail_card_open_link_and_answered()
+{
+	$item = workspace_mail_card_test_item(array('conversation' => array('id' => 3, 'message_id' => 100, 'last_in_at' => 1000, 'last_out_at' => 0)));
+	$html = ws_mail_card_html(array('id' => 100, 'file_id' => 0, 'body' => 'Hi'), $item);
+
+	pg_assert_contains('messages_mail.php?view=all&amp;conversation=3"', $html, 'Open e-mail is a plain link to the conversation in Communication');
+	pg_assert_contains(h(lang('Open e-mail')), $html, 'named');
+	pg_assert_contains('<a class="pg-button pg-button-quiet pg-button-sm" href=', $html, 'look A\'s quiet button');
+	pg_assert_true(strpos($html, 'ws-mail-card-answered') === false, 'not answered yet');
+
+	$answer = ws_mail_card_html(array('id' => 101, 'file_id' => 0, 'body' => 'x'), $item);
+	pg_assert_true(strpos($answer, 'ws-mail-card-open') === false, 'only the card carries the link');
+
+	$item['conversation']['last_out_at'] = 2000;
+	$item['answered_by'] = 'Can <Demir>';
+	$html = ws_mail_card_html(array('id' => 100, 'file_id' => 0, 'body' => 'Hi'), $item);
+	pg_assert_contains('<span class="pg-pill pg-tone-teal">', $html, 'answered once the newest answer is later than the newest mail, as look A\'s pill');
+	pg_assert_contains(h(lang('Answered')) . ' · Can &lt;Demir&gt; · ', $html, 'who answered, escaped');
+
+	$item['conversation']['last_in_at'] = 3000;
+	pg_assert_true(strpos(ws_mail_card_html(array('id' => 100, 'file_id' => 0, 'body' => 'Hi'), $item), 'ws-mail-card-answered') === false, 'a newer mail takes the mark away');
+
+	pg_assert_same('', ws_mail_card_answered_html(array('last_in_at' => 5, 'last_out_at' => 5), 'A'), 'the same moment is no answer');
 }
