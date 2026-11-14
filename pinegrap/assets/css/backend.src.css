@@ -18207,6 +18207,19 @@ button.ws-cal-more {
   gap: 10px;
   margin-bottom: 16px;
 }
+/* Somebody else's plan, read only: the fields dimmed as a disabled switch,
+   nothing that invites typing. */
+.ws-plan-readonly .pg-input:disabled,
+.ws-plan-readonly .pg-input:has(> :disabled) {
+  opacity: 0.5;
+  cursor: default;
+}
+.ws-plan-readonly textarea.pg-input {
+  resize: none;
+}
+.ws-people-select[aria-invalid="true"] {
+  border-color: var(--pg-tone-rose);
+}
 .ws-plan-private {
   display: flex;
   align-items: center;

@@ -563,7 +563,32 @@
             // The team but the owner: a plan is always its owner's to see.
             var picker = h.peoplePicker(plan ? (plan.people || []) : [], h.team().map(function (member) { return member.id; }).filter(function (id) { return id !== h.cfg.me; }));
             var pickerRow = el('div', 'ws-plan-field');
+            var pickerHint = el('div', 'pg-field-help', s('plan_people_hint'));
+            var pickerError = el('div', 'pg-field-help pg-field-error d-none', s('plan_people_error'));
+
+            pickerHint.id = h.nextId('ws-plan-people-');
+            pickerError.id = h.nextId('ws-plan-people-');
+            picker.setAttribute('aria-label', s('plan_chosen'));
+            picker.setAttribute('aria-describedby', pickerHint.id);
             pickerRow.appendChild(picker);
+            pickerRow.appendChild(pickerHint);
+            pickerRow.appendChild(pickerError);
+
+            // The hint while nobody is chosen; a choice clears the error.
+            function pickerView() {
+                var none = !picker.value().length;
+
+                pickerHint.classList.toggle('d-none', !none);
+
+                if (!none) {
+                    pickerError.classList.add('d-none');
+                    picker.removeAttribute('aria-invalid');
+                    picker.setAttribute('aria-describedby', pickerHint.id);
+                }
+            }
+
+            picker.addEventListener('change', pickerView);
+            pickerView();
 
             function whoView() {
                 Object.keys(whoItems).forEach(function (key) {
@@ -590,7 +615,9 @@
 
             // Somebody else's plan opened to the reader: read, not changed.
             if (!mine) {
-                [name, first, last, whole, from, until, note].forEach(function (control) {
+                // The panel's read-only state: every field dimmed, nothing to type in.
+                body.classList.add('ws-plan-readonly');
+                body.querySelectorAll('input, textarea, select').forEach(function (control) {
                     control.disabled = true;
                 });
                 footer.classList.add('d-none');
@@ -620,6 +647,16 @@
             var save = el('button', 'pg-button pg-button-fill pg-button-sm', s('save'));
             save.type = 'button';
             save.addEventListener('click', function () {
+                // Chosen team members with nobody chosen: said at the field.
+                if (whoValue === 'people' && !picker.value().length) {
+                    pickerError.classList.remove('d-none');
+                    pickerHint.classList.add('d-none');
+                    picker.setAttribute('aria-invalid', 'true');
+                    picker.setAttribute('aria-describedby', pickerError.id);
+                    picker.scrollIntoView({ block: 'nearest' });
+                    return;
+                }
+
                 save.disabled = true;
                 h.api('ws_personal_plan_save', {
                     plan_id: plan ? plan.id : 0,

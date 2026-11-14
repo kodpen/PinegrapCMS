@@ -629,6 +629,8 @@ function ws_personal_plan_js_strings()
         'plan_private_team'   => lang('The whole team sees this plan. Only you can change it.'),
         'plan_only_me'   => lang('Only me'),
         'plan_chosen'    => lang('Chosen team members'),
+        'plan_people_hint'  => lang('Choose the team members who may see this plan.'),
+        'plan_people_error' => lang('Choose who may see the plan.'),
         'plan_team'      => lang('The whole team'),
         'remind_options' => array(
             '0'    => lang('At the start'),
