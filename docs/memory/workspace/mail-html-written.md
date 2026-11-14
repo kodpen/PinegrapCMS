@@ -9,7 +9,7 @@ description: A written Workspace e-mail's HTML body (MA10b2 #9473): the writing 
 - Owner (2026-11-12, #8961): "eposta gövde html olabilmeli" (`workflow/decisions-made-workspace-21.md`).
 
 ## How does markup become the mail?
-- `ws_mail_markup_apply()` in the panel actions `ws_mail_new` and `ws_mail_reply` (only with `format=markup`; the API is untouched until MT5 of `plans/mail-chat-tools.md`). `ws_mail_markup_parts()`: an `@`/`#` chip becomes its plain words, `ws_render_body()` draws the HTML, the quote and a table get inline looks (mail programs read no class rules), `ws_plain_text()` gives the text part.
+- `ws_mail_markup_apply()` in the panel actions `ws_mail_new` and `ws_mail_reply` (only with `format=markup`; the API takes `html` itself, `mail-api-html-files.md`). `ws_mail_markup_parts()`: an `@`/`#` chip becomes its plain words, `ws_render_body()` draws the HTML, the quote and a table get inline looks (mail programs read no class rules), `ws_plain_text()` gives the text part.
 - `ws_mail_send_input()` takes the optional `html` and cleans it with `pg_mail_html_clean()`, the incoming allowlist cleaner (a fragment, no pictures; the outgoing mode of MA5a answers whole documents with web pictures). HTML the cleaner refuses refuses the mail (`too_long`). The text stays `body_text`: search, the card, a quote and the channel message read it.
 - `ws_mail_send_keep_html()` writes it to `ws_mail_items.body_html` in an UPDATE of its own, for a new mail and an answer; nothing before the column exists.
 

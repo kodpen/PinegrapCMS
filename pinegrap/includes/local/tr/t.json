@@ -1599,6 +1599,7 @@
     "The H1 heading is very long": "H1 başlığı çok uzun",
     "The H1 heading repeats the browser title": "H1 başlığı tarayıcı başlığını tekrarlıyor",
     "The HS code may hold only digits and dots, up to 16 characters.": "GTİP / HS kodu yalnızca rakam ve noktadan oluşabilir, en çok 16 karakter.",
+    "The HTML is too large to keep.": "HTML saklanamayacak kadar büyük.",
     "The HTML structure of every record is already up to date.": "Bütün kayıtların HTML yapısı güncel.",
     "The HTML structure of {var:1} record{suffix:1} was analyzed.": "{var:1} kaydın HTML yapısı denetlendi.",
     "The HTML structure of {var:1} record{suffix:1} was analyzed. {var:2} record{suffix:2} still need to be analyzed - click Analyze HTML Structure again to continue.": "{var:1} kaydın HTML yapısı denetlendi. {var:2} kaydın denetlenmesi gerekiyor - devam etmek için HTML Yapısını Denetle düğmesine tekrar tıklayın.",

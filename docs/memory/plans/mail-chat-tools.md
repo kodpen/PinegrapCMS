@@ -19,7 +19,7 @@ description: Plan (owner 2026-11-14): Workspace e-mail read, drafted and sent fr
   - MT3b The E-mails screen's Drafts view: a draft opens in the reply drawer or the New e-mail form, and Send there is the person's and deletes the draft. Look A, the picture set in the agent channel.
 - MT4 (M, done #9533) Sending from a person's connection. A new scope, `workspace:mail_send`, that no connection of today holds and the consent screen names. With it a person's OAuth connection or device session may call reply, new mail and "send this draft" as tools; the panel's own checks, limits and the unknown-domain stop hold, Idempotency-Key, dry run. The mail is the person's; the Site Log names the application it went through.
 - MT5 (M, after MA10b) HTML and files out. `html` on reply, new mail and drafts, cleaned by the allowlist cleaner, the text part made from it when none is sent; files by their Files id within the panel's limits, the sender's right to each checked at Send; a draft keeps them in `ws_mail_items.draft_files` (MT5's migration step).
-  - Free once MT4 (#9533) has landed (MA10b2, #9473, has); MT2's and MT4's workers handed it over on 2026-11-14. The next free worker claims it.
+  - Done in #9541: `html` and `file_ids` on reply, new mail and drafts, `draft_files` by 11.0.206 (`workspace/mail-api-html-files.md`).
 - MT6 (S) Close-out: `workspace/mail-api.md` and `mail-decisions.md` brought up to date, the plugin's e-mail skill named for `plans/claude-plugin-bundle.md`, this plan and its three census files deleted.
 
 ## What does every step keep?

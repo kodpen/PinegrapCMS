@@ -242,6 +242,138 @@ function ws_mail_compose_library_files($viewer, $request)
 }
 
 /**
+ * A file a person may send by its Files id (files.id), from the API: one
+ * the file manager lets them bring into a conversation (ws_library_file()),
+ * or the file of a message that is not deleted in a channel they read, since
+ * the file manager does not reach a channel's own folder. $reached narrows
+ * the channels as the API does for the Claude application.
+ *
+ * @param array    $viewer
+ * @param int      $file_id
+ * @param callable $reached channel row => bool; null for none
+ * @return array ok, file (id, name, size) or null
+ */
+function ws_mail_send_file_reach($viewer, $file_id, $reached = null)
+{
+    $file_id = (int) $file_id;
+    $missing = array('ok' => false, 'file' => null);
+
+    if ($file_id <= 0) {
+        return $missing;
+    }
+
+    $library = ws_library_file($viewer, $file_id);
+
+    if ($library['ok']) {
+        return array('ok' => true, 'file' => array('id' => $file_id, 'name' => (string) $library['file']['name'], 'size' => (int) $library['file']['size']));
+    }
+
+    $stored = db_item("SELECT id, name, size FROM files WHERE id = '" . $file_id . "'");
+
+    if (!is_array($stored) || !$stored || pg_file_withheld((string) $stored['name'])
+        || (function_exists('pg_files_include_erp_document') && pg_files_include_erp_document(array($file_id)))) {
+        return $missing;
+    }
+
+    $messages = (array) db_items("SELECT channel_id, file_name FROM ws_messages
+        WHERE file_id = '" . $file_id . "' AND deleted_at = 0 ORDER BY id LIMIT 50");
+
+    foreach ($messages as $message) {
+        $channel = ws_channel((int) $message['channel_id']);
+
+        if ($channel && ws_can_read_channel($viewer, $channel) && (($reached === null) || call_user_func($reached, $channel))) {
+            $name = ((string) $message['file_name'] !== '') ? (string) $message['file_name'] : (string) $stored['name'];
+
+            return array('ok' => true, 'file' => array('id' => $file_id, 'name' => $name, 'size' => (int) $stored['size']));
+        }
+    }
+
+    return $missing;
+}
+
+/**
+ * The files an API mail or draft names by Files id, each one the sender may
+ * send (ws_mail_send_file_reach()), at most WS_MAIL_SEND_FILES of together
+ * at most WS_MAIL_SEND_FILES_BYTES, checked by size before any is read.
+ * With $read the bytes come in ws_mail_compose_files()'s shape; without it
+ * only the check is made (a draft keeps the ids).
+ *
+ * @param array    $viewer
+ * @param int[]    $ids
+ * @param callable $reached as ws_mail_send_file_reach()
+ * @param bool     $read
+ * @return array ok, error (too_many_files | files_too_large | file_refused), detail, files (name, bytes)
+ */
+function ws_mail_send_files_by_id($viewer, $ids, $reached = null, $read = true)
+{
+    $out = array('ok' => true, 'error' => '', 'detail' => '', 'files' => array());
+    $ids = ws_mail_compose_file_ids(implode(',', array_map('intval', (array) $ids)));
+
+    if (count($ids) > WS_MAIL_SEND_FILES) {
+        return array_merge($out, array('ok' => false, 'error' => 'too_many_files'));
+    }
+
+    $found = array();
+    $total = 0;
+
+    foreach ($ids as $file_id) {
+        $reach = ws_mail_send_file_reach($viewer, $file_id, $reached);
+
+        if (!$reach['ok']) {
+            return array_merge($out, array('ok' => false, 'error' => 'file_refused',
+                'detail' => lang(array('string' => 'File {var:1} was not found, or you cannot open it.', 'vars' => $file_id))));
+        }
+
+        $total += (int) $reach['file']['size'];
+
+        if ($total > WS_MAIL_SEND_FILES_BYTES) {
+            return array_merge($out, array('ok' => false, 'error' => 'files_too_large'));
+        }
+
+        $found[] = $reach['file'];
+    }
+
+    if (!$read) {
+        return $out;
+    }
+
+    foreach ($found as $file) {
+        $path = pg_file_local_copy((int) $file['id']);
+        $bytes = ($path !== '') ? @file_get_contents($path) : false;
+
+        if (!is_string($bytes)) {
+            return array_merge($out, array('ok' => false, 'error' => 'file_refused',
+                'detail' => lang(array('string' => 'File {var:1} was not found, or you cannot open it.', 'vars' => (int) $file['id']))));
+        }
+
+        $out['files'][] = array('name' => (string) $file['name'], 'bytes' => $bytes);
+    }
+
+    return $out;
+}
+
+/**
+ * The text an API mail is kept and quoted with: the text sent, else the
+ * words of its HTML once cleaned (pg_mail_html_clean()), so search, the
+ * card and a later quote read it. Pure.
+ *
+ * @param string $text
+ * @param string $html
+ * @return string
+ */
+function ws_mail_text_or_html($text, $html)
+{
+    $text = trim(str_replace(array("\r\n", "\r"), "\n", is_scalar($text) ? (string) $text : ''));
+    $html = is_string($html) ? trim($html) : '';
+
+    if (($text !== '') || ($html === '') || !function_exists('pg_mail_html_clean')) {
+        return $text;
+    }
+
+    return ws_mail_html_text(pg_mail_html_clean($html));
+}
+
+/**
  * The file ids a form posted as a comma list: positive, each once, in order.
  * Pure.
  *

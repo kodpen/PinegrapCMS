@@ -221,7 +221,7 @@ function test_ws_api_mail_draft_mail()
 	$reply = ws_api_mail_draft_mail(array('conversation_id' => 7, 'box_id' => 2, 'to_list' => 'x@example.com', 'cc_list' => 'c@example.com',
 		'bcc_list' => '', 'subject' => 'S', 'body_text' => 'Thanks'), array('send_anyway' => true, 'channel_id' => 9));
 
-	pg_assert_same(array('conversation_id' => 7, 'cc' => 'c@example.com', 'bcc' => '', 'text' => 'Thanks', 'files' => array(), 'send_anyway' => true), $reply,
+	pg_assert_same(array('conversation_id' => 7, 'cc' => 'c@example.com', 'bcc' => '', 'text' => 'Thanks', 'html' => '', 'files' => array(), 'send_anyway' => true), $reply,
 		'an answer goes to its conversation\'s customer: To and subject are the conversation\'s');
 }
 
