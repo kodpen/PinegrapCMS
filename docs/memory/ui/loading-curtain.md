@@ -4,7 +4,7 @@ description: Panel transitions (pg_preloader_markup()): arrival curtain after 12
 ---
 
 ## Where and how is it printed?
-- `pg_preloader_markup()` (`includes/fn/output.php`) prints inside `output_header()` right after `<body>`: the curtain `#pg-preloader`, the leaving bar `.pg-leave-bar` and their inline script together, before any stylesheet or script below loads. CSS is the *Loading curtain and leaving bar* block of `assets/css/backend.src.css` (run `php tools/build_css.php`); never a screen's own second curtain.
+- `pg_preloader_markup()` (`includes/fn/output.php`) prints inside `output_header()` right after `<body>`: the curtain `#pg-preloader`, the leaving bar `.pg-leave-bar` and their inline script together, before any stylesheet or script below loads. CSS is the *Loading curtain and leaving bar* block of `assets/css/backend.src.css`; never a screen's own second curtain.
 - Excluded: `toolbar.php` (the strip above the edited site) and `output_header_secure()` (in-modal picker screens).
 
 ## What does arrival show?

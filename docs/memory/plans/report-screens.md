@@ -27,7 +27,7 @@ description: Plan (owner 2026-11-11, #8673): the order, visitor, shipping and ER
 ## What does every step keep?
 - No schema; a need for a column comes back as an `architect` question.
 - One shared report view: a module under `includes/fn/` turns a report's result (levels, rows, totals) into figures, chart series and the table model, as pure functions with tests; each screen hands it its result.
-- Every text through `lang()`, keys by `php tools/tr_add.php`; bundles rebuilt (`php tools/build_js.php`, `build_css.php`). The table's rules stay (`ui/report-table-rows.md`).
+- Every text through `lang()`, keys by `php tools/tr_add.php`. The table's rules stay (`ui/report-table-rows.md`).
 - Looked at in the sandbox (`ui/panel-screenshots.md`): wide and phone, light and dark, before and after, linked in the PR. The look on dev is the owner's, after landing.
 
 ## Who holds it, where does it start?

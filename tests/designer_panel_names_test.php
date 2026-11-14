@@ -36,7 +36,7 @@ function designer_panel_names_function($source, $name)
 function test_designer_panel_names_pass_ties_labels()
 {
 	$source = designer_panel_names_source('assets/js/style_designer.src.js');
-	$pass   = designer_panel_names_function($source, '_sdNamePropsPanel');
+	$pass   = designer_panel_names_function($source, '_sdNamePropsPanel') . designer_panel_names_function($source, '_sdNamePropsControl');
 
 	pg_assert_true($pass !== '', 'the naming pass exists');
 	pg_assert_contains("'.sd-sp-bp-item'", $pass, 'screen-size items are named');
@@ -47,7 +47,31 @@ function test_designer_panel_names_pass_ties_labels()
 
 	$has = designer_panel_names_function($source, '_sdPropsHasName');
 	pg_assert_contains("'aria-label'", $has, 'aria-label counts as a name');
-	pg_assert_contains('.labels', $has, 'a label with text counts as a name');
+	pg_assert_contains("closest('label')", $has, 'a wrapping label with text counts as a name');
+	pg_assert_contains('forIds.has(ctrl.id)', $has, 'a label[for] with text counts as a name');
+	pg_assert_same(false, strpos($has, '.labels'), 'ctrl.labels is not read: its first read scans the whole document');
+}
+
+// The pass covers only what is on show: a subtree folded by an inline
+// display:none is skipped and named when its style changes (a section or a
+// per-size box opens), so a selection does not walk the closed sections.
+function test_designer_panel_names_pass_skips_folded_parts()
+{
+	$source = designer_panel_names_source('assets/js/style_designer.src.js');
+
+	$walk = designer_panel_names_function($source, '_sdPropsShownControls');
+	pg_assert_contains("el.style.display === 'none') return 2", $walk, 'a folded subtree is rejected whole');
+
+	$roots = designer_panel_names_function($source, '_sdPropsMutatedRoots');
+	pg_assert_contains("r.type === 'attributes'", $roots, 'an opened part is named from its style change');
+	pg_assert_contains('_sdPropsFolded(el, panel)', $roots, 'a part still folded waits');
+
+	$init = designer_panel_names_function($source, '_sdPropsA11yInit');
+	pg_assert_contains("attributeFilter: ['style']", $init, 'the observer sees sections open');
+	pg_assert_contains('_sdNamePropsPanel(panel, root);', $init, 'names only what the mutations put on show');
+	pg_assert_contains('_swPageBrowseDecorate(root);', $init, 'Browse only on what is on show');
+
+	pg_assert_contains('_sdPropsFolded(sel, root.parentElement)', designer_panel_names_function($source, '_swPageBrowseDecorate'), 'a folded page select gets Browse when it opens');
 }
 
 function test_designer_panel_names_pass_runs_on_every_render()

@@ -30,4 +30,4 @@ description: Start file for the designer-canvas-* files: the canvas, its width b
 1. A control bound by its own script joins `_SD_CANVAS_CONTROLS`; a new Bootstrap component is checked for a sibling or child lookup (`designer-canvas-links.md`).
 2. A path that changes the tree calls `render()` (or `_sdRenderNode()` for one node); a selection-only path `_sdSelectRender()`; a state that shows a toolbar calls `_sdTbFill()`.
 3. A measured fix goes into `_sdCanvasFidelityPass()`: measure all, then write only what changed; a canvas-body class of the editor joins `_EDITOR_STATE_CLASSES`; script reaches the canvas only through `applyAssetsToIframe()`.
-4. New editor markup that draws the canvas carries `/* @pg-site-output */` (`ui/bootstrap-6-editor-markers.md`); `php tools/build_js.php`; a test beside the cluster's (`tests/designer_canvas_*_test.php`); the topic file, then this one.
+4. New editor markup that draws the canvas carries `/* @pg-site-output */` (`ui/bootstrap-6-editor-markers.md`); a test beside the cluster's (`tests/designer_canvas_*_test.php`); the topic file, then this one.

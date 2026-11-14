@@ -26,5 +26,5 @@ description: Start file for the designer-blocks-* files: what a block family is,
 1. Search the palette and the family files' "reused instead" lists; add only what no block covers.
 2. Copy `tests/fixtures/designer/style_designer_blocks_sample.js` to `assets/js/style_designer_blocks_<family>.js`: `prefix`, `group: { title: _sdT('…'), icon }` (left out for a general family), `items`, `build(ctype)`, the `_SD_BLOCK_CSS` and `_SD_BLOCK_CSS_NEEDS` text in the shape the PHP reader parses (`designer-block-family-files.md`). Neither the core nor `output.php` changes.
 3. Labels as single-quoted `_sdT('…')`, Turkish with `php tools/tr_add.php`; site output stays on Bootstrap 5.3.8; colours only from theme classes, no `!important`, no year in the sample.
-4. `php tools/build_js.php`; a Node test `tests/designer_blocks_<family>_test.php` through `tests/helpers/designer_family_run.php`; `tests/designer_blocks_test.php` and `designer_block_families_test.php` check every file.
+4. A Node test `tests/designer_blocks_<family>_test.php` through `tests/helpers/designer_family_run.php`; `tests/designer_blocks_test.php` and `designer_block_families_test.php` check every file.
 5. Write `designer-blocks-<prefix>.md` and add the family to this file.

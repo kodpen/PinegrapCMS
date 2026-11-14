@@ -29,7 +29,7 @@ description: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860)
 ## What holds for every step?
 - A step copies what the sheet shows, value for value; it does not design. Where the sheet is silent it asks on an `architect` issue.
 - A recipe lives in one place and is never copied into a screen's own CSS; a screen's own class only places things.
-- User texts through `lang()`, the Turkish with `php tools/tr_add.php`; `php tools/build_css.php` after `backend.src.css`.
+- User texts through `lang()`, the Turkish with `php tools/tr_add.php`.
 - A step that changes a screen's look is approved from a real panel's screenshot; the drawing is only where it starts.
 - DL3 and each DL5 step wait for DL1; DL1b, DL2 and DL4 may run beside them.
 

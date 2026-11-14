@@ -12,7 +12,7 @@ description: Plan (owner 2026-11-14): "My calendar" beside e-mail and a person's
 - A task has a due time and a reminder (`workspace/workspace-task-reminders.md`) but is the team's, never private.
 
 ## Which steps?
-- PC1 (S, done #9474) Census: `workspace/personal-calendar-census-*.md` (readers, tables, words, mail, privacy); the architect answered the rest, the tables wait for the owner's yes.
+- PC1 (S, done #9474) Census: `workspace/personal-calendar-census-*.md` (readers, tables, words, mail, privacy); the architect answered the rest; the tables: `workflow/decisions-made-schema-18.md`.
 - PC2 (M) Done #9477: "My calendar" (`workspace_my_calendar.php`) by month, week and list; the button on the E-mails toolbar and the Workspace menu tile (`workspace/workspace-my-calendar.md`).
 - PC3 (M, schema) Plans: Done #9500 (`workspace/workspace-personal-plans.md`): step 11.0.201, the gate `ws_personal_plan_can_see()` and its guard test, the "New plan" drawer, My calendar and Today, the reminder line `plan_reminder`.
 - PC4 (S) Sharing: "Who can see" on the drawer: Only me (the default), chosen team members, the whole team. The others read it on their My calendar under the owner's name and change nothing.
@@ -29,4 +29,4 @@ description: Plan (owner 2026-11-14): "My calendar" beside e-mail and a person's
 - Team accounts only; a guest has no calendar.
 - Look A (`ui/look-design-examples.md`), the whole picture set in the agent channel at once. Texts through `lang()`.
 - No table or column without asking the architect.
-- PC2 beside PC1; PC3 after the owner's yes to the tables; PC4, PC5 and PC7 after PC3; PC6 after PC5; PC8 after PC4. Claim as `[plan:personal-calendar-plans] <step> — <topic>`.
+- PC2 beside PC1; PC3 after PC1; PC4, PC5 and PC7 after PC3; PC6 after PC5; PC8 after PC4. Claim as `[plan:personal-calendar-plans] <step> — <topic>`.

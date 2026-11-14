@@ -4,7 +4,7 @@ description: Binding decisions of the Workspace module (channels, tasks, plan bo
 ---
 
 ## What is the Workspace and where is its code?
-- Team channels, tasks, plan board, calendar, notes; internal name `workspace`, prefix `ws_`, UI name "Çalışma Alanı". Code `includes/workspace/` (one gate constant per file), screens `workspace*.php`, JS `assets/js/workspace*.js` (bundled: `php tools/build_js.php`).
+- Team channels, tasks, plan board, calendar, notes; internal name `workspace`, prefix `ws_`, UI name "Çalışma Alanı". Code `includes/workspace/` (one gate constant per file), screens `workspace*.php`, JS `assets/js/workspace*.js` (bundled, `core/js-bundles.md`).
 - Built from 2026.4.4 (labels 4.80–4.89); open-version workspace labels 10.80–10.89 and 10.110–10.119.
 - Goal: conversation → decision → task → calendar in one place, tied to the site's own records (orders, invoices, products, contacts, files, pages).
 

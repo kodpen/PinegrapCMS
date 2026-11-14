@@ -175,7 +175,7 @@ function test_editor_bridge_designer_wired()
 	pg_assert_true(strpos($designer, 'window.pgEditorPicker.image(') !== false, 'pictures through the bridge');
 	pg_assert_true(strpos($designer, "picker.link(inp.value)") !== false, 'links through the bridge');
 	pg_assert_true(strpos($designer, ' data-sw-page-none>') !== false, 'page selects are marked');
-	pg_assert_true(strpos($designer, '_swPageBrowseDecorate(panel);') !== false, 'Browse is added as the panel is drawn');
+	pg_assert_true(strpos($designer, '_swPageBrowseDecorate(root);') !== false, 'Browse is added as the panel is drawn');
 
 	$pane = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_type_pane.php');
 	pg_assert_true(strpos($pane, '$properties, $user, $page_id, true);') !== false, 'the page type pane draws picker fields');
