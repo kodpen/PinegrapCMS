@@ -20,11 +20,11 @@ description: Plan (owner 2026-11-14): an approval request can ask a channel's ag
 - Only a person's `@herkes` wakes agents; an agent's or an application's rings the people and wakes no agent.
 
 ## Which steps?
-- AE1 (S, no product code) Census: `ws_approval_people` and its readers (the card, Today, the flows' waits, the export, the guest link), how the mention menu and `ws_agent_wake_matches()` read a tag, how a department mention rings. It names the column an agent approver needs; the architect asks the owner.
-- AE2 (M, schema) Agent approvers on the server: who may be asked, the wake, the answer of an asked agent, the bound with its tests (a flow's request refuses an agent, an agent's own request refuses it).
-- AE3 (S) The form and the card: agents under the people, the badge on the card. Look A, the pictures in the agent channel.
-- AE4 (S) API: `approvers` takes agents on create; `POST /workspace/approvals/{id}/decide` opens to the asked application agent's own key and stays closed to MCP; the dry run; `php tools/check_api_schema.php` passes.
-- AE5 (M) `@herkes`: the tag and the menu, the mention lines, the wake, the reserved handles, tests of the two bounds.
+- AE1 (S, no product code) Census: `ws_approval_people` and its readers (the card, Today, the flows' waits, the export, the guest link), how the mention menu and `ws_agent_wake_matches()` read a tag, how a department mention rings. It names the column an agent approver needs; the architect asks the owner. Done (#9555): `agent-approvers-everyone-census*.md`.
+- AE2 (M, schema) Agent approvers on the server: who may be asked, the wake, the answer of an asked agent, the bound with its tests (a flow's request refuses an agent, an agent's own request refuses it). Exact scope: `-census-steps.md`.
+- AE3 (S) The form and the card: agents under the people, the badge on the card (workspace_approvals.js, `ws_approvals_map()`). Look A, the pictures in the agent channel.
+- AE4 (S) API: `approvers` takes agents on create; `POST /workspace/approvals/{id}/decide` opens to the asked application agent's own key and stays closed to MCP; the dry run; `php tools/check_api_schema.php` passes. Exact scope: `-census-steps.md`.
+- AE5 (M) `@herkes`: the tag and the menu, the mention lines, the wake, the reserved handles, tests of the two bounds; `hepsi` is not reserved yet. Exact scope: `-census-mentions.md`.
 - AE6 (S) Close-out: the memory files; `workflow/agent-channel-wake.md` drops `@hepsi` and its text waiters; this plan deleted.
 
 ## What does every step keep?
