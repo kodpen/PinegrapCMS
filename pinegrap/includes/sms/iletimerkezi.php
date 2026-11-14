@@ -382,3 +382,76 @@ function pg_sms_iletimerkezi_senders($app)
 
     return pg_sms_iletimerkezi_senders_parse($response['status'], $response['body'], $response['error']);
 }
+
+/**
+ * The request that lists the SMS customers sent to the account's short
+ * number between two times (get-inbox, at most 10 days; up to 1000 on a
+ * page).
+ *
+ * @param array $app  pg_sms_app()
+ * @param int   $from
+ * @param int   $to
+ * @param int   $page from 1
+ * @return array url, headers, body
+ */
+function pg_sms_iletimerkezi_inbox_request($app, $from, $to, $page = 1)
+{
+    return pg_sms_iletimerkezi_request('get-inbox', $app, array('inbox' => array(
+        'page'     => max(1, (int) $page),
+        'rowCount' => 1000,
+        'filter'   => array('start' => date('Y-m-d H:i:s', (int) $from), 'end' => date('Y-m-d H:i:s', (int) $to)),
+    )));
+}
+
+/**
+ * The messages of a get-inbox answer, in the shape ws_mail_phone_ingest()
+ * reads, and whether more pages follow. A message İleti Merkezi itself
+ * took as an unsubscribe (action UNSUBSCRIBE) is marked stop. Pure but for
+ * lang() and pg_sms_number().
+ *
+ * @param int    $status
+ * @param string $body
+ * @param string $error
+ * @param int    $page
+ * @return array ok, messages (wamid, from, text, kind, name, at, stop), more, error
+ */
+function pg_sms_iletimerkezi_inbox_parse($status, $body, $error = '', $page = 1)
+{
+    $answer = pg_sms_iletimerkezi_answer($status, $body, $error);
+
+    if ($answer['error'] !== '') {
+        return array('ok' => false, 'messages' => array(), 'more' => false, 'error' => $answer['error']);
+    }
+
+    $inbox = (isset($answer['data']['inbox']) && is_array($answer['data']['inbox'])) ? $answer['data']['inbox'] : array();
+    $rows = (isset($inbox['messages']) && is_array($inbox['messages'])) ? array_values($inbox['messages']) : array();
+    $messages = array();
+
+    foreach ($rows as $row) {
+        $read = function ($name) use ($row) {
+            return (is_array($row) && isset($row[$name]) && is_scalar($row[$name])) ? trim((string) $row[$name]) : '';
+        };
+        $id = $read('id');
+        $from = pg_sms_number($read('from'));
+
+        if (!ctype_digit($id) || ($from === '')) {
+            continue;
+        }
+
+        $received = $read('receivedAt');
+
+        $messages[] = array(
+            'wamid' => 'iletimerkezi-' . $id,
+            'from'  => $from,
+            'text'  => mb_substr($read('message'), 0, 1600, 'UTF-8'),
+            'kind'  => 'text',
+            'name'  => '',
+            'at'    => ($received !== '') ? max(0, (int) strtotime($received)) : 0,
+            'stop'  => (strtoupper($read('action')) === 'UNSUBSCRIBE'),
+        );
+    }
+
+    $count = isset($inbox['count']) ? (int) $inbox['count'] : 0;
+
+    return array('ok' => true, 'messages' => $messages, 'more' => ($count > max(1, (int) $page) * 1000) && (count($rows) > 0), 'error' => '');
+}

@@ -395,3 +395,74 @@ function pg_sms_netgsm_senders($app)
 
     return pg_sms_netgsm_senders_parse($response['status'], $response['body'], $response['error']);
 }
+
+/**
+ * The request that lists the SMS customers sent to the account's receiving
+ * number on the days from $from to $to (REST v2 inbox, Basic auth). Dates
+ * are always sent: without them Netgsm hands each message out only once, so
+ * a run that failed after the call would lose it.
+ *
+ * @param array $app  pg_sms_app()
+ * @param int   $from first day's time
+ * @param int   $to   last day's time
+ * @return array url, headers
+ */
+function pg_sms_netgsm_inbox_request($app, $from, $to)
+{
+    return array(
+        'url'     => pg_sms_netgsm_host() . '/sms/rest/v2/inbox?startdate=' . date('dmY', (int) $from) . '&stopdate=' . date('dmY', (int) $to),
+        'headers' => pg_sms_netgsm_request_headers($app, false),
+    );
+}
+
+/**
+ * The messages of an inbox answer, in the shape ws_mail_phone_ingest()
+ * reads. Netgsm gives no message id, so the sender, the time and the text
+ * stand for it. Code 40 is an empty inbox, not an error. Pure but for
+ * lang() and pg_sms_number().
+ *
+ * @param int    $status
+ * @param string $body
+ * @param string $error
+ * @return array ok, messages (wamid, from, text, kind, name, at), error
+ */
+function pg_sms_netgsm_inbox_parse($status, $body, $error = '')
+{
+    $answer = pg_sms_netgsm_answer($status, $body, $error);
+
+    if ($answer['code'] === '40') {
+        return array('ok' => true, 'messages' => array(), 'error' => '');
+    }
+
+    if ($answer['error'] !== '') {
+        return array('ok' => false, 'messages' => array(), 'error' => $answer['error']);
+    }
+
+    $messages = array();
+
+    foreach ((isset($answer['data']['messages']) && is_array($answer['data']['messages'])) ? $answer['data']['messages'] : array() as $row) {
+        $read = function ($name) use ($row) {
+            return (is_array($row) && isset($row[$name]) && is_scalar($row[$name])) ? trim((string) $row[$name]) : '';
+        };
+        $from = pg_sms_number($read('sender'));
+
+        if ($from === '') {
+            continue;
+        }
+
+        $text = mb_substr($read('message'), 0, 1600, 'UTF-8');
+        $datetime = $read('datetime');
+        $at = ($datetime !== '') ? (int) strtotime($datetime) : 0;
+
+        $messages[] = array(
+            'wamid' => 'netgsm-' . hash('sha256', $from . "\n" . $datetime . "\n" . $text),
+            'from'  => $from,
+            'text'  => $text,
+            'kind'  => 'text',
+            'name'  => '',
+            'at'    => max(0, $at),
+        );
+    }
+
+    return array('ok' => true, 'messages' => $messages, 'error' => '');
+}

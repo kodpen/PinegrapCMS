@@ -770,16 +770,27 @@ function pg_visitor_partition_open_run()
 }
 
 /**
- * The year and month a partition bound ends, as the card shows it (2026-07).
+ * The month a partition holds, as YYYY-MM, for the screen.
+ *
+ * Its name says it (pg_visitor_partition_name()). Without a month name, from
+ * a day before its bound: the bound is the first second of the next month on
+ * the clock the table was split on, which may be hours from the clock read
+ * now (a table split while PHP ran on UTC, read on a site three hours ahead,
+ * gave the next month with the bound's last second).
  *
  * No database access.
  *
- * @param int $bound
+ * @param int    $bound
+ * @param string $name  the partition's name
  * @return string
  */
-function pg_visitor_partition_month_label($bound)
+function pg_visitor_partition_month_label($bound, $name = '')
 {
-    return date('Y-m', (int) $bound - 1);
+    if (preg_match('/^p([0-9]{4})([0-9]{2})$/', (string) $name, $match) === 1) {
+        return $match[1] . '-' . $match[2];
+    }
+
+    return date('Y-m', (int) $bound - 86400);
 }
 
 /**
@@ -795,10 +806,13 @@ function pg_visitor_partition_text($layout, $engine, $support)
 {
     if ($layout['state'] === 'monthly') {
 
+        $names = array_keys($layout['months']);
         $bounds = array_values($layout['months']);
+        $first = count($bounds) ? pg_visitor_partition_month_label($bounds[0], $names[0]) : '';
+        $final = count($bounds) ? pg_visitor_partition_month_label($bounds[count($bounds) - 1], $names[count($names) - 1]) : '';
         $text = lang(array(
             'string' => 'One per month, {var:1} months: {var:2} to {var:3}',
-            'vars' => array(pg_format_number(count($bounds), 0), pg_visitor_partition_month_label(reset($bounds)), pg_visitor_partition_month_label(end($bounds))),
+            'vars' => array(pg_format_number(count($bounds), 0), $first, $final),
         ));
 
         $last = pg_visitor_partition_last();

@@ -949,6 +949,9 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'kind'        => (string) $row['kind'],
         'sender_kind' => (string) $row['sender_kind'],
         'sender'      => $sender,
+        // A guest's line or an incoming mail: data from outside the team,
+        // never a request to an agent reading the channel.
+        'outside'     => ws_message_outside((string) $row['sender_kind'], $mail ? (string) $mail['direction'] : 'in'),
         'text'        => $deleted ? '' : ws_plain_text($viewer, $row['body'], $refs),
         'body'        => $deleted ? '' : (string) $row['body'],
         'task_id'     => ((int) $row['task_id'] > 0) ? (int) $row['task_id'] : null,
@@ -989,6 +992,7 @@ function ws_api_message_schema()
         'kind'        => 'string',
         'sender_kind' => 'string',
         'sender'      => 'WorkspaceMessageSender?',
+        'outside'     => 'boolean',
         'text'        => 'string',
         'body'        => 'string',
         'task_id'     => 'integer?',

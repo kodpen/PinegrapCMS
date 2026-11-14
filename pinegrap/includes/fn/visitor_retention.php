@@ -3362,7 +3362,8 @@ function pg_visitor_shrink_hour_views()
  * @param array $catalog_row pg_db_table_catalog()['visitors']
  * @param array $last        pg_visitor_shrink_last()
  * @param bool  $requested   the operator asked for it
- * @return array the facts of pg_visitor_shrink_hold_reason()
+ * @return array the facts of pg_visitor_shrink_hold_reason(), and gain
+ *               (pg_visitor_shrink_gain()) for the card
  */
 function pg_visitor_shrink_facts($catalog_row, $last, $requested)
 {
@@ -3399,6 +3400,7 @@ function pg_visitor_shrink_facts($catalog_row, $last, $requested)
         'needed' => pg_visitor_shrink_disk_needed($catalog_row),
         'hour' => (int) date('G'),
         'quiet_hour' => pg_visitor_shrink_quiet_hour(pg_visitor_shrink_hour_views()),
+        'gain' => pg_visitor_shrink_gain($rows_room, $file_now['bytes'], isset($catalog_row['free']) ? (float) $catalog_row['free'] : 0.0),
         'blind_ok' => ($disk_free === null) && pg_visitor_blind_ok($rows, $rows_room, $file_now['bytes']),
         'blind_failed' => !empty($last['blind_failed']),
     );
@@ -3750,6 +3752,118 @@ function pg_visitor_shrink_long_statement()
 }
 
 /**
+ * Room a rebuild has to give back before the card offers "Shrink now".
+ */
+define('PG_VISITOR_SHRINK_OFFER_MIN', 33554432);
+
+/**
+ * Whether a rebuild made the file smaller: by at least 1 MB and 1 %. Either
+ * size unknown (0) says it did not.
+ *
+ * No database access.
+ *
+ * @param float $before file size before the rebuild
+ * @param float $after  file size after it
+ * @return bool
+ */
+function pg_visitor_shrink_gave_room($before, $after)
+{
+    $before = (float) $before;
+    $after = (float) $after;
+
+    if (($before <= 0) || ($after <= 0)) {
+        return false;
+    }
+
+    return ($before - $after) >= max(1048576.0, $before / 100);
+}
+
+/**
+ * The room a rebuild would give back to the disk: the larger of the free
+ * space the server reports and the file less the rows' room.
+ *
+ * No database access.
+ *
+ * @param float $rows_room pg_visitor_rows_room_estimate()
+ * @param float $file      the table's file size
+ * @param float $free      DATA_FREE
+ * @return float bytes
+ */
+function pg_visitor_shrink_gain($rows_room, $file, $free)
+{
+    $by_file = ((float) $file > 0) ? max(0.0, (float) $file - (float) $rows_room) : 0.0;
+
+    return max(max(0.0, (float) $free), $by_file);
+}
+
+/**
+ * Whether the card offers "Shrink now": only where a rebuild has room to give
+ * back.
+ *
+ * No database access.
+ *
+ * @param float $gain pg_visitor_shrink_gain()
+ * @return bool
+ */
+function pg_visitor_shrink_offered($gain)
+{
+    return (float) $gain >= PG_VISITOR_SHRINK_OFFER_MIN;
+}
+
+/**
+ * Why "Clean up visitor records now" cannot be pressed, or '' when it can:
+ * 'busy' another database job runs on the Database engine screen,
+ * 'no_period' records are kept without a limit, 'inside_period' no record is
+ * older than the period.
+ *
+ * No database access.
+ *
+ * @param bool $tools no other database job is running
+ * @param int  $days  the period
+ * @param int  $rows  records older than the period
+ * @return string
+ */
+function pg_visitor_cleanup_disabled_reason($tools, $days, $rows)
+{
+    if (!$tools) {
+        return 'busy';
+    }
+
+    if ((int) $days <= 0) {
+        return 'no_period';
+    }
+
+    return ((int) $rows > 0) ? '' : 'inside_period';
+}
+
+/**
+ * The card's sentence when every record is inside the period: there is
+ * nothing to clean, and what a shorter period would do with this table.
+ *
+ * @param int    $days        the period
+ * @param bool   $partitioned the table is split into months
+ * @param string $engine      of `visitors`, lower case
+ * @return string
+ */
+function pg_visitor_inside_period_text($days, $partitioned, $engine)
+{
+    $inside = lang(array(
+        'string' => 'Every record is from the last {var:1} days, so there is nothing to clean up now and the table stays this size.',
+        'vars' => array((int) $days),
+    ));
+
+    if ($partitioned) {
+        return $inside . ' ' . lang('A shorter period under Visitor Tracking removes the older records: each month then wholly older than the period goes at once and its file goes back to the disk, the rest a chunk at a time.');
+    }
+
+    if ($engine === 'myisam') {
+        return $inside . ' ' . lang('A shorter period under Visitor Tracking removes the older records a chunk at a time; their room goes back to the disk when the table is moved to InnoDB.');
+    }
+
+    return $inside . ' ' . lang('A shorter period under Visitor Tracking removes the older records a chunk at a time; their room goes back to the disk when the table is rebuilt.');
+}
+
+/**
  * One sentence on how a rebuild ended, for the activity log and the screen.
  *
  * @param array $last pg_visitor_shrink_last()
@@ -3757,6 +3871,15 @@ function pg_visitor_shrink_long_statement()
  */
 function pg_visitor_shrink_result_text($last)
 {
+    if (($last['state'] === 'done') && !pg_visitor_shrink_gave_room($last['file_before'], $last['file_after'])) {
+        return ($last['file_after'] > 0)
+            ? lang(array(
+                'string' => 'The visitors table was rebuilt; its file stayed about the same size, {var:1}: there was little free space in it to give back.',
+                'vars' => array(pg_visitor_figure_text(pg_innodb_size_label($last['file_after']), $last['file_source'])),
+            ))
+            : lang('The visitors table was rebuilt; the size of its file afterwards could not be read.');
+    }
+
     if (($last['state'] === 'done') && ($last['seconds'] <= 0)) {
         return lang(array(
             'string' => 'The visitors table was rebuilt and its file made smaller: {var:1} before, {var:2} now.',
@@ -3804,7 +3927,9 @@ function pg_visitor_shrink_reason_text($reason, $last)
             return lang('Only a table on InnoDB is rebuilt this way; a table on MyISAM gets a smaller file when it is moved to InnoDB.');
 
         case 'moving':
-            return lang('The table is being moved to InnoDB, which gives the room back to the disk as well.');
+            return (pg_visitor_move_last()['kind'] === 'split')
+                ? lang('The table is being split into one partition per month, which gives the room back to the disk as well.')
+                : lang('The table is being moved to InnoDB, which gives the room back to the disk as well.');
 
         case 'shared_tablespace':
             return lang('The database server keeps InnoDB tables in one shared file (innodb_file_per_table is off), which does not get smaller when a table is rebuilt.');

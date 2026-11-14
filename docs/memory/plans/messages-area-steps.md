@@ -13,7 +13,7 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - MA4 (S, done #9074) E-mail body as a page: a proposed way for MA5 (`designer/campaign-email-body-*.md`), answered on #9083.
 - MA5 The campaign's content step (`plans/messages-area-decided.md`), in five PRs:
   - MA5a (S, done #9413, `designer/campaign-email-body-mail-pass.md`) The mail pass and the outgoing mode of `mail_html.php`.
-  - MA5b (M) The content step, drawn anew: design, ready design or pasted HTML; the stored body and "the design changed"; wide and phone preview.
+  - MA5b (M, done #9426, `ui/campaign-content-step.md`) The content step, drawn anew: design, pasted HTML or plain text; "Take the design again"; wide and phone preview.
   - MA5c (M) E-mail designs: the folder, `props.pgEmail`, 600/375 px canvas, mail blocks with PHP maps and canvas twins.
   - MA5d (M) Five ready designs, the template's and earlier campaigns' as copies; e-mail designs in Templates.
   - MA5e (S) "Send a test to me": to oneself and up to five addresses, never counted, a limit per user.
@@ -30,7 +30,7 @@ description: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, 
 - Claim as `[plan:messages-area] <step> — <topic>`.
 
 ## What is left for the next session? (2026-11-14, after #9363)
-- MA5b next, then MA5c to MA5e in order; MA8 after MA5 or beside it on other files.
+- MA5c next, then MA5d and MA5e in order; MA8 after MA5 or beside it on other files.
 - Left open by MA2b (#9275): Sends' search (3.2 s) and sorts other than Date or Channel (2 s) at 500,000 rows per queue a week (`platform/messages-area-sends.md`); asked only if a real site gets there.
 - The shell, the doors and the tabs so far: `ui/messages-area-shell.md`, `ui/messages-area-campaigns-tab.md`.
 

@@ -3080,6 +3080,7 @@
     "Put the record back as it was before this change?": "Kayıt bu değişiklikten önceki hâline döndürülsün mü?",
     "Put the reminders off until": "Hatırlatmaları şu tarihe kadar ertele",
     "Put the site on its address.": "Siteyi kendi adresinde yayına al.",
+    "Put the variable {var:1} in the message, or add a copy-code button, so the code reaches the person.": "Kodun kişiye ulaşması için {var:1} değişkenini mesaja koyun ya da bir kodu kopyala düğmesi ekleyin.",
     "Put the words of a customer here: a sentence or two on what you did for them and how it went.": "Buraya bir müşterinizin sözlerini koyun: onun için ne yaptığınızı ve nasıl geçtiğini anlatan bir iki cümle.",
     "Put this in ~/.codeium/windsurf/mcp_config.json, refresh the MCP servers and sign in when asked.": "Bunu ~/.codeium/windsurf/mcp_config.json dosyasına yazın, MCP sunucularını yenileyin ve istendiğinde oturum açın.",
     "Put this in ~/.gemini/settings.json, then run /mcp auth pinegrap in Gemini CLI.": "Bunu ~/.gemini/settings.json dosyasına yazın, ardından Gemini CLI'da /mcp auth pinegrap komutunu çalıştırın.",

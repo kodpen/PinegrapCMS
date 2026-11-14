@@ -7,6 +7,12 @@ module: visitor_retention
 ## Why does this exist?
 - Owner report 2026-11-13: on many sites the visitor table never got smaller. Where PHP cannot read the free space (`disk_free_space` off, data directory outside `open_basedir`, database on another host; most shared hosting) the split and the rebuild waited forever with reason `disk_unknown`.
 
+## What did a sandbox of the report show? (v2026.4.10, MariaDB 10.11, 5 M visits)
+- No table that no option made smaller: in every state one button did ("Shrink now" 784 to 664 MB; a shorter period, then a dropped month, 949 to 785 MB).
+- A table not split: deleting rows never changes the file; only the split or a rebuild gives the room back.
+- Every visit inside the kept period: "Clean up visitor records now" has nothing to do; the file follows a shorter period only when a whole month goes or by "Shrink now". The card says so since #9418 (`visitor-records-card-texts.md`).
+- While the rollup backfill is behind, a run removes only what it passed (20,000 to 50,000 rows).
+
 ## How big are the rows left?
 - `pg_visitor_rows_room_estimate()`: the smaller of the statistics (data + index; MyISAM less its free) and records × `PG_VISITOR_ROW_BYTES` (384 B).
 - After a large delete InnoDB still counts the emptied pages: sandbox, 5 M left of 10 M, statistics 2.9 GB, rebuilt file 1.6 GB. Measured 350–367 B per row with referrer and user agent on the row.

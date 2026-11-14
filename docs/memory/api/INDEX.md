@@ -56,6 +56,7 @@
 - api-orders-create.md: POST /orders records a counter (local) sale through the counter screen's completion: lines, customer, payment, the checks before the write, dry run, Idempotency-Key, what it answers
 - api-orders-list.md: GET /orders: status comma list, sort placed_desc, modified_since on last_modified_timestamp, cursor marks, and the writers that move the stamp (pg_order_touch_sql(), PR #2258)
 - api-panel-coverage.md: How far the external API covers what the panel manages (gap list #5239, X1-X13 landed; audit #7967), how a new write route reuses the screen's write path, and what deliberately has no endpoint
+- api-plugin-scopes.md: The 'moves_money' route mark and api_plugin_scopes(), the scopes an assistant plugin is meant to hold: marked routes, offered writes, and the test that keeps them apart [decision: here]
 - api-product-bundles.md: Product bundles in the external API: the bundle block on Product, the bundle fields POST /products/{id} writes, what it refuses, the price batch and inventory answers for a bundle
 - api-product-question-answer.md: POST /comments/{id}/answer writes, changes or removes the staff answer to a product question through the comment screen's save (comments:write, dry_run); refusals, the asker's mail
 - api-response-json-encoding.md: API and MCP answers as JSON (pg_json_encode_answer()): broken UTF-8 bytes, keys too, become U+FFFD on every PHP version; INF or NAN becomes a 500 or -32603, never an empty body

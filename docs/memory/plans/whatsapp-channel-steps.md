@@ -18,8 +18,8 @@ description: Steps WA0-WA11 of the WhatsApp channel plan (#8950): facts and stor
 - WA8 (M) Template designer, first half. Done in #9350: `platform/whatsapp-template-designer.md`.
 - WA8b (S) Variables as chips (owner, channel 25 #2222). Done in #9376: `ui/variable-chips.md`.
 - WA9 (M) Template designer, second half. Done in #9395: `platform/whatsapp-template-approval.md`.
-- WA10 (M) Offer codes: the variable "Offer code" as the offer's shared code or a key made for the recipient at send time with the validity set on the template; the marketing consent gate of Ka on every path that sends.
-- WA11 (S) Close-out of WA1 to WA10: the lasting rules into `platform/`, the overview file. The plan is deleted by WA18 (`whatsapp-channel-steps-2.md`: a customer's WhatsApp message and SMS in a channel).
+- WA10 (M) Offer codes: the variable "Offer code" as the offer's shared code or a key made for the recipient at send time with the validity set on the template; the marketing consent gate of Ka on every path that sends. Done in #9414: `platform/whatsapp-offer-codes.md`.
+- WA11 (S) Close-out of WA1 to WA10: the lasting rules into `platform/`, the overview file. Done in #9430: `platform/whatsapp-overview.md`. The plan is deleted by WA18 (`whatsapp-channel-steps-2.md`: a customer's WhatsApp message and SMS in a channel).
 
 ## In which order?
 - WA0 first; its questions (#9085) answered before WA2, WA3 and WA4 start, #9087 before WA10. WA1, then WA2, WA3 and WA4 one after the other (they share the module).

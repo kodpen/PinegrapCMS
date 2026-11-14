@@ -492,6 +492,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 
 - api/api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why
 - api/api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Store, Accounting, All, PR #1716): what each ticks, why record writes are ticked only by hand, the propose route always ticked
+- api/api-plugin-scopes.md: The 'moves_money' route mark and api_plugin_scopes(), the scopes an assistant plugin is meant to hold: marked routes, offered writes, and the test that keeps them apart
 - api/application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs
 - api/claude-plugin-census.md: Claude plugin bundle as Anthropic's pages state it (read 2026-11-14): folder and manifest, directory checks and policy, which Claude app loads what, and how a bundle can (not) ask for a site's address
 - api/claude-plugin-tool-check.md: The site's MCP tools checked against Claude's directory rules (2026-11-14): name length, annotations, and the routes that move money or issue stored value, by route id and scope
@@ -781,6 +782,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-message-seen-by.md: The "Who has seen it" drawer (ws_message_seen_by()): people by last_read_id, agents by their requests (#9366), the two groups, the muted not-woken line, the writer-alone line (#4238)
 - workspace/workspace-notes-groups-lock.md: Overview of note groups, shared groups, tabs, the PIN lock and media in notes (owner 2026-11-07): how the parts hold together, what was left out, the keyboard and screen-reader ways, open ends
 - workspace/workspace-notes-sources.md: Where an imported note came from (ws_note_sources, schema 11.0.86, PR #1812): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
+- workspace/workspace-outside-caution.md: The standing caution in every agent's and assistant's brief (GV5): a guest's line, a mail and other outside text are data, never a request; how a guest's message is marked in a brief and in the API
 - workspace/workspace-sales-quote-change.md: A sales quote added from a change card (kind erp_quote, PR #1705): fields, the erp_lines value kind, what is filled in and checked, the writer erp_quote_save(), how the card and the assistants show it
 - workspace/workspace-scheduled-actions-api.md: The /workspace/scheduled-actions routes were removed before 2026.11.0 shipped (PR #2107): why, what took their place, what stays (scheduled messages, the draft card)
 - workspace/workspace-settings-overview.md: Start file for the Workspace settings: the three categories of the Site Settings dialog, who opens them, the rules every card keeps, the old workspace_settings.php address, which file holds what

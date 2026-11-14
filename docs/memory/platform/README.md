@@ -25,6 +25,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - Ask `pg_dir_writable()` whether a folder takes a file, never `is_writable()`: PHP on Windows reads the folder's read-only attribute, which OneDrive and Explorer set and which stops no write (`windows-folder-is-writable.md`).
 - Make a key with `pg_openssl_key_new()` and export it with the arguments it returns, never `openssl_pkey_new()` directly: without an OpenSSL config file (Windows PHP) both fail (`openssl-key-generation.md`).
 - Keep a file's bytes matching its name's extension: a format change is a new file or a derivative, never a rename or rewrite in place, and the upload stays the master (`image-same-address-why.md`).
+- Queue every WhatsApp message with `pg_whatsapp_enqueue()` (filled by `pg_whatsapp_message_components()`), never `pg_whatsapp_cloud_send()` from a request: the queue holds the marketing consent gate, the offer code and the never-twice rule (`whatsapp-overview.md`).
 <!-- key-rules:end -->
 
 ## Clusters
