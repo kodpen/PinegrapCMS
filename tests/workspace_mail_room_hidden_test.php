@@ -54,6 +54,7 @@ function workspace_mail_room_hidden_test_readers()
 		'includes/fn/privacy_export.php::pg_privacy_export_collect'        => array('key:contact_id'),
 		'includes/workspace/access.php::ws_channel'                        => array('id'),
 		'includes/workspace/agent_activity.php::ws_agent_activity_open'    => array('id'),
+		'includes/workspace/agent_instructions.php::ws_agent_instructions_channels' => array('id'),
 		'includes/workspace/agent_queue.php::ws_agent_brief'               => array('id'),
 		'includes/workspace/ai.php::ws_ai_settings_card'                   => array('id'),
 		'includes/workspace/api_resources.php::ws_api_channel_groups_delete' => array('key:group_id'),
