@@ -29,12 +29,36 @@ include_once('liveform.class.php');
 $liveform = new liveform('erp_cashflow');
 
 // Two views: what happened (the report below) and what is ahead (the
-// forecast, includes/erp/cash_forecast.php), side by side in the toolbar.
+// forecast, includes/erp/cash_forecast.php), a segmented control at the
+// start of the tools row.
 $output_view_pills = function ($active) {
-    return '<ul class="nav nav-pills nav-sm mb-0 me-3">
-                    <li class="nav-item"><a class="nav-link py-1 px-3' . (($active === 'flow') ? ' active" aria-current="page' : '') . '" href="erp_cashflow.php">' . lang('What happened') . '</a></li>
-                    <li class="nav-item"><a class="nav-link py-1 px-3' . (($active === 'forecast') ? ' active" aria-current="page' : '') . '" href="erp_cashflow.php?view=forecast">' . lang('What is ahead') . '</a></li>
-                </ul>';
+    return '<span class="pg-seg">
+                    <a class="pg-seg-item' . (($active === 'flow') ? ' is-active" aria-current="page' : '') . '" href="erp_cashflow.php">' . lang('What happened') . '</a>
+                    <a class="pg-seg-item' . (($active === 'forecast') ? ' is-active" aria-current="page' : '') . '" href="erp_cashflow.php?view=forecast">' . lang('What is ahead') . '</a>
+                </span>';
+};
+
+// The address values a select of the tools row carries along when it
+// sends its own form (the values of this request, as given).
+$output_keep = function (array $keys) {
+    $hidden = '';
+    foreach ($keys as $key) {
+        if (isset($_GET[$key]) && is_scalar($_GET[$key]) && ((string) $_GET[$key] !== '')) {
+            $hidden .= '<input type="hidden" name="' . h($key) . '" value="' . h((string) $_GET[$key]) . '" />';
+        }
+    }
+
+    return $hidden;
+};
+
+// A select of the tools row, sent on change: options => text.
+$output_select = function ($id, $name, array $options, $current, $form = '') {
+    $items = '';
+    foreach ($options as $value => $text) {
+        $items .= '<option value="' . h((string) $value) . '"' . (((string) $value === (string) $current) ? ' selected' : '') . '>' . h((string) $text) . '</option>';
+    }
+
+    return '<select class="form-control" id="' . h($id) . '" name="' . h($name) . '"' . (($form !== '') ? ' form="' . h($form) . '"' : '') . ' onchange="this.form.submit()">' . $items . '</select>';
 };
 
 if (($_GET['view'] ?? '') === 'forecast') {
@@ -168,11 +192,14 @@ if (($_GET['view'] ?? '') === 'forecast') {
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+            <form method="get" action="erp_cashflow.php" class="pg-report-tools disable_shortcut">
                 ' . $output_view_pills('forecast') . '
-                ' . pg_filter_select('horizon', erp_cash_forecast_horizons(), (string) $forecast['horizon'],
-                    array('label' => lang('Period'), 'icon' => 'calendar3', 'action' => 'erp_cashflow.php', 'keep' => array('view'))) . '
-            </nav>
+                <input type="hidden" name="view" value="forecast" />
+                <span class="pg-report-field">
+                    <label class="pg-report-label" for="horizon">' . lang('Period') . '</label>
+                    ' . $output_select('horizon', 'horizon', erp_cash_forecast_horizons(), (string) $forecast['horizon']) . '
+                </span>
+            </form>
 
             <div class="pg-report-view">' . $output_figures . '</div>
 
@@ -304,10 +331,11 @@ foreach ($tills as $till) {
 
 $period_text = prepare_form_data_for_output($options['from'], 'date', false) . ' – ' . prepare_form_data_for_output($options['to'], 'date', false);
 
-// Bucket and period as two selects that keep each other and the till. A
-// period that is not one of the quick ranges is listed by its dates.
-$output_group_filter = pg_filter_select('group', $groups, (string) $options['group'],
-    array('label' => lang('Bucket'), 'icon' => 'bar-chart-steps', 'action' => 'erp_cashflow.php', 'keep' => array('from', 'to', 'till')));
+// Bucket and period as two selects that keep each other and the till,
+// each sending a form of its own (the form attribute) from inside the
+// tools row. A period that is not one of the quick ranges is listed by its
+// dates.
+$output_group_filter = $output_select('group', 'group', $groups, (string) $options['group'], 'erp_cashflow_group');
 
 $period_options = array();
 $period_current = '';
@@ -320,8 +348,7 @@ foreach ($quick_ranges as $key => $range) {
 if ($period_current === '') {
     $period_options = array('' => $period_text) + $period_options;
 }
-$output_period_filter = pg_filter_select('range', $period_options, $period_current,
-    array('label' => lang('Period'), 'icon' => 'calendar3', 'action' => 'erp_cashflow.php', 'keep' => array('from', 'to', 'till', 'group')));
+$output_period_filter = $output_select('range', 'range', $period_options, $period_current, 'erp_cashflow_range');
 
 // ------------------------------------------------------------ period rows
 $output_rows = '';
@@ -432,26 +459,34 @@ pg_page_shell(array(
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+            <form method="get" action="erp_cashflow.php" class="pg-report-tools disable_shortcut" id="erp_cashflow_period">
                 ' . $output_view_pills('flow') . '
-                ' . $output_group_filter . '
-                ' . $output_period_filter . '
-                <form method="get" action="erp_cashflow.php" class="d-flex flex-wrap align-items-center gap-3 row-gap-2 mb-0">
-                    <input type="hidden" name="group" value="' . h($options['group_chosen'] ? $options['group'] : '') . '" />
-                    <span class="d-inline-flex align-items-center gap-2">
-                        <label for="from" class="small fg-secondary text-nowrap mb-0">' . lang('Start') . '</label>
-                        <input type="date" data-pg-date id="from" name="from" class="form-control form-control-sm w-auto" value="' . h($options['from']) . '" max="' . h(date('Y-m-d')) . '" />
-                    </span>
-                    <span class="d-inline-flex align-items-center gap-2">
-                        <label for="to" class="small fg-secondary text-nowrap mb-0">' . lang('End') . '</label>
-                        <input type="date" data-pg-date id="to" name="to" class="form-control form-control-sm w-auto" value="' . h($options['to']) . '" max="' . h(date('Y-m-d')) . '" />
-                    </span>
-                    <select id="till" name="till" class="form-control form-control-sm w-auto text-truncate" style="max-width:min(100%, 20rem)" aria-label="' . lang('Till') . '">' . $output_till_options . '</select>
-                    <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
-                </form>
-                <div class="pg-toolbar-grow"></div>
-                <a class="btn btn-sm btn-text theme-secondary" href="erp_cashflow.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv me-1"></i>' . lang('Download CSV') . '</a>
-            </nav>
+                <input type="hidden" name="group" value="' . h($options['group_chosen'] ? $options['group'] : '') . '" />
+                <span class="pg-report-field">
+                    <label class="pg-report-label" for="group">' . lang('Bucket') . '</label>
+                    ' . $output_group_filter . '
+                </span>
+                <span class="pg-report-field">
+                    <label class="pg-report-label" for="range">' . lang('Period') . '</label>
+                    ' . $output_period_filter . '
+                </span>
+                <span class="pg-report-field">
+                    <label class="pg-report-label" for="from">' . lang('Start') . '</label>
+                    <input type="date" data-pg-date class="form-control" id="from" name="from" value="' . h($options['from']) . '" max="' . h(date('Y-m-d')) . '" />
+                </span>
+                <span class="pg-report-field">
+                    <label class="pg-report-label" for="to">' . lang('End') . '</label>
+                    <input type="date" data-pg-date class="form-control" id="to" name="to" value="' . h($options['to']) . '" max="' . h(date('Y-m-d')) . '" />
+                </span>
+                <span class="pg-report-field">
+                    <label class="visually-hidden" for="till">' . lang('Till') . '</label>
+                    <select class="form-control" id="till" name="till">' . $output_till_options . '</select>
+                </span>
+                <button type="submit" class="pg-button pg-button-quiet"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Show') . '</button>
+                <a class="pg-button pg-button-quiet ms-auto" href="erp_cashflow.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv" aria-hidden="true"></i>' . lang('Download CSV') . '</a>
+            </form>
+            <form method="get" action="erp_cashflow.php" class="disable_shortcut" id="erp_cashflow_group">' . $output_keep(array('from', 'to', 'till')) . '</form>
+            <form method="get" action="erp_cashflow.php" class="disable_shortcut" id="erp_cashflow_range">' . $output_keep(array('from', 'to', 'till', 'group')) . '</form>
 
             <div class="pg-report-view">' . $output_figures . '</div>
 

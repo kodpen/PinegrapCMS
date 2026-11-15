@@ -76,3 +76,30 @@ function test_report_figures_html_erp_report_screens()
 		pg_assert_contains('pg-report-frame', $source, $file . ': tables in report frames');
 	}
 }
+
+function test_report_view_profit_chart()
+{
+	$money = function ($kurus) {
+		return number_format($kurus / 100, 2, '.', '') . ' TL';
+	};
+	$names = array('2026-09' => 'September 2026', '2026-10' => 'October 2026');
+	$months = array(
+		'2026-09' => array('revenue' => 100000, 'cogs' => 20000, 'purchase_costs' => 5000, 'expenses' => 15000, 'net' => 60000),
+		'2026-10' => array('revenue' => -5000, 'cogs' => 0, 'purchase_costs' => 0, 'expenses' => 10000, 'net' => -15000),
+	);
+
+	$chart = pg_report_view_profit_chart($months, $names, $money);
+	pg_assert_same('line', $chart['kind']);
+	pg_assert_same('Net sales and costs by month', $chart['label'], 'the title names both lines');
+	pg_assert_same('Net sales', $chart['series']);
+	pg_assert_same('Costs and expenses', $chart['compare_label'], 'costs are the dashed line');
+	pg_assert_same(array(1000.0, 0.0), $chart['values'], 'net sales, a month below zero drawn at zero');
+	pg_assert_same(array(400.0, 100.0), $chart['compare'], 'cost of goods, purchase costs and expenses together');
+	pg_assert_same(array('September 2026', 'October 2026'), $chart['names']);
+	pg_assert_same('-50.00 TL', $chart['notes'][1], 'the tip says the real figure');
+	pg_assert_same(array('label' => 'Net profit', 'text' => '-150.00 TL'), $chart['extras'][1], 'net profit in the tip');
+
+	pg_assert_same(null, pg_report_view_profit_chart(array_slice($months, 0, 1, true), $names, $money), 'no chart for one month');
+	$empty = array('2026-09' => array(), '2026-10' => array());
+	pg_assert_same(null, pg_report_view_profit_chart($empty, $names, $money), 'no chart when every month is empty');
+}

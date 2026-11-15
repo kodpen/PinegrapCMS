@@ -364,13 +364,13 @@ if ($can_see_cash) {
                             <td class="text-nowrap fg-secondary" data-sort="' . h(str_replace('-', '', (string) $movement['doc_date'])) . '">' . h(prepare_form_data_for_output((string) $movement['doc_date'], 'date')) . '</td>
                             <td class="text-nowrap"><a href="' . h($movement_url) . '" class="pg-link-body-emphasis">' . h($movement_label) . '</a>'
                                 . (((int) $movement['reversal_id'] > 0) ? ' <span class="badge theme-secondary">' . lang('Cancelled') . '</span>' : '') . '</td>
-                            <th scope="row" class="text-wrap">' . (((int) $movement['account_id'] > 0)
+                            <td class="text-nowrap">' . (((int) $movement['account_id'] > 0)
                                 ? '<a href="edit_erp_account.php?id=' . (int) $movement['account_id'] . '" class="pg-link-body-emphasis">' . h((string) $movement['account_title']) . '</a>'
                                 : '<span class="fg-secondary">' . h($movement_description) . '</span>')
                                 // The till as a second line, not a column of its
                                 // own: on a phone a fifth column pushed the
                                 // amount out of the card.
-                                . (((string) $movement['till_name'] !== '') ? '<div class="pg-text-meta fg-secondary">' . h((string) $movement['till_name']) . '</div>' : '') . '</th>
+                                . (((string) $movement['till_name'] !== '') ? '<div class="pg-text-meta fg-secondary">' . h((string) $movement['till_name']) . '</div>' : '') . '</td>
                             <td class="text-end text-nowrap ' . (($movement_amount < 0) ? 'fg-danger' : 'fg-success') . '" data-sort="' . (int) $movement_amount . '">' . h(erp_money_out_currency($movement_amount, strtoupper(trim((string) $movement['currency'])))) . '</td>
                         </tr>';
     }

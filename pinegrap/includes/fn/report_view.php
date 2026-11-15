@@ -675,3 +675,51 @@ function pg_report_view_chart_by($kind, $groups, $names, $title, $measure, $code
 
     return $chart;
 }
+
+/**
+ * The ERP profit report's chart over more than one month: a line of the net
+ * sales by month with the costs and expenses (cost of goods, costs from
+ * purchase invoices, expenses) dashed beside it, the net profit of the month
+ * in its tip (all from the By month table). The line draws from zero up, so
+ * a month below zero is drawn at zero; its tip says the real figure. Null
+ * for one month or when every month is empty. Pure.
+ *
+ * @param array    $months erp_profit_report()['months']: month => figures
+ *                         'revenue', 'cogs', 'purchase_costs', 'expenses',
+ *                         'net'
+ * @param array    $names  month => its name
+ * @param callable $money  minor units => text
+ * @return array|null
+ */
+function pg_report_view_profit_chart($months, $names, $money)
+{
+    $months = (array) $months;
+
+    if (count($months) < 2) {
+        return null;
+    }
+
+    $sales = lang('Net sales');
+    $costs_label = lang('Costs and expenses');
+    $profit = lang('Net profit');
+    $chart = array('kind' => 'line', 'label' => lang('Net sales and costs by month'), 'series' => $sales, 'compare_label' => $costs_label, 'values' => array(), 'compare' => array(), 'names' => array(), 'notes' => array(), 'compare_notes' => array(), 'extras' => array(), 'tips' => array());
+    $any = false;
+
+    foreach ($months as $month => $figures) {
+        $revenue = (int) ($figures['revenue'] ?? 0);
+        $costs = (int) ($figures['cogs'] ?? 0) + (int) ($figures['purchase_costs'] ?? 0) + (int) ($figures['expenses'] ?? 0);
+        $net = (int) ($figures['net'] ?? 0);
+        $name = (string) ($names[$month] ?? $month);
+        $any = $any || ($revenue !== 0) || ($costs !== 0);
+
+        $chart['values'][] = round(max(0, $revenue) / 100, 2);
+        $chart['compare'][] = round(max(0, $costs) / 100, 2);
+        $chart['names'][] = $name;
+        $chart['notes'][] = $money($revenue);
+        $chart['compare_notes'][] = $money($costs);
+        $chart['extras'][] = array('label' => $profit, 'text' => $money($net));
+        $chart['tips'][] = $name . ': ' . $sales . ' ' . $money($revenue) . ' · ' . $costs_label . ' ' . $money($costs) . ' · ' . $profit . ' ' . $money($net);
+    }
+
+    return $any ? $chart : null;
+}

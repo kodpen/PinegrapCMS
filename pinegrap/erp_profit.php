@@ -113,14 +113,11 @@ $output_statement = '
 
 // Month by month.
 $output_months = '';
-$chart = array('labels' => array(), 'revenue' => array(), 'costs' => array(), 'net' => array());
+$month_names = array();
 
 foreach ($report['months'] as $month => $figures) {
     $label = get_month_name_from_number(substr($month, 5, 2)) . ' ' . substr($month, 0, 4);
-    $chart['labels'][] = $label;
-    $chart['revenue'][] = round($figures['revenue'] / 100, 2);
-    $chart['costs'][] = round(($figures['cogs'] + $figures['purchase_costs'] + $figures['expenses']) / 100, 2);
-    $chart['net'][] = round($figures['net'] / 100, 2);
+    $month_names[$month] = $label;
 
     $output_months .= '
         <tr>
@@ -228,7 +225,15 @@ foreach (array('month' => lang('Month'), 'quarter' => lang('Quarter'), 'year' =>
 }
 
 $export_url = 'erp_profit.php?' . h(http_build_query(array('range' => 'dates', 'from' => $period['from'], 'to' => $period['to'], 'orders' => $with_orders ? '1' : '0', 'export' => 'xlsx')));
-$many_months = (count($report['months']) > 1);
+// The chart over the tables (includes/fn/report_view.php), drawn by
+// assets/js/pg_report_view.js from the same months the By month table prints.
+$report_view = array(
+    'figures' => array(),
+    'chart' => pg_report_view_profit_chart($report['months'], $month_names, function ($kurus) {
+        return erp_money_out((int) $kurus);
+    }),
+    'strings' => pg_report_view_strings(),
+);
 
 // The summary figures as the report screens' cards; a figure below zero
 // keeps its red, a net loss marks its note.
@@ -293,7 +298,12 @@ pg_page_shell([
                 <a class="pg-button pg-button-quiet ms-auto" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>' . lang('Excel') . '</a>
             </form>
 
-            <div class="pg-report-view">' . $output_figures . '</div>
+            <section class="pg-report-view" id="pg_report_view" aria-label="' . h(lang('Summary')) . '">
+                <div class="pg-report-view-figures">' . $output_figures . '</div>
+                <div class="pg-report-view-chart"></div>
+                <script type="application/json" id="pg_report_view_data">' . (string) json_encode($report_view, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) . '</script>
+            </section>
+            ' . pg_js_bundle_tags('assets/js/pg_report_view.min.js') . '
 
             ' . $output_notes . '
 
@@ -307,7 +317,6 @@ pg_page_shell([
                 <div class="col-12 2xl:col-7">
                     <section class="pg-card pg-report-frame h-100 mb-0">
                         <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . lang('By month') . '</h3></div>
-                        ' . ($many_months ? '<div class="px-7 pt-5 pb-3"><div class="pg-report-plot"><canvas id="erp_profit_chart" aria-hidden="true"></canvas></div></div>' : '') . '
                             <div class="pg-report-frame-body">
                                 <table class="pg-report-table" data-pg-sort id="erp_profit_months">
                                     <thead>
@@ -375,7 +384,6 @@ pg_page_shell([
         </div>
     </div>
 </main>
-' . ($many_months ? '<script src="assets/lib/chartjs/chart.umd.min.js"></script>' : '') . '
 <script>
 (function () {
     var form = document.getElementById("erp_profit_period");
@@ -391,51 +399,6 @@ pg_page_shell([
         });
     }
 
-    var canvas = document.getElementById("erp_profit_chart");
-    if (!canvas || typeof Chart === "undefined") { return; }
-    var data = ' . json_encode($chart) . ';
-    var styles = getComputedStyle(document.documentElement);
-    var color = function (name, fallback) { return (styles.getPropertyValue(name) || "").trim() || fallback; };
-    var locale = document.documentElement.lang || undefined;
-    var format = function (value) { return Number(value).toLocaleString(locale, { maximumFractionDigits: 0 }); };
-    // Chart.js cannot parse the light-dark() text of a custom property, so the
-    // panel ink is resolved to an rgb() value through a probe element.
-    var probe = document.createElement("span");
-    probe.style.color = "var(--pg-fg-2)";
-    document.body.appendChild(probe);
-    var ink = getComputedStyle(probe).color;
-    // The pastel fills read about 2:1 on the light card, so bar edges and the
-    // line take the ink tones of the theme.
-    probe.style.color = "var(--pg-primary-ink)";
-    var primaryInk = getComputedStyle(probe).color;
-    probe.style.color = "var(--pg-secondary-ink)";
-    var secondaryInk = getComputedStyle(probe).color;
-    probe.style.color = "var(--pg-success-ink)";
-    var successInk = getComputedStyle(probe).color;
-    probe.remove();
-    var grid = "rgba(128,128,128,.2)";
-    new Chart(canvas, {
-        data: {
-            labels: data.labels,
-            datasets: [
-                { type: "bar", label: ' . json_encode(lang('Net sales')) . ', data: data.revenue, backgroundColor: color("--bs-primary", "#0d6efd"), borderColor: primaryInk, borderWidth: 2, borderRadius: 4 },
-                { type: "bar", label: ' . json_encode(lang('Costs and expenses')) . ', data: data.costs, backgroundColor: "transparent", borderColor: secondaryInk, borderWidth: 2, borderRadius: 4 },
-                { type: "line", label: ' . json_encode(lang('Net profit')) . ', data: data.net, borderColor: successInk, backgroundColor: successInk, tension: 0.3, pointRadius: 3 }
-            ]
-        },
-        options: {
-            maintainAspectRatio: false,
-            interaction: { mode: "index", intersect: false },
-            plugins: {
-                legend: { position: "bottom", labels: { color: ink } },
-                tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + ": " + format(ctx.parsed.y); } } }
-            },
-            scales: {
-                x: { ticks: { color: ink }, grid: { color: grid } },
-                y: { ticks: { color: ink, callback: function (value) { return format(value); } }, grid: { color: grid } }
-            }
-        }
-    });
 })();
 </script>
 ' . get_date_picker_format() . pg_fields_script() .
