@@ -4072,14 +4072,14 @@ function ws_api_approval_guest_present($guest, $staff)
  * One agent asked, with its answer. Pure.
  *
  * @param array      $answer ws_approval_agents row: agent, decision, note, decided_at
- * @param array|null $agent  its ws_agents row, null when it is gone
+ * @param array|null $agent  its ws_agents row (Pinegrap AI's has no handle), null when it is gone
  * @return array
  */
 function ws_api_approval_agent_present($answer, $agent)
 {
     return array(
         'agent'      => (string) $answer['agent'],
-        'handle'     => is_array($agent) ? (string) $agent['handle'] : null,
+        'handle'     => (is_array($agent) && ((string) $agent['handle'] !== '')) ? (string) $agent['handle'] : null,
         'name'       => is_array($agent) ? (string) $agent['name'] : (string) $answer['agent'],
         'decision'   => (string) $answer['decision'],
         'note'       => ((string) $answer['note'] !== '') ? (string) $answer['note'] : null,
@@ -4104,7 +4104,10 @@ function ws_api_approval_agent_values($given, $options)
 
     foreach ((array) $options as $option) {
         $by_name[strtolower((string) $option['value'])] = (string) $option['value'];
-        $by_name[strtolower((string) $option['handle'])] = (string) $option['value'];
+
+        if ((string) $option['handle'] !== '') {
+            $by_name[strtolower((string) $option['handle'])] = (string) $option['value'];
+        }
     }
 
     $values = array();

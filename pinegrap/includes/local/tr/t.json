@@ -2191,6 +2191,7 @@
     "The approval request could not be sent.": "Onay isteği gönderilemedi.",
     "The approval request is closed.": "Onay isteği kapandı.",
     "The approval request is gone.": "Onay isteği artık yok.",
+    "The approval request was not answered with Approve or Reject.": "Onay isteği Onayla veya Reddet ile yanıtlanmadı.",
     "The approval request was sent.": "Onay isteği gönderildi.",
     "The approval request “{var:1}” expired without a decision.": "“{var:1}” onay isteğinin süresi karar verilmeden doldu.",
     "The approval request “{var:1}” was approved.": "“{var:1}” onay isteği onaylandı.",
