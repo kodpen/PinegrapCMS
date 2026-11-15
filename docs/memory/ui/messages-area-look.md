@@ -26,7 +26,7 @@ module: messages_area
 - Never carried over as they are; each is redrawn from `plans/messages-area/messages-area.html` by the step named.
 - Campaign add and edit (`add_email_campaign.php`, `edit_email_campaign.php`, `view_email_campaign.php`, `send_email_campaign.php`): MA5, as the content step of New campaign.
 - SMS campaign (`edit_sms_campaign.php`): MA5 beside the e-mail one; DL5 of `panel-design-language-steps.md` if MA5 leaves it.
-- Profiles (`view_email_campaign_profiles.php`, `add_`/`edit_`/`duplicate_`/`import_email_campaign_profiles.php`): turned into flows by MA9 and removed by MA9f; not redrawn.
+- Profiles (`view_email_campaign_profiles.php`, `add_`/`edit_`/`duplicate_`/`import_email_campaign_profiles.php`): turned into flows by MA9; since MA9f they show only the profiles left and leave on a site with none ([[core/campaign-profile-screens-left]]); not redrawn.
 - Automatic sends: a list on the table driver and the recipes card since MA8 (`messages-area-automatic-tab.md`). Campaigns stays on the table driver.
 - The phone list (owner, #2255): one surface with rows split by lines, fixed in the shared driver for every list (`list-table-layout.md`). A campaign with no send time shows "—" (`pg_messages_campaign_start_time()` reads the zero date and the API's 1000-01-01 marker as none; before, "1 Jan 1000").
 

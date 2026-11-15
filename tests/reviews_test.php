@@ -400,7 +400,7 @@ function test_reviews_request_paths()
 	pg_assert_true(in_array('order_review_request', pg_email_campaign_profile_commerce_actions(), true), 'a commerce action');
 	pg_assert_same(array('action_item_id' => '0', 'schedule_period' => 'after', 'schedule_base' => 'action'), pg_email_campaign_profile_action_values('order_review_request', array()), 'saved like the other order actions');
 
-	pg_assert_contains("'order_review_request' => lang('Order Review Request')", (string) file_get_contents($root . '/view_email_campaign_profiles.php'), 'the profile list names it');
+	pg_assert_true(preg_match("/'order_review_request'\s*=> lang\('Order Review Request'\)/", (string) file_get_contents($root . '/includes/fn/campaign_profile_switch.php')) === 1, 'the profile list names it (pg_profile_flow_action_names())');
 
 	$mail = (string) file_get_contents($root . '/includes/fn/mail.php');
 

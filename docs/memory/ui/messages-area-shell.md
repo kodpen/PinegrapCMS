@@ -16,7 +16,7 @@ module: messages_area
 ## Which old screens sit inside the shell?
 - Campaigns tab: `view_email_campaigns.php` (below). My Campaign Profiles is reached from Automatic sends' note until MA9.
 - `view_sms_campaigns.php`, `edit_sms_campaign.php` and the four new screens mark row 9 in the active-row map; `mail_queue.php` is a door since MA2b (#9275); its row 25 case in the map stays, unused.
-- Doors (`validate_user()`, then `go()`, no right of their own): `view_email_campaign_history.php` to `?state=finished`, `view_sms_campaigns.php` to `?channel=sms` (MA3). `mail_queue.php` to the Sends tab with its channel (MA2b). Still to come: profiles (MA9f).
+- Doors (`validate_user()`, then `go()`, no right of their own): `view_email_campaign_history.php` to `?state=finished`, `view_sms_campaigns.php` to `?channel=sms` (MA3). `mail_queue.php` to the Sends tab with its channel (MA2b). Profiles since MA9f: a converted profile's edit leads to its flow, and with no profile left every profile screen leads to Automatic sends ([[core/campaign-profile-screens-left]]).
 
 ## What do the new tabs show before their step?
 - Rows (`pg_messages_place_rows()`) leading to where the job is done today. Templates lists its SMS texts since MA6 (`messages-area-templates-tab.md`) and leads to the WhatsApp card (role <= 2). Channels has its cards since MA7 (below).

@@ -20,6 +20,11 @@ include('init.php');
 $user = validate_user();
 validate_email_access($user);
 
+// A site with no profile left has no profile screens: the flows they
+// became are on the Automatic sends tab.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_switch.php');
+pg_profile_flow_screen_go();
+
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
 $liveform = new liveform('add_email_campaign_profile');

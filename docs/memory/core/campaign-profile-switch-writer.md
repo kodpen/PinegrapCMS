@@ -24,7 +24,7 @@ module: campaign_profile_switch
 
 ## Where is the report?
 - E-mail Campaign Profiles screen: `pg_profile_flow_switch_notice()`, the panel's alert (`id="profile-flows"`); due or running: under way; done: "Profiles turned into flows on <date>" opening to two lists: the flows made, each linked to its flow, and the profiles left, each linked to its profile, as `pg_profile_flow_report_lines()` words them in the reader's language, actions by the screen's names (architect, 2026-11-14).
-- MA9f moves it with the screen: where the profiles screen goes, the report stays reachable from the flows side.
+- Also on the Automatic sends tab, where it stays once the profiles screen leaves; the screens after the switch and the reasons kept as lang() specs: [[campaign-profile-screens-left]] (MA9f).
 
 ## When do the followers go off?
 - `pg_profile_flow_followers_drain()`, `job.php` every tenth minute while flows run: once no profile above it has a ready or paused campaign.

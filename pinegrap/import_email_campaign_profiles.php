@@ -25,6 +25,11 @@ pg_upload_refuse_discarded_body();
 $user = validate_user();
 validate_email_access($user);
 
+// A site with no profile left has no profile screens: the flows they
+// became are on the Automatic sends tab.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/campaign_profile_switch.php');
+pg_profile_flow_screen_go();
+
 include_once('liveform.class.php');
 $liveform = new liveform('import_email_campaign_profiles');
 
@@ -233,6 +238,9 @@ if (!$_POST) {
 
     // Rows not written, as array(line, reason).
     $problems = array();
+
+    // The profiles a flow was made of (includes/fn/campaign_profile_switch.php).
+    $converted = pg_profile_flow_converted();
     $next_line = 2;
 
     // Loops through all rows of data in CSV file, in order to create or update campaign profiles.
@@ -270,6 +278,13 @@ if (!$_POST) {
             && (USER_ID != $existing_profile['created_user_id'])
         ) {
             $skipped_count++;
+            continue;
+        }
+
+        // A profile a flow was made of is the flow's now: the file does not
+        // write over it.
+        if ($existing_profile && isset($converted[(int) $existing_profile['id']])) {
+            $problems[] = array($line, lang('This profile became a flow; change the flow instead.'));
             continue;
         }
 
