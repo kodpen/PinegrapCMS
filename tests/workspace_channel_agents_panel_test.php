@@ -41,6 +41,7 @@ function test_workspace_channel_agent_panel_row()
 		'avatar'      => '',
 		'active'      => false,
 		'state'       => 'paused',
+		'waiting'     => 0,
 		'wake_rule'   => 'prefix',
 		'wake_prefix' => '[ci]',
 		'wake_words'  => lang(array('string' => 'wakes on {var:1}', 'vars' => '[ci]')),
@@ -75,6 +76,12 @@ function test_workspace_channel_agent_panel_row_role_picture_state()
 	$model = ws_channel_agent_panel_row(ws_channel_agent_shape(array(), ws_agent_shape(array('id' => '6', 'kind' => 'model', 'status' => 'active'))), $now);
 
 	pg_assert_same(lang('Always ready'), $model['state_words']);
+
+	$counts = array(ws_agent_request_value($agent) => array('queued' => 2, 'working' => 0, 'answered' => 0, 'failed' => 0));
+	$waiting = ws_channel_agent_panel_row(ws_channel_agent_shape(array(), $agent), $now, $counts);
+
+	pg_assert_same('waiting', $waiting['state'], 'requests queued for it');
+	pg_assert_same(2, $waiting['waiting']);
 }
 
 function test_workspace_channel_agent_panel_state()
@@ -83,6 +90,10 @@ function test_workspace_channel_agent_panel_state()
 	pg_assert_same('late', ws_channel_agent_panel_state(true, 'late'));
 	pg_assert_same('ready', ws_channel_agent_panel_state(true, 'ready'));
 	pg_assert_same('off', ws_channel_agent_panel_state(true, 'odd'), 'an unknown state reads as off');
+	pg_assert_same('working', ws_channel_agent_panel_state(true, 'late', 'working'), 'the card\'s working before the last seen');
+	pg_assert_same('waiting', ws_channel_agent_panel_state(true, 'on', 'waiting'));
+	pg_assert_same('paused', ws_channel_agent_panel_state(false, 'on', 'working'), 'paused first of all');
+	pg_assert_same('on', ws_channel_agent_panel_state(true, 'on', 'idle'), 'an idle agent keeps its last seen');
 }
 
 function test_workspace_channel_agent_tier_and_wake_words()

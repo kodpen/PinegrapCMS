@@ -34,7 +34,7 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 
 - PF6b (S) The card for a person, drawn with PF3's card functions.
 
-- PF7 (M) The channel's agents panel redrawn, the same words on the Agents card of Site Settings. A new design: its pictures go to the owner.
+- PF7 (M) The channel's agents panel redrawn, the same words on the Agents card of Site Settings. A new design: its pictures go to the owner. Done #9615.
 
 - PF7b (M) The Channel settings drawer: `channel-profile-cards-settings.md`. The owner's look.
 

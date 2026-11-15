@@ -36,15 +36,16 @@ function ws_channel_agents_actions()
  * what wakes it and what it may do by itself. Pure but for lang() and the
  * clock.
  *
- * @param array    $row ws_channel_agent_shape()
- * @param int|null $now
+ * @param array      $row    ws_channel_agent_shape()
+ * @param int|null   $now
+ * @param array|null $counts ws_agent_request_counts() of the channel's agents, for the card's state
  * @return array
  */
-function ws_channel_agent_panel_row($row, $now = null)
+function ws_channel_agent_panel_row($row, $now = null, $counts = null)
 {
     $now = ($now === null) ? time() : (int) $now;
     $seen = ws_agent_seen_words($row['agent'], $now);
-    $member = ws_channel_member_agent($row, $now);
+    $member = ws_channel_member_agent($row, $now, $counts);
     $active = ((string) $row['agent']['status'] === 'active');
 
     return array(
@@ -55,7 +56,8 @@ function ws_channel_agent_panel_row($row, $now = null)
         'role'        => $member['role'],
         'avatar'      => ws_channel_agent_avatar_url($row['agent']['avatar'] ?? ''),
         'active'      => $active,
-        'state'       => ws_channel_agent_panel_state($active, $member['seen_state']),
+        'state'       => ws_channel_agent_panel_state($active, $member['seen_state'], $member['state'] ?? ''),
+        'waiting'     => (int) ($member['waiting'] ?? 0),
         'wake_rule'   => (string) $row['wake_rule'],
         'wake_prefix' => (string) $row['wake_prefix'],
         'wake_words'  => $member['wake'],
@@ -70,18 +72,24 @@ function ws_channel_agent_panel_row($row, $now = null)
 
 /**
  * The state the agents panel shows on a row: 'paused' for an agent not
- * active, first of all; else its last-seen state as the member list reads
- * it ('on', 'off', 'late', 'ready'). The agent card's own state (working,
- * waiting) replaces the second part once the server sends it. Pure.
+ * active, first of all; then the agent card's working or waiting
+ * (ws_agent_card_state()); else its last-seen state as the member list
+ * reads it ('on', 'off', 'late', 'ready'), so an idle agent's pill still
+ * says when it was seen. Pure.
  *
  * @param bool   $active
  * @param string $seen_state ws_channel_member_agent()'s seen_state
+ * @param string $card_state ws_agent_card_state(), '' when not read
  * @return string
  */
-function ws_channel_agent_panel_state($active, $seen_state)
+function ws_channel_agent_panel_state($active, $seen_state, $card_state = '')
 {
     if (!$active) {
         return 'paused';
+    }
+
+    if (in_array((string) $card_state, array('working', 'waiting'), true)) {
+        return (string) $card_state;
     }
 
     $seen_state = (string) $seen_state;
@@ -216,15 +224,22 @@ function ws_channel_agents_panel_state($viewer, $channel)
 
     $rows = ws_channel_agents($channel['id']);
     $in = array();
+    $agents = array();
 
     foreach ($rows as $row) {
         $in[] = (int) $row['agent']['id'];
+        $agents[] = $row['agent'];
     }
+
+    $now = time();
+    // One grouped read of the requests for every agent of the channel, for
+    // the card's working and waiting states.
+    $counts = ws_agent_request_counts($agents, $now);
 
     return array(
         'ready'    => true,
-        'agents'   => array_map(function ($row) {
-            return ws_channel_agent_panel_row($row);
+        'agents'   => array_map(function ($row) use ($now, $counts) {
+            return ws_channel_agent_panel_row($row, $now, $counts);
         }, $rows),
         'addable'  => ws_channel_agents_addable(ws_agents_list(), $in),
         'can_edit' => (ws_channel_agent_add_problem($viewer, $channel) === ''),
@@ -350,6 +365,7 @@ function ws_channel_agents_js_strings()
         'cha_paused'      => lang('Paused'),
         'cha_state_working' => lang('Working on a request'),
         'cha_state_waiting' => lang('A request is waiting'),
+        'cha_state_waiting_n' => lang('{1} requests are waiting'),
         'cha_wake'        => lang('When is it woken?'),
         'cha_wake_mention' => lang('When its name is written'),
         'cha_wake_all'    => lang('On every message'),

@@ -59,11 +59,10 @@
         // The section's one open agent: opening another row closes it.
         var openId = 0;
 
-        // The state's pill on a row. PF2's card state (working, waiting)
-        // arrives in agent.state beside the stored ones drawn today:
-        // paused, a poll agent not seen for ten minutes or a push door in
-        // error (late), seen recently (on), a model agent (ready), a push
-        // agent knocked as usual (off).
+        // The state's pill on a row (ws_channel_agent_panel_state()): paused,
+        // the agent card's working and waiting, a poll agent not seen for
+        // ten minutes or a push door in error (late), seen recently (on), a
+        // model agent (ready), a push agent knocked as usual (off).
         var STATE_TONES = {
             working: 'pg-tone-blue',
             waiting: 'pg-tone-amber',
@@ -78,7 +77,7 @@
             var state = STATE_TONES[agent.state] ? agent.state : (agent.active ? 'off' : 'paused');
             var words = {
                 working: t('cha_state_working'),
-                waiting: t('cha_state_waiting'),
+                waiting: (agent.waiting > 1) ? t('cha_state_waiting_n', agent.waiting) : t('cha_state_waiting'),
                 paused: t('cha_paused')
             };
             var pill = el('span', 'pg-pill ws-cha-state ' + STATE_TONES[state], words[state] || agent.state_words || '');
@@ -127,7 +126,7 @@
             top.appendChild(el('span', 'pg-text-meta', '@' + agent.handle));
 
             if (agent.role) {
-                top.appendChild(el('span', 'pg-pill pg-tone-blue', agent.role));
+                top.appendChild(el('span', 'pg-pill pg-tone-violet', agent.role));
             }
 
             main.appendChild(top);
