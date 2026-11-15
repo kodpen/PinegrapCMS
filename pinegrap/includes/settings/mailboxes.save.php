@@ -6,8 +6,10 @@
  * (ws_mail_box_save, value its id, 0 for a new one, the fields
  * ws_mail[<id>][...]), then the job of the card button that asked for the
  * save: a mailbox's Test connection (ws_mail_test), .eml file
- * (ws_mail_eml, posted with ws_mail_eml_file by a form of its own) or a
- * blocked sender's Allow again (ws_mail_allow, value the block's id).
+ * (ws_mail_eml, posted with ws_mail_eml_file by a form of its own), a
+ * blocked sender's Allow again (ws_mail_allow, value the block's id), or an
+ * incoming mail rule's Add rule (ws_mail_rule_add, the fields ws_mail_rule[...])
+ * and Delete (ws_mail_rule_delete, value "<box id>:<rule id>").
  *
  * Runs in the scope of includes/settings/screen.php or of
  * pg_settings_apply(), after the token check and after post_value() is
@@ -89,5 +91,29 @@ if (($ws_value !== null) && is_scalar($ws_value) && function_exists('ws_mail_blo
         $liveform->add_notice(lang('The sender is allowed again.'));
     } else {
         $ws_warn($ws_allowed['error']);
+    }
+}
+
+// Add rule and Delete on the card's incoming mail rules (mail_rules.php).
+if ((post_value('ws_mail_rule_add') !== null) && function_exists('ws_mail_rule_add')) {
+    $ws_rule = post_value('ws_mail_rule');
+    $ws_added = ws_mail_rule_add($ws_viewer, is_array($ws_rule) ? $ws_rule : array(), (string) ($_SESSION['sessionusername'] ?? ''));
+
+    if ($ws_added['ok']) {
+        $liveform->add_notice(lang('The rule was added.'));
+    } else {
+        $ws_warn($ws_added['error']);
+    }
+}
+
+$ws_value = post_value('ws_mail_rule_delete');
+
+if (($ws_value !== null) && is_scalar($ws_value) && function_exists('ws_mail_rule_delete')) {
+    $ws_deleted = ws_mail_rule_delete($ws_viewer, (string) $ws_value, (string) ($_SESSION['sessionusername'] ?? ''));
+
+    if ($ws_deleted['ok']) {
+        $liveform->add_notice(lang('The rule was deleted.'));
+    } else {
+        $ws_warn($ws_deleted['error']);
     }
 }

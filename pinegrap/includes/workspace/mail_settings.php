@@ -1234,8 +1234,9 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
     $ai_ready = ws_mail_triage_ai_ready();
     $workspace_on = ws_enabled();
     $rows = '';
+    $boxes = ws_mail_settings_boxes();
 
-    foreach (ws_mail_settings_boxes() as $box) {
+    foreach ($boxes as $box) {
         $id = (int) $box['id'];
         $channel = $channels[(int) $box['channel_id']] ?? null;
         $place = $channel ? '<a href="workspace.php?channel=' . (int) $channel['id'] . '">#' . h((string) $channel['name']) . '</a>' : h(lang('A channel you do not see'));
@@ -1307,6 +1308,7 @@ function ws_mail_settings_card($self_url, $viewer, $form = null)
                 ' . $intro . '
                 ' . ws_mail_connect_form($viewer, $form) . '
                 ' . (function_exists('ws_mail_blocks_html') ? ws_mail_blocks_html(ws_mail_blocks_list(), $form) : '') . '
+                ' . (function_exists('ws_mail_rules_html') ? ws_mail_rules_html($boxes, ws_mail_rule_people(), $form) : '') . '
             </div>
         </div>
     </div>' . ws_mail_settings_script();
