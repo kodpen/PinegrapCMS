@@ -226,6 +226,14 @@ function ws_mail_list_where($filters, $viewer_id, $channel_ids, $charset = '', $
             . ws_search_like_sql($search, array('i.from_name', 'i.from_email', 'i.to_list', 'i.cc_list', 'i.body_text'), $charset) . '))';
     }
 
+    // A conversation the viewer set aside with Remind me later stays out
+    // until it comes back (mail_remind.php); a search still finds it.
+    $aside = (($search === '') && function_exists('ws_mail_remind_hidden_sql')) ? ws_mail_remind_hidden_sql($viewer_id, ws_mail_remind_ready()) : '';
+
+    if ($aside !== '') {
+        $where[] = $aside;
+    }
+
     if (!empty($filters['before'])) {
         $last = 'GREATEST(last_in_at, last_out_at)';
         list($time, $id) = $filters['before'];
@@ -478,6 +486,8 @@ function ws_mail_list_mails($viewer_id, $rows)
 
     $floor = $reads ? ws_mail_read_floor($viewer_id) : PHP_INT_MAX;
     $marks = $reads ? ws_mail_read_marks($viewer_id, $ids) : array();
+    // Back from Remind me later and not read since (mail_remind.php).
+    $woken = ($reads && function_exists('ws_mail_remind_woken_ids')) ? ws_mail_remind_woken_ids($viewer_id, $ids) : array();
 
     foreach ($rows as $index => $row) {
         $id = (int) $row['id'];
@@ -486,7 +496,7 @@ function ws_mail_list_mails($viewer_id, $rows)
         $rows[$index] += array(
             'mails'   => (int) ($stat['mails'] ?? 0),
             'snippet' => trim((string) preg_replace('/\s+/u', ' ', $newest[$id] ?? '')),
-            'unread'  => ws_mail_unread((int) ($stat['last_in_id'] ?? 0), (int) ($marks[$id] ?? 0), $floor),
+            'unread'  => isset($woken[$id]) || ws_mail_unread((int) ($stat['last_in_id'] ?? 0), (int) ($marks[$id] ?? 0), $floor),
             'unsent'  => !empty($stat['failed']) ? 'failed' : (!empty($stat['queued']) ? 'waiting' : (!empty($stat['later']) ? 'later' : '')),
         );
     }

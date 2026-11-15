@@ -200,6 +200,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_send_later();      // 11.0.207
 	upgrade_2026_11_0_ws_roadmap_templates();    // 11.0.208
 	upgrade_2026_11_0_ws_approval_agents();      // 11.0.210
+	upgrade_2026_11_0_ws_mail_reminders();       // 11.0.211
 
 }
 
@@ -6720,5 +6721,30 @@ function upgrade_2026_11_0_ws_approval_agents() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: an approval request asked by hand can ask the channel\'s agents beside its people.');
+
+}
+
+// Remind me later on an e-mail conversation (includes/workspace/mail_remind.php):
+// one row per person, conversation and kind. kind 'later' sets the
+// conversation aside until due_at; woken_at is when it came back (the time
+// or a new mail), and the row goes once the person reads it. The kind
+// 'no_answer' (a reminder when no answer comes) shares the table.
+function upgrade_2026_11_0_ws_mail_reminders() {
+
+	install_create_table('ws_mail_reminders', "CREATE TABLE ws_mail_reminders (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		conversation_id INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		kind            VARCHAR(10) NOT NULL DEFAULT '',
+		item_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		due_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		woken_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_person (conversation_id, user_id, kind),
+		KEY idx_due (woken_at, due_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: an e-mail conversation can be set aside with Remind me later.');
 
 }

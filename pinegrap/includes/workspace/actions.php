@@ -407,7 +407,7 @@ function ws_mail_actions_without_workspace()
         'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_conversation', 'ws_mail_check',
         'ws_mail_reply_form', 'ws_mail_reply', 'ws_mail_resend',
         'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock', 'ws_mail_draft_open', 'ws_mail_draft_save', 'ws_mail_draft_remove', 'ws_mail_later_send', 'ws_mail_later_cancel',
-        'ws_mail_my_settings', 'ws_mail_my_settings_save',
+        'ws_mail_my_settings', 'ws_mail_my_settings_save', 'ws_mail_remind',
         'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
     );
 }
@@ -3035,6 +3035,17 @@ function ws_handle_action($action, $request)
                 : ws_mail_later_cancel($viewer, (int) ($request['item_id'] ?? 0));
 
             return $result['ok'] ? ws_action_ok(array('state' => $result['state'] ?? 'failed')) : ws_action_error($result['error']);
+
+        // Remind me later on the reading pane (mail_remind.php): a time, or
+        // Cancel reminder; the pane is read again after either.
+        case 'ws_mail_remind':
+            if (!function_exists('ws_mail_remind_set')) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $result = ws_mail_remind_set($viewer, (int) ($request['conversation_id'] ?? 0), (string) ($request['choice'] ?? ''), $request['at'] ?? '', time());
+
+            return $result['ok'] ? ws_action_ok(array('at' => $result['at'], 'unread' => ws_mail_unread_count($viewer))) : ws_action_error($result['error'], 'at');
 
         // The Drafts view (mail_drafts_screen.php): a draft opened into its
         // form, its changes saved there, or deleted without being sent.

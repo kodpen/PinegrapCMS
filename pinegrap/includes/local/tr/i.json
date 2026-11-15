@@ -797,6 +797,7 @@
     "In your own flows a change is not written at once: you are asked to approve it in this channel first.": "Kendi akışlarınızda değişiklik hemen yazılmaz: önce bu kanalda onaylamanız istenir.",
     "In your own flows a change is proposed for your approval first: choose the channel to ask in.": "Kendi akışlarınızda bir değişiklik önce onayınıza sunulur: onayın isteneceği kanalı seçin.",
     "In your own flows a summary of counts goes to a channel, not to e-mail addresses.": "Kendi akışlarınızda sayıların özeti e-posta adreslerine değil, bir kanala gider.",
+    "In your own time zone. The conversation leaves your list until then, or until a new e-mail arrives in it.": "Kendi saat diliminizde. Konuşma o zamana kadar ya da içine yeni bir e-posta gelene kadar listenizden çıkar.",
     "In your own time zone. The e-mail waits under Not sent until then.": "Kendi saat diliminizde. E-posta o zamana kadar Gönderilmedi altında bekler.",
     "In your podcast app": "Podcast uygulamanızda",
     "In {var:1}": "{var:1} cinsinden",

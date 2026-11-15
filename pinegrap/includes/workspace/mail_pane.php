@@ -417,6 +417,9 @@ function ws_mail_pane_tools($pane, $viewer)
         'state'      => $pane['can_post'] ? ws_mail_state_offer(array('conversation' => $conversation, 'support' => ws_mail_box_is_support($box)), (int) $conversation['id'], (int) $viewer['id']) : null,
         'members'    => $members,
         'others'     => $others,
+        // Remind me later, for whoever reads it (mail_remind.php).
+        'remind'     => function_exists('ws_mail_remind_tool')
+            ? ws_mail_remind_tool(!empty($viewer['member']), ws_mail_remind_ready(), ws_mail_remind_waiting((int) $viewer['id'], (int) $conversation['id'])) : null,
     );
 }
 
