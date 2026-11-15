@@ -7820,6 +7820,7 @@
     "a public holiday calendar was removed from the workspace": "çalışma alanından bir resmî tatil takvimi kaldırıldı",
     "a reserved address": "bir ayrılmış adres",
     "a scheduled action that is gone": "artık olmayan bir programlanmış işlem",
+    "a scheduled message was changed in #{var:1}": "#{var:1} kanalında zamanlanmış bir mesaj değiştirildi",
     "a scheduled message was deleted in #{var:1}": "#{var:1} kanalında zamanlanmış bir mesaj silindi",
     "a scheduled workspace message of {var:1} could not be posted: {var:2}": "{var:1} kişisinin zamanlanmış Çalışma Alanı mesajı gönderilemedi: {var:2}",
     "a scheduled workspace message of {var:1} was posted in #{var:2}": "{var:1} kişisinin zamanlanmış Çalışma Alanı mesajı #{var:2} kanalında paylaşıldı",

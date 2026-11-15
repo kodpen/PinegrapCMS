@@ -71,17 +71,22 @@ function ws_scheduled_message_mine($viewer, $id)
 }
 
 /**
- * Creates or changes a scheduled message.
+ * Everything a scheduled message is checked against before it is saved,
+ * shared by the panel and the external API (its dry run included): one of
+ * the person's own still waiting or failed, a channel they may post in, the
+ * words (no command but /ai and /claude), the moment and, for a new one,
+ * how many already wait.
  *
  * @param array $viewer
- * @param array $data id (0 for a new one), channel_id, body, parent_id, date (Y-m-d) and
- *                    time (H:i), or in_minutes
- * @return array ok, error, field, id
+ * @param array $data see ws_scheduled_message_save()
+ * @return array ok, error, field (body | time | ''), existing (null for a new
+ *               one), channel, body, at, date, time, parent_id
  */
-function ws_scheduled_message_save($viewer, $data)
+function ws_scheduled_message_save_check($viewer, $data)
 {
     $fail = function ($error, $field = '') {
-        return array('ok' => false, 'error' => $error, 'field' => $field, 'id' => 0);
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'existing' => null, 'channel' => null,
+            'body' => '', 'at' => 0, 'date' => '', 'time' => '', 'parent_id' => 0);
     };
 
     if (!ws_can_schedule_messages($viewer)) {
@@ -151,12 +156,50 @@ function ws_scheduled_message_save($viewer, $data)
         return $fail(lang('A message can be scheduled at most a year ahead.'), 'time');
     }
 
+    if (!$existing) {
+        $waiting = (int) db_value("SELECT COUNT(*) FROM ws_scheduled_actions
+            WHERE kind = 'message' AND created_by = '" . (int) $viewer['id'] . "' AND status IN ('active', 'failed')");
+
+        if ($waiting >= WS_SCHEDULED_MESSAGES_MAX) {
+            return $fail(lang(array('string' => 'You already have {var:1} messages waiting to be posted.', 'vars' => WS_SCHEDULED_MESSAGES_MAX)));
+        }
+    }
+
     // An answer to a message of the same channel, or to none.
     $parent_id = (int) ($data['parent_id'] ?? ($existing['action']['parent_id'] ?? 0));
 
     if (($parent_id > 0) && ((int) db_value("SELECT channel_id FROM ws_messages WHERE id = '" . $parent_id . "' AND deleted_at = 0") !== (int) $channel['id'])) {
         $parent_id = 0;
     }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'existing' => $existing, 'channel' => $channel,
+        'body' => $body, 'at' => (int) $at, 'date' => $date, 'time' => $clock, 'parent_id' => $parent_id);
+}
+
+/**
+ * Creates or changes a scheduled message.
+ *
+ * @param array $viewer
+ * @param array $data id (0 for a new one), channel_id, body, parent_id (null
+ *                    keeps a changed one's), date (Y-m-d) and time (H:i), or
+ *                    in_minutes
+ * @return array ok, error, field, id
+ */
+function ws_scheduled_message_save($viewer, $data)
+{
+    $checked = ws_scheduled_message_save_check($viewer, $data);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'field' => $checked['field'], 'id' => 0);
+    }
+
+    $existing = $checked['existing'];
+    $channel = $checked['channel'];
+    $body = $checked['body'];
+    $at = $checked['at'];
+    $date = $checked['date'];
+    $clock = $checked['time'];
+    $parent_id = $checked['parent_id'];
 
     $rules = array(array('type' => 'at', 'date' => $date, 'time' => $clock, 'repeat' => 'none'));
     $action = array('type' => 'post', 'channel_id' => (int) $channel['id'], 'body' => $body, 'parent_id' => $parent_id);
@@ -180,13 +223,6 @@ function ws_scheduled_message_save($viewer, $data)
         return array('ok' => true, 'error' => '', 'field' => '', 'id' => (int) $existing['id']);
     }
 
-    $waiting = (int) db_value("SELECT COUNT(*) FROM ws_scheduled_actions
-        WHERE kind = 'message' AND created_by = '" . (int) $viewer['id'] . "' AND status IN ('active', 'failed')");
-
-    if ($waiting >= WS_SCHEDULED_MESSAGES_MAX) {
-        return $fail(lang(array('string' => 'You already have {var:1} messages waiting to be posted.', 'vars' => WS_SCHEDULED_MESSAGES_MAX)));
-    }
-
     db("INSERT INTO ws_scheduled_actions (name, kind, channel_id, note_id, created_by, rules, action, status, next_run_at, updated_by, created_at, updated_at)
         VALUES ('" . e($name) . "', 'message', '" . (int) $channel['id'] . "', 0, '" . (int) $viewer['id'] . "',
             " . $json($rules) . ", " . $json($action) . ", 'active', '" . (int) $at . "', '" . (int) $viewer['id'] . "', '" . $now . "', '" . $now . "')");
@@ -195,7 +231,7 @@ function ws_scheduled_message_save($viewer, $data)
 
     return ($id > 0)
         ? array('ok' => true, 'error' => '', 'field' => '', 'id' => $id)
-        : $fail(lang('The message could not be saved.'));
+        : array('ok' => false, 'error' => lang('The message could not be saved.'), 'field' => '', 'id' => 0);
 }
 
 /**
@@ -292,6 +328,63 @@ function ws_scheduled_message_delete($viewer, $row)
     db("DELETE FROM ws_scheduled_runs WHERE action_id = '" . (int) $row['id'] . "'");
 
     return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Whether one of the person's own scheduled messages may be sent now, the
+ * checks the posting itself meets made first so that the external API's dry
+ * run meets them too: still waiting or failed, not being posted at this
+ * moment, and words the person may post in its channel now.
+ *
+ * @param array $viewer
+ * @param array $row decoded (ws_scheduled_message_mine())
+ * @return array ok, error, busy (being posted right now), channel
+ */
+function ws_scheduled_message_send_check($viewer, $row)
+{
+    if (!in_array((string) $row['status'], array('active', 'failed'), true)) {
+        return array('ok' => false, 'error' => lang('That scheduled message could not be found.'), 'busy' => false, 'channel' => null);
+    }
+
+    if ((int) ($row['running_at'] ?? 0) > 0) {
+        return array('ok' => false, 'error' => lang('It is being posted right now.'), 'busy' => true, 'channel' => null);
+    }
+
+    $action = is_array($row['action']) ? $row['action'] : array();
+    $channel = ws_channel((int) ($action['channel_id'] ?? $row['channel_id']));
+
+    if (!$channel) {
+        return array('ok' => false, 'error' => lang('The channel to write in is gone.'), 'busy' => false, 'channel' => null);
+    }
+
+    $checked = ws_message_send_check($viewer, $channel, (string) ($action['body'] ?? ''), array('parent_id' => (int) ($action['parent_id'] ?? 0)));
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'busy' => false, 'channel' => $channel);
+    }
+
+    return array('ok' => true, 'error' => '', 'busy' => false, 'channel' => $channel);
+}
+
+/**
+ * Posts one of the person's own scheduled messages now, before its time,
+ * as Send now does. One that cannot be posted stays as failed, and says why.
+ *
+ * @param array $viewer
+ * @param array $row decoded (ws_scheduled_message_mine())
+ * @return array ok, error
+ */
+function ws_scheduled_message_send_now($viewer, $row)
+{
+    $ran = ws_scheduled_execute((int) $row['id'], true);
+
+    if ($ran === 'ran') {
+        return array('ok' => true, 'error' => '');
+    }
+
+    $again = ws_scheduled_message_mine($viewer, $row['id']);
+
+    return array('ok' => false, 'error' => ($again && ($again['status'] === 'failed')) ? ws_scheduled_message_present($viewer, $again)['error'] : lang('It is being posted right now.'));
 }
 
 /**
