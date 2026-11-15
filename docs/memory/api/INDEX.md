@@ -74,7 +74,7 @@
 - api-store-shipping-method-writes.md: Shipping method writes (store:write): write path shared with the screens, typed fields to columns, base rate tiers, days and times, zones, excluded dates, events
 - api-store-zone-writes.md: Shipping zone and tax zone writes (store:write): shared write functions the zone screens call too, partial updates, country and state input, zone.* and tax_zone.* events
 - api-subscriptions-list.md: GET /subscriptions and /subscriptions/{id} (customers:read): every store-run subscription with its customer, the filters, updated_since on subscriptions.updated_at, the user-role row rule
-- api-team-devices-switch.md: The Team devices switch in Settings › API (includes/api/device_switch.php): which device application a save starts, widens, makes or disables, the ceiling, expiry, why off keeps the rows
+- api-team-devices-switch.md: The Team devices switch in Settings › API (includes/api/device_switch.php): which device application a save starts, widens, makes or disables, the ceiling, expiry, why off keeps the rows [decision: here]
 - api-text-field-limits.md: External API text limits must fit their varchar column (the non-strict session cuts in silence): product and group limits, and the test against the setup SQL
 - api-user-role-rows.md: Which rows an external API owner with the user role (3) reaches: contact groups, customers, campaigns, calendars, forms and submissions, 404 outside, the tests that guard it
 - api-users-read.md: External API GET /users and /users/{id} (users:read, roles 0-1): the users screen row rule, the User object, columns never read, two-step state

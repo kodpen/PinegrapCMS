@@ -15,6 +15,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 ## Clusters
 
+- `addon-hook-*`: 9 files.
 - `channel-profile-*`: 7 files.
 - `storefront-api-*`: 9 files.
 
