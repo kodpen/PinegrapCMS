@@ -462,10 +462,16 @@ function ws_mail_reply_copy($box, $folder, $mime)
  * Words for a reason an answer cannot leave.
  *
  * @param string $error
+ * @param string $detail the refused address of blocked
  * @return string
  */
-function ws_mail_reply_error_text($error)
+function ws_mail_reply_error_text($error, $detail = '')
 {
+    // The limits an answer shares with a new mail speak as for one.
+    if (in_array($error, array('hourly', 'blocked'), true)) {
+        return ws_mail_send_error_text($error, $detail);
+    }
+
     $texts = array(
         'empty'        => lang('Write the answer first.'),
         'too_long'     => lang(array('string' => 'An answer is at most {var:1} characters.', 'vars' => pg_format_number(WS_MAIL_REPLY_MAX, 0))),
@@ -528,7 +534,9 @@ function ws_mail_js_strings()
  * @param array  $viewer
  * @param int    $conversation_id
  * @param string $text
- * @return array ok, error, conversation, box, channel, route
+ * @return array ok, error (ws_mail_reply_target()'s, empty, too_long, hourly,
+ *               blocked), detail (the refused address), conversation, box,
+ *               channel, route
  */
 function ws_mail_reply_check($viewer, $conversation_id, $text)
 {
@@ -543,7 +551,25 @@ function ws_mail_reply_check($viewer, $conversation_id, $text)
         return array_merge($out, array('error' => 'too_long'));
     }
 
-    return ws_mail_reply_target($viewer, $conversation_id);
+    $target = ws_mail_reply_target($viewer, $conversation_id);
+
+    if (!$target['ok']) {
+        return $target;
+    }
+
+    // The limits of every mail the Workspace sends: the customer's address
+    // off the bounce list, the writer under the hourly count.
+    $blocked = function_exists('pg_mail_address_blocked') ? 'pg_mail_address_blocked' : function () {
+        return false;
+    };
+    $limits = ws_mail_send_limits(array((string) $target['conversation']['customer_email']), $blocked,
+        ws_mail_send_last_hour((int) $viewer['id'], time()));
+
+    if (!$limits['ok']) {
+        return array_merge($out, array('error' => $limits['error'], 'detail' => $limits['detail']));
+    }
+
+    return $target;
 }
 
 /**
@@ -616,7 +642,7 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
     $check = ws_mail_reply_check($viewer, $conversation_id, $text);
 
     if (!$check['ok']) {
-        return array('ok' => false, 'error' => $check['error'], 'detail' => '', 'item_id' => 0, 'message_id' => 0);
+        return array('ok' => false, 'error' => $check['error'], 'detail' => (string) ($check['detail'] ?? ''), 'item_id' => 0, 'message_id' => 0);
     }
 
     $conversation = $check['conversation'];

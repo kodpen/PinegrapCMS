@@ -9,7 +9,7 @@ description: Answering a Workspace e-mail by e-mail (WM7): the queued answer, Cc
 - The mail: `ws_mail_send_headers()` from the item; text `ws_mail_answer_body()`: the writer, the box's Signature (its name without one), the answered mail quoted (60 lines, read when it leaves).
 
 ## And the API's answer?
-- `POST …/reply` (`mail-api.md`) keeps `ws_mail_reply_send()` and its contract: `email()` at once, `not_sent` with the server's words, only the customer, the same text. Its item reads sent.
+- `POST …/reply` with plain text sends at once through `ws_mail_reply_send()`: `mail-api-reply.md`.
 
 ## Whom does Reply to all add?
 - `ws_mail_answer_others()`: the answered mail's sender when not the customer, its To and Cc, without the customer and the box's own addresses (`ws_mail_answer_own()`: the address, any +tag of it, a route's whole address), each once, at most 19. They go into Cc; To stays the customer.
