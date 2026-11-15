@@ -98,8 +98,9 @@ function ws_agent_avatar_url($agent)
 
 /**
  * The agents' entries of ws_assistants(): name and picture for their
- * requests and runs. delegate false keeps them out of the task drawer and
- * ws_task_delegate(): an agent is asked in its channels.
+ * requests and runs. delegate false keeps them out of the task drawer;
+ * ws_task_delegate() takes one for a task of a channel it is allowed in
+ * (ws_agent_task_problem()).
  *
  * @return array key => key, name, handle, icon, avatar, app_id, agent_id, delegate
  */

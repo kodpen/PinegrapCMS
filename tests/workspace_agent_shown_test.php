@@ -5,7 +5,7 @@
  * Tests for how the registry's agents show (includes/workspace/agent_shown.php)
  * that need no database: the request value read back, the line under a
  * message, the @ picker's entries, the agent's tag, its own messages, and
- * that no task is handed to an agent.
+ * and that an agent stays out of the task drawer's list.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com

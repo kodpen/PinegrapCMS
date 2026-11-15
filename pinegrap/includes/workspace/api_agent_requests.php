@@ -59,7 +59,7 @@ function ws_agent_request_api_routes()
             'mcp'         => false,
             'returns'     => array('list' => 'WorkspaceClaudeRequest'),
             'summary'     => 'The requests waiting for the calling agent',
-            'description' => 'A message that woke the agent in a channel (its handle, its wake rule) made one request for it. status open (the default) is what waits to be claimed, oldest first, leaving out a request whose message the writer is editing now; all is the latest 50 of every state.' . $only,
+            'description' => 'A message that woke the agent in a channel (its handle, its wake rule) made one request for it; a task a person handed to the agent made one with task filled and no message. status open (the default) is what waits to be claimed, oldest first, leaving out a request whose message the writer is editing now; all is the latest 50 of every state.' . $only,
             'params'      => array(
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'running', 'answered', 'failed', 'cancelled', 'all'), 'default' => 'open'),
             ),
@@ -87,7 +87,7 @@ function ws_agent_request_api_routes()
             'dry_run'     => true,
             'returns'     => ws_api_agent_answer_schema(),
             'summary'     => 'Answer a request',
-            'description' => 'Writes text under the message that asked, as the application, with the person who asked mentioned, and swaps the eye for a tick. no_answer true closes the request without writing anything (it takes no text). emoji leaves one emoji on the message that asked, with text or with no_answer. conclude true, for a request asked in a discussion by a person in it who asks for it, concludes the discussion after the answer is written (closed_by is that person); any other request is not concluded, conclude.error says why and the answer is still written. offer_conclude true, with text, unasked, puts a Conclude the discussion button under the answer for the people in the discussion; one of them presses it to conclude in their own name (the same asker rule; offer.error says why it was not made). Other things the agent does go through their own routes: a task POST /workspace/tasks, a poll POST /workspace/channels/{id}/polls, an approval request POST /workspace/channels/{id}/approvals (and POST /workspace/approvals/{id}/decide when asked to approve), a proposed change /workspace/changes. 403 when the channel no longer lets the agent answer or the person who asked can no longer write there: close the request with POST /workspace/agent-requests/{id}/fail; 422 on text for a wake made in no channel: write with POST /workspace/channels/{id}/messages, then close it with no_answer; 409 closed when the request is closed; 409 editing while the writer is editing the message that asked; 409 edited when it was edited after the claim: the request waits again, claim it and read the new words.' . $only,
+            'description' => 'Writes text under the message that asked, as the application, with the person who asked mentioned, and swaps the eye for a tick. For a run on a task (task filled) the text is kept on the run and shown on the task, the person who asked is told, and no message is written; it takes text only (422 for no_answer, emoji, conclude or offer_conclude), 403 once the task\'s channel no longer allows the agent. no_answer true closes the request without writing anything (it takes no text). emoji leaves one emoji on the message that asked, with text or with no_answer. conclude true, for a request asked in a discussion by a person in it who asks for it, concludes the discussion after the answer is written (closed_by is that person); any other request is not concluded, conclude.error says why and the answer is still written. offer_conclude true, with text, unasked, puts a Conclude the discussion button under the answer for the people in the discussion; one of them presses it to conclude in their own name (the same asker rule; offer.error says why it was not made). Other things the agent does go through their own routes: a task POST /workspace/tasks, a poll POST /workspace/channels/{id}/polls, an approval request POST /workspace/channels/{id}/approvals (and POST /workspace/approvals/{id}/decide when asked to approve), a proposed change /workspace/changes. 403 when the channel no longer lets the agent answer or the person who asked can no longer write there: close the request with POST /workspace/agent-requests/{id}/fail; 422 on text for a wake made in no channel: write with POST /workspace/channels/{id}/messages, then close it with no_answer; 409 closed when the request is closed; 409 editing while the writer is editing the message that asked; 409 edited when it was edited after the claim: the request waits again, claim it and read the new words.' . $only,
             'params'      => array(
                 $id,
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'description' => 'The answer; required unless no_answer is true.'),
@@ -107,7 +107,7 @@ function ws_agent_request_api_routes()
             'dry_run'     => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Give a request up',
-            'description' => 'Closes the request as failed with the reason, told to the person who asked under their message while they may still write there. 409 closed when the request is closed.' . $only,
+            'description' => 'Closes the request as failed with the reason, told to the person who asked under their message while they may still write there; for a run on a task the reason stays on the run and the person who asked is told. 409 closed when the request is closed.' . $only,
             'params'      => array(
                 $id,
                 array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => 250, 'required' => true),
@@ -533,6 +533,12 @@ function ws_api_agent_request_answer($params)
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
+    // A task handed to the agent: the answer is the run's note on the task.
+    if ((int) ($row['task_id'] ?? 0) > 0) {
+        ws_api_agent_task_answer($agent, $viewer, $row, $params);
+        return;
+    }
+
     ws_api_agent_request_kept_stop($row);
 
     // Held while the message is edited; edited after the claim, the
@@ -666,6 +672,59 @@ function ws_api_agent_request_answer($params)
     ));
 }
 
+/**
+ * Why an agent's answer to a run on a task is refused, from what it sent:
+ * text, as Claude's answer on a task takes, and nothing that belongs under
+ * a message (no_answer, an emoji, concluding a discussion). Pure.
+ *
+ * @param array $params text, no_answer, emoji, conclude, offer_conclude
+ * @return array field, error ('' when nothing is refused)
+ */
+function ws_agent_task_answer_refusal($params)
+{
+    foreach (array('emoji', 'conclude', 'offer_conclude') as $field) {
+        if (!empty($params[$field])) {
+            return array('field' => $field, 'error' => lang('A run on a task is answered with text only: it is written on the task.'));
+        }
+    }
+
+    return ws_api_claude_answer_input_refusal('task', $params);
+}
+
+/**
+ * Answers a run on a task handed to the agent (delegation.php): the text is
+ * kept on the run and shown on the task, and the person who asked is told,
+ * as Claude's answer on a task is. 403 once the task's channel no longer
+ * allows the agent.
+ *
+ * @param array $agent  the raw ws_agents row
+ * @param array $viewer
+ * @param array $row    ws_ai_requests, open
+ * @param array $params
+ */
+function ws_api_agent_task_answer($agent, $viewer, $row, $params)
+{
+    $refused = ws_agent_task_answer_refusal($params);
+
+    if ($refused['field'] !== '') {
+        api_fail_validation($refused['error'], $refused['field']);
+    }
+
+    $task = ws_task((int) $row['task_id']);
+
+    if (!$task || !function_exists('ws_agent_task_problem') || (ws_agent_task_problem(ws_agent_request_value($agent), $task) !== '')) {
+        api_fail(403, 'forbidden', ws_agent_answer_refusal_text('forbidden', (int) $row['id']));
+    }
+
+    api_dry_run_stop('answered', 'workspace_agent_request', array('id' => (int) $row['id'], 'task_id' => (int) $task['id']));
+
+    if (ws_task_delegation_answer($row, (string) $params['text'])) {
+        ws_api_log(lang(array('string' => '@{var:1} answered on task {var:2}', 'vars' => array((string) $agent['handle'], ws_task_number($task['id'])))));
+    }
+
+    api_ok(ws_api_claude_request_present($viewer, ws_api_agent_request_or_404($agent, $row['id'])));
+}
+
 function ws_api_agent_request_fail($params)
 {
     $agent = ws_api_agent_caller();
@@ -697,6 +756,12 @@ function ws_api_agent_request_fail($params)
 
     db("UPDATE ws_ai_requests SET status = 'failed', error = '" . e($reason) . "', reply_message_id = '" . $reply_id . "', answered_at = '" . time() . "'
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
+
+    // A run on a task: the reason stays on the run, and the person who
+    // asked is told it ended undone, as for Claude's.
+    if (((int) ($row['task_id'] ?? 0) > 0) && (mysqli_affected_rows(db::$con) > 0) && function_exists('ws_task_delegation_told')) {
+        ws_task_delegation_told($row, 'failed');
+    }
 
     if (!$kept) {
         ws_agent_react((int) $agent['app_id'], (int) $row['message_id'], '👀', false);

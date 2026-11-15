@@ -23,7 +23,7 @@ description: How a registry agent shows (A4b2): the line under its waking messag
 - Its tag `<@app:N>` reads as `@handle` with its name (`ws_agent_tags()` into `ws_app_tag()`); the channel's @ picker offers the agents the channel allows first, as that tag (`ws_agent_picker_entries()` in `ws_channel_app_picker()`), so the pick wakes it under any rule.
 
 ## Is it an assistant a task goes to?
-- `ws_assistants()` lists active app and model agents with an application (keys `agent:<id>`, `model:<id>`) for their name and picture, `delegate` false: the task drawer and `ws_task_delegate()` leave them out (`ws_assistant_takes_tasks()`); an agent is asked in its channels. Its key counts as an assistant's (`ws_api_is_assistant()`), so it hands no task over.
+- `ws_assistants()` lists active app and model agents with an application (keys `agent:<id>`, `model:<id>`) for their name and picture, `delegate` false: the task drawer's list leaves them out (`ws_assistant_takes_tasks()`). `ws_task_delegate()` takes one for a task of a channel that allows it: [[agent-tasks]]. Its key counts as an assistant's (`ws_api_is_assistant()`), so it hands no task over.
 
 ## May it change its own messages?
 - Own messages: `workspace.messages.update` and `.delete` take an active app agent's own key (no device, `ws_api_agent_own_app()`) for messages its application wrote (`ws_message_is_own()`, `$as_app` on `ws_message_edit*()` / `ws_message_delete*()`); the edit sets `edited_at`, so the edited mark shows. Any other application key stays refused.

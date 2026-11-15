@@ -553,12 +553,32 @@ function ws_api_claude_task_present($row)
         'priority'    => (string) $read['priority'],
         'start_date'  => $read['start_date'],
         'due_date'    => $read['due_date'],
-        'channel_id'  => ($channel && ws_claude_channel_allowed($channel) && ws_can_read_channel($asker, $channel)) ? (int) $channel['id'] : 0,
+        'channel_id'  => ($channel && ws_api_claude_task_channel_allowed($row, $task, $channel) && ws_can_read_channel($asker, $channel)) ? (int) $channel['id'] : 0,
         'handed_over' => (bool) $context['delegated'],
         'assignees'   => array_values($read['assignees']),
         'notes'       => array_values($read['notes']),
         'earlier'     => $earlier,
     );
+}
+
+/**
+ * Is the run's assistant allowed in the task's channel: a registry agent by
+ * its channel row, any other by Claude's channel switch.
+ *
+ * @param array $row     ws_ai_requests
+ * @param array $task
+ * @param array $channel
+ * @return bool
+ */
+function ws_api_claude_task_channel_allowed($row, $task, $channel)
+{
+    $agent = (string) ($row['agent'] ?? '');
+
+    if (function_exists('ws_assistant_is_agent') && ws_assistant_is_agent($agent)) {
+        return ws_agent_task_problem($agent, $task) === '';
+    }
+
+    return ws_claude_channel_allowed($channel);
 }
 
 // What ws_api_claude_task_present() returns.
