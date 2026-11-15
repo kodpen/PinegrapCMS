@@ -273,6 +273,11 @@
         picker.hidden = true;
         picker.setAttribute('role', 'listbox');
         picker.setAttribute('aria-label', t('mail_suggest_label'));
+        // A press anywhere in the list keeps the focus in the field, whose
+        // blur closes it.
+        picker.addEventListener('mousedown', function (event) {
+            event.preventDefault();
+        });
         field.setAttribute('role', 'combobox');
         field.setAttribute('aria-autocomplete', 'list');
         field.setAttribute('aria-controls', id);
@@ -601,6 +606,11 @@
             close();
             list = h.el('div', 'ws-picker');
             var inner = h.el('div', 'ws-picker-list');
+            // A press anywhere in the list keeps the caret in the answer,
+            // whose blur closes it.
+            list.addEventListener('mousedown', function (event) {
+                event.preventDefault();
+            });
 
             items.forEach(function (item, index) {
                 var row = h.el('button', 'ws-picker-item');

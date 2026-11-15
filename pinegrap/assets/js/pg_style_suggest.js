@@ -221,9 +221,11 @@
             }
         });
         box.addEventListener('mousedown', function (e) {
+            // Keep the focus in the input for any press in the list, its
+            // scrollbar and padding too, or the input's blur closes it.
+            e.preventDefault();
             var row = e.target.closest ? e.target.closest('.sd-class-ac-item') : null;
             if (!row) return;
-            e.preventDefault();  // keep the focus in the input
             var i = parseInt(row.getAttribute('data-idx'), 10);
             if (!isNaN(i)) choose(i);
         });
