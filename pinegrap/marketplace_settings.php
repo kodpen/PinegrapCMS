@@ -1511,7 +1511,7 @@ function mp_settings_claim_reject_form($account_id, $claim, $reasons) {
 							accept="image/*,video/*,.pdf,.doc,.docx">
 						<div class="form-text mb-3">'
 							. lang('Photos, videos, PDF or Word files of what came back: at most five, 5 MB each.') . '</div>
-						<button type="submit" class="btn btn-sm btn-outline theme-danger">' . lang('Send rejection') . '</button>
+						<button type="submit" class="pg-button pg-button-danger pg-button-sm">' . lang('Send rejection') . '</button>
 					</form>
 				</details>';
 
@@ -1549,7 +1549,7 @@ function mp_settings_invoice_form($account_id, $row, $invoice = null) {
 						<input type="url" class="form-control form-control-sm" id="invoice_url_' . $map_id . '"
 							name="invoice_url" maxlength="2048"' . ($public ? '' : ' required') . ' style="max-width:520px"
 							placeholder="https://">
-						<button type="submit" class="btn btn-sm btn-outline theme-secondary">' . lang('Send') . '</button>
+						<button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . lang('Send') . '</button>
 					</form>
 					<div class="form-text">'
 						. lang('The address of the e-Archive or e-Invoice PDF that the buyer can open without signing in. The marketplace keeps it with the order and it has to stay reachable for ten years. A link once sent cannot be changed from here.') . '</div>
@@ -1577,7 +1577,7 @@ function mp_settings_invoiced_form($account_id, $row, $invoice = null) {
 						<input type="text" class="form-control form-control-sm" id="invoice_number_' . $map_id . '"
 							name="invoice_number" maxlength="50" required pattern="[A-Za-z0-9][A-Za-z0-9\-]*" style="max-width:260px"
 							autocomplete="off"' . (is_array($invoice) ? ' value="' . h((string)$invoice['full_number']) . '"' : '') . '>
-						<button type="submit" class="btn btn-sm btn-outline theme-secondary">' . lang('Send') . '</button>
+						<button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . lang('Send') . '</button>
 					</form>
 					<div class="form-text">'
 						. lang('The number of the invoice you cut for this order. The marketplace sets the package to Invoiced; an order not accepted yet is accepted first.') . '</div>
@@ -1622,7 +1622,7 @@ function mp_settings_label_line($account_id, $row, $offer, $provider_name) {
 						<label class="form-label mb-0" for="label_boxes_' . $map_id . '">' . lang('Boxes') . '</label>
 						<input type="number" class="form-control form-control-sm" id="label_boxes_' . $map_id . '"
 							name="boxes" value="1" min="1" max="' . mp_label_max_boxes() . '" step="1" required style="max-width:90px">
-						<button type="submit" class="btn btn-sm btn-outline theme-secondary"
+						<button type="submit" class="pg-button pg-button-quiet pg-button-sm"
 							data-confirm-content="' . h(lang(array(
 								'string' => '{var:1} makes the shipping label of this package for its carrier, one per box. A package not accepted yet is accepted first, which starts its dispatch time. Continue?',
 								'vars'   => array($provider_name)
@@ -1965,7 +1965,7 @@ echo pg_page_shell(array(
 <main id="content" class="container-fluid">
 	' . pg_screen_toolbar(array(
 		'primary' => '<button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#mp_new">'
-			. '<i class="bi bi-plus-lg me-2" aria-hidden="true"></i>' . lang('Connect a Marketplace') . '</button>',
+			. '<i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('Connect a Marketplace') . '</button>',
 		'grow'    => $accounts
 			? '<span class="pg-text-2"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>'
 				. ($last_run
@@ -2125,14 +2125,14 @@ if ($selected) {
 
 	$mp_status .= '
 				<div class="d-grid gap-3 mt-5">
-					<button type="button" class="btn btn-sm btn-solid theme-primary" data-bs-toggle="drawer" data-bs-target="#mp_drawer">
-						<i class="bi bi-pencil me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Settings')) . '</span></button>
+					<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#mp_drawer">
+						<i class="bi bi-pencil" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Settings')) . '</span></button>
 					<form method="post" action="marketplace_settings.php" class="d-grid">
 						' . get_token_field() . '
 						<input type="hidden" name="mp_action" value="test">
 						<input type="hidden" name="account_id" value="' . $selected_id . '">
-						<button type="submit" class="btn btn-sm btn-outline theme-secondary">
-							<i class="bi bi-plug me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Test connection')) . '</span></button>
+						<button type="submit" class="pg-button pg-button-quiet pg-button-sm">
+							<i class="bi bi-plug" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Test connection')) . '</span></button>
 					</form>
 				</div>
 			</div>
@@ -2157,17 +2157,17 @@ if ($selected) {
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="push_all">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline theme-secondary"' . ($map_counts['all'] ? '' : ' disabled') . '>
-						<i class="bi bi-arrow-repeat me-1"></i>' . lang('Send all now') . '</button>
+					<button type="submit" class="pg-button pg-button-quiet pg-button-sm"' . ($map_counts['all'] ? '' : ' disabled') . '>
+						<i class="bi bi-arrow-repeat"></i>' . lang('Send all now') . '</button>
 				</form>
-				<a class="btn btn-sm ' . ($can_read_products ? 'btn-outline theme-secondary' : 'btn-solid theme-primary') . '" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=shop">
-					<i class="bi bi-shop me-1"></i>' . h(lang('Products in this shop')) . '</a>'
+				<a class="pg-button pg-button-quiet pg-button-sm" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=shop">
+					<i class="bi bi-shop"></i>' . h(lang('Products in this shop')) . '</a>'
 				. ($can_read_products ? '
-				<a class="btn btn-sm btn-solid theme-primary" href="marketplace_products.php?account=' . $selected_id . '">
-					<i class="bi bi-boxes me-1"></i>' . h(lang('Match in bulk with pictures')) . '</a>' : '')
+				<a class="pg-button pg-button-quiet pg-button-sm" href="marketplace_products.php?account=' . $selected_id . '">
+					<i class="bi bi-boxes"></i>' . h(lang('Match in bulk with pictures')) . '</a>' : '')
 				. ($can_listings ? '
-				<a class="btn btn-sm btn-outline theme-secondary" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=listings">
-					<i class="bi bi-tags me-1"></i>' . h(lang('Listings')) . '</a>' : '') . '
+				<a class="pg-button pg-button-quiet pg-button-sm" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=listings">
+					<i class="bi bi-tags"></i>' . h(lang('Listings')) . '</a>' : '') . '
 			</div>
 		</div>
 		<div class="card-body">'
@@ -2186,8 +2186,8 @@ if ($selected) {
 				<input type="hidden" name="account_id" value="' . $selected_id . '">
 				<span class="fg-warning">' . h(lang(array('string' => '{var:1} match(es) belong to products deleted since or in the Recycle Bin. They hold their codes, and no list shows them.',
 					'vars' => array(pg_format_number($map_counts['stale'], 0))))) . '</span>
-				<button type="submit" id="mp_clear_stale" class="btn btn-sm btn-outline theme-warning" data-confirm-content="' . h(lang(array('string' => 'Remove {var:1} stale match(es) of {var:2}? Their codes are freed; a product restored from the Recycle Bin afterwards comes back unmatched.',
-					'vars' => array(pg_format_number($map_counts['stale'], 0), $selected['name'])))) . '"><i class="bi bi-trash me-1"></i>' . h(lang('Remove them')) . '</button>
+				<button type="submit" id="mp_clear_stale" class="pg-button pg-button-danger pg-button-sm" data-confirm-content="' . h(lang(array('string' => 'Remove {var:1} stale match(es) of {var:2}? Their codes are freed; a product restored from the Recycle Bin afterwards comes back unmatched.',
+					'vars' => array(pg_format_number($map_counts['stale'], 0), $selected['name'])))) . '"><i class="bi bi-trash"></i>' . h(lang('Remove them')) . '</button>
 			</form>' : '') . '
 		</div>
 	</div>';
@@ -2228,9 +2228,9 @@ if ($selected) {
 
 			$webhook_onsubmit = '';
 
-			$webhook_button = '<button type="submit" class="btn btn-sm btn-outline theme-danger"
+			$webhook_button = '<button type="submit" class="pg-button pg-button-danger pg-button-sm"
 						onclick="return confirm(' . h(json_encode(lang('Remove the webhook?'))) . ')">
-						<i class="bi bi-x-lg me-1"></i>' . lang('Remove webhook') . '</button>';
+						<i class="bi bi-x-lg"></i>' . lang('Remove webhook') . '</button>';
 
 		} else {
 
@@ -2247,8 +2247,8 @@ if ($selected) {
 			// it is; it has no name, so nothing is dropped from the request.
 			$webhook_onsubmit = ' onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;"';
 
-			$webhook_button = '<button type="submit" class="btn btn-sm btn-outline theme-secondary">
-						<i class="bi bi-broadcast me-1"></i>' . lang('Register webhook') . '</button>';
+			$webhook_button = '<button type="submit" class="pg-button pg-button-quiet pg-button-sm">
+						<i class="bi bi-broadcast"></i>' . lang('Register webhook') . '</button>';
 
 		}
 
@@ -2294,9 +2294,9 @@ if ($selected) {
 				' . get_token_field() . '
 				<input type="hidden" name="mp_action" value="retry_orders">
 				<input type="hidden" name="account_id" value="' . $selected_id . '">
-				<button type="submit" class="btn btn-sm btn-outline theme-secondary"
+				<button type="submit" class="pg-button pg-button-quiet pg-button-sm"
 					title="' . h(lang('Match the products first. The next run reads the failed orders again.')) . '">
-					<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Try again') . '</button>
+					<i class="bi bi-arrow-clockwise"></i>' . lang('Try again') . '</button>
 			</form>' : '') . '
 		</div>
 		<div class="card-body px-3 py-5">' . $webhook_block;
@@ -2404,8 +2404,8 @@ if ($selected) {
 				' . get_token_field() . '
 				<input type="hidden" name="mp_action" value="claims_read">
 				<input type="hidden" name="account_id" value="' . $selected_id . '">
-				<button type="submit" class="btn btn-sm btn-outline theme-secondary">
-					<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Read returns') . '</button>
+				<button type="submit" class="pg-button pg-button-quiet pg-button-sm">
+					<i class="bi bi-arrow-clockwise"></i>' . lang('Read returns') . '</button>
 			</form>
 		</div>
 		<div class="card-body px-3 py-5">';
@@ -2487,7 +2487,7 @@ if ($selected) {
 						<input type="hidden" name="mp_action" value="claim_approve">
 						<input type="hidden" name="account_id" value="' . $selected_id . '">
 						<input type="hidden" name="claim_id" value="' . h((string)$claim['claim_id']) . '">
-						<button type="submit" class="btn btn-sm btn-outline theme-success">' . lang('Approve') . '</button>
+						<button type="submit" class="pg-button pg-button-quiet pg-button-sm">' . lang('Approve') . '</button>
 					</form>';
 
 				}
@@ -2548,8 +2548,8 @@ if ($selected) {
 				' . get_token_field() . '
 				<input type="hidden" name="mp_action" value="questions_read">
 				<input type="hidden" name="account_id" value="' . $selected_id . '">
-				<button type="submit" class="btn btn-sm btn-outline theme-secondary">
-					<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Read questions') . '</button>
+				<button type="submit" class="pg-button pg-button-quiet pg-button-sm">
+					<i class="bi bi-arrow-clockwise"></i>' . lang('Read questions') . '</button>
 			</form>
 		</div>
 		<div class="card-body px-3 py-5">';
@@ -2608,7 +2608,7 @@ if ($selected) {
 						rows="2" minlength="10" maxlength="2000" required></textarea>
 					<div class="d-flex align-items-center gap-3 mt-1">
 						<span class="form-text m-0">' . lang('10 to 2000 characters. The marketplace reviews the answer before the buyer sees it.') . '</span>
-						<button type="submit" class="btn btn-sm btn-outline theme-success ms-auto">' . lang('Answer') . '</button>
+						<button type="submit" class="pg-button pg-button-quiet pg-button-sm ms-auto">' . lang('Answer') . '</button>
 					</div>
 				</form>';
 
@@ -2650,15 +2650,15 @@ if ($selected) {
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="retry">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline theme-secondary">
-						<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Try again') . '</button>
+					<button type="submit" class="pg-button pg-button-quiet pg-button-sm">
+						<i class="bi bi-arrow-clockwise"></i>' . lang('Try again') . '</button>
 				</form>
 				<form method="post" action="marketplace_settings.php" class="d-inline disable_shortcut">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="clear_queue">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" id="mp_clear_failed" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang(array('string' => 'Delete the failed updates of {var:1}? The stock and price changes in them are not sent again.', 'vars' => $selected['name']))) . '">
-						<i class="bi bi-trash me-1"></i>' . lang('Clear') . '</button>
+					<button type="submit" id="mp_clear_failed" class="pg-button pg-button-quiet pg-button-sm" data-confirm-content="' . h(lang(array('string' => 'Delete the failed updates of {var:1}? The stock and price changes in them are not sent again.', 'vars' => $selected['name']))) . '">
+						<i class="bi bi-trash"></i>' . lang('Clear') . '</button>
 				</form>';
 
 	}
@@ -2802,8 +2802,8 @@ echo '
 				</div>
 			</div>
 			<div class="dialog-footer">
-				<button type="button" class="btn btn-outline theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
-				<button type="submit" class="btn btn-solid theme-primary">' . lang('Connect') . '</button>
+				<button type="button" class="pg-button pg-button-ghost" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+				<button type="submit" class="pg-button pg-button-fill">' . lang('Connect') . '</button>
 			</div>
 		</form>
 </dialog>';
@@ -2957,9 +2957,9 @@ if ($selected) {
 						'vars'   => array(mp_provider_name($selected['provider']))
 					)))
 					: lang('Removing a marketplace deletes its product matches and its queue. Your products are not touched, and nothing is removed from the marketplace itself.')) . '</p>
-			<button type="submit" class="btn btn-outline theme-danger btn-sm" name="mp_action" value="delete"
+			<button type="submit" class="pg-button pg-button-danger pg-button-sm" name="mp_action" value="delete"
 				formnovalidate onclick="return confirm(' . h(json_encode(lang('Remove this marketplace?'))) . ')">
-				<i class="bi bi-trash me-1"></i>' . lang('Remove marketplace') . '</button>')
+				<i class="bi bi-trash"></i>' . lang('Remove marketplace') . '</button>')
 			. (!empty($selected['credentials']['webhook_id']) ? '
 			<div class="form-field pg-text-2 mt-3">
 				<input class="check" type="checkbox" id="edit_webhook_force" name="webhook_force" value="1">
@@ -2970,8 +2970,8 @@ if ($selected) {
 			</div>' : '') . '
 		</div>
 		<div class="drawer-footer border-top p-5 d-flex gap-3">
-			<button type="button" class="btn btn-outline theme-secondary flex-grow-1" data-bs-dismiss="drawer">' . lang('Cancel') . '</button>
-			<button type="submit" class="btn btn-solid theme-primary flex-grow-1">' . lang('Save') . '</button>
+			<button type="button" class="pg-button pg-button-ghost flex-grow-1" data-bs-dismiss="drawer">' . lang('Cancel') . '</button>
+			<button type="submit" class="pg-button pg-button-fill flex-grow-1">' . lang('Save') . '</button>
 		</div>
 	</form>
 </dialog>';

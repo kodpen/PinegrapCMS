@@ -17,7 +17,7 @@ module: look_list
 - `pg_list_seg_filters($list, $column, $items, $label, $current)`: a `.pg-seg.pg-list-seg` group of `button.pg-seg-item` with the driver's `data-pg-list-filter` attributes; the driver moves `aria-pressed`, which draws the thumb. An item may carry a `count` (`.pg-seg-count`). On a narrow screen the group scrolls sideways.
 - Link segments (a range, a view) are `a.pg-seg-item` with `is-active` and `aria-current="true"` inside a `.pg-seg.pg-list-seg`.
 - Used by Site Log (`view_log.php`): range links and type filters as segments, the range in meta text; its "N records" badge left, the header count says it.
-- Not moved: lists filtering with `pg_filter_select()` or selects (Contacts, Submitted Forms), All Offers' own filter pills (a kept screen), Marketplace Products' view buttons and filter chips.
+- Not moved: lists filtering with `pg_filter_select()` or selects (Contacts, Submitted Forms), All Offers' own filter pills (a kept screen). Marketplace Products' views and filter rows took the link segments in SH10 (`ui/look-marketplace-ranks.md`).
 
 ## How does a settings row get its icon tile?
 - `pg_settings_tile($icon, $tone)` printed as the first child of the row's `.form-field` (switch row) or of the cell (label and field row). The settings grid gives it a 34 px column left of the name and description, centred on them, 13 px from the text; on a narrow card it stays left and tops.
