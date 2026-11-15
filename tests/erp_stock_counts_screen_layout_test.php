@@ -28,7 +28,7 @@ function test_erp_stock_counts_screen_has_form_and_status_columns()
 
 	$form = strpos($source, '<div class="col-12 lg:col-8 2xl:col-9 order-1">');
 	$status = strpos($source, '<div class="col-12 lg:col-4 2xl:col-3 order-2">');
-	$bar = strpos($source, '<div class="col-12 order-3">');
+	$bar = strpos($source, 'pg_save_bar(');
 
 	pg_assert_true($form !== false, 'the form column is there');
 	pg_assert_true($status !== false, 'the status column is there');
@@ -50,7 +50,7 @@ function test_erp_stock_counts_status_column_reads_the_counts()
 {
 	$source = erp_stock_counts_screen_layout_source();
 	$start = (int) strpos($source, '<div class="col-12 lg:col-4 2xl:col-3 order-2">');
-	$status = substr($source, $start, (int) strpos($source, '<div class="col-12 order-3">') - $start);
+	$status = substr($source, $start, (int) strpos($source, 'pg_save_bar(') - $start);
 
 	pg_assert_contains("lang('Summary')", $status, 'the status card has its title');
 	pg_assert_contains('$summary_total', $status, 'the number of counts is shown');

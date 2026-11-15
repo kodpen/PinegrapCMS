@@ -29,12 +29,12 @@ function erp_accounts_import_layout_assert_columns($step, $label)
 {
 	$form = strpos($step, '<div class="col-12 lg:col-8 2xl:col-9 order-1">');
 	$status = strpos($step, '<div class="col-12 lg:col-4 2xl:col-3 order-2">');
-	$bar = strpos($step, '<div class="col-12 order-3">');
+	$bar = strpos($step, 'pg_save_bar(');
 
 	pg_assert_true($form !== false && $status !== false && $bar !== false, $label . ': form, status and save bar columns are there');
 	pg_assert_true($form < $status && $status < $bar, $label . ': form column, status column, save bar in source order');
 	pg_assert_contains('position-sticky" style="top:3.3rem;"', substr($step, $status, $bar - $status), $label . ': the status box sticks below the top bar');
-	pg_assert_contains('<nav class="buttons navigation', substr($step, $bar), $label . ': the save bar sits in its column');
+	pg_assert_contains('<button type="submit"', substr($step, $bar), $label . ': the save bar holds the step\'s buttons');
 
 	return array($form, $status, $bar);
 }

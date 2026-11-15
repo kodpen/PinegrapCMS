@@ -38,7 +38,8 @@ function test_erp_panel_language_save_bar_names()
 	foreach ($paths as $path) {
 		$source = erp_panel_language_source($path);
 		pg_assert_false(strpos($source, 'aria-label="data edit buttons"') !== false, $path . ': literal save bar name');
-		pg_assert_contains("aria-label=\"' . h(lang('data edit buttons')) . '\"", $source, $path);
+		// pg_save_bar() names the bar through lang() itself.
+		pg_assert_true(strpos($source, "aria-label=\"' . h(lang('data edit buttons')) . '\"") !== false || strpos($source, 'pg_save_bar(') !== false, $path . ': translated save bar name');
 	}
 }
 
