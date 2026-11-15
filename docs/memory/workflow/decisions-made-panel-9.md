@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel-9
-description: Decisions list, panel part 9 (2026-11-14 on): the dashboard's assistant chat after a reload; a link that opens reads "Aç"; two buttons and Add Product's widths on the kept screens
+description: Decisions list, panel part 9 (2026-11-14 on): assistant chat after a reload; a link that opens reads "Aç"; kept screens' two buttons and widths; Site Settings keeps its place after a save
 ---
 
 ## Where are the rules and the earlier parts?
@@ -22,3 +22,7 @@ description: Decisions list, panel part 9 (2026-11-14 on): the dashboard's assis
 - Of the full-screen pairs before them (4643 to 4645) he wrote: "açıkcası görselleri inceledim ve bir fark göremedim" (4655); poll 43 closed with no vote.
 - The screens stay on the kept list (`decisions-made-panel-3.md`): any other change in their own files still waits for his look at its picture (`plans/panel-old-screens-rules.md`).
 - Work: the buttons #9721; the widths as one small PR after #9658 has landed.
+
+## Does the Site Settings dialog keep its place after a save? (owner, 2026-11-15, in the architect's window)
+- His words on the "Assistants and agents" pane: "mesela ayarlarda şu anda kaydedince kaldığım yer kapanıp sayfanın üzerine kayıyorum. bunun yerine yar penceresinde bir mesaj yeterli olur. ve gördüğün gibi ayar ekranları modern değil ve karman çorman düğmeler kayıyor bilgiler eksik vs."
+- Yes: after a save the pane stays where it was scrolled, the drawer he saved from stays open, and the dialog says "saved" in one message. The agents' settings are redrawn and say plainly what each door is for. Plan: `plans/agents-card-settings.md`.
