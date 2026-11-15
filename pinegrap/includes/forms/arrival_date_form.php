@@ -164,21 +164,21 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Arrival Date'))) . '</label>
                                             <input value="' . h($v['name']) . '" type="text" name="name" id="name" maxlength="50" class="form-control" required />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 pg-field-span-4 my-3">
                                             <label for="code" class="form-label">' . lang('Arrival Date Code') . '</label>
                                             <input value="' . h($v['code']) . '" type="text" name="code" id="code" maxlength="50" class="form-control" aria-describedby="code_help" />
                                             <div id="code_help" class="form-text">' . lang('Arrival Date Code for Order Reporting') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-8 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="description" class="form-label">' . lang(array('string'=>'{var:1} Description','vars'=>lang('Arrival Date'))) . '</label>
                                             <input value="' . h($v['description']) . '" type="text" name="description" id="description" maxlength="255" class="form-control" />
                                         </div>
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 pg-field-span-3 my-3">
                                             <label for="sort_order" class="form-label">' . lang('Sorting') . '</label>
                                             <div class="input-group number-controls">
                                                 <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
@@ -195,17 +195,17 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="start_date" class="form-label">' . lang('Start Date') . '</label>
                                             <input value="' . $start_date . '" placeholder="' . $date_placeholder . '" type="text" name="start_date" id="start_date" class="form-control" maxlength="10" autocomplete="off" required data-pg-date/>
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="end_date" class="form-label">' . lang('End Date') . '</label>
                                             <input value="' . $date('end_date') . '" placeholder="' . $date_placeholder . '" type="text" name="end_date" id="end_date" class="form-control" maxlength="10" autocomplete="off" required data-pg-date/>
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="arrival_date" class="form-label">' . lang('Arrival Date') . $arrival_date_marker . '</label>
                                             <input value="' . $date('arrival_date') . '" placeholder="' . $date_placeholder . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off"' . $arrival_date_required . ' data-pg-date/>
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
@@ -217,7 +217,7 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null, $status_rows = 
                                             </div>
                                             <div id="custom_help" class="form-text">' . lang('Or allow Customer to enter this Arrival Date during checkout') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-6 my-3" id="custom_maximum_arrival_date_row"' . $custom_maximum_arrival_date_row_style . '>
+                                        <div class="col-12 pg-field-span-3 my-3" id="custom_maximum_arrival_date_row"' . $custom_maximum_arrival_date_row_style . '>
                                             <label for="custom_maximum_arrival_date" class="form-label">' . lang('Latest Allowed Arrival Date') . '</label>
                                             <input value="' . $date('custom_maximum_arrival_date') . '" placeholder="' . $date_placeholder . '" type="text" name="custom_maximum_arrival_date" id="custom_maximum_arrival_date" class="form-control" maxlength="10" autocomplete="off" aria-describedby="custom_maximum_arrival_date_help" data-pg-date/>
                                             <div id="custom_maximum_arrival_date_help" class="form-text">' . lang('leave blank for no restriction') . '</div>

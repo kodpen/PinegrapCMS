@@ -70,7 +70,8 @@ function test_screen_help_visible_instructions_printed()
 	$visible = array(
 		'includes/templates/duplicate_folder.php' => "lang('Duplicate creates a new folder with a copy of each page",
 		'includes/templates/edit_auto_dialog.php' => "lang('Create a new auto dialog that can automatically popup for visitors.",
-		'includes/templates/edit_key_code.php' => "lang('Create one or more key codes",
+		'add_key_code.php' => "'heading_description' => lang('Create one or more key codes",
+		'edit_key_code.php' => "'heading_description' => lang('Edit a key code",
 		'includes/templates/generate_layout.php' => "lang('Copy & paste the code below into your custom layout.')",
 		'edit_custom_style.php' => "'heading_description' => lang('Update this HTML template that is applied to all associated pages.')",
 		'add_submitted_form.php' => "'heading_description' => lang('Manually create a submitted form for this custom form.",

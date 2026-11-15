@@ -78,7 +78,7 @@ function test_form_group_titles_are_h3_inside_cards()
 		'login_region_form.php' => '<h3 class="h5 mt-12">\' . lang(\'Logged In\') . \'</h3>',
 		'field_form.php' => '<h3 class="h6 fg-secondary">\' . lang(\'Amount of Rows and Columns to Display\') . \'</h3>',
 		'calendar_event_form.php' => '<h3 class="h5" id="multiselect-checkbox-checker-1_title">\' . lang(\'Post to any of my Calendars\') . \'</h3>',
-		'shipping_method_form.php' => '<h3 class="h5 fg-secondary mt-5">\' . lang(\'Available on\') . \'</h3>',
+		'shipping_method_form.php' => '<h3 class="pg-group-label mt-5 mb-3">\' . lang(\'Available on\') . \'</h3>',
 		'page_form.php' => '<h3 class="h5">\' . lang(\'Form List Views\') . \'</h3>',
 	);
 	foreach ($expected as $file => $needle) {
@@ -89,5 +89,5 @@ function test_form_group_titles_are_h3_inside_cards()
 function test_shipping_method_site_time_is_not_a_heading()
 {
 	$src = form_card_headings_source('shipping_method_form.php');
-	pg_assert_contains('<div class="h6"><em>\' . lang(array(\'string\'=>\'For reference, the current site time is {var:1}.\'', $src, 'the site time sentence is text');
+	pg_assert_contains('<div class="pg-text-2"><em>\' . lang(array(\'string\'=>\'For reference, the current site time is {var:1}.\'', $src, 'the site time sentence is text');
 }
