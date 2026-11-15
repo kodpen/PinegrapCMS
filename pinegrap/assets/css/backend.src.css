@@ -5547,6 +5547,48 @@ body.pg-code-field-open {
   min-width: 8rem;
 }
 
+/* ERP lists (Expenses, Expense categories, Cheques): the column widths
+   their cells held inline. */
+.erp-expense-cell-category {
+  min-width: 8rem;
+  max-width: 14rem;
+}
+.erp-expense-cell-supplier {
+  min-width: 8rem;
+  max-width: 18rem;
+}
+.erp-expense-cell-text {
+  max-width: 18rem;
+}
+.erp-category-cell-order,
+.erp-category-cell-count {
+  width: 6rem;
+}
+.erp-category-cell-name {
+  min-width: 12rem;
+}
+.erp-category-cell-code {
+  min-width: 8rem;
+}
+.erp-category-cell-tax {
+  width: 11rem;
+}
+.erp-category-cell-on {
+  width: 7rem;
+}
+.erp-cheque-cell-account {
+  max-width: 240px;
+}
+/* An ERP list card (pg-card) holding a table or a flush list: clipped to
+   the card's corners as the report frame is, the list rows on the card's
+   surface. */
+.erp-list-card {
+  overflow: hidden;
+}
+.erp-list-card > .list-group {
+  --bs-list-group-bg: transparent;
+}
+
 .object-fit,
 .img-thumbnail {
   object-fit: cover;
