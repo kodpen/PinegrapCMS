@@ -1395,10 +1395,36 @@
         this.more.hidden = !this.next || this.loading || !!this.failed;
 
         this.fillIds();
+        this.headCount();
 
         this.root.dispatchEvent(new CustomEvent('pg-list-table:selection', {
             detail: { count: count, payload: this.selection.payload(this.condition()) }
         }));
+    };
+
+    /**
+     * The list's count beside the screen's title (#header .pg-navhead), on a
+     * list screen (body.pg-measure-list) that holds this one list: the rows
+     * of the condition, so it follows the search and the filters.
+     */
+    Driver.prototype.headCount = function () {
+        var head = document.querySelector('#header .pg-navhead');
+        var title = head ? head.querySelector('.pg-navhead-title') : null;
+        var box;
+
+        if (!title || !document.body.classList.contains('pg-measure-list') || (document.querySelectorAll('.pg-list-table').length !== 1)) {
+            return;
+        }
+
+        box = head.querySelector('.pg-navhead-count');
+
+        if (!box) {
+            box = document.createElement('span');
+            box.className = 'pg-navhead-count';
+            title.insertAdjacentElement('afterend', box);
+        }
+
+        box.textContent = text((this.total === 1) ? this.texts.countOne : this.texts.countMany, this.total.toLocaleString(document.documentElement.lang || undefined));
     };
 
     /**

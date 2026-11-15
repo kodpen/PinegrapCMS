@@ -924,6 +924,8 @@ function pg_list_table_texts()
         'failed' => lang('The list could not be loaded.'),
         'retry' => lang('Try again'),
         'loaded' => lang(array('string' => '{var:1} rows loaded', 'vars' => array('%n'))),
+        'countOne' => lang(array('string' => '{var:1} record', 'vars' => array('%n'))),
+        'countMany' => lang(array('string' => '{var:1} records', 'vars' => array('%n'))),
         'selected' => lang(array('string' => '{var:1} selected', 'vars' => array('%n'))),
         'all' => lang(array('string' => 'All {var:1} rows selected', 'vars' => array('%n'))),
         'clear' => lang('Clear selection'),

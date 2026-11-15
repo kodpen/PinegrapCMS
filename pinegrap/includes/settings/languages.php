@@ -307,7 +307,7 @@ if (!empty($language_redirect_ready)) {
 
     $output_language_redirect = '
                     <div class="col-12">
-                        <div class="form-field">
+                        <div class="form-field">' . pg_settings_tile('translate', 'content') . '
                             <div class="switch"><input value="1"' . ($language_redirect ? ' checked="checked"' : '') . ' class="collapse-switcher" type="checkbox" id="language_redirect" name="language_redirect" data-bs-target="#language_redirect_row"/></div>
                             <label class="" for="language_redirect">' . lang('Send visitors to their language') . '</label>
                             <div class="form-text">' . lang('A visitor who arrives on a page in the source language is sent to the same page in their own language, when the site is served in it. Only the first page of a visit is redirected, and only a person\'s browser: search engines, signed-in staff and visitors already moving around the site see the page they asked for. A visitor who changes the language is remembered and not redirected again.') . '</div>

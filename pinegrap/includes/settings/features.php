@@ -65,7 +65,7 @@ $pg_settings_cards[] = '
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <div class="form-field">
+                                            <div class="form-field">' . pg_settings_tile('share', 'content') . '
                                                 <div class="switch"><input value="1"' . $social_networking_checked . '  id="social_networking" name="social_networking" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#social_networking_type_row"/></div>
                                                 <label class="d-inline" for="social_networking">' . lang('Enable Social Networking') . '</label>
                                             </div>

@@ -145,7 +145,7 @@ $pg_settings_cards[] = '
             <div class="card-body">
                 <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-field">
+                                            <div class="form-field">' . pg_settings_tile('laptop', 'system') . '
                                                 <div class="switch"><input value="1"' . $remember_me_device_limit_enabled_checked . ' class="collapse-switcher" type="checkbox" id="remember_me_device_limit_enabled" name="remember_me_device_limit_enabled" data-bs-target="#remember_me_device_limit_row"/></div>
                                                 <label class="" for="remember_me_device_limit_enabled">' . lang('Limit devices per account') . '</label>
                                                 <div class="form-text">' . lang('Applies only while "Limit devices per account" is on. When a new device would exceed the limit, the visitor is asked to sign out the oldest.') . '</div>
@@ -258,7 +258,7 @@ if ($audit_retention_ready) {
 // the card says so and only Google's fields are there.
 $signin_google_body = '
                                         <div class="col-12 ">
-                                            <div class="form-field">
+                                            <div class="form-field">' . pg_settings_tile('google', 'system') . '
                                                 <div class="switch"><input value="1"' . $oauth_google_enabled_checked . ' class="collapse-switcher" type="checkbox" id="oauth_google_enabled" name="oauth_google_enabled" data-bs-target="#oauth_google_row"/></div>
                                                 <label class="" for="oauth_google_enabled">' . lang('Enable Google Sign-In') . '</label>
                                             </div>
@@ -315,7 +315,7 @@ if ($signin_ready) {
 
     $signin_microsoft_body = '
                                         <div class="col-12">
-                                            <div class="form-field">
+                                            <div class="form-field">' . pg_settings_tile('microsoft', 'system') . '
                                                 <div class="switch"><input value="1"' . $signin_microsoft_checked . ' class="collapse-switcher" type="checkbox" id="signin_microsoft" name="signin_microsoft" data-bs-target="#signin_microsoft_row"/></div>
                                                 <label class="" for="signin_microsoft">' . lang('Enable Microsoft Sign-In') . '</label>
                                             </div>
@@ -352,7 +352,7 @@ if ($signin_ready) {
 
     $signin_apple_body = '
                                         <div class="col-12">
-                                            <div class="form-field">
+                                            <div class="form-field">' . pg_settings_tile('apple', 'system') . '
                                                 <div class="switch"><input value="1"' . $signin_apple_checked . ' class="collapse-switcher" type="checkbox" id="signin_apple" name="signin_apple" data-bs-target="#signin_apple_row"/></div>
                                                 <label class="" for="signin_apple">' . lang('Enable Apple Sign-In') . '</label>
                                             </div>
@@ -444,7 +444,7 @@ $pg_settings_cards[] = '
                                             <input type="text" name="membership_email_address" id="membership_email_address" class="form-control" value="' . h($membership_email_address) . '" inputmode="email" data-inputmask-alias="email"/>
                                         </div>
                                         <div class="col-12  ">
-                                            <div class="form-field">
+                                            <div class="form-field">' . pg_settings_tile('envelope-exclamation', 'system') . '
                                                 <div class="switch"><input type="checkbox" name="membership_expiration_warning_email" id="membership_expiration_warning_email" value="1"' . $membership_expiration_warning_email_checked . ' class="collapse-switcher" data-bs-target="#membership_expiration_warning_email_row"/></div>
                                                 <label class="" for="membership_expiration_warning_email">' . lang('Send Expiration Warning E-mail to Members') . '</label>
                                             </div>

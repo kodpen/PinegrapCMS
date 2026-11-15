@@ -32,7 +32,7 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-field">
+                                            <div class="form-field">' . pg_settings_tile('graph-up', 'reports') . '
                                                 <div class="switch"><input value="1"' . $visitor_tracking_checked . ' class="collapse-switcher" type="checkbox" id="visitor_tracking" name="visitor_tracking" data-bs-target="#visitor_tracking_row"/></div>
                                                 <label class="" for="visitor_tracking">' . lang('Enable Visitor Tracking') . '</label>
                                             </div>
@@ -189,7 +189,7 @@ if ($legal_documents_ready) {
             <div class="card-body">
                 <div class="row gy-5">
                     <div class="col-12">
-                        <div class="form-field">
+                        <div class="form-field">' . pg_settings_tile('file-earmark-text', 'shop') . '
                             <div class="switch"><input value="1"' . $ecommerce_legal_documents_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_legal_documents" name="ecommerce_legal_documents" data-bs-target="#ecommerce_legal_documents_row"/></div>
                             <label class="" for="ecommerce_legal_documents">' . lang('Ask customers to accept the pre-information form and the distance sales contract') . '</label>
                         </div>
