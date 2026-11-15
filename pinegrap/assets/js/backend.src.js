@@ -869,6 +869,15 @@ $(document).ready(function () {
     // in softwaremenunav, so the other screens keep theirs (the server draws
     // it: pg_menu_navigator_state()). Read up here for the same reason.
     var MENU_NAVIGATOR = document.querySelector('.software-container[data-pg-menu-navigator]') !== null;
+    // A screen that needs its whole width (Page Design Studio, output_header()'s
+    // menu_drawer) keeps the menu as the phone's drawer at every width, opened
+    // by a button of its own instead of the bar's. Read up here too.
+    var MENU_DRAWER_ONLY = document.querySelector('.software-container.menu-drawer-only') !== null;
+    // Every button that opens and shuts the drawer: the bar's, and a screen's
+    // own marked data-pg-menu-drawer-toggle.
+    var MENU_TOGGLES = '#menu_mode_toggle, [data-pg-menu-drawer-toggle]';
+    // The opener the drawer was last opened from, to give the focus back to.
+    var menuDrawerOpener = null;
     // Set once initMenuPanels() has run: until then a change of the menu's
     // state opens no panel by itself (autoMenuPanel()).
     var menuPanelsReady = false;
@@ -881,7 +890,7 @@ $(document).ready(function () {
     initMenuClock();                  // Dashboard clock and Calendars day keep running
 
     function isMenuDrawerMode() {
-        return window.innerWidth < MENU_DRAWER_BREAKPOINT;
+        return MENU_DRAWER_ONLY || (window.innerWidth < MENU_DRAWER_BREAKPOINT);
     }
 
     function isMenuDrawerOpen() {
@@ -978,6 +987,7 @@ $(document).ready(function () {
         var label;
 
         paintMenuInert();
+        paintMenuDrawerToggles();
 
         if (!toggle) {
             return;
@@ -999,6 +1009,31 @@ $(document).ready(function () {
             toggle.setAttribute('aria-label', label);
             toggle.setAttribute('title', label + ' (Ctrl+D)');
         }
+    }
+
+    // A screen's own drawer openers only ever open and shut the drawer.
+    function paintMenuDrawerToggles() {
+        var open = isMenuDrawerOpen();
+
+        $('[data-pg-menu-drawer-toggle]').each(function () {
+            var label = this.getAttribute(open ? 'data-label-hide' : 'data-label-show');
+
+            this.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+            if (label) {
+                this.setAttribute('aria-label', label);
+                this.setAttribute('title', label);
+            }
+        });
+    }
+
+    // The button to give the focus back to when the drawer shuts.
+    function menuDrawerToggle() {
+        if (menuDrawerOpener && document.body.contains(menuDrawerOpener)) {
+            return menuDrawerOpener;
+        }
+
+        return document.querySelector(MENU_TOGGLES);
     }
 
     // Draws a wide-screen state on the container, the menu and the button.
@@ -1050,11 +1085,19 @@ $(document).ready(function () {
             e.preventDefault();
 
             if (isMenuDrawerMode()) {
+                menuDrawerOpener = this;
                 toggleMenuDrawer();
                 return;
             }
 
             setMenuState(nextMenuState());
+        });
+
+        // A screen's own opener: the drawer, whatever the width.
+        $(document).on('click', '[data-pg-menu-drawer-toggle]', function (e) {
+            e.preventDefault();
+            menuDrawerOpener = this;
+            toggleMenuDrawer();
         });
     }
 
@@ -1069,6 +1112,12 @@ $(document).ready(function () {
         // the tree's own menu, whose Rename edits a row in the drawer).
         $('.software-content').on('click', function (e) {
             if (e.target && e.target.closest && e.target.closest('[data-pg-menu-hold]')) {
+                return;
+            }
+
+            // Nor a screen's own opener in the content, whose click toggles
+            // the drawer itself.
+            if (e.target && e.target.closest && e.target.closest('[data-pg-menu-drawer-toggle]')) {
                 return;
             }
 
@@ -1102,7 +1151,7 @@ $(document).ready(function () {
 
                 closeMenuDrawer();
 
-                var toggle = document.getElementById('menu_mode_toggle');
+                var toggle = menuDrawerToggle();
 
                 if (inMenu && toggle) {
                     toggle.focus();
@@ -1121,7 +1170,7 @@ $(document).ready(function () {
                 return;
             }
 
-            if (next.closest('.software-sidebar') || next.closest('[data-pg-menu-hold]') || (next.id === 'menu_mode_toggle')) {
+            if (next.closest('.software-sidebar') || next.closest('[data-pg-menu-hold]') || next.closest(MENU_TOGGLES)) {
                 return;
             }
 

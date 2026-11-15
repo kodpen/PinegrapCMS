@@ -1,21 +1,20 @@
 ---
 name: designer-left-panel-hide
-description: The Page Design Studio toolbar's menu button (#sd-left-toggle) that hides the whole left panel and its rail (sd-hide-left, pinegrap_designer_hide_left) and how it sits with docking.
+description: The Page Design Studio toolbar's menu button (#sd-left-toggle) opens and shuts the panel's main menu as the phone drawer at every width (#9712); the old left panel hide (sd-hide-left) is gone
+module: output
 ---
 
 ## What does the menu button do?
-- `#sd-left-toggle` (`bi-layout-sidebar`) is the first item of the designer toolbar (`.sd-toolbar-tabs`), outside `.sd-toolbar-pages`, so the component editor (`$sd_component`, page group hidden) and read-only mode keep it.
-- One press hides the left panel (`#sd-components`: Components / Shared / System tabs, palette, search, Overview tree) and the left rail together; the canvas takes the whole width. The next press brings the panel back.
-- Title and `aria-label` follow the state: "Hide the left panel" / "Show the left panel"; `aria-expanded` is `true` while shown. The command palette (Ctrl+Shift+P) has the same toggle (`act_left_panel`). No keyboard shortcut of its own.
-- Added in #8972, because the panel header's "|<" dock button only parks the panel on its 32px rail and never removes it.
+- `#sd-left-toggle` (`bi-layout-sidebar` shut, `bi-layout-sidebar-inset` open) is the first item of the designer toolbar (`.sd-toolbar-tabs`), outside `.sd-toolbar-pages`, so the component editor and read-only mode keep it.
+- It opens and shuts the panel's main menu, the drawer the phone shows, at every width: the menu slides in over the screen with the scrim and the designer keeps its whole width. Labels "Show menu" / "Hide menu", `aria-controls="menu"`, `aria-expanded` follows the drawer.
+- How the screen gets the drawer: `ui/main-menu-drawer-only.md`.
 
-## How is the hidden state kept?
-- One class on `.sd-body`: `sd-hide-left`. CSS `.sd-body.sd-hide-left > .sd-panel-left, > .sd-rail-left { display:none }` sits after the docking rules with equal specificity, so it wins without `!important`. No inline width or display is written.
-- `localStorage` key `pinegrap_designer_hide_left` (`'1'` / `'0'`), read and written in try/catch; applied at load by `_sdLeftHideInit()`, called at the end of `initPanelDocking()`.
+## Why did it change?
+- #8972 built it as "hide the designer's left panel" (Components / Shared / System, palette, Overview tree, with its rail). The owner's report #9712: the main menu could not be reached from Page Design Studio at any width (`hide_menu` printed no menu and no bar button); the button was meant to be the menu's.
 
-## How does it live with docking?
-- Docking state (`sd-dock-left`, `sd-dock-forced`, `pinegrap_designer_dock_left`) is untouched underneath; `_sdDockApply()` on resize keeps working while hidden.
-- Hiding closes the left drawer first (`_sdDockSetOpen('left', false)`).
-- Showing a docked panel (forced below `_SD_DOCK_BP` or chosen) also opens its drawer, so one press leaves the palette on screen at every width; `_sdDockSetOpen` closes the other drawer and, when forced, the bottom sheet: one layer at a time holds.
-- `_sdDockSetOpen('left', true)` while hidden shows the panel first (`_sdLeftSetHidden(false, true)`), so any opener of the left drawer brings the panel back.
-- The canvas frame's width label ("1400px · XXL") follows by the frame's own ResizeObserver; the selection's size badge is re-placed with `_positionSizeBadge()`.
+## What went with the old hide?
+- `sd-hide-left` on `.sd-body`, `_sdLeftSetHidden()`, `_sdLeftHideInit()`, the command palette's `act_left_panel` (Ctrl+Shift+P) and the rule in `style_designer.css` are gone, with the labels "Hide the left panel" / "Show the left panel" in code.
+- `pinegrap_designer_hide_left` is read no more: `_sdLeftHideForget()` (end of `initPanelDocking()`) removes it at load, so a panel hidden by it comes back.
+- The panel header's "|<" dock button stays the way to park the left panel on its 32px rail (docking: `sd-dock-left`, `pinegrap_designer_dock_left`).
+
+Tests: `tests/menu_drawer_screen_test.php`.
