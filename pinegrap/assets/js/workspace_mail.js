@@ -55,7 +55,8 @@
         var body = h.clear(node.querySelector('.drawer-body'));
         var footer = h.clear(node.querySelector('.drawer-footer'));
         var others = data.others || [];
-        var files = [];
+        // Files the browser still holds for a mail taken back with Undo.
+        var files = (kept && kept.uploads) ? kept.uploads.slice() : [];
         var form = el('form', 'ws-mail-answer');
         var everyone = null;
 
@@ -184,6 +185,9 @@
 
             if (later.value()) {
                 post.send_later = later.value();
+            } else {
+                // Undo send: the mail waits a few seconds (mail_later.php).
+                post.undo = 1;
             }
 
             if (kept) {
@@ -202,10 +206,21 @@
                 post.send_anyway = 1;
             }
 
+            var sentFiles = { library: library.slice(), uploads: files.slice() };
+
             formPost(h, 'ws_mail_reply', post, files).then(function (result) {
                 h.hideOffcanvas(node);
-                h.toast(result.state === 'failed' ? t('mail_new_failed') : (result.state === 'later' ? t('mail_later_set') : t('mail_new_sent')), result.state === 'failed' ? 'warning' : 'success');
                 view.sync();
+
+                if (result.undo) {
+                    undoLine(h, result, function (back) {
+                        view.sync();
+                        replyForm({ mail_reply: back.conversation_id }, view, h, undoDraft(back, sentFiles.library, sentFiles.uploads));
+                    });
+                    return;
+                }
+
+                h.toast(result.state === 'failed' ? t('mail_new_failed') : (result.state === 'later' ? t('mail_later_set') : t('mail_new_sent')), result.state === 'failed' ? 'warning' : 'success');
             }).catch(function (error) {
                 send.disabled = false;
 
@@ -2211,6 +2226,61 @@
         return library.map(function (file) { return file.id; }).join(',');
     }
 
+    // Undo send (mail_later.php): a mail the panel sent waits data.undo
+    // seconds under a notice with "Undo"; after the wait the browser asks
+    // for it to leave, and the general job sends it if the page was closed.
+    // Undo turns it back into its draft, which reopen(draft) opens.
+    function undoLine(h, data, reopen) {
+        var t = h.t;
+        var done = false;
+        var line = null;
+        var timer = window.setTimeout(function () {
+            done = true;
+
+            if (line && line.hide) {
+                line.hide();
+            }
+
+            h.api('ws_mail_later_send', { item_id: data.item_id }).then(function (result) {
+                h.toast(result.state === 'failed' ? t('mail_new_failed') : t('mail_new_sent'), result.state === 'failed' ? 'warning' : 'success');
+            }).catch(function () {
+                // The job took it first: it is on its way already.
+                h.toast(t('mail_new_sent'), 'success');
+            });
+        }, data.undo * 1000);
+
+        line = h.toast(t('mail_undo_wait'), 'dark', {
+            label: t('mail_undo'),
+            delay: data.undo * 1000,
+            onClick: function () {
+                if (done) {
+                    return;
+                }
+
+                done = true;
+                window.clearTimeout(timer);
+
+                h.api('ws_mail_undo_send', { item_id: data.item_id }).then(function (result) {
+                    h.toast(t('mail_undo_done'), 'success');
+                    reopen(result.draft);
+                }).catch(function (error) {
+                    h.fail(error);
+                });
+            }
+        });
+    }
+
+    // The draft a mail taken back became, with the files the form had:
+    // the Files ones by id, the computer's ones as the browser holds them.
+    function undoDraft(draft, library, uploads) {
+        draft.files = (draft.files || []).concat(library.map(function (file) {
+            return { id: file.id, name: file.name };
+        }));
+        draft.uploads = uploads;
+
+        return draft;
+    }
+
     // Save draft, beside Send in a form opened from a draft kept on the
     // server: the form's fields written back to it, so a change is never
     // lost by closing the form (mail_drafts_screen.php).
@@ -2276,7 +2346,8 @@
         // A forward keeps its unsent form apart, and only for its source.
         var key = newDraftKey(h.cfg.api_url, h.cfg.me) + (fill ? '|fwd' : '');
         var kept = server ? null : newDraftRead(key);
-        var files = [];
+        // Files the browser still holds for a mail taken back with Undo.
+        var files = (server && server.uploads) ? server.uploads.slice() : [];
         // The source's files the forward carries; each can be taken out.
         var carried = fill ? fill.files.slice() : [];
         var timer = 0;
@@ -2561,6 +2632,9 @@
 
             if (later.value()) {
                 post.send_later = later.value();
+            } else {
+                // Undo send: the mail waits a few seconds (mail_later.php).
+                post.undo = 1;
             }
 
             if (fill) {
@@ -2573,12 +2647,22 @@
                 post.file_ids = library.map(function (file) { return file.id; }).join(',');
             }
 
+            // A forward's carried files are Files ids, as the library's are.
+            var sentFiles = { library: carried.concat(library), uploads: files.slice() };
+
             formPost(h, 'ws_mail_new', post, files).then(function (data) {
                 window.clearTimeout(timer);
                 newDraftStore(key, null);
                 send.disabled = false;
                 h.hideOffcanvas(node);
-                h.toast(data.state === 'failed' ? t('mail_new_failed') : (data.state === 'later' ? t('mail_later_set') : t('mail_new_sent')), data.state === 'failed' ? 'warning' : 'success');
+
+                if (data.undo) {
+                    undoLine(h, data, function (back) {
+                        compose(h, { draft: undoDraft(back, sentFiles.library, sentFiles.uploads), channel: back.channel_id, sent: options.sent });
+                    });
+                } else {
+                    h.toast(data.state === 'failed' ? t('mail_new_failed') : (data.state === 'later' ? t('mail_later_set') : t('mail_new_sent')), data.state === 'failed' ? 'warning' : 'success');
+                }
 
                 if (options.sent) {
                     options.sent(data);
