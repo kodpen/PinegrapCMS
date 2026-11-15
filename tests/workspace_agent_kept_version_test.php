@@ -77,10 +77,11 @@ function test_workspace_agent_kept_version_guards()
 	pg_assert_contains('ws_agent_requests_freeze(', $clear);
 	pg_assert_true(strpos($clear, 'ws_agent_requests_freeze(') > strpos($clear, 'era_floor'), 'after the floor moved');
 
-	$freeze = workspace_agent_kept_version_test_source('ws_agent_requests_freeze');
+	$freeze = workspace_agent_kept_version_test_source('ws_agent_requests_freeze') . workspace_agent_kept_version_test_source('ws_agent_request_freeze');
 
 	pg_assert_contains("status = 'cancelled'", $freeze);
 	pg_assert_contains("'queued', 'sent', 'running'", $freeze);
+	pg_assert_contains('ws_agent_request_cleared_reason()', $freeze);
 	pg_assert_true(strpos($freeze, 'ws_agent_react(') === false && strpos($freeze, 'ws_message_touch(') === false, 'the kept message is not touched');
 
 	foreach (array('ws_api_agent_request_claim', 'ws_api_agent_request_answer') as $function) {
@@ -103,7 +104,7 @@ function test_workspace_agent_kept_version_guards()
 
 	pg_assert_contains('ws_message_kept(', workspace_agent_kept_version_test_source('ws_agent_react'));
 	pg_assert_contains('ws_message_in_past(', workspace_agent_kept_version_test_source('ws_reaction_check'));
-	pg_assert_contains('ws_agent_request_message_refusal(', workspace_agent_kept_version_test_source('ws_agent_activity_retry'));
-	pg_assert_contains('ws_agent_request_message_refusal(', workspace_agent_kept_version_test_source('ws_agent_activity_block'));
-	pg_assert_contains('ws_agent_request_message_refusal(', workspace_agent_kept_version_test_source('ws_agent_activity_post'));
+	pg_assert_contains('ws_agent_request_message_check(', workspace_agent_kept_version_test_source('ws_agent_activity_retry'));
+	pg_assert_contains('ws_agent_request_message_check(', workspace_agent_kept_version_test_source('ws_agent_activity_block'));
+	pg_assert_contains('ws_agent_request_message_refusal(', workspace_agent_kept_version_test_source('ws_agent_request_message_check'));
 }

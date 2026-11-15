@@ -88,6 +88,93 @@ function ws_message_in_past($message)
 }
 
 /**
+ * Is the message with this id in an earlier version of its channel's
+ * conversation? False for a message that is gone.
+ *
+ * @param int $message_id
+ * @return bool
+ */
+function ws_message_kept($message_id)
+{
+    return ((int) $message_id > 0) && ws_eras_ready() && ws_message_in_past(ws_message((int) $message_id));
+}
+
+/**
+ * Is an agent request's asking message in an earlier version of its
+ * conversation? Such a request cannot be answered and leaves no mark.
+ *
+ * @param array $row ws_ai_requests: message_id
+ * @return bool
+ */
+function ws_agent_request_in_past($row)
+{
+    return ws_message_kept((int) ($row['message_id'] ?? 0));
+}
+
+/**
+ * Why a request is closed when its conversation is cleared, kept as its
+ * error and drawn under it.
+ *
+ * @return string
+ */
+function ws_agent_request_cleared_reason()
+{
+    return lang('The conversation was cleared, so the request was cancelled.');
+}
+
+/**
+ * Cancels one open agent request whose message went into an earlier version
+ * of the conversation. The message is kept as it was: no mark is taken off
+ * and it is not touched. A flow's agent box waiting on it goes on.
+ *
+ * @param int $request_id
+ * @return bool whether it was open and is now cancelled
+ */
+function ws_agent_request_freeze($request_id)
+{
+    db("UPDATE ws_ai_requests SET status = 'cancelled', error = '" . e(mb_substr(ws_agent_request_cleared_reason(), 0, 250)) . "', ai_state = NULL, answered_at = '" . time() . "'
+        WHERE id = '" . (int) $request_id . "' AND status IN ('queued', 'sent', 'running')");
+
+    if ((int) mysqli_affected_rows(db::$con) <= 0) {
+        return false;
+    }
+
+    if (function_exists('ws_step_agent_request_closed')) {
+        ws_step_agent_request_closed((int) $request_id);
+    }
+
+    return true;
+}
+
+/**
+ * Cancels the channel's open agent requests (Claude, Pinegrap AI, a model
+ * assistant, an application or MCP agent) asked by a message that a clear
+ * has just put into an earlier version: no agent is left with a request it
+ * could not answer, nor leaves its marks on the kept message.
+ *
+ * @param int $channel_id
+ * @param int $last_id the new floor
+ * @return int how many were cancelled
+ */
+function ws_agent_requests_freeze($channel_id, $last_id)
+{
+    if (!function_exists('ws_ai_schema_ready') || !ws_ai_schema_ready()) {
+        return 0;
+    }
+
+    $ids = (array) db_values("SELECT id FROM ws_ai_requests
+        WHERE channel_id = '" . (int) $channel_id . "' AND message_id > 0 AND message_id <= '" . (int) $last_id . "'
+            AND status IN ('queued', 'sent', 'running')");
+    $count = 0;
+
+    foreach ($ids as $id) {
+        $count += ws_agent_request_freeze((int) $id) ? 1 : 0;
+    }
+
+    return $count;
+}
+
+/**
  * May this person clear the channel's conversation? Staff inside it, as for
  * making it public or private (ws_can_change_channel_kind()).
  *
@@ -298,6 +385,9 @@ function ws_channel_clear($viewer, $channel, $title = '')
 
     db("UPDATE ws_channels SET era_floor = '" . $last_id . "' WHERE id = '" . $channel_id . "'");
     ws_channel_floor_forget();
+
+    // What waited for an agent there cannot be answered any more.
+    ws_agent_requests_freeze($channel_id, $last_id);
 
     // What stayed unread is in the version before now: nobody is counted
     // unread for lines they can no longer see in front of them.

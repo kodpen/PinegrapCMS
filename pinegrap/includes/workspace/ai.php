@@ -1067,6 +1067,11 @@ function ws_ai_react($message_id, $emoji, $on)
         return;
     }
 
+    // An earlier version of a cleared conversation is kept as it was.
+    if (function_exists('ws_message_kept') && ws_message_kept((int) $message_id)) {
+        return;
+    }
+
     $app_id = (int) ws_ai_config()['app_id'];
 
     if (($app_id <= 0) || !ws_interact_ready()) {
