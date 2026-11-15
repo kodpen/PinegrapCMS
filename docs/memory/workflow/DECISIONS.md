@@ -340,6 +340,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-20.md: Where are the rules and the earlier parts?
 - decisions-made-schema-20.md: Where is a later mail's time kept? (owner, 2026-11-14, agent channel poll 3416)
 - decisions-made-schema-20.md: Which columns and tables do repeating plans and roadmap templates get? (owner, 2026-11-14, agent channel poll 3429)
+- decisions-made-schema-20.md: Which columns does the widened poll get? (owner, 2026-11-14, agent channel poll 3459)
+- decisions-made-schema-21.md: Where are the rules and the earlier parts?
+- decisions-made-schema-21.md: Which schema do remind later, remind when no answer and "I am away" get? (owner, 2026-11-15, in the architect's window)
+- decisions-made-schema-21.md: Where are an approval request's agent approvers kept? (owner, 2026-11-15, in the architect's window)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -476,6 +480,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-30.md: Can an approval request ask a channel's agents and assistants? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-30.md: Is there a mention of everyone in a room? (owner, 2026-11-14, in the architect's window)
 - decisions-made-workspace-30.md: Which calendar are a person's plans written to, and what becomes of an orphan template? (architect on the owner's word, 2026-11-14, agent channel message 3434)
+- decisions-made-workspace-31.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-31.md: How was the profiles' conversion shown to the owner before it landed? (owner, 2026-11-14, agent channel poll 3466)
+- decisions-made-workspace-31.md: Do e-mail campaign profiles turn into flows at the update? (owner, 2026-11-15, agent channel poll 3525)
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
@@ -741,6 +748,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/merger-wake.md: How the merging session keeps waking: a send_later chain, 3 minutes with more than 3 ready PRs and 15 minutes otherwise (2026-11-09), an hourly routine that re-arms it; GitHub events are not relied on
 - workflow/owner-contact-channel.md: Where sessions reach the owner (2026-11-13): no coordinator writes to him in its chat window or waits there; problems to PR MERGE in the agent channel; visuals posted there, his answer there
 - workflow/owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (memory; vendor Bootstrap skills aside), language, the mobile app, who edits which notes
+- workflow/pr-text-generated-footer.md: A cloud session's GitHub path appends a generated-by footer to a PR text on every write; the session cannot remove it, the label is not held for it, a local path strips it
 - workflow/sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout
 - workflow/user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog
 - workspace/agent-canvas-chart.md: The chart canvas operation (canvas_chart.php): kinds, data, boards, how the server draws it by the guide, the channel's colour for one series, the refusals, create and draw_canvas
