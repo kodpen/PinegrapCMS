@@ -3821,6 +3821,19 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   color: var(--pg-fg-body);
   font-weight: 500;
 }
+/* The trail's last part gives way first and ends with an ellipsis rather
+   than being cut mid-letter at the bar's edge; the parts before it keep
+   their width (and scroll, on a trail too deep for the bar). */
+.pg-breadcrumb .breadcrumb-item {
+  flex: none;
+}
+.pg-breadcrumb .breadcrumb-item:last-child {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 /* The trail is the only thing allowed to shrink; the back control keeps its
    footprint so it never collapses on a deep crumb list. */
 .pg-breadcrumb > nav {
@@ -27680,17 +27693,24 @@ body.pg-measure-report #content {
 }
 .pg-report-head > .pg-toolbar-grow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
 }
+/* The name wraps, never cut: it is the report's only name on the screen. */
 .pg-report-head .pg-title-screen {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 .pg-report-head .pg-pill {
   flex: none;
+}
+/* A phone: the pill goes under the name. */
+@media (max-width: 575.98px) {
+  .pg-report-head > .pg-toolbar-grow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* Ready reports and the period: a label in the third text colour beside a
@@ -27711,10 +27731,23 @@ body.pg-measure-report #content {
   color: var(--pg-fg-3);
   white-space: nowrap;
 }
+/* A segmented control wider than its row stays one row that scrolls
+   sideways; it never wraps into a box of rows. */
 .pg-report-strip .pg-seg,
 .pg-report-tools .pg-seg {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pg-report-strip .pg-seg::-webkit-scrollbar,
+.pg-report-tools .pg-seg::-webkit-scrollbar {
+  display: none;
+}
+.pg-report-strip .pg-seg-item,
+.pg-report-tools .pg-seg-item {
+  flex: none;
+  white-space: nowrap;
 }
 .pg-report-step {
   padding: 0 7px;
@@ -27831,6 +27864,10 @@ body.pg-measure-report #content {
   }
   .pg-report-fig-value > small {
     font-size: 13px;
+  }
+  /* An odd last card takes the whole row. */
+  .pg-report-fig:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
 
@@ -28186,6 +28223,49 @@ body.pg-measure-report #content {
 .pg-report-table > tbody:last-child > tr:last-child > *,
 .pg-report-table > tfoot > tr:last-child > * {
   border-bottom: 0;
+}
+/* A phone: the first column (a row's name, after its level's indent)
+   stays in place while the figures scroll under it, at most half the
+   width, its words wrapping; the cell is drawn opaque, its row's tint
+   laid over the card's fill. */
+@media (max-width: 575.98px) {
+  .pg-report-frame .pg-report-table > * > tr > :first-child,
+  .pg-report-frame .pg-report-table th[scope="row"] {
+    --pg-report-sticky-tint: transparent;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    width: auto;
+    min-width: min(9rem, 40vw);
+    max-width: 50vw;
+    background-color: var(--pg-surface-1);
+    background-image: linear-gradient(var(--pg-report-sticky-tint), var(--pg-report-sticky-tint));
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  .pg-report-frame .pg-report-table tr.pg-report-l2 > th[scope="row"] {
+    left: 26px;
+  }
+  .pg-report-frame .pg-report-table tr.pg-report-l3 > th[scope="row"] {
+    left: 52px;
+  }
+  .pg-report-frame .pg-report-table tr.pg-report-l3 > td:nth-child(2) {
+    position: sticky;
+    left: 26px;
+    z-index: 1;
+    background-color: var(--pg-surface-1);
+  }
+  .pg-report-frame .pg-report-table > thead > tr > :first-child,
+  .pg-report-frame .pg-report-table tr.pg-report-l1 > :first-child {
+    --pg-report-sticky-tint: var(--pg-surface-inset);
+  }
+  .pg-report-frame .pg-report-table tr.pg-report-total > :first-child {
+    --pg-report-sticky-tint: color-mix(in srgb, var(--pg-accent) 6%, transparent);
+  }
+  .pg-report-frame .pg-report-table > tbody > tr:hover > :first-child,
+  .pg-report-frame .pg-report-table > tbody > tr:hover > th[scope="row"] {
+    --pg-report-sticky-tint: var(--pg-hover);
+  }
 }
 
 /* The report settings: a 430 px drawer floating off the right edge with
