@@ -114,6 +114,22 @@ function ws_agent_request_api_routes()
             ),
         ),
         array(
+            'id'          => 'workspace.agent_requests.progress',
+            'method'      => 'POST',
+            'path'        => '/workspace/agent-requests/{id}/progress',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_agent_request_progress',
+            'mcp'         => false,
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceClaudeRequest',
+            'summary'     => 'Say where the work on a request is',
+            'description' => 'While the agent holds a request (after its claim, before its answer or fail), one short line on where it is ("reading the plans", "waiting for CI, back by 22:30"). The line under the message that asked shows it after "is working on it", with the time of the claim; the answer takes its place, and closing the request clears it. A new note replaces the last. Writes no message, wakes nobody, adds no inbox line. 409 not_claimed before the claim, 409 closed once the request is closed, 429 rate_limited for a second note inside ' . WS_AGENT_PROGRESS_GAP . ' seconds (Retry-After says when), 422 for an empty note or one over ' . WS_AGENT_PROGRESS_MAX . ' characters.' . $only,
+            'params'      => array(
+                $id,
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_PROGRESS_MAX, 'required' => true, 'description' => 'Where the work is, in one short line.'),
+            ),
+        ),
+        array(
             'id'          => 'workspace.agent_requests.brief',
             'method'      => 'GET',
             'path'        => '/workspace/agent-requests/{id}/brief',
@@ -585,6 +601,9 @@ function ws_api_agent_request_answer($params)
             answered_at = '" . $now . "', claimed_at = IF(claimed_at = 0, '" . $now . "', claimed_at), error = ''
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
 
+    // The answer takes the progress note's place.
+    ws_agent_progress_clear((int) $row['id']);
+
     // The eye becomes a tick only with a reply; closed without text, the
     // eye stays: the agent saw it.
     if ($reply_id > 0) {
@@ -647,6 +666,8 @@ function ws_api_agent_request_fail($params)
     db("UPDATE ws_ai_requests SET status = 'failed', error = '" . e($reason) . "', reply_message_id = '" . $reply_id . "', answered_at = '" . time() . "'
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
 
+    ws_agent_progress_clear((int) $row['id']);
+
     if (!$kept) {
         ws_agent_react((int) $agent['app_id'], (int) $row['message_id'], '👀', false);
     }
@@ -656,4 +677,45 @@ function ws_api_agent_request_fail($params)
     }
 
     api_ok(ws_api_claude_request_present($viewer, ws_api_agent_request_or_404($agent, $row['id'])));
+}
+
+/**
+ * The holding agent's progress note: kept in the request's ai_state, shown
+ * on the line under the asking message. No message, wake or inbox line.
+ */
+function ws_api_agent_request_progress($params)
+{
+    $agent = ws_api_agent_caller();
+    $viewer = ws_api_viewer();
+    $row = ws_api_agent_request_or_404($agent, $params['id']);
+    $now = time();
+
+    // Written only over the state it was checked against, so two notes sent
+    // at once cannot both pass the brake; the loser is checked again.
+    for ($try = 0; $try < 2; $try++) {
+        $check = ws_agent_progress_check($row, $params['text'] ?? '', $now);
+
+        if (!$check['ok']) {
+            if ($check['status'] === 429) {
+                api_extra_headers('Retry-After', (string) max(1, (int) $check['retry_after']));
+            }
+
+            api_fail($check['status'], $check['code'], $check['error'], $check['field']);
+        }
+
+        api_dry_run_stop('noted', 'workspace_agent_request', array('id' => (int) $row['id'], 'text' => $check['text']));
+
+        $before = ($row['ai_state'] === null) ? 'ai_state IS NULL' : "ai_state = '" . e((string) $row['ai_state']) . "'";
+
+        db("UPDATE ws_ai_requests SET ai_state = '" . e(ws_agent_progress_state($row['ai_state'], $check['text'], $now)) . "'
+            WHERE id = '" . (int) $row['id'] . "' AND status = 'running' AND " . $before);
+
+        if (mysqli_affected_rows(db::$con) > 0) {
+            api_ok(ws_api_claude_request_present($viewer, ws_api_agent_request_or_404($agent, $row['id'])));
+        }
+
+        $row = ws_api_agent_request_or_404($agent, $row['id']);
+    }
+
+    api_fail(409, 'already_claimed', lang('Another run is working on this request.'));
 }

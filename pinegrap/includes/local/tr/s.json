@@ -5962,6 +5962,7 @@
     "signed out all devices of user ({var:1})": "({var:1}) kullanıcısının tüm cihaz oturumları kapatıldı",
     "signed out one device of user ({var:1})": "({var:1}) kullanıcısının bir cihazının oturumu kapatıldı",
     "since": "başlangıç",
+    "since {var:1}": "başlangıç {var:1}",
     "single rate": "tek oran",
     "single-use or per-customer aliases of this code": "bu kodun tek kullanımlık ya da kişiye özel takma adları",
     "site icon, favicon, app icon, installed application, home screen": "site simgesi, favicon, uygulama simgesi, yüklü uygulama, ana ekran, site icon, app icon, installed application, home screen",

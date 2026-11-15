@@ -723,6 +723,7 @@
     "One point of contact": "Tek muhatap",
     "One point on each line.": "Her satıra bir madde.",
     "One producer": "Tek yapımcı",
+    "One progress note in {var:1} seconds at most. Try again in {var:2} seconds.": "{var:1} saniyede en çok bir ilerleme notu yazılabilir. {var:2} saniye sonra yeniden dene.",
     "One project manager": "Tek proje müdürü",
     "One project manager for the whole hire": "Tüm işe alım için tek proje yöneticisi",
     "One project manager from the site visit to the keys": "Keşiften anahtar teslimine tek bir proje müdürü",

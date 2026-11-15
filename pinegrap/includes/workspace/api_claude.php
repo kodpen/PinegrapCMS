@@ -386,6 +386,7 @@ function ws_api_claude_request_present($viewer, $row)
     }
 
     $wake = function_exists('ws_agent_wake_of') ? ws_agent_wake_of($row) : null;
+    $progress = (((string) $row['status'] === 'running') && function_exists('ws_agent_progress_of')) ? ws_agent_progress_of($row) : null;
     $kind = '';
 
     if ($channel) {
@@ -438,6 +439,12 @@ function ws_api_claude_request_present($viewer, $row)
         'error'            => (string) $row['error'],
         'created_at'       => api_time($row['created_at']),
         'claimed_at'       => ((int) $row['claimed_at'] > 0) ? api_time($row['claimed_at']) : null,
+        // An agent's last progress note while it holds the request
+        // (agent_shown.php); empty for any other request.
+        'progress'         => array(
+            'text' => $progress ? $progress['text'] : '',
+            'at'   => ($progress && ($progress['at'] > 0)) ? api_time($progress['at']) : null,
+        ),
     );
 }
 
@@ -481,6 +488,7 @@ function ws_api_claude_request_schema()
         'error'            => 'string',
         'created_at'       => 'string',
         'claimed_at'       => 'string?',
+        'progress'         => array('text' => 'string', 'at' => 'string?'),
     );
 }
 
