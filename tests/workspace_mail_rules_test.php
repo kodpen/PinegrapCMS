@@ -45,6 +45,7 @@ function test_workspace_mail_rules_clean_keeps_only_whole_rules()
 	pg_assert_same(null, ws_mail_rule_clean(array('id' => 'ab12cd34', 'field' => 'body', 'value' => 'x', 'action' => 'close')), 'an unknown field');
 	pg_assert_same(null, ws_mail_rule_clean(array('id' => 'ab12cd34', 'field' => 'address', 'value' => 'not an address', 'action' => 'close')), 'not an address');
 	pg_assert_same(null, ws_mail_rule_clean(array('id' => 'ab12cd34', 'field' => 'subject', 'value' => str_repeat('x', WS_MAIL_RULE_WORDS_MAX + 1), 'action' => 'close')), 'words too long');
+	pg_assert_same('iade talebi', ws_mail_rule_value('subject', '  İADE   Talebi '), 'a capital İ folds to a plain i');
 	pg_assert_same(null, ws_mail_rule_clean('x'), 'not an array');
 }
 
@@ -94,6 +95,7 @@ function test_workspace_mail_rules_match_the_first_that_fits()
 	pg_assert_same('00000001', ws_mail_rule_match($rules, 'ali@shop.test', 'Your  INVOICE is ready')['id'], 'words anywhere, any capitals');
 	pg_assert_same(null, ws_mail_rule_match($rules, 'ali@othershop.test', 'Hello'), 'a look-alike domain does not fit');
 	pg_assert_same(null, ws_mail_rule_match($rules, '', 'Hello'), 'no sender, no address or domain rule');
+	pg_assert_same('00000004', ws_mail_rule_match(array(array('id' => '00000004', 'field' => 'subject', 'value' => ws_mail_rule_value('subject', 'İade Talebi'), 'action' => 'close', 'user_id' => 0)), 'a@b.test', 'Yeni iade talebi')['id'], 'a capital İ matches a small i');
 	pg_assert_same(null, ws_mail_rule_match(array(), 'a@b.test', 'invoice'), 'no rules');
 }
 
@@ -132,6 +134,8 @@ function test_workspace_mail_rules_card_html()
 	pg_assert_contains('&quot;&lt;b&gt;sale&lt;/b&gt;&quot;', $html, 'words escaped');
 	pg_assert_contains('name="ws_mail_rule_delete" value="3:ab12cd34" form="pg_settings_page_form"', $html, 'Delete submits the pane form');
 	pg_assert_contains('name="ws_mail_rule_add" value="1" form="pg_settings_page_form"', $html, 'Add rule submits the pane form');
+	pg_assert_contains('name="ws_mail_rule_value"', $html, 'flat field names: the settings screen refuses a list');
+	pg_assert_true(strpos($html, 'name="ws_mail_rule[') === false, 'no field posted as a list');
 	pg_assert_contains('<option value="assign:4">Give it to Ayşe &lt;A&gt;</option>', $html, 'one choice per person');
 	pg_assert_contains('<option value="close">Close it</option>', $html, 'close');
 	pg_assert_contains('<option value="3">Support</option>', $html, 'the box to choose');

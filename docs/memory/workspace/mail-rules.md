@@ -4,7 +4,7 @@ description: A support box's incoming mail rules (IB11): one condition and one a
 ---
 
 ## What is a rule?
-- One condition: the sender's address (whole), the sender's domain (with its subdomains, as `ws_mail_block_domains()`), or words anywhere in the subject (any capitals, spaces tidied, at most `WS_MAIL_RULE_WORDS_MAX` 100 characters). One action: give the conversation to a person, or close it. Conversations carry no labels, so there is no label action.
+- One condition: the sender's address (whole), the sender's domain (with its subdomains, as `ws_mail_block_domains()`), or words anywhere in the subject (folded by `ws_mail_rule_fold()`: small letters, spaces tidied, the U+0307 dot a capital İ leaves taken off so "İade" equals "iade"; at most `WS_MAIL_RULE_WORDS_MAX` 100 characters). One action: give the conversation to a person, or close it. Conversations carry no labels, so there is no label action.
 - Kept in `ws_mail_boxes.settings` JSON as `rules`, like the routes: a list of `id` (8 hex characters), `field` (address | domain | subject), `value`, `action` (assign | close), `user_id`; at most `WS_MAIL_RULES_MAX` (20) a box. No column; `ws_mail_rules()` reads and cleans them (`ws_mail_rule_clean()`).
 - The box drawer's save starts from the stored settings, so it keeps `rules`; `ws_mail_rules_write()` reads the settings again before writing.
 
@@ -18,7 +18,7 @@ description: A support box's incoming mail rules (IB11): one condition and one a
 
 ## Where are they set?
 - "Incoming mail rules" on the Mailboxes card (Site Settings › Mailboxes), under "Blocked senders" (`ws_mail_rules_html()`): each rule as a line ("When the sender is at @shop.test → give it to Ayşe", `ws_mail_rule_text()`) with its box and Delete, then the Add rule form: Mailbox (support boxes), When, Address, domain or words, Then (Close it, or Give it to each team member). Drawn only when a support box exists.
-- The buttons submit the pane's form; `mailboxes.save.php` calls `ws_mail_rule_add()` (`ws_mail_rule_input()` checks) and `ws_mail_rule_delete()` (value `<box id>:<rule id>`). Both need the Workspace settings right, as Allow again does. A second rule with the same condition in one box is refused.
+- The fields are flat (`ws_mail_rule_box`, `_field`, `_value`, `_action`): the settings screen refuses a value posted as a list. The buttons submit the pane's form; `mailboxes.save.php` calls `ws_mail_rule_add()` (`ws_mail_rule_input()` checks) and `ws_mail_rule_delete()` (value `<box id>:<rule id>`). Both need the Workspace settings right, as Allow again does. A second rule with the same condition in one box is refused.
 - Each change is a Site Log line (`ws_mail_rule_log_line()`). No API route or MCP tool.
 
 ## Tests?

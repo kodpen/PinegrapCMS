@@ -8,7 +8,7 @@
  * save: a mailbox's Test connection (ws_mail_test), .eml file
  * (ws_mail_eml, posted with ws_mail_eml_file by a form of its own), a
  * blocked sender's Allow again (ws_mail_allow, value the block's id), or an
- * incoming mail rule's Add rule (ws_mail_rule_add, the fields ws_mail_rule[...])
+ * incoming mail rule's Add rule (ws_mail_rule_add, the fields ws_mail_rule_*)
  * and Delete (ws_mail_rule_delete, value "<box id>:<rule id>").
  *
  * Runs in the scope of includes/settings/screen.php or of
@@ -96,8 +96,15 @@ if (($ws_value !== null) && is_scalar($ws_value) && function_exists('ws_mail_blo
 
 // Add rule and Delete on the card's incoming mail rules (mail_rules.php).
 if ((post_value('ws_mail_rule_add') !== null) && function_exists('ws_mail_rule_add')) {
-    $ws_rule = post_value('ws_mail_rule');
-    $ws_added = ws_mail_rule_add($ws_viewer, is_array($ws_rule) ? $ws_rule : array(), (string) ($_SESSION['sessionusername'] ?? ''));
+    // Flat fields: the settings screen refuses a value posted as a list.
+    $ws_rule = array();
+
+    foreach (array('box_id' => 'ws_mail_rule_box', 'field' => 'ws_mail_rule_field', 'value' => 'ws_mail_rule_value', 'action' => 'ws_mail_rule_action') as $ws_key => $ws_name) {
+        $ws_posted = post_value($ws_name);
+        $ws_rule[$ws_key] = is_scalar($ws_posted) ? (string) $ws_posted : '';
+    }
+
+    $ws_added = ws_mail_rule_add($ws_viewer, $ws_rule, (string) ($_SESSION['sessionusername'] ?? ''));
 
     if ($ws_added['ok']) {
         $liveform->add_notice(lang('The rule was added.'));

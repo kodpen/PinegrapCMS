@@ -89,12 +89,27 @@ function ws_mail_rule_value($field, $value)
     }
 
     if ($field === 'subject') {
-        $value = mb_strtolower((string) preg_replace('/\s+/u', ' ', $value));
+        $value = ws_mail_rule_fold($value);
 
         return (($value !== '') && (mb_strlen($value) <= WS_MAIL_RULE_WORDS_MAX)) ? $value : '';
     }
 
     return '';
+}
+
+/**
+ * Words made comparable: small letters, spaces tidied, and the dot a
+ * capital İ leaves on its small i (U+0307) taken off, so "İade" and "iade"
+ * are the same words. Pure.
+ *
+ * @param string $text
+ * @return string
+ */
+function ws_mail_rule_fold($text)
+{
+    $text = mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', $text)), 'UTF-8');
+
+    return str_replace("\u{0307}", '', $text);
 }
 
 /**
@@ -185,7 +200,7 @@ function ws_mail_rule_match($rules, $from_email, $subject)
 {
     $address = ws_mail_block_value($from_email, 'address');
     $domains = ($address !== '') ? ws_mail_block_domains($address) : array();
-    $subject = mb_strtolower((string) preg_replace('/\s+/u', ' ', (string) $subject));
+    $subject = ws_mail_rule_fold((string) $subject);
 
     foreach ((array) $rules as $rule) {
         $value = (string) ($rule['value'] ?? '');
@@ -221,9 +236,11 @@ function ws_mail_rule_text($rule, $person)
         'domain'  => lang(array('string' => 'When the sender is at {var:1}', 'vars' => '@' . $value)),
         'subject' => lang(array('string' => 'When the subject has "{var:1}"', 'vars' => $value)),
     );
-    $then = ((string) $rule['action'] === 'close')
-        ? lang('close it')
-        : lang(array('string' => 'give it to {var:1}', 'vars' => ($person !== '') ? $person : lang('somebody who left the team')));
+    if ((string) $rule['action'] === 'close') {
+        $then = lang('close it');
+    } else {
+        $then = ($person !== '') ? lang(array('string' => 'give it to {var:1}', 'vars' => $person)) : lang('give it to somebody who left the team');
+    }
 
     return ($when[(string) $rule['field']] ?? '') . ' → ' . $then;
 }
@@ -476,14 +493,14 @@ function ws_mail_rules_html($boxes, $people, $form)
 
         $f = ' form="' . h($form) . '"';
         $add = '<div class="ws-mail-rule-add mt-5">'
-            . '<div><label class="pg-field-label" for="ws-mail-rule-box">' . h(lang('Mailbox')) . '</label><select class="pg-input" id="ws-mail-rule-box" name="ws_mail_rule[box_id]"' . $f . '>' . $choices . '</select></div>'
-            . '<div><label class="pg-field-label" for="ws-mail-rule-field">' . h(lang('When')) . '</label><select class="pg-input" id="ws-mail-rule-field" name="ws_mail_rule[field]"' . $f . '>'
+            . '<div><label class="pg-field-label" for="ws-mail-rule-box">' . h(lang('Mailbox')) . '</label><select class="pg-input" id="ws-mail-rule-box" name="ws_mail_rule_box"' . $f . '>' . $choices . '</select></div>'
+            . '<div><label class="pg-field-label" for="ws-mail-rule-field">' . h(lang('When')) . '</label><select class="pg-input" id="ws-mail-rule-field" name="ws_mail_rule_field"' . $f . '>'
                 . '<option value="address">' . h(lang('The sender is')) . '</option>'
                 . '<option value="domain">' . h(lang('The sender\'s domain is')) . '</option>'
                 . '<option value="subject">' . h(lang('The subject has')) . '</option></select></div>'
-            . '<div><label class="pg-field-label" for="ws-mail-rule-value">' . h(lang('Address, domain or words')) . '</label><input type="text" class="pg-input" id="ws-mail-rule-value" name="ws_mail_rule[value]" maxlength="255" autocomplete="off"' . $f . '></div>'
-            . '<div><label class="pg-field-label" for="ws-mail-rule-action">' . h(lang('Then')) . '</label><select class="pg-input" id="ws-mail-rule-action" name="ws_mail_rule[action]"' . $f . '>' . $does . '</select></div>'
-            . '<div class="ws-mail-rule-add-end"><button type="submit" name="ws_mail_rule_add" value="1"' . $f . ' class="pg-button pg-button-sm">' . h(lang('Add rule')) . '</button></div>'
+            . '<div><label class="pg-field-label" for="ws-mail-rule-value">' . h(lang('Address, domain or words')) . '</label><input type="text" class="pg-input" id="ws-mail-rule-value" name="ws_mail_rule_value" maxlength="255" autocomplete="off"' . $f . '></div>'
+            . '<div><label class="pg-field-label" for="ws-mail-rule-action">' . h(lang('Then')) . '</label><select class="pg-input" id="ws-mail-rule-action" name="ws_mail_rule_action"' . $f . '>' . $does . '</select></div>'
+            . '<div class="ws-mail-rule-add-end"><button type="submit" name="ws_mail_rule_add" value="1"' . $f . ' class="pg-button pg-button-quiet pg-button-sm">' . h(lang('Add rule')) . '</button></div>'
             . '</div>';
     }
 
