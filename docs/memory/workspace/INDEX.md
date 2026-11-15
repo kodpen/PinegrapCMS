@@ -29,7 +29,7 @@
 - agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869) [decision: decisions-made-schema-16.md, decisions-made-workspace-14.md]
 - agent-emoji.md: The one fitting emoji an agent leaves on the message that asked it (#8932): the brief, the answer route's emoji, a model assistant's answer tool, what is refused [decision: decisions-made-workspace-19.md]
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier
-- agent-instructions-route.md: GET /workspace/agent-instructions, read with an application agent's own key: the text's parts in order (who, channels, door, requests, never-list, rules), the three doors, its version [decision: here]
+- agent-instructions.md: How an application agent learns its work from the site: GET /workspace/agent-instructions with its own key, the text's parts, the three doors, the version and the brief's line, the Start text box [decision: here]
 - agent-key-trial-2.md: The agent's own side tried live on dev (2026-11-11) with an application agent's key: POST agent-wake and its dry run, a wake's request, brief and text answer, the agent's edit of its own message
 - agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief [decision: here]
 - agent-key-trial.md: The agent's own side tried live on dev (2026-11-10) with an application agent's key: the request list, the brief of a mention and of a wake, claim, answer, no_answer, fail, agent-wake
@@ -52,7 +52,7 @@
 - agent-words-wake.md: An application's API message and an agent's answer wake the agents they name or answer: only a mention or a reply counts, the asking application named, the braked line once an hour [decision: decisions-made-workspace-23.md]
 - approval-agents-api.md: Agents asked to approve over the external API (AE4, #9584): the agents field on create and who may send it, the decide route for an agent's own key, off MCP, WorkspaceApproval.agents
 - approval-agents.md: Agents asked to approve (AE2): ws_approval_agents, who may be asked, the by-hand bound, the wake and brief, an agent's answer and its checks, where agents show [decision: here]
-- approval-assistants.md: Model assistants and Pinegrap AI asked to approve (AE4b, #9608): offered and named, answered in the site's own run with the decide tool, the approval kept in the run's state
+- approval-assistants.md: Model assistants, Pinegrap AI (AE4b, #9608) and Claude (AE4c, #9622) asked to approve: offered and named, the site's run answering with the decide tool, Claude's routine over the API
 - approval-guest-frozen-channel.md: An approval link sent outside the team opens as closed while the channel is gone or archived, or the request is in an earlier version of a cleared conversation
 - automation-flows-api.md: Automation flows in the external API and MCP with the Workspace off (#9257): the flows module of api_modules(), what it merges, the scopes and their ceiling, how it is tested
 - automation-flows-bell.md: The panel's bell with the Workspace off (#9288): it shows the inbox lines flows write (a run of one's flow ended or failed, Let people know) and no other Workspace line; Let people know runs again [decision: here]

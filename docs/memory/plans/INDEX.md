@@ -13,7 +13,6 @@
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - agent-knock-routine-form.md: Plan (architect 2026-11-13, #9241): a push door on a routine's fire address is knocked in the routine's form (it answered HTTP 400 to the webhook form); one step, RK1, then a live check
-- agent-start-instructions.md: Plan (owner 2026-11-15, channel decision 3748): an application agent learns how it works from the site, an instructions route for its key and a start text on the Agents card; AS1 to AS3
 - channel-profile-cards-census-facts.md: PF1 census of channel-profile-cards: where each fact of the agent card and the person card is stored, who may see it, what the state dot and the 90% usage mark read from; no schema need found
 - channel-profile-cards-census-scope.md: PF1 census of channel-profile-cards: the card's look (no popover in the design sheet), the exact files and functions of PF2 to PF7, and further facts for the owner's poll
 - channel-profile-cards-census.md: PF1 census of channel-profile-cards (agent card on a name or picture in channels): where a sender's name and picture are drawn in workspace.js, what the message and member payloads carry today
