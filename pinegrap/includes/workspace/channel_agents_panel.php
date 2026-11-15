@@ -31,8 +31,10 @@ function ws_channel_agents_actions()
 }
 
 /**
- * A channel-agent row as the settings draw it, with the agent's last seen
- * (ws_agent_seen_words()). Pure but for lang() and the clock.
+ * A channel-agent row as the settings draw it: the agent's last seen
+ * (ws_agent_seen_words()), its role, picture and state, and in a few words
+ * what wakes it and what it may do by itself. Pure but for lang() and the
+ * clock.
  *
  * @param array    $row ws_channel_agent_shape()
  * @param int|null $now
@@ -40,21 +42,111 @@ function ws_channel_agents_actions()
  */
 function ws_channel_agent_panel_row($row, $now = null)
 {
-    $seen = ws_agent_seen_words($row['agent'], ($now === null) ? time() : (int) $now);
+    $now = ($now === null) ? time() : (int) $now;
+    $seen = ws_agent_seen_words($row['agent'], $now);
+    $member = ws_channel_member_agent($row, $now);
+    $active = ((string) $row['agent']['status'] === 'active');
 
     return array(
         'agent_id'    => (int) $row['agent']['id'],
         'kind'        => (string) $row['agent']['kind'],
         'handle'      => (string) $row['agent']['handle'],
         'name'        => (string) $row['agent']['name'],
-        'active'      => ((string) $row['agent']['status'] === 'active'),
+        'role'        => $member['role'],
+        'avatar'      => ws_channel_agent_avatar_url($row['agent']['avatar'] ?? ''),
+        'active'      => $active,
+        'state'       => ws_channel_agent_panel_state($active, $member['seen_state']),
         'wake_rule'   => (string) $row['wake_rule'],
         'wake_prefix' => (string) $row['wake_prefix'],
+        'wake_words'  => $member['wake'],
         'tier'        => (int) $row['tier'],
+        'tier_words'  => ws_channel_agent_tier_words($row['tier']),
         'loop_guard'  => (bool) $row['loop_guard'],
         'seen'        => $seen['label'],
         'not_seen'    => $seen['not_seen'],
     );
+}
+
+/**
+ * The state the agents panel shows on a row: 'paused' for an agent not
+ * active, first of all; else its last-seen state as the member list reads
+ * it ('on', 'off', 'late', 'ready'). The agent card's own state (working,
+ * waiting) replaces the second part once the server sends it. Pure.
+ *
+ * @param bool   $active
+ * @param string $seen_state ws_channel_member_agent()'s seen_state
+ * @return string
+ */
+function ws_channel_agent_panel_state($active, $seen_state)
+{
+    if (!$active) {
+        return 'paused';
+    }
+
+    $seen_state = (string) $seen_state;
+
+    return in_array($seen_state, array('on', 'off', 'late', 'ready'), true) ? $seen_state : 'off';
+}
+
+/**
+ * What an agent may do by itself in a channel, in the few words of its row:
+ * tier 1 asks before every change of a record, 2 makes the changes that
+ * can be undone, 3 every change. A value out of range counts as 1, as
+ * ws_agent_tier_allows() reads it. Pure but for lang().
+ *
+ * @param int $tier
+ * @return string
+ */
+function ws_channel_agent_tier_words($tier)
+{
+    switch ((int) $tier) {
+        case 2:
+            return lang('makes changes that can be undone');
+        case 3:
+            return lang('makes every change by itself');
+    }
+
+    return lang('asks before any change');
+}
+
+/**
+ * What wakes an agent in a channel, in the short words of its row and of
+ * Channel info. Pure but for lang().
+ *
+ * @param string $rule   mention, all, prefix, replies
+ * @param string $prefix the word of the prefix rule
+ * @return string
+ */
+function ws_channel_agent_wake_words($rule, $prefix = '')
+{
+    switch ((string) $rule) {
+        case 'all':
+            return lang('wakes on every message');
+        case 'prefix':
+            return lang(array('string' => 'wakes on {var:1}', 'vars' => (string) $prefix));
+        case 'replies':
+            return lang('wakes on replies to it');
+    }
+
+    return lang('wakes when mentioned');
+}
+
+/**
+ * An agent's own picture for the panel: a web address or a path of the
+ * site, else '' and the screen draws the robot tile. Pure.
+ *
+ * @param string $avatar ws_agents.avatar
+ * @return string
+ */
+function ws_channel_agent_avatar_url($avatar)
+{
+    $avatar = trim((string) $avatar);
+
+    if (preg_match('~^(https://|/(?!/))[^\s"\'<>]+$~i', $avatar)) {
+        return $avatar;
+    }
+
+    return '';
 }
 
 /**
@@ -357,19 +449,7 @@ function ws_channel_member_agent($row, $now)
         $state = ((string) ($agent['door_error'] ?? '') !== '') ? 'late' : 'off';
     }
 
-    switch ((string) ($row['wake_rule'] ?? 'mention')) {
-        case 'all':
-            $wake = lang('wakes on every message');
-            break;
-        case 'prefix':
-            $wake = lang(array('string' => 'wakes on {var:1}', 'vars' => (string) ($row['wake_prefix'] ?? '')));
-            break;
-        case 'replies':
-            $wake = lang('wakes on replies to it');
-            break;
-        default:
-            $wake = lang('wakes when mentioned');
-    }
+    $wake = ws_channel_agent_wake_words($row['wake_rule'] ?? 'mention', $row['wake_prefix'] ?? '');
 
     return array(
         'id'         => (int) ($agent['id'] ?? 0),
