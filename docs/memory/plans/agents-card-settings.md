@@ -21,6 +21,6 @@ description: Plan (owner 2026-11-15): the Site Settings dialog keeps its place a
 
 ## What does every step keep?
 - No schema change. The field names (`ws_agent[<id>][<field>]`), the named submit buttons and what a save stores stay.
-- AS1 can start now (`backend.src.js`, `includes/settings/modal.php`); AS2 after #9615, AS3 after AS2, AS4 after AS3.
+- AS1 can start now (`backend.src.js`, `includes/settings/modal.php`); AS2 too (#9615 has landed), AS3 after AS2, AS4 after AS3.
 - Pictures: light 1440 and 390, one dark, a close-up of the changed part; one short question to the owner per step.
 - Claim as `[plan:agents-card-settings] <step> — <topic>`.
