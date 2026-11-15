@@ -1036,7 +1036,7 @@ function test_comments_widget_rating_input_html()
 	}
 	pg_assert_same(1, substr_count($default, ' checked'), 'one checked');
 	pg_assert_contains('value="5" autocomplete="off" checked', $default, 'five by default');
-	pg_assert_contains('role="group" aria-label="Rating"', $default, 'a labelled group');
+	pg_assert_contains('role="radiogroup" aria-label="Rating"', $default, 'a labelled radio group');
 	pg_assert_contains('<span class="visually-hidden">3 out of 5</span>', $default, 'each number said in words');
 	pg_assert_false(strpos($default, 'style'), 'no style');
 

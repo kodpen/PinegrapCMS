@@ -206,3 +206,29 @@ function test_comments_tree_slots_editor()
 	pg_assert_contains("['has_prev_page',            _sdT('A previous page of comments exists')]", $js);
 	pg_assert_contains("if (p.type === 'loop_area' && !_sdListIsSourced(p)) place.inComment = true;", $js);
 }
+
+// The star rating input as review sites draw it: five stars side by side, no
+// number shown, filled up to the chosen one and the rest in outline; still a
+// radio group named rating with the ids comment_rating_1..5, no inline style.
+function test_comments_tree_slots_rating_stars()
+{
+	$html = pg_comments_rating_input_html(3);
+	pg_assert_contains('role="radiogroup" aria-label="Rating" data-pg-comment-stars', $html, 'a labelled radio group');
+	pg_assert_same(5, substr_count($html, 'type="radio" class="btn-check" name="rating"'), 'five radios named rating');
+	for ($i = 1; $i <= 5; $i++) {
+		pg_assert_contains('id="comment_rating_' . $i . '" value="' . $i . '"', $html, 'radio ' . $i);
+	}
+	pg_assert_contains('value="3" autocomplete="off" checked', $html, 'three chosen');
+	pg_assert_same(5, substr_count($html, 'data-pg-star-on'), 'a filled star per radio');
+	pg_assert_same(5, substr_count($html, 'data-pg-star-off'), 'an outline star per radio');
+	pg_assert_same(3, substr_count($html, '<span class="text-warning" data-pg-star-on>'), 'filled up to the chosen one');
+	pg_assert_same(2, substr_count($html, '<span class="text-body-tertiary" data-pg-star-off>'), 'the rest in outline');
+	pg_assert_false((bool) preg_match('#<span aria-hidden="true">\d</span>#', $html), 'no number shown');
+	pg_assert_contains('<span class="visually-hidden">3 out of 5</span>', $html, 'each star said in words');
+	pg_assert_false(strpos($html, 'style='), 'no inline style');
+	pg_assert_same(5, substr_count(pg_comments_rating_input_html(null), 'data-pg-star-on>'), 'five filled by default');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.src.js');
+	pg_assert_contains("form.find('[data-pg-comment-stars]')", $js, 'the stars refill on a change');
+	pg_assert_contains('[data-pg-comment-stars]', (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.min.js'), 'and in the minified twin');
+}

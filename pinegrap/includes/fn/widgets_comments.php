@@ -1601,9 +1601,13 @@ function pg_comments_form_hidden_html($token_field, $send_to, $page_id, $item_ty
 }
 
 /**
- * The star rating control (the comment_rating_input section): Bootstrap
- * btn-check radios named rating, 1-5, ids comment_rating_1..5, one checked
- * ($checked, else 5 as the classic form). No inline style.
+ * The star rating control (the comment_rating_input section), as review
+ * sites draw it: five stars side by side, no number shown, filled up to the
+ * chosen one and the rest in outline. Bootstrap btn-check radios named
+ * rating, 1-5, ids comment_rating_1..5, one checked ($checked, else 5 as the
+ * classic form), in a labelled radio group, so the keyboard and a screen
+ * reader meet radios. Each label holds both stars; software.init_comment_forms()
+ * (frontend.src.js) shows the right one after a change. No inline style.
  *
  * @param mixed $checked the rating to check
  * @return string
@@ -1612,12 +1616,16 @@ function pg_comments_rating_input_html($checked)
 {
     $n = _pg_comments_rating_value($checked);
     $n = ($n === 0) ? 5 : $n;
-    $html = '<div class="btn-group" role="group" aria-label="' . h(lang('Rating')) . '">';
+    $size = function ($svg) {
+        return str_replace('width="16" height="16"', 'width="1.5em" height="1.5em"', $svg);
+    };
+    $html = '<div class="d-inline-flex gap-1" role="radiogroup" aria-label="' . h(lang('Rating')) . '" data-pg-comment-stars>';
 
     for ($i = 1; $i <= 5; $i++) {
         $html .= '<input type="radio" class="btn-check" name="rating" id="comment_rating_' . $i . '" value="' . $i . '" autocomplete="off"' . (($i === $n) ? ' checked' : '') . '>'
-            . '<label class="btn btn-outline-warning btn-sm" for="comment_rating_' . $i . '">'
-            . _pg_comments_star_svg(true) . ' <span aria-hidden="true">' . $i . '</span>'
+            . '<label class="btn btn-link p-0 border-0 lh-1" for="comment_rating_' . $i . '">'
+            . '<span class="text-warning' . (($i <= $n) ? '' : ' d-none') . '" data-pg-star-on>' . $size(_pg_comments_star_svg(true)) . '</span>'
+            . '<span class="text-body-tertiary' . (($i <= $n) ? ' d-none' : '') . '" data-pg-star-off>' . $size(_pg_comments_star_svg(false)) . '</span>'
             . '<span class="visually-hidden">' . h(lang(array('string' => '{var:1} out of 5', 'vars' => $i))) . '</span>'
             . '</label>';
     }

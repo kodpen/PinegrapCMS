@@ -41999,10 +41999,14 @@ const StyleDesigner = (function () {
         var html = '';
         var setting = '';
         if (section === 'comment_rating_input') {
-            html = '<div class="btn-group" role="group">';
+            // Five stars filled, as the site draws its default (5).
+            html = '<div class="d-inline-flex gap-1" role="radiogroup">';
             for (var i = 1; i <= 5; i++) {
                 html += '<input type="radio" class="btn-check" tabindex="-1"' + (i === 5 ? ' checked' : '') + '>' +
-                    '<label class="btn btn-outline-warning btn-sm' + (i === 5 ? ' active' : '') + '">★ <span>' + i + '</span></label>';
+                    '<label class="btn btn-link p-0 border-0 lh-1"><span class="text-warning">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="1.5em" height="1.5em" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">' +
+                    '<path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>' +
+                    '</svg></span></label>';
             }
             html += '</div>';
             setting = _sdT('Shown when stars are on in this page\'s comment settings.');
