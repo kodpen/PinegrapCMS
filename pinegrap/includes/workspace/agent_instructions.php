@@ -29,17 +29,60 @@ define('WS_AGENT_INSTRUCTIONS_POLL', 15);
 define('WS_AGENT_INSTRUCTIONS_POLL_MIN', 5);
 
 /**
- * The channels the agent is allowed in, with the rule that wakes it there.
+ * The channels the agent is allowed in, with the rule that wakes it there
+ * and the other agents allowed there (ws_agent_instructions_peers()).
  *
  * @param int $agent_id
- * @return array[] id, name, wake_rule, wake_prefix
+ * @return array[] id, name, wake_rule, wake_prefix, agents
  */
 function ws_agent_instructions_channels($agent_id)
 {
-    return (array) db_items("SELECT c.id, c.name, ca.wake_rule, ca.wake_prefix FROM ws_channel_agents ca
+    $channels = (array) db_items("SELECT c.id, c.name, ca.wake_rule, ca.wake_prefix FROM ws_channel_agents ca
         INNER JOIN ws_channels c ON c.id = ca.channel_id
         WHERE ca.agent_id = '" . (int) $agent_id . "' AND ca.allowed = 1 AND c.archived_at = 0
         ORDER BY c.name LIMIT 50");
+    $peers = ws_agent_instructions_peers($agent_id, array_column($channels, 'id'));
+
+    foreach ($channels as $i => $channel) {
+        $channels[$i]['agents'] = $peers[(int) $channel['id']] ?? array();
+    }
+
+    return $channels;
+}
+
+/**
+ * The other active agents allowed in each of the channels, by channel id,
+ * in the order they were added: handle, name, role key and duty. The row
+ * is read with *, so a site before the duty's step reads no duty.
+ *
+ * @param int   $agent_id    the agent the instructions are for
+ * @param int[] $channel_ids
+ * @return array[] channel id => list of handle, name, role, duty
+ */
+function ws_agent_instructions_peers($agent_id, $channel_ids)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $channel_ids)));
+    $out = array();
+
+    if (!$ids) {
+        return $out;
+    }
+
+    $rows = (array) db_items("SELECT ca.channel_id, a.* FROM ws_channel_agents ca
+        INNER JOIN ws_agents a ON a.id = ca.agent_id
+        WHERE ca.channel_id IN (" . implode(',', $ids) . ") AND ca.agent_id <> '" . (int) $agent_id . "' AND ca.allowed = 1 AND a.status = 'active'
+        ORDER BY ca.channel_id, ca.added_at, ca.agent_id");
+
+    foreach ($rows as $row) {
+        $out[(int) $row['channel_id']][] = array(
+            'handle' => (string) $row['handle'],
+            'name'   => (string) $row['name'],
+            'role'   => (string) ($row['role'] ?? ''),
+            'duty'   => (string) ($row['duty'] ?? ''),
+        );
+    }
+
+    return $out;
 }
 
 /**
@@ -174,11 +217,56 @@ function ws_agent_instructions_who_lines($agent, $channels, $base)
 
     foreach ($channels as $channel) {
         $lines[] = '- #' . ws_agent_instructions_line((string) $channel['name']) . ' (id ' . (int) $channel['id'] . '): ' . ws_agent_instructions_wake($channel, $handle) . '.';
+
+        foreach ((array) ($channel['agents'] ?? array()) as $peer) {
+            $lines[] = '  ' . ws_agent_instructions_peer_line($peer);
+        }
     }
 
     $lines[] = 'Each message that wakes you makes one request for you; a scheduled wake makes one with no message.';
 
+    // The other agents of its channels: what each is there for, so the
+    // agent leaves that work to it and calls it by name.
+    if (array_filter(array_column($channels, 'agents'))) {
+        $lines[] = 'An agent named under a channel ("Also here") works there too: leave to it what its duty covers, and call it by its @handle when you need it.';
+    }
+
     return $lines;
+}
+
+/**
+ * The first line of a duty, at most WS_AGENT_DUTY_LINE_MAX characters (cut
+ * with an ellipsis): what another agent is told about it. Pure.
+ *
+ * @param string|null $duty
+ * @return string
+ */
+function ws_agent_duty_first_line($duty)
+{
+    $first = trim((string) strtok(ws_agent_duty_clean($duty) . "\n", "\n"));
+
+    return (mb_strlen($first) > WS_AGENT_DUTY_LINE_MAX) ? rtrim(mb_substr($first, 0, WS_AGENT_DUTY_LINE_MAX - 1)) . '…' : $first;
+}
+
+/**
+ * Another agent of a channel as one line of the instructions: its handle,
+ * name and role, and the first line of its duty. Pure.
+ *
+ * @param array $peer handle, name, role, duty
+ * @return string
+ */
+function ws_agent_instructions_peer_line($peer)
+{
+    $roles = ws_agent_role_list();
+    $role = ws_agent_role_key($peer['role'] ?? '');
+    $name = ws_agent_instructions_line((string) ($peer['name'] ?? ''));
+    $about = array_filter(array($name, ($role !== '') ? 'role: ' . $roles[$role] : ''));
+    $duty = ws_agent_instructions_line(ws_agent_duty_first_line($peer['duty'] ?? ''));
+
+    $line = 'Also here: @' . (string) ($peer['handle'] ?? '') . ($about ? ' (' . implode(', ', $about) . ')' : '') . (($duty !== '') ? ': ' . $duty : '');
+
+    // A duty that ends a sentence keeps its own stop.
+    return preg_match('/[.!?…]$/u', $line) ? $line : $line . '.';
 }
 
 /**

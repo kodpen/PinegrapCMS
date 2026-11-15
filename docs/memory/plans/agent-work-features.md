@@ -14,7 +14,7 @@ priority: 6
 - AF2 (S) The progress note. `@adnan`.
   - `POST /workspace/agent-requests/{id}/progress`: a text of at most 200 characters, only the key of the agent that holds the request, off MCP, one write in 30 seconds at most. Kept in the request's `ai_state`, cleared when the request closes.
   - `claudeStateLine()` shows it after "is working on it" with "since HH:MM"; the agent's instructions name the route. No message, no wake, no inbox line.
-- AF3 (S) after AF1, `@elcin`: the instructions name the other agents of each of the agent's channels with their role and the duty's first line.
+- AF3 (S) after AF1, `@elcin`, #9821: the instructions name the other agents of each of the agent's channels with their role and the duty's first line.
 - AF4a (M) A task handed to a registry agent, the server side. Done (#9792, `workspace/agent-tasks.md`).
   - An application or model agent allowed in a channel takes that channel's tasks (`ws_task_delegate()` with `agent:<id>` or `model:<id>`, no new column). Only a person hands over; a key hands no task over, as today.
   - The hand-over makes the agent's request with the task in its brief; answer and fail write the task note; Stop as for Claude.
