@@ -252,6 +252,22 @@
         more(body, data.url, config);
     };
 
+    // Recovered carts: the revenue brought back as the big figure, then a
+    // row per channel with its reach under the name and what it recovered
+    // at the end.
+    pgDash.renderers.recovery = function (body, data, card, config) {
+        body.appendChild(headline(data));
+        if ((data.rows || []).length) {
+            body.appendChild(list(data.rows, {
+                name: function (row) { return row.text; },
+                meta: function (row) { return row.meta; },
+                value: function (row) { return row.money; },
+                note: function (row) { return row.note; }
+            }));
+        }
+        more(body, data.url, config);
+    };
+
     // Coupons: the figure the offer takes off in a dashed box, the code over
     // its note and the days left, the whole coupon a link to the offer.
     pgDash.renderers.offers = function (body, data, card, config) {

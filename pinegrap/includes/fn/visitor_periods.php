@@ -348,6 +348,7 @@ function pg_visitors_sections()
         'alerts'      => lang('Alerts'),
         'traffic'     => lang('Traffic'),
         'conversions' => lang('Conversions'),
+        'cart_recovery' => lang('Recovered carts'),
         'sources'     => lang('Sources'),
         'content'     => lang('Content'),
         'site_search' => lang('Site Search'),
