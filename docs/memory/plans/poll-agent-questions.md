@@ -23,7 +23,7 @@ description: Plan (owner 2026-11-14): the poll gains described, pictured and lin
 
 ## Which steps?
 - AQ1 (S, no product code) Census. Done in #9557: `workspace/poll-agent-questions-census-*.md`.
-- AQ2a (M, schema) Step 11.0.213 with every AQ2 column; option description, picture, links, recommended, "Other" with the voter's words, server, guest vote and API, tests (`workspace/poll-option-parts.md`).
+- AQ2a (M, schema) Done in #9635. Step 11.0.213 with every AQ2 column: option parts and "Other" on the server and API (`workspace/poll-option-parts.md`).
 - AQ2b (M) Change, take back and ask again on the server and the API, the asking application included; `withdrawn_at`, `withdrawn_by`, `again_of` from AQ2a's step; tests.
 - AQ3 (M) The poll box in its three shapes and the "New poll" form. Look A; the whole picture set goes to the owner.
 - AQ4 (M, schema) The agent question: the flag, who answers, settling in the box, the wake, the memory index, its simpler box. Pictures to the owner.
