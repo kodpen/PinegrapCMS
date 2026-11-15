@@ -1,6 +1,6 @@
 ---
 name: agent-tasks
-description: A task handed to an app or model agent its channel allows (ws_task_delegate() with agent:<id> / model:<id>): the request with the task in its brief, answer and fail on the task, Stop
+description: A task handed to an app or model agent its channel allows (ws_task_delegate() with agent:<id> / model:<id>): the request with the task in its brief, answer and fail on the task, Stop (#9792)
 ---
 
 ## Who may hand a task to an agent?
