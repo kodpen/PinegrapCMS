@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The canvas placeholders of the Messages element, of the comments block
+ * The canvas sample error of the Messages element, the placeholders of the comments block
  * region and of the components the site prints only as a marker are
  * editor chrome (the site prints the real content instead), so the designer's canvas audit leaves them out: each
  * carries the sd-editor-ph class and _SD_CANVAS_AUDIT_SKIP lists it.
@@ -34,10 +34,10 @@ function test_designer_audit_editor_placeholder_skip_list_has_class()
 function test_designer_audit_editor_placeholder_messages_marked()
 {
 	$source = designer_audit_editor_placeholder_test_source();
-	$at = strpos($source, "esc(_sdT('Errors and notices appear here'))");
-	pg_assert_true($at !== false, 'the Messages placeholder is in the designer');
-	$render = substr($source, strrpos(substr($source, 0, $at), 'render: function'), 600);
-	pg_assert_true(strpos($render, "d.className = 'alert alert-info py-2 mb-0 sd-editor-ph'") !== false, 'the Messages placeholder carries sd-editor-ph');
+	$at = strpos($source, "esc(_sdT('Sample error: please fill in the required fields.'))");
+	pg_assert_true($at !== false, 'the Messages sample error is in the designer');
+	$render = substr($source, strrpos(substr($source, 0, $at), 'render: function'), 1600);
+	pg_assert_true(strpos($render, "d.className = CONTENT.messages.alertClass('error', p) + ' sd-editor-ph'") !== false, 'the Messages sample error carries sd-editor-ph');
 }
 
 function test_designer_audit_editor_placeholder_comments_marked()

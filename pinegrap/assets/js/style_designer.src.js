@@ -5812,29 +5812,59 @@ const StyleDesigner = (function () {
         },
         messages: {
             // PHP session messages — errors + notices from the liveform system.
-            // Replaces the legacy <?=$messages?> layout variable. On the canvas a styled
-            // placeholder is shown; at PHP render time the real session messages appear.
+            // Replaces the legacy <?=$messages?> layout variable. The messages
+            // depend on the request, so the saved body keeps a placeholder
+            // and the canvas draws a sample error in the node's look.
             // (No `formName` input: inside a system widget the server stamps
             // the node with the widget's liveform name (_pg_inject_messages_node());
             // at page level get_page_content.php fills the placeholder with
             // what the widgets left.)
+            // Settings: alertLook ('' standard, 'accent', 'solid', 'compact')
+            // and dismissButton. PHP twin: includes/fn/designer_messages.php
+            // (pg_messages_alert_html()); with neither set the site output
+            // is the one it always was.
             label: _sdT('Messages (PHP)'), icon: 'bi-chat-square-text',
-            defaultProps: { cssClass: '' },
+            defaultProps: { cssClass: '', alertLook: '', dismissButton: false },
+            looks: ['', 'accent', 'solid', 'compact'],
+            look: function (p) {
+                var l = p && typeof p.alertLook === 'string' ? p.alertLook : '';
+                return CONTENT.messages.looks.indexOf(l) !== -1 ? l : '';
+            },
+            // The alert's classes for a kind ('error', 'notice', 'warning'),
+            // as pg_messages_alert_html() writes them.
+            alertClass: function (kind, p) {
+                var colour = { error: 'danger', notice: 'success', warning: 'warning' }[kind] || 'success';
+                var look = CONTENT.messages.look(p);
+                var cls = 'software_' + kind + ' alert alert-' + colour + ' alert-dismissible show';
+                if (look === 'accent') cls += ' border-0 border-start border-4 border-' + colour;
+                else if (look === 'solid') cls += ' text-bg-' + colour;
+                else if (look === 'compact') cls += ' py-2 small';
+                return cls;
+            },
             render: function (doc, p) {
                 var d = doc.createElement('div');
                 // sd-editor-ph: editor chrome, left out of the canvas audit
-                // (_SD_CANVAS_AUDIT_SKIP); the site prints only the messages.
-                d.className = 'alert alert-info py-2 mb-0 sd-editor-ph';
-                d.style.borderStyle = 'dashed';
-                d.style.opacity = '0.7';
-                d.innerHTML = '<span class="bi bi-chat-square-text me-1"></span><strong>' + esc(_sdT('PHP Messages')) + '</strong>' +
-                    '<span class="ms-2 text-muted small">' + esc(_sdT('Errors and notices appear here')) + '</span>';
+                // (_SD_CANVAS_AUDIT_SKIP); the site prints the visitor's messages.
+                d.className = CONTENT.messages.alertClass('error', p) + ' sd-editor-ph' + (p.cssClass ? ' ' + p.cssClass : '');
+                d.setAttribute('role', 'alert');
+                d.title = _sdT('Sample error: the site shows the messages of the form the visitor sent here.');
+                var close = '';
+                if (p.dismissButton) {
+                    // No data-bs-dismiss on the canvas: a click must not remove the node.
+                    close = '<button type="button" tabindex="-1" class="btn-close no-popover' +
+                        (CONTENT.messages.look(p) === 'solid' ? ' btn-close-white' : '') +
+                        '" aria-label="' + esc(_sdT('Close')) + '"></button>';
+                }
+                d.innerHTML = close + '<h5 class="alert-heading description">' + esc(_sdT('An error occurred')) + ':</h5>' +
+                    '<p class="error">' + esc(_sdT('Sample error: please fill in the required fields.')) + '</p>';
                 return d;
             },
             toHTML: function (p, pad) {
-                // PHP renderer (_render_content_html) reads session messages at request time.
-                // No marker needed — contentType is kept in tree_json and resolved by PHP.
-                return pad + '<!--pg-messages-placeholder-->\n';
+                // get_page_content.php fills the placeholder per request; a
+                // look or the dismiss button rides on it (pg_messages_marker_settings()).
+                var look = CONTENT.messages.look(p);
+                if (look === '' && !p.dismissButton) return pad + '<!--pg-messages-placeholder-->\n';
+                return pad + '<!--pg-messages-placeholder:' + look + ':' + (p.dismissButton ? '1' : '0') + '-->\n';
             }
         },
         breadcrumb: {
@@ -48699,6 +48729,28 @@ const StyleDesigner = (function () {
                 + '</div></div>';
         }
 
+        // Messages: alert look and dismiss button; the canvas draws a
+        // sample error in that look (CONTENT.messages.render()).
+        if (ct === 'messages') {
+            var _msgLook = cnt.look(n.props);
+            var _msgOpts = [
+                ['',        _sdT('Standard')],
+                ['accent',  _sdT('Line on the left')],
+                ['solid',   _sdT('Filled')],
+                ['compact', _sdT('Compact')]
+            ];
+            h += row(_sdT('Alert look'),
+                '<select class="form-control form-control-sm" data-prop="alertLook" aria-label="' + esc(_sdT('Alert look')) + '">' +
+                _msgOpts.map(function (o) {
+                    return '<option value="' + o[0] + '"' + (o[0] === _msgLook ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                }).join('') + '</select>');
+            h += row(_sdT('Dismiss button'), sw('dismissButton', !!n.props.dismissButton));
+            h += '<div class="sd-prop-row" style="padding:6px 8px;background:rgba(99,102,241,.06);border-radius:3px"><div style="font-size:.7rem;color:#6366f1;line-height:1.4">' +
+                '<i class="bi bi-info-circle me-1"></i>' +
+                esc(_sdT('The canvas shows a sample error. On the site the errors and notices of the form the visitor sent appear here in this look.')) +
+                '</div></div>';
+        }
+
         // Carousel: dedicated UI (not the generic dp-iterator) so:
         //   • thumbsPosition is a select (not free-text)
         //   • indicator/controls toggles use real switches
@@ -48828,6 +48880,8 @@ const StyleDesigner = (function () {
             // Variant attribute template: same — every prop has a dedicated
             // input above, skip the generic loop.
             if (ct === 'variant_attr') continue;
+            // Messages: its rows are drawn above.
+            if (ct === 'messages') continue;
             var val = n.props[key] !== undefined ? n.props[key] : dp[key];
             // 'lead' for paragraph: may come from p.lead boolean (legacy) OR cssClass string —
             // normalize to cssClass-based toggle so carousel-created paragraphs work correctly.

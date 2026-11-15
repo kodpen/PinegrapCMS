@@ -246,6 +246,8 @@
     "Sample code": "Örnek kod",
     "Sample code, such as NOV10": "Örnek kod, örneğin KASIM10",
     "Sample comments": "Örnek yorumlar",
+    "Sample error: please fill in the required fields.": "Örnek hata: lütfen zorunlu alanları doldurun.",
+    "Sample error: the site shows the messages of the form the visitor sent here.": "Örnek hata: sitede burada ziyaretçinin gönderdiği formun mesajları görünür.",
     "Sample for the link's variable": "Bağlantının değişkeni için örnek",
     "Sample for the link's variable or the code": "Bağlantının değişkeni ya da kod için örnek",
     "Sample for {{1}}": "{{1}} için örnek",
