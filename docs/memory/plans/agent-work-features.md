@@ -11,7 +11,7 @@ priority: 6
 ## Which steps are there?
 - AF1 (S) The duty text. After AS2 #9759 (the same form), `@elcin`.
   - A migration step adds `ws_agents.duty` (text) with the idempotent helper; a Duty field of about 2,000 characters on the agent's form; a "Your duty" part in `ws_agent_instructions_text()`, whose version changes with it; the agent card shows it to whoever may read the channel.
-- AF2 (S) The progress note. `@adnan`.
+- AF2 (S) The progress note. Done (#9782, `workspace/agent-progress-note.md`).
   - `POST /workspace/agent-requests/{id}/progress`: a text of at most 200 characters, only the key of the agent that holds the request, off MCP, one write in 30 seconds at most. Kept in the request's `ai_state`, cleared when the request closes.
   - `claudeStateLine()` shows it after "is working on it" with "since HH:MM"; the agent's instructions name the route. No message, no wake, no inbox line.
 - AF3 (S) after AF1: the instructions name the other agents of each of the agent's channels with their role and the duty's first line.
