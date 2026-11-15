@@ -73,8 +73,8 @@ function ws_scheduled_message_mine($viewer, $id)
 /**
  * Everything a scheduled message is checked against before it is saved,
  * shared by the panel and the external API (its dry run included): one of
- * the person's own still waiting or failed, a channel they may post in, the
- * words (no command but /ai and /claude), the moment and, for a new one,
+ * the person's own still waiting or failed and not being posted right now, a
+ * channel they may post in, the words (no command but /ai and /claude), the moment and, for a new one,
  * how many already wait.
  *
  * @param array $viewer
@@ -98,6 +98,12 @@ function ws_scheduled_message_save_check($viewer, $data)
 
     if (($id > 0) && (!$existing || !in_array($existing['status'], array('active', 'failed'), true))) {
         return $fail(lang('That scheduled message could not be found.'));
+    }
+
+    // A row the run has claimed is posted with the words and the time it
+    // had; a change now would be lost, so it is refused as Delete refuses it.
+    if ($existing && ((int) ($existing['running_at'] ?? 0) > 0)) {
+        return $fail(lang('It is being posted right now.'));
     }
 
     $channel = ws_channel($existing ? (int) $existing['channel_id'] : (int) ($data['channel_id'] ?? 0));
@@ -219,6 +225,17 @@ function ws_scheduled_message_save($viewer, $data)
                 updated_by = '" . (int) $viewer['id'] . "',
                 updated_at = '" . $now . "'
             WHERE id = '" . (int) $existing['id'] . "' AND running_at = 0");
+
+        // No row changed: either the run claimed it after the check (or
+        // posted and deleted it), or the same values were saved again within
+        // the same second. Only the latter is a save.
+        if (mysqli_affected_rows(db::$con) !== 1) {
+            $again = ws_scheduled_message_mine($viewer, (int) $existing['id']);
+
+            if (!$again || ((int) ($again['running_at'] ?? 0) > 0) || ($again['status'] !== 'active')) {
+                return array('ok' => false, 'error' => lang('It is being posted right now.'), 'field' => '', 'id' => 0);
+            }
+        }
 
         return array('ok' => true, 'error' => '', 'field' => '', 'id' => (int) $existing['id']);
     }
