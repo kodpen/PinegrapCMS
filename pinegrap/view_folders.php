@@ -8458,6 +8458,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 if (wsSend) {
                     html += menuItem('bi-send', L.ws_send, 'ws_send', multi || insideWorkspaceFolder());
                 }
+                // An MP4 or WebM opens in the Design Canvas too: known by its
+                // type here, the file itself is read on the click.
+                if (itemCanvasVideo(item)) {
+                    html += menuItem(L.image_editor_icon, L.image_editor, 'image_editor', multi);
+                }
                 if (item.is_image && item.can_edit) {
                     html += menuItem(L.image_editor_icon, L.image_editor, 'image_editor', multi);
                     // The editor opened on its export panel alone: format,
@@ -8658,6 +8663,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         menuElement.setAttribute('data-target-kind', 'folder');
         menuElement.setAttribute('data-target-id', node.id);
         positionMenu(event);
+    }
+
+    // A video the Design Canvas takes (pg_image_editor_clip_types()), told
+    // by its type alone: no query per file in the lists.
+    function itemCanvasVideo(item) {
+        return item.kind === 'file' && item.can_edit && !item.backup && !item.short_link &&
+            CANVAS_VIDEO_TYPES.indexOf(item.type) !== -1;
     }
 
     // Resize is offered while the image is wider or taller than the
@@ -8874,7 +8886,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 }
                 break;
             case 'image_editor':
-                if (item) { openImageEditorFor(item); }
+                if (item && itemCanvasVideo(item)) { openVideoCanvasFor(item); } else if (item) { openImageEditorFor(item); }
                 break;
             case 'image_export':
                 if (item) { openImageEditorFor(item, null, 'optimise'); }
@@ -14870,6 +14882,46 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }).catch(function () { toast(L.image_editor_missing, false); });
     }
 
+    // A video in the Design Canvas from the context menu: the file window's
+    // answer says whether it is on the disk and whether the canvas saved it.
+    function openVideoCanvasFor(item) {
+
+        api({ type: 'explorer_file_get', id: item.id }, function (response) {
+
+            if (response.status !== 'success') { toast(response.message || L.request_failed, false); return; }
+
+            if (!response.file.on_disk) { toast(L.file_not_on_disk, false); return; }
+
+            openVideoCanvas(response.file);
+        });
+    }
+
+    // A video the canvas saved opens as its project (its document is kept
+    // with the file's newest version); any other opens a new canvas of its
+    // own size in its folder, holding it as the one clip. That canvas saves
+    // new files beside the video, never over it.
+    function openVideoCanvas(file, onSaved) {
+
+        if (file.editor_project) { openImageEditorFor(file, onSaved); return; }
+
+        window.pgImageEditor.open({
+            blank: { width: VIDEO_CANVAS_SIZE[0], height: VIDEO_CANVAS_SIZE[1], background: '#000000' },
+            clip: { id: file.id, name: file.name, url: file.url },
+            save: { mode: 'new', folderId: file.folder_id, name: file.name },
+            onSave: function (result) {
+
+                var response = result.file || {};
+
+                toast(fmt(L.saved_named, [response.name || file.name]), true);
+
+                if (onSaved) { onSaved(response); } else { reload(); }
+            }
+        }).catch(function () { toast(L.image_editor_missing, false); });
+    }
+
+    // The canvas a video opens on until the video says its own size.
+    var VIDEO_CANVAS_SIZE = [1280, 720];
+
     // -- Heavy tools, fetched the first time somebody reaches for them ----
     //
     // The Word and Excel view is large, and most visits to this screen never
@@ -15011,6 +15063,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // bottom are the actions the file's kind allows.
 
     var PREVIEW_VIDEO_TYPES = ['mp4', 'webm', 'mov', 'ogg', 'ogv', 'm4v'];
+    var CANVAS_VIDEO_TYPES = <?php echo encode_json(pg_image_editor_clip_types()); ?>;
     var PREVIEW_AUDIO_TYPES = ['mp3', 'wav', 'wma', 'aac', 'oga', 'm4a', 'flac', 'opus'];
 
     // What the server's image engine can turn: the same list explorer_rotate
@@ -15103,8 +15156,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 menuIcon(icon, 'me-1') + esc(label) + '</button>';
         }
 
-        // A video the image editor saved opens again as its project.
-        if (((kind === 'image') && file.on_disk && (file.type !== 'svg')) || ((kind === 'video') && file.editor_project)) {
+        // A video the image editor saved opens again as its project; any
+        // other MP4 or WebM as a new canvas holding it.
+        if (((kind === 'image') && file.on_disk && (file.type !== 'svg')) ||
+            ((kind === 'video') && file.on_disk && (CANVAS_VIDEO_TYPES.indexOf(file.type) !== -1))) {
             html += tool('image_editor', L.image_editor_icon, L.image_editor);
         }
 
@@ -15577,7 +15632,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         switch (button.getAttribute('data-file-tool')) {
 
             case 'image_editor':
-                openImageEditorFor(file, function () {
+                (((fileEditKind(file) === 'video') && !file.editor_project) ? openVideoCanvas : openImageEditorFor)(file, function () {
                     // Back in this window with the new pixels, and the
                     // listing behind it brought up to date.
                     var preview = document.getElementById('file_edit_preview');

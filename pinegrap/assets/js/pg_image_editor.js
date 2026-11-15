@@ -10,6 +10,9 @@
  *   pgImageEditor.open({
  *       src: url, fileId: id, fileName: name,    a picture, or
  *       blank: { width, height, background },    an empty artboard
+ *       clip: { id, name, url },                  with blank: a video from
+ *                                                 Files as its one clip, the
+ *                                                 canvas at the video's size
  *       save: { mode, folderId, name, url, label },  how Save writes (below)
  *       profile: 'photo' | 'canvas' | 'annotate' | 'optimise',
  *       tools: ['arrow', ...],                    a subset: the mini bar
@@ -324,8 +327,9 @@
         this.returnFocus = document.activeElement;
         Editor.inits.forEach(function (init) { init.call(self); });
 
-        // The New image dialog has nothing to ask of a canvas opened again.
-        if (this.reopened && this.board) {
+        // The New image dialog has nothing to ask of a canvas opened again,
+        // nor of one that takes a video's size.
+        if ((this.reopened || (opts.blank && opts.clip)) && this.board) {
             this.board.ask = false;
         }
 
@@ -562,6 +566,12 @@
             this.frame.style.background = this.doc.artboard.background === 'transparent' ? '' : this.doc.artboard.background;
             this.frame.classList.toggle('pgie-checker', this.doc.artboard.background === 'transparent');
             this.setReady();
+
+            // A plain video from Files opens as a canvas holding it.
+            if (this.opts.clip && this.opts.clip.url && this.clipOpen) {
+                this.clipOpen(this.opts.clip);
+            }
+
             return;
         }
 
