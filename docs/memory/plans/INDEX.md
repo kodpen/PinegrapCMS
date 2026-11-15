@@ -13,6 +13,9 @@
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - agent-knock-routine-form.md: Plan (architect 2026-11-13, #9241): a push door on a routine's fire address is knocked in the routine's form (it answered HTTP 400 to the webhook form); one step, RK1, then a live check
+- channel-profile-cards-census-facts.md: PF1 census of channel-profile-cards: where each fact of the agent card and the person card is stored, who may see it, what the state dot and the 90% usage mark read from; no schema need found
+- channel-profile-cards-census-scope.md: PF1 census of channel-profile-cards: the card's look (no popover in the design sheet), the exact files and functions of PF2 to PF7, and further facts for the owner's poll
+- channel-profile-cards-census.md: PF1 census of channel-profile-cards (agent card on a name or picture in channels): where a sender's name and picture are drawn in workspace.js, what the message and member payloads carry today
 - claude-plugin-bundle.md: Plan (owner 2026-11-14): a Pinegrap plugin bundle for Claude's directory: a site's MCP server connected by its address, skills for common site work, the listing; the repository is the owner's to open
 - design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
 - design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
