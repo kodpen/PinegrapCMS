@@ -16321,6 +16321,41 @@ a.ws-chip:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A registry agent in the @ menu: its icon with the state dot in the
+   corner, and the usage mark of a window at 90% or more. */
+.ws-picker-agent {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+}
+.ws-picker-agent .ws-agent-dot {
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+}
+.ws-picker-item .ws-picker-usage {
+  flex: none;
+  height: 18px;
+  padding: 0 7px 0 6px;
+  font-size: .7rem;
+}
+/* An agent's state as a dot, the tones of the agents panel: working blue,
+   waiting and not seen amber, paused gray, ready teal. */
+.ws-agent-dot {
+  display: inline-block;
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pg-tone, var(--pg-tone-gray));
+  box-shadow: 0 0 0 2px var(--pg-bg-body);
+}
+.ws-agent-dot.is-working { --pg-tone: var(--pg-tone-blue); }
+.ws-agent-dot.is-waiting,
+.ws-agent-dot.is-late { --pg-tone: var(--pg-tone-amber); }
+.ws-agent-dot.is-paused { --pg-tone: var(--pg-tone-gray); }
+.ws-agent-dot.is-idle { --pg-tone: var(--pg-tone-teal); }
 .ws-picker-empty {
   padding: .6rem .75rem;
   font-size: .85rem;

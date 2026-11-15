@@ -439,6 +439,19 @@
 
     // An icon with a small mark in its corner (ws_icon_badged_html() in
     // includes/workspace/channel_icons.php); the plain icon without one.
+    // An agent's icon in the @ menu with its state dot in the corner:
+    // working, waiting, not seen, paused or ready (ws_agent_card_state()).
+    function pickerAgentFace(item) {
+        var node = el('span', 'ws-picker-agent');
+        var dot = el('span', 'ws-agent-dot is-' + item.state);
+
+        node.appendChild(icon(item.icon || 'bi-robot'));
+        dot.title = item.stateWords;
+        dot.setAttribute('aria-hidden', 'true');
+        node.appendChild(dot);
+        return node;
+    }
+
     function badgedIcon(name, badge, extra) {
         if (!badge) {
             return icon(name, extra);
@@ -17377,7 +17390,9 @@
                     // as the list is cut at ten.
                     (self.channel.apps || []).forEach(function (app) {
                         if (!needle || foldText(app.shown.slice(1)).indexOf(needle) === 0 || foldText(app.meta).indexOf(needle) === 0) {
-                            items.push({ label: app.label, meta: app.meta, icon: app.icon, token: app.token, shown: app.shown });
+                            // A registry agent's state dot and usage mark
+                            // (ws_agent_picker_entries()).
+                            items.push({ label: app.label, meta: app.meta, icon: app.icon, token: app.token, shown: app.shown, state: app.state || '', stateWords: app.state_words || '', usage: app.usage_high ? { words: app.usage_words, title: app.usage_title } : null });
                         }
                     });
                 }
@@ -17536,6 +17551,8 @@
                     row.appendChild(el('span', 'ws-picker-emoji', item.glyph));
                 } else if (item.avatar) {
                     row.appendChild(avatar(item.face || { avatar: item.avatar, name: item.label }));
+                } else if (item.state) {
+                    row.appendChild(pickerAgentFace(item));
                 } else {
                     row.appendChild(badgedIcon(item.icon || 'bi-dot', item.badge || ''));
                 }
@@ -17549,6 +17566,19 @@
                     row.appendChild(text);
                 } else {
                     row.appendChild(el('span', 'ws-picker-label', item.label));
+                }
+
+                // The state in words for a screen reader; the dot shows it.
+                if (item.stateWords) {
+                    row.lastChild.appendChild(el('span', 'visually-hidden', ' (' + item.stateWords + ')'));
+                }
+
+                // A reported usage window at 90% or more: a mark only.
+                if (item.usage) {
+                    var usage = el('span', 'pg-pill pg-tone-amber ws-picker-usage', item.usage.words);
+
+                    usage.title = item.usage.title;
+                    row.appendChild(usage);
                 }
 
                 if (item.meta) {

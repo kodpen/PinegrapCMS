@@ -3392,6 +3392,7 @@
     "A two-storey warehouse of about 600 m²": "Yaklaşık 600 m² iki katlı bir depo",
     "A type change does not make a key: make the column the key in its form afterwards.": "Tür değişikliği anahtar yapmaz: sütunu sonra kendi formunda anahtar yapın.",
     "A university team reports a new electrode design that lasted twice as long in early tests.": "Bir üniversite ekibi, ilk testlerde iki kat uzun dayanan yeni bir elektrot tasarımı geliştirdiklerini açıkladı.",
+    "A usage window is at {var:1}% or more, as the agent reported it.": "Bir kullanım penceresi %{var:1} veya üzerinde; ajanın kendi bildirdiğine göre.",
     "A usage window needs its reset time.": "Kullanım penceresinin sıfırlanma zamanı gerekir.",
     "A usage window's percent is a whole number from 0 to 100.": "Kullanım penceresinin yüzdesi 0 ile 100 arasında bir tam sayıdır.",
     "A user account is made": "Bir kullanıcı hesabı oluşturulur",

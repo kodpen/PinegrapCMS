@@ -309,7 +309,7 @@ function ws_api_agent_own_app()
  *
  * @param array[] $rows   ws_agent_channel_rows(): handle, name, app_id
  * @param array[] $briefs by app_id: role (its label), state, state_words, usage_high
- * @return array[] label, meta, icon, token, shown, and with a brief state, state_words, usage_high; by handle
+ * @return array[] label, meta, icon, token, shown, and with a brief state, state_words, usage_high (usage_words, usage_title when set); by handle
  */
 function ws_agent_picker_entries($rows, $briefs = array())
 {
@@ -341,6 +341,14 @@ function ws_agent_picker_entries($rows, $briefs = array())
             $entry['state'] = (string) ($brief['state'] ?? '');
             $entry['state_words'] = (string) ($brief['state_words'] ?? '');
             $entry['usage_high'] = !empty($brief['usage_high']);
+
+            // The mark's words and its longer name: the figure is the
+            // agent's own report, and the mark stops nothing.
+            if ($entry['usage_high']) {
+                $high = defined('WS_AGENT_USAGE_HIGH') ? WS_AGENT_USAGE_HIGH : 90;
+                $entry['usage_words'] = lang(array('string' => 'Usage {var:1}%+', 'vars' => $high));
+                $entry['usage_title'] = lang(array('string' => 'A usage window is at {var:1}% or more, as the agent reported it.', 'vars' => $high));
+            }
         }
 
         $entries[$app_id] = $entry;
