@@ -578,6 +578,42 @@
         });
     };
 
+    // A plain video opened from Files (opts.clip: id, name, url): the canvas
+    // takes the video's size, the Animate tool opens and the video is its
+    // one clip from 0, as Import > From the site adds it. A video this
+    // browser cannot decode is said as Import says it (clipSource()). The
+    // canvas's save writes new files into its folder, never over the video.
+    Editor.prototype.clipOpen = function (f) {
+        var self = this;
+
+        this.showMessage(t('clipLoading'));
+
+        return this.clipSource(f.url).then(function (source) {
+            var size = M.clipCanvas(source.width, source.height);
+
+            // The size is the canvas the editor opened on, not a change:
+            // undo and the unsaved check start from it.
+            if (size) {
+                [self.doc, self.opening].forEach(function (d) {
+                    if (d && d.artboard) {
+                        d.artboard.width = size.w;
+                        d.artboard.height = size.h;
+                    }
+                });
+                self.renderMeta();
+                self.fit();
+            }
+
+            if ((self.tool !== 'motion') && (self.tools.list.indexOf('motion') >= 0)) {
+                self.pickTool('motion');
+            }
+
+            return self.clipAdd(f);
+        }, function () {
+            // Said by clipSource().
+        });
+    };
+
     // A video of this computer: opened here first (a codec this browser
     // cannot decode is said before anything is sent), then uploaded into
     // Files beside the picture or in the canvas's folder, then a layer.

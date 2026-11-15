@@ -186,5 +186,8 @@ function test_image_editor_reopen_wired()
 	$folders = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
 
 	pg_assert_true(strpos($window, "pg_image_editor_video_project(pg_file_versions_newest((int) \$file['id']))") !== false, 'the file window tells a video project');
-	pg_assert_true(strpos($folders, "((kind === 'video') && file.editor_project)") !== false, 'and offers Image Editor on it');
+	pg_assert_true(strpos($folders, "((kind === 'video') && file.on_disk && (CANVAS_VIDEO_TYPES.indexOf(file.type) !== -1))") !== false, 'and offers Design Canvas on every MP4 or WebM on disk');
+	pg_assert_true(strpos($folders, "if (file.editor_project) { openImageEditorFor(file, onSaved); return; }") !== false, 'a project opens as itself');
+	pg_assert_true(strpos($folders, "save: { mode: 'new', folderId: file.folder_id, name: file.name }") !== false, 'a plain video as a new canvas saving beside it');
+	pg_assert_true(strpos($folders, 'CANVAS_VIDEO_TYPES.indexOf(item.type) !== -1') !== false && strpos($folders, "if (itemCanvasVideo(item)) {") !== false, 'the context menu offers it by type');
 }
