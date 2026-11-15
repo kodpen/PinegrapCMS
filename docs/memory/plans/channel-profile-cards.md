@@ -13,7 +13,7 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 - The @ menu: each agent with its role and state. When a reported window is at 90% or more, a mark beside the name, in the menu and on the card. This takes back "no warning on plan usage" of 2026-11-13 (`agent-report.md`); it is a mark, it stops nothing.
 - The same card for a person: role, department, working hours, away days (`ws_profiles.mail_away`, IB12).
 - "Agents in this channel" of Channel settings, redrawn in plain words (`channel-profile-cards-panel.md`), and the drawer itself: tabs, icon, colour, switches, versions (`-settings.md`).
-- Further useful facts of the same kind are listed by PF1 and asked of the owner as one poll.
+- The card's layout and the further facts he chose: `channel-profile-cards-facts.md`.
 
 ## Who sees it?
 - Team members who may read the channel. A guest of a customer room sees no card, no usage and no state; an application's key reads the same facts in the channel-agent rows of the API.
