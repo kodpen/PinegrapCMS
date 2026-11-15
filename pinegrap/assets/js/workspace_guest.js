@@ -239,6 +239,13 @@
         // none of them, whatever they write.
         if (message.agent && message.badge) {
             meta.appendChild(el('span', 'pg-guest-badge', message.badge));
+
+            // Its role and reported model, muted; an empty fact is left out.
+            var facts = [message.role, message.model].filter(function (fact) { return typeof fact === 'string' && fact !== ''; });
+
+            if (facts.length) {
+                meta.appendChild(el('span', 'pg-guest-agent-facts', facts.join(' · ')));
+            }
         }
 
         meta.appendChild(el('span', '', message.time + (message.edited ? ' · ' + t('edited') : '')));

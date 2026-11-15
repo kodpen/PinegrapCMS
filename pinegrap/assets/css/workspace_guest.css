@@ -20,6 +20,7 @@
   --pg-border-color-translucent: var(--bs-border-color-translucent);
   --pg-danger: var(--bs-danger-base);
   --pg-fg-2: var(--bs-fg-2);
+  --pg-fg-3: var(--bs-fg-3);
   --pg-fg-body: var(--bs-fg-body);
   --pg-info-bg-subtle: var(--bs-info-bg-subtle);
   --pg-info-fg-emphasis: var(--bs-info-fg-emphasis);
@@ -194,6 +195,11 @@ body.pg-guest {
   font-size: .6875rem;
   font-weight: 600;
   line-height: 1.5;
+}
+
+/* The agent's role and model beside the badge. */
+.pg-guest-agent-facts {
+  color: var(--pg-fg-3);
 }
 
 .pg-guest-body {
