@@ -29157,6 +29157,7 @@ textarea.pg-campaign-text {
   color: var(--pg-fg-2);
 }
 .pg-figure-value {
+  display: block;
   margin: 7px 0 5px;
   overflow: hidden;
   font-size: var(--pg-text-figure);

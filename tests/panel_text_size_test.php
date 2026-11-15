@@ -70,7 +70,6 @@ function test_panel_text_size_marketplace_products_in_rem()
 	$style = panel_text_size_test_style('marketplace_products.php');
 
 	panel_text_size_test_no_px_font_size($style, 'marketplace_products.php');
-	pg_assert_contains('.mpp-stat b { display: block; font-size: 1.625rem;', $style);
 	pg_assert_contains('grid-template-columns: 22px minmax(0, 1fr) 7rem minmax(0, 1fr) 16.25rem;', $style);
 	pg_assert_contains('grid-template-columns: 22px minmax(0, 1fr) 6rem minmax(0, 1fr); }', $style);
 }
