@@ -773,7 +773,7 @@ function ws_approval_guests_js_strings()
         'apv_guest_remove'  => lang('Remove'),
         'apv_guest_badge'   => lang('customer'),
         'apv_agent_badge'   => lang('agent'),
-        'apv_agents'        => lang('Agents'),
+        'apv_agents'        => lang('Agents who approve'),
         'apv_agents_help'   => lang('Optional. Each agent asked is woken at once and answers Approve or Reject with its own key.'),
         'apv_guest_resend'  => lang('Send the link again'),
         'apv_guest_resent'  => lang('A new link was sent. The one before no longer opens.'),
