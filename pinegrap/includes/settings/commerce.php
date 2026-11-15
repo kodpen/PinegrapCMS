@@ -77,7 +77,7 @@ $pg_settings_cards[] = '
                                                         <div class="col-12 ">
                                                             <div class="form-field">' . pg_settings_tile('upc-scan', 'shop') . '
                                                                 <div class="switch"><input value="1"' . $barcode_enabled_checked . ' class="collapse-switcher" type="checkbox" id="barcode_enabled" name="barcode_enabled" data-bs-target="#barcode_settings_row"/></div>
-                                                                <label class="fw-semibold" for="barcode_enabled"><i class="bi bi-upc-scan me-1"></i>' . lang('Enable Barcode Feature') . '</label>
+                                                                <label class="fw-semibold" for="barcode_enabled">' . lang('Enable Barcode Feature') . '</label>
                                                             </div>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="barcode_settings_row">
                                                                 <div class="popover-arrow" style="position:absolute;left:0px;transform:translate(30px,0px);"></div>

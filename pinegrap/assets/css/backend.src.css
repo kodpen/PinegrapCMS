@@ -29661,22 +29661,34 @@ button.pg-var-chip:focus-visible {
 
 /* The count sits on the title's line, in the third text colour; the
    description keeps the line under both. Only the title gives up its width
-   (ellipsis), never the count. */
+   (ellipsis), never the count. A phone's header has room for the title
+   alone, so the count is left out there. */
 #header .pg-navhead:has(> .pg-navhead-count) {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) auto;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-start;
   align-content: center;
   align-items: baseline;
   column-gap: 8px;
 }
+#header .pg-navhead:has(> .pg-navhead-count) > .pg-navhead-title {
+  flex: 0 1 auto;
+  min-width: 0;
+}
 #header .pg-navhead:has(> .pg-navhead-count) > .pg-navhead-desc {
-  grid-column: 1 / -1;
+  flex: 1 0 100%;
 }
 #header .pg-navhead-count {
+  flex: none;
   color: var(--pg-fg-3);
   font-size: var(--pg-text-meta);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+@media (max-width: 575.98px) {
+  #header .pg-navhead-count {
+    display: none;
+  }
 }
 
 /* A list's segmented filters scroll sideways on a narrow screen instead of
