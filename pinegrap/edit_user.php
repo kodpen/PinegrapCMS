@@ -1156,7 +1156,7 @@ if (!$_POST) {
             </div>
             <div class="drawer-footer">
                 <div class="pg-perm-panel-count">' . h(lang('Sessions expire on their own after 30 days.')) . '</div>
-                <button type="button" class="pg-button pg-button-fill" data-bs-dismiss="drawer">' . h(lang('Done')) . '</button>
+                <button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-dismiss="drawer">' . h(lang('Done')) . '</button>
             </div>
         </dialog>'
         . (($log_count > 5)

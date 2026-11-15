@@ -23,7 +23,7 @@ if (!defined('PG_INIT_LOADED')) {
     <?=$liveform->get_warnings()?>
     <?=$liveform->output_notices()?>
     <div class="pg-toolbar mb-5" id="pg-offers-toolbar">
-        <a class="pg-button pg-button-fill" href="edit_offer.php"><i class="bi bi-plus-lg" aria-hidden="true"></i> <?=lang('New Offer')?></a>
+        <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="edit_offer.php"><i class="bi bi-plus-lg" aria-hidden="true"></i> <?=lang('New Offer')?></a>
         <?php
         // One chip per filter; the count rides in a badge so the active chip
         // stays readable when it fills in. A filter that may be empty is drawn
