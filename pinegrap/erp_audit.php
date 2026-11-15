@@ -102,7 +102,7 @@ foreach ($page['entries'] as $entry) {
         }
 
         $records .= '<div class="pg-text-2 d-flex flex-wrap gap-3 align-items-baseline">'
-            . '<span class="badge badge-subtle theme-secondary border">' . h(erp_audit_event_text($row)) . '</span>'
+            . pg_pill(erp_audit_event_text($row), 'secondary')
             . '<span class="text-break">' . $link . '</span>'
             . (((int) $row['amount'] !== 0) ? '<span class="fg-secondary">' . h(erp_money_out_currency((int) $row['amount'], (string) $row['currency'])) . '</span>' : '')
             . '</div>';
@@ -115,7 +115,7 @@ foreach ($page['entries'] as $entry) {
         <tr>
             <td class="text-nowrap align-top" data-sort="' . (int) $first['created_at'] . '">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $first['created_at']), 'date and time')) . '</td>
             <td class="align-top">' . $who
-                . (((string) $first['source'] === 'api') ? ' <span class="badge theme-info">' . h($sources['api']) . '</span>' : '')
+                . (((string) $first['source'] === 'api') ? ' ' . pg_pill($sources['api'], 'info') : '')
                 . (((string) $first['ip'] !== '') ? '<div class="pg-text-meta font-monospace">' . h((string) $first['ip']) . '</div>' : '') . '</td>
             <td class="align-top">' . $lines . $records . '</td>
         </tr>';
@@ -206,7 +206,7 @@ pg_page_shell([
 
             <div class="card pg-card erp-list-card my-7">
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover mb-0" data-pg-sort>
+                    <table class="table erp-list-table table-hover mb-0" data-pg-sort>
                         <thead>
                             <tr>
                                 <th style="width:11rem">' . lang('Date') . '</th>

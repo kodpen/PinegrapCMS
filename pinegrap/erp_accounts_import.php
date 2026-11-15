@@ -211,15 +211,8 @@ function erp_import_step_upload($liveform, $kind_options)
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 order-3">
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-solid theme-success"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Continue')) . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
-                    </div>
+                    ' . pg_save_bar('
+                                    <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-solid theme-success"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Continue')) . '</span></button>') . '
                 </div>
             </form>';
 }
@@ -414,17 +407,10 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 order-3">
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class="btn-group flex-wrap justify-content-center">
+                    ' . pg_save_bar('
                                     <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Re-check')) . '</span></button>
-                                    <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-solid theme-success"' . ($has_title ? '' : ' disabled="disabled"') . '><i class="bi bi-check2-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Start import')) . '</span></button>
-                                </div>
-                                <p class="pg-text-2 mt-2 mb-0" id="erp_import_map_status" role="status" aria-live="polite"></p>
-                            </div>
-                        </nav>
-                    </div>
+                                    <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-solid theme-success"' . ($has_title ? '' : ' disabled="disabled"') . '><i class="bi bi-check2-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Start import')) . '</span></button>', array('after' => '
+                                <p class="pg-text-2 mt-2 mb-0" id="erp_import_map_status" role="status" aria-live="polite"></p>')) . '
                 </div>
             </form>
             <script>
@@ -527,13 +513,8 @@ function erp_import_step_result($outcome)
                     </div>
                 </div>
                 ' . $output_table . '
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            <a href="erp_accounts_import.php" class="btn my-1 btn-solid theme-primary"><i class="bi bi-upload me-3" aria-hidden="true"></i>' . lang('Import another file') . '</a>
-                        </div>
-                    </div>
-                </nav>';
+                ' . pg_save_bar('
+                            <a href="erp_accounts_import.php" class="btn my-1 btn-solid theme-primary"><i class="bi bi-upload me-3" aria-hidden="true"></i>' . lang('Import another file') . '</a>');
 }
 
 // -- request handling ---------------------------------------------------------

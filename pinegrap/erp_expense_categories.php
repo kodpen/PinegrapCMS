@@ -189,7 +189,7 @@ pg_page_shell([
                 <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card pg-card erp-list-card my-7">
                     <div class="card-body p-0 table-responsive">
-                        <table class="table align-middle mb-0">
+                        <table class="table erp-list-table align-middle mb-0">
                             <thead>
                                 <tr>
                                     <th>' . lang('Sort Order') . '</th>
@@ -235,13 +235,8 @@ pg_page_shell([
                         </div>
                     </div>
                 </div>
-                <div class="col-12 order-3">
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <button type="submit" class="btn my-1 btn-solid theme-success"' . ($ready ? '' : ' disabled') . '><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>
-                    </div>
-                </nav>
-                </div>
+                ' . pg_save_bar('
+                    <button type="submit" class="btn my-1 btn-solid theme-success"' . ($ready ? '' : ' disabled') . '><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>', array('group' => '')) . '
                 </div>
             </form>
         </div>

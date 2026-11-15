@@ -20,4 +20,5 @@ description: An agent's role from a fixed list (ws_agents.role, step 11.0.195, #
 - The agent's form, under Name ("Role", "No role" first), on Workspace Settings and in the Site Settings dialog's drawer (`ws_agents_settings_form()`).
 - The Agents card's line: a badge after the name (`ws_agents_settings_line_html()`).
 - A channel's member list (Channel info): `ws_channel_member_agent()` `role` (the label), drawn after the name in `workspace.js`.
+- In a channel: a violet pill on the agent card, after its name in a message (in place of "(application)") and in the @ menu, and in "Agents in this channel" (`agent-state-marks.md`).
 - The API: `role` (the key, '' for none) in every channel-agent row (`ws_api_channel_agent_present()`, schema `WorkspaceChannelAgent`), so an agent can find who holds one.

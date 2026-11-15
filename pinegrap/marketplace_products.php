@@ -394,11 +394,11 @@ function mp_products_pager_arrow($disabled, $href, $label, $icon) {
 
 	if ($disabled) {
 
-		return '<span class="btn btn-sm btn-outline theme-secondary disabled" aria-disabled="true">' . $glyph . '<span class="visually-hidden">' . h($label) . '</span></span>';
+		return '<span class="pg-icon-button disabled" aria-disabled="true">' . $glyph . '<span class="visually-hidden">' . h($label) . '</span></span>';
 
 	}
 
-	return '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($href) . '" aria-label="' . h($label) . '">' . $glyph . '</a>';
+	return '<a class="pg-icon-button" href="' . h($href) . '" aria-label="' . h($label) . '">' . $glyph . '</a>';
 
 }
 
@@ -578,32 +578,32 @@ function mp_products_row_html($account, $row) {
 
 	if ($suggested) {
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-solid theme-success" data-mp-act="accept" data-mp-product="' . (int) $product['id'] . '">'
-			. '<i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . h(lang('Accept')) . '</button>';
+		$buttons[] = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="accept" data-mp-product="' . (int) $product['id'] . '">'
+			. '<i class="bi bi-check-lg" aria-hidden="true"></i>' . h(lang('Accept')) . '</button>';
 
 	}
 
 	if (!$matched && !$dismissed) {
 
-		$buttons[] = '<button type="button" class="btn btn-sm ' . ($suggested ? 'btn-outline theme-secondary' : 'btn-solid theme-primary') . '" data-mp-act="pick">'
-			. '<i class="bi bi-grid-3x3-gap me-1" aria-hidden="true"></i>' . h($suggested ? lang('Another product') : lang('Pick a product')) . '</button>';
+		$buttons[] = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="pick">'
+			. '<i class="bi bi-grid-3x3-gap" aria-hidden="true"></i>' . h($suggested ? lang('Another product') : lang('Pick a product')) . '</button>';
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-text theme-secondary" data-mp-act="dismiss" title="' . h(lang('This shop does not sell it')) . '">'
-			. '<i class="bi bi-slash-circle me-1" aria-hidden="true"></i>' . h(lang('Not sold here')) . '</button>';
+		$buttons[] = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="dismiss" title="' . h(lang('This shop does not sell it')) . '">'
+			. '<i class="bi bi-slash-circle" aria-hidden="true"></i>' . h(lang('Not sold here')) . '</button>';
 
 	}
 
 	if ($matched) {
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-text theme-secondary" data-mp-act="unmatch">'
-			. '<i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Remove match')) . '</button>';
+		$buttons[] = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="unmatch">'
+			. '<i class="bi bi-x-lg" aria-hidden="true"></i>' . h(lang('Remove match')) . '</button>';
 
 	}
 
 	if ($dismissed) {
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-act="restore">'
-			. '<i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Undo')) . '</button>';
+		$buttons[] = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="restore">'
+			. '<i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>' . h(lang('Undo')) . '</button>';
 
 	}
 
@@ -841,26 +841,26 @@ function mp_products_shop_row_html($account, $row) {
 
 	if ($matched) {
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-act="code"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Change code')) . '</button>';
+		$buttons[] = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="code"><i class="bi bi-pencil" aria-hidden="true"></i>' . h(lang('Change code')) . '</button>';
 
 		// Only an active match is sent; a refused one shows its reason above.
 		if ($row['map_status'] === 'active') {
 
-			$buttons[] = '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-act="shop_send"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Send now')) . '</button>';
+			$buttons[] = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="shop_send"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h(lang('Send now')) . '</button>';
 
 		}
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-text theme-secondary" data-mp-act="shop_remove"><i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Remove match')) . '</button>';
+		$buttons[] = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="shop_remove"><i class="bi bi-x-lg" aria-hidden="true"></i>' . h(lang('Remove match')) . '</button>';
 
 	} else {
 
 		if ($own !== '') {
 
-			$buttons[] = '<button type="button" class="btn btn-sm btn-solid theme-primary" data-mp-act="shop_own"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Match with its own code')) . '</button>';
+			$buttons[] = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="shop_own"><i class="bi bi-link-45deg" aria-hidden="true"></i>' . h(lang('Match with its own code')) . '</button>';
 
 		}
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-act="code"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Type a code')) . '</button>';
+		$buttons[] = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="code"><i class="bi bi-pencil" aria-hidden="true"></i>' . h(lang('Type a code')) . '</button>';
 
 	}
 
@@ -903,8 +903,8 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 					<div class="pg-text-2 mt-3">' . h(lang('Only matched products are sent. Their stock and price go from here; the rest is left alone on the marketplace.')) . '</div>
 				</div>
 				<div class="mpp-hero-actions">
-					<button type="button" class="btn btn-outline theme-secondary" data-mp-bulk="shop_send_all"' . ($counts['matched'] ? '' : ' disabled') . '>'
-						. '<i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Send all now')) . '</button>
+					<button type="button" class="pg-button pg-button-fill" data-mp-bulk="shop_send_all"' . ($counts['matched'] ? '' : ' disabled') . '>'
+						. '<i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h(lang('Send all now')) . '</button>
 				</div>
 			</div>'
 			. (($account['status'] !== 'active')
@@ -915,14 +915,14 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 	</div>
 	<div class="card pg-card">
 		<div class="mpp-list-head">
-			<nav class="mpp-tabs" aria-label="' . h(lang('Filters')) . '">';
+			<nav class="pg-seg pg-list-seg" aria-label="' . h(lang('Filters')) . '">';
 
 	foreach ($filters as $key => $label) {
 
 		echo '
-				<a class="mpp-tab' . ($key === $view ? ' active' : '') . '" href="' . h($query(array('view' => $key, 'page' => null))) . '"'
-					. ($key === $view ? ' aria-current="page"' : '') . '>' . h($label)
-					. '<span class="mpp-n" data-mp-count="' . h($key) . '">' . pg_format_number($counts[$key], 0) . '</span></a>';
+				<a class="pg-seg-item' . ($key === $view ? ' is-active' : '') . '" href="' . h($query(array('view' => $key, 'page' => null))) . '"'
+					. ($key === $view ? ' aria-current="true"' : '') . '>' . h($label)
+					. '<span class="pg-seg-count pg-tabular" data-mp-count="' . h($key) . '">' . pg_format_number($counts[$key], 0) . '</span></a>';
 
 	}
 
@@ -935,7 +935,7 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 				<input type="hidden" name="view" value="' . h($view) . '">
 				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm mpp-search"'
 					. ' placeholder="' . h(lang('Search by name, code or barcode')) . '" aria-label="' . h(lang('Search')) . '">
-				<button type="submit" class="btn btn-sm btn-outline theme-secondary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
+				<button type="submit" class="pg-icon-button" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
 			</form>
 		</div>'
 		. ($list['rows'] ? '
@@ -978,15 +978,15 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 	<div class="mpp-bulk d-none" id="mpp-bulk">
 		<span class="small"><b id="mpp-bulk-n">0</b> ' . h(lang('selected')) . '</span>
 		<div class="flex-grow-1"></div>
-		<button type="button" class="btn btn-sm btn-text theme-secondary" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
-		<button type="button" class="btn btn-sm btn-solid theme-primary" data-mp-bulk="shop_own"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Match with own codes')) . '</button>
-		<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-bulk="shop_send"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Send now')) . '</button>'
+		<button type="button" class="pg-button pg-button-ghost pg-button-sm" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
+		<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-bulk="shop_own"><i class="bi bi-link-45deg" aria-hidden="true"></i>' . h(lang('Match with own codes')) . '</button>
+		<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-bulk="shop_send"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h(lang('Send now')) . '</button>'
 		. (mp_can($account['provider'], 'update_listings')
-			? '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-bulk="shop_listing_update" title="'
+			? '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-bulk="shop_listing_update" title="'
 				. h(lang('Sends the title, description and pictures of the ticked approved listings. Price and stock go on their own.')) . '">'
-				. '<i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang('Send listing changes')) . '</button>'
+				. '<i class="bi bi-cloud-upload" aria-hidden="true"></i>' . h(lang('Send listing changes')) . '</button>'
 			: '') . '
-		<button type="button" class="btn btn-sm btn-text theme-secondary" data-mp-bulk="shop_remove"><i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Remove match')) . '</button>
+		<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-bulk="shop_remove"><i class="bi bi-x-lg" aria-hidden="true"></i>' . h(lang('Remove match')) . '</button>
 	</div>';
 
 }
@@ -1174,18 +1174,16 @@ function mp_products_article_html($account, $article) {
 
 	}
 
-	$buttons = '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-act="list_pick"><i class="bi bi-folder2-open me-1" aria-hidden="true"></i>'
+	$buttons = '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="list_pick"><i class="bi bi-folder2-open" aria-hidden="true"></i>'
 		. h(($article['remote_category_id'] !== '') ? lang('Change category') : lang('Choose category')) . '</button>';
 
 	if ($article['remote_category_id'] !== '') {
 
-		$buttons .= '<button type="button" class="btn btn-sm ' . (in_array($article['state'], array('missing', 'unread'), true) ? 'btn-solid theme-primary' : 'btn-outline theme-secondary')
-			. '" data-mp-act="list_form"><i class="bi bi-list-check me-1" aria-hidden="true"></i>' . h(lang('Attributes')) . '</button>';
+		$buttons .= '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="list_form"><i class="bi bi-list-check" aria-hidden="true"></i>' . h(lang('Attributes')) . '</button>';
 
 		if (mp_can($account['provider'], 'create_listings')) {
 
-			$buttons .= '<button type="button" class="btn btn-sm ' . (($article['state'] === 'ready') ? 'btn-solid theme-primary' : 'btn-outline theme-secondary')
-				. '" data-mp-act="list_now"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . h(lang('List on the marketplace')) . '</button>';
+			$buttons .= '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-act="list_now"><i class="bi bi-upload" aria-hidden="true"></i>' . h(lang('List on the marketplace')) . '</button>';
 
 		}
 
@@ -1337,8 +1335,8 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 					<div class="pg-text-2 mt-3">' . h(lang('An article is listed once, with its products as options. Pick its category and answer what the category asks.')) . '</div>
 				</div>
 				<div class="mpp-hero-actions">
-					<button type="button" class="btn ' . ($category_count ? 'btn-outline theme-secondary' : 'btn-solid theme-primary') . '" id="mpa-fetch">'
-						. '<i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Fetch categories')) . '</button>
+					<button type="button" class="pg-button pg-button-fill" id="mpa-fetch">'
+						. '<i class="bi bi-download" aria-hidden="true"></i>' . h(lang('Fetch categories')) . '</button>
 					<small>' . ($category_count
 						? h(lang(array('string' => '{var:1} categories', 'vars' => array(pg_format_number($category_count, 0)))))
 						: h(lang('No categories yet'))) . '</small>
@@ -1362,14 +1360,14 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 	echo '
 	<div class="card pg-card">
 		<div class="mpp-list-head">
-			<nav class="mpp-tabs" aria-label="' . h(lang('Filters')) . '">';
+			<nav class="pg-seg pg-list-seg" aria-label="' . h(lang('Filters')) . '">';
 
 	foreach ($filters as $key => $label) {
 
 		echo '
-				<a class="mpp-tab' . ($key === $view ? ' active' : '') . '" href="' . h($query(array('view' => $key, 'page' => null))) . '"'
-					. ($key === $view ? ' aria-current="page"' : '') . '>' . h($label)
-					. '<span class="mpp-n" data-mp-count="' . h($key) . '">' . pg_format_number($counts[$key], 0) . '</span></a>';
+				<a class="pg-seg-item' . ($key === $view ? ' is-active' : '') . '" href="' . h($query(array('view' => $key, 'page' => null))) . '"'
+					. ($key === $view ? ' aria-current="true"' : '') . '>' . h($label)
+					. '<span class="pg-seg-count pg-tabular" data-mp-count="' . h($key) . '">' . pg_format_number($counts[$key], 0) . '</span></a>';
 
 	}
 
@@ -1382,7 +1380,7 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 				<input type="hidden" name="view" value="' . h($view) . '">
 				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm mpp-search"'
 					. ' placeholder="' . h(lang('Search by code or title')) . '" aria-label="' . h(lang('Search')) . '">
-				<button type="submit" class="btn btn-sm btn-outline theme-secondary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
+				<button type="submit" class="pg-icon-button" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
 			</form>
 		</div>'
 		. ($list['rows'] ? '
@@ -1420,10 +1418,10 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 	<div class="mpp-bulk d-none" id="mpp-bulk">
 		<span class="small"><b id="mpp-bulk-n">0</b> ' . h(lang('selected')) . '</span>
 		<div class="flex-grow-1"></div>
-		<button type="button" class="btn btn-sm btn-text theme-secondary" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
-		<button type="button" class="btn btn-sm btn-solid theme-primary" data-mp-bulk="list_pick"><i class="bi bi-folder2-open me-1" aria-hidden="true"></i>' . h(lang('Choose category')) . '</button>'
+		<button type="button" class="pg-button pg-button-ghost pg-button-sm" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
+		<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-bulk="list_pick"><i class="bi bi-folder2-open" aria-hidden="true"></i>' . h(lang('Choose category')) . '</button>'
 		. (mp_can($account['provider'], 'create_listings')
-			? '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-bulk="list_now"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . h(lang('List on the marketplace')) . '</button>'
+			? '<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-mp-bulk="list_now"><i class="bi bi-upload" aria-hidden="true"></i>' . h(lang('List on the marketplace')) . '</button>'
 			: '') . '
 	</div>';
 
@@ -1613,12 +1611,6 @@ echo pg_page_shell(array(
 .mpp-meter.busy > i { background: var(--pg-primary); }
 .mpp-hero-actions { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
 .mpp-hero-actions small { color: var(--pg-fg-2); }
-.mpp-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.mpp-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border: 1px solid var(--pg-border-color);
-	border-radius: var(--pg-radius-pill); color: inherit; text-decoration: none; font-size: var(--pg-text-2); white-space: nowrap; }
-.mpp-tab:hover { border-color: var(--pg-primary); }
-.mpp-tab.active { background: var(--pg-primary-bg-subtle); border-color: var(--pg-primary); color: var(--pg-primary-fg-emphasis); font-weight: var(--pg-weight-strong); }
-.mpp-tab .mpp-n { font-size: var(--pg-text-count); font-weight: var(--pg-weight-strong); padding: 1px 8px; border-radius: var(--pg-radius-pill); background: var(--pg-bg-2); }
 .mpp-list-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 16px; }
 .mpp-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 7rem minmax(0, 1fr) 16.25rem; gap: 16px; align-items: center;
 	padding: 14px 16px; border-top: 1px solid var(--pg-border-color); transition: background-color .2s; }
@@ -1667,11 +1659,9 @@ a.mpp-title:hover { text-decoration: underline; }
 .mpp-pick .mpp-title { font-size: var(--pg-text-meta); }
 .mpp-pick .mpp-meta { font-size: var(--pg-text-count); margin-top: 0; }
 .mpp-search { min-width: 220px; }
-.mpp-modes { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-.mpp-mode { display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: var(--pg-radius-lg);
-	border: 1px solid var(--pg-border-color); color: inherit; text-decoration: none; font-weight: var(--pg-weight-strong); font-size: var(--pg-text-base); }
-.mpp-mode:hover { border-color: var(--pg-primary); }
-.mpp-mode.active { background: var(--pg-primary-bg-subtle); border-color: var(--pg-primary); color: var(--pg-primary-fg-emphasis); }
+/* The views are one segmented control over the screen, drawn with the
+   look A segments; it scrolls sideways on a phone (.pg-list-seg). */
+.mpp-modes { display: flex; width: fit-content; margin-bottom: 14px; }
 .mpp-row.is-error { background: color-mix(in srgb, var(--pg-danger) 6%, transparent); }
 .mpp-code code { font-size: var(--pg-text-base); font-weight: var(--pg-weight-strong); color: var(--pg-fg-emphasis); }
 .mpp-err { margin-top: 4px; font-size: var(--pg-text-meta); color: var(--pg-danger-fg-emphasis); word-break: break-word; }
@@ -1715,7 +1705,7 @@ a.mpp-title:hover { text-decoration: underline; }
 	.mpp-score { flex-direction: row; gap: 8px; }
 	.mpp-side.shop { grid-column: 2; }
 	.mpp-actions { grid-column: 1 / -1; }
-	.mpp-actions .btn { flex: 1 1 auto; }
+	.mpp-actions .pg-button { flex: 1 1 auto; }
 	.mpp-img { width: 64px; height: 64px; flex-basis: 64px; }
 	.mpp-steps { grid-template-columns: 1fr; }
 	.mpp-hero-actions { align-items: stretch; width: 100%; }
@@ -1751,13 +1741,13 @@ if ($account && ($supported || $can_listings)) {
 	}
 
 	echo '
-	<nav class="mpp-modes" aria-label="' . h(lang('Display')) . '">';
+	<nav class="pg-seg pg-list-seg mpp-modes" aria-label="' . h(lang('Display')) . '">';
 
 	foreach ($modes as $key => $item) {
 
 		echo '
-		<a class="mpp-mode' . ($mode === $key ? ' active' : '') . '" href="marketplace_products.php?account=' . $account_id . $item[0] . '"'
-			. ($mode === $key ? ' aria-current="page"' : '') . '><i class="bi ' . $item[1] . '" aria-hidden="true"></i>' . h($item[2]) . '</a>';
+		<a class="pg-seg-item' . ($mode === $key ? ' is-active' : '') . '" href="marketplace_products.php?account=' . $account_id . $item[0] . '"'
+			. ($mode === $key ? ' aria-current="true"' : '') . '><i class="bi ' . $item[1] . '" aria-hidden="true"></i>' . h($item[2]) . '</a>';
 
 	}
 
@@ -1814,9 +1804,9 @@ if (!$account) {
 							: h(lang('Nothing has been read yet.'))) . '</div>
 				</div>
 				<div class="mpp-hero-actions">
-					<button type="button" class="btn btn-solid theme-primary" id="mpp-read"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h($read_label) . '</button>'
-					. '<button type="button" class="btn btn-solid theme-success' . ($counts['sure'] ? '' : ' d-none') . '" id="mpp-accept-sure">'
-						. '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>'
+					<button type="button" class="pg-button pg-button-fill" id="mpp-read"><i class="bi bi-cloud-download" aria-hidden="true"></i>' . h($read_label) . '</button>'
+					. '<button type="button" class="pg-button pg-button-quiet' . ($counts['sure'] ? '' : ' d-none') . '" id="mpp-accept-sure">'
+						. '<i class="bi bi-check2-all" aria-hidden="true"></i>'
 						. h(lang('Accept all sure ones')) . ' (<span data-mp-count="sure">' . pg_format_number($counts['sure'], 0) . '</span>)</button>
 				</div>
 			</div>
@@ -1852,14 +1842,14 @@ if (!$account) {
 		echo '
 	<div class="card pg-card">
 		<div class="mpp-list-head">
-			<nav class="mpp-tabs" aria-label="' . h(lang('Filters')) . '">';
+			<nav class="pg-seg pg-list-seg" aria-label="' . h(lang('Filters')) . '">';
 
 		foreach ($filters as $key => $label) {
 
 			echo '
-				<a class="mpp-tab' . ($key === $view ? ' active' : '') . '" href="' . h($query(array('view' => $key, 'page' => null))) . '"'
-					. ($key === $view ? ' aria-current="page"' : '') . '>' . h($label)
-					. '<span class="mpp-n" data-mp-count="' . h($key) . '">' . pg_format_number($counts[$key], 0) . '</span></a>';
+				<a class="pg-seg-item' . ($key === $view ? ' is-active' : '') . '" href="' . h($query(array('view' => $key, 'page' => null))) . '"'
+					. ($key === $view ? ' aria-current="true"' : '') . '>' . h($label)
+					. '<span class="pg-seg-count pg-tabular" data-mp-count="' . h($key) . '">' . pg_format_number($counts[$key], 0) . '</span></a>';
 
 		}
 
@@ -1871,7 +1861,7 @@ if (!$account) {
 				<input type="hidden" name="view" value="' . h($view) . '">
 				<input type="search" name="q" value="' . h($search) . '" class="form-control form-control-sm mpp-search"'
 					. ' placeholder="' . h(lang('Search by title, code or barcode')) . '" aria-label="' . h(lang('Search')) . '">
-				<button type="submit" class="btn btn-sm btn-outline theme-secondary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
+				<button type="submit" class="pg-icon-button" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
 			</form>
 		</div>';
 
@@ -1931,8 +1921,8 @@ if (!$account) {
 	<div class="mpp-bulk d-none" id="mpp-bulk">
 		<span class="small"><b id="mpp-bulk-n">0</b> ' . h(lang('selected')) . '</span>
 		<div class="flex-grow-1"></div>
-		<button type="button" class="btn btn-sm btn-text theme-secondary" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
-		<button type="button" class="btn btn-sm btn-solid theme-success" id="mpp-bulk-accept"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Accept selected')) . '</button>
+		<button type="button" class="pg-button pg-button-ghost pg-button-sm" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
+		<button type="button" class="pg-button pg-button-quiet pg-button-sm" id="mpp-bulk-accept"><i class="bi bi-check2-all" aria-hidden="true"></i>' . h(lang('Accept selected')) . '</button>
 	</div>';
 
 	}

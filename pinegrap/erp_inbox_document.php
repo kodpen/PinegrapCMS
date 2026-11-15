@@ -447,14 +447,6 @@ pg_page_shell([
             ' . $output_totals . '
             ' . $output_supplier . '
             ' . $output_references . '
-
-            ' . (($output_actions !== '')
-                ? '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                <div class="container">
-                    <div class="d-flex flex-wrap justify-content-center gap-3">' . $output_actions . '</div>
-                </div>
-            </nav>'
-                : '') . '
         </div>
 
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
@@ -468,6 +460,7 @@ pg_page_shell([
                 </div>
             </div>
         </div>
+        ' . (($output_actions !== '') ? pg_save_bar($output_actions, array('group' => 'd-flex flex-wrap justify-content-center gap-3')) : '') . '
     </div>
 </main>
 ' .
