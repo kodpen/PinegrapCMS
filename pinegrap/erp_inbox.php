@@ -114,7 +114,7 @@ foreach ($rows as $row) {
     $row_state = erp_edoc_inbox_state($row);
     $tone = $states[$row_state]['tone'];
 
-    $output_state = '<span class="badge rounded-pill theme-' . $tone . '">' . h($states[$row_state]['label']) . '</span>';
+    $output_state = pg_pill($states[$row_state]['label'], $tone);
 
     if ($row_state === 'drafted') {
         $output_state .= ' <a href="edit_erp_invoice_draft.php?id=' . (int) $row['invoice_id'] . '" class="small">' . lang('Open the draft') . '</a>';

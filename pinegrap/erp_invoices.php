@@ -279,12 +279,13 @@ $edoc_labels = $edoc_column ? erp_edoc_status_labels() : array();
 
 $status_labels = erp_invoice_status_labels();
 
-$status_classes = array(
-    'draft' => 'fg-secondary',
-    'issued' => 'fg-primary',
-    'partially_paid' => 'fg-warning',
-    'paid' => 'fg-success',
-    'cancelled' => 'fg-danger',
+// The status pill's colour, by the status.
+$status_themes = array(
+    'draft' => 'secondary',
+    'issued' => 'primary',
+    'partially_paid' => 'warning',
+    'paid' => 'success',
+    'cancelled' => 'danger',
 );
 
 $direction_labels = array(
@@ -339,11 +340,11 @@ foreach ($invoices as $invoice) {
                 $output_snoozed = ($snoozed_text !== '')
                     ? ' <i class="bi bi-bell-slash fg-secondary" aria-hidden="true" title="' . h($snoozed_text) . '"></i><span class="visually-hidden">' . h($snoozed_text) . '</span>'
                     : '';
-                $output_due .= '<div><span class="badge theme-danger">' . h(lang(array('string' => '{var:1} day{suffix:1} overdue', 'vars' => $days, 'suffix' => ($days == 1) ? '' : 's'))) . '</span>' . $output_snoozed . '</div>';
+                $output_due .= '<div>' . pg_pill(lang(array('string' => '{var:1} day{suffix:1} overdue', 'vars' => $days, 'suffix' => ($days == 1) ? '' : 's')), 'danger') . $output_snoozed . '</div>';
             } elseif ($days === 0) {
-                $output_due .= '<div><span class="badge theme-warning">' . lang('Due today') . '</span></div>';
+                $output_due .= '<div>' . pg_pill(lang('Due today'), 'warning') . '</div>';
             } elseif (-$days <= 7) {
-                $output_due .= '<div><span class="badge theme-warning">' . h(lang(array('string' => 'due in {var:1} day{suffix:1}', 'vars' => -$days, 'suffix' => ($days == -1) ? '' : 's'))) . '</span></div>';
+                $output_due .= '<div>' . pg_pill(lang(array('string' => 'due in {var:1} day{suffix:1}', 'vars' => -$days, 'suffix' => ($days == -1) ? '' : 's')), 'warning') . '</div>';
             }
         }
     }
@@ -361,7 +362,7 @@ foreach ($invoices as $invoice) {
             $cells_edoc['edoc'] = pg_list_cell('&mdash;', 'align-middle fg-secondary', array('data-pg-sort-value' => ''));
         } else {
             $edoc_label = $edoc_labels[$edoc_status] ?? array($edoc_status, 'secondary');
-            $cells_edoc['edoc'] = pg_list_cell('<span class="badge theme-' . h($edoc_label[1]) . '">' . h($edoc_label[0]) . '</span>'
+            $cells_edoc['edoc'] = pg_list_cell(pg_pill($edoc_label[0], $edoc_label[1])
                 . (((string) ($invoice['gib_number'] ?? '') !== '') ? '<div class="small fg-secondary">' . h($invoice['gib_number']) . '</div>' : ''),
                 'align-middle text-nowrap', array('data-pg-sort-value' => $edoc_status));
         }
@@ -376,7 +377,7 @@ foreach ($invoices as $invoice) {
             'due' => pg_list_cell($output_due, 'align-middle text-nowrap', array('data-pg-sort-value' => $effective_due)),
             'account' => pg_list_cell('<span class="d-inline-block text-truncate pg-cell-truncate" title="' . h($account_title) . '">' . h($account_title) . '</span>', 'align-middle text-nowrap', array('data-pg-sort-value' => $account_title)),
             'direction' => pg_list_cell(h($direction_labels[$invoice['direction']] ?? $invoice['direction'])),
-            'status' => pg_list_cell(h($status_labels[$status] ?? $status), 'align-middle ' . ($status_classes[$status] ?? '')),
+            'status' => pg_list_cell(pg_pill($status_labels[$status] ?? $status, $status_themes[$status] ?? 'secondary'), 'align-middle'),
         ) + $cells_edoc + array(
             'order' => pg_list_cell($order_cell),
             'tax' => pg_list_cell(h(erp_money_out_currency((int) $invoice['tax_total'], $currency)), 'align-middle', array('data-pg-sort-value' => (int) $invoice['tax_total'])),

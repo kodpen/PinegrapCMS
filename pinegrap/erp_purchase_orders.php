@@ -53,9 +53,9 @@ foreach ($rows as $row) {
             <td style="max-width:280px" class="text-break">' . h((string) $row['account_title']) . '</td>
             <td class="text-nowrap' . ($late ? ' fg-danger' : '') . '" data-sort="' . h(str_replace('-', '', $expected)) . '">'
                 . (($expected > '0000-00-00') ? h(prepare_form_data_for_output($expected, 'date')) : '<span class="fg-secondary">—</span>')
-                . ($late ? ' <span class="badge theme-danger">' . lang('Late') . '</span>' : '') . '</td>
+                . ($late ? ' ' . pg_pill(lang('Late'), 'danger') : '') . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['grand_total'] . '">' . h(erp_money_out_currency((int) $row['grand_total'], (string) $row['currency'])) . '</td>
-            <td><span class="badge theme-' . h($row_status[1]) . '">' . h($row_status[0]) . '</span></td>
+            <td>' . pg_pill($row_status[0], $row_status[1]) . '</td>
         </tr>';
 }
 
@@ -122,7 +122,7 @@ pg_page_shell([
 
             <div class="card pg-card erp-list-card my-7">
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover align-middle mb-0" data-pg-sort>
+                    <table class="table erp-list-table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
                             <tr>
                                 <th>' . lang('Order No') . '</th>
