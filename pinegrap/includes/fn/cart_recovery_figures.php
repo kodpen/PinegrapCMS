@@ -203,3 +203,168 @@ function pg_cart_recovery_figures(array $touches, $from, $to, $untouched)
 
     return $out;
 }
+
+/**
+ * Left carts of [from, to) no message touched: the carts completed in the
+ * period with no touch (their channel '' row) and the carts still open that
+ * were started in the period, are at least 6 hours old, hold a line and have
+ * no touch.
+ *
+ * @param int $from
+ * @param int $to
+ * @param int $now
+ * @return int
+ */
+function pg_cart_recovery_untouched($from, $to, $now)
+{
+    $completed = (int) pg_cart_recovery_first(
+        "SELECT COUNT(*) FROM cart_recovery_touch
+        WHERE (channel = '') AND (completed_at >= ?) AND (completed_at < ?)",
+        array((string) (int) $from, (string) (int) $to));
+
+    $until = min((int) $to, (int) $now - PG_CART_RECOVERY_LEFT_AFTER + 1);
+
+    if ($until <= (int) $from) {
+        return $completed;
+    }
+
+    $open = (int) pg_cart_recovery_first(
+        "SELECT COUNT(*) FROM orders
+        WHERE
+            (orders.status = 'incomplete')
+            AND (orders.order_date >= ?)
+            AND (orders.order_date < ?)
+            AND NOT EXISTS (
+                SELECT 1 FROM cart_recovery_touch
+                WHERE cart_recovery_touch.order_id = orders.id)
+            AND EXISTS (
+                SELECT 1 FROM order_items
+                WHERE (order_items.order_id = orders.id)" . pg_order_item_active_sql('order_items') . ")",
+        array((string) (int) $from, (string) $until));
+
+    return $completed + $open;
+}
+
+/**
+ * The touch rows of every cart with a touch sent in [from, to), each with all
+ * its touches, so pg_cart_recovery_figures() can find the cart's first one.
+ *
+ * @param int $from
+ * @param int $to
+ * @return array
+ */
+function pg_cart_recovery_touch_rows($from, $to)
+{
+    $result = db_q(
+        "SELECT order_id, channel, source_type, source_id, sent_at, clicked_at, restored_at, recovered, completed_total
+        FROM cart_recovery_touch
+        WHERE
+            (channel <> '')
+            AND order_id IN (
+                SELECT order_id FROM cart_recovery_touch
+                WHERE (channel <> '') AND (sent_at >= ?) AND (sent_at < ?))",
+        array((string) (int) $from, (string) (int) $to));
+
+    $rows = array();
+
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $rows[] = $row;
+        }
+    }
+
+    return $rows;
+}
+
+/**
+ * A readable name for each message: an e-mail campaign's subject, else the
+ * kind and its number. Messages whose source is gone keep the number.
+ *
+ * @param array $messages pg_cart_recovery_figures()['messages']
+ * @return array the same, each with 'label'
+ */
+function pg_cart_recovery_message_labels(array $messages)
+{
+    $campaign_ids = array();
+
+    foreach ($messages as $message) {
+        if (($message['source_type'] === 'campaign') && ($message['source_id'] > 0)) {
+            $campaign_ids[] = (int) $message['source_id'];
+        }
+    }
+
+    $subjects = array();
+
+    if ($campaign_ids) {
+        $result = db_q(
+            "SELECT id, subject FROM email_campaigns WHERE id IN (" . implode(',', array_fill(0, count($campaign_ids), '?')) . ")",
+            array_map('strval', $campaign_ids));
+
+        if ($result) {
+            while ($row = mysqli_fetch_assoc($result)) {
+                $subjects[(int) $row['id']] = (string) $row['subject'];
+            }
+        }
+    }
+
+    foreach ($messages as $key => $message) {
+        $id = (int) $message['source_id'];
+
+        if (($message['source_type'] === 'campaign') && isset($subjects[$id]) && (trim($subjects[$id]) !== '')) {
+            $messages[$key]['label'] = $subjects[$id];
+        } else {
+            $messages[$key]['label'] = pg_cart_recovery_source_label($message['source_type'], $id);
+        }
+    }
+
+    return $messages;
+}
+
+/**
+ * The kind of a message and its number, when it has no name. Pure.
+ *
+ * @param string $source_type
+ * @param int    $source_id
+ * @return string
+ */
+function pg_cart_recovery_source_label($source_type, $source_id)
+{
+    $kinds = array(
+        'campaign' => lang('E-mail campaign'),
+        'template' => lang('Message template'),
+        'popup'    => lang('Pop-up'),
+    );
+
+    $kind = isset($kinds[$source_type]) ? $kinds[$source_type] : lang('Message');
+
+    return ((int) $source_id > 0) ? $kind . ' #' . (int) $source_id : $kind;
+}
+
+/**
+ * The figures of [from, to) read from the database, the messages named;
+ * null before the table exists.
+ *
+ * @param int      $from
+ * @param int      $to
+ * @param int|null $now unix time; now when null
+ * @return array|null pg_cart_recovery_figures()
+ */
+function pg_cart_recovery_period($from, $to, $now = null)
+{
+    if (!pg_cart_recovery_ready()) {
+        return null;
+    }
+
+    $now = ($now === null) ? time() : (int) $now;
+
+    $figures = pg_cart_recovery_figures(
+        pg_cart_recovery_touch_rows($from, $to),
+        $from,
+        $to,
+        pg_cart_recovery_untouched($from, $to, $now)
+    );
+
+    $figures['messages'] = pg_cart_recovery_message_labels($figures['messages']);
+
+    return $figures;
+}

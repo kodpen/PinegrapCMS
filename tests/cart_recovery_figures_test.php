@@ -20,6 +20,15 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/cart_recovery_figures.php');
 
+// The presenter's money helper lives in includes/api/response.php, which loads
+// only behind the API's own entry. A stand-in of the same shape.
+if (!function_exists('api_money')) {
+	function api_money($minor_units)
+	{
+		return (int) $minor_units;
+	}
+}
+
 // One touch row as the table holds it.
 function cart_recovery_figures_test_touch($order_id, $channel, $source_id, $sent_at, array $more = array())
 {
@@ -111,4 +120,92 @@ function test_cart_recovery_rate()
 	pg_assert_same(null, pg_cart_recovery_rate(0, 0), 'no base: no rate');
 	pg_assert_same(33.3, pg_cart_recovery_rate(1, 3), 'one decimal');
 	pg_assert_same(100.0, pg_cart_recovery_rate(2, 2), 'whole');
+}
+
+function test_cart_recovery_api_answer_matches_its_schema()
+{
+	if (!defined('PG_API_PANEL')) {
+		define('PG_API_PANEL', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/visitors.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/reports.php');
+
+	$from = 1800000000;
+	$touches = array(
+		cart_recovery_figures_test_touch(1, 'email', 10, $from + 10, array('clicked_at' => $from + 20, 'recovered' => 1, 'completed_total' => 2500)),
+	);
+
+	$figures = pg_cart_recovery_figures($touches, $from, $from + 86400, 2);
+	$figures['messages']['campaign:10']['label'] = 'Your cart is waiting';
+
+	$out = api_cart_recovery_present($figures, '2027-01-15', '2027-01-15');
+	$schema = api_cart_recovery_report_schema();
+
+	pg_assert_same(array_keys($schema), array_keys($out), 'top-level keys as declared');
+	pg_assert_same(array_keys($schema['channels'][0]), array_keys($out['channels'][0]), 'channel row keys as declared');
+	pg_assert_same(array_keys($schema['messages'][0]), array_keys($out['messages'][0]), 'message row keys as declared');
+	pg_assert_same(3, $out['left'], 'one reached and two untouched');
+	pg_assert_same(2500, $out['revenue'], 'revenue in minor units');
+	pg_assert_same('Your cart is waiting', $out['messages'][0]['label'], 'the message named');
+	pg_assert_same('email', $out['channels'][0]['channel'], 'the channel named');
+}
+
+function test_cart_recovery_dashboard_card_rows()
+{
+	if (!defined('PG_DASHBOARD_V2')) {
+		define('PG_DASHBOARD_V2', true);
+	}
+
+	if (!defined('BASE_CURRENCY_SYMBOL')) {
+		define('BASE_CURRENCY_SYMBOL', '$');
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/run.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/recovery.php');
+
+	$cards = pg_dashboard_v2_cards();
+	pg_assert_true($cards['recovery']['built'], 'the card is built');
+	pg_assert_same('shop_summary', $cards['recovery']['gate'], 'who sees the shop summary sees it');
+
+	$rows = pg_dashboard_v2_recovery_rows(array(
+		'email'    => array('reached' => 12, 'returned' => 4, 'recovered' => 2, 'revenue' => 5000),
+		'whatsapp' => array('reached' => 1, 'returned' => 0, 'recovered' => 0, 'revenue' => 0),
+	));
+
+	pg_assert_same(2, count($rows), 'a row per channel');
+	pg_assert_same(lang('E-mail'), $rows[0]['text'], 'the channel named');
+	pg_assert_same(pg_dashboard_v2_money(5000), $rows[0]['money'], 'its recovered revenue');
+	pg_assert_contains('12', $rows[0]['meta'], 'reached under the name');
+}
+
+function test_cart_recovery_section_rows()
+{
+	if (!defined('PG_VISITORS_SCREEN')) {
+		define('PG_VISITORS_SCREEN', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/visitors/shell.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/visitors/cart_recovery.php');
+
+	$now = array('left' => 10, 'untouched' => 6, 'reached' => 4, 'returned' => 2, 'recovered' => 1, 'revenue' => 3000);
+
+	$funnel = pg_visitors_cart_recovery_funnel($now);
+	pg_assert_same(array(10, 4, 2, 1), array_column($funnel, 'value'), 'left, reached, came back, recovered');
+
+	$tiles = pg_visitors_cart_recovery_tiles($now, null);
+	pg_assert_same(5, count($tiles), 'five tiles');
+	pg_assert_same(null, $tiles[0]['before'], 'no earlier figure without a compare');
+	pg_assert_same('money', $tiles[4]['format'], 'revenue as money');
+
+	$tiles = pg_visitors_cart_recovery_tiles($now, array('left' => 8, 'reached' => 3, 'returned' => 1, 'recovered' => 0, 'revenue' => 0));
+	pg_assert_same(8, $tiles[0]['before'], 'the earlier left carts');
+
+	$rows = pg_visitors_cart_recovery_message_rows(array(
+		array('label' => 'A', 'channel' => 'email', 'sent' => 5, 'reached' => 5, 'returned' => 1, 'recovered' => 0, 'revenue' => 0),
+		array('label' => 'B', 'channel' => 'email', 'sent' => 2, 'reached' => 2, 'returned' => 1, 'recovered' => 1, 'revenue' => 900),
+	));
+	pg_assert_same('B', $rows[0][0], 'the most recovered revenue first');
+	pg_assert_same(7, count($rows[0]), 'message, channel, sent and the four figures');
 }
