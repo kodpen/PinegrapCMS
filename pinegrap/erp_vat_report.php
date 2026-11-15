@@ -325,6 +325,7 @@ foreach (array_keys($report['months']) as $month) {
 }
 
 $report_view_names = array(
+    'tax' => erp_tax_label('tax'),
     'calculated' => erp_tax_label('calculated'),
     'deductible' => erp_tax_label('deductible'),
     'kinds' => $labels,
@@ -431,7 +432,7 @@ pg_page_shell([
                 </div>
                 <div class="pg-report-frame-body table-responsive">
                     <table class="pg-report-table" data-pg-sort id="erp_vat_documents">
-                        <thead class="sticky-top">
+                        <thead>
                             <tr>
                                 <th>' . lang('Date') . '</th>
                                 <th>' . lang('Document Number') . '</th>

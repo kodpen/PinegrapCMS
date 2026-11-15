@@ -26,7 +26,6 @@ function test_sticky_heading_erp_boxes_pad_the_heading_row()
 {
 	$boxes = array(
 		'erp_profit.php' => 'erp_profit_accounts',
-		'erp_vat_report.php' => 'erp_vat_documents',
 	);
 
 	foreach ($boxes as $file => $table) {

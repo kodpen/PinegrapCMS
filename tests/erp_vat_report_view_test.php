@@ -114,6 +114,7 @@ function test_erp_vat_report_notes_and_documents()
 	pg_assert_false(strpos($source, 'max-height:40rem') !== false, 'no window of 15 rows inside the card');
 	pg_assert_contains('id="erp_vat_count"', $source, 'a count in the card\'s head');
 	pg_assert_contains('id="erp_vat_all"', $source, 'Show all');
+	pg_assert_contains("'tax' => erp_tax_label('tax'),", $source, 'the line\'s title names the tax');
 	pg_assert_contains('<span class="pg-report-field ms-auto"><label class="pg-report-label" for="erp_vat_kind">', $source, 'the label with its select');
 
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
