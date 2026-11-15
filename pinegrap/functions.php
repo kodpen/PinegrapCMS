@@ -68,6 +68,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_themes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_previews.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_theme_vars.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_fx.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_messages.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_datetime.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_time_sql.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_conditions.php');
