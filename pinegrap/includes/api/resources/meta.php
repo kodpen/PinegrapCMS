@@ -158,8 +158,20 @@ function api_meta_features() {
 		'erp'                 => (defined('ERP_ENABLED') && ERP_ENABLED == true),
 		'mobile'              => (defined('MOBILE') && MOBILE == true),
 		'captcha'             => (defined('CAPTCHA') && CAPTCHA == true),
-		'performance_monitor' => (defined('PERF_MONITOR_ENABLED') && PERF_MONITOR_ENABLED == true)
+		'performance_monitor' => (defined('PERF_MONITOR_ENABLED') && PERF_MONITOR_ENABLED == true),
+		'native_push'         => api_meta_native_push()
 	);
+
+}
+
+// Whether a team device can register for native push (POST /push/devices):
+// a push service address, a VAPID key and the database step are all there.
+function api_meta_native_push() {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/push.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/push_broker.php');
+
+	return pg_push_broker_ready();
 
 }
 
@@ -356,7 +368,8 @@ function api_meta_schema() {
 			'erp'                 => 'boolean',
 			'mobile'              => 'boolean',
 			'captcha'             => 'boolean',
-			'performance_monitor' => 'boolean'
+			'performance_monitor' => 'boolean',
+			'native_push'         => 'boolean'
 		),
 		'security' => array(
 			'firewall'          => 'string',

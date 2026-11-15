@@ -205,6 +205,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_reminders();       // 11.0.212
 	upgrade_2026_11_0_ws_poll_parts();           // 11.0.213
 	upgrade_2026_11_0_ws_poll_agent_question();  // 11.0.214
+	upgrade_2026_11_0_push_provider();           // 11.0.215
 
 }
 
@@ -6850,5 +6851,26 @@ function upgrade_2026_11_0_ws_poll_agent_question() {
 	install_add_column('ws_polls', 'agent_question', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: a poll an agent asks is an agent question, answered by the people it asks.');
+
+}
+
+// Native push for team devices (11.0.215, includes/fn/push_broker.php): a
+// device's FCM or APNs token is traded at the push broker for an https
+// endpoint kept as a push_subscriptions row, so the site never holds the
+// token. provider tells such a row from a browser's: '' a browser, 'fcm' or
+// 'apns' a broker row. Existing rows are browsers, which the default says.
+function upgrade_2026_11_0_push_provider() {
+
+	if (!install_table_exists('push_subscriptions')) {
+
+		install_skipped('push_subscriptions does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('push_subscriptions', 'provider', "VARCHAR(8) NOT NULL DEFAULT ''");
+
+	install_note('Push notifications: a team device can register for native push through the Pinegrap push service.');
 
 }

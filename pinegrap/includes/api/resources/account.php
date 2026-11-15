@@ -1229,3 +1229,133 @@ function api_push_test($params) {
 	api_ok(array('devices' => count($sent), 'delivered' => $delivered));
 
 }
+
+// Native push (includes/fn/push_broker.php): only a team devices session
+// registers, since the registration ends with that session. An application
+// key or an OAuth connection is refused.
+function api_push_device_load() {
+
+	api_push_load();
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/push_broker.php');
+
+	$device = api_current_device();
+
+	if (($device === null) || ((int)($device['oauth_client_id'] ?? 0) > 0)) {
+
+		api_fail(403, 'forbidden', lang('Only a team devices session can register a device for native push.'));
+
+	}
+
+	if (pg_push_broker_base(PG_PUSH_BROKER_URL) === '' || pg_push_vapid_public_key() === '') {
+
+		api_fail(503, 'service_unavailable', lang('This server cannot send native push notifications.'));
+
+	}
+
+	if (!pg_push_broker_has_provider()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+
+	}
+
+	return $device;
+
+}
+
+// A refusal of the push broker, passed on with the broker's own words when it
+// gave any.
+function api_push_device_refuse($answer) {
+
+	$messages = array(
+		'busy'       => lang(array('string' => 'The push service is busy. Try again in {var:1} seconds.', 'vars' => array((int)$answer['retry_after']))),
+		'token'      => lang('The push service refused this device token.'),
+		'refused'    => lang('The push service refused this site.'),
+		'unreadable' => lang('The push service gave an answer this site cannot read.'),
+	);
+
+	$message = isset($messages[$answer['reason']]) ? $messages[$answer['reason']] : lang('The push service could not be reached. Try again later.');
+
+	if ((string)$answer['detail'] !== '') {
+
+		$message .= ' ' . $answer['detail'];
+
+	}
+
+	if ((int)$answer['retry_after'] > 0) {
+
+		api_extra_headers('Retry-After', (string)(int)$answer['retry_after']);
+
+	}
+
+	api_fail((int)$answer['status'], (string)$answer['code'], $message, $answer['field']);
+
+}
+
+function api_push_device_register($params) {
+
+	$device = api_push_device_load();
+
+	$app = api_current_app();
+
+	$bundle_id = trim((string)$params['bundle_id']);
+
+	if (!preg_match('/\A[A-Za-z0-9._-]{1,255}\z/', $bundle_id)) {
+
+		api_fail_validation(lang('The bundle id may hold only letters, digits, dots, hyphens and underscores.'), 'bundle_id');
+
+	}
+
+	api_dry_run_stop('created', 'push_device', array());
+
+	$answer = pg_push_broker_call('register', array(
+		'provider'  => (string)$params['provider'],
+		'token'     => trim((string)$params['token']),
+		'bundle_id' => $bundle_id
+	));
+
+	if (!$answer['ok']) {
+
+		api_push_device_refuse($answer);
+
+	}
+
+	// The broker answers the same endpoint for the same site and token, so a
+	// repeated registration updates the row the first one made.
+	if (!pg_push_subscription_save((int)$app['owner']['id'], $answer['endpoint'], '', '', mb_substr(api_header('User-Agent'), 0, 255))) {
+
+		api_push_device_refuse(array('reason' => 'unreadable', 'status' => 503, 'code' => 'service_unavailable', 'field' => null, 'retry_after' => 0, 'detail' => ''));
+
+	}
+
+	api_exec("UPDATE push_subscriptions
+		SET provider = '" . escape((string)$params['provider']) . "'"
+		. (pg_push_has_selector() ? ", auth_selector = 'api:" . (int)$device['id'] . "'" : "") . "
+		WHERE endpoint_hash = '" . escape(hash('sha256', $answer['endpoint'])) . "'");
+
+	api_ok(array('registered' => true), 201);
+
+}
+
+function api_push_device_unregister($params) {
+
+	$device = api_push_device_load();
+
+	$rows = pg_push_has_selector() ? api_rows("SELECT endpoint FROM push_subscriptions
+		WHERE auth_selector = 'api:" . (int)$device['id'] . "' AND provider <> ''") : array();
+
+	api_dry_run_stop('deleted', 'push_device', array('found' => !empty($rows)));
+
+	// The site stops sending whatever the broker answers; the broker forgets
+	// an endpoint it is told about, and one that is never used again expires.
+	foreach ($rows as $row) {
+
+		pg_push_broker_call('forget', array('endpoint' => (string)$row['endpoint']));
+
+		pg_push_subscription_delete($row['endpoint']);
+
+	}
+
+	api_ok(array('registered' => false));
+
+}
