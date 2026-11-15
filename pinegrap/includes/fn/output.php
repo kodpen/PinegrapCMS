@@ -982,13 +982,14 @@ function pg_page_shell($properties = array())
  */
 function pg_screen_toolbar($slots, $opts = array())
 {
+    // Look A's buttons: the slot's one main action filled, the rest ghost.
     $recipes = array(
-        'primary'   => 'btn btn-sm btn-solid theme-primary rounded-pill px-5',
-        'secondary' => 'btn btn-sm btn-text theme-secondary',
-        'grow'      => 'btn btn-sm btn-text theme-secondary',
-        'search'    => 'btn btn-sm btn-text theme-secondary',
-        'view'      => 'btn btn-sm btn-text theme-secondary',
-        'overflow'  => 'btn btn-sm btn-text theme-secondary',
+        'primary'   => 'pg-button pg-button-fill',
+        'secondary' => 'pg-button pg-button-ghost',
+        'grow'      => 'pg-button pg-button-ghost',
+        'search'    => 'pg-button pg-button-ghost',
+        'view'      => 'pg-button pg-button-ghost',
+        'overflow'  => 'pg-button pg-button-ghost',
     );
 
     $drawn = array();
@@ -1004,7 +1005,7 @@ function pg_screen_toolbar($slots, $opts = array())
                 if (!isset($item['label']) || (string) $item['label'] === '') {
                     continue;
                 }
-                $icon = (isset($item['icon']) && $item['icon'] !== '') ? '<i class="bi ' . h((string) $item['icon']) . ' me-2" aria-hidden="true"></i>' : '';
+                $icon = (isset($item['icon']) && $item['icon'] !== '') ? '<i class="bi ' . h((string) $item['icon']) . '" aria-hidden="true"></i>' : '';
                 $id = (isset($item['id']) && $item['id'] !== '') ? ' id="' . h((string) $item['id']) . '"' : '';
                 $url = isset($item['url']) ? (string) $item['url'] : '#';
                 $html .= '<a class="' . $recipe . '"' . $id . ' href="' . h($url) . '">' . $icon . h((string) $item['label']) . '</a>';
