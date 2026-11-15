@@ -848,6 +848,27 @@ div.pg-guest-poll-option {
   color: var(--pg-fg-2);
 }
 
+/* A canvas whose picture is not drawn yet: a line in place of a blank. */
+.pg-guest-canvas-wait {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  padding: .45rem .6rem;
+  border: 1px dashed var(--pg-border-color);
+  border-radius: .5rem;
+  background: var(--pg-bg-body);
+}
+
+.pg-guest-canvas-wait-text b,
+.pg-guest-canvas-wait-text span {
+  display: block;
+}
+
+.pg-guest-canvas-wait-text span {
+  font-size: .78rem;
+  color: var(--pg-fg-2);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pg-guest-poll-bar {
     transition: none;
