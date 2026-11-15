@@ -9,6 +9,7 @@ description: The agent question on the server (agent_question.php, step 11.0.214
 
 ## Who answers?
 - `ws_agent_question_asked()`: the people the question mentions (a department's members too), else the channel's owners (a discussion's: its channel's), team members who read the channel: `ws_question_asked_ids()`, which `ws_question_ring()` rings.
+- The readers are filtered before the choice (`ws_question_ring_pick()` with its reader check): a question that mentions only people who cannot read the channel asks the owners, not nobody (bug #9809, PR #9836; it used to ask nobody and could never be answered or closed).
 - `ws_poll_vote_check()` refuses anybody else ("Only the people asked can answer this question.", 403 over the API); a guest never ("A guest cannot answer an agent question."; `ws_guest_vote()` refuses it). The others read.
 - Over REST only the person's team devices session answers (`ws_api_own_words_only()` in `ws_api_polls_vote()`, before the dry run stops; #9818): an OAuth connection passed `ws_api_person_only()` as its approver and settled its own question in their name (#9807). Rule: `workspace-api-callers.md`.
 
