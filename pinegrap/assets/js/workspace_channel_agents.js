@@ -279,7 +279,7 @@
 
             var actions = el('div', 'ws-cha-actions');
             var remove = h.button('pg-button pg-button-ghost pg-button-sm ws-cha-remove', t('cha_remove'), 'bi-x-lg');
-            var save = h.button('pg-button pg-button-fill pg-button-sm', t('cha_save'), 'bi-check2');
+            var save = h.button('pg-button pg-button-quiet pg-button-sm', t('cha_save'), 'bi-check2');
 
             actions.appendChild(remove);
             actions.appendChild(save);
@@ -433,7 +433,9 @@
             }
 
             root.classList.remove('d-none');
-            var title = root.appendChild(el('div', 'pg-field-label', t('cha_title')));
+            // The drawer's other parts keep .form-label titles until the drawer is
+            // redrawn; the section's title matches them.
+            var title = root.appendChild(el('div', 'form-label', t('cha_title')));
             root.appendChild(el('div', 'pg-field-help ws-cha-intro', t('cha_help')));
 
             if (!state.agents.length) {

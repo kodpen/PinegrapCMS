@@ -12445,6 +12445,13 @@ body.workspace .ws-shell-main > #button_bar {
   gap: 4px 8px;
   min-width: 0;
 }
+.ws-cha-name > .pg-list-row-title {
+  flex: 0 0 auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ws-cha-summary {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -12534,6 +12541,9 @@ body.workspace .ws-shell-main > #button_bar {
   }
   .ws-cha-state {
     max-width: 34%;
+  }
+  .ws-cha-summary {
+    white-space: normal;
   }
 }
 .ws-info-badge {
