@@ -39,7 +39,7 @@ define('WS_PERSONAL_ICAL_AHEAD_DAYS', 366);
 /** The most bytes the kept events take before sealing: the sealed blob stays within url (TEXT). */
 define('WS_PERSONAL_ICAL_PAYLOAD_MAX', 40000);
 
-/** The most occurrences one repeating event gives. */
+/** The most occurrences one repeating event gives inside the read window. */
 define('WS_PERSONAL_ICAL_REPEAT_MAX', 500);
 
 /**
@@ -636,9 +636,23 @@ function ws_personal_ical_events($text, $from, $to)
             sort($days);
         }
 
-        $given = 0;
+        // Without COUNT the walk starts at the last period that cannot reach
+        // $from, so a rule begun years ago still gives the window's
+        // occurrences; the step is taken at its longest (31-day month, 366-day
+        // year), so the jump never passes a period that reaches the window.
+        // COUNT counts from the first occurrence, so then the walk starts there.
+        $first = 0;
+        $longest = array('DAILY' => 1, 'WEEKLY' => 7, 'MONTHLY' => 31, 'YEARLY' => 366);
 
-        for ($period = 0; $period < WS_PERSONAL_ICAL_REPEAT_MAX; $period++) {
+        if (($frequency !== '') && !$count) {
+            $gap = ($from - $length - $start->getTimestamp()) / 86400;
+            $first = max(0, (int) floor($gap / ($longest[$frequency] * $interval)) - 1);
+        }
+
+        $given = 0;
+        $kept = 0;
+
+        for ($period = $first; ($period < $first + WS_PERSONAL_ICAL_REPEAT_MAX) && ($kept < WS_PERSONAL_ICAL_REPEAT_MAX); $period++) {
             $base = clone $start;
 
             if ($period > 0) {
@@ -689,6 +703,7 @@ function ws_personal_ical_events($text, $from, $to)
                     continue;
                 }
 
+                $kept++;
                 $out[] = array(
                     'title'     => $title,
                     'starts_at' => $at,
