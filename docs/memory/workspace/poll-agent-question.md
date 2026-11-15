@@ -8,7 +8,8 @@ description: The agent question on the server (agent_question.php, step 11.0.214
 - `ws_agent_question_settings()` stores it with no anonymous vote and no closing time, at create and change. Before the upgrade every poll is a person's poll (`ws_agent_question_ready()`). No backfill: an agent's older poll stays a poll.
 
 ## Who answers?
-- `ws_agent_question_asked()`: the people the question mentions (a department's members too), else the channel's owners (a discussion's: its channel's), team members who read the channel: `ws_question_asked_ids()`, which `ws_question_ring()` rings. The readers are filtered before the choice (`ws_question_ring_pick()` with its reader check): a question that mentions only people who cannot read the channel asks the owners, not nobody (bug #9809, PR #PRNUM; it used to ask nobody and could never be answered or closed).
+- `ws_agent_question_asked()`: the people the question mentions (a department's members too), else the channel's owners (a discussion's: its channel's), team members who read the channel: `ws_question_asked_ids()`, which `ws_question_ring()` rings.
+- The readers are filtered before the choice (`ws_question_ring_pick()` with its reader check): a question that mentions only people who cannot read the channel asks the owners, not nobody (bug #9809, PR #PRNUM; it used to ask nobody and could never be answered or closed).
 - `ws_poll_vote_check()` refuses anybody else ("Only the people asked can answer this question.", 403 over the API); a guest never ("A guest cannot answer an agent question."; `ws_guest_vote()` refuses it). The others read.
 
 ## How is it settled?
