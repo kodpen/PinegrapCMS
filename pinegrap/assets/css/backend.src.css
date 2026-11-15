@@ -26618,6 +26618,9 @@ select.pg-list-table-field option.private {
   --pg-text-status-title: 0.9375rem;
   --pg-text-section-title: 1.0625rem;
   --pg-text-screen-title: 1.5rem;
+  /* A figure's value (the report's figure, a figure card), and on a phone. */
+  --pg-text-figure: 1.625rem;
+  --pg-text-figure-sm: 1.3125rem;
   --pg-weight-regular: var(--bs-font-weight-normal);
   --pg-weight-medium: var(--bs-font-weight-medium);
   --pg-weight-strong: 550;
@@ -29118,6 +29121,103 @@ textarea.pg-campaign-text {
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+}
+
+}
+
+/* ==========================================================================
+   Look A: figure cards.
+   A figure outside the report block, drawn as the report's figure is
+   (".pg-report-fig" in "Look A: report screens"): a label, the value in the
+   Display cut with tabular digits, a note under it. .pg-figures lays cards
+   out as the report does: four in a row, fewer share it, two on a phone.
+   The label, value and note also stand alone: a record's amount in a
+   status card, the figures inside a card, a hero's counts.
+   ========================================================================== */
+@layer custom {
+
+.pg-figures {
+  display: grid;
+  grid-template-columns: repeat(var(--pg-figures, 4), minmax(0, 1fr));
+  gap: 16px;
+  margin: 0 0 16px;
+}
+.pg-figure {
+  min-width: 0;
+  padding: 15px 18px 14px;
+}
+.pg-figure-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-regular);
+  color: var(--pg-fg-2);
+}
+.pg-figure-value {
+  margin: 7px 0 5px;
+  overflow: hidden;
+  font-size: var(--pg-text-figure);
+  font-weight: var(--pg-weight-title);
+  line-height: 1.2;
+  letter-spacing: var(--pg-tracking-screen-title);
+  font-variation-settings: var(--pg-opsz-display);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A value above its label (a hero's counts) starts the block. */
+.pg-figure-value:first-child {
+  margin-top: 0;
+}
+.pg-figure-value:last-child {
+  margin-bottom: 0;
+}
+.pg-figure-value > small {
+  font-size: var(--pg-text-status-title);
+  font-weight: var(--pg-weight-strong);
+  letter-spacing: 0;
+  color: var(--pg-fg-2);
+}
+.pg-figure-value.is-good {
+  color: var(--pg-success-fg-emphasis);
+}
+.pg-figure-value.is-bad {
+  color: var(--pg-danger-fg-emphasis);
+}
+.pg-figure-note {
+  margin: 0;
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-3);
+}
+.pg-figure-note.is-bad {
+  color: var(--pg-tone-rose-text);
+}
+@media (max-width: 991.98px) {
+  .pg-figures {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  }
+}
+/* A phone: two smaller cards a row, an odd last card the whole row. */
+@media (max-width: 575.98px) {
+  .pg-figures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .pg-figure {
+    padding: 12px 14px 11px;
+  }
+  .pg-figure-value {
+    margin: 5px 0 3px;
+    font-size: var(--pg-text-figure-sm);
+  }
+  .pg-figure-value > small {
+    font-size: var(--pg-text-2);
+  }
+  .pg-figures > .pg-figure:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
 
