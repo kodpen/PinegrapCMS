@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function ws_channel_access_api_routes()
 {
     $id = array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true);
-    $person = ' Only the person, signed in on a device, does this: an application key or an OAuth connection is refused with 403, and it is no MCP tool.';
+    $person = ' Only the person does this, signed in on a device or through an OAuth connection they approved: an application key is refused with 403, and it is no MCP tool.';
     $staff = ' Staff who are in the channel only, as in the panel: anybody else, an archived channel and a direct message, discussion or mailbox room are refused with 403.';
 
     return array(

@@ -5,7 +5,7 @@ description: Channel kind, join, clear and version rename in the API (api_channe
 
 ## Which routes, and who may call them?
 - `POST /workspace/channels/{id}/kind` (kind public or private), `POST …/join`, `POST …/clear` (title optional), `POST …/eras/{number}` (title; empty takes the name off), all `workspace:write`, `dry_run`, `'mcp' => false`.
-- Person only (`ws_api_person_only()`): an application key or an OAuth connection is refused 403 on each, as Make private, Join and Clear are the person's own acts in the panel.
+- Person only (`ws_api_person_only()`): an application key is refused 403 on each; a team devices session or an OAuth connection (acting for the person who approved it) passes, as Make private, Join and Clear are the person's own acts in the panel.
 - The panel's checks: kind, clear and rename need staff in the channel (`ws_can_change_channel_kind()`, `ws_can_clear_channel()`), else 403; join only a public channel (403 for a private one: it is joined when a member adds you). A version number the channel does not have is 404; nothing written since the conversation began 422; versions table missing 503.
 
 ## What do they answer?
