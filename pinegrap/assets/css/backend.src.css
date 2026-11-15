@@ -5696,6 +5696,19 @@ body.pg-code-field-open {
 .erp-list-table > tbody > tr:last-child > td {
   border-bottom: 0;
 }
+/* A phone: the table scrolls sideways, so a cell keeps at least 6rem and
+   a name that may break anywhere (text-break) is not squeezed to a few
+   letters a line; the sides are the table's 8 px (the driver lists are
+   cards there). */
+@media (max-width: 575.98px) {
+  .erp-list-table > thead > tr > th,
+  .erp-list-table > tbody > tr > td {
+    padding-inline: 8px;
+  }
+  .erp-list-table > tbody > tr > td {
+    min-width: 6rem;
+  }
+}
 
 .object-fit,
 .img-thumbnail {
