@@ -19,4 +19,4 @@ description: CA15 canvas routes: an older version of a part put back, an agent's
 - The writers return `status` beside `error`; `ws_api_canvas_refusal_code()` maps it: 403 forbidden, 404 not_found (a version the part has not got), 409 conflict (the version shown now, the edit changed since, no picture yet, a binding undone or changed), 500 server_error, 503.
 
 ## Which PR?
-- CA15 of plan channel-api-gaps (G26, G27, G28).
+- #9829, CA15 of plan channel-api-gaps (G26, G27, G28).
