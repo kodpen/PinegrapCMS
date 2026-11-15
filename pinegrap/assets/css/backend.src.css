@@ -29703,6 +29703,76 @@ textarea.pg-campaign-text {
 }
 
 /* ==========================================================================
+   Look A: a list table inside an edit screen.
+   A plain table whose rows hold form fields (so it is never on the list
+   table driver) takes the driver's heading row and rows: a 38 px heading
+   in small strong text in the third text colour, rows at least 52 px under
+   a faint line, cells 14 px from the edges, on the card's ground. Its tick
+   boxes are .pg-checkbox, its row action .pg-icon-button-sm, its fields
+   .pg-input-sm. First user: the products of Add and Edit Product Group.
+   ========================================================================== */
+@layer custom {
+
+.pg-embedded-table {
+  --bs-table-bg: transparent;
+}
+.pg-embedded-table > thead > tr > th,
+.pg-embedded-table > tbody > tr > td {
+  background-color: transparent;
+}
+.pg-embedded-table > thead > tr > th {
+  height: 38px;
+  padding: 0 14px;
+  border-bottom: 0;
+  box-shadow: inset 0 -1px 0 var(--pg-border-color-translucent);
+  font-size: var(--pg-text-meta);
+  font-weight: var(--pg-weight-strong);
+  color: var(--pg-fg-3);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.pg-embedded-table > thead > tr > th[aria-sort] {
+  color: var(--pg-fg-body);
+}
+.pg-embedded-table > tbody > tr > td {
+  height: 52px;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+  vertical-align: middle;
+}
+.pg-embedded-table > tbody > tr:last-child > td {
+  border-bottom: 0;
+}
+/* The tick box and the row's action take only their own width. */
+.pg-embedded-table .pg-embedded-table-tight {
+  width: 1%;
+  white-space: nowrap;
+}
+/* A short number field in a cell (a sort order). */
+.pg-embedded-table .pg-embedded-table-number {
+  width: 72px;
+  text-align: end;
+}
+/* The strip under the table (Load More) on the card's line. */
+.pg-embedded-table-foot {
+  padding: 12px 14px;
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+/* A phone: the table scrolls sideways, so the sides are 8 px and a cell
+   keeps at least 6rem but the tight ones. */
+@media (max-width: 575.98px) {
+  .pg-embedded-table > thead > tr > th,
+  .pg-embedded-table > tbody > tr > td {
+    padding-inline: 8px;
+  }
+  .pg-embedded-table > tbody > tr > td:not(.pg-embedded-table-tight) {
+    min-width: 6rem;
+  }
+}
+
+}
+
+/* ==========================================================================
    Look A: WhatsApp template designer.
    whatsapp_template.php as drawn in the plan's template-designer.html: the
    stages line, the cards of the form column, the message box with its

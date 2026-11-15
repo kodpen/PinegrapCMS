@@ -171,31 +171,6 @@ if (!$_POST) {
     $more_images = $show_image ? pg_product_more_images($selected_products) : array();
 
     foreach ($items as $item) {
-        // if this is a product
-        if ($item['type'] == "product") {
-            $output_checkbox = '<input class="check" type="checkbox" name="products[]" checked="checked" value="' . $item['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($item['name'])))) . '" />';
-            $output_product_group_class = '';
-            $price = prepare_amount($item['price']);
-            $id_type = 'product_id';
-            $output_url = 'edit_product.php?id=' . $item['id'];
-            
-        // else, this is a product_group
-        } else {
-            $output_checkbox = '<span class="material-icons disabled-checkbox">check_box</span>';
-            $output_product_group_class = 'unselectable selected';
-            $price = '';
-            $id_type = 'product_group_id';
-            $output_url = 'edit_product_group.php?id=' . $item['id'];
-        }
-
-        // If this item is enabled, then use green color for name and short description.
-        if ($item['enabled'] == 1) {
-            $status_class = 'fg-success';
-        
-        // Otherwise this item is disabled, so use red color for name and short description.
-        } else {
-            $status_class = 'fg-danger';
-        }
         $output_image_column = '';
         if ($show_image) {
             $output_image_column = ($item['type'] == 'product')
@@ -203,21 +178,8 @@ if (!$_POST) {
                     isset($more_images[(int) $item['id']]) ? $more_images[(int) $item['id']] : array())
                 : pg_product_image_cell('product-group-' . (int) $item['id'], $item['image_name'], $item['name'], $item['short_description']);
         }
-       
-        $output_rows .=
-            '<tr id="' . $item['id'] . '" class="' . $output_product_group_class . '">
-                <td class="select-all align-middle text-start">' . $output_checkbox . '</td>
-			    <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-                </td>
-                ' . $output_image_column . '
-                <td class="chart_label  align-middle ' . $status_class . '">' . h($item['name']) . (($item['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>
-                <td class="align-middle ' . $status_class . '">' . h($item['short_description']) . '</td>
-                <td class="align-middle text-end" data-sort="' . (($item['type'] == 'product') ? h((string) $item['price']) : '') . '">' . $price . '</td>
-                <td class="align-middle "><input class="form-control text-end" type="text" name="sort_order_' . $item['type'] . '_' . $item['id'] . '" size="5" value="' . $item['sort_order'] . '" maxlength="5" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="65535" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $item['name']) . '" style="text-align: right;width:60px;" /></td>
-                <td></td>
-            </tr>';
+
+        $output_rows .= pg_product_group_form_row($item, true, $output_image_column);
     }
     
     // Build the exclusion clause once (reused for count and initial batch).
