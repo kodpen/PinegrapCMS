@@ -55,8 +55,9 @@ function ws_chip_html($ref)
  * record's icon and name (a link where the tag has one), its status and the
  * line the chip shows on hover. Built only from the tag as ws_refs_resolve()
  * gave it to this reader, so it shows nothing the chip does not; a tag the
- * reader may not see, a record that is gone and a form (its own card,
- * ws_form_cards_html()) stay chips in the text.
+ * reader may not see, a record that is gone, a form (its own card,
+ * ws_form_cards_html()) and another message (its chip opens the message
+ * itself, message_refs.php) stay chips in the text.
  *
  * @param string $body the message as stored
  * @param array  $refs ws_refs_resolve() output covering the body's tokens
@@ -64,7 +65,7 @@ function ws_chip_html($ref)
  */
 function ws_tag_card_html($body, $refs)
 {
-    if (!preg_match('/^\s*<#(' . ws_token_types_pattern() . '):([0-9]{1,10})>\s*$/', (string) $body, $match) || ($match[1] === 'form')) {
+    if (!preg_match('/^\s*<#(' . ws_token_types_pattern() . '):([0-9]{1,10})>\s*$/', (string) $body, $match) || in_array($match[1], array('form', 'message'), true)) {
         return '';
     }
 
@@ -1012,7 +1013,9 @@ function ws_plain_text($viewer, $body, $refs = null, $note = false)
         $text = preg_replace_callback('/<[@#](' . ws_token_types_pattern() . '):([0-9]{1,10})>/', function ($match) use ($refs) {
             $key = $match[1] . ':' . $match[2];
 
-            return isset($refs[$key]) ? $refs[$key]['label'] : '';
+            // A message pointed at reads with who wrote it and its words
+            // (ws_message_ref()).
+            return isset($refs[$key]) ? (string) ($refs[$key]['plain'] ?? $refs[$key]['label']) : '';
         }, (string) $text);
 
         $text = preg_replace('/^\s*[-*]\s\[ \]\s+/mu', '☐ ', $text);

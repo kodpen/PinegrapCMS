@@ -1849,6 +1849,11 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('versions' => ws_file_history($message['id'], (int) $viewer['id'])));
 
+        // The message a tag points at, for its popup: only for a reader of
+        // its channel (message_refs.php).
+        case 'ws_message_ref':
+            return ws_action_ok(ws_message_ref_popup($viewer, (int) ($request['message_id'] ?? 0)));
+
         // The overview: what is coming, what was written to the person, the
         // latest decisions and the channels they could join.
         case 'ws_home':
