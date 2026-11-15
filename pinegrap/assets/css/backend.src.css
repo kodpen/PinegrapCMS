@@ -5673,7 +5673,17 @@ body.pg-code-field-open {
    table driver) takes the list table's heading row and rows: a 38 px
    heading in small strong text in the third text colour, the sorted
    column's heading in the text colour, rows at least 52 px under a faint
-   line, the cells 14 px from the edges. Rows keep their own wrapping. */
+   line, the cells 14 px from the edges. Rows keep their own wrapping. The
+   cells lie on the card's ground, not a fill of their own (the panel's
+   .table cell rule paints the card colour, which differs from pg-card's
+   gradient); the hover tone stays. */
+.erp-list-table {
+  --bs-table-bg: transparent;
+}
+.erp-list-table > thead > tr > th,
+.erp-list-table > tbody > tr > td {
+  background-color: transparent;
+}
 .erp-list-table > thead > tr > th {
   height: 38px;
   padding: 0 14px;
