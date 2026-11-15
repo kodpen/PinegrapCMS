@@ -19,6 +19,7 @@ description: Add and edit screens in look A: .form-label and .form-control in th
 - Settings: `.pg-settings-body` and `.pg-set-card` keep the 32 px row field and their 13 px label (`look-settings-screens.md`); the rule excludes them with `:not(.pg-settings-body *, .pg-set-card *)`; the settings pages' computed fields were compared before and after (unchanged).
 - A drawer or dialog opened from the screen (`dialog *`, `.drawer *`: Edit User's permission drawers) keeps its field.
 - A field inside an `.input-group` keeps the group's joined corners: the 10 px corners skip `.input-group > *`.
+- The bare input inside an adorned wrapper (`.form-control.form-ghost` in `.form-adorn`, a money field with its unit) is left out: the wrapper draws the one frame and focus ring. Without it the money field of Add Gift Card drew two frames and two rings in focus (#9727).
 - The visual designer and the site side load other stylesheets; a toolbar outside a card keeps Bootstrap's field.
 - Pickers drawn by their own widget (the page picker `.pg-pfield`, 48 px; select2) are not `.form-control` and keep their box.
 - A checkbox's or switch's own label (`.form-field > label` beside a `.check`) is not a `.form-label` and keeps its size.

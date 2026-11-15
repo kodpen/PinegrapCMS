@@ -27683,7 +27683,9 @@ body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn:is(:disabled,
    take the values of .pg-field-label and .pg-input, so no screen changes
    its markup. Settings cards (.pg-settings-body, .pg-set-card) keep their
    32 px row fields, a drawer or dialog opened from the screen keeps its
-   own; the designer and the site side load other stylesheets. The field is
+   own, and the bare input inside an adorned wrapper (.form-ghost) stays
+   bare, so the wrapper draws the one frame and ring; the designer and the
+   site side load other stylesheets. The field is
    drawn through Bootstrap's control variables, so the panel's invalid and
    valid borders still win over it.
    ========================================================================== */
@@ -27694,7 +27696,7 @@ body.pg-measure-edit main .card .form-label:not(dialog *, .drawer *, .pg-setting
   font-size: var(--pg-text-2);
   font-weight: var(--pg-weight-strong);
 }
-body.pg-measure-edit main .card .form-control:not(dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+body.pg-measure-edit main .card .form-control:not(.form-ghost, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
   --bs-control-min-height: 36px;
   --bs-control-padding-y: 6px;
   --bs-control-padding-x: 12px;
@@ -27707,27 +27709,27 @@ body.pg-measure-edit main .card .form-control:not(dialog *, .drawer *, .pg-setti
 }
 /* The corners as a property, as the panel's own .form-control rule sets
    them; a field inside an input group keeps the group's joined corners. */
-body.pg-measure-edit main .card .form-control:not(.input-group > *, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+body.pg-measure-edit main .card .form-control:not(.form-ghost, .input-group > *, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
   border-radius: 10px;
 }
-body.pg-measure-edit main .card textarea.form-control:not(dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+body.pg-measure-edit main .card textarea.form-control:not(.form-ghost, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
   --bs-control-padding-y: 9px;
   line-height: 1.5;
 }
 /* A field in a row (Bootstrap's small field) is the look's .pg-input-sm. */
-body.pg-measure-edit main .card .form-control.form-control-sm:not(dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+body.pg-measure-edit main .card .form-control.form-control-sm:not(.form-ghost, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
   --bs-control-min-height: 32px;
   --bs-control-padding-y: 4px;
   --bs-control-padding-x: 10px;
   --bs-control-font-size: var(--pg-text-2);
   --bs-control-border-radius: 9px;
 }
-body.pg-measure-edit main .card .form-control.form-control-sm:not(.input-group > *, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+body.pg-measure-edit main .card .form-control.form-control-sm:not(.form-ghost, .input-group > *, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
   border-radius: 9px;
 }
 /* Focus in the look's accent with its 4 px ring; a marked field keeps the
    panel's invalid or valid ring. */
-body.pg-measure-edit main .card .form-control:is(:focus, .form-adorn:focus-within):not(.is-invalid, .is-valid, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
+body.pg-measure-edit main .card .form-control:is(:focus, .form-adorn:focus-within):not(.form-ghost, .is-invalid, .is-valid, dialog *, .drawer *, .pg-settings-body *, .pg-set-card *) {
   border-color: var(--pg-accent);
   outline: 0;
   box-shadow: var(--pg-field-shadow), 0 0 0 4px color-mix(in srgb, var(--pg-accent) 24%, transparent);
