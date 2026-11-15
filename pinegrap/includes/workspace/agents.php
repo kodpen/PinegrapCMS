@@ -105,6 +105,9 @@ define('WS_AGENT_DOOR_DOUBLE_AFTER', 600);
 /** How many times one agent may be woken in an hour. */
 define('WS_AGENT_HOURLY_MAX', 30);
 
+/** The longest duty text, in characters (ws_agents.duty is TEXT). */
+define('WS_AGENT_DUTY_MAX', 2000);
+
 /**
  * Are the registry tables there? Files can land before the upgrade runs
  * (11.0.172): until then Claude's routine is read from config.
@@ -236,11 +239,24 @@ function ws_agent_shape($row)
     }
 
     $out['role'] = ws_agent_role_key($row['role'] ?? '');
+    $out['duty'] = ws_agent_duty_clean($row['duty'] ?? '');
 
     $out['key_set'] = (strpos((string) ($row['key_sealed'] ?? ''), ':') !== false);
     $out['door_secret_set'] = (strpos((string) ($row['door_secret_sealed'] ?? ''), ':') !== false);
 
     return $out;
+}
+
+/**
+ * A duty text as it is stored and shown: line ends as \n, the ends trimmed.
+ * NULL (no duty, or a site before the step) reads as ''. Pure.
+ *
+ * @param string|null $text
+ * @return string
+ */
+function ws_agent_duty_clean($text)
+{
+    return trim(str_replace(array("\r\n", "\r"), "\n", (string) $text));
 }
 
 /**
@@ -977,7 +993,7 @@ function ws_agent_apps_taken($rows, $except_id)
  * Secrets are written apart. Pure: what other agents, MCP servers and people
  * hold is read by the caller.
  *
- * @param array      $input      kind, handle, name, role, app_id, provider, model, status, door_kind, door_url, wake_every, wake_note
+ * @param array      $input      kind, handle, name, role, duty, app_id, provider, model, status, door_kind, door_url, wake_every, wake_note
  * @param array|null $current    ws_agent_shape() of the agent, null for a new one
  * @param string[]   $taken      handles other agents and MCP servers hold
  * @param string[]   $user_names the people's user names
@@ -994,6 +1010,7 @@ function ws_agent_save_check($input, $current, $taken, $user_names, $app_ids, $a
         'handle'     => $claude ? 'claude' : mb_strtolower(ltrim(trim((string) ($input['handle'] ?? '')), '@')),
         'name'       => trim((string) ($input['name'] ?? '')),
         'role'       => trim((string) ($input['role'] ?? '')),
+        'duty'       => ws_agent_duty_clean($input['duty'] ?? ''),
         'app_id'     => (int) ($input['app_id'] ?? 0),
         'provider'   => trim((string) ($input['provider'] ?? '')),
         'model'      => trim((string) ($input['model'] ?? '')),
@@ -1025,6 +1042,10 @@ function ws_agent_save_check($input, $current, $taken, $user_names, $app_ids, $a
 
     if (($values['role'] !== '') && (ws_agent_role_key($values['role']) === '')) {
         return $fail(lang('Choose a role from the list.'), 'role');
+    }
+
+    if (mb_strlen($values['duty']) > WS_AGENT_DUTY_MAX) {
+        return $fail(lang(array('string' => 'Keep the duty to {var:1} characters.', 'vars' => WS_AGENT_DUTY_MAX)), 'duty');
     }
 
     if (($values['app_id'] !== 0) && !in_array($values['app_id'], array_map('intval', (array) $app_ids), true)) {
@@ -1126,6 +1147,12 @@ function ws_agent_save($viewer, $values, $current, $key_sealed = null, $door_sea
     // Files can land before the upgrade adds the column: the role then waits.
     if (pg_schema_has('ws_agents', 'role')) {
         $sets[] = "role = '" . e(ws_agent_role_key($values['role'] ?? '')) . "'";
+    }
+
+    // The same for the duty; an empty one is stored as NULL, as no duty.
+    if (pg_schema_has('ws_agents', 'duty')) {
+        $duty = ws_agent_duty_clean($values['duty'] ?? '');
+        $sets[] = "duty = " . (($duty === '') ? 'NULL' : "'" . e($duty) . "'");
     }
     $sets[] = "wake_every = '" . (int) $values['wake_every'] . "'";
     $sets[] = "updated_at = '" . $now . "'";

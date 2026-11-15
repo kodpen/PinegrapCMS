@@ -130,7 +130,8 @@ function ws_agent_instructions_wake($channel, $handle)
 }
 
 /**
- * The part of the text that says who the agent is and where it works. Pure.
+ * The part of the text that says who the agent is, its duty when it has
+ * one, and where it works. Pure.
  *
  * @param array   $agent
  * @param array[] $channels
@@ -147,10 +148,21 @@ function ws_agent_instructions_who_lines($agent, $channels, $base)
         'You are ' . (($name !== '') ? $name . ' (@' . $handle . ')' : '@' . $handle) . ', an application agent in the Workspace of a Pinegrap site.'
             . (($role !== '') ? ' Your role: ' . $roles[$role] . '.' : ''),
         '',
+    );
+    $duty = ws_agent_duty_clean($agent['duty'] ?? '');
+
+    // What the agent is there for, in the words of the person who set it up.
+    if ($duty !== '') {
+        $lines[] = 'Your duty, as the person who set you up wrote it:';
+        $lines[] = $duty;
+        $lines[] = '';
+    }
+
+    $lines = array_merge($lines, array(
         'Site API: ' . $base,
         'Every path below is relative to it. Authenticate every call with HTTP Basic, your application\'s key and secret, from the environment variables PINEGRAP_KEY and PINEGRAP_SECRET: curl -sS -u "$PINEGRAP_KEY:$PINEGRAP_SECRET". Send bodies as JSON with the header Content-Type: application/json.',
         '',
-    );
+    ));
 
     if (!$channels) {
         $lines[] = 'You are in no channel yet. A person adds you to a channel in its settings (Agents in this channel); until then no message wakes you.';
