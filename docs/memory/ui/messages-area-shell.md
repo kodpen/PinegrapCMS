@@ -7,7 +7,7 @@ module: messages_area
 ## What is the shell?
 - Main menu row 9 under Marketing is "Communication" (İletişim), slot kept, its own drawing a speech bubble with two arrows (`main-menu-communication-icon.md`); shown to whoever may open one of its tabs (role <= 2, the Campaign Manager right, the Flows screen's right, or a reader of a mailbox), leading to the first of them. Its panel lists the tabs the person may open, then "New campaign" (`add_email_campaign.php`); history and profile entries left the panel.
 - Six tabs, each its own screen and gate (`pg_messages_area_tabs()` in `includes/fn/messages_area.php`): Incoming e-mail `messages_mail.php` (gate `mail`, `ws_mail_list_visible()`; `messages-area-mail-tab.md`), Campaigns `view_email_campaigns.php`, Automatic sends `messages_automatic.php` (`email_or_flows`, `messages-area-automatic-tab.md`), Templates `messages_templates.php`, Sends `messages_sends.php` (all `validate_email_access()`), Channels `messages_channels.php` (role <= 2).
-- Architect's ruling behind it: `plans/messages-area-decided.md` (#9081).
+- Architect's ruling behind it (#9081): `messages-area-rules.md`; the start file `messages-area-overview.md`.
 
 ## How is the tab strip drawn?
 - `pg_messages_tab_strip_for($key, $user)` prints `nav.pg-messages-tabs` > `.pg-seg` of links, the open one `is-active` with `aria-current="page"` (MA12 #9363; its look: `messages-area-look.md`); a tab the viewer may not open is left out, and with fewer than two tabs no strip is drawn. Links, not `role=tab`: each tab is an address.

@@ -23,7 +23,7 @@ module: messages_area
 - `div.pg-messages-channels` is a grid, two columns and `grid-auto-rows: 1fr` from 768 px (one column, rows as tall as their text, below), the pill on the title line, inside a padded `pg-card pg-messages-card` (before, the heading sat on the card's border). Each card is an `a.pg-card-inner.pg-messages-channel`.
 
 ## Which old screens are still inside the area?
-- Never carried over as they are; each is redrawn from `plans/messages-area/messages-area.html` by the step named.
+- Never carried over as they are; each is redrawn from `messages-area-drawing/messages-area.html` by the step named.
 - Campaign add and edit (`add_email_campaign.php`, `edit_email_campaign.php`, `view_email_campaign.php`, `send_email_campaign.php`): MA5, as the content step of New campaign.
 - SMS campaign (`edit_sms_campaign.php`): MA5 beside the e-mail one; DL5 of `panel-design-language-steps.md` if MA5 leaves it.
 - Profiles (`view_email_campaign_profiles.php`, `add_`/`edit_`/`duplicate_`/`import_email_campaign_profiles.php`): turned into flows by MA9; since MA9f they show only the profiles left and leave on a site with none ([[core/campaign-profile-screens-left]]); not redrawn.

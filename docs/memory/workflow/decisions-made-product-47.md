@@ -21,7 +21,7 @@ description: Decisions list, product part 47 (2026-11-12 on): WhatsApp as a chan
 - The architect's, not the owner's words: which stored consent counts as that marketing consent is not decided yet; step WA0 proposes it and it is asked of the owner.
 
 ## Is the campaigns area made anew as one messages area? (owner, 2026-11-12, #8961)
-- Yes, as drawn: in place of My Campaigns, with the tabs Campaigns, Automatic sends (flows), Templates, Sends and Channels; one Sends list for campaigns and the e-mail, SMS and WhatsApp queues; a campaign's e-mail body designed as a page. Plan `plans/messages-area.md`.
+- Yes, as drawn: in place of My Campaigns, with the tabs Campaigns, Automatic sends (flows), Templates, Sends and Channels; one Sends list for campaigns and the e-mail, SMS and WhatsApp queues; a campaign's e-mail body designed as a page. Plan `ui/messages-area-overview.md`.
 - Owner (2026-11-12): "bu ayarladığımız whatsapp iletişim vs. bunları kampanyalar ekranı ile birleştirelim ancak önce o alanıda baştan yaratalım."
 - And: "eposta gövdesi için html sayfa tasarlanabilsin de istiyorum kampanyalarda, kampanya gönderim ve geçmişi ve eposta kuyrugu ile whatsapp sms kuyruğu tek ekranda olabilir."; shown the drawing: "İa".
 
