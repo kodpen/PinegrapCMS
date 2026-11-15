@@ -30,7 +30,7 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 
 - PF5 (S) The @ menu's role, state and usage mark. Done #9628.
 
-- PF6a (S) A person's facts on the server: one reader (`-census-facts.md`, "Where are a person's facts?"), its panel action, tests. Needs no code of PF3.
+- PF6a (S) A person's facts on the server: one reader (`-census-facts.md`, "Where are a person's facts?"), its panel action, tests. Done #9644.
 
 - PF6b (S) The card for a person, drawn with PF3's card functions.
 
