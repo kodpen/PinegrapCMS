@@ -50,7 +50,7 @@ function pg_contact_group_form_cards($liveform, $form = array())
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-8 lg:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Contact Group Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'placeholder'=>lang('Please enter a name'), 'maxlength'=>'100', 'class'=>'form-control') + $required) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
