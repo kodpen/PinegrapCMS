@@ -848,6 +848,75 @@ div.pg-guest-poll-option {
   color: var(--pg-fg-2);
 }
 
+/* An agent's live page: the card, and the guarded frame on Open. */
+.pg-guest-page {
+  margin-top: .35rem;
+  padding: .45rem .6rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .5rem;
+  background: var(--pg-bg-body);
+}
+
+.pg-guest-page-head {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+}
+
+.pg-guest-page-text b,
+.pg-guest-page-text span {
+  display: block;
+}
+
+.pg-guest-page-text span {
+  font-size: .78rem;
+  color: var(--pg-fg-2);
+}
+
+.pg-guest-page-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .375rem;
+  margin-top: .4rem;
+}
+
+.pg-guest-page-box {
+  margin-top: .4rem;
+}
+
+.pg-guest-page-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: .35rem;
+  background: var(--pg-bg-1);
+}
+
+/* The agent's line shows above the frame in Full screen only; in the card
+   it is the card's own second line. */
+.pg-guest-page-by {
+  display: none;
+  padding: .5rem .75rem;
+  font-size: .78rem;
+  color: var(--pg-fg-2);
+}
+
+.pg-guest-page-box.pg-guest-page-full {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  background: var(--pg-bg-body);
+}
+
+.pg-guest-page-full .pg-guest-page-by {
+  display: block;
+}
+
+.pg-guest-page-full .pg-guest-page-frame {
+  flex: 1 1 auto;
+  border-radius: 0;
+}
+
 /* A canvas whose picture is not drawn yet: a line in place of a blank. */
 .pg-guest-canvas-wait {
   display: flex;
