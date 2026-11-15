@@ -1,6 +1,6 @@
 ---
 name: api-native-push
-description: Native push for team devices (M7a #9703, M7b): /push/devices routes, the broker call, push_subscriptions.provider (11.0.215), PG_PUSH_BROKER_URL, the badge body, 429 hold, forget on revoke
+description: Native push for team devices (M7a #9703, M7b #9720): /push/devices routes, the broker call, push_subscriptions.provider (11.0.215), PG_PUSH_BROKER_URL, the badge body, 429 hold, forget on revoke
 module: push_broker
 ---
 
@@ -19,7 +19,7 @@ module: push_broker
 - Headers (`pg_push_broker_headers()`, pure): `Authorization: vapid t=…, k=…` signed for the broker's origin with `pg_push_vapid_token()`, as the sender signs; `X-Pinegrap-License` with the normalised key when `pg_license_key_valid()` (the licence check's bearer cannot share Authorization); `X-Pinegrap-Site` as the Kodpen API client sends it.
 - Quotas and who may use the broker are the broker's settings: the site passes its refusal on (`pg_push_broker_answer()`, pure): 429 with Retry-After (1-3600 s, 60 without), 400/404/410/422 as 422 field `token`, other 4xx as 403, the broker's own words (`pg_push_broker_detail()`, plain text, 300 characters) after the site's message; no answer or 5xx is 503. Forget counts 2xx, 404 and 410 as done.
 
-## How does the sender treat a broker row? (M7b)
+## How does the sender treat a broker row? (M7b, #9720)
 - `pg_push_send_to_subscription($row, $badge)` (`includes/push.php`) posts `pg_push_body()`: `{"v":1,"badge":n}` with `Content-Type: application/json` for a row with a provider, the empty push for a browser. No text, title or name. The badge is `pg_push_badge()`: unread rows that pass `pg_notification_visible_to_user()`, counted once per person (`pg_push_notify_user()`); the device's own count can differ when its application lacks `orders:read`.
 - 404/410 delete the row (`pg_push_outcome()` 'gone'). A 429 writes `pg_push_hold_text()` ("HTTP 429, retry after <UTC time>") into `last_error`; the row is skipped until then (`pg_push_held_until()`), and the queue waits at least as long (`GREATEST()` with its back-off). `pg_push_retry_after()`: seconds or an HTTP date, 1 s to a day, 60 without. Browser rows get the same 429 rule.
 - The sessions screen's test push sends a broker row its badge.
