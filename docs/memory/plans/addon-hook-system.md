@@ -19,6 +19,7 @@ description: Plan (approved 2026-10-19; not to be started before the running pla
 - Security: add-on code runs with full PHP rights, so the panel warns, logs enable/disable in the audit trail and the WAF/CSP settings stay core-only.
 
 ## What remains?
+- AH1 census of the code (`addon-hook-system-census.md` and its parts) Done #9653.
 - Design note with the hook list and manifest schema (owner review).
 - Slices: registry + manifest + enable/disable (M), hooks at the listed points (S–M), migration namespacing (S), System Status + backup (S), zip upload + signature check (S–M), first conversions of the shipped PayTR/Netgsm drivers into add-on folders (S, no behaviour change).
 
