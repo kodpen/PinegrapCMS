@@ -378,18 +378,18 @@ foreach ($packages as $package) {
     $file_exists = is_file(erp_accountant_directory() . '/' . basename((string) $package['file_name']));
     $cash_locked = !$can_cash && erp_accountant_package_has_cash($package);
     $sent = ((int) $package['sent_at'] > 0)
-        ? '<span class="text-break">' . h((string) $package['sent_to']) . '</span><div class="small fg-secondary">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $package['sent_at']), 'date and time')) . '</div>'
+        ? '<span class="text-break">' . h((string) $package['sent_to']) . '</span><div class="pg-text-2">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $package['sent_at']), 'date and time')) . '</div>'
         : '<span class="fg-secondary">—</span>';
 
     // Sending opens one shared window below the table, so the row stays as
     // narrow as its two buttons.
     if (!$file_exists) {
-        $output_actions = '<span class="fg-secondary small">' . lang('The file is no longer there.') . '</span>';
+        $output_actions = '<span class="pg-text-2">' . lang('The file is no longer there.') . '</span>';
     } elseif ($cash_locked) {
-        $output_actions = '<span class="fg-secondary small">' . h(lang('Needs the right to see the tills.')) . '</span>';
+        $output_actions = '<span class="pg-text-2">' . h(lang('Needs the right to see the tills.')) . '</span>';
     } else {
         $output_actions = '<div class="d-flex flex-wrap gap-1 justify-content-end">'
-            . '<a class="btn btn-sm btn-outline theme-primary text-nowrap" href="' . h($self_url . '?download=' . (int) $package['id']) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . ' <span class="small fg-secondary">' . h(erp_accountant_size_text((int) $package['file_size'])) . '</span></a>'
+            . '<a class="btn btn-sm btn-outline theme-primary text-nowrap" href="' . h($self_url . '?download=' . (int) $package['id']) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . ' <span class="pg-text-2">' . h(erp_accountant_size_text((int) $package['file_size'])) . '</span></a>'
             . (!$readonly
                 ? '<button type="button" class="btn btn-sm btn-outline theme-secondary text-nowrap" data-erp-pack-send="' . (int) $package['id'] . '" data-erp-pack-period="' . h($period_title) . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send link') . '</button>'
                 : '')
@@ -399,10 +399,10 @@ foreach ($packages as $package) {
     $output_rows .= '
         <tr>
             <td class="align-middle" data-sort="' . h(str_replace('-', '', (string) $package['period_from'])) . '">'
-                . (($period_title !== $period_dates) ? h($period_title) . '<div class="small fg-secondary">' . h($period_dates) . '</div>' : h($period_dates)) . '</td>
+                . (($period_title !== $period_dates) ? h($period_title) . '<div class="pg-text-2">' . h($period_dates) . '</div>' : h($period_dates)) . '</td>
             <td class="align-middle" data-sort="' . (int) $package['created_at'] . '">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $package['created_at']), 'date and time'))
-                . '<div class="small fg-secondary">' . ((string) $package['source'] === 'monthly' ? lang('Monthly, by itself') : h((string) ($package['created_by_name'] ?? ''))) . '</div></td>
-            <td class="align-middle text-end" data-sort="' . (int) $package['documents'] . '">' . (int) $package['documents'] . '<div class="small fg-secondary">' . h(lang(array('string' => '{var:1} file(s)', 'vars' => (int) $package['files_added']))) . '</div></td>
+                . '<div class="pg-text-2">' . ((string) $package['source'] === 'monthly' ? lang('Monthly, by itself') : h((string) ($package['created_by_name'] ?? ''))) . '</div></td>
+            <td class="align-middle text-end" data-sort="' . (int) $package['documents'] . '">' . (int) $package['documents'] . '<div class="pg-text-2">' . h(lang(array('string' => '{var:1} file(s)', 'vars' => (int) $package['files_added']))) . '</div></td>
             <td class="align-middle text-end text-nowrap" data-sort="' . (int) ($summary['output_vat'] ?? 0) . '">' . $money($summary['output_vat'] ?? 0) . '</td>
             <td class="align-middle text-end text-nowrap" data-sort="' . (int) ($summary['input_vat'] ?? 0) . '">' . $money($summary['input_vat'] ?? 0) . '</td>
             <td class="align-middle" data-sort="' . (int) $package['sent_at'] . '">' . $sent . '</td>
@@ -480,7 +480,7 @@ if ($liveform->check_field_error('accountant_email')) {
 }
 
 $output_settings_card = '
-            <div class="card my-7">
+            <div class="card pg-card my-7">
                 <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Accountant') . '</h2>
                 <div class="card-body">
                     <form method="post" action="erp_accountant.php">
@@ -514,7 +514,7 @@ $output_settings_card = '
             </div>';
 
 $output_lock_card = '
-            <div class="card my-7">
+            <div class="card pg-card my-7">
                 <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Period lock') . '</h2>
                 <div class="card-body">
                     ' . $output_lock_state . '
@@ -551,7 +551,7 @@ pg_page_shell(array(
             ' . $output_link . '
         </div>
         <div class="col-12 xl:col-8">
-            <div class="card my-7">
+            <div class="card pg-card my-7">
                 <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Build a pack') . '</h2>
                 <div class="card-body">
                     <form method="post" action="erp_accountant.php">
@@ -610,7 +610,7 @@ pg_page_shell(array(
             ' . $output_settings_card . '
         </div>
         <div class="col-12">
-            <div class="card my-7">
+            <div class="card pg-card my-7">
                 <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Packs') . '</h2>
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort id="erp_accountant_packs">

@@ -305,7 +305,7 @@ $output_placeholders = '';
 foreach ($placeholders as $group => $names) {
     $output_placeholders .= '
                                 <div class="col-12 md:col-6 xl:col-4 mb-5">
-                                    <div class="fw-bold text-uppercase small fg-secondary mb-3">' . h($group) . '</div>
+                                    <div class="pg-group-label mb-3">' . h($group) . '</div>
                                     <dl class="row small mb-0">';
 
     foreach ($names as $name => $description) {
@@ -327,30 +327,26 @@ $output_efatura_threshold = '';
 
 if (!$can_site_settings && erp_late_fee_ready()) {
     $output_late_fee = '
-            <form action="erp_settings.php" method="post" id="erp_late_fee">
+            <form action="erp_settings.php" method="post" id="erp_late_fee" class="card my-7">
                 ' . get_token_field() . '
                 <input type="hidden" name="late_fee" value="1">
-                <div class="card my-7">
-                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Late payment fee') . '</h2>
-                    <div class="card-body">
-                        ' . erp_settings_late_fee_fields() . '
-                        <div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>
-                    </div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Late payment fee') . '</h2>
+                <div class="card-body">
+                    ' . erp_settings_late_fee_fields() . '
+                    <div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>
                 </div>
             </form>';
 }
 
 if (!$can_site_settings && erp_settings_efatura_threshold_shown()) {
     $output_efatura_threshold = '
-            <form action="erp_settings.php" method="post" id="erp_efatura_threshold">
+            <form action="erp_settings.php" method="post" id="erp_efatura_threshold" class="card my-7">
                 ' . get_token_field() . '
                 <input type="hidden" name="efatura_threshold" value="1">
-                <div class="card my-7">
-                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('e-Fatura threshold') . '</h2>
-                    <div class="card-body">
-                        ' . erp_settings_efatura_threshold_fields() . '
-                        <div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>
-                    </div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('e-Fatura threshold') . '</h2>
+                <div class="card-body">
+                    ' . erp_settings_efatura_threshold_fields() . '
+                    <div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>
                 </div>
             </form>';
 }
@@ -376,16 +372,14 @@ if ($can_site_settings) {
                             ' . $edoc_place . '</p>';
 
     $output_cards = '
-            <form action="erp_settings.php" method="post" id="erp_rules">
+            <form action="erp_settings.php" method="post" id="erp_rules" class="card my-7">
                 ' . get_token_field() . '
                 <input type="hidden" name="rules" value="1">
-                <div class="card my-7">
-                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Accounting rules') . '</h2>
-                    <div class="card-body">
-                        <p class="fg-secondary">' . lang('Choices your accountant settles for the store; until then the ERP works as it always has.') . '</p>
-                        ' . erp_settings_rules_fields() . '
-                        ' . (erp_settings_rules_editable() ? '<div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>' : '') . '
-                    </div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Accounting rules') . '</h2>
+                <div class="card-body">
+                    <p class="fg-secondary">' . lang('Choices your accountant settles for the store; until then the ERP works as it always has.') . '</p>
+                    ' . erp_settings_rules_fields() . '
+                    ' . (erp_settings_rules_editable() ? '<div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>' : '') . '
                 </div>
             </form>';
 }
@@ -451,28 +445,26 @@ echo pg_page_shell(array(
 ' . $output_late_fee . '
 ' . $output_efatura_threshold . '
 
-            <form name="form" id="erp_template" action="erp_settings.php" method="post">
+            <form name="form" id="erp_template" action="erp_settings.php" method="post" class="card my-7">
                 ' . get_token_field() . '
                 <input type="hidden" name="doc" value="' . h($doc) . '">
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center justify-content-between gap-3">
-                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h($document['label']) . '</span>
-                        <ul class="nav nav-pills nav-sm mb-0">' . $output_document_pills . '
-                        </ul>
-                    </div>
-                    <div class="card-body">' . $output_card_buttons . '
+                <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <span class="pg-title-section mb-0">' . h($document['label']) . '</span>
+                    <ul class="nav nav-pills nav-sm mb-0">' . $output_document_pills . '
+                    </ul>
+                </div>
+                <div class="card-body">' . $output_card_buttons . '
 
-                        <div class="collapse mb-5" id="placeholder_reference">
-                            <div class="border rounded-4 p-5">
-                                <p class="small fg-secondary">' . lang('Write a name in double braces to print it: {{seller.title}}. Triple braces print it without escaping. A block between {{#name}} and {{/name}} is shown when the value is set, and repeated for every line when the value is a list; a block between {{^name}} and {{/name}} is shown when it is empty.') . '</p>
-                                <div class="row">' . $output_placeholders . '
-                                </div>
+                    <div class="collapse mb-5" id="placeholder_reference">
+                        <div class="border rounded-4 p-5">
+                            <p class="pg-text-2">' . lang('Write a name in double braces to print it: {{seller.title}}. Triple braces print it without escaping. A block between {{#name}} and {{/name}} is shown when the value is set, and repeated for every line when the value is a list; a block between {{^name}} and {{/name}} is shown when it is empty.') . '</p>
+                            <div class="row">' . $output_placeholders . '
                             </div>
                         </div>
-
-                        <textarea class="form-control font-monospace" name="template" id="template" rows="28" spellcheck="false" aria-label="' . h($document['label']) . '">' . h($document['current']) . '</textarea>
-                        <div class="form-text">' . lang('The HTML the PDF document is rendered from. Saving it unchanged, or empty, keeps the built-in template.') . '</div>
                     </div>
+
+                    <textarea class="form-control font-monospace" name="template" id="template" rows="28" spellcheck="false" aria-label="' . h($document['label']) . '">' . h($document['current']) . '</textarea>
+                    <div class="form-text">' . lang('The HTML the PDF document is rendered from. Saving it unchanged, or empty, keeps the built-in template.') . '</div>
                 </div>
             </form>
         </div>

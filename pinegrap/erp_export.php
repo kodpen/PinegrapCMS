@@ -275,12 +275,12 @@ pg_page_shell([
                     </h2>
                     <div class="card-body pt-0">
                         <div class="row">
-                            <div class="col-12 xl:col-6 my-3">
+                            <div class="col-12 md:col-6 my-3">
                                 <label for="profile" class="form-label">' . lang('Format') . '</label>
                                 <select name="profile" id="profile" class="form-control" aria-describedby="profile_help">' . $output_profile_options . '</select>
                                 <div class="form-text" id="profile_help">' . lang('The generic CSV files load back through the import screens. The Paraşüt files are that program\'s own import templates, filled from their fourth row.') . '</div>
                             </div>
-                            <div class="col-12 xl:col-6 my-3">
+                            <div class="col-12 md:col-6 my-3">
                                 <label for="direction" class="form-label">' . lang('Direction') . '</label>
                                 ' . $liveform->output_field(array('type' => 'select', 'id' => 'direction', 'name' => 'direction', 'class' => 'form-control', 'options' => $direction_options, 'aria-describedby' => 'direction_help')) . '
                                 <div class="form-text" id="direction_help">' . lang('Only the generic invoice CSV writes purchase invoices.') . '</div>
@@ -317,11 +317,11 @@ pg_page_shell([
                     </h2>
                     <div class="card-body pt-0">
                         <div class="row">
-                            <div class="col-12 sm:col-6 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="from" class="form-label">' . lang('Start') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'from', 'data-pg-date' => '', 'name' => 'from', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'autocomplete' => 'off', 'aria-describedby' => 'dates_help')) . '
                             </div>
-                            <div class="col-12 sm:col-6 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="to" class="form-label">' . lang('End') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'to', 'data-pg-date' => '', 'name' => 'to', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'autocomplete' => 'off', 'aria-describedby' => 'dates_help')) . '
                                 ' . get_date_picker_format() . pg_fields_script() . '
