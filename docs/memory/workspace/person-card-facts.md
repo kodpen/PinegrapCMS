@@ -20,5 +20,5 @@ description: A person's card facts in a channel (person_card.php, PF6a): the ws_
 
 ## What is not on it?
 - Open tasks and anything about the person's work items: not read in PF6a (architect, channel 3989: role, title, departments, working day, away days, last seen).
-- No schema change, no API route, no JavaScript; the card's drawing is PF6b.
+- No schema change, no JavaScript; the card's drawing is PF6b. The API route is `GET /workspace/channels/{id}/members/{user_id}` (`workspace-api-person-card.md`).
 - Tests: `tests/workspace_person_card_test.php`.
