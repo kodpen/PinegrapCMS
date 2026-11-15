@@ -391,6 +391,10 @@ function ws_approval_agents_ask($viewer, $channel, $approval, $agents)
             if ($queued) {
                 db("UPDATE ws_ai_requests SET ai_state = '" . e($state) . "'
                     WHERE agent = '" . e($value) . "' AND message_id = '" . (int) $approval['message_id'] . "' AND status = 'queued' ORDER BY id DESC LIMIT 1");
+            } else {
+                // Followed mode asks silently: the channel is told the
+                // assistant was not asked, so nobody waits for its answer.
+                ws_approval_agent_not_asked($channel, $value);
             }
         } else {
             $made = ws_agent_after_send($viewer, $channel, (int) $approval['message_id'], $body, $value, false, array('state' => $state));
@@ -406,6 +410,71 @@ function ws_approval_agents_ask($viewer, $channel, $approval, $agents)
     }
 
     return $asked;
+}
+
+/**
+ * The asker's limit for Pinegrap AI or Claude, reached: the limit's own
+ * sentence, or '' while a request can still be made (and for any other
+ * agent, which the registry's brakes hold). Pure.
+ *
+ * @param string $value   ws_approval_agents_clean() value
+ * @param int    $waiting the asker's requests to it queued, sent or running
+ * @param int    $limit   WS_AI_PER_PERSON or WS_CLAUDE_PER_PERSON
+ * @return string
+ */
+function ws_approval_agent_limit_error($value, $waiting, $limit)
+{
+    if ((int) $waiting < (int) $limit) {
+        return '';
+    }
+
+    if ($value === 'ai') {
+        return lang(array('string' => 'Pinegrap AI already has {var:1} requests of yours waiting. Please wait for those to be answered.', 'vars' => (int) $limit));
+    }
+
+    if ($value === 'claude') {
+        return lang(array('string' => 'Claude already has {var:1} requests of yours waiting. Please wait for those to be answered.', 'vars' => (int) $limit));
+    }
+
+    return '';
+}
+
+/**
+ * Whether the asker's limit keeps Pinegrap AI or Claude from being asked
+ * to approve: the counts ws_ai_after_send() and ws_claude_after_send() read.
+ *
+ * @param array  $viewer the asker
+ * @param string $value  ws_approval_agents_clean() value
+ * @return string the refusal, '' when it can be asked
+ */
+function ws_approval_agent_limit_problem($viewer, $value)
+{
+    if ((($value !== 'ai') && ($value !== 'claude')) || !function_exists('ws_ai_agent_where')) {
+        return '';
+    }
+
+    $limit = ($value === 'ai')
+        ? (defined('WS_AI_PER_PERSON') ? WS_AI_PER_PERSON : 5)
+        : (defined('WS_CLAUDE_PER_PERSON') ? WS_CLAUDE_PER_PERSON : 5);
+    $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
+        WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')" . ws_ai_agent_where($value));
+
+    return ws_approval_agent_limit_error($value, $waiting, $limit);
+}
+
+/**
+ * Pinegrap AI or Claude asked to approve but no request made (its limit
+ * filled, or it went out of reach, after the check): a line in the channel
+ * says so.
+ *
+ * @param array  $channel
+ * @param string $value ai | claude
+ */
+function ws_approval_agent_not_asked($channel, $value)
+{
+    $name = ($value === 'claude') ? 'Claude' : 'Pinegrap AI';
+
+    ws_message_system((int) $channel['id'], lang(array('string' => '{var:1} could not be asked to approve this request and will not answer it.', 'vars' => $name)));
 }
 
 /**

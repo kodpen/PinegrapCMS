@@ -405,6 +405,17 @@ function ws_approval_input($viewer, $channel, $data, $strict = true, $app_id = 0
         if (count($agents) > WS_APPROVAL_MAX_PEOPLE) {
             return $fail(lang(array('string' => 'At most {var:1} agents can be asked to approve.', 'vars' => WS_APPROVAL_MAX_PEOPLE)), 'agents');
         }
+
+        // Pinegrap AI and Claude are asked under the asker's own limit: a
+        // full one is said here, before an approval waits for an assistant
+        // that was never asked.
+        foreach ($agents as $value) {
+            $limit = ws_approval_agent_limit_problem($viewer, $value);
+
+            if ($limit !== '') {
+                return $fail($limit, 'agents');
+            }
+        }
     }
 
     if (empty($given) && empty($guests) && empty($agents)) {

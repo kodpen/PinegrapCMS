@@ -846,6 +846,7 @@
     "{var:1} contacts": "{var:1} kişi",
     "{var:1} contacts were exported": "{var:1} kişi dışa aktarıldı",
     "{var:1} contacts were imported": "{var:1} kişi içe aktarıldı",
+    "{var:1} could not be asked to approve this request and will not answer it.": "{var:1} bu onay isteği için sorulamadı ve yanıt vermeyecek.",
     "{var:1} could not be copied: no trial design was made.": "{var:1} kopyalanamadı: deneme tasarımı yapılmadı.",
     "{var:1} could not be delivered": "{var:1} alıcıya teslim edilemedi",
     "{var:1} could not be fetched through the site's address: {var:2}": "{var:1} sitenin adresi üzerinden alınamadı: {var:2}",

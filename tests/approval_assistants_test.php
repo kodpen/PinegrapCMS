@@ -107,3 +107,24 @@ function test_approval_assistants_claude_request_stays_the_routines()
 	pg_assert_same('person', ws_claude_request_holder($asked, false, true, $now)['who'], 'an ordinary request waits for the asker\'s session');
 	pg_assert_same('routine', ws_claude_request_holder($approval, false, true, $now)['who'], 'a request to approve goes to the routine');
 }
+
+// Pinegrap AI or Claude asked to approve while the asker's requests to it
+// are at the limit: the request is refused with the limit's own sentence
+// before anything is written, never left waiting for an assistant that
+// was not asked.
+function test_approval_assistant_limit_refused_before_writing()
+{
+	pg_assert_same('', ws_approval_agent_limit_error('ai', 4, 5), 'under the limit');
+	pg_assert_contains('Pinegrap AI already has', ws_approval_agent_limit_error('ai', 5, 5));
+	pg_assert_contains('Claude already has', ws_approval_agent_limit_error('claude', 6, 5));
+	pg_assert_same('', ws_approval_agent_limit_error('model:3', 99, 5), 'a model agent has the brakes of the registry');
+	pg_assert_same('', ws_approval_agent_limit_error('agent:3', 99, 5), 'an application agent too');
+
+	$root = PG_FUNCTIONS_DIR . '/includes/workspace/';
+	$approvals = (string) file_get_contents($root . 'approvals.php');
+	$agents = (string) file_get_contents($root . 'approval_agents.php');
+
+	pg_assert_contains('$limit = ws_approval_agent_limit_problem($viewer, $value);', $approvals, 'the input checks each assistant');
+	pg_assert_contains("return \$fail(\$limit, 'agents');", $approvals, 'and refuses on the agents field');
+	pg_assert_contains('ws_approval_agent_not_asked($channel, $value);', $agents, 'a request not made is said in the channel');
+}
