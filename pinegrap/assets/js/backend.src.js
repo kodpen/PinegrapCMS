@@ -10154,9 +10154,11 @@ function pg_poll_while_visible(poll, ms) {
     }
 
     /**
-     * pgToast({message, variant, delay, link})
+     * pgToast({message, variant, delay, link, host})
      * variant: success | danger | warning | info (default: info)
      * link: optional {url, label} drawn after the text
+     * host: optional element the toast is drawn in instead of the page's
+     * toast stack (the Site Settings dialog's place for "saved")
      * delay: ms (default: 4000), success and info only: a danger or warning
      * toast stays until its Close button is used, so a keyboard or
      * magnifier user can still reach it, and the same one is not stacked.
@@ -10176,13 +10178,15 @@ function pg_poll_while_visible(poll, ms) {
             info: 'bi-info-circle-fill'
         };
 
-        var container = ensureToastContainer();
+        var container = opts.host || ensureToastContainer();
         // An open dialog's backdrop would cover a body-level toast: the
         // container goes into the top dialog until it hides.
-        if (window.pgUI && pgUI.hostLayer) {
-            pgUI.hostLayer(container);
+        if (!opts.host) {
+            if (window.pgUI && pgUI.hostLayer) {
+                pgUI.hostLayer(container);
+            }
+            placeToastContainer(container);
         }
-        placeToastContainer(container);
         // An optional link after the text ({url, label}): a site path or http(s) only.
         var linkHtml = '';
         if (opts.link && opts.link.url && opts.link.label && /^(https?:\/\/|\/(?!\/))/i.test(String(opts.link.url))) {
@@ -13472,23 +13476,8 @@ window.pgCodeEditorReady = function (markup, done) {
             host.style.top = Math.round(head.getBoundingClientRect().bottom - el.getBoundingClientRect().top + 12) + 'px';
         }
 
-        var toast = $('<div class="toast align-items-center bg-success fg-contrast-success border-0" role="status" aria-live="polite" aria-atomic="true">'
-            + '<div class="d-flex"><div class="toast-body flex-grow-1"><i class="bi bi-check-circle-fill me-3" aria-hidden="true"></i></div>'
-            + '<button type="button" class="btn-close ms-2 me-3 my-auto flex-shrink-0 no-popover" data-bs-dismiss="toast"></button></div></div>');
-
-        toast.find('.toast-body').append(document.createTextNode(said));
-        toast.find('.btn-close').attr('aria-label', say('close'));
-        host.appendChild(toast[0]);
-
-        var shown = window.pgUI ? pgUI.toast.get(toast[0], { delay: (said.length > 80) ? 600000 : 5000, autohide: true }) : null;
-
-        if (shown) {
-            pgUI.toast.on(toast[0], 'hidden', function () {
-                toast.remove();
-            });
-            shown.show();
-        } else {
-            toast.addClass('show');
+        if (typeof window.pgToast === 'function') {
+            window.pgToast({ message: said, variant: 'success', delay: (said.length > 80) ? 600000 : 5000, host: host });
         }
     }
 

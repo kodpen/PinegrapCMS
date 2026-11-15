@@ -11,6 +11,6 @@ description: After a save the Site Settings dialog keeps the form's scroll, open
 - After a button named `..._delete`, `..._remove` or `..._archive`, and from an add drawer (id ending `-0`, `-add`, `-new`, or `pgset-ws-github-link`): the stored record has a drawer of its own. Rule: `pgSettingsKeepDrawer()` in `backend.src.js`, test `tests/settings_dialog_keep_place_test.php`. A new add drawer follows the id pattern.
 
 ## How is "saved" said?
-- One toast in `#pg_settings_modal_saved` (`modal.php`), placed by `confirmSave()` just under the head of the open drawer or of the pane, never over a drawer's Save at its foot (on a phone it would cover it). A new save empties the box first.
+- The panel's own toast, `pgToast()` with its `host` option, in `#pg_settings_modal_saved` (`modal.php`), placed by `confirmSave()` just under the head of the open drawer or of the pane, never over a drawer's Save at its foot (on a phone it would cover it). A new save empties the box first. The architect's look (channel message 5007): a toast in an open dialog stands at its top, so under the drawer's title; no second recipe at the drawer's foot.
 - Text: the card's own sentence ("The agent was saved."); the endpoint's general one ("The Site Settings have been saved.", always last) only when the card said nothing. 5 s; a text over 80 characters (an address to note) stays until closed.
 - A save with warnings, a refused save and an error keep the old way: the notice at the top of the pane, scroll 0, drawer shut.

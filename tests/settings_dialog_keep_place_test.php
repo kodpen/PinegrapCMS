@@ -101,6 +101,8 @@ function test_settings_dialog_keep_place_save_path()
 	pg_assert_contains('form.scrollTop = place.scroll;', $source, 'paint() puts the form\'s scroll back');
 	pg_assert_contains("var host = byId('pg_settings_modal_saved');", $source, 'saved is a toast in the dialog');
 	pg_assert_contains('$(host).empty();', $source, 'the toast of the last save goes before the next one');
+	pg_assert_contains("variant: 'success', delay: (said.length > 80) ? 600000 : 5000, host: host });", $source, 'the panel\'s own toast, drawn in the dialog\'s place');
+	pg_assert_contains('var container = opts.host || ensureToastContainer();', $source, 'pgToast() draws in a host it is given');
 
 	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/modal.php');
 
