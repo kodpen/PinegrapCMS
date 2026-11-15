@@ -26,4 +26,4 @@ description: Plan (owner 2026-11-14): the PHP error log of the owner's dev machi
 - No behaviour changes: a warning's cause is fixed so that the screen answers as before. A fix that would change what a screen shows is asked first.
 - PHP 7.1 to 8.5 all run the result (`bash tools/static_analysis.sh`).
 - The log itself never enters the repository: it holds addresses and request data.
-- EL1 first; EL2 and EL3 may run beside it; EL4 and EL5 after EL1. Claim as `[plan:php-error-log-clean] <step> — <topic>`.
+- EL1 first; EL2, EL3 and EL4 may run beside it; EL5 after EL1. EL4 starts from the faults named above (architect, 2026-11-15): a file whose warning the code does not show is left for EL1. Claim as `[plan:php-error-log-clean] <step> — <topic>`.
