@@ -94,7 +94,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('New Invoice'),
-        'extra classes' => 'erp erp_invoices',
+        'extra classes' => 'erp erp_invoices pg-measure-edit',
         'icon' => 'erp',
         'heading' => lang('New Invoice'),
         'heading_description' => lang('Type in a sales or purchase invoice. Keep it as a draft, or issue it and take the next number.'),

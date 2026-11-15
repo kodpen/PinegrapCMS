@@ -440,7 +440,7 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     if (($output_mail_form !== '') || ($mail_rows !== '')) {
         $output_mail = '
             <div class="card my-7" id="erp-mail">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('E-mail to the customer') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('E-mail to the customer') . '</h2>
                 <div class="card-body">' . $card_slot('mail') . $output_mail_form . '</div>'
                 . (($mail_rows !== '') ? '
                 <div class="card-body p-0 border-top table-responsive">
@@ -470,7 +470,7 @@ if ($signature !== null) {
     $output_signature_icon = ' <i class="bi bi-pen fg-success fs-md align-middle" title="' . h(lang('Signed')) . '" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Signed')) . '</span>';
     $output_signature = '
             <div class="card my-7" id="erp-signature">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Customer signature') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Customer signature') . '</h2>
                 <div class="card-body">
                     ' . $card_slot('signature') . '
                     <div class="row g-5 align-items-center">
@@ -497,7 +497,7 @@ if ($signature !== null) {
 
     $output_signature = '
             <div class="card my-7" id="erp-signature">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Customer signature') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Customer signature') . '</h2>
                 <div class="card-body">
                     ' . $card_slot('signature') . '
                     <form name="signature_form" action="' . $self_action . '" method="post" class="row g-5 disable_shortcut" autocomplete="off">
@@ -573,7 +573,7 @@ if (!$readonly && erp_quote_links_ready()) {
     if (($guest_body !== '') || ($guest_buttons !== '')) {
         $output_guest_link = '
             <div class="card my-7" id="erp-guest-link">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Guest link') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Guest link') . '</h2>
                 <div class="card-body">
                     ' . $card_slot('guest-link') . '
                     <div class="form-text mt-0 mb-5">' . lang('The customer opens the quote with this link without an account, reads it and accepts it with a signature. It runs until the quote\'s valid until date.') . '</div>
@@ -642,7 +642,7 @@ $output_toolbar = pg_screen_toolbar(array(
 echo
 pg_page_shell([
     'title' => h((string) $quote['full_number']),
-    'extra classes' => 'erp erp_invoices',
+    'extra classes' => 'erp erp_invoices pg-measure-edit',
     'icon' => 'erp',
     'heading' => h(lang(array('string' => 'Quote {var:1}', 'vars' => (string) $quote['full_number']))) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>' . $output_signature_icon,
     'heading_description' => (string) $quote['account_title'] . ' · ' . lang(array('string' => 'Valid until {var:1}', 'vars' => prepare_form_data_for_output((string) $quote['valid_until'], 'date', false))),
@@ -665,9 +665,10 @@ pg_page_shell([
         <!--
             The form column: the quote itself. The signature, guest link and
             e-mail cards go in the status column after it, so a narrow screen
-            puts them below the quote. That column is not sticky: it holds
-            forms, is taller than the window and is reached by #erp-* jumps,
-            and a sticky box taller than the window hides its own end. The
+            puts them below the quote. That column does not pin (its box is
+            position-sticky with no offset, so its cards take the look\'s card):
+            it holds forms, is taller than the window and is reached by #erp-*
+            jumps, and a pinned box taller than the window hides its own end. The
             line editor needs about 1,060px, so an open quote splits only
             from 2xl; below that its cards follow the editor.
         -->
@@ -681,9 +682,11 @@ pg_page_shell([
             ' . $output_body . '
         </div>
         <div class="col-12 ' . ($editable ? '' : 'lg:col-4 ') . '2xl:col-3 order-2">
+            <div class="position-sticky">
             ' . $output_signature . '
             ' . $output_guest_link . '
             ' . $output_mail . '
+            </div>
         </div>
     </div>
 </main>

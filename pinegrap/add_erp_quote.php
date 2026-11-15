@@ -87,7 +87,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('New quote'),
-        'extra classes' => 'erp erp_invoices',
+        'extra classes' => 'erp erp_invoices pg-measure-edit',
         'icon' => 'erp',
         'heading' => lang('New quote'),
         'heading_description' => lang('A priced offer to a customer. It moves no money and no stock; once the customer says yes it becomes an invoice at the prices quoted.'),

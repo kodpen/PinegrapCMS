@@ -277,21 +277,21 @@ function erp_waybill_form_cards($liveform, $options = array())
         </div>
         <div class="card-body">
             <div class="row">' . $output_order . '
-                <div class="col-12 2xl:col-6 my-3">
+                <div class="col-12 md:col-6 my-3">
                     <label for="account_id" class="form-label">' . lang('Account') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'account_id', 'name' => 'account_id',
                         'class' => 'form-control', 'data-pg-combobox' => '', 'options' => $account_options)) . '
                     ' . erp_account_quick_link('#account_id', 'customer') . '
                 </div>
-                <div class="col-6 md:col-4 2xl:col-2 my-3">
+                <div class="col-12 md:col-3 my-3">
                     <label for="issue_date" class="form-label">' . lang('Date') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'issue_date', 'data-pg-date' => '', 'name' => 'issue_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-6 md:col-4 2xl:col-2 my-3">
+                <div class="col-12 md:col-3 my-3">
                     <label for="ship_date" class="form-label">' . lang('Shipment Date') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_date', 'data-pg-date' => '', 'name' => 'ship_date',
@@ -299,7 +299,7 @@ function erp_waybill_form_cards($liveform, $options = array())
                         'autocomplete' => 'off')) . '
                     <div class="form-text">' . lang('Empty means the date above.') . '</div>
                 </div>
-                <div class="col-6 md:col-4 2xl:col-2 my-3">
+                <div class="col-12 md:col-3 my-3">
                     <label for="ship_time" class="form-label">' . lang('Shipment Time') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_time', 'data-pg-time' => 'hh:mm', 'name' => 'ship_time',
@@ -316,14 +316,14 @@ function erp_waybill_form_cards($liveform, $options = array())
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-12 lg:col-6 my-3">
+                <div class="col-12 my-3">
                     <label for="ship_to_title" class="form-label">' . lang('Recipient') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_to_title', 'name' => 'ship_to_title',
                         'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                     <div class="form-text">' . lang('Empty means the account itself.') . '</div>
                 </div>
-                <div class="col-12 lg:col-6 my-3">
+                <div class="col-12 my-3">
                     <label for="ship_to_address" class="form-label">' . lang('Address') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_to_address', 'name' => 'ship_to_address',
@@ -382,21 +382,21 @@ function erp_waybill_form_cards($liveform, $options = array())
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-12 xl:col-5 my-3">
+                <div class="col-12 my-3">
                     <label for="carrier_title" class="form-label">' . lang('Carrier') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'carrier_title', 'name' => 'carrier_title',
                         'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                     <div class="form-text">' . lang('The shipping company, or the store itself when its own vehicle delivers.') . '</div>
                 </div>
-                <div class="col-12 sm:col-6 xl:col-3 my-3">
+                <div class="col-12 md:col-4 my-3">
                     <label for="carrier_vkn" class="form-label">' . ((erp_account_country('') === 'TR') ? lang('Carrier VKN') : lang('Carrier tax number')) . '</label>
                     ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'carrier_vkn', 'name' => 'carrier_vkn',
                         'class' => 'form-control', 'maxlength' => (erp_account_country('') === 'TR') ? '11' : '32', 'autocomplete' => 'off'),
                         (erp_account_country('') === 'TR') ? array('inputmode' => 'numeric') : array())) . '
                 </div>
-                <div class="col-12 sm:col-6 xl:col-4 my-3">
+                <div class="col-12 md:col-4 my-3">
                     <label for="plate" class="form-label">' . lang('Plate') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'plate', 'name' => 'plate',
@@ -404,13 +404,13 @@ function erp_waybill_form_cards($liveform, $options = array())
                 </div>
             </div>
             <div class="row">
-                <div class="col-12 xl:col-5 my-3">
+                <div class="col-12 my-3">
                     <label for="driver_name" class="form-label">' . lang('Driver') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'driver_name', 'name' => 'driver_name',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 sm:col-6 xl:col-3 my-3">
+                <div class="col-12 pg-field-span-4 my-3">
                     <label for="driver_tckn" class="form-label">' . lang('Driver ID No') . '</label>
                     ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'driver_tckn', 'name' => 'driver_tckn',
