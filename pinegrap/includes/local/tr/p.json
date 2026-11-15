@@ -600,6 +600,7 @@
     "Paste HTML content": "HTML içeriği yapıştır",
     "Paste a picture or the copied layers": "Bir resmi veya kopyalanan katmanları yapıştır",
     "Paste as Plain Text": "Düz Metin Olarak Yapıştır",
+    "Paste it into the agent's setup. Give the agent the application's key and secret as PINEGRAP_KEY and PINEGRAP_SECRET in its environment; the text holds neither.": "Bunu ajanın kurulumuna yapıştırın. Uygulamanın anahtarını ve gizli anahtarını ajana ortamında PINEGRAP_KEY ve PINEGRAP_SECRET olarak verin; metin ikisini de içermez.",
     "Paste or type the address": "Adresi yapıştırın ya da yazın",
     "Paste or write the code here": "Kodu buraya yapıştırın ya da yazın",
     "Paste some HTML first.": "Önce HTML yapıştırın.",

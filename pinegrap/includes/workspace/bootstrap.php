@@ -34,6 +34,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/app_handles.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_report.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agents_settings.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_start_text.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_agents_panel.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/message_seen_agents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_memory.php');

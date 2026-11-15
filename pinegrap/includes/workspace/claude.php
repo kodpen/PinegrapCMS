@@ -3035,7 +3035,19 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null, $form 
                 }
             });
         })();
+        </script>' . ws_claude_copy_script();
+}
 
+/**
+ * The Copy buttons' listener of ws_claude_copy_field(), bound once per page:
+ * the Claude card and the agents card both print it.
+ *
+ * @return string HTML, a script
+ */
+function ws_claude_copy_script()
+{
+    return '
+        <script>
         // Bound once: the dialog draws the card again with every pane.
         if (!window.pgWsCopyBound) {
         window.pgWsCopyBound = true;
