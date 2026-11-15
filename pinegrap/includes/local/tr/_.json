@@ -467,6 +467,7 @@
     "@{var:1} is not allowed in #{var:2}.": "@{var:1}, #{var:2} kanalında izinli değil.",
     "@{var:1} is not connected, or its connection ended. An administrator connects it again under Workspace settings › MCP servers.": "@{var:1} bağlı değil ya da bağlantısı sona erdi. Bir yönetici Çalışma Alanı Ayarları › MCP sunucuları altından yeniden bağlar.",
     "@{var:1} is not one of this channel's agents.": "@{var:1} bu kanalın ajanlarından biri değil.",
+    "@{var:1} is paused on the Agents card (Site Settings): its own routes answer again once a person sets it back to Active there.": "@{var:1}, Ajanlar kartında (Site Ayarları) duraklatıldı: bir kişi onu orada yeniden Etkin yaptığında kendi uç noktaları yine yanıt verir.",
     "@{var:1} is paused on the Agents card.": "@{var:1}, Ajanlar kartında duraklatılmış.",
     "@{var:1} is turned off. Nothing is sent to it until it is turned on again.": "@{var:1} kapatıldı. Yeniden açılana kadar ona hiçbir şey gönderilmez.",
     "@{var:1} is woken every {var:2} minutes, next at {var:3}.": "@{var:1} her {var:2} dakikada bir uyandırılır, sıradaki {var:3}.",
