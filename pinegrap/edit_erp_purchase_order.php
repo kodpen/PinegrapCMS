@@ -175,9 +175,11 @@ $quantity = function ($value, $unit_code) {
 // A menu row ($class 'menu-item ...') is a full-width form in the overflow menu.
 $action_button = function ($action, $label, $icon, $class, $confirm = '') use ($order_id, $self_action) {
     $menu = (strpos($class, 'menu-item') === 0);
+    // A look button (pg-button …) brings its whole class and spaces its icon itself.
+    $look = (strpos($class, 'pg-button') === 0);
     return '<form method="post" action="' . $self_action . '" class="' . ($menu ? 'disable_shortcut' : 'd-inline') . '">' . get_token_field()
         . '<input type="hidden" name="id" value="' . $order_id . '" /><input type="hidden" name="erp_action" value="' . h($action) . '" />'
-        . '<button type="submit" class="' . ($menu ? '' : 'btn btn-sm ') . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ' ' . ($menu ? 'me-3' : 'me-1') . '" aria-hidden="true"></i>' . $label . '</button></form>';
+        . '<button type="submit" class="' . (($menu || $look) ? '' : 'btn btn-sm ') . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ($menu ? ' me-3' : ($look ? '' : ' me-1')) . '" aria-hidden="true"></i>' . $label . '</button></form>';
 };
 
 // What has come against each line, and the invoices it came on.
@@ -197,7 +199,7 @@ $status_actions = array();
 if (!$readonly) {
     $menu_row = 'menu-item pg-link-body-emphasis';
     if ($can_invoice) {
-        $output_invoice_button = $action_button('invoice', lang('Make a purchase invoice draft'), 'bi-receipt', 'btn-solid theme-primary rounded-pill px-5', lang('Make a purchase invoice draft for what has not come yet, at the order\'s prices and dated today?'));
+        $output_invoice_button = $action_button('invoice', lang('Make a purchase invoice draft'), 'bi-receipt', 'pg-button pg-button-fill', lang('Make a purchase invoice draft for what has not come yet, at the order\'s prices and dated today?'));
     }
     if ($status_key === 'open') {
         $status_actions[] = $action_button('sent', lang('Mark as sent'), 'bi-send-check', $menu_row, lang('Mark this order as sent to the supplier (by phone, on paper)? Sending it by e-mail does this by itself.'));
@@ -386,7 +388,7 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     $output_mail_form = '';
 
     if ($can_mail) {
-        $output_mail_button = '<a class="btn btn-sm btn-text theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
+        $output_mail_button = '<a class="pg-button pg-button-ghost" href="#erp-mail"><i class="bi bi-envelope" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
         $output_mail_form = '
             <form name="mail_form" action="' . $self_action . '" method="post" class="row g-3" data-erp-send-once>
                 ' . get_token_field() . '
@@ -477,8 +479,8 @@ if ($status_actions) {
 }
 
 $output_toolbar = pg_screen_toolbar(array(
-    'primary' => ($output_invoice_button !== '') ? $output_invoice_button : $pdf_link('btn btn-sm btn-solid theme-primary rounded-pill px-5'),
-    'secondary' => (($output_invoice_button !== '') ? $pdf_link('btn btn-sm btn-text theme-secondary') : '') . $output_mail_button,
+    'primary' => ($output_invoice_button !== '') ? $output_invoice_button : $pdf_link('pg-button pg-button-fill'),
+    'secondary' => (($output_invoice_button !== '') ? $pdf_link('pg-button pg-button-ghost') : '') . $output_mail_button,
     'grow' => '<div class="small d-flex flex-wrap align-items-center column-gap-5 row-gap-1"><span>' . implode('</span><span>', $facts) . '</span></div>',
     'overflow' => '<div class="pg-menu-wrap">
                 <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-display="static" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>

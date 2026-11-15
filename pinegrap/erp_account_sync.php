@@ -414,7 +414,7 @@ if ($provider !== '') {
                     ' . get_token_field() . '
                     <input type="hidden" name="erp_action" value="fetch" />
                     <input type="hidden" name="tab" value="' . h($tab) . '" />
-                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Read from {var:1}', 'vars' => $provider_label))) . '</button>
+                    <button type="submit" class="pg-button pg-button-fill text-nowrap"><i class="bi bi-cloud-download" aria-hidden="true"></i>' . h(lang(array('string' => 'Read from {var:1}', 'vars' => $provider_label))) . '</button>
                 </form>') . '
                 ' . (($read_at > 0)
                     ? '<span class="small fg-secondary">' . lang(array('string' => 'Last read {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', $read_at), 'date and time'))) . '</span>'

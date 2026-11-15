@@ -189,7 +189,7 @@ function pg_messages_new_campaign_button($sms)
     }
 
     return '<div class="pg-menu-wrap">'
-        . '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false">'
+        . '<button type="button" class="pg-button pg-button-fill" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false">'
         . '<i class="bi bi-plus-lg me-2" aria-hidden="true"></i>' . h(lang('New campaign')) . '</button>'
         . '<ul class="menu" aria-label="' . h(lang('Channel')) . '">'
         . '<li><a class="menu-item pg-link-body-emphasis" href="add_email_campaign.php"><i class="bi bi-envelope me-3" aria-hidden="true"></i>' . h(lang('E-mail')) . '</a></li>'

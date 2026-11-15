@@ -216,7 +216,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . (($output_new !== '') ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="#erp_cheque_new"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New cheque or note') . '</a>' : '') . '
+                ' . (($output_new !== '') ? '<a class="pg-button pg-button-fill" href="#erp_cheque_new"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('New cheque or note') . '</a>' : '') . '
                 <div class="pg-toolbar-grow"></div>
                 <form method="get" action="erp_cheques.php" class="pg-toolbar-search disable_shortcut" role="search">
                     <input type="hidden" name="status" value="' . h($status) . '" />

@@ -3263,7 +3263,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                    <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
+                    <a class="pg-button pg-button-fill" href="add_order.php"><i class="bi bi-cart-plus" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
                     <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
                         ' . get_token_field() . '
                         <div class="pg-menu-wrap d-inline-block">

@@ -135,7 +135,7 @@ $bookings_filters = '
                             <fieldset>
                                 <legend class="form-label small mb-1">' . h(lang('Status')) . '</legend>
                                 ' . $bookings_chips . '
-                                <noscript><button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 mb-2">' . h(lang('Filter')) . '</button></noscript>
+                                <noscript><button type="submit" class="pg-button pg-button-fill mb-2">' . h(lang('Filter')) . '</button></noscript>
                             </fieldset>
                         </div>
                     </div>

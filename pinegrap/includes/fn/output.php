@@ -3229,7 +3229,7 @@ function pg_account_menu($user, $options = array())
             . ($photo_only ? '' : '<span class="small fg-secondary text-nowrap">' . lang('Optional') . '</span>') . '
                                     </div>
                                     <div class="d-flex align-items-center gap-3">
-                                        <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . lang('Save') . '</button>'
+                                        <button type="submit" class="pg-button pg-button-fill">' . lang('Save') . '</button>'
             . ($photo_only ? '<button type="button" class="btn btn-sm btn-link fg-secondary px-1" data-pg-contact-later>' . lang('Not now') . '</button>' : '') . '
                                         <span class="small fg-danger" data-pg-contact-error role="alert"></span>
                                     </div>

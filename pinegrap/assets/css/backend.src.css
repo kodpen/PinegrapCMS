@@ -3467,6 +3467,7 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
    children: a dissolved group's buttons are items of the bar while still
    matching .btn-group > .btn, and a child selector misses them. */
 #button_bar .btn,
+.pg-toolbar .pg-button,
 #button_bar .pg-button {
   flex: 0 0 auto;
 }
@@ -3556,6 +3557,7 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
 }
 /* The look's buttons keep their own type size for the icon; only the margin
    the markup carries goes, the recipe's gap spaces it. */
+.pg-toolbar .pg-button .bi,
 #button_bar .pg-button .bi {
   margin: 0 !important;
   line-height: 1;

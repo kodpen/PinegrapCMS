@@ -1957,7 +1957,7 @@ echo pg_page_shell(array(
 
 <main id="content" class="container-fluid">
 	' . pg_screen_toolbar(array(
-		'primary' => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="dialog" data-bs-target="#mp_new">'
+		'primary' => '<button type="button" class="pg-button pg-button-fill" data-bs-toggle="dialog" data-bs-target="#mp_new">'
 			. '<i class="bi bi-plus-lg me-2" aria-hidden="true"></i>' . lang('Connect a Marketplace') . '</button>',
 		'grow'    => $accounts
 			? '<span class="small fg-secondary"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>'
