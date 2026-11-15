@@ -102,6 +102,16 @@
         body.appendChild(chat);
     }
 
+    // The agent questions asked of the person, drawn only when there are
+    // any, as the proposals' chips; each opens the question to answer it.
+    function questions(body, data) {
+        var part = data.questions || {};
+
+        if ((part.chips || []).length) {
+            proposals(body, { proposals: part });
+        }
+    }
+
     function proposals(body, data) {
         var el = pgDash.el;
         var part = data.proposals || {};
@@ -715,6 +725,7 @@
         }
 
         summary(body, data);
+        questions(body, data);
         proposals(body, data);
         job(body, data);
         chat(body, data);

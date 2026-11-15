@@ -108,6 +108,65 @@ function test_workspace_personal_plan_repeat_clean()
 	pg_assert_same($rule, ws_personal_plan_repeat_clean($clean, $present), 'a write without a rule keeps the same one');
 }
 
+function test_workspace_personal_plan_cut_series_reads_back_its_last_day()
+{
+	$plan = workspace_personal_plan_repeat_row(array(
+		'starts_at'        => strtotime('2026-12-01 10:00:00'),
+		'ends_at'          => strtotime('2026-12-01 11:00:00'),
+		'repeat_frequency' => 'daily',
+	));
+	$clean = array('starts_at' => $plan['starts_at'], 'ends_at' => $plan['ends_at']);
+	// "This and the following" from 10 December, deleting or changing it: both cut there.
+	$cut = array_merge($plan, array('repeat_until' => ws_personal_plan_cut_until($plan, ws_personal_plan_time($plan, 9)), 'repeat_count' => 0));
+	$last = function ($plan) {
+		$times = ws_personal_plan_times($plan, strtotime('2026-12-01'), strtotime('2027-01-01'));
+
+		return end($times)['day'];
+	};
+
+	pg_assert_same('2026-12-09', $last($cut), 'the series ends the day before the cut');
+
+	$present = ws_personal_plan_repeat_present($cut);
+	pg_assert_same('until', $present['repeat_end'], 'it ends on a day');
+	pg_assert_same('2026-12-09', $present['repeat_until'], 'the drawer shows the last day left');
+
+	$saved = array_merge($cut, ws_personal_plan_repeat_clean($clean, $present));
+	pg_assert_same('2026-12-09', $last($saved), 'a save of the whole series keeps the cut time out');
+	pg_assert_same($cut['repeat_until'], $saved['repeat_until'], 'and keeps the same end');
+
+	$night = array_merge($plan, array('starts_at' => strtotime('2026-12-01 23:00:00'), 'ends_at' => strtotime('2026-12-02 01:00:00')));
+	$night['repeat_until'] = ws_personal_plan_cut_until($night, ws_personal_plan_time($night, 9));
+	pg_assert_same('2026-12-09', ws_personal_plan_repeat_present($night)['repeat_until'], 'a time running past midnight reads its start day');
+	pg_assert_same('2026-12-09', $last(array_merge($night, ws_personal_plan_repeat_clean(array('starts_at' => $night['starts_at'], 'ends_at' => $night['ends_at']), ws_personal_plan_repeat_present($night)))), 'and stays cut when saved');
+}
+
+function test_workspace_personal_plan_repeat_clean_across_a_clock_change()
+{
+	$saved = date_default_timezone_get();
+	date_default_timezone_set('Europe/Berlin');
+
+	$day = function ($from, $to) {
+		return array('starts_at' => strtotime($from), 'ends_at' => strtotime($to));
+	};
+	$autumn = ws_personal_plan_repeat_clean($day('2026-10-25 00:00:00', '2026-10-26 00:00:00'), array('repeat' => 'daily'));
+	$spring = ws_personal_plan_repeat_clean($day('2026-03-29 00:00:00', '2026-03-30 00:00:00'), array('repeat' => 'daily'));
+	$week = ws_personal_plan_repeat_clean($day('2026-10-19 00:00:00', '2026-10-26 00:00:00'), array('repeat' => 'weekly'));
+	$month = ws_personal_plan_repeat_clean($day('2027-02-01 00:00:00', '2027-03-01 00:00:00'), array('repeat' => 'monthly'));
+	$timed = ws_personal_plan_repeat_clean($day('2026-10-24 12:00:00', '2026-10-25 12:00:00'), array('repeat' => 'daily'));
+	$longer = ws_personal_plan_repeat_clean($day('2026-10-25 00:00:00', '2026-10-26 01:00:00'), array('repeat' => 'daily'));
+	$month_long = ws_personal_plan_repeat_clean($day('2026-10-01 00:00:00', '2026-10-30 00:00:00'), array('repeat' => 'monthly'));
+
+	date_default_timezone_set($saved);
+
+	pg_assert_same('daily', $autumn['repeat_frequency'] ?? $autumn, 'an all-day plan on the 25-hour day repeats every day');
+	pg_assert_same('daily', $spring['repeat_frequency'] ?? $spring, 'and on the 23-hour day');
+	pg_assert_same('weekly', $week['repeat_frequency'] ?? $week, 'a week holding the change repeats every week');
+	pg_assert_same('monthly', $month['repeat_frequency'] ?? $month, 'four weeks of February repeat every month');
+	pg_assert_same('daily', $timed['repeat_frequency'] ?? $timed, 'a 24-hour plan over the change repeats every day');
+	pg_assert_true(isset($longer['error']), 'a plan of a day and an hour still cannot repeat every day');
+	pg_assert_true(isset($month_long['error']), 'nor 29 days every month');
+}
+
 function test_workspace_personal_plan_reminds_each_time()
 {
 	$plan = workspace_personal_plan_repeat_row(array(

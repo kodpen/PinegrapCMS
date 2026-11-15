@@ -330,15 +330,15 @@ if ($status === 'paid') {
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . $id . '" />
             <input type="hidden" name="erp_action" value="pay" />
-            <div class="col-12 md:col-5">
+            <div class="col-12 md:col-6">
                 <label class="form-label small mb-1" for="cash_account_id">' . lang('Paid from') . '</label>
                 <select class="form-control form-control-sm" id="cash_account_id" name="cash_account_id" required>' . $pay_till_options . '</select>
             </div>
-            <div class="col-6 md:col-3">
+            <div class="col-12 md:col-6">
                 <label class="form-label small mb-1" for="payment_method">' . lang('Payment Method') . '</label>
                 <select class="form-control form-control-sm" id="payment_method" name="payment_method">' . $method_options($sent_form('pay') ? (string) $liveform->get_field_value('payment_method') : 'cash') . '</select>
             </div>
-            <div class="col-6 md:col-2">
+            <div class="col-12 md:col-3">
                 <label class="form-label small mb-1" for="paid_date">' . lang('Paid on') . '</label>
                 <input type="text" class="form-control form-control-sm' . ($date_invalid('pay', 'paid_date') ? ' is-invalid' : '') . '" id="paid_date" name="paid_date" data-pg-date value="' . h($sent_form('pay') ? (string) $liveform->get_field_value('paid_date') : prepare_form_data_for_output(date('Y-m-d'), 'date')) . '" maxlength="10" autocomplete="off" />
             </div>
@@ -460,11 +460,11 @@ if (erp_expense_recurring_ready()) {
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '" />
                         <input type="hidden" name="erp_action" value="repeat_till" />
-                        <div class="col-12 md:col-5">
+                        <div class="col-12 md:col-6">
                             <label class="form-label small mb-1" for="repeat_till">' . lang('Paid from') . '</label>
                             <select class="form-control form-control-sm" id="repeat_till" name="repeat_till" required>' . $repeat_till_options . '</select>
                         </div>
-                        <div class="col-6 md:col-4">
+                        <div class="col-12 md:col-6">
                             <label class="form-label small mb-1" for="repeat_method">' . lang('Payment Method') . '</label>
                             <select class="form-control form-control-sm" id="repeat_method" name="repeat_method">' . $method_options((string) $recurrence['payment_method']) . '</select>
                         </div>
@@ -534,15 +534,15 @@ if (erp_expense_recurring_ready()) {
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $id . '" />
                 <input type="hidden" name="erp_action" value="repeat" />
-                <div class="col-12 md:col-4">
+                <div class="col-12 md:col-6">
                     <label class="form-label small mb-1" for="repeat_every">' . lang('How often') . '</label>
                     <select class="form-control form-control-sm" id="repeat_every" name="repeat_every">' . $period_options . '</select>
                 </div>
-                <div class="col-6 md:col-3">
+                <div class="col-12 md:col-3">
                     <label class="form-label small mb-1" for="repeat_due_days">' . lang('Due after (days)') . '</label>
                     <input type="number" class="form-control form-control-sm" id="repeat_due_days" name="repeat_due_days" value="' . h($repeat_due_days) . '" min="0" max="365" placeholder="0" />
                 </div>
-                <div class="col-6 md:col-3">
+                <div class="col-12 md:col-3">
                     <label class="form-label small mb-1" for="repeat_end">' . lang('Until (optional)') . '</label>
                     <input type="text" class="form-control form-control-sm' . ($date_invalid('repeat', 'repeat_end') ? ' is-invalid' : '') . '" id="repeat_end" name="repeat_end" data-pg-date value="' . h($sent_form('repeat') ? (string) $liveform->get_field_value('repeat_end') : '') . '" maxlength="10" autocomplete="off" />
                 </div>
@@ -621,7 +621,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . ($can_change ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_expense.php?id=' . $id . h($send_to_query) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Change') . '</a>' : '') . '
+                ' . ($can_change ? '<a class="pg-button pg-button-fill" href="add_erp_expense.php?id=' . $id . h($send_to_query) . '"><i class="bi bi-pencil" aria-hidden="true"></i>' . lang('Change') . '</a>' : '') . '
                 ' . (!$readonly ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_expense.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
             </nav>
 
@@ -633,19 +633,19 @@ pg_page_shell([
             <div class="row g-7 my-1">
                 <div class="col-12 lg:col-8 2xl:col-9 order-1">
                     <div class="card mb-7">
-                        <div class="card-header bg-reset border-0 pg-title-section">' . lang('The expense') . '</div>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('The expense') . '</h2>
                         <div class="card-body">' . $output_details . '</div>
                     </div>
                     <div class="card mb-7">
-                        <div class="card-header bg-reset border-0 pg-title-section">' . lang('Payment') . '</div>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Payment') . '</h2>
                         <div class="card-body">' . $output_payment . '</div>
                     </div>
                     <div class="card mb-7">
-                        <div class="card-header bg-reset border-0 pg-title-section">' . lang('The receipt') . '</div>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('The receipt') . '</h2>
                         <div class="card-body">' . $output_receipt . '</div>
                     </div>
                     ' . (($output_repeat !== '') ? '<div class="card mb-7">
-                        <div class="card-header bg-reset border-0 pg-title-section"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Repeat') . '</div>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Repeat') . '</h2>
                         <div class="card-body">' . $output_repeat . '</div>
                     </div>' : '') . '
                     ' . $output_cancel . '
@@ -653,7 +653,7 @@ pg_page_shell([
                 <div class="col-12 lg:col-4 2xl:col-3 order-2">
                     <div class="position-sticky" style="top:3.3rem;">
                         <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 pg-title-section">' . lang('Amount and tax') . '</div>
+                            <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Amount and tax') . '</h2>
                             <div class="card-body">
                                 <div class="mb-3">' . $output_badge . '</div>
                                 ' . $output_figures . '

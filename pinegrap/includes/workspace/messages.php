@@ -480,6 +480,8 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
             $canvas = (($kind === 'image') && ($extension === 'png') && function_exists('ws_canvas_message_state')) ? ws_canvas_message_state((int) $row['file_id']) : null;
 
             $payload['file'] = array(
+                // The file's own id: a poll option's picture names it.
+                'id'       => (int) $row['file_id'],
                 'name'     => (string) $row['file_name'],
                 'url'      => ws_canvas_picture_url(PATH . encode_url_path($stored), $canvas),
                 // The version a browser draws and posts (canvas_picture), 0 for none.

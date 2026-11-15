@@ -200,14 +200,14 @@ if ($subscription_id > 0) {
 
     $output_content = '
             ' . pg_screen_toolbar(array('primary' => $output_actions)) . '
-            <div class="card my-7">
+            <div class="card pg-card my-7">
                 <div class="card-body">
                     <dl class="row mb-0">' . $output_facts . '
                     </dl>
                 </div>
             </div>
-            <div class="card my-7">
-                <div class="card-header"><h2 class="h6 mb-0">' . h(lang('Renewal orders')) . '</h2></div>
+            <div class="card pg-card my-7">
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Renewal orders')) . '</h2>
                 <div class="card-body p-0">' . (($output_orders !== '') ? '
                     <table class="table table-hover mb-0">
                         <thead>
@@ -224,8 +224,8 @@ if ($subscription_id > 0) {
                     <p class="p-12 mb-0 fg-secondary">' . h(lang('No renewal order yet.')) . '</p>') . '
                 </div>
             </div>
-            <div class="card my-7">
-                <div class="card-header"><h2 class="h6 mb-0">' . h(lang('History')) . '</h2></div>
+            <div class="card pg-card my-7">
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('History')) . '</h2>
                 <div class="card-body p-0">
                     <table class="table table-hover mb-0">
                         <thead>
@@ -323,7 +323,7 @@ if ($subscription_id > 0) {
                         <input type="date" data-pg-date name="next_to" value="' . h($filter['next_to']) . '" class="form-control form-control-sm w-auto flex-fill min-w-0" aria-label="' . h(lang('Next charge to')) . '" title="' . h(lang('Next charge to')) . '">
                     </span>
                     <input type="search" name="q" value="' . h($filter['q']) . '" maxlength="100" class="form-control form-control-sm w-auto" placeholder="' . h(lang('Customer name or e-mail')) . '" aria-label="' . h(lang('Customer name or e-mail')) . '">
-                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-12"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>
+                    <button type="submit" class="pg-button pg-button-fill"><i class="bi bi-funnel" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>
                     ' . ($filtered ? '<a class="btn btn-sm btn-text theme-secondary" href="view_subscriptions.php">' . h(lang('Clear')) . '</a>' : '') . '
                 </form>
             </nav>

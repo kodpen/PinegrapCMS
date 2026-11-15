@@ -66,8 +66,8 @@ function test_form_box_column_limits_contact_boxes()
 {
 	$source = form_box_column_limits_test_read('includes/forms/contact_form.php');
 
-	pg_assert_contains("'business_zip_code', lang('Business Zip Code'), 10)", $source, 'business zip holds VARCHAR(10)');
-	pg_assert_contains("'home_zip_code', lang('Home Zip Code'), 10)", $source, 'home zip holds VARCHAR(10)');
+	pg_assert_contains("'business_zip_code', lang('Business Zip Code'), 10,", $source, 'business zip holds VARCHAR(10)');
+	pg_assert_contains("'home_zip_code', lang('Home Zip Code'), 10,", $source, 'home zip holds VARCHAR(10)');
 	pg_assert_contains("'mobile_phone', lang('Mobile Phone'), 50,", $source, 'mobile phone holds VARCHAR(50)');
 	pg_assert_true((bool) preg_match('/<input\b[^>]*\bid="member_id"[^>]*\bmaxlength="50"/', $source), 'member id holds VARCHAR(50)');
 }

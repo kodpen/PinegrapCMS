@@ -187,12 +187,12 @@ foreach ($expenses as $expense) {
             <td class="align-middle text-nowrap" data-sort="' . h(str_replace('-', '', (string) $expense['expense_date']) . sprintf('%07d', $id % 10000000)) . '">
                 <a class="pg-link-body-emphasis" href="edit_erp_expense.php?id=' . $id . $output_send_to . '">' . h(prepare_form_data_for_output((string) $expense['expense_date'], 'date', false)) . '</a>
             </td>
-            <td class="align-middle text-break" style="min-width:8rem;max-width:14rem">' . h((string) $expense['category_name']) . '</td>
-            <td class="align-middle text-break' . $struck . '" style="min-width:8rem;max-width:18rem">
+            <td class="align-middle text-break erp-expense-cell-category">' . h((string) $expense['category_name']) . '</td>
+            <td class="align-middle text-break erp-expense-cell-supplier' . $struck . '">
                 <a class="pg-link-body-emphasis text-decoration-none" href="edit_erp_expense.php?id=' . $id . $output_send_to . '">' . h(((string) $expense['supplier'] !== '') ? (string) $expense['supplier'] : ('#' . $id)) . '</a>'
                 . (((string) $expense['document_no'] !== '') ? '<div class="small fg-secondary font-monospace">' . h((string) $expense['document_no']) . '</div>' : '') . '
             </td>
-            <td class="align-middle small' . $struck . '" style="max-width:18rem">' . h((string) $expense['description']) . '</td>
+            <td class="align-middle small erp-expense-cell-text' . $struck . '">' . h((string) $expense['description']) . '</td>
             <td class="align-middle text-end text-nowrap" data-sort="' . (int) $expense['tax_base'] . '">' . $money($expense['tax_base'])
                 . (((int) $expense['tax_deductible'] !== 1) && ((int) $expense['tax_base'] !== 0) ? '<div class="small fg-secondary">' . lang('not taken back') . '</div>' : '') . '</td>
             <td class="align-middle text-end text-nowrap fw-semibold' . $struck . '" data-sort="' . (int) $expense['total_base'] . '">' . $money($expense['total_base'])
@@ -217,8 +217,8 @@ foreach ($totals['categories'] as $category) {
                 <a class="pg-link-body-emphasis text-decoration-none text-truncate" href="erp_expenses.php?' . h(http_build_query(array('period' => $period_choice, 'from' => $period['from'], 'to' => $period['to'], 'category_id' => (int) $category['category_id']))) . '">' . h($category['name']) . '</a>
                 <span class="text-nowrap fw-semibold">' . $money($category['total']) . '</span>
             </div>
-            <div class="progress mt-1" style="height:.35rem" role="progressbar" aria-label="' . h($category['name']) . '" aria-valuenow="' . (int) $share . '" aria-valuemin="0" aria-valuemax="100">
-                <div class="progress-bar" style="width:' . (int) $share . '%"></div>
+            <div class="pg-report-bar-track mt-1" role="progressbar" aria-label="' . h($category['name']) . '" aria-valuenow="' . (int) $share . '" aria-valuemin="0" aria-valuemax="100">
+                <b style="width:' . (int) $share . '%"></b>
             </div>
         </li>';
 }
@@ -311,13 +311,13 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_expense.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
+                ' . ((!$readonly && $ready) ? '<a class="pg-button pg-button-fill" href="add_erp_expense.php"><i class="bi bi-plus-circle" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
                 ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_expense_categories.php"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Categories') . '</a>' : '') . '
                 <a class="btn btn-sm btn-outline theme-secondary" href="erp_profit.php?' . h(http_build_query(array('range' => 'dates', 'from' => $period['from'], 'to' => $period['to']))) . '"><i class="bi bi-graph-up me-1" aria-hidden="true"></i>' . lang('Profit and loss') . '</a>
                 ' . ($ready ? '<a class="btn btn-sm btn-outline theme-secondary" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . lang('Excel') . '</a>' : '') . '
             </nav>
 
-            <form method="get" action="erp_expenses.php" class="card my-7">
+            <form method="get" action="erp_expenses.php" class="card pg-card my-7">
                 <div class="card-body">
                     <div class="row g-3 align-items-end">
                     <div class="col-12 md:col-3">
@@ -351,45 +351,37 @@ pg_page_shell([
                 </div>
             </form>
 
-            <div class="row g-5">
-                <div class="col-6 lg:col-3">
-                    <div class="card h-100"><div class="card-body">
-                        <div class="small text-uppercase fg-secondary">' . lang('Spent in the period') . '</div>
-                        <div class="h4 mb-0">' . $money($totals['total']['total']) . '</div>
-                        <div class="small fg-secondary">' . h(lang(array('string' => '{var:1} expense(s)', 'vars' => (int) $totals['total']['count']))) . '</div>
-                    </div></div>
+            <dl class="pg-report-figs">
+                <div class="pg-card pg-report-fig">
+                    <dt class="pg-report-fig-name">' . lang('Spent in the period') . '</dt>
+                    <dd class="pg-report-fig-value">' . $money($totals['total']['total']) . '</dd>
+                    <dd class="pg-report-fig-note">' . h(lang(array('string' => '{var:1} expense(s)', 'vars' => (int) $totals['total']['count']))) . '</dd>
                 </div>
-                <div class="col-6 lg:col-3">
-                    <div class="card h-100"><div class="card-body">
-                        <div class="small text-uppercase fg-secondary">' . h(lang(array('string' => '{var:1} to take back', 'vars' => erp_tax_label('tax')))) . '</div>
-                        <div class="h4 mb-0">' . $money($totals['total']['deductible_tax']) . '</div>
-                        <div class="small fg-secondary">' . lang('Goes to the accountant with the purchases.') . '</div>
-                    </div></div>
+                <div class="pg-card pg-report-fig">
+                    <dt class="pg-report-fig-name">' . h(lang(array('string' => '{var:1} to take back', 'vars' => erp_tax_label('tax')))) . '</dt>
+                    <dd class="pg-report-fig-value">' . $money($totals['total']['deductible_tax']) . '</dd>
+                    <dd class="pg-report-fig-note">' . lang('Goes to the accountant with the purchases.') . '</dd>
                 </div>
-                <div class="col-6 lg:col-3">
-                    <div class="card h-100"><div class="card-body">
-                        <div class="small text-uppercase fg-secondary">' . lang('Cost to the business') . '</div>
-                        <div class="h4 mb-0">' . $money($totals['total']['cost']) . '</div>
-                        <div class="small fg-secondary">' . lang('Net, plus the tax that is not taken back.') . '</div>
-                    </div></div>
+                <div class="pg-card pg-report-fig">
+                    <dt class="pg-report-fig-name">' . lang('Cost to the business') . '</dt>
+                    <dd class="pg-report-fig-value">' . $money($totals['total']['cost']) . '</dd>
+                    <dd class="pg-report-fig-note">' . lang('Net, plus the tax that is not taken back.') . '</dd>
                 </div>
-                <div class="col-6 lg:col-3">
-                    <div class="card h-100' . ((is_array($open) && ((int) $open['overdue'] > 0)) ? ' border-danger' : '') . '"><div class="card-body">
-                        <div class="small text-uppercase fg-secondary">' . lang('Still to pay') . '</div>
-                        <div class="h4 mb-0' . ((is_array($open) && ((int) $open['overdue'] > 0)) ? ' fg-danger' : '') . '">' . $money(is_array($open) ? $open['total'] : 0) . '</div>
-                        <div class="small fg-secondary">'
-                            . h(lang(array('string' => '{var:1} expense(s), any date', 'vars' => is_array($open) ? (int) $open['count'] : 0)))
-                            . ((is_array($open) && ((int) $open['overdue'] > 0)) ? ' · <span class="fg-danger">' . h(lang(array('string' => '{var:1} past due', 'vars' => erp_money_out((int) $open['overdue'])))) . '</span>' : '') . '
-                        </div>
-                    </div></div>
+                <div class="pg-card pg-report-fig' . ((is_array($open) && ((int) $open['overdue'] > 0)) ? ' border-danger' : '') . '">
+                    <dt class="pg-report-fig-name">' . lang('Still to pay') . '</dt>
+                    <dd class="pg-report-fig-value' . ((is_array($open) && ((int) $open['overdue'] > 0)) ? ' fg-danger' : '') . '">' . $money(is_array($open) ? $open['total'] : 0) . '</dd>
+                    <dd class="pg-report-fig-note">'
+                        . h(lang(array('string' => '{var:1} expense(s), any date', 'vars' => is_array($open) ? (int) $open['count'] : 0)))
+                        . ((is_array($open) && ((int) $open['overdue'] > 0)) ? ' · <span class="fg-danger">' . h(lang(array('string' => '{var:1} past due', 'vars' => erp_money_out((int) $open['overdue'])))) . '</span>' : '') . '
+                    </dd>
                 </div>
-            </div>
+            </dl>
 
             <div class="row g-5 my-1">
                 <div class="col-12 xl:col-9">
-                    <div class="card h-100">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">'
-                            . h(lang('Expenses') . ' · ' . erp_profit_period_title($period['from'], $period['to'])) . '</div>
+                    <div class="card pg-card erp-list-card h-100">
+                        <h2 class="card-header bg-reset border-0 pg-title-section">'
+                            . h(lang('Expenses') . ' · ' . erp_profit_period_title($period['from'], $period['to'])) . '</h2>
                         <div class="card-body p-0 table-responsive">
                             <table class="table table-hover align-middle mb-0" data-pg-sort id="erp_expenses_list">
                                 <thead>
@@ -409,12 +401,12 @@ pg_page_shell([
                     </div>
                 </div>
                 <div class="col-12 xl:col-3">
-                    <div class="card">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By category') . '</div>
+                    <div class="card pg-card erp-list-card">
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('By category') . '</h2>
                         <ul class="list-group list-group-flush">' . $output_categories . '</ul>
                     </div>
-                    ' . (($output_recurring !== '') ? '<div class="card mt-5">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Repeating expenses') . '</div>
+                    ' . (($output_recurring !== '') ? '<div class="card pg-card erp-list-card mt-5">
+                        <h2 class="card-header bg-reset border-0 pg-title-section"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Repeating expenses') . '</h2>
                         <ul class="list-group list-group-flush">' . $output_recurring . '</ul>
                     </div>' : '') . '
                 </div>

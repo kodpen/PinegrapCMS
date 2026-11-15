@@ -141,7 +141,7 @@ function test_marketplace_products_read_progress_is_announced_at_steps()
 	$source = marketplace_products_names_test_source();
 	$script = marketplace_products_names_test_script();
 
-	pg_assert_true(strpos($source, '<div class="small mt-3" id="mpp-progress-text" role="status">') !== false, 'the progress line is a status region');
+	pg_assert_true(strpos($source, '<div class="pg-text-2 mt-3" id="mpp-progress-text" role="status">') !== false, 'the progress line is a status region');
 
 	$start = strpos($script, 'function readFrom(');
 	$read = substr($script, $start, (int) strpos($script, "\n    }\n", $start) - $start);

@@ -246,7 +246,7 @@ if (!$_POST) {
 
             <div class="pg-toolbar d-flex flex-wrap align-items-center gap-3 mb-5">
                 <div class="pg-menu-wrap">
-                    <button class="btn btn-sm btn-solid theme-primary rounded-pill px-5 pg-menu-caret no-popover" type="button" data-bs-toggle="menu" aria-expanded="false">
+                    <button class="pg-button pg-button-fill pg-menu-caret no-popover" type="button" data-bs-toggle="menu" aria-expanded="false">
                         <i class="bi ' . h($pg_settings_category['icon']) . ' me-3" aria-hidden="true"></i>' . h($pg_settings_category['label']) . '
                     </button>
                     <ul class="menu">' . $pg_settings_switcher . '</ul>

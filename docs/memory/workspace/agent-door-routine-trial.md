@@ -1,6 +1,6 @@
 ---
 name: agent-door-routine-trial
-description: Push door on a routine's fire address, tried on dev (2026-11-13, 2026-11-15): HTTP 400 to the webhook form; in the routine's form every knock starts a new cloud session and never wakes an open one
+description: Push door on a routine's fire address, tried on dev (2026-11-13, 2026-11-15): every knock starts a new cloud session, never wakes an open one, and the new run cannot pass the knock on either
 ---
 
 ## What did a routine's fire address answer first? (2026-11-13)
@@ -15,5 +15,11 @@ description: Push door on a routine's fire address, tried on dev (2026-11-13, 20
 - These runs show only on the routine's page of claude.ai, not in the routine's last run nor in the account's session list as a session's tools read them.
 - Since then both agents wait on the poll door. A routine's address fits an agent that keeps no session open: each knock is one run that reads the list, answers and ends, counted against the account's daily run allowance. The card's warning for the double is #9595's fix.
 - Open, for a trial with the owner: the first knocks of that night (requests 372 to 378) answered 2xx and left no session anyone found.
+
+## Can the routine's run pass the knock on to the open session? (2026-11-15)
+- No. Tried with the test agent on the owner's account and with the architect's own session: the routine's text told its new run only to wake the open session and end.
+- A run a routine starts has no tool that reaches another cloud session. The cloud sessions' `send_message` and `fire_trigger` tools are not in its tool list and its tool search finds neither; its `SendMessage` reaches only agents on the same machine and answers a session id with "No agent named … is reachable". A routine made by a session is given no connectors in this organization.
+- So nothing outside wakes an open cloud session at once. It waits on the poll door (`tools/ws_wait.php --requests` in the background spends nothing while it waits) and keeps an hourly scheduled task bound to itself, which wakes it after its container has slept.
+- The push door stays for an agent with an address of its own (a webhook on its own server) and for an agent that keeps no session open.
 
 Related: `agent-door-knock-trial.md`, `agent-doors.md`.

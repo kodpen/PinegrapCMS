@@ -3247,9 +3247,9 @@ function pg_returns_panel_card_html($rows, $add_url = '')
                     </div>';
     }
 
-    return '<div class="card mt-5">
+    return '<div class="card pg-card mt-5">
                 <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Returns')) . '</span>
+                    <h2 class="pg-title-section mb-0">' . h(lang('Returns')) . '</h2>
                     <a class="btn btn-sm btn-outline theme-secondary" href="view_returns.php?status=all">' . h(lang('All Returns')) . '</a>
                 </div>
                 <div class="card-body">

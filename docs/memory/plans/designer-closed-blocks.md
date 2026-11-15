@@ -1,6 +1,6 @@
 ---
 name: designer-closed-blocks
-description: Plan (owner 2026-11-13, #9076): the components the designer canvas still draws as one closed block are listed, then opened into editable element trees; steps CB0-CB2
+description: Plan (owner 2026-11-13, #9076): components the designer canvas draws as one closed block are listed, then opened into element trees; CB0, CB1 done, CB2 on in designer-closed-blocks-steps.md
 ---
 
 ## What is asked?
@@ -19,9 +19,9 @@ description: Plan (owner 2026-11-13, #9076): the components the designer canvas 
 ## Which steps?
 - CB0 (S, no product code), done (#9254): `designer/canvas-closed-blocks.md` and its family files.
 - CB0 was the list: every palette component, system widget type, page type and e-mail the canvas draws as a closed block: what it prints on the site, what a user can change in it today, which design templates and page types use it, and what opening it takes (a tree, a converter, settings only). Into a new file of `designer/` named canvas-closed-blocks, with a proposed order by how often a user meets the block.
-- CB1 (architect) The list and the order go to the owner; the steps from CB2 on are written from his answer, one block family per step.
-- CB2 and on: one family per step, by the rules above.
+- CB1 (architect), done: the owner chose the proposed order (2026-11-15, channel message 4146).
+- CB2 and on: one family per step, by the rules above: `designer-closed-blocks-steps.md`.
 - Close-out: the lasting part of the list stays in `designer/`; this plan is deleted.
 
 ## In which order?
-- CB0 may start at once, beside CS0 of `designer-canvas-real-samples.md`; nothing else before CB1. Claim as `[plan:designer-closed-blocks] CB0 — the list of closed blocks`.
+- As `designer-closed-blocks-steps.md` gives it. Claim as `[plan:designer-closed-blocks] <step> — <topic>`.

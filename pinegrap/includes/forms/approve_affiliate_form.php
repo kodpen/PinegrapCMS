@@ -122,7 +122,7 @@ function pg_approve_affiliate_form_card($contact, $already_approved)
 
         $facts .= '
                                         <div class="col-12 md:col-6 my-3">
-                                            <dt class="small fw-normal fg-secondary">' . h($labels[$key]) . '</dt>
+                                            <dt class="pg-text-meta fw-normal">' . h($labels[$key]) . '</dt>
                                             <dd class="mb-0 fw-bold text-break">' . $html . '</dd>
                                         </div>';
     }

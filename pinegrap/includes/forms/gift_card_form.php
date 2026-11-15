@@ -109,7 +109,7 @@ function pg_gift_card_form_card($liveform, $mode, $options)
         $quantity_max = (string) ($options['quantity_max'] ?? '');
 
         $output_quantity = '
-                                        <div class="col-12 md:col-6 xl:col-4 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="quantity" class="form-label">' . lang('Quantity') . '</label>
                                             <div class="input-group number-controls">
                                                 <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
@@ -142,7 +142,7 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                 </h2>
                                 <div class="card-body">' . $output_code . '
                                     <div class="row">
-                                        <div class="col-12 md:col-6 xl:col-4 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="' . $field . '" class="form-label">' . $output_label . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . ($options['symbol'] ?? '') . '</span>
@@ -150,7 +150,7 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                             </label>
                                             ' . $output_help . '
                                         </div>
-                                        <div class="col-12 md:col-6 xl:col-4 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'text',

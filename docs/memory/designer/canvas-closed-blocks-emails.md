@@ -9,10 +9,10 @@ description: CB0 list, the designed e-mail pages and what in them is closed: the
 
 ## What is closed in a comment e-mail?
 - The System region after the comment card: on the site it prints the fixed comment markup with its View or Reply link, unless the Comments widget card on the page drew the comment and claimed it (`comments-widget-email.md`).
-- Canvas: the System region's label box; the card above draws in the E-mail state (`comments-widget-email-design.md`).
+- Canvas: the System region's label box with a note saying what it prints on a comment e-mail page ([[comment-email-pages-system-region]]); the card above draws in the E-mail state (`comments-widget-email-design.md`).
 - Change today: nothing in the fixed markup; delete the region (the card must then always draw).
 - Use: 57 templates, most after the `email_comment` card.
-- Opening: when the card always claims (a comment it can draw), the region is dead weight; the step is a save warning or a template update removing it, not a tree. Whether the fixed markup may go on sites without a card is a question for CB1.
+- CB3 (#9685): the note above; the templates keep the region (owner 2026-11-01) and the fixed markup stays for a page with no card.
 
 ## What else is closed in an e-mail?
 - The closed slots of the widget it carries (`canvas-closed-blocks-widgets.md`), such as the order receipt's return actions.

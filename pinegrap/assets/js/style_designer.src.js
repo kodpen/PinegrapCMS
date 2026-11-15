@@ -6257,6 +6257,9 @@ const StyleDesigner = (function () {
         '.sd-legacy-band { padding:4px 8px; text-align:center; color:#6c757d; font-size:11px; border-bottom:1px dashed #ccc; }',
         '.sd-legacy-note { opacity:.85; }',
         '.sd-legacy-region { padding:8px; pointer-events:none; user-select:none; overflow:hidden; }',
+        // What a comment e-mail page's System region prints (_sdAppendSystemRegionEmailNote())
+        '.sd-region-email-note { display:block; padding:4px 8px 0; color:#6366f1; font-size:11px; line-height:1.4; text-align:center; }',
+        'html[data-bs-theme="dark"] .sd-region-email-note { color:#a5b4fc; }',
         // Drop active on parent
         // Drop indicators — doubled selector boosts specificity so semantic-wrap rules
         // (.sd-shared-wrap, .sd-custom-html-wrap, .sd-custom-php-wrap) with their own
@@ -14799,6 +14802,7 @@ const StyleDesigner = (function () {
                 rg.innerHTML = '<span class="bi ' + ico + '"></span>' + esc(rl) + esc(rn) +
                     (SD_LEGACY_REGIONS[node.props.regionType] ? ' ' + _sdLegacyBadge() : '');
                 if (_sdLegacyRegionOwn(node)) _sdLegacyRegionAppend(doc, rg);
+                if (_sdLegacyRegionOwn(node)) _sdAppendSystemRegionEmailNote(doc, rg);
                 return rg;
             case 'component':
                 var comp = COMPONENTS[node.props.componentType];
@@ -15662,6 +15666,37 @@ const StyleDesigner = (function () {
         rg.classList.add('sd-legacy-live');
         rg.appendChild(band);
         rg.appendChild(box);
+    }
+
+    // Whether `page` is a comment e-mail page: an open page names it in its
+    // comment settings (pg_comments_email_page), by id or, before the first
+    // save hands out ids, by its tab ('tab:<key>'). The pages of a design are
+    // all open in the editor.
+    function _sdCommentsEmailPageOf(page, pages) {
+        if (!page || !Array.isArray(pages)) return false;
+        var id = parseInt(page.page_id, 10) || 0;
+        var tab = 'tab:' + page.key;
+        return pages.some(function (p) {
+            var v = p ? p.pg_comments_email_page : null;
+            if (typeof v === 'string' && v === tab) return true;
+            return id > 0 && (parseInt(v, 10) || 0) === id;
+        });
+    }
+
+    // On a comment e-mail page the page's own System region prints the
+    // comment as fixed markup with its View or Reply link whenever no
+    // Comments card on the page draws it (get_page_content.php,
+    // pg_comments_email_keeps_fixed_markup()). The design templates leave
+    // the region out, since their card always draws; a page that keeps it
+    // says so under its label. Editor chrome: the region placeholder is
+    // skipped by the canvas checks.
+    function _sdAppendSystemRegionEmailNote(doc, rg) {
+        var p = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        if (!_sdCommentsEmailPageOf(p, _pages)) return;
+        var note = doc.createElement('span');
+        note.className = 'sd-region-email-note';
+        note.textContent = _sdT('On this comment e-mail it prints the comment and its View or Reply link when no Comments card on the page draws it.');
+        rg.appendChild(note);
     }
 
     // ── Ghost records ────────────────────────────────────────────────────

@@ -77,6 +77,7 @@
 - erp-line-quantity-places.md: Line quantities are priced at the four places they are stored with: erp_quantity_round(), erp_decimal_units() (float units, 32-bit safe), the editor's quantityRound(), the e-invoice inbox fold.
 - erp-line-total-and-rate-rounding.md: Line totals and rates round half away from zero on the exact product of the written decimals (erp_multiply_units(), #1243): every PHP version and width, the editor, the checkout (#1329).
 - erp-list-edit-screen-pattern.md: How ERP list and add/edit screens are built (list table driver, separate edit pages, liveform fields, menu highlight), which lists stay plain tables and how they sort, list filters.
+- erp-list-screens-look.md: Expenses, Expense Categories, Cheques and Bank Statements in look A (E2): look cards and titles, the figures recipe, erp-list-card, cell width classes, field widths
 - erp-local-sale.md: Counter sale (add_order.php) and the ERP: customer in the session, walk-in account opened on first need, VAT per rate, invoice from the order screen, waybill from an invoice and its write-back.
 - erp-manual-invoice-draft-issue.md: Manual ERP invoices: files and endpoints, the draft boundary (_D series, no number), the issue transaction and its refusals, what may change after issue, invoice_manual.php functions, FX drafts.
 - erp-manual-invoice-form-and-snapshot.md: Manual invoice form mechanics (lines[n][field] arrays, template row, JS vs PHP totals), the account snapshot columns (4.51, 4.64 district and postcode) and extra document data.

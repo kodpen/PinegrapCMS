@@ -2040,7 +2040,7 @@ function pg_designer_template_modal($templates, $from_pages)
                             <div class="d-flex align-items-center gap-3 ms-auto">
                                 ' . $delete_btn . '
                                 ' . $tour_btn . '
-                                <a href="' . h($use_now) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap sd-tpl-use" data-href="' . h($use_href) . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
+                                <a href="' . h($use_now) . '" class="pg-button pg-button-fill text-nowrap sd-tpl-use" data-href="' . h($use_href) . '"><i class="bi bi-magic" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
                             </div>
                         </div>
                         <span class="small fg-secondary text-truncate">' . h($s['description']) . '</span>

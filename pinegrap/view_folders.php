@@ -1562,7 +1562,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <div id="explorer_app" class="my-3" data-area="<?php echo $explorer_area; ?>">
     <div id="explorer_toolbar" class="pg-toolbar">
         <div class="pg-menu-wrap" id="new_menu_wrap">
-            <button type="button" id="new_menu_button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 no-popover" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false"><span class="bi bi-plus-lg me-1"></span><?php echo lang('New'); ?></button>
+            <button type="button" id="new_menu_button" class="pg-button pg-button-fill no-popover" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false"><span class="bi bi-plus-lg"></span><?php echo lang('New'); ?></button>
             <ul class="menu shadow" style="border-radius:.75rem;">
                 <!-- Only ever shown in the backup folder, where nothing else
                      under New applies: the menu used to open there with four

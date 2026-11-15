@@ -126,6 +126,11 @@ function ws_js_strings()
         'earlier_message'        => lang('An earlier message'),
         'edit'                   => lang('Edit'),
         'edit_channel'           => lang('Channel settings'),
+        'cs_tab_general'         => lang('General'),
+        'cs_tab_people'          => lang('People and agents'),
+        'cs_tab_conversation'    => lang('The conversation'),
+        'cs_tab_events'          => lang('Record events'),
+        'cs_open'                => lang('Open the memory'),
         'edit_plan_item'         => lang('Plan item'),
         'edit_summary'           => lang('Edit the summary'),
         'audit_locked'           => lang('A member of staff is in this private channel. It cannot be opened for inspection.'),
@@ -308,6 +313,30 @@ function ws_js_strings()
         'poll_title'             => lang('Poll'),
         'poll_voters'            => ws_js_template('{var:1} people voted', 1),
         'poll_withdraw'          => lang('Take back my vote'),
+        // The poll box's option parts, take back and ask again (AQ2).
+        'poll_again_help'        => lang('The new poll goes to the end of the channel. This one is taken back if it is still open.'),
+        'poll_ask_again'         => lang('Ask again'),
+        'poll_asked_again'       => lang('Asked again'),
+        'poll_earlier'           => lang('The earlier poll'),
+        'poll_option_description' => lang('Description'),
+        'poll_option_description_ph' => lang('A line under the option'),
+        'poll_option_link_add'   => lang('Add a link'),
+        'poll_option_link_label' => lang('Link text'),
+        'poll_option_link_url'   => lang('Address (https://…)'),
+        'poll_option_more'       => lang('Description, picture and links'),
+        'poll_option_picture_choose' => lang('Choose a picture from this channel'),
+        'poll_option_picture_none' => lang('No picture has been posted in this channel yet. Post it first, then choose it here.'),
+        'poll_option_picture_remove' => lang('Remove the picture'),
+        'poll_option_recommended' => lang('Mark it as recommended'),
+        'poll_other_help'        => lang('People who choose it write their own answer.'),
+        'poll_other_label'       => lang('Add an "Other" option'),
+        'poll_other_placeholder' => lang('Write your own answer'),
+        'poll_picture_open'      => ws_js_template('Open the picture of {var:1}', 1),
+        'poll_recommended'       => lang('Recommended'),
+        'poll_take_back'         => lang('Take back the poll'),
+        'poll_take_back_confirm' => lang('Take this poll back? It stays in the channel greyed out, takes no more votes and writes no result.'),
+        'poll_taken_back'        => lang('Taken back'),
+        'poll_taken_back_note'   => lang('The asker took this poll back.'),
         'post_card_in'           => lang('Post the card in'),
         'presence_away'          => lang('Away'),
         'presence_offline'       => lang('Offline'),
@@ -844,7 +873,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
-    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings());
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_agent_card_js_strings());
     // The time spent on tasks and the tasks they wait for
     // (assets/js/workspace_task_time.js, workspace_task_links.js).
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());

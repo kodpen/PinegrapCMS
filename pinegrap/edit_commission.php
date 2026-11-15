@@ -93,7 +93,7 @@ if (!$_POST) {
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 pg-field-span-6 my-3">
                                             <label for="status" class="form-label">' . lang('Status') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'status', 'id'=>'status', 'class'=>'form-control', 'options'=>$status_options)) . '
                                         </div>

@@ -809,18 +809,18 @@ echo pg_page_shell(array(
     <div id="pg_tr_app" data-config="' . h(encode_json($config)) . '">
         <div class="pg-toolbar d-flex flex-wrap align-items-center gap-3 mb-5">' . ($targets ? '
             <div class="pg-menu-wrap">
-                <button class="btn btn-sm btn-solid theme-primary rounded-pill px-5 pg-menu-caret no-popover" type="button" data-bs-toggle="menu" aria-expanded="false">
+                <button class="pg-button pg-button-fill pg-menu-caret no-popover" type="button" data-bs-toggle="menu" aria-expanded="false">
                     <i class="bi bi-translate me-3" aria-hidden="true"></i><span' . $text_lang($language) . '>' . h(pg_tr_language_label($language)) . '</span> <span class="opacity-75 font-monospace">' . h($language) . '</span>
                 </button>
                 <ul class="menu">' . $output_language_menu . '</ul>
             </div>
-            <button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="pg_tr_update"' . ($engine['ready'] ? '' : ' disabled="disabled"') . ' data-bs-toggle="tooltip" title="' . h($update_button_title) . '">
-                <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h($update_button_label) . '
+            <button type="button" class="pg-button pg-button-ghost no-popover" id="pg_tr_update"' . ($engine['ready'] ? '' : ' disabled="disabled"') . ' data-bs-toggle="tooltip" title="' . h($update_button_title) . '">
+                <i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . h($update_button_label) . '
             </button>
             <label class="visually-hidden" for="pg_tr_engine">' . lang('Translation engine') . '</label>
             <select class="form-control form-control-sm w-auto rounded-pill no-popover" id="pg_tr_engine" data-bs-toggle="tooltip" title="' . h(lang(array('string' => '{var:1} → {var:2} · engine', 'vars' => array($source, $language)))) . '">' . $output_engine_options . '</select>
-            <button type="button" class="btn btn-sm btn-text theme-secondary no-popover' . (($review_all_shown > 0) ? '' : ' d-none') . '" id="pg_tr_review_all" data-bs-toggle="tooltip" title="' . h(lang('Mark every machine translation here as reviewed in one go')) . '">
-                <i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Approve all') . ' <span class="opacity-75 pg-tr-review-all-shown">' . (int) $review_all_shown . '</span>
+            <button type="button" class="pg-button pg-button-ghost no-popover' . (($review_all_shown > 0) ? '' : ' d-none') . '" id="pg_tr_review_all" data-bs-toggle="tooltip" title="' . h(lang('Mark every machine translation here as reviewed in one go')) . '">
+                <i class="bi bi-check2-all" aria-hidden="true"></i>' . lang('Approve all') . ' <span class="opacity-75 pg-tr-review-all-shown">' . (int) $review_all_shown . '</span>
             </button>
             <div class="pg-toolbar-grow pg-chips">' . $output_chips . '</div>
             <form class="pg-toolbar-search" method="get" action="' . h($self) . '" role="search">
@@ -844,7 +844,7 @@ echo pg_page_shell(array(
                     <li><a class="menu-item" href="' . h(pg_settings_link('languages', 'pgset-languages')) . '"><i class="bi bi-gear me-3" aria-hidden="true"></i>' . lang('Languages and Translation') . '</a></li>
                 </ul>
             </div>' : '
-            <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="' . h(pg_settings_link('languages', 'pgset-languages')) . '"><i class="bi bi-plus-lg me-3" aria-hidden="true"></i>' . lang('Add a language') . '</a>
+            <a class="pg-button pg-button-fill" href="' . h(pg_settings_link('languages', 'pgset-languages')) . '"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . lang('Add a language') . '</a>
             <span class="fg-secondary small">' . lang('No target language yet. Add one in Settings > Languages and Translation; the pages of the designs are then served under its address prefix as well.') . '</span>') . '
         </div>
         ' . ($targets ? '

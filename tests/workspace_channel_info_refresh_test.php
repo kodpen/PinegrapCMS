@@ -40,8 +40,9 @@ function test_workspace_channel_info_refresh_in_place()
 	pg_assert_true($info !== '', 'drawInfo() found');
 	pg_assert_false(strpos($info, 'self.open(') !== false, 'the panel does not open the channel again');
 	pg_assert_false(strpos($info, "ws_channel_notify', { channel_id: channel.id, notify: option[0] }).then(function () { self.reloadChannels") !== false, 'the notification choice does not reload the channel');
-	pg_assert_true(substr_count($info, 'self.refreshInfo(') >= 3, 'notify, add and remove refresh the panel');
-	pg_assert_contains("t('member_remove', member.name)", $info, 'the remove button names the person');
+	pg_assert_true(substr_count($info, 'self.refreshInfo(') >= 2, 'notify and add refresh the panel');
+	pg_assert_false(strpos($info, "t('member_remove'") !== false, 'removing someone is in Channel settings, not in Channel info');
+	pg_assert_contains("t('member_remove', member.name)", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'), 'the remove button names the person');
 	pg_assert_contains("t('add_people_confirm')", $info, 'the add button differs from the one that opens the picker');
 
 	$refresh = workspace_channel_info_refresh_test_method('refreshInfo');

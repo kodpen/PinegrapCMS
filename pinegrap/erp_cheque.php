@@ -111,10 +111,10 @@ $step_form = function ($step, $title, $button, $class, $fields, $note) use ($che
 // box people type in is drawn by pg_fields.js next to the hidden input and
 // takes its aria-label, the only name it can have.
 $date_field = function ($step) use ($cheque) {
-    return '<div class="col-6 md:col-3"><label class="form-label small" for="erp_' . $step . '_date">' . lang('Date') . '</label><input type="date" data-pg-date class="form-control form-control-sm" id="erp_' . $step . '_date" name="date" aria-label="' . h(lang('Date')) . '" value="' . h(max(date('Y-m-d'), (string) $cheque['doc_date'])) . '" min="' . h((string) $cheque['doc_date']) . '" /></div>';
+    return '<div class="col-12 md:col-3"><label class="form-label small" for="erp_' . $step . '_date">' . lang('Date') . '</label><input type="date" data-pg-date class="form-control form-control-sm" id="erp_' . $step . '_date" name="date" aria-label="' . h(lang('Date')) . '" value="' . h(max(date('Y-m-d'), (string) $cheque['doc_date'])) . '" min="' . h((string) $cheque['doc_date']) . '" /></div>';
 };
 $bank_field = function ($step) use ($tills, $till_count) {
-    return '<div class="col-6 md:col-4"><label class="form-label small" for="erp_' . $step . '_bank_till_id">' . lang('Bank account') . '</label><select class="form-control form-control-sm" id="erp_' . $step . '_bank_till_id" name="bank_till_id">' . $tills . '</select>' . erp_no_till_hint($till_count, 'cheque') . '</div>';
+    return '<div class="col-12 md:col-6"><label class="form-label small" for="erp_' . $step . '_bank_till_id">' . lang('Bank account') . '</label><select class="form-control form-control-sm" id="erp_' . $step . '_bank_till_id" name="bank_till_id">' . $tills . '</select>' . erp_no_till_hint($till_count, 'cheque') . '</div>';
 };
 
 $output_steps = '';

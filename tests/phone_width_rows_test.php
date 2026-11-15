@@ -36,12 +36,12 @@ function test_phone_width_variable_base_rate_tiers_wrap()
 	pg_assert_true(preg_match('/<div class="d-flex flex-wrap gap-1">/', $tier) === 1, 'tier row wraps');
 	pg_assert_same(2, preg_match_all('/<div class="input-group w-auto flex-grow-1">/', $tier), 'two groups that share the row');
 
-	// One style attribute per input, so text-align survives the parser.
+	// At most one style attribute per input; the amount is aligned right by its class.
 	preg_match_all('/<input [^>]*\/>/', $tier, $inputs);
 	pg_assert_same(2, count($inputs[0]), 'two inputs per tier');
 	foreach ($inputs[0] as $input) {
-		pg_assert_same(1, substr_count($input, 'style='), 'one style attribute');
-		pg_assert_true(strpos($input, 'text-align: right') !== false, 'amount aligned right');
+		pg_assert_true(substr_count($input, 'style=') <= 1, 'at most one style attribute');
+		pg_assert_true(strpos($input, 'form-control text-end') !== false, 'amount aligned right');
 	}
 }
 

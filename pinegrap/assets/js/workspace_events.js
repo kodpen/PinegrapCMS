@@ -64,19 +64,28 @@
             return null;
         }
 
-        var wrap = el('div', 'form-field mb-5 ws-watch-field');
-        var input = el('input', '');
-        var label = el('label', '', text('watch_label'));
+        // A row of Site Settings: title and help line at the left, the
+        // switch at the row's end.
+        var wrap = el('div', 'pg-card-inner mb-5 ws-watch-field');
+        var row = el('div', 'pg-card-inner-row ws-switch-row');
+        var words = el('div', 'flex-grow-1 min-w-0');
+        var input = el('input', 'pg-switch');
+        var label = el('label', 'pg-list-row-title', text('watch_label'));
+        var help = el('div', 'pg-text-meta', text('watch_help'));
 
         uid += 1;
         input.type = 'checkbox';
         input.id = 'ws-watch-' + uid;
         input.checked = !!channel.watch;
         label.htmlFor = input.id;
+        help.id = input.id + '-help';
+        input.setAttribute('aria-describedby', help.id);
 
-        wrap.appendChild(el('div', 'switch')).appendChild(input);
-        wrap.appendChild(label);
-        wrap.appendChild(el('div', 'form-text mt-0', text('watch_help')));
+        words.appendChild(label);
+        words.appendChild(help);
+        row.appendChild(words);
+        row.appendChild(input);
+        wrap.appendChild(row);
 
         return {
             node: wrap,

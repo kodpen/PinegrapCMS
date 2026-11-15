@@ -193,8 +193,8 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
                 pg_hosted());
 
             $output_layout_buttons =
-                '<a class="btn btn-sm btn-text theme-secondary" href="' . h($edit_layout_url . ((strpos($edit_layout_url, 'edit_page_layout.php') === 0) ? '&send_to=' . urlencode(REQUEST_URL) : '')) . '"><i class="bi bi-code-slash me-1" aria-hidden="true"></i>' . lang('Edit Layout') . '</a>'
-                . '<a class="btn btn-sm btn-text theme-secondary" href="generate_layout.php?page_id=' . h($_GET['page_id']) . '"><i class="bi bi-file-earmark-code me-1" aria-hidden="true"></i>' . lang('Generate Layout') . '</a>';
+                '<a class="pg-button pg-button-ghost" href="' . h($edit_layout_url . ((strpos($edit_layout_url, 'edit_page_layout.php') === 0) ? '&send_to=' . urlencode(REQUEST_URL) : '')) . '"><i class="bi bi-code-slash" aria-hidden="true"></i>' . lang('Edit Layout') . '</a>'
+                . '<a class="pg-button pg-button-ghost" href="generate_layout.php?page_id=' . h($_GET['page_id']) . '"><i class="bi bi-file-earmark-code" aria-hidden="true"></i>' . lang('Generate Layout') . '</a>';
         }
     }
     $output_breadcrumb_first_level_item = '<li class="breadcrumb-item"><a class="pg-link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php">' . lang('All My Pages') . '</a></li>';
@@ -288,7 +288,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     $output_form_designer_content_heading = lang('Edit Product Form');
     $output_form_designer_content_subheading = lang('Add fields to this product form.');
     $output_cancel_onclick = 'window.location.href=\'edit_product.php?id=' . h(escape_javascript($_GET['product_id'])) . '\'';
-    $output_preview_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" onclick="document.location.href = \'preview_form.php?product_id=\' + document.getElementById(\'product_id\').value"><i class="bi bi-eye me-1" aria-hidden="true"></i>' . lang('Preview') . '</button>';
+    $output_preview_button = '<button type="button" class="pg-button pg-button-ghost" onclick="document.location.href = \'preview_form.php?product_id=\' + document.getElementById(\'product_id\').value"><i class="bi bi-eye" aria-hidden="true"></i>' . lang('Preview') . '</button>';
     $output_form_designer_footer = '<button type="submit" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('field(s)')))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang(array('string'=>'Delete Selected') ) . '</button>';
     
     // Send the product id through the browser url.
@@ -442,7 +442,7 @@ $list = pg_list_table_printed(array(
 ));
 
 // A designer form gets no Create button.
-$output_create_button = $designer_form ? '' : '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
+$output_create_button = $designer_form ? '' : '<a class="pg-button pg-button-fill" href="add_field.php?' . $form_type_identifier_id . '=' . h(urlencode($_GET[$form_type_identifier_id])) . '&amp;form_type=' . $form_type . '&amp;send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . '"><span class="bi bi-plus-circle"></span>' . lang(array('string'=>'Create') ) . '</a>';
 
 $liveform = new liveform('view_fields');
 

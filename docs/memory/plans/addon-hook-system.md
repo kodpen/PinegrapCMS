@@ -1,6 +1,6 @@
 ---
 name: addon-hook-system
-description: Plan (approved 2026-10-19; not to be started before the running plans end, owner 2026-11-14): add-on packages under includes/addons/ with manifest and hooks, so drivers add without forking
+description: Plan (approved 2026-10-19; started 2026-11-15 with the census, addon-hook-system-steps.md): add-on packages under includes/addons/ with manifest and hooks, so drivers add without forking
 ---
 
 ## What did the owner decide?
@@ -19,6 +19,7 @@ description: Plan (approved 2026-10-19; not to be started before the running pla
 - Security: add-on code runs with full PHP rights, so the panel warns, logs enable/disable in the audit trail and the WAF/CSP settings stay core-only.
 
 ## What remains?
+- AH1 census of the code (`addon-hook-system-census.md` and its parts) Done #9653.
 - Design note with the hook list and manifest schema (owner review).
 - Slices: registry + manifest + enable/disable (M), hooks at the listed points (S–M), migration namespacing (S), System Status + backup (S), zip upload + signature check (S–M), first conversions of the shipped PayTR/Netgsm drivers into add-on folders (S, no behaviour change).
 
@@ -26,4 +27,4 @@ description: Plan (approved 2026-10-19; not to be started before the running pla
 - Should add-ons be allowed to add panel menu items and settings cards? Yes, through the manifest, rendered by core templates only.
 
 ## Where to start?
-- When the running plans are done (owner, 2026-11-14); the payment driver layer is done (`commerce/payment-driver-layer-decisions.md`). Read `includes/fn/events.php` and `core/file-placement-rules.md`, `core/file-header-and-embedded-libraries.md` (gate constants, header block).
+- Started on 2026-11-15 with AH1: `addon-hook-system-steps.md`. The payment driver layer is done (`commerce/payment-driver-layer-decisions.md`). Read `includes/fn/events.php` and `core/file-placement-rules.md`, `core/file-header-and-embedded-libraries.md` (gate constants, header block).

@@ -67,7 +67,7 @@ function test_erp_cash_screens_hide_writes_from_the_accountant()
 		pg_assert_true(strpos(erp_cash_screens_test_source($file), "\$readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;") !== false, $file . ' reads the read-only right');
 	}
 
-	pg_assert_true(strpos(erp_cash_screens_test_source('erp_cash.php'), "(\$readonly ? '' : '<a class=\"btn btn-sm btn-solid theme-primary rounded-pill px-5\" href=\"add_erp_receipt.php?direction=collection\"") !== false, 'the list hides the write buttons');
+	pg_assert_true(strpos(erp_cash_screens_test_source('erp_cash.php'), "(\$readonly ? '' : '<a class=\"pg-button pg-button-fill\" href=\"add_erp_receipt.php?direction=collection\"") !== false, 'the list hides the write buttons');
 	pg_assert_true(strpos(erp_cash_screens_test_source('edit_erp_till.php'), "(\$readonly ? '<fieldset disabled>'") !== false, 'the till form is shown disabled, without its save bar');
 	pg_assert_true(strpos(erp_cash_screens_test_source('erp_receipt.php'), "} elseif (\$readonly) {\n    \$output_cancel = '';") !== false, 'the receipt view offers no cancel');
 

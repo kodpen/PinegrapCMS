@@ -18,8 +18,8 @@ description: Panel screen basics (frame, notices, fields, width, icons, help), t
 ## What is the toolbar slot order?
 | Slot | What | Class |
 |---|---|---|
-| 1 | Primary action (often opens a menu: "Yeni", "Kaydet") | `btn btn-sm btn-solid theme-primary rounded-pill px-5` |
-| 2 | Secondary tools, grouped into one menu if needed | `btn btn-sm btn-text theme-secondary` |
+| 1 | Primary action (often opens a menu: "Yeni", "Kaydet") | `pg-button pg-button-fill` |
+| 2 | Secondary tools, grouped into one menu if needed | `pg-button pg-button-ghost` |
 | 3 | Location / breadcrumb, flexes (`flex: 1 1 220px`, `.pg-toolbar-grow`) | - |
 | 4 | Search / filter | `input-group input-group-sm rounded-pill` (`.pg-toolbar-search`) |
 | 5 | View switcher (if any) | `btn-group btn-group-sm` + `btn-text theme-secondary active` |
@@ -33,4 +33,4 @@ description: Panel screen basics (frame, notices, fields, width, icons, help), t
 - A slot is markup (a menu, `pg_filter_select()`), a button array `label`/`url`/`icon`/`id` (escaped, drawn in the slot's recipe above) or a list of both. A right cluster with no grow gets an empty grow as spacer. Pinned by `tests/screen_toolbar_test.php`.
 - `pg_page_shell()` draws no buttons: its `actions`/`primary_button`/`action_bar_class` keys and the `.pg-page-actions` row were removed; `tests/panel_screen_titles_test.php` refuses the keys.
 
-Related: docs/memory/ui/admin-screen-toolbar-rules.md
+Related: docs/memory/ui/admin-screen-toolbar-rules.md, docs/memory/ui/look-shared-buttons.md
