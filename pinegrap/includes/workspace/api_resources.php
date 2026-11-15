@@ -1345,6 +1345,15 @@ function ws_api_poll_present($poll)
         'again_of_message_id'    => ((int) ($poll['again_of_message'] ?? 0) > 0) ? (int) $poll['again_of_message'] : null,
         'asked_again'            => ((int) ($poll['asked_again'] ?? 0) > 0) ? (int) $poll['asked_again'] : null,
         'asked_again_message_id' => ((int) ($poll['asked_again_message'] ?? 0) > 0) ? (int) $poll['asked_again_message'] : null,
+        // An agent question (agent_question.php): who is asked, who answered.
+        'agent_question'    => !empty($poll['agent_question']),
+        'asked'             => array_map(function ($person) {
+            return array('user_id' => (int) $person['id'], 'name' => (string) $person['name']);
+        }, array_values((array) ($poll['asked'] ?? array()))),
+        'can_answer'        => !empty($poll['can_answer']),
+        'answered_by'       => is_array($poll['answered_by'] ?? null) ? array('user_id' => (int) $poll['answered_by']['id'], 'name' => (string) $poll['answered_by']['name']) : null,
+        'answered_at'       => api_time($poll['answered_at'] ?? 0),
+        'answer'            => (string) ($poll['answer'] ?? ''),
     );
 }
 
@@ -1413,6 +1422,12 @@ function ws_api_poll_schema()
         'again_of_message_id'    => 'integer?',
         'asked_again'            => 'integer?',
         'asked_again_message_id' => 'integer?',
+        'agent_question'    => 'boolean',
+        'asked'             => array(array('user_id' => 'integer', 'name' => 'string')),
+        'can_answer'        => 'boolean',
+        'answered_by'       => 'object?',
+        'answered_at'       => 'string?',
+        'answer'            => 'string',
     );
 }
 
@@ -3498,6 +3513,13 @@ function ws_api_polls_vote($params)
         api_fail_validation($worded['error'], $worded['field']);
     }
 
+    // An agent question's answer settles it and cannot be taken back.
+    $empty = ws_agent_question_is($poll) ? ws_agent_question_choice_refusal($chosen) : '';
+
+    if ($empty !== '') {
+        api_fail_validation($empty, 'option_ids');
+    }
+
     api_dry_run_stop('voted', 'workspace_poll', array('id' => (int) $poll['id'], 'message_id' => (int) $poll['message_id'], 'option_ids' => $chosen));
 
     $result = ws_poll_vote($viewer, $poll, $chosen, $other_text);
@@ -3564,6 +3586,8 @@ function ws_api_poll_refused($error, $field = '')
         lang('Only the person who asked can change the poll.'),
         lang('Only the person who asked, or whoever runs the channel, can close the poll.'),
         lang('You cannot post in that channel.'),
+        lang('Only the people asked can answer this question.'),
+        lang('A guest cannot answer an agent question.'),
     );
 
     if (in_array($error, $forbidden, true)) {
@@ -3926,6 +3950,13 @@ function ws_api_polls_close($params)
 
     if (!ws_can_close_poll($viewer, $poll, ws_channel($poll['channel_id']))) {
         ws_api_poll_refused(lang('Only the person who asked, or whoever runs the channel, can close the poll.'));
+    }
+
+    // An agent question closes itself when it is answered.
+    $refusal = ws_agent_question_close_refusal($poll);
+
+    if ($refusal !== '') {
+        ws_api_poll_refused($refusal, 'closed_at');
     }
 
     api_dry_run_stop('closed', 'workspace_poll', array('id' => (int) $poll['id'], 'message_id' => (int) $poll['message_id']));

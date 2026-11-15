@@ -11,10 +11,12 @@ description: The Team devices switch in Settings › API (includes/api/device_sw
 - Planned by the pure `api_device_switch_plan($apps, $on, $ceiling, $now)`, written by `api_device_switch_save()`; a save that changes nothing writes nothing (no audit or Site Log line).
 - On: the oldest usable device application gains the ceiling's scopes; with none usable, the oldest device application is set active (a past expiry is cleared, or the switch would show off again); with none at all, `api_app_create()` makes "Team devices" (kind `device`, no secret, 120/min, owner the person saving).
 - Off: every active device application is disabled. Rows, scopes and devices are kept; a disabled application refuses every device call, and on lets them in again.
+- `POST /auth/refresh` checks the application (`api_device_app_check()`: switch, expiry, IP allow list) on the row found by `api_device_find_refresh()` before the exchange, so a refusal keeps the presented token current. Symptom (#9678): the exchange ran first, the client kept only the previous token, and its next refresh after the 60 s grace revoked the device as a replay.
 - Scopes the operator chose are never removed; only the ceiling is added.
 
 ## What is the ceiling?
-- `workspace:write`, `tasks:write`, `orders:read`, `meta:read`, `customers:read`, `products:read` through `api_scopes_normalise()` (`api_device_switch_ceiling()`). Module scopes are valid only while the module is on, so a site that turns the Workspace on later gains them on its next save. Each person still gets only their own rights (`api_device_scopes()`).
+- `workspace:write`, `tasks:write`, `orders:read`, `meta:read`, `customers:read`, `products:read`, `bookings:read`, `files:read`, `comments:read`, `commissions:read` through `api_scopes_normalise()` (`api_device_switch_ceiling()`). Module scopes are valid only while the module is on, so a site that turns the Workspace on later gains them on its next save. Each person still gets only their own rights (`api_device_scopes()`).
+- Owner (2026-11-15): bookings, files, comments and commissions joined the ceiling read only, so a team device shows booking and file records, product questions and reviews, and an order's commission without an operator adding each scope by hand in Application Access. Their write scopes stay the operator's choice. Issue #9606.
 
 ## How does a person pair a device once it is on?
 - With a password at `POST /auth/login`, or with a QR code from `device_pairing.php` at `POST /auth/pair` (`api/api-device-pairing.md`).

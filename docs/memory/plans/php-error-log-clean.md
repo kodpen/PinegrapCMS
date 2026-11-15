@@ -17,8 +17,8 @@ description: Plan (owner 2026-11-14): the PHP error log of the owner's dev machi
 - EL1 (S, no product code) Census. Every distinct Pinegrap line of the log (main checkout only, worktrees and scratch folders left out), grouped by file, checked against `development`: still there or gone. The list goes into `plans/php-error-log-clean-census.md`, most frequent first. A fatal error that is a real fault gets a `bug` issue.
 - EL2 (S) Own code. Done #9468. `tools/ws_client.php` frees its handle without `curl_close()` (`core/deprecated-resource-free-calls.md`). A test like `http_response_header_test.php` scans own code for the calls PHP 8.1 to 8.5 deprecate; a guarded call keeps its `phpcs:ignore`.
 - EL3 (M) Bundled libraries, one PR each: the library's newer release that is clean on 8.5 and still runs on PHP 7.1, or the smallest guarded patch written down in `core/`. A release that changes behaviour is asked first.
-  - dompdf, phpmailer: done in #9470, clean unpatched (`core/dompdf-embedding.md`, `core/phpmailer-embedding.md`). iyzipay-php: done in #9485, patched (`commerce/iyzipay-sdk-php85-patch.md`). stripe: done in #9488, patched (`core/stripe-classic-embedding.md`). EL3 is done.
-- EL4 (M) The eight files above: the cause fixed (a missing row, a key that may be absent, a constant defined twice), never an `@`; a test for each pure function touched.
+  - Done: dompdf, phpmailer #9470, unpatched (`core/dompdf-embedding.md`, `core/phpmailer-embedding.md`); iyzipay-php #9485, patched (`commerce/iyzipay-sdk-php85-patch.md`); stripe #9488, patched (`core/stripe-classic-embedding.md`).
+- EL4 (M) The eight files above: the cause fixed (a missing row, a key that may be absent, a constant defined twice), never an `@`; a test for each pure function touched. EL4a (duplicate_products, get_file, view_order, designer_ai) done #9657.
 - EL5 (M, as many PRs as the census needs) The rest of the census by family, each PR of the usual size.
 - EL6 (S) Close-out: what was learnt into `core/error-reporting.md`, this plan and its census deleted.
 
@@ -26,4 +26,4 @@ description: Plan (owner 2026-11-14): the PHP error log of the owner's dev machi
 - No behaviour changes: a warning's cause is fixed so that the screen answers as before. A fix that would change what a screen shows is asked first.
 - PHP 7.1 to 8.5 all run the result (`bash tools/static_analysis.sh`).
 - The log itself never enters the repository: it holds addresses and request data.
-- EL1 first; EL2 and EL3 may run beside it; EL4 and EL5 after EL1. Claim as `[plan:php-error-log-clean] <step> — <topic>`.
+- EL1 first; EL2, EL3 and EL4 may run beside it; EL5 after EL1. EL4 starts from the faults named above (architect, 2026-11-15): a file whose warning the code does not show is left for EL1. Claim as `[plan:php-error-log-clean] <step> — <topic>`.

@@ -73,7 +73,7 @@ $output_api_switches = '
                         <div class="form-field">
                             <div class="switch"><input value="1"' . $api_device_switch_checked . ' class="" type="checkbox" id="api_team_devices" name="api_team_devices"/></div>
                             <label class="" for="api_team_devices">' . lang('Team devices') . '</label>
-                            <div class="form-text">' . lang('Staff sign in on the team app with their own user name and password, and each gets at most what their own account may do. While this is on, saving adds the Workspace, tasks, orders, contacts and products to the Team devices application; off, it is disabled and its devices are kept.') . '</div>
+                            <div class="form-text">' . lang('Staff sign in on the team app with their own user name and password, and each gets at most what their own account may do. While this is on, saving adds the Workspace, tasks, and read access to orders, contacts, products, bookings, files, comments and commissions to the Team devices application; off, it is disabled and its devices are kept.') . '</div>
                         </div>
                     </div>' : '');
 

@@ -106,3 +106,72 @@ function test_workspace_agent_card_action()
 {
 	pg_assert_true(in_array('ws_agent_card', ws_channel_agents_actions(), true), 'the card is a panel action of the channel');
 }
+
+// One "function name(" of workspace.js up to the closing brace at its own
+// indent.
+function workspace_agent_card_test_js($name)
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	return preg_match('/\n    function ' . $name . '\([^)]*\) \{\n.*?\n    \}\n/s', $js, $match) ? $match[0] : '';
+}
+
+// Runs a script with Node; null without Node.
+function workspace_agent_card_test_node($script)
+{
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgcard');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, $script);
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+
+	return ($code === 0) ? json_decode(implode("\n", $out), true) : null;
+}
+
+function test_workspace_agent_card_js_place_and_lookup()
+{
+	$place = workspace_agent_card_test_js('agentCardPlace');
+	$lookup = workspace_agent_card_test_js('agentOfApp');
+
+	pg_assert_true($place !== '', 'agentCardPlace() is in workspace.js');
+	pg_assert_true($lookup !== '', 'agentOfApp() is in workspace.js');
+
+	$result = workspace_agent_card_test_node($place . $lookup . '
+var view = { width: 1440, height: 900 }, size = { width: 320, height: 400 };
+console.log(JSON.stringify({
+	below: agentCardPlace({ left: 100, top: 100, bottom: 120 }, size, view),
+	above: agentCardPlace({ left: 100, top: 700, bottom: 720 }, size, view),
+	right: agentCardPlace({ left: 1400, top: 100, bottom: 120 }, size, view),
+	phone: agentCardPlace({ left: 20, top: 300, bottom: 320 }, { width: 374, height: 400 }, { width: 390, height: 844 }),
+	found: agentOfApp({ agents: [{ id: 3, app_id: 9 }, { id: 4, app_id: 12 }] }, 12),
+	none: agentOfApp({ agents: [] }, 12)
+}));');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('left' => 100, 'top' => 126), $result['below'], 'under the anchor');
+	pg_assert_same(294, $result['above']['top'], 'over the anchor when the room below is short');
+	pg_assert_same(1112, $result['right']['left'], 'kept inside the right edge');
+	pg_assert_same(8, $result['phone']['left'], 'a phone: 8px from the edge');
+	pg_assert_same(4, $result['found']['id']);
+	pg_assert_same(null, $result['none']);
+}

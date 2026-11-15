@@ -3,7 +3,7 @@
  *
  * Workspace - approval requests on the channel screen: the card under a
  * request, the form that asks for one, the overview's list of requests
- * waiting for the reader, and the box of a scheduled action that asks for
+ * (and of agent questions) waiting for the reader, and the box of a scheduled action that asks for
  * one in a channel.
  *
  * assets/js/workspace.js draws the conversation and calls in here with its
@@ -548,7 +548,35 @@
             into.appendChild(row);
         });
 
-        return items.length;
+        // The agent questions asked of the reader and not answered yet
+        // (includes/workspace/agent_question.php): the asking agent's face,
+        // the question, and the box opens the message to answer it there.
+        var questions = (data && data.questions) || [];
+
+        questions.forEach(function (item) {
+            var row = h.button('ws-today-row ws-today-unread');
+            var text = el('span', 'ws-today-row-text');
+            var meta = el('small', 'ws-today-row-meta');
+            var face = el('span', 'ws-today-sign ws-today-face');
+
+            face.appendChild(h.avatar(item.asker));
+            row.appendChild(face);
+            meta.appendChild(el('b', '', item.asker ? item.asker.name : ''));
+            meta.appendChild(document.createTextNode(' ' + t('home_question') + ' · '));
+            // The channel's name never breaks at its hyphen.
+            var place = el('span', 'ws-today-row-place');
+            place.appendChild(h.icon(item.channel['private'] ? 'bi-lock' : 'bi-hash'));
+            place.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time));
+            meta.appendChild(place);
+            text.appendChild(meta);
+            text.appendChild(el('span', 'ws-today-row-quote', item.question));
+            row.appendChild(text);
+            row.title = t('home_question_title');
+            row.addEventListener('click', function () { view.open(item.channel.id, item.message_id); });
+            into.appendChild(row);
+        });
+
+        return items.length + questions.length;
     }
 
     window.PGWsApprovals = {

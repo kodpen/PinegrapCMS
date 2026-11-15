@@ -230,3 +230,29 @@ function test_ws_personal_plans_api_repeat()
 	pg_assert_same('body', $routes['workspace.personal_plans.delete_post']['mode']);
 	pg_assert_true(isset($routes['workspace.personal_plans.create']['repeat']), 'a new plan may repeat');
 }
+
+// The dry run meets the refusals the save adds after cleaning: people off
+// the team, a roadmap given a rule and the plan limit for a new plan.
+function test_ws_personal_plans_api_save_problem()
+{
+	$clean = array('visibility' => 'people', 'people' => array(99));
+	$team = array(1, 2);
+
+	pg_assert_same(lang('Choose who may see the plan.'), ws_personal_plan_save_problem(1, $clean, array(), false, $team, false, 0), 'a person off the team is refused');
+	pg_assert_same(lang('Choose who may see the plan.'), ws_personal_plan_save_problem(1, array('visibility' => 'people', 'people' => array(1)), array(), false, $team, false, 0), 'the owner alone is nobody');
+	pg_assert_same('', ws_personal_plan_save_problem(1, array('visibility' => 'people', 'people' => array(2, 99)), array(), false, $team, false, 0), 'one on the team is enough');
+	pg_assert_same('', ws_personal_plan_save_problem(1, array('visibility' => 'me', 'people' => array(99)), array(), false, $team, false, 0), 'people are not read for a private plan');
+
+	$me = array('visibility' => 'me', 'people' => array());
+
+	pg_assert_same(lang('A roadmap does not repeat. Remove its steps first.'), ws_personal_plan_save_problem(1, $me, array('repeat_frequency' => 'weekly'), false, $team, true, 0), 'a roadmap with a rule');
+	pg_assert_same('', ws_personal_plan_save_problem(1, $me, array('repeat_frequency' => ''), false, $team, true, 0), 'a roadmap without a rule');
+	pg_assert_same(lang('You have too many plans. Delete some first.'), ws_personal_plan_save_problem(1, $me, array(), true, $team, false, WS_PERSONAL_PLAN_MAX), 'a new plan over the limit');
+	pg_assert_same('', ws_personal_plan_save_problem(1, $me, array(), false, $team, false, WS_PERSONAL_PLAN_MAX), 'a change is no new plan');
+	pg_assert_same('', ws_personal_plan_save_problem(1, $me, array(), true, $team, false, WS_PERSONAL_PLAN_MAX - 1), 'under the limit');
+
+	$check = ws_personal_plans_api_test_source('ws_api_personal_plan_check');
+
+	pg_assert_true(strpos($check, 'ws_personal_plan_save_check(') !== false, 'the dry run runs the save\'s check');
+	pg_assert_true(strpos(ws_personal_plans_api_test_source('ws_personal_plan_save'), 'ws_personal_plan_save_check(') !== false, 'the save runs it too');
+}

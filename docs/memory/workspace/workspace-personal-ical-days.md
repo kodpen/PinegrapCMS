@@ -1,6 +1,6 @@
 ---
 name: workspace-personal-ical-days
-description: On which days and Today lines a person's own iCal events are drawn (ws_personal_ical_touches(), end exclusive), how a repeating all-day event ends across a clock change, the gzip unpack limit
+description: Which days and Today lines show a person's own iCal events (ws_personal_ical_touches()), all-day repeats across a clock change, rules begun years ago, the gzip limit
 ---
 
 ## On which days is an event of a person's own calendar drawn?
@@ -11,6 +11,10 @@ description: On which days and Today lines a person's own iCal events are drawn 
 - At 23:59:59 of its last calendar day: `ws_personal_ical_events()` turns its length into whole days (`round(length / 86400)`) and adds them to each occurrence with `modify('+N days')`.
 - Before, the master's length in seconds was added: an occurrence on the 23-hour day of spring forward ended at 00:59:59 of the next day (drawn on two days), one on the 25-hour day of fall back at 22:59:59.
 - Test: `tests/workspace_personal_ical_test.php` (midnight end, clock change in Europe/Berlin).
+
+## Is a repeating event that began years ago still drawn?
+- Yes: without COUNT, `ws_personal_ical_events()` starts its walk at the last period that cannot reach the window (step taken at its longest: 1, 7, 31 or 366 days × INTERVAL); with COUNT it walks from DTSTART, since COUNT counts from the first occurrence. `WS_PERSONAL_ICAL_REPEAT_MAX` (500) bounds the occurrences kept in the window.
+- Before, the 500 cap counted periods from DTSTART: a daily rule older than 500 days (weekly 500 weeks, monthly ~41 years) gave nothing while the feed read "synced" (#9670, issue #9662). Test: `test_workspace_personal_ical_old_rule_in_window`.
 
 ## Why is a gzip body unpacked with a limit?
 - A body that starts with the gzip magic bytes is unpacked with `gzdecode($body, 8 MB)`; above that it stays packed and the read fails with "did not answer with a calendar". The download is capped at 4 MB, but 4 MB of gzip can unpack to gigabytes and stop the job that reads every calendar.

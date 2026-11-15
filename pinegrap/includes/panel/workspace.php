@@ -6,7 +6,8 @@
  *
  *   pg_panel_ws  ws_* - every workspace action
  *                (includes/workspace/actions.php; a channel's agents in
- *                includes/workspace/channel_agents_panel.php)
+ *                includes/workspace/channel_agents_panel.php, a person's
+ *                card in includes/workspace/person_card.php)
  *
  * Called by pg_panel_dispatch() (includes/panel/actions.php); see that file
  * for the contract.
@@ -37,6 +38,11 @@ function pg_panel_ws($request, $action)
     // A channel's agents in its settings (channel_agents_panel.php).
     if (in_array($action, ws_channel_agents_actions(), true)) {
         respond(ws_channel_agents_action($action, $request));
+    }
+
+    // A person's card on their name or picture (person_card.php).
+    if (in_array($action, ws_person_card_actions(), true)) {
+        respond(ws_person_card_action($action, $request));
     }
 
     respond(ws_handle_action($action, $request));

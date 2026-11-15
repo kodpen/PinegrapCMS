@@ -1,6 +1,6 @@
 ---
 name: agent-questions
-description: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll closed once the vote is read; why the outcome is written in the agent's name
+description: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll, settled by its first answer; why the outcome is written in the agent's name
 ---
 
 ## How does an agent ask the people?
@@ -12,8 +12,8 @@ description: How an agent asks the people with a poll or an approval; a one-answ
 - Owner (2026-11-10): one choice, no change afterwards, a poll rather than a checklist; the shape is the architect's (#8554, `workflow/decisions-made-workspace-12.md`).
 - Ask: `php tools/ws_poll.php ask [--idempotency-key=K] "<question>" "<recommended>" "<other>"` prints `<message id> <poll id>` (#8564). It posts `POST /workspace/channels/{id}/polls` with `question` and `options` (trimmed, blank and repeated ones left out, two to ten), `multiple` and `anonymous` left out.
 - Wait: `php tools/ws_wait.php --changed=<message id>` wakes on a vote and prints the message; `poll.options[].voters` names who chose what (`user_id`, `name`).
-- Lock: as soon as it reads the vote it waits for (the owner account's, for an owner question) the asking agent closes the poll, `php tools/ws_poll.php close <poll id>` (`POST /workspace/polls/{poll id}/close`, no channel needed; prints `poll.result_message_id`; another's poll is 403, exit 1). A clear winner is written as a decision under the poll, and a closed poll takes no vote (`ws_poll_vote_state()`). Until then a vote can be changed or taken back (`ws_poll_vote()`).
-- No vote or a tie gives a line of the system's, not a decision: the agent then writes the answer itself, `php tools/ws_post.php --kind=decision --parent=<message id> "<option> — <who answered, where>"`. The same when the answer came in the architect's window.
+- Settled: from step 11.0.214 an application's poll is an agent question; the first answer of a person asked closes it, writes no outcome line and wakes the asking agent; closing it by hand is refused (`poll-agent-question.md`).
+- `tools/ws_poll.php` also asks with descriptions and "Other", takes back and asks again (`poll-agent-question-reach.md`); `close <poll id>` still closes a poll made before the step: a clear winner is written as a decision under it, a tie or no vote as a system line, and the agent then writes the answer itself (`tools/ws_post.php --kind=decision --parent=<message id>`).
 - A list where several lines are ticked, and a question one agent asks another, stay a checklist (`agent-checklist-questions.md`).
 
 ## In whose name is the outcome written?

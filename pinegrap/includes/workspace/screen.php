@@ -126,6 +126,11 @@ function ws_js_strings()
         'earlier_message'        => lang('An earlier message'),
         'edit'                   => lang('Edit'),
         'edit_channel'           => lang('Channel settings'),
+        'cs_tab_general'         => lang('General'),
+        'cs_tab_people'          => lang('People and agents'),
+        'cs_tab_conversation'    => lang('The conversation'),
+        'cs_tab_events'          => lang('Record events'),
+        'cs_open'                => lang('Open the memory'),
         'edit_plan_item'         => lang('Plan item'),
         'edit_summary'           => lang('Edit the summary'),
         'audit_locked'           => lang('A member of staff is in this private channel. It cannot be opened for inspection.'),
@@ -868,7 +873,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
-    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings());
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_agent_card_js_strings());
     // The time spent on tasks and the tasks they wait for
     // (assets/js/workspace_task_time.js, workspace_task_links.js).
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
