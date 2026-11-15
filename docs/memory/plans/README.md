@@ -15,6 +15,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 ## Clusters
 
+- `channel-profile-*`: 7 files.
 - `mail-inbox-*`: 7 files.
 - `storefront-api-*`: 9 files.
 
