@@ -22,14 +22,14 @@ description: Repeating plans on My calendar (#9565, #9611): the Repeat field, st
 
 ## What do the two answers do?
 - This one, change: the day goes into `ws_personal_plan_skips` and a plain plan is made from the drawer with `repeat_of` = the series and its customer. Delete: the day is skipped.
-- This and the following on a later time: the series ends at that time's start (`ws_personal_plan_series_cut()`); a change makes a new series from the drawer and hands it the later changed times and skipped days; a delete removes them. On the first time it is the whole series.
-- Deleting a whole series deletes the times changed out of it (`repeat_of`). A write without `repeat` (the API) keeps the rule.
+- This and the following on a later time: `repeat_until` becomes the end of the time before it (`ws_personal_plan_cut_until()`), so the drawer's last day and a later save stay right (#9663). A change starts a new series from the drawer with the later changed times and skipped days; a delete removes them. On the first time: the whole series.
+- Deleting a whole series deletes its changed-out times (`repeat_of`). A write without `repeat` (the API) keeps the rule.
 
 ## How does each time remind?
 - `remind_minutes` keeps the lead; `remind_at` is the next time's reminder (`ws_personal_plan_next_remind()`). The run tells the owner, then arms the next time; a skipped or ended time is passed over. With no time left the reminder stays claimed.
 - The reminder line names the time after the line was written (`&day=`).
 
 ## What did not change?
-- The Work Calendar, the planning board and capacity, task series (recurrence.php), the outgoing iCal subscription.
+- Work Calendar, planning board, capacity, task series (recurrence.php), outgoing iCal.
 
 Tests: `tests/workspace_personal_plan_repeat_test.php`.
