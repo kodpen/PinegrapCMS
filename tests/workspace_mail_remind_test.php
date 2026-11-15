@@ -128,6 +128,7 @@ function test_workspace_mail_remind_step()
 function test_workspace_mail_remind_wiring()
 {
 	pg_assert_contains("ws_mail_remind_new_mail(\$conversation_id, \$now);", workspace_mail_remind_test_source('includes/workspace/mail.php'), 'a new mail brings it back');
+	pg_assert_contains("ws_mail_remind_new_mail(\$conversation_id, \$now);", workspace_mail_remind_test_source('includes/workspace/mail_phone.php'), 'a new WhatsApp or SMS message brings it back');
 
 	$reminders = workspace_mail_remind_test_source('includes/workspace/reminders.php');
 	pg_assert_contains('ws_mail_reminders_waiting()', $reminders, 'the job\'s first look');
