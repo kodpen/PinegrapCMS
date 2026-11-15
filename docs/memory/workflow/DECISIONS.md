@@ -724,6 +724,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/list-table-overview.md: The panel list table driver as a whole: the decision behind it, its parts by label, which file holds what, the recipe for a new list, its filter, where a new screen is registered
 - ui/list-table-quick-edit-values.md: Which values of each driver list change in quick edit, which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 - ui/list-table-rollout.md: How the panel lists moved from DataTables to the list table driver (TD1-TD14, done with #8253): the driver, the rules that still hold, where each batch is noted, what the removal took out
+- ui/look-field-widths.md: Field widths of the add and edit screens in look A (DL5c, #9658): the 16 px field grid, the span per field kind from md up, pg-field-span-N for a field alone in its row, who sets which screen's spans
 - ui/look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields
 - ui/look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail
 - ui/look-report-erp-screens.md: ERP Dashboard, Cash Flow, Profit and Aging on look A's report recipes (#9696): server-drawn figure cards, the tools rows, the profit chart on the report view, what stayed
