@@ -215,6 +215,7 @@ description: Generated from the module field of the memory files: each includes/
 - `reseal`: [[encryption-key-reseal-registry]]
 - `returns`: [[api-returns]], [[bootstrap-6-runtime-markup]], [[order-returns-refund-cancelled-order]]
 - `reviews`: [[comment-page-copy-columns]], [[product-review-photos]], [[product-review-purchase-stands]], [[product-reviews-verified]]
+- `save_bar`: [[save-bar-helper]]
 - `search_audits`: [[search-and-audits-screen]]
 - `search_console`: [[search-console-screen-messages]]
 - `seo`: [[indexnow-ping-result]], [[jsonld-script-escaping]], [[list-row-names]], [[main-host-redirect]], [[panel-preview-not-a-visit]], [[record-breadcrumb-list-step]], [[record-page-schema-type]], [[recycle-bin-offline]], [[robots-large-image-preview]], [[seo-default-share-image-warning]], [[seo-impact-window-days]], [[sitemap-cache]], [[sitemap-listed-pages]]
