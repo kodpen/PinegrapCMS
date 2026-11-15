@@ -305,7 +305,7 @@ function test_workspace_personal_ical_quoted_param()
 		'DTEND;TZID="(UTC+03:00) Istanbul":20261104T110000',
 		'SUMMARY:Review',
 		'END:VEVENT',
-	)), 'an unknown quoted zone falls back to the site zone');
+	)), 'a display label is read at its offset');
 
 	$vevents = ws_ical_vevents("BEGIN:VEVENT\nATTENDEE;CN=\"Doe; John: CEO\";ROLE=CHAIR:mailto:j@example.com\nEND:VEVENT");
 	pg_assert_same('mailto:j@example.com', $vevents[0]['ATTENDEE']['value'], 'the value starts after the first colon outside quotes');
@@ -464,4 +464,43 @@ function test_workspace_personal_ical_old_rule_in_window()
 	pg_assert_same(3, count($read('20260912', 'FREQ=DAILY;COUNT=5')), 'and keeps those inside the window');
 
 	date_default_timezone_set($previous);
+}
+
+// Outlook's Windows zone names and display labels keep the sender's time.
+function test_workspace_personal_ical_windows_zone()
+{
+	pg_assert_same(array('2026-12-01 13:00 -> 14:00 London'), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT', 'UID:w1', 'SUMMARY:London',
+		'DTSTART;TZID="GMT Standard Time":20261201T100000',
+		'DTEND;TZID="GMT Standard Time":20261201T110000',
+		'END:VEVENT',
+	)), 'GMT Standard Time is London, read on an Istanbul site');
+	pg_assert_same(array('2026-11-04 12:00 -> 13:00 Berlin'), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT', 'UID:w2', 'SUMMARY:Berlin',
+		'DTSTART;TZID=W. Europe Standard Time:20261104T100000',
+		'DTEND;TZID=W. Europe Standard Time:20261104T110000',
+		'END:VEVENT',
+	)), 'an unquoted Windows name');
+	pg_assert_same(array('2026-11-04 14:30 -> 15:30 Label'), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT', 'UID:w3', 'SUMMARY:Label',
+		'DTSTART;TZID="(UTC-05:00) Eastern Time (US & Canada)":20261104T063000',
+		'DTEND;TZID="(UTC-05:00) Eastern Time (US & Canada)":20261104T073000',
+		'END:VEVENT',
+	)), 'a display label at its offset');
+	pg_assert_same(array('2026-11-04 10:00 -> 11:00 Unknown'), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT', 'UID:w4', 'SUMMARY:Unknown',
+		'DTSTART;TZID=Custom Zone 1:20261104T100000',
+		'DTEND;TZID=Custom Zone 1:20261104T110000',
+		'END:VEVENT',
+	)), 'a name that matches nothing stays in the site zone');
+
+	pg_assert_same('Europe/Istanbul', ws_ical_zone('turkey standard time')->getName(), 'any case');
+	pg_assert_same('UTC', ws_ical_zone('(UTC) Coordinated Universal Time')->getName(), 'a label without an offset is UTC');
+	pg_assert_same('America/New_York', ws_ical_zone('America/New_York')->getName(), 'an IANA name as it is');
+	pg_assert_same(null, ws_ical_zone(''), 'no name');
+
+	foreach (ws_ical_windows_zones() as $windows => $iana) {
+		$zone = ws_ical_zone($windows);
+		pg_assert_true($zone && in_array($zone->getName(), explode('|', $iana), true), $windows . ' maps to a zone PHP knows');
+	}
 }
