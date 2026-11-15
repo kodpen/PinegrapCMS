@@ -5628,6 +5628,15 @@ body.pg-code-field-open {
   min-width: 8rem;
 }
 
+/* 404 Log: the address and the referrer wrap inside a bounded width, so a
+   long address does not push the counts and dates off the screen. */
+.pg-404-cell-wrap {
+  white-space: normal;
+  min-width: 12rem;
+  max-width: 28rem;
+  overflow-wrap: anywhere;
+}
+
 /* ERP lists (Expenses, Expense categories, Cheques): the column widths
    their cells held inline. */
 .erp-expense-cell-category {

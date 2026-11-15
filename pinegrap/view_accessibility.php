@@ -182,7 +182,7 @@ echo pg_page_shell($shell) . '
             </nav>
             <p class="small fg-secondary mb-0">' . $output_status . '</p>
             <div class="card my-7">
-                <div class="card-header">' . h(lang('Checklist')) . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Checklist')) . '</h2>
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-sm mb-0">
@@ -193,7 +193,7 @@ echo pg_page_shell($shell) . '
                 </div>
             </div>
             <div class="card my-7">
-                <div class="card-header">' . h(lang('Findings')) . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Findings')) . '</h2>
                 <div class="card-body p-0">
                     ' . (($output_rows === '')
                         ? '<p class="fg-secondary m-7">' . h($last_run ? lang('Nothing was found.') : lang('Not checked yet')) . '</p>'

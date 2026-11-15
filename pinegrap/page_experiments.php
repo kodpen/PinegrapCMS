@@ -266,11 +266,11 @@ foreach ($experiments as $experiment) {
 
     $output_experiments .= '
             <div class="card my-7">
-                <div class="card-header d-flex flex-wrap align-items-center gap-3">
-                    <a class="fw-bold text-break min-w-0" href="' . h('experiments.php?id=' . (int) $experiment['id']) . '">' . h($experiment['name']) . '</a>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap align-items-center gap-3 row-gap-1">
+                    <a class="text-break min-w-0" href="' . h('experiments.php?id=' . (int) $experiment['id']) . '">' . h($experiment['name']) . '</a>
                     <span class="badge ' . ($theme !== '' ? 'theme-' . $theme : 'bg-1 fg-body border') . '">' . h($status_labels[$status]) . '</span>
-                    <span class="small fg-secondary">' . h(lang(array('string' => 'Goal: {var:1}', 'vars' => $goal))) . '</span>
-                    <span class="small fg-secondary">' . implode(' &middot; ', $dates) . '</span>
+                    <span class="small fw-normal fg-secondary">' . h(lang(array('string' => 'Goal: {var:1}', 'vars' => $goal))) . '</span>
+                    <span class="small fw-normal fg-secondary">' . implode(' &middot; ', $dates) . '</span>
                     <div class="ms-auto">' . $buttons . '</div>
                 </div>
                 <div class="card-body p-0">
@@ -309,20 +309,20 @@ if (!$has_open) {
     // columns and reaches the form through its form attribute.
     $output_form = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('New experiment')) . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('New experiment')) . '</h2>
                 <div class="card-body pt-0">
                     <form method="post" action="' . h($self) . '" id="page_experiment_new">
                         ' . get_token_field() . '
                         <input type="hidden" name="action" value="create">
                         <div class="row g-5">
-                            <div class="col-12 md:col-6">
+                            <div class="col-12">
                                 <div class="form-field">
                                     <label for="name" class="form-label">' . h(lang('Name')) . '</label>
                                     ' . $liveform->output_field(array('type' => 'text', 'name' => 'name', 'id' => 'name', 'maxlength' => '100', 'class' => 'form-control', 'required' => 'required')) . '
                                 </div>
                             </div>
-                            <div class="col-12 md:col-6">
-                                <div class="form-field">
+                            <div class="col-12">
+                                <div class="form-field pg-field-span-6">
                                     <label for="draft_page_id" class="form-label">' . h(lang('Variant B')) . '</label>
                                     ' . $liveform->output_field(array('type' => 'select', 'name' => 'draft_page_id', 'id' => 'draft_page_id', 'options' => $draft_options, 'class' => 'form-control', 'aria-describedby' => 'draft_page_id_help')) . '
                                     <div id="draft_page_id_help" class="form-text">' . h(lang('A draft of the same design. A new copy is made in Drafts; edit it in the Page Design Studio before you start.')) . '</div>
@@ -341,8 +341,8 @@ if (!$has_open) {
                                     <div id="goal_target_help" class="form-text"><span data-goal-kind="click">' . h(lang('The goal name set on the button or link.')) . '</span><span data-goal-kind="page">' . h(lang('The id of a page on the site, as in the pages list.')) . '</span></div>
                                 </div>
                             </div>
-                            <div class="col-12 md:col-6">
-                                <div class="form-field">
+                            <div class="col-12">
+                                <div class="form-field pg-field-span-3">
                                     <label for="weight_b" class="form-label">' . h(lang('Share of visitors who see variant B (%)')) . '</label>
                                     ' . $liveform->output_field(array('type' => 'number', 'name' => 'weight_b', 'id' => 'weight_b', 'min' => '1', 'max' => '99', 'step' => '1', 'class' => 'form-control', 'required' => 'required')) . '
                                 </div>
@@ -425,7 +425,7 @@ echo $shell() . '
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky my-7" style="top:3.3rem;">
                 <div class="card">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Summary')) . '</h2>
                     <div class="card-body pt-0">
                         <div class="fw-semibold text-break mb-5">' . h($live['page_name']) . '</div>
                         <dl class="row small mb-0">
