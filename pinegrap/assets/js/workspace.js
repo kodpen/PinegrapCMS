@@ -439,6 +439,36 @@
 
     // An icon with a small mark in its corner (ws_icon_badged_html() in
     // includes/workspace/channel_icons.php); the plain icon without one.
+    // An agent's state mark, the one map of the channel's agent marks
+    // (.ws-agent-dot): working a blue dot, waiting an amber dot, not seen an
+    // amber square, paused a grey square, ready no mark
+    // (ws_agent_card_state()). Null for ready or an unknown state.
+    function agentStateDot(state, words) {
+        if (['working', 'waiting', 'late', 'paused'].indexOf(state) === -1) {
+            return null;
+        }
+
+        var dot = el('span', 'ws-agent-dot is-' + state);
+
+        dot.title = words || '';
+        dot.setAttribute('aria-hidden', 'true');
+        return dot;
+    }
+
+    // An agent's icon in the @ menu with its state mark in the corner.
+    function pickerAgentFace(item) {
+        var node = el('span', 'ws-picker-agent');
+        var dot = agentStateDot(item.state, item.stateWords);
+
+        node.appendChild(icon(item.icon || 'bi-robot'));
+
+        if (dot) {
+            node.appendChild(dot);
+        }
+
+        return node;
+    }
+
     function badgedIcon(name, badge, extra) {
         if (!badge) {
             return icon(name, extra);
@@ -17435,7 +17465,9 @@
                     // as the list is cut at ten.
                     (self.channel.apps || []).forEach(function (app) {
                         if (!needle || foldText(app.shown.slice(1)).indexOf(needle) === 0 || foldText(app.meta).indexOf(needle) === 0) {
-                            items.push({ label: app.label, meta: app.meta, icon: app.icon, token: app.token, shown: app.shown });
+                            // A registry agent's state dot and usage mark
+                            // (ws_agent_picker_entries()).
+                            items.push({ label: app.label, meta: app.meta, role: app.role || '', icon: app.icon, token: app.token, shown: app.shown, state: app.state || '', stateWords: app.state_words || '', usage: app.usage_high ? { words: app.usage_words, title: app.usage_title } : null });
                         }
                     });
                 }
@@ -17594,6 +17626,8 @@
                     row.appendChild(el('span', 'ws-picker-emoji', item.glyph));
                 } else if (item.avatar) {
                     row.appendChild(avatar(item.face || { avatar: item.avatar, name: item.label }));
+                } else if (item.state) {
+                    row.appendChild(pickerAgentFace(item));
                 } else {
                     row.appendChild(badgedIcon(item.icon || 'bi-dot', item.badge || ''));
                 }
@@ -17609,7 +17643,29 @@
                     row.appendChild(el('span', 'ws-picker-label', item.label));
                 }
 
-                if (item.meta) {
+                // The state in words for a screen reader; the dot shows it.
+                if (item.stateWords && (item.state !== 'idle')) {
+                    row.lastChild.appendChild(el('span', 'visually-hidden', ' (' + item.stateWords + ')'));
+                }
+
+                // A reported usage window at 90% or more: a mark only.
+                if (item.usage) {
+                    var usage = el('span', 'pg-pill pg-tone-amber ws-picker-usage', item.usage.words);
+
+                    usage.title = item.usage.title;
+                    row.appendChild(usage);
+                }
+
+                // An agent's role after its name: when the line is cut, the
+                // name is cut and the role stays whole.
+                if (item.meta && item.role) {
+                    var meta = el('span', 'ws-picker-meta ws-picker-meta-role');
+
+                    meta.appendChild(el('span', 'ws-picker-meta-name', item.meta));
+                    meta.appendChild(el('span', 'ws-picker-meta-sep', ' · '));
+                    meta.appendChild(el('span', '', item.role));
+                    row.appendChild(meta);
+                } else if (item.meta) {
                     row.appendChild(el('span', 'ws-picker-meta', item.meta));
                 }
 

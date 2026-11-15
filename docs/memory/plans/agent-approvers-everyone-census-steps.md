@@ -12,7 +12,7 @@ description: AE1 census (2026-11-14): the exact scope of AE2 to AE4 (agent appro
 - AE3: the Approvers field lists the channel's agents under the people (paused ones left out), the card draws them with the agent badge; new texts by `lang()`.
 - AE4: `approvers` (or `agents`) on create; the decide route opens to the asked agent's own key (`ws_api_agent_caller()`), stays off MCP, keeps the dry run; `WorkspaceApproval` carries the agents; `php tools/check_api_schema.php`.
 - AE4b: done (#9608), `workspace/approval-assistants.md`.
-- AE4c (Claude): offer `claude` where Claude may be asked (`claude_access`, the `claude` registry row); ask it through Claude's queue with the approval in `ai_state` (its brief already gets the API lines from `ws_ai_briefing($row, $asker, 'claude')`); let the decide route take Claude's own key (`ws_api_is_claude()`) beside `ws_api_agent_caller_row()`, with `ws_approval_agent_value()` giving `claude`. Read how the routine claims and answers first (`api_claude.php`); no new table or column.
+- AE4c: done (#9622), `workspace/approval-assistants.md`.
 
 ## Which store does an agent approver need?
 - Decided (owner, channel 3501; shape 3506): a table of its own, `ws_approval_agents` beside `ws_approval_guests`: `approval_id`, `agent` VARCHAR(32) (the `ws_ai_requests.agent` value), `request_id`, `decision`, `note`, `decided_at`; key (approval_id, agent). `ws_approval_people` and its readers stay untouched. Added by AE2 (11.0.210).

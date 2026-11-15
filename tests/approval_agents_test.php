@@ -34,8 +34,8 @@ function test_approval_agents_allowed_only_by_hand_and_by_a_person()
 function test_approval_agents_clean_keeps_request_values_once()
 {
 	pg_assert_same(
-		array('agent:5', 'model:2'),
-		ws_approval_agents_clean(array(' Agent:5 ', 'model:2', 'agent:5', 'app:5', 'agent:0', 'agent:x', '', 'claude', 'agent:5:1'))
+		array('agent:5', 'model:2', 'claude'),
+		ws_approval_agents_clean(array(' Agent:5 ', 'model:2', 'agent:5', 'app:5', 'agent:0', 'agent:x', '', 'claude', 'agent:5:1', 'claude:1'))
 	);
 	pg_assert_same(array(), ws_approval_agents_clean(null));
 }

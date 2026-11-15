@@ -6,7 +6,8 @@
  * ask the channel's active application agents and model assistants of the
  * registry, and Pinegrap AI, beside its people. An application agent answers
  * with its own key; a model assistant and Pinegrap AI answer in the site's
- * own run (ws_ai_step()) with the decide tool. Claude is not offered yet.
+ * own run (ws_ai_step()) with the decide tool; Claude's routine answers over
+ * the API with Claude's key, as an application agent does.
  * Each agent asked is one ws_approval_agents
  * row and one request in its queue (ws_ai_requests), made at once with the
  * approval told in its brief; it answers Approve or Reject with a note, and
@@ -59,7 +60,7 @@ function ws_approval_agents_allowed($by_hand, $app_id)
 
 /**
  * The agents a form or the API names, kept as their request values
- * (agent:<id>, model:<id>, ai), each once, in the order given; anything of
+ * (agent:<id>, model:<id>, ai, claude), each once, in the order given; anything of
  * another shape is left out. Pure.
  *
  * @param mixed $given
@@ -72,7 +73,7 @@ function ws_approval_agents_clean($given)
     foreach ((array) $given as $value) {
         $value = strtolower(trim((string) $value));
 
-        if ((preg_match('/^((agent|model):[1-9][0-9]{0,9}|ai)$/', $value) === 1) && !in_array($value, $out, true)) {
+        if ((preg_match('/^((agent|model):[1-9][0-9]{0,9}|ai|claude)$/', $value) === 1) && !in_array($value, $out, true)) {
             $out[] = $value;
         }
     }
@@ -82,14 +83,36 @@ function ws_approval_agents_clean($given)
 
 /**
  * The request value an agent asked answers under: agent:<id>, model:<id>,
- * or ai for Pinegrap AI (ws_approval_agent_ai_row()). Pure.
+ * ai for Pinegrap AI (ws_approval_agent_ai_row()) or claude for Claude
+ * (ws_approval_agent_claude_row()). Pure.
  *
- * @param array $agent ws_agents row, or Pinegrap AI's row
+ * @param array $agent ws_agents row, or Pinegrap AI's or Claude's row
  * @return string '' for any other kind
  */
 function ws_approval_agent_value($agent)
 {
-    return ((string) ($agent['kind'] ?? '') === 'ai') ? 'ai' : ws_agent_request_value($agent);
+    $kind = (string) ($agent['kind'] ?? '');
+
+    return in_array($kind, array('ai', 'claude'), true) ? $kind : ws_agent_request_value($agent);
+}
+
+/**
+ * Claude as an agent asked: its requests wait in Claude's queue and its
+ * routine answers with the key of the application Claude works through.
+ *
+ * @return array id, kind, handle, name, app_id, status, avatar
+ */
+function ws_approval_agent_claude_row()
+{
+    return array(
+        'id'     => 0,
+        'kind'   => 'claude',
+        'handle' => 'claude',
+        'name'   => 'Claude',
+        'app_id' => function_exists('ws_claude_config') ? (int) ws_claude_config()['app_id'] : 0,
+        'status' => 'active',
+        'avatar' => '',
+    );
 }
 
 /**
@@ -168,6 +191,13 @@ function ws_approval_agent_options($channel)
         $out['ai'] = array('value' => 'ai', 'id' => 0, 'kind' => 'ai', 'handle' => '', 'name' => $ai['name'], 'app_id' => $ai['app_id']);
     }
 
+    // Claude where it may be asked (claude.php): never where a guest reads along.
+    if (function_exists('ws_claude_ready') && ws_claude_ready() && ws_claude_channel_allowed($channel)) {
+        $claude = ws_approval_agent_claude_row();
+
+        $out['claude'] = array('value' => 'claude', 'id' => 0, 'kind' => 'claude', 'handle' => $claude['handle'], 'name' => $claude['name'], 'app_id' => $claude['app_id']);
+    }
+
     return array_values($out);
 }
 
@@ -217,15 +247,20 @@ function ws_approval_agents_of($approval_id)
 }
 
 /**
- * The registry row behind a request value, Pinegrap AI's for ai, or null.
+ * The registry row behind a request value, Pinegrap AI's for ai, Claude's
+ * for claude, or null.
  *
- * @param string $value agent:<id> | model:<id> | ai
+ * @param string $value agent:<id> | model:<id> | ai | claude
  * @return array|null
  */
 function ws_approval_agent_row($value)
 {
     if ((string) $value === 'ai') {
         return ws_approval_agent_ai_row();
+    }
+
+    if ((string) $value === 'claude') {
+        return ws_approval_agent_claude_row();
     }
 
     $parts = explode(':', (string) $value);
@@ -339,14 +374,17 @@ function ws_approval_agents_ask($viewer, $channel, $approval, $agents)
         db("INSERT IGNORE INTO ws_approval_agents (approval_id, agent) VALUES ('" . (int) $approval['id'] . "', '" . e($value) . "')");
 
         // Followed mode: the agent is asked by name, whatever its wake rule.
-        // Pinegrap AI has a queue of its own; its request is given the
-        // approval once made.
-        if ($value === 'ai') {
-            $made = ws_ai_after_send($viewer, $channel, (int) $approval['message_id'], $body, true) ? array('ai') : array();
+        // Pinegrap AI and Claude have queues of their own; the request is
+        // given the approval once made.
+        if (($value === 'ai') || ($value === 'claude')) {
+            $queued = ($value === 'ai')
+                ? ws_ai_after_send($viewer, $channel, (int) $approval['message_id'], $body, true)
+                : ws_claude_after_send($viewer, $channel, (int) $approval['message_id'], $body, true);
+            $made = $queued ? array($value) : array();
 
-            if (!empty($made)) {
+            if ($queued) {
                 db("UPDATE ws_ai_requests SET ai_state = '" . e($state) . "'
-                    WHERE agent = 'ai' AND message_id = '" . (int) $approval['message_id'] . "' AND status = 'queued' ORDER BY id DESC LIMIT 1");
+                    WHERE agent = '" . e($value) . "' AND message_id = '" . (int) $approval['message_id'] . "' AND status = 'queued' ORDER BY id DESC LIMIT 1");
             }
         } else {
             $made = ws_agent_after_send($viewer, $channel, (int) $approval['message_id'], $body, $value, false, array('state' => $state));

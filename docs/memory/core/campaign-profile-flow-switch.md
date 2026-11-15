@@ -3,7 +3,7 @@ name: campaign-profile-flow-switch
 description: How e-mail campaign profiles become flows with no mail lost or sent twice (MA9a, #9077): one flow per chain, the switch moment, campaigns already waiting, followers drained, the owner
 ---
 
-## One flow of what? (decided: `plans/messages-area-decided-2.md`)
+## One flow of what? (decided: architect, 2026-11-13, #9077)
 - One flow per chain: a profile started by an action, then each profile following it (`email_campaign_sent`, a tree) as boxes after its leader's e-mail box: a Condition `{{node.<leader>.sent}}` at least 1 (a leader skipped for consent makes no campaign, so no follow-up today), a Wait, the follower's e-mail box. Over `WS_FLOW_MAX_NODES` boxes the chain stays.
 - A chain converts whole or stays whole: a follower left behind would never fire once its leader stops making campaigns.
 - The flow takes the head's name; a disabled head becomes a paused flow; a chain whose head follows a deleted profile sends nothing today and is listed, not converted.

@@ -28,7 +28,7 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 
 - PF4 (S) Role badge and state dot in a message. Done: #9629.
 
-- PF5 (S) The @ menu's role and state, and the usage mark.
+- PF5 (S) The @ menu's role, state and usage mark. Done #9628.
 
 - PF6 (M) The card for a person.
 

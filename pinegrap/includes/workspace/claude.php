@@ -685,7 +685,8 @@ function ws_claude_sessions_ready()
  * that, or with none online, it is the routine's as before. A message
  * written through a connection never goes to a session: it asks what the
  * application's message asked, and the session would be asking itself. The
- * daily summary, a note, a task run and the Visual Page Editor stay the
+ * daily summary, a note, a task run, the Visual Page Editor and a request
+ * to approve (approval_agents.php: Claude answers it, not the asker) stay the
  * routine's. Pure.
  *
  * @param array $row          ws_ai_requests row
@@ -706,7 +707,8 @@ function ws_claude_request_holder($row, $via, $asker_online, $now)
     $asked = ((int) ($row['message_id'] ?? 0) > 0)
         && ((int) ($row['note_id'] ?? 0) === 0)
         && ((int) ($row['task_id'] ?? 0) === 0)
-        && ((int) ($row['page_id'] ?? 0) === 0);
+        && ((int) ($row['page_id'] ?? 0) === 0)
+        && !(function_exists('ws_approval_agent_request_of') && ws_approval_agent_request_of($row));
 
     if ($open && $asked && !$via && $asker_online && ((int) $now < (int) ($row['created_at'] ?? 0) + WS_CLAUDE_SESSION_WAIT)) {
         return array('who' => 'person', 'device' => 0);

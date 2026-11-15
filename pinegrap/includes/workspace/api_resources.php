@@ -4285,6 +4285,12 @@ function ws_api_approvals_create($params)
 
 function ws_api_approvals_decide($params)
 {
+    // Claude's routine answers with Claude's key, reading the channel as
+    // its other routes do (ws_api_assistant_channel_reader()).
+    if (function_exists('ws_api_is_claude') && ws_api_is_claude()) {
+        ws_api_approvals_claude_decide($params);
+    }
+
     $viewer = ws_api_viewer();
     $approval = ws_api_approval_or_404($viewer, $params['id']);
 
@@ -4327,6 +4333,29 @@ function ws_api_approvals_decide($params)
     }
 
     api_ok(ws_api_approval_present($viewer, ws_approval($approval['id'])));
+}
+
+/**
+ * Claude's answer to a request it was asked. Ends the call.
+ *
+ * @param array $params
+ */
+function ws_api_approvals_claude_decide($params)
+{
+    $approval = function_exists('ws_approval') ? ws_approval((int) $params['id']) : null;
+
+    if (!$approval) {
+        api_fail_not_found(lang('Approval request'));
+    }
+
+    list($viewer) = ws_api_assistant_channel_reader($approval['channel_id']);
+    $message = ws_message($approval['message_id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0)) {
+        api_fail_not_found(lang('Approval request'));
+    }
+
+    ws_api_approvals_agent_decide($viewer, ws_approval_agent_claude_row(), $approval, $params);
 }
 
 /**

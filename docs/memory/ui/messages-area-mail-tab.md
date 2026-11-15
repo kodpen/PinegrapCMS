@@ -10,7 +10,7 @@ module: messages_area
 - Owner (2026-11-12, #8961, `workflow/decisions-made-workspace-21.md`): the incoming e-mail sits in Communication, not among the Workspace's channels.
 
 ## Who sees it?
-- Gate `mail` of `pg_messages_gate_allows()`: `ws_mail_list_visible()` only, not the campaigns' right (`plans/messages-area-decided-2.md`). Somebody who reads a mailbox without campaign rights gets the Communication row with this tab alone.
+- Gate `mail` of `pg_messages_gate_allows()`: `ws_mail_list_visible()` only, not the campaigns' right (architect, #9077, `workspace/mail-area-proposals.md`). Somebody who reads a mailbox without campaign rights gets the Communication row with this tab alone.
 - `pg_messages_mail_visible($user)`: mail on (`ws_mail_on()`, whatever the Workspace's switch, MA10c `workspace/mail-workspace-off.md`), the person on the team, a box writing where they read; asked once a request.
 - The screen itself: `ws_screen_gate($user, false, true)`, `ws_mail_reads_ready()`, then `ws_mail_list_visible()` ("Access denied" otherwise).
 
