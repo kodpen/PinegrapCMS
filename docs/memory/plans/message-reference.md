@@ -21,7 +21,7 @@ priority: 6
 - MR1 (M, server, done #9816) The tag kind: resolved per reader (sender, time, channel, kind, a short text; `known` false without the right, `gone` when deleted), the popup's data from the message payload behind the same right, `ws_plain_text()` words for push, e-mail and export, the API's `text` taking the token (schema and docs), tests.
 - MR2 (M, after MR1) The chip and the popup in `workspace.js` and `backend.src.css`: in a message, a discussion, a poll's and an agent question's text; the float frame of the agent card (`.pg-card`, `--pg-surface-float`); a long message cut with "Go to the message"; closes as the agent card does.
 - MR3 (S, after MR2) "Copy as reference" in a message's menu beside "Copy link"; pasted into a message box it becomes the chip, and so does a pasted link of a message of this site. Any channel's or discussion's box.
-- MR4 (S, after MR1) The agents' side: the working rule that an agent's question about a picture or an earlier message carries its reference, the tools' help text, close-out into `workspace/message-reference.md`, this plan deleted.
+- MR4 (S, after MR1, done #9845) The agents' side: the working rule that an agent's question about a picture or an earlier message carries its reference, the tools' help text, close-out into `workspace/message-reference.md`, this plan deleted.
 
 ## Whose look?
 - The owner's: the chip and the popup are new on Workspace. MR2 posts pictures (the chip in a message and in an agent question; the popup over a text, a picture and a poll; 1440 and 390, light and dark); the architect brings them to him in one question with the picture in its box. MR2 is not marked ready before his look.
