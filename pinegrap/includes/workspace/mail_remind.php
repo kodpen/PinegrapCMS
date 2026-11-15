@@ -399,13 +399,65 @@ function ws_mail_remind_describe($row, $base)
 }
 
 /**
+ * A reminder's time, short enough for a pane tool: day and month with the
+ * hour in the person's zone, the year only when it is not this year, no
+ * zone. The month is the English short name, translated by the caller.
+ * Pure.
+ *
+ * @param int    $at
+ * @param int    $now
+ * @param string $timezone  an identifier; '' or an unknown one reads as UTC
+ * @param bool   $month_first DATE_FORMAT month_day
+ * @param bool   $twelve      TIME_FORMAT twelve_hours
+ * @return string
+ */
+function ws_mail_remind_short_time($at, $now, $timezone, $month_first, $twelve)
+{
+    try {
+        $zone = new DateTimeZone(($timezone !== '') ? $timezone : 'UTC');
+    } catch (Exception $e) {
+        $zone = new DateTimeZone('UTC');
+    }
+
+    $time = new DateTime('@' . (int) $at);
+    $time->setTimezone($zone);
+    $today = new DateTime('@' . (int) $now);
+    $today->setTimezone($zone);
+
+    $year = ($time->format('Y') !== $today->format('Y')) ? ' Y' : '';
+
+    return $time->format(($month_first ? 'M j' : 'j M') . $year . ' ' . ($twelve ? 'g:i A' : 'H:i'));
+}
+
+/**
+ * ws_mail_remind_short_time() for the person, its month in their language.
+ *
+ * @param int $at
+ * @return string
+ */
+function ws_mail_remind_short_text($at)
+{
+    $text = ws_mail_remind_short_time($at, time(), ws_mail_remind_zone(),
+        defined('DATE_FORMAT') && (DATE_FORMAT === 'month_day'), defined('TIME_FORMAT') && (TIME_FORMAT === 'twelve_hours'));
+    $months = array();
+
+    foreach (array('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec') as $month) {
+        $months[$month] = lang($month);
+    }
+
+    // strtr(): one pass, so a translated name is never translated again.
+    return strtr($text, $months);
+}
+
+/**
  * Remind me later as the pane's script draws it: offered to a team member,
  * with the waiting reminder's time when one is set. Pure but for the words.
  *
  * @param bool       $member  the reader is a team member
  * @param bool       $ready   ws_mail_remind_ready()
  * @param array|null $waiting ws_mail_remind_waiting()
- * @return array|null on, at, text; null when it is not offered
+ * @return array|null on, at, short (the button's label), text (its title
+ *                    and accessible name); null when it is not offered
  */
 function ws_mail_remind_tool($member, $ready, $waiting)
 {
@@ -418,6 +470,7 @@ function ws_mail_remind_tool($member, $ready, $waiting)
     return array(
         'on'   => $at > 0,
         'at'   => $at,
+        'short' => ($at > 0) ? ws_mail_remind_short_text($at) : '',
         'text' => ($at > 0) ? lang(array('string' => 'Reminds you at {var:1}', 'vars' => ws_mail_later_time_text($at))) : '',
     );
 }

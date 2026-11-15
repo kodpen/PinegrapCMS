@@ -45,6 +45,17 @@ function test_workspace_mail_remind_time_in_the_persons_zone()
 	pg_assert_same(gmmktime(6, 30, 0, 11, 20, 2026), ws_mail_remind_time('at', '2026-11-20T09:30', 'Europe/Istanbul', $now)['at'], 'a chosen time in the zone');
 }
 
+function test_workspace_mail_remind_short_time()
+{
+	$now = gmmktime(12, 0, 0, 11, 15, 2026);
+	$at = gmmktime(6, 0, 0, 11, 16, 2026);
+
+	pg_assert_same('16 Nov 09:00', ws_mail_remind_short_time($at, $now, 'Europe/Istanbul', false, false), 'day, month and hour in the zone; no year, no zone');
+	pg_assert_same('Nov 16 9:00 AM', ws_mail_remind_short_time($at, $now, 'Europe/Istanbul', true, true), 'month first, twelve hours');
+	pg_assert_same('5 Jan 2027 09:00', ws_mail_remind_short_time(gmmktime(9, 0, 0, 1, 5, 2027), $now, 'UTC', false, false), 'the year when it is not this year');
+	pg_assert_same('1 Jan 2027 01:30', ws_mail_remind_short_time(gmmktime(22, 30, 0, 12, 31, 2026), $now, 'Europe/Istanbul', false, false), 'the year as the zone reads it');
+}
+
 function test_workspace_mail_remind_time_refuses()
 {
 	$now = gmmktime(12, 0, 0, 11, 14, 2026);
@@ -82,12 +93,13 @@ function test_workspace_mail_remind_tool()
 {
 	pg_assert_same(null, ws_mail_remind_tool(false, true, null), 'not offered outside the team');
 	pg_assert_same(null, ws_mail_remind_tool(true, false, null), 'nor before the table is there');
-	pg_assert_same(array('on' => false, 'at' => 0, 'text' => ''), ws_mail_remind_tool(true, true, null), 'offered, none set');
+	pg_assert_same(array('on' => false, 'at' => 0, 'short' => '', 'text' => ''), ws_mail_remind_tool(true, true, null), 'offered, none set');
 
 	$set = ws_mail_remind_tool(true, true, array('due_at' => gmmktime(9, 0, 0, 11, 20, 2026)));
 	pg_assert_true($set['on'], 'one set');
 	pg_assert_same(gmmktime(9, 0, 0, 11, 20, 2026), $set['at']);
 	pg_assert_true($set['text'] !== '', 'says when');
+	pg_assert_true(($set['short'] !== '') && (mb_strlen($set['short']) < mb_strlen($set['text'])), 'the button\'s label is the short time');
 
 	foreach (ws_mail_remind_js_strings() as $key => $text) {
 		pg_assert_true($text !== '', $key . ' has words');
@@ -98,7 +110,7 @@ function test_workspace_mail_remind_step()
 {
 	$source = workspace_mail_remind_test_source('includes/migrations/2026.11.0.php');
 
-	pg_assert_same(1, substr_count($source, "\tupgrade_2026_11_0_ws_mail_reminders();       // 11.0.211\n"), 'called once under 11.0.211');
+	pg_assert_same(1, substr_count($source, "\tupgrade_2026_11_0_ws_mail_reminders();       // 11.0.212\n"), 'called once under 11.0.212');
 
 	$step = substr($source, (int) strpos($source, 'function upgrade_2026_11_0_ws_mail_reminders'));
 	pg_assert_contains("install_create_table('ws_mail_reminders', \"CREATE TABLE ws_mail_reminders (", $step);

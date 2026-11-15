@@ -1454,11 +1454,20 @@
             var t = h.t;
             var id = current;
             var wrap = h.el('div', 'pg-menu-wrap d-inline-block');
-            var toggle = h.button('btn btn-sm btn-text theme-secondary', offer.on ? offer.text : t('mail_remind'), offer.on ? 'bi-alarm-fill' : 'bi-alarm');
+            var toggle = h.button('btn btn-sm btn-text theme-secondary', offer.on ? offer.short : t('mail_remind'), offer.on ? 'bi-alarm-fill' : 'bi-alarm');
             var menu = h.el('ul', 'menu pg-menu-end');
+
+            // A set reminder shows only its short time; the whole sentence
+            // is the button's title and accessible name.
+            if (offer.on) {
+                toggle.title = offer.text;
+                toggle.setAttribute('aria-label', offer.text);
+            }
 
             toggle.setAttribute('data-bs-toggle', 'menu');
             toggle.setAttribute('data-bs-placement', 'bottom-end');
+            // The pane scrolls and clips: the menu floats over it.
+            toggle.setAttribute('data-bs-strategy', 'fixed');
             wrap.appendChild(toggle);
             wrap.appendChild(menu);
 

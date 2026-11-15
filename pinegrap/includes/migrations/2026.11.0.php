@@ -200,7 +200,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_send_later();      // 11.0.207
 	upgrade_2026_11_0_ws_roadmap_templates();    // 11.0.208
 	upgrade_2026_11_0_ws_approval_agents();      // 11.0.210
-	upgrade_2026_11_0_ws_mail_reminders();       // 11.0.211
+	upgrade_2026_11_0_ws_mail_reminders();       // 11.0.212
 
 }
 
