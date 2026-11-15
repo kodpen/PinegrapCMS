@@ -27750,6 +27750,11 @@ body.pg-measure-report #content {
   align-items: center;
   gap: 8px;
 }
+/* A date of the tools row is as wide as a date (the picker's text box
+   would otherwise take a text field's twenty characters). */
+.pg-report-tools .pg-date-box {
+  width: 8.5rem;
+}
 
 /* The view: the figures, then the chart, 16 px apart. */
 .pg-report-view {

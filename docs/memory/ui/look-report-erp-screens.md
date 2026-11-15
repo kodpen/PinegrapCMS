@@ -23,3 +23,4 @@ module: report_view
 ## What stayed?
 - The dashboard's "Add Local Order" button (the shared buttons step), badges and alerts.
 - Latest movements on the dashboard keeps the account on one line with its till under it; the table scrolls inside its frame on a phone.
+- The tools row's date boxes (`.pg-date-box`, the picker's text box) are 8.5rem wide by a rule beside `.pg-report-field` in the report block, so the Cash Flow row fits one line at 1440.
