@@ -960,6 +960,34 @@ function ws_approval_evaluate($approval, $actor_id = 0)
 }
 
 /**
+ * Whether the person may take a request back or close it: the checks of
+ * ws_approval_close(), with nothing written, so the external API's dry run
+ * meets the same refusals.
+ *
+ * @param array $viewer
+ * @param array $approval
+ * @return array ok, error, refusal ('' | closed | missing | forbidden)
+ */
+function ws_approval_close_check($viewer, $approval)
+{
+    if ((int) $approval['closed_at'] > 0) {
+        return array('ok' => false, 'error' => lang('The approval request is closed.'), 'refusal' => 'closed');
+    }
+
+    $channel = ws_channel($approval['channel_id']);
+
+    if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('That approval request could not be found.'), 'refusal' => 'missing');
+    }
+
+    if (((int) $approval['created_by'] !== (int) $viewer['id']) && ((int) $viewer['role'] >= 3)) {
+        return array('ok' => false, 'error' => lang('Only the person who asked, or staff, can close the approval request.'), 'refusal' => 'forbidden');
+    }
+
+    return array('ok' => true, 'error' => '', 'refusal' => '');
+}
+
+/**
  * The person who asked takes the request back; staff close it. Either way
  * nothing was decided, and the channel is told so in a line of the system's.
  *
@@ -969,18 +997,10 @@ function ws_approval_evaluate($approval, $actor_id = 0)
  */
 function ws_approval_close($viewer, $approval)
 {
-    if ((int) $approval['closed_at'] > 0) {
-        return array('ok' => false, 'error' => lang('The approval request is closed.'));
-    }
+    $checked = ws_approval_close_check($viewer, $approval);
 
-    $channel = ws_channel($approval['channel_id']);
-
-    if (!$channel || !ws_can_read_channel($viewer, $channel)) {
-        return array('ok' => false, 'error' => lang('That approval request could not be found.'));
-    }
-
-    if (((int) $approval['created_by'] !== (int) $viewer['id']) && ((int) $viewer['role'] >= 3)) {
-        return array('ok' => false, 'error' => lang('Only the person who asked, or staff, can close the approval request.'));
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
     }
 
     ws_approval_settle($approval, 'withdrawn', (int) $viewer['id']);

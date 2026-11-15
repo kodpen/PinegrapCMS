@@ -65,6 +65,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_page.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_canvases.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_person_card.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_message_files.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_thread_close.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -2849,5 +2850,5 @@ function ws_api_routes()
     // live pages (api_page.php), the canvas as one thing with its
     // parts (api_canvases.php), a person's card (api_person_card.php) and the
     // files in a message (api_message_files.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_agent_instructions_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes(), ws_person_card_api_routes(), ws_message_file_api_routes());
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_agent_instructions_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes(), ws_person_card_api_routes(), ws_message_file_api_routes(), ws_thread_close_api_routes());
 }
