@@ -410,6 +410,7 @@ if (!pg_email_retry_ready()) {
                 email_recipients.attempts,
                 email_campaigns.type,
                 email_campaigns.action,
+                email_campaigns.order_id,
                 email_campaigns.action_item_id,
                 email_campaigns.calendar_event_recurrence_number,
                 orders.reference_code AS order_reference_code,
@@ -482,6 +483,11 @@ if (!pg_email_retry_ready()) {
                     AND (claim_token = '" . e($run) . "')");
 
             $count++;
+
+            // An abandoned-order mail that went out is a touch of that cart.
+            if ($email_recipient['action'] == 'order_abandoned') {
+                pg_cart_recovery_touch($email_recipient['order_id'], 'email', 'campaign', $email_recipient['email_campaign_id']);
+            }
 
             continue;
         }

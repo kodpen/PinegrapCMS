@@ -1,0 +1,297 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Recovered carts: the touches a left cart gets (a message sent or an offer
+ * shown) in cart_recovery_touch, and which completed order a touch brought
+ * back. Every write of that table goes through this file:
+ * pg_cart_recovery_touch() when a touch goes out, pg_cart_recovery_restored()
+ * when ?r=<reference code> restores the cart, pg_cart_recovery_completed()
+ * from pg_order_complete(). pg_cart_recovery_outcome() is the rule, pure.
+ *
+ * A site whose update has not added the table writes nothing here and
+ * completes orders as before.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
+/** Seconds a cart waits before it counts as left (the abandoned-order mail's 6 hours). */
+const PG_CART_RECOVERY_LEFT_AFTER = 21600;
+
+/** Seconds a touch may come before the completion and still take it (7 days). */
+const PG_CART_RECOVERY_WINDOW = 604800;
+
+/**
+ * Whether the table exists. Asked once a request.
+ *
+ * @return bool
+ */
+function pg_cart_recovery_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = pg_schema_has('cart_recovery_touch');
+    }
+
+    return $ready;
+}
+
+/**
+ * A channel name the table accepts, '' for any other.
+ *
+ * @param string $channel
+ * @return string email, whatsapp, sms or page
+ */
+function pg_cart_recovery_channel($channel)
+{
+    $channel = strtolower(trim((string) $channel));
+
+    return in_array($channel, array('email', 'whatsapp', 'sms', 'page'), true) ? $channel : '';
+}
+
+/**
+ * A source type the table accepts, '' for any other.
+ *
+ * @param string $source_type
+ * @return string campaign, template or popup
+ */
+function pg_cart_recovery_source_type($source_type)
+{
+    $source_type = strtolower(trim((string) $source_type));
+
+    return in_array($source_type, array('campaign', 'template', 'popup'), true) ? $source_type : '';
+}
+
+/**
+ * The rule, pure. A cart is left when it was started at least 6 hours before
+ * the completion. The order's last touch sent before the completion takes it
+ * when it was sent at most 7 days before; an older last touch takes nothing.
+ * A left cart with no touch sent before the completion is counted apart
+ * (untouched), never as recovered.
+ *
+ * @param int   $order_date   unix time the cart was started, read before the completion rewrites it
+ * @param int   $completed_at unix time of the completion
+ * @param array $touches      touch id => sent_at (unix time; 0 = not sent)
+ * @return array{left: bool, touch_id: int, untouched: bool}
+ */
+function pg_cart_recovery_outcome($order_date, $completed_at, array $touches)
+{
+    $order_date = (int) $order_date;
+    $completed_at = (int) $completed_at;
+
+    $left = ($order_date > 0) && (($completed_at - $order_date) >= PG_CART_RECOVERY_LEFT_AFTER);
+
+    $last_id = 0;
+    $last_sent = 0;
+
+    foreach ($touches as $id => $sent_at) {
+        $id = (int) $id;
+        $sent_at = (int) $sent_at;
+
+        if (($sent_at < 1) || ($sent_at > $completed_at)) {
+            continue;
+        }
+
+        // The later send wins; on the same second, the later row.
+        if (($sent_at > $last_sent) || (($sent_at === $last_sent) && ($id > $last_id))) {
+            $last_id = $id;
+            $last_sent = $sent_at;
+        }
+    }
+
+    $touch_id = (($last_id > 0) && (($completed_at - $last_sent) <= PG_CART_RECOVERY_WINDOW)) ? $last_id : 0;
+
+    return array(
+        'left'      => $left,
+        'touch_id'  => $touch_id,
+        'untouched' => $left && ($last_id === 0),
+    );
+}
+
+/**
+ * The first column of the first row a placeholder query returns; '' when it
+ * failed or found nothing.
+ *
+ * @param string $sql
+ * @param array  $params
+ * @return string
+ */
+function pg_cart_recovery_first($sql, array $params)
+{
+    $result = db_q($sql, $params);
+
+    if (!$result) {
+        return '';
+    }
+
+    $row = mysqli_fetch_row($result);
+
+    return is_array($row) ? (string) $row[0] : '';
+}
+
+/**
+ * Records one touch of a left cart. The one writer of a touch: CR4's
+ * WhatsApp offers and a pop-up shown on a page call it too (channel page,
+ * source popup). A second call for the same order, channel and source writes
+ * nothing, so a job that runs twice counts one touch.
+ *
+ * @param int      $order_id    the incomplete order
+ * @param string   $channel     email, whatsapp, sms or page
+ * @param string   $source_type campaign, template or popup
+ * @param int      $source_id   that row's id
+ * @param int|null $sent_at     unix time; now when null
+ * @return int the touch's id, 0 when nothing was written
+ */
+function pg_cart_recovery_touch($order_id, $channel, $source_type, $source_id, $sent_at = null)
+{
+    $order_id = (int) $order_id;
+    $channel = pg_cart_recovery_channel($channel);
+    $source_type = pg_cart_recovery_source_type($source_type);
+    $source_id = (int) $source_id;
+    $sent_at = ($sent_at === null) ? time() : (int) $sent_at;
+
+    if (($order_id < 1) || ($channel === '') || ($source_type === '') || !pg_cart_recovery_ready()) {
+        return 0;
+    }
+
+    $params = array((string) $order_id, $channel, $source_type, (string) $source_id);
+
+    $existing = (int) pg_cart_recovery_first(
+        "SELECT id FROM cart_recovery_touch
+        WHERE (order_id = ?) AND (channel = ?) AND (source_type = ?) AND (source_id = ?)
+        LIMIT 1", $params);
+
+    if ($existing > 0) {
+        return 0;
+    }
+
+    if (!db_q(
+        "INSERT INTO cart_recovery_touch (order_id, channel, source_type, source_id, sent_at)
+        VALUES (?, ?, ?, ?, ?)", array_merge($params, array((string) $sent_at)))
+    ) {
+        return 0;
+    }
+
+    return (int) mysqli_insert_id(db::$con);
+}
+
+/**
+ * ?r=<reference code> restored the cart: the order's last touch sent before
+ * now is marked clicked and restored (each time kept from its first visit).
+ *
+ * @param int      $order_id
+ * @param int|null $now unix time; now when null
+ * @return void
+ */
+function pg_cart_recovery_restored($order_id, $now = null)
+{
+    $order_id = (int) $order_id;
+    $now = ($now === null) ? time() : (int) $now;
+
+    if (($order_id < 1) || !pg_cart_recovery_ready()) {
+        return;
+    }
+
+    $touch_id = (int) pg_cart_recovery_first(
+        "SELECT id FROM cart_recovery_touch
+        WHERE (order_id = ?) AND (channel <> '') AND (sent_at > 0) AND (sent_at <= ?)
+        ORDER BY sent_at DESC, id DESC
+        LIMIT 1", array((string) $order_id, (string) $now));
+
+    if ($touch_id < 1) {
+        return;
+    }
+
+    db_q(
+        "UPDATE cart_recovery_touch
+        SET
+            clicked_at = IF(clicked_at = 0, ?, clicked_at),
+            restored_at = IF(restored_at = 0, ?, restored_at)
+        WHERE id = ?", array((string) $now, (string) $now, (string) $touch_id));
+}
+
+/**
+ * The cart's start time, read by pg_order_complete() before its first write
+ * rewrites order_date. 0 when the table is not there (nothing to record).
+ *
+ * @param int $order_id
+ * @return int
+ */
+function pg_cart_recovery_order_date($order_id)
+{
+    if (((int) $order_id < 1) || !pg_cart_recovery_ready()) {
+        return 0;
+    }
+
+    return (int) pg_cart_recovery_first("SELECT order_date FROM orders WHERE id = ?", array((string) (int) $order_id));
+}
+
+/**
+ * The order was completed: every touch of it gets completed_at; the touch
+ * the rule picks gets recovered = 1 and the total. A left cart with no touch
+ * gets one row with channel '' and the total, counted apart. The total is
+ * written on one row of an order at most, so a sum over a period counts an
+ * order once.
+ *
+ * @param int      $order_id
+ * @param int      $order_date   the cart's start time, from pg_cart_recovery_order_date()
+ * @param int      $total        the order's total, integer minor units
+ * @param int|null $completed_at unix time; now when null
+ * @return void
+ */
+function pg_cart_recovery_completed($order_id, $order_date, $total, $completed_at = null)
+{
+    $order_id = (int) $order_id;
+    $completed_at = ($completed_at === null) ? time() : (int) $completed_at;
+    $total = (int) round((float) $total);
+
+    if (($order_id < 1) || !pg_cart_recovery_ready()) {
+        return;
+    }
+
+    $result = db_q(
+        "SELECT id, sent_at FROM cart_recovery_touch
+        WHERE (order_id = ?) AND (channel <> '')", array((string) $order_id));
+
+    if (!$result) {
+        return;
+    }
+
+    $touches = array();
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $touches[(int) $row['id']] = (int) $row['sent_at'];
+    }
+
+    $outcome = pg_cart_recovery_outcome($order_date, $completed_at, $touches);
+
+    if ($touches) {
+        db_q(
+            "UPDATE cart_recovery_touch
+            SET completed_at = ?
+            WHERE (order_id = ?) AND (channel <> '')", array((string) $completed_at, (string) $order_id));
+    }
+
+    if ($outcome['touch_id'] > 0) {
+        db_q(
+            "UPDATE cart_recovery_touch
+            SET recovered = 1, completed_total = ?
+            WHERE id = ?", array((string) $total, (string) $outcome['touch_id']));
+
+        return;
+    }
+
+    if ($outcome['untouched']) {
+        db_q(
+            "INSERT INTO cart_recovery_touch (order_id, channel, completed_at, completed_total)
+            VALUES (?, '', ?, ?)", array((string) $order_id, (string) $completed_at, (string) $total));
+    }
+}
