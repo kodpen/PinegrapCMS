@@ -148,6 +148,7 @@
 - model-assistants-anthropic.md: Anthropic (Claude) as a provider of model assistants: why it was added, how the Messages API is translated to and from Pinegrap AI's chat completions loop, what its reference said (2026-11-12) [decision: decisions-made-workspace-15.md]
 - model-assistants.md: Model assistants (ws_agents kind 'model'): providers and their data terms, the card, how ws_ai_step() answers a model:<id> request with the assistant's address, key, model and application
 - note-media.md: A note line linking only to a file of this site is drawn as the file in the read view (ws_render_body, note_media.php) and as a media card in the writing box (workspace_editor.js)
+- person-card-facts.md: A person's card facts in a channel (person_card.php, PF6a): the ws_person_card action, who may read it, role, title, departments and leads, working day, away days, local time, last seen [decision: here]
 - personal-calendar-census-mail.md: PC1 census (2026-11-14): pg_mail_parse() keeps a mail's calendar part as an attachment entry; the Workspace mail ingest drops it today; what PC7 can reuse [decision: here]
 - personal-calendar-census-privacy.md: PC1 census (2026-11-14): export, erasure, account deletion and leaving the team today, and what each does with private plans (architect's answer) [decision: here]
 - personal-calendar-census-readers.md: PC1 census (2026-11-14): every reader of the Work Calendar's rows (ws_events) and of Today, which one asks whose row it is, and what each must do with a person's private plan
