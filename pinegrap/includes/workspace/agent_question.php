@@ -326,6 +326,20 @@ function ws_agent_question_answer_of($poll_id)
 }
 
 /**
+ * Does an assistant's per-person limit (WS_CLAUDE_PER_PERSON,
+ * WS_AI_PER_PERSON) count this wake? Not for an answer to the assistant's own
+ * question: that is not a new request of the person, and refusing it would
+ * leave a closed question the assistant never hears about. Pure.
+ *
+ * @param bool $answer
+ * @return bool
+ */
+function ws_assistant_per_person_limit_applies($answer)
+{
+    return !$answer;
+}
+
+/**
  * Wakes the asking agent with the answer: one request, as a mention would
  * make it, hung on the poll's message, its brief carrying the question and
  * the answer. A registry agent through its reaching row and push door;
@@ -366,11 +380,19 @@ function ws_agent_question_wake($viewer, $poll)
             continue;
         }
 
+        // An answer is not a new request of the person who gives it, so
+        // their per-person limit is not counted; the question is closed
+        // already, so a wake that still cannot be made is said in the channel.
         $queued = ($value === 'ai')
-            ? ws_ai_after_send($viewer, $channel, (int) $poll['message_id'], $body, true)
-            : ws_claude_after_send($viewer, $channel, (int) $poll['message_id'], $body, true);
+            ? ws_ai_after_send($viewer, $channel, (int) $poll['message_id'], $body, true, true)
+            : ws_claude_after_send($viewer, $channel, (int) $poll['message_id'], $body, true, true);
 
         if (!$queued) {
+            ws_message_system((int) $channel['id'], lang(array(
+                'string' => '{var:1} was not told the answer to its question: it is not set up or not allowed in this channel.',
+                'vars'   => ($value === 'ai') ? 'Pinegrap AI' : 'Claude',
+            )));
+
             return '';
         }
 

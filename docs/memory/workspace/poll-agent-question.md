@@ -18,7 +18,7 @@ description: The agent question on the server (agent_question.php, step 11.0.214
 
 ## How is the asking agent woken?
 - `ws_agent_question_wake()`: the poll message's application. A registry agent through `ws_agent_after_send(..., 'agent:<id>', false, array('state' => …, 'answer' => true))`: `answer` lets its own message wake it and starts the depth count at 0; the hourly brake and the push door stay.
-- Claude and Pinegrap AI are woken through their own queues (`ws_claude_after_send()` / `ws_ai_after_send()` followed), the state set after, as `approval_agents.php` does. An OAuth client with no agent reads the answer itself (`ws_wait.php`).
+- Claude and Pinegrap AI are woken through their own queues (`ws_claude_after_send()` / `ws_ai_after_send()` followed, as an answer outside the per-person limit: `agent-question-answer-limit.md`), the state set after, as `approval_agents.php` does. An OAuth client with no agent reads the answer itself (`ws_wait.php`).
 - `requested_by` is who answered, `message_id` the poll's message, `ai_state` `{"agent_question": {poll_id, message_id, question, answer, by}}` (`ws_agent_question_request_state()`). `ws_agent_brief()` and `ws_ai_briefing()` add `ws_agent_question_brief_lines()`: question and answer in data blocks. A person's Claude device session never takes such a request.
 
 ## How does the memory index read it?

@@ -986,9 +986,12 @@ function ws_ai_setup_hint()
  * @param bool   $followed a discussion Pinegrap AI follows asks it without
  *                         its name (ws_thread_follow_ask()); a refusal is not
  *                         written after every message there
+ * @param bool   $answer   a person's answer to the assistant's own question
+ *                         (ws_agent_question_wake()): not a request of theirs,
+ *                         so their per-person limit does not apply
  * @return bool a request was queued
  */
-function ws_ai_after_send($viewer, $channel, $message_id, $body, $followed = false)
+function ws_ai_after_send($viewer, $channel, $message_id, $body, $followed = false, $answer = false)
 {
     // Written to an MCP server's alias, or a reply to an answer given with
     // one: Pinegrap AI answers with that server's tools (mcp_ask.php).
@@ -1022,8 +1025,10 @@ function ws_ai_after_send($viewer, $channel, $message_id, $body, $followed = fal
         return false;
     }
 
-    $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
-        WHERE agent = 'ai' AND requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')");
+    $waiting = ws_assistant_per_person_limit_applies($answer)
+        ? (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
+            WHERE agent = 'ai' AND requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')")
+        : 0;
 
     if ($waiting >= WS_AI_PER_PERSON) {
         if (!$followed) {
