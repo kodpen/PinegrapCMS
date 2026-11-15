@@ -2125,14 +2125,14 @@ if ($selected) {
 
 	$mp_status .= '
 				<div class="d-grid gap-3 mt-5">
-					<button type="button" class="btn btn-sm btn-solid theme-primary" data-bs-toggle="drawer" data-bs-target="#mp_drawer">
-						<i class="bi bi-pencil me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Settings')) . '</span></button>
+					<button type="button" class="pg-button pg-button-quiet pg-button-sm" data-bs-toggle="drawer" data-bs-target="#mp_drawer">
+						<i class="bi bi-pencil" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Settings')) . '</span></button>
 					<form method="post" action="marketplace_settings.php" class="d-grid">
 						' . get_token_field() . '
 						<input type="hidden" name="mp_action" value="test">
 						<input type="hidden" name="account_id" value="' . $selected_id . '">
-						<button type="submit" class="btn btn-sm btn-outline theme-secondary">
-							<i class="bi bi-plug me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Test connection')) . '</span></button>
+						<button type="submit" class="pg-button pg-button-ghost pg-button-sm">
+							<i class="bi bi-plug" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Test connection')) . '</span></button>
 					</form>
 				</div>
 			</div>
@@ -2157,17 +2157,17 @@ if ($selected) {
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="push_all">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline theme-secondary"' . ($map_counts['all'] ? '' : ' disabled') . '>
-						<i class="bi bi-arrow-repeat me-1"></i>' . lang('Send all now') . '</button>
+					<button type="submit" class="pg-button pg-button-ghost pg-button-sm"' . ($map_counts['all'] ? '' : ' disabled') . '>
+						<i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Send all now') . '</button>
 				</form>
-				<a class="btn btn-sm ' . ($can_read_products ? 'btn-outline theme-secondary' : 'btn-solid theme-primary') . '" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=shop">
-					<i class="bi bi-shop me-1"></i>' . h(lang('Products in this shop')) . '</a>'
+				<a class="pg-button pg-button-sm ' . ($can_read_products ? 'pg-button-ghost' : 'pg-button-quiet') . '" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=shop">
+					<i class="bi bi-shop" aria-hidden="true"></i>' . h(lang('Products in this shop')) . '</a>'
 				. ($can_read_products ? '
-				<a class="btn btn-sm btn-solid theme-primary" href="marketplace_products.php?account=' . $selected_id . '">
-					<i class="bi bi-boxes me-1"></i>' . h(lang('Match in bulk with pictures')) . '</a>' : '')
+				<a class="pg-button pg-button-quiet pg-button-sm" href="marketplace_products.php?account=' . $selected_id . '">
+					<i class="bi bi-boxes" aria-hidden="true"></i>' . h(lang('Match in bulk with pictures')) . '</a>' : '')
 				. ($can_listings ? '
-				<a class="btn btn-sm btn-outline theme-secondary" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=listings">
-					<i class="bi bi-tags me-1"></i>' . h(lang('Listings')) . '</a>' : '') . '
+				<a class="pg-button pg-button-ghost pg-button-sm" href="marketplace_products.php?account=' . $selected_id . '&amp;mode=listings">
+					<i class="bi bi-tags" aria-hidden="true"></i>' . h(lang('Listings')) . '</a>' : '') . '
 			</div>
 		</div>
 		<div class="card-body">'

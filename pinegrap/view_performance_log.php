@@ -525,7 +525,7 @@ echo '
             </div>
             <button type="submit" class="btn btn-sm btn-solid theme-primary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
         </form>',
-        'overflow' => $can_clear ? '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#perf-log-clear-modal" title="' . h(lang('Clear all performance log data')) . '" aria-label="' . h(lang('Clear all performance log data')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>' : '',
+        'overflow' => $can_clear ? '<button type="button" class="pg-icon-button" data-bs-toggle="dialog" data-bs-target="#perf-log-clear-modal" title="' . h(lang('Clear all performance log data')) . '" aria-label="' . h(lang('Clear all performance log data')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>' : '',
     ), array('class' => 'mb-5')) . '
     <div class="row">
         <div class="col-12">
