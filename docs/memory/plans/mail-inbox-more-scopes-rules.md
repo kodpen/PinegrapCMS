@@ -16,7 +16,7 @@ description: Exact scope of IB11 and IB12 of plans/mail-inbox-more.md after the 
 - Calendar: saving writes a `ws_personal_plans` row (all day, `visibility` team, "Away") through `personal_plans.php`; clearing deletes it.
 
 ## Which schema does IB12 need?
-- Owner (2026-11-15, channel decision 3500; shape 3505): A, added by IB12 with the idempotent helpers, its [SCHEME] item in the PR body, no backfill.
+- Owner (2026-11-15, `workflow/decisions-made-schema-21.md`): A, added by IB12 with the idempotent helpers, its [SCHEME] item in the PR body, no backfill.
 - A, chosen: `ws_profiles.mail_away` TEXT NULL, JSON (first day, last day, text, stand-in, plan id), written as `mail_signature` is. Ingest reads one profile row.
 - Not chosen: B, five columns on `ws_profiles` (two DATE, TEXT, stand-in, plan id).
 - C: A or B plus a table of senders already answered, for an exact once per sender.
