@@ -540,7 +540,7 @@ function pg_designer_screen_render($ctx)
                              page group so the component editor and read-only
                              mode keep it. Wired by backend.src.js
                              (data-pg-menu-drawer-toggle). -->
-                        <button type="button" id="sd-left-toggle" class="sd-icon-btn sd-left-toggle" data-pg-menu-drawer-toggle aria-controls="menu" aria-expanded="false" title="' . h(lang('Show menu')) . '" aria-label="' . h(lang('Show menu')) . '" data-label-show="' . h(lang('Show menu')) . '" data-label-hide="' . h(lang('Hide menu')) . '"><span class="bi bi-layout-sidebar pg-mt-shut" aria-hidden="true"></span><span class="bi bi-layout-sidebar-inset pg-mt-open" aria-hidden="true"></span></button>
+                        <button type="button" id="sd-left-toggle" class="sd-icon-btn sd-left-toggle no-popover" data-pg-menu-drawer-toggle aria-controls="menu" aria-expanded="false" title="' . h(lang('Show menu')) . '" aria-label="' . h(lang('Show menu')) . '" data-label-show="' . h(lang('Show menu')) . '" data-label-hide="' . h(lang('Hide menu')) . '"><span class="bi bi-layout-sidebar pg-mt-shut" aria-hidden="true"></span><span class="bi bi-layout-sidebar-inset pg-mt-open" aria-hidden="true"></span></button>
                         <div class="sd-toolbar-group sd-toolbar-pages"' . ($sd_component ? ' hidden' : '') . '>
                             <div class="pg-menu-wrap sd-tabs-add">
                                 <button type="button" class="sd-tabs-add-btn" data-bs-toggle="menu" aria-expanded="false" title="' . lang('Add Page') . '">

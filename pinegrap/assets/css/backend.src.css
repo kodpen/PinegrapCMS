@@ -3296,8 +3296,9 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
 .software-container.menu-drawer-only {
   grid-template-columns: 0 minmax(0, 1fr);
 }
-.software-container.menu-drawer-only .software-sidebar,
-.software-container.menu-drawer-only:not(.expanded) .software-sidebar {
+/* As heavy as the rail's width rule and the open drawer's, between the two:
+   it beats the first by order and the open drawer below beats it. */
+.software-container.menu-drawer-only .software-sidebar {
   width: min(280px, 84vw);
   left: 0;
   transform: translateX(-100%);
@@ -3329,8 +3330,7 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   box-shadow: inset -1px 0 0 var(--pg-border-color), 0 0 24px #00000059;
 }
 @media (prefers-reduced-motion: reduce) {
-  .software-container.menu-drawer-only .software-sidebar,
-  .software-container.menu-drawer-only:not(.expanded) .software-sidebar {
+  .software-container.menu-drawer-only .software-sidebar {
     transition: none;
   }
 }
