@@ -24,7 +24,7 @@ description: Plan (owner 2026-11-14): an approval request can ask a channel's ag
 - AE2 (M, schema) Agent approvers on the server: who may be asked, the wake, the answer of an asked agent, the bound with its tests (a flow's request refuses an agent, an agent's own request refuses it). Exact scope: `-census-steps.md`. Done (#9567): `workspace/approval-agents.md`.
 - AE3 (S) The form and the card: agents under the people, the badge on the card (workspace_approvals.js, `ws_approvals_map()`). Done (#9586). Look A, the pictures in the agent channel.
 - AE4 (S) API for application agents: `agents` on create, the decide route for the asked agent's own key (off MCP), `WorkspaceApproval.agents`, the dry run. Done (#9584): `workspace/approval-agents-api.md`.
-- AE4b (S) The assistants as approvers: model agents, Claude and Pinegrap AI offered and answering through the site that carries them on. Scope: `-census-steps.md`.
+- AE4b (S, claimed) The assistants as approvers: model agents, Claude and Pinegrap AI offered and answering through the site that carries them on. Scope: `-census-steps.md`.
 - AE5 (M) `@herkes` on the server: tag, lines, wake, reserved handles. Done (#9571): `workspace/workspace-everyone-mention.md`.
 - AE5b (S) The @ menu's "Everyone" entry. Done (#9578), look request channel 3659.
 - AE6 (S) Close-out: the memory files; `workflow/agent-channel-wake.md` drops `@hepsi` and its text waiters; this plan deleted.
