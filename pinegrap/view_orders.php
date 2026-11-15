@@ -3204,19 +3204,15 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     $stat_card = function ($icon, $value, $label, $canvas, $value_class = '') {
         return '
-                    <div class="col-6 lg:col-3">
-                        <div class="card pg-card h-100">
-                            <div class="card-body p-5 pb-3">
-                                <div class="d-flex align-items-start gap-3 small fg-secondary mb-1"><i class="bi ' . $icon . '" aria-hidden="true"></i><span>' . $label . '</span></div>
-                                <div class="h5 mb-1 text-nowrap' . $value_class . '">' . $value . '</div>
-                                ' . (($canvas !== '') ? '<div class="pg-orders-spark"><canvas id="' . $canvas . '" aria-hidden="true"></canvas></div>' : '') . '
-                            </div>
-                        </div>
+                    <div class="pg-card pg-figure">
+                        <div class="pg-figure-label"><i class="bi ' . $icon . '" aria-hidden="true"></i><span>' . $label . '</span></div>
+                        <div class="pg-figure-value' . $value_class . '">' . $value . '</div>
+                        ' . (($canvas !== '') ? '<div class="pg-orders-spark"><canvas id="' . $canvas . '" aria-hidden="true"></canvas></div>' : '') . '
                     </div>';
     };
 
     $output_order_stats = '
-                <div class="row g-3 mb-3">'
+                <div class="pg-figures">'
                     . $stat_card('bi-bank', $online_orders_total_all, h(lang('Total Sales Amount')) . ' (' . h(lang('Online')) . ')', '')
                     . $stat_card('bi-funnel', $filter_totals, h(lang('Total Sales Amount')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_total')
                     . $stat_card('bi-receipt', h(pg_format_number((int) $number_of_results, 0)), h(lang('Orders')) . ' (' . h(lang('Current filter')) . ')', 'pg_orders_spark_count')

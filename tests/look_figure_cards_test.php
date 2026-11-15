@@ -4,7 +4,7 @@
  *
  * Source test for look A's figure cards: the shared label, value and note
  * of a figure outside the report block draw the report figure's values, and
- * the commissions figures, the invoice's settlement figures, the receipt's
+ * the orders and commissions figures, the invoice's settlement figures, the receipt's
  * amount and the Marketplace Products hero use them instead of their own
  * sizes.
  *
@@ -87,6 +87,16 @@ function test_figure_classes_draw_the_report_figure()
 
 function test_figure_screens_use_the_shared_classes()
 {
+	$orders = look_figure_cards_test_source('view_orders.php');
+	$start = strpos($orders, '$stat_card = function');
+	$card = substr($orders, (int) $start, (int) strpos($orders, '};', (int) $start) - (int) $start);
+
+	pg_assert_contains('<div class="pg-card pg-figure">', $card, 'orders: a figure card');
+	pg_assert_contains('<div class="pg-figure-label">', $card, 'orders: the label');
+	pg_assert_contains('<div class="pg-figure-value\' . $value_class', $card, 'orders: the value');
+	pg_assert_true(strpos($card, 'h5 mb-1') === false, 'orders: no heading size on a figure');
+	pg_assert_contains("<div class=\"pg-figures\">'\n                    . \$stat_card(", $orders, 'orders: the figure grid');
+
 	$commissions = look_figure_cards_test_source('view_commissions.php');
 
 	pg_assert_contains('<div class="pg-figures">', $commissions, 'commissions: the figure grid');
