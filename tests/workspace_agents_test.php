@@ -226,6 +226,11 @@ function test_workspace_agent_save_check()
 	pg_assert_same('wake_every', ws_agent_save_check(array('wake_every' => 1441) + $app, null, array(), array(), array(4))['field']);
 	pg_assert_same('kind', ws_agent_save_check(array('kind' => 'claude') + $app, null, array(), array(), array(4))['field'], 'a second Claude is not made by hand');
 
+	$shared = ws_agent_save_check($app, null, array(), array(), array(4, 5), array(4));
+	pg_assert_same(array(false, 'app_id'), array($shared['ok'], $shared['field']), 'an application another agent works through is refused');
+	pg_assert_true(ws_agent_save_check(array('app_id' => 5) + $app, null, array(), array(), array(4, 5), array(4))['ok'], 'an application of its own passes');
+	pg_assert_true(ws_agent_save_check(array('kind' => 'model', 'provider' => 'openai', 'model' => 'm', 'app_id' => 4) + $app, null, array(), array(), array(4), array(4))['ok'], 'only an app agent needs the application to itself');
+
 	$model = array('kind' => 'model', 'handle' => 'chatgpt', 'name' => 'ChatGPT', 'provider' => 'openai', 'model' => 'gpt-4.1-mini', 'door_kind' => 'push', 'door_url' => 'https://x.test/');
 	$checked = ws_agent_save_check($model, null, array(), array(), array());
 	pg_assert_true($checked['ok'], $checked['error']);
@@ -283,4 +288,20 @@ function test_workspace_agent_caller_marks_seen()
 	$caller = substr($caller, 0, strpos($caller, "\n}\n"));
 
 	pg_assert_contains('ws_agent_seen_mark((array) $row);', $caller, 'every call with the agent\'s key marks it seen');
+}
+
+function test_workspace_agent_apps_taken()
+{
+	$rows = array(
+		array('id' => 3, 'kind' => 'app', 'app_id' => 4),
+		array('id' => 7, 'kind' => 'app', 'app_id' => 4),
+		array('id' => 8, 'kind' => 'app', 'app_id' => 5),
+		array('id' => 9, 'kind' => 'model', 'app_id' => 6),
+		array('id' => 1, 'kind' => 'claude', 'app_id' => 0),
+	);
+
+	pg_assert_same(array(4, 5), ws_agent_apps_taken($rows, 0), 'a new agent may take no application an app agent holds');
+	pg_assert_same(array(5), ws_agent_apps_taken($rows, 3), 'the first agent of a shared application keeps it: its key resolves to it');
+	pg_assert_same(array(4, 5), ws_agent_apps_taken($rows, 7), 'the second agent of a shared application is refused it');
+	pg_assert_same(array(4), ws_agent_apps_taken($rows, 8));
 }

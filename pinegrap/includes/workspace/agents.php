@@ -841,6 +841,44 @@ function ws_agent_brake($depth, $last_hour)
 }
 
 /**
+ * The applications an app agent may not take: those other app agents work
+ * through. Where two agents already share one, the first in id order keeps
+ * it (later agents on it do not count against it), as an application's key
+ * resolves to that agent. Pure.
+ *
+ * @param array[] $rows      ws_agents rows: id, kind, app_id
+ * @param int     $except_id the agent being saved, 0 for a new one
+ * @return int[]
+ */
+function ws_agent_apps_taken($rows, $except_id)
+{
+    $except_id = (int) $except_id;
+    $own = 0;
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        if (($except_id > 0) && ((int) ($row['id'] ?? 0) === $except_id)) {
+            $own = (int) ($row['app_id'] ?? 0);
+        }
+    }
+
+    foreach ((array) $rows as $row) {
+        $id = (int) ($row['id'] ?? 0);
+        $app_id = (int) ($row['app_id'] ?? 0);
+
+        if ((($row['kind'] ?? '') !== 'app') || ($app_id === 0) || ($id === $except_id) || (($app_id === $own) && ($id > $except_id))) {
+            continue;
+        }
+
+        $out[$app_id] = $app_id;
+    }
+
+    sort($out);
+
+    return array_values($out);
+}
+
+/**
  * An agent's fields from the card checked and filled from its current row.
  * Claude's row keeps its kind, handle and door (the Claude card writes its
  * routine); an `app` agent works through an application and has a door, a
@@ -853,9 +891,10 @@ function ws_agent_brake($depth, $last_hour)
  * @param string[]   $taken      handles other agents and MCP servers hold
  * @param string[]   $user_names the people's user names
  * @param int[]      $app_ids    the applications an agent may work through
+ * @param int[]      $apps_taken applications other app agents work through (ws_agent_apps_taken())
  * @return array ok, error (a sentence), field, values
  */
-function ws_agent_save_check($input, $current, $taken, $user_names, $app_ids)
+function ws_agent_save_check($input, $current, $taken, $user_names, $app_ids, $apps_taken = array())
 {
     $input = (array) $input;
     $claude = $current && ($current['kind'] === 'claude');
@@ -903,6 +942,12 @@ function ws_agent_save_check($input, $current, $taken, $user_names, $app_ids)
 
     if (($values['kind'] === 'app') && ($values['app_id'] === 0)) {
         return $fail(lang('Choose the application the agent works through.'), 'app_id');
+    }
+
+    // A call made with an application's key is answered as one agent, so a
+    // second app agent on the same application never sees its own requests.
+    if (($values['kind'] === 'app') && in_array($values['app_id'], array_map('intval', (array) $apps_taken), true)) {
+        return $fail(lang('Another agent already works through this application: each agent needs its own application.'), 'app_id');
     }
 
     if ($values['kind'] === 'model') {
