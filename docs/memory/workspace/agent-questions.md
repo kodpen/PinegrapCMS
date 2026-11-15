@@ -1,23 +1,32 @@
 ---
 name: agent-questions
-description: How an agent asks the people with a poll or an approval; a one-answer question as a one-choice poll, settled by its first answer; why the outcome is written in the agent's name
+description: How an agent asks people: the agent question (a poll an application asks), who answers, how it settles, where it shows, the tool, in whose name an outcome is written
 ---
 
-## How does an agent ask the people?
-- With a poll (`workspace.polls.create`, an MCP tool since step A5b) or an approval request (`workspace.approvals.create`, open to applications before). An application key or an OAuth connection asks as the application (`ws_api_writer_app_id()` → `ws_poll_create(..., $app_id)`); a team devices session asks as the person, as before. The route texts tell an agent to put the option it recommends first.
-- Only people answer: votes and approval decisions stay `ws_api_person_only()` and off MCP (`workspace-api-callers.md`).
-- An application key closes only a poll it asked itself (`ws_api_poll_is_callers()`, the poll message's `sender_kind = app` and `sender_id` the caller's application); every other close stays the person's. Changing, taking back and asking again go the same way (`ws_api_poll_asker_app()`, `poll-take-back.md`); a person's poll stays own-words-only. These routes stay off MCP: an agent over MCP sets `closes_at`.
+## What is an agent question?
+- A poll an application asks (an agent's key, Claude's routine, an OAuth connection, an assistant). The server sets `ws_polls.agent_question` (`ws_agent_question_flag()`), never the request. Owner (2026-11-14): one thing, the poll, widened; an agent's poll only looks and settles differently (`workflow/decisions-made-workspace-29.md`, column `decisions-made-schema-19.md`).
+- A person's poll stays a poll, and so does an agent's poll made before step 11.0.214.
+- The approval request does not change. A question one agent asks another, or a list where several lines are ticked, stays a checklist (`agent-checklist-questions.md`).
 
-## How is a question with one answer asked, and when is the answer locked?
-- Owner (2026-11-10): one choice, no change afterwards, a poll rather than a checklist; the shape is the architect's (#8554, `workflow/decisions-made-workspace-12.md`).
-- Ask: `php tools/ws_poll.php ask [--idempotency-key=K] "<question>" "<recommended>" "<other>"` prints `<message id> <poll id>` (#8564). It posts `POST /workspace/channels/{id}/polls` with `question` and `options` (trimmed, blank and repeated ones left out, two to ten), `multiple` and `anonymous` left out.
-- Wait: `php tools/ws_wait.php --changed=<message id>` wakes on a vote and prints the message; `poll.options[].voters` names who chose what (`user_id`, `name`).
-- Settled: from step 11.0.214 an application's poll is an agent question; the first answer of a person asked closes it, writes no outcome line and wakes the asking agent; closing it by hand is refused (`poll-agent-question.md`).
-- `tools/ws_poll.php` also asks with descriptions and "Other", takes back and asks again (`poll-agent-question-reach.md`); `close <poll id>` still closes a poll made before the step: a clear winner is written as a decision under it, a tie or no vote as a system line, and the agent then writes the answer itself (`tools/ws_post.php --kind=decision --parent=<message id>`).
-- A list where several lines are ticked, and a question one agent asks another, stay a checklist (`agent-checklist-questions.md`).
+## Who answers, and how is it settled?
+- The people the question mentions, else the channel's owners; the others read; a guest never. No anonymous vote, closing time, counts or bars (`poll-agent-question.md`).
+- One answer: the click is the answer; several or "Other": one Send. The first answer settles it, writes no outcome line and wakes the asking agent with the question and the answer in its brief. Closing by hand is refused; its asker takes it back or asks again (`poll-take-back.md`).
+- Owner (2026-11-15): an agent question looks like the approved drawing (`agent-questions/drawing.html`), not like a poll (`workflow/decisions-made-workspace-34.md`). The box: `poll-agent-question-box.md`.
+- An answered one is a channel decision: the memory index and the Decisions tab list it (architect, message 3460).
 
-## In whose name is the outcome written?
+## Where does it reach the person?
+- Rung whatever their notify level, in Today's "Waiting for you", on the dashboard's Assistant card, in the channel export (`poll-agent-question-reach.md`).
+
+## What does every poll carry?
+- An option's description, picture (a file posted in the channel, never inline markup), links, Recommended mark and an "Other" row (`poll-option-parts.md`); change, take back and ask again by its asker (`poll-take-back.md`); three box shapes and the New poll form (`poll-box.md`).
+- A poll made before draws, counts and closes as before: every new column defaults to empty, no backfill.
+
+## How does an agent ask with the tool?
+- `php tools/ws_poll.php ask [--idempotency-key=K] "<question>" "<recommended>" "<other>"` prints `<message id> <poll id>`; the recommended option goes first. It also takes descriptions, "Other", several answers, `again` and `withdraw` (`poll-agent-question-reach.md`).
+- `php tools/ws_wait.php --changed=<message id>` wakes on the answer; `poll.options[].voters` names who chose what.
+- `close <poll id>` closes only a poll made before step 11.0.214: a clear winner is written as a decision under it, a tie or no vote as a system line.
+- Votes and approval decisions stay a person's (`ws_api_person_only()`, off MCP, `workspace-api-callers.md`). Owner (2026-11-10): a one-answer question is a one-choice poll, not changed afterwards (`workflow/decisions-made-workspace-12.md`).
+
+## In whose name is an outcome written?
 - The application's, when the question's message was the application's (`ws_message_app_id()`): `ws_poll_close()` and `ws_approval_settle()` pass it as `app_id` to `ws_message_send()`, so the decision has `sender_kind = app` and `marked_by_kind = app`.
-- **Why:** both used to write the outcome as the asker (`created_by`, the application's owner). From A5 on, a decision of the owner's account is an owner decision (`workflow/architect.md`), so an agent's poll result would have read as the owner's decision.
-- `ws_message_send()` marks a decision or note posted with an `app_id` by the application (`marked_by` = application id, `marked_by_kind = app`) once the column exists; before the upgrade it keeps the old person mark.
-- The outcome is a decision line, so it reaches every agent brief of the channel through the memory index (`channel-memory.md`).
+- **Why:** written as the asker (the application's owner) it would read as an owner decision (`workflow/architect.md`).

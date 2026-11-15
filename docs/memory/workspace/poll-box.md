@@ -5,7 +5,7 @@ description: The poll box (pollNode(), AQ3 #9647): three shapes and their rule, 
 
 ## Which shape does a poll box take?
 - `pollShape()` in `assets/js/workspace.js`, by what the options carry: `split` (one large picture beside the options) when the poll is single choice, has no "Other" row and every option has a picture; `rows` (a picture on each row that has one) when any option has a picture otherwise; `text` when none has.
-- The card carries `ws-poll-shape-<shape>` (not `ws-poll-split`: that is the inner picture-and-list grid). The rule fits the three boxes of the approved drawing (`plans/poll-agent-questions/drawing.html`). The agent question's box shares `pollShape()`, `pollOptionText()` and `pollPictures()` (`poll-agent-question-box.md`).
+- The card carries `ws-poll-shape-<shape>` (not `ws-poll-split`: that is the inner picture-and-list grid). The rule fits the three boxes of the approved drawing (`agent-questions/drawing.html`). The agent question's box shares `pollShape()`, `pollOptionText()` and `pollPictures()` (`poll-agent-question-box.md`).
 - `split`: the large picture follows the row pointed at or focused, starting on the reader's choice, else the recommended option, else the first. It opens the image viewer over the poll's pictures (`pollPictures()`); a row's thumbnail opens it too without ticking the row. Under 576 px the picture stands above the options.
 
 ## What does a row show?
