@@ -51,7 +51,7 @@ foreach ($rows as $row) {
             <td><span class="badge theme-' . h($status[1]) . '">' . h($status[0]) . '</span>'
                 . (!empty($row['signed']) ? ' <i class="bi bi-pen fg-success" title="' . h(lang('Signed')) . '" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Signed')) . '</span>' : '')
                 . (($row_state === 'invoiced')
-                    ? ' <a class="small pg-link-body-emphasis" href="' . (((string) $row['invoice_status'] === 'draft') ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $row['invoice_id'] . '">'
+                    ? ' <a class="pg-text-2 pg-link-body-emphasis" href="' . (((string) $row['invoice_status'] === 'draft') ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $row['invoice_id'] . '">'
                         . h(((string) $row['invoice_number'] !== '') ? (string) $row['invoice_number'] : lang('Draft')) . '</a>'
                     : '') . '</td>
         </tr>';
@@ -115,7 +115,7 @@ pg_page_shell([
             </nav>
             ' . $output_filter_note . '
 
-            <div class="card my-7">
+            <div class="card pg-card my-7">
                 <div class="card-body p-0 table-responsive position-relative">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
