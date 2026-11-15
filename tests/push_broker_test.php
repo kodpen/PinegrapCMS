@@ -165,10 +165,10 @@ function test_push_broker_route_handlers_check_before_the_rehearsal()
 
 	pg_assert_contains("oauth_client_id", push_broker_test_source('api_push_device_load'), 'an OAuth connection is refused');
 
-	foreach (array('api_push_device_register', 'api_push_device_unregister') as $name) {
+	foreach (array('api_push_device_register' => 'pg_push_broker_call(', 'api_push_device_unregister' => 'pg_push_broker_forget_endpoints(') as $name => $broker) {
 		$source = push_broker_test_source($name);
 		pg_assert_true(strpos($source, 'api_push_device_load(') < strpos($source, 'api_dry_run_stop('), $name . ': the gate first');
-		pg_assert_true(strpos($source, 'api_dry_run_stop(') < strpos($source, 'pg_push_broker_call('), $name . ': the broker after the rehearsal');
+		pg_assert_true(strpos($source, 'api_dry_run_stop(') < strpos($source, $broker), $name . ': the broker after the rehearsal');
 	}
 
 	pg_assert_true(strpos(push_broker_test_source('api_push_device_register'), 'bundle_id') < strpos(push_broker_test_source('api_push_device_register'), 'api_dry_run_stop('), 'the bundle id is checked before the rehearsal');
@@ -180,4 +180,29 @@ function test_push_broker_schema_step()
 
 	pg_assert_contains("upgrade_2026_11_0_push_provider();           // 11.0.215", $migration);
 	pg_assert_contains("install_add_column('push_subscriptions', 'provider', \"VARCHAR(8) NOT NULL DEFAULT ''\");", $migration);
+}
+
+// A revoke, a deleted registration and a row an operator stops each have the
+// broker forget the endpoint before the row is deleted.
+function test_push_broker_forget_comes_before_every_delete_of_a_native_row()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/devices.php');
+
+	$revoke = push_broker_test_source('api_device_forget_push');
+	pg_assert_true(strpos($revoke, 'pg_push_broker_forget_endpoints(') < strpos($revoke, 'DELETE FROM push_subscriptions'), 'device revoke');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/account.php');
+
+	$unregister = push_broker_test_source('api_push_device_unregister');
+	pg_assert_true(strpos($unregister, 'pg_push_broker_forget_endpoints(') < strpos($unregister, 'pg_push_subscription_delete('), 'POST /push/devices/delete');
+
+	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/view_sessions.php');
+	$stop = substr($screen, strpos($screen, "'revoke_push'"));
+	pg_assert_true(strpos($stop, 'pg_push_broker_forget_endpoints(') < strpos($stop, 'DELETE FROM push_subscriptions'), 'the sessions screen');
+}
+
+function test_push_broker_forget_asks_nothing_without_a_broker()
+{
+	pg_assert_same(null, pg_push_broker_forget_endpoints(array('https://push.pinegrap.com/e/1')), 'returns before any call');
+	pg_assert_contains("pg_push_broker_base(PG_PUSH_BROKER_URL) === ''", push_broker_test_source('pg_push_broker_forget_endpoints'));
 }

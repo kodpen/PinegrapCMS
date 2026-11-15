@@ -1346,11 +1346,10 @@ function api_push_device_unregister($params) {
 
 	api_dry_run_stop('deleted', 'push_device', array('found' => !empty($rows)));
 
-	// The site stops sending whatever the broker answers; the broker forgets
-	// an endpoint it is told about, and one that is never used again expires.
-	foreach ($rows as $row) {
+	// The site stops sending whatever the broker answers.
+	pg_push_broker_forget_endpoints(array_column($rows, 'endpoint'));
 
-		pg_push_broker_call('forget', array('endpoint' => (string)$row['endpoint']));
+	foreach ($rows as $row) {
 
 		pg_push_subscription_delete($row['endpoint']);
 

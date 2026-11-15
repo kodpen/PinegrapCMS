@@ -90,6 +90,23 @@ function pg_push_has_last_error()
 	return $available;
 }
 
+// The column that tells a native push row from a browser's (step 11.0.215)
+// arrives with the upgrade, and files land before the schema does.
+function pg_push_has_provider()
+{
+	static $available = null;
+
+	if ($available === null) {
+		$count = db_value("SELECT COUNT(*) FROM information_schema.COLUMNS
+			WHERE TABLE_SCHEMA = DATABASE()
+			AND TABLE_NAME = 'push_subscriptions'
+			AND COLUMN_NAME = 'provider'");
+		$available = ((int) $count > 0);
+	}
+
+	return $available;
+}
+
 function pg_push_base64url_encode($value)
 {
 	return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
@@ -291,7 +308,9 @@ function pg_push_subscriptions_for_user($user_id)
 		return array();
 	}
 
-	return db_items("SELECT id, endpoint, p256dh, auth, user_agent, last_seen_timestamp
+	return db_items("SELECT id, endpoint, p256dh, auth, user_agent, last_seen_timestamp, "
+		. ((pg_push_has_provider()) ? "provider" : "'' AS provider") . ", "
+		. ((pg_push_has_last_error()) ? "last_error" : "'' AS last_error") . "
 		FROM push_subscriptions
 		WHERE user_id = '" . (int) $user_id . "'");
 }
@@ -462,44 +481,142 @@ function pg_push_vapid_token($endpoint)
 	return $tokens[$audience];
 }
 
+// The body of one push. A browser's push is empty: it wakes the service
+// worker, which asks the site what to show. A native push row (provider 'fcm'
+// or 'apns', the push broker's endpoint) carries the version and the person's
+// unread count for the app's badge, and still no text, title or name. Pure.
+function pg_push_body($subscription, $badge)
+{
+	if ((string) ($subscription['provider'] ?? '') === '') {
+		return '';
+	}
+
+	return json_encode(array('v' => 1, 'badge' => max(0, (int) $badge)));
+}
+
+// What a push service's status means: ok, gone (404 and 410: the device is
+// gone for good), busy (429: asked to wait) or failed. Pure.
+function pg_push_outcome($status)
+{
+	$status = (int) $status;
+
+	if (($status >= 200) && ($status < 300)) {
+		return 'ok';
+	}
+
+	if (($status === 404) || ($status === 410)) {
+		return 'gone';
+	}
+
+	return ($status === 429) ? 'busy' : 'failed';
+}
+
+// How many seconds a Retry-After value asks for: delta seconds or an HTTP
+// date, kept between a second and a day; a minute when it says neither. Pure.
+function pg_push_retry_after($value, $now)
+{
+	$value = trim((string) $value);
+
+	if (ctype_digit($value)) {
+		return max(1, min(86400, (int) $value));
+	}
+
+	$when = ($value !== '') ? strtotime($value) : false;
+
+	if (($when !== false) && preg_match('/[A-Za-z]{3}, \d{2} [A-Za-z]{3} \d{4} \d{2}:\d{2}:\d{2} GMT\z/', $value)) {
+		return max(1, min(86400, $when - (int) $now));
+	}
+
+	return 60;
+}
+
+// A row held back by a 429 says until when in last_error, which the sessions
+// screen shows as it is; pg_push_held_until() reads it back. Pure.
+function pg_push_hold_text($until)
+{
+	return 'HTTP 429, retry after ' . gmdate('Y-m-d H:i:s', (int) $until) . ' UTC';
+}
+
+// Until when a row is held back, from its last_error; 0 when it is not. Pure.
+function pg_push_held_until($last_error)
+{
+	if (!preg_match('/\AHTTP 429, retry after (\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) UTC\z/', (string) $last_error, $match)) {
+		return 0;
+	}
+
+	return (int) gmmktime((int) $match[4], (int) $match[5], (int) $match[6], (int) $match[2], (int) $match[3], (int) $match[1]);
+}
+
 // One delivery. The address is a URL the browser gave us, so it goes out
 // through the outbound client that resolves the name once and calls the address
-// it resolved - the same protection the webhook sender uses.
-function pg_push_send_to_subscription($subscription)
+// it resolved - the same protection the webhook sender uses. $badge is the
+// person's unread count, sent only to a native push row (pg_push_body()).
+function pg_push_send_to_subscription($subscription, $badge = 0)
 {
 	include_once(dirname(__FILE__) . '/api/outbound/http.php');
+
+	$id = (int) $subscription['id'];
+	$now = time();
+
+	// A 429 asked this device's service to be left alone until then.
+	$held = pg_push_held_until($subscription['last_error'] ?? '');
+
+	if ($held > $now) {
+		return array('ok' => false, 'status' => 429, 'error' => (string) $subscription['last_error'], 'retry_after' => $held - $now);
+	}
 
 	$token = pg_push_vapid_token($subscription['endpoint']);
 
 	if ($token == '') {
-		return array('ok' => false, 'status' => 0, 'error' => 'The VAPID token could not be signed.');
+		return array('ok' => false, 'status' => 0, 'error' => 'The VAPID token could not be signed.', 'retry_after' => 0);
 	}
 
-	$result = api_http_post($subscription['endpoint'], '', array(
+	$body = pg_push_body($subscription, $badge);
+
+	$headers = array(
 		'Authorization: vapid t=' . $token . ', k=' . pg_push_vapid_public_key(),
 		'TTL: 3600',
 		'Urgency: normal',
-		'Content-Length: 0'
-	), 10);
+		'Content-Length: ' . strlen($body)
+	);
 
-	$id = (int) $subscription['id'];
+	if ($body !== '') {
+		$headers[] = 'Content-Type: application/json';
+	}
 
-	// 404 and 410 are the push service saying this browser is gone for good -
-	// the application was uninstalled, or the subscription was replaced. Keeping
+	$result = api_http_request('POST', $subscription['endpoint'], array(
+		'body'             => $body,
+		'headers'          => $headers,
+		'timeout'          => 10,
+		'agent'            => 'webhook',
+		'response_headers' => true
+	));
+
+	$result['retry_after'] = 0;
+
+	$outcome = pg_push_outcome($result['status']);
+
+	// Gone is the push service saying this device is gone for good - the
+	// application was uninstalled, or the subscription was replaced. Keeping
 	// the row would mean failing on it forever.
-	if (($result['status'] == 404) || ($result['status'] == 410)) {
+	if ($outcome === 'gone') {
 
 		pg_push_subscription_delete($subscription['endpoint']);
 
 	} elseif ($result['ok']) {
 
 		db("UPDATE push_subscriptions
-			SET last_ok_timestamp = '" . time() . "', fail_count = 0" . ((pg_push_has_last_error()) ? ", last_error = ''" : "") . "
+			SET last_ok_timestamp = '" . $now . "', fail_count = 0" . ((pg_push_has_last_error()) ? ", last_error = ''" : "") . "
 			WHERE id = '" . $id . "'");
 
 	} else {
 
 		$reason = ($result['error'] != '') ? $result['error'] : ('HTTP ' . (int) $result['status']);
+
+		if ($outcome === 'busy') {
+			$result['retry_after'] = pg_push_retry_after($result['headers']['retry-after'] ?? '', $now);
+			$reason = pg_push_hold_text($now + $result['retry_after']);
+		}
 
 		db("UPDATE push_subscriptions
 			SET fail_count = fail_count + 1" . ((pg_push_has_last_error()) ? ", last_error = '" . escape(substr($reason, 0, 255)) . "'" : "") . "
@@ -507,6 +624,30 @@ function pg_push_send_to_subscription($subscription)
 	}
 
 	return $result;
+}
+
+// The badge a native push row shows: the person's unread notifications as the
+// panel counts them for their own row (pg_notification_visible_to_user()).
+function pg_push_badge($user_id)
+{
+	include_once(dirname(__FILE__) . '/notifications.php');
+	include_once(dirname(__FILE__) . '/authentication.php');
+
+	$user_row = pg_load_user_row((int) $user_id);
+
+	if (!$user_row) {
+		return 0;
+	}
+
+	$count = 0;
+
+	foreach (pg_notification_unread_rows((int) $user_id) as $notification) {
+		if (pg_notification_visible_to_user($notification, $user_row)) {
+			$count++;
+		}
+	}
+
+	return $count;
 }
 
 // Can this account's browsers still be woken? Only while the account exists
@@ -537,16 +678,23 @@ function pg_push_account($user_id)
 function pg_push_notify_user($user_id)
 {
 	$sent = array();
+	$badge = null;
 
 	foreach (pg_push_subscriptions_for_user($user_id) as $subscription) {
 
-		$result = pg_push_send_to_subscription($subscription);
+		// Counted once, and only when a native push row is there to show it.
+		if (($badge === null) && ((string) ($subscription['provider'] ?? '') !== '')) {
+			$badge = pg_push_badge($user_id);
+		}
+
+		$result = pg_push_send_to_subscription($subscription, (int) $badge);
 
 		$sent[] = array(
-			'device' => substr((string) $subscription['user_agent'], 0, 60),
-			'status' => $result['status'],
-			'ok'     => $result['ok'],
-			'error'  => $result['error']
+			'device'      => substr((string) $subscription['user_agent'], 0, 60),
+			'status'      => $result['status'],
+			'ok'          => $result['ok'],
+			'error'       => $result['error'],
+			'retry_after' => (int) ($result['retry_after'] ?? 0)
 		);
 	}
 
@@ -785,6 +933,7 @@ function pg_push_queue_run($budget_seconds = 10)
 		$sent = pg_push_notify_user($user_id);
 		$delivered = false;
 		$error = '';
+		$wait = 0;
 
 		foreach ($sent as $result) {
 
@@ -793,6 +942,8 @@ function pg_push_queue_run($budget_seconds = 10)
 			} elseif ($error == '') {
 				$error = (string) $result['error'];
 			}
+
+			$wait = max($wait, (int) $result['retry_after']);
 		}
 
 		// No devices left at all is not a failure to retry - the person
@@ -808,15 +959,16 @@ function pg_push_queue_run($budget_seconds = 10)
 			// The push service is having a moment. Six tries over about a day,
 			// the same shape the webhook queue backs off with, then the row is
 			// given up: a banner nobody could be shown for a day is not news
-			// any more.
+			// any more. A service that answered 429 is not asked again before
+			// its Retry-After.
 			db("UPDATE push_queue
 				SET attempts = attempts + 1,
-					send_after = '" . $now . "' + CASE
+					send_after = '" . $now . "' + GREATEST('" . (int) $wait . "', CASE
 						WHEN attempts < 1 THEN 60
 						WHEN attempts < 2 THEN 300
 						WHEN attempts < 3 THEN 1800
 						WHEN attempts < 4 THEN 7200
-						ELSE 21600 END,
+						ELSE 21600 END),
 					last_error = '" . escape(substr($error, 0, 255)) . "'
 				WHERE id IN (" . implode(',', $relevant) . ")");
 
