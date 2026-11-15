@@ -12386,6 +12386,14 @@ body.workspace .ws-shell-main > #button_bar {
   font-size: 13px;
   line-height: 1;
 }
+/* An agent's state in a message: the avatar's own status dot, sized for the
+   message face; its role is a violet pill after the name. */
+.ws-msg-avatar .ws-msg-agent-state {
+  --bs-avatar-status-size: .625rem;
+}
+.ws-msg-meta .ws-msg-agent-role {
+  align-self: center;
+}
 .ws-agent-stack {
   margin-left: .45rem;
 }

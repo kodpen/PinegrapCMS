@@ -3416,6 +3416,45 @@
         return ours && (mine || !!message.mentions_me);
     }
 
+    // An agent's marks in a message of this channel: its own name (without
+    // the application's "(application)" suffix), its role label and its
+    // state dot, read from the channel's member row of the agent, matched by
+    // the application it writes as (ws_channel_member_agent(), the brief of
+    // ws_agent_card_brief()). The dot is the avatar's status dot: working
+    // green, waiting amber, not seen the alarm square, paused grey; ready
+    // draws none. Null for anything else: a person's, a guest's, Claude's,
+    // Pinegrap AI's, an MCP agent's, a plain application's, an agent's that
+    // is not in this channel. Pure.
+    function messageAgentMarks(message, channel) {
+        var sender = (message && message.sender) || {};
+        var dots = { working: 'online', waiting: 'away', late: 'busy', paused: 'offline' };
+        var row = null;
+
+        if (!message || (message.sender_kind !== 'app') || !sender.agent || !(sender.app_id > 0)
+            || sender.claude || sender.ai || sender.mcp || !channel) {
+            return null;
+        }
+
+        (channel.agents || []).some(function (agent) {
+            row = (agent.app_id === sender.app_id) ? agent : null;
+
+            return !!row;
+        });
+
+        if (!row) {
+            return null;
+        }
+
+        var dot = Object.prototype.hasOwnProperty.call(dots, row.state) ? dots[row.state] : '';
+
+        return {
+            name: row.name || sender.name || '',
+            role: row.role || '',
+            dot: dot,
+            words: dot ? (row.state_words || '') : ''
+        };
+    }
+
     // The application a message is a plain line of, 0 when it is anything
     // else: a one-line message of an application that is no agent, with
     // nothing on it a reader acts on (a file, a poll, an approval, a
@@ -10680,7 +10719,21 @@
 
             var face = el('div', 'ws-msg-avatar');
             var person = (message.sender_kind === 'user') ? message.sender : null;
-            face.appendChild(personLink(avatar(message.sender), person));
+            var agentMarks = messageAgentMarks(message, self.channel);
+            var picture = avatar(message.sender);
+
+            // An agent of this channel: its state on the picture's status
+            // dot, named for a screen reader and on hover.
+            if (agentMarks && agentMarks.dot) {
+                var stateDot = el('span', 'avatar-status status-' + agentMarks.dot + ' ws-msg-agent-state');
+
+                stateDot.setAttribute('role', 'img');
+                stateDot.setAttribute('aria-label', agentMarks.words);
+                stateDot.title = agentMarks.words;
+                picture.appendChild(stateDot);
+            }
+
+            face.appendChild(personLink(picture, person));
 
             // Read out with the name in the hidden head; shown on hover.
             if (follow) {
@@ -10696,7 +10749,12 @@
             var meta = el('div', 'ws-msg-meta');
             meta.id = 'ws-msg-meta-' + (++messageMetaSeq);
             node.setAttribute('aria-labelledby', meta.id);
-            meta.appendChild(personLink(el('b', '', message.sender ? message.sender.name : ''), person));
+            meta.appendChild(personLink(el('b', '', agentMarks ? agentMarks.name : (message.sender ? message.sender.name : '')), person));
+
+            // An agent of this channel: its role in place of "(application)".
+            if (agentMarks && agentMarks.role) {
+                meta.appendChild(el('span', 'pg-pill pg-tone-violet ws-msg-agent-role', agentMarks.role));
+            }
 
             if (message.sender_kind === 'guest') {
                 meta.appendChild(el('span', 'badge rounded-pill ws-guest-badge', t('guest_badge')));
