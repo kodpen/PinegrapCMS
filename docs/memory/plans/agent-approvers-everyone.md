@@ -22,7 +22,7 @@ description: Plan (owner 2026-11-14): an approval request can ask a channel's ag
 ## Which steps?
 - AE1 (S, no product code) Census of approvals, mentions and the wake; the store asked of the owner (a table of its own, channel 3501). Done (#9555): `agent-approvers-everyone-census*.md`.
 - AE2 (M, schema) Agent approvers on the server: who may be asked, the wake, the answer of an asked agent, the bound with its tests (a flow's request refuses an agent, an agent's own request refuses it). Exact scope: `-census-steps.md`. Done (#9567): `workspace/approval-agents.md`.
-- AE3 (S) The form and the card: agents under the people, the badge on the card (workspace_approvals.js, `ws_approvals_map()`). Look A, the pictures in the agent channel.
+- AE3 (S) The form and the card: agents under the people, the badge on the card (workspace_approvals.js, `ws_approvals_map()`). Done (#9586). Look A, the pictures in the agent channel.
 - AE4 (S) API: `approvers` takes agents on create; `POST /workspace/approvals/{id}/decide` opens to the asked application agent's own key and stays closed to MCP; the assistants' answers (AE2 offers application agents only); the dry run; `php tools/check_api_schema.php` passes. Exact scope: `-census-steps.md`.
 - AE5 (M) `@herkes` on the server: tag, lines, wake, reserved handles. Done (#9571): `workspace/workspace-everyone-mention.md`.
 - AE5b (S) The @ menu's "Everyone" entry (`-census-mentions.md`). Look A, pictures in the agent channel.
