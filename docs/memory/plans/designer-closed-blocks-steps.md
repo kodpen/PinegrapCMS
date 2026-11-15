@@ -7,7 +7,7 @@ description: Steps CB2 to CB10 of designer-closed-blocks, written from the owner
 - Owner (2026-11-15, channel message 4146, his vote): "Önerilen sıra (Önerilen)": the order of `designer/canvas-closed-blocks.md`, most met first. Custom HTML, SVG and Custom PHP stay closed. Record: `workflow/decisions-made-product-54.md`.
 
 ## Which steps?
-- CB2 (M) Comments widget slots: pagination as a tree, one family with Search results' `pagination` (order 7 goes with it); CAPTCHA, star rating input and publish options settings only, with a true sample; the watcher list keeps its children.
+- CB2 (M) Comments widget slots: pagination as a tree, one family with Search results' `pagination` (order 7 goes with it); CAPTCHA, star rating input and publish options settings only, with a true sample; the watcher list keeps its children. Done (#9716): `designer/comments-widget-open-slots.md`.
 - CB3 (S) Comment e-mail pages: a page that keeps its System region gets a note on the canvas saying what it prints. The design templates keep the region (owner 2026-11-01, `workflow/decisions-made-product-16.md` (a)): it prints the comment when no Comments card on the page draws it. The fixed markup stays for a page with no card: nothing changes on a running site. Done (#9685).
 - CB4 (M) Custom form slots: CAPTCHA settings only; on a form with steps the step break, the step progress and the step buttons drawn true, the buttons a tree.
 - CB5 (S) Messages node: settings only (alert look, dismiss button) and a sample error on the canvas.
