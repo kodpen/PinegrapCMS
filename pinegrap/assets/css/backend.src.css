@@ -12842,6 +12842,7 @@ body.workspace .ws-shell-main > #button_bar {
   min-width: 0;
 }
 .ws-agset-name > .pg-list-row-title {
+  flex: 0 0 auto;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -12893,19 +12894,26 @@ body.workspace .ws-shell-main > #button_bar {
   /* As in the channel's rows: the state's pill goes under the name and
      summary; Edit keeps the row's end. */
   .ws-agset-row {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 8px;
     padding: 12px;
   }
-  .ws-agset-main {
-    flex-basis: calc(100% - 140px);
+  .ws-agset-face {
+    grid-row: 1 / span 2;
+    align-self: start;
   }
   .ws-agset-edit {
-    order: 2;
+    grid-column: 3;
+    grid-row: 1;
+    align-self: start;
   }
   .ws-agset-state {
-    order: 3;
-    max-width: calc(100% - 52px);
-    margin-inline-start: 52px;
+    grid-column: 2 / span 2;
+    grid-row: 2;
+    justify-self: start;
+    max-width: 100%;
   }
 }
 /* The agent card (workspace.js agentCardShow()): a floating .pg-card on
