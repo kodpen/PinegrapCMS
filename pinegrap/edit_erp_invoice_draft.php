@@ -89,7 +89,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('Draft Invoice'),
-        'extra classes' => 'erp erp_invoices',
+        'extra classes' => 'erp erp_invoices pg-measure-edit',
         'icon' => 'erp',
         'heading' => lang('Draft Invoice'),
         'heading_description' => lang('No number has been taken and nothing has been posted to the account. Issue the draft when it is ready.'),

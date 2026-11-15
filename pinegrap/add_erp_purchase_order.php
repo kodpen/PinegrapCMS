@@ -101,7 +101,7 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title' => lang('New purchase order'),
-        'extra classes' => 'erp erp_invoices',
+        'extra classes' => 'erp erp_invoices pg-measure-edit',
         'icon' => 'erp',
         'heading' => lang('New purchase order'),
         'heading_description' => lang('What to ask a supplier for. It moves no money and no stock; as the goods arrive it becomes a purchase invoice.'),

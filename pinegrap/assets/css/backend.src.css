@@ -11242,6 +11242,10 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* The same content in Bootstrap's drawer on the page path
    (settings_maintenance.php and the like, with no settings dialog around it). */
 .pg-set-drawer { --pg-drawer-width: min(42rem, 100vw); }
+/* The ERP lists' quick look (includes/erp/drawer.php): 560 px wide, its
+   tables straight under their section title. */
+.pg-erp-drawer { --pg-drawer-width: min(560px, 100vw); }
+.pg-erp-drawer table.table { margin-top: 0; }
 
 /* ── Dashboard sales map (widget 1) ─────────────────────────────────────────
    The left panel of a two-track card: a period head and the outlines, with the

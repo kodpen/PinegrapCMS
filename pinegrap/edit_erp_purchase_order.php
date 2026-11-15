@@ -332,7 +332,7 @@ if (!empty($linked_invoices) || in_array($status_key, array('partial', 'received
 
     $output_goods = '
             <div class="card my-7" id="erp-goods">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Goods received') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Goods received') . '</h2>
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead><tr><th>#</th><th>' . lang('Description') . '</th><th class="text-end">' . lang('Ordered') . '</th><th class="text-end">' . lang('Received') . '</th><th class="text-end">' . lang('On drafts') . '</th><th class="text-end">' . lang('Still to come') . '</th></tr></thead>
@@ -424,7 +424,7 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     if (($output_mail_form !== '') || ($mail_rows !== '') || ($output_mail_result !== '')) {
         $output_mail = '
             <div class="card my-7" id="erp-mail">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('E-mail to the supplier') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('E-mail to the supplier') . '</h2>
                 <div class="card-body">' . $output_mail_result . $output_mail_form . '</div>'
                 . (($mail_rows !== '') ? '
                 <div class="card-body p-0 border-top table-responsive">
@@ -494,7 +494,7 @@ $output_toolbar = pg_screen_toolbar(array(
 echo
 pg_page_shell([
     'title' => h((string) $order['full_number']),
-    'extra classes' => 'erp erp_invoices',
+    'extra classes' => 'erp erp_invoices pg-measure-edit',
     'icon' => 'erp',
     'heading' => h(lang(array('string' => 'Purchase order {var:1}', 'vars' => (string) $order['full_number']))) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>',
     // The back arrow is named for where it goes: "Cancel" read the same as
@@ -520,9 +520,10 @@ pg_page_shell([
             The form column: the order and the goods received against it (a
             per-line table as wide as the order\'s). The e-mail card goes in the
             status column after it, so a narrow screen puts it below the order.
-            That column is not sticky: it holds a form, can be taller than the
-            window and is reached by the #erp-mail jump, and a sticky box taller
-            than the window hides its own end. The line editor needs about
+            That column does not pin (its box is position-sticky with no offset,
+            so its card takes the look\'s card): it holds a form, can be taller
+            than the window and is reached by the #erp-mail jump, and a pinned
+            box taller than the window hides its own end. The line editor needs about
             1,060px, so an open order splits only from 2xl; below that the card
             follows the editor. Without an e-mail card the order takes the width.
         -->
@@ -535,7 +536,9 @@ pg_page_shell([
             ' . $output_goods . '
         </div>
         ' . (($output_mail !== '') ? '<div class="col-12 ' . ($editable ? '' : 'lg:col-4 ') . '2xl:col-3 order-2">
+            <div class="position-sticky">
             ' . $output_mail . '
+            </div>
         </div>' : '') . '
     </div>
 </main>
