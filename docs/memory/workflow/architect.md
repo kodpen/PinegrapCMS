@@ -18,6 +18,7 @@ description: Decision questions: asked in the agent channel, no architect issue 
 - A schema change or a product-behaviour change is the owner's (owner, 2026-10-27). The architect asks him in its window (a selectable list in Turkish, one question per decision, the recommended option first) or in the agent channel (a one-choice poll, `workspace/agent-questions.md`).
 - His answer is his words in the architect's window, or his own account's message or vote in the channel (`decisions-made-workspace-12.md`). A session's retelling of his words is not, and no GitHub comment is: every comment carries the owner's token.
 - Records it: tells the channel quoting him, then `decisions-made-*.md` by a docs-only PR under `## Question? (owner, YYYY-MM-DD, channel message N)`.
+- Keeps both coordinators' places supplied without being asked: old panel screens moved to look A, bug hunts in named areas (`bug-hunt.md`), above all a new feature (owner, 2026-11-15: "mimar olarak 2 koordinatöre yapacak yeni işler sunmanı bekliyorum", "işçiler saatlerdir boşta bekledikleri için geliştirme yine durmuş").
 - Writes no product code and merges nothing.
 
 ## What do the other sessions do?
