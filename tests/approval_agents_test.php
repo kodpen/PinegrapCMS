@@ -102,3 +102,28 @@ function test_approval_flow_callers_never_ask_by_hand()
 
 	pg_assert_contains("'may_ask_agents' => true", (string) file_get_contents($root . 'actions.php'), 'the panel form asks by hand');
 }
+
+// An agent asked to approve is asked once: the approval's own request is the
+// only one, a tag naming it in the title or text (or its "all" rule) makes
+// no second, plain request.
+function test_approval_agents_asked_once_by_their_approval()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');
+
+	pg_assert_same(
+		array('claude' => true, 'ai' => true, 'agents' => array('agent:5', 'model:2')),
+		ws_message_ask_skip(array('agent:5', 'claude', 'model:2', 'ai', 'agent:5', '', 7))
+	);
+	pg_assert_same(array('claude' => false, 'ai' => false, 'agents' => array()), ws_message_ask_skip(null));
+
+	$root = PG_FUNCTIONS_DIR . '/includes/workspace/';
+	$approvals = (string) file_get_contents($root . 'approvals.php');
+	$messages = (string) file_get_contents($root . 'messages.php');
+
+	pg_assert_contains('$asked = ws_approval_agents_ask($viewer, $channel, ws_approval($approval_id), $checked[\'agents\']);', $approvals, 'the agents asked are kept');
+	pg_assert_contains('return $asked;', (string) file_get_contents($root . 'approval_agents.php'), 'the values asked are returned');
+	pg_assert_contains("ws_message_ask_noted(\$viewer, \$channel, \$sent['message_id'], \$body, ws_message_by_app(\$app_id), \$asked);", $approvals, 'and skipped by the tags');
+	pg_assert_contains("ws_agent_after_send(\$viewer, \$channel, \$message_id, \$body, '', false, array('skip' => \$skip['agents']))", $messages, 'registry agents skipped');
+	pg_assert_contains('!$skip[\'claude\'] && function_exists(\'ws_claude_after_send\')', $messages, 'Claude skipped');
+	pg_assert_contains('!$skip[\'ai\'] && function_exists(\'ws_ai_after_send\')', $messages, 'Pinegrap AI skipped');
+}
