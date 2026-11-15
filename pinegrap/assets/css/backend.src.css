@@ -27677,6 +27677,58 @@ body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn:is(:disabled,
 }
 
 /* ==========================================================================
+   Look A: the field of add and edit screens.
+   The Bootstrap label and field of the form and status columns
+   (.form-label, .form-control: inputs, selects, textareas, adorned wrappers)
+   take the values of .pg-field-label and .pg-input, so no screen changes
+   its markup. Settings cards (.pg-settings-body, .pg-set-card) keep their
+   32 px row fields; the designer and the site side load other stylesheets.
+   The field is drawn through Bootstrap's control variables, so the panel's
+   invalid and valid borders still win over it.
+   ========================================================================== */
+@layer custom {
+
+body.pg-measure-edit .row > :is(.order-1, .order-2) .form-label:not(.pg-settings-body *, .pg-set-card *) {
+  --bs-label-margin-bottom: 6px;
+  font-size: var(--pg-text-2);
+  font-weight: var(--pg-weight-strong);
+}
+body.pg-measure-edit .row > :is(.order-1, .order-2) .form-control:not(.pg-settings-body *, .pg-set-card *) {
+  --bs-control-min-height: 36px;
+  --bs-control-padding-y: 6px;
+  --bs-control-padding-x: 12px;
+  --bs-control-font-size: var(--pg-text-base);
+  --bs-control-border-radius: 10px;
+  --bs-control-bg: var(--pg-field-bg);
+  --bs-control-border-color: var(--pg-field-line);
+  --bs-control-box-shadow: var(--pg-field-shadow);
+  --bs-control-placeholder-color: var(--pg-fg-3);
+  border-radius: 10px;
+}
+body.pg-measure-edit .row > :is(.order-1, .order-2) textarea.form-control:not(.pg-settings-body *, .pg-set-card *) {
+  --bs-control-padding-y: 9px;
+  line-height: 1.5;
+}
+/* A field in a row (Bootstrap's small field) is the look's .pg-input-sm. */
+body.pg-measure-edit .row > :is(.order-1, .order-2) .form-control.form-control-sm:not(.pg-settings-body *, .pg-set-card *) {
+  --bs-control-min-height: 32px;
+  --bs-control-padding-y: 4px;
+  --bs-control-padding-x: 10px;
+  --bs-control-font-size: var(--pg-text-2);
+  --bs-control-border-radius: 9px;
+  border-radius: 9px;
+}
+/* Focus in the look's accent with its 4 px ring; a marked field keeps the
+   panel's invalid or valid ring. */
+body.pg-measure-edit .row > :is(.order-1, .order-2) .form-control:is(:focus, .form-adorn:focus-within):not(.is-invalid, .is-valid, .pg-settings-body *, .pg-set-card *) {
+  border-color: var(--pg-accent);
+  outline: 0;
+  box-shadow: var(--pg-field-shadow), 0 0 0 4px color-mix(in srgb, var(--pg-accent) 24%, transparent);
+}
+
+}
+
+/* ==========================================================================
    Look A: settings.
    The settings family, on the page (settings_<key>.php) and in the Site
    Settings dialog: a card's title stands above its rows, the rows sit in
