@@ -23,3 +23,6 @@ priority: 6
 ## What is left out?
 - A flow start "When a cart is left" (recovery by WhatsApp or SMS through a flow): a later plan (`core/campaign-profile-flow-gaps.md`).
 - The touch table is small (a row per message, not per visit), so no rollup at first; the figures read it by date range.
+
+## Whose look?
+- CR2's look is given: Owner (2026-11-15, agent channel poll 55): "Evet, böyle çıksın", the section on the Visitors overview between Conversions and Sources (`workflow/decisions-made-product-57.md`).
