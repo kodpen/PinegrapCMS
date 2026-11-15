@@ -29,8 +29,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *
  * @param string $label      the label text, ready to print
  * @param string $value_html the value: escaped text, or markup the caller built
- * @param bool   $wide       an address line: the label in its own column, the
- *                           value emphasised, as the other address rows
+ * @param bool   $wide       an address line: the value emphasised, at the
+ *                           right edge as every other row
  * @return string
  */
 function pg_order_view_row($label, $value_html, $wide = false)
@@ -42,9 +42,9 @@ function pg_order_view_row($label, $value_html, $wide = false)
     }
 
     if ($wide) {
-        return '<div class="row">
-                                        <span class="translateable col-auto fg-secondary">' . $label . '</span>
-                                        <span class="col offset-1 fw-medium">' . $value_html . '</span>
+        return '<div class="d-flex justify-content-between gap-3">
+                                        <span class="translateable fg-secondary">' . $label . '</span>
+                                        <span class="text-end text-break fw-medium">' . $value_html . '</span>
                                     </div>';
     }
 

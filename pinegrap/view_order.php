@@ -324,6 +324,11 @@ if (!$_POST) {
         <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1 border border-2" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
             <img class="lazy object-fit-contain w-100 h-100" alt="" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($contact_image) . '" />
         </div>';
+    } elseif ((trim((string) $contact_first_name) === '') && (trim((string) $contact_last_name) === '')) {
+        // No name to draw letters from: the look's icon, named for a screen
+        // reader. It opens nothing, so it is not a button.
+        $output_contact_image = '
+        <span class="pg-icon-button pg-print-none" role="img" aria-label="' . h(lang('No contact')) . '"><span class="bi bi-question-circle" aria-hidden="true"></span></span>';
     } else {
         $output_contact_image = '
         <div class="col-auto pg-print-none">' . pg_avatar_markup_for($contact_first_name, $contact_last_name, '', isset($contact_id) ? $contact_id : '', 'pg-avatar-50') . '</div>';
@@ -879,13 +884,6 @@ if (!$_POST) {
             }
         }
         
-        $output_custom_field_headings = '';
-        
-        // loop through the custom field names in order to output headings for them
-        foreach ($custom_field_names as $custom_field_name) {
-            $output_custom_field_headings .= '<span class="col fg-secondary">' . h($custom_field_name) . ':</span>';
-        }
-        
         $output_colspan = 13 + count($custom_field_names);
 
         // The names of the arrival dates the recipients chose (what the
@@ -1265,7 +1263,13 @@ if (!$_POST) {
                         $prepare_for_html = FALSE;
                     }
                     
-                    $output_custom_field_cells .= '<span class="col text-end order_custom_field">' . prepare_form_data_for_output($data, $type, $prepare_for_html) . '</span>';
+                    // A row like the card's others, labelled by the field's
+                    // name in words ("delivery_note" reads "Delivery note"),
+                    // and left out when the address has no answer for it.
+                    $output_custom_field_cells .= pg_order_view_row(
+                        h(lang(ucfirst(str_replace('_', ' ', (string) $custom_field_name)))),
+                        prepare_form_data_for_output($data, $type, $prepare_for_html)
+                    );
                 }
                 
                 $output_ship_dates_row = '';
@@ -1321,9 +1325,9 @@ if (!$_POST) {
                                             <span class="text-end text-break">' . h($name) . '</span>
                                         </div>
                                         ' . pg_order_view_row(lang('Company'), h($ship_tos[$key]['company'])) . '
-                                        <div class="row">
-                                            <span class="translateable col-auto fg-secondary">' . lang('Address') . '</span>
-                                            <span class="col offset-1 fw-medium">' . h($address) . '</span>
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Address') . '</span>
+                                            <span class="text-end text-break fw-medium">' . h($address) . '</span>
                                             ' . $output_postcode_province . '
                                         </div>
                                         ' . pg_order_view_row(lang('Address Type'), pg_order_view_address_type($ship_tos[$key]['address_type'])) . '
@@ -1359,10 +1363,7 @@ if (!$_POST) {
                                             <span class="text-end text-break">' . pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
                                         </div>
                                         ' . $packages . '
-                                        <div class="row">
-                                            ' . $output_custom_field_headings . '
-                                            ' . $output_custom_field_cells . '
-                                        </div>
+                                        ' . $output_custom_field_cells . '
                                     </div> 
                                 </div>
                             </div>
@@ -2681,9 +2682,9 @@ if (!$_POST) {
                                                 <span class="text-end text-break">' . h($billing_last_name) . '</span>
                                             </div>
                                             ' . pg_order_view_row(lang('Company'), h($billing_company)) . '
-                                            <div class="row" >
-                                                <span class="translateable col-auto fg-secondary">' . lang('Address') . ' 1</span>
-                                                <span class="col offset-1 fw-medium">' . h($billing_address_1) . '</span>
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . lang('Address') . ' 1</span>
+                                                <span class="text-end text-break fw-medium">' . h($billing_address_1) . '</span>
                                             </div>
                                             ' . pg_order_view_row(lang('Address') . ' 2', h($billing_address_2), true) . '
                                             <div class="d-flex justify-content-between gap-3">

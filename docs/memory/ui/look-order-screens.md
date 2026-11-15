@@ -15,8 +15,12 @@ description: The order screens in look A (C1, #9681): View Order and View Return
 ## How are titles and values drawn?
 - Card titles `h2.card-header.bg-reset.border-0.pg-title-section`; a title with a button or picture beside it is `h2.pg-title-section.mb-0` inside a flex `card-header` (Shipping Information, Customer Information, Returns, the ERP documents card).
 - Groups over rows (View Order's UTM, the Advanced Search sections) are `h3.pg-group-label`, no longer green or bold `h5`/`h6`.
-- The status column dropped its 110–120 % inline sizes: the order number `fw-medium pg-tabular`, sums `pg-tabular`, totals `strong.pg-tabular`; address lines `fw-medium`.
+- The status column dropped its 110–120 % inline sizes: the order number `fw-medium pg-tabular`, sums `pg-tabular`, totals `strong.pg-tabular`; address lines `fw-medium`, their value at the right edge like every row (`pg_order_view_row()` with `$wide`; architect, channel 25 message 4309).
 - The sale screen's card titles keep `.pg-sale-ch` for their margin: Cart `pg-title-section`, the status column's `pg-title-status`.
+
+## What else did the look review change?
+- A custom shipping form field is a row of the Shipping card labelled `lang()` of its name in words (`delivery_note` → "Delivery note"), left out when the address has no answer; it was a raw `name:` line (architect, message 4309).
+- Customer Information with no contact name shows `bi-question-circle` in `pg-icon-button` on a `span role="img"` named "No contact": it opens nothing, so it is not a button.
 
 ## Which field widths?
 - By `look-field-widths.md`: return code, tracking number, refund reference 4; carrier selects 6; refund amount 3; Create Return's order number 4 and its reason `pg-field-span-6` (the class is drawn by #9658).
