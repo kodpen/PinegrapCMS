@@ -20,3 +20,4 @@ description: A bug hunt is given out again (owner 2026-11-15), only in an area t
 
 ## How is the next area chosen?
 - By the architect: code built in the last weeks that many users meet and that no hunt has read yet. The first two (channel messages 4114, 4115): the mail inbox with the mail chat tools, the personal calendar with its API.
+- Both ended on 2026-11-15 with their issues (mail: channel message 4152; calendar: #9662 to #9667). Named next: team device sessions over the API (sign-in on a device, the list, revoke, the switch and its ceiling); the agent channel's requests, approvers and wake doors.
