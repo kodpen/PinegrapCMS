@@ -424,6 +424,26 @@ function ws_thread_leave($viewer, $channel)
 }
 
 /**
+ * Whether the person may conclude a discussion: the checks of
+ * ws_thread_close(), with nothing written, so the external API's dry run
+ * meets the same refusal. One already concluded is no error.
+ *
+ * @param array $viewer
+ * @param array $channel the discussion
+ * @return array ok, error, concluded (it already was)
+ */
+function ws_thread_close_check($viewer, $channel)
+{
+    $thread = ws_thread($channel['id']);
+
+    if (!$thread || !ws_channel_membership($channel['id'], $viewer['id'])) {
+        return array('ok' => false, 'error' => lang('Only the people in a discussion can conclude it.'), 'concluded' => false);
+    }
+
+    return array('ok' => true, 'error' => '', 'concluded' => ((int) $thread['closed_at'] > 0));
+}
+
+/**
  * Concludes a discussion: kept, read only, for WS_THREAD_KEEP_DAYS days,
  * then deleted. Anybody in it may.
  *
@@ -433,15 +453,13 @@ function ws_thread_leave($viewer, $channel)
  */
 function ws_thread_close($viewer, $channel)
 {
+    $checked = ws_thread_close_check($viewer, $channel);
+
+    if (!$checked['ok'] || $checked['concluded']) {
+        return array('ok' => $checked['ok'], 'error' => $checked['error']);
+    }
+
     $thread = ws_thread($channel['id']);
-
-    if (!$thread || !ws_channel_membership($channel['id'], $viewer['id'])) {
-        return array('ok' => false, 'error' => lang('Only the people in a discussion can conclude it.'));
-    }
-
-    if ((int) $thread['closed_at'] > 0) {
-        return array('ok' => true, 'error' => '');
-    }
 
     ws_thread_conclude($channel, $thread, (int) $viewer['id'], function ($purge) use ($viewer) {
         return lang(array('string' => '{var:1} concluded the discussion. It is kept until {var:2}, then deleted; its decisions and tasks stay in the channel.', 'vars' => array(
@@ -676,6 +694,31 @@ function ws_thread_close_for_agent($row, $handle, $check = false)
 }
 
 /**
+ * Whether the person may give a discussion this title: the checks of
+ * ws_thread_rename(), with nothing written.
+ *
+ * @param array  $viewer
+ * @param array  $channel the discussion
+ * @param string $title
+ * @return array ok, error, title (cleaned), field ('' when the person may not change it, title)
+ */
+function ws_thread_rename_check($viewer, $channel, $title)
+{
+    $thread = ws_thread($channel['id']);
+    $title = ws_thread_clean_title($title);
+
+    if (!$thread || !ws_can_post_channel($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('Only the people in a discussion can change it.'), 'title' => $title, 'field' => '');
+    }
+
+    if ($title === '') {
+        return array('ok' => false, 'error' => lang('A discussion needs a title.'), 'title' => $title, 'field' => 'title');
+    }
+
+    return array('ok' => true, 'error' => '', 'title' => $title, 'field' => '');
+}
+
+/**
  * Renames a discussion. Anybody in it may, while it is open.
  *
  * @param array  $viewer
@@ -685,16 +728,14 @@ function ws_thread_close_for_agent($row, $handle, $check = false)
  */
 function ws_thread_rename($viewer, $channel, $title)
 {
+    $checked = ws_thread_rename_check($viewer, $channel, $title);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
+    }
+
     $thread = ws_thread($channel['id']);
-    $title = ws_thread_clean_title($title);
-
-    if (!$thread || !ws_can_post_channel($viewer, $channel)) {
-        return array('ok' => false, 'error' => lang('Only the people in a discussion can change it.'));
-    }
-
-    if ($title === '') {
-        return array('ok' => false, 'error' => lang('A discussion needs a title.'));
-    }
+    $title = $checked['title'];
 
     db("UPDATE ws_channels SET name = '" . e($title) . "' WHERE id = '" . (int) $channel['id'] . "'");
     db("UPDATE ws_thread_copies SET title = '" . e($title) . "' WHERE thread_channel_id = '" . (int) $channel['id'] . "'");
