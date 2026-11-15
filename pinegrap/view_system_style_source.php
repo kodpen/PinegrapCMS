@@ -152,8 +152,9 @@ if (!$_POST) {
                             <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                                 <div class="container">
                                     <div class="btn-group flex-wrap justify-content-center">
-                                        <button type="submit" name="submit_save_and_return" value="Save &amp; Return" form="system_style_source_form" class="btn my-1 btn-solid theme-primary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save & Return')) . '</span></button>
+                                        ' . pg_save_bar_return_button('system_style_source_form') . '
                                         <button type="submit" name="submit_save" value="Save" form="system_style_source_form" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-check2 me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>
+                                        <button type="submit" name="submit_save_and_return" value="Save &amp; Return" form="system_style_source_form" class="btn my-1 btn-solid theme-primary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save & Return')) . '</span></button>
                                     </div>
                                 </div>
                             </nav>

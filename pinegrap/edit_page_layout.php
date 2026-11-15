@@ -77,8 +77,8 @@ $output_buttons = '';
 
 if (!$read_only) {
     $output_buttons = '
-                                        <button type="button" id="pg_layout_save" class="btn my-1 btn-solid theme-success" disabled><i class="bi bi-floppy me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>
-                                        <button type="button" id="pg_layout_regenerate" class="btn my-1 btn-outline theme-secondary" disabled><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Regenerate layout')) . '</span></button>';
+                                        <button type="button" id="pg_layout_regenerate" class="btn my-1 btn-outline theme-secondary" disabled><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Regenerate layout')) . '</span></button>
+                                        <button type="button" id="pg_layout_save" class="btn my-1 btn-solid theme-success" disabled><i class="bi bi-floppy me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>';
 }
 
 // The Summary of the status column: what the layout belongs to and whether

@@ -151,9 +151,10 @@ if (!$_POST) {
                                     </div>
                                 </div>
                             </div>', pg_design_file_form_summary_card('', $summary_rows), '
+                                        ' . pg_save_bar_return_button() . '
+                                        <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3" aria-hidden="true">control_point_duplicate</span><span class="pg-btn-label">' . lang(array('string'=>'Duplicate') ) . '</span></button>
                                         <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1 btn-solid theme-primary"><span class="material-icons me-3" aria-hidden="true">arrow_backsave</span><span class="pg-btn-label">' . lang(array('string'=>'Save & Return') ) . '</span></button>
-                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                        <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3" aria-hidden="true">control_point_duplicate</span><span class="pg-btn-label">' . lang(array('string'=>'Duplicate') ) . '</span></button>') . '
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>') . '
                     </form>
 </main>' . output_footer();
 

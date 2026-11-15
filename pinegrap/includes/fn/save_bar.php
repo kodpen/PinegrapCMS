@@ -68,3 +68,20 @@ function pg_save_bar($buttons, $opts = array())
             </nav>
         </div>';
 }
+
+/**
+ * The hidden first submit button of a save bar whose buttons run ghost,
+ * quiet, filled. Return in a text field presses a form's first submit
+ * button; with the delete or a quiet action first in the bar that would be
+ * the one pressed. This nameless button comes first instead, and the panel
+ * script (backend.src.js) hands its press to the bar's first filled button,
+ * the save, so that button's own handlers and question run as before.
+ *
+ * @param string $form The id of the form the bar's buttons name in their
+ *                     form attribute, when the bar sits outside it
+ * @return string HTML
+ */
+function pg_save_bar_return_button($form = '')
+{
+    return '<button type="submit"' . ($form !== '' ? ' form="' . h($form) . '"' : '') . ' class="visually-hidden" tabindex="-1" aria-hidden="true" data-pg-return-save></button>';
+}

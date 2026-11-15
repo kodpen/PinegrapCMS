@@ -82,8 +82,9 @@ if (!$_POST || $errors) {
                         ' . pg_country_form_layout(
                             pg_country_form_card($values, $errors, $status_rows),
                             '
-                                        <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(implode(' ', array_map('lang', pg_country_form_delete_confirm(...$usage)))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>'
+                                    ' . pg_save_bar_return_button() . '
+                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(implode(' ', array_map('lang', pg_country_form_delete_confirm(...$usage)))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
+                                        <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>'
                         ) . '
                     </form>
 </main>' .

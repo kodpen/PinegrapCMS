@@ -43,7 +43,7 @@ function test_phone_width_system_style_save_row_wraps()
 {
 	$source = phone_width_strips_2_test_source('view_system_style_source.php');
 
-	pg_assert_true(preg_match('/<div class="([^"]*)">\s*<button type="submit" name="submit_save_and_return"/', $source, $match) === 1, 'save row found');
+	pg_assert_true(preg_match('/<div class="([^"]*)">\s*\' \. pg_save_bar_return_button\(\'system_style_source_form\'\) \. \'\s*<button type="submit" name="submit_save"/', $source, $match) === 1, 'save row found');
 	pg_assert_true(strpos(' ' . $match[1] . ' ', ' flex-wrap ') !== false, 'save row wraps');
 }
 

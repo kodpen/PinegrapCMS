@@ -819,6 +819,33 @@ $(document).ready(function () {
     });
 
 
+    // Return in a text field presses the form's first submit button. A save
+    // bar lists its buttons ghost, quiet, filled, so it starts with a hidden
+    // nameless submit (pg_save_bar_return_button()) whose press goes on to
+    // the bar's save: its button marked data-pg-save-shortcut, else its
+    // first filled button, else the form's save button. That button's own
+    // click handlers and question run as on a click.
+    $(document).on('click', 'button[data-pg-return-save]', function (event) {
+        event.preventDefault();
+
+        var $bar = $(this).closest('nav');
+        var target = $bar.find('[data-pg-save-shortcut]').not(':disabled, .disabled').first();
+
+        if (!target.length) {
+            target = $bar.find('.btn-solid.theme-success, .btn-solid.theme-primary')
+                .not(':disabled, .disabled, [data-pg-return-save]').first();
+        }
+
+        if (!target.length && this.form) {
+            target = pgSaveShortcutButton($(this.form));
+        }
+
+        if (target.length) {
+            target[0].click();
+        }
+    });
+
+
     //classic Tooltips
     var classicTooltips = $('[data-bs-toggle="tooltip"]').each(function () {
         pgUI.tooltip.get(this, { placement: 'auto' });

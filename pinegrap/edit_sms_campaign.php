@@ -289,8 +289,9 @@ $output_buttons = '';
 
 if (!$readonly) {
     $output_buttons =
-                    '<button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="bi bi-check-circle me-3" aria-hidden="true"></span>' . lang('Save') . '</button>
-                    ' . (($campaign['status'] === 'ready') ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang('This campaign will be cancelled. A cancelled campaign cannot be scheduled again.')) . '"><span class="bi bi-x-circle me-3" aria-hidden="true"></span>' . lang('Cancel Campaign') . '</button>' : '');
+                    pg_save_bar_return_button()
+                    . (($campaign['status'] === 'ready') ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang('This campaign will be cancelled. A cancelled campaign cannot be scheduled again.')) . '"><span class="bi bi-x-circle me-3" aria-hidden="true"></span>' . lang('Cancel Campaign') . '</button>' : '') . '
+                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="bi bi-check-circle me-3" aria-hidden="true"></span>' . lang('Save') . '</button>';
 }
 
 $heading = $id ? lang('Edit SMS Campaign') : lang('Create SMS Campaign');
