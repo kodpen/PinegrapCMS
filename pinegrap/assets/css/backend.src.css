@@ -5628,6 +5628,23 @@ body.pg-code-field-open {
   min-width: 8rem;
 }
 
+/* A plain table straight in a card (no card-body padding): its first and
+   last cells take the card's side padding, so the head stands under the
+   card's title and a row's button keeps off the card's edge. On a phone the
+   table keeps a readable width and its .table-responsive wrapper scrolls
+   sideways instead of squeezing the columns. */
+.pg-card-table > * > tr > :first-child {
+  padding-inline-start: var(--bs-card-cap-padding-x);
+}
+.pg-card-table > * > tr > :last-child {
+  padding-inline-end: var(--bs-card-cap-padding-x);
+}
+@media (max-width: 767.98px) {
+  .pg-card-table {
+    min-width: 40rem;
+  }
+}
+
 /* 404 Log: the address and the referrer wrap inside a bounded width, so a
    long address does not push the counts and dates off the screen. */
 .pg-404-cell-wrap {

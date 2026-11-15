@@ -275,7 +275,7 @@ foreach ($experiments as $experiment) {
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-sm mb-0">
+                        <table class="table table-sm mb-0 pg-card-table">
                             <thead><tr><th>' . h(lang('Variant')) . '</th><th>' . h(lang('Page')) . '</th><th class="text-end">' . h(lang('Share of visitors')) . '</th><th class="text-end">' . h(lang('Views')) . '</th><th class="text-end">' . h(lang('Conversions')) . '</th><th class="text-end">' . h(lang('Rate')) . '</th><th></th></tr></thead>
                             <tbody>' . $rows . '</tbody>
                         </table>
