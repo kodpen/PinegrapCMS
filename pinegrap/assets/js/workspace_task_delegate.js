@@ -643,7 +643,8 @@
             return 'bi-cpu';
         }
 
-        if (isAgentKey(task.delegate)) {
+        // A registry agent (agent:<id>, model:<id>).
+        if (/^(agent|model):[1-9][0-9]*$/.test(String(task.delegate || ''))) {
             return 'bi-robot';
         }
 
