@@ -1195,9 +1195,9 @@ function erp_order_flow_card($order_id, $state = null)
     }
 
     return '
-<div class="card mb-7 pg-print-none" id="erp_order_documents">
+<div class="card pg-card mb-7 pg-print-none" id="erp_order_documents">
     <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Invoice and delivery documents') . '</span>
+        <h2 class="pg-title-section mb-0">' . lang('Invoice and delivery documents') . '</h2>
         ' . ($all_done ? '<span class="small fg-success"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Every document is done.') . '</span>' : '') . '
     </div>
     <ul class="list-group list-group-flush">' . $output_steps . '

@@ -8,7 +8,7 @@ description: Steps CB2 to CB10 of designer-closed-blocks, written from the owner
 
 ## Which steps?
 - CB2 (M) Comments widget slots: pagination as a tree, one family with Search results' `pagination` (order 7 goes with it); CAPTCHA, star rating input and publish options settings only, with a true sample; the watcher list keeps its children.
-- CB3 (S) Comment e-mail pages: where the Comments card always draws the comment, the System region after it leaves the design templates; a page that keeps the region gets a note on the canvas saying what it prints. The fixed markup stays for a page with no card: nothing changes on a running site.
+- CB3 (S) Comment e-mail pages: a page that keeps its System region gets a note on the canvas saying what it prints. The design templates keep the region (owner 2026-11-01, `workflow/decisions-made-product-16.md` (a)): it prints the comment when no Comments card on the page draws it. The fixed markup stays for a page with no card: nothing changes on a running site. Done (#9685).
 - CB4 (M) Custom form slots: CAPTCHA settings only; on a form with steps the step break, the step progress and the step buttons drawn true, the buttons a tree.
 - CB5 (S) Messages node: settings only (alert look, dismiss button) and a sample error on the canvas.
 - CB6a (M) Shop, catalog detail: variant attribute, breadcrumb, product carousel, price block; payment methods settings only.

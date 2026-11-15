@@ -21,7 +21,7 @@
 - campaign-email-body-today.md: MA4 census (2026-11-13): how a campaign's HTML body and the designed e-mails (account, form, comment, receipt) are made today, what the e-mail render leaves in, and who may design one
 - campaign-email-body-way.md: MA4 proposal (2026-11-13, kept on #9083): a campaign's e-mail body as an e-mail design page (600 px canvas, mail blocks), the mail pass, ready designs, pasted HTML, test send
 - canvas-closed-blocks-content.md: CB0 list, content nodes the server draws (Messages, Breadcrumb, Variant Attribute, Applied Offers, Carousel, own code, Language Switcher): output, settings, use, opening
-- canvas-closed-blocks-emails.md: CB0 list, the designed e-mail pages and what in them is closed: the comment e-mail's System region with its fixed markup, the other e-mails' widgets, and what opening takes
+- canvas-closed-blocks-emails.md: CB0 list, the designed e-mail pages and what in them is closed: the comment e-mail's System region with its fixed markup, the other e-mails' widgets, and what opening takes [decision: here]
 - canvas-closed-blocks-regions.md: CB0 list, region nodes and classic page types the canvas draws closed: the System region of a classic page, the page types with no widget, the legacy regions of a classic style, what opens each
 - canvas-closed-blocks-widgets.md: CB0 list, the closed slots inside system widgets: section bindings and HTML values per widget kind, what each prints, template use, and what opening it takes
 - canvas-closed-blocks.md: CB0 list (2026-11-13): what the designer canvas draws as one closed block, in four families, the counts, and the proposed order of opening them (for CB1, the owner's answer) [decision: decisions-made-product-54.md]
@@ -58,6 +58,7 @@
 - comment-admin-notification.md: The administrator e-mail add_comment.php sends about a new comment: queued, written in the staff language, attachment line only when a file came
 - comment-anonymous-name.md: The stored literal 'Anonymous' of a nameless comment and every reader that shows it in the site or panel language through pg_comment_display_name()
 - comment-counters-recount.md: Upgrade step 11.0.33 (data only) counts the comments of form records on designed pages again: two walks, a time pause, a per-database data/temp progress file with a done marker
+- comment-email-pages-system-region.md: Comment e-mail pages: what their System region prints, the canvas note saying so on a page that keeps it, why the design templates keep it, the fixed markup kept [decision: here]
 - comment-label-stored-and-mail-line.md: Empty or old default 'Comment' comment label shows the site's word; admin e-mail line starts with a capital; member's pending line in Turkish (#4791, #4872, #4877)
 - comment-replies.md: Which comment a reply may answer (pg_comment_parent_ok()): same thread, visible to the writer, else refused with the text kept; ?reply_to=, staff mails, API parent_id, deleted parents, page copies
 - comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept [decision: here]

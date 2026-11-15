@@ -266,7 +266,7 @@ function pg_zone_form_cards($values, $country_options, $state_options, $errors =
         $rate_error = isset($errors[$rate]) ? (string) $errors[$rate] : '';
 
         $output_rates .= '
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="' . $rate . '" class="form-label">' . $label . '</label>
                                             <label class="form-control form-adorn form-adorn-end' . (($rate_error !== '') ? ' is-invalid' : '') . '">
                                                 <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
@@ -306,7 +306,7 @@ function pg_zone_form_cards($values, $country_options, $state_options, $errors =
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Shipping Zone Name') . '</label>
                                             <input value="' . h($values['name']) . '" type="text" name="name" placeholder="' . lang('Zone Name') . '" id="name" maxlength="50" class="form-control' . $name_class . '" required' . $name_aria . ' />' . $name_feedback . '
                                         </div>

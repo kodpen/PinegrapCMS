@@ -442,7 +442,7 @@ echo
 
                     <div class="card pg-sale-cart mt-5">
                         <div class="card-header">
-                            <h2 class="pg-sale-ch fg-primary">' . lang('Cart') . '</h2>
+                            <h2 class="pg-sale-ch pg-title-section">' . lang('Cart') . '</h2>
                             <span class="small fg-secondary" id="pg_sale_count">' . h(local_sale_count_text($totals)) . '</span>
                         </div>
                         <div class="table-responsive">
@@ -480,8 +480,8 @@ echo
                 <aside class="col-12 lg:col-4 2xl:col-3 order-2" aria-label="' . h(lang('Summary and payment')) . '">
                     <div class="pg-sale-status" id="pg_sale_status">
                         <div id="pg_sale_done" hidden></div>
-                        <div class="card" id="pg_sale_summary_card">
-                            <div class="card-header pg-belge"><h2 class="pg-sale-ch fg-primary">' . lang('Summary') . '</h2></div>
+                        <div class="card pg-card" id="pg_sale_summary_card">
+                            <div class="card-header pg-belge"><h2 class="pg-sale-ch pg-title-status">' . lang('Summary') . '</h2></div>
                             <div id="pg_sale_summary">' . local_sale_render_summary($totals) . '</div>
                         </div>
                         ' . local_sale_render_pay($user) . '
