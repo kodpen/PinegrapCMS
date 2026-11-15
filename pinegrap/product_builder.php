@@ -3446,7 +3446,7 @@ function pg_pb_render_stock_quantity($mode, $product_id, $total)
     $is_bundle = $product_id && pg_bundle_ids_among(array((int) $product_id));
 
     if (!$locations || ($mode !== 'edit') || $is_bundle) {
-        return '<div class="col-12 md:col-3">
+        return '<div class="col-12 pg-field-span-3">
                 <label for="inventory_quantity" class="form-label">' . lang('Inventory Quantity') . '</label>
                 <input type="number" min="0" name="inventory_quantity" id="inventory_quantity" class="form-control" value="' . h($total) . '" />
                 ' . (($mode === 'edit') ? '<input type="hidden" name="inventory_quantity_was" value="' . h($total) . '" />' : '') . '
@@ -3505,7 +3505,7 @@ function pg_pb_render_preorder_row($v)
             'checked' => $running,
             'help'    => lang('Sell this before its stock arrives; the back order is turned on with it and the pre-order ends on the date or when stock is in.'),
             'panel'   =>
-                '<div class="col-12 md:col-3">
+                '<div class="col-12 pg-field-span-3">
                     <label for="preorder_date" class="form-label">' . lang('Ships From') . '</label>
                     <input type="date" data-pg-date name="preorder_date" id="preorder_date" class="form-control" min="' . h(date('Y-m-d', strtotime($today . ' +1 day'))) . '" value="' . h($running ? $date : '') . '" />' . get_date_picker_format() . pg_fields_script() . '
                 </div>',
@@ -4875,7 +4875,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
     if ($output_zone_options !== '') {
         $output_zones_field =
-            '<div class="col-12 md:col-6 my-3">
+            '<div class="col-12 pg-field-span-6 my-3">
                 <label for="allowed_zones" class="form-label">' . lang('Allowed Zones') . '</label>
                 <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select shipping zone(s)') . '" id="allowed_zones" name="allowed_zones[]" multiple="multiple">' . $output_zone_options . '</select>
             </div>';
@@ -4899,7 +4899,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 'name'  => 'commissionable',
                 'label' => lang('Commissionable'),
                 'panel' =>
-                    '<div class="col-12 md:col-3">
+                    '<div class="col-12 pg-field-span-3">
                         <label for="commission_rate_limit" class="form-label">' . lang('Commission Rate Limit') . '</label>
                         <label class="form-control form-adorn form-adorn-end">
                             <span class="form-adorn-text" aria-hidden="true">%</span>
@@ -4946,7 +4946,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                     'label' => lang('Compare-at Price'),
                     'help'  => lang('An earlier or list price of this article, higher than the price it sells at.'),
                     'panel' =>
-                        '<div class="col-12 md:col-3">
+                        '<div class="col-12 pg-field-span-3">
                             <label for="compare_at_price" class="form-label">' . lang('Amount') . '</label>
                             <label class="form-control form-adorn form-adorn-end">
                                 <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
@@ -5522,7 +5522,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             <div class="card-body">
                                 <div class="row">
 
-                                    <div class="col-12 md:col-4 my-3">
+                                    <div class="col-12 pg-field-span-4 my-3">
                                         <label for="name" class="form-label">' . lang('Product ID / SKU') . '</label>
                                         <input type="text" name="name" id="name" class="form-control" maxlength="100" required value="' . h($v('name')) . '" data-pg-name-except="' . (($pg_mode === 'edit') ? $pg_product_id : 0) . '" />
                                         <div class="invalid-feedback">' . lang('Required Area') . '</div>
@@ -5583,7 +5583,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'name'    => 'taxable',
                                                 'label'   => lang('Taxable'),
                                                 'panel'   =>
-                                                    '<div class="col-12 md:col-3">
+                                                    '<div class="col-12 pg-field-span-3">
                                                         <label for="tax_rate" class="form-label">' . lang('Tax Rate (%)') . '</label>
                                                         <input type="number" min="0" max="100" step="0.001" name="tax_rate" id="tax_rate" class="form-control" placeholder="' . h($output_tax_rate_placeholder) . '" value="' . h($output_tax_rate_value) . '" />
                                                         <div class="form-text">' . $output_tax_rate_help . '</div>
@@ -5698,7 +5698,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     </div>
                                                     <div class="col-12 mt-5 d-none" id="pg_pb_combo_preview"></div>
 
-                                                    <div class="col-12 md:col-4 mt-5 pg-pb-group-only d-none">
+                                                    <div class="col-12 pg-field-span-4 mt-5 pg-pb-group-only d-none">
                                                         <label for="sku_template" class="form-label">' . lang('SKU Template') . '</label>
                                                         <input type="text" id="sku_template" name="sku_template" class="form-control" placeholder="' . lang('e.g. {Color}-{Size}') . '" value="' . h($v('sku_template')) . '" />
                                                         <div class="pg-pb-tokens d-flex flex-wrap gap-1 mt-1" data-pg-pb-target="sku_template"></div>
@@ -5808,7 +5808,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             <div class="card-body">
                                 <div class="row">
 
-                                    <div class="col-12 md:col-6 my-3">
+                                    <div class="col-12 pg-field-span-6 my-3">
                                         <label class="form-label" for="required_product">' . lang('Requires Product') . '</label>
                                         <select class="form-control" id="required_product" name="required_product">
                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Product')))) . '-</option>' . select_product($v('required_product')) . '
@@ -5900,7 +5900,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                         <label for="mpn" class="form-label">' . lang('MPN') . '</label>
                                         <input type="text" name="mpn" id="mpn" class="form-control" maxlength="50" placeholder="' . lang('i.e. manufacturer product number') . '" value="' . h($v('mpn')) . '" />
                                     </div>
-                                    <div class="col-12 md:col-6 my-3">
+                                    <div class="col-12 pg-field-span-6 my-3">
                                         <label for="google_product_category" class="form-label">' . lang('Google Product Category') . '</label>
                                         <select name="google_product_category" id="google_product_category" class="form-control" data-pg-combobox data-pg-source="google_taxonomy_action.php?action=search" data-pg-min-length="2" data-pg-free-text data-placeholder="' . h(lang('Google Product Category')) . '"><option value=""></option>' . $output_google_product_category_option . '</select>' . pg_fields_script() . '
                                         <div class="form-text" id="pg_pb_taxonomy_status">' . $output_taxonomy_status . '</div>
@@ -5981,7 +5981,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         </label>
                                                         <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
                                                     </div>
-                                                    <div class="col-12 md:col-6">
+                                                    <div class="col-12 pg-field-span-6">
                                                         <label class="form-label" for="send_to_page">' . lang('Set Customer\'s Start Page to') . '</label>
                                                         ' . pg_picker_field('page', 'send_to_page', $v('send_to_page')) . '
                                                     </div>',
@@ -6041,7 +6041,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                                             <div class="popover-body">
                                                                 <div class="row">
-                                                                    <div class="col-12 md:col-6">
+                                                                    <div class="col-12 pg-field-span-6">
                                                                         <label class="form-label" for="gift_card_email_page_id">' . lang('Page') . '</label>
                                                                         ' . pg_picker_field('page', 'gift_card_email_page_id', $v('gift_card_email_page_id')) . '
                                                                     </div>
@@ -6082,7 +6082,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Contact Group')))) . '-</option>' . select_contact_group($v('contact_group_id'), $user) . '
                                         </select>
                                     </div>
-                                    <div class="col-12 md:col-3 my-3">
+                                    <div class="col-12 pg-field-span-3 my-3">
                                         <label for="reward_points" class="form-label">' . lang('Reward Points') . '</label>
                                         <input type="text" name="reward_points" id="reward_points" class="form-control" size="5" maxlength="9" inputmode="numeric" style="text-align:right;" value="' . h($v('reward_points')) . '" />
                                     </div>
@@ -6161,7 +6161,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'label' => lang('Add Comment'),
                                                 'help'  => lang('Buying this posts a comment on a page, as the customer.'),
                                                 'panel' =>
-                                                    '<div class="col-12 md:col-6">
+                                                    '<div class="col-12 pg-field-span-6">
                                                         <label class="form-label" for="add_comment_page_id">' . lang('Page') . '</label>
                                                         ' . pg_picker_field('page', 'add_comment_page_id', $v('add_comment_page_id')) . '
                                                     </div>
