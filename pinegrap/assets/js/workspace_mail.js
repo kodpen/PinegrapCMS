@@ -1542,11 +1542,9 @@
             field.name = 'at';
 
             // The panel's own control (pgDateField() in workspace.js) keeps
-            // the ISO value the post reads; the browser's own one without it.
+            // the ISO value the post reads.
             if (h.dateField) {
                 h.dateField(field, 'datetime-local');
-            } else {
-                field.type = 'datetime-local';
             }
 
             form.appendChild(h.formRow(t('mail_remind_when'), field, t('mail_remind_hint')));
