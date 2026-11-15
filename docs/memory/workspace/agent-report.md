@@ -19,11 +19,12 @@ description: An application agent's report of its model and plan usage (POST /wo
 ## What does the Agents card show?
 - Under an application agent's line (`ws_agents_settings_line_html()`, both the dialog and the old screen): the model, each window as "Weekly 61%, resets 14.11 09:00", and "reported 12 min ago" (`ws_agent_report_words()`, `ws_seen_ago_words()`), escaped, with the tip "As the agent reported it; the site cannot check it."
 - Older than a day (`WS_AGENT_REPORT_STALE_AFTER`) it is drawn muted (`opacity-50`). Nothing for a model assistant, Claude, or before a first report.
-- Not in the API's agent rows or the brief.
+- The same report in a channel: the agent card's bars, the 90% mark in the @ menu (`agent-card-look.md`, `agent-state-marks.md`), and the API's channel-agent rows (`agent-card-facts.md`). Not in the brief.
 
 ## How does a session send it?
 - `php tools/ws_profile.php --model=NAME --windows=NAME:PERCENT:RESETS[,…]` with the `PG_WS_*` settings (no channel needed); exit 0 reported, 1 refused, 2 usage. It only sends what it is given: how a session reads its plan's limits is its own. When: `workflow/agent-channel-wake.md`.
 
 ## What was left out?
-- Owner and architect (2026-11-13, #9260): no history or chart of reports, no limit or warning on plan usage, no rights by role, no mention of everyone holding a role.
+- Owner and architect (2026-11-13, #9260): no history or chart of reports, no limit on plan usage, no rights by role, no mention of everyone holding a role.
+- Owner (2026-11-15, channel decision 3775): a window at 90% or more is now marked on the agent card and in the @ menu (`agent-state-marks.md`); the mark stops nothing.
 - Not tried: whether a cloud session can read its plan's limits; agents on one account report the same account's numbers.
