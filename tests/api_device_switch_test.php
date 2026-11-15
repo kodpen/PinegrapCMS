@@ -200,3 +200,21 @@ function test_api_device_switch_ceiling_is_known_scopes()
 		pg_assert_contains($scope, $ceiling, $scope);
 	}
 }
+
+// An older active application past its expiry beside a newer usable one: the
+// switch shows on and a save "on" writes nothing, which holds because sign-in,
+// pairing and discovery pick the oldest usable application
+// (api_device_app_usable_where()), the newer one here.
+function test_api_device_switch_older_expired_app_beside_a_usable_one()
+{
+	$now = 1800000000;
+	$apps = array(
+		api_device_switch_test_app(1, 'active', array(), $now - 3600),
+		api_device_switch_test_app(2, 'active', api_device_switch_ceiling(), 0),
+	);
+
+	pg_assert_true(api_device_switch_is_on($apps, $now), 'switch shows on');
+	pg_assert_same(array(), api_device_switch_plan($apps, true, api_device_switch_ceiling(), $now), 'save on writes nothing');
+	pg_assert_false(api_device_switch_app_usable($apps[0], $now), 'older one is not usable');
+	pg_assert_true(api_device_switch_app_usable($apps[1], $now), 'newer one is usable');
+}

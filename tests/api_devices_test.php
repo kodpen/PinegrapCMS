@@ -63,3 +63,37 @@ function test_api_devices_next_token_depends_on_kind_token_and_key()
 	pg_assert_true($refresh !== api_device_token_next('refresh', $token, 'k2'), 'another site key');
 	pg_assert_true(api_device_token_next('refresh', $refresh, 'k1') !== $refresh, 'the next exchange moves on');
 }
+
+// The rule for "the site's device application" when no key is named: active
+// and not past expires_at, so an older expired application does not hide a
+// newer usable one (the switch counts the newer one as on).
+function test_api_devices_usable_app_where_skips_expired()
+{
+	$where = api_device_app_usable_where(1800000000);
+
+	pg_assert_contains("status = 'active'", $where, 'active');
+	pg_assert_contains('expires_at <= 0', $where, 'no expiry passes');
+	pg_assert_contains('expires_at >= 1800000000', $where, 'not yet expired passes');
+	pg_assert_same($where, api_device_app_usable_where('1800000000abc'), 'time is cast to an integer');
+}
+
+// Sign-in without a key (and with it the discovery document) and pairing read
+// the same rule, so all three agree on one application.
+function test_api_devices_sign_in_and_pairing_share_the_usable_rule()
+{
+	$sources = array(
+		'api_device_app' => file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/devices.php'),
+		'api_pairing_device_app' => file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/pairing.php'),
+	);
+
+	foreach ($sources as $function => $source) {
+		$start = strpos($source, 'function ' . $function . '(');
+		pg_assert_true($start !== false, $function . ' found');
+		$end = strpos($source, "\n}\n", $start);
+		$body = substr($source, $start, $end - $start);
+		pg_assert_contains('api_device_app_usable_where(', $body, $function . ' uses the shared rule');
+	}
+
+	$discovery = file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/discovery.php');
+	pg_assert_contains("api_device_app('')", $discovery, 'discovery reads api_device_app()');
+}
