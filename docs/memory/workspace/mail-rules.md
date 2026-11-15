@@ -15,6 +15,7 @@ description: A support box's incoming mail rules (IB11): one condition and one a
 - `ws_mail_rules_run()` from `ws_mail_ingest()`, only for a mail that opens a conversation, after the block check and the conversation's write, before the `mail_customer` notice, the `workspace.mail.received` event and the automatic answer. A blocked, looping or held mail stops earlier, so it runs none. Rules run in their order; the first that fits wins (`ws_mail_rule_match()`).
 - "Close it": status `closed`, `closed_at` now; that conversation gets no automatic answer (`$ruled !== 'close'`).
 - "Give it to": `assignee_id` and inbox kind `mail_assigned` with actor 0. A person off the team, or who may not answer in the conversation's place (`ws_mail_can_answer()`), is passed over and the conversation stays with nobody.
+- A person away today ("I am away", `workspace/mail-away.md`) hands it to their stand-in: `ws_mail_rules_run()` asks `ws_mail_away_stand_in()` after that check and writes and tells the holder it gives, as a hand assignment does (#9669; before it the away person held it and the stand-in was never told).
 
 ## Where are they set?
 - "Incoming mail rules" on the Mailboxes card (Site Settings › Mailboxes), under "Blocked senders" (`ws_mail_rules_html()`): each rule as a line ("When the sender is at @shop.test → give it to Ayşe", `ws_mail_rule_text()`) with its box and Delete, then the Add rule form: Mailbox (support boxes), When, Address, domain or words, Then (Close it, or Give it to each team member). Drawn only when a support box exists.
