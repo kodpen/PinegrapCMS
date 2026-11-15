@@ -5,7 +5,7 @@ description: Add-on hook system AH1 census from the code: announced events, driv
 
 ## What is this census?
 - Step AH1 of `addon-hook-system.md` (with `addon-hook-system-site.md`): what the code has today, written for the architect's design note. It describes, it does not design. Paths are relative to `pinegrap/`.
-- Parts: this file (the plan's hook points, open questions), `addon-hook-system-census-events.md`, `addon-hook-system-census-drivers.md`, `addon-hook-system-census-slots.md`, `addon-hook-system-census-files.md`. Open questions are at the end of this file.
+- Parts: this file (the plan's hook points, open questions), `addon-hook-system-census-events.md`, `addon-hook-system-census-drivers.md`, `addon-hook-system-census-slots.md`, `addon-hook-system-census-print.md`, `addon-hook-system-census-files.md`. Open questions are at the end of this file.
 
 ## How do the plan's hook points map onto the code?
 - Order placed, order status changed, product saved: covered by `order.created`, `order.status_changed`, `product.created`/`product.updated` (several doors, above).
