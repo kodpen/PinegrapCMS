@@ -461,8 +461,9 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_save" value="save" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
+                            ' . pg_save_bar_return_button() . '
                             ' . (!is_array($existing) ? '<button type="submit" name="submit_save" value="another" class="btn my-1 btn-outline theme-success"><i class="bi bi-plus-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save and record another') . '</span></button>' : '') . '
+                            <button type="submit" name="submit_save" value="save" data-pg-save-shortcut class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
                 </nav>

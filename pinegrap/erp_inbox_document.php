@@ -334,6 +334,8 @@ if (empty($proposal['success'])) {
 
 // What can be done from here, by the state the document is in.
 if ($state === 'new') {
+    $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-archive me-3" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
+
     if (!empty($proposal['success']) && ($proposal['existing'] !== null)) {
         $output_actions .= $form('link', '<button type="submit" class="btn my-1 btn-solid theme-primary"><i class="bi bi-link-45deg me-3" aria-hidden="true"></i>' . lang('Mark as taken in') . '</button>',
             '<input type="hidden" name="invoice_id" value="' . (int) $proposal['existing']['id'] . '" />');
@@ -341,8 +343,6 @@ if ($state === 'new') {
         $output_actions .= $form('import', '<button type="submit" class="btn my-1 btn-solid theme-primary"><i class="bi bi-box-arrow-in-down me-3" aria-hidden="true"></i>'
             . (($proposal['account'] === null) ? lang('Open the supplier and draft the purchase invoice') : lang('Draft the purchase invoice')) . '</button>');
     }
-
-    $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-archive me-3" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
 } elseif ($state === 'ignored') {
     $output_actions .= $form('restore', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . lang('Bring back') . '</button>');
 } elseif ($state === 'drafted') {

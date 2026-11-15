@@ -1,6 +1,6 @@
 ---
 name: save-bar-helper
-description: pg_save_bar() (includes/fn/save_bar.php, SH6a): the framed save bar's markup, its options, the .pg-savebar frame on any screen, which screens took it, what is left to SH6b and SH6c
+description: pg_save_bar() (SH6a): the framed bar's markup, options, .pg-savebar frame, screens that took it; the buttons' order ghost, quiet, filled and the hidden Return button (SH6b)
 module: save_bar
 ---
 
@@ -21,6 +21,15 @@ module: save_bar
 ## What stays out?
 - `includes/templates/edit_offer.php`: an owner's kept screen (`decisions-made-panel-3.md`).
 - `includes/settings/screen.php`: the settings page frames its own bar (`#pg_settings_page_form > nav`).
-- The buttons' order (ghost, quiet, filled) in the markup is SH6b, the phone bar SH6c (`plans/panel-old-screens-shared-steps.md`).
+- The phone bar is SH6c (`plans/panel-old-screens-shared-steps.md`).
+
+## In which order are the buttons? (SH6b)
+- Ghost, quiet, filled, in the markup, never by CSS order: the danger delete first, the save last. The roles are the stylesheet's (`look-edit-screens.md`, "What is the save bar?"). `tests/save_bar_order_test.php` checks every inline bar and the screens that hand their buttons to a form layout.
+- Left in the old order: `product_builder.php`, `edit_offer` (kept screens), `edit_comment.php` and `edit_erp_invoice.php` (an open step changed them at the time), and Edit Product Group (`product_group_form.php`).
+
+## What keeps Return on Save?
+- Return presses the form's first submit button, so a delete first would be pressed. A reordered bar starts with `pg_save_bar_return_button()`: a nameless, visually hidden submit (`form=` when the bar sits outside its form). `backend.src.js` hands its press to the bar's `[data-pg-save-shortcut]` button, else its first filled button, else `pgSaveShortcutButton()`; that button's handlers and question run.
+- A bar whose buttons each sit on a form of their own (account sync item, inbox document), or whose form has no field (delivery note), needs none.
+- Add Expense's Save carries `data-pg-save-shortcut`: "Save and add another" (same `submit_save` name) now comes first and Ctrl+S would take it.
 
 Related: docs/memory/ui/look-edit-screens.md, docs/memory/ui/save-bar-chat-launcher.md

@@ -371,12 +371,12 @@ if ($mode === 'linked') {
                 </div>
             </form>';
 
+    $output_actions .= $form('unlink', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-x-circle me-3" aria-hidden="true"></i>' . lang('Undo the link') . '</button>', '',
+        lang('Undo the link between this card and the account? Neither record changes.'));
+
     if (!empty($diff) && !$readonly) {
         $output_actions .= '<button type="submit" form="erp_account_align" class="btn my-1 btn-solid theme-primary" data-confirm-content="' . h(lang(array('string' => 'Write the chosen values to the ERP account and to {var:1}?', 'vars' => $provider_label))) . '"><i class="bi bi-arrow-left-right me-3" aria-hidden="true"></i>' . lang('Align the chosen fields') . '</button>';
     }
-
-    $output_actions .= $form('unlink', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-x-circle me-3" aria-hidden="true"></i>' . lang('Undo the link') . '</button>', '',
-        lang('Undo the link between this card and the account? Neither record changes.'));
 
 } elseif ($mode === 'account') {
 
@@ -404,13 +404,6 @@ if ($mode === 'linked') {
 
     $eligible = erp_edoc_account_tax_number_usable($number, (string) $account['country_code']) && ((int) $account['id'] !== erp_edoc_accounts_walkin_id()) && empty($same_number);
 
-    if (($provider !== '') && $eligible) {
-        $output_actions .= $form('push', '<button type="submit" class="btn my-1 btn-solid theme-primary"><i class="bi bi-cloud-upload me-3" aria-hidden="true"></i>' . h(lang(array('string' => 'Send to {var:1} as a new card', 'vars' => $provider_label))) . '</button>', '',
-            lang(array('string' => 'Open a card for this account at {var:1}?', 'vars' => $provider_label)));
-    } elseif (!$eligible && empty($same_number)) {
-        $output_main = '<div class="alert theme-info my-7">' . lang('Only an account with a valid tax number is sent; the walk-in account never is.') . '</div>' . $output_main;
-    }
-
     $aside = in_array((int) $account['id'], ($provider_code !== '') ? erp_edoc_accounts_ignored_ids($provider_code) : array(), true);
 
     // Only an account the list could offer is set aside: the Put aside tab
@@ -420,6 +413,13 @@ if ($mode === 'linked') {
         $output_actions .= $form('restore', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . lang('Bring back') . '</button>');
     } elseif ($eligible) {
         $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-archive me-3" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
+    }
+
+    if (($provider !== '') && $eligible) {
+        $output_actions .= $form('push', '<button type="submit" class="btn my-1 btn-solid theme-primary"><i class="bi bi-cloud-upload me-3" aria-hidden="true"></i>' . h(lang(array('string' => 'Send to {var:1} as a new card', 'vars' => $provider_label))) . '</button>', '',
+            lang(array('string' => 'Open a card for this account at {var:1}?', 'vars' => $provider_label)));
+    } elseif (!$eligible && empty($same_number)) {
+        $output_main = '<div class="alert theme-info my-7">' . lang('Only an account with a valid tax number is sent; the walk-in account never is.') . '</div>' . $output_main;
     }
 
 } else {
@@ -452,9 +452,9 @@ if ($mode === 'linked') {
                 </div>
             </div>';
 
+        $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-archive me-3" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
         $output_actions .= $form('import', '<button type="submit" class="btn my-1 btn-solid theme-primary"><i class="bi bi-box-arrow-in-down me-3" aria-hidden="true"></i>' . lang('Take into the ERP as a new account') . '</button>', '',
             lang('Open a new ERP account from this card? When an account already carries its number, the card is linked to it instead.'));
-        $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-archive me-3" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
     } else {
         $output_actions .= $form('restore', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . lang('Bring back') . '</button>');
     }

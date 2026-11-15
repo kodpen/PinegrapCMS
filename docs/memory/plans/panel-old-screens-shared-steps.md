@@ -16,11 +16,12 @@ description: Old panel screens to look A: the shared steps cut after the groups,
 - SH3 (M, #9744) ERP lists: the plain table's head (12 px, weight 550, third text) and rows on the card's surface, the status badges as `.pg-pill`, the filter card's labels as `.pg-field-label`.
 - SH5 (S, #9739) Icon-only toolbar buttons and menu toggles as `.pg-icon-button`, their names through `lang()`. Marketplace Settings is not in it: its button ranks are SH10's.
 - SH6a (M, #9746) The save bar, first part: one shared helper (`pg_save_bar()`) draws the framed bar and the bare sticky button rows take it.
+- SH6b (M, #9779) The save bar's buttons in the sheet's order (ghost, quiet, filled), changed in the markup and not by CSS order; a hidden first submit keeps Return on Save (`ui/save-bar-helper.md`). Done, waiting for the merge.
 - SH10 (M, #9755) The Marketplace screens: the view buttons, the filter chips and the button ranks. One filled button per view (the toolbar's); a card's own actions share one rank, the same across the view's cards and the status column.
 
 ## Which can be given now?
 - KS2 (small fix, `[iş]`, no look) Add Product's field widths, by the owner's answer (`workflow/decisions-made-panel-9.md`); #9658 has landed.
-- SH6b, SH6c (after SH1 has landed) The bar's buttons in the sheet's order (ghost, quiet, filled), changed in the markup and not by CSS order; the phone bar where three actions take three full rows.
+- SH6c (after SH1 has landed) The phone bar where three actions take three full rows.
 
 ## What does every shared step keep?
 - Claim as `[plan:panel-old-screens] <step> — <topic>`. A file an open step's PR already changes is left to the later step and named in the PR body.

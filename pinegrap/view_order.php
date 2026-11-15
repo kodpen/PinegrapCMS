@@ -2856,9 +2856,10 @@ if (!$_POST) {
                             <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                                 <div class="container">
                                     <div class=" btn-group flex-wrap justify-content-center pg-print-none">
-                                        ' . $output_save_button . '
-                                        ' . $output_restore_button . '
+                                        ' . pg_save_bar_return_button() . '
                                         <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                        ' . $output_restore_button . '
+                                        ' . $output_save_button . '
                                     </div>
                                 </div>
                             </nav>

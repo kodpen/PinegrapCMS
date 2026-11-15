@@ -670,10 +670,11 @@ if (!isset($_POST['name'])) {
                         . pg_design_file_form_access_card(select_folder($row['folder']), array('design' => ($user['role'] <= 1), 'design_checked' => ($design == 1)))
                         . $output_where_used,
                         '
-                                        <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1 btn-solid theme-primary"><i class="bi bi-box-arrow-left me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save & Return') . '</span></button>
-                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                        ' . pg_save_bar_return_button() . '
+                                        <button type="submit" name="delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h($output_delete_confirmation) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete') . '</span></button>
                                         <button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1 btn-solid theme-secondary"><i class="bi bi-copy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Duplicate') . '</span></button>
-                                        <button type="submit" name="delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h($output_delete_confirmation) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete') . '</span></button>'
+                                        <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1 btn-solid theme-primary"><i class="bi bi-box-arrow-left me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save & Return') . '</span></button>
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>'
                     ) . '
                 </form>
             </div>
