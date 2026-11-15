@@ -892,6 +892,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_voice_js_strings());
     // Status updates and check-ins (status.php, assets/js/workspace_status.js).
     $strings = array_merge($strings, ws_status_js_strings());
+    // The open items line over the conversation (open_items.php,
+    // assets/js/workspace.js, drawOpenItems()).
+    $strings = array_merge($strings, ws_open_items_js_strings());
     // A task handed to an assistant (delegation.php,
     // assets/js/workspace_task_delegate.js).
     $strings = array_merge($strings, ws_delegation_js_strings());
