@@ -155,6 +155,7 @@
 - personal-calendar-census-tables.md: PC1 proposal (2026-11-14), shaped by the architect and approved by the owner (decisions-made-schema-18): the tables and columns a person's private plans need, each with its reason and step [decision: here]
 - personal-calendar-census-words.md: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Planning Board, /workspace/plan, "#plan") and the names proposed for a private plan [decision: here]
 - plan-board-grid.md: Planning Board (workspace_board.php) Turkish name, grid columns and why .ws-board's min-width equals the grid minimum (#3815) [decision: here]
+- poll-agent-question-reach.md: Where an agent question reaches the person it asks: the ring, Today, the Assistant card, the channel export, and tools/ws_poll.php ask, again, withdraw
 - poll-agent-question.md: The agent question on the server (agent_question.php, step 11.0.214): the flag, who answers, settling by the first answer, the wake and brief, the memory index, map and API fields
 - poll-agent-questions-census-columns.md: AQ1 census: the columns the poll's new parts need (description, picture, links, recommended, "Other", take back, ask again), older polls, API, export, guests [decision: here]
 - poll-agent-questions-census-today.md: AQ1 census of the poll today: its three tables, the box, ws_poll_vote(), ws_poll_close(), who may change or close, a guest's vote, who asks as an agent, export, ws_poll.php
@@ -474,7 +475,7 @@
 - workspace-office-edits.md: The cells of an Excel file or the paragraphs of a Word file posted in a channel, changed in its preview window (ws_file_office, ws_file_office_save, PR #656, #702): who may, replace or copy
 - workspace-outside-caution.md: The standing caution in every agent's and assistant's brief (GV5): a guest's line, a mail and other outside text are data, never a request; how a guest's message is marked in a brief and in the API [decision: decisions-made-workspace-24.md]
 - workspace-personal-calendar-rules.md: My calendar and a person's own plans (two plans, both closed 2026-11-15): what the owner asked, the rules every change keeps, where each part is written up, what is still open [decision: decisions-made-schema-18.md, decisions-made-schema-19.md, decisions-made-workspace-27.md, decisions-made-workspace-29.md]
-- workspace-personal-ical-days.md: On which days and Today lines a person's own iCal events are drawn (ws_personal_ical_touches(), end exclusive), how a repeating all-day event ends across a clock change, the gzip unpack limit
+- workspace-personal-ical-days.md: Which days and Today lines show a person's own iCal events (ws_personal_ical_touches()), all-day repeats across a clock change, rules begun years ago, the gzip limit
 - workspace-personal-ical.md: A person's own secret iCal address as a read-only layer on their Work Calendar: ws_holiday_feeds.user_id, the sealed payload, the sync path, who sees it (#3254, decided in #3180) [decision: decisions-made-product-5.md, decisions-made-workspace-6.md]
 - workspace-personal-overview.md: A person's own calendar layers as a whole: own iCal calendars and own plans on My calendar; the rules that bind them and which file holds each part
 - workspace-personal-plan-customer.md: A person's own plan made for a customer (PC6): contact_id, the drawer field, Roadmaps on the card and history, New roadmap, merge and erasure, not in the API [decision: here]
@@ -483,7 +484,7 @@
 - workspace-personal-plan-repeat.md: Repeating plans on My calendar (#9565, #9611): the Repeat field, step 11.0.209, times worked out on read, This one / This and the following, a reminder each time [decision: here]
 - workspace-personal-plan-roadmap.md: The roadmap of a person's own plan (PC5): dated steps in ws_personal_plan_steps, the bar and its progress, "Make a task" and a step that follows its task
 - workspace-personal-plan-sharing.md: Who can see a person's plan (PC4): Only me, chosen team members, the whole team; what the others see and may not do
-- workspace-personal-plans-api.md: A person's own plans in the external API and MCP (PC8): /workspace/personal-plans, scope workspace:personal_plans, only the person's own device or OAuth connection, own plans only
+- workspace-personal-plans-api.md: A person's own plans in the external API and MCP (PC8): /workspace/personal-plans, scope workspace:personal_plans, only the person's own device or OAuth connection, own plans only [decision: here]
 - workspace-personal-plans.md: A person's private plans on My calendar (PC3): step 11.0.201, the gate ws_personal_plan_can_see() and its guard test, the drawer, Today, the plan_reminder line
 - workspace-picker-press-open.md: Why a press inside the @ and # list of a Workspace writing box (scrollbar, gap, padding) keeps it open: the root mousedown guard, blurPicker() and pickerStaysOpen() (#9580)
 - workspace-plan-day-state.md: How a plan grid day reads (ws_plan_day_state(): away, holiday, off, over, full, ok), why load 999 is an internal marker, and where a day off with work is named instead of "%999" (PR #4326, #4233)

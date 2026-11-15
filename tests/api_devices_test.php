@@ -2,9 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the pair a device refresh token is exchanged for
- * (api_device_token_next(), includes/api/devices.php): the same token always
- * gives the same pair, so exchanges that run together agree on it.
+ * Tests for device sessions (includes/api/devices.php): the scope adjustments
+ * on top of a device's ceiling (api_device_scopes_adjust()), and the pair a
+ * device refresh token is exchanged for (api_device_token_next()): the same
+ * token always gives the same pair, so exchanges that run together agree on it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -62,4 +63,39 @@ function test_api_devices_next_token_depends_on_kind_token_and_key()
 	pg_assert_true($refresh !== api_device_token_next('refresh', 'pgrt_' . str_repeat('ce', 24), 'k1'), 'another token');
 	pg_assert_true($refresh !== api_device_token_next('refresh', $token, 'k2'), 'another site key');
 	pg_assert_true(api_device_token_next('refresh', $refresh, 'k1') !== $refresh, 'the next exchange moves on');
+}
+
+// A device session's scope adjustments (api_device_scopes_adjust()): never
+// webhooks:manage, always the person's own account, and with workspace:write
+// the mail and personal plans scopes, each within the owner's rights.
+function test_api_devices_scopes_adjust_adds_workspace_scopes_with_write()
+{
+	$owner = array('workspace:read', 'workspace:write', 'workspace:mail_send', 'workspace:personal_plans', 'account:read', 'account:write', 'meta:read');
+
+	pg_assert_same(
+		array('account:read', 'account:write', 'meta:read', 'workspace:mail_send', 'workspace:personal_plans', 'workspace:read', 'workspace:write'),
+		api_device_scopes_adjust(array('workspace:write', 'workspace:read', 'meta:read', 'webhooks:manage'), $owner),
+		'write brings mail and personal plans; webhooks:manage is removed'
+	);
+
+	pg_assert_same(
+		array('account:read', 'account:write', 'meta:read', 'workspace:read'),
+		api_device_scopes_adjust(array('workspace:read', 'meta:read'), $owner),
+		'read alone brings neither'
+	);
+}
+
+function test_api_devices_scopes_adjust_stays_within_the_owner_rights()
+{
+	pg_assert_same(
+		array('account:read', 'account:write', 'workspace:write'),
+		api_device_scopes_adjust(array('workspace:write'), array('workspace:write', 'account:read', 'account:write')),
+		'an owner without the two scopes gets neither'
+	);
+
+	pg_assert_same(
+		array('account:read', 'account:write', 'workspace:personal_plans', 'workspace:write'),
+		api_device_scopes_adjust(array('workspace:write', 'workspace:personal_plans'), array('workspace:write', 'workspace:personal_plans')),
+		'a scope already held is not listed twice'
+	);
 }

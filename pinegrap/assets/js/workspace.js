@@ -3335,6 +3335,8 @@
         (channel.agents || []).forEach(function (agent) {
             out.push({
                 key: 'agent-' + agent.id,
+                id: agent.id,
+                app_id: agent.app_id,
                 tone: agent.id,
                 name: agent.name || ('@' + agent.handle),
                 handle: agent.handle,
@@ -3380,6 +3382,366 @@
         return face;
     }
 
+    // ── The agent card (agent_card.php, ws_agent_card) ──
+    // Opened on an agent's name or picture by hover, keyboard focus or a
+    // tap; one at a time; Escape, a click outside or leaving it closes it.
+    // The figures are the agent's own report, as the card says.
+    var agentCardOpen = { node: null, anchor: null, timer: 0, key: '' };
+    var agentCardCache = {};
+
+    // The registry agent a channel has for an application, or null.
+    function agentOfApp(channel, appId) {
+        var found = null;
+
+        (channel && channel.agents || []).forEach(function (agent) {
+            if (!found && appId && (agent.app_id === appId)) {
+                found = agent;
+            }
+        });
+
+        return found;
+    }
+
+    function agentCardClose() {
+        clearTimeout(agentCardOpen.timer);
+
+        if (agentCardOpen.anchor) {
+            agentCardOpen.anchor.setAttribute('aria-expanded', 'false');
+        }
+
+        if (agentCardOpen.node && agentCardOpen.node.parentNode) {
+            agentCardOpen.node.parentNode.removeChild(agentCardOpen.node);
+        }
+
+        agentCardOpen.node = null;
+        agentCardOpen.anchor = null;
+        agentCardOpen.key = '';
+    }
+
+    // Where the card stands: under the anchor, or over it when the room
+    // below is short; kept 8px inside the window. Pure
+    // (tests/workspace_agent_card_js_test.php).
+    function agentCardPlace(anchor, size, view) {
+        var gap = 6;
+        var left = Math.min(Math.max(8, anchor.left), Math.max(8, view.width - size.width - 8));
+        var below = view.height - anchor.bottom - gap - 8;
+        var top = ((below >= size.height) || (anchor.top - gap - 8 < size.height && below >= anchor.top))
+            ? anchor.bottom + gap
+            : anchor.top - gap - size.height;
+
+        return { left: Math.round(left), top: Math.round(Math.max(8, top)) };
+    }
+
+    function agentCardRow(box, label, value) {
+        var row = el('div', 'ws-agent-card-row');
+
+        row.appendChild(el('span', 'ws-agent-card-key', label));
+
+        if (value && value.nodeType) {
+            row.appendChild(value);
+        } else {
+            row.appendChild(el('span', 'ws-agent-card-value', value));
+        }
+
+        box.appendChild(row);
+    }
+
+    var AGENT_CARD_TONES = { working: 'blue', waiting: 'amber', late: 'amber', paused: 'gray', idle: 'teal' };
+
+    // The card's body from what ws_agent_card answers; until then, from the
+    // member row the channel already holds.
+    function agentCardBody(node, agent, card, channel) {
+        var data = card || {};
+
+        clear(node);
+
+        var head = el('div', 'ws-agent-card-head');
+        var face = agentFace({ tone: agent.id, assistant: agent.assistant });
+
+        face.classList.add('ws-agent-card-face');
+
+        if (data.avatar) {
+            clear(face);
+            var img = el('img', 'avatar-img');
+
+            img.src = data.avatar;
+            img.alt = '';
+            face.appendChild(img);
+        }
+
+        head.appendChild(face);
+
+        var who = el('div', 'ws-agent-card-who');
+
+        who.appendChild(el('div', 'pg-title-status ws-agent-card-name', data.name || agent.name || ('@' + agent.handle)));
+
+        var line = el('div', 'pg-text-meta ws-agent-card-handle', '@' + (data.handle || agent.handle));
+        var role = data.role || agent.role || '';
+
+        if (role) {
+            line.appendChild(el('span', 'pg-pill pg-tone-violet', role));
+        }
+
+        who.appendChild(line);
+        head.appendChild(who);
+        node.appendChild(head);
+
+        if (!card) {
+            node.appendChild(el('div', 'pg-text-meta ws-agent-card-loading', t('loading')));
+            return;
+        }
+
+        var facts = el('div', 'ws-agent-card-box');
+        var state = el('span', 'pg-pill pg-tone-' + (AGENT_CARD_TONES[data.state] || 'gray'), data.state_words);
+
+        agentCardRow(facts, t('ac_state'), state);
+
+        if (data.waiting > 0) {
+            agentCardRow(facts, t('ac_waiting'), t('ac_requests', data.waiting));
+        }
+
+        if (data.model) {
+            agentCardRow(facts, t('ac_model'), data.model);
+
+            // Part of the report: muted with it once older than a day.
+            if (data.stale) {
+                facts.lastChild.classList.add('opacity-50');
+            }
+        }
+
+        if (data.seen) {
+            agentCardRow(facts, t('ac_seen'), data.seen);
+        }
+
+        agentCardRow(facts, t('ac_today'), t('ac_today_counts', data.today.answered, data.today.failed));
+        node.appendChild(facts);
+
+        if (data.windows && data.windows.length) {
+            var windows = el('div', 'ws-agent-card-box' + (data.stale ? ' is-stale' : ''));
+
+            data.windows.forEach(function (window) {
+                var item = el('div', 'ws-agent-card-window' + (window.high ? ' is-high' : ''));
+                var top = el('div', 'ws-agent-card-row');
+                var label = el('span', 'ws-agent-card-value', window.label);
+
+                if (window.high) {
+                    var mark = icon('bi-exclamation-triangle-fill', 'ws-agent-card-high');
+
+                    mark.removeAttribute('aria-hidden');
+                    mark.setAttribute('role', 'img');
+                    mark.setAttribute('aria-label', t('ac_high'));
+                    mark.title = t('ac_high');
+                    label.appendChild(mark);
+                }
+
+                top.appendChild(label);
+                top.appendChild(el('span', 'pg-tabular ws-agent-card-key', window.percent + '% · ' + window.resets));
+                item.appendChild(top);
+
+                var bar = el('div', 'ws-agent-card-bar');
+                var fill = el('span', '');
+
+                fill.style.width = Math.max(0, Math.min(100, window.percent)) + '%';
+                bar.appendChild(fill);
+                bar.setAttribute('role', 'meter');
+                bar.setAttribute('aria-valuemin', '0');
+                bar.setAttribute('aria-valuemax', '100');
+                bar.setAttribute('aria-valuenow', String(window.percent));
+                bar.setAttribute('aria-label', window.label);
+                item.appendChild(bar);
+                windows.appendChild(item);
+            });
+
+            node.appendChild(windows);
+        }
+
+        var more = el('div', 'ws-agent-card-box');
+
+        if (data.wake) {
+            agentCardRow(more, t('ac_wakes'), data.wake);
+        }
+
+        if (data.last_message) {
+            var last = el('button', 'pg-button pg-button-quiet pg-button-sm', data.last_message.when);
+
+            last.type = 'button';
+            last.addEventListener('click', function () {
+                agentCardClose();
+                app.jumpTo(data.last_message.id, true);
+            });
+            agentCardRow(more, t('ac_last'), last);
+        }
+
+        if (data.channels && data.channels.length) {
+            var list = el('span', 'ws-agent-card-channels');
+
+            data.channels.forEach(function (item) {
+                var link = el('button', 'pg-button pg-button-ghost pg-button-sm', '#' + item.name);
+
+                link.type = 'button';
+                link.addEventListener('click', function () {
+                    agentCardClose();
+                    app.open(item.id, 0);
+                });
+                list.appendChild(link);
+            });
+            agentCardRow(more, t('ac_channels'), list);
+        }
+
+        node.appendChild(more);
+
+        if (data.reported) {
+            var note = el('div', 'pg-text-meta ws-agent-card-note' + (data.stale ? ' opacity-50' : ''));
+
+            note.appendChild(icon('bi-info-circle', 'me-1'));
+            note.appendChild(document.createTextNode(data.reported));
+            node.appendChild(note);
+        }
+
+        if (channel && channel.can_post) {
+            var mention = el('button', 'pg-button pg-button-quiet pg-button-sm ws-agent-card-mention');
+
+            mention.type = 'button';
+            mention.appendChild(icon('bi-at', 'me-1'));
+            mention.appendChild(document.createTextNode(t('ac_mention')));
+            mention.addEventListener('click', function () {
+                agentCardClose();
+
+                if (app.input) {
+                    app.insertText('@' + (data.handle || agent.handle) + ' ');
+                }
+            });
+            node.appendChild(mention);
+        }
+    }
+
+    function agentCardShow(anchor, channel, agent) {
+        var key = channel.id + ':' + agent.id;
+
+        clearTimeout(agentCardOpen.timer);
+
+        if (agentCardOpen.key === key && agentCardOpen.anchor === anchor) {
+            return;
+        }
+
+        agentCardClose();
+
+        var node = el('div', 'pg-card ws-agent-card');
+
+        node.setAttribute('role', 'dialog');
+        node.setAttribute('aria-label', agent.name || ('@' + agent.handle));
+        node.addEventListener('mouseenter', function () { clearTimeout(agentCardOpen.timer); });
+        node.addEventListener('mouseleave', function () { agentCardOpen.timer = setTimeout(agentCardClose, 250); });
+        node.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.stopPropagation();
+                agentCardClose();
+                anchor.focus();
+            }
+        });
+
+        agentCardOpen.node = node;
+        agentCardOpen.anchor = anchor;
+        agentCardOpen.key = key;
+        anchor.setAttribute('aria-expanded', 'true');
+
+        var place = function () {
+            if (agentCardOpen.node !== node) {
+                return;
+            }
+
+            var box = anchor.getBoundingClientRect();
+            var spot = agentCardPlace(box, { width: node.offsetWidth, height: node.offsetHeight }, { width: window.innerWidth, height: window.innerHeight });
+
+            node.style.left = spot.left + 'px';
+            node.style.top = spot.top + 'px';
+        };
+        var cached = agentCardCache[key];
+
+        agentCardBody(node, agent, (cached && (Date.now() - cached.at < 30000)) ? cached.card : null, channel);
+        document.body.appendChild(node);
+        place();
+
+        if (!cached || (Date.now() - cached.at >= 30000)) {
+            api('ws_agent_card', { channel_id: channel.id, agent_id: agent.id }).then(function (data) {
+                agentCardCache[key] = { at: Date.now(), card: data.card };
+
+                if (agentCardOpen.node === node) {
+                    agentCardBody(node, agent, data.card, channel);
+                    place();
+                }
+            }).catch(function () {
+                if (agentCardOpen.node === node) {
+                    agentCardClose();
+                }
+            });
+        }
+    }
+
+    // Makes a name or a picture open the agent's card. keyboard: the
+    // anchor is a Tab stop and opens on focus (a picture hidden from
+    // screen readers is not).
+    function agentCardHook(target, channel, agent, keyboard) {
+        if (!target || !channel || !agent || !agent.id) {
+            return target;
+        }
+
+        target.classList.add('ws-agent-card-anchor');
+
+        if (keyboard) {
+            target.tabIndex = 0;
+            target.setAttribute('role', 'button');
+            target.setAttribute('aria-haspopup', 'dialog');
+            target.setAttribute('aria-expanded', 'false');
+            target.addEventListener('focus', function () {
+                if (target.matches(':focus-visible')) {
+                    agentCardShow(target, channel, agent);
+                }
+            });
+            target.addEventListener('keydown', function (event) {
+                if ((event.key === 'Enter') || (event.key === ' ')) {
+                    event.preventDefault();
+                    agentCardShow(target, channel, agent);
+                } else if ((event.key === 'Escape') && agentCardOpen.anchor === target) {
+                    event.stopPropagation();
+                    agentCardClose();
+                }
+            });
+        }
+
+        target.addEventListener('mouseenter', function () {
+            clearTimeout(agentCardOpen.timer);
+            agentCardOpen.timer = setTimeout(function () { agentCardShow(target, channel, agent); }, 350);
+        });
+        target.addEventListener('mouseleave', function () {
+            clearTimeout(agentCardOpen.timer);
+            agentCardOpen.timer = setTimeout(agentCardClose, 250);
+        });
+        target.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (agentCardOpen.anchor === target) {
+                agentCardClose();
+            } else {
+                agentCardShow(target, channel, agent);
+            }
+        });
+
+        return target;
+    }
+
+    document.addEventListener('click', function (event) {
+        if (agentCardOpen.node && !agentCardOpen.node.contains(event.target)) {
+            agentCardClose();
+        }
+    });
+    window.addEventListener('scroll', function () {
+        if (agentCardOpen.node) {
+            agentCardClose();
+        }
+    }, true);
+
     // The channel head's faces: its people, then its agents as squares, and
     // one count for both.
     function memberFaces(node, channel) {
@@ -3394,7 +3756,7 @@
                 var face = agentFace(agent);
 
                 face.title = agent.name;
-                stack.appendChild(face);
+                stack.appendChild(agentCardHook(face, channel, agent, false));
             });
             node.appendChild(stack);
         }
@@ -5606,101 +5968,334 @@
         return box;
     }
 
-    // The versions of a channel's conversation (includes/workspace/eras.php):
-    // the current one, the earlier ones to read, and clearing it for staff.
-    // ownDrawer: the section fills a drawer titled with the same words, so
-    // its own heading is left out.
+    // "Conversation versions" as one list: the current conversation first,
+    // with Clear for whoever may clear it, then every earlier version newest
+    // first, each with Rename (whoever may clear) and Read. Pure.
+    function eraRows(data) {
+        var rows = [{
+            kind: 'current',
+            since_text: data.since_text || '',
+            count: parseInt(data.count, 10) || 0,
+            actions: data.can_clear ? ['clear'] : []
+        }];
+
+        (data.eras || []).slice().sort(function (a, b) {
+            return (b.number || 0) - (a.number || 0);
+        }).forEach(function (era) {
+            rows.push({
+                kind: 'era',
+                id: era.id,
+                era: era,
+                actions: data.can_clear ? ['rename', 'read'] : ['read']
+            });
+        });
+
+        return rows;
+    }
+
+    // The tabs of the Channel settings drawer: General always, the others
+    // when the channel has something to show there, in the drawer's order.
+    // Pure.
+    function channelSettingsTabs(has) {
+        return ['general', 'people', 'conversation', 'events'].filter(function (key) {
+            return (key === 'general') || !!(has || {})[key];
+        });
+    }
+
+    // The versions of a channel's conversation (includes/workspace/eras.php)
+    // as one list (eraRows()). ownDrawer: the section fills a drawer titled
+    // with the same words, so its own heading is left out.
     function eraSection(channel, node, ownDrawer) {
         var box = el('div', 'mb-5 ws-era-section');
-        var list = el('div', 'ws-era-list');
+        var list = el('div', 'pg-card-inner ws-era-list');
 
         if (!ownDrawer) {
-            box.appendChild(el('div', 'form-label', t('era_list')));
+            box.appendChild(el('div', 'pg-list-row-title', t('era_list')));
         }
+        box.appendChild(el('div', 'pg-text-meta mb-3', t('era_help')));
         list.appendChild(skeleton(2, 'ws-skeleton-sm'));
         box.appendChild(list);
+
+        function closeDrawer() {
+            if (node) {
+                hideOffcanvas(node);
+            }
+        }
+
+        function currentRow(row) {
+            var line = el('div', 'pg-card-inner-row ws-era-row ws-era-current');
+            var text = el('div', 'flex-grow-1 min-w-0');
+            var meta = [row.since_text ? t('era_current_since', row.since_text) : '', t('era_current_count', row.count)].filter(Boolean).join(' · ');
+
+            line.appendChild(icon('bi-chat-square-text', 'fg-secondary'));
+            text.appendChild(el('div', 'pg-list-row-title', t('era_current')));
+            text.appendChild(el('div', 'pg-text-meta', meta));
+            line.appendChild(text);
+
+            if (row.actions.indexOf('clear') !== -1) {
+                var clearButton = button('btn btn-sm btn-outline theme-warning rounded-pill px-4', t('era_clear_short'), 'bi-eraser');
+
+                clearButton.title = t('era_clear');
+                clearButton.addEventListener('click', function () {
+                    app.clearConversation(channel, closeDrawer);
+                });
+                line.appendChild(clearButton);
+            }
+
+            return line;
+        }
+
+        function versionRow(row) {
+            var era = row.era;
+            var line = el('div', 'pg-card-inner-row ws-era-row');
+            var text = el('div', 'flex-grow-1 min-w-0');
+
+            line.appendChild(icon('bi-clock-history', 'fg-secondary'));
+            text.appendChild(el('div', 'pg-list-row-title text-truncate', era.label));
+            text.appendChild(el('div', 'pg-text-meta', t('era_meta', era.from_text, era.to_text, era.count, era.cleared_by || '—')));
+            line.appendChild(text);
+
+            if (row.actions.indexOf('rename') !== -1) {
+                var rename = button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('era_rename'));
+
+                rename.addEventListener('click', function () {
+                    var input = el('input', 'form-control form-control-sm');
+                    input.maxLength = 160;
+                    input.value = era.title || '';
+                    input.placeholder = t('era_title');
+
+                    ask(t('era_rename') + ': ' + era.label, t('save'), false, input).then(function (yes) {
+                        if (yes) {
+                            api('ws_channel_era_rename', { channel_id: channel.id, era_id: era.id, title: input.value }).then(load).catch(fail);
+                        }
+                    });
+                });
+                line.appendChild(rename);
+            }
+
+            var read = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('era_open'), 'bi-book');
+
+            read.addEventListener('click', function () {
+                closeDrawer();
+                app.open(channel.id, 0, era.id);
+            });
+            line.appendChild(read);
+
+            return line;
+        }
 
         function draw(data) {
             clear(list);
 
-            var current = el('div', 'ws-era-row ws-era-current');
-            var currentText = el('div', 'flex-grow-1 min-w-0');
-            current.appendChild(icon('bi-chat-square-text', 'fg-secondary'));
-            currentText.appendChild(el('div', 'fw-semibold', t('era_current')));
-
-            if (data.since_text) {
-                currentText.appendChild(el('div', 'small fg-secondary', t('era_current_since', data.since_text)));
-            }
-
-            current.appendChild(currentText);
-            list.appendChild(current);
-
-            if (!data.eras.length) {
-                list.appendChild(el('div', 'small fg-secondary mb-3', t('era_none')));
-            }
-
-            data.eras.forEach(function (era) {
-                var row = el('div', 'ws-era-row');
-                var info = el('div', 'flex-grow-1 min-w-0');
-
-                row.appendChild(icon('bi-clock-history', 'fg-secondary'));
-                info.appendChild(el('div', 'fw-semibold text-truncate', era.label));
-                info.appendChild(el('div', 'small fg-secondary', t('era_meta', era.from_text, era.to_text, era.count, era.cleared_by || '—')));
-                row.appendChild(info);
-
-                if (data.can_clear) {
-                    var rename = button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('era_rename'));
-                    rename.addEventListener('click', function () {
-                        var input = el('input', 'form-control form-control-sm');
-                        input.maxLength = 160;
-                        input.value = era.title || '';
-                        input.placeholder = t('era_title');
-
-                        ask(t('era_rename') + ': ' + era.label, t('save'), false, input).then(function (yes) {
-                            if (yes) {
-                                api('ws_channel_era_rename', { channel_id: channel.id, era_id: era.id, title: input.value }).then(load).catch(fail);
-                            }
-                        });
-                    });
-                    row.appendChild(rename);
-                }
-
-                var read = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('era_open'), 'bi-book');
-                read.addEventListener('click', function () {
-                    if (node) {
-                        hideOffcanvas(node);
-                    }
-
-                    app.open(channel.id, 0, era.id);
-                });
-                row.appendChild(read);
-                list.appendChild(row);
+            eraRows(data).forEach(function (row) {
+                list.appendChild((row.kind === 'current') ? currentRow(row) : versionRow(row));
             });
-
-            if (data.can_clear) {
-                var clearBox = el('div', 'mt-3');
-                var clearButton = button('btn btn-sm btn-outline theme-warning rounded-pill px-5', t('era_clear'), 'bi-eraser');
-                clearButton.addEventListener('click', function () {
-                    app.clearConversation(channel, function () {
-                        if (node) {
-                            hideOffcanvas(node);
-                        }
-                    });
-                });
-                clearBox.appendChild(clearButton);
-                clearBox.appendChild(el('div', 'form-text', t('era_clear_help')));
-                list.appendChild(clearBox);
-            }
         }
 
         function load() {
             api('ws_channel_eras', { channel_id: channel.id }).then(draw).catch(function (error) {
                 clear(list);
-                list.appendChild(el('div', 'small fg-danger', error.message));
+                list.appendChild(el('div', 'small fg-danger p-4', error.message));
             });
         }
 
         load();
+
+        return box;
+    }
+
+    // The channel's name with its look at the left: a button showing the
+    // icon in the colour opens the icon list, one showing the colour opens
+    // the swatches. Each list floats like a popover (floatBox()); neither
+    // stands open in the drawer. Gives the row and the two pickers (null
+    // where the site has no palette or no icon list).
+    function channelLook(name, color, iconName, kindIcon) {
+        var row = el('div', 'ws-look-row');
+        var colors = (CFG.palette || []).length ? colorPicker(color) : null;
+        var icons = (CFG.channel_icons || []).length ? iconPicker(iconName, kindIcon) : null;
+        var kind = kindIcon || 'bi-hash';
+        var iconButton = null;
+        var colorButton = null;
+
+        function hex() {
+            var id = colors ? colors.value() : 0;
+            var found = (CFG.palette || []).filter(function (one) { return one.id === id; })[0];
+
+            return found ? found.hex : '';
+        }
+
+        function paint() {
+            if (iconButton) {
+                clear(iconButton);
+                iconButton.appendChild(icon((icons && icons.value()) || kind));
+                iconButton.style.color = hex();
+            }
+
+            // The colour itself: a filled dot, or the crossed ring of "no
+            // colour" as in the swatches.
+            if (colorButton) {
+                clear(colorButton);
+
+                if (hex()) {
+                    var dot = el('span', 'ws-look-dot');
+
+                    dot.style.background = hex();
+                    colorButton.appendChild(dot);
+                } else {
+                    colorButton.appendChild(icon('bi-slash-circle', 'ws-look-none'));
+                }
+            }
+        }
+
+        function opener(className, label, picker, pickClass) {
+            var node = button('pg-icon-button ws-look-button ' + className, '', '', label);
+
+            node.setAttribute('aria-haspopup', 'dialog');
+            node.setAttribute('aria-expanded', 'false');
+
+            // A pick paints the button; a click on one closes the list.
+            picker.addEventListener('click', function (event) {
+                if (event.target.closest('.' + pickClass)) {
+                    paint();
+                    closeCtx();
+                }
+            });
+            picker.addEventListener('keydown', function (event) {
+                paint();
+
+                if ((event.key === 'Enter') && event.target.matches('input')) {
+                    closeCtx();
+                }
+            });
+
+            node.addEventListener('click', function (event) {
+                event.stopPropagation();
+
+                if (ctxNode && ctxNode.contains(picker)) {
+                    closeCtx();
+                    return;
+                }
+
+                var holder = el('div', 'ws-look-pop');
+                var rect = node.getBoundingClientRect();
+
+                holder.setAttribute('role', 'dialog');
+                holder.setAttribute('aria-label', label);
+                holder.appendChild(picker);
+                floatBox(rect.left, rect.bottom + 6, holder, 'ws-look-picker');
+
+                var first = picker.querySelector('input') || picker.querySelector('.active') || picker.querySelector('button');
+
+                if (first) {
+                    first.focus();
+                }
+            });
+
+            return node;
+        }
+
+        if (icons) {
+            iconButton = opener('ws-look-icon', t('icon'), icons, 'ws-icon-choice');
+            row.appendChild(iconButton);
+        }
+
+        row.appendChild(name);
+
+        if (colors) {
+            colorButton = opener('ws-look-color', t('color'), colors, 'ws-swatch');
+            row.appendChild(colorButton);
+        }
+
+        paint();
+
+        // A template's colour, or a new channel's kind, repaints the row.
+        if (colors) {
+            var setColor = colors.set;
+
+            colors.set = function (value) {
+                setColor(value);
+                paint();
+            };
+        }
+
+        if (icons) {
+            var setKind = icons.setKindIcon;
+
+            icons.setKindIcon = function (value) {
+                kind = value || 'bi-hash';
+                setKind(value);
+                paint();
+            };
+        }
+
+        return { node: row, colors: colors, icons: icons };
+    }
+
+    // The channel's people in the People and agents tab: each with the
+    // remove button, then Add people. Both act at once, as in Channel info
+    // before; refresh() reads the channel again.
+    function channelPeople(channel, refresh) {
+        var box = el('div', 'mb-5 ws-settings-people');
+        var list = el('div', 'pg-card-inner');
+
+        box.appendChild(el('div', 'pg-list-row-title mb-2', t('cm_people') + ' · ' + channel.members.length));
+
+        channel.members.forEach(function (member) {
+            var row = el('div', 'pg-card-inner-row');
+            var text = el('div', 'flex-grow-1 min-w-0');
+            var role = [(member.id === channel.owner_id) ? t('owner') : '', member.title || ''].filter(Boolean).join(' · ');
+
+            row.appendChild(avatar(member, null, true));
+            text.appendChild(el('div', 'pg-list-row-title text-truncate', member.name));
+
+            if (role) {
+                text.appendChild(el('div', 'pg-text-meta', role));
+            }
+
+            row.appendChild(text);
+
+            if (member.seen) {
+                row.appendChild(el('span', 'pg-text-meta', member.seen));
+            }
+
+            if (member.id !== channel.owner_id && member.id !== BOOT.me.id) {
+                var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('member_remove', member.name));
+
+                remove.addEventListener('click', function () {
+                    api('ws_channel_member_remove', { channel_id: channel.id, user_id: member.id }).then(refresh).catch(fail);
+                });
+                row.appendChild(remove);
+            }
+
+            list.appendChild(row);
+        });
+
+        box.appendChild(list);
+
+        var inside = channel.members.map(function (member) { return member.id; });
+        var outside = BOOT.people.filter(function (member) { return inside.indexOf(member.id) === -1; }).map(function (member) { return member.id; });
+
+        if (outside.length && (channel.kind === 'public' || channel.joined)) {
+            var picker = peoplePicker([], outside);
+            var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-4 mt-2', t('add_people_confirm'), 'bi-person-plus');
+
+            add.addEventListener('click', function () {
+                var ids = picker.value();
+
+                if (ids.length) {
+                    api('ws_channel_members_add', { channel_id: channel.id, user_ids: ids }).then(refresh).catch(fail);
+                }
+            });
+
+            var adding = el('div', 'mt-4');
+
+            var addRow = formRow(t('add_people'), picker);
+
+            addRow.classList.remove('mb-5');
+            adding.appendChild(addRow);
+            adding.appendChild(add);
+            box.appendChild(adding);
+        }
 
         return box;
     }
@@ -5714,11 +6309,41 @@
         node.querySelector('.drawer-title').textContent = channel ? t('edit_channel') : t('new_channel');
         defaults = defaults || {};
 
+        var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', channel ? t('save') : t('create_channel'), 'bi-check2');
+        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
+        cancel.setAttribute('data-bs-dismiss', 'drawer');
+        footer.appendChild(cancel);
+        footer.appendChild(save);
+
+        // A channel's settings are four tabs (channelSettingsTabs()); a pane
+        // is only hidden while another is shown, so Save reads every tab's
+        // fields. A new channel is the General pane alone.
+        var panes = {
+            general: el('div', 'ws-settings-pane'),
+            people: el('div', 'ws-settings-pane'),
+            conversation: el('div', 'ws-settings-pane'),
+            events: el('div', 'ws-settings-pane')
+        };
+        var general = panes.general;
+
+        body.appendChild(general);
+
         var name = el('input', 'form-control');
         name.id = nextId('ws-ch-name-');
         name.maxLength = 80;
         name.value = channel ? channel.name : (defaults.name || '');
-        body.appendChild(formRow(t('channel_name'), name, t('channel_name_help')));
+
+        // The icon at the left of the name, the colour at its right, the
+        // same for everybody; whoever may rename the channel may choose them.
+        var look = channelLook(name, channel ? channel.color : (defaults.color || 0),
+            channel && channel.icon_chosen ? channel.icon : (defaults.icon || ''),
+            channel ? channel.kind_icon : ((defaults.kind === 'private') ? 'bi-lock' : 'bi-hash'));
+        var colors = look.colors;
+        var icons = look.icons;
+        var nameRow = formRow(t('channel_name'), look.node, t('channel_name_help'));
+
+        nameRow.querySelector('label').htmlFor = name.id;
+        general.appendChild(nameRow);
 
         var kind = null;
 
@@ -5742,7 +6367,16 @@
                 kind.appendChild(wrap);
             });
 
-            body.appendChild(kind);
+            general.appendChild(kind);
+
+            // A new channel's "none" icon follows the kind picked.
+            if (icons) {
+                kind.addEventListener('change', function () {
+                    var picked = kind.querySelector('input:checked');
+
+                    icons.setKindIcon((picked && (picked.value === 'private')) ? 'bi-lock' : 'bi-hash');
+                });
+            }
 
             // A conversation with somebody who has no account is a room of
             // its own, made by its own form.
@@ -5755,7 +6389,7 @@
                     }, { once: true });
                     hideOffcanvas(node);
                 });
-                body.appendChild(toGuest);
+                general.appendChild(toGuest);
             }
         }
 
@@ -5763,7 +6397,7 @@
         topic.id = nextId('ws-ch-topic-');
         topic.maxLength = 255;
         topic.value = channel ? channel.topic : (defaults.topic || '');
-        body.appendChild(formRow(t('channel_topic'), topic));
+        general.appendChild(formRow(t('channel_topic'), topic));
 
         // The customer the channel is about: a contact, a user or a current
         // account, with the records tied to it through its contact.
@@ -5873,44 +6507,17 @@
         }
 
         contactBox.appendChild(el('div', 'form-text', CFG.customer ? t('cust_help') : t('customer_help')));
-        body.appendChild(contactBox);
+        general.appendChild(contactBox);
 
         var dept = select(departmentOptions(), channel && channel.department ? channel.department.id : (defaults.department_id || 0));
         dept.id = nextId('ws-ch-dept-');
-        body.appendChild(formRow(t('department'), dept));
-
-        // The channel's colour in the list, the same for everybody.
-        var colors = null;
-
-        if ((CFG.palette || []).length) {
-            colors = colorPicker(channel ? channel.color : (defaults.color || 0));
-            body.appendChild(formRow(t('color'), colors, t('color_help')));
-        }
-
-        // Its own icon beside the colour, the same for everybody; whoever may
-        // rename the channel may choose it.
-        var icons = null;
-
-        if ((CFG.channel_icons || []).length) {
-            icons = iconPicker(channel && channel.icon_chosen ? channel.icon : (defaults.icon || ''),
-                channel ? channel.kind_icon : ((defaults.kind === 'private') ? 'bi-lock' : 'bi-hash'));
-            body.appendChild(formRow(t('icon'), icons, t('icon_help')));
-
-            // A new channel's "none" follows the kind picked above.
-            if (kind) {
-                kind.addEventListener('change', function () {
-                    var picked = kind.querySelector('input:checked');
-
-                    icons.setKindIcon((picked && (picked.value === 'private')) ? 'bi-lock' : 'bi-hash');
-                });
-            }
-        }
+        general.appendChild(formRow(t('department'), dept));
 
         var members = null;
 
         if (!channel) {
             members = peoplePicker(defaults.members || []);
-            body.appendChild(formRow(t('invite_people'), members));
+            general.appendChild(formRow(t('invite_people'), members));
         }
 
         // Made from a group's menu: it goes into that group.
@@ -5922,11 +6529,11 @@
         var watch = (channel && window.PGWsEvents) ? window.PGWsEvents.watchField(channel) : null;
 
         if (watch) {
-            body.appendChild(watch.node);
+            panes.events.appendChild(watch.node);
         }
 
         if (channel && CFG.eras) {
-            body.appendChild(eraSection(channel, node));
+            panes.conversation.appendChild(eraSection(channel, node));
         }
 
         // Opened from a note, the note is its first message.
@@ -5949,30 +6556,133 @@
         // The channel's memory (assets/js/workspace_memory.js): a channel
         // with an agent shows it as a tab, any other opens it from here.
         if (channel && channel.memory && !channel.memory.tab && window.PGWsMemory && app.channel && (app.channel.id === channel.id)) {
-            var memoryRow = el('div', 'mb-5');
-            var memoryOpen = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('mem_open'), 'bi-journal-bookmark');
+            var memoryCard = el('div', 'pg-card-inner mb-5');
+            var memoryRow = memoryCard.appendChild(el('div', 'pg-card-inner-row ws-switch-row'));
+            var memoryText = el('div', 'flex-grow-1 min-w-0');
+            var memoryOpen = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('cs_open'), 'bi-journal-bookmark');
             memoryOpen.addEventListener('click', function () {
                 hideOffcanvas(node, function () {
                     app.tab = 'memory';
                     app.drawCenter();
                 });
             });
+            memoryText.appendChild(el('div', 'pg-list-row-title', t('mem_open')));
+            memoryText.appendChild(el('div', 'pg-text-meta', t('mem_help')));
+            memoryRow.appendChild(memoryText);
             memoryRow.appendChild(memoryOpen);
-            memoryRow.appendChild(el('div', 'form-text', t('mem_help')));
-            body.appendChild(memoryRow);
+            panes.conversation.appendChild(memoryCard);
         }
 
-        // The channel's agents and what wakes each here
-        // (assets/js/workspace_channel_agents.js); it saves on its own.
+        // The people and the agents, each acting at once: a person added or
+        // removed, an agent's settings saved by its own panel
+        // (assets/js/workspace_channel_agents.js).
+        if (channel && channel.members) {
+            var peopleBox = channelPeople(channel, function refreshPeople() {
+                api('ws_channel_get', { channel_id: channel.id }).then(function (data) {
+                    if (!data || !data.channel) {
+                        return;
+                    }
+
+                    Object.keys(data.channel).forEach(function (key) {
+                        channel[key] = data.channel[key];
+                    });
+
+                    var fresh = channelPeople(channel, refreshPeople);
+
+                    peopleBox.replaceWith(fresh);
+                    peopleBox = fresh;
+
+                    if (app.channel === channel) {
+                        app.refreshHead();
+
+                        if (app.infoOpen) {
+                            app.drawInfo(false);
+                        }
+                    }
+                }).catch(fail);
+            });
+
+            panes.people.appendChild(peopleBox);
+        }
+
         if (channel && window.PGWsChannelAgents) {
-            window.PGWsChannelAgents.mount(body, channel, { reveal: !!defaults.agents });
+            window.PGWsChannelAgents.mount(panes.people, channel, {});
         }
 
-        var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', channel ? t('save') : t('create_channel'), 'bi-check2');
-        var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
-        cancel.setAttribute('data-bs-dismiss', 'drawer');
-        footer.appendChild(cancel);
-        footer.appendChild(save);
+        if (channel) {
+            var shown = channelSettingsTabs({
+                people: panes.people.childNodes.length > 0,
+                conversation: panes.conversation.childNodes.length > 0,
+                events: panes.events.childNodes.length > 0
+            });
+            var tabNames = { general: 'cs_tab_general', people: 'cs_tab_people', conversation: 'cs_tab_conversation', events: 'cs_tab_events' };
+            var tabIcons = { general: 'bi-sliders', people: 'bi-people', conversation: 'bi-chat-square-text', events: 'bi-broadcast' };
+            var tabs = el('div', 'pg-seg pg-seg-icons ws-settings-tabs');
+            var tabButtons = {};
+
+            tabs.setAttribute('role', 'tablist');
+            tabs.setAttribute('aria-label', t('edit_channel'));
+
+            // People and agents and Conversation act at once: their footer
+            // only closes. Save stays where the form has fields.
+            var showTab = function (key, focus) {
+                var atOnce = (key === 'people') || (key === 'conversation');
+
+                save.style.display = atOnce ? 'none' : '';
+                cancel.textContent = t(atOnce ? 'close' : 'cancel');
+
+                shown.forEach(function (one) {
+                    var on = (one === key);
+
+                    panes[one].hidden = !on;
+                    tabButtons[one].classList.toggle('is-active', on);
+                    tabButtons[one].setAttribute('aria-selected', on ? 'true' : 'false');
+                    tabButtons[one].tabIndex = on ? 0 : -1;
+                });
+
+                if (focus) {
+                    tabButtons[key].focus();
+                }
+            };
+
+            shown.forEach(function (key, index) {
+                var tab = el('button', 'pg-seg-item');
+                var label = el('span', 'pg-seg-label');
+
+                tab.type = 'button';
+                tab.id = nextId('ws-cs-tab-');
+                tab.setAttribute('role', 'tab');
+                label.appendChild(document.createTextNode(t(tabNames[key])));
+                tab.appendChild(icon(tabIcons[key]));
+                tab.appendChild(label);
+                panes[key].setAttribute('role', 'tabpanel');
+                panes[key].setAttribute('aria-labelledby', tab.id);
+                tab.addEventListener('click', function () {
+                    showTab(key, false);
+                });
+                tab.addEventListener('keydown', function (event) {
+                    var moves = { ArrowLeft: -1, ArrowRight: 1 };
+
+                    if (moves[event.key]) {
+                        event.preventDefault();
+                        showTab(shown[(index + moves[event.key] + shown.length) % shown.length], true);
+                    }
+                });
+                tabButtons[key] = tab;
+                tabs.appendChild(tab);
+
+                if (key !== 'general') {
+                    body.appendChild(panes[key]);
+                }
+            });
+
+            if (shown.length > 1) {
+                body.insertBefore(tabs, body.firstChild);
+            }
+
+            showTab((shown.indexOf(defaults.tab) !== -1) ? defaults.tab : 'general', false);
+        }
+
 
         save.addEventListener('click', function () {
             var data = {
@@ -8122,7 +8832,7 @@
             clear(body);
 
             var waitingCount = (data.talk || []).filter(function (item) { return item.unread; }).length
-                + (data.approvals || []).length + (data.acks || []).length;
+                + (data.approvals || []).length + (data.acks || []).length + (data.questions || []).length;
 
             // The new dashboard's container: its columns follow this width,
             // its palette and the person's card face apply inside it.
@@ -8152,18 +8862,17 @@
 
             hello.appendChild(greeting);
 
-            // The counts as parts that wrap whole, each dot at a line's end.
+            // The counts as parts that wrap whole; each dot goes with the
+            // part after it, so no line ends with one.
             var lead = el('p', 'ws-today-lead');
             var parts = data.lead || [];
 
             parts.forEach(function (part, index) {
-                var last = (index === parts.length - 1);
-
-                lead.appendChild(el('span', 'ws-today-lead-part', last ? part : part + ' ·'));
-
-                if (!last) {
+                if (index > 0) {
                     lead.appendChild(document.createTextNode(' '));
                 }
+
+                lead.appendChild(el('span', 'ws-today-lead-part', (index > 0) ? '· ' + part : part));
             });
 
             hello.appendChild(lead);
@@ -10033,22 +10742,15 @@
                     row.appendChild(seenNode(member.seen, (member.presence === 'online') ? 'on' : ''));
                 }
 
-                if (channel.can_manage && member.id !== channel.owner_id && member.id !== BOOT.me.id) {
-                    var remove = button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('member_remove', member.name));
-                    remove.setAttribute('data-info-key', 'remove-' + member.id);
-                    remove.addEventListener('click', function () {
-                        api('ws_channel_member_remove', { channel_id: channel.id, user_id: member.id }).then(function () {
-                            self.refreshInfo('add-open');
-                        }).catch(fail);
-                    });
-                    row.appendChild(remove);
-                }
+                // Removing someone is a manager's, in Channel settings.
             });
 
             body.appendChild(people);
 
-            // Adding people: a button that opens the picker in place.
-            if (channel.can_post && (channel.kind === 'public' || channel.joined)) {
+            // Adding people: a button that opens the picker in place. A
+            // manager adds them in Channel settings (People and agents); a
+            // member who may add people but not manage keeps it here.
+            if (!channel.can_manage && channel.can_post && (channel.kind === 'public' || channel.joined)) {
                 var inside = channel.members.map(function (member) { return member.id; });
                 var outside = BOOT.people.filter(function (member) { return inside.indexOf(member.id) === -1; }).map(function (member) { return member.id; });
 
@@ -10111,7 +10813,12 @@
                         name.appendChild(el('span', 'badge badge-subtle theme-secondary ws-info-badge', t('cha_paused')));
                     }
 
-                    var row = personRow(agentFace(agent), name, agent.line, agentList);
+                    // A registry agent's name and face open its card.
+                    if (agent.id) {
+                        agentCardHook(name, channel, agent, true);
+                    }
+
+                    var row = personRow(agent.id ? agentCardHook(agentFace(agent), channel, agent, false) : agentFace(agent), name, agent.line, agentList);
 
                     if (agent.seen) {
                         row.appendChild(seenNode(agent.seen, agent.seen_state));
@@ -10119,17 +10826,6 @@
                 });
 
                 body.appendChild(agentList);
-
-                if (channel.can_manage && window.PGWsChannelAgents) {
-                    var manage = button('btn btn-sm btn-text theme-secondary ws-info-manage', t('cm_manage'), 'bi-sliders');
-
-                    manage.title = t('cm_manage_label');
-                    manage.setAttribute('data-info-key', 'agents-manage');
-                    manage.addEventListener('click', function () {
-                        channelForm(channel, { agents: true }, function () { self.refreshInfo(); });
-                    });
-                    body.appendChild(manage);
-                }
             }
 
             // The guests with an open share (ws_channel_info_guests()): read
@@ -10751,6 +11447,9 @@
             var person = (message.sender_kind === 'user') ? message.sender : null;
             var agentMarks = messageAgentMarks(message, self.channel);
             var picture = avatar(message.sender);
+            // A registry agent of the channel: its name and picture open its
+            // card (agentCardHook()).
+            var cardAgent = (message.sender_kind === 'app' && message.sender) ? agentOfApp(self.channel, message.sender.app_id) : null;
 
             // An agent of this channel: its state dot in the picture's
             // corner, named for a screen reader and on hover.
@@ -10763,7 +11462,7 @@
                 picture.appendChild(stateDot);
             }
 
-            face.appendChild(personLink(picture, person));
+            face.appendChild(cardAgent ? agentCardHook(picture, self.channel, cardAgent, false) : personLink(picture, person));
 
             // Read out with the name in the hidden head; shown on hover.
             if (follow) {
@@ -10779,7 +11478,9 @@
             var meta = el('div', 'ws-msg-meta');
             meta.id = 'ws-msg-meta-' + (++messageMetaSeq);
             node.setAttribute('aria-labelledby', meta.id);
-            meta.appendChild(personLink(el('b', '', agentMarks ? agentMarks.name : (message.sender ? message.sender.name : '')), person));
+            var senderName = el('b', '', agentMarks ? agentMarks.name : (message.sender ? message.sender.name : ''));
+
+            meta.appendChild(cardAgent ? agentCardHook(senderName, self.channel, cardAgent, true) : personLink(senderName, person));
 
             // An agent of this channel: its role in place of "(application)".
             if (agentMarks && agentMarks.role) {

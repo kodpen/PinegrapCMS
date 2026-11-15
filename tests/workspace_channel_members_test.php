@@ -108,8 +108,7 @@ function test_workspace_channel_members_js()
 	pg_assert_contains("node.appendChild(el('span', 'small', channel.members.length + agents.length));", $source, 'one count for people and agents');
 	pg_assert_true(substr_count($source, 'memberFaces(') >= 3, 'the head draws and redraws the faces');
 	pg_assert_contains("'avatar avatar-subtle ws-agent-face '", $source, 'an agent\'s face is its own shape');
-	pg_assert_contains("channelForm(channel, { agents: true }", $source, 'Manage opens Agents in this channel');
-	pg_assert_contains("mount(body, channel, { reveal: !!defaults.agents })", $source);
+	pg_assert_contains("window.PGWsChannelAgents.mount(panes.people, channel, {});", $source, 'Agents in this channel sits in the People and agents tab of Channel settings');
 
 	$texts = ws_channel_agents_js_strings();
 

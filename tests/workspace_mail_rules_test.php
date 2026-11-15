@@ -177,3 +177,21 @@ function test_workspace_mail_rules_wiring()
 	pg_assert_contains("'mail_assigned', array('channel_id' => (int) \$channel['id'], 'message_id' => (int) \$message_id, 'actor_id' => 0)", $module, 'the person is told');
 	pg_assert_contains('!ws_mail_can_answer($person, $channel)', $module, 'only somebody who may answer there');
 }
+
+function test_workspace_mail_rules_give_it_to_an_away_person_goes_to_the_stand_in()
+{
+	$module = workspace_mail_rules_test_source('includes/workspace/mail_rules.php');
+	$start = strpos($module, 'function ws_mail_rules_run(');
+	$end = strpos($module, "\nfunction ", $start + 1);
+	$run = substr($module, $start, ($end === false) ? null : ($end - $start));
+
+	$check = strpos($run, '!ws_mail_can_answer($person, $channel)');
+	$stand_in = strpos($run, "\$holder = function_exists('ws_mail_away_stand_in') ? ws_mail_away_stand_in((int) \$rule['user_id'], \$channel) : (int) \$rule['user_id'];");
+	$write = strpos($run, "SET assignee_id = '\" . (int) \$holder . \"'");
+	$told = strpos($run, "ws_notify((int) \$holder, 'mail_assigned'");
+
+	pg_assert_true($check !== false && $stand_in !== false && $write !== false && $told !== false, 'the rule asks for the stand-in and gives it to the holder');
+	pg_assert_true(($check < $stand_in) && ($stand_in < $write) && ($stand_in < $told), 'after the team and answer check, before the write and the notice');
+	pg_assert_true(strpos($run, "assignee_id = '\" . (int) \$rule['user_id']") === false, 'never written straight to the rule\'s person');
+	pg_assert_true(strpos($run, "ws_notify((int) \$rule['user_id']") === false, 'never told straight to the rule\'s person');
+}

@@ -3821,12 +3821,16 @@ function ws_handle_action($action, $request)
                 return ws_action_error($channel);
             }
 
-            $first = (int) db_value("SELECT MIN(id) FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "' AND id > '" . ws_channel_floor($channel['id']) . "'");
+            // The current conversation: since when, and how many messages
+            // written in it, counted as a version kept counts them.
+            $span = db_item("SELECT MIN(created_at) AS since, SUM(deleted_at = 0 AND sender_kind <> 'system') AS written
+                FROM ws_messages WHERE channel_id = '" . (int) $channel['id'] . "' AND id > '" . ws_channel_floor($channel['id']) . "'");
 
-            $since = ($first > 0) ? (int) db_value("SELECT created_at FROM ws_messages WHERE id = '" . $first . "'") : 0;
+            $since = is_array($span) ? (int) $span['since'] : 0;
 
             return ws_action_ok(array(
                 'eras'      => array_map('ws_era_present', ws_channel_eras($channel['id'])),
+                'count'     => is_array($span) ? (int) $span['written'] : 0,
                 'since'     => $since,
                 'since_text' => ($since > 0) ? trim(strip_tags(get_absolute_time(array('timestamp' => $since, 'type' => 'date', 'size' => 'short')))) : '',
                 'can_clear' => ws_can_clear_channel($viewer, $channel),

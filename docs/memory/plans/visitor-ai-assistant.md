@@ -5,6 +5,7 @@ description: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant
 
 ## What did the owner decide?
 - 2026-10-30 (#3313): the plan stays a weak plan for now and is evaluated later; no start in 2026.11.0. The design below is settled for the day it starts.
+- Owner (2026-11-15, channel message 4147, his vote): asked whether it starts now, beside the add-on hook system and native push, he chose "Şimdilik yeter: kanca sistemi, anlık bildirim ve tasarımcı blokları". It stays on the watch list; not offered again before those three are done.
 
 ## Why?
 - Visitors get a human Live Chat (`chat.php`), a browser-side summariser and "ask an AI" links on records; no assistant answers from the site's content. Turkish SaaS competitors ship chat assistants (ikas, T-Soft) and use them as a 2026 headline. The EU AI Act transparency duties (from 2 Aug 2026) require telling people they talk to an AI.
