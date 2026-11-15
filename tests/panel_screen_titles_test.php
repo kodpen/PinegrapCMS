@@ -186,7 +186,7 @@ function test_panel_screen_titles_menu_reorder_bar_named()
 {
 	$source = panel_screen_titles_source('view_menu_items.php');
 	pg_assert_false(strpos($source, 'aria-label="reorder buttons"') !== false, 'literal English aria-label');
-	pg_assert_contains('id="reorder_actions" style="bottom:.5rem;display:none" aria-label="\' . h(lang(\'Reorder Buttons\')) . \'"', $source, 'reorder bar named through lang()');
+	pg_assert_contains("array('id' => 'reorder_actions', 'hidden' => true, 'label' => lang('Reorder Buttons'))", $source, 'reorder bar named through lang()');
 }
 
 function test_panel_screen_titles_shell_draws_no_action_bar()

@@ -235,13 +235,8 @@ pg_page_shell([
                         </div>
                     </div>
                 </div>
-                <div class="col-12 order-3">
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <button type="submit" class="btn my-1 btn-solid theme-success"' . ($ready ? '' : ' disabled') . '><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>
-                    </div>
-                </nav>
-                </div>
+                ' . pg_save_bar('
+                    <button type="submit" class="btn my-1 btn-solid theme-success"' . ($ready ? '' : ' disabled') . '><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>', array('group' => '')) . '
                 </div>
             </form>
         </div>

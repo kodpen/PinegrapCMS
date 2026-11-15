@@ -66,7 +66,7 @@ function test_email_campaign_send_window_uses_the_wide_layout()
 	// Both the sending view and the sent view: form column, status column, save bar, in that order.
 	pg_assert_same(2, substr_count($src, 'col-12 lg:col-8 2xl:col-9 order-1'), 'form column in both views');
 	pg_assert_same(2, substr_count($src, 'send_email_campaign_information_html($subject_template, $from_name, $from_email_address, $reply_email_address)'), 'campaign card in both views');
-	pg_assert_same(2, substr_count($src, 'col-12 order-3 position-sticky'), 'save bar in both views');
+	pg_assert_same(2, substr_count($src, 'send_email_campaign_information_html($subject_template, $from_name, $from_email_address, $reply_email_address) . \'' . "\n" . '            \' . pg_save_bar('), 'save bar in both views');
 	pg_assert_contains('<div class="col-12 lg:col-4 2xl:col-3 order-2">', $src, 'status column');
 	pg_assert_contains('<div class="position-sticky" style="top:3.3rem;">', $src, 'status box sticks below the header');
 	pg_assert_true(strpos($src, 'lg:col-8 2xl:col-9 order-1') < strpos($src, 'send_email_campaign_information_html($subject_template'), 'status column after the form column');

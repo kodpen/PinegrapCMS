@@ -143,13 +143,8 @@ pg_page_shell([
                         </div>
                     </div>
                 </div>
-                ' . ($can_start ? '<div class="col-12 order-3">
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <button type="submit" class="btn my-1 btn-solid theme-primary"><i class="bi bi-upc-scan me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Start counting')) . '</span></button>
-                    </div>
-                </nav>
-                </div>' : '') . '
+                ' . ($can_start ? pg_save_bar('
+                    <button type="submit" class="btn my-1 btn-solid theme-primary"><i class="bi bi-upc-scan me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Start counting')) . '</span></button>', array('group' => '')) : '') . '
                 </div>
             ' . ($can_start ? '</form>' : '') . '
         </div>
