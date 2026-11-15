@@ -94,3 +94,20 @@ function test_workspace_api_approval_decide_stays_off_mcp()
 
 	pg_assert_true(false, 'workspace.approvals.decide is declared');
 }
+
+// An agent's answer to an approval closes its request with no message: the
+// line under the card says it answered, never "no answer needed".
+function test_workspace_api_approval_agent_request_counts_as_replied()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/approval_agents.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_shown.php');
+
+	$decided = array('status' => 'answered', 'reply_message_id' => 0, 'note_reply' => '',
+		'ai_state' => ws_approval_agent_request_state(array('id' => 8, 'title' => 'Ship it', 'rule' => 'any', 'closes_at' => 0)));
+	$silent = array('status' => 'answered', 'reply_message_id' => 0, 'note_reply' => '', 'ai_state' => '');
+
+	pg_assert_true(ws_agent_request_replied($decided), 'an approval answered is a reply');
+	pg_assert_false(ws_agent_request_no_answer($decided));
+	pg_assert_true(ws_agent_request_no_answer($silent), 'any other request closed without text is still no_answer');
+	pg_assert_false(ws_agent_request_replied(array('status' => 'queued', 'ai_state' => $decided['ai_state'])), 'still waiting');
+}

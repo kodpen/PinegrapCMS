@@ -168,15 +168,22 @@ function ws_agent_request_label($status, $handle, $error, $next_try, $now, $repl
 }
 
 /**
- * Whether a request left a reply: a message, or an answer written in a note.
- * Pure.
+ * Whether a request left a reply: a message, an answer written in a note, or
+ * an answer to the approval request it asked about. Pure.
  *
- * @param array $row ws_ai_requests: reply_message_id, note_reply when read
+ * @param array $row ws_ai_requests: reply_message_id, note_reply when read, status, ai_state
  * @return bool
  */
 function ws_agent_request_replied($row)
 {
-    return ((int) ($row['reply_message_id'] ?? 0) > 0) || (trim((string) ($row['note_reply'] ?? '')) !== '');
+    if (((int) ($row['reply_message_id'] ?? 0) > 0) || (trim((string) ($row['note_reply'] ?? '')) !== '')) {
+        return true;
+    }
+
+    // An agent asked to approve answers on the card (approval_agents.php),
+    // not with a message: its answered request is a reply.
+    return ((string) ($row['status'] ?? '') === 'answered') && function_exists('ws_approval_agent_request_of')
+        && (ws_approval_agent_request_of($row) !== null);
 }
 
 /**

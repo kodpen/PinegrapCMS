@@ -15,4 +15,7 @@ description: Agents asked to approve over the external API (AE4, #9584): the age
 
 ## How does WorkspaceApproval show the agents?
 - `agents` lists agent (the request value), handle (null once the agent is removed), name, decision, note, decided_at (`ws_api_approval_agent_present()`), after `people` and `guests`.
+
+## What does the line under the card say once an agent answered?
+- `ws_approval_agent_decide()` closes the agent's request as answered with no message; `ws_agent_request_replied()` counts an answered request whose `ai_state` carries an approval as a reply (#9584), so the line reads "@handle answered" and `no_answer` stays false, never "saw it · no answer needed".
 - Tests: `tests/workspace_api_approval_agents_test.php`.
