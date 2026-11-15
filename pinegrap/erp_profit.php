@@ -97,14 +97,14 @@ $output_statement = '
     <table class="pg-report-table">
         <tbody>
             <tr><th scope="row" class="fw-normal">' . lang('Sales') . '</th><td class="text-end">' . $money($totals['sales']) . '</td></tr>
-            ' . ($report['orders']['included'] ? '<tr><th scope="row" class="fw-normal">' . lang('Completed orders without an invoice') . '<div class="pg-text-meta fg-secondary">' . h(lang(array('string' => '{var:1} order(s), by the order date', 'vars' => (int) $report['orders']['count']))) . '</div></th><td class="text-end">' . $money($totals['order_sales']) . '</td></tr>' : '') . '
+            ' . ($report['orders']['included'] ? '<tr><th scope="row" class="fw-normal">' . lang('Completed orders without an invoice') . '<div class="pg-text-meta fg-secondary text-wrap">' . h(lang(array('string' => '{var:1} order(s), by the order date', 'vars' => (int) $report['orders']['count']))) . '</div></th><td class="text-end">' . $money($totals['order_sales']) . '</td></tr>' : '') . '
             <tr><th scope="row" class="fw-normal">' . lang('Returns') . '</th><td class="text-end">' . $money(-$totals['returns']) . '</td></tr>
             <tr class="fw-semibold border-top"><th scope="row" class="fw-semibold">' . lang('Net sales') . '</th><td class="text-end">' . $money($totals['revenue']) . '</td></tr>
             <tr><th scope="row" class="fw-normal">' . lang('Cost of goods sold')
-                . (((int) $totals['cogs_estimated'] !== 0) ? '<div class="pg-text-meta fg-secondary">' . h(lang(array('string' => 'of which {var:1} estimated at today\'s average cost', 'vars' => erp_money_out((int) $totals['cogs_estimated'])))) . '</div>' : '')
+                . (((int) $totals['cogs_estimated'] !== 0) ? '<div class="pg-text-meta fg-secondary text-wrap">' . h(lang(array('string' => 'of which {var:1} estimated at today\'s average cost', 'vars' => erp_money_out((int) $totals['cogs_estimated'])))) . '</div>' : '')
                 . '</th><td class="text-end">' . $money(-$totals['cogs']) . '</td></tr>
             <tr class="fw-semibold border-top"><th scope="row" class="fw-semibold">' . lang('Gross profit') . ' <span class="fg-secondary fw-normal pg-text-meta">' . $margin($gross_margin) . '</span></th><td class="text-end">' . $money($totals['gross']) . '</td></tr>
-            <tr><th scope="row" class="fw-normal">' . lang('Costs from purchase invoices') . '<div class="pg-text-meta fg-secondary">' . lang('Purchase lines with no product: services and costs bought on an invoice.') . '</div></th><td class="text-end">' . $money(-$totals['purchase_costs']) . '</td></tr>
+            <tr><th scope="row" class="fw-normal">' . lang('Costs from purchase invoices') . '<div class="pg-text-meta fg-secondary text-wrap">' . lang('Purchase lines with no product: services and costs bought on an invoice.') . '</div></th><td class="text-end">' . $money(-$totals['purchase_costs']) . '</td></tr>
             <tr><th scope="row" class="fw-normal">' . lang('Expenses') . ' <a class="pg-text-meta" href="erp_expenses.php?' . h(http_build_query(array('period' => 'dates', 'from' => $period['from'], 'to' => $period['to']))) . '">' . lang('List') . '</a></th><td class="text-end">' . $money(-$totals['expenses']) . '</td></tr>
             ' . $output_expense_lines . '
             <tr class="fw-bold border-top border-2"><th scope="row">' . lang('Net profit') . ' <span class="fg-secondary fw-normal pg-text-meta">' . $margin($net_margin) . '</span></th><td class="text-end">' . $money($totals['net']) . '</td></tr>
