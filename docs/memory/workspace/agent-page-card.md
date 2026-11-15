@@ -6,7 +6,7 @@ description: The card of an agent's live page (#8851): Open, Full screen, View s
 ## What does the card show?
 - A message whose file is a live page (`ws_page_card()`, `includes/workspace/page_card.php`) carries `file.page` {version, by, edited_by, can_undo, versions, frame, sandbox}; `workspace.js` `filePreview()` draws `PGWsPageCard.card()` (`assets/js/workspace_page_card.js`, in `workspace.min.js`) instead of the file line.
 - The card: the page's name, "Live page by @handle. It is the agent's work, not the panel's." (the first version's agent), Open, Full screen, View source, Download (the file's own address with `download`; `get_file.php` serves HTML without script).
-- A guest is not served a live page's file (`ws_guest_file_reached()`, `guest-agent-lines.md`); the guest page draws no card for it yet.
+- A guest sees its own card (Open page, Full screen; no source, versions, Undo or Download), framed from `workspace_guest.php?page=<id>`: `guest-page-content.md`. The page's file is never a download for a guest.
 
 ## When does a page run?
 - Only on Open: the frame (`PATH . SOFTWARE_DIRECTORY . '/live_page.php?message=<id>'`; until #8960 the folder was missing and a site framed its own 404 page, sandbox from `pg_guarded_frame_panel_sandbox('script')`, `allow-scripts` only) is made then. Close removes it; `app.open()` calls `PGWsPageCard.stopAll()`, so leaving the channel stops every page. A message drawn again while open (an edit, Undo) opens again with the newest version.
