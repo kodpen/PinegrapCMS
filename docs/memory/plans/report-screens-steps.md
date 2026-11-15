@@ -21,6 +21,7 @@ description: Steps of plans/report-screens.md: RS1 the Sales map card's See all,
 - RS6 (S) Done: #8811. The shipping report (`view_shipping_report.php`) on the shared view; its period bound (`PG_SHIPPING_REPORT_MAX_DAYS`) and its lists stay (`commerce/shipping-report.md`).
 - RS7 (S) Done: #8827. The ERP VAT report (`erp_vat_report.php`) on the shared view; its figures, rates and export stay (`erp/README.md` first).
 - RS8 (S) The owner's look and the close-out. The architect asks the owner to look at the four screens on dev; what he asks for becomes steps here. Then the lasting rules stand in the topics above and this plan's two files are deleted.
+  - Look request: channel 25 message 4150 (2026-11-15): the four screens from a sandbox with demo data, light and dark, 1440 and 390 px, a ready report each where the screen has one, the settings drawer open once. The architect's answers become RS8a, RS8b … below.
 
 ## Why this order?
 - RS1 answers the owner's finding at once and needs no new look. The order report carries the shared view first, as the dashboard's shop cards point at it; the visitor report shares its filter builder; the two small screens follow the settled view.
