@@ -14,11 +14,12 @@
 - architect-no-hand-over.md: The architect session does not hand over to a fresh session at a token count (2026-11-10): auto-compact summarises its context in place; what it reads again after a compaction
 - architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer [decision: decisions-made-schema.md, decisions-made.md]
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
+- bug-hunt.md: A bug hunt is given out again (owner 2026-11-15), only in an area the architect named: one per coordinator at a time, no product code, at most eight bug issues as its result [decision: here]
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - claim-work.md: How a session claims work before starting it: the open-PR check, the claiming draft PR and its title, the race between two drafts, finishing and marking ready
 - coordinator-context.md: Keeping a coordinator's context small (2026-11-04): what its first turn and each check-in read, tools/free_work.php for free work, what it never reads whole
 - coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators [decision: here]
-- coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; no bug hunt; open bug issues are work like plan steps [decision: here]
+- coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; bug hunts by bug-hunt.md; open bug issues are work like plan steps [decision: here]
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
 - coordinator-worker-brief.md: What a coordinator's worker brief says and never says: no "stop and report", no "one step only", the lifecycle as its last line; workers are real sessions, never Workflow or sub-agent runs
 - coordinator-worker-steps.md: A worker does at most three steps in its life, whoever hands them; a coordinator starts a new session for every step it gives and never feeds a step to an idle or ended worker
@@ -86,6 +87,8 @@
 - decisions-made-product-50.md: Decisions list, product part 50 (2026-11-13 on): the site search on a page in another language is developed further, its gaps closed by a plan (#9216)
 - decisions-made-product-51.md: Decisions list, product part 51 (2026-11-14 on): a Pinegrap plugin bundle for Claude's directory, so a site's owner connects Claude to the site quickly
 - decisions-made-product-52.md: Decisions made, product part 52: deleting a user ends the account's open store credit; a Void button for a card with no account; the add-on hook system and mobile API come after the running plans
+- decisions-made-product-53.md: Decisions made, product part 53: a team device gets the person's own plans scope; the Team devices ceiling gains four read scopes; M7 native push is moved forward with its one column
+- decisions-made-product-54.md: Decisions made, product part 54: the designer's closed blocks are opened in the proposed order, most met first; the visitor AI assistant does not start now
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
 - decisions-made-product-7.md: Decisions list, product part 7 (2026-10-30 on): customs data on international labels, carrier pickup requests from the panel, ShipWorks through the shipment write path
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
