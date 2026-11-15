@@ -270,7 +270,7 @@
 - workspace-editor-smart-paste.md: Pasting into a Workspace writing box (#2018): HTML mapped to the box's markup and why it is safe, sheet ranges to the table window, a URL over words, pasted files elsewhere
 - workspace-editor-toolbar.md: One row of tools for every Workspace writing box (PGWsEditor.toolbar()); marks made on the nodes by format(), never execCommand; waiting marks, IME, pressed state, undo, labels
 - workspace-empty-states.md: Workspace empty lists with a small theme-coloured drawing (emptyState(), the shared ART kit / window.PGWsArt) and skeleton rows instead of "Loading…" (U4, PR #2027)
-- workspace-everyone-mention.md: The @herkes tag (AE5, #9571): who gets a mention line, which agents it wakes, the reserved handles herkes, everyone and hepsi [decision: here]
+- workspace-everyone-mention.md: The @herkes tag (AE5 #9571, AE5b #9578): who gets a mention line, which agents it wakes, the reserved handles, the @ menu's Everyone row [decision: here]
 - workspace-field-names.md: How Workspace drawer and dialog fields get their screen-reader names: formRow(), saLabelled(), ask(), labelTarget()/hasName(), the pickers
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
 - workspace-files-object-storage.md: Workspace channel files, note attachments, guest files and ERP documents in the object store: which functions read them, which places still write the file directory, the guard test
@@ -465,6 +465,7 @@
 - workspace-personal-plan-sharing.md: Who can see a person's plan (PC4): Only me, chosen team members, the whole team; what the others see and may not do
 - workspace-personal-plans-api.md: A person's own plans in the external API and MCP (PC8): /workspace/personal-plans, scope workspace:personal_plans, only the person's own device or OAuth connection, own plans only
 - workspace-personal-plans.md: A person's private plans on My calendar (PC3): step 11.0.201, the gate ws_personal_plan_can_see() and its guard test, the drawer, Today, the plan_reminder line
+- workspace-picker-press-open.md: Why a press inside the @ and # list of a Workspace writing box (scrollbar, gap, padding) keeps it open: the root mousedown guard, blurPicker() and pickerStaysOpen() (#9580)
 - workspace-plan-day-state.md: How a plan grid day reads (ws_plan_day_state(): away, holiday, off, over, full, ok), why load 999 is an internal marker, and where a day off with work is named instead of "%999" (PR #4326, #4233)
 - workspace-polls-api.md: A poll over the Workspace API: closed_at, can_vote false past closes_at and in an earlier version (ws_poll_vote_state()), and the field a vote, change or close refusal names
 - workspace-quick-create.md: A product or group made by a person in the Workspace (ws_quick_create_*): drawer new mode, palette line, /create, off sale unless ticked, applied ws_ai_changes row, decision

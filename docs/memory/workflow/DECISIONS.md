@@ -827,7 +827,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-command-live-line.md: The live line under a /task and a /status (ws_command_suggest: "Will create: …", warnings), a typed @username assigning, and what the parser reads: next week, datives, 14:00, "1.5 saat" as an estimate
 - workspace/workspace-create-commands.md: /create (/oluştur) product|group and its alias /product (/ürün) in a channel: kind word, parsers, the single-create card through ws_quick_create_input()/_save(), what Create sends
 - workspace/workspace-discussion-follow.md: The assistant a discussion follows (ws_threads.follow_agent, step 11.0.113, decision #2419, PR #2924): who is followed, which message asks it, the no-pile-up rule, scheduled sends
-- workspace/workspace-everyone-mention.md: The @herkes tag (AE5, #9571): who gets a mention line, which agents it wakes, the reserved handles herkes, everyone and hepsi
+- workspace/workspace-everyone-mention.md: The @herkes tag (AE5 #9571, AE5b #9578): who gets a mention line, which agents it wakes, the reserved handles, the @ menu's Everyone row
 - workspace/workspace-flow-draft-card-window.md: The flow draft card (D8b #3032, V7a #3393, K3 #6630): a still picture at rest, a click or Enter opens the read-only Flows canvas in a 20 rem pane; the strip below with link and try
 - workspace/workspace-flow-layer.md: flowLayer() in workspace.js: the whole Flows editor in a full-screen layer over a channel; ways in, Add › New flow, bar, inert page, Escape, Close with flush
 - workspace/workspace-flows-adding.md: Recipe for a new flow box or start event, never one example: is it there already, then every place it is named (server, canvas, Pinegrap AI, bundle, tests)
