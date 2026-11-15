@@ -982,6 +982,11 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
     // affiliate's commission.
     pg_order_complete_key_code($context['key_code'], $context['created_user_id']);
 
+    // A single-use key from a WhatsApp message that touched this cart.
+    if (!empty($context['key_code']['single_use'])) {
+        pg_cart_recovery_key_used($order_id, $context['key_code']);
+    }
+
     if (ECOMMERCE_GIFT_CARD == TRUE) {
         pg_order_complete_gift_cards($order_id, $order_number, $values['gift_card_discount'], $context['created_user_id'], $context['actor']);
     }

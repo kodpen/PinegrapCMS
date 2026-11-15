@@ -5,7 +5,8 @@
  * Workspace - the agents of a channel in the external API and MCP
  * (includes/workspace/agents.php): list them with the registered agents the
  * channel can still take, read one agent's card, add an agent to a channel
- * or change what wakes it there, and take it out. Whoever may post in a channel
+ * or change what wakes it there, take it out, and a person's setting of an
+ * application agent's scheduled wakes from the channel (/wake @agent). Whoever may post in a channel
  * changes its agents, in a private channel only a member; a new agent in a
  * private channel and the tier above 1 are the channel manager's. A row
  * decides waking and the tier only: an application keeps reading with its
@@ -80,6 +81,27 @@ function ws_agent_api_routes()
                 array('name' => 'wake_prefix', 'in' => 'body', 'type' => 'string', 'max_length' => 32, 'description' => 'For wake_rule prefix, such as [ci].'),
                 array('name' => 'tier', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 3, 'description' => '1 reading and messages, 2 reversible record changes, 3 irreversible ones. Only the owner of the channel changes it.'),
                 array('name' => 'loop_guard', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether the loop-guard text goes into the agent\'s brief here.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.agents.wake',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/agents/{agent_id}/wake',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_agent_wake',
+            'mcp'         => false,
+            'dry_run'     => true,
+            'returns'     => ws_api_channel_agent_wake_schema(),
+            'summary'     => 'Set an agent\'s scheduled wakes from a channel',
+            'description' => 'The same as /wake @agent typed in the channel: every (minutes, 1-1440) wakes the agent every so often from now; at (a moment to come) once; off clears its schedule. Give exactly one of them; note is what each wake request carries. The change leaves the same system line in the channel, naming the person, and message_id is that line. Only a person signed in on a device sets it: an application key sets no agent\'s wakes, and an agent keeps its own POST /workspace/agent-wake. No MCP tool. Refusals: not exactly one of every, at and off, or at a time gone, 422 validation_failed; a channel the person may not read, an agent that is none, or no application agent (a model agent has no scheduled wakes) 404 not_found; an application key, a person who may not write in the channel, an agent not in it, or one paused 403 forbidden; the database not updated yet 503 service_unavailable.',
+            'params'      => array(
+                $id,
+                array('name' => 'agent_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'every', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => WS_AGENT_WAKE_EVERY_MAX),
+                array('name' => 'at', 'in' => 'body', 'type' => 'datetime'),
+                array('name' => 'off', 'in' => 'body', 'type' => 'bool'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_WAKE_NOTE_MAX),
             ),
         ),
 
@@ -221,6 +243,13 @@ function ws_api_agent_card_present($channel_id, $card)
     $out['windows'] = $windows;
 
     return array_intersect_key($out, ws_api_agent_card_schema());
+}
+
+// What the channel wake route returns: the agent's schedule as the
+// agent-wake routes give it, beside the channel, the agent and the line.
+function ws_api_channel_agent_wake_schema()
+{
+    return array('channel_id' => 'integer', 'agent_id' => 'integer', 'message_id' => 'integer?') + ws_api_agent_wake_schema();
 }
 
 function ws_api_channel_agent_removal_schema()
@@ -405,4 +434,42 @@ function ws_api_channel_agents_remove($params)
     api_dry_run_stop('removed', 'workspace_channel_agent', array('channel_id' => $channel_id, 'agent_id' => $agent_id, 'member' => (bool) ws_channel_agent_row($channel_id, $agent_id)));
 
     api_ok(array('channel_id' => $channel_id, 'agent_id' => $agent_id, 'removed' => ws_channel_agent_remove($channel_id, $agent_id)));
+}
+
+/**
+ * A person sets an application agent's scheduled wakes from a channel, as
+ * /wake @agent does (ws_command_wake()): the same check, writer and system
+ * line. A device session only: an application key sets no agent's wakes.
+ */
+function ws_api_channel_agent_wake($params)
+{
+    ws_api_person_only(lang('Only a person signed in on a device can set an agent\'s wakes; an application key cannot.'));
+
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    ws_api_agents_ready_or_503();
+
+    $agent = ws_agent((int) $params['agent_id']);
+
+    if (!$agent || ((string) $agent['kind'] !== 'app')) {
+        api_fail_not_found(lang('The agent'));
+    }
+
+    $problem = ws_agent_wake_problem($viewer, $channel, $agent);
+
+    if ($problem !== '') {
+        api_fail(403, 'forbidden', $problem);
+    }
+
+    $now = time();
+    $values = ws_agent_wake_values(ws_api_agent_wake_parsed($params, $now), $now);
+    $out = array('channel_id' => (int) $channel['id'], 'agent_id' => (int) $agent['id'], 'message_id' => null) + ws_api_agent_wake_present(array('handle' => $agent['handle']) + $values);
+
+    api_dry_run_stop('set', 'workspace_agent_wake', $out);
+
+    ws_agent_wake_save((int) $agent['id'], $values);
+    $out['message_id'] = ws_agent_wake_system_line($viewer, $channel, $agent, $values);
+
+    api_ok($out);
 }

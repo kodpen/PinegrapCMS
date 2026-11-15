@@ -1,6 +1,6 @@
 ---
 name: poll-agent-question-reach
-description: Where an agent question reaches the person it asks: the ring, Today, the Assistant card, the channel export, and tools/ws_poll.php ask, again, withdraw
+description: Where an agent question reaches the person it asks: the ring, Today, the Assistant card, the channel export, and tools/ws_poll.php ask (option pictures by message number), again, withdraw
 ---
 
 ## Who is rung, and how?
@@ -16,5 +16,8 @@ description: Where an agent question reaches the person it asks: the ring, Today
 
 ## What does tools/ws_poll.php do?
 - `ask`: an option written `label :: description` carries its line; `--recommend` marks the first option, `--other[=LABEL]` adds the "Other" row, `--multiple` takes several answers (`ws_poll_ask_body()`, plain texts stay texts; "Other" counts among the ten).
+- A picture in an option's own box: `label :: #N` or `label :: description :: #N`, N the message number of a picture posted in the poll's channel.
+- The picture's file id: the tool reads message N with the same key (`GET /workspace/channels/{id}/messages?since_id=N-1&limit=1`), takes `file.id` of an `image` message as the option's `file_id` (`ws_poll_picture_file_id()`), and stops with exit 1 when the message is not there or is no picture. `again` with a picture needs the channel (`PG_WS_CHANNEL` or `--channel`). Why: the owner could not tell which picture a question meant when it sat outside the box.
+- `--help` (and a command error) prints `ws_poll_usage()`.
 - `again POLL_ID "question" "option" …` (`POST /workspace/polls/{id}/again`, prints the new `<message id> <poll id>`), `withdraw POLL_ID` (prints the message id). `close` is refused for an agent question (exit 1).
-- Tests: `tests/workspace_agent_question_reach_test.php`.
+- Tests: `tests/workspace_agent_question_reach_test.php`, `tests/ws_poll_pictures_test.php`.

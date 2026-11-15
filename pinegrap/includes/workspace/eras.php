@@ -352,6 +352,40 @@ function ws_era_present($era)
 }
 
 /**
+ * What clearing the channel would keep as a version: the current
+ * conversation's first and last message ids, when it began and how many
+ * messages were written in it. Null when nothing has been written since it
+ * began, so there is nothing to clear.
+ *
+ * @param int $channel_id
+ * @return array|null first_id, last_id, started_at, written
+ */
+function ws_channel_clear_span($channel_id)
+{
+    $channel_id = (int) $channel_id;
+    $floor = ws_channel_floor($channel_id);
+    $span = db_item("SELECT MIN(id) AS first_id, MAX(id) AS last_id, MIN(created_at) AS started_at,
+            SUM(deleted_at = 0 AND sender_kind <> 'system') AS written
+        FROM ws_messages WHERE channel_id = '" . $channel_id . "' AND id > '" . $floor . "'");
+
+    if (!is_array($span) || ((int) $span['last_id'] <= $floor) || ((int) $span['written'] === 0)) {
+        return null;
+    }
+
+    return $span;
+}
+
+/**
+ * The refusal when there is nothing to clear.
+ *
+ * @return string
+ */
+function ws_channel_clear_nothing()
+{
+    return lang('There is nothing to clear: nothing has been written since the conversation began.');
+}
+
+/**
  * Clears the channel's conversation: what was written so far becomes an
  * earlier version, and the conversation starts again with a line saying so.
  * Nothing is deleted; nobody's unread count keeps what they can no longer
@@ -377,13 +411,10 @@ function ws_channel_clear($viewer, $channel, $title = '')
     }
 
     $channel_id = (int) $channel['id'];
-    $floor = ws_channel_floor($channel_id);
-    $span = db_item("SELECT MIN(id) AS first_id, MAX(id) AS last_id, MIN(created_at) AS started_at,
-            SUM(deleted_at = 0 AND sender_kind <> 'system') AS written
-        FROM ws_messages WHERE channel_id = '" . $channel_id . "' AND id > '" . $floor . "'");
+    $span = ws_channel_clear_span($channel_id);
 
-    if (!is_array($span) || ((int) $span['last_id'] <= $floor) || ((int) $span['written'] === 0)) {
-        return $fail(lang('There is nothing to clear: nothing has been written since the conversation began.'));
+    if ($span === null) {
+        return $fail(ws_channel_clear_nothing());
     }
 
     $number = (int) db_value("SELECT COALESCE(MAX(number), 0) FROM ws_channel_eras WHERE channel_id = '" . $channel_id . "'") + 1;
