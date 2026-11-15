@@ -27,4 +27,4 @@ description: Steps CA2 to CA16 of plans/channel-api-gaps.md: the agents' side (C
 - CA13 Channel fields: G17 records watch, G18 summary read and write, G16 the Claude, Pinegrap AI and voice switches (the three switches person only). Done: #9791.
 - CA14 Channel access and versions, person only: G15 make private or public (the answer names who leaves and who comes in), G20 join a public channel, G19 clear the conversation and rename a version.
 - CA15 Canvases: G26 put an older version back, G27 undo an agent's edit (person only), G28 the tables a page may bind.
-- CA16 Tables and the rest: G31 delete a binned row for good (person only), G32 a flow from a table, G5 saved blocks search and pull, G22 customer follow-up.
+- CA16 Tables and the rest: G31 delete a binned row for good (person only), G32 a flow from a table, G5 saved blocks search and pull, G22 customer follow-up. Done: #9831.
