@@ -204,16 +204,47 @@
         var before = log.scrollTop;
 
         state.messages = messages;
-        log.textContent = '';
         log.setAttribute('aria-busy', 'false');
+
+        // A row whose live page is open stays where it is: moving or
+        // redrawing its frame would start the page again. Every other row
+        // is drawn anew around it.
+        var kept = {};
+
+        messages.forEach(function (message) {
+            if (pages[message.id] && message.page && document.contains(pages[message.id].row)) {
+                kept[message.id] = pages[message.id].row;
+            }
+        });
+
+        Object.keys(pages).forEach(function (id) {
+            if (!kept[id]) {
+                closePage(id);
+            }
+        });
+
+        Array.prototype.slice.call(log.childNodes).forEach(function (node) {
+            if (!Object.keys(kept).some(function (id) { return kept[id] === node; })) {
+                node.remove();
+            }
+        });
 
         if (!messages.length) {
             log.appendChild(el('div', 'pg-guest-note', t('empty')));
             return;
         }
 
+        var keptIds = messages.filter(function (message) { return kept[message.id]; }).map(function (message) { return message.id; });
+        var anchor = keptIds.length ? kept[keptIds[0]] : null;
+
         messages.forEach(function (message) {
-            log.appendChild(drawMessage(message));
+            if (kept[message.id]) {
+                keptIds.shift();
+                anchor = keptIds.length ? kept[keptIds[0]] : null;
+                return;
+            }
+
+            log.insertBefore(drawMessage(message), anchor);
         });
 
         if (stay) {
@@ -290,6 +321,10 @@
 
         if (message.task) {
             bubble.appendChild(drawTask(message.task));
+        }
+
+        if (message.page) {
+            bubble.appendChild(drawPage(message));
         }
 
         var actions = el('div', 'pg-guest-actions');
@@ -541,6 +576,153 @@
     }
 
     // A task staff made in the room, to read.
+    // An agent's live page: its card, and on Open the guarded frame from
+    // the guest's own address, sandboxed as in the panel. The frame is
+    // made on Open and removed on Close, so the page runs only when asked.
+    var PAGE_MIN = 120;
+    var PAGE_MAX = 640;
+    var pages = {};
+
+    function pageFull(entry) {
+        return document.fullscreenElement === entry.box;
+    }
+
+    // The page is told its frame's size; nothing else goes in.
+    function pageSize(entry) {
+        if (entry.frame.contentWindow) {
+            entry.frame.contentWindow.postMessage({ pg: 'guarded-frame', width: entry.frame.clientWidth, height: entry.frame.clientHeight }, '*');
+        }
+    }
+
+    function closePage(id) {
+        var entry = pages[id];
+
+        if (!entry) {
+            return;
+        }
+
+        if (pageFull(entry) && document.exitFullscreen) {
+            document.exitFullscreen().catch(function () { /* already left */ });
+        }
+
+        // Taking the frame out of the document stops the page's script.
+        entry.frame.remove();
+        entry.box.hidden = true;
+        entry.button.textContent = t('page_open');
+        entry.button.setAttribute('aria-expanded', 'false');
+        delete pages[id];
+    }
+
+    function openPage(message, row, box, button) {
+        var frame = el('iframe', 'pg-guest-page-frame');
+        frame.setAttribute('sandbox', message.page.sandbox);
+        frame.setAttribute('referrerpolicy', 'no-referrer');
+        frame.title = message.page.name;
+        frame.style.height = PAGE_MIN + 'px';
+        frame.src = message.page.frame;
+
+        var entry = { frame: frame, box: box, row: row, button: button };
+        frame.addEventListener('load', function () { pageSize(entry); });
+        pages[message.id] = entry;
+        box.appendChild(frame);
+        box.hidden = false;
+        button.textContent = t('page_close');
+        button.setAttribute('aria-expanded', 'true');
+
+        return entry;
+    }
+
+    // Only what a frame of a card posts is taken, and only its height; the
+    // page itself may post to this window too, and that is dropped.
+    window.addEventListener('message', function (event) {
+        var data = event.data;
+        var entry = null;
+
+        Object.keys(pages).forEach(function (id) {
+            if (pages[id].frame.contentWindow === event.source) {
+                entry = pages[id];
+            }
+        });
+
+        if (!entry || !data || (typeof data !== 'object') || (data.pg !== 'guarded-frame')) {
+            return;
+        }
+
+        var height = (typeof data.height === 'number') && isFinite(data.height) ? Math.round(data.height) : -1;
+
+        if ((height >= 0) && !pageFull(entry)) {
+            entry.frame.style.height = Math.max(PAGE_MIN, Math.min(PAGE_MAX, height)) + 'px';
+            pageSize(entry);
+        }
+    });
+
+    window.addEventListener('resize', function () {
+        Object.keys(pages).forEach(function (id) { pageSize(pages[id]); });
+    });
+
+    document.addEventListener('fullscreenchange', function () {
+        Object.keys(pages).forEach(function (id) {
+            var entry = pages[id];
+            var full = pageFull(entry);
+
+            entry.box.classList.toggle('pg-guest-page-full', full);
+            entry.frame.style.height = full ? '' : PAGE_MIN + 'px';
+            pageSize(entry);
+        });
+    });
+
+    function drawPage(message) {
+        var page = message.page;
+        var card = el('div', 'pg-guest-page');
+        var head = el('div', 'pg-guest-page-head');
+        head.appendChild(icon('bi-window'));
+
+        var words = el('div', 'pg-guest-page-text');
+        words.appendChild(el('b', '', page.name));
+        head.appendChild(words);
+        card.appendChild(head);
+
+        // The agent's line sits outside the frame, in the card and in Full
+        // screen: nothing in the page can cover it.
+        var box = el('div', 'pg-guest-page-box');
+        box.hidden = true;
+        box.appendChild(el('div', 'pg-guest-page-by', t('page_by', page.by)));
+        words.appendChild(el('span', '', t('page_by', page.by)));
+
+        var tools = el('div', 'pg-guest-page-tools');
+        var openButton = el('button', 'btn btn-outline theme-secondary btn-sm', t('page_open'));
+        openButton.type = 'button';
+        openButton.setAttribute('aria-expanded', 'false');
+
+        var fullButton = el('button', 'btn btn-outline theme-secondary btn-sm', t('page_full_screen'));
+        fullButton.type = 'button';
+        fullButton.hidden = !(box.requestFullscreen && document.fullscreenEnabled);
+
+        openButton.addEventListener('click', function () {
+            if (pages[message.id]) {
+                closePage(message.id);
+                return;
+            }
+
+            openPage(message, card.closest('.pg-guest-msg'), box, openButton);
+        });
+
+        fullButton.addEventListener('click', function () {
+            if (!pages[message.id]) {
+                openPage(message, card.closest('.pg-guest-msg'), box, openButton);
+            }
+
+            box.requestFullscreen().catch(function () { /* the browser said no */ });
+        });
+
+        tools.appendChild(openButton);
+        tools.appendChild(fullButton);
+        card.appendChild(tools);
+        card.appendChild(box);
+
+        return card;
+    }
+
     function drawTask(task) {
         var box = el('div', 'pg-guest-task' + (task.open ? '' : ' done'));
         box.appendChild(icon(task.open ? 'bi-check2-square' : 'bi-check2-circle'));

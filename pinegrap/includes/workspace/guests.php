@@ -1388,6 +1388,90 @@ function ws_guest_canvas_view($state)
 }
 
 /**
+ * Whether a live page is the guest's to run in the guarded frame: the
+ * page of an agent's line the guest page lists (an application's message,
+ * never a person's, a guest's or another application's), in the guest's
+ * room, after its clear floor, not deleted, its file a page the routes
+ * wrote and no larger than the frame takes. Pure.
+ *
+ * @param array|null|false $row        id, channel_id, deleted_at, sender_kind, sender_id, kind, file_id
+ * @param int              $channel_id the guest's room
+ * @param int              $floor      ws_guest_room_floor()
+ * @param int[]            $agent_apps ws_guest_agent_apps() keys
+ * @param bool             $page       the file is a live page (ws_page_is_page())
+ * @param int              $size       the file's size in bytes
+ * @param int              $max        the frame's limit (PG_GUARDED_FRAME_MAX_BYTES)
+ * @return bool
+ */
+function ws_guest_page_reached($row, $channel_id, $floor, $agent_apps, $page, $size, $max)
+{
+    if (!$page || ((int) $size <= 0) || ((int) $size > (int) $max) || !is_array($row) || ((string) ($row['sender_kind'] ?? '') !== 'app')) {
+        return false;
+    }
+
+    // The same reach as a file's, with the page let through.
+    return ws_guest_file_reached($row, $channel_id, $floor, $agent_apps, false, false)
+        && (ws_guest_line_sender($row, $agent_apps) === 'agent');
+}
+
+/**
+ * Answers a guest's frame with an agent's live page in the guarded frame
+ * (includes/fn/guarded_frame.php, script mode), as live_page.php answers a
+ * member: only a frame's request, only the page of a line this guest reads.
+ * Anything else is the same 404 line, nothing of the page.
+ *
+ * @param array|null $context ws_guest_context()
+ * @param int        $message_id
+ * @param array      $server  $_SERVER
+ */
+function ws_guest_page_send($context, $message_id, $server)
+{
+    $refuse = function () {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=utf-8');
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        echo lang('That page could not be found.');
+        exit;
+    };
+
+    if (!$context || !pg_guarded_frame_request_framed($server)) {
+        $refuse();
+    }
+
+    $channel_id = (int) $context['channel']['id'];
+    $floor = ws_guest_room_floor($channel_id);
+    $row = db_item("SELECT m.id, m.channel_id, m.deleted_at, m.sender_kind, m.sender_id, m.kind, m.file_id, f.name AS stored_name, f.size AS stored_size
+        FROM ws_messages m
+        INNER JOIN files f ON f.id = m.file_id
+        WHERE m.id = '" . (int) $message_id . "' AND " . ws_guest_message_reach_sql($channel_id, $floor, 'm.') . "
+        AND m.file_id > 0");
+
+    $page = is_array($row) && pg_guarded_frame_is_page_name((string) $row['stored_name']) && ws_page_is_page((int) $row['file_id']);
+
+    if (!ws_guest_page_reached($row, $channel_id, $floor, array_keys(ws_guest_agent_apps()), $page, is_array($row) ? (int) $row['stored_size'] : 0, PG_GUARDED_FRAME_MAX_BYTES)) {
+        $refuse();
+    }
+
+    $path = pg_file_reader_path((string) $row['stored_name']);
+    $html = ($path !== '') ? @file_get_contents($path, false, null, 0, PG_GUARDED_FRAME_MAX_BYTES + 1) : false;
+
+    if (!is_string($html) || (strlen($html) > PG_GUARDED_FRAME_MAX_BYTES)) {
+        $refuse();
+    }
+
+    // The site's own copy of each library the page names, as for a member.
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_chart.php');
+
+    $html = ws_page_with_libraries($html, ws_page_libraries_of((int) $row['file_id']), array(
+        'channel_hex' => ws_canvas_chart_channel_tone($context['channel']),
+    ));
+
+    pg_guarded_frame_send($html, 'script', lang('Live page'));
+    exit;
+}
+
+/**
  * The WHERE part of the senders a guest reads: people, guests and the
  * applications of ws_guest_agent_apps(). Pure.
  *
@@ -1488,6 +1572,17 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
             WHERE file_id IN (" . implode(',', array_map('intval', $file_ids)) . ") AND format = 'html'")));
     }
 
+    $page_sizes = array();
+
+    if (!empty($pages)) {
+        foreach ((array) db_items("SELECT id, name, size FROM files WHERE id IN (" . implode(',', array_keys($pages)) . ")") as $file) {
+            // Only a page the routes wrote: an .html name.
+            if (pg_guarded_frame_is_page_name((string) $file['name'])) {
+                $page_sizes[(int) $file['id']] = (int) $file['size'];
+            }
+        }
+    }
+
     $endpoint = PATH . SOFTWARE_DIRECTORY . '/workspace_guest.php';
     $out = array();
 
@@ -1545,6 +1640,7 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
             'poll'      => null,
             'approval'  => null,
             'task'      => null,
+            'page'      => null,
             'reactions' => array_values($reactions[$id] ?? array()),
         );
 
@@ -1651,9 +1747,19 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
             }
         }
 
-        // An agent's line with nothing a guest reads (a live page alone,
-        // until the guest page draws its card) is left out.
-        if ($agent && (trim(strip_tags($html)) === '') && ($message['poll'] === null) && ($message['file'] === null) && ($message['task'] === null)) {
+        // An agent's live page: its card, run in the guarded frame from the
+        // guest's own address on Open. No source, versions, Undo or download.
+        if (isset($pages[(int) $row['file_id']]) && ws_guest_page_reached($row, $channel_id, $floor, array_keys($agent_apps), true, (int) ($page_sizes[(int) $row['file_id']] ?? 0), PG_GUARDED_FRAME_MAX_BYTES)) {
+            $message['page'] = array(
+                'name'    => (string) $row['file_name'],
+                'by'      => ltrim((string) $agent_apps[(int) $row['sender_id']]['tag'], '@'),
+                'frame'   => $endpoint . '?page=' . $id,
+                'sandbox' => pg_guarded_frame_panel_sandbox('script'),
+            );
+        }
+
+        // An agent's line with nothing a guest reads is left out.
+        if ($agent && (trim(strip_tags($html)) === '') && ($message['poll'] === null) && ($message['file'] === null) && ($message['task'] === null) && ($message['page'] === null)) {
             continue;
         }
 
@@ -2261,6 +2367,10 @@ function ws_guest_page_strings()
         'download'     => lang('Download'),
         'task'         => lang('Task'),
         'preview_not_ready' => lang('The preview is not ready yet.'),
+        'page_by'      => ws_js_template('Live page by @{var:1}. It is the agent\'s work, not the site\'s.', 1),
+        'page_open'    => lang('Open page'),
+        'page_close'   => lang('Close'),
+        'page_full_screen' => lang('Full screen'),
         'poll_voters'  => ws_js_template('{var:1} people voted', 1),
         'poll_closed'  => lang('The poll is closed.'),
         'poll_closes'  => ws_js_template('Closes {var:1}', 1),
