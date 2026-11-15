@@ -12389,6 +12389,153 @@ body.workspace .ws-shell-main > #button_bar {
 .ws-agent-stack {
   margin-left: .45rem;
 }
+/* Channel settings' "Agents in this channel": one compact row an agent in
+   an inner card (look A), which opens its settings under it, one agent at
+   a time; the row's own classes only place things. */
+.ws-cha-intro {
+  margin: 0 0 12px;
+}
+.ws-cha-list {
+  overflow: hidden;
+}
+.ws-cha-item + .ws-cha-item {
+  border-top: 1px solid var(--pg-border-color-translucent);
+}
+.ws-cha-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+}
+.ws-cha-head:hover {
+  background: var(--pg-surface-hi);
+}
+.ws-cha-head:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--pg-accent) 50%, transparent);
+}
+.ws-cha-face {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+}
+.ws-cha-picture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ws-cha-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+.ws-cha-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+.ws-cha-summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-cha-state {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-cha-chevron {
+  flex: none;
+  color: var(--pg-fg-3);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ws-cha-chevron {
+    transition: transform 0.15s ease;
+  }
+}
+.ws-cha-item.is-open .ws-cha-chevron {
+  transform: rotate(180deg);
+}
+.ws-cha-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 16px 16px 62px;
+}
+.ws-cha-choices {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ws-cha-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+.ws-cha-radio {
+  flex: none;
+  margin-top: 3px;
+  accent-color: var(--pg-accent);
+}
+.ws-cha-choice-text,
+.ws-cha-switch-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ws-cha-choice-title {
+  font-weight: 550;
+}
+.ws-cha-tier-note {
+  margin-top: -10px;
+}
+.ws-cha-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.ws-cha-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.ws-cha-remove {
+  margin-inline-end: auto;
+  color: var(--pg-tone-rose-text);
+}
+.ws-cha-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+@media (max-width: 575.98px) {
+  .ws-cha-head {
+    padding: 12px;
+  }
+  .ws-cha-body {
+    padding: 4px 12px 16px;
+  }
+  .ws-cha-state {
+    max-width: 34%;
+  }
+}
 .ws-info-badge {
   margin-left: .4rem;
   font-size: 11px;

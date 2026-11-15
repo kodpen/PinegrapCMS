@@ -524,7 +524,7 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
     $list = '';
     $agents = ws_agents_list();
     $counts = function_exists('ws_agent_activity_read_counts') ? ws_agent_activity_read_counts($agents) : array();
-    $intro = h(lang('Agents act as members of the channels they are added to, each through its own application and within the tier the channel\'s manager allows.'));
+    $intro = h(lang('Agents act as members of the channels they are added to, each through its own application. In each channel its manager chooses when it is woken and what it may do by itself.'));
 
     foreach ($agents as $agent) {
         $error = ($agent['door_error'] !== '') ? '<div class="small fg-danger">' . h($agent['door_error']) . '</div>' : '';

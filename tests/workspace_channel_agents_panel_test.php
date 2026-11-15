@@ -49,6 +49,7 @@ function test_workspace_channel_agent_panel_row()
 		'loop_guard'  => false,
 		'seen'        => '',
 		'not_seen'    => false,
+		'seen_words'  => lang('Not knocked yet'),
 	), $row, 'no door, address or secret reaches the screen');
 }
 
