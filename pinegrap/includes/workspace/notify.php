@@ -48,6 +48,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | mail_assigned | mail_customer (an e-mail conversation given to one, its
  *                           customer writing again on one held: mail_status.php, mail.php)
  *                         | mail_unsent (an e-mail one wrote could not be sent: mail_send.php)
+ *                         | mail_remind (a conversation set aside with Remind me later came
+ *                           back: mail_remind.php)
  *                         | canvas_edited (an agent edited one's canvas: canvas_edit.php)
  *                         | question_asked (an application asks one with a checklist
  *                           or a poll: interact.php)
@@ -653,6 +655,14 @@ function ws_inbox_describe($viewer, $row)
         case 'mail_customer':
             if (function_exists('ws_mail_inbox_describe')) {
                 return ws_mail_inbox_describe($row, $actor, $channel_name, $base, $channel);
+            }
+            break;
+
+        // An e-mail conversation set aside with Remind me later came back
+        // (mail_remind.php).
+        case 'mail_remind':
+            if (function_exists('ws_mail_remind_describe')) {
+                return ws_mail_remind_describe($row, $base);
             }
             break;
 

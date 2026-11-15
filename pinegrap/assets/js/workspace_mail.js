@@ -1471,6 +1471,137 @@
             address(0);
         }
 
+        // Remind me later (mail_remind.php): a menu of times for whoever
+        // reads the conversation. Once set, the conversation leaves this
+        // person's list and the pane closes; while one is set the menu says
+        // when and offers Cancel reminder.
+        function remind(offer) {
+            var t = h.t;
+            var id = current;
+            var wrap = h.el('div', 'pg-menu-wrap d-inline-block');
+            var toggle = h.button('btn btn-sm btn-text theme-secondary', offer.on ? offer.short : t('mail_remind'), offer.on ? 'bi-alarm-fill' : 'bi-alarm');
+            var menu = h.el('ul', 'menu pg-menu-end');
+
+            // A set reminder shows only its short time; the whole sentence
+            // is the button's title and accessible name.
+            if (offer.on) {
+                toggle.title = offer.text;
+                toggle.setAttribute('aria-label', offer.text);
+            }
+
+            toggle.setAttribute('data-bs-toggle', 'menu');
+            toggle.setAttribute('data-bs-placement', 'bottom-end');
+            // The pane scrolls and clips: the menu floats over it.
+            toggle.setAttribute('data-bs-strategy', 'fixed');
+            wrap.appendChild(toggle);
+            wrap.appendChild(menu);
+
+            function send(choice, at, done) {
+                toggle.disabled = true;
+
+                return h.api('ws_mail_remind', { conversation_id: id, choice: choice, at: at || '' }).then(function (result) {
+                    toggle.disabled = false;
+                    badge(result.unread || 0);
+
+                    if (done) {
+                        done();
+                    }
+
+                    if (choice === 'cancel') {
+                        h.toast(t('mail_remind_off'), 'success');
+                        open(id);
+
+                        return;
+                    }
+
+                    h.toast(t('mail_remind_set'), 'success');
+
+                    // It leaves this person's list until it comes back.
+                    var row = root.querySelector('[data-ws-mail-row="' + id + '"]');
+
+                    if (row && row.parentNode) {
+                        row.parentNode.removeChild(row);
+                    }
+
+                    if (current === id) {
+                        close();
+                    }
+                }).catch(function (error) {
+                    toggle.disabled = false;
+                    h.fail(error);
+                });
+            }
+
+            function item(label, iconName, handler) {
+                var li = h.el('li');
+                var link = h.button('menu-item pg-link-body-emphasis', label, iconName);
+
+                link.addEventListener('click', handler);
+                li.appendChild(link);
+                menu.appendChild(li);
+            }
+
+            item(t('mail_remind_hour'), 'bi-hourglass-split', function () { send('hour'); });
+            item(t('mail_remind_morning'), 'bi-sunrise', function () { send('morning'); });
+            item(t('mail_remind_week'), 'bi-calendar-week', function () { send('week'); });
+            item(t('mail_remind_at'), 'bi-calendar-event', function () { remindAt(send); });
+
+            if (offer.on) {
+                var li = h.el('li');
+
+                li.appendChild(h.el('hr', 'menu-divider'));
+                menu.appendChild(li);
+                item(t('mail_remind_cancel'), 'bi-x-lg', function () { send('cancel'); });
+            }
+
+            return wrap;
+        }
+
+        // Choose a time: a drawer with the panel's date-and-time control, in
+        // the person's own time zone; the server refuses a time too near or
+        // too far.
+        function remindAt(send) {
+            var t = h.t;
+            var node = h.offcanvas('ws-mail-remind-at', t('mail_remind_at'));
+            var body = h.clear(node.querySelector('.drawer-body'));
+            var footer = h.clear(node.querySelector('.drawer-footer'));
+            var form = h.el('form', 'ws-mail-remind-at');
+            var field = h.el('input', 'form-control');
+            var save = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_remind_save'), 'bi-alarm');
+
+            node.querySelector('.drawer-title').textContent = t('mail_remind_at');
+            footer.classList.remove('d-none');
+            form.noValidate = true;
+            field.id = h.nextId('ws-mail-remind-at-');
+            field.name = 'at';
+
+            // The panel's own control (pgDateField() in workspace.js) keeps
+            // the ISO value the post reads.
+            if (h.dateField) {
+                h.dateField(field, 'datetime-local');
+            }
+
+            form.appendChild(h.formRow(t('mail_remind_when'), field, t('mail_remind_hint')));
+            body.appendChild(form);
+            footer.appendChild(save);
+
+            function submit() {
+                save.disabled = true;
+                send('at', field.value, function () {
+                    h.hideOffcanvas(node);
+                }).then(function () {
+                    save.disabled = false;
+                });
+            }
+
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                submit();
+            });
+            save.addEventListener('click', submit);
+            h.showOffcanvas(node);
+        }
+
         // The answer and the status controls, for whoever may write in the
         // conversation's channel; a change draws the pane again.
         function tools(data) {
@@ -1479,6 +1610,10 @@
 
             shut.addEventListener('click', close);
             place.appendChild(shut);
+
+            if (data.remind) {
+                place.insertBefore(remind(data.remind), shut);
+            }
 
             if (!data.reply) {
                 return;

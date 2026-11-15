@@ -2648,6 +2648,7 @@
     "A relaxed session at home, in a park or at the beach, for the whole family and the dog.": "Bütün aile ve köpeğiniz için evde, parkta ya da sahilde rahat bir çekim.",
     "A reliable compass with a sighting mirror and a lanyard.": "Nişan aynalı ve boyun ipli, güvenilir bir pusula.",
     "A reminder before winter and before summer of what to check at home": "Kıştan ve yazdan önce evde neleri kontrol etmeniz gerektiğine dair bir hatırlatma",
+    "A reminder can be at most {var:1} days away.": "Bir hatırlatma en fazla {var:1} gün sonraya kurulabilir.",
     "A reminder can be set up to 60 days before the task is due.": "Hatırlatma, bitişten en çok 60 gün önceye kurulabilir.",
     "A reminder e-mail went to {var:1} customer(s).": "{var:1} müşteriye hatırlatma e-postası gönderildi.",
     "A reminder is set": "Hatırlatma kurulu",

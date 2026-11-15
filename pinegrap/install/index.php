@@ -9305,6 +9305,7 @@ function get_tables() {
 		'ws_mail_conversations',
 		'ws_mail_items',
 		'ws_mail_reads',
+		'ws_mail_reminders',
 		'ws_saved_replies',
 		'ws_personal_plans',
 		'ws_personal_plan_steps',

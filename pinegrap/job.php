@@ -1047,6 +1047,11 @@ if (is_file(dirname(__FILE__) . '/includes/workspace/reminders.php')) {
         require_once(dirname(__FILE__) . '/includes/workspace/personal_plans.php');
     }
 
+    // So does an e-mail conversation set aside with Remind me later (mail_remind.php).
+    if (is_file(dirname(__FILE__) . '/includes/workspace/mail_remind.php')) {
+        require_once(dirname(__FILE__) . '/includes/workspace/mail_remind.php');
+    }
+
     $workspace_overdue_due = defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED && ws_task_overdue_due();
 
     if (ws_task_reminders_waiting() || $workspace_overdue_due) {

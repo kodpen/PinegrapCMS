@@ -212,6 +212,11 @@ function ws_task_reminders_waiting()
         return true;
     }
 
+    // An e-mail conversation set aside with Remind me later (mail_remind.php).
+    if (function_exists('ws_mail_reminders_waiting') && ws_mail_reminders_waiting()) {
+        return true;
+    }
+
     if (!ws_task_reminders_ready()) {
         return false;
     }
@@ -639,6 +644,11 @@ function ws_task_reminders_run($limit = WS_TASK_REMIND_BATCH)
 
     if (function_exists('ws_personal_plan_reminders_run')) {
         ws_personal_plan_reminders_run($limit);
+    }
+
+    // Before the Workspace's switch is asked: mail is read with it off too.
+    if (function_exists('ws_mail_reminders_run')) {
+        ws_mail_reminders_run($limit);
     }
 
     if (!ws_task_reminders_ready() || !ws_enabled()) {

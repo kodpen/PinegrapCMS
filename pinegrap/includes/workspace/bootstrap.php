@@ -205,5 +205,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_rules.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_drafts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_drafts_screen.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_later.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_remind.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/nav.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
