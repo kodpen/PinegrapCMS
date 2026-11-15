@@ -14,7 +14,7 @@ description: Plan (owner 2026-11-14, poll 3363): the E-mails screen gains remind
   Rules run in `ws_mail_ingest()` for a mail that opens a conversation, after the block check and the conversation's write, before the notices and the automatic answer; the first that fits wins; a closed one gets no automatic answer; a blocked or held mail runs none. Behind the Workspace settings right, as the block list; each change is a Site Log line.
 - IB12 (M) done #9591 (`workspace/mail-away.md`): "I am away" in "My e-mail settings": two days, a text, an optional stand-in. In that range a mail arriving in an ongoing conversation held by the person gets the text once per sender, as an automatic answer (never to an automatic mail, a bounce or a `fail` sender); a conversation given to the person by hand, the API or a rule goes to the stand-in. The range is a whole-team plan on My calendar (`ws_personal_plans`, visibility team).
 - IB13 (S, after IB6) Undo send, done #9609 (`workspace/mail-undo-send.md`): the panel's Send keeps the mail as IB6's waiting mail for 10 seconds with "Undo", which turns it back into its draft; after the wait the browser asks for it to leave, the job is the fallback. The API sends at once. No setting, no schema beyond IB6's.
-- IB14 (S) Close-out: the memory files of the steps, `workspace/mail-overview.md`, this plan deleted.
+- IB14 (S, in progress) Close-out: the memory files of the steps, `workspace/mail-overview.md`, this plan deleted.
 
 ## What does every step keep?
 - What the mailbox plan keeps: team accounts only, the channel decides who reaches a conversation, a running site reads and sends as before until a button is pressed or a setting written.
