@@ -1648,8 +1648,9 @@ function ws_guest_vote($context, $poll_id, $option_ids, $other_text = '')
         return array('ok' => false, 'error' => lang('Invalid request.'));
     }
 
-    // An agent's poll asks the team, never a guest (ws_guest_messages()).
-    if (!ws_guest_person_line((int) $poll['message_id'])) {
+    // An agent's poll asks the team, never a guest (ws_guest_messages()); an
+    // agent question is never a guest's to answer (agent_question.php).
+    if (ws_agent_question_is($poll) || !ws_guest_person_line((int) $poll['message_id'])) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
     }
 

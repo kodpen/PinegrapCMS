@@ -708,7 +708,8 @@ function ws_claude_request_holder($row, $via, $asker_online, $now)
         && ((int) ($row['note_id'] ?? 0) === 0)
         && ((int) ($row['task_id'] ?? 0) === 0)
         && ((int) ($row['page_id'] ?? 0) === 0)
-        && !(function_exists('ws_approval_agent_request_of') && ws_approval_agent_request_of($row));
+        && !(function_exists('ws_approval_agent_request_of') && ws_approval_agent_request_of($row))
+        && !(function_exists('ws_agent_question_request_of') && ws_agent_question_request_of($row));
 
     if ($open && $asked && !$via && $asker_online && ((int) $now < (int) ($row['created_at'] ?? 0) + WS_CLAUDE_SESSION_WAIT)) {
         return array('who' => 'person', 'device' => 0);

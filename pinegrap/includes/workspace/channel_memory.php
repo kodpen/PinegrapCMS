@@ -605,6 +605,14 @@ function ws_memory_brief($viewer, $channel)
 
     $total = (count($decisions) < WS_MEMORY_BRIEF_DECISIONS) ? count($decisions) : (int) db_value("SELECT COUNT(*) FROM ws_messages WHERE " . $where);
 
+    // An answered agent question is a decision with no outcome line
+    // (agent_question.php): question — answer (who), in time order with the rest.
+    if (function_exists('ws_agent_question_decisions')) {
+        $answered = ws_agent_question_decisions($viewer, $channel, WS_MEMORY_BRIEF_DECISIONS);
+        $decisions = ws_agent_question_decisions_merge($decisions, $answered['lines'], WS_MEMORY_BRIEF_DECISIONS);
+        $total += $answered['total'];
+    }
+
     return ws_memory_digest(ws_memory_rows($channel['id'], false), $decisions, time(), WS_MEMORY_DIGEST_MAX, $total);
 }
 

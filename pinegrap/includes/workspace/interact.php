@@ -307,18 +307,15 @@ function ws_question_ring_pick($mentioned, $owners)
 }
 
 /**
- * Rings the people an application asks with a checklist question or a poll
- * (question_asked), whatever their channel's notify level: an approval
- * request rings its approvers the same way. Somebody who already holds an
- * unread mention of the message is not rung twice. People's own checklists
- * and polls ring nobody beyond their mentions.
+ * The people an application's question is asked of: those it mentions (a
+ * department's members too), else the owners of the channel (of the channel
+ * a discussion was started in). Only team members who read the channel.
  *
  * @param array $channel
- * @param int   $message_id
  * @param array $tokens ws_tokens() of the message
- * @return int[] the people rung
+ * @return int[]
  */
-function ws_question_ring($channel, $message_id, $tokens)
+function ws_question_asked_ids($channel, $tokens)
 {
     $mentioned = array();
 
@@ -340,13 +337,34 @@ function ws_question_ring($channel, $message_id, $tokens)
     $place = (function_exists('ws_thread_parent_channel') ? ws_thread_parent_channel($channel) : null) ?: $channel;
     $owners = $mentioned ? array() : array_map('intval', (array) db_values("SELECT user_id FROM ws_channel_members
         WHERE channel_id = '" . (int) $place['id'] . "' AND role = 'owner'"));
-    $rung = array();
+    $asked = array();
 
     foreach (ws_question_ring_pick($mentioned, $owners) as $user_id) {
-        if (!ws_is_team_member($user_id) || !ws_can_read_channel(ws_rights_for_id($user_id), $channel)) {
-            continue;
+        if (ws_is_team_member($user_id) && ws_can_read_channel(ws_rights_for_id($user_id), $channel)) {
+            $asked[] = (int) $user_id;
         }
+    }
 
+    return $asked;
+}
+
+/**
+ * Rings the people an application asks with a checklist question or a poll
+ * (question_asked), whatever their channel's notify level: an approval
+ * request rings its approvers the same way. Somebody who already holds an
+ * unread mention of the message is not rung twice. People's own checklists
+ * and polls ring nobody beyond their mentions.
+ *
+ * @param array $channel
+ * @param int   $message_id
+ * @param array $tokens ws_tokens() of the message
+ * @return int[] the people rung
+ */
+function ws_question_ring($channel, $message_id, $tokens)
+{
+    $rung = array();
+
+    foreach (ws_question_asked_ids($channel, $tokens) as $user_id) {
         $mention = (int) db_value("SELECT id FROM ws_inbox
             WHERE user_id = '" . $user_id . "' AND kind = 'mention' AND message_id = '" . (int) $message_id . "' AND read_at = 0 LIMIT 1");
 
@@ -680,15 +698,21 @@ function ws_poll_create($viewer, $channel, $data, $app_id = 0)
         return $fail($stored['error'], $stored['field']);
     }
 
+    // An application asking makes it an agent question (agent_question.php):
+    // set here, never from the request, with no anonymous vote or closing time.
+    $flag = ws_agent_question_ready() ? ws_agent_question_flag($app_id) : 0;
+    $data = ws_agent_question_settings(array('multiple' => $data['multiple'] ?? 0, 'anonymous' => $data['anonymous'] ?? 0, 'closes_at' => $closes_at), $flag === 1);
+    $closes_at = (int) $data['closes_at'];
+
     $sent = ws_message_send($viewer, $channel, $checked['question'], array('app_id' => $app_id));
 
     if (!$sent['ok']) {
         return $fail($sent['error'], 'question');
     }
 
-    db("INSERT INTO ws_polls (message_id, channel_id, multiple, anonymous, closes_at, created_by, created_at)
+    db("INSERT INTO ws_polls (message_id, channel_id, multiple, anonymous, closes_at, created_by, created_at" . (ws_agent_question_ready() ? ', agent_question' : '') . ")
         VALUES ('" . (int) $sent['message_id'] . "', '" . (int) $channel['id'] . "', '" . (empty($data['multiple']) ? 0 : 1) . "',
-            '" . (empty($data['anonymous']) ? 0 : 1) . "', '" . $closes_at . "', '" . (int) $viewer['id'] . "', '" . time() . "')");
+            '" . (empty($data['anonymous']) ? 0 : 1) . "', '" . $closes_at . "', '" . (int) $viewer['id'] . "', '" . time() . "'" . (ws_agent_question_ready() ? ", '" . $flag . "'" : '') . ")");
 
     $poll_id = (int) mysqli_insert_id(db::$con);
 
@@ -907,6 +931,8 @@ function ws_poll_edit_check($viewer, $poll, $data, $as_app = 0)
         }
     }
 
+    // An agent question keeps no anonymous vote and no closing time.
+    $data = ws_agent_question_settings($data, ws_agent_question_is($poll));
     $multiple = !empty($data['multiple']);
     $anonymous = !empty($data['anonymous']);
 
@@ -1063,7 +1089,11 @@ function ws_polls_map($message_ids, $viewer)
         $asker = ((int) $poll['created_by'] === (int) $viewer['id']) && (ws_message_app_id($poll['message_id']) === 0)
             && ws_can_post_channel($viewer, $channel) && ws_poll_again_ready();
 
-        $out[(int) $poll['message_id']] = array(
+        // Asked of named people, settled by the first answer (agent_question.php).
+        $question = ws_agent_question_map_fields($poll, $viewer);
+        $can_vote = ws_poll_vote_state($poll, ws_poll_in_past($poll))['ok'] && ws_can_post_channel($viewer, $channel);
+
+        $out[(int) $poll['message_id']] = $question + array(
             'id'         => $poll_id,
             'multiple'   => ((int) $poll['multiple'] === 1),
             'anonymous'  => $anonymous,
@@ -1077,8 +1107,8 @@ function ws_polls_map($message_ids, $viewer)
             'voted'      => !empty($mine),
             // Refused past closes_at before anything closes the poll, and in an
             // earlier version of the conversation, as the vote refuses it.
-            'can_vote'   => ws_poll_vote_state($poll, ws_poll_in_past($poll))['ok'] && ws_can_post_channel($viewer, $channel),
-            'can_close'  => !$closed && !$withdrawn && ws_can_close_poll($viewer, $poll, $channel),
+            'can_vote'   => $can_vote && (!$question['agent_question'] || $question['can_answer']),
+            'can_close'  => !$closed && !$withdrawn && !$question['agent_question'] && ws_can_close_poll($viewer, $poll, $channel),
             // The asker changes it while it is open; the form is filled from these.
             'can_edit'   => !$closed && !$withdrawn && ((int) $poll['created_by'] === (int) $viewer['id']) && ws_can_post_channel($viewer, $channel),
             // Taken back and asked again (poll_again.php).
@@ -1183,6 +1213,13 @@ function ws_poll_vote_check($viewer, $poll)
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'field' => '', 'expired' => false);
     }
 
+    // Only the people an agent question asks answer it.
+    $refusal = ws_agent_question_is($poll) ? ws_agent_question_answer_check($viewer, $poll) : '';
+
+    if ($refusal !== '') {
+        return array('ok' => false, 'error' => $refusal, 'field' => '', 'expired' => false);
+    }
+
     return $state;
 }
 
@@ -1224,6 +1261,22 @@ function ws_poll_vote($viewer, $poll, $option_ids, $other_text = '')
         return array('ok' => false, 'error' => $worded['error'], 'field' => $worded['field']);
     }
 
+    // An agent question is settled by its first answer: closed before the
+    // answer is written, with no outcome line, and the asking agent woken.
+    $question = ws_agent_question_is($poll);
+
+    if ($question) {
+        $refusal = ws_agent_question_choice_refusal($chosen);
+
+        if ($refusal !== '') {
+            return array('ok' => false, 'error' => $refusal, 'field' => 'option_ids');
+        }
+
+        if (!ws_agent_question_settle($viewer, $poll)) {
+            return array('ok' => false, 'error' => lang('The question was already answered.'), 'field' => 'closes_at');
+        }
+    }
+
     db("DELETE FROM ws_poll_votes WHERE poll_id = '" . (int) $poll['id'] . "' AND user_id = '" . (int) $viewer['id'] . "'");
 
     foreach ($chosen as $option_id) {
@@ -1232,6 +1285,10 @@ function ws_poll_vote($viewer, $poll, $option_ids, $other_text = '')
     }
 
     ws_message_touch($poll['message_id']);
+
+    if ($question) {
+        ws_agent_question_wake($viewer, $poll);
+    }
 
     return array('ok' => true, 'error' => '', 'field' => '');
 }
@@ -1255,6 +1312,13 @@ function ws_poll_close($viewer, $poll)
     // A poll taken back writes no result (poll_again.php).
     if ((int) ($poll['withdrawn_at'] ?? 0) > 0) {
         return array('ok' => true, 'error' => '', 'result_message_id' => 0);
+    }
+
+    // An agent question closes itself when it is answered (agent_question.php).
+    $refusal = ws_agent_question_close_refusal($poll);
+
+    if ($refusal !== '') {
+        return array('ok' => false, 'error' => $refusal, 'result_message_id' => 0);
     }
 
     $channel = ws_channel($poll['channel_id']);
