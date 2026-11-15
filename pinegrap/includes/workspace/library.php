@@ -303,6 +303,63 @@ function ws_library_file($viewer, $file_id)
 }
 
 /**
+ * Whether a file of the file manager may be posted into a channel now, as
+ * ws_library_send() would post it: the file this person may bring in, within
+ * the channel's size limit, and the checks of ws_message_send_file_bytes()
+ * on its bytes and on the words beside it. Nothing is kept, so the external
+ * API's dry run meets the same refusals.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param int    $file_id
+ * @param string $body    the words beside the file, may be empty
+ * @param array  $options as for ws_message_send(), file_id and file_name aside
+ * @return array ok, error, field (file_id | text), name, binary
+ */
+function ws_library_send_check($viewer, $channel, $file_id, $body = '', $options = array())
+{
+    $found = ws_library_file($viewer, $file_id);
+
+    if (!$found['ok']) {
+        return array('ok' => false, 'error' => $found['error'], 'field' => 'file_id', 'name' => '', 'binary' => false);
+    }
+
+    $name = (string) $found['file']['name'];
+    $path = pg_file_reader_path(basename($name));
+    $size = ($path !== '') ? @filesize($path) : false;
+    $refuse = function ($error, $field) {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'name' => '', 'binary' => false);
+    };
+
+    if ($size === false) {
+        return $refuse(lang('The file could not be read.'), 'file_id');
+    }
+
+    // Measured before it is read: a file past the channel's limit is not
+    // loaded only to be refused.
+    if ($size > ws_upload_max_bytes()) {
+        return $refuse(lang(array('string' => 'The file is larger than {var:1} MB.', 'vars' => (int) floor(ws_upload_max_bytes() / 1048576))), 'file_id');
+    }
+
+    $binary = @file_get_contents($path);
+    $upload = ws_upload_check($viewer, $channel, $name, $binary);
+
+    if (!$upload['ok']) {
+        return $refuse($upload['error'], 'file_id');
+    }
+
+    // The file it is about to carry stands in for its id: words are optional
+    // beside a file.
+    $message = ws_message_send_check($viewer, $channel, (string) $body, array_merge($options, array('file_id' => PHP_INT_MAX)));
+
+    if (!$message['ok']) {
+        return $refuse($message['error'], 'text');
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'name' => $name, 'binary' => $binary);
+}
+
+/**
  * Posts a copy of a file of the file manager into a channel, as a message
  * carrying it.
  *
@@ -310,31 +367,19 @@ function ws_library_file($viewer, $file_id)
  * @param array  $channel
  * @param int    $file_id
  * @param string $body    the words beside the file, may be empty
- * @return array ok, error, message_id
+ * @param array  $options as for ws_message_send(), file_id and file_name aside:
+ *                        app_id and via_client_id for the external API
+ * @return array ok, error, message_id, asked (ws_message_send_file_bytes())
  */
-function ws_library_send($viewer, $channel, $file_id, $body = '')
+function ws_library_send($viewer, $channel, $file_id, $body = '', $options = array())
 {
-    $found = ws_library_file($viewer, $file_id);
+    $checked = ws_library_send_check($viewer, $channel, $file_id, $body, $options);
 
-    if (!$found['ok']) {
-        return array('ok' => false, 'error' => $found['error'], 'message_id' => 0);
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'message_id' => 0);
     }
 
-    $name = (string) $found['file']['name'];
-    $path = pg_file_reader_path(basename($name));
-    $size = ($path !== '') ? @filesize($path) : false;
-
-    if ($size === false) {
-        return array('ok' => false, 'error' => lang('The file could not be read.'), 'message_id' => 0);
-    }
-
-    // Measured before it is read: a file past the channel's limit is not
-    // loaded only to be refused.
-    if ($size > ws_upload_max_bytes()) {
-        return array('ok' => false, 'error' => lang(array('string' => 'The file is larger than {var:1} MB.', 'vars' => (int) floor(ws_upload_max_bytes() / 1048576))), 'message_id' => 0);
-    }
-
-    return ws_message_send_file_bytes($viewer, $channel, (string) $body, $name, @file_get_contents($path));
+    return ws_message_send_file_bytes($viewer, $channel, (string) $body, $checked['name'], $checked['binary'], $options);
 }
 
 /**

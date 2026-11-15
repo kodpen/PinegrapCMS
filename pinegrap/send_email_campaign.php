@@ -75,6 +75,7 @@ $query =
         email_campaign_profile_id,
         action,
         action_item_id,
+        order_id,
         calendar_event_recurrence_number,
         from_name,
         from_email_address,
@@ -489,6 +490,11 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
                 claim_token = ''" : "") . "
             WHERE id = ?";
         $result = db_q($query, array((string) $email_recipient['reference_code'], (string) $email_recipient['id'])) or output_error('Query failed.');
+
+        // An abandoned-order mail sent by hand is a touch of that cart too.
+        if ($action == 'order_abandoned') {
+            pg_cart_recovery_touch($email_campaign['order_id'], 'email', 'campaign', $id);
+        }
     }
 
     // Whatever this batch claimed and did not finish goes straight back.

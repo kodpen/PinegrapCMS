@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - the agents of a channel in the external API and MCP
- * (includes/workspace/agents.php): list them, add an agent to a channel or
- * change what wakes it there, and take it out. Whoever may post in a channel
+ * (includes/workspace/agents.php): list them with the registered agents the
+ * channel can still take, read one agent's card, add an agent to a channel
+ * or change what wakes it there, and take it out. Whoever may post in a channel
  * changes its agents, in a private channel only a member; a new agent in a
  * private channel and the tier above 1 are the channel manager's. A row
  * decides waking and the tier only: an application keeps reading with its
@@ -41,10 +42,25 @@ function ws_agent_api_routes()
             'path'        => '/workspace/channels/{id}/agents',
             'scope'       => 'workspace:read',
             'handler'     => 'ws_api_channel_agents_list',
-            'returns'     => array('list' => 'WorkspaceChannelAgent'),
+            'returns'     => array('list' => 'WorkspaceChannelAgent', 'addable' => 'WorkspaceAddableAgent[]'),
             'summary'     => 'The agents in a channel',
-            'description' => 'The agents added to a channel the owner of the application may read, in the order they were added, each with what wakes it there, its tier and whether the loop-guard text is on, and what the channel\'s agent card shows: state (paused, working, late for not seen, waiting or idle), waiting (requests queued for it), seen_at (its last call with its key), and its last report of model and usage windows (reported_at; usage_high when a window of a report younger than a day is at 90% or more). The report is the agent\'s own: the site cannot check it. Claude is no channel agent and is not listed: it answers where the channel\'s claude_access allows.',
+            'description' => 'The agents added to a channel the owner of the application may read, in the order they were added, each with what wakes it there, its tier and whether the loop-guard text is on, and what the channel\'s agent card shows: state (paused, working, late for not seen, waiting or idle), waiting (requests queued for it), seen_at (its last call with its key), and its last report of model and usage windows (reported_at; usage_high when a window of a report younger than a day is at 90% or more). The report is the agent\'s own: the site cannot check it. Claude is no channel agent and is not listed: it answers where the channel\'s claude_access allows. Beside data, addable lists the registered agents the channel does not have yet, as the Add an agent list of Channel settings shows them (id, handle, name, status: active, paused or off), never a door or a key: an id there is the agent_id POST /workspace/channels/{id}/agents takes. The database not updated yet leaves addable empty.',
             'params'      => array($id),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.agents.card',
+            'method'      => 'GET',
+            'path'        => '/workspace/channels/{id}/agents/{agent_id}',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_channel_agent_card',
+            'returns'     => 'WorkspaceAgentCard',
+            'summary'     => 'The agent card of one agent of a channel',
+            'description' => 'The card the channel opens on an agent\'s name or picture, for a channel the owner of the application may read: its role, state (paused, working, late for not seen, waiting or idle) and the requests waiting for it, last seen, its last report of model and usage windows (the agent\'s own report: the site cannot check it; stale when a day old), today\'s answered and failed requests, its last message in this channel, the channels it is in that the owner may read, its tier and what wakes it here. The words fields (role, seen, wake, reported, state_words, a window\'s resets, last_message.when) are in the site\'s language. Refusals: a channel the owner may not read, or an agent not in the channel, 404 not_found; the database not updated yet 503 service_unavailable.',
+            'params'      => array(
+                $id,
+                array('name' => 'agent_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
         ),
 
         array(
@@ -110,6 +126,101 @@ function ws_api_channel_agent_schema()
         'reported_at' => 'string?',
         'usage_high'  => 'boolean',
     );
+}
+
+function ws_api_addable_agent_schema()
+{
+    return array(
+        'id'     => 'integer',
+        'handle' => 'string',
+        'name'   => 'string',
+        'status' => 'string',
+    );
+}
+
+function ws_api_agent_card_schema()
+{
+    return array(
+        'channel_id'   => 'integer',
+        'id'           => 'integer',
+        'app_id'       => 'integer',
+        'handle'       => 'string',
+        'name'         => 'string',
+        'kind'         => 'string',
+        'avatar'       => 'string',
+        'role'         => 'string',
+        'role_key'     => 'string',
+        'state'        => 'string',
+        'state_words'  => 'string',
+        'waiting'      => 'integer',
+        'seen'         => 'string',
+        'seen_state'   => 'string',
+        'model'        => 'string',
+        'windows'      => array(array('name' => 'string', 'label' => 'string', 'percent' => 'integer', 'resets_at' => 'string?', 'resets' => 'string', 'high' => 'boolean')),
+        'reported'     => 'string',
+        'stale'        => 'boolean',
+        'usage_high'   => 'boolean',
+        'today'        => array('answered' => 'integer', 'failed' => 'integer'),
+        'last_message' => 'WorkspaceAgentCardMessage?',
+        'channels'     => array(array('id' => 'integer', 'name' => 'string')),
+        'tier'         => 'integer',
+        'wake'         => 'string',
+    );
+}
+
+function ws_api_agent_card_message_schema()
+{
+    return array(
+        'id'   => 'integer',
+        'when' => 'string',
+    );
+}
+
+/**
+ * The Add an agent list of Channel settings (ws_channel_agents_addable()) as
+ * the API gives it: id, handle, name and status only. Pure.
+ *
+ * @param array[] $addable ws_channel_agents_addable()
+ * @return array[]
+ */
+function ws_api_addable_agents_present($addable)
+{
+    $out = array();
+
+    foreach ((array) $addable as $agent) {
+        $out[] = array(
+            'id'     => (int) $agent['agent_id'],
+            'handle' => (string) $agent['handle'],
+            'name'   => (string) $agent['name'],
+            'status' => (string) $agent['status'],
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * The agent card (ws_agent_card()) as the API gives it: the panel's fields
+ * with the channel's id beside them and a window's reset time as an API
+ * time. Pure but for api_time().
+ *
+ * @param int   $channel_id
+ * @param array $card ws_agent_card()
+ * @return array
+ */
+function ws_api_agent_card_present($channel_id, $card)
+{
+    $out = array('channel_id' => (int) $channel_id) + (array) $card;
+    $windows = array();
+
+    foreach ((array) ($card['windows'] ?? array()) as $window) {
+        $window['resets_at'] = ((int) ($window['resets_at'] ?? 0) > 0) ? api_time($window['resets_at']) : null;
+        $windows[] = $window;
+    }
+
+    $out['windows'] = $windows;
+
+    return array_intersect_key($out, ws_api_agent_card_schema());
 }
 
 function ws_api_channel_agent_removal_schema()
@@ -214,11 +325,32 @@ function ws_api_channel_agents_list($params)
         return $row['agent'];
     }, $rows), $now);
 
+    $in = array();
+
     foreach ($rows as $row) {
         $out[] = ws_api_channel_agent_present($channel['id'], $row, $counts, $now);
+        $in[] = (int) $row['agent']['id'];
     }
 
-    api_ok_list($out, count($out));
+    $addable = ws_agents_ready() ? ws_api_addable_agents_present(ws_channel_agents_addable(ws_agents_list(), $in)) : array();
+
+    api_ok_list($out, count($out), null, null, array('addable' => $addable));
+}
+
+function ws_api_channel_agent_card($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    ws_api_agents_ready_or_503();
+
+    $card = ws_agent_card($viewer, $channel, (int) $params['agent_id'], time());
+
+    if (!is_array($card)) {
+        api_fail_not_found(lang('The agent'));
+    }
+
+    api_ok(ws_api_agent_card_present($channel['id'], $card));
 }
 
 function ws_api_channel_agents_set($params)

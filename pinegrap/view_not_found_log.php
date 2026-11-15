@@ -154,10 +154,9 @@ $answers = pg_not_found_log_answers(array_column($rows, 'path'));
 // the first rows.
 $list_rows = array();
 
-// The address, its note and the referrer wrap inside a bounded width, so a
-// long address or the Recycle Bin note does not push the counts and dates
-// off the screen.
-$wrap_style = 'white-space: normal; min-width: 12rem; max-width: 28rem; overflow-wrap: anywhere';
+// The address, its note and the referrer wrap inside a bounded width
+// (.pg-404-cell-wrap), so a long address or the Recycle Bin note does not
+// push the counts and dates off the screen.
 
 foreach ($rows as $row) {
     $path = (string) $row['path'];
@@ -190,10 +189,10 @@ foreach ($rows as $row) {
     $list_rows[] = array(
         'id' => (int) $row['id'],
         'cells' => array(
-            'path' => pg_list_cell('<div style="' . $wrap_style . '"><span class="font-monospace text-break">' . $address . '</span>' . $output_state . '</div>', 'align-middle', array('data-pg-sort-value' => $path)),
+            'path' => pg_list_cell('<div class="pg-404-cell-wrap"><span class="font-monospace text-break">' . $address . '</span>' . $output_state . '</div>', 'align-middle', array('data-pg-sort-value' => $path)),
             'hits' => pg_list_cell(pg_format_number($hits, 0), 'align-middle', array('data-pg-sort-value' => $hits)),
             'crawlers' => pg_list_cell(($crawler_hits > 0) ? pg_format_number($crawler_hits, 0) : '<span class="fg-secondary">-</span>', 'align-middle', array('data-pg-sort-value' => $crawler_hits)),
-            'referrer' => pg_list_cell(($referrer !== '') ? '<div class="text-break" style="' . $wrap_style . '">' . h(mb_substr($referrer, 0, 90, 'UTF-8')) . ((mb_strlen($referrer, 'UTF-8') > 90) ? '…' : '') . '</div>' : '<span class="fg-secondary">-</span>', 'align-middle small'),
+            'referrer' => pg_list_cell(($referrer !== '') ? '<div class="text-break pg-404-cell-wrap">' . h(mb_substr($referrer, 0, 90, 'UTF-8')) . ((mb_strlen($referrer, 'UTF-8') > 90) ? '…' : '') . '</div>' : '<span class="fg-secondary">-</span>', 'align-middle small'),
             'first_seen' => pg_list_table_when_cell((int) $row['first_seen']),
             'last_seen' => pg_list_table_when_cell((int) $row['last_seen']),
             'actions' => pg_list_cell($output_create

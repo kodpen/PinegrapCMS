@@ -88,7 +88,7 @@ function test_workspace_agent_word_in_the_routes_not_found_text()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_agents.php');
 
-	pg_assert_same(2, substr_count($source, "api_fail_not_found(lang('The agent'))"));
+	pg_assert_same(3, substr_count($source, "api_fail_not_found(lang('The agent'))"));
 }
 
 // No Workspace file asks for a key of the template's estate agents, in

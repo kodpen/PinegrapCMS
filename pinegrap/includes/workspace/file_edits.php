@@ -311,6 +311,50 @@ function ws_file_edit_name($name, $extension)
 }
 
 /**
+ * Whether the person may put an edited file in the place of the one a
+ * message carries: the checks of ws_message_file_replace() before the file
+ * itself (ws_upload_check()), with nothing kept.
+ *
+ * @param array $viewer
+ * @param array $message
+ * @param array $channel
+ * @return array ok, error
+ */
+function ws_message_file_replace_check($viewer, $message, $channel)
+{
+    if (!ws_file_can_replace($viewer, $message, $channel)) {
+        return array('ok' => false, 'error' => lang('Only the one who posted a file can replace it. Send an edited copy instead.'));
+    }
+
+    if (!ws_file_edits_ready()) {
+        return array('ok' => false, 'error' => lang('The workspace is not installed yet: the database has to be updated first.'));
+    }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * The kind of edit a message's file takes in place (ws_file_edit_target()):
+ * image, office (a Word document or an Excel workbook) or text, from its
+ * name; '' for a file no editor opens. Pure but for pg_office_kind().
+ *
+ * @param string $name
+ * @return string image | office | text | ''
+ */
+function ws_file_edit_kind($name)
+{
+    if (ws_file_kind($name) === 'image') {
+        return 'image';
+    }
+
+    if (function_exists('pg_office_kind') && (pg_office_kind($name) !== '')) {
+        return 'office';
+    }
+
+    return ws_file_is_text($name) ? 'text' : '';
+}
+
+/**
  * Puts an edited file in the place of the one a message carries. The old
  * file stays, as the message's earlier version.
  *
@@ -325,12 +369,10 @@ function ws_file_edit_name($name, $extension)
  */
 function ws_message_file_replace($viewer, $message, $channel, $name, $data, $redacted = false)
 {
-    if (!ws_file_can_replace($viewer, $message, $channel)) {
-        return array('ok' => false, 'error' => lang('Only the one who posted a file can replace it. Send an edited copy instead.'));
-    }
+    $checked = ws_message_file_replace_check($viewer, $message, $channel);
 
-    if (!ws_file_edits_ready()) {
-        return array('ok' => false, 'error' => lang('The workspace is not installed yet: the database has to be updated first.'));
+    if (!$checked['ok']) {
+        return $checked;
     }
 
     $stored = ws_store_upload($viewer, $channel, $name, $data);
@@ -405,7 +447,7 @@ function ws_file_edits_visible($rows, $viewer_id)
  *
  * @param int $message_id
  * @param int $viewer_id
- * @return array[] name, url, by, time
+ * @return array[] name, url, by, time, by_id, created_at, stored (the file manager's name)
  */
 function ws_file_history($message_id, $viewer_id = 0)
 {
@@ -428,6 +470,10 @@ function ws_file_history($message_id, $viewer_id = 0)
             'url'  => ((string) $row['stored_name'] !== '') ? PATH . encode_url_path($row['stored_name']) : '',
             'by'   => (string) ($people[(int) $row['edited_by']]['name'] ?? ''),
             'time' => ws_time_label($row['created_at']),
+            // For the external API: who and when, as numbers.
+            'by_id'      => (int) $row['edited_by'],
+            'created_at' => (int) $row['created_at'],
+            'stored'     => (string) $row['stored_name'],
         );
     }
 

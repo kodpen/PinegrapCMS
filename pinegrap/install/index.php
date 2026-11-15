@@ -8975,6 +8975,7 @@ function get_tables() {
 		'calendars',
 		'cart_quote_items',
 		'cart_quotes',
+		'cart_recovery_touch',
 		'catalog_detail_pages',
 		'catalog_pages',
 		'comments',

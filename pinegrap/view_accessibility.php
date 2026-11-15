@@ -182,10 +182,10 @@ echo pg_page_shell($shell) . '
             </nav>
             <p class="small fg-secondary mb-0">' . $output_status . '</p>
             <div class="card my-7">
-                <div class="card-header">' . h(lang('Checklist')) . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Checklist')) . '</h2>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-sm mb-0">
+                        <table class="table table-sm mb-0 pg-card-table">
                             <thead><tr><th>' . h(lang('Criterion')) . '</th><th>' . h(lang('Level')) . '</th><th>' . h(lang('Automatic check')) . '</th><th>' . h(lang('Result')) . '</th></tr></thead>
                             <tbody>' . $output_checklist . '</tbody>
                         </table>
@@ -193,12 +193,12 @@ echo pg_page_shell($shell) . '
                 </div>
             </div>
             <div class="card my-7">
-                <div class="card-header">' . h(lang('Findings')) . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Findings')) . '</h2>
                 <div class="card-body p-0">
                     ' . (($output_rows === '')
                         ? '<p class="fg-secondary m-7">' . h($last_run ? lang('Nothing was found.') : lang('Not checked yet')) . '</p>'
                         : '<div class="table-responsive">
-                            <table class="table table-sm table-hover mb-0">
+                            <table class="table table-sm table-hover mb-0 pg-card-table">
                                 <thead><tr><th>' . h(lang('Page')) . '</th><th>' . h(lang('Problem')) . '</th><th>' . h(lang('Times')) . '</th><th>' . h(lang('Example')) . '</th></tr></thead>
                                 <tbody>' . $output_rows . '</tbody>
                             </table>
