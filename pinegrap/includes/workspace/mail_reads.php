@@ -60,9 +60,14 @@ function ws_mail_unread($last_in_id, $mark, $floor)
  */
 function ws_mail_unread_sql($user_id, $floor)
 {
-    return "(SELECT MAX(i.id) FROM ws_mail_items i WHERE i.conversation_id = ws_mail_conversations.id AND i.direction = 'in')"
+    // Back from Remind me later and not read since (mail_remind.php).
+    $woken = function_exists('ws_mail_remind_woken_sql') ? ws_mail_remind_woken_sql($user_id, ws_mail_remind_ready()) : '';
+
+    return (($woken !== '') ? '(' . $woken . ' OR ' : '')
+        . "(SELECT MAX(i.id) FROM ws_mail_items i WHERE i.conversation_id = ws_mail_conversations.id AND i.direction = 'in')"
         . " > GREATEST('" . (int) $floor . "', COALESCE((SELECT r.item_id FROM ws_mail_reads r"
-        . " WHERE r.conversation_id = ws_mail_conversations.id AND r.user_id = '" . (int) $user_id . "'), 0))";
+        . " WHERE r.conversation_id = ws_mail_conversations.id AND r.user_id = '" . (int) $user_id . "'), 0))"
+        . (($woken !== '') ? ')' : '');
 }
 
 /**
@@ -127,6 +132,11 @@ function ws_mail_read_mark($user_id, $conversation_id, $item_id)
     db("INSERT INTO ws_mail_reads (conversation_id, user_id, item_id)
         VALUES ('" . (int) $conversation_id . "', '" . (int) $user_id . "', '" . max(0, (int) $item_id) . "')
         ON DUPLICATE KEY UPDATE item_id = GREATEST(item_id, VALUES(item_id))");
+
+    // Read now: a reminder that brought it back is done (mail_remind.php).
+    if (((int) $conversation_id > 0) && function_exists('ws_mail_remind_read')) {
+        ws_mail_remind_read($user_id, $conversation_id);
+    }
 }
 
 /**
@@ -185,6 +195,10 @@ function ws_mail_read_all($viewer)
 
     ws_mail_read_mark($user_id, 0, $newest);
     db("DELETE FROM ws_mail_reads WHERE user_id = '" . $user_id . "' AND conversation_id > 0 AND item_id <= '" . $newest . "'");
+
+    if (function_exists('ws_mail_remind_read')) {
+        ws_mail_remind_read($user_id, 0);
+    }
 }
 
 /**

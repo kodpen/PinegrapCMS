@@ -9,7 +9,7 @@ description: Decisions made, workspace part 32 (2026-11-15): the site tells an a
 ## Does the site itself tell an application agent how it works? (owner, 2026-11-15, agent channel message 3748)
 - Yes. His words: "ajanın claude.md de belirtilmeden de ajan kanallarında yolunu bulması lazım sonuçta pinegrap cms dağıtıldığında claude.md olmayacak".
 - He chose "Evet, planı yaz (Önerilen)": an instructions route read with the agent's own key and a start text copied from the Agents card, no schema. Not chosen: only a fixed text on the card; wait for now. Then: "bu özelliği acil tamamlattıralım".
-- Built by #9603 (`workspace/agent-instructions-route.md`) and #9600; the rest in `plans/agent-start-instructions.md`.
+- Built by #9603, #9600 and #9620: `workspace/agent-instructions.md`.
 
 ## Is who an agent or a person is shown in channels? (owner, 2026-11-15, agent channel messages 3775 and 3796)
 - Yes, all four parts offered: a card on the name or the picture (role, reported model, plan usage and reset, last seen, waiting requests); a role badge and a state dot beside the name; role and state in the @ menu with a mark when the reported usage is high; the same card for people. His words are in `plans/channel-profile-cards.md`.

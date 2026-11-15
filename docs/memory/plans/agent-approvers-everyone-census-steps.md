@@ -11,8 +11,8 @@ description: AE1 census (2026-11-14): the exact scope of AE2 to AE4 (agent appro
 - AE2 tests (red first): the by-hand switch refuses agents for a flow's call and an application's, an agent never answers a request its application wrote, `ws_approval_outcome()` counts an agent as a person.
 - AE3: the Approvers field lists the channel's agents under the people (paused ones left out), the card draws them with the agent badge; new texts by `lang()`.
 - AE4: `approvers` (or `agents`) on create; the decide route opens to the asked agent's own key (`ws_api_agent_caller()`), stays off MCP, keeps the dry run; `WorkspaceApproval` carries the agents; `php tools/check_api_schema.php`.
-- AE4b (offer): `ws_approval_agent_options()` also offers the channel's active `model` agents, Claude (`claude` row, `claude_access`) and Pinegrap AI (`ai`, `ws_ai_config()`); `ws_approval_agents_clean()` takes their values.
-- AE4b (answer): the request runs on the site; the run sees the approval in `ai_state` (`ws_approval_agent_request_of()`), asks the model for approve or reject with a note, and records it with `ws_approval_agent_decide()` instead of posting a message. Read how each runner picks its request up first; no new table or column.
+- AE4b: done (#9608), `workspace/approval-assistants.md`.
+- AE4c: done (#9622), `workspace/approval-assistants.md`.
 
 ## Which store does an agent approver need?
 - Decided (owner, channel 3501; shape 3506): a table of its own, `ws_approval_agents` beside `ws_approval_guests`: `approval_id`, `agent` VARCHAR(32) (the `ws_ai_requests.agent` value), `request_id`, `decision`, `note`, `decided_at`; key (approval_id, agent). `ws_approval_people` and its readers stay untouched. Added by AE2 (11.0.210).

@@ -772,15 +772,36 @@
 
         row.appendChild(text);
 
+        // Or a button that acts on it (Undo); the notice closes once pressed.
+        if (action && action.onClick) {
+            var act = button('btn btn-sm btn-text fg-reset fw-semibold text-nowrap flex-shrink-0 my-auto', action.label, '');
+            act.addEventListener('click', function () {
+                act.disabled = true;
+                action.onClick();
+                hide();
+            });
+            row.appendChild(act);
+        }
+
         var close = button('btn-close ms-2 me-3 my-auto flex-shrink-0', '', '', t('close'));
         close.setAttribute('data-bs-dismiss', 'toast');
         row.appendChild(close);
         box.appendChild(row);
         toastRoot.appendChild(box);
 
-        // Bootstrap's Toast: hides after five seconds, pauses while hovered
-        // or focused, and the close button dismisses it.
-        var instance = window.pgUI ? pgUI.toast.get(box, { delay: 5000 }) : null;
+        // Bootstrap's Toast: hides after five seconds (action.delay when
+        // given), pauses while hovered or focused, and the close button
+        // dismisses it.
+        var delay = (action && action.delay) ? action.delay : 5000;
+        var instance = window.pgUI ? pgUI.toast.get(box, { delay: delay }) : null;
+
+        function hide() {
+            if (instance) {
+                instance.hide();
+            } else {
+                box.remove();
+            }
+        }
 
         if (instance) {
             pgUI.toast.on(box, 'hidden', function () { box.remove(); });
@@ -788,8 +809,10 @@
         } else {
             box.classList.add('show');
             close.addEventListener('click', function () { box.remove(); });
-            setTimeout(function () { box.remove(); }, 5000);
+            setTimeout(function () { box.remove(); }, delay);
         }
+
+        return { hide: hide };
     }
 
     function fail(error) {

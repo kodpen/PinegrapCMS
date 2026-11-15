@@ -205,3 +205,16 @@ function test_workspace_agent_instructions_route()
 	pg_assert_same(false, $routes[0]['mcp'], 'not an MCP tool');
 	pg_assert_true(in_array('workspace.agent_instructions.get', array_column(ws_api_routes(), 'id'), true), 'merged into the routes');
 }
+
+// The brief's one line: the route and the version of the text served now.
+function test_workspace_agent_instructions_brief_line()
+{
+	$present = ws_agent_instructions_present(workspace_agent_instructions_test_agent('poll'), workspace_agent_instructions_test_channels(), workspace_agent_instructions_test_base());
+	$line = ws_agent_instructions_brief_line($present['instructions_version']);
+
+	pg_assert_contains('GET /workspace/agent-instructions', $line, 'the route');
+	pg_assert_contains('version ' . $present['instructions_version'] . '.', $line, 'the version');
+	pg_assert_contains('read them again', $line, 'what an older version means');
+	pg_assert_true(strpos($line, "\n") === false, 'one line');
+	pg_assert_contains('When a brief names another version, read them again', $present['text'], 'the text says the same');
+}

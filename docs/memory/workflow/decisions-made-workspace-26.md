@@ -6,7 +6,7 @@ description: Decisions made, workspace part 26: a template is chosen with a prev
 ## Does a place where a template is chosen show a preview? (owner, 2026-11-14, channel message 2709)
 - Looking at the Reply by WhatsApp drawer's pictures (WA14b, #9446), where the approved template was a plain select and its text showed the raw `{{1}}` marks, the owner wrote: "Adnan gorsellerini onayla ancak şablon seçim ekranlarında önizleme ler olursa iyi olur."
 - So: wherever a template or a design is chosen, the choice shows a preview of what the receiver will see. In the drawer the chosen WhatsApp template is drawn as the customer reads it, a message bubble with the typed values in place, updated as they are typed.
-- The same holds for the ready e-mail designs (`plans/messages-area-steps.md`, MA5d) and for every later chooser of a template or a design.
+- The same holds for the ready e-mail designs (`designer/email-designs-ready.md`, MA5d) and for every later chooser of a template or a design.
 - The architect's reading, told to him in the channel (the answer to 2709): it is a rule for every such screen, not for this drawer only. The drawer's pictures were approved by the same message; the preview was added to that PR while it was a draft.
 
 ## Which components does a new part inside a channel use? (owner, 2026-11-14, channel message 2709)

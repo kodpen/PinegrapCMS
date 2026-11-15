@@ -1074,5 +1074,11 @@ function ws_agent_brief($agent, $row, $scopes)
     $mcp = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/mcp.php';
     $lines = array_merge($lines, ws_agent_brief_tool_lines($mcp, $scopes, (int) $row['id']));
 
+    // Where the agent's instructions are and their version now
+    // (agent_instructions.php, loaded with the API).
+    if (function_exists('ws_agent_instructions_brief_line_for')) {
+        $lines[] = ws_agent_instructions_brief_line_for($agent);
+    }
+
     return ws_ai_briefing_text($lines, ws_ai_request_language($request));
 }

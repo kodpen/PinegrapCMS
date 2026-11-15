@@ -7,13 +7,12 @@
 - agent-approvers-everyone-census-mentions.md: AE1 census (2026-11-14) for @herkes: how the @ menu, the mention lines and ws_agent_wake_matches() read a tag, how a department mention rings, the reserved handles, AE5's scope
 - agent-approvers-everyone-census-steps.md: AE1 census (2026-11-14): the exact scope of AE2 to AE4 (agent approvers on the server, the form and card, the API) and the store an agent approver needs (a table of its own, decided)
 - agent-approvers-everyone-census.md: AE1 census (2026-11-14) for agent approvers: ws_approval_people and its readers, who may be asked, the routes that ask and decide, where the bound sits
-- agent-approvers-everyone.md: Plan (owner 2026-11-14): an approval request can ask a channel's agents and assistants, and the tag @herkes mentions everyone in the room but the writer; steps AE1 to AE6 (AE4b split from AE4)
+- agent-approvers-everyone.md: Plan (owner 2026-11-14): an approval request can ask a channel's agents and assistants, and the tag @herkes mentions everyone in the room but the writer; steps AE1 to AE6 (AE4b, AE4c split from AE4)
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - agent-knock-routine-form.md: Plan (architect 2026-11-13, #9241): a push door on a routine's fire address is knocked in the routine's form (it answered HTTP 400 to the webhook form); one step, RK1, then a live check
-- agent-start-instructions.md: Plan (owner 2026-11-15, channel decision 3748): an application agent learns how it works from the site, an instructions route for its key and a start text on the Agents card; AS1 to AS3
 - channel-profile-cards-census-facts.md: PF1 census of channel-profile-cards: where each fact of the agent card and the person card is stored, who may see it, what the state dot and the 90% usage mark read from; no schema need found
 - channel-profile-cards-census-scope.md: PF1 census of channel-profile-cards: the card's look (no popover in the design sheet), the exact files and functions of PF2 to PF7, and further facts for the owner's poll
 - channel-profile-cards-census.md: PF1 census of channel-profile-cards (agent card on a name or picture in channels): where a sender's name and picture are drawn in workspace.js, what the message and member payloads carry today
@@ -45,11 +44,6 @@
 - mail-inbox-more-scopes-wait.md: Exact scope of IB10, IB10b and IB13 of plans/mail-inbox-more.md after the IB9 census: remind later, remind when no answer comes, undo send; files, functions, texts, schema asked
 - mail-inbox-more.md: Plan (owner 2026-11-14, poll 3363): the E-mails screen gains remind later, a reminder when no answer comes, incoming mail rules, "I am away" and undo send; steps IB9 to IB14
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
-- messages-area-decided-2.md: The architect's decisions on the proposals of MA9a and MA10a (#9077): campaign profiles into flows (boxes first, what stays, one flow per chain, the switch, the owner), incoming e-mail in the area
-- messages-area-decided.md: The architect's decisions on the proposals of MA0 and MA4 (#9081, #9083): the shell, the Sends list as a union with its measure, e-mail source, rights, the e-mail design page
-- messages-area-steps-2.md: Steps MA9a-MA9f and MA10a-MA10c of the messages area plan (#8961): campaign profiles turned into flows, incoming e-mail in the area; decisions in messages-area-decided-2.md
-- messages-area-steps.md: Steps MA0-MA11 and MA2b of the messages area plan (#8961): census, shell, sends list, campaigns, e-mail bodies, templates, channels, automatic sends, profiles, incoming e-mail
-- messages-area.md: Plan (owner 2026-11-12, #8961): one messages area in place of My Campaigns: campaigns, automatic sends as flows, templates, one sends list, channels; e-mail bodies as pages; profiles become flows
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says

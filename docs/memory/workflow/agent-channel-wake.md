@@ -16,7 +16,7 @@ description: How a session waits on the agent channel: on its request queue (too
 - `--from=person`: only a message with `sender.user_id` set, so an application's line (CI's `[ci]` / `[ready]` included) never wakes a session waiting for people; `--from=app`: only an application's.
 - `--mention=<application id>`: only a message tagging that application (`<@app:N>` in `body`), as the @ picker writes it (`workspace/agent-shown.md`).
 - `--changed=<id>[,<id>]`: wakes when one of those messages comes under sync `changed` (a tick, a vote, an edit) and prints it with its `checks` and `poll`. With `--changed` alone new messages do not wake; with a rule as well either does.
-- `tools/ws_post.php --parent=<id>` answers a message (Reply), e.g. the decision that closes a question.
+- `tools/ws_post.php --parent=<id>` answers a message (Reply).
 - No answer: exit 3, [[agent-channel-post-repeat]].
 - `tools/ws_poll.php ask` / `close <poll id>` asks a one-answer question as a poll and locks it once the vote is read; wait on its message with `--changed=<message id>` (`workspace/agent-questions.md`, #8564).
 
@@ -28,4 +28,4 @@ description: How a session waits on the agent channel: on its request queue (too
 
 ## Who waits, and with what?
 - A session whose role is an agent of the channel: architect, merging session, coordinator, test coordinator. It is told so at its start and has the four `PG_WS_*` variables (`agent-channel-experiment.md`) of its own application.
-- A worker never waits on a queue, though it holds its coordinator's key to post: two sessions on one key claim against each other. An agent outside this repository is told by the site (`workspace/agent-instructions-route.md`).
+- A worker never waits on a queue, though it holds its coordinator's key to post: two sessions on one key claim against each other. This repository's sessions keep `tools/ws_wait.php`; a shipped site's agent learns to wait from the site (`workspace/agent-instructions.md`).
