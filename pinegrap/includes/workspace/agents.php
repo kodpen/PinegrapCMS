@@ -354,6 +354,97 @@ function ws_agent_door_double_words()
 }
 
 /**
+ * Does a save start an application agent's door afresh? Its last push error
+ * and failure count belong to the door they were met at, so a new door kind,
+ * address or token (a sealed one given, or '' for removed) clears them. A
+ * model agent's error is its model's and is cleared by a call. Pure.
+ *
+ * @param array|null  $current     ws_agent_shape(), null for a new agent
+ * @param array       $values      door_kind, door_url as they are saved
+ * @param string|null $door_sealed the token written, null when kept
+ * @return bool
+ */
+function ws_agent_door_error_clears($current, $values, $door_sealed)
+{
+    if (!$current || ((string) ($current['kind'] ?? '') !== 'app')) {
+        return false;
+    }
+
+    return ((string) ($current['door_kind'] ?? '') !== (string) ($values['door_kind'] ?? ''))
+        || (trim((string) ($current['door_url'] ?? '')) !== trim((string) ($values['door_url'] ?? '')))
+        || ($door_sealed !== null);
+}
+
+/**
+ * The door error an agent's row and drawer show: an application agent's
+ * only while its door is push (a poll door is never knocked), a model
+ * agent's always. Pure.
+ *
+ * @param array $agent kind, door_kind, door_error
+ * @return string '' when none is shown
+ */
+function ws_agent_door_error_shown($agent)
+{
+    if (((string) ($agent['kind'] ?? '') === 'app') && ((string) ($agent['door_kind'] ?? '') !== 'push')) {
+        return '';
+    }
+
+    return (string) ($agent['door_error'] ?? '');
+}
+
+/**
+ * An application agent's door in one sentence for its drawer: a poll door
+ * with when the agent last read its queue, a push door with the address's
+ * host and how its last knock went. '' for any other kind. Pure.
+ *
+ * @param array $agent ws_agent_shape()
+ * @param int   $now
+ * @return string
+ */
+function ws_agent_door_state_words($agent, $now)
+{
+    if ((string) ($agent['kind'] ?? '') !== 'app') {
+        return '';
+    }
+
+    if ((string) ($agent['door_kind'] ?? '') !== 'push') {
+        $seen = (int) ($agent['seen_at'] ?? 0);
+
+        if ($seen <= 0) {
+            return lang('It waits on its queue: it reads its requests itself, and it has not read it yet.');
+        }
+
+        $age = max(0, (int) $now - $seen);
+
+        if ($age < 60) {
+            $when = lang('a moment ago');
+        } elseif ($age < 3600) {
+            $when = lang(array('string' => '{var:1} min ago', 'vars' => (int) floor($age / 60)));
+        } elseif ($age < 86400) {
+            $when = lang(array('string' => '{var:1} h ago', 'vars' => (int) floor($age / 3600)));
+        } else {
+            $when = date('d.m.Y H:i', $seen);
+        }
+
+        return lang(array('string' => 'It waits on its queue: it reads its requests itself, last {var:1}.', 'vars' => $when));
+    }
+
+    $host = (string) parse_url(trim((string) ($agent['door_url'] ?? '')), PHP_URL_HOST);
+    $knock = (int) ($agent['door_last_knock'] ?? 0);
+
+    if ($knock <= 0) {
+        return lang(array('string' => 'The site knocks at {var:1} on each request. No knock yet.', 'vars' => $host));
+    }
+
+    if ((string) ($agent['door_error'] ?? '') !== '') {
+        return lang(array('string' => 'The site knocks at {var:1} on each request. The last knock, {var:2}, failed; failures in a row: {var:3}.',
+            'vars' => array($host, date('d.m.Y H:i', $knock), max(1, (int) ($agent['door_failures'] ?? 0)))));
+    }
+
+    return lang(array('string' => 'The site knocks at {var:1} on each request. The last knock, {var:2}, was answered.', 'vars' => array($host, date('d.m.Y H:i', $knock))));
+}
+
+/**
  * The registered agents, by handle.
  *
  * @return array[] shaped by ws_agent_shape()
@@ -1049,6 +1140,11 @@ function ws_agent_save($viewer, $values, $current, $key_sealed = null, $door_sea
 
     if ($door_sealed !== null) {
         $sets[] = "door_secret_sealed = " . $sealed($door_sealed);
+    }
+
+    if (ws_agent_door_error_clears($current, $values, $door_sealed)) {
+        $sets[] = "door_failures = 0";
+        $sets[] = "door_error = ''";
     }
 
     if ($current) {
