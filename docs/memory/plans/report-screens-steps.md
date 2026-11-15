@@ -1,6 +1,6 @@
 ---
 name: report-screens-steps
-description: Steps of plans/report-screens.md: RS1-RS8c landed or done; the close-out (RS9) left
+description: Steps of plans/report-screens.md: RS1-RS8c landed or done; the close-out (RS9) under way
 ---
 
 ## Which steps are there?
