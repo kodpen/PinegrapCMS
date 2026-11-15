@@ -16,7 +16,7 @@ description: Decisions list, schema part 21 (2026-11-15 on): ws_mail_reminders a
 
 ## Where are an approval request's agent approvers kept? (owner, 2026-11-15, in the architect's window)
 - Asked as agent channel poll 3455 after the census AE1 (#9555), with "Evet, ayrı tablo eklensin" recommended; answered by the same sentence of his. Decision under the poll: channel message 3501.
-- Table `ws_approval_agents`, beside `ws_approval_guests`: `approval_id`, `agent` VARCHAR(32) (the `ws_ai_requests.agent` value), `request_id`, `decision`, `note`, `decided_at`; key (`approval_id`, `agent`). Added by AE2 of `plans/agent-approvers-everyone.md`.
+- Table `ws_approval_agents`, beside `ws_approval_guests`: `approval_id`, `agent` VARCHAR(32) (the `ws_ai_requests.agent` value), `request_id`, `decision`, `note`, `decided_at`; key (`approval_id`, `agent`). Added by AE2 (#9567, 11.0.210): `workspace/approval-agents.md`.
 - `ws_approval_people`, its primary key and every reader of it (the card, Today, the reminders, the calendar, the dashboard) stay as they are.
 - Not chosen: a column `agent_id` on `ws_approval_people` with its primary key widened, a MODIFY after which every reader must leave agent rows out.
 - The architect's, not the owner's words: he had been told "a column"; the census showed the table is safer and the poll said so. The outcome comes from the one pure function, fed both lists; a removed or paused agent counts as not answering.

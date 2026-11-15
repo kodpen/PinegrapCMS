@@ -18,6 +18,12 @@ description: channel-profile-cards (owner 2026-11-15, channel decision 3796): th
 ## Which further facts on the person card, and for both? (PF6)
 - He chose all four offered: a Message button (a direct message to a person; an agent's handle put into the message box); the person's local time; their open tasks (a count, only tasks the reader may see); their department's lead.
 
+## Which mark tells an agent's state, and which tone its role? (PF3, PF4, PF5, PF7)
+- One map for every step, the architect's (2026-11-15), after PF3, PF4 and PF5 each drew another: working blue, waiting amber, not seen amber, paused grey, ready teal. These are the tones of the agents panel.
+- Where the words stand beside it (a pill: the card, the panel) the tone is enough. Where they do not (the dot on a picture, in a message and in the @ menu): working and waiting are round, not seen and paused are square, ready shows no mark; the state's words are the dot's title and accessible name.
+- The map has one definition, the `.ws-agent-dot` class with `is-<state>` (PF5); no step writes a second.
+- The role pill is violet everywhere, so it is never read as the blue of working.
+
 ## What stays?
 - No schema change: PF1 found every fact stored (`channel-profile-cards-census-facts.md`).
 - Who sees what stays as the plan says: nothing for a guest; a person's last seen only for a channel manager.

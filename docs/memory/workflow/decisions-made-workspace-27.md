@@ -5,7 +5,7 @@ description: Decisions made, workspace part 27: Check e-mail, own signature and 
 
 ## Does the E-mails screen get a button that reads the boxes now, and a mailbox's features? (owner, 2026-11-14, in the architect's window)
 - The owner: "birde eposta için yenileme düğmesi koyalım. yeni epostaları kontrol eden ve indiren bir düğme. başladık artık kullanıcı başı eposta imzası kara liste vs. gibi gelen kutusu özelliklerini de ekleyelim."
-- So: "Check e-mail" on the E-mails screen, a signature per person, a block list, and the next features of a mailbox. Plan: `plans/mail-inbox-features.md`.
+- So: "Check e-mail" on the E-mails screen, a signature per person, a block list, and the next features of a mailbox. Built as IB1-IB8, plan closed: `workspace/mail-overview.md`, `workspace/mail-decisions.md`.
 - The architect's reading, under his "uyarlayıp iyi, işe yarar plana çevirmek sende": the signature is the person's and stands where the writer's name stands, the box's Signature stays under it. The block list belongs to a box or to every box, not to a person, because a box is shared; a blocked mail waits 30 days in a "Blocked" view. Recipient suggestions, Send later and the Sent folder are the "other features".
 
 ## Does a person get a calendar of their own beside e-mail, with private plans? (owner, 2026-11-14, in the architect's window)

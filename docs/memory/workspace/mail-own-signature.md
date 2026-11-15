@@ -14,7 +14,7 @@ description: A person's own e-mail signature (IB3, #9513): My e-mail settings on
 ## Where does it stand in a mail?
 - Under "-- " in place of the writer's name, the box's Signature (or its name) under it: `ws_mail_writer_lines($name, $own)` gives the lines, which go into `ws_mail_send_body()` / `ws_mail_answer_body()` / `ws_mail_answer_html()` as the writer.
 - Read when the mail leaves: `ws_mail_send_properties()` takes the item's `user_id`, so Send again carries the signature of that moment; `ws_mail_reply_send()` takes the viewer's. The automatic answer has no writer and stays as it was.
-- Plain text in an HTML mail too, escaped line by line; an HTML signature waits and is asked again (plan scope).
+- Plain text in an HTML mail too, escaped line by line; an HTML signature is later, asked of the owner again once MA10b's writing has landed (architect, channel 2863).
 
 ## What do the forms show?
 - `signatureLines()` in `workspace_mail.js` draws the same lines for New e-mail, Forward as e-mail and Reply by e-mail: `ws_mail_compose` and `ws_mail_forward` send `own_signature`; `ws_mail_reply_form` sends `writer`, `own_signature` and `box` (name, signature).

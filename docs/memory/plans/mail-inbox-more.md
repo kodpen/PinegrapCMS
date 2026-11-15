@@ -4,7 +4,7 @@ description: Plan (owner 2026-11-14, poll 3363): the E-mails screen gains remind
 ---
 
 ## What is asked?
-- The owner ticked four additions to the mailbox plan (`workflow/decisions-made-workspace-29.md`). They widen what `plans/mail-inbox-features.md` builds and start when its IB6 has landed or beside it, as each line says.
+- The owner ticked four additions to the mailbox plan (`workflow/decisions-made-workspace-29.md`). They widen what the closed plan IB1-IB8 built (`workspace/mail-overview.md`), after its IB6 (#9547) or beside it.
 
 ## Which steps?
 - IB9 (S, no product code) Census, done #9554: findings `plans/mail-inbox-more-census.md`; exact scopes `plans/mail-inbox-more-scopes-wait.md` (IB10, IB10b, IB13) and `plans/mail-inbox-more-scopes-rules.md` (IB11, IB12). Schema (owner's yes, `workflow/decisions-made-schema-21.md`): table `ws_mail_reminders` added by IB10 and read by IB10b, `ws_profiles.mail_away` added by IB12; IB11 and IB13 need none of their own.
@@ -17,7 +17,7 @@ description: Plan (owner 2026-11-14, poll 3363): the E-mails screen gains remind
 - IB14 (S, in progress) Close-out: the memory files of the steps, `workspace/mail-overview.md`, this plan deleted.
 
 ## What does every step keep?
-- What the mailbox plan keeps: team accounts only, the channel decides who reaches a conversation, a running site reads and sends as before until a button is pressed or a setting written.
+- What the closed mailbox plan keeps (`workspace/mail-decisions.md`): team accounts only, the channel decides who reaches a conversation, a running site reads and sends as before until a button is pressed or a setting written.
 - An automatic answer and a rule never answer a mail the loop gate or the hold would stop (`workspace/mail-ingest.md`).
 - Times are the person's time zone; the general job does the waking, no new job.
 - Look A (`ui/look-design-examples.md`), the whole picture set in the agent channel at once. Texts through `lang()`, Turkish by `tools/tr_add.php`.
