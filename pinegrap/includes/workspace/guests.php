@@ -1653,6 +1653,10 @@ function ws_guest_vote($context, $poll_id, $option_ids, $other_text = '')
         return array('ok' => false, 'error' => lang('Invalid request.'));
     }
 
+    if ((int) ($poll['withdrawn_at'] ?? 0) > 0) {
+        return array('ok' => false, 'error' => lang('The poll was taken back.'));
+    }
+
     if (((int) $poll['closed_at'] > 0) || (((int) $poll['closes_at'] > 0) && ((int) $poll['closes_at'] <= time()))) {
         return array('ok' => false, 'error' => lang('The poll is closed.'));
     }

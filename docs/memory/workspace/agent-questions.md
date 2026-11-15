@@ -6,7 +6,7 @@ description: How an agent asks the people with a poll or an approval; a one-answ
 ## How does an agent ask the people?
 - With a poll (`workspace.polls.create`, an MCP tool since step A5b) or an approval request (`workspace.approvals.create`, open to applications before). An application key or an OAuth connection asks as the application (`ws_api_writer_app_id()` → `ws_poll_create(..., $app_id)`); a team devices session asks as the person, as before. The route texts tell an agent to put the option it recommends first.
 - Only people answer: votes and approval decisions stay `ws_api_person_only()` and off MCP (`workspace-api-callers.md`).
-- An application key closes only a poll it asked itself (`ws_api_poll_is_callers()`, the poll message's `sender_kind = app` and `sender_id` the caller's application); every other close stays the person's. Changing a poll stays own-words-only. `workspace.polls.close` stays off MCP: an agent over MCP sets `closes_at`.
+- An application key closes only a poll it asked itself (`ws_api_poll_is_callers()`, the poll message's `sender_kind = app` and `sender_id` the caller's application); every other close stays the person's. Changing, taking back and asking again go the same way (`ws_api_poll_asker_app()`, `poll-take-back.md`); a person's poll stays own-words-only. These routes stay off MCP: an agent over MCP sets `closes_at`.
 
 ## How is a question with one answer asked, and when is the answer locked?
 - Owner (2026-11-10): one choice, no change afterwards, a poll rather than a checklist; the shape is the architect's (#8554, `workflow/decisions-made-workspace-12.md`).

@@ -58,6 +58,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/customer_history.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/guests.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/interact.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/poll_parts.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/poll_again.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/tasks.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/recurrence.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/reminders.php');

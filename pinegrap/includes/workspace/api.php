@@ -1262,7 +1262,7 @@ function ws_api_routes()
             'mcp'          => false,
             'returns'      => 'WorkspaceMessage',
             'summary'      => 'Change a poll',
-            'description'  => 'Changes an open poll the person asked, the way Edit the poll on it does; poll.can_edit says whether they may. A field left out stays as it is. options, when sent, is the whole new list: an item with the id of one of poll.options keeps that option (and its votes) under the label sent, an item without an id adds an option, and an option left out is removed. Once somebody has voted, an option with votes has to stay with its words unchanged, and multiple and anonymous no longer change (422): a secret vote does not turn public, and a second answer is not taken away. New options can still be added, the question worded better and the closing moment moved; closes_at null leaves it open until it is closed. Somebody else\'s poll is refused with 403, a closed poll and one of an earlier version of the conversation with 422. The answer is the message with its poll. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden, so an integration does not rewrite its owner\'s words. PATCH is accepted beside POST.',
+            'description'  => 'Changes an open poll the person asked, the way Edit the poll on it does; poll.can_edit says whether they may. A field left out stays as it is. options, when sent, is the whole new list: an item with the id of one of poll.options keeps that option (and its votes) under the label sent, an item without an id adds an option, and an option left out is removed. Once somebody has voted, an option with votes has to stay with its words unchanged, and multiple and anonymous no longer change (422): a secret vote does not turn public, and a second answer is not taken away. New options can still be added, the question worded better and the closing moment moved; closes_at null leaves it open until it is closed. Somebody else\'s poll is refused with 403, a closed poll, one taken back and one of an earlier version of the conversation with 422. The answer is the message with its poll. A person\'s poll is changed only from their team devices session (a Bearer token from POST /auth/login): an application key and an OAuth connection are refused with 403 forbidden, so an integration does not rewrite its owner\'s words. An application changes the polls it asked itself, the same way. PATCH is accepted beside POST.',
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'question', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'The whole new question. Tags are written as tokens, as when writing.'),
@@ -1286,6 +1286,44 @@ function ws_api_routes()
             'description' => 'Closes a poll, the way Close the poll on it does: the person who asked closes their own, and whoever runs the channel any (poll.can_close says whether the person may; 403 otherwise). The result is written into the channel: a clear winner as a decision in the name of the person who asked, so it lands on the Decisions tab, and a tie or a poll nobody voted in as a line of the workspace\'s. The answer is the message with its poll, now closed, and poll.result_message_id the result. A poll already closed is not an error: the answer is the same. A poll of an earlier version of the conversation is refused with 422. A device session may - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection; an application key only closes a poll it asked itself, and is refused with 403 forbidden for any other.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.polls.withdraw',
+            'method'      => 'POST',
+            'path'        => '/workspace/polls/{id}/withdraw',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_polls_withdraw',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Take a poll back',
+            'description' => 'Takes back an open poll, the way Take back on it does: it stays in the channel, greyed (poll.withdrawn true), takes no vote and writes no result; votes already cast are not counted. Only its asker may (poll.can_withdraw): a person\'s poll from their team devices session (a Bearer token from POST /auth/login), an application\'s poll with that application\'s key or connection; anybody else is refused with 403. A closed poll, one already taken back and one of an earlier version of the conversation are refused with 422. The answer is the message with its poll.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.polls.again',
+            'method'      => 'POST',
+            'path'        => '/workspace/polls/{id}/again',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_polls_again',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMessage',
+            'status'      => 201,
+            'summary'     => 'Ask a poll again',
+            'description' => 'Asks a poll again as a new poll in the same channel, the way Ask again on it does: the new poll names the old one (poll.again_of), and the old one links to it (poll.asked_again). An old poll still open is taken back; an answered or closed one stays. The fields sent replace the old poll\'s and the rest are carried over, the options with their parts; closes_at is not carried over. Only its asker may (poll.can_ask_again), as for workspace.polls.withdraw. The new poll is held to the rules of workspace.polls.create (422). The answer is the new poll\'s message (201). Send an Idempotency-Key so a retried call does not ask twice.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'question', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'The new question. Left out, the old one.'),
+                array('name' => 'options', 'in' => 'body', 'type' => 'list', 'of' => array('label' => 'string', 'description' => 'string', 'file_id' => 'integer', 'links' => array(array('url' => 'string', 'label' => 'string')), 'recommended' => 'boolean', 'other' => 'boolean'), 'max_items' => 10, 'description' => 'The new options as workspace.polls.create takes them. Left out, the old ones with their parts.'),
+                array('name' => 'multiple', 'in' => 'body', 'type' => 'bool'),
+                array('name' => 'anonymous', 'in' => 'body', 'type' => 'bool'),
+                array('name' => 'closes_at', 'in' => 'body', 'type' => 'datetime', 'description' => 'When the new poll closes by itself, at least a minute from now. Left out, it stays open until it is closed.'),
             ),
         ),
 
