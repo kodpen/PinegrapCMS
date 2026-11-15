@@ -17,5 +17,6 @@ description: "Agents in this channel" of Channel settings (PF7, #9615): one comp
 - Each pill says what its time is (architect, channel 3871): "Seen 6 min ago", "Never seen", "Last knock …", "Always ready", "Paused", "Working on a request", "A request is waiting" or "{n} requests are waiting" (`ws_channel_agent_state_words()`).
 
 ## Who approved it?
-- Owner (2026-11-15): the look, by his vote on channel message 4097.
+- Owner (2026-11-15, with a picture of Channel settings): "bu alanda biraz daha modern ve anlaşılır olsun. kademe kısmı benim tarafımdan bile ne olduğu anlaşılmıyor". Before, every agent was an open form of its own with no line saying what a choice does.
+- Owner (2026-11-15): the look, by his vote on channel message 4097. The drawer around it: `channel-settings-drawer.md`.
 - Tests: `tests/workspace_channel_agents_panel_test.php`.

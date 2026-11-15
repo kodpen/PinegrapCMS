@@ -18,7 +18,10 @@ description: A person's card facts in a channel (person_card.php, PF6a): the ws_
 - `away`: `ws_person_card_away()`: leaves (`kind` leave) on the plan that apply to the person (`ws_event_applies()`: their own, their department's, the company's), ending today or later, within `WS_PERSON_CARD_AWAY_DAYS` (90), at most `WS_PERSON_CARD_AWAY_MAX` (5), each start, end, `now`, `source` plan, title. The mail away range (`ws_mail_away()`, IB12) is added as `source` mail without its reply text; a mail range the plan shows with the same days is not listed twice.
 - `clock`: `ws_person_card_clock()`: `user.timezone` (through `pg_timezone_canonical()`), else the site's zone; an unknown name counts as none. zone, time (H:i), `other` when not the site's.
 
+## Where does it open and what does it draw? (PF6b, #9688)
+- A person's picture and name on a message and in Channel info (`personCardHook()`); a guest, an application or a former member gets none. The message's link to the account is now the card's Edit the user.
+- The agent card's frame (`cardShow()`, `cardHook()`, `agentCardPlace()`): face, name, `@username`, role pill, title; departments ("Leads it", the other leads), working day (`personCardDays()`: "Mon–Fri"), local time, last seen, away days; Message (a direct message) and Edit the user for whoever may change the account.
+
 ## What is not on it?
-- Open tasks and anything about the person's work items: not read in PF6a (architect, channel 3989: role, title, departments, working day, away days, last seen).
-- No schema change, no API route, no JavaScript; the card's drawing is PF6b.
-- Tests: `tests/workspace_person_card_test.php`.
+- Open tasks: the owner chose them (`agent-card-look.md`), the architect left them out (channel 3989).
+- No schema change, no API route. Tests: `tests/workspace_person_card_test.php`, `workspace_person_card_js_test.php`.

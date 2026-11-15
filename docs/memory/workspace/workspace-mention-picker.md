@@ -6,6 +6,7 @@ description: The @ and # lists of Workspace writing boxes (drawPicker()): which 
 ## Which boxes use the list?
 - One component: `pickerCheck()` → `openPicker()` → `drawPicker()` of the app in `assets/js/workspace.js` (people after `@`, records and the kind chips after `#`, and the `:`, `;`, `/` lists). The channel and discussion composers are the app; `richField()` lends it to every formatted box (a task's description and notes, the channel summary, the notes screen, the approval, status and saved-reply drawers of `workspace_approvals.js`, `workspace_status.js`, `workspace_replies.js`); `tokenField()` to a task note box without the formatted editor.
 - `refSearchField()` (a kind select and a search box) draws its own `.ws-picker` under its input; not this list.
+- An agent's role, state dot and usage mark in the list: `agent-state-marks.md`.
 
 ## Where does a list open?
 - A formatted box (`richField()` sets `caretPicker: true`, the notes screen `notesMode`): at the caret. `placePicker()` adds `.ws-picker-caret` (fixed, `width: min(26rem, 100vw - 1rem)`), measures it, asks `pickerPlace(caret, field, view, size)` and sets left, top and width inline, max-height only when the room is shorter than the list (a cap at its own height rounded down drew a row scrollbar for a pixel).
