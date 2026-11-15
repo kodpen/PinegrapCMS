@@ -222,6 +222,62 @@ function ws_api_channel_present($brief)
         'agent_channel' => !empty($brief['agent_channel']),
         'unread'        => (int) $brief['unread'],
         'last_message_at' => ((int) $brief['last_message_at'] > 0) ? api_time($brief['last_message_at']) : null,
+    ) + (isset($brief['api_settings']) ? $brief['api_settings'] : ws_api_channel_settings_present(null));
+}
+
+/**
+ * The settings fields of the channel object, as the settings drawer and the
+ * channel menu show them to the reader: the records watch, the Claude,
+ * Pinegrap AI and voice-transcript switches (null where the channel offers
+ * none) and the summary. Null for every field when $states is null: a list
+ * carries none. Pure.
+ *
+ * @param array|null $states claude, ai, voice (the *_channel_state() values),
+ *                           watch (ws_watch_channel_state()), shared (a guest's
+ *                           room or a channel shared with guests), summary,
+ *                           summary_updated_at
+ * @return array
+ */
+function ws_api_channel_settings_present($states)
+{
+    if (!is_array($states)) {
+        return array_fill_keys(array('watch', 'claude_allowed', 'ai_allowed', 'voice_allowed', 'summary', 'summary_updated_at'), null);
+    }
+
+    $allowed = function ($state) {
+        return is_array($state) ? !empty($state['allowed']) : null;
+    };
+    $shared = !empty($states['shared']);
+
+    return array(
+        'watch'              => isset($states['watch']) ? (bool) $states['watch'] : null,
+        'claude_allowed'     => $shared ? null : $allowed($states['claude'] ?? null),
+        'ai_allowed'         => $shared ? null : $allowed($states['ai'] ?? null),
+        'voice_allowed'      => $allowed($states['voice'] ?? null),
+        'summary'            => (string) ($states['summary'] ?? ''),
+        'summary_updated_at' => ((int) ($states['summary_updated_at'] ?? 0) > 0) ? api_time($states['summary_updated_at']) : null,
+    );
+}
+
+/**
+ * What ws_api_channel_settings_present() reads, for one channel and its
+ * reader: the same calls ws_channel_detail() makes for the panel.
+ *
+ * @param array $viewer
+ * @param array $channel ws_channels row
+ * @return array
+ */
+function ws_api_channel_settings_states($viewer, $channel)
+{
+    return array(
+        'claude'             => function_exists('ws_claude_channel_state') ? ws_claude_channel_state($channel) : null,
+        'ai'                 => function_exists('ws_ai_channel_state') ? ws_ai_channel_state($channel) : null,
+        'voice'              => function_exists('ws_voice_channel_state') ? ws_voice_channel_state($channel) : null,
+        'watch'              => function_exists('ws_watch_channel_state') ? ws_watch_channel_state($channel) : null,
+        'shared'             => (function_exists('ws_guest_channel_state') && (ws_guest_channel_state($viewer, $channel) !== null))
+            || (function_exists('ws_channel_share_open') && ws_channel_share_open($channel)),
+        'summary'            => (string) ($channel['summary'] ?? ''),
+        'summary_updated_at' => (int) ($channel['summary_updated_at'] ?? 0),
     );
 }
 
@@ -249,6 +305,12 @@ function ws_api_channel_schema()
         'agent_channel'   => 'boolean',
         'unread'          => 'integer',
         'last_message_at' => 'string?',
+        'watch'              => 'boolean?',
+        'claude_allowed'     => 'boolean?',
+        'ai_allowed'         => 'boolean?',
+        'voice_allowed'      => 'boolean?',
+        'summary'            => 'string?',
+        'summary_updated_at' => 'string?',
     );
 }
 
@@ -287,9 +349,12 @@ function ws_api_channels_list($params)
  */
 function ws_api_channel_brief($viewer, $channel)
 {
+    // One channel's answer carries its settings and summary; a list does not.
+    $settings = array('api_settings' => ws_api_channel_settings_present(ws_api_channel_settings_states($viewer, $channel)));
+
     foreach (ws_channels_for($viewer, ((int) $channel['archived_at'] > 0)) as $brief) {
         if ((int) $brief['id'] === (int) $channel['id']) {
-            return $brief;
+            return $brief + $settings;
         }
     }
 
@@ -301,7 +366,7 @@ function ws_api_channel_brief($viewer, $channel)
         'my_role'   => $membership['role'] ?? '',
         'my_pinned' => $membership['pinned'] ?? 0,
         'my_sort'   => $membership['sort'] ?? 0,
-    )));
+    ))) + $settings;
 }
 
 /**
@@ -550,6 +615,16 @@ function ws_api_channels_update($params)
         api_fail_validation(lang('That department could not be found.'), 'department_id');
     }
 
+    // The records watch, as the settings drawer offers it: a public or
+    // private channel only (ws_watch_channel_state()).
+    if (array_key_exists('watch', $params)) {
+        if (!function_exists('ws_watch_channel_state') || (ws_watch_channel_state($channel) === null)) {
+            api_fail_validation(lang('This channel cannot watch records: only a public or private channel can.'), 'watch');
+        }
+
+        $data['watch'] = !empty($params['watch']);
+    }
+
     $changes = array_keys($data);
 
     if (($archive !== null) && ($archive !== $archived)) {
@@ -573,6 +648,95 @@ function ws_api_channels_update($params)
 
         if (!$result['ok']) {
             ws_api_channel_refused($result);
+        }
+    }
+
+    api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
+}
+
+/**
+ * POST /workspace/channels/{id}/summary: the Summary tab's save, for anybody
+ * who may write in the channel.
+ *
+ * @param array $params
+ */
+function ws_api_channel_summary_set($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    api_dry_run_stop('updated', 'workspace_channel', array('id' => (int) $channel['id'], 'fields' => array('summary')));
+
+    $result = ws_channel_set_summary($viewer, $channel, (string) ($params['summary'] ?? ''));
+
+    if (!$result['ok']) {
+        api_fail(403, 'forbidden', $result['error']);
+    }
+
+    api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
+}
+
+/**
+ * POST /workspace/channels/{id}/switches: the channel menu's Claude,
+ * Pinegrap AI and voice-transcript switches. The person's own choice of what
+ * leaves the site, so never an application key (ws_api_person_only()), and
+ * no MCP tool.
+ *
+ * @param array $params
+ */
+function ws_api_channel_switches_set($params)
+{
+    ws_api_person_only(lang('Only the person, signed in on a device, can switch Claude, Pinegrap AI or voice transcripts in a channel; an application cannot do it for them.'));
+
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_manage_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('Only the owner of the channel can change it.'));
+    }
+
+    $now = ws_api_channel_settings_present(ws_api_channel_settings_states($viewer, $channel));
+    $fields = array('claude' => 'claude_allowed', 'ai' => 'ai_allowed', 'voice' => 'voice_allowed');
+    $changes = array();
+
+    if (!array_intersect_key($params, $fields)) {
+        api_fail_validation(lang('Send claude, ai or voice.'), 'claude');
+    }
+
+    foreach ($fields as $field => $key) {
+        if (!array_key_exists($field, $params)) {
+            continue;
+        }
+
+        if ($now[$key] === null) {
+            api_fail_validation(lang('This channel does not offer that switch.'), $field);
+        }
+
+        if ((bool) $params[$field] !== $now[$key]) {
+            $changes[$field] = (bool) $params[$field];
+        }
+    }
+
+    api_dry_run_stop('updated', 'workspace_channel', array('id' => (int) $channel['id'], 'fields' => array_keys($changes)));
+
+    // Each writer leaves the line the menu leaves; one that does not change
+    // is not called, so it leaves none.
+
+    foreach ($changes as $field => $allowed) {
+        if ($field === 'claude') {
+            $result = ws_claude_channel_set($viewer, ws_channel($channel['id']), $allowed);
+        } elseif ($field === 'ai') {
+            $result = ws_ai_channel_set($viewer, ws_channel($channel['id']), $allowed);
+        } else {
+            $result = ws_voice_channel_set($viewer, ws_channel($channel['id']), $allowed);
+        }
+
+        if (!$result['ok']) {
+            api_fail(403, 'forbidden', $result['error']);
         }
     }
 

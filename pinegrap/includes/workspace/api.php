@@ -44,6 +44,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_customer.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_threads.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_channel_reads.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_day.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
@@ -64,6 +65,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_page.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_canvases.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_person_card.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_message_files.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_thread_close.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_channel_access.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -187,6 +190,11 @@ function ws_openapi_objects()
 {
     return array(
         'WorkspaceChannel'    => 'ws_api_channel_schema',
+        'WorkspaceChannelDetail'    => 'ws_api_channel_detail_schema',
+        'WorkspaceChannelBoard'     => 'ws_api_channel_board_schema',
+        'WorkspaceChannelBoardCard' => 'ws_api_channel_board_card_schema',
+        'WorkspaceChannelEras'      => 'ws_api_channel_eras_schema',
+        'WorkspaceChannelExport'    => 'ws_api_channel_export_schema',
         'WorkspaceMessage'    => 'ws_api_message_schema',
         'WorkspaceDecision'   => 'ws_api_decision_schema',
         'WorkspaceTask'       => 'ws_api_task_schema',
@@ -225,6 +233,8 @@ function ws_openapi_objects()
         'WorkspacePersonCardWorkday'    => 'ws_api_person_card_workday_schema',
         'WorkspacePersonCardAway'       => 'ws_api_person_card_away_schema',
         'WorkspacePersonCardClock'      => 'ws_api_person_card_clock_schema',
+        'WorkspaceChannelKindChange'    => 'ws_api_channel_kind_change_schema',
+        'WorkspaceChannelEraWrite'      => 'ws_api_channel_era_write_schema',
         'WorkspaceChange'         => 'ws_api_change_schema',
         'WorkspaceProposal'       => 'ws_api_proposal_schema',
         'WorkspaceAssistantRequest' => 'ws_api_assistant_request_schema',
@@ -436,6 +446,42 @@ function ws_api_routes()
                 array('name' => 'archived', 'in' => 'body', 'type' => 'bool'),
                 array('name' => 'customer_type', 'in' => 'body', 'type' => 'enum', 'values' => array('contact', 'user_account', 'erp_account'), 'nullable' => true, 'description' => 'The kind of record the channel is about, with customer_id: contact, user_account or erp_account. Sent together with customer_id (one alone is refused unless it clears); null or empty, or customer_id 0, takes the customer off.'),
                 array('name' => 'customer_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The id of that record. With the user role, a contact must be filed in one of the owner\'s contact groups. Left out with customer_type, the customer is left alone.'),
+                array('name' => 'watch', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether the events of the channel\'s records (its customer, its tasks) are written in it, the settings drawer\'s switch. A public or private channel only: a discussion or a guest\'s room is refused with 422.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.summary',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/summary',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_summary_set',
+            'dry_run' => true,
+            'returns'     => 'WorkspaceChannel',
+            'summary'     => 'Write a channel\'s summary',
+            'description' => 'Replaces the summary of the Summary tab (the plan, the people to call, the rules) for anybody who may write in the channel, as the tab does; it is kept with the caller\'s owner and the time. Tags (<#task:12>, <@user:3>) stay as written. Empty clears it. The answer is the channel with summary and summary_updated_at.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'summary', 'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'required' => true, 'description' => 'The whole summary; empty clears it.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.channels.switches',
+            'method'      => 'POST',
+            'path'        => '/workspace/channels/{id}/switches',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_channel_switches_set',
+            'mcp'         => false,
+            'dry_run' => true,
+            'returns'     => 'WorkspaceChannel',
+            'summary'     => 'Let Claude, Pinegrap AI or voice transcripts in a channel, or stop them',
+            'description' => 'The channel menu\'s three switches, for a person who may manage the channel, signed in on a device: an application key gets 403, and no MCP tool sets them. Send only the switches to change; one that does not change leaves no line, one that does leaves the line the menu leaves. A switch the channel does not offer (its claude_allowed, ai_allowed or voice_allowed is null: the assistant is not set up, a guest\'s room, a channel shared with guests, a discussion for voice) is refused with 422.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'claude', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether Claude may be asked in the channel.'),
+                array('name' => 'ai', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether Pinegrap AI may be asked in the channel.'),
+                array('name' => 'voice', 'in' => 'body', 'type' => 'bool', 'description' => 'Whether the channel\'s voice messages are transcribed.'),
             ),
         ),
 
@@ -1155,11 +1201,12 @@ function ws_api_routes()
             'returns'     => 'WorkspaceScheduledMessage',
             'status'      => 201,
             'summary'     => 'Schedule a message',
-            'description' => 'Writes a message to be posted later in a channel the person may post in, the way the clock beside the send button does. It is posted in the person\'s own name when its time comes, with their rights as they are then, so only a team devices session (a Bearer token from POST /auth/login) may schedule one: an application key and an OAuth connection write as the application and are refused with 403 forbidden. send_at is read to the minute on the site\'s clock and must be later than now and at most a year ahead. A command (text starting with /) cannot be scheduled, except /ai and /claude, which ask the assistant when the message is posted. Fifty messages may wait per person.',
+            'description' => 'Writes a message to be posted later in a channel the person may post in, the way the clock beside the send button does. It is posted in the person\'s own name when its time comes, with their rights as they are then, so only a team devices session (a Bearer token from POST /auth/login) may schedule one: an application key and an OAuth connection write as the application and are refused with 403 forbidden. send_at is read to the minute on the site\'s clock and must be later than now and at most a year ahead. A command (text starting with /) cannot be scheduled, except /ai and /claude, which ask the assistant when the message is posted. Fifty messages may wait per person. parent_id makes it an answer to a message, as scheduling from Reply does; a dry run checks it too and its detail gives parent_id. Change one with POST /workspace/scheduled-messages/{id}/update and post it before its time with POST /workspace/scheduled-messages/{id}/send.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'Tags such as <#order:1045> or <@user:12> are kept as tags.'),
                 array('name' => 'send_at', 'in' => 'body', 'type' => 'datetime', 'required' => true, 'description' => 'When to post it, as an ISO-8601 moment; seconds are dropped.'),
+                array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The message it answers when it is posted (GET /workspace/channels/{id}/messages), as Reply does: one of this channel or discussion, not deleted and not in an earlier version of the conversation, or the call is refused with 422 on parent_id. Left out, it is a message of its own. If that message is deleted before the time comes, it is posted as a message of its own.'),
             ),
         ),
 
@@ -1175,6 +1222,43 @@ function ws_api_routes()
             'summary'      => 'Delete a scheduled message',
             'description'  => 'Deletes one of the owner\'s scheduled messages before it is posted, waiting or failed, and answers with it as it was. Somebody else\'s, or one already posted, is answered with 404; one being posted at this very moment is refused with 422. POST is accepted as well, because a default IIS install answers DELETE itself before PHP is reached.',
             'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        // Both post in the person's own name, so from their team devices
+        // session only and offered as no tool, as create.
+        array(
+            'id'          => 'workspace.scheduled_messages.update',
+            'method'      => 'POST',
+            'path'        => '/workspace/scheduled-messages/{id}/update',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_scheduled_messages_update',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceScheduledMessage',
+            'summary'     => 'Change a scheduled message',
+            'description' => 'Changes one of the person\'s own scheduled messages before it is posted, as the list beside the clock does: only the fields sent change - text, send_at, parent_id (0 makes it a message of its own again). The same rules as POST /workspace/channels/{id}/scheduled-messages hold, send_at included: it must be later than now even when it is not sent, so a failed one whose time went by needs a new one, and once saved a failed one waits again. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. Somebody else\'s, or one already posted, is answered with 404. A dry run makes every check and its detail gives send_at and parent_id.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'The new words. Tags such as <#order:1045> or <@user:12> are kept as tags.'),
+                array('name' => 'send_at', 'in' => 'body', 'type' => 'datetime', 'description' => 'The new moment, as an ISO-8601 moment; seconds are dropped.'),
+                array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 0, 'nullable' => true, 'description' => 'The message it answers, in its channel; 0 for none. Left out or null, it stays as it is.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.scheduled_messages.send',
+            'method'      => 'POST',
+            'path'        => '/workspace/scheduled-messages/{id}/send',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_scheduled_messages_send',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceMessage',
+            'summary'     => 'Send a scheduled message now',
+            'description' => 'Posts one of the person\'s own scheduled messages now, before its time, as Send now does in the list beside the clock; a failed one is tried again. It is written as the person, with their rights and their limit of twenty messages a minute, and asks the assistants it names as a message written now does. The answer is the message it became. Only a team devices session (a Bearer token from POST /auth/login) may: an application key and an OAuth connection are refused with 403 forbidden. Somebody else\'s, or one already posted, is answered with 404; one being posted at this moment, or one that cannot be posted (the channel is gone or may no longer be written in), is refused with 422 and left as it is. A dry run makes the checks the posting makes.',
+            'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
@@ -2790,6 +2874,10 @@ function ws_api_routes()
 
     );
 
+    // One channel's detail, its Files and Board tabs, the versions of its
+    // conversation and its export (api_channel_reads.php).
+    $routes = array_merge($routes, ws_channel_read_api_routes());
+
     // Asking Claude in a channel (api_claude.php), the changes an
     // application proposes (api_proposals.php), workflow tables
     // (api_wtables.php), e-mail conversations (api_mail.php) and drafts (api_mail_drafts.php), saved
@@ -2800,6 +2888,8 @@ function ws_api_routes()
     // (api_agent_requests.php) and instructions (api_agent_instructions.php), the agents' canvases (api_canvas.php) and
     // live pages (api_page.php), the canvas as one thing with its
     // parts (api_canvases.php), a person's card (api_person_card.php) and the
-    // files in a message (api_message_files.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_agent_instructions_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes(), ws_person_card_api_routes(), ws_message_file_api_routes());
+    // files in a message (api_message_files.php), concluding a discussion
+    // and closing an approval request (api_thread_close.php), and who reads
+    // a channel and the versions of its conversation (api_channel_access.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_mail_draft_api_routes(), ws_saved_reply_api_routes(), ws_personal_plan_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes(), ws_agent_instructions_api_routes(), ws_canvas_api_routes(), ws_page_api_routes(), ws_canvases_api_routes(), ws_person_card_api_routes(), ws_message_file_api_routes(), ws_thread_close_api_routes(), ws_channel_access_api_routes());
 }

@@ -40,6 +40,7 @@
 - kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer
+- message-reference.md: Plan (owner 2026-11-15, in the architect's window): a message pasted into a message box as a reference, shown by its number, opening the referenced message in a popup; for people and agents
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what exists (M1–M6), what M7 (native push) and M8 add, decisions, how its needs arrive
 - panel-design-language-dialogs.md: Look A's dialogs and drawers (#8860): the scrim, the three dialog widths, head, body and foot, the confirm dialog, the settings dialog's rail and pane, a drawer's sections and member rows
 - panel-design-language-look.md: Look A's numbers (second pass) for the panel's design language: type, surfaces and depth, fields, buttons, the segmented control, the status pill, the icon tile and tones, rows, what a title says
@@ -60,7 +61,6 @@
 - panel-old-screens-shared-steps.md: Old panel screens to look A: the shared steps cut after the groups, SH1 to SH10 (field, status list, ERP lists, figure cards, icon buttons, save bar, list title) and KS1, KS2 on kept screens
 - panel-old-screens.md: Plan (owner 2026-11-15): the panel screens still drawn the old way move to look A; censuses done, LM2 the shared buttons, then one census group per step (C1 to C5, E1 to E5, S1 to S6)
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
-- poll-agent-questions.md: Plan (owner 2026-11-14): the poll gains described, pictured and linked options, "Other", taking back and asking again; a poll an agent asks is an agent question, answered in its box; AQ1 to AQ6
 - reverse-oauth-leftovers.md: Remaining outside-account connections (Meta, Business Profile, social posting, AI accounts), the connect.pinegrap.com broker and open decisions
 - storefront-api-acp-ucp.md: Storefront API design note: OpenAI ACP checkout_sessions mapped onto the storefront routes, the UCP manifest after checkout exists, MCP tools under the customer's consent, WAF agent verification
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings

@@ -25,5 +25,5 @@ description: Decisions list, schema part 19 (2026-11-14 on): ws_mail_items.invit
 
 ## Does a poll keep that it is an agent question? (owner, 2026-11-14, in the architect's window)
 - Yes. Owner: "oylama yine dursun, ajan sorusu sütunu ekleyelim ajan sorusu olarak seçiliyse(yine bunu sadece ajan ve asistanlar sorduğunda otomatik işaretlenir yapalım) oylamanın görünüşü değişsin."
-- Shape, the architect's: `ws_polls.agent_question` TINYINT UNSIGNED NOT NULL DEFAULT 0, set by the server when an application agent or an assistant makes the poll, never from the request; added by step AQ4 of `plans/poll-agent-questions.md` with `install_add_column()`. No backfill: an earlier poll of an agent stays a poll.
-- The other columns the plan needs (an option's description, picture and links, "Other", who is asked) are asked after its census.
+- Shape, the architect's: `ws_polls.agent_question` TINYINT UNSIGNED NOT NULL DEFAULT 0, set by the server when an application agent or an assistant makes the poll, never from the request; added by step 11.0.214 (#9646) with `install_add_column()`. No backfill: an earlier poll of an agent stays a poll.
+- The other columns: `decisions-made-schema-20.md`.

@@ -9,6 +9,11 @@
  * when ?r=<reference code> restores the cart, pg_cart_recovery_completed()
  * from pg_order_complete(). pg_cart_recovery_outcome() is the rule, pure.
  *
+ * A WhatsApp message that carries a single-use key is a touch of the
+ * recipient's left cart (pg_cart_recovery_whatsapp_key_sent()); the key's
+ * use on that cart marks it clicked and restored
+ * (pg_cart_recovery_key_used()).
+ *
  * A site whose update has not added the table writes nothing here and
  * completes orders as before.
  *
@@ -27,6 +32,9 @@ const PG_CART_RECOVERY_LEFT_AFTER = 21600;
 
 /** Seconds a touch may come before the completion and still take it (7 days). */
 const PG_CART_RECOVERY_WINDOW = 604800;
+
+/** Seconds after its last change a cart is still a left cart a message may touch (30 days). */
+const PG_CART_RECOVERY_LEFT_HORIZON = 2592000;
 
 /**
  * Whether the table exists. Asked once a request.
@@ -68,6 +76,52 @@ function pg_cart_recovery_source_type($source_type)
     $source_type = strtolower(trim((string) $source_type));
 
     return in_array($source_type, array('campaign', 'template', 'popup'), true) ? $source_type : '';
+}
+
+/**
+ * The arguments pg_cart_recovery_touch() writes, pure: the names checked,
+ * the ids made integers. null when a touch cannot be written (no order, an
+ * unknown channel or source).
+ *
+ * @param int    $order_id
+ * @param string $channel
+ * @param string $source_type
+ * @param int    $source_id
+ * @return array|null order_id, channel, source_type, source_id
+ */
+function pg_cart_recovery_touch_args($order_id, $channel, $source_type, $source_id)
+{
+    $args = array(
+        'order_id'    => (int) $order_id,
+        'channel'     => pg_cart_recovery_channel($channel),
+        'source_type' => pg_cart_recovery_source_type($source_type),
+        'source_id'   => max(0, (int) $source_id),
+    );
+
+    if (($args['order_id'] < 1) || ($args['channel'] === '') || ($args['source_type'] === '')) {
+        return null;
+    }
+
+    return $args;
+}
+
+/**
+ * Whether an order is a left cart a message may touch now, pure: still
+ * incomplete, last changed at least 6 hours ago (the abandoned-order mail's
+ * rule) and at most 30 days ago.
+ *
+ * @param string $status        orders.status
+ * @param int    $last_modified orders.last_modified_timestamp
+ * @param int    $now
+ * @return bool
+ */
+function pg_cart_recovery_is_left($status, $last_modified, $now)
+{
+    $last_modified = (int) $last_modified;
+    $idle = (int) $now - $last_modified;
+
+    return ((string) $status === 'incomplete') && ($last_modified > 0)
+        && ($idle >= PG_CART_RECOVERY_LEFT_AFTER) && ($idle <= PG_CART_RECOVERY_LEFT_HORIZON);
 }
 
 /**
@@ -138,9 +192,10 @@ function pg_cart_recovery_first($sql, array $params)
 }
 
 /**
- * Records one touch of a left cart. The one writer of a touch: CR4's
- * WhatsApp offers and a pop-up shown on a page call it too (channel page,
- * source popup). A second call for the same order, channel and source writes
+ * Records one touch of a left cart. The one writer of a touch: a WhatsApp
+ * message carrying a single-use key (channel whatsapp, source template,
+ * pg_cart_recovery_whatsapp_key_sent()) and an offer a visitor took up on a
+ * page (channel page, source popup, the pop-up's id) call it too. A second call for the same order, channel and source writes
  * nothing, so a job that runs twice counts one touch.
  *
  * @param int      $order_id    the incomplete order
@@ -152,17 +207,14 @@ function pg_cart_recovery_first($sql, array $params)
  */
 function pg_cart_recovery_touch($order_id, $channel, $source_type, $source_id, $sent_at = null)
 {
-    $order_id = (int) $order_id;
-    $channel = pg_cart_recovery_channel($channel);
-    $source_type = pg_cart_recovery_source_type($source_type);
-    $source_id = (int) $source_id;
+    $args = pg_cart_recovery_touch_args($order_id, $channel, $source_type, $source_id);
     $sent_at = ($sent_at === null) ? time() : (int) $sent_at;
 
-    if (($order_id < 1) || ($channel === '') || ($source_type === '') || !pg_cart_recovery_ready()) {
+    if (($args === null) || !pg_cart_recovery_ready()) {
         return 0;
     }
 
-    $params = array((string) $order_id, $channel, $source_type, (string) $source_id);
+    $params = array((string) $args['order_id'], $args['channel'], $args['source_type'], (string) $args['source_id']);
 
     $existing = (int) pg_cart_recovery_first(
         "SELECT id FROM cart_recovery_touch
@@ -216,6 +268,111 @@ function pg_cart_recovery_restored($order_id, $now = null)
             clicked_at = IF(clicked_at = 0, ?, clicked_at),
             restored_at = IF(restored_at = 0, ?, restored_at)
         WHERE id = ?", array((string) $now, (string) $now, (string) $touch_id));
+}
+
+/**
+ * The left cart a message is about: the order given, when it is one, else
+ * the contact's last changed left cart. 0 for none.
+ *
+ * @param int $order_id   the order the sender named, 0 for none
+ * @param int $contact_id the recipient's contact, 0 for none
+ * @param int $now
+ * @return int
+ */
+function pg_cart_recovery_left_cart($order_id, $contact_id, $now)
+{
+    $order_id = (int) $order_id;
+    $contact_id = (int) $contact_id;
+
+    if ($order_id > 0) {
+        $result = db_q("SELECT id, status, last_modified_timestamp FROM orders WHERE id = ?", array((string) $order_id));
+    } elseif ($contact_id > 0) {
+        $result = db_q(
+            "SELECT orders.id, orders.status, orders.last_modified_timestamp
+            FROM orders
+            WHERE
+                (orders.contact_id = ?)
+                AND (orders.status = 'incomplete')
+                AND EXISTS (
+                    SELECT 1 FROM order_items
+                    WHERE (order_items.order_id = orders.id)" . pg_order_item_active_sql() . "
+                )
+            ORDER BY orders.last_modified_timestamp DESC, orders.id DESC
+            LIMIT 1", array((string) $contact_id));
+    } else {
+        return 0;
+    }
+
+    $row = $result ? mysqli_fetch_assoc($result) : null;
+
+    if (!is_array($row) || !pg_cart_recovery_is_left($row['status'], $row['last_modified_timestamp'], $now)) {
+        return 0;
+    }
+
+    return (int) $row['id'];
+}
+
+/**
+ * A WhatsApp message carrying a single-use key was queued: a touch of the
+ * left cart it is about (channel whatsapp, source the template). Called by
+ * pg_whatsapp_enqueue() once the message is in the queue.
+ *
+ * @param int      $order_id    the order the sender named, 0 for none
+ * @param int      $contact_id  the recipient's contact, 0 for none
+ * @param int      $template_id whatsapp_templates.id
+ * @param int|null $now         unix time; now when null
+ * @return int the touch's id, 0 when nothing was written
+ */
+function pg_cart_recovery_whatsapp_key_sent($order_id, $contact_id, $template_id, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+
+    if ((((int) $order_id < 1) && ((int) $contact_id < 1)) || !pg_cart_recovery_ready()) {
+        return 0;
+    }
+
+    $cart = pg_cart_recovery_left_cart($order_id, $contact_id, $now);
+
+    return ($cart > 0) ? pg_cart_recovery_touch($cart, 'whatsapp', 'template', $template_id, $now) : 0;
+}
+
+/**
+ * A single-use key was used on an order: when the key came in a WhatsApp
+ * message (whatsapp_outbox.key_code_id) and that message's template touched
+ * this order, the touch is marked clicked and restored as ?r= marks one
+ * (each time kept from its first visit).
+ *
+ * @param int        $order_id
+ * @param array|null $key_code pg_order_key_code()
+ * @param int|null   $now      unix time; now when null
+ * @return void
+ */
+function pg_cart_recovery_key_used($order_id, $key_code, $now = null)
+{
+    $order_id = (int) $order_id;
+    $key_id = is_array($key_code) ? (int) ($key_code['id'] ?? 0) : 0;
+    $now = ($now === null) ? time() : (int) $now;
+
+    if (($order_id < 1) || ($key_id < 1) || !pg_cart_recovery_ready() || !pg_schema_has('whatsapp_outbox')) {
+        return;
+    }
+
+    $template_id = (int) pg_cart_recovery_first(
+        "SELECT template_id FROM whatsapp_outbox WHERE key_code_id = ? ORDER BY id DESC LIMIT 1", array((string) $key_id));
+
+    if ($template_id < 1) {
+        return;
+    }
+
+    db_q(
+        "UPDATE cart_recovery_touch
+        SET
+            clicked_at = IF(clicked_at = 0, ?, clicked_at),
+            restored_at = IF(restored_at = 0, ?, restored_at)
+        WHERE
+            (order_id = ?) AND (channel = 'whatsapp') AND (source_type = 'template') AND (source_id = ?)
+            AND (sent_at > 0) AND (sent_at <= ?)",
+        array((string) $now, (string) $now, (string) $order_id, (string) $template_id, (string) $now));
 }
 
 /**

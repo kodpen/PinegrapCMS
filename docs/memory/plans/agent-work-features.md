@@ -11,6 +11,7 @@ priority: 6
 ## Which steps are there?
 - AF1 (S) The duty text. After AS2 #9759 (the same form), `@elcin`.
   - A migration step adds `ws_agents.duty` (text) with the idempotent helper; a Duty field of about 2,000 characters on the agent's form; a "Your duty" part in `ws_agent_instructions_text()`, whose version changes with it; the agent card shows it to whoever may read the channel.
+  - The column is `ws_agents.duty TEXT NULL`, step 11.0.217; a site whose update has not run works as today. The field's label is "Görev tanımı" (the architect's call). On the card a cut duty opens whole on a click or tap.
 - AF2 (S) The progress note. Done (#9782, `workspace/agent-progress-note.md`).
   - `POST /workspace/agent-requests/{id}/progress`: a text of at most 200 characters, only the key of the agent that holds the request, off MCP, one write in 30 seconds at most. Kept in the request's `ai_state`, cleared when the request closes.
   - `claudeStateLine()` shows it after "is working on it" with "since HH:MM"; the agent's instructions name the route. No message, no wake, no inbox line.
@@ -28,3 +29,4 @@ priority: 6
 
 ## Whose look?
 - Workspace is a kept screen: AF2, AF4b and AF5b post close-up pairs in the agent channel and the architect brings them to the owner; none is marked ready before his look. AF1's form field is the architect's look.
+- AF2's look is given: Owner (2026-11-15, agent channel poll 53): "Evet, böyle çıksın" (`workflow/decisions-made-workspace-34.md`).

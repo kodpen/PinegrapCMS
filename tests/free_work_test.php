@@ -4,7 +4,7 @@
  *
  * Tests for the pure parts of tools/free_work.php: which lines of a plan file
  * are steps, when a step is done, which open PR holds it, and which plans
- * are shelved or low priority.
+ * are shelved or low priority, each plan's priority and the listing's order.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -212,4 +212,59 @@ function test_free_work_own_looks_next_step_per_template()
 		array('forum-1', false),
 	), free_work_own_looks($text));
 	pg_assert_same(array(), free_work_own_looks("## Which steps are there?\n- A1 (S) One.\n"));
+}
+
+function test_free_work_priority_line_only_in_the_frontmatter()
+{
+	pg_assert_same(9, free_work_priority_line("---\nname: x\ndescription: y\npriority: 9\n---\n\n## Why?\n"));
+	pg_assert_same(null, free_work_priority_line("---\nname: x\ndescription: y\n---\n\npriority: 9\n"));
+	pg_assert_same(null, free_work_priority_line("no frontmatter\npriority: 9\n"));
+}
+
+function test_free_work_priority_default_rule()
+{
+	pg_assert_same(2, free_work_priority_default('docs/memory/plans/design-template-zoo.md', 'Plan (owner 2026-11-07): the Zoo template'));
+	pg_assert_same(2, free_work_priority_default('panel-old-screens-census-site.md', 'Census LM1b of old panel screens'));
+	pg_assert_same(2, free_work_priority_default('report-screens.md', 'Plan (owner 2026-11-10): report screens'));
+	pg_assert_same(6, free_work_priority_default('cart-recovery.md', 'Plan (owner 2026-11-15, poll 50): recovered carts'));
+	pg_assert_same(FREE_WORK_PRIORITY_UNRATED, free_work_priority_default('marketplace-x.md', 'Plan (approved 2026-10-19): Trendyol'));
+	pg_assert_same(FREE_WORK_PRIORITY_UNRATED, free_work_priority_default('erp-leftovers.md', 'Open ERP work (owner asked)'));
+}
+
+function test_free_work_priorities_steps_files_follow_their_plan()
+{
+	$files = array(
+		'panel-old-screens-census-site-forms.md' => array('Census LM1b (S3)', ''),
+		'panel-old-screens-census-site.md' => array('Census LM1b', ''),
+		'panel-old-screens.md' => array('Plan (owner 2026-11-15): old screens', "---\nname: panel-old-screens\npriority: 3\n---\n"),
+		'cart-recovery-steps.md' => array('Steps of cart-recovery', ''),
+		'cart-recovery.md' => array('Plan (owner 2026-11-15)', "---\nname: cart-recovery\npriority: 10\n---\n"),
+		'cart-recovery-census.md' => array('Census', "---\nname: cart-recovery-census\npriority: 5\n---\n"),
+		'agent-channel-trial.md' => array('Live trial', ''),
+		'agent-channel.md' => array('Plan (owner 2026-11-06)', ''),
+		'storefront-api-errors.md' => array('Design note', ''),
+	);
+	$priorities = free_work_priorities($files);
+
+	pg_assert_same(3, $priorities['panel-old-screens-census-site-forms.md']);
+	pg_assert_same(3, $priorities['panel-old-screens-census-site.md']);
+	pg_assert_same(10, $priorities['cart-recovery-steps.md']);
+	pg_assert_same(5, $priorities['cart-recovery-census.md']);
+	pg_assert_same(6, $priorities['agent-channel-trial.md']);
+	pg_assert_same(FREE_WORK_PRIORITY_UNRATED, $priorities['storefront-api-errors.md']);
+}
+
+function test_free_work_plan_order_by_priority_then_date()
+{
+	$plans = array(
+		'look' => array(2, '2026-10-01'),
+		'late-request' => array(6, '2026-11-15'),
+		'security' => array(9, '2026-11-15'),
+		'undated' => array(6, ''),
+		'early-request' => array(6, '2026-11-02'),
+	);
+
+	pg_assert_same(array('security', 'early-request', 'late-request', 'undated', 'look'), free_work_plan_order($plans));
+	pg_assert_same('2026-10-19', free_work_first_date('Plan (approved 2026-10-19; started 2026-11-15)'));
+	pg_assert_same('', free_work_first_date('Census'));
 }
