@@ -29,12 +29,36 @@ include_once('liveform.class.php');
 $liveform = new liveform('erp_cashflow');
 
 // Two views: what happened (the report below) and what is ahead (the
-// forecast, includes/erp/cash_forecast.php), side by side in the toolbar.
+// forecast, includes/erp/cash_forecast.php), a segmented control at the
+// start of the tools row.
 $output_view_pills = function ($active) {
-    return '<ul class="nav nav-pills nav-sm mb-0 me-3">
-                    <li class="nav-item"><a class="nav-link py-1 px-3' . (($active === 'flow') ? ' active" aria-current="page' : '') . '" href="erp_cashflow.php">' . lang('What happened') . '</a></li>
-                    <li class="nav-item"><a class="nav-link py-1 px-3' . (($active === 'forecast') ? ' active" aria-current="page' : '') . '" href="erp_cashflow.php?view=forecast">' . lang('What is ahead') . '</a></li>
-                </ul>';
+    return '<span class="pg-seg">
+                    <a class="pg-seg-item' . (($active === 'flow') ? ' is-active" aria-current="page' : '') . '" href="erp_cashflow.php">' . lang('What happened') . '</a>
+                    <a class="pg-seg-item' . (($active === 'forecast') ? ' is-active" aria-current="page' : '') . '" href="erp_cashflow.php?view=forecast">' . lang('What is ahead') . '</a>
+                </span>';
+};
+
+// The address values a select of the tools row carries along when it
+// sends its own form (the values of this request, as given).
+$output_keep = function (array $keys) {
+    $hidden = '';
+    foreach ($keys as $key) {
+        if (isset($_GET[$key]) && is_scalar($_GET[$key]) && ((string) $_GET[$key] !== '')) {
+            $hidden .= '<input type="hidden" name="' . h($key) . '" value="' . h((string) $_GET[$key]) . '" />';
+        }
+    }
+
+    return $hidden;
+};
+
+// A select of the tools row, sent on change: options => text.
+$output_select = function ($id, $name, array $options, $current, $form = '') {
+    $items = '';
+    foreach ($options as $value => $text) {
+        $items .= '<option value="' . h((string) $value) . '"' . (((string) $value === (string) $current) ? ' selected' : '') . '>' . h((string) $text) . '</option>';
+    }
+
+    return '<select class="form-control" id="' . h($id) . '" name="' . h($name) . '"' . (($form !== '') ? ' form="' . h($form) . '"' : '') . ' onchange="this.form.submit()">' . $items . '</select>';
 };
 
 if (($_GET['view'] ?? '') === 'forecast') {
@@ -62,7 +86,7 @@ if (($_GET['view'] ?? '') === 'forecast') {
     $output_heads = '';
     foreach ($forecast['buckets'] as $key => $bucket) {
         $caption = ($key === 'overdue') ? lang('Past due') : $range_labels[(int) substr($key, 1)];
-        $dates = ($key === 'overdue') ? '' : '<div class="small fw-normal fg-secondary text-nowrap">'
+        $dates = ($key === 'overdue') ? '' : '<div class="pg-text-meta fw-normal text-nowrap">'
             . h(prepare_form_data_for_output($bucket['start'], 'date', false) . ' – ' . prepare_form_data_for_output($bucket['end'], 'date', false)) . '</div>';
         $output_heads .= '<th class="text-end">' . h($caption) . $dates . '</th>';
     }
@@ -135,10 +159,18 @@ if (($_GET['view'] ?? '') === 'forecast') {
 
     $output_notes = '';
     foreach ($notes as $note) {
-        $output_notes .= '<div class="form-text">' . h($note) . '</div>';
+        $output_notes .= '<p class="mb-1">' . h($note) . '</p>';
     }
 
     $last_day = end($forecast['buckets'])['end'];
+
+    // The summary figures as the report screens' cards.
+    $output_figures = pg_report_figures_html(array(
+        pg_report_view_figure(lang('Cash today'), erp_money_out($forecast['cash']), 'bi-safe', 'blue', prepare_form_data_for_output($forecast['today'], 'date', false)),
+        pg_report_view_figure(lang('Expected in'), erp_money_out($forecast['in']['total']), 'bi-arrow-down-left', 'teal') + array('class' => 'fg-success'),
+        pg_report_view_figure(lang('Expected out'), erp_money_out($forecast['out']['total']), 'bi-arrow-up-right', 'rose') + array('class' => 'fg-danger'),
+        pg_report_view_figure(lang('Expected balance'), erp_money_out($forecast['position']['total']), 'bi-calendar-check', 'violet', prepare_form_data_for_output($last_day, 'date', false)) + array('class' => ($forecast['position']['total'] < 0) ? 'fg-danger' : ''),
+    ));
 
     echo
     pg_page_shell(array(
@@ -160,41 +192,21 @@ if (($_GET['view'] ?? '') === 'forecast') {
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+            <form method="get" action="erp_cashflow.php" class="pg-report-tools disable_shortcut">
                 ' . $output_view_pills('forecast') . '
-                ' . pg_filter_select('horizon', erp_cash_forecast_horizons(), (string) $forecast['horizon'],
-                    array('label' => lang('Period'), 'icon' => 'calendar3', 'action' => 'erp_cashflow.php', 'keep' => array('view'))) . '
-            </nav>
+                <input type="hidden" name="view" value="forecast" />
+                <span class="pg-report-field">
+                    <label class="pg-report-label" for="horizon">' . lang('Period') . '</label>
+                    ' . $output_select('horizon', 'horizon', erp_cash_forecast_horizons(), (string) $forecast['horizon']) . '
+                </span>
+            </form>
 
-            <div class="card my-7">
-                <div class="card-body">
-                    <div class="row g-5 text-center md:text-start">
-                        <div class="col-6 md:col">
-                            <div class="small text-uppercase fg-secondary">' . lang('Cash today') . '</div>
-                            <div class="h5 mb-0">' . h(erp_money_out($forecast['cash'])) . '</div>
-                            <div class="small fg-secondary">' . h(prepare_form_data_for_output($forecast['today'], 'date', false)) . '</div>
-                        </div>
-                        <div class="col-6 md:col">
-                            <div class="small text-uppercase fg-secondary">' . lang('Expected in') . '</div>
-                            <div class="h5 mb-0 fg-success">' . h(erp_money_out($forecast['in']['total'])) . '</div>
-                        </div>
-                        <div class="col-6 md:col">
-                            <div class="small text-uppercase fg-secondary">' . lang('Expected out') . '</div>
-                            <div class="h5 mb-0 fg-danger">' . h(erp_money_out($forecast['out']['total'])) . '</div>
-                        </div>
-                        <div class="col-6 md:col">
-                            <div class="small text-uppercase fg-secondary">' . lang('Expected balance') . '</div>
-                            <div class="h5 mb-0' . (($forecast['position']['total'] < 0) ? ' fg-danger' : '') . '">' . h(erp_money_out($forecast['position']['total'])) . '</div>
-                            <div class="small fg-secondary">' . h(prepare_form_data_for_output($last_day, 'date', false)) . '</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div class="pg-report-view">' . $output_figures . '</div>
 
-            <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(erp_cash_forecast_horizons()[$forecast['horizon']]) . '</div>
-                <div class="card-body p-0 position-relative table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+            <section class="pg-card pg-report-frame">
+                <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . h(erp_cash_forecast_horizons()[$forecast['horizon']]) . '</h3></div>
+                <div class="pg-report-frame-body">
+                    <table class="pg-report-table">
                         <thead>
                             <tr>
                                 <th scope="col">' . lang('Type') . '</th>
@@ -208,17 +220,17 @@ if (($_GET['view'] ?? '') === 'forecast') {
                             . $total_row(lang('Money in'), $forecast['in'], $plain)
                             . $total_row(lang('Money out'), $forecast['out'], $plain)
                             . $total_row(lang('Net change'), $forecast['net'], $signed)
-                            . $total_row(lang('Expected balance'), $forecast['position'], $balance_out, 'fw-bold') . '
+                            . $total_row(lang('Expected balance'), $forecast['position'], $balance_out, 'pg-report-total') . '
                         </tfoot>
                     </table>
                 </div>
-                <div class="px-5 pb-5">' . $output_notes . '</div>
-            </div>
+                <div class="pg-report-frame-note px-7 py-5">' . $output_notes . '</div>
+            </section>
 
-            <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Expected movements') . '</div>
-                <div class="card-body p-0 position-relative table-responsive">
-                    <table class="table table-hover align-middle mb-0">
+            <section class="pg-card pg-report-frame">
+                <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . lang('Expected movements') . '</h3></div>
+                <div class="pg-report-frame-body">
+                    <table class="pg-report-table">
                         <thead>
                             <tr>
                                 <th>' . lang('Due date') . '</th>
@@ -233,7 +245,7 @@ if (($_GET['view'] ?? '') === 'forecast') {
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </section>
         </div>
     </div>
 </main>
@@ -319,10 +331,11 @@ foreach ($tills as $till) {
 
 $period_text = prepare_form_data_for_output($options['from'], 'date', false) . ' – ' . prepare_form_data_for_output($options['to'], 'date', false);
 
-// Bucket and period as two selects that keep each other and the till. A
-// period that is not one of the quick ranges is listed by its dates.
-$output_group_filter = pg_filter_select('group', $groups, (string) $options['group'],
-    array('label' => lang('Bucket'), 'icon' => 'bar-chart-steps', 'action' => 'erp_cashflow.php', 'keep' => array('from', 'to', 'till')));
+// Bucket and period as two selects that keep each other and the till,
+// each sending a form of its own (the form attribute) from inside the
+// tools row. A period that is not one of the quick ranges is listed by its
+// dates.
+$output_group_filter = $output_select('group', 'group', $groups, (string) $options['group'], 'erp_cashflow_group');
 
 $period_options = array();
 $period_current = '';
@@ -335,8 +348,7 @@ foreach ($quick_ranges as $key => $range) {
 if ($period_current === '') {
     $period_options = array('' => $period_text) + $period_options;
 }
-$output_period_filter = pg_filter_select('range', $period_options, $period_current,
-    array('label' => lang('Period'), 'icon' => 'calendar3', 'action' => 'erp_cashflow.php', 'keep' => array('from', 'to', 'till', 'group')));
+$output_period_filter = $output_select('range', 'range', $period_options, $period_current, 'erp_cashflow_range');
 
 // ------------------------------------------------------------ period rows
 $output_rows = '';
@@ -350,7 +362,7 @@ foreach ($report['rows'] as $row) {
                                 <td class="align-middle text-end" data-sort="' . (int) $row['in'] . '">' . $money($row['in']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) $row['out'] . '">' . $money($row['out']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) $row['net'] . '">' . $signed($row['net']) . '</td>
-                                <td class="align-middle text-end small" data-sort="' . (int) $row['count'] . '">' . ($quiet ? '—' : pg_format_number($row['count'], 0)) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) $row['count'] . '">' . ($quiet ? '—' : pg_format_number($row['count'], 0)) . '</td>
                                 <td class="align-middle text-end fw-bold' . (($row['balance'] < 0) ? ' fg-danger' : '') . '" data-sort="' . (int) $row['balance'] . '">' . h(erp_money_out($row['balance'])) . '</td>
                             </tr>';
 }
@@ -360,7 +372,7 @@ $output_till_rows = '';
 
 foreach ($by_till as $row) {
     $name = h($row['name']) . (($row['is_active']) ? '' : ' <span class="badge theme-secondary">' . lang('passive') . '</span>');
-    $note = (!$row['in_base']) ? '<div class="small fg-secondary">' . h(lang(array('string' => 'Kept in {var:1}; movements at their booked base value, the opening figure left out.', 'vars' => $row['currency']))) . '</div>' : '';
+    $note = (!$row['in_base']) ? '<div class="pg-text-meta fg-secondary">' . h(lang(array('string' => 'Kept in {var:1}; movements at their booked base value, the opening figure left out.', 'vars' => $row['currency']))) . '</div>' : '';
 
     $output_till_rows .= '
                             <tr>
@@ -370,7 +382,7 @@ foreach ($by_till as $row) {
                                 <td class="align-middle text-end" data-sort="' . (int) $row['in'] . '">' . $money($row['in']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) $row['out'] . '">' . $money($row['out']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) $row['net'] . '">' . $signed($row['net']) . '</td>
-                                <td class="align-middle text-end small" data-sort="' . (int) $row['count'] . '">' . (($row['count'] === 0) ? '—' : pg_format_number($row['count'], 0)) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) $row['count'] . '">' . (($row['count'] === 0) ? '—' : pg_format_number($row['count'], 0)) . '</td>
                                 <td class="align-middle text-end fw-bold' . (($row['closing'] < 0) ? ' fg-danger' : '') . '" data-sort="' . (int) $row['closing'] . '">' . h(erp_money_out($row['closing'])) . '</td>
                             </tr>';
 }
@@ -390,7 +402,7 @@ foreach ($by_method as $row) {
                                 <td class="align-middle text-end" data-sort="' . (int) $row['in'] . '">' . $money($row['in']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) $row['out'] . '">' . $money($row['out']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) ($row['in'] - $row['out']) . '">' . $signed($row['in'] - $row['out']) . '</td>
-                                <td class="align-middle text-end small" data-sort="' . (int) $row['count'] . '">' . pg_format_number($row['count'], 0) . '</td>
+                                <td class="align-middle text-end" data-sort="' . (int) $row['count'] . '">' . pg_format_number($row['count'], 0) . '</td>
                             </tr>';
 }
 
@@ -414,8 +426,18 @@ if (!$options['group_chosen']) {
 
 $output_notes = '';
 foreach ($notes as $note) {
-    $output_notes .= '<div class="form-text">' . h($note) . '</div>';
+    $output_notes .= '<p class="mb-1">' . h($note) . '</p>';
 }
+
+// The summary figures as the report screens' cards.
+$net_class = ($report['net'] > 0) ? 'fg-success' : (($report['net'] < 0) ? 'fg-danger' : 'fg-secondary');
+$output_figures = pg_report_figures_html(array(
+    pg_report_view_figure(lang('Opening'), erp_money_out($report['opening']), 'bi-door-open', 'blue', prepare_form_data_for_output($options['from'], 'date', false)),
+    pg_report_view_figure(lang('Money in'), erp_money_out($report['in']), 'bi-arrow-down-left', 'teal') + array('class' => 'fg-success'),
+    pg_report_view_figure(lang('Money out'), erp_money_out($report['out']), 'bi-arrow-up-right', 'rose') + array('class' => 'fg-danger'),
+    pg_report_view_figure(lang('Net change'), (($report['net'] > 0) ? '+' : '') . erp_money_out($report['net']), 'bi-plus-slash-minus', 'amber', lang(array('string' => '{var:1} movement(s)', 'vars' => (int) $report['count']))) + array('class' => $net_class),
+    pg_report_view_figure(lang('Closing'), erp_money_out($report['closing']), 'bi-door-closed', 'violet', prepare_form_data_for_output($options['to'], 'date', false)) + array('class' => ($report['closing'] < 0) ? 'fg-danger' : ''),
+));
 
 echo
 pg_page_shell(array(
@@ -437,64 +459,44 @@ pg_page_shell(array(
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
+            <form method="get" action="erp_cashflow.php" class="pg-report-tools disable_shortcut" id="erp_cashflow_period">
                 ' . $output_view_pills('flow') . '
-                ' . $output_group_filter . '
-                ' . $output_period_filter . '
-                <form method="get" action="erp_cashflow.php" class="d-flex flex-wrap align-items-center gap-3 row-gap-2 mb-0">
-                    <input type="hidden" name="group" value="' . h($options['group_chosen'] ? $options['group'] : '') . '" />
-                    <span class="d-inline-flex align-items-center gap-2">
-                        <label for="from" class="small fg-secondary text-nowrap mb-0">' . lang('Start') . '</label>
-                        <input type="date" data-pg-date id="from" name="from" class="form-control form-control-sm w-auto" value="' . h($options['from']) . '" max="' . h(date('Y-m-d')) . '" />
-                    </span>
-                    <span class="d-inline-flex align-items-center gap-2">
-                        <label for="to" class="small fg-secondary text-nowrap mb-0">' . lang('End') . '</label>
-                        <input type="date" data-pg-date id="to" name="to" class="form-control form-control-sm w-auto" value="' . h($options['to']) . '" max="' . h(date('Y-m-d')) . '" />
-                    </span>
-                    <select id="till" name="till" class="form-control form-control-sm w-auto text-truncate" style="max-width:min(100%, 20rem)" aria-label="' . lang('Till') . '">' . $output_till_options . '</select>
-                    <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
-                </form>
-                <div class="pg-toolbar-grow"></div>
-                <a class="btn btn-sm btn-text theme-secondary" href="erp_cashflow.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv me-1"></i>' . lang('Download CSV') . '</a>
-            </nav>
+                <input type="hidden" name="group" value="' . h($options['group_chosen'] ? $options['group'] : '') . '" />
+                <span class="pg-report-field">
+                    <label class="pg-report-label" for="group">' . lang('Bucket') . '</label>
+                    ' . $output_group_filter . '
+                </span>
+                <span class="pg-report-field">
+                    <label class="pg-report-label" for="range">' . lang('Period') . '</label>
+                    ' . $output_period_filter . '
+                </span>
+                <span class="pg-report-field">
+                    <label class="pg-report-label" for="from">' . lang('Start') . '</label>
+                    <input type="date" data-pg-date class="form-control" id="from" name="from" value="' . h($options['from']) . '" max="' . h(date('Y-m-d')) . '" />
+                </span>
+                <span class="pg-report-field">
+                    <label class="pg-report-label" for="to">' . lang('End') . '</label>
+                    <input type="date" data-pg-date class="form-control" id="to" name="to" value="' . h($options['to']) . '" max="' . h(date('Y-m-d')) . '" />
+                </span>
+                <span class="pg-report-field">
+                    <label class="visually-hidden" for="till">' . lang('Till') . '</label>
+                    <select class="form-control" id="till" name="till">' . $output_till_options . '</select>
+                </span>
+                <button type="submit" class="pg-button pg-button-quiet"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Show') . '</button>
+                <a class="pg-button pg-button-quiet ms-auto" href="erp_cashflow.php?' . h($query) . '&amp;csv=1"><i class="bi bi-filetype-csv" aria-hidden="true"></i>' . lang('Download CSV') . '</a>
+            </form>
+            <form method="get" action="erp_cashflow.php" class="disable_shortcut" id="erp_cashflow_group">' . $output_keep(array('from', 'to', 'till')) . '</form>
+            <form method="get" action="erp_cashflow.php" class="disable_shortcut" id="erp_cashflow_range">' . $output_keep(array('from', 'to', 'till', 'group')) . '</form>
 
-            <div class="card my-7">
-                <div class="card-body">
-                    <div class="row g-5 text-center md:text-start">
-                        <div class="col-6 md:col">
-                            <div class="small text-uppercase fg-secondary">' . lang('Opening') . '</div>
-                            <div class="h5 mb-0">' . h(erp_money_out($report['opening'])) . '</div>
-                            <div class="small fg-secondary">' . h(prepare_form_data_for_output($options['from'], 'date', false)) . '</div>
-                        </div>
-                        <div class="col-6 md:col">
-                            <div class="small text-uppercase fg-secondary">' . lang('Money in') . '</div>
-                            <div class="h5 mb-0 fg-success">' . h(erp_money_out($report['in'])) . '</div>
-                        </div>
-                        <div class="col-6 md:col">
-                            <div class="small text-uppercase fg-secondary">' . lang('Money out') . '</div>
-                            <div class="h5 mb-0 fg-danger">' . h(erp_money_out($report['out'])) . '</div>
-                        </div>
-                        <div class="col-6 md:col">
-                            <div class="small text-uppercase fg-secondary">' . lang('Net change') . '</div>
-                            <div class="h5 mb-0">' . $signed($report['net']) . '</div>
-                            <div class="small fg-secondary">' . h(lang(array('string' => '{var:1} movement(s)', 'vars' => (int) $report['count']))) . '</div>
-                        </div>
-                        <div class="col-6 md:col">
-                            <div class="small text-uppercase fg-secondary">' . lang('Closing') . '</div>
-                            <div class="h5 mb-0' . (($report['closing'] < 0) ? ' fg-danger' : '') . '">' . h(erp_money_out($report['closing'])) . '</div>
-                            <div class="small fg-secondary">' . h(prepare_form_data_for_output($options['to'], 'date', false)) . '</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div class="pg-report-view">' . $output_figures . '</div>
 
-            <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex align-items-center flex-wrap gap-3">
-                    <span>' . h($groups[$options['group']]) . '</span>
-                    <span class="small fg-secondary fw-normal text-lowercase ms-auto">' . h($period_text) . '</span>
+            <section class="pg-card pg-report-frame">
+                <div class="pg-report-frame-head">
+                    <h3 class="pg-report-frame-title">' . h($groups[$options['group']]) . '</h3>
+                    <span class="pg-report-frame-note">' . h($period_text) . '</span>
                 </div>
-                <div class="card-body p-0 position-relative table-responsive">
-                    <table class="table table-hover align-middle mb-0" data-pg-sort>
+                <div class="pg-report-frame-body">
+                    <table class="pg-report-table" data-pg-sort>
                         <thead>
                             <tr>
                                 <th>' . lang('Period') . '</th>
@@ -506,33 +508,33 @@ pg_page_shell(array(
                             </tr>
                         </thead>
                         <tbody>
-                            <tr class="fw-bold" data-pg-sort-fixed="top">
+                            <tr class="pg-report-l1" data-pg-sort-fixed="top">
                                 <td>' . lang('Opening Balance') . '</td>
                                 <td colspan="4"></td>
                                 <td class="text-end">' . h(erp_money_out($report['opening'])) . '</td>
                             </tr>' . $output_rows . '
                         </tbody>
                         <tfoot>
-                            <tr class="fw-bold">
+                            <tr class="pg-report-total">
                                 <td>' . lang('Total') . '</td>
                                 <td class="text-end">' . h(erp_money_out($report['in'])) . '</td>
                                 <td class="text-end">' . h(erp_money_out($report['out'])) . '</td>
                                 <td class="text-end">' . $signed($report['net']) . '</td>
-                                <td class="text-end small">' . pg_format_number($report['count'], 0) . '</td>
+                                <td class="text-end">' . pg_format_number($report['count'], 0) . '</td>
                                 <td class="text-end">' . h(erp_money_out($report['closing'])) . '</td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
-                ' . (($output_notes !== '') ? '<div class="px-5 pb-5">' . $output_notes . '</div>' : '') . '
-            </div>
+                ' . (($output_notes !== '') ? '<div class="pg-report-frame-note px-7 py-5">' . $output_notes . '</div>' : '') . '
+            </section>
 
-            <div class="row">
+            <div class="row g-5">
                 <div class="col-12 2xl:col-8">
-                    <div class="card my-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By till') . '</div>
-                        <div class="card-body p-0 position-relative table-responsive">
-                            <table class="table table-hover align-middle mb-0" data-pg-sort>
+                    <section class="pg-card pg-report-frame">
+                        <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . lang('By till') . '</h3></div>
+                        <div class="pg-report-frame-body">
+                            <table class="pg-report-table" data-pg-sort>
                                 <thead>
                                     <tr>
                                         <th>' . lang('Till') . '</th>
@@ -549,14 +551,14 @@ pg_page_shell(array(
                                 </tbody>
                             </table>
                         </div>
-                        ' . (((int) $options['till'] === 0) ? '<div class="px-5 pb-5"><div class="form-text">' . lang('Transfers are counted here: what left one till arrived in another.') . '</div></div>' : '') . '
-                    </div>
+                        ' . (((int) $options['till'] === 0) ? '<p class="pg-report-frame-note px-7 py-5 mb-0">' . lang('Transfers are counted here: what left one till arrived in another.') . '</p>' : '') . '
+                    </section>
                 </div>
                 <div class="col-12 2xl:col-4">
-                    <div class="card my-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By payment method') . '</div>
-                        <div class="card-body p-0 position-relative table-responsive">
-                            <table class="table table-hover align-middle mb-0" data-pg-sort>
+                    <section class="pg-card pg-report-frame">
+                        <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . lang('By payment method') . '</h3></div>
+                        <div class="pg-report-frame-body">
+                            <table class="pg-report-table" data-pg-sort>
                                 <thead>
                                     <tr>
                                         <th>' . lang('Payment method') . '</th>
@@ -570,7 +572,7 @@ pg_page_shell(array(
                                 </tbody>
                             </table>
                         </div>
-                    </div>
+                    </section>
                 </div>
             </div>
         </div>

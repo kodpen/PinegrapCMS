@@ -28106,6 +28106,17 @@ body.pg-measure-report #content {
   align-items: center;
   gap: 8px;
 }
+/* A date of the tools row is as wide as a date (the picker's text box
+   would otherwise take a text field's twenty characters). */
+.pg-report-tools .pg-date-box {
+  width: 8.5rem;
+}
+/* The aging report's account names keep their words whole: the name
+   column is wide enough for a name in two lines, and the table scrolls in
+   its frame on a phone. */
+body.erp_aging .pg-report-table th[scope="row"] {
+  min-width: 12rem;
+}
 
 /* The view: the figures, then the chart, 16 px apart. */
 .pg-report-view {

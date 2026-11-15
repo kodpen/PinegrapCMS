@@ -26,9 +26,11 @@ function test_report_formats_cashflow_toolbar_wraps()
 {
 	$source = report_formats_source('erp_cashflow.php');
 
-	pg_assert_true((bool) preg_match('/<form method="get" action="erp_cashflow\.php" class="[^"]*\bflex-wrap\b[^"]*\brow-gap-/', $source), 'cash flow toolbar form wraps with a row gap');
-	pg_assert_true((bool) preg_match('/<span class="d-inline-flex align-items-center gap-2">\s*<label for="from"/', $source), 'start label stays with its field');
-	pg_assert_true((bool) preg_match('/<span class="d-inline-flex align-items-center gap-2">\s*<label for="to"/', $source), 'end label stays with its field');
+	// The report's tools row wraps (.pg-report-tools is flex-wrap) and each
+	// label shares a .pg-report-field with its field.
+	pg_assert_true((bool) preg_match('/<form method="get" action="erp_cashflow\.php" class="pg-report-tools[^"]*" id="erp_cashflow_period">/', $source), 'cash flow filter is the report tools row');
+	pg_assert_true((bool) preg_match('/<span class="pg-report-field">\s*<label class="pg-report-label" for="from"/', $source), 'start label stays with its field');
+	pg_assert_true((bool) preg_match('/<span class="pg-report-field">\s*<label class="pg-report-label" for="to"/', $source), 'end label stays with its field');
 }
 
 function test_report_formats_seo_weight_is_translated()
