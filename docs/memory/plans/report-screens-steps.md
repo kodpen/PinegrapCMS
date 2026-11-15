@@ -1,27 +1,29 @@
 ---
 name: report-screens-steps
-description: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out
+description: Steps of plans/report-screens.md: RS1-RS7 landed; RS8 the look (RS8a phone and shared parts, RS8b order and visitor, RS8c shipping and ERP VAT) and close-out
 ---
 
 ## Which steps are there?
-- S under 400 product lines, M about 1,000; no schema; each step its tests and its memory topic. They are built in the order written: each waits for the one before it.
+- S under 400 product lines, M about 1,000; no schema; each step its tests and its memory topic. Built in the order written.
+- Landed (their rules are in the topic files): RS1 the Sales map card's See all, #8691 (`commerce/order-report-ready-reports.md`); RS2 the shared view on the order report, #8709 (`ui/report-view.md`); RS3 its ready reports, #8724 (`commerce/order-report-ready-strip.md`); RS4 the visitor report, #8764; RS5 its ready reports, #8800; RS6 shipping, #8811 (`commerce/shipping-report.md`); RS7 ERP VAT, #8827.
 
-- RS1 (S) The Sales map card's "See all" opens what the card shows. Done: #8691.
-  - A registry of ready reports in a new `includes/fn/` module (key, title, levels, filters, period), pure, with one entry: sales by region, last 30 days, counted as the card counts (`includes/dashboard/v2/cards/salesmap.php`: the same orders, the same region field).
-  - `view_order_report.php` opens a ready report by an address parameter as a new, unsaved report; an unknown key opens the plain new report. The card's link (`'url' => 'view_order_report.php'`) names the ready report. A level for the card's region field, if the report has none, is added in code.
-  - Tests: the registry's shape, the parameter's reading, the report's levels and period for the entry. Topic `commerce/order-report-ready-reports.md`; `ui/dashboard-v2-shop-cards.md` corrected.
-- RS2 (M) The shared view, on the order report. Done: #8709.
-  - `includes/fn/report_view.php`: from a report's result (levels, rows, totals) the summary figures, the chart's kind and series (a line over time, bars for a named level, the map for a region level, none otherwise) and the table model; pure, tested.
-  - `view_order_report.php` draws figures, chart and table with the dashboard's drawing (`assets/js/pg_dash.js`, served here as a bundle, `core/js-bundles.md`). The settings form moves into a drawer from the right (`<dialog class="drawer drawer-end">`) behind a "Report settings" button, open at once on a plain new report; field names, the filter builder and Save stay.
-  - Every figure equals today's: the queries are not touched. Kept: `ui/report-table-rows.md`, `order-report-totals.md`, `report-dynamic-date-filter.md`, `list-period-navigator-and-clock.md`.
-  - Topic `ui/report-view.md`; `commerce/order-report-screen.md` and `ui/report-screen-controls.md` corrected.
-- RS3 (S) Done: #8724. The order report's ready reports: the strip on top (by region, product, payment method, source: those its levels can give); Save turns one into the person's saved report; the shop cards' links (`pg_dashboard_v2_shop_url()`) open their ready report with the card's period.
-- RS4 (M) Done: #8764. The visitor report (`view_visitor_report.php`) on the shared view; its query traps and site time stay (`visitors/visitor-report-sql-pitfalls.md`, `visitor-report-site-time.md`, `high-volume-counter-rules.md`).
-- RS5 (S) Done: #8800. The visitor report's ready reports (by source, page, country: those its levels can give) and the visitor cards' links.
-- RS6 (S) Done: #8811. The shipping report (`view_shipping_report.php`) on the shared view; its period bound (`PG_SHIPPING_REPORT_MAX_DAYS`) and its lists stay (`commerce/shipping-report.md`).
-- RS7 (S) Done: #8827. The ERP VAT report (`erp_vat_report.php`) on the shared view; its figures, rates and export stay (`erp/README.md` first).
-- RS8 (S) The owner's look and the close-out. The architect asks the owner to look at the four screens on dev; what he asks for becomes steps here. Then the lasting rules stand in the topics above and this plan's two files are deleted.
-  - Look request: channel 25 message 4150 (2026-11-15): the four screens from a sandbox with demo data, light and dark, 1440 and 390 px, a ready report each where the screen has one, the settings drawer open once. The architect's answers become RS8a, RS8b … below.
-
-## Why this order?
-- RS1 answers the owner's finding at once and needs no new look. The order report carries the shared view first, as the dashboard's shop cards point at it; the visitor report shares its filter builder; the two small screens follow the settled view.
+- RS8 (S) The look and the close-out: the asked steps below, then the lasting rules into the topic files and this plan's two files deleted.
+  - Look request: channel 25 message 4150 (2026-11-15): the four screens from a sandbox with demo data, light and dark, 1440 and 390 px.
+  - The look is the architect's (delegated by the owner's 2645), answered in channel 25 message 4223: the screens stand in their shape, light and dark; nothing is redrawn. RS8a, RS8b and RS8c below; RS8b and RS8c may run beside RS8a. After the three land, two pictures per changed screen (light 1440 and 390) in the 4150 thread; then RS8 closes the plan.
+- RS8a (S) The shared parts, mostly on a phone:
+  1. A segmented control that does not fit its row (ready reports, periods) is one row that scrolls sideways; it never wraps into a box of three or four rows (4153, 4161).
+  2. An odd last figure card takes the whole row on a phone (shipping's Total, VAT's Difference).
+  3. The report's title wraps and is never cut with an ellipsis ("Kaynağa göre ziyaret..."); the pill goes under it. The breadcrumb's last part ends with an ellipsis, not mid-letter.
+  4. A table on a phone: the first column stays in place and takes at most half the width, its header wraps; today the order report shows only names, every figure is off the screen.
+  5. The charts' x-axis: ticks at even steps (shipping jumps 15, 17, 19, 22; the VAT year shows Temmuz and then Ağustos).
+- RS8b (S) Order and visitor reports:
+  1. A ready order report shows its period and the period control as every order report does; "Sales by region" shows 153 orders of no named days.
+  2. Country names in place of codes in the map's list and the table's group rows, where the site knows the name; the export keeps the code.
+  3. The visitor report's bars card, alone in its row, takes the whole row as the map card does.
+  4. The visitor report's "Average Order Amount" is the order total divided by visitors (25.818,54 / 1.762 = 14,65), in the card and in the table, as it always was. The figure stays; its label says what it is: "Order amount per visitor" (tr_add). The export keeps its header.
+- RS8c (S) Shipping and ERP VAT:
+  1. Shipping, 1440: the products table is cut at the card's edge (one letter of the column after "Cmt 28 Kas"). Fourteen days fit at 1440 with narrower day columns; below that the table scrolls inside its card.
+  2. One shape for the period beside the calendar icon on the four screens: the panel's date text (`get_absolute_time()`, type date) and an en dash. Today there are three ("Cmt 17 Eki 2026 - Paz 15 Kas 2026", "15 Kasım 2026 – 28 Kasım 2026", "1/11/2026 – 30/11/2026"). Table cells keep the site's date format.
+  3. The VAT notice about orders without an invoice: body text size, the look's note; today its text is larger than everything around it.
+  4. VAT: the "by document type" card shows only with two kinds or more (one bar says nothing); the year chart's title names both series ("VAT by month").
+  5. VAT documents card: on a phone the "Document type" label sits with its select; the year's table shows 15 of 59 rows and nothing says so: a count in the card's head, and pages or "Show all".
