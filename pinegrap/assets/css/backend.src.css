@@ -2473,7 +2473,9 @@ body:not(.toolbar) .software-content {
   text-overflow: ellipsis;
   overflow: hidden;
 }
-#menu:not(.expanded) .list-group .list-group-item .list-group-text {
+/* The rail's rules skip a drawer-only screen (.menu-drawer-only, below):
+   its menu is the drawer at every width. :where() keeps their weight. */
+:where(.software-container:not(.menu-drawer-only)) #menu:not(.expanded) .list-group .list-group-item .list-group-text {
   visibility: hidden;
 }
 
@@ -2512,7 +2514,7 @@ body:not(.toolbar) .software-content {
   padding: 0.3em 0.55em;
   pointer-events: none;
 }
-#menu:not(.expanded) .list-group .list-group-item .pg-menu-badge {
+:where(.software-container:not(.menu-drawer-only)) #menu:not(.expanded) .list-group .list-group-item .pg-menu-badge {
   right: 2px;
   top: 2px;
   transform: none;
@@ -2545,12 +2547,12 @@ body:not(.toolbar) .software-content {
   border-radius: 50%;
   background: var(--pg-success-ink);
 }
-#menu:not(.expanded) .list-group .list-group-item .pg-menu-live {
+:where(.software-container:not(.menu-drawer-only)) #menu:not(.expanded) .list-group .list-group-item .pg-menu-live {
   right: 4px;
   top: 4px;
   transform: none;
 }
-#menu:not(.expanded) .list-group .list-group-item .pg-menu-live-n {
+:where(.software-container:not(.menu-drawer-only)) #menu:not(.expanded) .list-group .list-group-item .pg-menu-live-n {
   display: none;
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -2634,7 +2636,7 @@ body:not(.toolbar) .software-content {
 #menu.expanded .pg-menu-main .list-group-item.pg-menu-parent .pg-menu-badge {
   margin-right: 0.375rem;
 }
-#menu:not(.expanded) .pg-menu-hint {
+:where(.software-container:not(.menu-drawer-only)) #menu:not(.expanded) .pg-menu-hint {
   display: none;
 }
 /* On the rail the name is hidden, so the arrow is what says a row opens a
@@ -2642,7 +2644,7 @@ body:not(.toolbar) .software-content {
    only: below it #menu is never .expanded either, and the drawer shows the
    full arrow with the names. */
 @media (min-width: 1024px) {
-  #menu:not(.expanded) .pg-menu-main .pg-menu-chevron {
+  :where(.software-container:not(.menu-drawer-only)) #menu:not(.expanded) .pg-menu-main .pg-menu-chevron {
     right: 0.1875rem;
     font-size: 0.5rem;
     opacity: 0.75;
@@ -2670,7 +2672,7 @@ body:not(.toolbar) .software-content {
   user-select: none;
 }
 @media (min-width: 1024px) {
-  #menu:not(.expanded) .pg-menu-heading {
+  :where(.software-container:not(.menu-drawer-only)) #menu:not(.expanded) .pg-menu-heading {
     position: relative;
     width: 1.75rem;
     height: 0;
@@ -2678,7 +2680,7 @@ body:not(.toolbar) .software-content {
     padding: 0;
     border-top: var(--pg-border-width) solid var(--pg-border-color);
   }
-  #menu:not(.expanded) .pg-menu-heading-text {
+  :where(.software-container:not(.menu-drawer-only)) #menu:not(.expanded) .pg-menu-heading-text {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -3100,11 +3102,6 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
     transition: transform 0.3s ease;
   }
 
-  .software-container.drawer-open .software-sidebar {
-    transform: translateX(0);
-    box-shadow: inset -1px 0 0 var(--pg-border-color), 0 0 24px #00000059;
-  }
-
   /* No rail below lg means no pocket to round; the drawer keeps the flat edge
      it already draws for itself. */
   .software-container .software-sidebar::before,
@@ -3152,30 +3149,34 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
     text-overflow: ellipsis;
     overflow: hidden;
   }
+}
 
-  .software-menu-backdrop {
-    position: fixed;
-    top: var(--pg-navbar-h);
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 1029;
-    background: #00000059;
-    opacity: 0;
-    /* Hidden state must not swallow taps meant for the page underneath. */
-    visibility: hidden;
-    pointer-events: none;
-    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
-    /* Stops a drag on the scrim from scrolling the page behind the drawer. */
-    touch-action: none;
-  }
+/* The drawer's scrim, created by backend.src.js when the drawer first opens.
+   Not inside the below-lg query: a drawer-only screen (below) opens the
+   drawer at every width, and nowhere else is the scrim ever created above
+   lg, where it stays hidden without .show. */
+.software-menu-backdrop {
+  position: fixed;
+  top: var(--pg-navbar-h);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1029;
+  background: #00000059;
+  opacity: 0;
+  /* Hidden state must not swallow taps meant for the page underneath. */
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+  /* Stops a drag on the scrim from scrolling the page behind the drawer. */
+  touch-action: none;
+}
 
-  .software-menu-backdrop.show {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transition: opacity 0.3s ease, visibility 0s linear 0s;
-  }
+.software-menu-backdrop.show {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
 
 /* Selectors are kept at least as specific as the ones they need to beat above -
@@ -3282,6 +3283,54 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   .software-container .software-sidebar,
   .software-container.menu-hidden .software-sidebar,
   .software-container.menu-hidden.pg-menu-peek .software-sidebar {
+    transition: none;
+  }
+}
+
+/* ── Drawer-only screens ─────────────────────────────────────────────────────
+   A screen drawn with output_header()'s menu_drawer (Page Design Studio) keeps
+   the menu as the phone's drawer at every width: .menu-drawer-only on the
+   container. The rail's rules skip it (:where() guard above); these repeat
+   the below-lg drawer for it, one class heavier and after the lg rules.
+   Keep the two in step. */
+.software-container.menu-drawer-only {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+/* As heavy as the rail's width rule and the open drawer's, between the two:
+   it beats the first by order and the open drawer below beats it. */
+.software-container.menu-drawer-only .software-sidebar {
+  width: min(280px, 84vw);
+  left: 0;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+.software-container.menu-drawer-only .software-sidebar::before,
+.software-container.menu-drawer-only .software-sidebar::after {
+  display: none;
+}
+.menu-drawer-only #menu .list-group .list-group-item .pg-menu-badge,
+.menu-drawer-only #menu .list-group .list-group-item .pg-menu-live {
+  position: static;
+  transform: none;
+  margin-left: 0.5rem;
+  flex: 0 0 auto;
+}
+.menu-drawer-only #menu .list-group .list-group-item.pg-menu-parent .pg-menu-badge {
+  margin-right: 0.375rem;
+}
+.menu-drawer-only #menu .list-group .list-group-item {
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+/* The open drawer, below lg and on a drawer-only screen. Outside the query
+   and after the rules above: .drawer-open is only ever set in drawer mode
+   (backend.src.js shuts the drawer when the mode changes). */
+.software-container.drawer-open .software-sidebar {
+  transform: translateX(0);
+  box-shadow: inset -1px 0 0 var(--pg-border-color), 0 0 24px #00000059;
+}
+@media (prefers-reduced-motion: reduce) {
+  .software-container.menu-drawer-only .software-sidebar {
     transition: none;
   }
 }
@@ -3403,6 +3452,16 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   .software-container.drawer-open #header #menu_mode_toggle > .pg-mt-open {
     display: inline-flex;
   }
+}
+/* A screen's own drawer opener (data-pg-menu-drawer-toggle, on a
+   drawer-only screen): the same two drawer pictures at every width. */
+[data-pg-menu-drawer-toggle] > .pg-mt-shut,
+[data-pg-menu-drawer-toggle] > .pg-mt-open {
+  display: none;
+}
+.software-container:not(.drawer-open) [data-pg-menu-drawer-toggle] > .pg-mt-shut,
+.software-container.drawer-open [data-pg-menu-drawer-toggle] > .pg-mt-open {
+  display: inline-block;
 }
 
 /* ══ Page action bar ═══════════════════════════════════════════════════════
