@@ -9,7 +9,7 @@ description: Over a channel's conversation (C2, C3 of workspace-channel-screen.m
 
 ## How do the catch-up line and the pinned message stand?
 - `drawCenter()` puts both in `.ws-strip`: one above the other; on a phone, when both are there, one row (`:has()`), the catch-up line first and the pin as a button that opens it; the whole strip hides while the keyboard is up.
-- Under the pin, the open items line (polls, agent questions, the check-in, approval requests still open): `channel-open-items-line.md`.
+- Under the pin, the open items line (OI1 #9783): only what is still open (polls and agent questions taking answers, the running check-in, approval requests waiting), the reader's own first and marked, the first item with Go and a list behind a count when there are several; no item, no line. `GET /workspace/channels/{id}` gives the same list as `open_items` (OI2 #9827). Details: `channel-open-items-line.md`.
 - `drawPinBar()`: one line, the pin icon, who wrote it and its text (`.ws-pin-words`), a click opens it in the conversation (`jumpTo()`); who pinned it is the tooltip, the read receipt and close follow.
 
 ## Where does the line come from?
@@ -19,3 +19,4 @@ description: Over a channel's conversation (C2, C3 of workspace-channel-screen.m
 
 ## Why?
 - Owner (2026-10-31, `workflow/decisions-made-workspace-5.md`): the drawn design; the card took a third of a phone's screen.
+- Owner (2026-11-15, agent channel message 5143): open polls, agent questions, check-ins and approval requests scrolled out of sight were missed, so the strip names them; his look at the line: poll 52, "Evet, böyle çıksın" (`workflow/decisions-made-workspace-34.md`). Only open items, the reader's own first and a list behind a count are the architect's readings (5157), not his words.

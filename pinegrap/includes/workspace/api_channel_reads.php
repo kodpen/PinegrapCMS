@@ -45,7 +45,7 @@ function ws_channel_read_api_routes()
             'handler'     => 'ws_api_channel_get',
             'returns'     => 'WorkspaceChannelDetail',
             'summary'     => 'One channel, as its Channel info shows it',
-            'description' => 'A channel the owner of the application reads, as the sidebar lists it (channel), with what its Channel info shows every reader: who owns it, how many people and agents are in it (GET /workspace/channels/{id}/members and /agents list them), the guests an open share lets read it (seen, when a guest was last here, only for an owner who may manage the channel, as on the screen; null otherwise), how many earlier versions its conversation has (GET /workspace/channels/{id}/eras), the pinned message, the counts on its Decisions and Tasks tabs, whether it is a discussion, how many of the owner\'s own messages wait to be posted in it, and what the owner may do there (post, manage, make it public or private, clear its conversation, pin, share with guests). reading_as_staff is true when staff read a private channel they are not in.' . $unread,
+            'description' => 'A channel the owner of the application reads, as the sidebar lists it (channel), with what its Channel info shows every reader: who owns it, how many people and agents are in it (GET /workspace/channels/{id}/members and /agents list them), the guests an open share lets read it (seen, when a guest was last here, only for an owner who may manage the channel, as on the screen; null otherwise), how many earlier versions its conversation has (GET /workspace/channels/{id}/eras), the pinned message, the counts on its Decisions and Tasks tabs, whether it is a discussion, how many of the owner\'s own messages wait to be posted in it, what the owner may do there (post, manage, make it public or private, clear its conversation, pin, share with guests), and open_items: the polls and agent questions still taking answers, the running check-in and the approval requests still waiting, as the line over the conversation lists them (the caller\'s own first, at most 10; mine is true when the item waits for the caller\'s answer: for the person\'s own session or connection, as on their screen; for an application key, only an approval request that asked its own agent and still waits for that agent). reading_as_staff is true when staff read a private channel they are not in.' . $unread,
             'params'      => array($id),
         ),
 
@@ -128,7 +128,7 @@ function ws_channel_read_api_routes()
  * @param array $detail  ws_channel_detail()
  * @return array
  */
-function ws_api_channel_detail_present($channel, $detail)
+function ws_api_channel_detail_present($channel, $detail, $open_items = array())
 {
     $guests = array();
 
@@ -163,7 +163,53 @@ function ws_api_channel_detail_present($channel, $detail)
         'can_clear'         => !empty($detail['can_clear']),
         'can_pin'           => !empty($detail['can_pin']),
         'can_share'         => !empty($detail['can_share']),
+        'open_items'        => ws_api_channel_open_items_present($open_items),
     );
+}
+
+/**
+ * ws_channel_open_items() as the route gives it. Pure.
+ *
+ * @param array[] $items
+ * @return array[] kind, message_id, text, mine
+ */
+function ws_api_channel_open_items_present($items)
+{
+    $out = array();
+
+    foreach ((array) $items as $item) {
+        $out[] = array(
+            'kind'       => (string) ($item['kind'] ?? ''),
+            'message_id' => (int) ($item['message_id'] ?? 0),
+            'text'       => (string) ($item['text'] ?? ''),
+            'mine'       => !empty($item['mine']),
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * Whose answer the open items are marked for (ws_channel_open_items()):
+ * null for the person's own session or OAuth connection, which answer as
+ * the person; for an application key its own agent's request value,
+ * 'claude' for Claude's key, '' for a key with no agent.
+ *
+ * @return string|null
+ */
+function ws_api_open_items_caller()
+{
+    if (ws_api_writer_app_id() === 0) {
+        return null;
+    }
+
+    if (function_exists('ws_api_is_claude') && ws_api_is_claude()) {
+        return 'claude';
+    }
+
+    $agent = function_exists('ws_api_agent_caller_row') ? ws_api_agent_caller_row() : null;
+
+    return is_array($agent) ? ws_agent_request_value($agent) : '';
 }
 
 // What ws_api_channel_detail_present() returns.
@@ -188,6 +234,7 @@ function ws_api_channel_detail_schema()
         'can_clear'         => 'boolean',
         'can_pin'           => 'boolean',
         'can_share'         => 'boolean',
+        'open_items'        => array(array('kind' => 'string', 'message_id' => 'integer', 'text' => 'string', 'mine' => 'boolean')),
     );
 }
 
@@ -196,7 +243,8 @@ function ws_api_channel_get($params)
     $viewer = ws_api_viewer();
     $channel = ws_api_channel_or_404($viewer, $params['id']);
 
-    api_ok(ws_api_channel_detail_present(ws_api_channel_present(ws_api_channel_brief($viewer, $channel)), ws_channel_detail($viewer, $channel)));
+    api_ok(ws_api_channel_detail_present(ws_api_channel_present(ws_api_channel_brief($viewer, $channel)), ws_channel_detail($viewer, $channel),
+        ws_channel_open_items($viewer, $channel, ws_api_open_items_caller())));
 }
 
 /* ---------------------------------------------------------------------------

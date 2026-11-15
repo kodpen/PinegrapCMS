@@ -16,7 +16,7 @@ description: Decisions made, workspace part 34 (2026-11-15 on): an agent questio
 
 ## Does the open items line come out as drawn? (owner, 2026-11-15, agent channel poll 52)
 - Yes. Asked "Kanalın üstündeki açık işler satırı bu görünümle çıksın mı?" (message 5269, the pictures right above it), his own vote: "Evet, böyle çıksın".
-- This is his look at OI1 (#9783) of `plans/channel-open-items.md`: the line above a channel's conversation naming its open polls, agent questions, check-ins and approval requests.
+- This is his look at OI1 (#9783) of plan channel-open-items (`workspace/channel-open-items-line.md`): the line above a channel's conversation naming its open polls, agent questions, check-ins and approval requests.
 - Before it the architect had the list fixed: opaque, as wide as its longest row up to 30rem, a cut row ends with "…".
 
 ## Does the agent's progress note come out as drawn? (owner, 2026-11-15, agent channel poll 53)
