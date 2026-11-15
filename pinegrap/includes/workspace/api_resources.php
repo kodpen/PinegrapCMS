@@ -1350,16 +1350,29 @@ function ws_api_poll_option_present($option)
     $voters = array();
 
     foreach ((array) $option['voters'] as $voter) {
-        $voters[] = array('user_id' => ((int) $voter['id'] > 0) ? (int) $voter['id'] : null, 'name' => (string) $voter['name']);
+        $voters[] = array('user_id' => ((int) $voter['id'] > 0) ? (int) $voter['id'] : null, 'name' => (string) $voter['name'], 'text' => (string) ($voter['text'] ?? ''));
     }
 
+    $picture = is_array($option['picture'] ?? null) ? array(
+        'file_id' => (int) $option['picture']['file_id'],
+        'name'    => (string) $option['picture']['name'],
+        'url'     => (defined('URL_SCHEME') ? URL_SCHEME . HOSTNAME_SETTING : '') . (string) $option['picture']['url'],
+    ) : null;
+
     return array(
-        'id'      => (int) $option['id'],
-        'label'   => (string) $option['label'],
-        'count'   => (int) $option['count'],
-        'mine'    => !empty($option['mine']),
-        'leading' => !empty($option['leading']),
-        'voters'  => $voters,
+        'id'          => (int) $option['id'],
+        'label'       => (string) $option['label'],
+        'count'       => (int) $option['count'],
+        'mine'        => !empty($option['mine']),
+        'leading'     => !empty($option['leading']),
+        'voters'      => $voters,
+        // The option's parts (poll_parts.php); empty on a poll made before.
+        'description' => (string) ($option['description'] ?? ''),
+        'picture'     => $picture,
+        'links'       => array_values((array) ($option['links'] ?? array())),
+        'recommended' => !empty($option['recommended']),
+        'other'       => !empty($option['other']),
+        'my_text'     => (string) ($option['my_text'] ?? ''),
     );
 }
 
@@ -1379,7 +1392,9 @@ function ws_api_poll_schema()
         'can_edit'          => 'boolean',
         'can_close'         => 'boolean',
         'options'           => array(array('id' => 'integer', 'label' => 'string', 'count' => 'integer', 'mine' => 'boolean', 'leading' => 'boolean',
-            'voters' => array(array('user_id' => 'integer?', 'name' => 'string')))),
+            'voters' => array(array('user_id' => 'integer?', 'name' => 'string', 'text' => 'string')),
+            'description' => 'string', 'picture' => 'object?', 'links' => array(array('url' => 'string', 'label' => 'string')),
+            'recommended' => 'boolean', 'other' => 'boolean', 'my_text' => 'string')),
         'result_message_id' => 'integer?',
     );
 }
@@ -3458,12 +3473,20 @@ function ws_api_polls_vote($params)
         api_fail_validation(lang('Only one option can be chosen in this poll.'), 'option_ids');
     }
 
+    // The "Other" row needs the voter's own words.
+    $other_text = ws_poll_other_text($params['other_text'] ?? '');
+    $worded = ws_poll_other_check($chosen, ws_poll_other_id((int) $poll['id']), $other_text);
+
+    if (!$worded['ok']) {
+        api_fail_validation($worded['error'], $worded['field']);
+    }
+
     api_dry_run_stop('voted', 'workspace_poll', array('id' => (int) $poll['id'], 'message_id' => (int) $poll['message_id'], 'option_ids' => $chosen));
 
-    $result = ws_poll_vote($viewer, $poll, $chosen);
+    $result = ws_poll_vote($viewer, $poll, $chosen, $other_text);
 
     if (!$result['ok']) {
-        ws_api_poll_refused($result['error']);
+        ws_api_poll_refused($result['error'], (string) ($result['field'] ?? ''));
     }
 
     ws_api_poll_message_ok($viewer, $poll);
@@ -3567,12 +3590,19 @@ function ws_api_polls_create($params)
 
     $options = array();
 
+    // A text, or an object with the option's label and its parts.
     foreach ((array) $params['options'] as $item) {
-        if (!is_string($item) && !is_int($item) && !is_float($item)) {
-            api_fail_validation(lang(array('string' => 'Each item of {var:1} must be a text.', 'vars' => 'options')), 'options');
-        }
+        if (is_array($item)) {
+            if (!isset($item['label']) && empty($item['other'])) {
+                api_fail_validation(lang(array('string' => 'Each item of {var:1} needs a label.', 'vars' => 'options')), 'options');
+            }
 
-        $options[] = (string) $item;
+            $options[] = $item;
+        } elseif (is_string($item) || is_int($item) || is_float($item)) {
+            $options[] = (string) $item;
+        } else {
+            api_fail_validation(lang(array('string' => 'Each item of {var:1} must be a text or an object.', 'vars' => 'options')), 'options');
+        }
     }
 
     $data = array(
@@ -3589,6 +3619,16 @@ function ws_api_polls_create($params)
 
     if (!$checked['ok']) {
         api_fail_validation($checked['error'], ($checked['field'] !== '') ? $checked['field'] : null);
+    }
+
+    $stored = ws_poll_parts_store_check((int) $channel['id'], $checked['parts']);
+
+    if (!$stored['ok']) {
+        if ($stored['error'] === lang('The database has to be updated first.')) {
+            api_fail(503, 'service_unavailable', $stored['error']);
+        }
+
+        api_fail_validation($stored['error'], 'options');
     }
 
     api_dry_run_stop('created', 'workspace_poll', array(
@@ -3667,7 +3707,9 @@ function ws_api_polls_update($params)
                 $item = array('label' => (string) $item);
             }
 
-            if (!is_array($item) || !isset($item['label']) || (!is_string($item['label']) && !is_int($item['label']) && !is_float($item['label']))) {
+            // An existing option sent by its id alone keeps its label.
+            if (!is_array($item) || (!isset($item['label']) && !isset($item['id']) && empty($item['other']))
+                || (isset($item['label']) && !is_string($item['label']) && !is_int($item['label']) && !is_float($item['label']))) {
                 api_fail_validation(lang(array('string' => 'Each item of {var:1} needs a label.', 'vars' => 'options')), 'options');
             }
 
@@ -3681,7 +3723,15 @@ function ws_api_polls_update($params)
                 }
             }
 
-            $data['options'][] = array('id' => $option_id, 'label' => (string) $item['label']);
+            // The parts sent go with it; a part left out of an existing
+            // option keeps its value (ws_poll_edit_check()).
+            $item['id'] = $option_id;
+
+            if ($option_id > 0) {
+                $item += $options[$option_id];
+            }
+
+            $data['options'][] = $item;
         }
     }
 

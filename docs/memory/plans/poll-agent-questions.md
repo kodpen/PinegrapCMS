@@ -22,8 +22,9 @@ description: Plan (owner 2026-11-14): the poll gains described, pictured and lin
 - The answer makes one request row for the asking agent and knocks its door as a mention does; the brief carries the question and the answer. An assistant is carried on the same way.
 
 ## Which steps?
-- AQ1 (S, no product code) Census: what a poll keeps and draws, `ws_poll_vote()` and `ws_poll_close()`, how an assistant makes a poll, the memory index, the request row and its brief. It names the columns; the architect asks the owner. The flag column is decided. Done in #9557: `workspace/poll-agent-questions-census-*.md`.
-- AQ2 (M, schema) The poll's new parts on the server and in the API's poll routes: the option fields, "Other", change, take back, ask again, with tests.
+- AQ1 (S, no product code) Census. Done in #9557: `workspace/poll-agent-questions-census-*.md`.
+- AQ2a (M, schema) Step 11.0.213 with every AQ2 column; option description, picture, links, recommended, "Other" with the voter's words, server, guest vote and API, tests (`workspace/poll-option-parts.md`).
+- AQ2b (M) Change, take back and ask again on the server and the API, the asking application included; `withdrawn_at`, `withdrawn_by`, `again_of` from AQ2a's step; tests.
 - AQ3 (M) The poll box in its three shapes and the "New poll" form. Look A; the whole picture set goes to the owner.
 - AQ4 (M, schema) The agent question: the flag, who answers, settling in the box, the wake, the memory index, its simpler box. Pictures to the owner.
 - AQ5 (S) The asked person is rung whatever their notify level (`ws_question_ring()`), the question stands in Today and on the dashboard's Assistant card; a channel's export writes it; `tools/ws_poll.php` asks with the new fields, takes back and asks again.
@@ -34,4 +35,4 @@ description: Plan (owner 2026-11-14): the poll gains described, pictured and lin
 - The approval and the checklist do not change; a question one agent asks another stays a checklist.
 - A guest never answers an agent question.
 - No table or column without asking the architect. Texts through `lang()`, Turkish by `tools/tr_add.php`.
-- AQ1 first, AQ2 after the owner's answer on the columns, AQ3 and AQ4 after AQ2, AQ5 after AQ4. Claim as `[plan:poll-agent-questions] <step> — <topic>`.
+- AQ1 first, AQ2a after the owner's answer on the columns, then AQ2b; AQ3 and AQ4 after AQ2b, AQ5 after AQ4. Claim as `[plan:poll-agent-questions] <step> — <topic>`.

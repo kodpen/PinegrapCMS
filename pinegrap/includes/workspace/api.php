@@ -1226,6 +1226,7 @@ function ws_api_routes()
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'option_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 50, 'required' => true, 'description' => 'Ids from poll.options of the message. An empty list takes the vote back.'),
+                array('name' => 'other_text', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The person\'s own words, required when option_ids holds the option whose other is true.'),
             ),
         ),
 
@@ -1243,7 +1244,7 @@ function ws_api_routes()
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'question', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'The question. Tags are written as tokens, as when writing.'),
-                array('name' => 'options', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 10, 'required' => true, 'description' => 'The texts to choose from, two to ten, each up to 255 characters, in the order shown.'),
+                array('name' => 'options', 'in' => 'body', 'type' => 'list', 'of' => array('label' => 'string', 'description' => 'string', 'file_id' => 'integer', 'links' => array(array('url' => 'string', 'label' => 'string')), 'recommended' => 'boolean', 'other' => 'boolean'), 'max_items' => 10, 'required' => true, 'description' => 'Two to ten options in the order shown, each a text (its label, up to 255 characters) or an object: label, description (a line under it, up to 500), file_id (a picture posted in this channel, the file.id of its message), links (up to three {url, label}, http or https), recommended (at most one option), other (one row that takes the voter\'s own words; its label defaults to Other and it does not count toward the two).'),
                 array('name' => 'multiple', 'in' => 'body', 'type' => 'bool', 'description' => 'A voter may choose several options. Left out, one.'),
                 array('name' => 'anonymous', 'in' => 'body', 'type' => 'bool', 'description' => 'Nobody sees who chose what, only the counts.'),
                 array('name' => 'closes_at', 'in' => 'body', 'type' => 'datetime', 'description' => 'When it closes by itself, at least a minute from now. Left out, it stays open until it is closed.'),
@@ -1265,7 +1266,7 @@ function ws_api_routes()
             'params'       => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'question', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'description' => 'The whole new question. Tags are written as tokens, as when writing.'),
-                array('name' => 'options', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'label' => 'string'), 'max_items' => 10, 'description' => 'Objects of {id, label}, two to ten, in the order shown: id from poll.options keeps that option, no id adds one.'),
+                array('name' => 'options', 'in' => 'body', 'type' => 'list', 'of' => array('id' => 'integer', 'label' => 'string', 'description' => 'string', 'file_id' => 'integer', 'links' => array(array('url' => 'string', 'label' => 'string')), 'recommended' => 'boolean', 'other' => 'boolean'), 'max_items' => 10, 'description' => 'Objects of {id, label} with the parts workspace.polls.create takes, two to ten, in the order shown: id from poll.options keeps that option, no id adds one. A part left out of a kept option stays as it is.'),
                 array('name' => 'multiple', 'in' => 'body', 'type' => 'bool'),
                 array('name' => 'anonymous', 'in' => 'body', 'type' => 'bool'),
                 array('name' => 'closes_at', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When it closes by itself, at least a minute from now. null leaves it open until it is closed.'),
