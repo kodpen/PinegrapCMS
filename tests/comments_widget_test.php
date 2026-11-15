@@ -1036,7 +1036,7 @@ function test_comments_widget_rating_input_html()
 	}
 	pg_assert_same(1, substr_count($default, ' checked'), 'one checked');
 	pg_assert_contains('value="5" autocomplete="off" checked', $default, 'five by default');
-	pg_assert_contains('role="group" aria-label="Rating"', $default, 'a labelled group');
+	pg_assert_contains('role="radiogroup" aria-label="Rating"', $default, 'a labelled radio group');
 	pg_assert_contains('<span class="visually-hidden">3 out of 5</span>', $default, 'each number said in words');
 	pg_assert_false(strpos($default, 'style'), 'no style');
 
@@ -1984,7 +1984,7 @@ function test_comments_widget_canvas_twin_fades_by_place()
 
 	$js = comments_widget_test_source('assets/js/style_designer.src.js');
 	$code_js = '';
-	foreach (array('_parentIndexFor', 'findParent', '_cfNodeAttr', '_sdFindByPropId', '_sdCommentsPlace', '_swKindOf', '_sdCommentsModeOffBindings', '_sdCommentsModeOff', '_sdCommentsBindingOff') as $name) {
+	foreach (array('_parentIndexFor', '_sdListIsSourced', 'findParent', '_cfNodeAttr', '_sdFindByPropId', '_sdCommentsPlace', '_swKindOf', '_sdCommentsModeOffBindings', '_sdCommentsModeOff', '_sdCommentsBindingOff') as $name) {
 		$body = comments_widget_test_js_function($js, $name);
 		pg_assert_true($body !== '', 'style_designer.js has ' . $name . '()');
 		$code_js .= $body . "\n";

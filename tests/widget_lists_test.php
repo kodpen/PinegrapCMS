@@ -212,7 +212,8 @@ function test_widget_lists_descriptor_parity()
 	pg_assert_same(pg_sw_kind_lists('form_list_view'), pg_sw_kind_lists('blog_list'));
 	pg_assert_same(array_keys($args), array_keys(pg_sw_kind_lists('form_item_view')));
 	pg_assert_same(array('product.images', 'product.attributes', 'product.bundle_items', 'catalog.crumbs', 'catalog.active_filters', 'paging.pages'), array_keys(pg_sw_kind_lists('catalog_listing')));
-	pg_assert_same(array(), pg_sw_kind_lists('comments'));
+	pg_assert_same(array('paging.pages'), array_keys(pg_sw_kind_lists('comments')), 'the comments widget: its page links');
+	pg_assert_same(array(), pg_sw_kind_lists('comments_recent'));
 }
 
 // -- the split ---------------------------------------------------------------------

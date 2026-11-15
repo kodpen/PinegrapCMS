@@ -1,6 +1,6 @@
 ---
 name: designer-closed-blocks
-description: Plan (owner 2026-11-13, #9076): components the designer canvas draws as one closed block are listed, then opened into element trees; CB0, CB1 done, CB2 on in designer-closed-blocks-steps.md
+description: Plan (owner 2026-11-13, #9076): components the designer canvas draws as one closed block are listed, then opened into element trees; CB0, CB1 done, CB2 and on in designer-closed-blocks-steps.md
 ---
 
 ## What is asked?

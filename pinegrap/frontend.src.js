@@ -1801,6 +1801,26 @@ var software = {
                     update(true);
                 });
             });
+
+            // The star rating: every star up to the chosen one filled, the
+            // rest in outline (pg_comments_rating_input_html()). Each radio's
+            // label follows it and holds both stars.
+            form.find('[data-pg-comment-stars]').each(function() {
+                var stars = software_$(this);
+                var radios = stars.find('input[name="rating"]');
+
+                radios.on('change', function() {
+                    var chosen = parseInt(radios.filter(':checked').val(), 10) || 0;
+
+                    radios.each(function() {
+                        var on = (parseInt(this.value, 10) <= chosen);
+                        var label = software_$(this).next('label');
+
+                        label.find('[data-pg-star-on]').toggleClass('d-none', !on);
+                        label.find('[data-pg-star-off]').toggleClass('d-none', on);
+                    });
+                });
+            });
         });
     },
 

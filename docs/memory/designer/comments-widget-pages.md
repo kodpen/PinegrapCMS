@@ -14,6 +14,7 @@ module: comments, widgets_comments
 - The `comment_pagination` section: `pg_sw_pagination_html('comments_page', page, pages, 'software_comments')`, links ending at the widget's anchor (the optional `$fragment`; without it the output is as before). Links keep the other query values, `comment` included.
 - A design without the section the visitor gets: right after the comments; beside a list or table that holds them (`_split_widget_tree($tree, true)`'s markers), never inside it. One page: nothing.
 - Canvas twin: the section fades while `per_page` is 0.
+- A design may build the links as a page list instead ("Convert to design elements" on the section): the built-in links then go ([[comments-widget-open-slots]]).
 
 ## Which addresses does a comment get?
 - `pg_comments_widget_page_url($path, $params, $drop, $add, $fragment)`: the current query minus `$drop` and non-scalars, plus `$add`, urlencoded.
