@@ -28452,9 +28452,9 @@ body.erp_aging .pg-report-table th[scope="row"] {
 .pg-report-note {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: 12px;
   margin: 0 0 16px;
-  padding: 12px 16px;
+  padding: 14px 18px;
   font-size: var(--pg-text-base);
   line-height: 1.45;
 }
@@ -28580,7 +28580,7 @@ body.erp_aging .pg-report-table th[scope="row"] {
 .pg-report-frame-foot:not([hidden]) {
   display: flex;
   justify-content: center;
-  padding: 8px;
+  padding: 12px 18px;
   border-top: 1px solid var(--pg-border-color-translucent);
 }
 
