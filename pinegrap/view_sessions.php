@@ -493,7 +493,7 @@ print '<main id="content" class="container-fluid">
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0" style="width:100%">
+                        <table class="table table-hover mb-0 w-100">
                             <thead>
                                 <tr>
                                     <th>' . lang('User') . '</th>
@@ -522,7 +522,7 @@ print '<main id="content" class="container-fluid">
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0" style="width:100%">
+                        <table class="table table-hover mb-0 w-100">
                             <thead>
                                 <tr>
                                     <th>' . lang('User') . '</th>
@@ -548,7 +548,7 @@ print '<main id="content" class="container-fluid">
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <div class="table-responsive">
-                        <table class="table table-hover mb-0" style="width:100%">
+                        <table class="table table-hover mb-0 w-100">
                             <thead>
                                 <tr>
                                     <th>' . lang('User') . '</th>

@@ -222,9 +222,14 @@ function pg_contact_form_name_card($values, $is_new)
         'nickname' => lang('Nickname'),
     );
 
+    // First and last name share a row, six columns each; the salutation and
+    // suffix are short and take four columns, each alone in its row; the
+    // nickname takes the whole row.
+    $spans = array('salutation' => ' pg-field-span-4', 'first_name' => ' md:col-6', 'last_name' => ' md:col-6', 'suffix' => ' pg-field-span-4');
+
     foreach ($fields as $name => $label) {
         $output_fields .= '
-                                        <div class="col-12 my-3">
+                                        <div class="col-12' . ($spans[$name] ?? '') . ' my-3">
                                             <label for="' . $name . '" class="form-label">' . $label . '</label>
                                             <input value="' . pg_contact_form_value($values, $name) . '" type="text" name="' . $name . '" id="' . $name . '" class="form-control" size="30" maxlength="50" />
                                         </div>';
@@ -337,8 +342,9 @@ function pg_contact_form_keyboard_attributes($keyboard)
  * @param int $maxlength
  * @param string $keyboard Phone keyboard (pg_contact_form_keyboard_attributes())
  * @param string $column   The column classes: the whole row for a name, a
- *                         text or a web address, 4 columns for a code or a
- *                         phone (ui/look-field-widths.md)
+ *                         text or a web address, 3 for a city, state, zip
+ *                         or country (one row of quarters), 4 for a code or
+ *                         a phone (ui/look-field-widths.md)
  * @return string
  */
 function pg_contact_form_text_field($values, $name, $label, $maxlength, $keyboard = '', $column = 'col-12')
@@ -400,20 +406,20 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
     $output_business =
         pg_contact_form_text_field($values, 'business_address_1', lang('Business Address') . ' 1', 50) .
         pg_contact_form_text_field($values, 'business_address_2', lang('Business Address') . ' 2', 50) .
-        pg_contact_form_text_field($values, 'business_city', lang('Business City'), 50) .
-        pg_contact_form_text_field($values, 'business_state', lang('Business State'), 50) .
-        pg_contact_form_text_field($values, 'business_country', lang('Business Country'), 50) .
-        pg_contact_form_text_field($values, 'business_zip_code', lang('Business Zip Code'), 10, '', 'col-12 md:col-4') .
+        pg_contact_form_text_field($values, 'business_city', lang('Business City'), 50, '', 'col-12 md:col-3') .
+        pg_contact_form_text_field($values, 'business_state', lang('Business State'), 50, '', 'col-12 md:col-3') .
+        pg_contact_form_text_field($values, 'business_zip_code', lang('Business Zip Code'), 10, '', 'col-12 md:col-3') .
+        pg_contact_form_text_field($values, 'business_country', lang('Business Country'), 50, '', 'col-12 md:col-3') .
         pg_contact_form_text_field($values, 'business_phone', lang('Business Phone'), 50, 'tel', 'col-12 md:col-4') .
         pg_contact_form_text_field($values, 'business_fax', lang('Business Fax'), 50, 'tel', 'col-12 md:col-4');
 
     $output_home =
         pg_contact_form_text_field($values, 'home_address_1', lang('Home Address') . ' 1', 50) .
         pg_contact_form_text_field($values, 'home_address_2', lang('Home Address') . ' 2', 50) .
-        pg_contact_form_text_field($values, 'home_city', lang('Home City'), 50) .
-        pg_contact_form_text_field($values, 'home_state', lang('Home State'), 50) .
-        pg_contact_form_text_field($values, 'home_country', lang('Home Country'), 50) .
-        pg_contact_form_text_field($values, 'home_zip_code', lang('Home Zip Code'), 10, '', 'col-12 md:col-4') .
+        pg_contact_form_text_field($values, 'home_city', lang('Home City'), 50, '', 'col-12 md:col-3') .
+        pg_contact_form_text_field($values, 'home_state', lang('Home State'), 50, '', 'col-12 md:col-3') .
+        pg_contact_form_text_field($values, 'home_zip_code', lang('Home Zip Code'), 10, '', 'col-12 md:col-3') .
+        pg_contact_form_text_field($values, 'home_country', lang('Home Country'), 50, '', 'col-12 md:col-3') .
         pg_contact_form_text_field($values, 'home_phone', lang('Home Phone'), 50, 'tel', 'col-12 md:col-4') .
         pg_contact_form_text_field($values, 'home_fax', lang('Home Fax'), 50, 'tel', 'col-12 md:col-4') .
         pg_contact_form_text_field($values, 'mobile_phone', lang('Mobile Phone'), 50, 'tel', 'col-12 md:col-4');
