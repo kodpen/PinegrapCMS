@@ -11,7 +11,7 @@ module: look_list
 - The screen's title stays in the header (`#header .pg-navhead`); the list table driver adds `span.pg-navhead-count` after the title: 12 px, third text colour, tabular, on the title's line, the description under both.
 - Written on every paint, so it follows the search and the filters: the rows of the condition (server mode) or the rows shown (browser mode). Text: the driver's `countOne` / `countMany` ("{var:1} record(s)"), the number in the page language's grouping.
 - Only on a screen whose body has `pg-measure-list` and holds exactly one `.pg-list-table`; an embedded list (edit screens) gets none. A screen needs no change of its own.
-- A list named in `pg_list_table_no_head_count()` (`includes/fn/list_table.php`) prints `data-pg-list-head-count="0"` and keeps its title alone. All Offers (`view_offers`) is there: a kept screen, the owner asked in the architect's poll 46 (channel message 4850); his yes is a small fix that takes it off the list.
+- A list named in `pg_list_table_no_head_count()` (`includes/fn/list_table.php`) prints `data-pg-list-head-count="0"` and keeps its title alone; the list is empty today. All Offers (`view_offers`, a kept screen) shows its count like every list: Owner (2026-11-15): yes in poll 4850 (channel message 5351), "Evet, görünsün"; its own filter pills stay as they are.
 
 ## How are a list's filters drawn?
 - `pg_list_seg_filters($list, $column, $items, $label, $current)`: a `.pg-seg.pg-list-seg` group of `button.pg-seg-item` with the driver's `data-pg-list-filter` attributes; the driver moves `aria-pressed`, which draws the thumb. An item may carry a `count` (`.pg-seg-count`). On a narrow screen the group scrolls sideways.
