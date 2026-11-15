@@ -1,6 +1,6 @@
 ---
 name: workspace-everyone-mention
-description: The @herkes tag (AE5, #9571): who gets a mention line, which agents it wakes, the reserved handles herkes, everyone and hepsi
+description: The @herkes tag (AE5 #9571, AE5b #9578): who gets a mention line, which agents it wakes, the reserved handles, the @ menu's Everyone row
 ---
 
 ## What is @herkes?
@@ -22,4 +22,5 @@ description: The @herkes tag (AE5, #9571): who gets a mention line, which agents
 - An agent or MCP server that already held `hepsi` keeps it until renamed; the check runs only when a handle is set.
 
 ## Where is it offered?
-- Typed only until AE5b adds "Everyone" on top of the @ menu (`plans/agent-approvers-everyone.md`).
+- Typed, or picked from the @ menu: "Everyone" ("Everyone in the room but you") on top of the channel and discussion composers' list, found by herkes, everyone or the translated word; it inserts `@herkes ` as text (workspace.js, AE5b #9578).
+- Not offered in boxes that borrow the menu without a channel (a task's description and notes, the drawers, the notes screen): the tag rings nobody there.

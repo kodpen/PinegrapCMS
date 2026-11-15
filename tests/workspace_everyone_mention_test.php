@@ -73,3 +73,12 @@ function test_workspace_everyone_reserved()
 		pg_assert_true(ws_mcp_alias_shape_problem($word) !== '', $word . ' is no handle');
 	}
 }
+
+function test_workspace_everyone_menu_wiring()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains("insert: '@herkes '", $js, 'the @ menu offers Everyone as @herkes');
+	pg_assert_contains("if (self.channel && (!needle || ['herkes', 'everyone'", $js, 'only in a channel or discussion composer, found by both words');
+	pg_assert_contains("items.unshift({ label: t('everyone')", $js, 'on top of the list');
+}
