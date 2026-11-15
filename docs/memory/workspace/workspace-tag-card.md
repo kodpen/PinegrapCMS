@@ -4,7 +4,7 @@ description: A Workspace message that is one record tag and nothing else drawn a
 ---
 
 ## Which messages get a card?
-- A message whose whole body, spaces and blank lines around it aside, is one `#` tag (`<#order:7>`): any kind `ws_token_types_pattern()` knows (orders, products, accounts, quotes, tasks, plan items, channels, files...), except `form`, which keeps its own card (`ws_form_cards_html()`), and `message`, whose chip opens the message itself (message-reference.md).
+- A message whose whole body, spaces and blank lines around it aside, is one `#` tag (`<#order:7>`): any kind `ws_token_types_pattern()` knows (orders, products, accounts, quotes, tasks, plan items, channels, files...), except `form`, which keeps its own card (`ws_form_cards_html()`), and `message`, whose chip opens the message itself (message-reference-tag.md).
 - Only whole messages, not a line inside a longer one: two tags, a tag with words, a tag in code, a list, a quote or bold stay text with the chip.
 - Only messages of kind `message`, `decision` and `note` from a person or an application; a guest's text, an MCP agent's answer and a deleted message never.
 

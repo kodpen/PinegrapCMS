@@ -1,5 +1,5 @@
 ---
-name: message-reference
+name: message-reference-tag
 description: The message tag <#message:N> (MR1, message_refs.php): a reference to another message resolved per reader (shown, hidden, gone), its plain words, the popup action, not a reply
 ---
 
