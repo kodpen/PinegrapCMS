@@ -37,6 +37,14 @@ if (!defined('PG_PROFILE_FLOW_SWITCH_WINDOW')) {
 }
 
 /**
+ * How many days the done report stays a notice on the Automatic sends tab
+ * before it gives way to a quiet line under the list.
+ */
+if (!defined('PG_PROFILE_FLOW_REPORT_DAYS')) {
+    define('PG_PROFILE_FLOW_REPORT_DAYS', 30);
+}
+
+/**
  * Whether an event starts the flow a profile became: one recorded more than
  * the window before the switch never does (the profile served its action),
  * one more than the window after it always does, one in between only when
@@ -595,9 +603,12 @@ function pg_profile_flow_switch_tick($budget)
  * @param string     $date    the day it was done, as the reader reads it
  * @param string[]   $actions action => its name on the screen; a key
  *                            missing is shown as it is
+ * @param bool       $quiet   a done report as a quiet line under a list,
+ *                            opening to the same details
+ *                            (pg_profile_flow_switch_quiet())
  * @return string HTML
  */
-function pg_profile_flow_switch_notice($state, $date, $actions = array())
+function pg_profile_flow_switch_notice($state, $date, $actions = array(), $quiet = false)
 {
     if (!is_array($state)) {
         return '';
@@ -649,12 +660,32 @@ function pg_profile_flow_switch_notice($state, $date, $actions = array())
         $left .= '<li>' . $text . (isset($lines[2]) ? '<div class="fg-secondary">' . h(trim($lines[2])) . '</div>' : '') . '</li>';
     }
 
+    $title = lang(array('string' => 'Profiles turned into flows on {var:1}', 'vars' => $date));
+    $counts = lang(array('string' => 'Flows made: {var:1}; profiles left: {var:2}', 'vars' => array(count((array) $plan['done']), count((array) $plan['left']))));
+    $details = (($made !== '') ? '<h3 class="h6 mt-3">' . h(lang('Flows made')) . '</h3><ul class="mb-0">' . $made . '</ul>' : '')
+        . (($left !== '') ? '<h3 class="h6 mt-3">' . h(lang('Profiles left')) . '</h3><ul class="mb-0">' . $left . '</ul>' : '');
+
+    if ($quiet) {
+        return '<details id="profile-flows" class="mt-3 small fg-secondary"><summary>' . h($title . ' · ' . $counts) . '</summary>' . $details . '</details>';
+    }
+
     return $open('success', 'bi-diagram-3')
-        . '<strong>' . h(lang(array('string' => 'Profiles turned into flows on {var:1}', 'vars' => $date))) . '</strong>'
-        . '<details class="mt-2"><summary>' . h(lang(array('string' => 'Flows made: {var:1}; profiles left: {var:2}', 'vars' => array(count((array) $plan['done']), count((array) $plan['left']))))) . '</summary>'
-        . (($made !== '') ? '<h3 class="h6 mt-3">' . h(lang('Flows made')) . '</h3><ul class="mb-0">' . $made . '</ul>' : '')
-        . (($left !== '') ? '<h3 class="h6 mt-3">' . h(lang('Profiles left')) . '</h3><ul class="mb-0">' . $left . '</ul>' : '')
-        . '</details></div></div>';
+        . '<strong>' . h($title) . '</strong>'
+        . '<details class="mt-2"><summary>' . h($counts) . '</summary>' . $details . '</details></div></div>';
+}
+
+/**
+ * Whether a done report has had its time as a notice and is drawn as a
+ * quiet line: 30 days after the conversion was done. Pure.
+ *
+ * @param array|null $state pg_profile_flow_switch_state()
+ * @param int        $now
+ * @return bool
+ */
+function pg_profile_flow_switch_quiet($state, $now)
+{
+    return is_array($state) && (($state['status'] ?? '') === 'done')
+        && ((int) $now - (int) ($state['done_at'] ?? 0) > PG_PROFILE_FLOW_REPORT_DAYS * 86400);
 }
 
 /**

@@ -277,3 +277,28 @@ function test_campaign_profile_switch_screen_door()
 
 	pg_assert_contains('pg_profile_flow_switch_notice(', file_get_contents(PG_FUNCTIONS_DIR . '/messages_automatic.php'), 'the report on the flows side');
 }
+
+// On Automatic sends the done report is a notice for 30 days, then a quiet
+// line under the list opening to the same details.
+function test_campaign_profile_switch_quiet_after_thirty_days()
+{
+	$done = array('status' => 'done', 'done_at' => 1000000, 'switched' => array(1 => 70), 'failed' => array(), 'report' => array(
+		'plan' => array('flows' => array(), 'left' => array(4 => array('string' => 'No start box covers its action yet.')), 'orphans' => array(), 'done' => array(1 => 70)),
+		'profiles' => array(1 => array('name' => 'Shipped', 'action' => 'order_shipped', 'enabled' => 0, 'purpose' => 'transactional'),
+			4 => array('name' => 'Left cart', 'action' => 'order_abandoned', 'enabled' => 1, 'purpose' => 'commercial')),
+		'stats' => array()));
+	$day = 86400;
+
+	pg_assert_true(!pg_profile_flow_switch_quiet($done, 1000000 + 30 * $day), 'a notice through its 30th day');
+	pg_assert_true(pg_profile_flow_switch_quiet($done, 1000000 + 30 * $day + 1), 'quiet after it');
+	pg_assert_true(!pg_profile_flow_switch_quiet(array('status' => 'running', 'done_at' => 0) + $done, 1000000 + 90 * $day), 'a conversion under way is never quiet');
+	pg_assert_true(!pg_profile_flow_switch_quiet(null, 1000000), 'no conversion');
+
+	$quiet = pg_profile_flow_switch_notice($done, '14.11.2026', array(), true);
+
+	pg_assert_true(strpos($quiet, 'alert') === false, 'no alert');
+	pg_assert_contains('<details id="profile-flows" class="mt-3 small fg-secondary"><summary>Profiles turned into flows on 14.11.2026 · Flows made: 1; profiles left: 1</summary>', $quiet);
+	pg_assert_contains('<a href="workspace_flows.php?flow=70">Shipped</a>', $quiet, 'the flows made, linked');
+	pg_assert_contains('<a href="edit_email_campaign_profile.php?id=4">“Left cart”</a>', $quiet, 'the profiles left, linked');
+	pg_assert_contains('!empty($profile_flows_quiet) ? $profile_flows_html', file_get_contents(PG_FUNCTIONS_DIR . '/messages_automatic.php'), 'drawn under the list');
+}

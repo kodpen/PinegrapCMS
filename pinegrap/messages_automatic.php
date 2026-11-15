@@ -55,9 +55,12 @@ if ($automatic_email) {
     // The profiles turned into flows at the update: under way, or its
     // report, here as well as on the profiles' list, which leaves once no
     // profile is left (includes/fn/campaign_profile_switch.php).
+    // After 30 days a done report gives way to a quiet line under the list.
     $profile_flows_state = pg_profile_flow_switch_state();
-    $body .= pg_profile_flow_switch_notice($profile_flows_state, is_array($profile_flows_state)
-        ? get_absolute_time(array('timestamp' => (int) $profile_flows_state['done_at'], 'type' => 'date', 'format' => 'plain_text')) : '', pg_profile_flow_action_names());
+    $profile_flows_quiet = pg_profile_flow_switch_quiet($profile_flows_state, time());
+    $profile_flows_html = pg_profile_flow_switch_notice($profile_flows_state, is_array($profile_flows_state)
+        ? get_absolute_time(array('timestamp' => (int) $profile_flows_state['done_at'], 'type' => 'date', 'format' => 'plain_text')) : '', pg_profile_flow_action_names(), $profile_flows_quiet);
+    $body .= $profile_flows_quiet ? '' : $profile_flows_html;
 }
 
 if (!$automatic_flows) {
@@ -90,6 +93,7 @@ $body .= pg_screen_toolbar(array(
         'search'    => array(pg_list_table_search_box('messages_automatic'), pg_list_sort_menu($self, $sort_columns, $list_state['sorts'], $sort_default)),
     ))
     . pg_list_table_html($list['source'], $list['page'], lang('Automatic sends'))
+    . (!empty($profile_flows_quiet) ? $profile_flows_html : '')
     . pg_messages_recipes_html($list['recipes'])
     . pg_js_bundle_tags('assets/js/pg_list_table.min.js');
 
