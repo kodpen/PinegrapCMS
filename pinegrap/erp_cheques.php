@@ -97,7 +97,7 @@ foreach (erp_cheque_rows(array('direction' => $direction, 'status' => $status, '
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['due_date'])) . '"><a class="pg-link-body-emphasis fw-semibold" href="erp_cheque.php?id=' . (int) $row['id'] . h('&send_to=' . urlencode(REQUEST_URL)) . '">' . h(prepare_form_data_for_output((string) $row['due_date'], 'date')) . '</a>'
                 . ($late ? ' <span class="badge theme-danger">' . lang('Overdue') . '</span>' : '') . '</td>
             <td>' . h($kinds[(string) $row['kind']] ?? '') . '<div class="small fg-secondary">' . ((string) $row['direction'] === 'received' ? lang('Received') : lang('Given out')) . '</div></td>
-            <td style="max-width:240px" class="text-break pg-cell-wrap">' . h((string) $row['account_title']) . (((string) $row['drawer'] !== '') ? '<div class="small fg-secondary text-break">' . h((string) $row['drawer']) . '</div>' : '') . '</td>
+            <td class="text-break pg-cell-wrap erp-cheque-cell-account">' . h((string) $row['account_title']) . (((string) $row['drawer'] !== '') ? '<div class="small fg-secondary text-break">' . h((string) $row['drawer']) . '</div>' : '') . '</td>
             <td class="small text-break pg-cell-wrap">' . h(trim((string) $row['bank_name'] . ' ' . (string) $row['serial_no'])) . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['amount_base'] . '">' . h(erp_money_out_currency((int) $row['amount'], (string) $row['currency'])) . '</td>
             <td><span class="badge theme-' . h($state[1]) . '">' . h($state[0]) . '</span></td>
@@ -134,16 +134,16 @@ if (!$liveform->field_in_session('doc_date')) {
 }
 
 $output_new = (!$ready || $readonly) ? '' : '
-            <form method="post" action="erp_cheques.php" class="card my-7" id="erp_cheque_new" autocomplete="off">
+            <form method="post" action="erp_cheques.php" class="card pg-card my-7" id="erp_cheque_new" autocomplete="off">
                 ' . get_token_field() . '
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('New cheque or note') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('New cheque or note') . '</h2>
                 <div class="card-body">
                     <div class="row g-3">
-                    <div class="col-6 md:col-3">
+                    <div class="col-12 md:col-6">
                         <label class="form-label" for="direction">' . lang('Direction') . '</label>
                         ' . $liveform->output_field(array('type' => 'select', 'id' => 'direction', 'name' => 'direction', 'class' => 'form-control', 'options' => array(lang('Taken from a customer') => 'received', lang('Given to a supplier') => 'given'))) . '
                     </div>
-                    <div class="col-6 md:col-3">
+                    <div class="col-12 md:col-6">
                         <label class="form-label" for="kind">' . lang('Type') . '</label>
                         ' . $liveform->output_field(array('type' => 'select', 'id' => 'kind', 'name' => 'kind', 'class' => 'form-control', 'options' => array($kinds['cheque'] => 'cheque', $kinds['note'] => 'note'))) . '
                     </div>
@@ -164,24 +164,24 @@ $output_new = (!$ready || $readonly) ? '' : '
                         <label class="form-label" for="due_date">' . lang('Due Date') . '</label>
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'due_date', 'data-pg-date' => '', 'name' => 'due_date', 'class' => 'form-control', 'maxlength' => '10', 'required' => 'required')) . '
                         ' . get_date_picker_format() . pg_fields_script() . '                    </div>
-                    <div class="col-6 md:col-3">
+                    <div class="col-12 md:col-4">
                         <label class="form-label" for="serial_no">' . lang('Serial number') . '</label>
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'serial_no', 'name' => 'serial_no', 'class' => 'form-control', 'maxlength' => '40')) . '
                     </div>
-                    <div class="col-6 md:col-3">
+                    <div class="col-12 md:col-6">
                         <label class="form-label" for="bank_name">' . lang('Bank') . '</label>
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'bank_name', 'name' => 'bank_name', 'class' => 'form-control', 'maxlength' => '100')) . '
                     </div>
-                    <div class="col-6 md:col-3">
+                    <div class="col-12 md:col-6">
                         <label class="form-label" for="branch">' . lang('Branch') . '</label>
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'branch', 'name' => 'branch', 'class' => 'form-control', 'maxlength' => '100')) . '
                     </div>
-                    <div class="col-12 md:col-6">
+                    <div class="col-12">
                         <label class="form-label" for="drawer">' . lang('Drawn by') . '</label>
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'drawer', 'name' => 'drawer', 'class' => 'form-control', 'maxlength' => '150')) . '
                         <div class="form-text">' . lang('Whose cheque or note it is, when it is not the account\'s own.') . '</div>
                     </div>
-                    <div class="col-12 md:col-6">
+                    <div class="col-12 pg-field-span-6">
                         <label class="form-label" for="till_id">' . lang('Kept in') . '</label>
                         ' . $liveform->output_field(array('type' => 'select', 'id' => 'till_id', 'name' => 'till_id', 'class' => 'form-control', 'options' => $tills, 'required' => 'required')) . '
                         <div class="form-text">' . lang('A till the store keeps for cheques and notes: the portfolio for the ones taken, one for the ones given. Add it under Cash and Bank first.') . '</div>
@@ -231,7 +231,7 @@ pg_page_shell([
             </nav>
         </div>
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
-            <div class="card my-7" id="erp_cheques">
+            <div class="card pg-card erp-list-card my-7" id="erp_cheques">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
@@ -252,8 +252,8 @@ pg_page_shell([
         </div>
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky my-7" style="top:3.3rem;">
-                <div class="card">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                <div class="card pg-card">
+                    <h2 class="card-header bg-reset border-0 pg-title-status">' . h(lang('Summary')) . '</h2>
                     <div class="card-body">
                         <dl class="row small mb-0">
                             <dt class="col-7 fw-normal fg-secondary">' . h(lang('In the portfolio or at the bank')) . '</dt>
