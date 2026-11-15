@@ -304,4 +304,5 @@ function test_workspace_agent_apps_taken()
 	pg_assert_same(array(5), ws_agent_apps_taken($rows, 3), 'the first agent of a shared application keeps it: its key resolves to it');
 	pg_assert_same(array(4, 5), ws_agent_apps_taken($rows, 7), 'the second agent of a shared application is refused it');
 	pg_assert_same(array(4), ws_agent_apps_taken($rows, 8));
+	pg_assert_same(array(6), ws_agent_apps_taken(array(array('id' => 2, 'kind' => 'app', 'app_id' => 6, 'status' => 'off')), 0), 'an agent switched off still holds its application');
 }

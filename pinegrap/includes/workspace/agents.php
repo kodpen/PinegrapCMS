@@ -947,7 +947,7 @@ function ws_agent_save_check($input, $current, $taken, $user_names, $app_ids, $a
     // A call made with an application's key is answered as one agent, so a
     // second app agent on the same application never sees its own requests.
     if (($values['kind'] === 'app') && in_array($values['app_id'], array_map('intval', (array) $apps_taken), true)) {
-        return $fail(lang('Another agent already works through this application: each agent needs its own application.'), 'app_id');
+        return $fail(lang('Another agent already works through this application: give this agent its own application under Settings › API › Application Access.'), 'app_id');
     }
 
     if ($values['kind'] === 'model') {
