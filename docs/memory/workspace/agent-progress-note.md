@@ -21,4 +21,4 @@ description: An app agent's progress note on a request it holds: the progress ro
 - The agent's instructions (`ws_agent_instructions_request_lines()`) name the route, so `instructions_version` changed.
 
 ## Tests?
-- `tests/workspace_agent_progress_test.php` (PR #PRNUM): the refusals, the brake, the state kept and cleared, the line, the route row, the wiring.
+- `tests/workspace_agent_progress_test.php` (#9782): the refusals, the brake, the state kept and cleared, the line, the route row, the wiring.
