@@ -23,6 +23,7 @@
 - agent-discussion-follow.md: A discussion that follows a registry agent (#8608, #8911): the agent:<id> / model:<id> key, the reaching row read live, what starts it (answer, writer, name), the ask [decision: decisions-made-workspace-12.md, decisions-made-workspace-19.md]
 - agent-discussion-reach.md: A channel's registry agent asked in the channel's discussions by name (A4b3 #8600): ws_agent_reach_rows(), the merged row, its readers, what stays the discussion's own [decision: decisions-made-workspace-12.md]
 - agent-door-knock-trial.md: Push door trial (dev, 2026-11-13): the site's knock reached a signed receiver in the same second; what a session on a personal computer still needs; a routine's fire address answered HTTP 400
+- agent-door-routine-double.md: A routine's address as push door starts a new run per knock, never an open session: the address's help says so; the card warns while a poll also holds the key (#9595)
 - agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (agent:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
 - agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869) [decision: decisions-made-schema-16.md, decisions-made-workspace-14.md]
 - agent-emoji.md: The one fitting emoji an agent leaves on the message that asked it (#8932): the brief, the answer route's emoji, a model assistant's answer tool, what is refused [decision: decisions-made-workspace-19.md]
@@ -50,6 +51,7 @@
 - agent-words-wake.md: An application's API message and an agent's answer wake the agents they name or answer: only a mention or a reply counts, the asking application named, the braked line once an hour [decision: decisions-made-workspace-23.md]
 - approval-agents-api.md: Agents asked to approve over the external API (AE4, #9584): the agents field on create and who may send it, the decide route for an agent's own key, off MCP, WorkspaceApproval.agents
 - approval-agents.md: Agents asked to approve (AE2): ws_approval_agents, who may be asked, the by-hand bound, the wake and brief, an agent's answer and its checks, where agents show [decision: here]
+- approval-assistants.md: Model assistants and Pinegrap AI asked to approve (AE4b, #9608): offered and named, answered in the site's own run with the decide tool, the approval kept in the run's state
 - approval-guest-frozen-channel.md: An approval link sent outside the team opens as closed while the channel is gone or archived, or the request is in an earlier version of a cleared conversation
 - automation-flows-api.md: Automation flows in the external API and MCP with the Workspace off (#9257): the flows module of api_modules(), what it merges, the scopes and their ceiling, how it is tested
 - automation-flows-bell.md: The panel's bell with the Workspace off (#9288): it shows the inbox lines flows write (a run of one's flow ended or failed, Let people know) and no other Workspace line; Let people know runs again [decision: here]
@@ -133,6 +135,7 @@
 - mail-tables.md: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why [decision: decisions-made-schema-2.md]
 - mail-threading.md: Which conversation an incoming mail joins (ws_mail_find_conversation()): threading headers, only for a sender who took part, then the subject tag; why a stranger's reply opens its own (#9012)
 - mail-triage.md: Pinegrap AI's one suggestion on a new e-mail conversation (G8, PR #3787, decision #3744 a): the per-box switch, when it runs, the prompt, the message and its draft, what it never does [decision: decisions-made-product-10.md]
+- mail-undo-send.md: Undo send (IB13): the panel's Send keeps a mail waiting 10 seconds with Undo on a notice; then the browser sends it, the job as fallback; Undo turns it into its draft
 - mail-workspace-off.md: Incoming e-mail with the Workspace off (MA10c): the gate ws_mail_on(), who asks it (tab, actions, jobs, frame, API, bell), a new box kept in the mailbox itself, the test [decision: decisions-made-workspace-22.md]
 - model-assistant-channel-rule.md: Where a model assistant is asked (its own ws_channel_agents row; a channel closed to Pinegrap AI on purpose keeps it out too) and how the shared loop's failure sentences name it (PR #8413) [decision: decisions-made-workspace-9.md]
 - model-assistant-site-log.md: The Site Log line of a model assistant's answer: "@handle answered a request in #channel (its name)" through ws_ai_log_answered() and ws_ai_log_line(); Pinegrap AI's own lines unchanged (#8454)
