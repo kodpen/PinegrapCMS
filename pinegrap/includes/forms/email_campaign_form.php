@@ -181,7 +181,7 @@ function pg_email_campaign_from_card($values, $readonly = false)
         } elseif ($name == 'from_name') {
             $fields[$name] = '<input value="' . h($values[$name]) . '" type="text" class="form-control" id="from_name" name="from_name" maxlength="100" />';
         } else {
-            $fields[$name] = '<input value="' . h($values[$name]) . '" type="text" class="form-control text-end" id="' . $name . '" name="' . $name . '" maxlength="100"' . (($name == 'from_email_address') ? ' required' : '') . ' inputmode="email" data-inputmask-alias="email"/>';
+            $fields[$name] = '<input value="' . h($values[$name]) . '" type="text" class="form-control" id="' . $name . '" name="' . $name . '" maxlength="100"' . (($name == 'from_email_address') ? ' required' : '') . ' inputmode="email" data-inputmask-alias="email"/>';
         }
     }
 
@@ -240,7 +240,7 @@ function pg_email_campaign_schedule_card($start_time, $readonly = false, $enable
     } else {
         $field =
             '<input value="' . prepare_form_data_for_output($start_time, 'date and time') . '" type="text" maxlength="19" class="form-control" id="start_time" name="start_time" data-pg-datetime />
-            <div class="text-end form-text">' . lang('Leave blank to send as soon as possible.') . '</div>
+            <div class="form-text">' . lang('Leave blank to send as soon as possible.') . '</div>
             ' . get_date_time_picker_format() . pg_fields_script();
     }
 

@@ -164,7 +164,7 @@ if (!$_POST) {
         $output_status = '<label class="form-label" for="status">' . lang('Status') . '</label>
             <select id="status" name="status" class="form-control">' .  $output_status_options . '</select>';
         
-        $output_bcc_email_address = '<div class="row"><div class="col-12 md:col-auto"><input value="' . h($bcc_email_address) . '" type="text" class="form-control text-end" id="bcc_email_address" aria-label="' . h(lang('BCC E-mail Address')) . '" name="bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"></div></div>';
+        $output_bcc_email_address = '<div class="row"><div class="col-12 md:col-auto"><input value="' . h($bcc_email_address) . '" type="text" class="form-control" id="bcc_email_address" aria-label="' . h(lang('BCC E-mail Address')) . '" name="bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"></div></div>';
 
         $output_buttons = '<button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="bi bi-save me-3" aria-hidden="true"></span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>';
         $output_form_end = '</form>';

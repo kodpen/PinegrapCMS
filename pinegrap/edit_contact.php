@@ -302,7 +302,7 @@ if (!$_POST) {
                                         <div class="col-12 pg-field-span-6 my-3">
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
                                             <div class="input-group">
-                                                <input value="' . $email_address . '" type="text" name="email_address" id="email_address" autocomplete="off" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
+                                                <input value="' . $email_address . '" type="text" name="email_address" id="email_address" autocomplete="off" class="form-control" maxlength="100" inputmode="email" data-inputmask-alias="email" />
                                                 <a class="btn btn-solid theme-primary" href="mailto:' . $email_address . '" aria-label="' . h(lang('Send Email')) . '"><span class="material-icons" aria-hidden="true">email</span></a>
                                             </div>
                                         </div>

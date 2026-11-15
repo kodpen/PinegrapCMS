@@ -170,7 +170,7 @@ if (!$_POST) {
                                             <label class="form-label md:mb-0" for="entered_email_address">' . lang('Also send message to the following e-mail address') . ':</label>
                                         </div>
                                         <div class="col-12 md:col-6">
-                                            <input type="text" class="form-control text-end" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
+                                            <input type="text" class="form-control" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
                                         </div>
                                     </div>
                                 </div>

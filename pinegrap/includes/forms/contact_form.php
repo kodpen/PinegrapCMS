@@ -222,9 +222,10 @@ function pg_contact_form_name_card($values, $is_new)
         'nickname' => lang('Nickname'),
     );
 
-    // A name takes the whole row; the salutation and suffix are short and
-    // take four columns of it, each alone in its row.
-    $spans = array('salutation' => ' pg-field-span-4', 'suffix' => ' pg-field-span-4');
+    // First and last name share a row, six columns each; the salutation and
+    // suffix are short and take four columns, each alone in its row; the
+    // nickname takes the whole row.
+    $spans = array('salutation' => ' pg-field-span-4', 'first_name' => ' md:col-6', 'last_name' => ' md:col-6', 'suffix' => ' pg-field-span-4');
 
     foreach ($fields as $name => $label) {
         $output_fields .= '
@@ -344,9 +345,16 @@ function pg_contact_form_keyboard_attributes($keyboard)
  */
 function pg_contact_form_text_field($values, $name, $label, $maxlength, $keyboard = '')
 {
-    // A name, an address or a web address takes the whole row; a zip code,
-    // a phone or a fax four of the twelve columns, side by side.
-    $span = (preg_match('/_(zip_code|phone|fax)$/', $name) ? ' md:col-4' : '');
+    // An address line, a name or a web address takes the whole row; city,
+    // state, zip code and country share one row in quarters; the phones and
+    // faxes share one row in thirds.
+    $span = '';
+
+    if (preg_match('/_(city|state|zip_code|country)$/', $name)) {
+        $span = ' md:col-3';
+    } elseif (preg_match('/_(phone|fax)$/', $name)) {
+        $span = ' md:col-4';
+    }
 
     return '
                                         <div class="col-12' . $span . ' my-3">
@@ -407,8 +415,8 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
         pg_contact_form_text_field($values, 'business_address_2', lang('Business Address') . ' 2', 50) .
         pg_contact_form_text_field($values, 'business_city', lang('Business City'), 50) .
         pg_contact_form_text_field($values, 'business_state', lang('Business State'), 50) .
-        pg_contact_form_text_field($values, 'business_country', lang('Business Country'), 50) .
         pg_contact_form_text_field($values, 'business_zip_code', lang('Business Zip Code'), 10) .
+        pg_contact_form_text_field($values, 'business_country', lang('Business Country'), 50) .
         pg_contact_form_text_field($values, 'business_phone', lang('Business Phone'), 50, 'tel') .
         pg_contact_form_text_field($values, 'business_fax', lang('Business Fax'), 50, 'tel');
 
@@ -417,8 +425,8 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
         pg_contact_form_text_field($values, 'home_address_2', lang('Home Address') . ' 2', 50) .
         pg_contact_form_text_field($values, 'home_city', lang('Home City'), 50) .
         pg_contact_form_text_field($values, 'home_state', lang('Home State'), 50) .
-        pg_contact_form_text_field($values, 'home_country', lang('Home Country'), 50) .
         pg_contact_form_text_field($values, 'home_zip_code', lang('Home Zip Code'), 10) .
+        pg_contact_form_text_field($values, 'home_country', lang('Home Country'), 50) .
         pg_contact_form_text_field($values, 'home_phone', lang('Home Phone'), 50, 'tel') .
         pg_contact_form_text_field($values, 'home_fax', lang('Home Fax'), 50, 'tel') .
         pg_contact_form_text_field($values, 'mobile_phone', lang('Mobile Phone'), 50, 'tel');
@@ -465,12 +473,12 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                         <div class="col-12 pg-field-span-4 my-3">
                                             <label for="member_id" class="form-label">' . h(MEMBER_ID_LABEL) . '</label>
                                             <input value="' . pg_contact_form_value($values, 'member_id') . '" type="text" name="member_id" id="member_id" class="form-control" maxlength="50" />
-                                            <div class="form-text text-end">' . lang('leave blank for no membership') . '</div>
+                                            <div class="form-text">' . lang('leave blank for no membership') . '</div>
                                         </div>
                                         <div class="col-12 pg-field-span-3 my-3">
                                             <label for="expiration_date" class="form-label">' . lang('Membership Expiration Date') . '</label>
                                             <input value="' . pg_contact_form_value($values, 'expiration_date') . '" type="text" name="expiration_date" id="expiration_date" class="form-control" data-pg-date />
-                                            <div class="form-text text-end">' . lang('leave blank for lifetime membership') . '</div>
+                                            <div class="form-text">' . lang('leave blank for lifetime membership') . '</div>
                                             ' . get_date_picker_format() . pg_fields_script() . '
                                         </div>
                                     </div>
@@ -538,7 +546,7 @@ function pg_contact_form_affiliate_card($values)
                         <div class="col-12 md:col-4 my-3">
                             <label for="affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
                             <input value="' . pg_contact_form_value($values, 'affiliate_code') . '" type="text" name="affiliate_code" id="affiliate_code" class="form-control" maxlength="100" />
-                            <div class="form-text text-end">' . lang('leave blank to generate a code when the affiliate is approved') . '</div>
+                            <div class="form-text">' . lang('leave blank to generate a code when the affiliate is approved') . '</div>
                         </div>
                         <div class="col-12 md:col-3 my-3">
                             <label for="affiliate_commission_rate" class="form-label">' . lang('Commission Rate') . '</label>
@@ -546,7 +554,7 @@ function pg_contact_form_affiliate_card($values)
                                 <span class="form-adorn-text" aria-hidden="true">%</span>
                                 <input value="' . h(pg_contact_form_commission_rate_value($values['affiliate_commission_rate'] ?? '')) . '" type="text" name="affiliate_commission_rate" id="affiliate_commission_rate" class="form-ghost" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-allowminus="false" data-inputmask-max="100" data-inputmask-placeholder="0" style="text-align: right;">
                             </label>
-                            <div class="form-text text-end">' . lang(array('string'=>'leave blank for default: {var:1}%','vars'=>pg_format_number(AFFILIATE_DEFAULT_COMMISSION_RATE, 2))) . '</div>
+                            <div class="form-text">' . lang(array('string'=>'leave blank for default: {var:1}%','vars'=>pg_format_number(AFFILIATE_DEFAULT_COMMISSION_RATE, 2))) . '</div>
                         </div>
                     </div>
                 </div>
