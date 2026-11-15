@@ -1570,7 +1570,7 @@ function local_sale_render_done($r, $user)
         . ($r['retry_invoice'] ? '<button type="button" class="btn btn-sm btn-outline theme-success no-submit" data-sale-invoice="' . (int) $r['order_id'] . '"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Try the invoice again') . '</button>' : '')
         . '</div>'
         . '<div class="pg-sale-next"><span>' . lang('Scanning the next product starts a new sale.') . '</span>'
-        . '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 no-submit" data-sale-new>' . lang('New sale') . ' <kbd>Enter</kbd></button></div>'
+        . '<button type="button" class="pg-button pg-button-fill no-submit" data-sale-new>' . lang('New sale') . ' <kbd>Enter</kbd></button></div>'
         . '</div>';
 
     return $output;

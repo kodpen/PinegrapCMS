@@ -588,7 +588,7 @@ function pg_lbs_move_card_html($legacy_id, $trial, $pages, $moved, $reports, $bu
     $id = (int)$legacy_id;
     $off = $busy ? ' disabled' : '';
     $outline = 'btn btn-sm btn-outline theme-secondary rounded-pill px-4';
-    $solid = 'btn btn-sm btn-solid theme-primary rounded-pill px-4';
+    $solid = 'pg-button pg-button-fill';
     $form = function ($direction, $inner) use ($id) {
         return '<form method="post" action="legacy_to_designer.php" class="d-inline">' . get_token_field()
             . '<input type="hidden" name="bootstrap_move" value="' . $direction . '"><input type="hidden" name="design" value="' . $id . '">' . $inner . '</form>';

@@ -181,8 +181,8 @@ $title = $is_collection ? lang('Receipt') : lang('Payment');
 // The receipt itself.
 $output_header = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span>' . h($title) . ' #' . $cash_id . '</span>
+                <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <h2 class="pg-title-status mb-0">' . h($title) . ' #' . $cash_id . '</h2>
                     ' . ($is_cancelled
                         ? '<span class="badge theme-secondary"><i class="bi bi-x-circle me-1"></i>' . lang('Cancelled') . '</span>'
                         : '<span class="badge ' . ($is_collection ? 'theme-success' : 'theme-danger') . '">' . ($is_collection ? lang('Money in') : lang('Money out')) . '</span>') . '
@@ -254,8 +254,8 @@ if ($output_allocation_rows === '') {
 
 $output_allocations = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap justify-content-between align-items-center gap-3">
-                    <span>' . lang('Allocations') . '</span>
+                <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <h2 class="pg-title-section mb-0">' . lang('Allocations') . '</h2>
                     <span class="small fw-normal fg-secondary">' . lang('Unallocated') . ': <span class="fw-bold ' . (($unallocated > 0 && !$no_allocation) ? 'fg-warning' : '') . '" id="unallocated_amount">' . $money($no_allocation ? 0 : $unallocated) . '</span></span>
                 </div>
                 <div class="card-body">
@@ -312,9 +312,9 @@ if (!$readonly && !$no_allocation && ($unallocated > 0)) {
                 <input type="hidden" name="id" value="' . $cash_id . '" />
                 <input type="hidden" name="erp_action" value="allocate" />
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 pg-title-section">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Allocate to open invoices') . '
-                    </div>
+                    </h2>
                     <div class="card-body">
                         <div class="form-text mb-3">' . lang('The amounts are suggested oldest first; change them before saving. Nothing is written until you save.') . '</div>
                         <div class="table-responsive">

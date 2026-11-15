@@ -73,8 +73,8 @@ function test_screen_toolbar_button_recipes()
 		),
 	));
 
-	pg_assert_contains('<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add.php"><i class="bi bi-plus-lg me-2" aria-hidden="true"></i>New</a>', $html, 'primary recipe');
-	pg_assert_contains('<a class="btn btn-sm btn-text theme-secondary" href="import.php">Import</a><a class="btn" href="x.php">X</a>', $html, 'secondary recipe, list order kept');
+	pg_assert_contains('<a class="pg-button pg-button-fill" href="add.php"><i class="bi bi-plus-lg" aria-hidden="true"></i>New</a>', $html, 'primary recipe');
+	pg_assert_contains('<a class="pg-button pg-button-ghost" href="import.php">Import</a><a class="btn" href="x.php">X</a>', $html, 'secondary recipe, list order kept');
 }
 
 function test_screen_toolbar_escaping()

@@ -400,6 +400,7 @@
 - look-report-screens.md: Report screens in look A (DL5e, #8981): order, visitor, shipping and ERP tax reports; head, strip, tools row, table frame, drawer, the choices made and what is not done
 - look-screen-widths.md: Root panel screens outside the look's widths (no pg-measure-edit, -list or -report, or a container of their own) on 2026-11-13, and the PR that took each (#9230, #9330, #9249) [decision: decisions-made-panel-7.md, decisions-made-panel-8.md]
 - look-settings-screens.md: Settings screens in look A (DL5d, #8952): dialog size, rail, head and foot; cards as a title over an inner card of rows, page and dialog; 32 px fields, switch; what is not done
+- look-shared-buttons.md: LM2 (#9680): the toolbar's primary pill and labelled text buttons as look A's .pg-button, the save bar's buttons by role; what was left and why [decision: here]
 - look-switch.md: The look's switch (#9197): .pg-switch and the settings card and report drawer .switch, one drawing: white 18 px thumb, accent gradient, focus ring, disabled; the missing thumb [decision: decisions-made-panel-7.md, decisions-made-panel-8.md, decisions-made-product-48.md]
 - look-type-and-recipes.md: Look A's typeface (self-hosted Inter 4.1), the type scale and tone tokens, and the recipe classes in backend.src.css (#8879): which class draws which part, the block's place, the unlayered body family
 - mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording

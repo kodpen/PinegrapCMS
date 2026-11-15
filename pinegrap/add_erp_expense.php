@@ -203,22 +203,22 @@ if (!$_POST) {
                         <input type="hidden" name="pay" value="0" />
                         <div class="form-text mb-3">' . lang('Paying from a till needs the right to the tills; the expense is recorded as to pay.') . '</div>
                         <div class="row" id="erp_expense_pay_now" hidden>') . '
-                            <div class="col-12 lg:col-5 my-3">
+                            <div class="col-12 md:col-6 my-3">
                                 <label for="cash_account_id" class="form-label">' . lang('Paid from') . '</label>
                                 ' . $liveform->output_field(array('type' => 'select', 'id' => 'cash_account_id', 'name' => 'cash_account_id', 'class' => 'form-control', 'options' => $till_options))
                                 . erp_no_till_hint($till_count) . '
                             </div>
-                            <div class="col-12 sm:col-6 lg:col-4 my-3">
+                            <div class="col-12 md:col-6 my-3">
                                 <label for="payment_method" class="form-label">' . lang('Payment Method') . '</label>
                                 ' . $liveform->output_field(array('type' => 'select', 'id' => 'payment_method', 'name' => 'payment_method', 'class' => 'form-control', 'options' => $method_options)) . '
                             </div>
-                            <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="paid_date" class="form-label">' . lang('Paid on') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'paid_date', 'data-pg-date' => '', 'name' => 'paid_date', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off', 'placeholder' => lang('the expense date'))) . '
                             </div>
                         </div>
                         <div class="row" id="erp_expense_pay_later">
-                            <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="col-12 pg-field-span-3 my-3">
                                 <label for="due_date" class="form-label">' . lang('Due Date') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'due_date', 'data-pg-date' => '', 'name' => 'due_date', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off')) . '
                                 <div class="form-text">' . lang('Optional. Shown on the expenses list when it has passed.') . '</div>
@@ -232,7 +232,7 @@ if (!$_POST) {
         $paid_currency = strtoupper((string) $existing['currency']);
         $output_money_card = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 pg-title-section">' . lang('Amount and tax') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Amount and tax') . '</h2>
                     <div class="card-body">
                         <div class="form-field">
                             <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'tax_deductible', 'name' => 'tax_deductible', 'value' => '1', 'class' => 'no-bs')) . '</div>
@@ -249,32 +249,32 @@ if (!$_POST) {
     } else {
         $output_money_card = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 pg-title-section">' . lang('Amount and tax') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Amount and tax') . '</h2>
                     <div class="card-body">
                         <div class="row align-items-end">
-                            <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="amount" class="form-label">' . lang('Amount') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" id="erp_expense_currency_label" aria-hidden="true">' . $currency_label . '</span>
                                     ' . $liveform->output_field(array('type' => 'text', 'id' => 'amount', 'name' => 'amount', 'class' => 'form-ghost text-end', 'maxlength' => '15', 'inputmode' => 'decimal', 'autocomplete' => 'off', 'required' => 'required')) . '
                                 </label>
                             </div>
-                            <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <div class="form-field mb-3">
                                     <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'includes_tax', 'name' => 'includes_tax', 'value' => '1', 'class' => 'no-bs')) . '</div>
                                     <label class="" for="includes_tax">' . h(erp_tax_label('included')) . '</label>
                                 </div>
                             </div>
-                            <div class="col-6 lg:col-2 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="tax_rate" class="form-label">' . h(erp_tax_label('percent')) . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'tax_rate', 'name' => 'tax_rate', 'class' => 'form-control text-end', 'maxlength' => '7', 'inputmode' => 'decimal', 'autocomplete' => 'off', 'datalist' => 'erp_expense_rates')) . '
                                 <datalist id="erp_expense_rates">' . $output_rates . '</datalist>
                             </div>
-                            <div class="col-6 lg:col-2 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="tax_amount" class="form-label">' . h(erp_tax_label('amount')) . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'tax_amount', 'name' => 'tax_amount', 'class' => 'form-control text-end', 'maxlength' => '15', 'inputmode' => 'decimal', 'autocomplete' => 'off', 'placeholder' => lang('worked out'))) . '
                             </div>
-                            <div class="col-12 lg:col-2 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <div class="form-field mb-3">
                                     <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'tax_deductible', 'name' => 'tax_deductible', 'value' => '1', 'class' => 'no-bs')) . '</div>
                                     <label class="" for="tax_deductible">' . lang('Tax taken back') . '</label>
@@ -287,11 +287,11 @@ if (!$_POST) {
                         ))) . '</div>
                         ' . ($fx_on
                             ? '<div class="row mt-3">
-                            <div class="col-12 sm:col-4 lg:col-3 my-3">
+                            <div class="col-12 md:col-6 my-3">
                                 <label for="currency" class="form-label">' . lang('Currency') . '</label>
                                 ' . $liveform->output_field(array('type' => 'select', 'id' => 'currency', 'name' => 'currency', 'class' => 'form-control', 'options' => erp_fx_currency_options())) . '
                             </div>
-                            <div class="col-12 sm:col-4 lg:col-3 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="exchange_rate" class="form-label">' . lang('Exchange Rate') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'exchange_rate', 'name' => 'exchange_rate', 'class' => 'form-control text-end', 'maxlength' => '20', 'inputmode' => 'decimal', 'autocomplete' => 'off', 'placeholder' => lang('rate of the expense date'))) . '
                                 <div class="form-text">' . h(lang(array('string' => '{var:1} per unit; leave empty for the recorded rate of the expense date.', 'vars' => $base))) . '</div>
@@ -321,22 +321,22 @@ if (!$_POST) {
 
         $output_repeat = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 pg-title-section">' . lang('Repeat') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Repeat') . '</h2>
                     <div class="card-body">
                         <div class="form-field mb-3">
                             <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'repeat', 'name' => 'repeat', 'value' => '1', 'class' => 'no-bs')) . '</div>
                             <label class="" for="repeat">' . lang('Write this expense again by itself (rent, the internet line, a subscription)') . '</label>
                         </div>
                         <div class="row" id="erp_expense_repeat_fields">
-                            <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="col-12 md:col-6 my-3">
                                 <label for="repeat_every" class="form-label">' . lang('How often') . '</label>
                                 <select class="form-control" id="repeat_every" name="repeat_every">' . $period_options . '</select>
                             </div>
-                            <div class="col-6 lg:col-2 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="repeat_due_days" class="form-label">' . lang('Due after (days)') . '</label>
                                 ' . $liveform->output_field(array('type' => 'number', 'id' => 'repeat_due_days', 'name' => 'repeat_due_days', 'class' => 'form-control', 'min' => '0', 'max' => '365', 'placeholder' => '0')) . '
                             </div>
-                            <div class="col-6 lg:col-3 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="repeat_end" class="form-label">' . lang('Until (optional)') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'repeat_end', 'data-pg-date' => '', 'name' => 'repeat_end', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off')) . '
                             </div>
@@ -366,7 +366,7 @@ if (!$_POST) {
     if ($kept === null) {
         $output_file = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 pg-title-section">' . lang('The receipt') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('The receipt') . '</h2>
                     <div class="card-body">
                         <label for="receipt_file" class="form-label">' . lang('A picture or a PDF of the receipt') . '</label>
                         <input class="form-control" type="file" id="receipt_file" name="receipt_file" accept="image/jpeg,image/png,image/webp,application/pdf" />
@@ -401,34 +401,34 @@ if (!$_POST) {
                 <div class="row">
                 <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 pg-title-section">' . lang('What was spent') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('What was spent') . '</h2>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="expense_date" class="form-label">' . lang('Date') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'expense_date', 'name' => 'expense_date', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off', 'required' => 'required') + ($paid ? array('readonly' => 'readonly') : array('data-pg-date' => ''))) . '
                             </div>
-                            <div class="col-12 sm:col-6 lg:col-4 my-3">
+                            <div class="col-12 md:col-6 my-3">
                                 <label for="category_id" class="form-label">' . lang('Category') . '</label>
                                 ' . $liveform->output_field(array('type' => 'select', 'id' => 'category_id', 'name' => 'category_id', 'class' => 'form-control', 'options' => $category_options, 'required' => 'required')) . '
                             </div>
-                            <div class="col-12 lg:col-5 my-3">
+                            <div class="col-12 my-3">
                                 <label for="supplier" class="form-label">' . lang('Supplier') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'supplier', 'name' => 'supplier', 'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off', 'datalist' => 'erp_expense_suppliers', 'placeholder' => lang('Where it was spent'))) . '
                                 <datalist id="erp_expense_suppliers">' . $output_suppliers . '</datalist>
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="col-12 md:col-4 my-3">
                                 <label for="supplier_tax_number" class="form-label">' . h(erp_tax_id_label()) . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'supplier_tax_number', 'name' => 'supplier_tax_number', 'class' => 'form-control', 'maxlength' => '32', 'autocomplete' => 'off', 'inputmode' => ((pg_erp_store_country() === 'TR') ? 'numeric' : ''))) . '
                                 <div class="form-text">' . lang('The supplier\'s, as printed on the receipt.') . '</div>
                             </div>
-                            <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="col-12 md:col-4 my-3">
                                 <label for="document_no" class="form-label">' . lang('Receipt number') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'document_no', 'name' => 'document_no', 'class' => 'form-control', 'maxlength' => '64', 'autocomplete' => 'off')) . '
                             </div>
-                            <div class="col-12 lg:col-6 my-3">
+                            <div class="col-12 my-3">
                                 <label for="description" class="form-label">' . lang('Description') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'description', 'name' => 'description', 'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                             </div>
@@ -439,7 +439,7 @@ if (!$_POST) {
                 ' . $output_money_card . '
 
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 pg-title-section">' . lang('Payment') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Payment') . '</h2>
                     <div class="card-body">' . $output_payment . '
                     </div>
                 </div>
@@ -451,7 +451,7 @@ if (!$_POST) {
                 <div class="col-12 lg:col-4 2xl:col-3 order-2">
                     <div class="position-sticky" style="top:3.3rem;">
                         <div class="card my-7">
-                            <div class="card-header bg-reset border-0 pg-title-section">' . lang('Total') . '</div>
+                            <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Total') . '</h2>
                             <div class="card-body">' . $output_figures . '
                             </div>
                         </div>

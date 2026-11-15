@@ -10,6 +10,13 @@ description: Field widths of the add and edit screens in look A (DL5c, #9658): t
 - Fields side by side take the span on the column (`col-12 md:col-N`). A narrow field alone in its row takes `col-12 pg-field-span-N` (N 3, 4 or 6): the column keeps the row, so the label stays on one line and the help text runs the row's width; only the control is capped to N columns (architect, channel 25 message 4234).
 - A field's other classes (`my-3`, a row's style and id) stay. Radios, switches and the card's full-width wrappers were left as they were.
 
+## What did the architect answer where the sheet is silent?
+- Architect, 2026-11-15: a date or a time 3 columns (3 + 3 side by side), a date with its time in one input 4.
+- Architect, 2026-11-15: a phone 4, an e-mail 6, a web address the whole row.
+- Architect, 2026-11-15: spans from md (768 px), whole row below; a value cut at 1024 px may take the next span up from lg.
+- Architect, 2026-11-15: one 16 px column gap rule; `my-3` leaves all fields in one later step.
+- Architect, 2026-11-15: a narrow field alone in its row keeps the row (`pg-field-span-N`): label on one line, help the row's width, only the control spans.
+
 ## Where is the gap set?
 - In the "Look A: add and edit screens" block of `backend.src.css`: `body.pg-measure-edit .order-1 .card-body .row { --bs-gutter-x: 16px; }` (Bootstrap's row gutter was 24 px), and the `.pg-field-span-N` rules (from md, every child but `.form-label`, `.form-text`, `.invalid-feedback`, `legend` gets `max-width: calc((100% + gutter) * N / 12 - gutter)`). The vertical spacing (`my-3`) is unchanged.
 

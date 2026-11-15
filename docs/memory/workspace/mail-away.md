@@ -19,7 +19,7 @@ description: "I am away" in My e-mail settings (IB12): ws_profiles.mail_away (11
 
 ## Who holds a conversation given to an away person?
 - `ws_mail_away_stand_in($user_id, $channel)` gives the stand-in while the person is away today and the stand-in is a member who may answer there (`ws_mail_can_answer()`), else the person. `ws_mail_conversation_check()` asks it when somebody gives a conversation to another person (panel and API); taking it oneself stays. The stand-in is told (`mail_assigned`).
-- IB11's "Give it to" rule calls the same function.
+- IB11's "Give it to" rule (`ws_mail_rules_run()`) calls the same function after its team and answer check and writes and tells the holder it gives (#9669).
 - At ingest nothing moves: the holder keeps an ongoing conversation and its `mail_customer` notice.
 
 ## What stands on My calendar?

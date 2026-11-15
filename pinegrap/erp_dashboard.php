@@ -454,7 +454,7 @@ echo pg_page_shell(array(
     // may use it (validate_ecommerce_access).
     . ((((int) $user['role'] < 3) || !empty($user['manage_ecommerce'])) ? '
     <div class="pg-toolbar" id="button_bar">
-        <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('Add Local Order') . '</a>
+        <a class="pg-button pg-button-fill" href="add_order.php"><i class="bi bi-cart-plus" aria-hidden="true"></i>' . lang('Add Local Order') . '</a>
     </div>' : '') . '
     <div class="row">' . $output_cards . '
     </div>

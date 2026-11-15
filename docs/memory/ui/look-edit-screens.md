@@ -17,18 +17,15 @@ description: Add and edit screens in look A (DL5c, #8934): the edit width on eve
 - Card titles in `includes/forms/` and the add/edit screens are `h2.card-header.bg-reset.border-0.pg-title-section` (17 / 650, sentence case); in the status column the block sets the status title (15 / 650). The old `text-uppercase h5 fg-primary fw-bold` had to leave the markup: Bootstrap 6's utilities layer comes after `custom`, so no panel rule can beat them.
 
 ## How wide is a field?
-- Architect, 2026-11-15: a date or a time 3 columns (3 + 3 side by side), a date with its time in one input 4.
-- Architect, 2026-11-15: a phone 4, an e-mail 6, a web address the whole row.
-- Architect, 2026-11-15: spans from md (768 px), whole row below; a value cut at 1024 px may take the next span up from lg.
-- Architect, 2026-11-15: one 16 px column gap rule; `my-3` leaves all fields in one later step.
-- Architect, 2026-11-15: a narrow field alone in its row keeps the row (`pg-field-span-N`): label on one line, help the row's width, only the control spans. How: `look-field-widths.md`.
+- As wide as its content on the card's 12-column grid; the architect's answers of 2026-11-15 and the rules: `look-field-widths.md`.
 
 ## What is the save bar?
 - The shared `nav.buttons.navigation` straight in the `order-3` column is the floating bar; a bar left in the form column or in `order-4` stays the old centred pill. Under a full-width table the bar's column is a second `order-3` after the table's (product group) (selector beside `.pg-floatbar`): from 576 px 56 px high, buttons at the right, 34 px high with 10 px corners (the shared bar's pill `!important` is overridden). A phone keeps the shared two-per-row bar.
+- Its buttons are drawn by their role in the same block, at every width, the markup keeping its Bootstrap classes (#9680): the bar's one solid success or primary button is the save action in `.pg-button-fill`'s values, a `theme-danger` button (solid or outline) a ghost in the danger rose (`--pg-tone-rose-text`, hover `--pg-hover`), every other button `.pg-button-quiet`. No add or edit bar has two solid success or primary buttons; a screen that adds one makes two fills.
 
 ## What is not done yet?
 - The card's line under the title. Field spans: with each screen's group of the panel-old-screens plan; kept screens wait for the owner (`look-field-widths.md`).
-- The bar's buttons keep their Bootstrap colours, not fill, quiet and ghost; no unsaved note at its left.
+- The unsaved note at the bar's left is not drawn.
 - `product_builder.php`'s own section titles stay its own.
 
 Related: docs/memory/ui/look-page-widths.md, docs/memory/ui/look-edit-screens-wrapped-cards.md, docs/memory/ui/look-field-widths.md

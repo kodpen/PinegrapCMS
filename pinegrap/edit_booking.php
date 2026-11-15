@@ -327,7 +327,7 @@ if ($booking_id === 0) {
                                 </div>
                             </div>
                         </div>
-                        <noscript><button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 mt-5">' . h(lang('Show free times')) . '</button></noscript>
+                        <noscript><button type="submit" class="pg-button pg-button-fill mt-5">' . h(lang('Show free times')) . '</button></noscript>
                     </div>
                 </form>
                 <script>

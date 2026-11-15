@@ -305,9 +305,11 @@ function ws_mail_remind_wake($row, $now)
     $viewer = is_array($user) ? ws_viewer($user) : null;
 
     $no_answer = ((string) $row['kind'] === WS_MAIL_REMIND_NO_ANSWER);
-    // The mail it waits on an answer to was undone into a draft or cancelled.
-    $left = !$no_answer || ws_mail_no_answer_left((string) db_value("SELECT send_state FROM ws_mail_items
-        WHERE id = '" . (int) $row['item_id'] . "' AND direction = 'out'"));
+    // The mail it waits on an answer to was undone into a draft, cancelled,
+    // or its row is gone (the undone draft deleted or sent again as a new item).
+    $item = $no_answer ? db_item("SELECT send_state FROM ws_mail_items
+        WHERE id = '" . (int) $row['item_id'] . "' AND direction = 'out'") : null;
+    $left = !$no_answer || ws_mail_no_answer_left($item ? (string) $item['send_state'] : null);
 
     // Gone, or no longer the person's to read: the row goes with nothing told.
     if (!$left || !$channel || !$viewer || empty($viewer['member']) || !ws_can_read_channel($viewer, $channel)) {
@@ -424,13 +426,19 @@ function ws_mail_no_answer_due($days, $send_at, $now)
 
 /**
  * Whether the mail a no-answer reminder waits on still left or is leaving:
- * one undone into a draft, or cancelled before its time, is not. Pure.
+ * one undone into a draft, cancelled before its time, or whose row is gone
+ * (null: the undone draft was deleted or sent again) is not. '' is a mail
+ * written before the send state was kept. Pure.
  *
- * @param string $state ws_mail_items.send_state
+ * @param string|null $state ws_mail_items.send_state, null for no row
  * @return bool
  */
 function ws_mail_no_answer_left($state)
 {
+    if ($state === null) {
+        return false;
+    }
+
     return in_array((string) $state, array('', 'sent', 'queued', 'later', 'external'), true);
 }
 

@@ -798,7 +798,7 @@ if (!$_POST) {
             }
 
             $output_option_field = '
-                                        <div class="col-12 md:col-4">
+                                        <div class="col-12 md:col-6">
                                             <div class="form-field">
                                                 <label class="form-label" for="option_id">' . h(lang('Product Attribute')) . '</label>
                                                 <select class="form-control" id="option_id" name="option_id">
@@ -831,19 +831,19 @@ if (!$_POST) {
                         <input type="hidden" name="edit_tax_rate_method">
                         <input type="hidden" name="edit_tax_rate_value">
                         <input type="hidden" name="edit_inventory_quantity">
-                        <div class="card my-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Duplicate Options')) . '</div>
+                        <div class="card pg-card my-7">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Duplicate Options')) . '</h2>
                             <div class="card-body">
                                 <p class="mb-5">' . h(lang('The new letter replaces the 1 character removed from the ID and Short Description fields.')) . '</p>
                                 <div class="row g-5">
-                                    <div class="col-12 md:col-4">
+                                    <div class="col-12 md:col-3">
                                         <div class="form-field">
                                             <label class="form-label" for="lettertodelete">' . h(lang('Number of Letters to Remove')) . '</label>
                                             <input type="number" class="form-control" id="lettertodelete" name="lettertodelete" value="1" min="1" aria-describedby="lettertodelete_help" />
                                             <div class="form-text" id="lettertodelete_help">' . h(lang('Add +1 for each space as well')) . '</div>
                                         </div>
                                     </div>
-                                    <div class="col-12 md:col-4">
+                                    <div class="col-12">
                                         <div class="form-field">
                                             <label class="form-label" for="newletter">' . h(lang('Word or Letter to Add')) . '</label>
                                             <input type="text" class="form-control" id="newletter" name="newletter" />
@@ -861,7 +861,7 @@ if (!$_POST) {
 
         print pg_page_shell([
         'title'=> $heading,
-        'extra classes'=>'products',
+        'extra classes'=>'products pg-measure-list',
         'icon'=>'store',
         'heading'=>$heading,
         'heading_description' => ($subheading ?? '')

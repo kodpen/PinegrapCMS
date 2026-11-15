@@ -270,6 +270,43 @@ function ws_agent_reader_channels($viewer, $agent_id)
 }
 
 /**
+ * The agent's own picture for the card: an https address or a path of
+ * the site, else '' (the card draws the robot mark in a quiet tile). Pure.
+ *
+ * @param string $avatar ws_agents.avatar
+ * @return string
+ */
+function ws_agent_card_avatar($avatar)
+{
+    $avatar = trim((string) $avatar);
+
+    return preg_match('~^(https://|/(?!/))[^\s"\'<>]+$~i', $avatar) ? $avatar : '';
+}
+
+/**
+ * The texts of the agent card in workspace.js.
+ *
+ * @return array key => text
+ */
+function ws_agent_card_js_strings()
+{
+    return array(
+        'ac_state'        => lang('State now'),
+        'ac_waiting'      => lang('Waiting for it'),
+        'ac_requests'     => ws_js_template('{var:1} requests', 1),
+        'ac_model'        => lang('Model'),
+        'ac_seen'         => lang('Last seen'),
+        'ac_today'        => lang('Today'),
+        'ac_today_counts' => ws_js_template('{var:1} answered · {var:2} failed', 2),
+        'ac_high'         => lang('This window is at 90% or more of its limit.'),
+        'ac_wakes'        => lang('Wakes'),
+        'ac_last'         => lang('Last answer here'),
+        'ac_channels'     => lang('Channels'),
+        'ac_mention'      => lang('Mention'),
+    );
+}
+
+/**
  * The agent card of one agent of a channel the reader reads. Null when the
  * agent is not in the channel.
  *
@@ -309,6 +346,7 @@ function ws_agent_card($viewer, $channel, $agent_id, $now)
         'handle'       => (string) $agent['handle'],
         'name'         => (string) $agent['name'],
         'kind'         => (string) $agent['kind'],
+        'avatar'       => ws_agent_card_avatar($agent['avatar'] ?? ''),
         'role'         => ws_agent_role_label($agent['role'] ?? ''),
         'seen'         => $member['seen'],
         'seen_state'   => $member['seen_state'],

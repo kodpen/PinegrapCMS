@@ -435,9 +435,13 @@ function ws_mail_rules_run($box, $conversation_id, $channel, $message_id, $from_
         return '';
     }
 
-    db("UPDATE ws_mail_conversations SET assignee_id = '" . (int) $rule['user_id'] . "', updated_at = '" . (int) $now . "'
+    // A person who is away today hands it to their stand-in, where the
+    // stand-in may answer, as when it is given by hand (mail_away.php).
+    $holder = function_exists('ws_mail_away_stand_in') ? ws_mail_away_stand_in((int) $rule['user_id'], $channel) : (int) $rule['user_id'];
+
+    db("UPDATE ws_mail_conversations SET assignee_id = '" . (int) $holder . "', updated_at = '" . (int) $now . "'
         WHERE id = '" . (int) $conversation_id . "'");
-    ws_notify((int) $rule['user_id'], 'mail_assigned', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $message_id, 'actor_id' => 0));
+    ws_notify((int) $holder, 'mail_assigned', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $message_id, 'actor_id' => 0));
 
     return 'assign';
 }

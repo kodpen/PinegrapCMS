@@ -575,7 +575,7 @@ echo
                     </div>
                     <div class="dialog-footer">
                         <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
-                        <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 no-submit" id="pg_sale_account_go">' . lang('Open and pick') . '</button>
+                        <button type="submit" class="pg-button pg-button-fill no-submit" id="pg_sale_account_go">' . lang('Open and pick') . '</button>
                     </div>
                 </form>
         </dialog>

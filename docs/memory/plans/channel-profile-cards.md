@@ -24,7 +24,7 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 
 - PF2 (M) The facts on the server: one reader for an agent's card (role, model, windows, ages, state, waiting count) and its panel action; the API rows; tests. Done, #9618.
 
-- PF3 (M) The agent card in channels. A new design: its pictures go to the owner (`Approval: channel`). #9630 waits for his look.
+- PF3 (M) The agent card in channels. A new design: Approval: channel 4096. Done #9630.
 
 - PF4 (S) Role badge and state dot in a message. Done: #9629.
 
@@ -36,7 +36,7 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 
 - PF7 (M) The channel's agents panel redrawn, the same words on the Agents card of Site Settings. A new design: its pictures go to the owner.
 
-- PF7b (M) The Channel settings drawer: `channel-profile-cards-settings.md`. The owner's look.
+- PF7b (M) The Channel settings drawer: `channel-profile-cards-settings.md`. The owner's look. Done #9616.
 
 - PF8 (S) Close-out: memory files, `agent-report.md`'s "left out" line corrected, this plan deleted.
 

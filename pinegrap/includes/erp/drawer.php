@@ -45,7 +45,6 @@ function erp_drawer_markup($type)
     $script = PG_FUNCTIONS_DIR . '/assets/js/erp_lists.js';
 
     return '
-<style>@layer custom {.pg-erp-drawer { --pg-drawer-width: min(560px, 100vw); } .pg-erp-drawer table.table { margin-top: 0; }}</style>
 <dialog class="drawer drawer-end pg-erp-drawer" id="erp_drawer" aria-labelledby="erp_drawer_title" data-erp-drawer-type="' . h($type) . '" data-erp-drawer-url="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/get_erp_drawer.php') . '" data-erp-drawer-error="' . h(lang('The details could not be loaded.')) . '" data-erp-drawer-loading="' . h(lang('Loading...')) . '">
     <div class="drawer-header border-bottom gap-3">
         <h5 class="drawer-title text-break me-auto" id="erp_drawer_title"></h5>
@@ -105,7 +104,7 @@ function erp_drawer_section($title, $body)
 {
     return '
     <section class="mb-7">
-        <h6 class="text-uppercase small fw-bold fg-primary mb-3">' . h($title) . '</h6>
+        <h6 class="pg-group-label mb-3">' . h($title) . '</h6>
         ' . $body . '
     </section>';
 }

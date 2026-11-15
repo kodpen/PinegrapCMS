@@ -241,7 +241,7 @@ function pg_product_attribute_form_cards($liveform, $usage = null)
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row g-5">
-                                        <div class="col-12 md:col-5">
+                                        <div class="col-12">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'text',
@@ -252,7 +252,7 @@ function pg_product_attribute_form_cards($liveform, $usage = null)
                                                 'maxlength' => '100',
                                                 'required' => 'required')) . '
                                         </div>
-                                        <div class="col-12 md:col-7">
+                                        <div class="col-12">
                                             <label for="label" class="form-label">' . lang('Label') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'text',

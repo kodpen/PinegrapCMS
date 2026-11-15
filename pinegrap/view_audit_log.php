@@ -182,15 +182,15 @@ if ($audit_view_filters['request'] !== '') {
 // search box and Filter belong to the filter form below by their form
 // attribute, so one submit carries the fields and the search together.
 $audit_view_toolbar = pg_screen_toolbar(array(
-    'primary'   => '<button type="submit" form="audit_view_filter" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>',
-    'secondary' => ($audit_view_query || $audit_view_bad_dates) ? '<a href="view_audit_log.php" class="btn btn-sm btn-text theme-secondary">' . h(lang('Clear filters')) . '</a>' : '',
+    'primary'   => '<button type="submit" form="audit_view_filter" class="pg-button pg-button-fill"><i class="bi bi-funnel" aria-hidden="true"></i>' . h(lang('Filter')) . '</button>',
+    'secondary' => ($audit_view_query || $audit_view_bad_dates) ? '<a href="view_audit_log.php" class="pg-button pg-button-ghost">' . h(lang('Clear filters')) . '</a>' : '',
     'grow'      => $audit_view_narrowed,
     'search'    => '<label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
                         <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
                         <input type="search" class="form-ghost" form="audit_view_filter" name="q" value="' . h($audit_view_filters['q']) . '" maxlength="255" placeholder="' . h(lang('Record name')) . '" aria-label="' . h(lang('Record name')) . '">
                     </label>',
     'view'      => pg_list_sort_menu('view_audit_log.php', $audit_view_sort['sort_columns'], $audit_view_sort['sort_levels'], $audit_view_sort['sort_default'], $audit_view_kept),
-    'overflow'  => '<a href="' . h(pg_audit_list_link($audit_view_query, array('export' => 'csv'))) . '" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-filetype-csv me-1" aria-hidden="true"></i>' . h(lang('Export CSV')) . '</a>',
+    'overflow'  => '<a href="' . h(pg_audit_list_link($audit_view_query, array('export' => 'csv'))) . '" class="pg-button pg-button-ghost"><i class="bi bi-filetype-csv" aria-hidden="true"></i>' . h(lang('Export CSV')) . '</a>',
 )) . '
             <form action="view_audit_log.php" method="get" id="audit_view_filter" class="disable_shortcut card mb-7">
                 <div class="card-body">

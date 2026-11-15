@@ -124,15 +124,16 @@ function api_device_token_next($kind, $refresh_token, $key) {
 // A client that names its key gets that application, provided it is a device
 // application. A client that names none - a general mobile app that only knows
 // the site's address - gets the site's device application; with more than one,
-// the oldest active one, so the answer does not change when a second is added
-// for testing.
+// the oldest usable one (api_device_app_usable_where()), so the answer does not
+// change when a second is added for testing, and an older application past its
+// expiry does not hide a newer usable one the Team devices switch counts as on.
 function api_device_app($client_key = '') {
 
 	$client_key = trim((string)$client_key);
 
 	$where = ($client_key !== '')
 		? "api_key = '" . escape($client_key) . "'"
-		: "status = 'active'";
+		: api_device_app_usable_where(time());
 
 	return api_row("SELECT id, name, api_key, owner_user_id, scopes, ip_allowlist,
 			status, expires_at, rate_limit_per_min, kind
@@ -140,6 +141,16 @@ function api_device_app($client_key = '') {
 		WHERE kind = 'device' AND " . $where . "
 		ORDER BY id ASC
 		LIMIT 1");
+
+}
+
+// The SQL condition for a device application usable at $now: active and not
+// past expires_at (0 means no expiry). The same test as api_device_app_check()
+// and api_device_switch_app_usable(); sign-in without a key, the discovery
+// document and pairing all pick the oldest application that passes it.
+function api_device_app_usable_where($now) {
+
+	return "status = 'active' AND (expires_at <= 0 OR expires_at >= " . (int)$now . ")";
 
 }
 
@@ -165,19 +176,30 @@ function api_device_app_check($app) {
 
 // What a device may do: the application's ceiling narrowed to what the person
 // may delegate today, recomputed on every call so a demotion takes effect on
-// the next request. Three adjustments on top of that:
+// the next request, then adjusted by api_device_scopes_adjust().
+function api_device_scopes($app, $owner) {
+
+	$granted = json_decode((string)$app['scopes'], true);
+
+	$scopes = api_effective_scopes(is_array($granted) ? $granted : array(), $owner);
+
+	return api_device_scopes_adjust($scopes, api_owner_scopes($owner));
+
+}
+
+// The adjustments on top of a device's narrowed ceiling, given what the owner
+// may delegate ($owner_scopes, api_owner_scopes()):
 //
 //   * webhooks:manage never. A subscription sends the site's events to an
 //     address; that is set up once by an integration, not by a phone.
 //   * account:read and account:write always. They cover the person's own
 //     notifications, devices and push registration, which is what signing in
 //     from a device is for in the first place.
-//   * workspace:mail_send with workspace:write, within the owner's rights.
-function api_device_scopes($app, $owner) {
-
-	$granted = json_decode((string)$app['scopes'], true);
-
-	$scopes = api_effective_scopes(is_array($granted) ? $granted : array(), $owner);
+//   * workspace:mail_send and workspace:personal_plans with workspace:write,
+//     each within the owner's rights. The person's own sign-in on their device
+//     stands in for the tick an OAuth connection asks for on its consent
+//     screen; the plans routes serve only the caller's own plans.
+function api_device_scopes_adjust(array $scopes, array $owner_scopes) {
 
 	$scopes = array_values(array_diff($scopes, array('webhooks:manage')));
 
@@ -191,18 +213,23 @@ function api_device_scopes($app, $owner) {
 
 	}
 
-	// A person who writes in the Workspace from a device has always sent its
-	// e-mail from there; the mail scope keeps that, within the owner's rights.
-	if (in_array('workspace:write', $scopes, true) && !in_array('workspace:mail_send', $scopes, true)
-		&& in_array('workspace:mail_send', api_owner_scopes($owner), true)) {
+	if (in_array('workspace:write', $scopes, true)) {
 
-		$scopes[] = 'workspace:mail_send';
+		foreach (array('workspace:mail_send', 'workspace:personal_plans') as $scope) {
+
+			if (!in_array($scope, $scopes, true) && in_array($scope, $owner_scopes, true)) {
+
+				$scopes[] = $scope;
+
+			}
+
+		}
 
 	}
 
 	sort($scopes);
 
-	return $scopes;
+	return array_values($scopes);
 
 }
 

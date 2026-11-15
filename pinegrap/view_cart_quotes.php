@@ -201,8 +201,8 @@ echo
             ' . $output_not_ready . '
             ' . $output_not_found . '
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                ' . ($ready ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-12" href="add_cart_quote.php' . (($contact_id > 0) ? '?contact_id=' . $contact_id : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New cart quote')) . '</a>' : '') . '
-                ' . ($filter ? '<a class="btn btn-sm btn-text theme-secondary" href="view_cart_quotes.php"><i class="bi bi-list-ul me-1" aria-hidden="true"></i>' . h(lang('All cart quotes')) . '</a>' : '') . '
+                ' . ($ready ? '<a class="pg-button pg-button-fill" href="add_cart_quote.php' . (($contact_id > 0) ? '?contact_id=' . $contact_id : '') . '"><i class="bi bi-plus-lg" aria-hidden="true"></i>' . h(lang('New cart quote')) . '</a>' : '') . '
+                ' . ($filter ? '<a class="pg-button pg-button-ghost" href="view_cart_quotes.php"><i class="bi bi-list-ul" aria-hidden="true"></i>' . h(lang('All cart quotes')) . '</a>' : '') . '
                 ' . $output_workspace_button . '
                 <div class="pg-toolbar-grow"></div>
                 ' . pg_list_table_search_box('view_cart_quotes') . '

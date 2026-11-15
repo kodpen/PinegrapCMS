@@ -499,7 +499,7 @@ echo pg_screen_toolbar(array(
             <label class="input-group-text" for="search" title="' . h(lang('Every word in the address, request, user agent, rule, reference, match or action')) . '"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Search')) . '</span></label>
             <input type="text" name="search" id="search" class="form-control form-control-sm" style="min-width:12rem;" value="' . h($search) . '" placeholder="' . h(lang('Search events')) . '""/>
         </div>
-        <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . lang('Filter') . '</button>
+        <button type="submit" class="pg-button pg-button-fill"><i class="bi bi-funnel" aria-hidden="true"></i>' . lang('Filter') . '</button>
     </form>',
     'view'   => ((int) $summary['rows_stored'] === 0) ? '' : pg_list_sort_menu('view_waf_log.php', $list_sort['sort_columns'], $list_sort['sort_levels'], $list_sort['sort_default'], $list_query),
     'overflow' => $clear_menu,

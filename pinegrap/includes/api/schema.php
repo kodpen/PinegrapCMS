@@ -6003,6 +6003,37 @@ function api_schema() {
 			'params'  => array()
 		),
 
+		array(
+			'id'      => 'push.devices.register',
+			'method'  => 'POST',
+			'path'    => '/push/devices',
+			'scope'   => 'account:write',
+			'handler' => 'api_push_device_register',
+			'dry_run' => true,
+			'returns' => array('registered' => 'boolean'),
+			'status'  => 201,
+			'summary' => 'Register this team device for native push',
+			'description' => 'For an app with an FCM or APNs token rather than a browser subscription; a team devices session only, 403 for an application key or an OAuth connection. The site trades the token at the Pinegrap push service for an endpoint and keeps only that endpoint, never the token. The push carries no text: it wakes the device, which then asks GET /notifications?unread=true what to show. Send again whenever the token changes; the same token updates the registration. It ends when the device is signed out. 503 service_unavailable while the site has no push service (GET /meta features.native_push is false). A refusal of the push service is passed on: 422 for the token, 403 for the site, 429 with Retry-After when it is busy.',
+			'params'  => array(
+				array('name' => 'provider',  'in' => 'body', 'type' => 'enum', 'values' => array('fcm', 'apns'), 'required' => true, 'description' => 'fcm for Firebase Cloud Messaging, apns for Apple Push Notification service.'),
+				array('name' => 'token',     'in' => 'body', 'type' => 'string', 'max_length' => 4096, 'required' => true, 'description' => 'The device token the provider gave the app.'),
+				array('name' => 'bundle_id', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'The app\'s bundle id or package name: letters, digits, dots, hyphens and underscores.')
+			)
+		),
+
+		array(
+			'id'      => 'push.devices.unregister',
+			'method'  => 'POST',
+			'path'    => '/push/devices/delete',
+			'scope'   => 'account:write',
+			'handler' => 'api_push_device_unregister',
+			'dry_run' => true,
+			'returns' => array('registered' => 'boolean'),
+			'summary' => 'Stop native push to this team device',
+			'description' => 'Removes the native push registrations this team devices session made and tells the push service to forget them. A team devices session only; 503 service_unavailable while the site has no push service.',
+			'params'  => array()
+		),
+
 		/* ----- Bookings ---------------------------------------------------- */
 
 		array(

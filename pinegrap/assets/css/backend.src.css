@@ -3466,7 +3466,9 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
    The flex rule is for every button in the bar, not only its direct
    children: a dissolved group's buttons are items of the bar while still
    matching .btn-group > .btn, and a child selector misses them. */
-#button_bar .btn {
+#button_bar .btn,
+.pg-toolbar .pg-button,
+#button_bar .pg-button {
   flex: 0 0 auto;
 }
 
@@ -3551,6 +3553,13 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
 #button_bar .btn .bi {
   margin: 0 !important;
   font-size: 1rem;
+  line-height: 1;
+}
+/* The look's buttons keep their own type size for the icon; only the margin
+   the markup carries goes, the recipe's gap spaces it. */
+.pg-toolbar .pg-button .bi,
+#button_bar .pg-button .bi {
+  margin: 0 !important;
   line-height: 1;
 }
 /* A finger needs more than the 26px a mouse is happy with. Only the links need
@@ -3820,6 +3829,19 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
 .pg-breadcrumb .breadcrumb-item.active {
   color: var(--pg-fg-body);
   font-weight: 500;
+}
+/* The trail's last part gives way first and ends with an ellipsis rather
+   than being cut mid-letter at the bar's edge; the parts before it keep
+   their width (and scroll, on a trail too deep for the bar). */
+.pg-breadcrumb .breadcrumb-item {
+  flex: none;
+}
+.pg-breadcrumb .breadcrumb-item:last-child {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* The trail is the only thing allowed to shrink; the back control keeps its
    footprint so it never collapses on a deep crumb list. */
@@ -5545,6 +5567,48 @@ body.pg-code-field-open {
    width, so the table's auto layout cannot squeeze it to a sliver. */
 .pg-cell-wrap {
   min-width: 8rem;
+}
+
+/* ERP lists (Expenses, Expense categories, Cheques): the column widths
+   their cells held inline. */
+.erp-expense-cell-category {
+  min-width: 8rem;
+  max-width: 14rem;
+}
+.erp-expense-cell-supplier {
+  min-width: 8rem;
+  max-width: 18rem;
+}
+.erp-expense-cell-text {
+  max-width: 18rem;
+}
+.erp-category-cell-order,
+.erp-category-cell-count {
+  width: 6rem;
+}
+.erp-category-cell-name {
+  min-width: 12rem;
+}
+.erp-category-cell-code {
+  min-width: 8rem;
+}
+.erp-category-cell-tax {
+  width: 11rem;
+}
+.erp-category-cell-on {
+  width: 7rem;
+}
+.erp-cheque-cell-account {
+  max-width: 240px;
+}
+/* An ERP list card (pg-card) holding a table or a flush list: clipped to
+   the card's corners as the report frame is, the list rows on the card's
+   surface. */
+.erp-list-card {
+  overflow: hidden;
+}
+.erp-list-card > .list-group {
+  --bs-list-group-bg: transparent;
 }
 
 .object-fit,
@@ -11233,6 +11297,10 @@ body.pg-side-panel-open .pg-chat-launcher {
 /* The same content in Bootstrap's drawer on the page path
    (settings_maintenance.php and the like, with no settings dialog around it). */
 .pg-set-drawer { --pg-drawer-width: min(42rem, 100vw); }
+/* The ERP lists' quick look (includes/erp/drawer.php): 560 px wide, its
+   tables straight under their section title. */
+.pg-erp-drawer { --pg-drawer-width: min(560px, 100vw); }
+.pg-erp-drawer table.table { margin-top: 0; }
 
 /* ── Dashboard sales map (widget 1) ─────────────────────────────────────────
    The left panel of a two-track card: a period head and the outlines, with the
@@ -12400,6 +12468,132 @@ body.workspace .ws-shell-main > #button_bar {
 .ws-agent-stack {
   margin-left: .45rem;
 }
+/* The agent card (workspace.js agentCardShow()): a floating .pg-card on
+   the float surface, placed by script; boxes of rows, one bar a usage
+   window, amber from WS_AGENT_USAGE_HIGH. */
+.ws-agent-card-anchor {
+  cursor: pointer;
+}
+b.ws-agent-card-anchor:hover,
+b.ws-agent-card-anchor:focus-visible {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+.pg-card.ws-agent-card {
+  position: fixed;
+  z-index: 1070;
+  width: min(20rem, calc(100vw - 1rem));
+  max-height: calc(100vh - 1rem);
+  overflow-y: auto;
+  padding: 1rem;
+  background: var(--pg-surface-float);
+  box-shadow: var(--pg-shadow-float);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.ws-agent-card-head {
+  display: flex;
+  gap: .75rem;
+  align-items: center;
+}
+.avatar.ws-agent-card-face {
+  --bs-avatar-size: 3rem;
+  flex: none;
+}
+.avatar.ws-agent-card-face .bi {
+  font-size: var(--pg-text-section-title);
+}
+.ws-agent-card-who {
+  min-width: 0;
+}
+.ws-agent-card-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-agent-card-handle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .375rem;
+  align-items: center;
+}
+.ws-agent-card-loading {
+  margin-top: .75rem;
+}
+.ws-agent-card-box {
+  margin-top: .75rem;
+  padding: .25rem .75rem;
+  border-radius: .75rem;
+  background: var(--pg-surface-inset);
+}
+.ws-agent-card-box.is-stale {
+  opacity: .5;
+}
+.ws-agent-card-row {
+  display: flex;
+  gap: .75rem;
+  justify-content: space-between;
+  align-items: center;
+  padding: .375rem 0;
+  font-size: var(--pg-text-2);
+}
+.ws-agent-card-box > .ws-agent-card-row + .ws-agent-card-row,
+.ws-agent-card-window + .ws-agent-card-window {
+  border-top: 1px solid var(--pg-field-line);
+}
+.ws-agent-card-key {
+  color: var(--pg-fg-3);
+}
+.ws-agent-card-value {
+  display: inline-flex;
+  gap: .375rem;
+  align-items: center;
+  min-width: 0;
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+.ws-agent-card-window {
+  padding: .25rem 0 .5rem;
+}
+.ws-agent-card-window .ws-agent-card-row {
+  padding-bottom: .25rem;
+}
+.ws-agent-card-window .ws-agent-card-value {
+  flex: none;
+}
+.ws-agent-card-window .ws-agent-card-key {
+  white-space: nowrap;
+}
+.ws-agent-card-high {
+  color: var(--pg-tone-amber);
+}
+.ws-agent-card-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--pg-quiet);
+}
+.ws-agent-card-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--pg-tone-blue);
+}
+.ws-agent-card-window.is-high .ws-agent-card-bar > span {
+  background: var(--pg-tone-amber);
+}
+.ws-agent-card-channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+  justify-content: flex-end;
+}
+.ws-agent-card-note {
+  margin-top: .75rem;
+}
+.ws-agent-card-mention {
+  margin-top: .75rem;
+}
 .ws-info-badge {
   margin-left: .4rem;
   font-size: 11px;
@@ -12429,9 +12623,6 @@ body.workspace .ws-shell-main > #button_bar {
   color: var(--pg-warning-fg-emphasis);
   font-weight: 550;
   line-height: 1.5rem;
-}
-.ws-info-manage {
-  margin-top: .25rem;
 }
 /* The reader's notifications: three choices side by side. */
 .ws-seg {
@@ -13259,18 +13450,75 @@ html[data-bs-theme="dark"] .ws-group-icon {
   flex-direction: column;
   min-width: 0;
 }
-/* Versions of a conversation. */
-.ws-era-row {
+/* Versions of a conversation: one list in a settings card, the current
+   conversation first. */
+.ws-era-row > .btn {
+  flex-shrink: 0;
+}
+/* Channel settings: the segmented control at the top places its tabs
+   across the drawer. */
+.ws-settings-tabs {
+  display: flex;
+  width: 100%;
+  margin-bottom: var(--ws-space-4);
+}
+.ws-settings-tabs .pg-seg-item {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* On a phone the chosen tab takes the room its name needs, the others
+   keep their icon; a name too long for even that ends in an ellipsis. */
+@media (max-width: 575.98px) {
+  .ws-settings-tabs .pg-seg-item.is-active {
+    flex: 0 1 auto;
+  }
+  .ws-settings-tabs .pg-seg-item.is-active .pg-seg-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+/* The channel's name with its icon button at the left and its colour
+   button at the right; each opens its list in a floating box. */
+.ws-look-row {
   display: flex;
   align-items: center;
-  gap: .5rem;
-  padding: .5rem .6rem;
-  margin-bottom: .35rem;
+  gap: var(--ws-space-2);
+}
+.ws-look-row > .form-control {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* As tall as the name's field, a square tile on the field's surface. */
+.ws-look-row > .ws-look-button {
+  flex-shrink: 0;
+  align-self: stretch;
+  width: 2.6rem;
+  height: auto;
   border: 1px solid var(--pg-border-color);
   border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-body);
+  font-size: 1.1rem;
 }
-.ws-era-current {
-  background: var(--pg-bg-1);
+.ws-look-dot {
+  display: block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent);
+}
+.ws-look-none {
+  color: var(--pg-fg-2);
+}
+.ws-ctx.contextmenu.popover.ws-look-picker {
+  width: 19.5rem;
+  max-width: calc(100vw - 16px);
+}
+.ws-look-pop {
+  padding: var(--ws-space-2);
+  border-radius: inherit;
+  background: var(--pg-surface-float);
 }
 .ws-count {
   flex-shrink: 0;
@@ -27418,6 +27666,38 @@ body.pg-measure-edit .order-1 .card-body .row {
   }
 }
 
+/* The save bar's buttons by their role, in the values of the button recipes:
+   the save action (the bar's one solid success or primary button) is
+   .pg-button-fill, delete (danger, solid or outline) a ghost in the danger
+   recipe's rose, every other button .pg-button-quiet. The markup keeps its
+   Bootstrap classes; at every width, a phone included. */
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn {
+  border: 0;
+  background: var(--pg-quiet);
+  color: var(--pg-fg-body);
+  box-shadow: inset 0 0 0 1px var(--pg-border-color-translucent), inset 0 1px 0 var(--pg-surface-hi);
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn-solid:is(.theme-success, .theme-primary) {
+  color: var(--pg-on-accent-fill);
+  background: linear-gradient(180deg, var(--pg-accent-1), var(--pg-accent-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 18px -8px var(--pg-accent-glow);
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn.theme-danger {
+  background: none;
+  color: var(--pg-tone-rose-text);
+  box-shadow: none;
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn.theme-danger:hover {
+  background: var(--pg-hover);
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 2px;
+}
+body.pg-measure-edit .row > .order-3 > nav.buttons.navigation .btn:is(:disabled, .disabled) {
+  opacity: 0.5;
+}
+
 }
 
 /* ==========================================================================
@@ -27524,17 +27804,24 @@ body.pg-measure-report #content {
 }
 .pg-report-head > .pg-toolbar-grow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 6px 10px;
 }
+/* The name wraps, never cut: it is the report's only name on the screen. */
 .pg-report-head .pg-title-screen {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 .pg-report-head .pg-pill {
   flex: none;
+}
+/* A phone: the pill goes under the name. */
+@media (max-width: 575.98px) {
+  .pg-report-head > .pg-toolbar-grow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* Ready reports and the period: a label in the third text colour beside a
@@ -27555,10 +27842,23 @@ body.pg-measure-report #content {
   color: var(--pg-fg-3);
   white-space: nowrap;
 }
+/* A segmented control wider than its row stays one row that scrolls
+   sideways; it never wraps into a box of rows. */
 .pg-report-strip .pg-seg,
 .pg-report-tools .pg-seg {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pg-report-strip .pg-seg::-webkit-scrollbar,
+.pg-report-tools .pg-seg::-webkit-scrollbar {
+  display: none;
+}
+.pg-report-strip .pg-seg-item,
+.pg-report-tools .pg-seg-item {
+  flex: none;
+  white-space: nowrap;
 }
 .pg-report-step {
   padding: 0 7px;
@@ -27675,6 +27975,10 @@ body.pg-measure-report #content {
   }
   .pg-report-fig-value > small {
     font-size: 13px;
+  }
+  /* An odd last card takes the whole row. */
+  .pg-report-fig:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
 }
 
@@ -28030,6 +28334,49 @@ body.pg-measure-report #content {
 .pg-report-table > tbody:last-child > tr:last-child > *,
 .pg-report-table > tfoot > tr:last-child > * {
   border-bottom: 0;
+}
+/* A phone: the first column (a row's name, after its level's indent)
+   stays in place while the figures scroll under it, at most half the
+   width, its words wrapping; the cell is drawn opaque, its row's tint
+   laid over the card's fill. */
+@media (max-width: 575.98px) {
+  .pg-report-frame .pg-report-table > * > tr > :first-child,
+  .pg-report-frame .pg-report-table th[scope="row"] {
+    --pg-report-sticky-tint: transparent;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    width: auto;
+    min-width: min(9rem, 40vw);
+    max-width: 50vw;
+    background-color: var(--pg-surface-1);
+    background-image: linear-gradient(var(--pg-report-sticky-tint), var(--pg-report-sticky-tint));
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+  .pg-report-frame .pg-report-table tr.pg-report-l2 > th[scope="row"] {
+    left: 26px;
+  }
+  .pg-report-frame .pg-report-table tr.pg-report-l3 > th[scope="row"] {
+    left: 52px;
+  }
+  .pg-report-frame .pg-report-table tr.pg-report-l3 > td:nth-child(2) {
+    position: sticky;
+    left: 26px;
+    z-index: 1;
+    background-color: var(--pg-surface-1);
+  }
+  .pg-report-frame .pg-report-table > thead > tr > :first-child,
+  .pg-report-frame .pg-report-table tr.pg-report-l1 > :first-child {
+    --pg-report-sticky-tint: var(--pg-surface-inset);
+  }
+  .pg-report-frame .pg-report-table tr.pg-report-total > :first-child {
+    --pg-report-sticky-tint: color-mix(in srgb, var(--pg-accent) 6%, transparent);
+  }
+  .pg-report-frame .pg-report-table > tbody > tr:hover > :first-child,
+  .pg-report-frame .pg-report-table > tbody > tr:hover > th[scope="row"] {
+    --pg-report-sticky-tint: var(--pg-hover);
+  }
 }
 
 /* The report settings: a 430 px drawer floating off the right edge with
