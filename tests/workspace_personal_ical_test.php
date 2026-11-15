@@ -421,3 +421,47 @@ function test_workspace_personal_ical_all_day_clock_change()
 		'2027-03-28 00:00:00 -> 2027-03-28 23:59:59 Run',
 	), $lines, 'the 25-hour and 23-hour days end at their own midnight');
 }
+
+// A rule that began long before the window still gives every occurrence inside it.
+function test_workspace_personal_ical_old_rule_in_window()
+{
+	$previous = date_default_timezone_get();
+	date_default_timezone_set('Europe/Istanbul');
+	$from = strtotime('2026-11-15 -62 days');
+	$to = strtotime('2026-11-15 +366 days');
+	$read = function ($start, $rule) use ($from, $to) {
+		$text = implode("\r\n", array(
+			'BEGIN:VCALENDAR', 'VERSION:2.0',
+			'BEGIN:VEVENT', 'UID:a', 'SUMMARY:Standup',
+			'DTSTART;TZID=Europe/Istanbul:' . $start . 'T093000',
+			'DTEND;TZID=Europe/Istanbul:' . $start . 'T094500',
+			'RRULE:' . $rule,
+			'END:VEVENT', 'END:VCALENDAR',
+		));
+
+		return ws_personal_ical_events($text, $from, $to);
+	};
+
+	$daily = $read('20250101', 'FREQ=DAILY');
+	pg_assert_same(428, count($daily), 'one a day over the whole window');
+	pg_assert_same('2026-09-14 09:30', date('Y-m-d H:i', $daily[0]['starts_at']), 'from the window\'s first day');
+	pg_assert_same('2027-11-15 09:30', date('Y-m-d H:i', $daily[427]['starts_at']), 'to its last');
+
+	$weekly = $read('20150105', 'FREQ=WEEKLY;BYDAY=MO,TH');
+	pg_assert_same('2026-09-14 09:30', date('Y-m-d H:i', $weekly[0]['starts_at']), 'a ten-year-old weekly rule starts in the window');
+	pg_assert_same(123, count($weekly), 'two a week over the whole window');
+
+	$monthly = $read('19800115', 'FREQ=MONTHLY');
+	pg_assert_same('2026-09-15 09:30', date('Y-m-d H:i', $monthly[0]['starts_at']), 'a 46-year-old monthly rule starts in the window');
+	pg_assert_same(15, count($monthly), 'one a month over the whole window');
+
+	$yearly = $read('19000920', 'FREQ=YEARLY');
+	pg_assert_same(array('2026-09-20 09:30', '2027-09-20 09:30'), array_map(function ($event) {
+		return date('Y-m-d H:i', $event['starts_at']);
+	}, $yearly), 'a yearly rule of 1900 still gives this and next year');
+
+	pg_assert_same(0, count($read('20250101', 'FREQ=DAILY;COUNT=100')), 'COUNT still counts from the first occurrence');
+	pg_assert_same(3, count($read('20260912', 'FREQ=DAILY;COUNT=5')), 'and keeps those inside the window');
+
+	date_default_timezone_set($previous);
+}
