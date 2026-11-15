@@ -14503,15 +14503,10 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   align-items: center;
   gap: .4rem;
 }
-/* The foot keeps one line: the count gives way first. */
-.ws-poll .ws-poll-foot {
-  flex-wrap: nowrap;
-}
+/* The foot's sentence is never cut: it wraps, and the buttons take the
+   next line when the two do not fit. */
 .ws-poll-foot > .ws-grow {
-  min-width: 2.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1 1 auto;
 }
 .ws-poll-foot-label {
   margin-left: .25rem;

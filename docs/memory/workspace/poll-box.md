@@ -18,7 +18,7 @@ description: The poll box (pollNode(), AQ3 #9647): three shapes and their rule, 
 - Taken back (`withdrawn`): head and options greyed (`.ws-poll-withdrawn`), "Taken back" in place of the closing time, the foot "The asker took this poll back."; no vote.
 - "The earlier poll" (`again_of_message`) and "Asked again" (`asked_again_message`) buttons jump between the polls of one question.
 - Under 576 px, where the asker's Close or menu shares the foot's line (`.ws-poll-foot-tight`), the plain foot buttons show only their icon, the label as their name; elsewhere they keep their words (message 4093).
-- The foot keeps one line (the count text gives way): the voter's "Take back my vote", "See the result", the poll links and the asker's Close stay in the open; the asker's Edit (`can_edit`), Ask again (`can_ask_again`, only on the newest box: not once `asked_again_message` is set) and Take back the poll (`can_withdraw`, asked first) are one three-dot menu at its end. Architect, channel message 4045.
+- The foot's sentence is never cut: it wraps, and the buttons take the next line when the two do not fit (message 4139). the voter's "Take back my vote", "See the result", the poll links and the asker's Close stay in the open; the asker's Edit (`can_edit`), Ask again (`can_ask_again`, only on the newest box: not once `asked_again_message` is set) and Take back the poll (`can_withdraw`, asked first) are one three-dot menu at its end. Architect, channel message 4045.
 - Ask again opens the form filled from the poll (`ws_poll_again`), without a closing time since none is carried.
 
 ## What does the New poll form offer?
