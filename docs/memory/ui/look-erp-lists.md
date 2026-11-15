@@ -17,4 +17,4 @@ module: output
 ## Which filter card?
 - Expenses: its six labels are `.pg-field-label`. The Audit Log's had it already. The forms on list screens (New cheque, the bank statement upload, New count, the account prices discount) are not filter cards and keep `form-label`.
 
-PR: #SH3_PR
+PR: #9744
