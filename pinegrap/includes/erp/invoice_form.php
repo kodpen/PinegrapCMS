@@ -472,9 +472,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
                 </div>
-            </div>
-            <div class="row">
-                <div class="col-12 ' . (($output_fx === '') ? 'pg-field-span-3' : 'md:col-3') . ' my-3">
+                <div class="col-12 md:col-3 my-3">
                     <label for="due_date" class="form-label">' . ($is_quote ? lang('Valid until') : ($is_order ? lang('Expected delivery') : lang('Due Date'))) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'due_date', 'data-pg-date' => '', 'name' => 'due_date',

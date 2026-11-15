@@ -59,6 +59,8 @@ function test_erp_document_fields_sit_on_the_grid()
 	foreach (array(
 		array($form, 'col-12 md:col-3 my-3">' . "\n" . '                    <label for="issue_date"'),
 		array($form, 'col-12 md:col-6 my-3">' . "\n" . '                    <label for="currency"'),
+		array($form, 'col-12 md:col-3 my-3">' . "\n" . '                    <label for="due_date"'),
+		array($waybill, 'col-12 md:col-3 my-3">' . "\n" . '                    <label for="ship_to_country"'),
 		array($form, 'col-12 md:col-3 my-3">' . "\n" . '                    <label for="exchange_rate"'),
 		array($form, 'col-12 md:col-4 my-3">' . "\n" . '                    <label for="supplier_invoice_no"'),
 		array($waybill, 'col-12 md:col-6 my-3">' . "\n" . '                    <label for="account_id"'),
@@ -68,6 +70,9 @@ function test_erp_document_fields_sit_on_the_grid()
 	) as $case) {
 		pg_assert_contains($case[1], $case[0], 'a field takes the span of its kind');
 	}
+
+	// The header fields share one row, so the due date sits beside the date.
+	pg_assert_true((bool) preg_match('#<label for="issue_date"(?:(?!<div class="row).)*<label for="due_date"#s', $form), 'the due date is in the date\'s row');
 }
 
 function test_erp_drawer_has_no_style_block()

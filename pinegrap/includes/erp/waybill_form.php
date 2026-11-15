@@ -331,25 +331,25 @@ function erp_waybill_form_cards($liveform, $options = array())
                 </div>
             </div>
             <div class="row">
-                <div class="col-12 sm:col-6 xl:col-3 my-3"' . pg_places_input_attrs('ship_to_country', 'ship_to_city') . '>
+                <div class="col-12 md:col-3 my-3"' . pg_places_input_attrs('ship_to_country', 'ship_to_city') . '>
                     <label for="ship_to_district" class="form-label">' . lang('District') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_to_district', 'name' => 'ship_to_district',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 sm:col-6 xl:col-3 my-3">
+                <div class="col-12 md:col-3 my-3">
                     <label for="ship_to_city" class="form-label" data-label-tr="' . h(lang('Province')) . '" data-label-other="' . h(lang('City')) . '">' . h(lang(erp_address_city_label_key((string) $liveform->get_field_value('ship_to_country')))) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_to_city', 'name' => 'ship_to_city',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 sm:col-6 xl:col-3 my-3' . ((strtoupper((string) $liveform->get_field_value('ship_to_country')) === 'TR') ? ' d-none' : '') . '" id="ship_to_state_box">
+                <div class="col-12 md:col-3 my-3' . ((strtoupper((string) $liveform->get_field_value('ship_to_country')) === 'TR') ? ' d-none' : '') . '" id="ship_to_state_box">
                     <label for="ship_to_state" class="form-label">' . lang('State / Province') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_to_state', 'name' => 'ship_to_state',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 sm:col-6 xl:col-3 my-3">
+                <div class="col-12 md:col-3 my-3">
                     <label for="ship_to_country" class="form-label">' . lang('Country') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'ship_to_country', 'name' => 'ship_to_country',
