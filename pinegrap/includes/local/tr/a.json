@@ -8157,6 +8157,7 @@
     "age, minimum age, children, kids": "yaş, en küçük yaş, çocuklar",
     "age, teenager, children, minimum age": "yaş, genç, çocuk, yaş sınırı",
     "agent": "ajan",
+    "agent is claude, ai, mcp, agent:<id> or model:<id>.": "agent değeri claude, ai, mcp, agent:<id> ya da model:<id> olur.",
     "agent, realtor, team, languages": "danışman, emlakçı, ekip, diller",
     "agents": "danismanlar",
     "ago": "önce",
