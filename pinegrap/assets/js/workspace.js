@@ -6178,8 +6178,8 @@
                 tab.type = 'button';
                 tab.id = nextId('ws-cs-tab-');
                 tab.setAttribute('role', 'tab');
-                label.appendChild(icon(tabIcons[key]));
                 label.appendChild(document.createTextNode(t(tabNames[key])));
+                tab.appendChild(icon(tabIcons[key]));
                 tab.appendChild(label);
                 panes[key].setAttribute('role', 'tabpanel');
                 panes[key].setAttribute('aria-labelledby', tab.id);

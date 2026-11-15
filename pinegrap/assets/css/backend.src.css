@@ -13247,11 +13247,8 @@ html[data-bs-theme="dark"] .ws-group-icon {
 }
 /* Versions of a conversation: one list in a settings card, the current
    conversation first. */
-.ws-era-row {
-  flex-wrap: wrap;
-}
-.ws-era-row > .flex-grow-1 {
-  flex-basis: 12rem;
+.ws-era-row > .btn {
+  flex-shrink: 0;
 }
 /* Channel settings: the segmented control at the top places its tabs
    across the drawer. */
@@ -13275,9 +13272,16 @@ html[data-bs-theme="dark"] .ws-group-icon {
   flex: 1 1 auto;
   min-width: 0;
 }
-.ws-look-button {
+/* As tall as the name's field, a square tile on the field's surface. */
+.ws-look-row > .ws-look-button {
   flex-shrink: 0;
+  align-self: stretch;
+  width: 2.6rem;
+  height: auto;
   border: 1px solid var(--pg-border-color);
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-body);
+  font-size: 1.1rem;
 }
 .ws-look-dot {
   display: block;
@@ -13295,6 +13299,8 @@ html[data-bs-theme="dark"] .ws-group-icon {
 }
 .ws-look-pop {
   padding: var(--ws-space-2);
+  border-radius: inherit;
+  background: var(--pg-surface-float);
 }
 .ws-count {
   flex-shrink: 0;
