@@ -2797,6 +2797,11 @@ function ws_handle_action($action, $request)
                 ws_mail_draft_remove($viewer, (int) $request['draft_id'], $conversation_id);
             }
 
+            // Remind me if no answer comes (mail_remind.php).
+            if (function_exists('ws_mail_no_answer_set')) {
+                ws_mail_no_answer_set($viewer, $result, $request['remind_days'] ?? 0, time());
+            }
+
             return ws_action_ok(array('message_id' => $result['message_id'], 'item_id' => $result['item_id'], 'state' => $result['state'],
                 'undo' => ws_mail_undo_offered($request, $later['at'], $result['state'])));
 
@@ -2957,6 +2962,11 @@ function ws_handle_action($action, $request)
             // The new mail's draft goes once the mail is stored.
             if (!empty($request['draft_id']) && function_exists('ws_mail_draft_remove')) {
                 ws_mail_draft_remove($viewer, (int) $request['draft_id'], 0);
+            }
+
+            // Remind me if no answer comes (mail_remind.php).
+            if (function_exists('ws_mail_no_answer_set')) {
+                ws_mail_no_answer_set($viewer, $result, $request['remind_days'] ?? 0, time());
             }
 
             return ws_action_ok(array(

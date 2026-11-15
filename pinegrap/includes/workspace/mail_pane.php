@@ -132,6 +132,10 @@ function ws_mail_pane_open($viewer, $conversation_id)
 
     ws_mail_read_mark((int) $viewer['id'], (int) $pane['conversation']['id'], $pane['last_id']);
 
+    // "No answer yet" for the person whose reminder came due (mail_remind.php).
+    $pane['no_answer'] = function_exists('ws_mail_no_answer_ids')
+        && !empty(ws_mail_no_answer_ids((int) $viewer['id'], array((int) $pane['conversation']['id'])));
+
     // Block sender (mail_blocks.php), then Forward.
     $pane = ws_mail_block_pane($pane, $viewer);
 
@@ -193,6 +197,7 @@ function ws_mail_pane_html($pane, $base, $tools = '', $channels = true)
     $html = '<header class="ws-mail-pane-head"><h2 class="h5 mb-1" tabindex="-1">' . h($subject) . '</h2>'
         . '<div class="small fg-secondary">' . h($customer)
         . (($pane['box_name'] !== '') ? ' · ' . h($pane['box_name']) : '') . ($room ? '' : ' · ' . h('#' . (string) $pane['channel']['name'])) . '</div>'
+        . ((!empty($pane['no_answer']) && function_exists('ws_mail_no_answer_badge_html')) ? '<div class="mt-1">' . ws_mail_no_answer_badge_html() . '</div>' : '')
         . '<div class="ws-mail-pane-tools">' . ($room ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="' . h($url) . '"><i class="bi bi-hash me-1" aria-hidden="true"></i>' . h(lang('Open in channel')) . '</a>') . $tools . '</div>'
         . '</header>';
 

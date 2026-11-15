@@ -157,6 +157,11 @@
 
         form.appendChild(later.node);
 
+        // Remind me if no answer comes (mail_remind.php).
+        var noAnswer = noAnswerField(h);
+
+        form.appendChild(noAnswer.node);
+
         // Files, as New e-mail takes them: from Files or the computer.
         var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
         var library = [];
@@ -182,6 +187,10 @@
             domainWarningClear(footer);
 
             var post = { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: body.value() };
+
+            if (noAnswer.value()) {
+                post.remind_days = noAnswer.value();
+            }
 
             if (later.value()) {
                 post.send_later = later.value();
@@ -2335,6 +2344,26 @@
         });
     }
 
+    // Remind me if no answer comes (mail_remind.php): No, or 1, 3 or 7 days
+    // from the mail's sending; an incoming mail in the conversation ends it.
+    function noAnswerField(h) {
+        var t = h.t;
+        var choice = h.select([
+            ['', t('mail_no_answer_none')], ['1', t('mail_no_answer_1')], ['3', t('mail_no_answer_3')], ['7', t('mail_no_answer_7')]
+        ], '');
+
+        choice.classList.add('w-auto');
+        choice.id = h.nextId('ws-mail-no-answer-');
+        choice.name = 'remind_days';
+
+        return {
+            node: h.formRow(t('mail_no_answer'), choice),
+            value: function () {
+                return choice.value;
+            }
+        };
+    }
+
     // Send later (mail_later.php): a link that opens a time field, typed in
     // the writer's own zone; Send at once closes and clears it. The server
     // reads the time and refuses one that is past or too far.
@@ -2674,6 +2703,11 @@
         var later = laterField(h);
 
         form.appendChild(later.node);
+
+        // Remind me if no answer comes (mail_remind.php).
+        var noAnswer = noAnswerField(h);
+
+        form.appendChild(noAnswer.node);
         fileRow.appendChild(list);
         form.appendChild(fileRow);
         draftKept(h, server, library, body.node, drawFiles);
@@ -2839,6 +2873,10 @@
 
             if (server) {
                 post.draft_id = server.id;
+            }
+
+            if (noAnswer.value()) {
+                post.remind_days = noAnswer.value();
             }
 
             if (later.value()) {

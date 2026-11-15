@@ -2,7 +2,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace: Remind me later on an e-mail conversation. Whoever reads a
+ * Workspace: Remind me later, and Remind me if no answer comes, on an e-mail
+ * conversation. Whoever reads a
  * conversation on the E-mails screen may set it aside until a time (in an
  * hour, tomorrow morning, next week or a chosen time, in their own time
  * zone). Until then it leaves that person's list and unread count; nobody
@@ -10,6 +11,12 @@
  * it comes back unread with an inbox line (mail_remind) until the person
  * reads it. One row per person and conversation in ws_mail_reminders,
  * kind 'later'; the general job's reminder run wakes it.
+ *
+ * Remind me if no answer comes, on Reply by e-mail and New e-mail: in 1, 3
+ * or 7 days from the mail's sending, kind 'no_answer'. With no incoming mail
+ * by then the writer gets an inbox line (mail_no_answer) and their row and
+ * pane say "No answer yet" until an answer comes; an incoming mail in the
+ * conversation removes the reminder, waiting or not.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -23,6 +30,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /** The kind of a reminder set with Remind me later. */
 define('WS_MAIL_REMIND_LATER', 'later');
+
+/** The kind of a reminder set with Remind me if no answer comes. */
+define('WS_MAIL_REMIND_NO_ANSWER', 'no_answer');
 
 /** The hour "Tomorrow morning" and "Next week" remind at, in the person's zone. */
 define('WS_MAIL_REMIND_MORNING', 9);
@@ -294,14 +304,19 @@ function ws_mail_remind_wake($row, $now)
     $user = function_exists('pg_load_user_row') ? pg_load_user_row((int) $row['user_id']) : null;
     $viewer = is_array($user) ? ws_viewer($user) : null;
 
+    $no_answer = ((string) $row['kind'] === WS_MAIL_REMIND_NO_ANSWER);
+    // The mail it waits on an answer to was undone into a draft or cancelled.
+    $left = !$no_answer || ws_mail_no_answer_left((string) db_value("SELECT send_state FROM ws_mail_items
+        WHERE id = '" . (int) $row['item_id'] . "' AND direction = 'out'"));
+
     // Gone, or no longer the person's to read: the row goes with nothing told.
-    if (!$channel || !$viewer || empty($viewer['member']) || !ws_can_read_channel($viewer, $channel)) {
+    if (!$left || !$channel || !$viewer || empty($viewer['member']) || !ws_can_read_channel($viewer, $channel)) {
         db("DELETE FROM ws_mail_reminders WHERE id = '" . (int) $row['id'] . "'");
 
         return false;
     }
 
-    ws_notify((int) $row['user_id'], 'mail_remind', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $conversation['message_id'], 'actor_id' => 0, 'batch' => true));
+    ws_notify((int) $row['user_id'], $no_answer ? 'mail_no_answer' : 'mail_remind', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $conversation['message_id'], 'actor_id' => 0, 'batch' => true));
 
     return true;
 }
@@ -315,7 +330,7 @@ function ws_mail_remind_wake($row, $now)
 function ws_mail_reminders_waiting()
 {
     return ws_mail_remind_ready() && (bool) db_value("SELECT id FROM ws_mail_reminders
-        WHERE woken_at = 0 AND due_at <= '" . time() . "' AND kind = '" . WS_MAIL_REMIND_LATER . "' LIMIT 1");
+        WHERE woken_at = 0 AND due_at <= '" . time() . "' LIMIT 1");
 }
 
 /**
@@ -335,7 +350,7 @@ function ws_mail_reminders_run($limit = WS_MAIL_REMIND_BATCH)
     $told = 0;
 
     foreach ((array) db_items("SELECT * FROM ws_mail_reminders WHERE woken_at = 0 AND due_at <= '" . $now . "'
-        AND kind = '" . WS_MAIL_REMIND_LATER . "' ORDER BY due_at, id LIMIT " . max(1, (int) $limit)) as $row) {
+        ORDER BY due_at, id LIMIT " . max(1, (int) $limit)) as $row) {
         $told += ws_mail_remind_wake($row, $now) ? 1 : 0;
     }
 
@@ -347,8 +362,9 @@ function ws_mail_reminders_run($limit = WS_MAIL_REMIND_BATCH)
 }
 
 /**
- * A new mail arrived in a conversation (ws_mail_ingest()): every reminder
- * still waiting on it comes back at once.
+ * A new mail arrived in a conversation (ws_mail_ingest()): every Remind me
+ * later still waiting on it comes back at once, and every Remind me if no
+ * answer comes on it goes.
  *
  * @param int $conversation_id
  * @param int $now
@@ -359,6 +375,9 @@ function ws_mail_remind_new_mail($conversation_id, $now)
     if (((int) $conversation_id <= 0) || !ws_mail_remind_ready()) {
         return 0;
     }
+
+    // An answer came: nobody waits on one any more, whether told or not.
+    db("DELETE FROM ws_mail_reminders WHERE conversation_id = '" . (int) $conversation_id . "' AND kind = '" . WS_MAIL_REMIND_NO_ANSWER . "'");
 
     $told = 0;
 
@@ -375,8 +394,115 @@ function ws_mail_remind_new_mail($conversation_id, $now)
 }
 
 /**
- * What a reminder line says (ws_inbox_describe()): "Reminder: subject",
- * opening the conversation on the E-mails screen.
+ * The days Remind me if no answer comes offers: 0 for no reminder and
+ * anything else. Pure.
+ *
+ * @param mixed $value the form's choice
+ * @return int 0, 1, 3 or 7
+ */
+function ws_mail_no_answer_days($value)
+{
+    $days = is_scalar($value) ? (int) $value : 0;
+
+    return in_array($days, array(1, 3, 7), true) ? $days : 0;
+}
+
+/**
+ * When a no-answer reminder is due: the days counted from the mail's
+ * sending, which for a mail sent later (or waiting for Undo) is its send
+ * time. Pure.
+ *
+ * @param int $days    ws_mail_no_answer_days()
+ * @param int $send_at the item's send_at, 0 for at once
+ * @param int $now
+ * @return int
+ */
+function ws_mail_no_answer_due($days, $send_at, $now)
+{
+    return max((int) $now, (int) $send_at) + ((int) $days * 86400);
+}
+
+/**
+ * Whether the mail a no-answer reminder waits on still left or is leaving:
+ * one undone into a draft, or cancelled before its time, is not. Pure.
+ *
+ * @param string $state ws_mail_items.send_state
+ * @return bool
+ */
+function ws_mail_no_answer_left($state)
+{
+    return in_array((string) $state, array('', 'sent', 'queued', 'later', 'external'), true);
+}
+
+/**
+ * Remind me if no answer comes, after a mail was written from the panel's
+ * Reply by e-mail or New e-mail (ws_mail_send()'s result): one reminder per
+ * writer and conversation; a later mail with the choice moves it.
+ *
+ * @param array $viewer
+ * @param array $result ws_mail_send()'s, ok
+ * @param mixed $days   the form's remind_days
+ * @param int   $now
+ * @return int the due time, 0 when none was set
+ */
+function ws_mail_no_answer_set($viewer, $result, $days, $now)
+{
+    $days = ws_mail_no_answer_days($days);
+    $item_id = (int) ($result['item_id'] ?? 0);
+    $conversation_id = (int) ($result['conversation_id'] ?? 0);
+
+    if (($days === 0) || ($item_id <= 0) || ($conversation_id <= 0) || empty($viewer['member']) || !ws_mail_remind_ready()) {
+        return 0;
+    }
+
+    $send_at = function_exists('ws_mail_later_ready') && ws_mail_later_ready()
+        ? (int) db_value("SELECT send_at FROM ws_mail_items WHERE id = '" . $item_id . "'") : 0;
+    $due = ws_mail_no_answer_due($days, $send_at, $now);
+
+    db("INSERT INTO ws_mail_reminders (conversation_id, user_id, kind, item_id, due_at, woken_at, created_at)
+        VALUES ('" . $conversation_id . "', '" . (int) $viewer['id'] . "', '" . WS_MAIL_REMIND_NO_ANSWER . "', '" . $item_id . "',
+            '" . $due . "', 0, '" . (int) $now . "')
+        ON DUPLICATE KEY UPDATE item_id = VALUES(item_id), due_at = VALUES(due_at), woken_at = 0, created_at = VALUES(created_at)");
+
+    return $due;
+}
+
+/**
+ * Which of some conversations the person was told have no answer yet (the
+ * reminder came due and no mail came since).
+ *
+ * @param int   $user_id
+ * @param int[] $conversation_ids
+ * @return array conversation id => true
+ */
+function ws_mail_no_answer_ids($user_id, $conversation_ids)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $conversation_ids)));
+
+    if (!$ids || !ws_mail_remind_ready()) {
+        return array();
+    }
+
+    return array_fill_keys(array_map('intval', (array) db_values("SELECT conversation_id FROM ws_mail_reminders
+        WHERE user_id = '" . (int) $user_id . "' AND kind = '" . WS_MAIL_REMIND_NO_ANSWER . "' AND woken_at > 0
+        AND conversation_id IN (" . implode(',', $ids) . ")")), true);
+}
+
+/**
+ * "No answer yet" on the writer's list row and in the pane. Pure but for
+ * the words.
+ *
+ * @return string HTML
+ */
+function ws_mail_no_answer_badge_html()
+{
+    return '<span class="badge theme-warning"><i class="bi bi-hourglass-split me-1" aria-hidden="true"></i>' . h(lang('No answer yet')) . '</span>';
+}
+
+/**
+ * What a reminder line says (ws_inbox_describe()): "Reminder: subject", or
+ * "No answer yet: subject" for mail_no_answer, opening the conversation on
+ * the E-mails screen.
  *
  * @param array  $row  ws_inbox row
  * @param string $base the panel's address, ending in /
@@ -390,11 +516,15 @@ function ws_mail_remind_describe($row, $base)
     $subject = is_array($conversation) ? (string) $conversation['subject'] : '';
     $customer = is_array($conversation) ? ((trim((string) $conversation['customer_name']) !== '') ? (string) $conversation['customer_name'] : (string) $conversation['customer_email']) : '';
 
+    $subject = ($subject !== '') ? $subject : lang('(no subject)');
+
     return array(
-        'title' => lang(array('string' => 'Reminder: {var:1}', 'vars' => ($subject !== '') ? $subject : lang('(no subject)'))),
+        'title' => ((string) ($row['kind'] ?? '') === 'mail_no_answer')
+            ? lang(array('string' => 'No answer yet: {var:1}', 'vars' => $subject))
+            : lang(array('string' => 'Reminder: {var:1}', 'vars' => $subject)),
         'body'  => $customer,
         'url'   => $base . 'messages_mail.php' . (is_array($conversation) ? '?conversation=' . (int) $conversation['id'] : ''),
-        'icon'  => 'bi-alarm',
+        'icon'  => ((string) ($row['kind'] ?? '') === 'mail_no_answer') ? 'bi-hourglass-split' : 'bi-alarm',
     );
 }
 
@@ -494,5 +624,10 @@ function ws_mail_remind_js_strings()
         'mail_remind_cancel'  => lang('Cancel reminder'),
         'mail_remind_set'     => lang('The conversation comes back at the chosen time.'),
         'mail_remind_off'     => lang('The reminder was cancelled.'),
+        'mail_no_answer'      => lang('Remind me if no answer comes'),
+        'mail_no_answer_none' => lang('No'),
+        'mail_no_answer_1'    => lang('In 1 day'),
+        'mail_no_answer_3'    => lang('In 3 days'),
+        'mail_no_answer_7'    => lang('In 7 days'),
     );
 }
