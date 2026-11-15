@@ -1,6 +1,6 @@
 ---
 name: channel-profile-cards-panel
-description: Step PF7 of channel-profile-cards (owner 2026-11-15): "Agents in this channel" redrawn, the tier, wake rule and loop guard asked in plain words; what stays
+description: Steps PF7 and PF7b of channel-profile-cards (owner 2026-11-15): Channel settings redrawn, the agents panel in plain words, icon and colour as popovers beside the name, switches at the row's end
 ---
 
 ## What is asked?
@@ -16,6 +16,12 @@ description: Step PF7 of channel-profile-cards (owner 2026-11-15): "Agents in th
 - The wake rule as "When is it woken?": when its name is written, on every message, on messages starting with a word, on answers to its messages; a help line under the chosen one.
 - The loop guard as a switch with its reason: agents answering one another are told to stop after a few turns.
 - The same words on the Agents card of Site Settings where it names a tier or a door.
+
+## What else of Channel settings is redrawn? (PF7b)
+- Owner (2026-11-15, with a picture of the Colour and Icon parts): "bu alanlarıda modernize edelim. switchler sağda ayarlardaki gibi olabilir. renkler ve ikonlar genişlemiş olmasına gerek yok. Kanal adı solunda ikonu seçicisi ve altında veya aynı sırada renk seçicisi daha bütün olurdu. ikonlar ve renkler popover gibi gelebilir".
+- The icon is chosen from a button at the left of the channel's name, showing the current icon in the current colour; the colour from a button in the same row or right under it. Each opens a popover: the icon list with its search, the colour swatches with "no colour". Neither list stands open in the drawer.
+- Every switch of the drawer sits at the end of its row with its title and help line at the left, as a row of Site Settings does ("Write the linked records' events into the channel" and the others).
+- The lists, the search, who may choose and what is stored stay (`workspace/workspace-channel-icon.md`).
 
 ## What stays?
 - The stored values, who may change them (a channel manager) and what each does: `workspace/agent-risk-tiers.md`, `agent-registry.md`, `channel-members-agents.md`. No schema change.
