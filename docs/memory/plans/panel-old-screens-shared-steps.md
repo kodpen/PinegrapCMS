@@ -7,7 +7,7 @@ description: Old panel screens to look A: the shared steps cut after the groups,
 - Each changes every screen of a family at once, so it is one step with one look, cut by the architect (2026-11-15, channel message 4671 and the answer to request 512) once LM2 (#9680) had landed. A group step changes nothing for them and names them as "seen, not this step".
 
 ## Which have landed?
-- SH4 figure cards (#9725); SH7 the "Action" label under a stacked list row's buttons on a phone (#9734); SH9 a list's title with its count, the segmented filters and the icon tile of settings rows (#9726); KS1 the two buttons of kept screens (#9721).
+- SH4 figure cards (#9725); SH7 the "Action" label under a stacked list row's buttons on a phone (#9734); SH9 a list's title with its count, the segmented filters and the icon tile of settings rows (#9726); KS1 the two buttons of kept screens (#9721); SH2 the status column's label and value list `.pg-kv` on Edit Invoice, Receipt and Marketplace Settings' count list (#9757).
 - Offers' count is asked of the owner (poll 46, message 4850): by his answer one small `[iş]` fix.
 
 ## Which are open?
@@ -17,7 +17,6 @@ description: Old panel screens to look A: the shared steps cut after the groups,
 - SH6a (M, #9746) The save bar, first part: one shared helper (`pg_save_bar()`) draws the framed bar and the bare sticky button rows take it.
 
 ## Which can be given now?
-- SH2 (S) The status column's label and value list, one recipe: Edit Invoice, Receipt, the count list of Marketplace Settings.
 - SH10 (M) The Marketplace screens: the view buttons, the filter chips and the button ranks. One filled button per view (the toolbar's); a card's own actions share one rank, the same across the view's cards and the status column.
 - SH8 (S) The list table embedded in an edit screen (the included products of Edit Product Group).
 - KS2 (small fix, `[iş]`, no look) Add Product's field widths, by the owner's answer (`workflow/decisions-made-panel-9.md`); #9658 has landed.
