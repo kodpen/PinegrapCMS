@@ -1,5 +1,5 @@
 ---
-name: channel-open-items
+name: channel-open-items-line
 description: The open items line under a channel's pin (OI1, #9783): open polls, agent questions, the running check-in, waiting approvals; ws_channel_open_items(), drawOpenItems(), phone row
 ---
 
