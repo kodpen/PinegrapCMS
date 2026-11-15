@@ -1385,14 +1385,14 @@ function mp_settings_claim_files($field) {
 function mp_settings_claim_status($status) {
 
 	$labels = array(
-		'Created'           => array(lang('On its way back'), 'off'),
-		'WaitingInAction'   => array(lang('Waiting for you'), 'bad'),
-		'WaitingFraudCheck' => array(lang('Fraud check'), 'off'),
-		'InAnalysis'        => array(lang('In analysis'), 'off'),
-		'Accepted'          => array(lang('Accepted'), 'on'),
-		'Rejected'          => array(lang('Rejected'), 'off'),
-		'Cancelled'         => array(lang('Cancelled'), 'off'),
-		'Unresolved'        => array(lang('Unresolved'), 'off')
+		'Created'           => array(lang('On its way back'), 'gray'),
+		'WaitingInAction'   => array(lang('Waiting for you'), 'rose'),
+		'WaitingFraudCheck' => array(lang('Fraud check'), 'gray'),
+		'InAnalysis'        => array(lang('In analysis'), 'gray'),
+		'Accepted'          => array(lang('Accepted'), 'teal'),
+		'Rejected'          => array(lang('Rejected'), 'gray'),
+		'Cancelled'         => array(lang('Cancelled'), 'gray'),
+		'Unresolved'        => array(lang('Unresolved'), 'gray')
 	);
 
 	if ($status === '') {
@@ -1401,9 +1401,9 @@ function mp_settings_claim_status($status) {
 
 	}
 
-	$label = isset($labels[$status]) ? $labels[$status] : array(h($status), 'off');
+	$label = isset($labels[$status]) ? $labels[$status] : array(h($status), 'gray');
 
-	return '<span class="mp-pill ' . $label[1] . '">' . $label[0] . '</span>';
+	return '<span class="pg-pill pg-tone-' . $label[1] . '">' . $label[0] . '</span>';
 
 }
 
@@ -1413,18 +1413,18 @@ function mp_settings_question_status($question) {
 
 	if (!empty($question['sent'])) {
 
-		return '<span class="mp-pill on" title="' . h(mp_settings_ago((int)$question['sent'])) . '">'
+		return '<span class="pg-pill pg-tone-teal" title="' . h(mp_settings_ago((int)$question['sent'])) . '">'
 			. lang('Answer sent') . '</span>';
 
 	}
 
 	$labels = array(
-		'WAITING_FOR_ANSWER'  => array(lang('Waiting for you'), 'bad'),
-		'WAITING_FOR_APPROVE' => array(lang('Answer in review'), 'off'),
-		'ANSWERED'            => array(lang('Answered'), 'on'),
-		'REJECTED'            => array(lang('Answer rejected'), 'bad'),
-		'REPORTED'            => array(lang('Reported'), 'off'),
-		'UNANSWERED'          => array(lang('Time ran out'), 'off')
+		'WAITING_FOR_ANSWER'  => array(lang('Waiting for you'), 'rose'),
+		'WAITING_FOR_APPROVE' => array(lang('Answer in review'), 'gray'),
+		'ANSWERED'            => array(lang('Answered'), 'teal'),
+		'REJECTED'            => array(lang('Answer rejected'), 'rose'),
+		'REPORTED'            => array(lang('Reported'), 'gray'),
+		'UNANSWERED'          => array(lang('Time ran out'), 'gray')
 	);
 
 	$status = isset($question['status']) ? (string)$question['status'] : '';
@@ -1435,9 +1435,9 @@ function mp_settings_question_status($question) {
 
 	}
 
-	$label = isset($labels[$status]) ? $labels[$status] : array(h($status), 'off');
+	$label = isset($labels[$status]) ? $labels[$status] : array(h($status), 'gray');
 
-	return '<span class="mp-pill ' . $label[1] . '">' . $label[0] . '</span>';
+	return '<span class="pg-pill pg-tone-' . $label[1] . '">' . $label[0] . '</span>';
 
 }
 
@@ -1450,13 +1450,13 @@ function mp_settings_claim_reject_form($account_id, $claim, $reasons) {
 	$key = substr(md5((string)$claim['claim_id']), 0, 12);
 
 	$out = '
-				<details class="small" style="grid-column:1/-1">
+				<details class="pg-text-2 mp-span">
 					<summary class="pg-link-secondary">' . lang('Reject') . '</summary>';
 
 	if (!$reasons) {
 
 		return $out . '
-					<p class="mt-3 mb-0 opacity-75">' . lang('The reasons for rejecting a return were not read. Read the returns again.') . '</p>
+					<p class="mt-3 mb-0 pg-text-meta">' . lang('The reasons for rejecting a return were not read. Read the returns again.') . '</p>
 				</details>';
 
 	}
@@ -1531,7 +1531,7 @@ function mp_settings_invoice_form($account_id, $row, $invoice = null) {
 	$public = is_array($invoice) && function_exists('erp_invoice_public_link_issue') && erp_invoice_public_link_ready();
 
 	return '
-				<details class="small" style="grid-column:1/-1">
+				<details class="pg-text-2 mp-span">
 					<summary class="pg-link-secondary">' . lang('Send invoice link') . '</summary>' . ($public ? '
 					<div class="form-text">' . h(lang(array('string' => 'The public address of invoice {var:1} is sent, unless you untick it and type another address.', 'vars' => (string)$invoice['full_number']))) . '</div>' : '') . '
 					<form method="post" action="marketplace_settings.php" class="d-flex gap-3 flex-wrap mt-3"
@@ -1565,7 +1565,7 @@ function mp_settings_invoiced_form($account_id, $row, $invoice = null) {
 	$map_id = (int)$row['id'];
 
 	return '
-				<details class="small" style="grid-column:1/-1">
+				<details class="pg-text-2 mp-span">
 					<summary class="pg-link-secondary">' . lang('Mark invoiced') . '</summary>
 					<form method="post" action="marketplace_settings.php" class="d-flex gap-3 flex-wrap mt-3"
 						onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
@@ -1594,10 +1594,10 @@ function mp_settings_label_line($account_id, $row, $offer, $provider_name) {
 	if ($offer['offer'] === 'print') {
 
 		return '
-				<div class="small" style="grid-column:1/-1">
+				<div class="pg-text-2 mp-span">
 					<a class="pg-link-secondary" href="shipment_label.php?id=' . (int)$offer['label_id'] . '">
 						<i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print Label') . '</a>
-					<span class="opacity-75 ms-1">' . lang('ZPL file for a thermal label printer') . '</span>
+					<span class="pg-text-meta ms-1">' . lang('ZPL file for a thermal label printer') . '</span>
 				</div>';
 
 	}
@@ -1611,7 +1611,7 @@ function mp_settings_label_line($account_id, $row, $offer, $provider_name) {
 	$map_id = (int)$row['id'];
 
 	return '
-				<details class="small" style="grid-column:1/-1">
+				<details class="pg-text-2 mp-span">
 					<summary class="pg-link-secondary">' . h(lang(array('string' => '{var:1} shipping label', 'vars' => array($provider_name)))) . '</summary>
 					<form method="post" action="marketplace_settings.php" class="d-flex gap-3 flex-wrap align-items-center mt-3"
 						onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
@@ -1923,36 +1923,39 @@ echo pg_page_shell(array(
 <style>@layer custom {
 /* Same reasoning as the application list: six columns of real content do not
    fit a phone, so the block scrolls sideways rather than stacking every row
-   into a paragraph nobody can scan. */
+   into a paragraph nobody can scan. Type and colours are the tokens of look A:
+   the column heads as the head of a report table, the rows at the base size. */
 .mp-scroll { overflow-x: auto; overflow-y: hidden; }
 .mp-head, .mp-row { display: grid; grid-template-columns: 2fr 1.4fr 1fr .9fr .9fr 40px;
 	gap: 12px; align-items: center; min-width: 760px; }
-.mp-head { padding: 0 14px 8px; font-size: 0.65625rem; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
-.mp-row { padding: 11px 14px; border-top: 1px solid var(--pg-border-color); }
-.mp-row b { font-size: 0.8125rem; display: block; }
-.mp-row code { font-size: 0.6875rem; opacity: .7; }
-.mp-pill { font-size: 0.65625rem; padding: 3px 9px; border-radius: 20px; font-weight: 600;
-	border: 1px solid var(--pg-border-color); display: inline-block; white-space: nowrap; }
-.mp-pill.on { color: var(--pg-success-fg-emphasis); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
-.mp-pill.off { color: var(--pg-fg-2); }
-.mp-pill.bad { color: var(--pg-danger-fg-emphasis); border-color: color-mix(in srgb, var(--pg-danger) 35%, transparent); }
-.mp-tab { border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 10px 14px;
-	text-decoration: none; color: inherit; display: block; }
-.mp-tab.sel { border-color: var(--pg-primary); background: var(--pg-bg-1); }
-.mp-tab small { color: var(--pg-fg-2); }
+.mp-grid-orders { grid-template-columns: 1.4fr 1.4fr 1fr .9fr .9fr 40px; }
+.mp-grid-claims { grid-template-columns: 1.2fr 1.2fr 2.6fr .9fr 110px; }
+.mp-head { padding: 0 14px 8px; font-size: var(--pg-text-meta); font-weight: var(--pg-weight-strong); color: var(--pg-fg-3); }
+.mp-row { padding: 11px 14px; border-top: 1px solid var(--pg-border-color-translucent); }
+.mp-row b { display: block; }
+.mp-row b, .mp-tab b, .mp-fail-name b { font-weight: var(--pg-weight-strong); }
+.mp-row code { font-size: var(--pg-text-meta); color: var(--pg-fg-3); }
+/* A folded form or a label line under an order or a return takes the whole
+   width of the row. */
+.mp-span { grid-column: 1 / -1; }
+.mp-tab { border: 1px solid var(--pg-border-color-translucent); border-radius: var(--pg-radius-card); padding: 10px 14px;
+	text-decoration: none; color: inherit; display: block;
+	background: linear-gradient(180deg, var(--pg-surface-1), var(--pg-surface-2)); box-shadow: var(--pg-shadow-card); }
+.mp-tab.sel { border-color: var(--pg-accent); }
 /* An account name is free text of up to 100 characters, possibly one long
    word: it breaks inside the tile, the account card header and the drawer
    title instead of pushing the page (and the close button of the drawer) sideways. */
 .mp-name { min-width: 0; overflow-wrap: anywhere; }
 #mp_drawer .drawer-header .btn-close { flex: 0 0 auto; }
-.mp-err { font-size: 0.71875rem; color: var(--pg-danger-fg-emphasis); word-break: break-word; }
+.mp-err { font-size: var(--pg-text-meta); color: var(--pg-danger-fg-emphasis); word-break: break-word; }
 /* Questions and failures are free text, not columns: they sit outside the
-   sideways-scrolling block, so they wrap to the width of the card instead. */
-.mp-question { padding: 11px 14px; border-top: 1px solid var(--pg-border-color); }
+   sideways-scrolling block, so they wrap to the width of the card instead;
+   a question and its answer keep the line breaks of the buyer. */
+.mp-question { padding: 11px 14px; border-top: 1px solid var(--pg-border-color-translucent); }
+.mp-pre { white-space: pre-wrap; }
 .mp-fail-name { flex: 1 1 150px; min-width: 0; }
 .mp-fail .mp-err { flex: 1 1 100%; }
 @media (min-width: 768px) { .mp-fail .mp-err { flex: 1 1 0; min-width: 0; } }
-.mp-fail-time { color: var(--pg-fg-2); }
 }</style>
 
 <main id="content" class="container-fluid">
@@ -1960,7 +1963,7 @@ echo pg_page_shell(array(
 		'primary' => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="dialog" data-bs-target="#mp_new">'
 			. '<i class="bi bi-plus-lg me-2" aria-hidden="true"></i>' . lang('Connect a Marketplace') . '</button>',
 		'grow'    => $accounts
-			? '<span class="small fg-secondary"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>'
+			? '<span class="pg-text-2"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>'
 				. ($last_run
 					? lang(array('string' => 'Last run {var:1}', 'vars' => array(mp_settings_ago($last_run))))
 					: lang('The scheduled job has not run yet.')) . '</span>'
@@ -1982,8 +1985,8 @@ if (!$accounts) {
 	<div class="card">
 		<div class="card-body text-center py-12">
 			<i class="bi bi-shop" style="font-size:2.125rem;opacity:.35"></i>
-			<p class="mt-5 mb-1"><b>' . lang('No marketplace is connected yet.') . '</b></p>
-			<p class="small opacity-75 mb-0" style="max-width:520px;margin:0 auto">'
+			<p class="mt-5 mb-1 fw-medium">' . lang('No marketplace is connected yet.') . '</p>
+			<p class="pg-text-2 mb-0 mx-auto" style="max-width:520px">'
 				. lang('Connect a marketplace account and match your products to the codes it knows them by. Stock and price changes here are then sent over there on a schedule.') . '</p>
 		</div>
 	</div>';
@@ -1998,8 +2001,8 @@ if (!$accounts) {
 		$is_selected = ((int)$row['id'] === $selected_id);
 
 		$state = ($row['status'] === 'active')
-			? '<span class="mp-pill on">' . lang('Active') . '</span>'
-			: '<span class="mp-pill off">' . lang('Paused') . '</span>';
+			? '<span class="pg-pill pg-tone-teal">' . lang('Active') . '</span>'
+			: '<span class="pg-pill pg-tone-gray">' . lang('Paused') . '</span>';
 
 		echo '
 		<div class="col-12 md:col-6 xl:col-4">
@@ -2009,12 +2012,12 @@ if (!$accounts) {
 					<b class="mp-name">' . h($row['name']) . '</b>
 					<span class="ms-auto">' . $state . '</span>
 				</div>
-				<small>' . h(mp_provider_name($row['provider']))
+				<span class="pg-text-2">' . h(mp_provider_name($row['provider']))
 					. ($row['last_error'] !== ''
 						? ' &middot; <span class="fg-danger">' . h(mb_substr($row['last_error'], 0, 60)) . '</span>'
 						: ($row['last_success']
 							? ' &middot; ' . lang(array('string' => 'worked {var:1}', 'vars' => array(mp_settings_ago((int)$row['last_success']))))
-							: ' &middot; ' . lang('not tried yet'))) . '</small>
+							: ' &middot; ' . lang('not tried yet'))) . '</span>
 			</a>
 		</div>';
 
@@ -2080,27 +2083,27 @@ if ($selected) {
 	$mp_status = '
 		<div class="card mb-5" id="mp-account">
 			<div class="card-header bg-reset border-0 d-flex align-items-center flex-wrap gap-3">
-				<i class="bi bi-sliders fg-primary" aria-hidden="true"></i><b class="mp-name">' . h($selected['name']) . '</b>'
+				<h2 class="pg-title-status mp-name mb-0">' . h($selected['name']) . '</h2>'
 				. ((isset($selected['credentials']['environment']) && $selected['credentials']['environment'] === 'stage')
-					? ' <span class="mp-pill off">' . lang('Test environment') . '</span>' : '') . '
-				<div class="small fg-secondary w-100">' . h(mp_provider_name($selected['provider'])) . '</div>
+					? ' <span class="pg-pill pg-tone-gray">' . lang('Test environment') . '</span>' : '') . '
+				<div class="pg-text-2 w-100">' . h(mp_provider_name($selected['provider'])) . '</div>
 			</div>
 			<div class="card-body pt-0">
-				<dl class="row small mb-0">
+				<dl class="row mb-0">
 					<dt class="col-8 fw-normal fg-secondary">' . h(lang('Matched products')) . '</dt>
-					<dd class="col-4 text-end mb-2">' . pg_format_number($map_counts['all'], 0) . '</dd>
+					<dd class="col-4 text-end mb-2 pg-tabular">' . pg_format_number($map_counts['all'], 0) . '</dd>
 					<dt class="col-8 fw-normal fg-secondary">' . h(lang('Waiting')) . '</dt>
-					<dd class="col-4 text-end mb-2">' . pg_format_number($queue_counts['waiting'], 0) . '</dd>
+					<dd class="col-4 text-end mb-2 pg-tabular">' . pg_format_number($queue_counts['waiting'], 0) . '</dd>
 					<dt class="col-8 fw-normal fg-secondary">' . h(lang('With the marketplace')) . '</dt>
-					<dd class="col-4 text-end mb-2">' . pg_format_number($queue_counts['sent'], 0) . '</dd>
+					<dd class="col-4 text-end mb-2 pg-tabular">' . pg_format_number($queue_counts['sent'], 0) . '</dd>
 					<dt class="col-8 fw-normal fg-secondary">' . h(lang('Failed')) . '</dt>
-					<dd class="col-4 text-end mb-0' . ($queue_counts['failed'] ? ' fg-danger fw-bold' : '') . '">' . pg_format_number($queue_counts['failed'], 0) . '</dd>
+					<dd class="col-4 text-end mb-0 pg-tabular' . ($queue_counts['failed'] ? ' fg-danger fw-medium' : '') . '">' . pg_format_number($queue_counts['failed'], 0) . '</dd>
 				</dl>';
 
 	if ($selected['status'] !== 'active') {
 
 		$mp_status .= '
-				<div class="alert theme-warning small mt-5 mb-0">
+				<div class="alert theme-warning mt-5 mb-0">
 					<i class="bi bi-pause-circle me-1"></i>'
 					. lang('This account is paused. Nothing is sent while it is, and changes made in the meantime are not queued.') . '
 				</div>';
@@ -2110,7 +2113,7 @@ if ($selected) {
 	if ($selected['last_error'] !== '') {
 
 		$mp_status .= '
-				<div class="alert theme-danger small mt-5 mb-0 mp-name">
+				<div class="alert theme-danger mt-5 mb-0 mp-name">
 					<i class="bi bi-exclamation-triangle me-1"></i>' . h($selected['last_error']) . '
 				</div>';
 
@@ -2143,8 +2146,8 @@ if ($selected) {
 	// says how many and leads there.
 	echo '
 	<div class="card mb-5" id="mp-map">
-		<div class="card-header d-flex align-items-center flex-wrap gap-3">
-			<i class="bi bi-link-45deg me-1"></i><b>' . lang('Matched products') . '</b>
+		<div class="card-header bg-reset border-0 d-flex align-items-center flex-wrap gap-3">
+			<h2 class="pg-title-section mb-0">' . lang('Matched products') . '</h2>
 			<div class="ms-auto d-flex flex-wrap justify-content-end gap-3">
 				<form method="post" action="marketplace_settings.php" class="d-inline">
 					' . get_token_field() . '
@@ -2163,7 +2166,7 @@ if ($selected) {
 					<i class="bi bi-tags me-1"></i>' . h(lang('Listings')) . '</a>' : '') . '
 			</div>
 		</div>
-		<div class="card-body small">'
+		<div class="card-body">'
 			. ($map_counts['all']
 				? h(lang(array('string' => '{var:1} products are matched and sent to {var:2}.',
 					'vars' => array(pg_format_number($map_counts['all'], 0), mp_provider_name($selected['provider'])))))
@@ -2246,7 +2249,7 @@ if ($selected) {
 		}
 
 		$webhook_block = '
-			<div class="d-flex align-items-center flex-wrap gap-3 small px-3 pb-5 mb-5 border-bottom" id="mp-webhook">
+			<div class="d-flex align-items-center flex-wrap gap-3 px-3 pb-5 mb-5 border-bottom" id="mp-webhook">
 				<i class="bi bi-broadcast"></i>
 				<div class="flex-grow-1">' . $webhook_text . '</div>
 				<form method="post" action="marketplace_settings.php" class="d-inline"' . $webhook_onsubmit . '>
@@ -2275,9 +2278,9 @@ if ($selected) {
 
 		echo '
 	<div class="card mb-5" id="mp-orders">
-		<div class="card-header d-flex align-items-center flex-wrap gap-3">
-			<i class="bi bi-bag-check me-1"></i><b>' . lang('Imported orders') . '</b>
-			<span class="small opacity-75 ms-auto">'
+		<div class="card-header bg-reset border-0 d-flex align-items-center flex-wrap gap-3">
+			<h2 class="pg-title-section mb-0">' . lang('Imported orders') . '</h2>
+			<span class="pg-text-meta ms-auto">'
 				. ((int)$selected['last_order_pull']
 					? h(lang(array('string' => 'Orders read up to {var:1}',
 						'vars' => array(mp_settings_ago((int)$selected['last_order_pull'])))))
@@ -2297,14 +2300,14 @@ if ($selected) {
 		if (!$orders) {
 
 			echo '
-			<p class="small opacity-75 text-center my-7 mb-0">'
+			<p class="pg-text-2 text-center my-7 mb-0">'
 			. lang('No order has come in from this marketplace yet.') . '</p>';
 
 		} else {
 
 			echo '
 			<div class="mp-scroll">
-			<div class="mp-head" style="grid-template-columns:1.4fr 1.4fr 1fr .9fr .9fr 40px">
+			<div class="mp-head mp-grid-orders">
 				<span>' . lang('Order') . '</span><span>' . lang('Customer') . '</span>
 				<span>' . lang('Total') . '</span><span>' . lang('Status') . '</span>
 				<span>' . lang('Imported') . '</span><span></span>
@@ -2321,7 +2324,7 @@ if ($selected) {
 				$invoice = isset($order_invoices[(int)$row['order_id']]) ? $order_invoices[(int)$row['order_id']] : null;
 
 				echo '
-			<div class="mp-row" style="grid-template-columns:1.4fr 1.4fr 1fr .9fr .9fr 40px">
+			<div class="mp-row mp-grid-orders">
 				<span>
 					<b>' . h((string)$row['remote_order_id']) . '</b>
 					<code>' . h((string)$row['remote_package_id']) . '</code>
@@ -2330,19 +2333,19 @@ if ($selected) {
 				<span>' . (($row['order_id'] && $row['total'] !== null)
 					? mp_settings_order_total($row) : '&mdash;') . '</span>
 				<span>' . (($row['status'] === 'imported')
-						? '<span class="mp-pill on">' . h((string)$row['remote_status']) . '</span>'
-						: '<span class="mp-pill bad">' . h(lang('Failed')) . '</span>')
+						? '<span class="pg-pill pg-tone-teal">' . h((string)$row['remote_status']) . '</span>'
+						: '<span class="pg-pill pg-tone-rose">' . h(lang('Failed')) . '</span>')
 					. (!empty($row['approved'])
-						? ' <span class="mp-pill on">' . lang('Accepted') . '</span>' : '')
+						? ' <span class="pg-pill pg-tone-teal">' . lang('Accepted') . '</span>' : '')
 					. (!empty($row['invoice_sent'])
-						? ' <span class="mp-pill on" title="' . h(mp_settings_ago((int)$row['invoice_sent'])) . '">'
+						? ' <span class="pg-pill pg-tone-teal" title="' . h(mp_settings_ago((int)$row['invoice_sent'])) . '">'
 							. lang('Invoice sent') . '</span>' : '')
 					. (mp_invoice_push_pending($push_on, $row, $invoice, $can_invoice)
-						? ' <span class="mp-pill bad" title="' . h(lang('The invoice was issued but its link has not reached the marketplace. The reason is in the activity log; send it again with Send invoice link.')) . '">'
+						? ' <span class="pg-pill pg-tone-rose" title="' . h(lang('The invoice was issued but its link has not reached the marketplace. The reason is in the activity log; send it again with Send invoice link.')) . '">'
 							. lang('Invoice link not sent') . '</span>' : '') . '
 					' . ($row['last_error'] !== ''
 						? '<div class="mp-err">' . h(mb_substr((string)$row['last_error'], 0, 120)) . '</div>' : '') . '</span>
-				<span class="small opacity-75">' . h(mp_settings_ago((int)$row['imported_timestamp'])) . '</span>
+				<span class="pg-text-meta">' . h(mp_settings_ago((int)$row['imported_timestamp'])) . '</span>
 				<span>' . ($row['order_id']
 					? '<a class="btn btn-sm btn-link p-0" href="view_order.php?id=' . (int)$row['order_id'] . '" title="'
 						. lang('View Order') . '"><i class="bi bi-box-arrow-up-right"></i></a>'
@@ -2383,12 +2386,12 @@ if ($selected) {
 
 		echo '
 	<div class="card mb-5" id="mp-claims">
-		<div class="card-header d-flex align-items-center flex-wrap gap-3">
-			<i class="bi bi-arrow-return-left me-1"></i><b>' . h(lang(array(
+		<div class="card-header bg-reset border-0 d-flex align-items-center flex-wrap gap-3">
+			<h2 class="pg-title-section mb-0">' . h(lang(array(
 				'string' => 'Returns from {var:1}',
 				'vars'   => array(mp_provider_name($selected['provider']))
-			))) . '</b>
-			<span class="small opacity-75 ms-auto">'
+			))) . '</h2>
+			<span class="pg-text-meta ms-auto">'
 				. ($claims_read['read']
 					? h(lang(array('string' => 'Read {var:1}', 'vars' => array(mp_settings_ago($claims_read['read'])))))
 					: lang('Not read yet')) . '</span>
@@ -2406,20 +2409,20 @@ if ($selected) {
 		if (!$claims_read['read']) {
 
 			echo '
-			<p class="small opacity-75 text-center my-7 mb-0">'
+			<p class="pg-text-2 text-center my-7 mb-0">'
 			. lang('Returns are read from the marketplace when you ask: the last two weeks, every status.') . '</p>';
 
 		} elseif (!$claims_read['claims']) {
 
 			echo '
-			<p class="small opacity-75 text-center my-7 mb-0">'
+			<p class="pg-text-2 text-center my-7 mb-0">'
 			. lang('No return in the last two weeks.') . '</p>';
 
 		} else {
 
 			echo '
 			<div class="mp-scroll">
-			<div class="mp-head" style="grid-template-columns:1.2fr 1.2fr 2.6fr .9fr 110px">
+			<div class="mp-head mp-grid-claims">
 				<span>' . lang('Order') . '</span><span>' . lang('Customer') . '</span>
 				<span>' . lang('Products') . '</span><span>' . lang('Date') . '</span><span></span>
 			</div>';
@@ -2433,10 +2436,10 @@ if ($selected) {
 				foreach ($claim['units'] as $unit) {
 
 					$units .= '
-					<div class="small">' . h((string)$unit['product'])
+					<div class="pg-text-2">' . h((string)$unit['product'])
 						. (((string)$unit['barcode'] !== '') ? ' <code>' . h((string)$unit['barcode']) . '</code>' : '')
 						. ' ' . mp_settings_claim_status((string)$unit['status'])
-						. (((string)$unit['reason'] !== '') ? '<div class="opacity-75">' . h((string)$unit['reason'])
+						. (((string)$unit['reason'] !== '') ? '<div class="pg-text-meta">' . h((string)$unit['reason'])
 							. (((string)$unit['note'] !== '') ? ' &mdash; &ldquo;' . h((string)$unit['note']) . '&rdquo;' : '')
 							. '</div>' : '') . '
 					</div>';
@@ -2444,28 +2447,28 @@ if ($selected) {
 				}
 
 				echo '
-			<div class="mp-row" style="grid-template-columns:1.2fr 1.2fr 2.6fr .9fr 110px">
+			<div class="mp-row mp-grid-claims">
 				<span>
 					<b>' . h((string)$claim['order_number']) . '</b>
 					' . (((string)$claim['carrier'] !== '')
-						? '<div class="small opacity-75">' . h((string)$claim['carrier'])
+						? '<div class="pg-text-2">' . h((string)$claim['carrier'])
 							. (((string)$claim['tracking'] !== '') ? ' <code>' . h((string)$claim['tracking']) . '</code>' : '') . '</div>'
 						: '') . '
 				</span>
 				<span>' . (((string)$claim['customer'] !== '') ? h((string)$claim['customer']) : '&mdash;') . '</span>
 				<span>' . $units . '
 				</span>
-				<span class="small opacity-75">' . ($claim['claimed'] ? h(mp_settings_ago((int)$claim['claimed'])) : '&mdash;') . '</span>
+				<span class="pg-text-meta">' . ($claim['claimed'] ? h(mp_settings_ago((int)$claim['claimed'])) : '&mdash;') . '</span>
 				<span>';
 
 				if (!empty($claim['approved'])) {
 
-					echo '<span class="mp-pill on" title="' . h(mp_settings_ago((int)$claim['approved'])) . '">'
+					echo '<span class="pg-pill pg-tone-teal" title="' . h(mp_settings_ago((int)$claim['approved'])) . '">'
 						. lang('Approval sent') . '</span>';
 
 				} elseif (!empty($claim['rejected'])) {
 
-					echo '<span class="mp-pill off" title="' . h(mp_settings_ago((int)$claim['rejected'])) . '">'
+					echo '<span class="pg-pill pg-tone-gray" title="' . h(mp_settings_ago((int)$claim['rejected'])) . '">'
 						. lang('Rejection sent') . '</span>';
 
 				} elseif ($waiting && $can_approve_claims) {
@@ -2504,7 +2507,7 @@ if ($selected) {
 			if ($claims_read['more']) {
 
 				echo '
-			<p class="small opacity-75 mt-5 mb-0 px-3">'
+			<p class="pg-text-2 mt-5 mb-0 px-3">'
 				. lang('Only the first 200 returns are shown. The rest are in your seller panel.') . '</p>';
 
 			}
@@ -2527,12 +2530,12 @@ if ($selected) {
 
 		echo '
 	<div class="card mb-5" id="mp-questions">
-		<div class="card-header d-flex align-items-center flex-wrap gap-3">
-			<i class="bi bi-chat-left-text me-1"></i><b>' . h(lang(array(
+		<div class="card-header bg-reset border-0 d-flex align-items-center flex-wrap gap-3">
+			<h2 class="pg-title-section mb-0">' . h(lang(array(
 				'string' => 'Questions from {var:1}',
 				'vars'   => array(mp_provider_name($selected['provider']))
-			))) . '</b>
-			<span class="small opacity-75 ms-auto">'
+			))) . '</h2>
+			<span class="pg-text-meta ms-auto">'
 				. ($questions_read['read']
 					? h(lang(array('string' => 'Read {var:1}', 'vars' => array(mp_settings_ago($questions_read['read'])))))
 					: lang('Not read yet')) . '</span>
@@ -2550,13 +2553,13 @@ if ($selected) {
 		if (!$questions_read['read']) {
 
 			echo '
-			<p class="small opacity-75 text-center my-7 mb-0">'
+			<p class="pg-text-2 text-center my-7 mb-0">'
 			. lang('Questions are read from the marketplace when you ask: the last two weeks, every status.') . '</p>';
 
 		} elseif (!$questions_read['questions']) {
 
 			echo '
-			<p class="small opacity-75 text-center my-7 mb-0">'
+			<p class="pg-text-2 text-center my-7 mb-0">'
 			. lang('No question in the last two weeks.') . '</p>';
 
 		} else {
@@ -2567,20 +2570,20 @@ if ($selected) {
 
 				echo '
 			<div class="mp-question">
-				<div class="d-flex flex-wrap gap-3 align-items-center small">
+				<div class="d-flex flex-wrap gap-3 align-items-center pg-text-2">
 					' . (((string)$question['product_url'] !== '')
 						? '<a href="' . h((string)$question['product_url']) . '" target="_blank" rel="noopener noreferrer">'
 							. h((string)$question['product']) . '</a>'
 						: h((string)$question['product'])) . '
 					' . mp_settings_question_status($question) . '
-					<span class="opacity-75 ms-auto">'
+					<span class="pg-text-meta ms-auto">'
 						. (((string)$question['user'] !== '') ? h((string)$question['user']) . ' &middot; ' : '')
 						. ($question['asked'] ? h(mp_settings_ago((int)$question['asked'])) : '') . '</span>
 				</div>
-				<div class="my-1" style="white-space:pre-wrap">' . h((string)$question['text']) . '</div>'
+				<div class="my-1 mp-pre">' . h((string)$question['text']) . '</div>'
 				. (((string)$question['answer'] !== '')
 					? '
-				<div class="small border-start ps-3 opacity-75" style="white-space:pre-wrap">' . h((string)$question['answer']) . '</div>'
+				<div class="pg-text-2 border-start ps-3 mp-pre">' . h((string)$question['answer']) . '</div>'
 					: '')
 				. (((string)$question['reason'] !== '')
 					? '
@@ -2615,7 +2618,7 @@ if ($selected) {
 			if ($questions_read['more']) {
 
 				echo '
-			<p class="small opacity-75 mt-5 mb-0 px-3">'
+			<p class="pg-text-2 mt-5 mb-0 px-3">'
 				. lang('Only the newest 200 questions are shown. The rest are in your seller panel.') . '</p>';
 
 			}
@@ -2632,8 +2635,8 @@ if ($selected) {
 
 	echo '
 	<div class="card mb-5" id="mp-queue">
-		<div class="card-header d-flex align-items-center flex-wrap gap-3">
-			<i class="bi bi-hourglass-split me-1"></i><b>' . lang('What did not go through') . '</b>
+		<div class="card-header bg-reset border-0 d-flex align-items-center flex-wrap gap-3">
+			<h2 class="pg-title-section mb-0">' . lang('What did not go through') . '</h2>
 			<div class="ms-auto d-flex flex-wrap justify-content-end gap-3">';
 
 	if ($failures) {
@@ -2664,7 +2667,7 @@ if ($selected) {
 	if (!$failures) {
 
 		echo '
-			<p class="small opacity-75 text-center my-5 mb-0">'
+			<p class="pg-text-2 text-center my-5 mb-0">'
 			. lang('Nothing has failed. Sent items disappear from here once the marketplace confirms them.') . '</p>';
 
 	} else {
@@ -2673,11 +2676,11 @@ if ($selected) {
 
 			echo '
 			<div class="mp-fail d-flex flex-wrap gap-5 py-3 border-top align-items-start">
-				<div class="mp-fail-name"><b class="small">' . h((string)$row['product_name']) . '</b>'
+				<div class="mp-fail-name"><b>' . h((string)$row['product_name']) . '</b>'
 					. (((string)$row['operation'] === 'listing_update')
-						? '<div class="small opacity-75">' . lang('Listing changes') . '</div>' : '') . '</div>
+						? '<div class="pg-text-2">' . lang('Listing changes') . '</div>' : '') . '</div>
 				<div class="mp-err">' . h((string)$row['last_error']) . '</div>
-				<div class="mp-fail-time small text-nowrap">' . h(mp_settings_ago((int)$row['updated_timestamp'])) . '</div>
+				<div class="pg-text-meta text-nowrap">' . h(mp_settings_ago((int)$row['updated_timestamp'])) . '</div>
 			</div>';
 
 		}
@@ -2849,7 +2852,7 @@ if ($selected) {
 	if ($selected_managed) {
 
 		$edit_fields .= '
-			<div class="alert theme-info small mb-5"><i class="bi bi-info-circle me-1"></i>' . h(mp_settings_managed_note($selected['provider']))
+			<div class="alert theme-info mb-5"><i class="bi bi-info-circle me-1"></i>' . h(mp_settings_managed_note($selected['provider']))
 				. ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_commerce.php#pgset-feeds') . '">' . lang('Open the Product Feeds card') . '</a></div>';
 
 	}
@@ -2919,7 +2922,7 @@ if ($selected) {
 				<div class="form-text">'
 					. lang('Accepting an order tells the marketplace you are preparing it, and their dispatch clock starts. Leave this off to accept them yourself.') . '</div>
 			</div>' : '') : '
-			<p class="small opacity-75 mb-0">' . h(lang(array(
+			<p class="pg-text-2 mb-0">' . h(lang(array(
 				'string' => 'Orders are not brought in from {var:1} yet.',
 				'vars'   => array(mp_provider_name($selected['provider']))
 			))) . '</p>') . '
@@ -2943,7 +2946,7 @@ if ($selected) {
 			</fieldset>'
 			. ($selected_managed ? '' : '
 			<hr>
-			<p class="small opacity-75">'
+			<p class="pg-text-2">'
 				. (!empty($selected['credentials']['webhook_id'])
 					? h(lang(array(
 						'string' => 'Removing a marketplace deletes its product matches and its queue. Your products are not touched. Its webhook is removed from {var:1} first; nothing else is removed from the marketplace itself.',
@@ -2954,7 +2957,7 @@ if ($selected) {
 				formnovalidate onclick="return confirm(' . h(json_encode(lang('Remove this marketplace?'))) . ')">
 				<i class="bi bi-trash me-1"></i>' . lang('Remove marketplace') . '</button>')
 			. (!empty($selected['credentials']['webhook_id']) ? '
-			<div class="form-field small mt-3">
+			<div class="form-field pg-text-2 mt-3">
 				<input class="check" type="checkbox" id="edit_webhook_force" name="webhook_force" value="1">
 				<label class="" for="edit_webhook_force">' . h(lang(array(
 					'string' => 'Remove the marketplace even if its webhook cannot be removed from {var:1} (then remove the webhook in the seller panel)',
