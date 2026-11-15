@@ -48,6 +48,7 @@
 - agent-requests-kept-version.md: No agent request, claim, answer, emoji or eye on a message of an earlier version of a cleared conversation; the clear cancels the open requests it freezes (#9593, bug #9588)
 - agent-risk-tiers.md: Agent risk tiers (agent_tiers.php, A7): the tier of a change, when an application agent's proposal is applied at once, the undo journal in ws_ai_changes (step 11.0.174), who may undo and when
 - agent-role.md: An agent's role from a fixed list (ws_agents.role, step 11.0.195, #9302): the list in code, an unknown key as no role, form, Agents card, member list, API; report columns for AP2 [decision: decisions-made-workspace-22.md]
+- agent-route-words.md: The words an application agent reads on its own routes: the brief's tool line (HTTP only, not MCP), the answer route's 403 and no-channel 422 and its description, a paused agent's 403 (CA6, #9768)
 - agent-sessions.md: The asker's own Claude session over OAuth: @Claude waits 2 min for the asker's online connection, then the routine; claimed_device_id; via_client_id in the depth brake
 - agent-shown.md: How a registry agent shows (A4b2): the line under its waking message ("saw it · no answer needed", #8919), its tag and @ picker entry, kept off tasks, its own edits, two applications' lines kept apart [decision: decisions-made-workspace-19.md, decisions-made-workspace-21.md]
 - agent-start-text.md: The "Start text for the agent" box in an application agent's drawer on the Agents card: the short bootstrap it holds, who gets it, the shared Copy field and script
