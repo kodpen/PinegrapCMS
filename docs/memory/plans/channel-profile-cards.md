@@ -12,7 +12,7 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 - Beside the name in a message: the role's badge in place of "(application)", and a state dot on the picture: working (a request it claimed), waiting, not seen for ten minutes, paused.
 - The @ menu: each agent with its role and state. When a reported window is at 90% or more, a mark beside the name, in the menu and on the card. This takes back "no warning on plan usage" of 2026-11-13 (`agent-report.md`); it is a mark, it stops nothing.
 - The same card for a person: role, department, working hours, away days (`ws_profiles.mail_away`, IB12).
-- "Agents in this channel" of Channel settings, redrawn in plain words, and the drawer's icon, colour and switches: `channel-profile-cards-panel.md`.
+- "Agents in this channel" of Channel settings, redrawn in plain words (`channel-profile-cards-panel.md`), and the drawer itself: tabs, icon, colour, switches, versions (`-settings.md`).
 - Further useful facts of the same kind are listed by PF1 and asked of the owner as one poll.
 
 ## Who sees it?
@@ -34,7 +34,7 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 
 - PF7 (M) The channel's agents panel redrawn, the same words on the Agents card of Site Settings. A new design: its pictures go to the owner.
 
-- PF7b (M) Channel settings: icon and colour as popovers beside the name, switches at the row's end. The owner's look.
+- PF7b (M) The Channel settings drawer: `channel-profile-cards-settings.md`. The owner's look.
 
 - PF8 (S) Close-out: memory files, `agent-report.md`'s "left out" line corrected, this plan deleted.
 
