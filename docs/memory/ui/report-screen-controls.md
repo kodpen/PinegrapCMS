@@ -4,8 +4,9 @@ description: Report and panel controls on Bootstrap 6: period changers, named ar
 ---
 
 ## How is a report's period changer built?
-- The order and visitor reports print one `.btn-group.btn-group-sm` per unit (Year, Month, Week, Day), `role="group"` named by the unit, of `btn btn-outline theme-secondary` links: previous (`bi-chevron-left`, `aria-label` Previous), the current period, next (`bi-chevron-right`, Next). Bootstrap 6's group, join and size rules only select `[class*=btn-]` children, so bare `.btn` links (the v5 markup with `border-*` utilities) kept their full corners and never joined.
-- They cannot call `pg_period_nav()`: their links carry the report's `&id=`. The visitor report's next-month link dropped the id before (#2716). The shipping report's pair uses `start_date` / `end_date` and is a `role="group"` named Period with `btn-text` chevrons around the range.
+- The order report prints one `.pg-seg` per unit (Year, Month, Week, Day), `role="group"` named by the unit: previous (`.pg-seg-item.pg-report-step`, `bi-chevron-left`, `aria-label` Previous), the unit, next (Next); the period stands beside as text (`report-period-text.md`). Look A's tools row (#8981, `look-report-screens.md`). The visitor report has date presets instead (`visitors/visitor-report-filters-and-form.md`).
+- Before look A they were `.btn-group` rows of bare `.btn` links; Bootstrap 6's group rules only select `[class*=btn-]` children, so they never joined (#2716).
+- They cannot call `pg_period_nav()`: their links carry the report's `&id=` (and `&ready=`, `commerce/order-report-ready-reports.md`). The visitor report's next-month link once dropped the id (#2716). The shipping report's pair uses `start_date` / `end_date`, a `.pg-seg` named Period of two steps.
 
 ## How are the layout selects named?
 - The Summarize by / order by rows (order and visitor reports, `edit_form_list_view.php`; inside each report's settings drawer, `report-view.md`) are plain `.row`s of `<label for>` + select; liveform prints a select's id only when `output_field()` gets `'id'`. They sat in an `.input-group-text row` with the texts in divs: six unnamed comboboxes per screen.

@@ -5,7 +5,7 @@ module: ready_reports
 ---
 
 ## What is a ready report?
-- A report defined in code, opened by an address parameter as a new, unsaved report; no table, no column. Saving it makes it the person's own saved report, as any new report (`plans/report-screens.md`).
+- A report defined in code, opened by an address parameter as a new, unsaved report; no table, no column. Saving it makes it the person's own saved report, as any new report. Owner (2026-11-11, #8673): `workflow/decisions-made-panel-5.md`.
 - The registry is `pg_ready_reports()` in `includes/fn/ready_reports.php` (pure, loaded by `functions.php`): each entry has `key`, `screen` (`order_report`; `visitor_report` for `visitors/visitor-report-ready-reports.md`), `title` (English, printed through `lang()`), `levels` (one to three, each `by` and `order`), `filters` (field, operator, value) and `period` (calendar days counted, today included; 0 for none).
 
 ## How does the order report open one?
