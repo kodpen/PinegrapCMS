@@ -162,7 +162,7 @@ function test_designer_canvas_chip_and_band_rules()
 	pg_assert_contains('bandInner.title = bandInner.textContent;', $source, 'the table band keeps its text in its title');
 
 	// The red section warning only where the page replaces the children.
-	pg_assert_contains('var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1 };', $source, 'sections whose children the page keeps');
+	pg_assert_contains('var _SD_SECTION_KEEPS_CHILDREN = { recipient_picker: 1, comment_watchers: 1, form_step_nav: 1 };', $source, 'sections whose children the page keeps');
 	pg_assert_contains('if (_hasChildren && _SD_SECTION_KEEPS_CHILDREN[_sec]) {', $source, 'no warning on a section that keeps its children');
 	pg_assert_contains("_hint.title = _sdT('The child elements here are replaced with BACKEND HTML at render time');", $source, 'the warning says in its title what is wrong');
 }
