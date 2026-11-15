@@ -359,11 +359,15 @@ function ws_approval_agent_request_of($row)
  * @param array    $channel
  * @param array    $approval the ws_approvals row
  * @param string[] $agents   ws_approval_agents_clean() values, checked already
+ * @return string[] the values asked: the message's own tags skip them,
+ *                  a brake that held a request back included
  */
 function ws_approval_agents_ask($viewer, $channel, $approval, $agents)
 {
+    $asked = array();
+
     if (empty($agents) || !ws_approval_agents_ready()) {
-        return;
+        return $asked;
     }
 
     $state = ws_approval_agent_request_state($approval);
@@ -371,6 +375,8 @@ function ws_approval_agents_ask($viewer, $channel, $approval, $agents)
     $body = $message ? ws_tokens_normalise((string) $message['body']) : '';
 
     foreach ($agents as $value) {
+        $asked[] = (string) $value;
+
         db("INSERT IGNORE INTO ws_approval_agents (approval_id, agent) VALUES ('" . (int) $approval['id'] . "', '" . e($value) . "')");
 
         // Followed mode: the agent is asked by name, whatever its wake rule.
@@ -398,6 +404,8 @@ function ws_approval_agents_ask($viewer, $channel, $approval, $agents)
                 WHERE approval_id = '" . (int) $approval['id'] . "' AND agent = '" . e($value) . "'");
         }
     }
+
+    return $asked;
 }
 
 /**

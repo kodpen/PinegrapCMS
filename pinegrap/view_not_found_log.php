@@ -252,7 +252,7 @@ echo pg_page_shell($shell) . '
         ),
         'view'     => $view_switcher,
         'overflow' => '<div class="pg-menu-wrap">
-                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <button type="button" class="pg-icon-button" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                 <ul class="menu pg-menu-end">
                     <li><button type="button" class="menu-item pg-link-body-emphasis no-submit pg-404-clear"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . h(lang('Clear Log')) . '</button></li>
                 </ul>

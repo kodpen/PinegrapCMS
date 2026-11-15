@@ -144,15 +144,16 @@ if (!$_POST) {
     foreach (array(array($pg_settings_prev, 'bi-chevron-left', lang('Previous')), array($pg_settings_next, 'bi-chevron-right', lang('Next'))) as $pg_settings_step) {
 
         if ($pg_settings_step[0] === '') {
-            $pg_settings_step_links .= '<button type="button" class="btn btn-sm btn-text theme-secondary" disabled="disabled" aria-label="' . h($pg_settings_step[2]) . '"><i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></button>';
+            $pg_settings_step_links .= '<button type="button" class="pg-icon-button opacity-50" disabled="disabled" aria-label="' . h($pg_settings_step[2]) . '"><i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></button>';
             continue;
         }
 
         $pg_settings_step_category = pg_settings_category($pg_settings_step[0]);
 
         $pg_settings_step_links .=
-            '<a class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="tooltip"'
+            '<a class="pg-icon-button no-popover" data-bs-toggle="tooltip"'
             . ' title="' . h($pg_settings_step_category['label']) . '"'
+            . ' aria-label="' . h($pg_settings_step[2] . ': ' . $pg_settings_step_category['label']) . '"'
             . ' href="' . h(pg_settings_url($pg_settings_step[0])) . '" data-pg-settings-page>'
             . '<i class="bi ' . $pg_settings_step[1] . '" aria-hidden="true"></i></a>';
     }

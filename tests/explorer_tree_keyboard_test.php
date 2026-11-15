@@ -67,5 +67,5 @@ function test_explorer_tree_keyboard_current_row_and_keys()
 function test_explorer_tree_keyboard_view_group_named()
 {
 	$source = explorer_tree_keyboard_source();
-	pg_assert_true(strpos($source, '<div class="btn-group btn-group-sm" id="explorer_view_group" role="group" aria-label="<?php echo lang(\'View\'); ?>">') !== false, 'the Grid/List group is named');
+	pg_assert_true(strpos($source, '<div class="d-inline-flex gap-1" id="explorer_view_group" role="group" aria-label="<?php echo lang(\'View\'); ?>">') !== false, 'the Grid/List group is named');
 }

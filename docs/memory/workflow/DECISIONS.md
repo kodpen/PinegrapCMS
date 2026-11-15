@@ -71,6 +71,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-9.md: How does a link that opens something read in Turkish? (owner, 2026-11-14, agent channel message 3236)
 - decisions-made-panel-9.md: Do the kept screens' two buttons and Add Product's field widths take the new look? (owner, 2026-11-15, agent channel message 4662)
 - decisions-made-panel-9.md: Does the Site Settings dialog keep its place after a save? (owner, 2026-11-15, in the architect's window)
+- decisions-made-panel-9.md: Do the fields of add and edit screens take the look's field label and input? (owner, 2026-11-15, agent channel poll under message 4811)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -730,6 +731,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - ui/list-table-quick-edit-values.md: Which values of each driver list change in quick edit, which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 - ui/list-table-rollout.md: How the panel lists moved from DataTables to the list table driver (TD1-TD14, done with #8253): the driver, the rules that still hold, where each batch is noted, what the removal took out
 - ui/look-field-widths.md: Field widths of the add and edit screens in look A (DL5c, #9658): the 16 px field grid, the span per field kind from md up, pg-field-span-N for a field alone in its row, who sets which screen's spans
+- ui/look-icon-buttons.md: SH5: icon-only toolbar buttons and menu toggles of the old panel screens as look A's .pg-icon-button with a lang() name; what was left and why
 - ui/look-list-title-settings-tile.md: Look A shared recipes (SH9, #9726): a list screen's count beside its title, a list's filters as a segmented control (pg_list_seg_filters()), the 34 px icon tile of a settings row (pg_settings_tile())
 - ui/look-mapping-grids.md: Column-mapping grids (one small select per column of an uploaded file) keep their own narrow columns in look A; the field widths of add and edit screens are for a record's fields
 - ui/look-page-widths.md: Look A's page widths: edit screens centred at 1700 px (1300 + 24 + 376), lists as wide as their columns (1700 px to the window, details panel added), held while searching; tokens, rail

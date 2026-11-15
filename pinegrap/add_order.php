@@ -403,7 +403,7 @@ echo
                     <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-sale-mode="belge" title="' . h(lang('Document view: VAT breakdown, account and due date')) . '"><i class="bi bi-journal-text" aria-hidden="true"></i><span class="pg-sale-lbl">' . lang('Document') . '</span></button>
                 </div>' : '') . '
                 <div class="pg-menu-wrap">
-                    <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                    <button type="button" class="pg-icon-button no-submit" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
                     <ul class="menu pg-menu-end">
                         <li><button type="button" class="menu-item pg-link-body-emphasis no-submit" data-sale-keys><i class="bi bi-keyboard me-3" aria-hidden="true"></i>' . lang('Keyboard shortcuts') . '</button></li>
                         <li><button type="button" class="menu-item pg-link-body-emphasis d-flex align-items-center no-submit" data-sale-sound><i class="bi bi-volume-up me-3" aria-hidden="true"></i>' . lang('Error sound') . '<i class="bi bi-check2 ms-auto ps-5" id="pg_sale_sound_tick" aria-hidden="true"></i></button></li>'
