@@ -16,7 +16,7 @@ description: Remind me later (IB10): the pane's menu and times, ws_mail_reminder
 - A woken conversation reads unread (`ws_mail_unread_sql()` ORs `ws_mail_remind_woken_sql()`; list rows and the API's unread map ask `ws_mail_remind_woken_ids()`) until it is read: `ws_mail_read_mark()` for a conversation deletes its woken row, Mark all as read deletes them all.
 
 ## How is it kept?
-- Table `ws_mail_reminders` (owner 2026-11-15, the schema decisions' part 21, brought by PR #9566): one row per conversation, person and kind (UNIQUE `uniq_person`); kind `later` here, `no_answer` for IB10b. A second choice moves `due_at` and sets `woken_at` back to 0.
+- Table `ws_mail_reminders` (owner 2026-11-15, the schema decisions' part 21, brought by PR #9566): one row per conversation, person and kind (UNIQUE `uniq_person`); kind `later` here, `no_answer` for Remind me if no answer comes (`mail-no-answer.md`). A second choice moves `due_at` and sets `woken_at` back to 0.
 - Step `upgrade_2026_11_0_ws_mail_reminders()` (11.0.212), listed in `get_tables()`; readiness `ws_mail_remind_ready()` (a plain `pg_schema_has()`, callable before the Workspace loads).
 - Panel action `ws_mail_remind` (choice hour | morning | week | at | cancel), also with the Workspace off. No API route or MCP tool; the API's inbox lists the kind.
 

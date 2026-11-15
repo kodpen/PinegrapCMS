@@ -22,4 +22,4 @@ description: A support box's incoming mail rules (IB11): one condition and one a
 - Each change is a Site Log line (`ws_mail_rule_log_line()`). No API route or MCP tool.
 
 ## Tests?
-- `tests/workspace_mail_rules_test.php`: clean, input, match, text and log lines, which boxes, the card's HTML, the wiring. Built by IB11 of `plans/mail-inbox-more.md`.
+- `tests/workspace_mail_rules_test.php`: clean, input, match, text and log lines, which boxes, the card's HTML, the wiring. Built by IB11 (#9589).

@@ -1336,6 +1336,24 @@ function ws_api_poll_present($poll)
         'can_close'         => !empty($poll['can_close']),
         'options'           => array_map('ws_api_poll_option_present', array_values((array) $poll['options'])),
         'result_message_id' => ((int) $poll['result_id'] > 0) ? (int) $poll['result_id'] : null,
+        // Taken back and asked again (poll_again.php); null for none.
+        'withdrawn'         => !empty($poll['withdrawn']),
+        'withdrawn_at'      => api_time($poll['withdrawn_at'] ?? 0),
+        'can_withdraw'      => !empty($poll['can_withdraw']),
+        'can_ask_again'     => !empty($poll['can_ask_again']),
+        'again_of'          => ((int) ($poll['again_of'] ?? 0) > 0) ? (int) $poll['again_of'] : null,
+        'again_of_message_id'    => ((int) ($poll['again_of_message'] ?? 0) > 0) ? (int) $poll['again_of_message'] : null,
+        'asked_again'            => ((int) ($poll['asked_again'] ?? 0) > 0) ? (int) $poll['asked_again'] : null,
+        'asked_again_message_id' => ((int) ($poll['asked_again_message'] ?? 0) > 0) ? (int) $poll['asked_again_message'] : null,
+        // An agent question (agent_question.php): who is asked, who answered.
+        'agent_question'    => !empty($poll['agent_question']),
+        'asked'             => array_map(function ($person) {
+            return array('user_id' => (int) $person['id'], 'name' => (string) $person['name']);
+        }, array_values((array) ($poll['asked'] ?? array()))),
+        'can_answer'        => !empty($poll['can_answer']),
+        'answered_by'       => is_array($poll['answered_by'] ?? null) ? array('user_id' => (int) $poll['answered_by']['id'], 'name' => (string) $poll['answered_by']['name']) : null,
+        'answered_at'       => api_time($poll['answered_at'] ?? 0),
+        'answer'            => (string) ($poll['answer'] ?? ''),
     );
 }
 
@@ -1350,16 +1368,29 @@ function ws_api_poll_option_present($option)
     $voters = array();
 
     foreach ((array) $option['voters'] as $voter) {
-        $voters[] = array('user_id' => ((int) $voter['id'] > 0) ? (int) $voter['id'] : null, 'name' => (string) $voter['name']);
+        $voters[] = array('user_id' => ((int) $voter['id'] > 0) ? (int) $voter['id'] : null, 'name' => (string) $voter['name'], 'text' => (string) ($voter['text'] ?? ''));
     }
 
+    $picture = is_array($option['picture'] ?? null) ? array(
+        'file_id' => (int) $option['picture']['file_id'],
+        'name'    => (string) $option['picture']['name'],
+        'url'     => (defined('URL_SCHEME') ? URL_SCHEME . HOSTNAME_SETTING : '') . (string) $option['picture']['url'],
+    ) : null;
+
     return array(
-        'id'      => (int) $option['id'],
-        'label'   => (string) $option['label'],
-        'count'   => (int) $option['count'],
-        'mine'    => !empty($option['mine']),
-        'leading' => !empty($option['leading']),
-        'voters'  => $voters,
+        'id'          => (int) $option['id'],
+        'label'       => (string) $option['label'],
+        'count'       => (int) $option['count'],
+        'mine'        => !empty($option['mine']),
+        'leading'     => !empty($option['leading']),
+        'voters'      => $voters,
+        // The option's parts (poll_parts.php); empty on a poll made before.
+        'description' => (string) ($option['description'] ?? ''),
+        'picture'     => $picture,
+        'links'       => array_values((array) ($option['links'] ?? array())),
+        'recommended' => !empty($option['recommended']),
+        'other'       => !empty($option['other']),
+        'my_text'     => (string) ($option['my_text'] ?? ''),
     );
 }
 
@@ -1379,8 +1410,24 @@ function ws_api_poll_schema()
         'can_edit'          => 'boolean',
         'can_close'         => 'boolean',
         'options'           => array(array('id' => 'integer', 'label' => 'string', 'count' => 'integer', 'mine' => 'boolean', 'leading' => 'boolean',
-            'voters' => array(array('user_id' => 'integer?', 'name' => 'string')))),
+            'voters' => array(array('user_id' => 'integer?', 'name' => 'string', 'text' => 'string')),
+            'description' => 'string', 'picture' => 'object?', 'links' => array(array('url' => 'string', 'label' => 'string')),
+            'recommended' => 'boolean', 'other' => 'boolean', 'my_text' => 'string')),
         'result_message_id' => 'integer?',
+        'withdrawn'         => 'boolean',
+        'withdrawn_at'      => 'string?',
+        'can_withdraw'      => 'boolean',
+        'can_ask_again'     => 'boolean',
+        'again_of'          => 'integer?',
+        'again_of_message_id'    => 'integer?',
+        'asked_again'            => 'integer?',
+        'asked_again_message_id' => 'integer?',
+        'agent_question'    => 'boolean',
+        'asked'             => array(array('user_id' => 'integer', 'name' => 'string')),
+        'can_answer'        => 'boolean',
+        'answered_by'       => 'object?',
+        'answered_at'       => 'string?',
+        'answer'            => 'string',
     );
 }
 
@@ -3458,12 +3505,27 @@ function ws_api_polls_vote($params)
         api_fail_validation(lang('Only one option can be chosen in this poll.'), 'option_ids');
     }
 
+    // The "Other" row needs the voter's own words.
+    $other_text = ws_poll_other_text($params['other_text'] ?? '');
+    $worded = ws_poll_other_check($chosen, ws_poll_other_id((int) $poll['id']), $other_text);
+
+    if (!$worded['ok']) {
+        api_fail_validation($worded['error'], $worded['field']);
+    }
+
+    // An agent question's answer settles it and cannot be taken back.
+    $empty = ws_agent_question_is($poll) ? ws_agent_question_choice_refusal($chosen) : '';
+
+    if ($empty !== '') {
+        api_fail_validation($empty, 'option_ids');
+    }
+
     api_dry_run_stop('voted', 'workspace_poll', array('id' => (int) $poll['id'], 'message_id' => (int) $poll['message_id'], 'option_ids' => $chosen));
 
-    $result = ws_poll_vote($viewer, $poll, $chosen);
+    $result = ws_poll_vote($viewer, $poll, $chosen, $other_text);
 
     if (!$result['ok']) {
-        ws_api_poll_refused($result['error']);
+        ws_api_poll_refused($result['error'], (string) ($result['field'] ?? ''));
     }
 
     ws_api_poll_message_ok($viewer, $poll);
@@ -3524,6 +3586,8 @@ function ws_api_poll_refused($error, $field = '')
         lang('Only the person who asked can change the poll.'),
         lang('Only the person who asked, or whoever runs the channel, can close the poll.'),
         lang('You cannot post in that channel.'),
+        lang('Only the people asked can answer this question.'),
+        lang('A guest cannot answer an agent question.'),
     );
 
     if (in_array($error, $forbidden, true)) {
@@ -3532,6 +3596,10 @@ function ws_api_poll_refused($error, $field = '')
 
     if ($error === lang('That poll could not be found.')) {
         api_fail_not_found(lang('Poll'));
+    }
+
+    if ($error === lang('The database has to be updated first.')) {
+        api_fail(503, 'service_unavailable', $error);
     }
 
     // A closed poll, or one whose time ran out, is refused on its closing time.
@@ -3567,12 +3635,19 @@ function ws_api_polls_create($params)
 
     $options = array();
 
+    // A text, or an object with the option's label and its parts.
     foreach ((array) $params['options'] as $item) {
-        if (!is_string($item) && !is_int($item) && !is_float($item)) {
-            api_fail_validation(lang(array('string' => 'Each item of {var:1} must be a text.', 'vars' => 'options')), 'options');
-        }
+        if (is_array($item)) {
+            if (!isset($item['label']) && empty($item['other'])) {
+                api_fail_validation(lang(array('string' => 'Each item of {var:1} needs a label.', 'vars' => 'options')), 'options');
+            }
 
-        $options[] = (string) $item;
+            $options[] = $item;
+        } elseif (is_string($item) || is_int($item) || is_float($item)) {
+            $options[] = (string) $item;
+        } else {
+            api_fail_validation(lang(array('string' => 'Each item of {var:1} must be a text or an object.', 'vars' => 'options')), 'options');
+        }
     }
 
     $data = array(
@@ -3589,6 +3664,16 @@ function ws_api_polls_create($params)
 
     if (!$checked['ok']) {
         api_fail_validation($checked['error'], ($checked['field'] !== '') ? $checked['field'] : null);
+    }
+
+    $stored = ws_poll_parts_store_check((int) $channel['id'], $checked['parts']);
+
+    if (!$stored['ok']) {
+        if ($stored['error'] === lang('The database has to be updated first.')) {
+            api_fail(503, 'service_unavailable', $stored['error']);
+        }
+
+        api_fail_validation($stored['error'], 'options');
     }
 
     api_dry_run_stop('created', 'workspace_poll', array(
@@ -3618,8 +3703,7 @@ function ws_api_polls_update($params)
 {
     $viewer = ws_api_viewer();
     $poll = ws_api_poll_or_404($viewer, $params['id']);
-
-    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can change their poll; an application key or an OAuth connection cannot change it for them.'));
+    $as_app = ws_api_poll_asker_app($poll);
 
     $fields = array('question', 'options', 'multiple', 'anonymous', 'closes_at');
 
@@ -3667,7 +3751,9 @@ function ws_api_polls_update($params)
                 $item = array('label' => (string) $item);
             }
 
-            if (!is_array($item) || !isset($item['label']) || (!is_string($item['label']) && !is_int($item['label']) && !is_float($item['label']))) {
+            // An existing option sent by its id alone keeps its label.
+            if (!is_array($item) || (!isset($item['label']) && !isset($item['id']) && empty($item['other']))
+                || (isset($item['label']) && !is_string($item['label']) && !is_int($item['label']) && !is_float($item['label']))) {
                 api_fail_validation(lang(array('string' => 'Each item of {var:1} needs a label.', 'vars' => 'options')), 'options');
             }
 
@@ -3681,13 +3767,21 @@ function ws_api_polls_update($params)
                 }
             }
 
-            $data['options'][] = array('id' => $option_id, 'label' => (string) $item['label']);
+            // The parts sent go with it; a part left out of an existing
+            // option keeps its value (ws_poll_edit_check()).
+            $item['id'] = $option_id;
+
+            if ($option_id > 0) {
+                $item += $options[$option_id];
+            }
+
+            $data['options'][] = $item;
         }
     }
 
     // The checks ws_poll_edit() makes, made first so that a dry run meets
     // the same refusals.
-    $checked = ws_poll_edit_check($viewer, $poll, $data);
+    $checked = ws_poll_edit_check($viewer, $poll, $data, $as_app);
 
     if (!$checked['ok']) {
         ws_api_poll_refused($checked['error'], $checked['field']);
@@ -3710,13 +3804,112 @@ function ws_api_polls_update($params)
         'closes_at'  => api_time($checked['closes_at']),
     ));
 
-    $result = ws_poll_edit($viewer, $poll, $data);
+    $result = ws_poll_edit($viewer, $poll, $data, $as_app);
 
     if (!$result['ok']) {
         ws_api_poll_refused($result['error'], $result['field']);
     }
 
     ws_api_poll_message_ok($viewer, $poll);
+}
+
+/**
+ * The application that changes, takes back or asks again its own poll: the
+ * caller's, when the poll's message is that application's. Otherwise the
+ * poll is the person's own words, which only their team devices session
+ * changes, and anything else is refused here.
+ *
+ * @param array $poll
+ * @return int the application, 0 for the person
+ */
+function ws_api_poll_asker_app($poll)
+{
+    if (ws_api_poll_is_callers($poll)) {
+        return ws_api_writer_app_id();
+    }
+
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can change their poll; an application key or an OAuth connection cannot change it for them.'));
+
+    return 0;
+}
+
+/**
+ * Takes a poll back, the way Take back on it does: the asker's own, a person
+ * or the application that asked it. It stays in the channel, greyed, takes
+ * no vote and writes no result.
+ */
+function ws_api_polls_withdraw($params)
+{
+    $viewer = ws_api_viewer();
+    $poll = ws_api_poll_or_404($viewer, $params['id']);
+    $as_app = ws_api_poll_asker_app($poll);
+    $checked = ws_poll_withdraw_check($viewer, $poll, $as_app);
+
+    if (!$checked['ok']) {
+        ws_api_poll_refused($checked['error'], $checked['field']);
+    }
+
+    api_dry_run_stop('withdrawn', 'workspace_poll', array('id' => (int) $poll['id'], 'message_id' => (int) $poll['message_id']));
+
+    $result = ws_poll_withdraw($viewer, $poll, $as_app);
+
+    if (!$result['ok']) {
+        ws_api_poll_refused($result['error'], $result['field']);
+    }
+
+    ws_api_poll_message_ok($viewer, ws_poll($poll['id']));
+}
+
+/**
+ * Asks a poll again as a new poll naming it: the fields sent replace the
+ * old poll's, the rest are carried over (not closes_at). An open old poll is
+ * taken back; an answered or closed one stays. The answer is the new
+ * poll's message (201).
+ */
+function ws_api_polls_again($params)
+{
+    $viewer = ws_api_viewer();
+    $poll = ws_api_poll_or_404($viewer, $params['id']);
+    $as_app = ws_api_poll_asker_app($poll);
+    $sent = array();
+
+    foreach (array('question', 'options', 'multiple', 'anonymous', 'closes_at') as $key) {
+        if (array_key_exists($key, $params) && ($params[$key] !== null)) {
+            $sent[$key] = $params[$key];
+        }
+    }
+
+    if (isset($sent['options'])) {
+        foreach ((array) $sent['options'] as $item) {
+            if (!is_array($item) && !is_string($item) && !is_int($item) && !is_float($item)) {
+                api_fail_validation(lang(array('string' => 'Each item of {var:1} must be a text or an object.', 'vars' => 'options')), 'options');
+            }
+        }
+    }
+
+    $checked = ws_poll_again_check($viewer, $poll, $sent, $as_app);
+
+    if (!$checked['ok']) {
+        if ($checked['error'] === lang('The database has to be updated first.')) {
+            api_fail(503, 'service_unavailable', $checked['error']);
+        }
+
+        ws_api_poll_refused($checked['error'], $checked['field']);
+    }
+
+    api_dry_run_stop('created', 'workspace_poll', array(
+        'channel_id' => (int) $poll['channel_id'],
+        'again_of'   => (int) $poll['id'],
+        'withdraws'  => !ws_poll_withdrawn($poll) && ((int) $poll['closed_at'] === 0),
+    ));
+
+    $result = ws_poll_ask_again($viewer, $poll, $sent, $as_app);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], ($result['field'] !== '') ? $result['field'] : null);
+    }
+
+    ws_api_poll_message_ok($viewer, ws_poll($result['poll_id']), 201);
 }
 
 /**
@@ -3757,6 +3950,13 @@ function ws_api_polls_close($params)
 
     if (!ws_can_close_poll($viewer, $poll, ws_channel($poll['channel_id']))) {
         ws_api_poll_refused(lang('Only the person who asked, or whoever runs the channel, can close the poll.'));
+    }
+
+    // An agent question closes itself when it is answered.
+    $refusal = ws_agent_question_close_refusal($poll);
+
+    if ($refusal !== '') {
+        ws_api_poll_refused($refusal, 'closed_at');
     }
 
     api_dry_run_stop('closed', 'workspace_poll', array('id' => (int) $poll['id'], 'message_id' => (int) $poll['message_id']));
@@ -4285,6 +4485,12 @@ function ws_api_approvals_create($params)
 
 function ws_api_approvals_decide($params)
 {
+    // Claude's routine answers with Claude's key, reading the channel as
+    // its other routes do (ws_api_assistant_channel_reader()).
+    if (function_exists('ws_api_is_claude') && ws_api_is_claude()) {
+        ws_api_approvals_claude_decide($params);
+    }
+
     $viewer = ws_api_viewer();
     $approval = ws_api_approval_or_404($viewer, $params['id']);
 
@@ -4327,6 +4533,29 @@ function ws_api_approvals_decide($params)
     }
 
     api_ok(ws_api_approval_present($viewer, ws_approval($approval['id'])));
+}
+
+/**
+ * Claude's answer to a request it was asked. Ends the call.
+ *
+ * @param array $params
+ */
+function ws_api_approvals_claude_decide($params)
+{
+    $approval = function_exists('ws_approval') ? ws_approval((int) $params['id']) : null;
+
+    if (!$approval) {
+        api_fail_not_found(lang('Approval request'));
+    }
+
+    list($viewer) = ws_api_assistant_channel_reader($approval['channel_id']);
+    $message = ws_message($approval['message_id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0)) {
+        api_fail_not_found(lang('Approval request'));
+    }
+
+    ws_api_approvals_agent_decide($viewer, ws_approval_agent_claude_row(), $approval, $params);
 }
 
 /**

@@ -439,6 +439,36 @@
 
     // An icon with a small mark in its corner (ws_icon_badged_html() in
     // includes/workspace/channel_icons.php); the plain icon without one.
+    // An agent's state mark, the one map of the channel's agent marks
+    // (.ws-agent-dot): working a blue dot, waiting an amber dot, not seen an
+    // amber square, paused a grey square, ready no mark
+    // (ws_agent_card_state()). Null for ready or an unknown state.
+    function agentStateDot(state, words) {
+        if (['working', 'waiting', 'late', 'paused'].indexOf(state) === -1) {
+            return null;
+        }
+
+        var dot = el('span', 'ws-agent-dot is-' + state);
+
+        dot.title = words || '';
+        dot.setAttribute('aria-hidden', 'true');
+        return dot;
+    }
+
+    // An agent's icon in the @ menu with its state mark in the corner.
+    function pickerAgentFace(item) {
+        var node = el('span', 'ws-picker-agent');
+        var dot = agentStateDot(item.state, item.stateWords);
+
+        node.appendChild(icon(item.icon || 'bi-robot'));
+
+        if (dot) {
+            node.appendChild(dot);
+        }
+
+        return node;
+    }
+
     function badgedIcon(name, badge, extra) {
         if (!badge) {
             return icon(name, extra);
@@ -3776,6 +3806,45 @@
         });
 
         return ours && (mine || !!message.mentions_me);
+    }
+
+    // An agent's marks in a message of this channel: its own name (without
+    // the application's "(application)" suffix), its role label and its
+    // state dot, read from the channel's member row of the agent, matched by
+    // the application it writes as (ws_channel_member_agent(), the brief of
+    // ws_agent_card_brief()). The state is drawn with the agents' one dot
+    // (.ws-agent-dot, its colour map); ready, or a state the screen does not
+    // know, draws no mark. Null for anything else: a person's, a guest's, Claude's,
+    // Pinegrap AI's, an MCP agent's, a plain application's, an agent's that
+    // is not in this channel. Pure.
+    function messageAgentMarks(message, channel) {
+        var sender = (message && message.sender) || {};
+        var marked = ['working', 'waiting', 'late', 'paused'];
+        var row = null;
+
+        if (!message || (message.sender_kind !== 'app') || !sender.agent || !(sender.app_id > 0)
+            || sender.claude || sender.ai || sender.mcp || !channel) {
+            return null;
+        }
+
+        (channel.agents || []).some(function (agent) {
+            row = (agent.app_id === sender.app_id) ? agent : null;
+
+            return !!row;
+        });
+
+        if (!row) {
+            return null;
+        }
+
+        var state = (marked.indexOf(row.state) !== -1) ? row.state : '';
+
+        return {
+            name: row.name || sender.name || '',
+            role: row.role || '',
+            state: state,
+            words: state ? (row.state_words || '') : ''
+        };
     }
 
     // The application a message is a plain line of, 0 when it is anything
@@ -11047,10 +11116,24 @@
 
             var face = el('div', 'ws-msg-avatar');
             var person = (message.sender_kind === 'user') ? message.sender : null;
+            var agentMarks = messageAgentMarks(message, self.channel);
+            var picture = avatar(message.sender);
             // A registry agent of the channel: its name and picture open its
             // card (agentCardHook()).
-            var cardAgent = (message.sender_kind === 'app' && message.sender) ? agentOfApp(this.channel, message.sender.app_id) : null;
-            face.appendChild(cardAgent ? agentCardHook(avatar(message.sender), this.channel, cardAgent, false) : personLink(avatar(message.sender), person));
+            var cardAgent = (message.sender_kind === 'app' && message.sender) ? agentOfApp(self.channel, message.sender.app_id) : null;
+
+            // An agent of this channel: its state dot in the picture's
+            // corner, named for a screen reader and on hover.
+            if (agentMarks && agentMarks.state) {
+                var stateDot = el('span', 'ws-agent-dot is-' + agentMarks.state + ' ws-msg-agent-state');
+
+                stateDot.setAttribute('role', 'img');
+                stateDot.setAttribute('aria-label', agentMarks.words);
+                stateDot.title = agentMarks.words;
+                picture.appendChild(stateDot);
+            }
+
+            face.appendChild(cardAgent ? agentCardHook(picture, self.channel, cardAgent, false) : personLink(picture, person));
 
             // Read out with the name in the hidden head; shown on hover.
             if (follow) {
@@ -11066,7 +11149,14 @@
             var meta = el('div', 'ws-msg-meta');
             meta.id = 'ws-msg-meta-' + (++messageMetaSeq);
             node.setAttribute('aria-labelledby', meta.id);
-            meta.appendChild(cardAgent ? agentCardHook(el('b', '', message.sender.name), this.channel, cardAgent, true) : personLink(el('b', '', message.sender ? message.sender.name : ''), person));
+            var senderName = el('b', '', agentMarks ? agentMarks.name : (message.sender ? message.sender.name : ''));
+
+            meta.appendChild(cardAgent ? agentCardHook(senderName, self.channel, cardAgent, true) : personLink(senderName, person));
+
+            // An agent of this channel: its role in place of "(application)".
+            if (agentMarks && agentMarks.role) {
+                meta.appendChild(el('span', 'pg-pill pg-tone-violet ws-msg-agent-role', agentMarks.role));
+            }
 
             if (message.sender_kind === 'guest') {
                 meta.appendChild(el('span', 'badge rounded-pill ws-guest-badge', t('guest_badge')));
@@ -17747,7 +17837,9 @@
                     // as the list is cut at ten.
                     (self.channel.apps || []).forEach(function (app) {
                         if (!needle || foldText(app.shown.slice(1)).indexOf(needle) === 0 || foldText(app.meta).indexOf(needle) === 0) {
-                            items.push({ label: app.label, meta: app.meta, icon: app.icon, token: app.token, shown: app.shown });
+                            // A registry agent's state dot and usage mark
+                            // (ws_agent_picker_entries()).
+                            items.push({ label: app.label, meta: app.meta, role: app.role || '', icon: app.icon, token: app.token, shown: app.shown, state: app.state || '', stateWords: app.state_words || '', usage: app.usage_high ? { words: app.usage_words, title: app.usage_title } : null });
                         }
                     });
                 }
@@ -17906,6 +17998,8 @@
                     row.appendChild(el('span', 'ws-picker-emoji', item.glyph));
                 } else if (item.avatar) {
                     row.appendChild(avatar(item.face || { avatar: item.avatar, name: item.label }));
+                } else if (item.state) {
+                    row.appendChild(pickerAgentFace(item));
                 } else {
                     row.appendChild(badgedIcon(item.icon || 'bi-dot', item.badge || ''));
                 }
@@ -17921,7 +18015,29 @@
                     row.appendChild(el('span', 'ws-picker-label', item.label));
                 }
 
-                if (item.meta) {
+                // The state in words for a screen reader; the dot shows it.
+                if (item.stateWords && (item.state !== 'idle')) {
+                    row.lastChild.appendChild(el('span', 'visually-hidden', ' (' + item.stateWords + ')'));
+                }
+
+                // A reported usage window at 90% or more: a mark only.
+                if (item.usage) {
+                    var usage = el('span', 'pg-pill pg-tone-amber ws-picker-usage', item.usage.words);
+
+                    usage.title = item.usage.title;
+                    row.appendChild(usage);
+                }
+
+                // An agent's role after its name: when the line is cut, the
+                // name is cut and the role stays whole.
+                if (item.meta && item.role) {
+                    var meta = el('span', 'ws-picker-meta ws-picker-meta-role');
+
+                    meta.appendChild(el('span', 'ws-picker-meta-name', item.meta));
+                    meta.appendChild(el('span', 'ws-picker-meta-sep', ' · '));
+                    meta.appendChild(el('span', '', item.role));
+                    row.appendChild(meta);
+                } else if (item.meta) {
                     row.appendChild(el('span', 'ws-picker-meta', item.meta));
                 }
 

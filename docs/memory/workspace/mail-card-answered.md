@@ -6,7 +6,7 @@ description: The conversation's mail card in a channel since MA10b (#9453): "Ans
 ## What does the conversation's card add?
 - "Answered · who · time" (`ws_mail_card_answered_html()`) while the conversation's `last_out_at` is later than its `last_in_at`: no column. The writer of the newest answer is read once per page in `ws_mail_items_map()` (`answered_by`); an automatic answer does not set `last_out_at`, so it never marks the card.
 - Then "Open e-mail", a plain link to `ws_mail_room_url()`, the conversation in Communication › Incoming e-mail; it works without the script.
-- Owner (2026-11-12, #8961): "oradan yanıtladığında da yanıtlandı olarak işaretlenir kanalda" (`workflow/decisions-made-workspace-21.md`); the card's parts decided in `plans/messages-area-decided-2.md`.
+- Owner (2026-11-12, #8961): "oradan yanıtladığında da yanıtlandı olarak işaretlenir kanalda" (`workflow/decisions-made-workspace-21.md`); the card's parts decided in `mail-area-proposals.md`.
 
 ## What left the card?
 - "Show all" with the whole text and "Not taken in": both are read in the area. A customer's text shows its first lines (`ws_mail_card_excerpt()`, [[mail-card]]).

@@ -1,6 +1,6 @@
 ---
 name: mail-blocks
-description: A mailbox's block list (IB4): Block sender under a mail, who may block where, what a blocked mail keeps, the list with Allow again on the Mailboxes card, the 30-day sweep, the schema step
+description: A mailbox's block list (IB4, IB4b): Block sender under a mail, who may block where, what a blocked mail keeps, the list with Allow again on the Mailboxes card, the 30-day sweep, the schema step
 ---
 
 ## What is blocked?

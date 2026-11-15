@@ -203,6 +203,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_personal_plan_repeat(); // 11.0.209
 	upgrade_2026_11_0_ws_mail_away();            // 11.0.211
 	upgrade_2026_11_0_ws_mail_reminders();       // 11.0.212
+	upgrade_2026_11_0_ws_poll_parts();           // 11.0.213
+	upgrade_2026_11_0_ws_poll_agent_question();  // 11.0.214
 
 }
 
@@ -6798,5 +6800,55 @@ function upgrade_2026_11_0_ws_mail_reminders() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: an e-mail conversation can be set aside with Remind me later.');
+
+}
+
+// The widened poll (11.0.213, includes/workspace/poll_parts.php): an
+// option's description, picture (a file posted in the channel), links,
+// recommended mark and the "Other" row; the voter's own words on that row;
+// a poll taken back and the poll a new one asks again. No backfill: every
+// column is empty on a poll made before, which draws and counts as it did.
+function upgrade_2026_11_0_ws_poll_parts() {
+
+	if (!install_table_exists('ws_polls') || !install_table_exists('ws_poll_options') || !install_table_exists('ws_poll_votes')) {
+
+		install_skipped('ws_polls does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_poll_options', 'description', "VARCHAR(500) NOT NULL DEFAULT ''");
+	install_add_column('ws_poll_options', 'file_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_poll_options', 'links', "TEXT NULL");
+	install_add_column('ws_poll_options', 'recommended', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_poll_options', 'other', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_poll_votes', 'other_text', "VARCHAR(255) NOT NULL DEFAULT ''");
+	install_add_column('ws_polls', 'withdrawn_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_polls', 'withdrawn_by', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_polls', 'again_of', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_polls', 'idx_again_of', "INDEX idx_again_of (again_of)");
+
+	install_note('Workspace: a poll\'s options can carry a description, a picture, links, a recommended mark and an "Other" answer in the voter\'s own words.');
+
+}
+
+// The agent question (11.0.214, includes/workspace/agent_question.php): a
+// poll an application agent or an assistant asks is marked by the server,
+// asked of named people and settled by its first answer. No backfill: a
+// poll an agent asked before stays a poll.
+function upgrade_2026_11_0_ws_poll_agent_question() {
+
+	if (!install_table_exists('ws_polls')) {
+
+		install_skipped('ws_polls does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_polls', 'agent_question', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: a poll an agent asks is an agent question, answered by the people it asks.');
 
 }

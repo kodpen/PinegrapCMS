@@ -1,17 +1,16 @@
 ---
 name: approval-agents
-description: Agents asked to approve (AE2): ws_approval_agents, who may be asked, the by-hand bound, the wake and brief, an agent's answer and its checks, where agents show
+description: Agents asked to approve (AE2 #9567, the form and card AE3 #9586): ws_approval_agents, who may be asked, the by-hand bound, the wake and brief, an agent's answer and its checks, where agents show
 ---
 
 ## What can ask an agent to approve?
 - Owner (2026-11-14, `workflow/decisions-made-workspace-30.md`): "Ask for approval" offers the channel's agents beside its people. Store: the table `ws_approval_agents` (11.0.210), owner's yes in channel decision 3501, shape in 3506.
 - Only a request a person makes by hand: `ws_approval_input()` takes `agents` only with `may_ask_agents` true and `app_id` 0 (`ws_approval_agents_allowed()`). The panel action `ws_approval_create` passes it; a flow's approval box, a tool that asks first, a member's change, a scheduled action and an application never do (`tests/approval_agents_test.php` keeps scheduled.php, steps.php and approval_guests.php without it).
 - `scheduled.php` has its own `by_hand` (a run started by hand): a different thing, never the approval's switch.
-
+- A request that asks people only works as before; a poll's votes and read receipts stay people's.
 
 ## Which agents may be asked?
-- `ws_approval_agent_options($channel)`: the channel's active `app` agents of the registry it allows (and the assistants, `approval-assistants.md`) (a discussion: its own and its channel's rows, `ws_agent_reach_rows()`), each as its request value `agent:<id>`. Up to 10 agents beside up to 10 people.
-- Model assistants and Pinegrap AI are offered too and answer in the site's own run: `approval-assistants.md`. Claude is not offered yet (plan step AE4c).
+- `ws_approval_agent_options($channel)`: the channel's active `app` agents of the registry it allows (and the assistants, `approval-assistants.md`) (a discussion: its own and its channel's rows, `ws_agent_reach_rows()`), each as its request value `agent:<id>`. Up to 10 agents beside up to 10 people. A paused agent is not offered.
 
 ## What happens when an agent is asked?
 - `ws_approval_agents_ask()`: one `ws_approval_agents` row (approval_id, agent, request_id, decision, note, decided_at) and one request in its queue through `ws_agent_after_send()` in followed mode, so it is asked by name whatever its wake rule; brakes and the push knock as for any request. `request_id` keeps that request.

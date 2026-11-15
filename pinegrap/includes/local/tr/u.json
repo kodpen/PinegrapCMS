@@ -454,6 +454,7 @@
     "Urine tests": "İdrar tahlilleri",
     "Usable by everyone": "Herkes kullanabilir",
     "Usage rights for your business": "İşletmeniz için kullanım hakları",
+    "Usage {var:1}%+": "Kullanım %{var:1}+",
     "Use": "Kullan",
     "Use Campaign Profiles to schedule e-mails automatically for certain actions (e.g. Calendar Event reservation).": "Belirli eylemler (örneğin, Takvim Etkinliği rezervasyonu) için e-postaları otomatik olarak planlamak için Kampanya Profillerini kullanın.",
     "Use Folder name for field default value": "Alanın varsayılan değeri için Klasör adını kullan",

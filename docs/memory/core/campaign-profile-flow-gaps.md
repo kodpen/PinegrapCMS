@@ -3,7 +3,7 @@ name: campaign-profile-flow-gaps
 description: What no flow box covers of an e-mail campaign profile (MA9a, #9077), and what is decided: the e-mail box, the Wait box and the events gain it first (MA9b, MA9c); the profiles that keep running, listed
 ---
 
-## Which gaps are closed first? (decided: `plans/messages-area-decided-2.md`)
+## Which gaps are closed first? (decided: architect, 2026-11-13, #9077)
 - MA9b (done, #9435; [[workspace/workspace-flows-email-campaign]]), before the converter, the e-mail box sends as a campaign does: optional From name, From address, Reply-to and BCC; a page body with a base tag and absolute links, its `^^fields^^` (and `[[…||]]` fallbacks) filled from the run's start values and the recipient's contact (`^^name^^`, `^^first_name^^`, `^^last_name^^`), the page's PHP given the run's record as `data`.
 - The same step, for marketing: `?t=` codes on same-site links and the campaigns' commercial footer (organization address, preferences and unsubscribe links); a run started by `contact_group.joined` refuses a contact opted out of that group.
 - MA9c, done #9437, the Wait box and the events: an optional time of day (HH:MM, the site's zone: the first such moment at or after the wait's end); in until mode "If the moment has passed: go on / end the run" (go on by default, so flows drawn before keep their way) (`workspace/workspace-flows-delay-box.md`).

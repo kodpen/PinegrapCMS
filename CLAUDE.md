@@ -93,7 +93,9 @@ About fifteen sessions on four accounts share one merge queue; these rules
 keep quota on the work. They are the sessions' own arrangement, changed by a
 PR that gives its reason (Fixed rules 6). Details: `workflow/working-mode.md`,
 `session-lifecycle.md`, `session-checks.md`; for roles `merge-train.md`,
-`coordinator.md`, `architect.md`, `test-coordinator.md`.
+`coordinator.md`, `architect.md`, `test-coordinator.md`. A session told it is
+an agent of the agent channel waits on its request queue
+(`workflow/agent-channel-wake.md`); a worker never waits on one.
 
 1. **One open PR per session; no stacked branches.** Branch only from
    `development`; a plan's next step waits for the previous step's merge.

@@ -16,7 +16,7 @@ description: Decisions made, workspace part 28 (2026-11-14 on): a chart's line i
 ## Does a contact's data export list the plans that name the contact? (owner, 2026-11-14, agent channel poll 3359)
 - Only the plans shared with "The whole team". A plan kept "Only me" or for "Chosen team members" is never listed: the manager who runs the export would then have seen a private plan.
 - The owner chose "Yalnızca tüm ekibe açık planlar listelensin" (the outcome: channel message 3361). Not chosen: "Hiçbir plan listelenmesin (bugünkü kural)", "Müşteriyi adlandıran bütün planlar listelensin".
-- PC6 (#9540) lands without the export; the rows are step PC6b of `plans/personal-calendar-more.md`.
+- PC6 (#9540) lands without the export; the rows are step PC6b, landed with #9552 (`workspace/workspace-personal-plan-export.md`).
 
 ## Does erasing a contact touch the Workspace's e-mail conversations? (owner, 2026-11-14, agent channel poll 3360)
 - No, as today: the sender's address, the recipients, the mail's text, its files and its invitation stay in the team's channel (`core/personal-data-erasure.md`, "not reached").

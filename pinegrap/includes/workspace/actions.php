@@ -493,7 +493,7 @@ function ws_handle_action($action, $request)
         if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_canvas_restore', 'ws_canvas_binding_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
-        } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
+        } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close', 'ws_poll_withdraw', 'ws_poll_again'), true)) {
             $poll = db_item("SELECT message_id FROM ws_polls WHERE id = '" . (int) ($request['poll_id'] ?? 0) . "'");
             $touched = is_array($poll) ? ws_message((int) $poll['message_id']) : null;
         } elseif (in_array($action, array('ws_approval_decide', 'ws_approval_close', 'ws_approval_guest_resend'), true)) {
@@ -2589,6 +2589,39 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
+        // The asker takes the poll back, or asks it again as a new poll
+        // naming it (poll_again.php); the answer is the old poll's message,
+        // and for an ask-again the new one's id.
+        case 'ws_poll_withdraw':
+        case 'ws_poll_again':
+            $poll = ws_poll((int) ($request['poll_id'] ?? 0));
+
+            if (!$poll || !ws_can_read_channel($viewer, ws_channel($poll['channel_id']))) {
+                return ws_action_error(lang('That poll could not be found.'));
+            }
+
+            if ($action === 'ws_poll_withdraw') {
+                $result = ws_poll_withdraw($viewer, $poll);
+            } else {
+                $sent = array();
+
+                foreach (array('question', 'options', 'multiple', 'anonymous') as $key) {
+                    if (array_key_exists($key, $request)) {
+                        $sent[$key] = $request[$key];
+                    }
+                }
+
+                $result = ws_poll_ask_again($viewer, $poll, $sent);
+            }
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) ($result['field'] ?? ''));
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($poll['message_id'])));
+
+            return ws_action_ok(array('message' => $payload[0], 'message_id' => (int) ($result['message_id'] ?? 0), 'poll_id' => (int) ($result['poll_id'] ?? 0)));
+
         case 'ws_poll_vote':
         case 'ws_poll_close':
             $poll = ws_poll((int) ($request['poll_id'] ?? 0));
@@ -2598,7 +2631,7 @@ function ws_handle_action($action, $request)
             }
 
             $result = ($action === 'ws_poll_vote')
-                ? ws_poll_vote($viewer, $poll, (array) ($request['option_ids'] ?? array()))
+                ? ws_poll_vote($viewer, $poll, (array) ($request['option_ids'] ?? array()), $request['other_text'] ?? '')
                 : ws_poll_close($viewer, $poll);
 
             if (!$result['ok']) {
@@ -2797,6 +2830,11 @@ function ws_handle_action($action, $request)
                 ws_mail_draft_remove($viewer, (int) $request['draft_id'], $conversation_id);
             }
 
+            // Remind me if no answer comes (mail_remind.php).
+            if (function_exists('ws_mail_no_answer_set')) {
+                ws_mail_no_answer_set($viewer, $result, $request['remind_days'] ?? 0, time());
+            }
+
             return ws_action_ok(array('message_id' => $result['message_id'], 'item_id' => $result['item_id'], 'state' => $result['state'],
                 'undo' => ws_mail_undo_offered($request, $later['at'], $result['state'])));
 
@@ -2957,6 +2995,11 @@ function ws_handle_action($action, $request)
             // The new mail's draft goes once the mail is stored.
             if (!empty($request['draft_id']) && function_exists('ws_mail_draft_remove')) {
                 ws_mail_draft_remove($viewer, (int) $request['draft_id'], 0);
+            }
+
+            // Remind me if no answer comes (mail_remind.php).
+            if (function_exists('ws_mail_no_answer_set')) {
+                ws_mail_no_answer_set($viewer, $result, $request['remind_days'] ?? 0, time());
             }
 
             return ws_action_ok(array(

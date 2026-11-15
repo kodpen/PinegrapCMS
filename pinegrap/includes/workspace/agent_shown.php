@@ -303,12 +303,15 @@ function ws_api_agent_own_app()
 /**
  * The @ picker's entries for the agents a channel allows: the agent's
  * application tag, read as its @handle, so the pick wakes it under any
- * wake rule (ws_agent_wake_matches()). Pure.
+ * wake rule (ws_agent_wake_matches()). With the agent's brief
+ * (ws_agent_picker_briefs()) the entry also carries its role after the
+ * name (role) and the state and usage mark the menu draws. Pure.
  *
- * @param array[] $rows ws_agent_channel_rows(): handle, name, app_id
- * @return array[] label, meta, icon, token, shown; by handle
+ * @param array[] $rows   ws_agent_channel_rows(): handle, name, app_id
+ * @param array[] $briefs by app_id: role (its label), state, state_words, usage_high
+ * @return array[] label, meta, icon, token, shown, and with a brief role, state, state_words, usage_high (usage_words, usage_title when set); by handle
  */
-function ws_agent_picker_entries($rows)
+function ws_agent_picker_entries($rows, $briefs = array())
 {
     $entries = array();
 
@@ -320,13 +323,34 @@ function ws_agent_picker_entries($rows)
             continue;
         }
 
-        $entries[$app_id] = array(
+        $entry = array(
             'label' => '@' . $handle,
             'meta'  => ((string) ($row['name'] ?? '') !== '') ? (string) $row['name'] : lang('The agent'),
             'icon'  => 'bi-robot',
             'token' => '<@app:' . $app_id . '>',
             'shown' => '@' . $handle,
         );
+
+        $brief = $briefs[$app_id] ?? null;
+
+        if (is_array($brief)) {
+            // The role is drawn after the name, which is cut before it.
+            $entry['role'] = (string) ($brief['role'] ?? '');
+
+            $entry['state'] = (string) ($brief['state'] ?? '');
+            $entry['state_words'] = (string) ($brief['state_words'] ?? '');
+            $entry['usage_high'] = !empty($brief['usage_high']);
+
+            // The mark's words and its longer name: the figure is the
+            // agent's own report, and the mark stops nothing.
+            if ($entry['usage_high']) {
+                $high = defined('WS_AGENT_USAGE_HIGH') ? WS_AGENT_USAGE_HIGH : 90;
+                $entry['usage_words'] = lang(array('string' => 'Usage {var:1}%+', 'vars' => $high));
+                $entry['usage_title'] = lang(array('string' => 'A usage window is at {var:1}% or more, as the agent reported it.', 'vars' => $high));
+            }
+        }
+
+        $entries[$app_id] = $entry;
     }
 
     usort($entries, function ($a, $b) {
@@ -334,4 +358,42 @@ function ws_agent_picker_entries($rows)
     });
 
     return $entries;
+}
+
+/**
+ * The brief of each agent the @ picker offers, by its application: the
+ * role's label and ws_agent_card_brief() (state, state_words, usage_high),
+ * read as the channel's member rows read it, with one query for the
+ * request counts. Never called for a guest (ws_channel_detail()).
+ *
+ * @param array[] $rows ws_agent_reach_rows()
+ * @param int     $now
+ * @return array[] by app_id: role, state, state_words, usage_high
+ */
+function ws_agent_picker_briefs($rows, $now)
+{
+    if (!function_exists('ws_agent_card_brief') || !function_exists('ws_channel_member_agent')) {
+        return array();
+    }
+
+    $agents = array_map('ws_agent_shape', (array) $rows);
+    $counts = ws_agent_request_counts($agents, $now);
+    $briefs = array();
+
+    foreach ($agents as $agent) {
+        if ((int) $agent['app_id'] <= 0) {
+            continue;
+        }
+
+        $member = ws_channel_member_agent(array('agent' => $agent), $now, $counts);
+
+        $briefs[(int) $agent['app_id']] = array(
+            'role'        => (string) $member['role'],
+            'state'       => (string) ($member['state'] ?? ''),
+            'state_words' => (string) ($member['state_words'] ?? ''),
+            'usage_high'  => !empty($member['usage_high']),
+        );
+    }
+
+    return $briefs;
 }

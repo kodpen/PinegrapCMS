@@ -450,7 +450,8 @@ function ws_mail_list($viewer, $filters, $now)
  *
  * @param int     $viewer_id
  * @param array[] $rows ws_mail_conversations rows
- * @return array[] the rows with mails, snippet, unread (bool), unsent ('' | waiting | failed | later)
+ * @return array[] the rows with mails, snippet, unread (bool), unsent ('' | waiting | failed | later),
+ *                 no_answer (bool: the viewer's no-answer reminder came due)
  */
 function ws_mail_list_mails($viewer_id, $rows)
 {
@@ -488,6 +489,8 @@ function ws_mail_list_mails($viewer_id, $rows)
     $marks = $reads ? ws_mail_read_marks($viewer_id, $ids) : array();
     // Back from Remind me later and not read since (mail_remind.php).
     $woken = ($reads && function_exists('ws_mail_remind_woken_ids')) ? ws_mail_remind_woken_ids($viewer_id, $ids) : array();
+    // The person's own mail that got no answer in time (mail_remind.php).
+    $waiting = function_exists('ws_mail_no_answer_ids') ? ws_mail_no_answer_ids($viewer_id, $ids) : array();
 
     foreach ($rows as $index => $row) {
         $id = (int) $row['id'];
@@ -498,6 +501,7 @@ function ws_mail_list_mails($viewer_id, $rows)
             'snippet' => trim((string) preg_replace('/\s+/u', ' ', $newest[$id] ?? '')),
             'unread'  => isset($woken[$id]) || ws_mail_unread((int) ($stat['last_in_id'] ?? 0), (int) ($marks[$id] ?? 0), $floor),
             'unsent'  => !empty($stat['failed']) ? 'failed' : (!empty($stat['queued']) ? 'waiting' : (!empty($stat['later']) ? 'later' : '')),
+            'no_answer' => isset($waiting[$id]),
         );
     }
 
@@ -563,6 +567,7 @@ function ws_mail_list_rows_html($rows, $filters, $now, $open = 0)
             . (($unsent === 'failed') ? '<span class="badge theme-danger">' . h(lang('Not sent')) . '</span>' : '')
             . (($unsent === 'waiting') ? '<span class="badge theme-secondary">' . h(lang('Waiting to be sent')) . '</span>' : '')
             . (($unsent === 'later') ? '<span class="badge theme-info">' . h(lang('Sends later')) . '</span>' : '')
+            . ((!empty($row['no_answer']) && function_exists('ws_mail_no_answer_badge_html')) ? ws_mail_no_answer_badge_html() : '')
             . (((string) $row['box_name'] !== '') ? '<span>' . h((string) $row['box_name']) . '</span>' : '')
             . (((string) $row['channel_name'] !== '') ? '<span>' . h('#' . (string) $row['channel_name']) . '</span>' : '')
             . (($row['support'] ?? true) ? '<span>' . ws_mail_status_html($row, (string) $row['assignee_name'], (int) $row['first_reply_hours'], $now) . '</span>' : '')

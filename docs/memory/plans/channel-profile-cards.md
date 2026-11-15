@@ -20,17 +20,19 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 - The figures are the agent's own report: the card says so, as the Agents card does, and mutes a report older than a day.
 
 ## Which steps are there?
-- PF1 (S, no product code) Census: every place a sender's name and picture is drawn (`assets/js/workspace.js`, the member list, the @ picker), what the payload carries, the popover the sheet offers, where a person's facts are read, who may see what; a drawing of the card in light and dark; candidates for further facts. Ends in `-census.md`.
+- PF1 (S, no product code) Census: where a sender's name and picture is drawn, what the payload carries, where a person's facts are read, who may see what. Done, #9599 (`-census*.md`).
 
-- PF2 (M) The facts on the server: one reader for an agent's card (role, model, windows, ages, state, waiting count) and its panel action; the same fields in the API's channel-agent rows; tests.
+- PF2 (M) The facts on the server: one reader for an agent's card (role, model, windows, ages, state, waiting count) and its panel action; the API rows; tests. Done, #9618.
 
-- PF3 (M) The agent card in channels. A new design: its pictures go to the owner (`Approval: channel`).
+- PF3 (M) The agent card in channels. A new design: Approval: channel 4096. Done #9630.
 
-- PF4 (S) The role badge and the state dot in a message.
+- PF4 (S) Role badge and state dot in a message. Done: #9629.
 
-- PF5 (S) The @ menu's role and state, and the usage mark.
+- PF5 (S) The @ menu's role, state and usage mark. Done #9628.
 
-- PF6 (M) The card for a person.
+- PF6a (S) A person's facts on the server: one reader (`-census-facts.md`, "Where are a person's facts?"), its panel action, tests. Done #9644.
+
+- PF6b (S) The card for a person, drawn with PF3's card functions.
 
 - PF7 (M) The channel's agents panel redrawn, the same words on the Agents card of Site Settings. A new design: its pictures go to the owner.
 
@@ -41,5 +43,4 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 ## What does every step keep?
 - No schema change: every fact is stored today. A schema need found by PF1 is asked of the architect.
 - A channel with no agent looks as today; nothing is read for a guest.
-- PF1 first, then PF2; PF3 to PF5 after PF2, PF6 after PF3; PF7 and PF7b after PF1, beside the rest. Claim as `[plan:channel-profile-cards] <step> — <topic>`.
-- It starts after AS1 and AS2 of `agent-start-instructions.md` are given out.
+- PF1 first, then PF2; PF3 to PF5 and PF6a after PF2, PF6b after PF3 and PF6a; PF7 and PF7b after PF1, beside the rest. Claim as `[plan:channel-profile-cards] <step> — <topic>`.
