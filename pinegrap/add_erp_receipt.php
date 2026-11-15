@@ -240,7 +240,7 @@ if ($preset_refusal !== '') {
 
             $output_invoice_picker = '
                         <div class="row">
-                            <div class="col-12 lg:col-8 my-3">
+                            <div class="col-12 pg-field-span-6 my-3">
                                 <label for="invoice_id" class="form-label">' . lang('Invoice to Close') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'invoice_id', 'name' => 'invoice_id',
@@ -289,7 +289,7 @@ if ($preset_refusal !== '') {
                     </h2>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 lg:col-5 my-3">
+                            <div class="col-12 md:col-6 my-3">
                                 <label for="' . (($preset_invoice !== null) ? 'account_id_locked' : 'account_id') . '" class="form-label">' . lang('Account') . '</label>
                                 ' . (($preset_invoice !== null)
                                     ? '<input type="hidden" name="account_id" value="' . (int) $preset_invoice['account_id'] . '" />
@@ -303,14 +303,14 @@ if ($preset_refusal !== '') {
                                         'class' => 'form-control', 'data-pg-combobox' => '', 'required' => 'required', 'options' => $account_options))
                                     . erp_account_quick_link('#account_id', $is_collection ? 'customer' : 'supplier')) . '
                             </div>
-                            <div class="col-12 lg:col-4 my-3">
+                            <div class="col-12 md:col-6 my-3">
                                 <label for="cash_account_id" class="form-label">' . lang('Till or Bank Account') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'cash_account_id', 'name' => 'cash_account_id',
                                     'class' => 'form-control', 'options' => $till_options, 'required' => 'required'))
                                 . erp_no_till_hint($till_count) . '
                             </div>
-                            <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="amount" class="form-label">' . lang('Amount') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" id="erp_receipt_currency_label" aria-hidden="true">' . ($fx_on ? h($amount_currency) : BASE_CURRENCY_SYMBOL) . '</span>
@@ -323,7 +323,7 @@ if ($preset_refusal !== '') {
                         </div>
                         ' . ($fx_on
                             ? '<div class="row">
-                            <div class="col-12 sm:col-4 lg:col-3 my-3">
+                            <div class="col-12 md:col-6 my-3">
                                 <label for="' . (($preset_invoice !== null) ? 'currency_locked' : 'currency') . '" class="form-label">' . lang('Currency') . '</label>
                                 ' . (($preset_invoice !== null)
                                     ? '<input type="hidden" name="currency" value="' . h($preset_currency) . '" />
@@ -334,7 +334,7 @@ if ($preset_refusal !== '') {
                                         'class' => 'form-control', 'options' => erp_fx_currency_options())) . '
                                 <div class="form-text">' . lang('Has to match the till and, when one is chosen, the invoice.') . '</div>') . '
                             </div>
-                            <div class="col-12 sm:col-4 lg:col-3 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <label for="exchange_rate" class="form-label">' . lang('Exchange Rate') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'text', 'id' => 'exchange_rate', 'name' => 'exchange_rate',

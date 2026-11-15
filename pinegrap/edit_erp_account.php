@@ -258,9 +258,9 @@ if (!$_POST) {
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 pg-title-section">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Balance') . '
-                    </div>
+                    </h2>
                     <div class="card-body">
                         <div class="h4 mb-1 ' . $balance_class . '">' . h(erp_money_out(abs($balance))) . '</div>
                         ' . (($balance_side !== '') ? '<div class="fg-secondary">' . h($balance_side) . '</div>' : '') . '
@@ -288,9 +288,9 @@ if (!$_POST) {
     <div class="row">
         <div class="col-12">
             <div class="card pg-card my-7">
-                <div class="card-header bg-reset border-0 pg-title-section">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Statement') . '
-                </div>
+                </h2>
                 <div class="card-body p-0 position-relative table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
