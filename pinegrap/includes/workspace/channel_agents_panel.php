@@ -185,7 +185,7 @@ function ws_channel_agent_avatar_url($avatar)
  *
  * @param array[] $agents ws_agent_shape() rows
  * @param int[]   $in     ids of the agents already in the channel
- * @return array[] agent_id, kind, handle, name, active
+ * @return array[] agent_id, kind, handle, name, status, active
  */
 function ws_channel_agents_addable($agents, $in)
 {
@@ -202,6 +202,7 @@ function ws_channel_agents_addable($agents, $in)
             'kind'     => (string) $agent['kind'],
             'handle'   => (string) $agent['handle'],
             'name'     => (string) $agent['name'],
+            'status'   => (string) $agent['status'],
             'active'   => ((string) $agent['status'] === 'active'),
         );
     }
