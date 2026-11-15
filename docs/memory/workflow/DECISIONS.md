@@ -301,6 +301,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-56.md: When does a left cart count as recovered? (owner, 2026-11-15, agent channel poll 50)
 - decisions-made-product-56.md: How are pop-ups built? (owner, 2026-11-15, agent channel poll 51 and message 5139)
 - decisions-made-product-56.md: Is a video edited from Files? (owner, 2026-11-15, agent channel message 5103)
+- decisions-made-product-57.md: Where are the rules and the earlier parts?
+- decisions-made-product-57.md: Does the Recovered carts section come out as drawn, and where does it sit? (owner, 2026-11-15, agent channel poll 55)
+- decisions-made-product-57.md: Does All Offers show its record count beside the title? (owner, 2026-11-15, agent channel poll 46)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
@@ -362,6 +365,9 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-schema-21.md: Which schema do remind later, remind when no answer and "I am away" get? (owner, 2026-11-15, in the architect's window)
 - decisions-made-schema-21.md: Where are an approval request's agent approvers kept? (owner, 2026-11-15, in the architect's window)
 - decisions-made-schema-21.md: Which schema do the features chosen on 2026-11-15 get? (owner, agent channel polls 49, 50, 51 and message 5139)
+- decisions-made-schema-22.md: Where are the rules and the earlier parts?
+- decisions-made-schema-22.md: Which schema do quiet hours and the link preview card get? (owner, 2026-11-15, agent channel poll 54)
+- decisions-made-schema-22.md: Which columns does the table of marks have? (owner's yes in agent channel poll 49; columns confirmed by the architect, 2026-11-15)
 - decisions-made-schema-3.md: Where are the rules and the earlier steps?
 - decisions-made-schema-3.md: Which schema was approved on 2026-10-29?
 - decisions-made-schema-4.md: Where are the rules and the earlier steps?
@@ -513,6 +519,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-34.md: What is the architect's reading here, not his words?
 - decisions-made-workspace-34.md: Does the open items line come out as drawn? (owner, 2026-11-15, agent channel poll 52)
 - decisions-made-workspace-34.md: Does the agent's progress note come out as drawn? (owner, 2026-11-15, agent channel poll 53)
+- decisions-made-workspace-35.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-35.md: Which of the R&D agent's three proposals go into plans? (owner, 2026-11-15, agent channel poll 54)
+- decisions-made-workspace-35.md: What is the architect's reading here, not his words?
+- decisions-made-workspace-35.md: Do message boxes keep a maximum width on a wide screen? (owner, 2026-11-15, agent channel poll 47)
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
@@ -822,7 +832,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-conclude-discussion.md: An agent concludes a discussion when a person in it asks (conclude, #9404) and unasked only offers a Conclude button a person presses (offer_conclude, #9416); who may ask, the lines, the button
 - workspace/agent-door-routine-trial.md: Push door on a routine's fire address, tried on dev (2026-11-13, 2026-11-15): every knock starts a new cloud session, never wakes an open one, and the new run cannot pass the knock on either
 - workspace/agent-door-words.md: The agent form's "Door" field as two described choices, the door's state sentence in its drawer, door_error cleared on a door change and shown only for a push door (#9759)
-- workspace/agent-duty.md: An agent's duty text (AF1, #9785): the "Duty" box on the agent's form, ws_agents.duty TEXT NULL, the "Your duty" part of its instructions, the duty on the agent card
+- workspace/agent-duty.md: An agent's duty text (AF1 #9785, AF3 #9821): the "Duty" box on the agent's form, ws_agents.duty TEXT NULL, "Your duty" and the channel's other agents in its instructions, the agent card
 - workspace/agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869)
 - workspace/agent-instructions.md: How an application agent learns its work from the site: GET /workspace/agent-instructions with its own key, the text's parts, the three doors, the version and the brief's line, the Start text box
 - workspace/agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief

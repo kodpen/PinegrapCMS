@@ -30,7 +30,7 @@
 - agent-door-routine-trial.md: Push door on a routine's fire address, tried on dev (2026-11-13, 2026-11-15): every knock starts a new cloud session, never wakes an open one, and the new run cannot pass the knock on either [decision: here]
 - agent-door-words.md: The agent form's "Door" field as two described choices, the door's state sentence in its drawer, door_error cleared on a door change and shown only for a push door (#9759) [decision: here]
 - agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (agent:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
-- agent-duty.md: An agent's duty text (AF1, #9785): the "Duty" box on the agent's form, ws_agents.duty TEXT NULL, the "Your duty" part of its instructions, the duty on the agent card [decision: here]
+- agent-duty.md: An agent's duty text (AF1 #9785, AF3 #9821): the "Duty" box on the agent's form, ws_agents.duty TEXT NULL, "Your duty" and the channel's other agents in its instructions, the agent card [decision: here]
 - agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869) [decision: decisions-made-schema-16.md, decisions-made-workspace-14.md]
 - agent-emoji.md: The one fitting emoji an agent leaves on the message that asked it (#8932): the brief, the answer route's emoji, a model assistant's answer tool, what is refused [decision: decisions-made-workspace-19.md]
 - agent-flows.md: The flows part of the agent risk tiers (flow_agent_box.php, A7b): the Ask an agent box (kind agent) and runs an application agent starts within its channel tier
@@ -44,6 +44,7 @@
 - agent-page-libraries.md: The site's libraries a live page names (Chart.js #8830, the chart_guide preset DG5): the list, how a call names one, how live_page.php puts the site's own copy in, never an address [decision: decisions-made-workspace-27.md]
 - agent-page.md: Live pages an agent makes (#8815): what one is for and is not, the routes, the mark of a page without a column, versions (20 kept), 409, who may [decision: decisions-made-workspace-16.md]
 - agent-progress-note.md: An app agent's progress note on a request it holds: the progress route, its refusals and 30 s brake, kept in ai_state, shown with "since HH:MM", cleared on close (AF2)
+- agent-question-answer-limit.md: An answer to Claude's or Pinegrap AI's own question always wakes it: the answerer's per-person limit (5) is not counted; a wake that still fails writes a system line (#9808)
 - agent-questions.md: How an agent asks people: the agent question (a poll an application asks), who answers, how it settles, where it shows, the tool, in whose name an outcome is written [decision: decisions-made-workspace-12.md, decisions-made-workspace-29.md]
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, where the membership rules are, the depth and hourly brakes [decision: decisions-made-workspace-7.md, decisions-made-workspace-8.md]
 - agent-report.md: An application agent's report of its model and plan usage (POST /workspace/agent-report, #9322): the rules that refuse it whole, the window names, the last report only, the card line and its age [decision: decisions-made-schema-17.md, decisions-made-workspace-22.md, decisions-made-workspace-32.md]
@@ -171,6 +172,7 @@
 - personal-calendar-census-words.md: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Planning Board, /workspace/plan, "#plan") and the names proposed for a private plan [decision: here]
 - plan-board-grid.md: Planning Board (workspace_board.php) Turkish name, grid columns and why .ws-board's min-width equals the grid minimum (#3815) [decision: here]
 - poll-agent-question-box.md: The agent question's box (agentQuestionNode() in workspace.js, AQ4b #9722): who it asks, the click or one Send, "Other" as a words field, the answered state, taken back; the Decisions tab line
+- poll-agent-question-dry-run.md: A dry run of POST /workspace/channels/{id}/polls reports the settings an agent question keeps (anonymous false, closes_at null) and agent_question (#9812)
 - poll-agent-question-reach.md: Where an agent question reaches the person it asks: the ring, Today, the Assistant card, the channel export, and tools/ws_poll.php ask (option pictures by message number), again, withdraw
 - poll-agent-question.md: The agent question on the server (agent_question.php, step 11.0.214): the flag, who answers, settling by the first answer, the wake and brief, the memory index, map and API fields [decision: decisions-made-workspace-34.md]
 - poll-box.md: The poll box (pollNode(), AQ3 #9647): three shapes and their rule, option parts, "Other" words, taken back, asked again, the asker's actions; the New poll form's parts and channel pictures
