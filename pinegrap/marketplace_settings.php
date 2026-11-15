@@ -2093,15 +2093,15 @@ if ($selected) {
 				<div class="pg-text-2 w-100">' . h(mp_provider_name($selected['provider'])) . '</div>
 			</div>
 			<div class="card-body pt-0">
-				<dl class="row mb-0">
-					<dt class="col-8 fw-normal fg-secondary">' . h(lang('Matched products')) . '</dt>
-					<dd class="col-4 text-end mb-2 pg-tabular">' . pg_format_number($map_counts['all'], 0) . '</dd>
-					<dt class="col-8 fw-normal fg-secondary">' . h(lang('Waiting')) . '</dt>
-					<dd class="col-4 text-end mb-2 pg-tabular">' . pg_format_number($queue_counts['waiting'], 0) . '</dd>
-					<dt class="col-8 fw-normal fg-secondary">' . h(lang('With the marketplace')) . '</dt>
-					<dd class="col-4 text-end mb-2 pg-tabular">' . pg_format_number($queue_counts['sent'], 0) . '</dd>
-					<dt class="col-8 fw-normal fg-secondary">' . h(lang('Failed')) . '</dt>
-					<dd class="col-4 text-end mb-0 pg-tabular' . ($queue_counts['failed'] ? ' fg-danger fw-medium' : '') . '">' . pg_format_number($queue_counts['failed'], 0) . '</dd>
+				<dl class="pg-kv">
+					<dt>' . h(lang('Matched products')) . '</dt>
+					<dd class="pg-tabular">' . pg_format_number($map_counts['all'], 0) . '</dd>
+					<dt>' . h(lang('Waiting')) . '</dt>
+					<dd class="pg-tabular">' . pg_format_number($queue_counts['waiting'], 0) . '</dd>
+					<dt>' . h(lang('With the marketplace')) . '</dt>
+					<dd class="pg-tabular">' . pg_format_number($queue_counts['sent'], 0) . '</dd>
+					<dt>' . h(lang('Failed')) . '</dt>
+					<dd class="pg-tabular' . ($queue_counts['failed'] ? ' fg-danger' : '') . '">' . pg_format_number($queue_counts['failed'], 0) . '</dd>
 				</dl>';
 
 	if ($selected['status'] !== 'active') {

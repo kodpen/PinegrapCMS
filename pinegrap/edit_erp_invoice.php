@@ -681,7 +681,7 @@ $quote_number = ((int) ($invoice['quote_id'] ?? 0) > 0)
     ? (string) db_value("SELECT full_number FROM erp_quotes WHERE id = '" . (int) $invoice['quote_id'] . "' LIMIT 1")
     : '';
 $output_quote = ($quote_number !== '')
-    ? '<div class="col-12 my-3"><a href="edit_erp_quote.php?id=' . (int) $invoice['quote_id'] . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'From quote {var:1}', 'vars' => $quote_number))) . '</a></div>'
+    ? '<div class="mb-3"><a href="edit_erp_quote.php?id=' . (int) $invoice['quote_id'] . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'From quote {var:1}', 'vars' => $quote_number))) . '</a></div>'
     : '';
 
 // The purchase order it was made from (10.58), the same way.
@@ -689,7 +689,7 @@ $purchase_order_number = ((int) ($invoice['purchase_order_id'] ?? 0) > 0)
     ? (string) db_value("SELECT full_number FROM erp_purchase_orders WHERE id = '" . (int) $invoice['purchase_order_id'] . "' LIMIT 1")
     : '';
 if ($purchase_order_number !== '') {
-    $output_quote .= '<div class="col-12 my-3"><a href="edit_erp_purchase_order.php?id=' . (int) $invoice['purchase_order_id'] . '"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'From purchase order {var:1}', 'vars' => $purchase_order_number))) . '</a></div>';
+    $output_quote .= '<div class="mb-3"><a href="edit_erp_purchase_order.php?id=' . (int) $invoice['purchase_order_id'] . '"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'From purchase order {var:1}', 'vars' => $purchase_order_number))) . '</a></div>';
 }
 
 // The counterparty as it read when the document was issued; the live card
@@ -711,10 +711,7 @@ $output_supplier = '';
 if (((string) $invoice['direction'] === 'purchase') && (trim((string) $invoice['supplier_invoice_no']) !== '')) {
     $supplier_date = (string) $invoice['supplier_invoice_date'];
     $output_supplier = '
-                        <div class="col-6 sm:col-4 lg:col-12 my-3">
-                            <div class="form-label fg-secondary">' . lang('Supplier Invoice Number') . '</div>
-                            <div>' . h($invoice['supplier_invoice_no']) . (($supplier_date !== '' && $supplier_date !== '0000-00-00') ? ' <span class="fg-secondary">' . h(prepare_form_data_for_output($supplier_date, 'date')) . '</span>' : '') . '</div>
-                        </div>';
+                        <dt>' . lang('Supplier Invoice Number') . '</dt><dd>' . h($invoice['supplier_invoice_no']) . (($supplier_date !== '' && $supplier_date !== '0000-00-00') ? ' <span class="pg-kv-note">' . h(prepare_form_data_for_output($supplier_date, 'date')) . '</span>' : '') . '</dd>';
 }
 
 // The internet sale block: an e-archive invoice for a sale made over the
@@ -736,35 +733,20 @@ if ((int) ($invoice['is_internet_sale'] ?? 0) === 1) {
     $carrier_title = (string) ($invoice['carrier_title'] ?? '');
     $carrier_vkn = (string) ($invoice['carrier_vkn'] ?? '');
     $output_carrier = ($carrier_title !== '' || $carrier_vkn !== '')
-        ? h($carrier_title) . (($carrier_vkn !== '') ? ' <span class="fg-secondary">' . h($carrier_vkn) . '</span>' : '')
+        ? h($carrier_title) . (($carrier_vkn !== '') ? ' <span class="pg-kv-note">' . h($carrier_vkn) . '</span>' : '')
         : $empty;
 
     $web_address = (string) ($invoice['web_address'] ?? '');
     $output_web_address = ($web_address !== '') ? h($web_address) : $empty;
 
     $output_internet_sale = '
-                    <div class="row border-top mt-3 pt-3">
-                        <div class="col-12 sm:col-6 lg:col-12 my-1">
-                            <div class="form-label fg-secondary">' . lang('Payment Method') . '</div>
-                            <div>' . $output_payment_method . '</div>
-                        </div>
-                        <div class="col-12 sm:col-6 lg:col-12 my-1">
-                            <div class="form-label fg-secondary">' . lang('Payment Date') . '</div>
-                            <div>' . $date_out($invoice['payment_date'] ?? '') . '</div>
-                        </div>
-                        <div class="col-12 sm:col-6 lg:col-12 my-1">
-                            <div class="form-label fg-secondary">' . lang('Shipment Date') . '</div>
-                            <div>' . $date_out($invoice['shipment_date'] ?? '') . '</div>
-                        </div>
-                        <div class="col-12 sm:col-6 lg:col-12 my-1">
-                            <div class="form-label fg-secondary">' . lang('Carrier') . '</div>
-                            <div>' . $output_carrier . '</div>
-                        </div>
-                        <div class="col-12 sm:col-6 lg:col-12 my-1">
-                            <div class="form-label fg-secondary">' . lang('Web Address') . '</div>
-                            <div>' . $output_web_address . '</div>
-                        </div>
-                    </div>';
+                    <dl class="pg-kv pg-kv-rule">
+                        <dt>' . lang('Payment Method') . '</dt><dd>' . $output_payment_method . '</dd>
+                        <dt>' . lang('Payment Date') . '</dt><dd>' . $date_out($invoice['payment_date'] ?? '') . '</dd>
+                        <dt>' . lang('Shipment Date') . '</dt><dd>' . $date_out($invoice['shipment_date'] ?? '') . '</dd>
+                        <dt>' . lang('Carrier') . '</dt><dd>' . $output_carrier . '</dd>
+                        <dt>' . lang('Web Address') . '</dt><dd>' . $output_web_address . '</dd>
+                    </dl>';
 }
 
 // The overdue reminders, for a claim that can be late. The card appears once
@@ -1701,60 +1683,27 @@ pg_page_shell([
                     <div class="card-header bg-reset border-0 pg-title-section">
                         ' . ($is_return ? lang('Return') : lang('Invoice')) . '
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            ' . $output_quote . '
-                            <div class="col-6 sm:col-4 lg:col-12 my-3">
-                                <div class="form-label fg-secondary">' . lang('Account') . '</div>
-                                <div>' . $output_account . '</div>
-                            </div>
-                            <div class="col-6 sm:col-4 lg:col-12 my-3">
-                                <div class="form-label fg-secondary">' . h(erp_tax_id_label($has_snapshot ? (string) $invoice['account_country_code'] : (string) ($invoice['live_country_code'] ?? ''))) . '</div>
-                                <div>' . h($account_tax_number ?: '—') . ' <span class="fg-secondary">' . h($account_tax_office) . '</span></div>
-                            </div>
-                            <div class="col-6 sm:col-4 lg:col-12 my-3">
-                                <div class="form-label fg-secondary">' . lang('Date') . '</div>
-                                <div>' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</div>
-                            </div>
-                            <div class="col-6 sm:col-4 lg:col-12 my-3">
-                                <div class="form-label fg-secondary">' . lang('Due Date') . '</div>
-                                <div>' . h(prepare_form_data_for_output(((string) $invoice['due_date'] !== '0000-00-00') ? $invoice['due_date'] : $invoice['issue_date'], 'date')) . '</div>
-                            </div>
-                            <div class="col-6 sm:col-4 lg:col-12 my-3">
-                                <div class="form-label fg-secondary">' . lang('Status') . '</div>
-                                <div>' . h($status_labels[$invoice['status']] ?? $invoice['status']) . '</div>
-                            </div>
-                            <div class="col-6 sm:col-4 lg:col-12 my-3">
-                                <div class="form-label fg-secondary">' . lang('Order') . '</div>
-                                <div>' . $output_order . '</div>
-                            </div>
+                    <div class="card-body pt-0">
+                        ' . $output_quote . '
+                        <dl class="pg-kv">
+                            <dt>' . lang('Account') . '</dt><dd>' . $output_account . '</dd>
+                            <dt>' . h(erp_tax_id_label($has_snapshot ? (string) $invoice['account_country_code'] : (string) ($invoice['live_country_code'] ?? ''))) . '</dt><dd>' . h($account_tax_number ?: '—') . ' <span class="pg-kv-note">' . h($account_tax_office) . '</span></dd>
+                            <dt>' . lang('Date') . '</dt><dd>' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</dd>
+                            <dt>' . lang('Due Date') . '</dt><dd>' . h(prepare_form_data_for_output(((string) $invoice['due_date'] !== '0000-00-00') ? $invoice['due_date'] : $invoice['issue_date'], 'date')) . '</dd>
+                            <dt>' . lang('Status') . '</dt><dd>' . h($status_labels[$invoice['status']] ?? $invoice['status']) . '</dd>
+                            <dt>' . lang('Order') . '</dt><dd>' . $output_order . '</dd>
                             ' . ($is_return
-                                ? '<div class="col-6 sm:col-4 lg:col-12 my-3">
-                                <div class="form-label fg-secondary">' . lang('Against Invoice') . '</div>
-                                <div><a href="edit_erp_invoice.php?id=' . (int) $invoice['parent_invoice_id'] . '">' . h((string) db_value("SELECT full_number FROM erp_invoices WHERE id = '" . (int) $invoice['parent_invoice_id'] . "'")) . '</a></div>
-                            </div>'
+                                ? '<dt>' . lang('Against Invoice') . '</dt><dd><a href="edit_erp_invoice.php?id=' . (int) $invoice['parent_invoice_id'] . '">' . h((string) db_value("SELECT full_number FROM erp_invoices WHERE id = '" . (int) $invoice['parent_invoice_id'] . "'")) . '</a></dd>'
                                 : '') . '
                             ' . $output_supplier . '
-                        </div>
+                        </dl>
                         ' . ($is_foreign
-                            ? '<div class="row border-top mt-3 pt-3">
-                            <div class="col-6 sm:col-4 lg:col-12 my-3">
-                                <div class="form-label fg-secondary">' . lang('Currency') . '</div>
-                                <div>' . h($currency) . '</div>
-                            </div>
-                            <div class="col-6 sm:col-4 lg:col-12 my-3">
-                                <div class="form-label fg-secondary">' . lang('Exchange Rate') . '</div>
-                                <div>' . h(erp_fx_rate_text((float) $invoice['exchange_rate'])) . ' <span class="fg-secondary">' . h(erp_base_currency()) . ((trim((string) $invoice['exchange_rate_source']) !== '') ? ' · ' . h($invoice['exchange_rate_source']) : '') . '</span></div>
-                            </div>
-                            <div class="col-6 sm:col-4 lg:col-12 my-3">
-                                <div class="form-label fg-secondary">' . lang('Exchange Rate Date') . '</div>
-                                <div>' . h(prepare_form_data_for_output($invoice['exchange_rate_date'], 'date')) . '</div>
-                            </div>
-                            <div class="col-6 sm:col-4 lg:col-12 my-3">
-                                <div class="form-label fg-secondary">' . h(lang(array('string' => 'Total in {var:1}', 'vars' => erp_base_currency()))) . '</div>
-                                <div>' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>
-                            </div>
-                        </div>'
+                            ? '<dl class="pg-kv pg-kv-rule">
+                            <dt>' . lang('Currency') . '</dt><dd>' . h($currency) . '</dd>
+                            <dt>' . lang('Exchange Rate') . '</dt><dd>' . h(erp_fx_rate_text((float) $invoice['exchange_rate'])) . ' <span class="pg-kv-note">' . h(erp_base_currency()) . ((trim((string) $invoice['exchange_rate_source']) !== '') ? ' · ' . h($invoice['exchange_rate_source']) : '') . '</span></dd>
+                            <dt>' . lang('Exchange Rate Date') . '</dt><dd>' . h(prepare_form_data_for_output($invoice['exchange_rate_date'], 'date')) . '</dd>
+                            <dt>' . h(lang(array('string' => 'Total in {var:1}', 'vars' => erp_base_currency()))) . '</dt><dd>' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</dd>
+                        </dl>'
                             : '') . '
                         ' . $output_internet_sale . '
                     </div>
