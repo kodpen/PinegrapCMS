@@ -69,6 +69,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-panel-9.md: Where are the rules and the earlier parts?
 - decisions-made-panel-9.md: Does the dashboard's assistant chat keep its talk after a reload? (owner, 2026-11-14, agent channel messages 3230 and 3236)
 - decisions-made-panel-9.md: How does a link that opens something read in Turkish? (owner, 2026-11-14, agent channel message 3236)
+- decisions-made-panel-9.md: Do the kept screens' two buttons and Add Product's field widths take the new look? (owner, 2026-11-15, agent channel message 4662)
+- decisions-made-panel-9.md: Does the Site Settings dialog keep its place after a save? (owner, 2026-11-15, in the architect's window)
 - decisions-made-panel.md: Why do the panel's own media queries break at 1024 and 1280 px?
 - decisions-made-panel.md: Why do the product and user screens use the narrower layout at 1440 px?
 - decisions-made-panel.md: Which date-and-time picker does the software use? (#2693, 2026-10-28)
@@ -292,6 +294,8 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-product-54.md: In which order are the designer's closed blocks opened? (owner, 2026-11-15, channel message 4146)
 - decisions-made-product-54.md: Does the visitor AI assistant start now? (owner, 2026-11-15, channel message 4147)
 - decisions-made-product-55.md: Does a Send later e-mail leave after its writer lost the right to answer there? (owner, 2026-11-15, channel message 4238)
+- decisions-made-product-55.md: How does the comment form's star rating input look? (owner, 2026-11-15, channel message 4700)
+- decisions-made-product-55.md: Do Workspace's message boxes stop growing on a wide screen? (owner, 2026-11-15, in the architect's window)
 - decisions-made-product-6.md: What happens to a recurring line that starts after the order date? (#3310)
 - decisions-made-product-6.md: How is a subscription price change noticed and applied? (#3311)
 - decisions-made-product-6.md: Does the panel get an operator Subscriptions screen? (#3343)
