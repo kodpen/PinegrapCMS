@@ -743,6 +743,111 @@ function ws_api_channel_switches_set($params)
     api_ok(ws_api_channel_present(ws_api_channel_brief($viewer, ws_channel($channel['id']))));
 }
 
+/**
+ * POST /workspace/channels/{id}/customer/followup: the customer card's
+ * Remind me button, for anybody who may write in the channel.
+ *
+ * @param array $params
+ */
+function ws_api_channel_customer_followup($params)
+{
+    $viewer = ws_api_viewer();
+    $channel = ws_api_channel_or_404($viewer, $params['id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    // Every check of the follow-up and of the task, before the dry run.
+    $checked = ws_customer_followup_open($viewer, $channel, $params, true);
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error'], ((string) $checked['field'] !== '') ? (string) $checked['field'] : null);
+    }
+
+    api_dry_run_stop('created', 'workspace_task', array('channel_id' => (int) $channel['id'], 'assignees' => array((int) $viewer['id'])));
+
+    $made = ws_customer_followup_open($viewer, $channel, $params);
+
+    if (!$made['ok']) {
+        api_fail_validation($made['error'], ((string) $made['field'] !== '') ? (string) $made['field'] : null);
+    }
+
+    api_ok(ws_api_task_present($viewer, ws_task($made['task']['id'])), 201);
+}
+
+/**
+ * Whether the application reaches a titled block: the owner reads its place
+ * (ws_block_source()), and Claude only where it may be asked - a message's
+ * channel open to Claude, a note as ws_api_note_reachable() lets it.
+ *
+ * @param array $viewer
+ * @param int   $block_id
+ * @return bool
+ */
+function ws_api_block_reachable($viewer, $block_id)
+{
+    if (!ws_api_is_claude()) {
+        return true;
+    }
+
+    $row = ws_blocks_ready() ? db_item("SELECT source_kind, source_id FROM ws_blocks WHERE id = '" . (int) $block_id . "'") : null;
+
+    if (!is_array($row)) {
+        return false;
+    }
+
+    if ((string) $row['source_kind'] === 'message') {
+        $message = ws_message((int) $row['source_id']);
+        $channel = $message ? ws_channel((int) $message['channel_id']) : null;
+
+        return $channel && ws_claude_channel_allowed($channel);
+    }
+
+    $note = function_exists('ws_note') ? ws_note((int) $row['source_id']) : null;
+
+    return $note && ws_api_note_reachable($viewer, array('access' => ws_note_access($viewer, $note)) + $note);
+}
+
+// What GET /workspace/blocks lists.
+function ws_api_block_schema()
+{
+    return array(
+        'id'     => 'integer',
+        'kind'   => 'string',
+        'title'  => 'string',
+        'where'  => 'string',
+        'author' => 'string',
+        'time'   => 'string',
+    );
+}
+
+function ws_api_blocks_list($params)
+{
+    $viewer = ws_api_viewer();
+    $out = array();
+
+    foreach (ws_blocks_search($viewer, (string) ($params['q'] ?? ''), 20) as $block) {
+        if (ws_api_block_reachable($viewer, $block['id'])) {
+            $out[] = $block;
+        }
+    }
+
+    api_ok_list($out, count($out));
+}
+
+function ws_api_blocks_get($params)
+{
+    $viewer = ws_api_viewer();
+    $pulled = ws_block_pull($viewer, (int) $params['id']);
+
+    if (!$pulled['ok'] || !ws_api_block_reachable($viewer, (int) $params['id'])) {
+        api_fail_not_found(lang('Block'));
+    }
+
+    api_ok(array('id' => (int) $params['id'], 'kind' => $pulled['kind'], 'markup' => $pulled['markup'], 'from' => $pulled['from']));
+}
+
 /* ---------------------------------------------------------------------------
    Channel members
    --------------------------------------------------------------------------- */

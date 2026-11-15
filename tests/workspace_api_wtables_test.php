@@ -80,6 +80,8 @@ function test_ws_api_wtables_routes()
 		'workspace.table_rows.delete_post'    => array('POST', '/workspace/tables/{id}/rows/{row_id}/delete', 'workspace:write'),
 		'workspace.table_rows.deleted'        => array('GET', '/workspace/tables/{id}/deleted-rows', 'workspace:read'),
 		'workspace.table_rows.restore'        => array('POST', '/workspace/tables/{id}/deleted-rows/{bin_id}/restore', 'workspace:write'),
+		'workspace.table_rows.purge'          => array('POST', '/workspace/tables/{id}/deleted-rows/{bin_id}/delete', 'workspace:write'),
+		'workspace.tables.flow'               => array('POST', '/workspace/tables/{id}/flow', 'workspace:write'),
 		'workspace.table_shares.list'         => array('GET', '/workspace/tables/{id}/shares', 'workspace:read'),
 		'workspace.table_shares.set'          => array('POST', '/workspace/tables/{id}/shares', 'workspace:write'),
 		'workspace.table_shares.delete'       => array('DELETE', '/workspace/tables/{id}/shares/{share_id}', 'workspace:write'),
@@ -134,6 +136,7 @@ function test_ws_api_wtables_mcp_tools()
 		'workspace.tables.home', 'workspace.tables.delete', 'workspace.tables.delete_post', 'workspace.tables.deleted', 'workspace.tables.restore',
 		'workspace.table_columns.delete', 'workspace.table_columns.delete_post',
 		'workspace.table_shares.set', 'workspace.table_shares.delete', 'workspace.table_shares.delete_post',
+		'workspace.table_rows.purge',
 	);
 
 	foreach ($routes as $id => $route) {
@@ -156,6 +159,7 @@ function test_ws_api_wtables_writes_check_before_the_rehearsal()
 		'ws_api_wtables_update'        => array('ws_wtable_update_check(', 'ws_wtable_update('),
 		'ws_api_wtables_home'          => array('ws_wtable_home_set_check(', 'ws_wtable_home_set('),
 		'ws_api_wtables_delete'        => array('ws_wtable_delete_check(', 'ws_wtable_delete('),
+		'ws_api_wtable_rows_purge'     => array('ws_wtable_bin_row_delete_check(', 'ws_wtable_bin_row_delete('),
 		'ws_api_wtable_columns_create' => array('ws_wtable_column_create_check(', 'ws_wtable_column_create('),
 		'ws_api_wtable_columns_update' => array('ws_wtable_column_update_check(', 'ws_wtable_column_update('),
 		'ws_api_wtable_columns_retype' => array('ws_wtable_column_retype_check(', 'ws_wtable_column_retype('),
