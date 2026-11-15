@@ -3669,6 +3669,9 @@
                 var link = el('button', 'pg-button pg-button-ghost pg-button-sm', '#' + item.name);
 
                 link.type = 'button';
+                // A long name is cut with an ellipsis on the card: the title
+                // carries it whole.
+                link.title = '#' + item.name;
                 link.addEventListener('click', function () {
                     agentCardClose();
                     app.open(item.id, 0);
