@@ -17,6 +17,8 @@ module: report_view
 - Profit: the period form copied from the VAT report, plus the "Count orders without an invoice" `.pg-switch`.
 - Cash Flow: "What happened" / "What is ahead" as a `.pg-seg` at the row's start; Bucket, Period, Start, End, the till, "Show" quiet, "Download CSV" quiet at the right. Bucket and Period send their own hidden forms through the `form` attribute, keeping the address values as the old filter selects did; the main form sends `group` only when it was chosen, so the bucket is still picked from the period's length.
 
+- Aging: Direction (its own hidden form through the `form` attribute, keeping "As of"), "As of" as a date, "Show" quiet, the summary sentence as the range text, "Invoices" then "Download CSV" quiet at the right. Account names are row headers without `text-break`, 12rem at least (`body.erp_aging` rule in the report block), so a name keeps its words and the table scrolls in its frame on a phone.
+
 ## How is the profit chart drawn?
 - `pg_report_view_profit_chart()`: net sales the line, costs and expenses (cost of goods, purchase costs, expenses) dashed, net profit in the tip, titled "Net sales and costs by month"; null for one month. Chart.js left the screen.
 

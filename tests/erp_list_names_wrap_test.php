@@ -33,7 +33,7 @@ function erp_list_names_wrap_pins()
 			'data-pg-open>\' . h($account[\'title\']) . \'</a>\' . $output_edoc_flag, \'align-middle text-wrap text-break\'',
 		),
 		'erp_aging.php' => array(
-			'<th scope="row" class="text-wrap text-break" data-sort="\' . h($account[\'title\']) . \'">',
+			'<th scope="row" class="text-wrap" data-sort="\' . h($account[\'title\']) . \'">',
 		),
 		'erp_cash.php' => array(
 			'\'iban\' => pg_list_cell(h($till[\'iban\']), \'align-middle text-wrap text-break\'),',

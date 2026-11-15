@@ -27875,6 +27875,12 @@ body.pg-measure-report #content {
 .pg-report-tools .pg-date-box {
   width: 8.5rem;
 }
+/* The aging report's account names keep their words whole: the name
+   column is wide enough for a name in two lines, and the table scrolls in
+   its frame on a phone. */
+body.erp_aging .pg-report-table th[scope="row"] {
+  min-width: 12rem;
+}
 
 /* The view: the figures, then the chart, 16 px apart. */
 .pg-report-view {
