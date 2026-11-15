@@ -73,9 +73,12 @@ function test_current_state_offer_editor_pressed()
 function test_current_state_site_log_type_filter()
 {
 	$source = current_state_marks_source('view_log.php');
-	pg_assert_contains("(\$type_value === '') ? ' active' : ''", $source, 'All starts pressed');
-	pg_assert_contains("aria-pressed=\"' . ((\$type_value === '') ? 'true' : 'false') . '\"", $source);
-	pg_assert_contains('data-pg-list-filter="view_log" data-pg-filter-column="type"', $source);
+	pg_assert_contains("pg_list_seg_filters('view_log', 'type', array('' => lang('All')", $source, 'the type filters are the shared segments');
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/look_list.php');
+	$html = pg_list_seg_filters('view_log', 'type', array('' => 'All', 'site' => 'Site Log'), 'Type');
+	pg_assert_contains('class="pg-seg-item active" aria-pressed="true" data-pg-list-filter="view_log" data-pg-filter-column="type" data-pg-filter-value=""', $html, 'All starts pressed');
+	pg_assert_contains('aria-pressed="false" data-pg-list-filter="view_log" data-pg-filter-column="type" data-pg-filter-value="site"', $html);
 
 	$driver = current_state_marks_source('assets/js/pg_list_table.js');
 	pg_assert_contains("other.setAttribute('aria-pressed', (other === button) ? 'true' : 'false');", $driver, 'the driver moves the mark');
