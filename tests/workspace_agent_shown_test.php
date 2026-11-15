@@ -122,7 +122,8 @@ function test_workspace_agent_picker_entries_brief()
 		array('handle' => 'zeta', 'name' => 'Zeta', 'app_id' => 9),
 	), $briefs);
 
-	pg_assert_same('ADNAN Mimar · Developer', $entries[0]['meta'], 'the role follows the name');
+	pg_assert_same('ADNAN Mimar', $entries[0]['meta'], 'the name stays the meta');
+	pg_assert_same('Developer', $entries[0]['role'], 'the role is drawn after it');
 	pg_assert_same('late', $entries[0]['state']);
 	pg_assert_same('Not seen', $entries[0]['state_words']);
 	pg_assert_true($entries[0]['usage_high']);
@@ -133,7 +134,7 @@ function test_workspace_agent_picker_entries_brief()
 	pg_assert_false(isset($entries[1]['state']));
 
 	$plain = ws_agent_picker_entries(array(array('handle' => 'zeta', 'name' => 'Zeta', 'app_id' => 9)), array(9 => array('role' => '', 'state' => 'idle', 'state_words' => 'Ready', 'usage_high' => false)));
-	pg_assert_same('Zeta', $plain[0]['meta'], 'no role: the name alone');
+	pg_assert_same('', $plain[0]['role'], 'no role: the name alone');
 	pg_assert_false($plain[0]['usage_high']);
 	pg_assert_false(isset($plain[0]['usage_words']), 'no mark, no words');
 }

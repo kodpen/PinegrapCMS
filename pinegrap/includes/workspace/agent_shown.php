@@ -305,11 +305,11 @@ function ws_api_agent_own_app()
  * application tag, read as its @handle, so the pick wakes it under any
  * wake rule (ws_agent_wake_matches()). With the agent's brief
  * (ws_agent_picker_briefs()) the entry also carries its role after the
- * name and the state and usage mark the menu draws. Pure.
+ * name (role) and the state and usage mark the menu draws. Pure.
  *
  * @param array[] $rows   ws_agent_channel_rows(): handle, name, app_id
  * @param array[] $briefs by app_id: role (its label), state, state_words, usage_high
- * @return array[] label, meta, icon, token, shown, and with a brief state, state_words, usage_high (usage_words, usage_title when set); by handle
+ * @return array[] label, meta, icon, token, shown, and with a brief role, state, state_words, usage_high (usage_words, usage_title when set); by handle
  */
 function ws_agent_picker_entries($rows, $briefs = array())
 {
@@ -334,9 +334,8 @@ function ws_agent_picker_entries($rows, $briefs = array())
         $brief = $briefs[$app_id] ?? null;
 
         if (is_array($brief)) {
-            if ((string) ($brief['role'] ?? '') !== '') {
-                $entry['meta'] .= ' · ' . (string) $brief['role'];
-            }
+            // The role is drawn after the name, which is cut before it.
+            $entry['role'] = (string) ($brief['role'] ?? '');
 
             $entry['state'] = (string) ($brief['state'] ?? '');
             $entry['state_words'] = (string) ($brief['state_words'] ?? '');
