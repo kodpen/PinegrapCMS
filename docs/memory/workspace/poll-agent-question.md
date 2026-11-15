@@ -10,7 +10,7 @@ description: The agent question on the server (agent_question.php, step 11.0.214
 ## Who answers?
 - `ws_agent_question_asked()`: the people the question mentions (a department's members too), else the channel's owners (a discussion's: its channel's), team members who read the channel: `ws_question_asked_ids()`, which `ws_question_ring()` rings.
 - `ws_poll_vote_check()` refuses anybody else ("Only the people asked can answer this question.", 403 over the API); a guest never ("A guest cannot answer an agent question."; `ws_guest_vote()` refuses it). The others read.
-- The application that asked never answers it: `ws_api_polls_vote()` refuses `ws_api_poll_is_callers()` with 403 before the dry run stops (#9818). An OAuth connection passes `ws_api_person_only()` as its approver, one of the people asked, so it used to settle its own question in their name (#9807).
+- Over REST only the person's team devices session answers (`ws_api_own_words_only()` in `ws_api_polls_vote()`, before the dry run stops; #9818): an OAuth connection passed `ws_api_person_only()` as its approver and settled its own question in their name (#9807). Rule: `workspace-api-callers.md`.
 
 ## How is it settled?
 - One `ws_poll_vote()` call is the answer: the click for one answer, the Send for several or "Other" (`poll-agent-question-box.md`). An empty choice is refused ("Choose an answer first.").
