@@ -196,3 +196,32 @@ function test_workspace_api_channel_reads_file_rows_shared()
 	pg_assert_contains('ws_channel_file_rows(', ws_api_channel_reads_test_source('ws_channel_files'), 'the panel\'s tab and the route read the same rows');
 	pg_assert_contains('ws_channel_file_rows(', ws_api_channel_reads_test_source('ws_api_channel_files_list'));
 }
+
+function test_workspace_api_channel_reads_detail_open_items()
+{
+	$out = ws_api_channel_detail_present(array('id' => 12), ws_api_channel_reads_test_detail(false), array(
+		array('kind' => 'approval', 'message_id' => 30, 'text' => 'Approve the budget', 'mine' => true),
+		array('kind' => 'poll', 'message_id' => '50', 'text' => 'Which colour?', 'mine' => 0),
+	));
+
+	pg_assert_same(array(
+		array('kind' => 'approval', 'message_id' => 30, 'text' => 'Approve the budget', 'mine' => true),
+		array('kind' => 'poll', 'message_id' => 50, 'text' => 'Which colour?', 'mine' => false),
+	), $out['open_items']);
+	pg_assert_same(array(), ws_api_channel_detail_present(array('id' => 12), ws_api_channel_reads_test_detail(false))['open_items'], 'nothing open: an empty list');
+
+	$schema = ws_api_channel_detail_schema();
+	pg_assert_same(array('kind', 'message_id', 'text', 'mine'), array_keys($schema['open_items'][0]));
+}
+
+function test_workspace_api_channel_reads_open_items_come_from_the_panels_function()
+{
+	$source = ws_api_channel_reads_test_source('ws_api_channel_get');
+
+	pg_assert_contains('ws_channel_open_items($viewer, $channel, ws_api_open_items_caller())', $source, 'the line\'s own list, never a second copy');
+	pg_assert_contains('ws_api_channel_or_404(', $source, 'a channel the caller may not read answers 404, its items with it');
+
+	$caller = ws_api_channel_reads_test_source('ws_api_open_items_caller');
+	pg_assert_contains('ws_api_writer_app_id() === 0', $caller, 'the person\'s session or connection keeps the person\'s marks');
+	pg_assert_contains('ws_api_agent_caller_row()', $caller, 'a key marks its own agent\'s approvals');
+}
