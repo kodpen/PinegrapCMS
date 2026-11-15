@@ -1646,7 +1646,7 @@
     "Its tools were read.": "Araçları okundu.",
     "Its tree could not be read.": "Ağacı okunamadı.",
     "Its webhook is still registered on {var:1}. Remove it in your {var:1} seller panel.": "Webhook'u hâlâ {var:1} üzerinde kayıtlı. {var:1} satıcı panelinizden kaldırın.",
-    "Its writer may no longer answer there, so it was not sent. It is in Drafts.": "Yazanı orada artık yanıt veremediği için gönderilmedi. Taslaklar'da duruyor.",
+    "Its writer may no longer answer there, so it was not sent. It is in Drafts.": "Yazan kişi artık orada yanıt veremediği için gönderilmedi. Taslaklar'da duruyor.",
     "Its {n} page(s) will be moved to the Recycle Bin.": "{n} sayfası Geri Dönüşüm Kutusuna taşınacak.",
     "Its {var:1} is Bootstrap {var:2}, not Bootstrap 3: there is no report and no trial design.": "{var:1} dosyası Bootstrap 3 değil, Bootstrap {var:2}: rapor ve deneme tasarımı yok.",
     "Iyzipay 3D Secure answer matches no payment started for order #{var:1} (conversation {var:2}).": "Iyzipay 3D Secure yanıtı #{var:1} numaralı sipariş için başlatılmış hiçbir ödemeyle eşleşmiyor (konuşma {var:2}).",
