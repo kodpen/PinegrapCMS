@@ -178,7 +178,7 @@ function erp_import_step_upload($liveform, $kind_options)
                 <div class="row">
                     <div class="col-12 lg:col-8 2xl:col-9 order-1">
                         <div class="card my-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <div class="card-header bg-reset border-0 pg-title-section">
                                 ' . h(lang('Import CSV')) . '
                             </div>
                             <div class="card-body">
@@ -198,7 +198,7 @@ function erp_import_step_upload($liveform, $kind_options)
                     </div>
                     <div class="col-12 lg:col-4 2xl:col-3 order-2">
                         <div class="card my-7 position-sticky" style="top:3.3rem;">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('What Is Imported')) . '</div>
+                            <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('What Is Imported')) . '</h2>
                             <div class="card-body">
                                 <ul class="small ps-5 mb-3">
                                     <li class="mb-2">' . h(lang('The delimiter and the character set are detected; Excel files saved as CSV in Turkish work as they are.')) . '</li>
@@ -345,7 +345,7 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                 <div class="row">
                     <div class="col-12 lg:col-8 2xl:col-9 order-1">
                         <div class="card my-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <div class="card-header bg-reset border-0 pg-title-section">
                                 ' . h(lang('Column mapping')) . '
                             </div>
                             <div class="card-body">
@@ -356,7 +356,7 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                         </div>
 
                         <div class="card my-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <div class="card-header bg-reset border-0 pg-title-section">
                                 ' . h(lang(array('string' => 'Preview (first {var:1} rows)', 'vars' => count($plan)))) . '
                             </div>
                             <div class="card-body">
@@ -380,7 +380,7 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                     <div class="col-12 lg:col-4 2xl:col-3 order-2">
                         <div class="position-sticky" style="top:3.3rem;">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Summary')) . '</h2>
                                 <div class="card-body">
                                     <p class="small mb-1 text-break"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . h($staged['name']) . '</p>
                                     <p class="small fg-secondary mb-3">' . h(lang(array('string' => '{var:1} data rows', 'vars' => $total_rows))) . ' — ' . h(lang(array('string' => 'Detected delimiter: {var:1}', 'vars' => $delimiter_name))) . '</p>
@@ -388,7 +388,7 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                                 </div>
                             </div>
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <div class="card-header bg-reset border-0 pg-title-section">
                                     ' . h(lang('Options')) . '
                                 </div>
                                 <div class="card-body">
@@ -495,7 +495,7 @@ function erp_import_step_result($outcome)
     if ($output_rows !== '') {
         $output_table = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <div class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Rows that were not written') . '
                     </div>
                     <div class="card-body">
@@ -518,7 +518,7 @@ function erp_import_step_result($outcome)
 
     return erp_import_steps(3) . '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <div class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Import complete.') . '
                     </div>
                     <div class="card-body">' . $output_counts . '

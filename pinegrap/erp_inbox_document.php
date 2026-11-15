@@ -244,7 +244,7 @@ if (empty($proposal['success'])) {
 
     $output_supplier = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Supplier') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Supplier') . '</h2>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12 md:col-7 my-3">
@@ -323,7 +323,7 @@ if (empty($proposal['success'])) {
     if (!empty($references) || ($notes !== '')) {
         $output_references = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Notes') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Notes') . '</h2>
                 <div class="card-body">
                     ' . (!empty($references) ? '<div class="mb-3">' . implode(' · ', $references) . '</div>' : '') . '
                     ' . (($notes !== '') ? '<ul class="mb-0 ps-5 fg-secondary">' . $notes . '</ul>' : '') . '
@@ -423,7 +423,7 @@ pg_page_shell([
 
             ' . (($output_lines !== '')
                 ? '<div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Lines') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Lines') . '</h2>
                 <div class="card-body p-0 position-relative table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
@@ -460,7 +460,7 @@ pg_page_shell([
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('e-Invoice') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('e-Invoice') . '</h2>
                     <div class="card-body">
                         <div class="row">' . $output_status . '</div>
                         <div class="small fg-secondary border-top mt-3 pt-3">' . lang(array('string' => 'Read from {var:1}.', 'vars' => h(is_array($provider_info) ? $provider_info['label'] : $row['provider']))) . '</div>

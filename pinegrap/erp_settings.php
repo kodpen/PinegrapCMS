@@ -331,7 +331,7 @@ if (!$can_site_settings && erp_late_fee_ready()) {
                 ' . get_token_field() . '
                 <input type="hidden" name="late_fee" value="1">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Late payment fee') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Late payment fee') . '</h2>
                     <div class="card-body">
                         ' . erp_settings_late_fee_fields() . '
                         <div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>
@@ -346,7 +346,7 @@ if (!$can_site_settings && erp_settings_efatura_threshold_shown()) {
                 ' . get_token_field() . '
                 <input type="hidden" name="efatura_threshold" value="1">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('e-Fatura threshold') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('e-Fatura threshold') . '</h2>
                     <div class="card-body">
                         ' . erp_settings_efatura_threshold_fields() . '
                         <div class="mt-5"><button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-check2 me-3" aria-hidden="true"></i>' . lang('Save') . '</button></div>
@@ -380,7 +380,7 @@ if ($can_site_settings) {
                 ' . get_token_field() . '
                 <input type="hidden" name="rules" value="1">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Accounting rules') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Accounting rules') . '</h2>
                     <div class="card-body">
                         <p class="fg-secondary">' . lang('Choices your accountant settles for the store; until then the ERP works as it always has.') . '</p>
                         ' . erp_settings_rules_fields() . '
@@ -479,14 +479,14 @@ echo pg_page_shell(array(
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card my-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Document Templates')) . '</h2>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Document Templates')) . '</h2>
                     <div class="card-body pt-0">
                         <ul class="list-group small mb-0">' . $output_document_states . '
                         </ul>
                     </div>
                 </div>
                 <div class="card my-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($output_seller_title) . '</h2>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . h($output_seller_title) . '</h2>
                     <div class="card-body pt-0">' . $output_seller . '
                     </div>
                 </div>

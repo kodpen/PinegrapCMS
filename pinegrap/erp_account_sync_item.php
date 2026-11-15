@@ -351,7 +351,7 @@ if ($mode === 'linked') {
                 <input type="hidden" name="id" value="' . (int) $row['id'] . '" />
                 <input type="hidden" name="erp_action" value="align" />
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Comparison') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Comparison') . '</h2>
                     <div class="card-body">
                         <p class="fg-secondary small">' . (empty($diff)
                             ? lang('The account and the card agree on every field that is compared.')
@@ -390,11 +390,11 @@ if ($mode === 'linked') {
 
     $output_main = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('ERP account') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('ERP account') . '</h2>
                 <div class="card-body p-0">' . $details(erp_edoc_account_erp_card($account)) . '</div>
             </div>
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang(array('string' => 'Link to a card at {var:1}', 'vars' => $provider_label))) . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang(array('string' => 'Link to a card at {var:1}', 'vars' => $provider_label))) . '</h2>
                 <div class="card-body">
                     ' . (!empty($same_number)
                         ? '<p class="small fg-secondary">' . lang('Cards with the same tax number:') . '</p>' . $pick_list($same_number, 'card')
@@ -434,7 +434,7 @@ if ($mode === 'linked') {
 
     $output_main = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang(array('string' => 'Card at {var:1}', 'vars' => $provider_label))) . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang(array('string' => 'Card at {var:1}', 'vars' => $provider_label))) . '</h2>
                 <div class="card-body p-0">' . $details($card) . '</div>
             </div>';
 
@@ -444,7 +444,7 @@ if ($mode === 'linked') {
     } elseif ($mode === 'new') {
         $output_main .= '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Link to an ERP account') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Link to an ERP account') . '</h2>
                 <div class="card-body">
                     ' . (!empty($candidates)
                         ? '<p class="small fg-secondary">' . lang('Accounts with the same tax number:') . '</p>' . $pick_list($candidates, 'account')
@@ -549,7 +549,7 @@ pg_page_shell([
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($provider_label) . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . h($provider_label) . '</h2>
                     <div class="card-body">
                         <div class="row">' . $output_status . '</div>
                         <div class="small fg-secondary border-top mt-3 pt-3">' . lang('Balances are never exchanged.') . '</div>

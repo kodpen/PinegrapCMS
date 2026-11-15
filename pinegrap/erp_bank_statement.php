@@ -270,7 +270,7 @@ if ((string) $statement['status'] === 'mapping') {
 
     $output_status = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Statement') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Statement') . '</h2>
                     <div class="card-body pt-0">
                         ' . $status_line(lang('Bank account'), h((string) $statement['till_name'])) . '
                         ' . $status_line(lang('File'), h((string) $statement['file_name'])) . '
@@ -281,7 +281,7 @@ if ((string) $statement['status'] === 'mapping') {
 
     $output_body = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('The first lines of the file') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('The first lines of the file') . '</h2>
                 ' . $separator_form . '
                 <div class="card-body p-0 table-responsive"><table class="table table-sm table-bordered mb-0"><thead>' . $head . '</thead><tbody>' . $body . '</tbody></table></div>
             </div>
@@ -289,7 +289,7 @@ if ((string) $statement['status'] === 'mapping') {
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $statement_id . '" />
                 <input type="hidden" name="erp_action" value="map" />
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Which column is which') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Which column is which') . '</h2>
                 <div class="card-body">
                     <div class="row g-3 align-items-end">
                     ' . $select('col_date', 'date', lang('Date'), false) . '
@@ -430,7 +430,7 @@ if ((string) $statement['status'] === 'mapping') {
 
     $output_status = '
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Summary') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Summary') . '</h2>
                     <div class="card-body pt-0">
                         ' . $status_line(lang('Lines'), (string) count($lines)) . '
                         ' . $output_status_counts . '

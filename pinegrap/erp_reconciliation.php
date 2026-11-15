@@ -108,7 +108,7 @@ $output_send_card = '';
 if (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) {
     $output_send_card = '
                     <div class="card mb-7">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Send by e-mail') . '</div>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Send by e-mail') . '</h2>
                         <div class="card-body">
                             <form name="form" method="post" action="erp_reconciliation.php">
                                 ' . get_token_field() . '
@@ -162,7 +162,7 @@ pg_page_shell([
         -->
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Letter') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Letter') . '</h2>
                 <div class="card-body">
                     <form method="get" action="erp_reconciliation.php">
                         <input type="hidden" name="id" value="' . $account_id . '" />
@@ -197,7 +197,7 @@ pg_page_shell([
             </div>
 
             <div class="card mb-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex align-items-center">
+                <div class="card-header bg-reset border-0 pg-title-section d-flex align-items-center">
                     <span>' . lang('Preview') . '</span>
                     <a class="btn btn-sm btn-link ms-auto" href="' . $pdf_url . '&amp;html=1" target="_blank" rel="noopener">' . lang('Open in a new tab') . '</a>
                 </div>
@@ -216,7 +216,7 @@ pg_page_shell([
             <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Balance') . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Balance') . '</h2>
                     <div class="card-body">
                         <div class="fg-secondary small">' . h(lang(array('string' => 'Balance as of {var:1}', 'vars' => prepare_form_data_for_output($options['as_of'], 'date', false)))) . '</div>
                         <div class="d-flex flex-wrap align-items-baseline gap-3 my-3">

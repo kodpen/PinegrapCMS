@@ -481,7 +481,7 @@ if ($liveform->check_field_error('accountant_email')) {
 
 $output_settings_card = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Accountant') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Accountant') . '</h2>
                 <div class="card-body">
                     <form method="post" action="erp_accountant.php">
                         ' . get_token_field() . '
@@ -515,7 +515,7 @@ $output_settings_card = '
 
 $output_lock_card = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Period lock') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Period lock') . '</h2>
                 <div class="card-body">
                     ' . $output_lock_state . '
                     ' . ($can_settings ? '
@@ -552,7 +552,7 @@ pg_page_shell(array(
         </div>
         <div class="col-12 xl:col-8">
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Build a pack') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Build a pack') . '</h2>
                 <div class="card-body">
                     <form method="post" action="erp_accountant.php">
                         ' . get_token_field() . '
@@ -611,7 +611,7 @@ pg_page_shell(array(
         </div>
         <div class="col-12">
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Packs') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Packs') . '</h2>
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort id="erp_accountant_packs">
                         <thead>

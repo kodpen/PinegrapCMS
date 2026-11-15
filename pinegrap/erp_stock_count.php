@@ -185,7 +185,7 @@ pg_page_shell([
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $count_id . '" />
                 <input type="hidden" name="erp_action" value="scan" />
-                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Scan') . '
                 </h2>
                 <div class="card-body pt-0">
@@ -237,7 +237,7 @@ pg_page_shell([
             <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card mb-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Summary') . '
                     </h2>
                     <div class="card-body pt-0">
