@@ -91,7 +91,7 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <div class="card pg-card my-7">
+            <div class="card pg-card erp-list-card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>

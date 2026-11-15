@@ -120,7 +120,7 @@ pg_page_shell([
             </nav>
             ' . $output_filter_note . '
 
-            <div class="card pg-card my-7">
+            <div class="card pg-card erp-list-card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>

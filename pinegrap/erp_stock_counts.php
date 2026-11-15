@@ -115,7 +115,7 @@ pg_page_shell([
                         <input type="text" class="form-control" id="title" name="title" maxlength="100" placeholder="' . h(lang(array('string' => 'Count of {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d'), 'date', false)))) . '" />
                     </div>
                 </div>' : '') . '
-                <div class="card pg-card my-7">
+                <div class="card pg-card erp-list-card my-7">
                     <div class="card-body p-0 table-responsive">
                         <table class="table table-hover align-middle mb-0" data-pg-sort>
                             <thead>

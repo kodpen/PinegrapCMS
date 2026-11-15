@@ -145,7 +145,7 @@ if (!empty($low_products)) {
                     <a class="btn btn-sm btn-outline theme-danger m-1" href="erp_stock_minimums.php?show=low">' . lang('All of them') . '</a>
                 </div>
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-sm align-middle mb-0">
+                    <table class="table align-middle mb-0">
                         <thead><tr><th>' . lang('Product') . '</th><th class="text-end">' . lang('Stock') . '</th><th class="text-end">' . lang('Minimum') . '</th></tr></thead>
                         <tbody>' . $low_rows . '</tbody>
                     </table>
