@@ -6447,9 +6447,30 @@ function ws_api_assistant_request_present($viewer, $row, $people)
     // read where they were asked.
     $task_id = ((int) $row['channel_id'] === 0) ? (int) ($row['task_id'] ?? 0) : 0;
 
+    // A registry agent's or a model assistant's request is named as the
+    // queue writes it (agent:<id>, the older app:<id> too, or model:<id>) and
+    // says where it stands in the words under its message.
+    $agent = (string) ($row['agent'] ?? '');
+    $registry = function_exists('ws_agent_request_parse') ? ws_agent_request_line_value($agent) : '';
+    $registry = ($registry !== '' && ws_agent_request_parse($registry) !== null) ? $registry : '';
+
+    if ($registry !== '') {
+        $agent = $registry;
+    } elseif (!in_array($agent, array('ai', 'mcp'), true)) {
+        $agent = 'claude';
+    }
+
+    $label = null;
+
+    if ($registry !== '') {
+        $state = ws_agent_request_state(array_merge($row, array('agent' => $registry)));
+        $label = (string) $state['label'];
+    }
+
     return array(
         'id'               => (int) $row['id'],
-        'agent'            => in_array((string) ($row['agent'] ?? ''), array('ai', 'mcp'), true) ? (string) $row['agent'] : 'claude',
+        'agent'            => $agent,
+        'label'            => $label,
         'status'           => (string) $row['status'],
         'origin'           => ws_api_assistant_request_origin($row),
         'channel_id'       => ((int) $row['channel_id'] > 0) ? (int) $row['channel_id'] : null,
@@ -6477,6 +6498,7 @@ function ws_api_assistant_request_schema()
     return array(
         'id'               => 'integer',
         'agent'            => 'string',
+        'label'            => 'string?',
         'status'           => 'string',
         'origin'           => 'string',
         'channel_id'       => 'integer?',
@@ -6523,6 +6545,58 @@ function ws_api_assistant_requests_rows($where, $limit)
         LIMIT " . max(1, (int) $limit));
 }
 
+/**
+ * The requests a reader of GET /workspace/assistant-requests reaches, as SQL
+ * over ws_ai_requests: those asked in a channel they read, the runs on a
+ * task they see, and their own asked where neither is (in a note or in the
+ * page editor). Every agent filter is added to this, never in its place.
+ * Pure.
+ *
+ * @param int    $viewer_id
+ * @param int[]  $channel_ids ws_api_readable_channel_ids()
+ * @param string $task_seen_sql ws_api_task_seen_sql() over ws_tasks t; '' when tasks have no runs
+ * @return string
+ */
+function ws_api_assistant_requests_reach($viewer_id, $channel_ids, $task_seen_sql)
+{
+    $tasks = ((string) $task_seen_sql !== '');
+    $reach = array("(channel_id = 0 AND requested_by = '" . (int) $viewer_id . "'" . ($tasks ? " AND task_id = 0" : '') . ")");
+    $channel_ids = array_values(array_filter(array_map('intval', (array) $channel_ids)));
+
+    if (!empty($channel_ids)) {
+        $reach[] = "channel_id IN (" . implode(',', $channel_ids) . ")";
+    }
+
+    if ($tasks) {
+        $reach[] = "(channel_id = 0 AND task_id IN (SELECT t.id FROM ws_tasks t WHERE " . $task_seen_sql . "))";
+    }
+
+    return "(" . implode(' OR ', $reach) . ")";
+}
+
+/**
+ * The agent filter agent:<id> (a registry agent's requests) or model:<id>
+ * (a model assistant's) as SQL over ws_ai_requests, every value the agent's
+ * rows may carry (ws_agent_activity_keys()). A row of the older app:<id>
+ * shape counts only on a message: a proposal carries app:<api app id> as
+ * well, and never on a message. Pure.
+ *
+ * @param string $value
+ * @return string ' AND (…)', or '' when the value names no registry agent
+ */
+function ws_api_assistant_requests_registry_where($value)
+{
+    $parsed = ws_agent_request_parse((string) $value);
+    $match = array();
+
+    // The keys are built from the parsed integer id, so they need no escaping.
+    foreach (($parsed !== null) ? ws_agent_activity_keys($parsed) : array() as $key) {
+        $match[] = (strpos($key, 'app:') === 0) ? "(agent = '" . $key . "' AND message_id > 0)" : "agent = '" . $key . "'";
+    }
+
+    return empty($match) ? '' : ' AND (' . implode(' OR ', $match) . ')';
+}
+
 function ws_api_assistant_requests_list($params)
 {
     $viewer = ws_api_viewer();
@@ -6536,18 +6610,7 @@ function ws_api_assistant_requests_list($params)
     // Asked in a channel the owner reads; on a task the owner sees; or by
     // the owner where neither is: in a note or in the page editor.
     $tasks = ws_delegation_ready();
-    $reach = array("(channel_id = 0 AND requested_by = '" . (int) $viewer['id'] . "'" . ($tasks ? " AND task_id = 0" : '') . ")");
-    $channel_ids = ws_api_readable_channel_ids($viewer);
-
-    if (!empty($channel_ids)) {
-        $reach[] = "channel_id IN (" . implode(',', $channel_ids) . ")";
-    }
-
-    if ($tasks) {
-        $reach[] = "(channel_id = 0 AND task_id IN (SELECT t.id FROM ws_tasks t WHERE " . ws_api_task_seen_sql($viewer, 't') . "))";
-    }
-
-    $where = "(" . implode(' OR ', $reach) . ")";
+    $where = ws_api_assistant_requests_reach($viewer['id'], ws_api_readable_channel_ids($viewer), $tasks ? ws_api_task_seen_sql($viewer, 't') : '');
 
     if (!empty($params['task_id'])) {
         $task = ws_api_task_or_404($viewer, $params['task_id']);
@@ -6563,13 +6626,32 @@ function ws_api_assistant_requests_list($params)
         $where .= " AND status = '" . e($params['status']) . "'";
     }
 
-    if (!empty($params['agent']) && function_exists('ws_ai_agent_where')) {
-        $where .= ws_ai_agent_where((string) $params['agent']);
+    $agent = (string) ($params['agent'] ?? '');
+    $registry = '';
+
+    if (in_array($agent, array('claude', 'ai', 'mcp'), true)) {
+        if (function_exists('ws_ai_agent_where')) {
+            $where .= ws_ai_agent_where($agent);
+        }
+    } elseif ($agent !== '') {
+        $registry = function_exists('ws_agent_request_parse') ? ws_api_assistant_requests_registry_where($agent) : '';
+
+        if ($registry === '') {
+            api_fail_validation(lang('agent is claude, ai, mcp, agent:<id> or model:<id>.'), 'agent');
+        }
+
+        // Without the column no request was ever a registry agent's.
+        if (!function_exists('waf_table_has_column') || !waf_table_has_column('ws_ai_requests', 'agent')) {
+            api_ok_list(array(), $limit);
+        }
+
+        $where .= $registry;
     }
 
     // An application's proposal (proposals.php) asked no assistant: its
-    // changes are listed by GET /workspace/changes.
-    if (function_exists('ws_proposals_ready') && ws_proposals_ready()) {
+    // changes are listed by GET /workspace/changes. A registry agent's filter
+    // keeps proposals out itself, and lets that agent's older app:<id> rows in.
+    if (($registry === '') && function_exists('ws_proposals_ready') && ws_proposals_ready()) {
         $where .= " AND " . ws_proposal_where('', false);
     }
 
