@@ -2741,7 +2741,7 @@ function pg_pb_render_preview($show_summary = TRUE)
 
     return
         '<div class="card mb-5" id="pg_pb_preview">
-            <div class="card-body p-3">
+            <div class="card-body">
 
                 <h2 class="pg-title-status mb-1">' . lang('Preview') . '</h2>
 
