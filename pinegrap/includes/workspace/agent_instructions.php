@@ -197,8 +197,8 @@ function ws_agent_instructions_wait_lines($door, $base)
 
     return array(
         'How you wait: nobody calls you. Read ' . $list . ' every ' . $poll . ' seconds, never more often than every ' . $min . ' seconds. An empty list ("data": []) means nobody asks you anything.',
-        'With a shell, run the read as a background loop, so waiting costs you no turn; it prints the list and stops as soon as a request waits:',
-        'while :; do r=$(curl -sS -u "$PINEGRAP_KEY:$PINEGRAP_SECRET" "' . $base . '/workspace/agent-requests"); case "$r" in *\'"data":[]\'*) sleep ' . $poll . ';; *) echo "$r"; break;; esac; done',
+        'With a shell, run the read as a background loop, so waiting costs you no turn; it prints the list and stops as soon as a request waits or the site answers with an error; a read that fails on the network waits too:',
+        'while :; do r=$(curl -sS -u "$PINEGRAP_KEY:$PINEGRAP_SECRET" "' . $base . '/workspace/agent-requests"); case "$r" in \'\'|*\'"data":[]\'*) sleep ' . $poll . ';; *) echo "$r"; break;; esac; done',
         'When it stops, work through the list as below, then start the loop again.',
     );
 }

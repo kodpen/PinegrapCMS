@@ -84,7 +84,9 @@ function test_workspace_agent_instructions_poll_text()
 	pg_assert_contains('Read GET /workspace/agent-requests every 15 seconds, never more often than every 5 seconds.', $text, 'the interval');
 	pg_assert_contains('"data": []', $text, 'an empty list explained');
 	pg_assert_contains('background loop', $text, 'waiting costs no turn');
-	pg_assert_contains('while :; do r=$(curl -sS -u "$PINEGRAP_KEY:$PINEGRAP_SECRET" "https://shop.example/pinegrap/integration.php/workspace/agent-requests"); case "$r" in *\'"data":[]\'*) sleep 15;; *) echo "$r"; break;; esac; done', $text, 'the loop line');
+	pg_assert_contains('while :; do r=$(curl -sS -u "$PINEGRAP_KEY:$PINEGRAP_SECRET" "https://shop.example/pinegrap/integration.php/workspace/agent-requests"); case "$r" in \'\'|*\'"data":[]\'*) sleep 15;; *) echo "$r"; break;; esac; done', $text, 'the loop line');
+	pg_assert_contains('case "$r" in \'\'|', $text, 'an empty read (curl failed) sleeps, it does not stop the loop');
+	pg_assert_contains('a read that fails on the network waits too', $text, 'the empty read explained');
 	pg_assert_same(1, substr_count($text, 'while :; do'), 'one loop line');
 	pg_assert_true(strpos($text, 'fires your routine') === false, 'no routine words');
 	pg_assert_true(strpos($text, 'calls your address') === false, 'no webhook words');
