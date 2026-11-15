@@ -32,6 +32,23 @@ window.pgFoldTR = function (s) {
         .replace(/\u0131/g, 'i').replace(/\u00f6/g, 'o').replace(/\u00e7/g, 'c');
 };
 
+// Whether a Site Settings card drawer opens again on the pane read back after
+// a save made from it. Not after a button that takes the record away (named
+// ..._delete, ..._remove, ..._archive): its drawer has nothing left to show.
+// Not from a drawer that adds a record (id ending in -0, -add, -new, or the
+// "Link a repository" drawer): once stored, the record has a drawer of its
+// own and the add form comes back empty. `button` is the named submit button
+// that started the save ({name, value}), null for the dialog's Save.
+window.pgSettingsKeepDrawer = function (drawer, button) {
+    drawer = String(drawer || '');
+
+    if (!drawer || /-(0|add|new)$/.test(drawer) || (drawer === 'pgset-ws-github-link')) {
+        return false;
+    }
+
+    return !(button && /_(delete|remove|archive)$/.test(String(button.name || '')));
+};
+
 // Says a short answer to a screen reader without moving focus. A live region
 // is only heard when its words change after it is in the document, so the two
 // regions (polite and assertive) are made empty once the page has loaded and
@@ -10137,9 +10154,11 @@ function pg_poll_while_visible(poll, ms) {
     }
 
     /**
-     * pgToast({message, variant, delay, link})
+     * pgToast({message, variant, delay, link, host})
      * variant: success | danger | warning | info (default: info)
      * link: optional {url, label} drawn after the text
+     * host: optional element the toast is drawn in instead of the page's
+     * toast stack (the Site Settings dialog's place for "saved")
      * delay: ms (default: 4000), success and info only: a danger or warning
      * toast stays until its Close button is used, so a keyboard or
      * magnifier user can still reach it, and the same one is not stacked.
@@ -10159,13 +10178,15 @@ function pg_poll_while_visible(poll, ms) {
             info: 'bi-info-circle-fill'
         };
 
-        var container = ensureToastContainer();
+        var container = opts.host || ensureToastContainer();
         // An open dialog's backdrop would cover a body-level toast: the
         // container goes into the top dialog until it hides.
-        if (window.pgUI && pgUI.hostLayer) {
-            pgUI.hostLayer(container);
+        if (!opts.host) {
+            if (window.pgUI && pgUI.hostLayer) {
+                pgUI.hostLayer(container);
+            }
+            placeToastContainer(container);
         }
-        placeToastContainer(container);
         // An optional link after the text ({url, label}): a site path or http(s) only.
         var linkHtml = '';
         if (opts.link && opts.link.url && opts.link.label && /^(https?:\/\/|\/(?!\/))/i.test(String(opts.link.url))) {
@@ -11694,6 +11715,7 @@ var pgSettingsModal = (function () {
             clearExtras();
             drawer(false);
             unlocate();
+            $('#pg_settings_modal_saved').empty();
 
             // The next opening asks for the pane again rather than showing
             // values that may have been changed by the work done in between.
@@ -12837,7 +12859,12 @@ var pgSettingsModal = (function () {
     }
 
 
-    function load(key) {
+    /**
+     * @param {string} key the pane
+     * @param {?{scroll: number, drawer: string, drawerScroll: number}} [place]
+     *     where the operator was when a save asked for the pane again (send())
+     */
+    function load(key, place) {
 
         // Tapping a second category before the first arrives is a normal
         // thing to do on a slow link. Both requests run, but only the newest
@@ -12887,7 +12914,7 @@ var pgSettingsModal = (function () {
                     return;
                 }
 
-                paint(key, response);
+                paint(key, response, place || null);
 
                 if (later) {
                     settle();
@@ -13047,7 +13074,12 @@ window.pgCodeEditorReady = function (markup, done) {
 
     return true;
 };
-    function paint(key, response) {
+    /**
+     * @param {string} key the pane
+     * @param {Object} response the endpoint's answer
+     * @param {?Object} [place] as load(): the scroll and drawer a save left
+     */
+    function paint(key, response, place) {
 
         pane = key;
 
@@ -13148,11 +13180,24 @@ window.pgCodeEditorReady = function (markup, done) {
 
         locate(key);
 
-        if (pending) {
+        if (place) {
+            // Read back after a save: the operator stays where they were. Once
+            // more after the frame, for a code field or an image that changes
+            // its card's height as it starts.
+            form.scrollTop = place.scroll;
+            window.requestAnimationFrame(function () {
+                form.scrollTop = place.scroll;
+            });
+            pending = '';
+        } else if (pending) {
             jump(pending);
             pending = '';
         } else {
             form.scrollTop = 0;
+        }
+
+        if (place && place.drawer) {
+            reopen(place);
         }
 
         // The pane the operator was reading has just been replaced, so focus
@@ -13241,6 +13286,9 @@ window.pgCodeEditorReady = function (markup, done) {
         // never in the body. On a page the browser had always sent it.
         button = button || null;
 
+        // Where the operator is, to come back to once the pane is read again.
+        var place = spot(button);
+
         busy++;
         setDirty(dirty);
         $(shell()).addClass('is-busy');
@@ -13308,8 +13356,22 @@ window.pgCodeEditorReady = function (markup, done) {
             // Read the pane back rather than trust the form: a save normalises
             // what it was given -- a list becomes comma separated, a limit of
             // zero becomes one -- and the operator should see what was stored.
-            load(pane).always(function () {
-                notice(said, false, caution);
+            // A warning is read at the top of the pane, as before, with the
+            // confirmation under it.
+            if (caution) {
+                load(pane).always(function () {
+                    notice(said, false, caution);
+                });
+                return;
+            }
+
+            // Otherwise the pane comes back where it was, with the drawer the
+            // save came from, and "saved" is one toast in the dialog: a notice
+            // at the top of the form would be out of sight.
+            load(pane, place).done(function (answer) {
+                if (answer && (answer.status === 'success')) {
+                    confirmSave(response.notices);
+                }
             });
 
         }).fail(function (xhr) {
@@ -13323,6 +13385,100 @@ window.pgCodeEditorReady = function (markup, done) {
             $(shell()).removeClass('is-busy');
             setDirty(dirty);
         });
+    }
+
+
+    /**
+     * The form's scroll and the card drawer a save is made from, to be put
+     * back on the pane read after it (paint()). The drawer is left out after
+     * a button that removes its record and on an add form
+     * (pgSettingsKeepDrawer()).
+     */
+    function spot(button) {
+
+        var from = cardDrawer();
+        var body = from ? from.querySelector('.pg-sm-drawer-body') : null;
+        var keep = !!(from && window.pgSettingsKeepDrawer(from.id, button));
+
+        return {
+            scroll: form.scrollTop,
+            drawer: keep ? from.id : '',
+            drawerScroll: (keep && body) ? body.scrollTop : 0
+        };
+    }
+
+
+    /**
+     * Opens the drawer a save came from again, on the pane read back, with the
+     * button that opens it as the one focus returns to. Gone (the record is no
+     * longer there): nothing opens.
+     */
+    function reopen(place) {
+
+        var again = byId(place.drawer);
+
+        if (!again) {
+            return;
+        }
+
+        var trigger = null;
+
+        $('#pg_settings_modal_pane [data-pgdrawer="open"]').each(function () {
+            if (!trigger && ((this.getAttribute('data-bs-target') || '') === '#' + place.drawer)) {
+                trigger = this;
+            }
+        });
+
+        openCardDrawer(again, trigger);
+
+        var body = again.querySelector('.pg-sm-drawer-body');
+
+        if (body) {
+            body.scrollTop = place.drawerScroll;
+        }
+    }
+
+
+    /**
+     * One toast in the dialog says the save went through: under the head of
+     * the pane, or of the drawer the save came from, where the operator is
+     * looking. The endpoint ends every save with the general
+     * confirmation; a card that said something of its own ("The agent was
+     * saved.") is heard instead of it. A toast still up from the last save
+     * goes first, so there is never more than one. A long confirmation (an
+     * address to note) stays until it is closed.
+     */
+    function confirmSave(notices) {
+
+        var host = byId('pg_settings_modal_saved');
+        var list = (notices && notices.length) ? notices.slice() : [];
+
+        if (list.length > 1) {
+            list.pop();
+        }
+
+        var said = list.join(' ') || say('saved');
+
+        notice('');
+
+        if (!host) {
+            return;
+        }
+
+        $(host).empty();
+
+        // Just under the head of the drawer or of the pane, never over the
+        // buttons at their foot: on a phone the drawer's Save sits there.
+        var open = cardDrawer();
+        var head = open ? open.querySelector('.pg-sm-drawer-head') : el.querySelector('.pg-sm-head');
+
+        if (head) {
+            host.style.top = Math.round(head.getBoundingClientRect().bottom - el.getBoundingClientRect().top + 12) + 'px';
+        }
+
+        if (typeof window.pgToast === 'function') {
+            window.pgToast({ message: said, variant: 'success', delay: (said.length > 80) ? 600000 : 5000, host: host });
+        }
     }
 
 

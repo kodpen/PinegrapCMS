@@ -11345,6 +11345,29 @@ body.pg-side-panel-open .pg-chat-launcher {
   opacity: 1;
   pointer-events: auto;
 }
+/* "Saved" after a save (confirmSave() in backend.src.js): one toast just
+   under the head of the pane, or of the open drawer; the script sets its top
+   from the head. Above the drawer and its scrim; only the toast takes clicks. */
+.pg-sm-saved {
+  position: absolute;
+  z-index: 6;
+  top: 5rem;
+  right: 0;
+  left: 0;
+  display: flex;
+  justify-content: center;
+  padding-inline: 1rem;
+  pointer-events: none;
+}
+.pg-sm-saved > .toast {
+  max-width: 100%;
+  box-shadow: var(--pg-shadow-lg);
+  pointer-events: auto;
+}
+.pg-sm.is-drawer-open .pg-sm-saved {
+  left: auto;
+  width: min(42rem, 100%);
+}
 @media (max-width: 575.98px) {
   .pg-sm-drawer { width: 100%; }
   .pg-sm-drawer-head { padding-inline: .875rem; }
