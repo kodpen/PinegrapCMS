@@ -97,6 +97,8 @@ function ws_home($viewer)
     // (approvals.php, acks.php): all of them counted, five of each shown.
     $approvals = function_exists('ws_approvals_waiting') ? ws_approvals_waiting($viewer, 50) : array();
     $acks = function_exists('ws_acks_waiting') ? ws_acks_waiting($viewer, 20) : array();
+    // Agent questions asked of the person and not answered yet (agent_question.php).
+    $questions = function_exists('ws_agent_questions_for') ? ws_agent_questions_for($viewer, 20) : array();
 
     return array(
         'name'          => (string) ($person[$me]['name'] ?? ''),
@@ -107,6 +109,7 @@ function ws_home($viewer)
             'mentions'  => $mentions,
             'approvals' => count($approvals),
             'acks'      => count($acks),
+            'questions' => count($questions),
             'due'       => (int) ($counts['due_count'] ?? 0),
         )),
         'due'           => $due,
@@ -120,6 +123,7 @@ function ws_home($viewer)
         'talk'          => ws_home_talk($viewer, 5),
         'approvals'     => array_slice($approvals, 0, 5),
         'acks'          => array_slice($acks, 0, 5),
+        'questions'     => array_slice($questions, 0, 5),
         'decisions'     => ws_timeline_items($viewer, $timeline['rows'], $timeline['channels']),
         'join'          => ws_home_joinable($viewer, 5),
         'newcomer'      => ($written === 0),
@@ -211,7 +215,7 @@ function ws_home_greeting($hour)
  * the page joins with dots ("3 new messages · 1 mention · 1 approval
  * request"), or the one sentence that nothing does.
  *
- * @param array $counts messages, mentions, approvals, acks, due
+ * @param array $counts messages, mentions, approvals, acks, questions, due
  * @return string[]
  */
 function ws_home_lead($counts)
@@ -223,6 +227,7 @@ function ws_home_lead($counts)
     $mentions = $count('mentions');
     $approvals = $count('approvals');
     $acks = $count('acks');
+    $questions = $count('questions');
     $due = $count('due');
     $parts = array();
 
@@ -240,6 +245,10 @@ function ws_home_lead($counts)
 
     if ($acks > 0) {
         $parts[] = lang(array('string' => '{var:1} read receipt{suffix:1} asked of you', 'vars' => $acks, 'suffix' => array(($acks === 1) ? '' : 's')));
+    }
+
+    if ($questions > 0) {
+        $parts[] = lang(array('string' => '{var:1} agent question{suffix:1} for you', 'vars' => $questions, 'suffix' => array(($questions === 1) ? '' : 's')));
     }
 
     if ($due > 0) {
@@ -696,6 +705,8 @@ function ws_home_js_strings()
         'home_tasks_empty'    => lang('No open task is yours. Tasks handed to you show here, the nearest due date first.'),
         'home_reply'          => lang('replied'),
         'home_mention'        => lang('mentioned you'),
+        'home_question'       => lang('asks you'),
+        'home_question_title' => lang('An agent question waiting for your answer'),
         'home_decisions'      => lang('Latest decisions'),
         'home_decisions_empty' => lang('No decision yet. A message marked as a decision shows here.'),
         'home_join'           => lang('Channels you could join'),
