@@ -191,7 +191,7 @@ function test_report_view_visitor_figures_follow_the_grand_total_row()
 
 	$figures = pg_report_view_visitor_figures($grand, true, '$');
 
-	pg_assert_same(array(lang('Visitors'), lang('Page Views'), lang('Custom Form Submitted') . ' %', lang('Order Completed') . ' %', lang('Order Total'), lang('Average Order Amount')), array_column($figures, 'label'));
+	pg_assert_same(array(lang('Visitors'), lang('Page Views'), lang('Custom Form Submitted') . ' %', lang('Order Completed') . ' %', lang('Order Total'), lang('Order amount per visitor')), array_column($figures, 'label'));
 	pg_assert_same(pg_format_number(3, 0), $figures[0]['text']);
 	pg_assert_same(pg_format_number(1234, 0), $figures[1]['text']);
 	pg_assert_same($percent(1 / 3 * 100), $figures[2]['text'], 'as the cell: submitted over visitors');
@@ -241,4 +241,19 @@ function test_report_view_visitor_chart_counts_visitors()
 	pg_assert_same(null, pg_report_view_visitor_chart('none', $groups, $names, 'x'));
 	pg_assert_same(null, pg_report_view_visitor_chart('bars', array(), array(), 'x'));
 	pg_assert_same('map', pg_report_view_chart_kind('country'), 'the visitor report country');
+}
+
+// A country level names the place where the site's country list knows its
+// code; a name, an unknown code or an empty value stays as stored.
+function test_report_view_country_name()
+{
+	$names = array('TR' => 'Türkiye', 'DE' => 'Germany');
+
+	pg_assert_same('Türkiye', pg_report_view_country_name('billing_country', 'TR', $names));
+	pg_assert_same('Germany', pg_report_view_country_name('country', 'de', $names), 'a code in any case');
+	pg_assert_same('Germany', pg_report_view_country_name('shipping_country', ' DE ', $names));
+	pg_assert_same('Turkey', pg_report_view_country_name('billing_country', 'Turkey', $names), 'a stored name stays');
+	pg_assert_same('XX', pg_report_view_country_name('billing_country', 'XX', $names), 'an unknown code stays');
+	pg_assert_same('', pg_report_view_country_name('billing_country', '', $names));
+	pg_assert_same('TR', pg_report_view_country_name('billing_state', 'TR', $names), 'only a country level');
 }

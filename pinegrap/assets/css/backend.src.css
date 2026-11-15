@@ -27958,8 +27958,7 @@ body.pg-measure-report #content {
   }
 }
 
-/* The chart card: a title, the legend, the plot 232 px high. Bars and the
-   line that says no chart fits are 620 px at most. */
+/* The chart card: a title, the legend, the plot 232 px high. */
 .pg-report-chart {
   min-width: 0;
   padding: 16px 20px 10px;
@@ -27968,7 +27967,8 @@ body.pg-measure-report #content {
 .pg-report-chart.is-map {
   padding-bottom: 14px;
 }
-.pg-report-chart.is-bars,
+/* The line that says no chart fits is 620 px at most; bars, alone in their
+   row, take the whole row as the map does. */
 .pg-report-nochart {
   max-width: 620px;
 }

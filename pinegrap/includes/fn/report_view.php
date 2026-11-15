@@ -223,7 +223,7 @@ function pg_report_view_visitor_figures($grand, $ecommerce, $symbol)
 
         $figures[] = pg_report_view_figure(lang('Order Completed') . ' %', $percent((int) ($grand['order_completed'] ?? 0)), 'bi-bag-check', 'teal');
         $figures[] = pg_report_view_figure(lang('Order Total'), pg_report_view_money($total, $symbol), 'bi-cash-stack', 'blue');
-        $figures[] = pg_report_view_figure(lang('Average Order Amount'), pg_money_text((($count > 0) ? $total / $count : 0) / 100, $symbol), 'bi-basket2', 'violet');
+        $figures[] = pg_report_view_figure(lang('Order amount per visitor'), pg_money_text((($count > 0) ? $total / $count : 0) / 100, $symbol), 'bi-basket2', 'violet');
     }
 
     return $figures;
@@ -608,4 +608,46 @@ function pg_report_view_chart_by($kind, $groups, $names, $title, $measure, $code
     }
 
     return $chart;
+}
+
+/**
+ * A country level's group as the screen names it: the site's own name for a
+ * stored country code, else the stored text (a name, an unknown code). The
+ * export and the map keep the stored value. Pure.
+ *
+ * @param string $level a summarize-by value
+ * @param string $value the group's stored text
+ * @param array  $names upper-case code => name (pg_report_view_country_names())
+ * @return string
+ */
+function pg_report_view_country_name($level, $value, $names)
+{
+    if (!in_array($level, array('billing_country', 'shipping_country', 'country'), true)) {
+        return (string) $value;
+    }
+
+    $code = strtoupper(trim((string) $value));
+
+    return (($code !== '') && isset($names[$code])) ? (string) $names[$code] : (string) $value;
+}
+
+/**
+ * The site's country names by code (the countries table), read once a
+ * request.
+ *
+ * @return array upper-case code => name
+ */
+function pg_report_view_country_names()
+{
+    static $names = null;
+
+    if ($names === null) {
+        $names = array();
+
+        foreach ((array) db_items("SELECT code, name FROM countries WHERE code <> '' AND name <> ''") as $row) {
+            $names[strtoupper(trim((string) $row['code']))] = (string) $row['name'];
+        }
+    }
+
+    return $names;
 }

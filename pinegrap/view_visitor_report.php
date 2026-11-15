@@ -1239,7 +1239,7 @@ if (!$_POST) {
         }
 
         foreach ($results as $report_view_key => $report_view_group) {
-            $report_view_names[$report_view_key] = update_summarize_by_name($report_view_group['name'], $report_view_level);
+            $report_view_names[$report_view_key] = pg_report_view_country_name($report_view_level, update_summarize_by_name($report_view_group['name'], $report_view_level), pg_report_view_country_names());
 
             if ($report_view_kind === 'map') {
                 $report_view_codes[$report_view_key] = pg_sales_map_country_code((string) $report_view_group['name']);
@@ -1408,7 +1408,7 @@ if (!$_POST) {
                                     <th class="text-end text-nowrap">' . lang('Order Completed') . ' %</th>
                                     <th class="text-end text-nowrap">' . lang('Order Total') . '</th>
                                     <th class="text-end text-nowrap">' . lang('Order Total') . ' %</th>
-                                    <th class="text-end text-nowrap">' . lang('Average Order Amount') . '</th>
+                                    <th class="text-end text-nowrap">' . lang('Order amount per visitor') . '</th>
                                     ' : '') . '
                                 </tr>
                             </thead>
@@ -1429,7 +1429,7 @@ if (!$_POST) {
         }
         
         foreach ($results as $summarize_by_1_result) {
-            $summarize_by_1_name = update_summarize_by_name($summarize_by_1_result['name'], $liveform->get_field_value('summarize_by_1'));
+            $summarize_by_1_name = pg_report_view_country_name($liveform->get_field_value('summarize_by_1'), update_summarize_by_name($summarize_by_1_result['name'], $liveform->get_field_value('summarize_by_1')), pg_report_view_country_names());
             
             // get percentages
             $count_percentage = ($grand_count > 0) ? $summarize_by_1_result['count'] / $grand_count * 100 : 0;
@@ -1477,7 +1477,7 @@ if (!$_POST) {
                 }
                 
                 foreach ($summarize_by_1_result['results'] as $summarize_by_2_result) {
-                    $summarize_by_2_name = update_summarize_by_name($summarize_by_2_result['name'], $liveform->get_field_value('summarize_by_2'));
+                    $summarize_by_2_name = pg_report_view_country_name($liveform->get_field_value('summarize_by_2'), update_summarize_by_name($summarize_by_2_result['name'], $liveform->get_field_value('summarize_by_2')), pg_report_view_country_names());
                     
                     $colspan = $number_of_summarize_bys - 1;
                     
@@ -1528,7 +1528,7 @@ if (!$_POST) {
                         }
                         
                         foreach ($summarize_by_2_result['results'] as $summarize_by_3_result) {
-                            $summarize_by_3_name = update_summarize_by_name($summarize_by_3_result['name'], $liveform->get_field_value('summarize_by_3'));
+                            $summarize_by_3_name = pg_report_view_country_name($liveform->get_field_value('summarize_by_3'), update_summarize_by_name($summarize_by_3_result['name'], $liveform->get_field_value('summarize_by_3')), pg_report_view_country_names());
 
                             // get percentages
                             $count_percentage = ($summarize_by_2_result['count'] > 0) ? $summarize_by_3_result['count'] / $summarize_by_2_result['count'] * 100 : 0;
