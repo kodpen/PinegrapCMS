@@ -22,9 +22,9 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 ## Which steps are there?
 - PF1 (S, no product code) Census: every place a sender's name and picture is drawn (`assets/js/workspace.js`, the member list, the @ picker), what the payload carries, the popover the sheet offers, where a person's facts are read, who may see what; a drawing of the card in light and dark; further facts. Done, #9599 (`-census*.md`).
 
-- PF2 (M) The facts on the server: one reader for an agent's card (role, model, windows, ages, state, waiting count) and its panel action; the API rows; tests. Done, #9618 (`workspace/agent-card-facts.md`).
+- PF2 (M) The facts on the server: one reader for an agent's card (role, model, windows, ages, state, waiting count) and its panel action; the API rows; tests. Done, #9618.
 
-- PF3 (M) The agent card in channels. A new design: its pictures go to the owner (`Approval: channel`).
+- PF3 (M) The agent card in channels. A new design: its pictures go to the owner (`Approval: channel`). #9630 waits for his look.
 
 - PF4 (S) The role badge and the state dot in a message.
 
