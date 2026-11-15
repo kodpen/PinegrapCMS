@@ -343,7 +343,11 @@ function ws_agents_settings_form($self_url, $agent, $apps, $admin, $form = null)
 
         $rows .= $field('app_id', lang('Application'), $select('app_id', $app_options, $agent ? $agent['app_id'] : 0), lang('The application it reads and writes through, with that application\'s permissions.'), $when_kind('app'));
         $rows .= $field('door_kind', lang('Door'), $select('door_kind', array('poll' => lang('Poll: it reads its requests itself'), 'push' => lang('Push: the site knocks at its address')), $agent ? $agent['door_kind'] : 'poll'), '', $when_kind('app'));
-        $rows .= $field('door_url', lang('Push address'), $input('door_url', $value('door_url'), ' type="url" maxlength="500" placeholder="https://…"'), lang('A push carries only ids and the site\'s address, never the brief.'), 'door_kind=push', $push);
+        // Shown while the address is a routine's (the script follows the typing).
+        $routine = $agent && ws_claude_url_valid(trim((string) $agent['door_url']));
+        $routine_help = '<div class="form-text' . ($routine ? '' : ' d-none') . '" data-ws-agent-routine-help>'
+            . h(lang('A routine\'s address: every knock starts a new run of that routine and never wakes a session that is already open. An agent that keeps one session open uses the poll door.')) . '</div>';
+        $rows .= $field('door_url', lang('Push address'), $input('door_url', $value('door_url'), ' type="url" maxlength="500" placeholder="https://…"') . $routine_help, lang('A push carries only ids and the site\'s address, never the brief.'), 'door_kind=push', $push);
         $rows .= $field('door_secret', lang('Push token'), $secret('door_secret', $agent && $agent['door_secret_set']), '', 'door_kind=push', $push);
     }
 
@@ -433,6 +437,16 @@ function ws_agents_settings_script()
             }
 
             window.pgWsAgentFormBound = true;
+
+            // A push address that is a routine\'s shows what a knock on it does.
+            document.addEventListener(\'input\', function (event) {
+                var url = (event.target.id && /-door_url$/.test(event.target.id)) ? event.target : null;
+                var help = (url && url.parentNode) ? url.parentNode.querySelector(\'[data-ws-agent-routine-help]\') : null;
+
+                if (help) {
+                    help.classList.toggle(\'d-none\', !/^https:\/\/api\.anthropic\.com\/v1\/claude_code\/routines\/[A-Za-z0-9_-]{4,100}\/fire$/.test(url.value.trim()));
+                }
+            });
 
             document.addEventListener(\'change\', function (event) {
                 var changed = event.target.closest ? event.target.closest(\'[data-ws-agent-field]\') : null;
@@ -528,6 +542,7 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
 
     foreach ($agents as $agent) {
         $error = ($agent['door_error'] !== '') ? '<div class="small fg-danger">' . h($agent['door_error']) . '</div>' : '';
+        $error .= ws_agent_door_double($agent) ? '<div class="small fg-danger" data-ws-agent-door-double>' . h(ws_agent_door_double_words()) . '</div>' : '';
 
         if ($form !== null) {
             $drawer = 'pgset-ws-agent-' . (int) $agent['id'];
@@ -603,6 +618,7 @@ function ws_settings_agent_drawer($agent, $viewer, $apps, $counts, $form, $in_di
     }
 
     $error = ($agent['door_error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($agent['door_error']) . '</div>' : '';
+    $error .= ws_agent_door_double($agent) ? '<div class="alert theme-danger small py-3" data-ws-agent-door-double>' . h(ws_agent_door_double_words()) . '</div>' : '';
 
     return pg_settings_drawer('pgset-ws-agent-' . (int) $agent['id'], '@' . h($agent['handle']) . ' · ' . h($agent['name']),
         $error . (function_exists('ws_agent_activity_block') ? '<div class="mb-5">' . ws_agent_activity_block('', $viewer, $agent, $counts, $form) . '</div>' : '') . ws_agents_settings_form('', $agent, $apps, $admin, $form), $in_dialog);

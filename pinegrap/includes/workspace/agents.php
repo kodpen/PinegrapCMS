@@ -98,6 +98,10 @@ define('WS_AGENT_DEPTH_MAX', 6);
 define('WS_AGENT_SEEN_EVERY', 60);
 define('WS_AGENT_NOT_SEEN_AFTER', 600);
 
+// A call with an agent's key this long after a knock on a routine was not made
+// by the run that knock started (ws_agent_door_double()).
+define('WS_AGENT_DOOR_DOUBLE_AFTER', 600);
+
 /** How many times one agent may be woken in an hour. */
 define('WS_AGENT_HOURLY_MAX', 30);
 
@@ -306,6 +310,47 @@ function ws_agent_seen_words($agent, $now)
     }
 
     return array('label' => $label, 'not_seen' => $age >= WS_AGENT_NOT_SEEN_AFTER);
+}
+
+/**
+ * Is an agent knocked on a routine while something else also reads its
+ * queue with its key? A knock on a routine's fire address starts a new run
+ * of that routine and never reaches a session that is already open; a run
+ * started by a knock calls in the minutes after it. A call with the key
+ * more than WS_AGENT_DOOR_DOUBLE_AFTER seconds after the last knock, or
+ * with no knock yet, means another session holds the key and polls, so
+ * every request is answered twice over. Only an active application agent
+ * with a push door on a routine's address can be. Pure.
+ *
+ * @param array $agent kind, status, door_kind, door_url, door_last_knock, seen_at
+ * @return bool
+ */
+function ws_agent_door_double($agent)
+{
+    if (((string) ($agent['kind'] ?? '') !== 'app') || ((string) ($agent['status'] ?? '') !== 'active')
+        || ((string) ($agent['door_kind'] ?? '') !== 'push') || !ws_claude_url_valid(trim((string) ($agent['door_url'] ?? '')))) {
+        return false;
+    }
+
+    $seen = (int) ($agent['seen_at'] ?? 0);
+    $knock = (int) ($agent['door_last_knock'] ?? 0);
+
+    if ($seen <= 0) {
+        return false;
+    }
+
+    return ($knock <= 0) || ($seen > $knock + WS_AGENT_DOOR_DOUBLE_AFTER);
+}
+
+/**
+ * The warning the Agents card and an agent's drawer show while
+ * ws_agent_door_double() holds.
+ *
+ * @return string
+ */
+function ws_agent_door_double_words()
+{
+    return lang('This agent is knocked on a routine and also reads its requests itself, so every request starts a second session. Choose the poll door or stop the session that polls.');
 }
 
 /**

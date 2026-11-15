@@ -2726,6 +2726,7 @@
     "A route is an address such as billing@example.com or a tag of the mailbox's address such as +billing.": "Bir yönlendirme billing@example.com gibi bir adres ya da kutunun adresinin +billing gibi bir etiketidir.",
     "A route of four numbered works not to miss, each with its picture, its maker and its room, and a button for the highlights tour.": "Kaçırılmaması gereken dört numaralı eserlik rota: her birinde görsel, yapan ve salon; öne çıkanlar turu düğmesi.",
     "A routine on claude.ai": "claude.ai'da bir rutin",
+    "A routine's address: every knock starts a new run of that routine and never wakes a session that is already open. An agent that keeps one session open uses the poll door.": "Bir rutinin adresi: her çalma o rutinin yeni bir çalışmasını başlatır, zaten açık olan bir oturumu asla uyandırmaz. Tek bir oturumu açık tutan ajan yoklama kapısını kullanır.",
     "A row is added": "Bir satır eklendiğinde",
     "A row is changed": "Bir satır değiştiğinde",
     "A row is deleted": "Bir satır silindiğinde",
