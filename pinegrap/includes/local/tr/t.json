@@ -8382,6 +8382,7 @@
     "This adds a product group, or a product, inside the group you are standing in. In All Products and All Variant Sets it offers a product on its own, because there is no one group to add it to.": "İçinde bulunduğunuz grubun altına ürün grubu ya da ürün ekler. Tüm Ürünler ve Tüm Varyantlar'da yalnızca ürün önerir, çünkü orada ekleyeceği tek bir grup yoktur.",
     "This adds things where you are standing. Inside a folder it offers a folder, a page and a file; in a view across everything it offers only what belongs there. You can also drop files, and whole folders, straight onto the screen.": "Bulunduğunuz yere ekler. Bir klasörün içindeyken klasör, sayfa ve dosya önerir; her şeyi listeleyen görünümlerde yalnızca oraya ait olanı. Ayrıca dosyaları, hatta klasörlerin tamamını, doğrudan ekranın üstüne bırakabilirsiniz.",
     "This afternoon and evening": "Bugün öğleden sonra ve akşam",
+    "This agent is knocked on a routine and also reads its requests itself, so every request starts a second session. Choose the poll door or stop the session that polls.": "Bu ajan için site bir rutinin kapısını çalıyor, ama ajan isteklerini kendisi de okuyor; bu yüzden her istek ikinci bir oturum başlatıyor. Yoklama kapısını seçin ya da istekleri okuyan oturumu durdurun.",
     "This amount is not stored; it only works out the change.": "Bu tutar kaydedilmez; yalnız para üstünü hesaplar.",
     "This and the following": "Bu ve sonrakiler",
     "This and the following copies": "Bu ve sonraki kopyalar",
