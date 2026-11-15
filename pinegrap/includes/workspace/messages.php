@@ -1592,6 +1592,38 @@ function ws_message_mentions_outside($viewer, $message)
 }
 
 /**
+ * Everything bringing a message's mentioned people in is checked against
+ * before anything is written, shared by the panel and the external API (its
+ * dry run included): a message not deleted in a channel the person reads and
+ * may invite into, and who of the people it mentions are outside it.
+ *
+ * @param array      $viewer
+ * @param array      $message
+ * @param int[]|null $user_ids some of them only; null for all
+ * @return array ok, error, forbidden, channel, user_ids (the ones to bring in)
+ */
+function ws_message_mention_invite_check($viewer, $message, $user_ids = null)
+{
+    $channel = ws_channel($message['channel_id']);
+
+    if (!$channel || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('That message could not be found.'), 'forbidden' => false, 'channel' => null, 'user_ids' => array());
+    }
+
+    if (!ws_channel_can_invite($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('Access denied.'), 'forbidden' => true, 'channel' => $channel, 'user_ids' => array());
+    }
+
+    $outside = ws_message_mentions_outside($viewer, $message);
+
+    if ($user_ids !== null) {
+        $outside = array_values(array_intersect($outside, array_map('intval', (array) $user_ids)));
+    }
+
+    return array('ok' => true, 'error' => '', 'forbidden' => false, 'channel' => $channel, 'user_ids' => $outside);
+}
+
+/**
  * Brings the people a message mentions into its channel, and hands them the
  * mention they could not have had while they were outside it.
  *
@@ -1602,21 +1634,14 @@ function ws_message_mentions_outside($viewer, $message)
  */
 function ws_message_mention_invite($viewer, $message, $user_ids = null)
 {
-    $channel = ws_channel($message['channel_id']);
+    $checked = ws_message_mention_invite_check($viewer, $message, $user_ids);
 
-    if (!$channel || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, $channel)) {
-        return array('ok' => false, 'error' => lang('That message could not be found.'), 'added' => array());
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'added' => array());
     }
 
-    if (!ws_channel_can_invite($viewer, $channel)) {
-        return array('ok' => false, 'error' => lang('Access denied.'), 'added' => array());
-    }
-
-    $outside = ws_message_mentions_outside($viewer, $message);
-
-    if ($user_ids !== null) {
-        $outside = array_values(array_intersect($outside, array_map('intval', (array) $user_ids)));
-    }
+    $channel = $checked['channel'];
+    $outside = $checked['user_ids'];
 
     if (empty($outside)) {
         return array('ok' => true, 'error' => '', 'added' => array());
