@@ -13814,14 +13814,15 @@
         },
 
         // An option's description, links and, on the "Other" row, the words
-        // the voters wrote, under its label.
-        pollOptionText: function (option) {
+        // the voters wrote, under its label; withPill puts the Recommended
+        // pill beside the label (the poll box puts it beside the count).
+        pollOptionText: function (option, withPill) {
             var text = el('span', 'ws-poll-text');
             var line = el('span', 'ws-poll-line');
 
             line.appendChild(el('span', 'ws-poll-label', option.label));
 
-            if (option.recommended) {
+            if (withPill && option.recommended) {
                 line.appendChild(el('span', 'pg-pill pg-tone-blue', t('poll_recommended')));
             }
 
@@ -13993,16 +13994,25 @@
                     row.appendChild(thumb);
                 }
 
-                row.appendChild(self.pollOptionText(option));
+                row.appendChild(self.pollOptionText(option, false));
+
+                // The Recommended pill, the voters and the count: at the
+                // row's end, or its last line on a phone.
+                var meta = el('span', 'ws-poll-meta');
+
+                if (option.recommended) {
+                    meta.appendChild(el('span', 'pg-pill pg-tone-blue', t('poll_recommended')));
+                }
 
                 if (option.voters && option.voters.length) {
                     var faces = avatarStack('ws-avatars-sm', option.voters, 4);
 
                     row.title = option.voters.map(function (voter) { return voter.name; }).join(', ');
-                    row.appendChild(faces);
+                    meta.appendChild(faces);
                 }
 
-                row.appendChild(el('span', 'ws-poll-count', voters ? t('poll_share', option.count, share) : '0'));
+                meta.appendChild(el('span', 'ws-poll-count', voters ? t('poll_share', option.count, share) : '0'));
+                row.appendChild(meta);
 
                 if (figure) {
                     row.addEventListener('mouseenter', function () { showPicture(option); });
@@ -14037,43 +14047,57 @@
 
             var foot = el('div', 'ws-poll-foot');
 
+            // A plain foot button: its label hides on a phone, where the
+            // icon stays with the label as its name, so the foot keeps one line.
+            function footButton(label, iconName) {
+                var node = button('btn btn-sm btn-text theme-secondary', '', iconName, label);
+
+                node.appendChild(el('span', 'ws-poll-foot-label', label));
+
+                return node;
+            }
+
             foot.appendChild(el('span', 'ws-grow', poll.withdrawn ? t('poll_taken_back_note') : t('poll_voters', poll.voters)));
 
             if (poll.voted && poll.can_vote) {
-                var undo = button('btn btn-sm btn-text theme-secondary', t('poll_withdraw'), 'bi-arrow-counterclockwise');
+                var undo = footButton(t('poll_withdraw'), 'bi-arrow-counterclockwise');
                 undo.addEventListener('click', function () { self.vote(message, []); });
                 foot.appendChild(undo);
             }
 
             if (poll.result_id) {
-                var result = button('btn btn-sm btn-text theme-secondary', t('poll_result'), 'bi-patch-check');
+                var result = footButton(t('poll_result'), 'bi-patch-check');
                 result.addEventListener('click', function () { self.jumpTo(poll.result_id); });
                 foot.appendChild(result);
             }
 
             // The polls of one question link to each other.
             if (poll.again_of_message) {
-                var earlier = button('btn btn-sm btn-text theme-secondary', t('poll_earlier'), 'bi-arrow-up');
+                var earlier = footButton(t('poll_earlier'), 'bi-arrow-up');
                 earlier.addEventListener('click', function () { self.jumpTo(poll.again_of_message); });
                 foot.appendChild(earlier);
             }
 
             if (poll.asked_again_message) {
-                var newer = button('btn btn-sm btn-text theme-secondary', t('poll_asked_again'), 'bi-arrow-down');
+                var newer = footButton(t('poll_asked_again'), 'bi-arrow-down');
                 newer.addEventListener('click', function () { self.jumpTo(poll.asked_again_message); });
                 foot.appendChild(newer);
             }
 
-            // The asker's own actions.
+            // The asker's own actions, in one menu at the foot's end. A poll
+            // asked again is asked again from the newest box.
+            var asker = [];
+
             if (poll.can_edit) {
-                var change = button('btn btn-sm btn-text theme-secondary', t('edit'), 'bi-pencil');
-                change.addEventListener('click', function () { self.pollForm(null, null, message); });
-                foot.appendChild(change);
+                asker.push({ icon: 'bi-pencil', label: t('edit'), action: function () { self.pollForm(null, null, message); } });
+            }
+
+            if (poll.can_ask_again && !poll.asked_again_message) {
+                asker.push({ icon: 'bi-arrow-repeat', label: t('poll_ask_again'), action: function () { self.pollForm(null, null, message, true); } });
             }
 
             if (poll.can_withdraw) {
-                var takeBack = button('btn btn-sm btn-text theme-secondary', t('poll_take_back'), 'bi-x-circle');
-                takeBack.addEventListener('click', function () {
+                asker.push({ icon: 'bi-x-circle', label: t('poll_take_back'), danger: true, action: function () {
                     ask(t('poll_take_back_confirm'), t('poll_take_back'), true).then(function (yes) {
                         if (!yes) {
                             return;
@@ -14084,14 +14108,7 @@
                             self.sync(true);
                         }).catch(fail);
                     });
-                });
-                foot.appendChild(takeBack);
-            }
-
-            if (poll.can_ask_again) {
-                var again = button('btn btn-sm btn-text theme-secondary', t('poll_ask_again'), 'bi-arrow-repeat');
-                again.addEventListener('click', function () { self.pollForm(null, null, message, true); });
-                foot.appendChild(again);
+                } });
             }
 
             if (poll.can_close) {
@@ -14109,6 +14126,18 @@
                     });
                 });
                 foot.appendChild(shut);
+            }
+
+            if (asker.length) {
+                var more = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('more')));
+
+                more.addEventListener('click', function (event) {
+                    var box = more.getBoundingClientRect();
+
+                    event.stopPropagation();
+                    ctxMenu(Math.max(8, box.right - 220), box.bottom + 4, asker);
+                });
+                foot.appendChild(more);
             }
 
             card.appendChild(foot);

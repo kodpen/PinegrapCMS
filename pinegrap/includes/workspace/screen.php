@@ -325,7 +325,7 @@ function ws_js_strings()
         'poll_option_recommended' => lang('Mark it as recommended'),
         'poll_other_help'        => lang('People who choose it write their own answer.'),
         'poll_other_label'       => lang('Add an "Other" option'),
-        'poll_other_placeholder' => lang('Other: write your own answer'),
+        'poll_other_placeholder' => lang('Write your own answer'),
         'poll_picture_open'      => ws_js_template('Open the picture of {var:1}', 1),
         'poll_recommended'       => lang('Recommended'),
         'poll_take_back'         => lang('Take back the poll'),
