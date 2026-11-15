@@ -19,3 +19,6 @@ description: Campaign profile screens after the switch to flows (MA9f): only pro
 - Untranslated, as the lang() spec it is drawn from (`array('string' => …, 'vars' => …)`): the converter's reasons, the wait refusals, the limits, "It was made after the update.", a chain partner's line. `pg_profile_flow_reason_text()` draws it in the reader's language, so a report the general job stored reads in whoever opens it's language.
 - A plain string is shown as it is: the flow code's own refusal when a publish fails (in the job's language), and reports stored before MA9f.
 - Tests: `tests/campaign_profile_switch_test.php` (members, the door, the left SQL, the reason specs, each screen calling the door).
+
+## What is still open?
+- The six actions with no flow start (order abandoned, review request, product ordered, booking reminder, credit expiring, subscription price changed): architect (2026-11-13, #9077), a later plan, written once the dry-run report on running sites shows which are in use ([[campaign-profile-flow-gaps]]). M2b is complete on a site when no profile is left there.
