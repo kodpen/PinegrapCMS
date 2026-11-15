@@ -10,7 +10,7 @@ description: Steps PU1 to PU10 of plans/auto-dialog-popups.md: census, the dialo
   - who calls `software.open_dialog()`;
   - how the cookie notice sits above the page, so a pop-up leaves it answerable;
   - how PHP can draw a shared component outside a page's tree.
-- PU2 (M) after PU1: the `<dialog>` script, the pick in the browser, `open_dialog()` as a wrapper, the session key gone. No schema. Before and after pictures of an old row on a site: the architect's look.
+- PU2 (M) after PU1: the `<dialog>` script, the pick in the browser, `open_dialog()` as a wrapper, the session key gone. Done: #9805 (`platform/auto-dialog-browser-dialog.md`). No schema. Before and after pictures of an old row on a site: the architect's look.
 - PU3 (S) after PU2: consent. The one cookie, `sessionStorage` without consent, the catalogue and the revoke names; with the notice on nothing opens until it is answered (the `pg:consent` event). No schema.
 - PU4 (M) after PU2: the columns `open_on`, `open_scroll`, `audience` and `place`, the scroll and leave triggers, the form's fields and the API's fields (`api/api-design-dialogs-regions.md`).
 - PU5 (M) after PU4: the three screens (`view_auto_dialogs.php`, `add_auto_dialog.php`, `edit_auto_dialog.php`) in the panel's new look. Pictures to the owner.
