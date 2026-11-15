@@ -476,3 +476,99 @@ function ws_agent_question_map_fields($poll, $viewer)
 
     return $out;
 }
+
+/**
+ * Is this reader one of the people the agent question asks, and is it still
+ * open (not answered, not taken back)? Pure.
+ *
+ * @param array $poll      ws_polls row
+ * @param int[] $asked     ws_question_asked_ids() of it
+ * @param int   $viewer_id
+ * @return bool
+ */
+function ws_agent_question_waits_for($poll, $asked, $viewer_id)
+{
+    return ws_agent_question_is($poll) && ((int) ($poll['closed_at'] ?? 0) === 0) && !ws_poll_withdrawn($poll)
+        && ((int) $viewer_id > 0) && in_array((int) $viewer_id, array_map('intval', (array) $asked), true);
+}
+
+/**
+ * The agent questions waiting for this person's answer, newest first, from
+ * the channels they read: for Today's "Waiting for you" card and the
+ * dashboard's Assistant card. Each: poll id, message id, the question cut
+ * to 160 characters, the asking agent as a sender, the channel, the time
+ * and the address of the message.
+ *
+ * @param array $viewer
+ * @param int   $limit
+ * @return array[] id, message_id, question, asker, channel (id, name, private), time, created_at, url
+ */
+function ws_agent_questions_for($viewer, $limit = 5)
+{
+    $me = (int) ($viewer['id'] ?? 0);
+
+    if (($me <= 0) || ((int) ($viewer['guest_id'] ?? 0) > 0) || !ws_interact_ready() || !ws_agent_question_ready()) {
+        return array();
+    }
+
+    $rows = (array) db_items("SELECT p.*, m.body, m.sender_kind, m.sender_id, m.created_at AS asked_at FROM ws_polls p
+        INNER JOIN ws_messages m ON m.id = p.message_id
+        WHERE p.agent_question = 1 AND p.closed_at = 0" . (ws_poll_again_ready() ? ' AND p.withdrawn_at = 0' : '') . " AND m.deleted_at = 0
+        ORDER BY p.id DESC
+        LIMIT 100");
+    $channels = array();
+    $kept = array();
+
+    foreach ($rows as $row) {
+        $channel_id = (int) $row['channel_id'];
+
+        if (!array_key_exists($channel_id, $channels)) {
+            $channel = ws_channel($channel_id);
+            $channels[$channel_id] = ($channel && ws_can_read_channel($viewer, $channel)) ? $channel : null;
+        }
+
+        if (($channels[$channel_id] === null) || !ws_agent_question_waits_for($row, ws_question_asked_ids($channels[$channel_id], ws_tokens($row['body'])), $me)) {
+            continue;
+        }
+
+        $kept[] = $row;
+
+        if (count($kept) >= (int) $limit) {
+            break;
+        }
+    }
+
+    if (empty($kept)) {
+        return array();
+    }
+
+    // An agent question is an application's message; a person's poll made
+    // before the step never is one.
+    $people = ws_people(array_filter(array_map(function ($row) {
+        return ((string) $row['sender_kind'] === 'user') ? (int) $row['sender_id'] : 0;
+    }, $kept)));
+    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php';
+    $out = array();
+
+    foreach ($kept as $row) {
+        $channel = $channels[(int) $row['channel_id']];
+        $text = ws_plain_text($viewer, (string) $row['body']);
+
+        if (mb_strlen($text) > 160) {
+            $text = rtrim(mb_substr($text, 0, 159)) . '…';
+        }
+
+        $out[] = array(
+            'id'         => (int) $row['id'],
+            'message_id' => (int) $row['message_id'],
+            'question'   => $text,
+            'asker'      => ws_message_row_sender($row, $people),
+            'channel'    => array('id' => (int) $channel['id'], 'name' => (string) $channel['name'], 'private' => ((string) $channel['kind'] === 'private')),
+            'time'       => ws_time_label($row['asked_at']),
+            'created_at' => (int) $row['asked_at'],
+            'url'        => $base . '?channel=' . (int) $channel['id'] . '&message=' . (int) $row['message_id'],
+        );
+    }
+
+    return $out;
+}

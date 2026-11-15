@@ -661,6 +661,7 @@
     "{var:1} address(es) were skipped because they bounced or complained.": "Geri döndüğü veya şikâyet ettiği için {var:1} adres atlandı.",
     "{var:1} address(es), {var:2} request(s), {var:3} of them from search engines.": "{var:1} adres, {var:2} istek; bunların {var:3} tanesi arama motorlarından.",
     "{var:1} address{suffix:1}": "{var:1} adres",
+    "{var:1} agent question{suffix:1} for you": "yanıtınızı bekleyen {var:1} ajan sorusu",
     "{var:1} allocation(s) saved.": "{var:1} tahsis kaydedildi.",
     "{var:1} allowed Claude to be asked in this channel.": "{var:1}, bu kanalda Claude'un çağrılmasına izin verdi.",
     "{var:1} allowed Pinegrap AI to be asked in this channel.": "{var:1}, Pinegrap AI'ın bu kanalda çağrılmasına izin verdi.",
