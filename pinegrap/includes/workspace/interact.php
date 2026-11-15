@@ -117,6 +117,12 @@ function ws_reaction_check($viewer, $message, $emoji, $app_id = 0, $on = null)
         return array('ok' => false, 'error' => lang('That message could not be found.'));
     }
 
+    // An earlier version of a cleared conversation is kept as it was, for
+    // every caller: the panel's action, the API's reaction route, an agent.
+    if (function_exists('ws_message_in_past') && ws_message_in_past($message)) {
+        return array('ok' => false, 'error' => lang('This message is in an earlier version of the conversation, which is kept as it was.'));
+    }
+
     $channel = ws_channel($message['channel_id']);
 
     if (!ws_can_post_channel($viewer, $channel)) {

@@ -341,16 +341,19 @@ function ws_agent_token_limit_text($used, $limit)
 
 /**
  * Which buttons a request's line offers its reader: Cancel while it waits,
- * Ask again when it failed on a message, Knock now while it waits on a
- * push door. The one who asked and an administrator use them, as an MCP
- * agent's Cancel. Pure.
+ * Ask again when it failed on a message that may still be answered, Knock
+ * now while it waits on a push door. The one who asked and an administrator
+ * use them, as an MCP agent's Cancel. Pure.
  *
- * @param array $viewer id, role
- * @param array $row    ws_ai_requests: status, requested_by, message_id, channel_id
- * @param array $agent  ws_agent_shape(): kind, status, door_kind
+ * @param array $viewer       id, role
+ * @param array $row          ws_ai_requests: status, requested_by, message_id, channel_id
+ * @param array $agent        ws_agent_shape(): kind, status, door_kind
+ * @param bool  $message_open false when the request's message was deleted or
+ *                            is in an earlier version of the conversation
+ *                            (ws_agent_request_message_refusal())
  * @return array cancel, retry, knock (bool)
  */
-function ws_agent_activity_actions($viewer, $row, $agent)
+function ws_agent_activity_actions($viewer, $row, $agent, $message_open = true)
 {
     $none = array('cancel' => false, 'retry' => false, 'knock' => false);
 
@@ -363,9 +366,42 @@ function ws_agent_activity_actions($viewer, $row, $agent)
 
     return array(
         'cancel' => in_array($status, array('queued', 'sent', 'running'), true),
-        'retry'  => ($status === 'failed') && $active && ((int) ($row['message_id'] ?? 0) > 0) && ((int) ($row['channel_id'] ?? 0) > 0),
+        'retry'  => ($status === 'failed') && $active && $message_open && ((int) ($row['message_id'] ?? 0) > 0) && ((int) ($row['channel_id'] ?? 0) > 0),
         'knock'  => ($status === 'queued') && $active && ((string) ($agent['kind'] ?? '') === 'app') && ((string) ($agent['door_kind'] ?? '') === 'push'),
     );
+}
+
+/**
+ * Why a request's message may not be asked about again: it is gone, deleted,
+ * or in an earlier version of a cleared conversation, which is kept as it
+ * was. The sentence an answer to it meets (ws_message_parent_refusal()).
+ * Pure: the row and its channel's floor are read by the caller.
+ *
+ * @param array|null $message ws_messages row, null when it is gone
+ * @param int        $floor   ws_channel_floor() of the message's channel
+ * @return string '' when it may be asked about
+ */
+function ws_agent_request_message_refusal($message, $floor)
+{
+    return ws_message_parent_refusal($message, is_array($message) ? (int) $message['channel_id'] : 0, (int) $floor);
+}
+
+/**
+ * The refusal of ws_agent_request_message_refusal() for a request's row,
+ * read from the database; '' for a request asked by no message.
+ *
+ * @param array $row ws_ai_requests: message_id
+ * @return string
+ */
+function ws_agent_request_message_check($row)
+{
+    if ((int) ($row['message_id'] ?? 0) <= 0) {
+        return '';
+    }
+
+    $message = ws_message((int) $row['message_id']);
+
+    return ws_agent_request_message_refusal($message, is_array($message) ? ws_channel_floor((int) $message['channel_id']) : 0);
 }
 
 /**
@@ -670,6 +706,8 @@ function ws_agent_activity_post($viewer, $action, $liveform, $request_id = null,
 
     $row = $found['row'];
     $agent = $found['agent'];
+    // The message is not read here: ws_agent_activity_retry() refuses a
+    // kept or deleted one with its own sentence.
     $may = ws_agent_activity_actions($viewer, $row, $agent);
 
     if ($action === 'agent_request_cancel') {
@@ -733,6 +771,14 @@ function ws_agent_activity_cancel($viewer, $row, $agent)
  */
 function ws_agent_activity_retry($viewer, $row, $agent)
 {
+    // A deleted message, or one in an earlier version of the conversation,
+    // is kept as it was: no new request and no mark on it.
+    $refused = ws_agent_request_message_check($row);
+
+    if ($refused !== '') {
+        return $refused;
+    }
+
     $rows = ws_agent_reach_rows(ws_channel((int) $row['channel_id']));
     $channel_row = null;
 
@@ -840,7 +886,7 @@ function ws_agent_activity_block($self_url, $viewer, $agent, $counts, $form = nu
         $state = ws_agent_request_state($row);
         $channel = ((int) $row['channel_id'] > 0) ? ws_channel((int) $row['channel_id']) : null;
         $place = ws_agent_activity_place($row, is_array($channel) ? (string) $row['channel_name'] : null, is_array($channel) && ws_can_read_channel($viewer, $channel));
-        $may = ws_agent_activity_actions($viewer, $row, $agent);
+        $may = ws_agent_activity_actions($viewer, $row, $agent, ((string) $row['status'] !== 'failed') || (ws_agent_request_message_check($row) === ''));
         $asker = ((int) $row['requested_by'] > 0) ? ws_person_name((int) $row['requested_by']) : '';
         $button = function ($action, $label, $theme) use ($form, $row) {
             return ($form !== null)

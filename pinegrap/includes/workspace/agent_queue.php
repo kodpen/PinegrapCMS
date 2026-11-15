@@ -813,6 +813,12 @@ function ws_agent_knocks_retry()
  */
 function ws_agent_react($app_id, $message_id, $emoji, $on)
 {
+    // An earlier version of a cleared conversation is kept as it was: no
+    // mark is left or taken back there, and the message is not touched.
+    if (((int) $message_id > 0) && function_exists('ws_message_kept') && ws_message_kept((int) $message_id)) {
+        return;
+    }
+
     if (((int) $message_id <= 0) || ((int) $app_id <= 0) || !ws_interact_ready()) {
         if ((int) $message_id > 0) {
             ws_message_touch($message_id);
@@ -835,15 +841,17 @@ function ws_agent_react($app_id, $message_id, $emoji, $on)
 /**
  * Why an agent may not leave this emoji on the message that asked it, '' when
  * it may: one emoji (ws_reaction_valid()), on a message, never one the
- * agent's own application wrote. Rights and the message's reaction limit are
+ * agent's own application wrote, never one in an earlier version of a
+ * cleared conversation. Rights and the message's reaction limit are
  * ws_reaction_check()'s. Pure.
  *
  * @param string     $emoji
  * @param array|null $message the asking message: id, sender_kind, sender_id
  * @param int        $app_id  the agent's application
+ * @param bool       $in_past ws_message_in_past() of the asking message
  * @return string
  */
-function ws_agent_emoji_problem($emoji, $message, $app_id)
+function ws_agent_emoji_problem($emoji, $message, $app_id, $in_past = false)
 {
     if (!ws_reaction_valid(trim((string) $emoji))) {
         return lang('That is not an emoji.');
@@ -855,6 +863,10 @@ function ws_agent_emoji_problem($emoji, $message, $app_id)
 
     if (((string) ($message['sender_kind'] ?? '') === 'app') && ((int) ($message['sender_id'] ?? 0) === (int) $app_id)) {
         return lang('An agent leaves no emoji on its own message.');
+    }
+
+    if ($in_past) {
+        return lang('This message is in an earlier version of the conversation, which is kept as it was.');
     }
 
     return '';

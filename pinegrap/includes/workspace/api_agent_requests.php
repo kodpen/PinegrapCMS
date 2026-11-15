@@ -395,6 +395,28 @@ function ws_api_agent_request_place($viewer, $agent, $row)
     return $writer ? array('channel' => $channel, 'writer' => $writer) : null;
 }
 
+/**
+ * Stops a claim or an answer of a request whose message went into an
+ * earlier version of a cleared conversation: the request is cancelled with
+ * the clear's reason (not on a dry run) and nothing is written on the kept
+ * message. A request made before its clear cancelled such requests, or
+ * between the clear and its cancel, ends here.
+ *
+ * @param array $row ws_ai_requests
+ */
+function ws_api_agent_request_kept_stop($row)
+{
+    if (!function_exists('ws_agent_request_in_past') || !ws_agent_request_in_past($row)) {
+        return;
+    }
+
+    if (!api_dry_run_requested()) {
+        ws_agent_request_freeze((int) $row['id']);
+    }
+
+    api_fail(409, 'conversation_cleared', ws_agent_request_cleared_reason());
+}
+
 function ws_api_agent_requests_list($params)
 {
     $agent = ws_api_agent_caller();
@@ -429,6 +451,8 @@ function ws_api_agent_request_claim($params)
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
+    ws_api_agent_request_kept_stop($row);
+
     if (function_exists('ws_edit_hold_is_held') && ws_edit_hold_is_held($row, time())) {
         $said = ws_edit_hold_refusal_error('held');
         api_fail(409, $said['code'], $said['error']);
@@ -458,6 +482,8 @@ function ws_api_agent_request_answer($params)
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
+    ws_api_agent_request_kept_stop($row);
+
     // Held while the message is edited; edited after the claim, the
     // request waits again for a claim that reads the new words.
     if (function_exists('ws_edit_hold_answer_guard')) {
@@ -478,7 +504,7 @@ function ws_api_agent_request_answer($params)
 
     if ($emoji !== '') {
         $asking = ((int) $row['message_id'] > 0) ? ws_message((int) $row['message_id']) : null;
-        $problem = ws_agent_emoji_problem($emoji, $asking, (int) $agent['app_id']);
+        $problem = ws_agent_emoji_problem($emoji, $asking, (int) $agent['app_id'], function_exists('ws_message_in_past') && ws_message_in_past($asking));
 
         if ($problem === '') {
             $checked = ws_reaction_check($viewer, $asking, $emoji, (int) $agent['app_id'], true);
@@ -600,7 +626,10 @@ function ws_api_agent_request_fail($params)
     }
 
     $reason = trim(mb_substr(preg_replace('/\s+/u', ' ', (string) $params['reason']), 0, 250));
-    $place = ws_api_agent_request_place($viewer, $agent, $row);
+    // A message in an earlier version of the conversation is kept as it
+    // was: the failure is recorded, nothing is written under it.
+    $kept = function_exists('ws_agent_request_in_past') && ws_agent_request_in_past($row);
+    $place = $kept ? null : ws_api_agent_request_place($viewer, $agent, $row);
 
     api_dry_run_stop('failed', 'workspace_agent_request', array('id' => (int) $row['id'], 'told_in_channel' => (bool) $place));
 
@@ -618,7 +647,9 @@ function ws_api_agent_request_fail($params)
     db("UPDATE ws_ai_requests SET status = 'failed', error = '" . e($reason) . "', reply_message_id = '" . $reply_id . "', answered_at = '" . time() . "'
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
 
-    ws_agent_react((int) $agent['app_id'], (int) $row['message_id'], '👀', false);
+    if (!$kept) {
+        ws_agent_react((int) $agent['app_id'], (int) $row['message_id'], '👀', false);
+    }
 
     if (function_exists('ws_step_agent_request_closed')) {
         ws_step_agent_request_closed((int) $row['id']);
