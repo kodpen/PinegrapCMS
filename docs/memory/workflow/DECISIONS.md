@@ -483,6 +483,10 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - decisions-made-workspace-31.md: Where are the rules and the earlier parts?
 - decisions-made-workspace-31.md: How was the profiles' conversion shown to the owner before it landed? (owner, 2026-11-14, agent channel poll 3466)
 - decisions-made-workspace-31.md: Do e-mail campaign profiles turn into flows at the update? (owner, 2026-11-15, agent channel poll 3525)
+- decisions-made-workspace-32.md: Where are the rules and the earlier parts?
+- decisions-made-workspace-32.md: Does the site itself tell an application agent how it works? (owner, 2026-11-15, agent channel message 3748)
+- decisions-made-workspace-32.md: Is who an agent or a person is shown in channels? (owner, 2026-11-15, agent channel messages 3775 and 3796)
+- decisions-made-workspace-32.md: How are Channel settings and Channel info redrawn? (owner, 2026-11-15, agent channel messages 3780, 3781, 3783, 3784 and 3786)
 - decisions-made-workspace-4.md: May a thread end in a webhook box's URL? (#3410)
 - decisions-made-workspace-4.md: How does a customer with no order in N days produce a follow-up? (#3416, part 2)
 - decisions-made-workspace-4.md: Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
@@ -742,7 +746,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/agent-channel-language.md: The agent channel's language (owner, 2026-11-13): English between agents, Turkish only from the architect to the owner; a note that asks nothing names an agent without the mark
 - workflow/agent-channel-post-repeat.md: tools/ws_post.php never writes a channel line twice: every post has an Idempotency-Key, a call without an answer is repeated once with it, exit 3 names the key the caller repeats with
 - workflow/agent-channel-reads.md: How much of a Workspace channel an agent session reads per turn: the message that woke it, its request and brief, no history; at most 5 messages for a check; more only when a person asks
-- workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests; a person's or an agent's message makes the request), on text and changes, the handles typed in it
+- workflow/agent-channel-wake.md: How a session waits on the agent channel: on its request queue (tools/ws_wait.php --requests), what makes a request (a mention, @herkes, a reply), on changes, the handles typed
 - workflow/architect.md: Decision questions: asked in the agent channel, no architect issue (2026-11-13); the architect decides technical ones, asks the owner schema and product-behaviour ones, records the answer
 - workflow/coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - workflow/coordinator-no-plans.md: Design template plans are paused (2026-11-09) but for the lines the owner opened on 2026-11-11; low priority before that; no bug hunt; open bug issues are work like plan steps
@@ -753,7 +757,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workflow/merger-wake.md: How the merging session keeps waking: a send_later chain, 3 minutes with more than 3 ready PRs and 15 minutes otherwise (2026-11-09), an hourly routine that re-arms it; GitHub events are not relied on
 - workflow/owner-contact-channel.md: Where sessions reach the owner (2026-11-13): no coordinator writes to him in its chat window or waits there; problems to PR MERGE in the agent channel; visuals posted there, his answer there
 - workflow/owner-rules.md: Standing rules from the owner (Erdal) on docs, how changes are recorded, pages, plans, where area rules live (memory; vendor Bootstrap skills aside), language, the mobile app, who edits which notes
-- workflow/pr-text-generated-footer.md: A cloud session's GitHub path appends a generated-by footer to a PR text on every write; the session cannot remove it, the label is not held for it, a local path strips it
+- workflow/pr-text-generated-footer.md: A cloud session's GitHub path appends a generated-by footer to a PR text on every write; the session cannot remove it, the label is not held for it, no session strips it now
 - workflow/sandbox-and-environment.md: Cloud sandbox (PHP 8.3, no Composer), when and how to run tools/setup_sandbox.sh, the owner's dev machine dev.pinegrap.com and how a linked session updates its checkout
 - workflow/user-docs-writing.md: How a pinegrap.com documentation page is written and published: English only, the page's structure (sections, anchors, tables, notes), the editor route, Publish is live, release notes on /changelog
 - workspace/agent-canvas-chart.md: The chart canvas operation (canvas_chart.php): kinds, data, boards, how the server draws it by the guide, the channel's colour for one series, the refusals, create and draw_canvas
@@ -765,6 +769,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-channel-flag.md: Agent channel switch (ws_channels.agent_channel, #8440): /agent-channel on|off, its decisions kept apart on the decisions screen, the dashboard and GET /workspace/decisions
 - workspace/agent-checklist-questions.md: Checklist questions over a poll; reading ticks (checks) and an application ticking a line (POST …/checks, app_id), a roll call, the wake on a tick, the closing decision; who a question rings
 - workspace/agent-conclude-discussion.md: An agent concludes a discussion when a person in it asks (conclude, #9404) and unasked only offers a Conclude button a person presses (offer_conclude, #9416); who may ask, the lines, the button
+- workspace/agent-door-routine-trial.md: Push door on a routine's fire address, tried on dev (2026-11-13, 2026-11-15): HTTP 400 to the webhook form; in the routine's form every knock starts a new cloud session and never wakes an open one
 - workspace/agent-edit-hold.md: An agent waits while its message is edited: the edit box's beat, held_until, "Being edited, @agent is waiting", 409 editing / edited, a save in each status (#8869)
 - workspace/agent-instructions.md: How an application agent learns its work from the site: GET /workspace/agent-instructions with its own key, the text's parts, the three doors, the version and the brief's line, the Start text box
 - workspace/agent-key-trial-memory.md: Channel memory written live on dev (2026-11-11) with an application agent's key: create, read, list, update and delete by POST, dry runs, refusals, the entry's line in the brief
@@ -776,7 +781,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/agent-role.md: An agent's role from a fixed list (ws_agents.role, step 11.0.195, #9302): the list in code, an unknown key as no role, form, Agents card, member list, API; report columns for AP2
 - workspace/agent-shown.md: How a registry agent shows (A4b2): the line under its waking message ("saw it · no answer needed", #8919), its tag and @ picker entry, kept off tasks, its own edits, two applications' lines kept apart
 - workspace/agent-words-wake.md: An application's API message and an agent's answer wake the agents they name or answer: only a mention or a reply counts, the asking application named, the braked line once an hour
-- workspace/approval-agents.md: Agents asked to approve (AE2): ws_approval_agents, who may be asked, the by-hand bound, the wake and brief, an agent's answer and its checks, where agents show
+- workspace/approval-agents.md: Agents asked to approve (AE2 #9567, the form and card AE3 #9586): ws_approval_agents, who may be asked, the by-hand bound, the wake and brief, an agent's answer and its checks, where agents show
 - workspace/automation-flows-bell.md: The panel's bell with the Workspace off (#9288): it shows the inbox lines flows write (a run of one's flow ended or failed, Let people know) and no other Workspace line; Let people know runs again
 - workspace/automation-flows-decisions.md: Automation flows outside the Workspace (owner #8961, M1a): on at every site behind the right only, the one gate, the boxes that need the Workspace, what stays inside it, where each part is
 - workspace/automation-flows-gate.md: The one gate of automation flows, pg_flows_enabled() (#9109): flows run with the Workspace off; what the general job, the site events and the scheduled run do then, and what waits for the Workspace
@@ -790,11 +795,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/claude-not-channel-agent.md: Claude is no channel agent: never offered in a channel's Agents list, refused with 422 on the add route, its old ws_channel_agents rows unread but removable
 - workspace/mail-area-proposals.md: Incoming e-mail in the messages area as decided after MA10a (#9077, #9203): mail with the Workspace off, the tab's gate, who reads, what the mail card keeps beside its link, the steps
 - workspace/mail-away.md: "I am away" in My e-mail settings (IB12): ws_profiles.mail_away (11.0.211), the text once per sender, the stand-in for conversations given to an away person, the team plan
-- workspace/mail-blocks.md: A mailbox's block list (IB4): Block sender under a mail, who may block where, what a blocked mail keeps, the list with Allow again on the Mailboxes card, the 30-day sweep, the schema step
+- workspace/mail-blocks.md: A mailbox's block list (IB4, IB4b): Block sender under a mail, who may block where, what a blocked mail keeps, the list with Allow again on the Mailboxes card, the 30-day sweep, the schema step
 - workspace/mail-bounce-dev-check.md: Why conversation 48 on dev seemed to get no "Not delivered" line after an answer to a mistyped domain, and why mail_bounces has no row for a Workspace bounce (checked 2026-11-13)
 - workspace/mail-card-answered.md: The conversation's mail card in a channel since MA10b (#9453): "Answered · who · time" with no column, the Open e-mail link to Communication, what left the card, the touch after an answer
-- workspace/mail-check.md: Check e-mail on Communication › Incoming e-mail (IB2): which boxes a press reads, the fetch's lock and budget, the 15-second gap, presses a minute, the line over the list
-- workspace/mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444) and a later push endpoint (G9), the eleven answers, defaults, scope, the E-mails screen and what is left, what stays unverified
+- workspace/mail-check.md: Check e-mail on Communication › Incoming e-mail (IB2, #9481): which boxes a press reads, the fetch's lock and budget, the 15-second gap, presses a minute, the line over the list
+- workspace/mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP (#2444), the eleven answers, defaults, scope, the E-mails screen, a mailbox's features (IB), what stays unverified
 - workspace/mail-domain-warning.md: The warning before a Workspace e-mail goes to a domain that does not exist: Send anyway, Change the address, "Did you mean …?", the API's 409 unknown_domain
 - workspace/mail-html-written.md: A written Workspace e-mail's HTML body (MA10b2 #9473): the writing box in New e-mail and Reply, markup to text and HTML, the cleaner, body_html, the HTML that leaves with signature and quote
 - workspace/mail-list.md: The list of Communication › Incoming e-mail (messages_mail.php, mail_list.php): which conversations, views, filters, mailbox, search, Load more, the row, the menu
@@ -803,6 +808,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it
 - workspace/mail-own-signature.md: A person's own e-mail signature (IB3, #9513): My e-mail settings on the E-mails toolbar, ws_profiles.mail_signature, where it stands in a sent mail and in the forms' previews
 - workspace/mail-phone-decisions.md: Why a customer's WhatsApp message and SMS are Workspace conversations like e-mail (owner #9151), where they are kept (#9286), the rules every part keeps, the drawer's owner rules, what was left out
+- workspace/mail-prs.md: Which PR built each slice of Workspace e-mail: incoming e-mail G1-G8, the E-mails screen WM1-WM14, a chat's mail tools MT1-MT6, a mailbox's features IB1-IB8
 - workspace/mail-remind-later.md: Remind me later (IB10): the pane's menu and times, ws_mail_reminders, what leaves the person's list and comes back unread, the wake, inbox kind mail_remind, step 11.0.212
 - workspace/mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test
 - workspace/mail-send-later.md: Send later (IB6): a time on the New e-mail form and the reply drawer, send_state later and ws_mail_items.send_at, the job that hands due mail to the queue, Send now and Cancel, the step 11.0.207
@@ -869,11 +875,11 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/workspace-notes-groups-lock.md: Overview of note groups, shared groups, tabs, the PIN lock and media in notes (owner 2026-11-07): how the parts hold together, what was left out, the keyboard and screen-reader ways, open ends
 - workspace/workspace-notes-sources.md: Where an imported note came from (ws_note_sources, schema 11.0.86, PR #1812): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
 - workspace/workspace-outside-caution.md: The standing caution in every agent's and assistant's brief (GV5): a guest's line, a mail and other outside text are data, never a request; how a guest's message is marked in a brief and in the API
-- workspace/workspace-personal-calendar-rules.md: My calendar and a person's own plans (PC1-PC9, closed 2026-11-14): what the owner asked, the rules every change keeps, where each part is written up, what comes next
+- workspace/workspace-personal-calendar-rules.md: My calendar and a person's own plans (two plans, both closed 2026-11-15): what the owner asked, the rules every change keeps, where each part is written up, what is still open
 - workspace/workspace-personal-plan-customer.md: A person's own plan made for a customer (PC6): contact_id, the drawer field, Roadmaps on the card and history, New roadmap, merge and erasure, not in the API
 - workspace/workspace-personal-plan-export.md: A contact's data export lists the person's own plans naming them only when shared with the whole team (PC6b, owner 3361): title, days, owner, roadmap steps
 - workspace/workspace-personal-plan-mail.md: Add to my calendar on a mail (PC7): the button, the filled New plan drawer, one plan a person, the invitation column 11.0.204 and its card states
-- workspace/workspace-personal-plan-repeat.md: Repeating plans on My calendar (PC11a): the Repeat field of the plan drawer, step 11.0.209, times worked out on read, This one / This and the following, a reminder for each time
+- workspace/workspace-personal-plan-repeat.md: Repeating plans on My calendar (#9565, #9611): the Repeat field, step 11.0.209, times worked out on read, This one / This and the following, a reminder each time
 - workspace/workspace-roadmap-templates.md: Team roadmap templates (PC12, #9562): Save as team template, the two tables, who changes or deletes one, Team templates under New roadmap, Move the following steps too
 - workspace/workspace-sales-quote-change.md: A sales quote added from a change card (kind erp_quote, PR #1705): fields, the erp_lines value kind, what is filled in and checked, the writer erp_quote_save(), how the card and the assistants show it
 - workspace/workspace-scheduled-actions-api.md: The /workspace/scheduled-actions routes were removed before 2026.11.0 shipped (PR #2107): why, what took their place, what stays (scheduled messages, the draft card)

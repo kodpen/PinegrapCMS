@@ -4,15 +4,10 @@
 
 - addon-hook-system-site.md: Add-on hook system, the owner's additions of 2026-11-14: the start in two parts, UI slots on core screens, a site's own add-on that updates never touch, an add-on prepared from the panel
 - addon-hook-system.md: Plan (approved 2026-10-19; not to be started before the running plans end, owner 2026-11-14): add-on packages under includes/addons/ with manifest and hooks, so drivers add without forking
-- agent-approvers-everyone-census-mentions.md: AE1 census (2026-11-14) for @herkes: how the @ menu, the mention lines and ws_agent_wake_matches() read a tag, how a department mention rings, the reserved handles, AE5's scope
-- agent-approvers-everyone-census-steps.md: AE1 census (2026-11-14): the exact scope of AE2 to AE4 (agent approvers on the server, the form and card, the API) and the store an agent approver needs (a table of its own, decided)
-- agent-approvers-everyone-census.md: AE1 census (2026-11-14) for agent approvers: ws_approval_people and its readers, who may be asked, the routes that ask and decide, where the bound sits
-- agent-approvers-everyone.md: Plan (owner 2026-11-14): an approval request can ask a channel's agents and assistants, and the tag @herkes mentions everyone in the room but the writer; steps AE1 to AE6 (AE4b, AE4c split from AE4)
 - agent-channel-steps-2.md: Steps A0-A9 of plans/agent-channel.md: registry, doors, wakes, channel memory, model assistants, risk tiers, the canvas as a tool, further doors (Claude Code plugin, per-person sessions, chat box)
 - agent-channel-steps-7.md: Step A22 of plans/agent-channel.md (owner 2026-11-12, #8880): a channel's agents among its members in the head's faces and in Channel info, last seen for people and agents
 - agent-channel-trial.md: Live trial of the agent channel on dev (2026-11-10): what is still to try and what the trial found wrong, fixed or not
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
-- agent-knock-routine-form.md: Plan (architect 2026-11-13, #9241): a push door on a routine's fire address is knocked in the routine's form (it answered HTTP 400 to the webhook form); one step, RK1, then a live check
 - channel-profile-cards-census-facts.md: PF1 census of channel-profile-cards: where each fact of the agent card and the person card is stored, who may see it, what the state dot and the 90% usage mark read from; no schema need found
 - channel-profile-cards-census-scope.md: PF1 census of channel-profile-cards: the card's look (no popover in the design sheet), the exact files and functions of PF2 to PF7, and further facts for the owner's poll
 - channel-profile-cards-census.md: PF1 census of channel-profile-cards (agent card on a name or picture in channels): where a sender's name and picture are drawn in workspace.js, what the message and member payloads carry today
@@ -32,9 +27,6 @@
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md still to build: which keys verify (P5c) and P2's release workflow; the built check, pin, download and beta builds are in platform/
 - kodpen-vendor-api-client-steps.md: Open steps of plans/kodpen-vendor-api-client.md: P2 and P5c before the 2026.11.0 release branch, P9 (api2 client removal) in the next open version; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): the Kodpen API client is on (P8); left are P2 and P5c before the 2026.11.0 release branch and P9, the api2 client removal in the next open version; steps in -steps
-- mail-inbox-features-census.md: IB1 census (2026-11-14) of plans/mail-inbox-features.md: a read on request, a person's own setting, a blocked mail, a later send, a box's Sent folder, phone numbers; the questions asked
-- mail-inbox-features-scopes.md: Exact scope of IB3-IB7 of plans/mail-inbox-features.md after the IB1 census: the functions each step changes, what waits on a schema answer, what stays out
-- mail-inbox-features.md: Plan (owner 2026-11-14): the E-mails screen gains Check e-mail, a person's own signature, a block list, recipient suggestions, Send later and the Sent folder; steps IB1 to IB8
 - mail-inbox-more-census.md: IB9 census of plans/mail-inbox-more.md (2026-11-14): per-person conversation state, My e-mail settings, Send later, ingest order, labels, notices and the job, Not sent
 - mail-inbox-more-scopes-rules.md: Exact scope of IB11 and IB12 of plans/mail-inbox-more.md after the IB9 census: incoming mail rules and "I am away"; files, functions, texts, schema asked
 - mail-inbox-more-scopes-wait.md: Exact scope of IB10, IB10b and IB13 of plans/mail-inbox-more.md after the IB9 census: remind later, remind when no answer comes, undo send; files, functions, texts, schema asked
@@ -46,7 +38,6 @@
 - panel-design-language-report.md: Look A's report screen (#8955): ready reports and the period on top, four figures, the chart against the previous period, the grouped table and its total, the bars card, the settings drawer
 - panel-design-language-sheet.md: The reference sheet of the panel's design language: its pages (basics, add page, table page, the bell's drawer), the page widths they set (#8860, #9070), the list rules, what is only a placeholder
 - panel-design-language-steps.md: Steps DL1-DL6 of the panel's design language (look A, #8842, #8860): typeface and recipes, the page widths, the Design examples screen, the bell's drawer, the check, the screen families, close-out
-- personal-calendar-more.md: Plan (owner 2026-11-14, polls 3359 and 3363): My calendar gains the export of whole-team plans, repeating plans, team roadmap templates, Google or Outlook writing; steps PC6b, PC10 to PC14
 - php-error-log-clean.md: Plan (owner 2026-11-14): the PHP error log of the owner's dev machine read for Pinegrap's own deprecations and warnings on PHP 8.5, and their causes fixed; steps EL1 to EL6
 - poll-agent-questions.md: Plan (owner 2026-11-14): the poll gains described, pictured and linked options, "Other", taking back and asking again; a poll an agent asks is an agent question, answered in its box; AQ1 to AQ6
 - report-screens-steps.md: Steps of plans/report-screens.md: RS1 the Sales map card's See all, RS2 the shared view on the order report, RS3 its ready reports, RS4-RS5 the visitor report, RS6 shipping, RS7 ERP VAT, RS8 close-out
