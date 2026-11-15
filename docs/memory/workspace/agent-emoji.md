@@ -9,7 +9,7 @@ description: The one fitting emoji an agent leaves on the message that asked it 
 
 ## How does an application agent leave it?
 - `POST /workspace/agent-requests/{id}/answer` takes an optional `emoji`: with `text` both are left, with `no_answer` the request closes with the emoji alone.
-- It is checked before the dry run: `ws_agent_emoji_problem()` (pure: one emoji by `ws_reaction_valid()`, an asking message, not the agent's own application's) and `ws_reaction_check()` (rights, the 20-emoji limit), then left with `ws_reaction_set()` as the application's, as the reaction route writes it. A wake asked by no message takes none (422 on `emoji`).
+- It is checked before the dry run: `ws_agent_emoji_problem()` (pure: one emoji by `ws_reaction_valid()`, an asking message, not the agent's own application's, not in an earlier version of a cleared conversation, `agent-requests-kept-version.md`) and `ws_reaction_check()` (rights, the 20-emoji limit), then left with `ws_reaction_set()` as the application's, as the reaction route writes it. A wake asked by no message takes none (422 on `emoji`).
 
 ## How does a model assistant leave it?
 - Its `answer` tool (`ws_ai_tools()`, `ai.php`) takes an optional `emoji` when a channel message asked it (`ws_ai_answer_takes_emoji()`, `model_agents.php`), and `text` is then optional. Pinegrap AI, a note, a task, the Page Design Studio and an MCP alias keep the old tool.

@@ -16,7 +16,7 @@ description: The Agents card's activity per app and model agent: counts of 7 and
 ## Who may use the buttons, and what do they do?
 - The one who asked and role 0, as an MCP agent's cancel (`ws_agent_activity_actions()`).
 - Cancel (queued, sent, running): status cancelled, error "Stopped by <name>.", the eye mark taken off; an agent that claimed it is refused when it answers.
-- Ask again (failed, on a message, agent active): a new queued request for the same message by the viewer, only while the channel still allows the agent, under `ws_agent_brake()` (chain depth and the hour's count over both key shapes); a push door is knocked. A wake (no message) is not asked again.
+- Ask again (failed, on a message that is neither deleted nor in an earlier version of a cleared conversation, agent active; `agent-requests-kept-version.md`): a new queued request for the same message by the viewer, only while the channel still allows the agent, under `ws_agent_brake()` (chain depth and the hour's count over both key shapes); a push door is knocked. A wake (no message) is not asked again.
 - Knock now (queued, active app agent with a push door): `ws_agent_knock()` at once; the outcome lands on the agent's row as any knock.
 
 ## How are tokens counted?
