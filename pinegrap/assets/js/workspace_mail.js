@@ -55,7 +55,8 @@
         var body = h.clear(node.querySelector('.drawer-body'));
         var footer = h.clear(node.querySelector('.drawer-footer'));
         var others = data.others || [];
-        var files = [];
+        // Files the browser still holds for a mail taken back with Undo.
+        var files = (kept && kept.uploads) ? kept.uploads.slice() : [];
         var form = el('form', 'ws-mail-answer');
         var everyone = null;
 
@@ -156,6 +157,11 @@
 
         form.appendChild(later.node);
 
+        // Remind me if no answer comes (mail_remind.php).
+        var noAnswer = noAnswerField(h);
+
+        form.appendChild(noAnswer.node);
+
         // Files, as New e-mail takes them: from Files or the computer.
         var list = el('ul', 'ws-mail-new-files list-unstyled mb-0');
         var library = [];
@@ -182,8 +188,15 @@
 
             var post = { conversation_id: conversation, cc: cc.field.value, bcc: bcc.field.value, text: body.value() };
 
+            if (noAnswer.value()) {
+                post.remind_days = noAnswer.value();
+            }
+
             if (later.value()) {
                 post.send_later = later.value();
+            } else {
+                // Undo send: the mail waits a few seconds (mail_later.php).
+                post.undo = 1;
             }
 
             if (kept) {
@@ -202,10 +215,21 @@
                 post.send_anyway = 1;
             }
 
+            var sentFiles = { library: library.slice(), uploads: files.slice() };
+
             formPost(h, 'ws_mail_reply', post, files).then(function (result) {
                 h.hideOffcanvas(node);
-                h.toast(result.state === 'failed' ? t('mail_new_failed') : (result.state === 'later' ? t('mail_later_set') : t('mail_new_sent')), result.state === 'failed' ? 'warning' : 'success');
                 view.sync();
+
+                if (result.undo) {
+                    undoLine(h, result, function (back) {
+                        view.sync();
+                        replyForm({ mail_reply: back.conversation_id }, view, h, undoDraft(back, sentFiles.library, sentFiles.uploads));
+                    });
+                    return;
+                }
+
+                h.toast(result.state === 'failed' ? t('mail_new_failed') : (result.state === 'later' ? t('mail_later_set') : t('mail_new_sent')), result.state === 'failed' ? 'warning' : 'success');
             }).catch(function (error) {
                 send.disabled = false;
 
@@ -1456,6 +1480,137 @@
             address(0);
         }
 
+        // Remind me later (mail_remind.php): a menu of times for whoever
+        // reads the conversation. Once set, the conversation leaves this
+        // person's list and the pane closes; while one is set the menu says
+        // when and offers Cancel reminder.
+        function remind(offer) {
+            var t = h.t;
+            var id = current;
+            var wrap = h.el('div', 'pg-menu-wrap d-inline-block');
+            var toggle = h.button('btn btn-sm btn-text theme-secondary', offer.on ? offer.short : t('mail_remind'), offer.on ? 'bi-alarm-fill' : 'bi-alarm');
+            var menu = h.el('ul', 'menu pg-menu-end');
+
+            // A set reminder shows only its short time; the whole sentence
+            // is the button's title and accessible name.
+            if (offer.on) {
+                toggle.title = offer.text;
+                toggle.setAttribute('aria-label', offer.text);
+            }
+
+            toggle.setAttribute('data-bs-toggle', 'menu');
+            toggle.setAttribute('data-bs-placement', 'bottom-end');
+            // The pane scrolls and clips: the menu floats over it.
+            toggle.setAttribute('data-bs-strategy', 'fixed');
+            wrap.appendChild(toggle);
+            wrap.appendChild(menu);
+
+            function send(choice, at, done) {
+                toggle.disabled = true;
+
+                return h.api('ws_mail_remind', { conversation_id: id, choice: choice, at: at || '' }).then(function (result) {
+                    toggle.disabled = false;
+                    badge(result.unread || 0);
+
+                    if (done) {
+                        done();
+                    }
+
+                    if (choice === 'cancel') {
+                        h.toast(t('mail_remind_off'), 'success');
+                        open(id);
+
+                        return;
+                    }
+
+                    h.toast(t('mail_remind_set'), 'success');
+
+                    // It leaves this person's list until it comes back.
+                    var row = root.querySelector('[data-ws-mail-row="' + id + '"]');
+
+                    if (row && row.parentNode) {
+                        row.parentNode.removeChild(row);
+                    }
+
+                    if (current === id) {
+                        close();
+                    }
+                }).catch(function (error) {
+                    toggle.disabled = false;
+                    h.fail(error);
+                });
+            }
+
+            function item(label, iconName, handler) {
+                var li = h.el('li');
+                var link = h.button('menu-item pg-link-body-emphasis', label, iconName);
+
+                link.addEventListener('click', handler);
+                li.appendChild(link);
+                menu.appendChild(li);
+            }
+
+            item(t('mail_remind_hour'), 'bi-hourglass-split', function () { send('hour'); });
+            item(t('mail_remind_morning'), 'bi-sunrise', function () { send('morning'); });
+            item(t('mail_remind_week'), 'bi-calendar-week', function () { send('week'); });
+            item(t('mail_remind_at'), 'bi-calendar-event', function () { remindAt(send); });
+
+            if (offer.on) {
+                var li = h.el('li');
+
+                li.appendChild(h.el('hr', 'menu-divider'));
+                menu.appendChild(li);
+                item(t('mail_remind_cancel'), 'bi-x-lg', function () { send('cancel'); });
+            }
+
+            return wrap;
+        }
+
+        // Choose a time: a drawer with the panel's date-and-time control, in
+        // the person's own time zone; the server refuses a time too near or
+        // too far.
+        function remindAt(send) {
+            var t = h.t;
+            var node = h.offcanvas('ws-mail-remind-at', t('mail_remind_at'));
+            var body = h.clear(node.querySelector('.drawer-body'));
+            var footer = h.clear(node.querySelector('.drawer-footer'));
+            var form = h.el('form', 'ws-mail-remind-at');
+            var field = h.el('input', 'form-control');
+            var save = h.button('btn btn-solid theme-primary rounded-pill px-5', t('mail_remind_save'), 'bi-alarm');
+
+            node.querySelector('.drawer-title').textContent = t('mail_remind_at');
+            footer.classList.remove('d-none');
+            form.noValidate = true;
+            field.id = h.nextId('ws-mail-remind-at-');
+            field.name = 'at';
+
+            // The panel's own control (pgDateField() in workspace.js) keeps
+            // the ISO value the post reads.
+            if (h.dateField) {
+                h.dateField(field, 'datetime-local');
+            }
+
+            form.appendChild(h.formRow(t('mail_remind_when'), field, t('mail_remind_hint')));
+            body.appendChild(form);
+            footer.appendChild(save);
+
+            function submit() {
+                save.disabled = true;
+                send('at', field.value, function () {
+                    h.hideOffcanvas(node);
+                }).then(function () {
+                    save.disabled = false;
+                });
+            }
+
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+                submit();
+            });
+            save.addEventListener('click', submit);
+            h.showOffcanvas(node);
+        }
+
         // The answer and the status controls, for whoever may write in the
         // conversation's channel; a change draws the pane again.
         function tools(data) {
@@ -1464,6 +1619,10 @@
 
             shut.addEventListener('click', close);
             place.appendChild(shut);
+
+            if (data.remind) {
+                place.insertBefore(remind(data.remind), shut);
+            }
 
             if (!data.reply) {
                 return;
@@ -2043,8 +2202,75 @@
         return '-- \n' + [lines, under].filter(function (line) { return line !== ''; }).join('\n');
     }
 
-    // My e-mail settings: the person's own signature in a drawer, with the
-    // lines a mail will carry under it as it is typed.
+    // The "I am away" part of My e-mail settings: first and last day, the
+    // answer and a stand-in from the team. No first day switches it off;
+    // Clear empties the days.
+    function awayPart(h, form, data) {
+        var t = h.t;
+        var el = h.el;
+        var away = data.away || {};
+        var part = el('div', 'ws-mail-away mt-6');
+        var grid = el('div', 'row g-3');
+        var startCell = el('div', 'col-6');
+        var endCell = el('div', 'col-6');
+        var start = el('input', 'form-control form-control-sm');
+        var end = el('input', 'form-control form-control-sm');
+        var text = el('textarea', 'form-control');
+        var people = [['', t('mail_away_nobody')]].concat((data.people || []).map(function (person) {
+            return [String(person.id), person.name];
+        }));
+        var standIn = h.select(people, away.stand_in ? String(away.stand_in) : '');
+        var clear = h.button('btn btn-sm btn-text theme-secondary', t('mail_away_clear'), 'bi-x-circle');
+
+        h.dateField(start, 'date');
+        h.dateField(end, 'date');
+        start.id = h.nextId('ws-mail-away-start-');
+        end.id = h.nextId('ws-mail-away-end-');
+        start.name = 'away_start';
+        end.name = 'away_end';
+        start.value = away.start || '';
+        end.value = away.end || '';
+        text.id = h.nextId('ws-mail-away-text-');
+        text.name = 'away_text';
+        text.rows = 5;
+        text.maxLength = data.away_max || 5000;
+        text.value = away.text || '';
+        standIn.id = h.nextId('ws-mail-away-stand-in-');
+        standIn.name = 'away_stand_in';
+        clear.type = 'button';
+
+        part.appendChild(el('div', 'pg-title-section mb-1', t('mail_away_title')));
+        part.appendChild(el('div', 'form-text mt-0 mb-4', t('mail_away_hint')));
+        startCell.appendChild(h.formRow(t('mail_away_start'), start));
+        endCell.appendChild(h.formRow(t('mail_away_end'), end));
+        grid.appendChild(startCell);
+        grid.appendChild(endCell);
+        part.appendChild(grid);
+        part.appendChild(h.formRow(t('mail_away_text'), text, t('mail_away_text_hint')));
+        part.appendChild(h.formRow(t('mail_away_stand_in'), standIn));
+        part.appendChild(clear);
+        form.appendChild(part);
+
+        start.addEventListener('change', function () {
+            if (start.value && (!end.value || end.value < start.value)) {
+                end.value = start.value;
+            }
+        });
+        clear.addEventListener('click', function () {
+            start.value = '';
+            end.value = '';
+        });
+
+        return {
+            values: function () {
+                return { away_start: start.value, away_end: end.value, away_text: text.value, away_stand_in: standIn.value };
+            }
+        };
+    }
+
+        // My e-mail settings: the person's own signature in a drawer, with the
+    // lines a mail will carry under it as it is typed, and "I am away" (a
+    // range, the answer senders get, a stand-in) once the site has it.
     function mySettings(h) {
         var t = h.t;
         var el = h.el;
@@ -2080,15 +2306,24 @@
             preview.appendChild(el('div', '', t('mail_my_signature_preview')));
             preview.appendChild(lines);
             form.appendChild(preview);
+
+            var away = data.away_ready ? awayPart(h, form, data) : null;
+
             body.appendChild(form);
             footer.appendChild(save);
             draw();
             field.addEventListener('input', draw);
 
             function submit() {
+                var payload = { signature: field.value };
+
                 save.disabled = true;
 
-                h.api('ws_mail_my_settings_save', { signature: field.value }).then(function () {
+                if (away) {
+                    Object.assign(payload, away.values());
+                }
+
+                h.api('ws_mail_my_settings_save', payload).then(function () {
                     h.hideOffcanvas(node);
                     h.toast(t('mail_my_settings_saved'), 'success');
                 }).catch(function (error) {
@@ -2107,6 +2342,26 @@
         }).catch(function (error) {
             h.fail(error);
         });
+    }
+
+    // Remind me if no answer comes (mail_remind.php): No, or 1, 3 or 7 days
+    // from the mail's sending; an incoming mail in the conversation ends it.
+    function noAnswerField(h) {
+        var t = h.t;
+        var choice = h.select([
+            ['', t('mail_no_answer_none')], ['1', t('mail_no_answer_1')], ['3', t('mail_no_answer_3')], ['7', t('mail_no_answer_7')]
+        ], '');
+
+        choice.classList.add('w-auto');
+        choice.id = h.nextId('ws-mail-no-answer-');
+        choice.name = 'remind_days';
+
+        return {
+            node: h.formRow(t('mail_no_answer'), choice),
+            value: function () {
+                return choice.value;
+            }
+        };
     }
 
     // Send later (mail_later.php): a link that opens a time field, typed in
@@ -2211,6 +2466,61 @@
         return library.map(function (file) { return file.id; }).join(',');
     }
 
+    // Undo send (mail_later.php): a mail the panel sent waits data.undo
+    // seconds under a notice with "Undo"; after the wait the browser asks
+    // for it to leave, and the general job sends it if the page was closed.
+    // Undo turns it back into its draft, which reopen(draft) opens.
+    function undoLine(h, data, reopen) {
+        var t = h.t;
+        var done = false;
+        var line = null;
+        var timer = window.setTimeout(function () {
+            done = true;
+
+            if (line && line.hide) {
+                line.hide();
+            }
+
+            h.api('ws_mail_later_send', { item_id: data.item_id }).then(function (result) {
+                h.toast(result.state === 'failed' ? t('mail_new_failed') : t('mail_new_sent'), result.state === 'failed' ? 'warning' : 'success');
+            }).catch(function () {
+                // The job took it first: it is on its way already.
+                h.toast(t('mail_new_sent'), 'success');
+            });
+        }, data.undo * 1000);
+
+        line = h.toast(t('mail_undo_wait'), 'dark', {
+            label: t('mail_undo'),
+            delay: data.undo * 1000,
+            onClick: function () {
+                if (done) {
+                    return;
+                }
+
+                done = true;
+                window.clearTimeout(timer);
+
+                h.api('ws_mail_undo_send', { item_id: data.item_id }).then(function (result) {
+                    h.toast(t('mail_undo_done'), 'success');
+                    reopen(result.draft);
+                }).catch(function (error) {
+                    h.fail(error);
+                });
+            }
+        });
+    }
+
+    // The draft a mail taken back became, with the files the form had:
+    // the Files ones by id, the computer's ones as the browser holds them.
+    function undoDraft(draft, library, uploads) {
+        draft.files = (draft.files || []).concat(library.map(function (file) {
+            return { id: file.id, name: file.name };
+        }));
+        draft.uploads = uploads;
+
+        return draft;
+    }
+
     // Save draft, beside Send in a form opened from a draft kept on the
     // server: the form's fields written back to it, so a change is never
     // lost by closing the form (mail_drafts_screen.php).
@@ -2276,7 +2586,8 @@
         // A forward keeps its unsent form apart, and only for its source.
         var key = newDraftKey(h.cfg.api_url, h.cfg.me) + (fill ? '|fwd' : '');
         var kept = server ? null : newDraftRead(key);
-        var files = [];
+        // Files the browser still holds for a mail taken back with Undo.
+        var files = (server && server.uploads) ? server.uploads.slice() : [];
         // The source's files the forward carries; each can be taken out.
         var carried = fill ? fill.files.slice() : [];
         var timer = 0;
@@ -2392,6 +2703,11 @@
         var later = laterField(h);
 
         form.appendChild(later.node);
+
+        // Remind me if no answer comes (mail_remind.php).
+        var noAnswer = noAnswerField(h);
+
+        form.appendChild(noAnswer.node);
         fileRow.appendChild(list);
         form.appendChild(fileRow);
         draftKept(h, server, library, body.node, drawFiles);
@@ -2559,8 +2875,15 @@
                 post.draft_id = server.id;
             }
 
+            if (noAnswer.value()) {
+                post.remind_days = noAnswer.value();
+            }
+
             if (later.value()) {
                 post.send_later = later.value();
+            } else {
+                // Undo send: the mail waits a few seconds (mail_later.php).
+                post.undo = 1;
             }
 
             if (fill) {
@@ -2573,12 +2896,22 @@
                 post.file_ids = library.map(function (file) { return file.id; }).join(',');
             }
 
+            // A forward's carried files are Files ids, as the library's are.
+            var sentFiles = { library: carried.concat(library), uploads: files.slice() };
+
             formPost(h, 'ws_mail_new', post, files).then(function (data) {
                 window.clearTimeout(timer);
                 newDraftStore(key, null);
                 send.disabled = false;
                 h.hideOffcanvas(node);
-                h.toast(data.state === 'failed' ? t('mail_new_failed') : (data.state === 'later' ? t('mail_later_set') : t('mail_new_sent')), data.state === 'failed' ? 'warning' : 'success');
+
+                if (data.undo) {
+                    undoLine(h, data, function (back) {
+                        compose(h, { draft: undoDraft(back, sentFiles.library, sentFiles.uploads), channel: back.channel_id, sent: options.sent });
+                    });
+                } else {
+                    h.toast(data.state === 'failed' ? t('mail_new_failed') : (data.state === 'later' ? t('mail_later_set') : t('mail_new_sent')), data.state === 'failed' ? 'warning' : 'success');
+                }
 
                 if (options.sent) {
                     options.sent(data);

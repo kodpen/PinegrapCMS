@@ -73,12 +73,14 @@ function pg_notification_flow_kinds()
 
 // The kinds of Workspace inbox line incoming e-mail writes: a conversation
 // given to one (mail_assigned), its customer wrote again to its holder
-// (mail_customer), an e-mail one wrote could not be sent (mail_unsent). Mail
+// (mail_customer), an e-mail one wrote could not be sent (mail_unsent), a
+// conversation set aside with Remind me later came back (mail_remind), no
+// answer came in time to a mail one wrote (mail_no_answer). Mail
 // is read with the Workspace off (ws_mail_on()), so the bell shows them
 // then too. Pure.
 function pg_notification_mail_kinds()
 {
-	return array('mail_assigned', 'mail_customer', 'mail_unsent');
+	return array('mail_assigned', 'mail_customer', 'mail_unsent', 'mail_remind', 'mail_no_answer');
 }
 
 // The kinds of Workspace inbox line the bell shows with the Workspace off:

@@ -141,7 +141,7 @@ function test_ws_item_tags_outside_body_wired()
 
 	$interact = $read('interact.php');
 	pg_assert_contains("ws_message_ask_item(\$viewer, \$channel, (int) \$sent['message_id'], '', ws_poll_tag_text(\$checked['question'], \$options), ws_message_by_app(\$app_id));", $interact, 'a new poll');
-	pg_assert_contains("ws_message_ask_item(\$viewer, ws_channel(\$poll['channel_id']), (int) \$message['id'], \$before, ws_poll_tag_text(\$question, \$options));", $interact, 'a poll\'s edit');
+	pg_assert_contains("ws_message_ask_item(\$viewer, ws_channel(\$poll['channel_id']), (int) \$message['id'], \$before, ws_poll_tag_text(\$question, \$options), ws_message_by_app(\$as_app));", $interact, 'a poll\'s edit');
 	pg_assert_contains("ws_message_ask_item(\$viewer, \$channel, (int) \$message['id'], \$before, \$text);", $read('status.php'), 'a check-in answer');
 	pg_assert_contains("ws_message_ask_item(\$viewer, \$target, (int) \$sent['message_id'], (string) \$comment,", $read('forward.php'), 'a forward\'s copies');
 

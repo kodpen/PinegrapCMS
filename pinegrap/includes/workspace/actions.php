@@ -406,8 +406,8 @@ function ws_mail_actions_without_workspace()
         'ws_bootstrap', 'ws_tick',
         'ws_mail_rows', 'ws_mail_pane', 'ws_mail_read_all', 'ws_mail_conversation', 'ws_mail_check',
         'ws_mail_reply_form', 'ws_mail_reply', 'ws_mail_resend',
-        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock', 'ws_mail_draft_open', 'ws_mail_draft_save', 'ws_mail_draft_remove', 'ws_mail_later_send', 'ws_mail_later_cancel',
-        'ws_mail_my_settings', 'ws_mail_my_settings_save',
+        'ws_mail_compose', 'ws_mail_new', 'ws_mail_forward', 'ws_mail_suggest', 'ws_mail_block', 'ws_mail_unblock', 'ws_mail_draft_open', 'ws_mail_draft_save', 'ws_mail_draft_remove', 'ws_mail_later_send', 'ws_mail_later_cancel', 'ws_mail_undo_send',
+        'ws_mail_my_settings', 'ws_mail_my_settings_save', 'ws_mail_remind',
         'ws_whatsapp_reply_form', 'ws_whatsapp_reply',
     );
 }
@@ -493,7 +493,7 @@ function ws_handle_action($action, $request)
         if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_page_undo', 'ws_canvas_restore', 'ws_canvas_binding_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
-        } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
+        } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close', 'ws_poll_withdraw', 'ws_poll_again'), true)) {
             $poll = db_item("SELECT message_id FROM ws_polls WHERE id = '" . (int) ($request['poll_id'] ?? 0) . "'");
             $touched = is_array($poll) ? ws_message((int) $poll['message_id']) : null;
         } elseif (in_array($action, array('ws_approval_decide', 'ws_approval_close', 'ws_approval_guest_resend'), true)) {
@@ -2589,6 +2589,39 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('message' => $payload[0]));
 
+        // The asker takes the poll back, or asks it again as a new poll
+        // naming it (poll_again.php); the answer is the old poll's message,
+        // and for an ask-again the new one's id.
+        case 'ws_poll_withdraw':
+        case 'ws_poll_again':
+            $poll = ws_poll((int) ($request['poll_id'] ?? 0));
+
+            if (!$poll || !ws_can_read_channel($viewer, ws_channel($poll['channel_id']))) {
+                return ws_action_error(lang('That poll could not be found.'));
+            }
+
+            if ($action === 'ws_poll_withdraw') {
+                $result = ws_poll_withdraw($viewer, $poll);
+            } else {
+                $sent = array();
+
+                foreach (array('question', 'options', 'multiple', 'anonymous') as $key) {
+                    if (array_key_exists($key, $request)) {
+                        $sent[$key] = $request[$key];
+                    }
+                }
+
+                $result = ws_poll_ask_again($viewer, $poll, $sent);
+            }
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) ($result['field'] ?? ''));
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($poll['message_id'])));
+
+            return ws_action_ok(array('message' => $payload[0], 'message_id' => (int) ($result['message_id'] ?? 0), 'poll_id' => (int) ($result['poll_id'] ?? 0)));
+
         case 'ws_poll_vote':
         case 'ws_poll_close':
             $poll = ws_poll((int) ($request['poll_id'] ?? 0));
@@ -2598,7 +2631,7 @@ function ws_handle_action($action, $request)
             }
 
             $result = ($action === 'ws_poll_vote')
-                ? ws_poll_vote($viewer, $poll, (array) ($request['option_ids'] ?? array()))
+                ? ws_poll_vote($viewer, $poll, (array) ($request['option_ids'] ?? array()), $request['other_text'] ?? '')
                 : ws_poll_close($viewer, $poll);
 
             if (!$result['ok']) {
@@ -2785,7 +2818,7 @@ function ws_handle_action($action, $request)
             $mail = function_exists('ws_mail_draft_sent_mail') ? ws_mail_draft_sent_mail($viewer, $mail, $request) : $mail;
             $result = ws_mail_send($viewer, array('conversation_id' => $conversation_id, 'cc' => $mail['cc'], 'bcc' => $mail['bcc'],
                 'text' => $mail['text'], 'html' => $mail['html'] ?? '', 'files' => $mail['files'], 'send_anyway' => $mail['send_anyway'],
-                'send_at' => $later['at']));
+                'send_at' => ws_mail_undo_send_at($request, $later['at'], ws_mail_later_ready(), time())));
 
             if (!$result['ok']) {
                 return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail']), in_array($result['error'], array('empty', 'too_long'), true) ? 'text' : '')
@@ -2797,7 +2830,13 @@ function ws_handle_action($action, $request)
                 ws_mail_draft_remove($viewer, (int) $request['draft_id'], $conversation_id);
             }
 
-            return ws_action_ok(array('message_id' => $result['message_id'], 'state' => $result['state']));
+            // Remind me if no answer comes (mail_remind.php).
+            if (function_exists('ws_mail_no_answer_set')) {
+                ws_mail_no_answer_set($viewer, $result, $request['remind_days'] ?? 0, time());
+            }
+
+            return ws_action_ok(array('message_id' => $result['message_id'], 'item_id' => $result['item_id'], 'state' => $result['state'],
+                'undo' => ws_mail_undo_offered($request, $later['at'], $result['state'])));
 
         // Send again: an outgoing mail that could not leave (mail_send.php).
         // Reply by WhatsApp inside the customer's 24 hours (mail_phone.php):
@@ -2870,9 +2909,29 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('Only team members have e-mail settings.'));
             }
 
+            // "I am away" (mail_away.php) is offered once its column is there.
+            $away_ready = function_exists('ws_mail_away_ready') && ws_mail_away_ready();
+
             if ($action === 'ws_mail_my_settings') {
                 return ws_action_ok(array('signature' => ws_mail_own_signature((int) $viewer['id']), 'writer' => ws_person_name((int) $viewer['id']),
-                    'max' => WS_MAIL_SIGNATURE_MAX, 'lines' => WS_MAIL_SIGNATURE_LINES));
+                    'max' => WS_MAIL_SIGNATURE_MAX, 'lines' => WS_MAIL_SIGNATURE_LINES,
+                    'away_ready' => $away_ready, 'away' => $away_ready ? ws_mail_away_offer((int) $viewer['id']) : null,
+                    'people' => $away_ready ? ws_mail_away_people($viewer) : array(), 'away_max' => WS_MAIL_AUTO_REPLY_MAX));
+            }
+
+            // Both parts are checked before either is kept.
+            $signature = ws_mail_signature_input($request['signature'] ?? '');
+
+            if (!$signature['ok']) {
+                return ws_action_error($signature['error'], 'signature');
+            }
+
+            if ($away_ready && isset($request['away_start'])) {
+                $away = ws_mail_away_save($viewer, $request);
+
+                if (!$away['ok']) {
+                    return ws_action_error($away['error'], 'away_' . $away['field']);
+                }
             }
 
             $saved = ws_mail_own_signature_save($viewer, $request['signature'] ?? '');
@@ -2924,7 +2983,8 @@ function ws_handle_action($action, $request)
             $mail = ws_mail_markup_apply($viewer, ws_mail_compose_mail($request, array_merge($forward['files'], $files['files'])), $request);
             // Sent from a draft: its own HTML while the text is unchanged.
             $mail = function_exists('ws_mail_draft_sent_mail') ? ws_mail_draft_sent_mail($viewer, $mail, $request) : $mail;
-            $result = ws_mail_send($viewer, $mail + array('send_at' => $later['at']));
+            // Undo send (mail_later.php): the panel's Send waits a few seconds.
+            $result = ws_mail_send($viewer, $mail + array('send_at' => ws_mail_undo_send_at($request, $later['at'], ws_mail_later_ready(), time())));
 
             if (!$result['ok']) {
                 return ws_action_error(ws_mail_send_error_text($result['error'], $result['detail'])) + array('code' => $result['error']);
@@ -2937,11 +2997,18 @@ function ws_handle_action($action, $request)
                 ws_mail_draft_remove($viewer, (int) $request['draft_id'], 0);
             }
 
+            // Remind me if no answer comes (mail_remind.php).
+            if (function_exists('ws_mail_no_answer_set')) {
+                ws_mail_no_answer_set($viewer, $result, $request['remind_days'] ?? 0, time());
+            }
+
             return ws_action_ok(array(
                 'conversation_id' => $result['conversation_id'],
                 'message_id'      => $result['message_id'],
                 'channel_id'      => $mail['channel_id'],
+                'item_id'         => $result['item_id'],
                 'state'           => $result['state'],
+                'undo'            => ws_mail_undo_offered($request, $later['at'], $result['state']),
             ));
 
         // Forward as e-mail: the New e-mail form filled from chosen channel
@@ -3035,6 +3102,28 @@ function ws_handle_action($action, $request)
                 : ws_mail_later_cancel($viewer, (int) ($request['item_id'] ?? 0));
 
             return $result['ok'] ? ws_action_ok(array('state' => $result['state'] ?? 'failed')) : ws_action_error($result['error']);
+
+        // Undo, while a mail the panel sent still waits (mail_later.php):
+        // the mail turns back into its draft, which the form opens again.
+        case 'ws_mail_undo_send':
+            if (!function_exists('ws_mail_undo_send')) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $result = ws_mail_undo_send($viewer, (int) ($request['item_id'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('draft' => $result['draft'])) : ws_action_error($result['error']);
+
+        // Remind me later on the reading pane (mail_remind.php): a time, or
+        // Cancel reminder; the pane is read again after either.
+        case 'ws_mail_remind':
+            if (!function_exists('ws_mail_remind_set')) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $result = ws_mail_remind_set($viewer, (int) ($request['conversation_id'] ?? 0), (string) ($request['choice'] ?? ''), $request['at'] ?? '', time());
+
+            return $result['ok'] ? ws_action_ok(array('at' => $result['at'], 'unread' => ws_mail_unread_count($viewer))) : ws_action_error($result['error'], 'at');
 
         // The Drafts view (mail_drafts_screen.php): a draft opened into its
         // form, its changes saved there, or deleted without being sent.

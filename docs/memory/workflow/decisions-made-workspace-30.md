@@ -10,7 +10,7 @@ description: Decisions made, workspace part 30 (2026-11-14 on): agents and assis
 - Yes. Owner: "Onay iste aracını da geliştirelim eş zamanlı. Onaylayanlar kısmına kanalda olan ajan ve asistanları da dahil edelim olur mu? api uçları yoksa onlarıda ekleyelim."
 - His case: "@ajan1 @ajan2 @ajan3 mesajımı aldınız mı?" asked as an approval request; "onay kutusunu işaretlerler".
 - The bound the architect proposed: only a request a person makes by hand may ask an agent or an assistant; a flow's request and an agent's request ask people only; no agent answers a request it made. A flow's approval is a gate put there for a person to look. He answered: "planın mantıklı uygun".
-- Plan: `plans/agent-approvers-everyone.md`. The column an agent approver needs is asked of him after the census.
+- Built by AE1 to AE6 (#9555 to #9622): `workspace/approval-agents.md`, `approval-agents-api.md`, `approval-assistants.md`, `workspace-everyone-mention.md`. The store, a table of its own: `decisions-made-schema-21.md`.
 
 ## Is there a mention of everyone in a room? (owner, 2026-11-14, in the architect's window)
 - Yes, `@herkes`. Owner: "birde bir odada birden fazla ajan veya kişi varsa @herkes etiketi de ekleyelim. bu etiket kişinin kendisi dışındaki herkese anmaya yarasın. örneğin ajan kanalında tüm ajanlar. (asistanlar hariç)"

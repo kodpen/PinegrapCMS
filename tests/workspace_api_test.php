@@ -1406,7 +1406,7 @@ function test_ws_api_poll_present()
 	pg_assert_same(null, $present['closes_at'], 'open until closed');
 	pg_assert_same(null, $present['result_message_id']);
 	pg_assert_same(array(31, 32), array_column($present['options'], 'id'));
-	pg_assert_same(array(array('user_id' => 12, 'name' => 'Ayşe'), array('user_id' => null, 'name' => 'Guest')), $present['options'][0]['voters']);
+	pg_assert_same(array(array('user_id' => 12, 'name' => 'Ayşe', 'text' => ''), array('user_id' => null, 'name' => 'Guest', 'text' => '')), $present['options'][0]['voters']);
 	pg_assert_true($present['options'][0]['mine'] && !$present['options'][1]['mine'], 'mine marks the person\'s choice');
 	pg_assert_same(array_keys(ws_api_poll_schema()), array_keys($present), 'the answer has the declared fields in order');
 }

@@ -26,4 +26,4 @@ description: E-mail drafts kept on the server (MT3a #9516, MT3b): the ws_mail_it
 - Send posts `draft_id`; once the mail is stored the draft goes (`ws_mail_draft_remove()` with the sent mail's conversation: a reply's draft only with an answer in its conversation, a new mail's only with a new mail). A mail that is stored but fails to leave still deletes its draft: it waits under Not sent.
 - Tests: `tests/workspace_mail_drafts_screen_test.php`.
 
-Related: docs/memory/plans/mail-chat-tools-drafts.md, docs/memory/workspace/mail-api.md
+Related: docs/memory/workspace/mail-api-html-files.md, docs/memory/workspace/mail-api.md

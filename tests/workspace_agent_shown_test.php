@@ -30,7 +30,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 function test_workspace_agent_request_parse()
 {
 	pg_assert_same(array('kind' => 'app', 'id' => 4), ws_agent_request_parse('agent:4'));
-	pg_assert_same(null, ws_agent_request_parse('app:4'), 'app:<n> is an application\'s proposal');
+	pg_assert_same(null, ws_agent_request_parse('app:4'), 'app:<n> is also a proposal\'s key; the line under a message reads the old agent shape on its own');
 	pg_assert_same(array('kind' => 'model', 'id' => 12), ws_agent_request_parse('model:12'));
 	pg_assert_same(null, ws_agent_request_parse('claude'));
 	pg_assert_same(null, ws_agent_request_parse('mcp:3'), 'an MCP server is not a registry agent');
@@ -109,6 +109,34 @@ function test_workspace_agent_picker_entries()
 	pg_assert_same('@mimar', $entries[0]['shown']);
 	pg_assert_same('ADNAN Mimar', $entries[0]['meta']);
 	pg_assert_same(array(), ws_agent_picker_entries(array()));
+	pg_assert_false(isset($entries[0]['state']), 'no brief: the entry stays as it was');
+}
+
+// The @ menu draws an agent's role, state dot and usage mark from the
+// brief of its member row (agent_card.php ws_agent_card_brief()).
+function test_workspace_agent_picker_entries_brief()
+{
+	$briefs = array(7 => array('role' => 'Developer', 'role_key' => 'developer', 'state' => 'late', 'state_words' => 'Not seen', 'waiting' => 2, 'usage_high' => true));
+	$entries = ws_agent_picker_entries(array(
+		array('handle' => 'mimar', 'name' => 'ADNAN Mimar', 'app_id' => 7),
+		array('handle' => 'zeta', 'name' => 'Zeta', 'app_id' => 9),
+	), $briefs);
+
+	pg_assert_same('ADNAN Mimar', $entries[0]['meta'], 'the name stays the meta');
+	pg_assert_same('Developer', $entries[0]['role'], 'the role is drawn after it');
+	pg_assert_same('late', $entries[0]['state']);
+	pg_assert_same('Not seen', $entries[0]['state_words']);
+	pg_assert_true($entries[0]['usage_high']);
+	pg_assert_contains('90', $entries[0]['usage_words'], 'the mark names the limit');
+	pg_assert_contains('reported', $entries[0]['usage_title'], 'the figure is the agent\'s own report');
+	pg_assert_false(isset($entries[0]['waiting']), 'only what the menu draws');
+	pg_assert_same('Zeta', $entries[1]['meta'], 'an agent with no brief stays as it was');
+	pg_assert_false(isset($entries[1]['state']));
+
+	$plain = ws_agent_picker_entries(array(array('handle' => 'zeta', 'name' => 'Zeta', 'app_id' => 9)), array(9 => array('role' => '', 'state' => 'idle', 'state_words' => 'Ready', 'usage_high' => false)));
+	pg_assert_same('', $plain[0]['role'], 'no role: the name alone');
+	pg_assert_false($plain[0]['usage_high']);
+	pg_assert_false(isset($plain[0]['usage_words']), 'no mark, no words');
 }
 
 function test_workspace_agent_tag()
@@ -177,4 +205,44 @@ function test_workspace_agent_requests_by_message()
 
 	$shuffled = array_reverse($rows);
 	pg_assert_same($map, ws_agent_requests_by_message($shuffled), 'the rows\' order does not matter');
+}
+
+// A registry agent's request written before agent:<id> carries app:<id>; the
+// line under its message reads it as the agent's, while the parser keeps
+// app:<n> out (a proposal's key, edit_hold.php's knock and name).
+function test_workspace_agent_request_line_value()
+{
+	pg_assert_same('agent:4', ws_agent_request_line_value('app:4'));
+	pg_assert_same('agent:4', ws_agent_request_line_value('agent:4'));
+	pg_assert_same('model:12', ws_agent_request_line_value('model:12'));
+	pg_assert_same('claude', ws_agent_request_line_value('claude'));
+	pg_assert_same('app:0', ws_agent_request_line_value('app:0'));
+	pg_assert_same('app:4x', ws_agent_request_line_value('app:4x'));
+	pg_assert_same(null, ws_agent_request_parse('app:4'), 'the parser is unchanged');
+}
+
+// Only Claude's own request reads in Claude's words.
+function test_workspace_request_is_claudes()
+{
+	pg_assert_true(ws_claude_request_is_claudes('claude'));
+	pg_assert_true(ws_claude_request_is_claudes(''), 'a row from before the column');
+
+	foreach (array('app:4', 'app:0', 'agent:4', 'model:12', 'oauth:3', 'designer') as $value) {
+		pg_assert_false(ws_claude_request_is_claudes($value), $value);
+	}
+}
+
+// A failed request whose value is not claude never reads "Claude could not
+// do it". app:0 and oauth:3 name no registry agent, so no table is read.
+function test_workspace_failed_request_of_another_agent_is_not_claudes()
+{
+	$viewer = array('id' => 1, 'role' => 0);
+
+	foreach (array('app:0', 'oauth:3') as $value) {
+		$state = ws_claude_request_state_own($viewer, array('id' => 7, 'agent' => $value, 'status' => 'failed', 'error' => 'timeout', 'session_url' => ''));
+
+		pg_assert_same(lang(array('string' => '{var:1} could not do it', 'vars' => lang('The agent'))) . ': timeout', $state['label'], $value);
+		pg_assert_true(strpos($state['label'], lang('Claude could not do it')) === false, $value);
+		pg_assert_true($state['agent'] !== 'claude', $value);
+	}
 }

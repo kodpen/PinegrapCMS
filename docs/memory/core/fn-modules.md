@@ -166,7 +166,7 @@ description: Generated from the module field of the memory files: each includes/
 - `messages_automatic`: [[messages-area-automatic-tab]]
 - `messages_calendar`: [[messages-area-sends-calendar]]
 - `messages_campaigns`: [[messages-area-campaigns-tab]]
-- `messages_sends`: [[messages-area-sends]]
+- `messages_sends`: [[messages-area-sends]], [[messages-area-sends-speed]]
 - `messages_templates`: [[messages-area-templates-tab]]
 - `mfa`: [[two-step-sign-in-expiry]]
 - `not_found_log`: [[not-found-log-screen]]

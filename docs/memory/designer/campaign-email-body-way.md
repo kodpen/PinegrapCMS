@@ -4,7 +4,7 @@ description: MA4 proposal (2026-11-13, kept on #9083): a campaign's e-mail body 
 ---
 
 ## Is this settled?
-- Yes: the architect kept it on #9083 (`plans/messages-area-decided.md`); MA5a to MA5e build it (`plans/messages-area-steps.md`). Built so far: [[campaign-email-body-mail-pass]]. Facts: [[campaign-email-body-today]], rules: [[campaign-email-body-mail-programs]].
+- Yes: the architect kept it on #9083 (#9083); MA5a to MA5e built it (`ui/messages-area-overview.md`). Built so far: [[campaign-email-body-mail-pass]]. Facts: [[campaign-email-body-today]], rules: [[campaign-email-body-mail-programs]].
 
 ## What would an e-mail design be?
 - A page, as today's e-mail pages: in a private folder "E-mail designs" made on first use (its id in `config_text` `email_designs_folder_id`, `data/config-table-no-varchar.md`), no search, no sitemap, noindex. No schema.

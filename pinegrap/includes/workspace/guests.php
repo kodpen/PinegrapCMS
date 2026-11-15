@@ -1636,9 +1636,10 @@ function ws_guest_person_line($message_id)
  * @param array $context
  * @param int   $poll_id
  * @param int[] $option_ids
+ * @param string $other_text the words on the "Other" row
  * @return array ok, error
  */
-function ws_guest_vote($context, $poll_id, $option_ids)
+function ws_guest_vote($context, $poll_id, $option_ids, $other_text = '')
 {
     $poll = function_exists('ws_poll') ? ws_poll((int) $poll_id) : null;
 
@@ -1647,9 +1648,14 @@ function ws_guest_vote($context, $poll_id, $option_ids)
         return array('ok' => false, 'error' => lang('Invalid request.'));
     }
 
-    // An agent's poll asks the team, never a guest (ws_guest_messages()).
-    if (!ws_guest_person_line((int) $poll['message_id'])) {
+    // An agent's poll asks the team, never a guest (ws_guest_messages()); an
+    // agent question is never a guest's to answer (agent_question.php).
+    if (ws_agent_question_is($poll) || !ws_guest_person_line((int) $poll['message_id'])) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
+    }
+
+    if ((int) ($poll['withdrawn_at'] ?? 0) > 0) {
+        return array('ok' => false, 'error' => lang('The poll was taken back.'));
     }
 
     if (((int) $poll['closed_at'] > 0) || (((int) $poll['closes_at'] > 0) && ((int) $poll['closes_at'] <= time()))) {
@@ -1664,12 +1670,20 @@ function ws_guest_vote($context, $poll_id, $option_ids)
     }
 
     $guest_id = (int) $context['guest']['id'];
+    // The "Other" row takes the guest's own words (poll_parts.php).
+    $other_id = ws_poll_other_id((int) $poll['id']);
+    $text = ws_poll_other_text($other_text);
+    $worded = ws_poll_other_check($chosen, $other_id, $text);
+
+    if (!$worded['ok']) {
+        return array('ok' => false, 'error' => $worded['error']);
+    }
 
     db("DELETE FROM ws_poll_votes WHERE poll_id = '" . (int) $poll['id'] . "' AND user_id = 0 AND guest_id = '" . $guest_id . "'");
 
     foreach ($chosen as $option_id) {
-        db("INSERT IGNORE INTO ws_poll_votes (poll_id, option_id, user_id, guest_id, created_at)
-            VALUES ('" . (int) $poll['id'] . "', '" . (int) $option_id . "', 0, '" . $guest_id . "', '" . time() . "')");
+        db("INSERT IGNORE INTO ws_poll_votes SET poll_id = '" . (int) $poll['id'] . "', option_id = '" . (int) $option_id . "', user_id = 0, guest_id = '" . $guest_id . "',
+            created_at = '" . time() . "'" . ((($other_id > 0) && ($option_id === $other_id)) ? ", other_text = '" . e($text) . "'" : ''));
     }
 
     ws_message_touch($poll['message_id']);
@@ -2072,7 +2086,7 @@ function ws_guest_handle($action, $request)
             return $reacted['ok'] ? ws_guest_state($context) : array('status' => 'error', 'message' => $reacted['error']);
 
         case 'vote':
-            $voted = ws_guest_vote($context, (int) ($request['poll_id'] ?? 0), (array) ($request['option_ids'] ?? array()));
+            $voted = ws_guest_vote($context, (int) ($request['poll_id'] ?? 0), (array) ($request['option_ids'] ?? array()), ws_guest_request_text($request['other_text'] ?? ''));
 
             return $voted['ok'] ? ws_guest_state($context) : array('status' => 'error', 'message' => $voted['error']);
 

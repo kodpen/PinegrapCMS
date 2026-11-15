@@ -201,6 +201,10 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_roadmap_templates();    // 11.0.208
 	upgrade_2026_11_0_ws_approval_agents();      // 11.0.210
 	upgrade_2026_11_0_ws_personal_plan_repeat(); // 11.0.209
+	upgrade_2026_11_0_ws_mail_away();            // 11.0.211
+	upgrade_2026_11_0_ws_mail_reminders();       // 11.0.212
+	upgrade_2026_11_0_ws_poll_parts();           // 11.0.213
+	upgrade_2026_11_0_ws_poll_agent_question();  // 11.0.214
 
 }
 
@@ -6752,5 +6756,99 @@ function upgrade_2026_11_0_ws_personal_plan_repeat() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: a personal plan on My calendar can repeat every day, week, month or year.');
+
+}
+
+// "I am away" under My e-mail settings (11.0.211): a person's range, text and
+// stand-in as JSON beside their own signature (includes/workspace/mail_away.php).
+// No backfill: nobody is away until they say so.
+function upgrade_2026_11_0_ws_mail_away() {
+
+	if (!install_table_exists('ws_profiles')) {
+
+		install_skipped('ws_profiles does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_profiles', 'mail_away', "TEXT NULL");
+
+	install_note('Workspace: a person can say they are away under My e-mail settings; senders get their text once and a stand-in takes conversations given to them.');
+
+}
+
+// Remind me later on an e-mail conversation (includes/workspace/mail_remind.php):
+// one row per person, conversation and kind. kind 'later' sets the
+// conversation aside until due_at; woken_at is when it came back (the time
+// or a new mail), and the row goes once the person reads it. The kind
+// 'no_answer' (a reminder when no answer comes) shares the table.
+function upgrade_2026_11_0_ws_mail_reminders() {
+
+	install_create_table('ws_mail_reminders', "CREATE TABLE ws_mail_reminders (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		conversation_id INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		kind            VARCHAR(10) NOT NULL DEFAULT '',
+		item_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		due_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		woken_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_person (conversation_id, user_id, kind),
+		KEY idx_due (woken_at, due_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: an e-mail conversation can be set aside with Remind me later.');
+
+}
+
+// The widened poll (11.0.213, includes/workspace/poll_parts.php): an
+// option's description, picture (a file posted in the channel), links,
+// recommended mark and the "Other" row; the voter's own words on that row;
+// a poll taken back and the poll a new one asks again. No backfill: every
+// column is empty on a poll made before, which draws and counts as it did.
+function upgrade_2026_11_0_ws_poll_parts() {
+
+	if (!install_table_exists('ws_polls') || !install_table_exists('ws_poll_options') || !install_table_exists('ws_poll_votes')) {
+
+		install_skipped('ws_polls does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_poll_options', 'description', "VARCHAR(500) NOT NULL DEFAULT ''");
+	install_add_column('ws_poll_options', 'file_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_poll_options', 'links', "TEXT NULL");
+	install_add_column('ws_poll_options', 'recommended', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_poll_options', 'other', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_poll_votes', 'other_text', "VARCHAR(255) NOT NULL DEFAULT ''");
+	install_add_column('ws_polls', 'withdrawn_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_polls', 'withdrawn_by', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_polls', 'again_of', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_polls', 'idx_again_of', "INDEX idx_again_of (again_of)");
+
+	install_note('Workspace: a poll\'s options can carry a description, a picture, links, a recommended mark and an "Other" answer in the voter\'s own words.');
+
+}
+
+// The agent question (11.0.214, includes/workspace/agent_question.php): a
+// poll an application agent or an assistant asks is marked by the server,
+// asked of named people and settled by its first answer. No backfill: a
+// poll an agent asked before stays a poll.
+function upgrade_2026_11_0_ws_poll_agent_question() {
+
+	if (!install_table_exists('ws_polls')) {
+
+		install_skipped('ws_polls does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_polls', 'agent_question', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: a poll an agent asks is an agent question, answered by the people it asks.');
 
 }

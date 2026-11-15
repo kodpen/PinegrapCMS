@@ -8,9 +8,9 @@ description: Decisions made, workspace part 29 (2026-11-14 on): the nine additio
 
 ## Which additions go into the running plans? (owner, 2026-11-14, agent channel poll 3363)
 - Owner (2026-11-14, in the architect's window): "senden bir ricam var, planlarda eklemeler yap mevcut yön az çok anlaşılır olduğu için mevcut özellikleri genişletecek özellikler üzerine geliştirmeler öner." The architect offered ten, each described in channel message 3365; he ticked nine and closed the poll.
-- E-mail (`plans/mail-inbox-more.md`): remind later and remind when no answer comes, incoming mail rules, "I am away", undo send.
-- My calendar (`plans/personal-calendar-more.md`): repeating plans, team roadmap templates with "move the following steps too", plans written into the person's Google or Outlook calendar.
-- Communication: a sending calendar, step MA13 of `plans/messages-area-steps-2.md`.
+- E-mail (built as IB9-IB14, `workspace/mail-prs.md`): remind later (`workspace/mail-remind-later.md`) and remind when no answer comes (`workspace/mail-no-answer.md`), incoming mail rules (`workspace/mail-rules.md`), "I am away" (`workspace/mail-away.md`), undo send (`workspace/mail-undo-send.md`).
+- My calendar (landed, `workspace/workspace-personal-calendar-rules.md`): repeating plans, team roadmap templates with "move the following steps too", plans written into the person's Google or Outlook calendar.
+- Communication: a sending calendar, step MA13 of `ui/messages-area-sends-calendar.md`.
 - Not ticked: "Add to my calendar" on tasks, orders, quotes and bookings; it stays e-mail's alone.
 - A table or column one of these needs is asked of him when its census shows the shape.
 
