@@ -226,7 +226,6 @@ function ws_js_strings()
         'channel_search'         => lang('Search in this channel'),
         'purpose'                => lang('Purpose'),
         'mention'                => lang('Mention someone'),
-        'everyone'               => lang('Everyone'),
         'everyone_meta'          => lang('Everyone in the room but you'),
         'message_deleted'        => lang('This message was deleted.'),
         'minutes_short'          => ws_js_template('{var:1} min', 1),
