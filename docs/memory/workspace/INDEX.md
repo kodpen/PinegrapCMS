@@ -167,7 +167,7 @@
 - personal-calendar-census-words.md: PC1 census (2026-11-14): words taken beside "plan" (Plan item, Planning Board, /workspace/plan, "#plan") and the names proposed for a private plan [decision: here]
 - plan-board-grid.md: Planning Board (workspace_board.php) Turkish name, grid columns and why .ws-board's min-width equals the grid minimum (#3815) [decision: here]
 - poll-agent-question-reach.md: Where an agent question reaches the person it asks: the ring, Today, the Assistant card, the channel export, and tools/ws_poll.php ask, again, withdraw
-- poll-agent-question.md: The agent question on the server (agent_question.php, step 11.0.214): the flag, who answers, settling by the first answer, the wake and brief, the memory index, map and API fields
+- poll-agent-question.md: The agent question on the server (agent_question.php, step 11.0.214): the flag, who answers, settling by the first answer, the wake and brief, the memory index, map and API fields [decision: decisions-made-workspace-34.md]
 - poll-agent-questions-census-columns.md: AQ1 census: the columns the poll's new parts need (description, picture, links, recommended, "Other", take back, ask again), older polls, API, export, guests [decision: here]
 - poll-agent-questions-census-today.md: AQ1 census of the poll today: its three tables, the box, ws_poll_vote(), ws_poll_close(), who may change or close, a guest's vote, who asks as an agent, export, ws_poll.php
 - poll-agent-questions-census-wake.md: AQ1 census for the agent question: an agent changing its poll, the answer's request row and brief, the memory index, the ring; the answered behaviour questions [decision: here]
@@ -216,6 +216,7 @@
 - workspace-api-layout-writes.md: Workspace API layout writes the same for everybody (a channel into a group): gated like changing the channel, not ws_api_person_only(); access writes name who comes in and leaves
 - workspace-api-message-canvas.md: file.canvas of an API message (#8649, PR #9161): a canvas picture's newest version and pending, server or drawn, read once a page; which writes touch the message so changed_since and sync bring it
 - workspace-api-overview.md: The Workspace part of the external API as a whole: who may call which write (key, OAuth, team devices), dry runs, sync and inbox, tasks, plan, time, forwards; which workspace-api-* file holds each
+- workspace-api-person-card.md: GET /workspace/channels/{id}/members/{user_id}, the person card of a channel in the API and MCP (api_person_card.php): what it returns, who may call it, seen only for a manager [decision: here]
 - workspace-api-plan.md: GET /workspace/plan: what a cell and a row carry (task entries with their flags, plan items, the undated count) and where they come from
 - workspace-api-sync-inbox.md: Keeping a Workspace app current through the API: GET /workspace/sync cursor marks, inbox deletions and reach changes for changed_since, hidden messages and touched_at, assistants carried on
 - workspace-api-task-reminder.md: A task's due time and e-mail reminder over the Workspace API and MCP (PR #1742): due_time, remind_minutes on the task writes and answers, how null clears them, the drawer's checks they go through
