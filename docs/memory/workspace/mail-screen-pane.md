@@ -9,7 +9,6 @@ description: The Workspace E-mails reading pane (mail_pane.php) and the per-pers
 - Marks per mail: Not sent with `send_error` and Waiting to be sent, the card's badge (`ws_mail_send_state()`, `ws_mail_send_badge_html()`, `workspace/mail-send.md`; a mail that left gets none), Automatic answer (`ws_mail_item_is_auto_reply()`), and Not delivered under an outgoing mail whose bounce came back (`in_reply_to` = its `rfc_message_id`, `workspace/mail-sent-and-bounces.md`).
 - The open conversation stays in the address (`?conversation=`), so a reload or a shared link opens it again. Below 768 px the pane takes the list's place.
 - For that address the server draws the pane (WM10, #8796): `ws_mail_pane_open()` (read mark, Forward offers) before the list and the menu count, `ws_mail_pane_page_html()` with a Close link back to the list (`data-ws-mail-close`), or "This conversation cannot be opened.". The script reads it again for its tools without a loading line; the panel action `ws_mail_pane` opens it the same way.
-
 - Long names wrap: `mail-screen-pane-wrap.md`.
 
 ## What can be done in it?
@@ -18,6 +17,7 @@ description: The Workspace E-mails reading pane (mail_pane.php) and the per-pers
 
 ## When is a conversation unread?
 - Per person, in `ws_mail_reads` (`workspace/mail-tables-sending.md`): unread while its newest incoming mail id is greater than both the person's mark on it and their floor (`ws_mail_unread()`, in SQL `ws_mail_unread_sql()`). A mark never moves back (`GREATEST` on upsert).
+- The SQL puts the floor in `GREATEST()` unquoted (#9729): MySQL 8 compared `'950'` with `1200` as text.
 - The floor is the row with conversation 0. `ws_mail_read_floor()` writes it at the newest mail the first time a person's count is asked for, so nobody starts with a backlog of old mail.
 
 ## Where are marks written?
@@ -26,7 +26,7 @@ description: The Workspace E-mails reading pane (mail_pane.php) and the per-pers
 - Mark all as read (`ws_mail_read_all`): the floor moves to the newest mail and the marks below it are deleted.
 
 ## What does the menu count?
-- `ws_mail_unread_count()`: open conversations of the channels the person reads that are unread for them; the badge of the Communication menu row (`pg_messages_mail_unread()`, MA10b #9453), counted again on each page; the E-mails tile it was on left the Workspace's list.
+- `ws_mail_unread_count()`: open conversations of the channels the person reads that are unread for them; the badge of the Communication menu row (`pg_messages_mail_unread()`, MA10b #9453), counted again on each page.
 
 ## Tests?
-- `tests/workspace_mail_list_test.php` (pane HTML and marks, unread rule, item ids, menu count, wiring). Not run against a database or in a browser for PR #8652.
+- `tests/workspace_mail_list_test.php` (pane HTML and marks, unread rule and its SQL, item ids, menu count, wiring).
