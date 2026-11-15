@@ -178,14 +178,12 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                 </div>
             </div>' : '') . ((function_exists('erp_credit_ready') && erp_credit_ready()) ? '
             <div class="row">
-                <div class="col-12 md:col-3 my-3">
+                <div class="col-12 pg-field-span-3 my-3">
                     <label for="credit_limit" class="form-label">' . h(lang(array('string' => 'Credit limit ({var:1})', 'vars' => erp_base_currency()))) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'credit_limit', 'name' => 'credit_limit',
                         'class' => 'form-control', 'maxlength' => '20', 'inputmode' => 'decimal',
                         'autocomplete' => 'off', 'placeholder' => lang('No limit'))) . '
-                </div>
-                <div class="col-12 md:col-9 my-3 d-flex align-items-end">
                     <div class="form-text">' . h((erp_credit_mode() === 'block')
                         ? lang('The most this customer may owe, in the base currency. An invoice typed in the ERP that would take the balance past it is refused until a payment comes in. Empty is no limit; order invoices are never held back.')
                         : lang('The most this customer may owe, in the base currency. An invoice typed in the ERP that takes the balance past it is still issued, with a warning, and the account list shows the account as over. Empty is no limit.')) . '</div>
@@ -260,32 +258,32 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         'type' => 'text', 'id' => 'address', 'name' => 'address',
                         'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 md:col-6 my-3"' . pg_places_input_attrs('country_code', 'city') . '>
+                <div class="col-12 md:col-3 my-3"' . pg_places_input_attrs('country_code', 'city') . '>
                     <label for="district" class="form-label">' . lang('District') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'district', 'name' => 'district',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 md:col-6 my-3">
+                <div class="col-12 md:col-3 my-3">
                     <label for="city" class="form-label" data-label-tr="' . h(lang('Province')) . '" data-label-other="' . h(lang('City')) . '">' . h(lang(erp_address_city_label_key($country))) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'city', 'name' => 'city',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 md:col-6 my-3' . $not_tr . '" data-erp-not-tr>
+                <div class="col-12 md:col-3 my-3' . $not_tr . '" data-erp-not-tr>
                     <label for="state" class="form-label">' . lang('State / Province') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'state', 'name' => 'state',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 md:col-4 my-3">
+                <div class="col-12 md:col-3 my-3">
                     <label for="postcode" class="form-label">' . lang('Postal Code') . '</label>
                     ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'postcode', 'name' => 'postcode',
                         'class' => 'form-control', 'maxlength' => '20',
                         'autocomplete' => 'off'), $is_tr ? array('inputmode' => 'numeric') : array())) . '
                 </div>
-                <div class="col-12 md:col-6 my-3">
+                <div class="col-12 md:col-3 my-3">
                     <label for="country_code" class="form-label">' . lang('Country') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'country_code', 'name' => 'country_code',

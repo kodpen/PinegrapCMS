@@ -645,7 +645,7 @@ pg_page_shell([
                         <div class="card-body">' . $output_receipt . '</div>
                     </div>
                     ' . (($output_repeat !== '') ? '<div class="card mb-7">
-                        <h2 class="card-header bg-reset border-0 pg-title-section"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Repeat') . '</h2>
+                        <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Repeat') . '</h2>
                         <div class="card-body">' . $output_repeat . '</div>
                     </div>' : '') . '
                     ' . $output_cancel . '
