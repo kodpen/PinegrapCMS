@@ -42,13 +42,13 @@ function pg_container_form_cards($liveform, $status_rows = '')
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
                                             <input type="text" name="name" id="name" maxlength="100" required value="' . h($liveform->get_field_value('name')) . '" class="form-control' . ($liveform->check_field_error('name') ? ' is-invalid' : '') . '" />
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 pg-field-span-3 my-3">
                                             <label for="cost" class="form-label">' . lang('Cost') . '</label>
-                                            <label class="form-control form-adorn" style="max-width:200px;">
+                                            <label class="form-control form-adorn">
                                                 <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
                                                 <input type="number" step="any" min="0" max="' . pg_container_cost_max() . '" id="cost" name="cost" value="' . h($liveform->get_field_value('cost')) . '" class="form-ghost' . ($liveform->check_field_error('cost') ? ' is-invalid' : '') . '" />
                                             </label>
@@ -74,22 +74,22 @@ function pg_container_form_cards($liveform, $status_rows = '')
                                                     <label class="" for="length_type_cm">' . lang('Cm') . '</label>
                                                 </div>
                                             </div>
-                                            <div id="length_inches" class="row g-3" style="max-width:600px;">
-                                                <div class="col-12 sm:col-4">
+                                            <div id="length_inches" class="row g-3">
+                                                <div class="col-12 md:col-3">
                                                     <label for="length" class="form-label">' . lang('Length') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                     <label class="form-control form-adorn form-adorn-end">
                                                         <span class="form-adorn-text" aria-hidden="true">' . lang('in') . '</span>
                                                         <input type="number" step="any" min="0.0001" max="' . pg_container_dimension_max() . '" id="length" name="length" value="' . h($liveform->get_field_value('length')) . '" class="form-ghost' . ($liveform->check_field_error('length') ? ' is-invalid' : '') . '" />
                                                     </label>
                                                 </div>
-                                                <div class="col-12 sm:col-4">
+                                                <div class="col-12 md:col-3">
                                                     <label for="width" class="form-label">' . lang('Width') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                     <label class="form-control form-adorn form-adorn-end">
                                                         <span class="form-adorn-text" aria-hidden="true">' . lang('in') . '</span>
                                                         <input type="number" step="any" min="0.0001" max="' . pg_container_dimension_max() . '" id="width" name="width" value="' . h($liveform->get_field_value('width')) . '" class="form-ghost' . ($liveform->check_field_error('width') ? ' is-invalid' : '') . '" />
                                                     </label>
                                                 </div>
-                                                <div class="col-12 sm:col-4">
+                                                <div class="col-12 md:col-3">
                                                     <label for="height" class="form-label">' . lang('Height') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                     <label class="form-control form-adorn form-adorn-end">
                                                         <span class="form-adorn-text" aria-hidden="true">' . lang('in') . '</span>
@@ -97,22 +97,22 @@ function pg_container_form_cards($liveform, $status_rows = '')
                                                     </label>
                                                 </div>
                                             </div>
-                                            <div id="length_cm" class="row g-3 d-none" style="max-width:600px;">
-                                                <div class="col-12 sm:col-4">
+                                            <div id="length_cm" class="row g-3 d-none">
+                                                <div class="col-12 md:col-3">
                                                     <label for="lengthcm" class="form-label">' . lang('Length') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                     <label class="form-control form-adorn form-adorn-end">
                                                         <span class="form-adorn-text" aria-hidden="true">' . lang('cm') . '</span>
                                                         <input type="number" step="any" min="0.01" max="253999999.9997" id="lengthcm" name="lengthcm" class="form-ghost" />
                                                     </label>
                                                 </div>
-                                                <div class="col-12 sm:col-4">
+                                                <div class="col-12 md:col-3">
                                                     <label for="widthcm" class="form-label">' . lang('Width') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                     <label class="form-control form-adorn form-adorn-end">
                                                         <span class="form-adorn-text" aria-hidden="true">' . lang('cm') . '</span>
                                                         <input type="number" step="any" min="0.01" max="253999999.9997" id="widthcm" name="widthcm" class="form-ghost" />
                                                     </label>
                                                 </div>
-                                                <div class="col-12 sm:col-4">
+                                                <div class="col-12 md:col-3">
                                                     <label for="heightcm" class="form-label">' . lang('Height') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                     <label class="form-control form-adorn form-adorn-end">
                                                         <span class="form-adorn-text" aria-hidden="true">' . lang('cm') . '</span>
@@ -121,7 +121,7 @@ function pg_container_form_cards($liveform, $status_rows = '')
                                                 </div>
                                             </div>
                                         </fieldset>
-                                        <div class="col-12 my-3">
+                                        <div class="col-12 pg-field-span-3 my-3">
                                             <label for="weight" id="weight_label" class="form-label">' . lang('Weight') . '</label>
                                             <div class="mb-3">
                                                 <div class="form-field d-inline-grid me-5">
@@ -133,11 +133,11 @@ function pg_container_form_cards($liveform, $status_rows = '')
                                                     <label class="" for="weight_type_kg">' . lang('Kg') . '</label>
                                                 </div>
                                             </div>
-                                            <label id="weight_pound" class="form-control form-adorn form-adorn-end" style="max-width:200px;">
+                                            <label id="weight_pound" class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('lbs') . '</span>
                                                 <input type="number" step="any" min="0" max="' . pg_container_dimension_max() . '" id="weight" name="weight" value="' . h($liveform->get_field_value('weight')) . '" class="form-ghost' . ($liveform->check_field_error('weight') ? ' is-invalid' : '') . '" />
                                             </label>
-                                            <label id="weight_kg" class="form-control form-adorn form-adorn-end d-none" style="max-width:200px;">
+                                            <label id="weight_kg" class="form-control form-adorn form-adorn-end d-none">
                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('kg') . '</span>
                                                 <input type="number" step="any" min="0" max="45359236.9999" id="weightkg" name="weightkg" class="form-ghost" aria-labelledby="weight_label" />
                                             </label>

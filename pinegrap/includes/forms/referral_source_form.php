@@ -122,14 +122,14 @@ function pg_referral_source_form_card($values)
                                     ' . $heading . '
                                 </h2>
                                 <div class="card-body pt-0">
-                                    <h3 class="h6 mt-3">' . lang('Shown in the "How did you hear about us?" choice at checkout') . '</h3>
+                                    <h3 class="pg-group-label mt-3">' . lang('Shown in the "How did you hear about us?" choice at checkout') . '</h3>
                                     <div class="row">
-                                        <div class="col-12 md:col-8 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Referral Source Name') . '</label>
                                             <input type="text" id="name" name="name" class="form-control" maxlength="50"' . $name_value . ' required />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 pg-field-span-3 my-3">
                                             <label for="sort_order" class="form-label">' . lang('Sort Order') . '</label>
                                             <div class="input-group number-controls">
                                                 <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
@@ -138,9 +138,9 @@ function pg_referral_source_form_card($values)
                                             </div>
                                         </div>
                                     </div>
-                                    <h3 class="h6 mt-5">' . lang('Referral Source Code for Order Reporting') . '</h3>
+                                    <h3 class="pg-group-label mt-5">' . lang('Referral Source Code for Order Reporting') . '</h3>
                                     <div class="row">
-                                        <div class="col-12 md:col-8 my-3">
+                                        <div class="col-12 pg-field-span-4 my-3">
                                             <label for="code" class="form-label">' . lang('Referral Source Code') . '</label>
                                             <input type="text" id="code" name="code" class="form-control" maxlength="50"' . $code_value . ' required />
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>

@@ -17,7 +17,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 - `addon-hook-*`: 10 files.
 - `channel-profile-*`: 7 files.
-- `panel-old-*`: 11 files.
+- `panel-old-*`: 13 files.
 - `storefront-api-*`: 9 files.
 
 ## Files

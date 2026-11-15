@@ -443,7 +443,7 @@ foreach ($providers as $provider_key => $provider) {
 					' . (($account_rows !== '')
 						? '<ul class="list-group list-group-flush mb-5">' . $account_rows . '</ul>'
 						: '<p class="small fg-secondary">' . h(lang(array('string' => 'No {var:1} account is connected.', 'vars' => $provider['label']))) . '</p>') . '
-					<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 connections-connect"
+					<button type="button" class="pg-button pg-button-fill connections-connect"
 						data-provider="' . h($provider_key) . '" data-purpose="' . h($connect_purpose) . '" data-connection="0"' . (($ready && $can_seal) ? '' : ' disabled') . '>
 						<i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Connect a {var:1} account', 'vars' => $provider['label']))) . '</button>
 					' . (($hint === '') ? '' : '<div class="form-text">' . h($hint) . '</div>') . '

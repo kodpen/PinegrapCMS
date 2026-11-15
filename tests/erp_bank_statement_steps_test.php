@@ -65,15 +65,15 @@ function test_erp_bank_statement_steps_send_once()
 {
 	$list = erp_bank_statement_steps_source('erp_bank_statements.php');
 	erp_bank_statement_steps_send_once($list, 'Take in');
-	pg_assert_contains('enctype="multipart/form-data" class="card mb-7" data-erp-send-once>', $list, 'Take in form sends once');
+	pg_assert_contains('enctype="multipart/form-data" class="card pg-card mb-7" data-erp-send-once>', $list, 'Take in form sends once');
 	pg_assert_contains('data-erp-send-once-status', $list, 'Take in status line');
 
 	$one = erp_bank_statement_steps_source('erp_bank_statement.php');
 	erp_bank_statement_steps_send_once($one, 'Take the lines in');
 	pg_assert_contains('<form method="post" action="erp_bank_statement.php" class="card my-7" data-erp-send-once>', $one, 'Take the lines in form sends once');
 	pg_assert_contains("'btn-solid theme-success', ' data-erp-send-once')", $one, 'Record the suggested lines sends once');
-	pg_assert_contains('<span class="small fg-secondary" role="status" aria-live="polite" data-erp-send-once-status></span></div>', $one, 'Take the lines in status line');
-	pg_assert_contains("((\$attributes !== '') ? '<span class=\"small fg-secondary\" role=\"status\" aria-live=\"polite\" data-erp-send-once-status></span>' : '')", $one, 'Record the suggested lines status line');
+	pg_assert_contains('<span class="pg-text-2" role="status" aria-live="polite" data-erp-send-once-status></span></div>', $one, 'Take the lines in status line');
+	pg_assert_contains("((\$attributes !== '') ? '<span class=\"pg-text-2\" role=\"status\" aria-live=\"polite\" data-erp-send-once-status></span>' : '')", $one, 'Record the suggested lines status line');
 	// Split again and the per-line forms keep the window guard only.
 	pg_assert_contains("lang('Split again'), 'btn-outline theme-secondary')", $one, 'Split again unchanged');
 }

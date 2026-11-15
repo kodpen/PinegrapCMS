@@ -10,7 +10,7 @@ description: The credential-free discovery document (.well-known/pinegrap.json a
 - `version` is the major line only (`2026`, not `2026.11.0`), cut by `api_discovery_version_line()`, so one unauthenticated request does not name the exact build; the exact version comes from `GET /meta` after sign-in (decided #2384, PR #2495). Nothing about people, keys, scopes or the firewall goes in.
 
 ## When is device_signin true?
-- When `api_device_app_check()` would let a sign-in through: API on, `api_devices_ready()`, `api_device_app('')` active and not past `expires_at`, and the caller's address admitted by its allow list. The allow-list test is `api_ip_allowlist_admits($list, $ip)`, the boolean `api_check_ip_allowlist()` now calls.
+- When `api_device_app_check()` would let a sign-in through: API on, `api_devices_ready()`, `api_device_app('')` found (it takes the oldest active device application not past `expires_at`, `api_device_app_usable_where()`), and the caller's address admitted by its allow list. The allow-list test is `api_ip_allowlist_admits($list, $ip)`, the boolean `api_check_ip_allowlist()` now calls.
 - `pairing` = `device_signin` and the `api_device_pairings` table (`api_pairing_ready()`): true once the 11.0.70 step has run (`api/api-device-pairing.md`).
 
 ## Where is it wired?

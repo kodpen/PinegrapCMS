@@ -88,7 +88,7 @@ foreach ($rows as $row) {
         'class' => $enabled ? '' : 'opacity-75',
         'cells' => array(
             'product' => pg_list_cell(pg_commerce_list_open_link('erp_stock.php?product_id=' . $product_id . '#erp_stock_moves', h($label))
-                . ((($sku !== '') && ($sku !== trim($label))) ? '<div class="small fg-secondary font-monospace">' . h($sku) . '</div>' : '')
+                . ((($sku !== '') && ($sku !== trim($label))) ? '<div class="pg-text-meta font-monospace">' . h($sku) . '</div>' : '')
                 . ($enabled ? '' : '<span class="badge theme-secondary">' . lang('Not on sale') . '</span>'), 'align-middle text-wrap text-break', array('data-pg-sort-value' => $label)),
             'stock' => pg_list_cell($cells['stock']['html'], $cells['stock']['class'], array('data-pg-sort-value' => (string) $cells['stock']['sort'])),
             'min_quantity' => pg_list_cell($cells['min_quantity']['html'], $cells['min_quantity']['class'], pg_list_edit_cell_attributes($quick_edit, 'min_quantity', $product_id, ($minimum > 0) ? $minimum : '') + array('data-pg-sort-value' => (string) $cells['min_quantity']['sort'])),
@@ -156,10 +156,10 @@ pg_page_shell([
         </div>
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky my-7" style="top:3.3rem;">
-                <div class="card">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                <div class="card pg-card">
+                    <h2 class="card-header bg-reset border-0 pg-title-status">' . h(lang('Summary')) . '</h2>
                     <div class="card-body">
-                        <dl class="row small mb-0">
+                        <dl class="row pg-text-2 mb-0">
                             <dt class="col-8 fw-normal fg-secondary">' . h(lang('Products')) . '</dt>
                             <dd class="col-4 text-end mb-2">' . pg_format_number($summary_products, 0) . '</dd>
                             <dt class="col-8 fw-normal fg-secondary">' . h(lang('With a minimum')) . '</dt>

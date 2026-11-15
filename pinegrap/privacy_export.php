@@ -212,7 +212,7 @@ if (is_array($privacy_export_result) && ($privacy_export_result['status'] === 'r
                         ' . (($privacy_export_people !== '') ? '<ul class="list-unstyled mb-5">' . $privacy_export_people . '</ul>' : '') . '
                         <form action="privacy_export.php" method="post" class="disable_shortcut d-flex flex-wrap gap-3">
                             ' . get_token_field() . $privacy_export_hidden . '
-                            <button type="submit" name="download" value="json" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-filetype-json me-1" aria-hidden="true"></i>' . h(lang('Download JSON')) . '</button>
+                            <button type="submit" name="download" value="json" class="pg-button pg-button-fill"><i class="bi bi-filetype-json" aria-hidden="true"></i>' . h(lang('Download JSON')) . '</button>
                             ' . ($privacy_export_pdf_ready ? '<button type="submit" name="download" value="pdf" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5"><i class="bi bi-filetype-pdf me-1" aria-hidden="true"></i>' . h(lang('Download PDF summary')) . '</button>' : '') . '
                         </form>
                         <p class="small fg-secondary mt-5 mb-0">' . h(lang('The JSON file is the full record; the PDF summary is the version to send to the person. Each download is recorded in the audit trail.')) . '</p>

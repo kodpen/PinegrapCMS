@@ -219,11 +219,11 @@ function pg_tax_zone_form_cards($values, $country_options, $state_options, $erro
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang('Tax Zone Name') . '</label>
                                             <input type="text" name="name" id="name" maxlength="50" value="' . h($name) . '" placeholder="' . h(lang('Tax Zone Name')) . '" class="form-control' . $name_class . '" required' . $name_aria . ' />' . $name_feedback . '
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 pg-field-span-3 my-3">
                                             <label for="tax_rate" class="form-label">' . lang('Tax Rate') . ' (%)</label>
                                             <input type="number" min="0" max="100" step="0.001" name="tax_rate" id="tax_rate" required' . $tax_rate_attribute . ' class="form-control" />
                                         </div>

@@ -5,12 +5,14 @@ description: The Team devices switch in Settings › API (includes/api/device_sw
 
 ## Where is it and what does it show?
 - The Application API card of Site Settings (`includes/settings/api.php`, saved by `api.save.php`), drawn only where `api_apps` has its `kind` column. On while a device application is usable now: active and not past `expires_at` (`api_device_switch_is_on()`, the same test as `api_device_app_check()` and the discovery document's `device_signin`).
+- Sign-in without a key (`api_device_app('')`), the discovery document and pairing (`api_pairing_device_app()`) take the oldest usable device application by the shared SQL rule `api_device_app_usable_where($now)`, so an older active one past its expiry does not hide a newer usable one the switch counts as on. Symptom fixed: switch on, yet sign-in 403 `application_expired`, `device_signin: false`, no pairing code (issue #9679).
 - Application Access still makes and edits device applications by hand; the switch is the one-click way.
 
 ## What does a save do?
 - Planned by the pure `api_device_switch_plan($apps, $on, $ceiling, $now)`, written by `api_device_switch_save()`; a save that changes nothing writes nothing (no audit or Site Log line).
 - On: the oldest usable device application gains the ceiling's scopes; with none usable, the oldest device application is set active (a past expiry is cleared, or the switch would show off again); with none at all, `api_app_create()` makes "Team devices" (kind `device`, no secret, 120/min, owner the person saving).
 - Off: every active device application is disabled. Rows, scopes and devices are kept; a disabled application refuses every device call, and on lets them in again.
+- `POST /auth/refresh` checks the application (`api_device_app_check()`: switch, expiry, IP allow list) on the row found by `api_device_find_refresh()` before the exchange, so a refusal keeps the presented token current. Symptom (#9678): the exchange ran first, the client kept only the previous token, and its next refresh after the 60 s grace revoked the device as a replay.
 - Scopes the operator chose are never removed; only the ceiling is added.
 
 ## What is the ceiling?

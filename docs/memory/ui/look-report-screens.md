@@ -19,9 +19,15 @@ module: report_view
 ## Which choices were made, and why?
 - The range is text, not a 34 px field: there is no range picker, and a field would promise one.
 - Shipping and ERP tax print no `h2`: the top bar names them already. They drop `pg_dash.min.js` and the dashboard sheet (no map); order and visitor keep both for the map.
-- Figures: up to five share a row, more go in two even rows of at most four; a phone draws two a row.
-- A level with no chart prints one line saying so (`p.pg-report-nochart`), never an empty plot.
+- Figures: up to five share a row, more go in two even rows of at most four; a phone draws two a row, an odd last card the whole row (RS8a, #9700).
+- A level with no chart prints one line saying so (`p.pg-report-nochart`, 620 px at most), never an empty plot. Bars take the whole row, as the map (#9718).
 - The drawer's Bootstrap `.switch` is the look's switch (`look-switch.md`).
+
+## What does a phone get? (RS8a, #9700, the architect's look 4223)
+- A `.pg-seg` of the strip or tools row never wraps: one row that scrolls sideways, its scrollbar hidden.
+- The report's name wraps, never cut; on a phone the pill goes under it. The breadcrumb's last part (every screen) gives way first and ends with an ellipsis.
+- Tables: the first column (a row's name after its level's indent, 26 px a level) is sticky, between 9rem and half the width, words wrapping, the cell opaque with its row's tint.
+- The line's axis names stand at even steps from the first point (`pgReportView.axisTicks()`, `tests/report_view_axis_test.php`).
 
 ## What is not done?
 - Each is a behaviour, not only a look: compare with the previous period (dashed line, change marks), a segmented control choosing the figure, period presets on the order report, filters as pills with "Add filter" in the tools row, Export in the head.

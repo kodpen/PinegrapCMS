@@ -175,9 +175,11 @@ $quantity = function ($value, $unit_code) {
 // A menu row ($class 'menu-item ...') is a full-width form in the overflow menu.
 $action_button = function ($action, $label, $icon, $class, $confirm = '') use ($order_id, $self_action) {
     $menu = (strpos($class, 'menu-item') === 0);
+    // A look button (pg-button …) brings its whole class and spaces its icon itself.
+    $look = (strpos($class, 'pg-button') === 0);
     return '<form method="post" action="' . $self_action . '" class="' . ($menu ? 'disable_shortcut' : 'd-inline') . '">' . get_token_field()
         . '<input type="hidden" name="id" value="' . $order_id . '" /><input type="hidden" name="erp_action" value="' . h($action) . '" />'
-        . '<button type="submit" class="' . ($menu ? '' : 'btn btn-sm ') . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ' ' . ($menu ? 'me-3' : 'me-1') . '" aria-hidden="true"></i>' . $label . '</button></form>';
+        . '<button type="submit" class="' . (($menu || $look) ? '' : 'btn btn-sm ') . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ($menu ? ' me-3' : ($look ? '' : ' me-1')) . '" aria-hidden="true"></i>' . $label . '</button></form>';
 };
 
 // What has come against each line, and the invoices it came on.
@@ -197,7 +199,7 @@ $status_actions = array();
 if (!$readonly) {
     $menu_row = 'menu-item pg-link-body-emphasis';
     if ($can_invoice) {
-        $output_invoice_button = $action_button('invoice', lang('Make a purchase invoice draft'), 'bi-receipt', 'btn-solid theme-primary rounded-pill px-5', lang('Make a purchase invoice draft for what has not come yet, at the order\'s prices and dated today?'));
+        $output_invoice_button = $action_button('invoice', lang('Make a purchase invoice draft'), 'bi-receipt', 'pg-button pg-button-fill', lang('Make a purchase invoice draft for what has not come yet, at the order\'s prices and dated today?'));
     }
     if ($status_key === 'open') {
         $status_actions[] = $action_button('sent', lang('Mark as sent'), 'bi-send-check', $menu_row, lang('Mark this order as sent to the supplier (by phone, on paper)? Sending it by e-mail does this by itself.'));
@@ -330,7 +332,7 @@ if (!empty($linked_invoices) || in_array($status_key, array('partial', 'received
 
     $output_goods = '
             <div class="card my-7" id="erp-goods">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Goods received') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Goods received') . '</h2>
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead><tr><th>#</th><th>' . lang('Description') . '</th><th class="text-end">' . lang('Ordered') . '</th><th class="text-end">' . lang('Received') . '</th><th class="text-end">' . lang('On drafts') . '</th><th class="text-end">' . lang('Still to come') . '</th></tr></thead>
@@ -386,7 +388,7 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     $output_mail_form = '';
 
     if ($can_mail) {
-        $output_mail_button = '<a class="btn btn-sm btn-text theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
+        $output_mail_button = '<a class="pg-button pg-button-ghost" href="#erp-mail"><i class="bi bi-envelope" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
         $output_mail_form = '
             <form name="mail_form" action="' . $self_action . '" method="post" class="row g-3" data-erp-send-once>
                 ' . get_token_field() . '
@@ -422,7 +424,7 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     if (($output_mail_form !== '') || ($mail_rows !== '') || ($output_mail_result !== '')) {
         $output_mail = '
             <div class="card my-7" id="erp-mail">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('E-mail to the supplier') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('E-mail to the supplier') . '</h2>
                 <div class="card-body">' . $output_mail_result . $output_mail_form . '</div>'
                 . (($mail_rows !== '') ? '
                 <div class="card-body p-0 border-top table-responsive">
@@ -477,8 +479,8 @@ if ($status_actions) {
 }
 
 $output_toolbar = pg_screen_toolbar(array(
-    'primary' => ($output_invoice_button !== '') ? $output_invoice_button : $pdf_link('btn btn-sm btn-solid theme-primary rounded-pill px-5'),
-    'secondary' => (($output_invoice_button !== '') ? $pdf_link('btn btn-sm btn-text theme-secondary') : '') . $output_mail_button,
+    'primary' => ($output_invoice_button !== '') ? $output_invoice_button : $pdf_link('pg-button pg-button-fill'),
+    'secondary' => (($output_invoice_button !== '') ? $pdf_link('pg-button pg-button-ghost') : '') . $output_mail_button,
     'grow' => '<div class="small d-flex flex-wrap align-items-center column-gap-5 row-gap-1"><span>' . implode('</span><span>', $facts) . '</span></div>',
     'overflow' => '<div class="pg-menu-wrap">
                 <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-display="static" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
@@ -492,7 +494,7 @@ $output_toolbar = pg_screen_toolbar(array(
 echo
 pg_page_shell([
     'title' => h((string) $order['full_number']),
-    'extra classes' => 'erp erp_invoices',
+    'extra classes' => 'erp erp_invoices pg-measure-edit',
     'icon' => 'erp',
     'heading' => h(lang(array('string' => 'Purchase order {var:1}', 'vars' => (string) $order['full_number']))) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>',
     // The back arrow is named for where it goes: "Cancel" read the same as
@@ -518,9 +520,10 @@ pg_page_shell([
             The form column: the order and the goods received against it (a
             per-line table as wide as the order\'s). The e-mail card goes in the
             status column after it, so a narrow screen puts it below the order.
-            That column is not sticky: it holds a form, can be taller than the
-            window and is reached by the #erp-mail jump, and a sticky box taller
-            than the window hides its own end. The line editor needs about
+            That column does not pin (its box is position-sticky with no offset,
+            so its card takes the look\'s card): it holds a form, can be taller
+            than the window and is reached by the #erp-mail jump, and a pinned
+            box taller than the window hides its own end. The line editor needs about
             1,060px, so an open order splits only from 2xl; below that the card
             follows the editor. Without an e-mail card the order takes the width.
         -->
@@ -533,7 +536,9 @@ pg_page_shell([
             ' . $output_goods . '
         </div>
         ' . (($output_mail !== '') ? '<div class="col-12 ' . ($editable ? '' : 'lg:col-4 ') . '2xl:col-3 order-2">
+            <div class="position-sticky">
             ' . $output_mail . '
+            </div>
         </div>' : '') . '
     </div>
 </main>

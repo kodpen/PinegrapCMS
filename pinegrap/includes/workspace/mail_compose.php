@@ -287,6 +287,17 @@ function ws_mail_send_file_reach($viewer, $file_id, $reached = null)
     $messages = (array) db_items("SELECT channel_id, file_name FROM ws_messages
         WHERE file_id = '" . $file_id . "' AND deleted_at = 0 ORDER BY id LIMIT 50");
 
+    // A mail held at its time keeps its files on the deleted lines of its
+    // card (ws_mail_later_hold()): they are reached as its draft is - a
+    // reply's by the channel's readers, a new mail's by its writer.
+    if (defined('WS_MAIL_DRAFT_STATE')) {
+        $messages = array_merge($messages, (array) db_items("SELECT m.channel_id, m.file_name FROM ws_messages m
+            INNER JOIN ws_mail_items i ON i.id = m.sender_id
+            WHERE m.file_id = '" . $file_id . "' AND m.deleted_at > 0 AND m.sender_kind = 'mail'
+                AND i.send_state = '" . WS_MAIL_DRAFT_STATE . "' AND (i.conversation_id > 0 OR i.user_id = '" . (int) ($viewer['id'] ?? 0) . "')
+            ORDER BY m.id LIMIT 50"));
+    }
+
     foreach ($messages as $message) {
         $channel = ws_channel((int) $message['channel_id']);
 

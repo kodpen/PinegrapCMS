@@ -29,6 +29,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/ical_zone.php');
+
 /** The most addresses one person keeps. */
 define('WS_PERSONAL_ICAL_MAX', 5);
 
@@ -504,8 +506,9 @@ function ws_personal_ical_trim($events)
 /**
  * A DTSTART, DTEND, EXDATE or RECURRENCE-ID value as a moment: a date is
  * midnight in the site's zone, a time ending in Z is UTC, one with a TZID is
- * in that zone (the site's when PHP does not know the name, as with
- * Outlook's Windows names), a floating time is in the site's zone.
+ * in that zone (an Outlook Windows name or display label through
+ * ws_ical_zone(); the site's zone for a name that matches nothing), a
+ * floating time is in the site's zone.
  *
  * @param array $property value, params
  * @return DateTime|null
@@ -523,11 +526,7 @@ function ws_personal_ical_moment($property)
     if (!empty($match[3])) {
         $zone = new DateTimeZone('UTC');
     } elseif (preg_match('/(?:^|;)TZID="?([^";]+)"?/i', (string) ($property['params'] ?? ''), $tzid)) {
-        try {
-            $zone = new DateTimeZone($tzid[1]);
-        } catch (Exception $e) {
-            $zone = null;
-        }
+        $zone = ws_ical_zone($tzid[1]);
     }
 
     $moment = DateTime::createFromFormat('!YmdHis', $match[1] . (isset($match[2]) && $match[2] !== '' ? $match[2] : '000000'), $zone ?: new DateTimeZone(date_default_timezone_get()));

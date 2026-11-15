@@ -80,9 +80,9 @@ if (!$_POST) {
         <div class="row">
             <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 pg-title-section">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Transfer') . '
-                    </div>
+                    </h2>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-12 md:col-6 my-3">
@@ -102,7 +102,7 @@ if (!$_POST) {
                                     . erp_no_till_hint($till_count, 'transfer') . '
                                 </div>
                             </div>
-                            <div class="col-12 sm:col-6 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <div class="form-field">
                                     <label for="amount" class="form-label">' . lang('Amount') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
@@ -114,7 +114,7 @@ if (!$_POST) {
                                     </label>
                                 </div>
                             </div>
-                            <div class="col-12 sm:col-6 my-3">
+                            <div class="col-12 md:col-3 my-3">
                                 <div class="form-field">
                                     <label for="doc_date" class="form-label">' . lang('Date') . '</label>
                                     ' . $liveform->output_field(array(
@@ -144,9 +144,9 @@ if (!$_POST) {
                 <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
                 <div class="position-sticky" style="top:3.3rem;">
                     <div class="card my-7">
-                        <div class="card-header bg-reset border-0 pg-title-section">
+                        <h2 class="card-header bg-reset border-0 pg-title-section">
                             ' . lang('Till Balances') . '
-                        </div>
+                        </h2>
                         <div class="card-body">
                             ' . (($balance_rows !== '')
                                 ? '<ul class="list-group list-group-flush mb-0">' . $balance_rows . '

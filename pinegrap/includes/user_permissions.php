@@ -109,7 +109,7 @@ function pg_user_permission_panel($group)
 			</div>
 			<div class="drawer-footer">
 				<div class="pg-perm-panel-count" data-pg-panel-count="' . h($group['id']) . '"></div>
-				<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-dismiss="drawer">' . h(lang('Done')) . '</button>
+				<button type="button" class="pg-button pg-button-fill" data-bs-dismiss="drawer">' . h(lang('Done')) . '</button>
 			</div>
 		</dialog>';
 }

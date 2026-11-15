@@ -193,7 +193,7 @@ if ($provider !== '') {
                         <span class="fg-secondary">&ndash;</span>
                         <input type="date" data-pg-date name="to" value="' . h($fetch_to) . '" max="' . h($default_to) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('End date') . '" required />
                     </span>
-                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . lang('Read from the provider') . '</button>
+                    <button type="submit" class="pg-button pg-button-fill text-nowrap"><i class="bi bi-cloud-download" aria-hidden="true"></i>' . lang('Read from the provider') . '</button>
                     <span class="small fg-secondary">' . lang(array('string' => 'Read at most {var:1} days at a time.', 'vars' => ERP_EDOC_INBOX_MAX_DAYS)) . '</span>
                 </form>') . '
                 ' . (($read_at > 0)

@@ -6257,6 +6257,9 @@ const StyleDesigner = (function () {
         '.sd-legacy-band { padding:4px 8px; text-align:center; color:#6c757d; font-size:11px; border-bottom:1px dashed #ccc; }',
         '.sd-legacy-note { opacity:.85; }',
         '.sd-legacy-region { padding:8px; pointer-events:none; user-select:none; overflow:hidden; }',
+        // What a comment e-mail page's System region prints (_sdAppendSystemRegionEmailNote())
+        '.sd-region-email-note { display:block; padding:4px 8px 0; color:#6366f1; font-size:11px; line-height:1.4; text-align:center; }',
+        'html[data-bs-theme="dark"] .sd-region-email-note { color:#a5b4fc; }',
         // Drop active on parent
         // Drop indicators — doubled selector boosts specificity so semantic-wrap rules
         // (.sd-shared-wrap, .sd-custom-html-wrap, .sd-custom-php-wrap) with their own
@@ -14799,6 +14802,7 @@ const StyleDesigner = (function () {
                 rg.innerHTML = '<span class="bi ' + ico + '"></span>' + esc(rl) + esc(rn) +
                     (SD_LEGACY_REGIONS[node.props.regionType] ? ' ' + _sdLegacyBadge() : '');
                 if (_sdLegacyRegionOwn(node)) _sdLegacyRegionAppend(doc, rg);
+                if (_sdLegacyRegionOwn(node)) _sdAppendSystemRegionEmailNote(doc, rg);
                 return rg;
             case 'component':
                 var comp = COMPONENTS[node.props.componentType];
@@ -15662,6 +15666,37 @@ const StyleDesigner = (function () {
         rg.classList.add('sd-legacy-live');
         rg.appendChild(band);
         rg.appendChild(box);
+    }
+
+    // Whether `page` is a comment e-mail page: an open page names it in its
+    // comment settings (pg_comments_email_page), by id or, before the first
+    // save hands out ids, by its tab ('tab:<key>'). The pages of a design are
+    // all open in the editor.
+    function _sdCommentsEmailPageOf(page, pages) {
+        if (!page || !Array.isArray(pages)) return false;
+        var id = parseInt(page.page_id, 10) || 0;
+        var tab = 'tab:' + page.key;
+        return pages.some(function (p) {
+            var v = p ? p.pg_comments_email_page : null;
+            if (typeof v === 'string' && v === tab) return true;
+            return id > 0 && (parseInt(v, 10) || 0) === id;
+        });
+    }
+
+    // On a comment e-mail page the page's own System region prints the
+    // comment as fixed markup with its View or Reply link whenever no
+    // Comments card on the page draws it (get_page_content.php,
+    // pg_comments_email_keeps_fixed_markup()). The design templates leave
+    // the region out, since their card always draws; a page that keeps it
+    // says so under its label. Editor chrome: the region placeholder is
+    // skipped by the canvas checks.
+    function _sdAppendSystemRegionEmailNote(doc, rg) {
+        var p = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        if (!_sdCommentsEmailPageOf(p, _pages)) return;
+        var note = doc.createElement('span');
+        note.className = 'sd-region-email-note';
+        note.textContent = _sdT('On this comment e-mail it prints the comment and its View or Reply link when no Comments card on the page draws it.');
+        rg.appendChild(note);
     }
 
     // ── Ghost records ────────────────────────────────────────────────────
@@ -55347,9 +55382,6 @@ const StyleDesigner = (function () {
     function _sdDockSetOpen(side, on) {
         var body = _sdDockBody();
         if (!body) return;
-        // Whatever asks for the left drawer while the menu button has the
-        // panel hidden gets the panel back first.
-        if (on && side === 'left' && body.classList.contains('sd-hide-left')) { _sdLeftSetHidden(false, true); return; }
         var cls = side === 'left' ? 'sd-open-left' : 'sd-open-right';
         // A panel sitting in the layout has nothing to slide open.
         if (on && !body.classList.contains(side === 'left' ? 'sd-dock-left' : 'sd-dock-right')) return;
@@ -55527,56 +55559,11 @@ const StyleDesigner = (function () {
         }, 120);
     }
 
-    // ── The toolbar's menu button: the left panel out of the way ──────
-    // Hiding takes the panel and its rail off the screen together
-    // (sd-hide-left on .sd-body), so the canvas gets the whole width. The
-    // docking state underneath is kept: showing puts the panel back as
-    // docking has it, in the flow, or on its rail with the drawer open, so
-    // one press leaves the palette on screen at every width.
-    var _SD_HIDE_LEFT_KEY = 'pinegrap_designer_hide_left';
-
-    function _sdLeftHidden() {
-        var body = _sdDockBody();
-        return !!(body && body.classList.contains('sd-hide-left'));
-    }
-
-    function _sdLeftHideSync() {
-        var btn = document.getElementById('sd-left-toggle');
-        if (!btn) return;
-        var hidden = _sdLeftHidden();
-        var label = hidden ? _sdT('Show the left panel') : _sdT('Hide the left panel');
-        btn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
-        btn.title = label;
-        btn.setAttribute('aria-label', label);
-    }
-
-    function _sdLeftSetHidden(on, remember) {
-        var body = _sdDockBody();
-        if (!body) return;
-        if (on) _sdDockSetOpen('left', false);
-        body.classList.toggle('sd-hide-left', !!on);
-        // A docked panel comes back with its drawer open (which also closes
-        // the other drawer and the bottom sheet: one layer at a time).
-        if (!on && body.classList.contains('sd-dock-left')) _sdDockSetOpen('left', true);
-        if (remember) {
-            try { localStorage.setItem(_SD_HIDE_LEFT_KEY, on ? '1' : '0'); } catch (e) {}
-        }
-        _sdLeftHideSync();
-        // The canvas frame's width label follows by its own ResizeObserver;
-        // the selection's size badge is placed by hand.
-        if (selectedNode) setTimeout(_positionSizeBadge, 0);
-    }
-
-    function _sdLeftHideInit() {
-        var btn = document.getElementById('sd-left-toggle');
-        if (btn && !btn._sdWired) {
-            btn._sdWired = true;
-            btn.addEventListener('click', function () { _sdLeftSetHidden(!_sdLeftHidden(), true); });
-        }
-        var stored = false;
-        try { stored = localStorage.getItem(_SD_HIDE_LEFT_KEY) === '1'; } catch (e) {}
-        if (stored) _sdLeftSetHidden(true, false);
-        else _sdLeftHideSync();
+    // The toolbar's first button (#sd-left-toggle) once hid this panel and
+    // kept the choice in pinegrap_designer_hide_left; it opens the main menu
+    // now (backend.src.js), so a panel hidden by the old key comes back.
+    function _sdLeftHideForget() {
+        try { localStorage.removeItem('pinegrap_designer_hide_left'); } catch (e) {}
     }
 
     function initPanelDocking() {
@@ -55638,7 +55625,7 @@ const StyleDesigner = (function () {
         window.addEventListener('resize', _sdDockOnResize);
         _sdDockApply();
         _sdRailSyncTabs();
-        _sdLeftHideInit();
+        _sdLeftHideForget();
     }
 
     function initPanelResizes() {
@@ -74972,7 +74959,6 @@ const StyleDesigner = (function () {
                 if (b) b.click();
             }},
             { id: 'act_grid', label: _sdT('Toggle Grid'), icon: 'bi-grid', action: function() { var b = document.getElementById('sd-vb-grid'); if (b) b.click(); } },
-            { id: 'act_left_panel', label: _sdLeftHidden() ? _sdT('Show the left panel') : _sdT('Hide the left panel'), icon: 'bi-layout-sidebar', action: function() { _sdLeftSetHidden(!_sdLeftHidden(), true); } },
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ];

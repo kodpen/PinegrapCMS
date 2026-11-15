@@ -103,18 +103,30 @@ function test_ready_report_days_reads_only_a_day_count()
 	}
 }
 
-// The days given replace the entry's period in the date filter.
-function test_ready_report_filters_take_the_days_given()
+// The days given replace the entry's period in the date changer's range,
+// which ends today; the filters carry no order date, so the report shows its
+// period and the period control as every order report does.
+function test_ready_report_range_takes_the_days_given()
 {
 	$report = pg_ready_reports()['sales_over_time'];
+	$now = strtotime('2026-11-15 15:00:00');
+	$part = function ($date) {
+		return array(
+			'start_month' => substr($date[0], 5, 2), 'start_day' => substr($date[0], 8, 2), 'start_year' => substr($date[0], 0, 4),
+			'stop_month' => substr($date[1], 5, 2), 'stop_day' => substr($date[1], 8, 2), 'stop_year' => substr($date[1], 0, 4),
+		);
+	};
 
-	$today = pg_ready_report_filters($report, 1);
-	$week = pg_ready_report_filters($report, 7);
-	$own = pg_ready_report_filters($report, 0);
+	pg_assert_same($part(array('2026-11-15', '2026-11-15')), pg_ready_report_range($report, 1, $now), 'today');
+	pg_assert_same($part(array('2026-11-09', '2026-11-15')), pg_ready_report_range($report, 7, $now), 'a week');
+	pg_assert_same($part(array('2026-10-17', '2026-11-15')), pg_ready_report_range($report, 0, $now), 'its own 30 days');
+	pg_assert_same($part(array('2025-12-31', '2026-01-01')), pg_ready_report_range($report, 2, strtotime('2026-01-01 00:10:00')), 'across a year');
 
-	pg_assert_same('0', end($today)['dynamic_value_attribute'], 'today: 0 days ago');
-	pg_assert_same('6', end($week)['dynamic_value_attribute']);
-	pg_assert_same('29', end($own)['dynamic_value_attribute'], 'its own 30 days');
+	foreach (pg_ready_reports() as $key => $entry) {
+		foreach (pg_ready_report_filters($entry) as $filter) {
+			pg_assert_true($filter['field'] !== 'order_date', $key . ': no order date filter');
+		}
+	}
 }
 
 // The strip lists the screen's ready reports whose levels it offers.
@@ -196,21 +208,16 @@ function test_ready_report_sales_by_region_period()
 	pg_assert_same(30, $report['period']);
 
 	$filters = pg_ready_report_filters($report);
-	$date = end($filters);
 
-	pg_assert_same(count($report['filters']) + 1, count($filters), 'the period is one more filter');
-	pg_assert_same('order_date', $date['field']);
-	pg_assert_same('is greater than or equal to', $date['operator']);
-	pg_assert_same('', $date['value']);
-	pg_assert_same('days ago', $date['dynamic_value']);
-	pg_assert_same('29', $date['dynamic_value_attribute']);
+	pg_assert_same(count($report['filters']), count($filters), 'the period is no filter');
 
-	// The report compares the order's day in site time with this date; the
-	// card compares the order's time with the start of that same day.
+	// The date changer counts from the range's first day at midnight in the
+	// site's time; the card from that same midnight.
 	$card_from = pg_sales_map_periods()['d30']['from'];
+	$range = pg_ready_report_range($report);
 
-	pg_assert_same(date('Y-m-d', $card_from), pg_report_dynamic_value('days ago', $date['dynamic_value_attribute'], 'date'), 'the first day counted');
-	pg_assert_same(strtotime(date('Y-m-d', $card_from)), $card_from, 'the card starts at midnight');
+	pg_assert_same($card_from, mktime(0, 0, 0, (int) $range['start_month'], (int) $range['start_day'], (int) $range['start_year']), 'the first moment counted');
+	pg_assert_same(date('Y-m-d'), $range['stop_year'] . '-' . $range['stop_month'] . '-' . $range['stop_day'], 'through today');
 
 	// Late in the evening and early in the morning, and over a clock change.
 	$zone = date_default_timezone_get();
@@ -218,9 +225,9 @@ function test_ready_report_sales_by_region_period()
 
 	foreach (array('2026-03-30 00:10:00', '2026-03-30 23:50:00', '2026-11-11 12:00:00') as $now_text) {
 		$now = strtotime($now_text);
-		$midnight = strtotime(date('Y-m-d', $now));
+		$range = pg_ready_report_range($report, 0, $now);
 
-		pg_assert_same(date('Y-m-d', strtotime('-29 days', $midnight)), pg_report_dynamic_value('days ago', '29', 'date', $now), $now_text);
+		pg_assert_same(date('Y-m-d', strtotime('-29 days', strtotime(date('Y-m-d', $now)))), $range['start_year'] . '-' . $range['start_month'] . '-' . $range['start_day'], $now_text);
 	}
 
 	date_default_timezone_set($zone);
@@ -232,9 +239,10 @@ function test_ready_report_sales_by_region_period()
 
 function test_ready_report_without_a_period_adds_no_date()
 {
-	$filters = pg_ready_report_filters(array('filters' => array(), 'period' => 0));
+	$entry = array('filters' => array(), 'period' => 0);
 
-	pg_assert_same(array(), $filters);
+	pg_assert_same(array(), pg_ready_report_filters($entry));
+	pg_assert_same(array(), pg_ready_report_range($entry), 'the range last chosen stays');
 }
 
 function test_ready_report_url()
@@ -262,11 +270,17 @@ function test_order_report_screen_opens_a_ready_report()
 	pg_assert_contains('if ($ready_report !== null) {', $block);
 	pg_assert_contains("\$liveform->assign_field_value('summarize_by_' . \$level, \$ready_report['levels'][\$level - 1]['by'] ?? '');", $block, 'levels');
 	pg_assert_contains("\$liveform->assign_field_value('order_by_' . \$level, \$ready_report['levels'][\$level - 1]['order'] ?? '');", $block, 'order by');
-	pg_assert_contains('$default_filters = pg_ready_report_filters($ready_report, $ready_days);', $block, 'filters and period');
+	pg_assert_contains('$default_filters = pg_ready_report_filters($ready_report);', $block, 'filters and period');
 	pg_assert_contains('$default_filters = pg_order_report_default_filters();', $block, 'the plain new report keeps its defaults');
 	pg_assert_contains("\$liveform->assign_field_value('summarize_by_1', 'year');", $block, 'the plain new report keeps year, month, day');
 	pg_assert_contains("'_dynamic_value', \$default_filter['dynamic_value'] ?? '');", $block, 'dynamic value');
 	pg_assert_contains("'_dynamic_value_attribute', \$default_filter['dynamic_value_attribute'] ?? '');", $block, 'day count');
+
+	// The period goes into the date changer's range, which a step of its
+	// arrows (start_month in the address) then moves; its links keep the key.
+	pg_assert_contains("if ((\$ready_report !== null) && !isset(\$_GET['start_month'])) {", $source, 'the range set on opening');
+	pg_assert_contains('$ready_range = pg_ready_report_range($ready_report, $ready_days);', $source);
+	pg_assert_contains("\$output_date_changer_query_string_id = '&ready=' . rawurlencode(\$ready_report['key']);", $source, 'the arrows keep the ready report');
 }
 
 // The Sales map card's "See all" names the ready report; each place's own
@@ -289,7 +303,7 @@ function test_order_report_screen_strip_days_and_save()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order_report.php');
 
 	pg_assert_contains("\$ready_days = (\$ready_report === null) ? 0 : pg_ready_report_days(\$_GET['days'] ?? null);", $source);
-	pg_assert_contains('$default_filters = pg_ready_report_filters($ready_report, $ready_days);', $source);
+	pg_assert_contains('$default_filters = pg_ready_report_filters($ready_report);', $source);
 	pg_assert_contains("\$ready_strip = pg_ready_report_strip('order_report', array_values(array_filter(\$summarize_by_options, function (\$value) {", $source);
 	pg_assert_contains('class="pg-seg-item\' . ($ready_item[\'current\'] ? \' is-active" aria-current="page"\'', $source, 'the open one is marked');
 	pg_assert_contains('<nav class="pg-report-strip" aria-label="\' . h(lang(\'Ready reports\')) . \'"><span class="pg-report-label" aria-hidden="true">\' . h(lang(\'Ready reports\')) . \'</span><div class="pg-seg">', $source, 'a named segmented row that wraps on a phone');

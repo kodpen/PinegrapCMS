@@ -309,11 +309,14 @@ function ws_api_personal_plan_or_404($viewer, $id)
 }
 
 /**
- * Checks a write as the drawer's save does, and refuses what it turns down.
+ * Checks a write as the drawer's save does, and refuses what it turns down:
+ * the cleaning, the rule, then ws_personal_plan_save_check().
  *
- * @param array $data ws_api_personal_plan_merge()
+ * @param array      $viewer
+ * @param array      $data ws_api_personal_plan_merge()
+ * @param array|null $plan the plan changed, none for a new one
  */
-function ws_api_personal_plan_check($data)
+function ws_api_personal_plan_check($viewer, $data, $plan = null)
 {
     $clean = ws_personal_plan_clean($data);
 
@@ -326,6 +329,12 @@ function ws_api_personal_plan_check($data)
 
     if (isset($rule['error'])) {
         api_fail_validation($rule['error'], null);
+    }
+
+    $problem = ws_personal_plan_save_check((int) $viewer['id'], $clean, $rule, $plan ? (int) $plan['id'] : 0);
+
+    if ($problem !== '') {
+        api_fail_validation($problem, null);
     }
 }
 
@@ -391,7 +400,7 @@ function ws_api_personal_plans_create($params)
     $viewer = ws_api_personal_plans_caller();
     $data = ws_api_personal_plan_merge(null, $params);
 
-    ws_api_personal_plan_check($data);
+    ws_api_personal_plan_check($viewer, $data);
     api_dry_run_stop('created', 'workspace_personal_plan', array('title' => (string) $data['title']));
     ws_api_personal_plan_write($viewer, $data, 0, 201);
 }
@@ -409,7 +418,7 @@ function ws_api_personal_plans_update($params)
         $data['time_day'] = $time['day'];
     }
 
-    ws_api_personal_plan_check($data);
+    ws_api_personal_plan_check($viewer, $data, $plan);
     api_dry_run_stop('updated', 'workspace_personal_plan', array('id' => (int) $plan['id']));
     ws_api_personal_plan_write($viewer, $data, (int) $plan['id'], 200);
 }

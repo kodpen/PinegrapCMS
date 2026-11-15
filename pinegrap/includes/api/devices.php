@@ -124,15 +124,16 @@ function api_device_token_next($kind, $refresh_token, $key) {
 // A client that names its key gets that application, provided it is a device
 // application. A client that names none - a general mobile app that only knows
 // the site's address - gets the site's device application; with more than one,
-// the oldest active one, so the answer does not change when a second is added
-// for testing.
+// the oldest usable one (api_device_app_usable_where()), so the answer does not
+// change when a second is added for testing, and an older application past its
+// expiry does not hide a newer usable one the Team devices switch counts as on.
 function api_device_app($client_key = '') {
 
 	$client_key = trim((string)$client_key);
 
 	$where = ($client_key !== '')
 		? "api_key = '" . escape($client_key) . "'"
-		: "status = 'active'";
+		: api_device_app_usable_where(time());
 
 	return api_row("SELECT id, name, api_key, owner_user_id, scopes, ip_allowlist,
 			status, expires_at, rate_limit_per_min, kind
@@ -140,6 +141,16 @@ function api_device_app($client_key = '') {
 		WHERE kind = 'device' AND " . $where . "
 		ORDER BY id ASC
 		LIMIT 1");
+
+}
+
+// The SQL condition for a device application usable at $now: active and not
+// past expires_at (0 means no expiry). The same test as api_device_app_check()
+// and api_device_switch_app_usable(); sign-in without a key, the discovery
+// document and pairing all pick the oldest application that passes it.
+function api_device_app_usable_where($now) {
+
+	return "status = 'active' AND (expires_at <= 0 OR expires_at >= " . (int)$now . ")";
 
 }
 

@@ -252,6 +252,23 @@ function ws_personal_plan_repeat_until($plan, $end, $day, $count)
 }
 
 /**
+ * A plan's length on the wall clock, in seconds: the local date and time of
+ * its end less those of its start, so an all-day plan on a day with a clock
+ * change lasts 86400. Pure.
+ *
+ * @param array $plan starts_at, ends_at
+ * @return int
+ */
+function ws_personal_plan_wall_length($plan)
+{
+    $wall = function ($ts) {
+        return gmmktime((int) date('G', $ts), (int) date('i', $ts), (int) date('s', $ts), (int) date('n', $ts), (int) date('j', $ts), (int) date('Y', $ts));
+    };
+
+    return $wall((int) $plan['ends_at']) - $wall((int) $plan['starts_at']);
+}
+
+/**
  * Reads and checks the rule the drawer sends, for a plan already cleaned by
  * ws_personal_plan_clean(). Pure.
  *
@@ -288,7 +305,9 @@ function ws_personal_plan_repeat_clean($clean, $data)
     $rule = array('starts_at' => $clean['starts_at'], 'ends_at' => $clean['ends_at'], 'repeat_frequency' => $frequency, 'repeat_interval' => (int) $every);
 
     // Two times never overlap: the plan ends before its next time starts.
-    if (($clean['ends_at'] - $clean['starts_at']) > ws_personal_plan_repeat_step_days($frequency, (int) $every)[0] * 86400) {
+    // Times move by calendar days, so the length is read on the wall clock:
+    // a day holding a clock change is still one day.
+    if (ws_personal_plan_wall_length($clean) > ws_personal_plan_repeat_step_days($frequency, (int) $every)[0] * 86400) {
         return array('error' => lang('A repeating plan has to end before its next time starts.'));
     }
 

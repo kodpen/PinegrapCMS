@@ -178,9 +178,9 @@ function erp_import_step_upload($liveform, $kind_options)
                 <div class="row">
                     <div class="col-12 lg:col-8 2xl:col-9 order-1">
                         <div class="card my-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 ' . h(lang('Import CSV')) . '
-                            </div>
+                            </h2>
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-12 my-3">
@@ -188,7 +188,7 @@ function erp_import_step_upload($liveform, $kind_options)
                                         ' . $liveform->output_field(array('type' => 'file', 'id' => 'file', 'name' => 'file', 'class' => 'form-control', 'accept' => '.csv,.txt,text/csv')) . '
                                         <div class="form-text">' . h(lang('Upload a CSV file. The first row must hold the column names.')) . ' ' . h(lang(array('string' => 'Up to {var:1} MB.', 'vars' => erp_upload_mb_text(erp_upload_max_bytes(ERP_IMPORT_MAX_BYTES))))) . '</div>
                                     </div>
-                                    <div class="col-12 lg:col-6 my-3">
+                                    <div class="col-12 md:col-6 my-3">
                                         <label for="default_kind" class="form-label">' . h(lang('Default type for rows without one')) . '</label>
                                         ' . $liveform->output_field(array('type' => 'select', 'id' => 'default_kind', 'name' => 'default_kind', 'class' => 'form-control', 'options' => $kind_options)) . '
                                     </div>
@@ -197,15 +197,17 @@ function erp_import_step_upload($liveform, $kind_options)
                         </div>
                     </div>
                     <div class="col-12 lg:col-4 2xl:col-3 order-2">
-                        <div class="card my-7 position-sticky" style="top:3.3rem;">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('What Is Imported')) . '</div>
-                            <div class="card-body">
-                                <ul class="small ps-5 mb-3">
-                                    <li class="mb-2">' . h(lang('The delimiter and the character set are detected; Excel files saved as CSV in Turkish work as they are.')) . '</li>
-                                    <li class="mb-2">' . h(lang('Columns are matched by name; you can correct the matching in the next step.')) . '</li>
-                                    <li>' . h(lang('Opening balances are not imported; enter them on the account.')) . '</li>
-                                </ul>
-                                <a href="erp_accounts_import.php?template=1" class="pg-link-body-emphasis small"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download template')) . '</a>
+                        <div class="position-sticky" style="top:3.3rem;">
+                            <div class="card my-7">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('What Is Imported')) . '</h2>
+                                <div class="card-body">
+                                    <ul class="small ps-5 mb-3">
+                                        <li class="mb-2">' . h(lang('The delimiter and the character set are detected; Excel files saved as CSV in Turkish work as they are.')) . '</li>
+                                        <li class="mb-2">' . h(lang('Columns are matched by name; you can correct the matching in the next step.')) . '</li>
+                                        <li>' . h(lang('Opening balances are not imported; enter them on the account.')) . '</li>
+                                    </ul>
+                                    <a href="erp_accounts_import.php?template=1" class="pg-link-body-emphasis small"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download template')) . '</a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -325,7 +327,7 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
         $output_rows .= '
                                     <tr>
                                         <td class="text-end fg-secondary">' . (int) $entry['line'] . '</td>
-                                        <td class="text-nowrap">' . $badge . ($detail !== '' ? '<div class="small fg-secondary">' . $detail . '</div>' : '') . '</td>
+                                        <td class="text-nowrap">' . $badge . ($detail !== '' ? '<div class="pg-text-2">' . $detail . '</div>' : '') . '</td>
                                         ' . $output_cells . '
                                     </tr>';
     }
@@ -345,9 +347,9 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                 <div class="row">
                     <div class="col-12 lg:col-8 2xl:col-9 order-1">
                         <div class="card my-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 ' . h(lang('Column mapping')) . '
-                            </div>
+                            </h2>
                             <div class="card-body">
                                 <div class="row">' . $output_mapping . '
                                 </div>
@@ -356,9 +358,9 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                         </div>
 
                         <div class="card my-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 ' . h(lang(array('string' => 'Preview (first {var:1} rows)', 'vars' => count($plan)))) . '
-                            </div>
+                            </h2>
                             <div class="card-body">
                                 <div class="table-responsive">
                                     <table class="table table-sm table-hover align-middle mb-0" data-pg-sort>
@@ -380,17 +382,17 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                     <div class="col-12 lg:col-4 2xl:col-3 order-2">
                         <div class="position-sticky" style="top:3.3rem;">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Summary')) . '</h2>
                                 <div class="card-body">
                                     <p class="small mb-1 text-break"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . h($staged['name']) . '</p>
-                                    <p class="small fg-secondary mb-3">' . h(lang(array('string' => '{var:1} data rows', 'vars' => $total_rows))) . ' — ' . h(lang(array('string' => 'Detected delimiter: {var:1}', 'vars' => $delimiter_name))) . '</p>
+                                    <p class="pg-text-2 mb-3">' . h(lang(array('string' => '{var:1} data rows', 'vars' => $total_rows))) . ' — ' . h(lang(array('string' => 'Detected delimiter: {var:1}', 'vars' => $delimiter_name))) . '</p>
                                     <div class="small d-flex flex-column gap-2">' . $output_summary . '</div>
                                 </div>
                             </div>
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 pg-title-section">
                                     ' . h(lang('Options')) . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <fieldset class="my-3">
                                         <legend class="form-label fs-md">' . lang('If the account already exists') . '</legend>
@@ -419,7 +421,7 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                                     <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Re-check')) . '</span></button>
                                     <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-solid theme-success"' . ($has_title ? '' : ' disabled="disabled"') . '><i class="bi bi-check2-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Start import')) . '</span></button>
                                 </div>
-                                <p class="small fg-secondary mt-2 mb-0" id="erp_import_map_status" role="status" aria-live="polite"></p>
+                                <p class="pg-text-2 mt-2 mb-0" id="erp_import_map_status" role="status" aria-live="polite"></p>
                             </div>
                         </nav>
                     </div>
@@ -471,10 +473,10 @@ function erp_import_step_result($outcome)
 
     $output_counts = '
                         <div class="row text-center">
-                            <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-success">' . (int) $counts['created'] . '</div><div class="small fg-secondary">' . lang('Newly created') . '</div></div>
-                            <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-primary">' . (int) $counts['updated'] . '</div><div class="small fg-secondary">' . lang('Updated') . '</div></div>
-                            <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-secondary">' . (int) $counts['skipped'] . '</div><div class="small fg-secondary">' . lang('Skipped') . '</div></div>
-                            <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-danger">' . (int) $counts['failed'] . '</div><div class="small fg-secondary">' . lang('Failed') . '</div></div>
+                            <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-success">' . (int) $counts['created'] . '</div><div class="pg-text-2">' . lang('Newly created') . '</div></div>
+                            <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-primary">' . (int) $counts['updated'] . '</div><div class="pg-text-2">' . lang('Updated') . '</div></div>
+                            <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-secondary">' . (int) $counts['skipped'] . '</div><div class="pg-text-2">' . lang('Skipped') . '</div></div>
+                            <div class="col-6 md:col-3 my-3"><div class="pg-display-6 fg-danger">' . (int) $counts['failed'] . '</div><div class="pg-text-2">' . lang('Failed') . '</div></div>
                         </div>';
 
     $output_rows = '';
@@ -494,10 +496,10 @@ function erp_import_step_result($outcome)
     $output_table = '';
     if ($output_rows !== '') {
         $output_table = '
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card pg-card my-7">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Rows that were not written') . '
-                    </div>
+                    </h2>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-sm table-hover align-middle mb-0" data-pg-sort>
@@ -517,10 +519,10 @@ function erp_import_step_result($outcome)
     }
 
     return erp_import_steps(3) . '
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card pg-card my-7">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Import complete.') . '
-                    </div>
+                    </h2>
                     <div class="card-body">' . $output_counts . '
                     </div>
                 </div>

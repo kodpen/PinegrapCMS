@@ -239,6 +239,13 @@
         // none of them, whatever they write.
         if (message.agent && message.badge) {
             meta.appendChild(el('span', 'pg-guest-badge', message.badge));
+
+            // Its role and reported model, muted; an empty fact is left out.
+            var facts = [message.role, message.model].filter(function (fact) { return typeof fact === 'string' && fact !== ''; });
+
+            if (facts.length) {
+                meta.appendChild(el('span', 'pg-guest-agent-facts', facts.join(' · ')));
+            }
         }
 
         meta.appendChild(el('span', '', message.time + (message.edited ? ' · ' + t('edited') : '')));
@@ -378,6 +385,20 @@
     // A picture, a video, a sound or a document staff put in the room.
     function drawFile(file) {
         var box = el('div', 'pg-guest-file');
+
+        // A canvas is shown as its drawn picture only; while an agent's
+        // picture waits to be drawn, a line says so instead of a blank.
+        if (file.canvas && file.pending) {
+            var waiting = el('div', 'pg-guest-canvas-wait');
+            waiting.appendChild(icon('bi-easel'));
+            var words = el('div', 'pg-guest-canvas-wait-text');
+            words.appendChild(el('b', '', file.name));
+            words.appendChild(el('span', '', t('preview_not_ready')));
+            waiting.appendChild(words);
+            box.appendChild(waiting);
+
+            return box;
+        }
 
         if (file.kind === 'image') {
             var link = el('a', 'pg-guest-image');

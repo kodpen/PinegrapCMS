@@ -56,30 +56,37 @@ function test_marketplace_settings_failure_rows_wrap()
 	pg_assert_true((bool) preg_match('/\.mp-fail-name \{[^}]*flex: 1 1 150px;[^}]*min-width: 0;/', marketplace_settings_names_test_style()), 'the name shrinks from 150px');
 }
 
-function test_marketplace_settings_status_text_uses_emphasis_inks()
+// Statuses are look A's pills in a tone; the error line keeps the emphasis
+// ink, and no fill colour is used as text.
+function test_marketplace_settings_status_text_uses_pills_and_emphasis_inks()
 {
+	$source = marketplace_settings_names_test_source();
 	$style = marketplace_settings_names_test_style();
 
-	pg_assert_true((bool) preg_match('/\.mp-pill\.on \{ color: var\(--pg-success-fg-emphasis\);/', $style), 'green pill text');
-	pg_assert_true((bool) preg_match('/\.mp-pill\.bad \{ color: var\(--pg-danger-fg-emphasis\);/', $style), 'red pill text');
+	pg_assert_true(strpos($source, 'mp-pill') === false, 'no screen-own pill is left');
+	pg_assert_contains('<span class="pg-pill pg-tone-teal">\' . lang(\'Active\')', $source, 'an active account is a teal pill');
+	pg_assert_contains('<span class="pg-pill pg-tone-gray">\' . lang(\'Paused\')', $source, 'a paused account is a gray pill');
+	pg_assert_contains('<span class="pg-pill pg-tone-rose">\' . h(lang(\'Failed\'))', $source, 'a failed order is a rose pill');
+	pg_assert_contains("'<span class=\"pg-pill pg-tone-' . \$label[1] . '\">'", $source, 'claim and question statuses name their tone');
 	pg_assert_true((bool) preg_match('/\.mp-err \{[^}]*color: var\(--pg-danger-fg-emphasis\);/', $style), 'error line text');
 	pg_assert_true(!preg_match('/color: var\(--pg-(success|danger)\);/', $style), 'no fill colour used as text');
 }
 
+// Secondary text is the look's second or meta text, never an opacity.
 function test_marketplace_settings_secondary_text_without_opacity()
 {
 	$source = marketplace_settings_names_test_source();
 	$style = marketplace_settings_names_test_style();
 
-	foreach (array('.mp-head', '.mp-pill.off', '.mp-tab small') as $selector) {
-		$at = strpos($style, "\n" . $selector . ' {');
-		pg_assert_true($at !== false, $selector . ' rule is there');
-		$rule = substr($style, $at, (int) strpos($style, '}', $at) - $at);
-		pg_assert_contains('color: var(--pg-fg-2)', $rule);
-		pg_assert_true(strpos($rule, 'opacity') === false, $selector . ' has no opacity');
-	}
+	$at = strpos($style, "\n.mp-head {");
+	pg_assert_true($at !== false, '.mp-head rule is there');
+	$rule = substr($style, $at, (int) strpos($style, '}', $at) - $at);
+	pg_assert_contains('color: var(--pg-fg-3)', $rule);
+	pg_assert_contains('font-size: var(--pg-text-meta)', $rule);
 
-	pg_assert_true(strpos($source, 'small opacity-50 text-nowrap') === false, 'failure time is not greyed with opacity');
+	pg_assert_true(strpos($style, 'opacity') === false, 'the style block has no opacity');
+	pg_assert_true(strpos($source, 'opacity-75') === false, 'no text is greyed with opacity-75');
+	pg_assert_true(strpos($source, 'class="small') === false && strpos($source, ' small ') === false && strpos($source, '<small>') === false, 'no Bootstrap small text is left');
 }
 
 function test_marketplace_settings_dialogs_are_named_by_their_titles()
