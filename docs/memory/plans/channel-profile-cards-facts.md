@@ -1,6 +1,6 @@
 ---
 name: channel-profile-cards-facts
-description: channel-profile-cards (owner 2026-11-15, channel decision 3788): the card's layout, the agent's picture and the further facts he chose for the agent card and the person card
+description: channel-profile-cards (owner 2026-11-15, channel decision 3796): the card's layout, the agent's picture and the further facts he chose for the agent card and the person card
 ---
 
 ## Which layout? (PF3)
