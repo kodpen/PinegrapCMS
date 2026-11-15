@@ -109,3 +109,17 @@ function test_workspace_person_card_texts()
 	pg_assert_same(7, count($texts['pc_days']), 'a short name for each day, Monday first');
 	pg_assert_contains('ws_person_card_js_strings()', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php'), 'the screen gives them');
 }
+
+// api.php answers only the actions its table lists: both cards' reads are
+// in it, or each card closes on "Invalid action." as soon as it opens.
+function test_workspace_person_card_actions_reach_api()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
+
+	foreach (array('ws_person_card', 'ws_agent_card') as $action) {
+		$row = pg_panel_action($action);
+
+		pg_assert_true(is_array($row), $action . ' is in the panel\'s action table');
+		pg_assert_same('pg_panel_ws', is_array($row) ? $row['handler'] : '', $action . ' goes to the workspace handler');
+	}
+}
