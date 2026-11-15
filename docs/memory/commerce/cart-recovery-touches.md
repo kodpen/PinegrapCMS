@@ -1,6 +1,6 @@
 ---
 name: cart-recovery-touches
-description: Recovered carts record (cart_recovery_touch, 11.0.216, PR #9778): what a touch row holds, the three places that write it, the 6-hour left and 7-day recovered rule, the no-touch row, readiness
+description: Recovered carts record (cart_recovery_touch, 11.0.216, PR #9778): what a touch row holds, the places that write it, the 6-hour left and 7-day recovered rule, the no-touch row, readiness
 module: cart_recovery
 ---
 
@@ -9,9 +9,10 @@ module: cart_recovery
 - Owner (2026-11-15, poll 50): a new table; a cart counts as recovered when completed within 7 days of the last touch.
 
 ## Who writes it?
-- Only `includes/fn/cart_recovery.php`. `pg_cart_recovery_touch($order_id, $channel, $source_type, $source_id)` is the one touch writer; a second call with the same order, channel and source writes nothing. WhatsApp offers and pop-ups (later steps) call it with their channel and source.
+- Only `includes/fn/cart_recovery.php`. `pg_cart_recovery_touch($order_id, $channel, $source_type, $source_id)` is the one touch writer; a second call with the same order, channel and source writes nothing. Its names are checked by pure `pg_cart_recovery_touch_args()`.
 - The abandoned-order mail: where it actually goes out, `email_campaign_job.php` (claim path) and Send now (`send_email_campaign.php`), not where `job.php` creates the campaign, so a delayed or cancelled campaign is no touch. The pre-2026.4.8 job path writes none (the table cannot exist there).
 - `?r=<reference code>`: `_eo_restore_cart_from_reference_code()` calls `pg_cart_recovery_restored()` when the session's cart changed; the order's last sent touch gets `clicked_at` and `restored_at` (first visit kept).
+- WhatsApp single-use keys and a pop-up taken up on a page: `cart-recovery-whatsapp-page.md`.
 - `pg_order_complete()` reads `orders.order_date` before its first write (the completion rewrites it) and calls `pg_cart_recovery_completed()` after the abandoned campaigns are cancelled.
 
 ## What is the rule?

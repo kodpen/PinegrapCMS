@@ -17,7 +17,7 @@ priority: 6
 - CR2 (M) after CR1: the figures. A Recovered carts section (left, reached, returned, recovered, revenue; by channel and by message), a dashboard card, `GET /reports/cart-recovery`. A new screen: its pictures go to the owner, who also says where the section sits.
 - CR3 (S to M) after CR2: what weakens recovery. Pure rules over the figures with minimums, as `alerts.php`: carts no message can reach (no address or no consent), a message sent much and clicked little, clicked but not completed and at which checkout step, a late send, lines out of stock.
   - "Clicked but not completed" reads the order's own status as well as the touch: a cart completed more than 7 days after its last touch is neither recovered nor untouched (no `completed_total`, no `channel = ''` row); CR2 counts it among left, reached and returned, never recovered.
-- CR4 (S) after CR1: WhatsApp's single-use offer keys (`whatsapp-offer-codes.md`) and an offer shown on a page (the pop-up plan's take-up) as touches.
+- CR4 (S) after CR1, done (#9799): WhatsApp's single-use offer keys (`whatsapp-offer-codes.md`) and an offer shown on a page (the pop-up plan's take-up) as touches: `commerce/cart-recovery-whatsapp-page.md`.
 - Last (S): close-out: the topic files in `commerce/`, this plan deleted.
 
 ## What is left out?
