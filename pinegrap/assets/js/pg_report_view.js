@@ -31,6 +31,22 @@
     var PLOT = {height: 232, left: 46, right: 10, top: 10, bottom: 26};
     var TONES = ["blue", "violet", "amber", "teal", "rose", "gray"];
 
+    // The points named under a line's axis: at most `most` of them, the
+    // first and then one every step, the step the same between all names,
+    // so days or months never jump (15, 17, 19, 22). The last point is
+    // named only when a step lands on it.
+    function axisTicks(count, most) {
+        var ticks = [];
+        if (count < 1) {
+            return ticks;
+        }
+        var step = (count <= most) ? 1 : Math.ceil((count - 1) / Math.max(1, most - 1));
+        for (var i = 0; i < count; i += step) {
+            ticks.push(i);
+        }
+        return ticks;
+    }
+
     function el(tag, className, text) {
         var node = document.createElement(tag);
         if (className) {
@@ -211,15 +227,15 @@
                 text.textContent = texts[n];
                 next.appendChild(text);
             });
-            // As many names under the axis as its width holds, the first
-            // and the last among them.
-            var shown = Math.min(count, Math.max(2, Math.min(7, Math.floor((width - left - PLOT.right) / 120))));
-            for (var n = 0; n < shown; n++) {
-                var i = (shown > 1) ? Math.round((n * (count - 1)) / (shown - 1)) : 0;
-                var name = svgEl("text", {x: x(i), y: PLOT.height - 6, "text-anchor": (count === 1) ? "middle" : ((n === 0) ? "start" : ((n === shown - 1) ? "end" : "middle"))});
+            // As many names under the axis as its width holds, at even
+            // steps from the first point.
+            var ticks = axisTicks(count, Math.max(2, Math.min(7, Math.floor((width - left - PLOT.right) / 120))));
+            ticks.forEach(function (i) {
+                var anchor = (count === 1) ? "middle" : ((i === 0) ? "start" : ((i === count - 1) ? "end" : "middle"));
+                var name = svgEl("text", {x: x(i), y: PLOT.height - 6, "text-anchor": anchor});
                 name.textContent = names[i] || "";
                 next.appendChild(name);
-            }
+            });
             if (values.length > 1) {
                 next.appendChild(svgEl("path", {"class": "pg-report-plot-area", d: path(values) + " L" + x(values.length - 1).toFixed(1) + " " + y(0) + " L" + x(0).toFixed(1) + " " + y(0) + " Z"}));
             }
@@ -525,6 +541,8 @@
         }
         draw(root, data);
     }
+
+    window.pgReportView = {axisTicks: axisTicks};
 
     if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", start);
