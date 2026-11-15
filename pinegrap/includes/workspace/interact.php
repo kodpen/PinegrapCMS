@@ -719,11 +719,12 @@ function ws_poll_create($viewer, $channel, $data, $app_id = 0)
  * @param array $viewer
  * @param array $poll
  * @param array $data question, options (list of {id, label} and an option's parts; id 0 for a new one), multiple, anonymous, closes_at (timestamp, 0 = open until closed)
+ * @param int   $as_app the asking application changing its own poll, 0 for a person
  * @return array ok, error, field
  */
-function ws_poll_edit($viewer, $poll, $data)
+function ws_poll_edit($viewer, $poll, $data, $as_app = 0)
 {
-    $checked = ws_poll_edit_check($viewer, $poll, $data);
+    $checked = ws_poll_edit_check($viewer, $poll, $data, $as_app);
 
     if (!$checked['ok']) {
         return array('ok' => false, 'error' => $checked['error'], 'field' => $checked['field']);
@@ -740,7 +741,7 @@ function ws_poll_edit($viewer, $poll, $data)
     // The question is the message: its edit keeps tags, mentions and
     // checklists right and tells whoever it newly mentions.
     if ($question !== trim((string) $message['body'])) {
-        $edited = ws_message_edit($viewer, $message, $question);
+        $edited = ws_message_edit($viewer, $message, $question, $as_app);
 
         if (!$edited['ok']) {
             return array('ok' => false, 'error' => $edited['error'], 'field' => 'question');
@@ -770,7 +771,7 @@ function ws_poll_edit($viewer, $poll, $data)
         WHERE id = '" . (int) $poll['id'] . "'");
 
     // Only the tags the edit adds to the question or the options ask.
-    ws_message_ask_item($viewer, ws_channel($poll['channel_id']), (int) $message['id'], $before, ws_poll_tag_text($question, $options));
+    ws_message_ask_item($viewer, ws_channel($poll['channel_id']), (int) $message['id'], $before, ws_poll_tag_text($question, $options), ws_message_by_app($as_app));
 
     return array('ok' => true, 'error' => '', 'field' => '');
 }
@@ -801,9 +802,10 @@ function ws_poll_tag_text($question, $options)
  * @param array $viewer
  * @param array $poll
  * @param array $data as ws_poll_edit() takes it
+ * @param int   $as_app the asking application changing its own poll, 0 for a person
  * @return array ok, error, field, message, question, options (parts with id: ws_poll_option_part()), multiple, anonymous, closes_at
  */
-function ws_poll_edit_check($viewer, $poll, $data)
+function ws_poll_edit_check($viewer, $poll, $data, $as_app = 0)
 {
     $fail = function ($error, $field = '') {
         return array('ok' => false, 'error' => $error, 'field' => $field);
@@ -819,8 +821,12 @@ function ws_poll_edit_check($viewer, $poll, $data)
         return $fail(lang('That poll could not be found.'));
     }
 
-    if (((int) $poll['created_by'] !== (int) $viewer['id']) || ($message['sender_kind'] !== 'user') || ((int) $message['sender_id'] !== (int) $viewer['id'])) {
+    if (!ws_poll_is_asker($poll, $message, (int) $viewer['id'], $as_app)) {
         return $fail(lang('Only the person who asked can change the poll.'));
+    }
+
+    if ((int) ($poll['withdrawn_at'] ?? 0) > 0) {
+        return $fail(lang('The poll was taken back.'), 'withdrawn_at');
     }
 
     if (((int) $poll['closed_at'] > 0) || (((int) $poll['closes_at'] > 0) && ((int) $poll['closes_at'] <= time()))) {
@@ -916,7 +922,7 @@ function ws_poll_edit_check($viewer, $poll, $data)
 
     // A new wording of the question is held to the rules of a message edit.
     if ($question !== trim((string) $message['body'])) {
-        $editable = ws_message_edit_check($viewer, $message, $question);
+        $editable = ws_message_edit_check($viewer, $message, $question, $as_app);
 
         if (!$editable['ok']) {
             return $fail($editable['error'], 'question');
@@ -979,6 +985,7 @@ function ws_polls_map($message_ids, $viewer)
     }
 
     $pictures = ws_poll_pictures_map($file_ids);
+    $again = ws_poll_again_links($polls);
 
     foreach ((array) db_items("SELECT poll_id, option_id, user_id" . ($guest_votes ? ', guest_id' : ', 0 AS guest_id') . ($parts_ready ? ', other_text' : ", '' AS other_text") . " FROM ws_poll_votes WHERE poll_id IN (" . implode(',', $poll_ids) . ") ORDER BY created_at") as $row) {
         $votes[(int) $row['poll_id']][] = $row;
@@ -1050,6 +1057,11 @@ function ws_polls_map($message_ids, $viewer)
         }
 
         $channel = ws_channel($poll['channel_id']);
+        $withdrawn = ((int) ($poll['withdrawn_at'] ?? 0) > 0);
+        $links = $again[$poll_id] ?? array('again_of' => 0, 'again_of_message' => 0, 'asked_again' => 0, 'asked_again_message' => 0);
+        // The person who asked; an agent's poll is taken back through its key.
+        $asker = ((int) $poll['created_by'] === (int) $viewer['id']) && (ws_message_app_id($poll['message_id']) === 0)
+            && ws_can_post_channel($viewer, $channel) && ws_poll_again_ready();
 
         $out[(int) $poll['message_id']] = array(
             'id'         => $poll_id,
@@ -1066,9 +1078,18 @@ function ws_polls_map($message_ids, $viewer)
             // Refused past closes_at before anything closes the poll, and in an
             // earlier version of the conversation, as the vote refuses it.
             'can_vote'   => ws_poll_vote_state($poll, ws_poll_in_past($poll))['ok'] && ws_can_post_channel($viewer, $channel),
-            'can_close'  => !$closed && ws_can_close_poll($viewer, $poll, $channel),
+            'can_close'  => !$closed && !$withdrawn && ws_can_close_poll($viewer, $poll, $channel),
             // The asker changes it while it is open; the form is filled from these.
-            'can_edit'   => !$closed && ((int) $poll['created_by'] === (int) $viewer['id']) && ws_can_post_channel($viewer, $channel),
+            'can_edit'   => !$closed && !$withdrawn && ((int) $poll['created_by'] === (int) $viewer['id']) && ws_can_post_channel($viewer, $channel),
+            // Taken back and asked again (poll_again.php).
+            'withdrawn'           => $withdrawn,
+            'withdrawn_at'        => (int) ($poll['withdrawn_at'] ?? 0),
+            'can_withdraw'        => $asker && !$closed && !$withdrawn,
+            'can_ask_again'       => $asker,
+            'again_of'            => $links['again_of'],
+            'again_of_message'    => $links['again_of_message'],
+            'asked_again'         => $links['asked_again'],
+            'asked_again_message' => $links['asked_again_message'],
             'closes_date' => ((int) $poll['closes_at'] > 0) ? date('Y-m-d', (int) $poll['closes_at']) : '',
             'closes_time' => ((int) $poll['closes_at'] > 0) ? date('H:i', (int) $poll['closes_at']) : '',
             'result_id'  => (int) $poll['result_message_id'],
@@ -1113,6 +1134,11 @@ function ws_poll_vote_state($poll, $in_past, $now = null)
 
     if ($in_past) {
         return array('ok' => false, 'error' => lang('This message is in an earlier version of the conversation, which is kept as it was.'), 'field' => 'message_id', 'expired' => false);
+    }
+
+    // Taken back by its asker (poll_again.php): greyed, no vote, no result.
+    if ((int) ($poll['withdrawn_at'] ?? 0) > 0) {
+        return array('ok' => false, 'error' => lang('The poll was taken back.'), 'field' => 'withdrawn_at', 'expired' => false);
     }
 
     if ((int) $poll['closed_at'] > 0) {
@@ -1226,6 +1252,11 @@ function ws_poll_close($viewer, $poll)
         return array('ok' => true, 'error' => '', 'result_message_id' => (int) $poll['result_message_id']);
     }
 
+    // A poll taken back writes no result (poll_again.php).
+    if ((int) ($poll['withdrawn_at'] ?? 0) > 0) {
+        return array('ok' => true, 'error' => '', 'result_message_id' => 0);
+    }
+
     $channel = ws_channel($poll['channel_id']);
 
     if (($viewer !== null) && !ws_can_close_poll($viewer, $poll, $channel)) {
@@ -1332,7 +1363,8 @@ function ws_polls_autoclose($channel_id)
     }
 
     foreach ((array) db_items("SELECT * FROM ws_polls
-        WHERE channel_id = '" . (int) $channel_id . "' AND closed_at = 0 AND closes_at > 0 AND closes_at <= '" . time() . "'
+        WHERE channel_id = '" . (int) $channel_id . "' AND closed_at = 0 AND closes_at > 0 AND closes_at <= '" . time() . "'"
+        . (ws_poll_again_ready() ? ' AND withdrawn_at = 0' : '') . "
         LIMIT 10") as $poll) {
         ws_poll_close(null, $poll);
     }

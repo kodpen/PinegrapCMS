@@ -808,7 +808,7 @@ Search it rather than read it whole, then open the part or file that matches: `g
 - workspace/mail-overview.md: Workspace e-mail as a whole: mailboxes, the card or a box's room, the E-mails screen, sending, answers, routing, status, the API; which file holds each part, which PR built it
 - workspace/mail-own-signature.md: A person's own e-mail signature (IB3, #9513): My e-mail settings on the E-mails toolbar, ws_profiles.mail_signature, where it stands in a sent mail and in the forms' previews
 - workspace/mail-phone-decisions.md: Why a customer's WhatsApp message and SMS are Workspace conversations like e-mail (owner #9151), where they are kept (#9286), the rules every part keeps, the drawer's owner rules, what was left out
-- workspace/mail-prs.md: Which PR built each slice of Workspace e-mail: incoming e-mail G1-G8, the E-mails screen WM1-WM14, a chat's mail tools MT1-MT6, a mailbox's features IB1-IB8
+- workspace/mail-prs.md: Which PR built each slice of Workspace e-mail: incoming e-mail G1-G8, the E-mails screen WM1-WM14, a chat's mail tools MT1-MT6, a mailbox's features IB1-IB14
 - workspace/mail-remind-later.md: Remind me later (IB10): the pane's menu and times, ws_mail_reminders, what leaves the person's list and comes back unread, the wake, inbox kind mail_remind, step 11.0.212
 - workspace/mail-room.md: A mailbox kept in no channel (WM13, #8985): its room of kind mailbox, the box form's Kept in, who reads and answers, where the room never shows, the inventory test
 - workspace/mail-send-later.md: Send later (IB6): a time on the New e-mail form and the reply drawer, send_state later and ws_mail_items.send_at, the job that hands due mail to the queue, Send now and Cancel, the step 11.0.207

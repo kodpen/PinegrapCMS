@@ -4,7 +4,7 @@ description: "I am away" in My e-mail settings (IB12): ws_profiles.mail_away (11
 ---
 
 ## What is it?
-- Owner (2026-11-14, poll 3363, `workflow/decisions-made-workspace-29.md`): a person says they are away for a range of days, with a text and an optional stand-in. Built by IB12 of `plans/mail-inbox-more.md`.
+- Owner (2026-11-14, poll 3363, `workflow/decisions-made-workspace-29.md`): a person says they are away for a range of days, with a text and an optional stand-in. Built by IB12 (#9591).
 - Kept in `ws_profiles.mail_away` TEXT NULL (step 11.0.211, `upgrade_2026_11_0_ws_mail_away()`), a JSON `start`, `end` (Y-m-d), `text`, `stand_in` (user id, 0 none), `plan_id`. Schema: owner 2026-11-15, channel decision 3500, shape 3505, in the decisions list (schema part 21). Readiness `ws_mail_away_ready()`; read by `ws_mail_away()`, checked by `ws_mail_away_input()` (pure), written by `ws_mail_away_save()`.
 
 ## Where is it set?

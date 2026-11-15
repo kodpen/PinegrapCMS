@@ -1336,6 +1336,15 @@ function ws_api_poll_present($poll)
         'can_close'         => !empty($poll['can_close']),
         'options'           => array_map('ws_api_poll_option_present', array_values((array) $poll['options'])),
         'result_message_id' => ((int) $poll['result_id'] > 0) ? (int) $poll['result_id'] : null,
+        // Taken back and asked again (poll_again.php); null for none.
+        'withdrawn'         => !empty($poll['withdrawn']),
+        'withdrawn_at'      => api_time($poll['withdrawn_at'] ?? 0),
+        'can_withdraw'      => !empty($poll['can_withdraw']),
+        'can_ask_again'     => !empty($poll['can_ask_again']),
+        'again_of'          => ((int) ($poll['again_of'] ?? 0) > 0) ? (int) $poll['again_of'] : null,
+        'again_of_message_id'    => ((int) ($poll['again_of_message'] ?? 0) > 0) ? (int) $poll['again_of_message'] : null,
+        'asked_again'            => ((int) ($poll['asked_again'] ?? 0) > 0) ? (int) $poll['asked_again'] : null,
+        'asked_again_message_id' => ((int) ($poll['asked_again_message'] ?? 0) > 0) ? (int) $poll['asked_again_message'] : null,
     );
 }
 
@@ -1396,6 +1405,14 @@ function ws_api_poll_schema()
             'description' => 'string', 'picture' => 'object?', 'links' => array(array('url' => 'string', 'label' => 'string')),
             'recommended' => 'boolean', 'other' => 'boolean', 'my_text' => 'string')),
         'result_message_id' => 'integer?',
+        'withdrawn'         => 'boolean',
+        'withdrawn_at'      => 'string?',
+        'can_withdraw'      => 'boolean',
+        'can_ask_again'     => 'boolean',
+        'again_of'          => 'integer?',
+        'again_of_message_id'    => 'integer?',
+        'asked_again'            => 'integer?',
+        'asked_again_message_id' => 'integer?',
     );
 }
 
@@ -3557,6 +3574,10 @@ function ws_api_poll_refused($error, $field = '')
         api_fail_not_found(lang('Poll'));
     }
 
+    if ($error === lang('The database has to be updated first.')) {
+        api_fail(503, 'service_unavailable', $error);
+    }
+
     // A closed poll, or one whose time ran out, is refused on its closing time.
     if (($field === '') && ($error === lang('The poll is closed.'))) {
         $field = 'closes_at';
@@ -3658,8 +3679,7 @@ function ws_api_polls_update($params)
 {
     $viewer = ws_api_viewer();
     $poll = ws_api_poll_or_404($viewer, $params['id']);
-
-    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can change their poll; an application key or an OAuth connection cannot change it for them.'));
+    $as_app = ws_api_poll_asker_app($poll);
 
     $fields = array('question', 'options', 'multiple', 'anonymous', 'closes_at');
 
@@ -3737,7 +3757,7 @@ function ws_api_polls_update($params)
 
     // The checks ws_poll_edit() makes, made first so that a dry run meets
     // the same refusals.
-    $checked = ws_poll_edit_check($viewer, $poll, $data);
+    $checked = ws_poll_edit_check($viewer, $poll, $data, $as_app);
 
     if (!$checked['ok']) {
         ws_api_poll_refused($checked['error'], $checked['field']);
@@ -3760,13 +3780,112 @@ function ws_api_polls_update($params)
         'closes_at'  => api_time($checked['closes_at']),
     ));
 
-    $result = ws_poll_edit($viewer, $poll, $data);
+    $result = ws_poll_edit($viewer, $poll, $data, $as_app);
 
     if (!$result['ok']) {
         ws_api_poll_refused($result['error'], $result['field']);
     }
 
     ws_api_poll_message_ok($viewer, $poll);
+}
+
+/**
+ * The application that changes, takes back or asks again its own poll: the
+ * caller's, when the poll's message is that application's. Otherwise the
+ * poll is the person's own words, which only their team devices session
+ * changes, and anything else is refused here.
+ *
+ * @param array $poll
+ * @return int the application, 0 for the person
+ */
+function ws_api_poll_asker_app($poll)
+{
+    if (ws_api_poll_is_callers($poll)) {
+        return ws_api_writer_app_id();
+    }
+
+    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can change their poll; an application key or an OAuth connection cannot change it for them.'));
+
+    return 0;
+}
+
+/**
+ * Takes a poll back, the way Take back on it does: the asker's own, a person
+ * or the application that asked it. It stays in the channel, greyed, takes
+ * no vote and writes no result.
+ */
+function ws_api_polls_withdraw($params)
+{
+    $viewer = ws_api_viewer();
+    $poll = ws_api_poll_or_404($viewer, $params['id']);
+    $as_app = ws_api_poll_asker_app($poll);
+    $checked = ws_poll_withdraw_check($viewer, $poll, $as_app);
+
+    if (!$checked['ok']) {
+        ws_api_poll_refused($checked['error'], $checked['field']);
+    }
+
+    api_dry_run_stop('withdrawn', 'workspace_poll', array('id' => (int) $poll['id'], 'message_id' => (int) $poll['message_id']));
+
+    $result = ws_poll_withdraw($viewer, $poll, $as_app);
+
+    if (!$result['ok']) {
+        ws_api_poll_refused($result['error'], $result['field']);
+    }
+
+    ws_api_poll_message_ok($viewer, ws_poll($poll['id']));
+}
+
+/**
+ * Asks a poll again as a new poll naming it: the fields sent replace the
+ * old poll's, the rest are carried over (not closes_at). An open old poll is
+ * taken back; an answered or closed one stays. The answer is the new
+ * poll's message (201).
+ */
+function ws_api_polls_again($params)
+{
+    $viewer = ws_api_viewer();
+    $poll = ws_api_poll_or_404($viewer, $params['id']);
+    $as_app = ws_api_poll_asker_app($poll);
+    $sent = array();
+
+    foreach (array('question', 'options', 'multiple', 'anonymous', 'closes_at') as $key) {
+        if (array_key_exists($key, $params) && ($params[$key] !== null)) {
+            $sent[$key] = $params[$key];
+        }
+    }
+
+    if (isset($sent['options'])) {
+        foreach ((array) $sent['options'] as $item) {
+            if (!is_array($item) && !is_string($item) && !is_int($item) && !is_float($item)) {
+                api_fail_validation(lang(array('string' => 'Each item of {var:1} must be a text or an object.', 'vars' => 'options')), 'options');
+            }
+        }
+    }
+
+    $checked = ws_poll_again_check($viewer, $poll, $sent, $as_app);
+
+    if (!$checked['ok']) {
+        if ($checked['error'] === lang('The database has to be updated first.')) {
+            api_fail(503, 'service_unavailable', $checked['error']);
+        }
+
+        ws_api_poll_refused($checked['error'], $checked['field']);
+    }
+
+    api_dry_run_stop('created', 'workspace_poll', array(
+        'channel_id' => (int) $poll['channel_id'],
+        'again_of'   => (int) $poll['id'],
+        'withdraws'  => !ws_poll_withdrawn($poll) && ((int) $poll['closed_at'] === 0),
+    ));
+
+    $result = ws_poll_ask_again($viewer, $poll, $sent, $as_app);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], ($result['field'] !== '') ? $result['field'] : null);
+    }
+
+    ws_api_poll_message_ok($viewer, ws_poll($result['poll_id']), 201);
 }
 
 /**

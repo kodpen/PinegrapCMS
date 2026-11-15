@@ -5817,6 +5817,7 @@
     "The poll ended in a tie between {var:1} ({var:2} votes each) - {var:3}": "Oylama berabere bitti: {var:1} (her biri {var:2} oy) - {var:3}",
     "The poll has to close later than now.": "Oylamanın kapanışı şu andan sonra olmalı.",
     "The poll is closed.": "Oylama kapandı.",
+    "The poll was taken back.": "Oylama geri alındı.",
     "The pontoons are ready for the season": "İskeleler sezona hazır",
     "The ports of this route": "Bu hattın iskeleleri",
     "The post is hidden if it breaks a rule": "Bir kuralı çiğneyen gönderi gizlenir",
