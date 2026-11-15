@@ -1984,7 +1984,7 @@ function test_comments_widget_canvas_twin_fades_by_place()
 
 	$js = comments_widget_test_source('assets/js/style_designer.src.js');
 	$code_js = '';
-	foreach (array('_parentIndexFor', 'findParent', '_cfNodeAttr', '_sdFindByPropId', '_sdCommentsPlace', '_swKindOf', '_sdCommentsModeOffBindings', '_sdCommentsModeOff', '_sdCommentsBindingOff') as $name) {
+	foreach (array('_parentIndexFor', '_sdListIsSourced', 'findParent', '_cfNodeAttr', '_sdFindByPropId', '_sdCommentsPlace', '_swKindOf', '_sdCommentsModeOffBindings', '_sdCommentsModeOff', '_sdCommentsBindingOff') as $name) {
 		$body = comments_widget_test_js_function($js, $name);
 		pg_assert_true($body !== '', 'style_designer.js has ' . $name . '()');
 		$code_js .= $body . "\n";

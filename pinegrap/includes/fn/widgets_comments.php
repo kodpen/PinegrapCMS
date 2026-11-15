@@ -401,6 +401,31 @@ function pg_comments_widget_page_param($value)
 }
 
 /**
+ * The page links of a thread showing page $page of $pages, for a design
+ * that builds them as a list (source paging.pages, widgets_lists_paging.php):
+ * 'tokens' (^^__page_number^^, ^^__prev_page_url^^, ^^__next_page_url^^ ...,
+ * escaped once), 'flags' (has_prev_page, has_next_page, has_more_pages) and
+ * 'rows' for pg_sw_list_publish(). Every link ends at the comments' anchor,
+ * as the comment_pagination section's links do.
+ *
+ * @param mixed $page
+ * @param mixed $pages
+ * @return array
+ */
+function pg_comments_widget_paging($page, $pages)
+{
+    $page = is_scalar($page) ? (int) $page : 1;
+    $pages = is_scalar($pages) ? (int) $pages : 1;
+    $paging = pg_sw_list_paging('comments_page', $page, $pages, 'software_comments');
+
+    return array(
+        'tokens' => $paging['tokens'],
+        'flags' => $paging['flags'],
+        'rows' => pg_sw_list_paging_rows('comments_page', $page, $pages, 'software_comments'),
+    );
+}
+
+/**
  * One page of a thread's entries. Pure.
  *
  * A page holds $per_page units: an entry at depth 0 with the replies drawn
@@ -1812,7 +1837,8 @@ function _pg_comments_holds_action($node, $action)
 }
 
 /**
- * Whether a tree has a loop_area anywhere.
+ * Whether a tree has the comments' loop_area anywhere: a list of another
+ * source (the page links) is not it.
  *
  * @param mixed $node
  * @return bool
@@ -1820,6 +1846,10 @@ function _pg_comments_holds_action($node, $action)
 function _pg_comments_tree_has_loop($node)
 {
     if (!is_array($node)) {
+        return false;
+    }
+
+    if (pg_sw_list_is_sourced($node)) {
         return false;
     }
 
@@ -3211,6 +3241,11 @@ function pg_comments_default_tree()
  * - sections: comment_captcha, comment_rating_input, comment_publish,
  *   comment_watchers, comment_pagination markup, '' when off (the container
  *   is then dropped);
+ * - paging: pg_comments_widget_paging() of the thread, for a design that
+ *   builds its page links as a list: its tokens and flags fill the
+ *   surround, and when the design drew such a list its rows are published
+ *   and the comment_pagination markup is left out, here and after the
+ *   comments;
  * - slots: the form's internal slots, already escaped;
  * - edit_chips: draw the edit pencil on each comment;
  * - recent: a list of recent comments (widgets_comments_recent.php): each
@@ -3254,6 +3289,7 @@ function pg_comments_widget_draw($tree, $data)
     $sections = $list('sections') + array('comment_captcha' => '', 'comment_rating_input' => '', 'comment_publish' => '',
         'comment_watchers' => '', 'comment_pagination' => '');
     $slots = $list('slots');
+    $paging = $list('paging') + array('tokens' => array(), 'flags' => array(), 'rows' => array());
     $controls = $list('controls');
     $edit_chips = !empty($data['edit_chips']);
     $comments_thread_flags = $list('thread_flags');
@@ -3279,6 +3315,10 @@ function pg_comments_widget_draw($tree, $data)
     pg_comments_apply_form_bindings($tree, $form);
     pg_comments_apply_control_bindings($tree, $controls);
     pg_cf_link_labels($tree);
+    // The page links are known to be wanted only once the tree is drawn (a
+    // list registers itself then): the section holds a marker till then.
+    $pagination = is_scalar($sections['comment_pagination']) ? (string) $sections['comment_pagination'] : '';
+    $sections['comment_pagination'] = ($pagination !== '') ? '<!--pg-cm-pagination-->' : '';
     pg_cf_apply_section_bindings($tree, $sections);
     _pg_member_drop_empty_links($tree, array(
         '__comments_show_all_url' => $link_value('__comments_show_all_url'),
@@ -3301,7 +3341,7 @@ function pg_comments_widget_draw($tree, $data)
     }
 
     $static_tree = $split['static_tree'];
-    _eo_apply_visibility_bindings($static_tree, $comments_thread_flags);
+    _eo_apply_visibility_bindings($static_tree, $comments_thread_flags + (is_array($paging['flags']) ? $paging['flags'] : array()));
     pg_comments_watchers_feedback($static_tree);
 
     $loop_tree = array('type' => 'root', 'props' => array(), 'children' => $loop_children);
@@ -3358,7 +3398,18 @@ function pg_comments_widget_draw($tree, $data)
 
     // The Messages node prints, and uses up, the comment form state here.
     $static = trim(_render_tree_node($static_tree, 0, 0));
-    $static = pg_sw_sweep_tokens(_pg_sw_fill_tokens($static, pg_comments_widget_escape($thread_values) + $slots));
+    $static = pg_sw_sweep_tokens(_pg_sw_fill_tokens($static, pg_comments_widget_escape($thread_values) + $slots
+        + (is_array($paging['tokens']) ? $paging['tokens'] : array())));
+
+    // A design that drew the page links as a list gets their rows, and no
+    // built-in pagination beside them.
+    if (pg_sw_list_wanted('paging')) {
+        pg_sw_list_publish('paging', is_array($paging['rows']) ? $paging['rows'] : array());
+        $pagination = '';
+    }
+
+    $placed = (strpos($static, '<!--pg-cm-pagination-->') !== false);
+    $static = str_replace('<!--pg-cm-pagination-->', $pagination, $static);
 
     if ($fallback && ($rows_html !== '')) {
         $rows_html = '<div class="pg-comments-list' . ($recent ? ' list-group list-group-flush' : '') . '">' . $rows_html . '</div>';
@@ -3367,10 +3418,9 @@ function pg_comments_widget_draw($tree, $data)
     // The page links, when the design placed no comment_pagination section
     // the visitor gets: right after the comments, outside the list or table
     // that holds them.
-    $pagination = is_scalar($sections['comment_pagination']) ? (string) $sections['comment_pagination'] : '';
     $after_list = '';
 
-    if (($pagination !== '') && ($rows_html !== '') && (strpos($static, 'pg-sw-pagination') === false)) {
+    if (($pagination !== '') && ($rows_html !== '') && !$placed) {
         if (strpos($static, '<!--pg-loop-after-->') !== false) {
             $after_list = $pagination;
         } else {
@@ -5032,6 +5082,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'comment_watchers' => '',
         'comment_pagination' => pg_sw_pagination_html('comments_page', $paged['page'], $paged['pages'], 'software_comments'),
     );
+    $paging = pg_comments_widget_paging($paged['page'], $paged['pages']);
 
     if ($can_publish) {
         if ($field('publish') !== '') {
@@ -5164,6 +5215,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         'form' => $form,
         'controls' => $controls,
         'sections' => $sections,
+        'paging' => $paging,
         'slots' => $slots,
         'edit_chips' => $is_staff && pg_sw_edit_chips_on(),
     ));

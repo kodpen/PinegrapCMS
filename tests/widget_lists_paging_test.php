@@ -130,7 +130,7 @@ function test_widget_lists_paging_editor()
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("extra: { listSource: 'paging.pages' }", $js);
 	pg_assert_contains("'paging.pages': {", $js);
-	pg_assert_contains("kinds: ['form_list_view', 'catalog_listing', 'search_results'],", $js);
+	pg_assert_contains("kinds: ['form_list_view', 'catalog_listing', 'search_results', 'comments'],", $js);
 	pg_assert_contains("function _sdListNeedsMainLoop(kind, source) {", $js);
 	pg_assert_true((bool) preg_match("/'paging.pages':\s+_sdT\('One row for every page link/", $js), 'the panel explains the list');
 }

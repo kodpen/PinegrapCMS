@@ -540,7 +540,7 @@ out.on = run();
 process.stdout.write(JSON.stringify(out));
 JS;
 
-	$res = comments_widget_designer_test_node(array('_parentIndexFor', 'findParent', '_cfNodeAttr', '_sdFindByPropId', '_sdCommentsPlace', '_swKindOf', '_sdCommentsModeOffBindings', '_sdCommentsModeOff', '_sdCommentsBindingOff'), $script);
+	$res = comments_widget_designer_test_node(array('_parentIndexFor', '_sdListIsSourced', 'findParent', '_cfNodeAttr', '_sdFindByPropId', '_sdCommentsPlace', '_swKindOf', '_sdCommentsModeOffBindings', '_sdCommentsModeOff', '_sdCommentsBindingOff'), $script);
 	if ($res === null) {
 		return;
 	}
@@ -2380,7 +2380,7 @@ out.staff_on = _sdCommentsFlagOff(named['staff controls'], list);
 JS;
 
 	$res = comments_widget_designer_test_node(array('_swKindOf', '_sdCommentsThreadFlags', '_sdCommentsRecentFlags', '_sdCommentsCanvasStates', '_sdCommentsPageThread', '_sdCommentsProductViewPage', '_sdCommentsStateThread', '_sdCommentsCanvasFacts',
-		'_sdCommentsRecentFacts', '_sdCommentsStateFlags', '_sdCommentsCanvasFlags', '_sdCommentsFlagOff', '_sdCommentsRecentSamples'), comments_widget_designer_test_canvas_script($body));
+		'_sdCommentsRecentFacts', '_sdCommentsStateFlags', '_sdCommentsCanvasFlags', '_sdListIsSourced', '_sdCommentsFlagOff', '_sdCommentsRecentSamples'), comments_widget_designer_test_canvas_script($body));
 	if ($res === null) {
 		return;
 	}
