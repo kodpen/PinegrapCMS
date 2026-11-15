@@ -2051,7 +2051,7 @@
             return [String(person.id), person.name];
         }));
         var standIn = h.select(people, away.stand_in ? String(away.stand_in) : '');
-        var clear = h.button('btn btn-link btn-sm px-0', t('mail_away_clear'), 'bi-x-circle');
+        var clear = h.button('btn btn-sm btn-text theme-secondary', t('mail_away_clear'), 'bi-x-circle');
 
         h.dateField(start, 'date');
         h.dateField(end, 'date');
