@@ -194,7 +194,7 @@ function test_skiresort_lessons_view_lists_and_mails_read_the_form()
 		pg_assert_same('public', $w[$key]['config']['access_control'], "$key is drawn for the submission just sent");
 		pg_assert_contains('{{page:lesson_view}}?r=^^reference_code^^', json_encode($w[$key]['tree'], JSON_UNESCAPED_SLASHES), "$key links the request");
 	}
-	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
+	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps the System region');
 }
 
 function test_skiresort_lessons_ids_classes_and_headings()

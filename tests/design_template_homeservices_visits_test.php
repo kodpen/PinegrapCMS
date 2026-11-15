@@ -209,7 +209,7 @@ function test_homeservices_visits_record_and_mail()
 	pg_assert_contains('"eo_visible_if":"record_found"', $json, 'the record');
 	pg_assert_contains('"eo_visible_if":"record_not_found"', $json, 'the not-found note');
 	pg_assert_contains('"eo_visible_if":"can_edit"', $json, 'the staff\'s Edit button');
-	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
+	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps the fixed comment');
 	foreach (array('email_visit_admin', 'email_visit_client') as $key) {
 		pg_assert_contains('{{page:visit_view}}?r=^^reference_code^^', json_encode($d['widgets'][$key]['tree'], JSON_UNESCAPED_SLASHES), "$key opens the booking");
 	}

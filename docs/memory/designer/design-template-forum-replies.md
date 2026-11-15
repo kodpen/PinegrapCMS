@@ -18,7 +18,7 @@ description: Forum template on the Comments widget (1.1.0, board list 1.2.0): se
 - None since 1.3.0 ([[design-template-forum-private-threads]]).
 
 ## How do the e-mails draw a comment?
-- The card's View or Reply link is bound to `__comment_url` with no flag above it, so `pg_comments_email_drew()` takes the draw; the e-mail pages have no System region ([[comment-email-pages-system-region]]). A comment of the conversation or the desk gets the card too.
+- The card's View or Reply link is bound to `__comment_url` with no flag above it, so `pg_comments_email_drew()` takes the draw; the System region after it keeps the fixed markup for an e-mail the widget does not draw. A comment of the conversation or the desk gets the card too.
 
 ## Which page settings?
 - Each page keeps its `comments` array; every one has attachments and select_name false (names come from the profile); topic and doc also a message and a closed_message.

@@ -284,8 +284,10 @@ $report_pages[] = array_merge($mail_settings, array(
     'tree'  => $mail_page(array($widget('email_report_member'))),
 ));
 // The comment e-mails. Their Comments widget draws the comment in the card
-// of mail.php, with its View or Reply button. The pages have no System
-// region: the card always draws the comment.
+// of mail.php, with its View or Reply button; the System region after it
+// keeps the fixed comment for an e-mail the widget does not draw (a card
+// edited so it lost its link to the comment).
+$report_mail_system = array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array());
 // A new comment on a post: sent to the members who follow its thread (who
 // saved it, the member who shared it among them).
 $report_pages[] = array_merge($mail_settings, array(
@@ -296,6 +298,7 @@ $report_pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('There is a new comment')),
         $mail_para(lang('Someone commented on a post you shared or saved. You can read it below and reply on the post.')),
         $widget('email_comment_card'),
+        $report_mail_system,
     )),
 ));
 // A new reply in a conversation with the community's team: sent to the
@@ -308,6 +311,7 @@ $report_pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('There is a new reply')),
         $mail_para(lang('The team answered a message you sent us. You can read it below and reply in the conversation.')),
         $widget('email_comment_card'),
+        $report_mail_system,
     )),
 ));
 

@@ -82,11 +82,11 @@ function test_social_reports_widgets_are_placed_on_their_pages()
 			pg_assert_true(isset($d['widgets'][$wkey]), "$key places the defined widget $wkey");
 		}
 	}
-	// Both comment e-mails draw the comment with their card, which always
-	// draws it: no System region.
+	// Both comment e-mails draw the comment; the System region keeps the
+	// fixed one for a card that lost its link.
 	foreach (array('email_comment', 'email_reply') as $key) {
 		pg_assert_contains('"templateWidget":"email_comment_card"', $json_pages[$key], "$key draws the comment");
-		pg_assert_false(strpos($json_pages[$key], '"regionType":"system"'), "$key has no System region");
+		pg_assert_contains('"regionType":"system"', $json_pages[$key], "$key keeps the System region");
 	}
 }
 

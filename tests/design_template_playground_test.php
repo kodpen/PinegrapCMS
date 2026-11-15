@@ -6,7 +6,7 @@
  * pinegrap-playground.php): its comment threads are drawn by the Comments
  * widget (a blog post's comments, open to any visitor with a typed name
  * and the CAPTCHA, and a conversation's replies), and both comment e-mails
- * draw their comment with the widget's card, with no System region.
+ * draw their comment with the widget's card before the System region.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -104,7 +104,7 @@ function test_design_template_playground_anonymous_comment()
 }
 
 // Both comment e-mails: the blog's comment e-mail and the conversation's
-// reply e-mail, each with its card and no System region.
+// reply e-mail, each with its card right before its System region.
 function test_design_template_playground_comment_emails()
 {
 	_tpl_threads_check_email_card('pinegrap-playground', 'email_comment_card', 'email_comment', array('blog_post'));

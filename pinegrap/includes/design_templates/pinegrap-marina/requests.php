@@ -257,8 +257,8 @@ $request_pages[] = $mn_mail_page('email_request_received', lang('email-berth-req
 // A new message or reply: sent to the skipper of a berth request, a
 // charter enquiry or an event entry, the sender of a conversation and the
 // visitors watching a page. Its Comments widget draws the comment in the
-// card of mail.php. The page has no System region: the card always draws the
-// comment.
+// card of mail.php; the System region after it keeps the fixed comment
+// for an e-mail the widget does not draw.
 $request_pages[] = array_merge($mail_settings, array(
     'key'   => 'email_reply',
     'name'  => lang('email-new-reply'),
@@ -267,6 +267,7 @@ $request_pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('There is a new message')),
         $mail_para(lang('Something new was written on a page you follow: your berth request, your charter enquiry, your event entry, a conversation or a news post. You can read it below and answer it on the page.')),
         $widget('email_comment'),
+        array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
 

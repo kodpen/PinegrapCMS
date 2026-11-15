@@ -1,12 +1,12 @@
 ---
 name: design-template-threads
-description: Café, Clinic, Playground and Salon 1.1.0 comment threads on the Comments widget, the comment e-mail cards (no System region), Google Reviews beside the sample testimonials
+description: Café, Clinic, Playground and Salon 1.1.0 comment threads on the Comments widget, the comment e-mail cards before the System region, Google Reviews beside the sample testimonials
 ---
 
 ## Which comments widgets does the Café ship?
 - `post_comments` on blog_post: oldest, featured `first`, threaded, max_depth 2, 20 a page; Reply, Share, the follow box.
 - `reservation_messages` (reservation_view), `quote_messages` (quote_view), `conversation_replies` (conversation): two-sided private threads under their `submitter_only` record view ([[comments-widget-contract]]). Oldest, featured `none`, flat, one page; no Reply, Share or follow box: the guest gets each answer by the page's e-mail, the café by `notify_email`.
-- `email_comment` (`$mail_comment_tree`, the template's mail colours) on email_reply, with no System region: the card always draws ([[comment-email-pages-system-region]]).
+- `email_comment` (`$mail_comment_tree`, the template's mail colours) right before the System region of email_reply, which stays ([[comments-widget-email]]).
 - `$comments_section($name, $widget_key)` places them; `$comment_thread($w)` draws the look and words. The pages' `comments` arrays are unchanged. Labels: [[design-template-comment-labels]].
 - Café 1.1.0 (#4509), as [[design-template-shop-comments]], explicit trees for the same reasons. Decision: owner, 2026-11-01 (`workflow/decisions-made-product-16.md`).
 

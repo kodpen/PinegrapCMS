@@ -288,8 +288,9 @@ $study_pages[] = array_merge($mail_settings, array(
 // A new message, feedback or answer: sent to the student of an enrolment
 // or an assignment, the sender of a conversation and whoever follows a
 // lesson's questions. Its Comments widget draws the comment with its "View
-// or Reply" button. The page has no System region: the card always draws the
-// comment.
+// or Reply" button; the System region after it keeps the fixed comment for
+// an e-mail the widget does not draw (a card edited so it lost its link to
+// the comment).
 $study_pages[] = array_merge($mail_settings, array(
     'key'   => 'email_reply',
     'name'  => lang('email-new-reply'),
@@ -298,6 +299,7 @@ $study_pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('There is a new message')),
         $mail_para(lang('Something new was written on a page you follow: a lesson\'s questions, your enrolment, your project or a conversation. You can read it below and answer it on the page.')),
         $widget('email_comment'),
+        array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
 

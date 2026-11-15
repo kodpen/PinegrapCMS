@@ -216,8 +216,9 @@ $booking_pages[] = array_merge($mail_settings, array(
 ));
 // A new message or reply: sent to the renter of a booking request or a
 // business enquiry, the sender of a conversation and the visitors watching
-// a page. Its Comments widget draws the comment in the card of mail.php. The
-// page has no System region: the card always draws the comment.
+// a page. Its Comments widget draws the comment in the card of mail.php;
+// the System region after it keeps the fixed comment for an e-mail the
+// widget does not draw.
 $booking_pages[] = array_merge($mail_settings, array(
     'key'   => 'email_reply',
     'name'  => lang('email-new-reply'),
@@ -226,6 +227,7 @@ $booking_pages[] = array_merge($mail_settings, array(
         $mail_heading(lang('There is a new message')),
         $mail_para(lang('Something new was written on a page you follow: your booking request, your business enquiry, a conversation or a Road Trip Journal post. You can read it below and answer it on the page.')),
         $widget('email_comment'),
+        array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
 

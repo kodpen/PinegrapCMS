@@ -279,7 +279,7 @@ function test_museum_events_request_pages()
 		pg_assert_same('{{tab:booking_view}}', $d['widgets'][$key]['config']['detail_page_id'], "$key opens the request");
 	}
 	pg_assert_same('comments', $d['widgets']['email_comment']['config']['regionType'], 'the reply e-mail draws the comment');
-	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
+	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the fixed comment for other e-mails');
 }
 
 function test_museum_events_links_ids_and_classes()

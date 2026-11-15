@@ -267,7 +267,7 @@ function test_portfolio_brief_form()
 }
 
 // The e-mails: every page drawn in the frame with the shared header and
-// footer, the reply e-mail with its card and no System region, the
+// footer, the reply e-mail keeping the System region after its card, the
 // button bound to the comment's address, and no class of another template.
 function test_portfolio_brief_mails()
 {
@@ -280,7 +280,7 @@ function test_portfolio_brief_mails()
 	}
 	$reply = json_encode($d['briefs']['pages'][7]['tree']);
 	pg_assert_same('email_reply', $d['briefs']['pages'][7]['key'], 'the reply e-mail');
-	pg_assert_false(strpos($reply, '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
+	pg_assert_true(strpos($reply, '"regionType":"system"') !== false, 'the reply e-mail keeps the System region');
 	pg_assert_true(strpos(json_encode($d['mail_comment']), '__comment_url') !== false, 'the comment card links the comment');
 	$all = json_encode(array($d['briefs'], $d['mail_shared'], $d['mail_comment']));
 	pg_assert_same(0, preg_match('/\b(pf|pre|pl|pdl)-[a-z]/', str_replace(array('pre-wrap'), '', $all)), 'no class of another template');

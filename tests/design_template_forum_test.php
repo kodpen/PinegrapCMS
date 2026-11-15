@@ -866,9 +866,8 @@ function test_forum_template_loads()
 	// the inbox, desk and report threads on the Comments widget, and the
 	// blog; 1.3.1: the conversation's answers labelled replies; 1.3.2:
 	// readable alert links; 1.3.3: the report notes' own button words, a
-	// guide's byline as its author; 1.3.4: the masthead's links from xl;
-	// 1.3.5: the comment e-mails without their System region.
-	pg_assert_same('1.3.5', $tpl['version'], 'version 1.3.5');
+	// guide's byline as its author; 1.3.4: the masthead's links from xl.
+	pg_assert_same('1.3.4', $tpl['version'], 'version 1.3.4');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
 	pg_assert_same('bi-chat-square-text', $tpl['icon'], 'icon');
@@ -2728,8 +2727,9 @@ function test_forum_email_comment()
 				$order[] = '#' . $n['props']['regionType'];
 			}
 		}
-		pg_assert_false(in_array('#system', $order, true), $key . ' has no System region: the card always draws the comment');
-		pg_assert_true(in_array('email_comment', $order, true), $key . ' places the card');
+		$at = array_search('#system', $order, true);
+		pg_assert_true($at !== false, $key . ' keeps its System region');
+		pg_assert_same('email_comment', ($at !== false && $at > 0) ? $order[$at - 1] : null, $key . ': the widget right before it');
 	}
 
 	// Drawn as an e-mail draws it (_pg_comments_widget_email()): the comment,

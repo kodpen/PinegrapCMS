@@ -332,8 +332,8 @@ function test_events_registration_page_thread_and_emails()
 	foreach (array('"comment_form"', '"comment_submit"', '"can_comment"', '"__comment_message_html"') as $token) pg_assert_contains($token, $json, "thread binds $token");
 	pg_assert_false(strpos($json, '"comment_reply"') !== false, 'a two-sided thread has no Reply');
 
-	// The reply e-mail: the comment card and no System region, its button
-	// bound to the comment's own address.
+	// The reply e-mail: the comment card before the System region, its
+	// button bound to the comment's own address.
 	$reply = _test_events_part('pages', 'email_reply');
 	$nodes = array();
 	_test_events_nodes($reply['tree'], $nodes);
@@ -342,7 +342,7 @@ function test_events_registration_page_thread_and_emails()
 		if (isset($n['props']['templateWidget']) && $n['props']['templateWidget'] === 'email_comment') $card = $i;
 		if (isset($n['props']['regionType']) && $n['props']['regionType'] === 'system') $system = $i;
 	}
-	pg_assert_true($card >= 0 && $system === -1, 'the comment card and no System region: the card always draws the comment');
+	pg_assert_true($card >= 0 && $system > $card, 'comment card before the System region');
 	pg_assert_contains('"__comment_url"', json_encode(_test_events_part('widgets', 'email_comment')['tree']), 'card links the comment');
 
 	foreach (array('email_registration_admin', 'email_registration_client') as $key) {

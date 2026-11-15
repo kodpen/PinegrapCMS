@@ -185,7 +185,7 @@ function test_construction_quotes_record_and_mail()
 	$json = json_encode($d['widgets']['quote_detail']['tree']);
 	pg_assert_contains('"eo_visible_if":"record_found"', $json, 'the record');
 	pg_assert_contains('"eo_visible_if":"record_not_found"', $json, 'the not-found note');
-	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
+	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps the fixed comment');
 	foreach (array('email_quote_admin', 'email_quote_client') as $key) {
 		pg_assert_same('public', $d['widgets'][$key]['config']['access_control'], "$key is drawn for the submission just sent");
 		pg_assert_contains('{{page:quote_view}}?r=^^reference_code^^', json_encode($d['widgets'][$key]['tree'], JSON_UNESCAPED_SLASHES), "$key opens the request");

@@ -232,7 +232,7 @@ function test_bikeshop_requests_views_lists_and_mails_read_the_form()
 		}
 	}
 	pg_assert_contains('"quote"', json_encode($w['service_detail']['tree']), 'the service request shows the quote');
-	pg_assert_false(strpos(json_encode($d['pages']['email_reply']['tree']), '"regionType":"system"'), 'the reply e-mail has no System region: its card always draws the comment');
+	pg_assert_contains('"regionType":"system"', json_encode($d['pages']['email_reply']['tree']), 'the reply e-mail keeps the System region');
 	pg_assert_same('email_reply', $w['email_comment']['page'], 'the reply e-mail draws the comment');
 }
 

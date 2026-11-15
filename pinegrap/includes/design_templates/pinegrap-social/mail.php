@@ -89,10 +89,10 @@ $mail_reference = function () use ($el, $span, $bind, $mail_style) {
 // The comment an e-mail is about, in a box: who wrote it and when, its
 // stars, the comment it answers, its words and its file, then its View or
 // Reply button. The button is bound to the comment's own address, with no
-// flag over it: with it the card always draws the comment, so the comment
-// e-mail pages need no System region. No form, no control; every colour
-// written for mail programs that drop the stylesheet, with its fallback inside
-// var().
+// flag over it: an e-mail whose card has no such link keeps the fixed
+// comment the System region carries. No form, no control; every colour
+// written for mail programs that drop the stylesheet, with its fallback
+// inside var().
 $mail_comment_tree = $widget_root(array(
     $el('div', '', lang('Comment List'), array(
         $loop(array(

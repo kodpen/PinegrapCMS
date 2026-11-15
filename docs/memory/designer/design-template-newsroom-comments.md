@@ -7,7 +7,7 @@ description: News and magazine templates (1.1.0) on the Comments widget: post_co
 - `post_comments` on blog_post, under the article view, in the article's column: oldest, featured `first`, threaded, max_depth 2, 20 a page; Reply, Share, the follow box. Reader comments stay held for an editor (page setting).
 - `conversation_replies` on conversation, under the conversation view: oldest, featured `none`, flat, all on one page; no Reply, Share or follow box (two sides: the sender gets each answer, the newsroom each new message).
 - `desk_messages` on submission, under `submission_view`: as the conversation, but the follow box stays: `email_desk_message` goes to the author and to every editor who follows the article ([[design-template-news-publishing]]).
-- `email_comment` (`$mail_comment_tree`, flat, featured none), owned by email_reply and placed on email_reply and email_desk_message, with no System region: the card always draws ([[comment-email-pages-system-region]]).
+- `email_comment` (`$mail_comment_tree`, flat, featured none), owned by email_reply and placed on email_reply and email_desk_message, right before the System region, which stays ([[comments-widget-email]]).
 - The magazine (1.1.0) ships the same keys and options (`test_magazine_shares_the_news_contract` compares the files): `post_comments` are the story's letters (label `Letter`, held), inside `.pm-measure` in the story column; `desk_messages` on submission ("Messages with the editors").
 - The fixed `comments_block` region is gone; `$comments_section($name, $widget_key)` places the widget in the reading column. Decision: owner, 2026-11-01 (`workflow/decisions-made-product-16.md`): public and private threads move, comment e-mails get the card and keep the System region.
 
