@@ -182,7 +182,8 @@ function ws_ical_windows_zones()
  * The zone a TZID names: an IANA name as it is, a Windows name through
  * ws_ical_windows_zones(), a display label "(UTC+hh:mm) City" or "(UTC) City"
  * as its fixed offset (the label carries no clock-change rule); null for a
- * name that matches none, which the caller reads in the site's zone.
+ * name that matches none or an offset beyond ±14:00, which the caller reads
+ * in the site's zone.
  *
  * @param string $tzid
  * @return DateTimeZone|null
@@ -211,7 +212,22 @@ function ws_ical_zone($tzid)
     }
 
     if (preg_match('/^\(UTC(?:([+-])(\d{1,2}):(\d{2}))?\)/i', $tzid, $label)) {
-        return new DateTimeZone(isset($label[1]) ? sprintf('%s%02d:%s', $label[1], (int) $label[2], $label[3]) : 'UTC');
+        if (!isset($label[1])) {
+            return new DateTimeZone('UTC');
+        }
+
+        // Real offsets run from -12:00 to +14:00; a label outside them is
+        // read in the site's zone, since PHP versions differ on whether
+        // they refuse it or keep it.
+        if (((int) $label[2] > 14) || ((int) $label[3] > 59)) {
+            return null;
+        }
+
+        try {
+            return new DateTimeZone(sprintf('%s%02d:%s', $label[1], (int) $label[2], $label[3]));
+        } catch (Exception $e) {
+            return null;
+        }
     }
 
     try {

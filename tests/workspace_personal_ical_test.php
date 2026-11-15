@@ -498,6 +498,14 @@ function test_workspace_personal_ical_windows_zone()
 	pg_assert_same('UTC', ws_ical_zone('(UTC) Coordinated Universal Time')->getName(), 'a label without an offset is UTC');
 	pg_assert_same('America/New_York', ws_ical_zone('America/New_York')->getName(), 'an IANA name as it is');
 	pg_assert_same(null, ws_ical_zone(''), 'no name');
+	pg_assert_same(null, ws_ical_zone('(UTC+99:00) Nowhere'), 'an offset beyond any real one gives no zone');
+	pg_assert_same(null, ws_ical_zone('(UTC+03:99) Nowhere'), 'and so do minutes past 59');
+	pg_assert_same(array('2026-11-04 10:00 -> 11:00 Far'), ws_personal_ical_test_read(array(
+		'BEGIN:VEVENT', 'UID:w5', 'SUMMARY:Far',
+		'DTSTART;TZID="(UTC+99:00) Nowhere":20261104T100000',
+		'DTEND;TZID="(UTC+99:00) Nowhere":20261104T110000',
+		'END:VEVENT',
+	)), 'such an event is read in the site zone, not dropped');
 
 	foreach (ws_ical_windows_zones() as $windows => $iana) {
 		$zone = ws_ical_zone($windows);

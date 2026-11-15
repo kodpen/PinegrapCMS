@@ -4,7 +4,7 @@ description: How a TZID of a person's own iCal calendar or a mail invitation is 
 ---
 
 ## How is a TZID turned into a zone?
-- `ws_personal_ical_moment()` calls `ws_ical_zone($tzid)` (`includes/workspace/ical_zone.php`): a Windows name ("GMT Standard Time", any case) through `ws_ical_windows_zones()` (CLDR windowsZones, territory 001); a display label `(UTC+03:00) Istanbul` at its fixed offset, `(UTC) …` as UTC; anything else as an IANA name. A name that matches none gives null and the time is read in the site's zone.
+- `ws_personal_ical_moment()` calls `ws_ical_zone($tzid)` (`includes/workspace/ical_zone.php`): a Windows name ("GMT Standard Time", any case) through `ws_ical_windows_zones()` (CLDR windowsZones, territory 001); a display label `(UTC+03:00) Istanbul` at its fixed offset (hours above 14 or minutes above 59 give null, never an exception), `(UTC) …` as UTC; anything else as an IANA name. A name that matches none gives null and the time is read in the site's zone.
 - Both the own iCal calendar (`ws_personal_ical_events()`) and mail invitations (`ws_mail_invitation_read()`: the card, "Update my plan", the saved plan) read through it.
 
 ## Why?
