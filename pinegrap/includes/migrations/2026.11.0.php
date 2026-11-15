@@ -206,6 +206,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_poll_parts();           // 11.0.213
 	upgrade_2026_11_0_ws_poll_agent_question();  // 11.0.214
 	upgrade_2026_11_0_push_provider();           // 11.0.215
+	upgrade_2026_11_0_ws_agent_duty();           // 11.0.217
 
 }
 
@@ -6872,5 +6873,25 @@ function upgrade_2026_11_0_push_provider() {
 	install_add_column('push_subscriptions', 'provider', "VARCHAR(8) NOT NULL DEFAULT ''");
 
 	install_note('Push notifications: a team device can register for native push through the Pinegrap push service.');
+
+}
+
+// An agent's duty (11.0.217, includes/workspace/agents.php): what the agent
+// is there for, in the words of the person who set it up. Its instructions
+// carry it as "Your duty" and the agent card shows it. NULL by default and no
+// backfill: an agent with no duty works as before.
+function upgrade_2026_11_0_ws_agent_duty() {
+
+	if (!install_table_exists('ws_agents')) {
+
+		install_skipped('ws_agents does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_agents', 'duty', 'TEXT NULL');
+
+	install_note('Workspace: an agent can be given a duty on its form; its instructions and its card carry it.');
 
 }
