@@ -16,7 +16,7 @@ description: Repeating plans on My calendar (#9565, #9611): the Repeat field, st
 
 ## What does the drawer ask?
 - "Repeat": Does not repeat, Every day, week, month, year; "Repeat every" N (1-99); "Repeat ends": Never, On a day (Last day of the repeat), After a number of times (1-999). `ws_personal_plan_repeat_clean()` turns a day or a count into `repeat_until` on save, so no reader counts. Two rows of two under Reminder (architect, channel 3590).
-- A plan longer than the step between its times is refused (times never overlap).
+- A plan longer than its shortest step is refused; length by wall clock (`ws_personal_plan_wall_length()`, #9666).
 - A roadmap does not repeat: the Roadmap section hides while a repeat is set; the save refuses a rule on a plan with steps, and `ws_personal_plan_steps_save()` refuses steps on a repeating plan. A plan made from a mail may repeat (architect, 3432).
 - Save or Delete on a repeating plan asks "This one" / "This and the following" (the drawer's own `askTimes()` in workspace_my_calendar.js).
 
