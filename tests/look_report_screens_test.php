@@ -108,3 +108,30 @@ function test_settings_card_switch_keeps_its_knob()
 	pg_assert_contains("  --bs-switch-border-width: 0px;\n", $css, 'the width with a unit');
 	pg_assert_false(strpos($css, '--bs-switch-border-width: 0;') !== false, 'never a bare 0');
 }
+
+// One shape for the period beside the calendar: the panel's date text and
+// an en dash, the same day once.
+function test_report_screens_one_period_shape()
+{
+	pg_assert_same('<time>1</time> – <time>2</time>', pg_report_view_range('<time>1</time>', '<time>2</time>'));
+	pg_assert_same('<time>1</time>', pg_report_view_range('<time>1</time>', '<time>1</time>'), 'one day');
+
+	foreach (array('view_order_report.php', 'view_visitor_report.php', 'view_shipping_report.php', 'erp_vat_report.php') as $screen) {
+		$source = look_report_screens_test_source($screen);
+
+		pg_assert_contains('pg_report_view_range(', $source, $screen . ': the shared range text');
+		pg_assert_contains("'type' => 'date'", $source, $screen . ': the panel\'s date text');
+		pg_assert_false(strpos($source, "' - ' . \$stop_date") !== false, $screen . ': no hyphen');
+	}
+}
+
+// Shipping: fourteen day columns fit at 1440 with narrower cells; below that
+// the table scrolls inside its card.
+function test_shipping_report_day_columns()
+{
+	$source = look_report_screens_test_source('view_shipping_report.php');
+	$block = look_report_screens_test_block();
+
+	pg_assert_same(3, substr_count($source, '<td class="text-end pg-report-day">') + substr_count($source, '<th class="text-end pg-report-day">'), 'day heading and day cells');
+	pg_assert_contains(".pg-report-table .pg-report-day {\n  padding: 0 6px;", $block);
+}
