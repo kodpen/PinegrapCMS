@@ -209,12 +209,12 @@ function pg_country_form_card($values, $errors = array(), $status_rows = '')
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Country'))) . '</label>
                                             <input type="text" name="name" id="name" class="form-control' . $name_class . '" maxlength="50" required' . $name_value . $name_aria . ' />' . $name_feedback . '
                                             <div class="form-text">' . lang('Display on Commerce Pages') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 pg-field-span-4 my-3">
                                             <label for="code" class="form-label">' . lang('Code') . '</label>
                                             <input type="text" name="code" id="code" class="form-control' . $code_class . '" maxlength="50" required' . $code_value . $code_aria . ' />' . $code_feedback . '
                                             <div class="form-text">' . lang('Country Code for Order Reporting') . '</div>
@@ -228,7 +228,7 @@ function pg_country_form_card($values, $errors = array(), $status_rows = '')
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="transit_adjustment_days" class="form-label">' . lang('Extra Delivery Days') . '</label>
                                             <div class="input-group number-controls">
                                                 <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>

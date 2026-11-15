@@ -52,14 +52,14 @@ if (!defined('PG_INIT_LOADED')) {
                 <div class="row">
                     <div class="col-12 lg:col-8 2xl:col-9 order-1">
                         <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 pg-title-section">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 <?=lang('Main Informations')?>
-                            </div>
+                            </h2>
                             <div class="card-body pt-0">
                                 <div class="row">
 									<?php if ($screen == 'create'): ?>
-                                    	<div class="col-12 md:col-4 my-3">
-											<label for="quantity" class="form-label "><?=lang('Quantity')?></label>
+                                    	<div class="col-12 md:col-3 my-3">
+											<label for="quantity" class="form-label"><?=lang('Quantity')?></label>
                                             <div class="input-group number-controls">
                                                 
                                                 <?=$liveform->output_field(array(
@@ -78,7 +78,7 @@ if (!defined('PG_INIT_LOADED')) {
 													'required' => 'required'))?>
                                                
                                             </div>
-											<div class="text-end form-text"><?=lang('Increase Quantity to Create Multiple Key Codes')?></div>
+											<div class="form-text"><?=lang('Increase Quantity to Create Multiple Key Codes')?></div>
                                     	</div>
 									<?php endif ?>
                                     <div class="col-12 md:col-4 my-3 collapse show" id="code_row">
@@ -90,7 +90,7 @@ if (!defined('PG_INIT_LOADED')) {
 											'name' => 'code',
 											'class' => 'form-control add-header-content-updater',
 											'maxlength' => '50'), $screen == 'edit' ? array('required' => 'required') : array()))?>
-										<div class="text-end form-text"><?=lang('New Key Code for Redemption & Order Reporting')?></div>
+										<div class="form-text"><?=lang('New Key Code for Redemption & Order Reporting')?></div>
                                     </div>
                                     <div class="col-12 md:col-4 my-3">
                                         <label for="offer_code" class="form-label"><?=lang('Offer Code')?></label>
@@ -101,15 +101,15 @@ if (!defined('PG_INIT_LOADED')) {
 											'class' => 'form-control',
 											'maxlength' => '50',
 											'required' => 'required'))?>
-										<div class="text-end form-text"><?=lang('Alias of Existing Offer Code')?></div>
+										<div class="form-text"><?=lang('Alias of Existing Offer Code')?></div>
                                     </div>
 								</div>
 							</div>
 						</div>
                         <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 pg-title-section">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 <?=lang('Notes')?>
-                            </div>
+                            </h2>
                             <div class="card-body pt-0">
                                 <div class="row">
                                     <div class="col-12 my-3">
@@ -128,9 +128,9 @@ if (!defined('PG_INIT_LOADED')) {
                         <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
                         <div class="position-sticky" style="top:3.3rem;">
                         <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 pg-title-section">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 <?=lang('Availability')?>
-                            </div>
+                            </h2>
                             <div class="card-body pt-0">
                                 <div class="row">
 									<div class="col-12 my-3">
@@ -154,16 +154,16 @@ if (!defined('PG_INIT_LOADED')) {
 											'autocomplete'=>'off',
 											'maxlength' => '10',
 											'data-pg-date' => ''))?>
-										<div class="text-end form-text"><?=lang('leave blank for no expiration')?></div>
+										<div class="form-text"><?=lang('leave blank for no expiration')?></div>
 										<?=get_date_picker_format() . pg_fields_script()?>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 pg-title-section">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
                                 <?=lang('Other Options')?>
-                            </div>
+                            </h2>
                             <div class="card-body pt-0">
                                 <div class="row">
 									<div class="col-12 my-3">

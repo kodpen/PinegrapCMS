@@ -108,23 +108,23 @@ function pg_verified_shipping_address_form_card($liveform, $status_rows = '')
                                             <label for="company" class="form-label">' . lang('Company') . '</label>
                                             <input type="text" name="company" id="company" maxlength="50" value="' . h($liveform->get_field_value('company')) . '" class="form-control' . ($liveform->check_field_error('company') ? ' is-invalid' : '') . '" />
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="address_1" class="form-label">' . lang('Address 1') . '</label>
                                             <input type="text" name="address_1" id="address_1" maxlength="50" required value="' . h($liveform->get_field_value('address_1')) . '" class="form-control' . ($liveform->check_field_error('address_1') ? ' is-invalid' : '') . '" />
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="address_2" class="form-label">' . lang('Address 2') . '</label>
                                             <input type="text" name="address_2" id="address_2" maxlength="50" value="' . h($liveform->get_field_value('address_2')) . '" class="form-control' . ($liveform->check_field_error('address_2') ? ' is-invalid' : '') . '" />
                                         </div>
-                                        <div class="col-12 md:col-5 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="city" class="form-label"' . $city_label['attrs'] . '>' . $city_label['text'] . '</label>
                                             <input type="text" name="city" id="city" maxlength="50" required value="' . h($liveform->get_field_value('city')) . '" class="form-control' . ($liveform->check_field_error('city') ? ' is-invalid' : '') . '"' . pg_places_input_attrs('TR', 'state_id') . ' />
                                         </div>
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="state_id" class="form-label"' . $state_label['attrs'] . '>' . $state_label['text'] . '</label>
-                                            <select style="width:100%" data-pg-combobox class="form-control' . ($liveform->check_field_error('state_id') ? ' is-invalid' : '') . '" data-placeholder="' . lang('Click to select state') . '" id="state_id" name="state_id" required>' . $output_state_options . '</select>' . pg_fields_script() . pg_ship_to_district_script() . '
+                                            <select data-pg-combobox class="form-control w-100' . ($liveform->check_field_error('state_id') ? ' is-invalid' : '') . '" data-placeholder="' . lang('Click to select state') . '" id="state_id" name="state_id" required>' . $output_state_options . '</select>' . pg_fields_script() . pg_ship_to_district_script() . '
                                         </div>
-                                        <div class="col-12 md:col-3 my-3">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="zip_code" class="form-label">' . lang('Zip Code') . '</label>
                                             <input type="text" name="zip_code" id="zip_code" maxlength="50" required value="' . h($liveform->get_field_value('zip_code')) . '" class="form-control' . ($liveform->check_field_error('zip_code') ? ' is-invalid' : '') . '" />
                                         </div>

@@ -210,11 +210,11 @@ function pg_state_form_cards($values, $errors = array(), $status_rows = '')
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('State'))) . '</label>
                                             <input value="' . h($name) . '" name="name" id="name" type="text" class="form-control' . $name_class . '" maxlength="50" required' . $name_aria . ' />' . $name_feedback . '
                                         </div>
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="code" class="form-label">' . lang('State Code') . '</label>
                                             <input value="' . h($code) . '" name="code" id="code" type="text" class="form-control' . $code_class . '" maxlength="50" required' . $code_aria . ' />' . $code_feedback . '
                                             <div class="form-text">' . lang('State/Province Code for Order Reporting') . '</div>

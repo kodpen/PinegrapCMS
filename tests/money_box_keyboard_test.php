@@ -47,7 +47,7 @@ function test_integer_boxes_keep_the_numeric_keyboard()
 	$shipping = (string) file_get_contents($root . 'shipping_method_form.php');
 	$gift = (string) file_get_contents($root . 'gift_card_form.php');
 
-	pg_assert_contains('name="handle_days" id="handle_days" class="form-control" size="7" maxlength="7" inputmode="numeric"', $shipping);
-	pg_assert_contains('name="base_transit_days" id="base_transit_days" class="form-control" size="7" maxlength="7" inputmode="numeric"', $shipping);
+	pg_assert_contains('name="handle_days" id="handle_days" class="form-control text-end" size="7" maxlength="7" inputmode="numeric"', $shipping);
+	pg_assert_contains('name="base_transit_days" id="base_transit_days" class="form-control text-end" size="7" maxlength="7" inputmode="numeric"', $shipping);
 	pg_assert_contains("'inputmode'=>'numeric',", $gift);
 }
