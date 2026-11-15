@@ -12813,6 +12813,20 @@ b.ws-agent-card-anchor:focus-visible {
 .ws-agent-card-mention {
   margin-top: .75rem;
 }
+/* A person's card: departments one under another at the row's end, then
+   Message and Edit the user side by side. */
+.ws-person-card-departments {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+.ws-person-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .75rem;
+}
 .ws-info-badge {
   margin-left: .4rem;
   font-size: 11px;

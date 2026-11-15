@@ -269,3 +269,24 @@ function ws_person_card_action($action, $request)
 
     return is_array($card) ? ws_action_ok(array('card' => $card)) : ws_action_error(lang('That person could not be found.'));
 }
+
+/**
+ * The texts of a person's card in workspace.js.
+ *
+ * @return array key => text
+ */
+function ws_person_card_js_strings()
+{
+    return array(
+        'pc_departments' => lang('Departments'),
+        'pc_leads_it'    => lang('Leads it'),
+        'pc_led_by'      => ws_js_template('Lead: {var:1}', 1),
+        'pc_workday'     => lang('Working day'),
+        'pc_local_time'  => lang('Local time'),
+        'pc_away'        => lang('Away'),
+        'pc_away_now'    => lang('Now'),
+        'pc_away_mail'   => lang('Automatic e-mail reply'),
+        'pc_message'     => lang('Message'),
+        'pc_days'        => array(lang('Mon'), lang('Tue'), lang('Wed'), lang('Thu'), lang('Fri'), lang('Sat'), lang('Sun')),
+    );
+}

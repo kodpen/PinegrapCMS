@@ -101,14 +101,17 @@ console.log(JSON.stringify({
 function test_workspace_agent_card_js_failed_load_keeps_card()
 {
 	$show = workspace_agent_card_js_test_function('agentCardShow');
+	$frame = workspace_agent_card_js_test_function('cardShow');
 	$refused = workspace_agent_card_js_test_function('agentCardRefused');
 
 	pg_assert_true($show !== '', 'agentCardShow() is in workspace.js');
+	pg_assert_true($frame !== '', 'cardShow() is in workspace.js');
 	pg_assert_true($refused !== '', 'agentCardRefused() is in workspace.js');
 
-	// The failed load writes the refusal on the card and never closes it.
-	pg_assert_contains('agentCardRefused(node, error && error.message)', $show, 'a refusal is written on the card');
-	pg_assert_same(0, preg_match('/catch\(function \([a-z]*\) \{\s*if \(agentCardOpen\.node === node\) \{\s*agentCardClose\(\);/', $show), 'a failed load does not close the card');
+	// The failed load writes the refusal on the card and never closes it;
+	// cardShow() loads every card, the agent's and a person's.
+	pg_assert_contains('agentCardRefused(node, error && error.message)', $frame, 'a refusal is written on the card');
+	pg_assert_same(0, preg_match('/catch\(function \([a-z]*\) \{\s*if \(agentCardOpen\.node === node\) \{\s*agentCardClose\(\);/', $frame), 'a failed load does not close the card');
 	pg_assert_contains("querySelector('.ws-agent-card-loading')", $refused, 'the words take the place of Loading…');
 
 	// The drawing runs in its own guard and reports to the console.
