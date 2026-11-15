@@ -3899,6 +3899,16 @@ function ws_api_polls_vote($params)
 
     ws_api_person_only();
 
+    // An agent question is answered from the person's own team devices
+    // session only: an OAuth connection passes the gate above as the person
+    // who approved it, so the application that asked would settle its own
+    // question in their name, and another connection is no more the person
+    // than the asker. Checked before the dry run stops, so a rehearsal meets
+    // it too.
+    if (ws_agent_question_is($poll)) {
+        ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can answer a question an application asked; an application key or an OAuth connection cannot, whichever application asked it.'));
+    }
+
     $checked = ws_poll_vote_check($viewer, $poll);
 
     if (!$checked['ok']) {
@@ -4960,6 +4970,14 @@ function ws_api_approvals_decide($params)
     }
 
     ws_api_person_only();
+
+    // A request an application made (an OAuth connection's goes out as the
+    // application) is answered from the person's own team devices session
+    // only, as an agent question is: a connection would otherwise approve
+    // what it asked for in the person's name.
+    if (ws_message_app_id($approval['message_id']) > 0) {
+        ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can answer an approval request an application made; an application key or an OAuth connection cannot, whichever application made it.'));
+    }
 
     // The checks ws_approval_decide() makes, made first so that a dry run
     // meets the same refusals. An answer after the request's time closes it,
