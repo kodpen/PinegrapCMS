@@ -27841,6 +27841,30 @@ body.pg-measure-edit .row > .order-2 .card-header.pg-title-section {
   font-size: var(--pg-text-status-title);
 }
 
+/* Fields sit on the card's 12-column grid with 16 px between columns; each
+   field's span (col-12 md:col-N) says how wide its content is: a price, a
+   rate or a count 3 columns, a code 4, a select 6, a name or a text the
+   whole row. */
+body.pg-measure-edit .order-1 .card-body .row {
+  --bs-gutter-x: 16px;
+}
+
+/* A narrow field alone in its row: the column keeps the row, so its label
+   stays on one line and its help text runs the row's width; only the
+   control takes the span (N of the 12 columns, less one gap). Fields side
+   by side take their span on the column (md:col-N). */
+@media (min-width: 768px) {
+  .pg-field-span-3 > :not(.form-label, .form-text, .invalid-feedback, legend) {
+    max-width: calc((100% + var(--bs-gutter-x)) * 3 / 12 - var(--bs-gutter-x));
+  }
+  .pg-field-span-4 > :not(.form-label, .form-text, .invalid-feedback, legend) {
+    max-width: calc((100% + var(--bs-gutter-x)) * 4 / 12 - var(--bs-gutter-x));
+  }
+  .pg-field-span-6 > :not(.form-label, .form-text, .invalid-feedback, legend) {
+    max-width: calc((100% + var(--bs-gutter-x)) * 6 / 12 - var(--bs-gutter-x));
+  }
+}
+
 /* The save bar: from 576 px a floating bar 56 px high, as wide as the
    content, its buttons at the right in the look's size; a phone keeps the
    shared two-per-row bar. The shared bar rounds its buttons into pills with
