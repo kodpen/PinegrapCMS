@@ -14476,6 +14476,145 @@ html[data-bs-theme="dark"] .ws-channel-card[data-ws-colored] .ws-tabs button.act
   color: var(--pg-fg-2);
   background: var(--pg-bg-1);
 }
+/* An option's parts under its label: description, links, the words
+   written on the "Other" row; a picture beside it or beside the list. */
+.ws-poll-option {
+  align-items: flex-start;
+}
+.ws-poll-option :is(.check, .radio) {
+  margin-top: .2rem;
+}
+.ws-poll-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: .1rem;
+  min-width: 0;
+}
+.ws-poll-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+}
+.ws-poll-desc,
+.ws-poll-links,
+.ws-poll-words {
+  font-size: var(--pg-text-meta);
+  color: var(--pg-fg-2);
+}
+.ws-poll-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .1rem .75rem;
+}
+.ws-poll-links .bi {
+  font-size: var(--pg-text-count);
+}
+.ws-poll-words {
+  display: grid;
+  gap: .1rem;
+}
+.ws-poll-thumb {
+  flex: 0 0 auto;
+  width: 4.5rem;
+  height: 3.25rem;
+  overflow: hidden;
+  border-radius: var(--ws-radius-xs);
+  background: var(--pg-bg-2);
+  cursor: zoom-in;
+}
+.ws-poll-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ws-poll-other {
+  display: flex;
+  gap: .4rem;
+  padding-left: 1.6rem;
+}
+.ws-poll.ws-poll-shape-split {
+  max-width: 46rem;
+}
+.ws-poll-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: .6rem;
+  align-items: start;
+}
+.ws-poll-figure {
+  display: block;
+  width: 100%;
+  padding: .4rem;
+  border: 0;
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-2);
+  cursor: zoom-in;
+}
+.ws-poll-figure img {
+  display: block;
+  width: 100%;
+  max-height: 18rem;
+  object-fit: contain;
+}
+@media (max-width: 575.98px) {
+  .ws-poll-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+/* Taken back: the box stays, greyed, and takes no vote. */
+.ws-poll-withdrawn :is(.ws-poll-head, .ws-poll-options, .ws-poll-split) {
+  opacity: .55;
+  filter: grayscale(1);
+}
+.ws-poll-withdrawn .ws-poll-option {
+  cursor: default;
+}
+/* The New poll form: an option's parts folded under its label. */
+.ws-poll-form-more {
+  display: grid;
+  gap: .4rem;
+  margin: .25rem 0 .5rem;
+  padding: .5rem;
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-1);
+}
+.ws-poll-form-picture {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem;
+}
+.ws-poll-form-more > .btn {
+  justify-self: start;
+}
+.ws-poll-form-links {
+  display: grid;
+  gap: .25rem;
+}
+.ws-poll-pick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.5rem, 1fr));
+  gap: .3rem;
+  max-height: 12rem;
+  overflow: auto;
+}
+.ws-poll-pick-item {
+  height: 3.25rem;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--ws-radius-xs);
+  background: var(--pg-bg-2);
+}
+.ws-poll-pick-item img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 /* The table size picker above the composer. */
 .ws-ctx.contextmenu.popover.ws-table-picker {

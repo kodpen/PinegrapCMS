@@ -10,7 +10,7 @@ description: Take back and Ask again on a poll (poll_again.php): the asker (a pe
 
 ## What does taking back do?
 - `ws_poll_withdraw()`: an open poll only (not closed, not taken back), not in an earlier version. Sets `ws_polls.withdrawn_at` and `withdrawn_by` (the person, an application's owner).
-- The poll stays in the channel; the box draws it greyed (AQ3). `ws_poll_vote_state()` refuses a vote ("The poll was taken back.", field `withdrawn_at`) before it looks at the closing time, so a vote past `closes_at` does not close it. `ws_guest_vote()` refuses too.
+- The poll stays in the channel; the box draws it greyed (`poll-box.md`). `ws_poll_vote_state()` refuses a vote ("The poll was taken back.", field `withdrawn_at`) before it looks at the closing time, so a vote past `closes_at` does not close it. `ws_guest_vote()` refuses too.
 - `ws_poll_close()` returns without a result and `ws_polls_autoclose()` skips it: a taken-back poll never writes a decision or a tie line. Votes already cast stay stored and are never counted into a result.
 - The change (`ws_poll_edit_check()`) refuses it.
 
@@ -21,7 +21,7 @@ description: Take back and Ask again on a poll (poll_again.php): the asker (a pe
 ## What do the box and the API get?
 - `ws_polls_map()`: `withdrawn`, `withdrawn_at`, `can_withdraw`, `can_ask_again` (the person who asked; an agent's poll goes through its key), `again_of` / `again_of_message`, `asked_again` / `asked_again_message` (the newest poll asking it again, `ws_poll_again_links()`). `can_vote`, `can_edit`, `can_close` are false on a taken-back poll.
 - `WorkspacePoll`: the same, ids as `again_of`, `again_of_message_id`, `asked_again`, `asked_again_message_id` (null for none), `withdrawn_at` as a time.
-- Panel actions `ws_poll_withdraw` and `ws_poll_again` (`poll_id`, and for an ask-again `question`, `options`, `multiple`, `anonymous`); AQ3 draws the buttons.
+- Panel actions `ws_poll_withdraw` and `ws_poll_again` (`poll_id`, and for an ask-again `question`, `options`, `multiple`, `anonymous`); the box draws the buttons (`poll-box.md`).
 - API: `POST /workspace/polls/{id}/withdraw` (`workspace.polls.withdraw`) and `POST /workspace/polls/{id}/again` (`workspace.polls.again`, 201 with the new poll's message), both with a dry run.
 
 ## How does a poll made before read?
