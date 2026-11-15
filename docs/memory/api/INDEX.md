@@ -117,8 +117,11 @@
 - removed-rest-api-apps.md: History note: apps.php, apps_settings.php and the custom_apps table were removed in 2026.4.4 and replaced by the external API (integration.php, includes/api/). [decision: decisions-made-data.md, decisions-made.md]
 - translations-api-dry-run.md: The seven translation API writes take X-Dry-Run (PR #1911): where each stops, the batch counts, translate_api_write_check(), pg_tr_result_judge(), pg_tr_reviewed_kept()
 - workspace-api-message-people.md: Workspace API routes for a message's readers (seen by and read receipts), bringing its mentioned people into the channel, and forwarding messages into a note (note_id on the forward route)
+- workspace-api-scheduled-message-changes.md: Workspace API scheduled messages: change one (POST …/update), schedule a reply (parent_id), send one now (POST …/send), and the checks shared with the panel
 - workspace-assistant-requests-agents.md: GET /workspace/assistant-requests agent filter (CA5 #9770): agent:<id> and model:<id>, both row shapes, proposals kept out, the reader's reach first, label on a registry agent's row
 - workspace-canvas-api.md: The canvas as one thing in the API and MCP (CO7, #9231): GET /workspace/canvases/{id} with its parts and one list of versions, tables bound and taken off, a new version of a part
 - workspace-channel-agents-api-reads.md: The agents a channel can still take (addable on GET /workspace/channels/{id}/agents) and the agent card route over the API and MCP: fields, readers, refusals (PR #9766)
+- workspace-channel-reads-api.md: CA12 (#9790) channel reads (api_channel_reads.php): GET /workspace/channels/{id}, its files, board and eras, the Markdown export (REST only), channel_id on the tables list
 - workspace-mcp-small-file.md: Posting a file into a channel over MCP (workspace_files_create, PR #1830): content_base64 and name only, at most 1 MB measured before decoding, larger files over REST, why
 - workspace-message-file-api.md: The API routes for files in a message: post a file of the file manager, put an edited file in place of the old one (own words, no tool), list a file's earlier versions
+- workspace-thread-approval-api.md: The API routes that conclude or rename a discussion and take back or close an approval request: the panel function each runs, the check it shares for the dry run, who may and the refusals
