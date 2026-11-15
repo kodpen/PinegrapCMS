@@ -5,7 +5,7 @@ description: Team roadmap templates (PC12, #9562): Save as team template, the tw
 
 ## Where does it live?
 - `includes/workspace/roadmap_templates.php` (loaded by `bootstrap.php`), tables `ws_roadmap_templates` and `ws_roadmap_template_steps` of step 11.0.208 (the decisions list, schema part 20; the train may renumber the label).
-- It names no plan table: it reads a plan only through `ws_personal_plan()` and `ws_personal_plan_step_rows()` (`tests/workspace_roadmap_templates_test.php`). A template is never a plan: no plan reader, the gate or the API sees it.
+- It names no plan table: it reads a plan only through `ws_personal_plan()` and `ws_personal_plan_step_rows()` (`tests/workspace_roadmap_templates_test.php`). A template is never a plan: no plan reader, the gate or the API sees it. Why own tables: a template has no days, customer, reminder or people, and its rule (the team uses, the maker changes) is not the gate's.
 
 ## What does a template keep?
 - The plan's title, `all_day`, `start_minute` (time of day of a timed plan), `length_minutes` (an all-day plan in whole days × 1440), and each step with a title: `position`, `title`, `day_offset` (calendar days after the earliest dated step), `has_day` (a step with no day keeps none). Pure: `ws_roadmap_template_from_plan()`.
