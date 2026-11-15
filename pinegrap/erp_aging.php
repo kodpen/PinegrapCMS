@@ -73,8 +73,8 @@ foreach ($folded['accounts'] as $account) {
 
     $output_rows .=
         '<tr>
-            <td class="text-wrap text-break" style="max-width:280px" data-sort="' . h($account['title']) . '"><a href="edit_erp_account.php?id=' . $account_id . '" class="pg-link-body-emphasis">' . h($account['title']) . '</a>'
-                . '<div class="small fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $account['count']))) . '</div></td>
+            <th scope="row" class="text-wrap text-break" data-sort="' . h($account['title']) . '"><a href="edit_erp_account.php?id=' . $account_id . '" class="pg-link-body-emphasis">' . h($account['title']) . '</a>'
+                . '<div class="pg-text-meta fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $account['count']))) . '</div></th>
             ' . $output_cells . '
             <td class="text-end fw-bold" data-sort="' . (int) $account['total'] . '"><a href="erp_invoices.php?' . h($account_query . '&filter=open') . '" class="pg-link-body-emphasis">' . h(erp_money_out((int) $account['total'])) . '</a></td>
         </tr>';
@@ -82,7 +82,7 @@ foreach ($folded['accounts'] as $account) {
 
 $output_total_cells = '';
 foreach (array_keys($buckets) as $key) {
-    $output_total_cells .= '<th class="text-end">' . h(erp_money_out((int) $folded['totals']['buckets'][$key])) . '</th>';
+    $output_total_cells .= '<td class="text-end">' . h(erp_money_out((int) $folded['totals']['buckets'][$key])) . '</td>';
 }
 
 $output_headings = '';
@@ -93,7 +93,7 @@ foreach ($buckets as $label) {
 // The other direction keeps the date; the date form keeps the direction.
 
 $output_fx_note = erp_fx_enabled()
-    ? '<div class="form-text px-5 pb-5">' . lang('Foreign-currency documents are counted at the rate they were booked at.') . '</div>'
+    ? '<p class="pg-report-frame-note px-7 py-5 mb-0">' . lang('Foreign-currency documents are counted at the rate they were booked at.') . '</p>'
     : '';
 
 echo
@@ -116,7 +116,7 @@ pg_page_shell(array(
                 ' . pg_filter_select('direction', $direction_titles, $direction, array('label' => lang('Direction'), 'icon' => 'arrow-left-right', 'action' => 'erp_aging.php', 'keep' => array('as_of'))) . '
                 <form method="get" action="erp_aging.php" class="d-flex align-items-center gap-3 mb-0">
                     <input type="hidden" name="direction" value="' . h($direction) . '" />
-                    <label for="as_of" class="small fg-secondary text-nowrap mb-0">' . lang('As of') . '</label>
+                    <label for="as_of" class="pg-text-meta fg-secondary text-nowrap mb-0">' . lang('As of') . '</label>
                     <input type="date" data-pg-date id="as_of" name="as_of" class="form-control form-control-sm" value="' . h($as_of) . '" max="' . h(date('Y-m-d')) . '" />
                     <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
                 </form>
@@ -127,9 +127,13 @@ pg_page_shell(array(
                 <a class="btn btn-sm btn-outline theme-secondary" href="erp_invoices.php?' . h($query . '&filter=' . ($is_today ? 'overdue' : 'open')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Invoices') . '</a>
             </nav>
 
-            <div class="card my-7">
-                <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover align-middle mb-0" data-pg-sort>
+            <section class="pg-card pg-report-frame">
+                <div class="pg-report-frame-head">
+                    <h3 class="pg-report-frame-title">' . h($direction_titles[$direction]) . '</h3>
+                    <span class="pg-report-frame-note">' . h(prepare_form_data_for_output($as_of, 'date', false)) . '</span>
+                </div>
+                <div class="pg-report-frame-body">
+                    <table class="pg-report-table" data-pg-sort>
                         <thead>
                             <tr>
                                 <th>' . lang('Account') . '</th>
@@ -139,16 +143,16 @@ pg_page_shell(array(
                         </thead>
                         <tbody>' . $output_rows . '</tbody>
                         <tfoot>
-                            <tr>
-                                <th>' . lang('Total') . '</th>
+                            <tr class="pg-report-total">
+                                <th scope="row">' . lang('Total') . '</th>
                                 ' . $output_total_cells . '
-                                <th class="text-end">' . h(erp_money_out((int) $folded['totals']['total'])) . '</th>
+                                <td class="text-end">' . h(erp_money_out((int) $folded['totals']['total'])) . '</td>
                             </tr>
                         </tfoot>
                     </table>
                 </div>
                 ' . $output_fx_note . '
-            </div>
+            </section>
         </div>
     </div>
 </main>

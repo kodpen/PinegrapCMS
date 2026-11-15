@@ -87,27 +87,27 @@ $costs = $totals['purchase_costs'] + $totals['expenses'];
 $output_expense_lines = '';
 foreach ((array) $report['expenses']['categories'] as $category) {
     $output_expense_lines .= '
-        <tr class="small">
+        <tr class="pg-report-detail">
             <th scope="row" class="ps-7 fg-secondary fw-normal">' . h($category['name']) . (($category['code'] !== '') ? ' <span class="font-monospace">' . h($category['code']) . '</span>' : '') . '</th>
             <td class="text-end fg-secondary">' . $money(-$category['cost']) . '</td>
         </tr>';
 }
 
 $output_statement = '
-    <table class="table table-sm align-middle mb-0">
+    <table class="pg-report-table">
         <tbody>
             <tr><th scope="row" class="fw-normal">' . lang('Sales') . '</th><td class="text-end">' . $money($totals['sales']) . '</td></tr>
-            ' . ($report['orders']['included'] ? '<tr><th scope="row" class="fw-normal">' . lang('Completed orders without an invoice') . '<div class="small fg-secondary">' . h(lang(array('string' => '{var:1} order(s), by the order date', 'vars' => (int) $report['orders']['count']))) . '</div></th><td class="text-end">' . $money($totals['order_sales']) . '</td></tr>' : '') . '
+            ' . ($report['orders']['included'] ? '<tr><th scope="row" class="fw-normal">' . lang('Completed orders without an invoice') . '<div class="pg-text-meta fg-secondary">' . h(lang(array('string' => '{var:1} order(s), by the order date', 'vars' => (int) $report['orders']['count']))) . '</div></th><td class="text-end">' . $money($totals['order_sales']) . '</td></tr>' : '') . '
             <tr><th scope="row" class="fw-normal">' . lang('Returns') . '</th><td class="text-end">' . $money(-$totals['returns']) . '</td></tr>
             <tr class="fw-semibold border-top"><th scope="row" class="fw-semibold">' . lang('Net sales') . '</th><td class="text-end">' . $money($totals['revenue']) . '</td></tr>
             <tr><th scope="row" class="fw-normal">' . lang('Cost of goods sold')
-                . (((int) $totals['cogs_estimated'] !== 0) ? '<div class="small fg-secondary">' . h(lang(array('string' => 'of which {var:1} estimated at today\'s average cost', 'vars' => erp_money_out((int) $totals['cogs_estimated'])))) . '</div>' : '')
+                . (((int) $totals['cogs_estimated'] !== 0) ? '<div class="pg-text-meta fg-secondary">' . h(lang(array('string' => 'of which {var:1} estimated at today\'s average cost', 'vars' => erp_money_out((int) $totals['cogs_estimated'])))) . '</div>' : '')
                 . '</th><td class="text-end">' . $money(-$totals['cogs']) . '</td></tr>
-            <tr class="fw-semibold border-top"><th scope="row" class="fw-semibold">' . lang('Gross profit') . ' <span class="fg-secondary fw-normal small">' . $margin($gross_margin) . '</span></th><td class="text-end">' . $money($totals['gross']) . '</td></tr>
-            <tr><th scope="row" class="fw-normal">' . lang('Costs from purchase invoices') . '<div class="small fg-secondary">' . lang('Purchase lines with no product: services and costs bought on an invoice.') . '</div></th><td class="text-end">' . $money(-$totals['purchase_costs']) . '</td></tr>
-            <tr><th scope="row" class="fw-normal">' . lang('Expenses') . ' <a class="small" href="erp_expenses.php?' . h(http_build_query(array('period' => 'dates', 'from' => $period['from'], 'to' => $period['to']))) . '">' . lang('List') . '</a></th><td class="text-end">' . $money(-$totals['expenses']) . '</td></tr>
+            <tr class="fw-semibold border-top"><th scope="row" class="fw-semibold">' . lang('Gross profit') . ' <span class="fg-secondary fw-normal pg-text-meta">' . $margin($gross_margin) . '</span></th><td class="text-end">' . $money($totals['gross']) . '</td></tr>
+            <tr><th scope="row" class="fw-normal">' . lang('Costs from purchase invoices') . '<div class="pg-text-meta fg-secondary">' . lang('Purchase lines with no product: services and costs bought on an invoice.') . '</div></th><td class="text-end">' . $money(-$totals['purchase_costs']) . '</td></tr>
+            <tr><th scope="row" class="fw-normal">' . lang('Expenses') . ' <a class="pg-text-meta" href="erp_expenses.php?' . h(http_build_query(array('period' => 'dates', 'from' => $period['from'], 'to' => $period['to']))) . '">' . lang('List') . '</a></th><td class="text-end">' . $money(-$totals['expenses']) . '</td></tr>
             ' . $output_expense_lines . '
-            <tr class="fw-bold border-top border-2"><th scope="row">' . lang('Net profit') . ' <span class="fg-secondary fw-normal small">' . $margin($net_margin) . '</span></th><td class="text-end">' . $money($totals['net'], 'fs-lg') . '</td></tr>
+            <tr class="fw-bold border-top border-2"><th scope="row">' . lang('Net profit') . ' <span class="fg-secondary fw-normal pg-text-meta">' . $margin($net_margin) . '</span></th><td class="text-end">' . $money($totals['net']) . '</td></tr>
         </tbody>
     </table>';
 
@@ -135,7 +135,7 @@ foreach ($report['months'] as $month => $figures) {
 }
 
 $output_months .= '
-        <tr class="fw-bold border-top" data-pg-sort-fixed>
+        <tr class="pg-report-total" data-pg-sort-fixed>
             <td>' . lang('Total') . '</td>
             <td class="text-end">' . $money($totals['revenue']) . '</td>
             <td class="text-end">' . $money($totals['cogs']) . '</td>
@@ -152,8 +152,8 @@ foreach (array_slice($report['products'], 0, 500) as $product) {
     $output_products .= '
         <tr>
             <td>' . h($product['name'])
-                . ((($product['sku'] !== '') && ($product['sku'] !== $product['name'])) ? '<div class="small fg-secondary font-monospace">' . h($product['sku']) . '</div>' : '')
-                . (((int) $product['uncosted'] > 0) ? '<div class="small fg-emphasis-warning">' . lang('no cost known') . '</div>' : '') . '</td>
+                . ((($product['sku'] !== '') && ($product['sku'] !== $product['name'])) ? '<div class="pg-text-meta fg-secondary font-monospace">' . h($product['sku']) . '</div>' : '')
+                . (((int) $product['uncosted'] > 0) ? '<div class="pg-text-meta fg-emphasis-warning">' . lang('no cost known') . '</div>' : '') . '</td>
             <td class="text-end" data-sort="' . h((string) $product['quantity']) . '">' . h(erp_quantity_text($product['quantity'])) . '</td>
             <td class="text-end" data-sort="' . (int) $product['revenue'] . '">' . $money($product['revenue']) . '</td>
             <td class="text-end" data-sort="' . (int) $product['cost'] . '">' . $money($product['cost'])
@@ -230,6 +230,18 @@ foreach (array('month' => lang('Month'), 'quarter' => lang('Quarter'), 'year' =>
 $export_url = 'erp_profit.php?' . h(http_build_query(array('range' => 'dates', 'from' => $period['from'], 'to' => $period['to'], 'orders' => $with_orders ? '1' : '0', 'export' => 'xlsx')));
 $many_months = (count($report['months']) > 1);
 
+// The summary figures as the report screens' cards; a figure below zero
+// keeps its red, a net loss marks its note.
+$figure_class = function ($kurus) {
+    return ((int) $kurus < 0) ? 'fg-danger' : '';
+};
+$output_figures = pg_report_figures_html(array(
+    pg_report_view_figure(lang('Net sales'), erp_money_out((int) $totals['revenue']), 'bi-bar-chart', 'teal', lang(array('string' => '{var:1} returned', 'vars' => erp_money_out((int) $totals['returns'])))) + array('class' => $figure_class($totals['revenue'])),
+    pg_report_view_figure(lang('Gross profit'), erp_money_out((int) $totals['gross']), 'bi-graph-up', 'blue', lang(array('string' => 'Margin {var:1}', 'vars' => erp_profit_margin_text($gross_margin)))) + array('class' => $figure_class($totals['gross'])),
+    pg_report_view_figure(lang('Costs and expenses'), erp_money_out((int) $costs), 'bi-receipt-cutoff', 'rose', lang(array('string' => '{var:1} expense(s)', 'vars' => (int) ($report['expenses']['total']['count'] ?? 0)))) + array('class' => $figure_class($costs)),
+    pg_report_view_figure(lang('Net profit'), erp_money_out((int) $totals['net']), 'bi-cash-stack', 'violet', lang(array('string' => 'Margin {var:1}', 'vars' => erp_profit_margin_text($net_margin))), ($totals['net'] < 0) ? 'bad' : '') + array('class' => $figure_class($totals['net'])),
+));
+
 echo
 pg_page_shell([
     'title' => lang('Profit and loss'),
@@ -246,88 +258,58 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <form method="get" action="erp_profit.php" class="card my-7" id="erp_profit_period">
-                <div class="card-body">
-                    <div class="row g-3 align-items-end">
-                    <div class="col-6 md:col-2">
-                        <label class="form-label small fg-secondary mb-1" for="range">' . lang('Period') . '</label>
-                        <select class="form-control form-control-sm" id="range" name="range">' . $range_options . '</select>
-                    </div>
-                    <div class="col-6 md:col-3" data-range="month"' . (($range === 'month') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="month">' . lang('Month') . '</label>
-                        <select class="form-control form-control-sm" id="month" name="month">' . $output_month_options . '</select>
-                    </div>
-                    <div class="col-6 md:col-3" data-range="quarter"' . (($range === 'quarter') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="quarter">' . lang('Quarter') . '</label>
-                        <select class="form-control form-control-sm" id="quarter" name="quarter">' . $output_quarter_options . '</select>
-                    </div>
-                    <div class="col-6 md:col-3" data-range="year"' . (($range === 'year') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="year">' . lang('Year') . '</label>
-                        <select class="form-control form-control-sm" id="year" name="year">' . $output_year_options . '</select>
-                    </div>
-                    <div class="col-6 md:col-2" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="from">' . lang('Start') . '</label>
-                        <input type="date" data-pg-date class="form-control form-control-sm" id="from" name="from" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['from']) . '" />
-                    </div>
-                    <div class="col-6 md:col-2" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
-                        <label class="form-label small fg-secondary mb-1" for="to">' . lang('End') . '</label>
-                        <input type="date" data-pg-date class="form-control form-control-sm" id="to" name="to" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['to']) . '" />
-                    </div>
-                    <div class="col-12 md:col-auto">
-                        <input type="hidden" name="orders" value="0" />
-                        <div class="form-field mb-1">
-                            <div class="switch"><input class="" type="checkbox" id="orders" name="orders" value="1"' . ($with_orders ? ' checked' : '') . ' /></div>
-                            <label class="small" for="orders">' . lang('Count orders without an invoice') . '</label>
-                        </div>
-                    </div>
-                    <div class="col-12 md:col-auto">
-                        <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Show') . '</button>
-                        <a class="btn btn-sm btn-outline theme-secondary" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . lang('Excel') . '</a>
-                    </div>
-                    <div class="col-12 small fg-secondary">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>
-                    </div>
-                </div>
+            <form method="get" action="erp_profit.php" class="pg-report-tools" id="erp_profit_period">
+                <span class="pg-report-field">
+                    <label class="pg-report-label" for="range">' . lang('Period') . '</label>
+                    <select class="form-control" id="range" name="range">' . $range_options . '</select>
+                </span>
+                <span class="pg-report-field" data-range="month"' . (($range === 'month') ? '' : ' hidden') . '>
+                    <label class="visually-hidden" for="month">' . lang('Month') . '</label>
+                    <select class="form-control" id="month" name="month">' . $output_month_options . '</select>
+                </span>
+                <span class="pg-report-field" data-range="quarter"' . (($range === 'quarter') ? '' : ' hidden') . '>
+                    <label class="visually-hidden" for="quarter">' . lang('Quarter') . '</label>
+                    <select class="form-control" id="quarter" name="quarter">' . $output_quarter_options . '</select>
+                </span>
+                <span class="pg-report-field" data-range="year"' . (($range === 'year') ? '' : ' hidden') . '>
+                    <label class="visually-hidden" for="year">' . lang('Year') . '</label>
+                    <select class="form-control" id="year" name="year">' . $output_year_options . '</select>
+                </span>
+                <span class="pg-report-field" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
+                    <label class="pg-report-label" for="from">' . lang('Start') . '</label>
+                    <input type="date" data-pg-date class="form-control" id="from" name="from" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['from']) . '" />
+                </span>
+                <span class="pg-report-field" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
+                    <label class="pg-report-label" for="to">' . lang('End') . '</label>
+                    <input type="date" data-pg-date class="form-control" id="to" name="to" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['to']) . '" />
+                </span>
+                <span class="pg-report-field">
+                    <input type="hidden" name="orders" value="0" />
+                    <input class="pg-switch" type="checkbox" id="orders" name="orders" value="1"' . ($with_orders ? ' checked' : '') . ' />
+                    <label class="pg-report-label" for="orders">' . lang('Count orders without an invoice') . '</label>
+                </span>
+                <button type="submit" class="pg-button pg-button-quiet"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>' . lang('Show') . '</button>
+                <span class="pg-report-range"><i class="bi bi-calendar3" aria-hidden="true"></i>' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</span>
+                <a class="pg-button pg-button-quiet ms-auto" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i>' . lang('Excel') . '</a>
             </form>
 
-            <div class="row g-5">
-                <div class="col-6 lg:col-3"><div class="card h-100"><div class="card-body">
-                    <div class="small text-uppercase fg-secondary">' . lang('Net sales') . '</div>
-                    <div class="h4 mb-0">' . $money($totals['revenue']) . '</div>
-                    <div class="small fg-secondary">' . h(lang(array('string' => '{var:1} returned', 'vars' => erp_money_out((int) $totals['returns'])))) . '</div>
-                </div></div></div>
-                <div class="col-6 lg:col-3"><div class="card h-100"><div class="card-body">
-                    <div class="small text-uppercase fg-secondary">' . lang('Gross profit') . '</div>
-                    <div class="h4 mb-0">' . $money($totals['gross']) . '</div>
-                    <div class="small fg-secondary">' . h(lang(array('string' => 'Margin {var:1}', 'vars' => erp_profit_margin_text($gross_margin)))) . '</div>
-                </div></div></div>
-                <div class="col-6 lg:col-3"><div class="card h-100"><div class="card-body">
-                    <div class="small text-uppercase fg-secondary">' . lang('Costs and expenses') . '</div>
-                    <div class="h4 mb-0">' . $money($costs) . '</div>
-                    <div class="small fg-secondary">' . h(lang(array('string' => '{var:1} expense(s)', 'vars' => (int) ($report['expenses']['total']['count'] ?? 0)))) . '</div>
-                </div></div></div>
-                <div class="col-6 lg:col-3"><div class="card h-100 ' . (($totals['net'] < 0) ? 'border-danger' : 'border-success') . '"><div class="card-body">
-                    <div class="small text-uppercase fg-secondary">' . lang('Net profit') . '</div>
-                    <div class="h4 mb-0">' . $money($totals['net']) . '</div>
-                    <div class="small fg-secondary">' . h(lang(array('string' => 'Margin {var:1}', 'vars' => erp_profit_margin_text($net_margin)))) . '</div>
-                </div></div></div>
-            </div>
+            <div class="pg-report-view">' . $output_figures . '</div>
 
             ' . $output_notes . '
 
-            <div class="row g-5 my-1">
+            <div class="row g-5 mb-7">
                 <div class="col-12 2xl:col-5">
-                    <div class="card h-100">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Profit and loss statement') . '</div>
-                        <div class="card-body">' . $output_statement . '</div>
-                    </div>
+                    <section class="pg-card pg-report-frame h-100 mb-0">
+                        <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . lang('Profit and loss statement') . '</h3></div>
+                        <div class="pg-report-frame-body">' . $output_statement . '</div>
+                    </section>
                 </div>
                 <div class="col-12 2xl:col-7">
-                    <div class="card h-100">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By month') . '</div>
-                        <div class="card-body">
-                            ' . ($many_months ? '<div style="height:16rem"><canvas id="erp_profit_chart" aria-hidden="true"></canvas></div>' : '') . '
-                            <div class="table-responsive' . ($many_months ? ' mt-5' : '') . '">
-                                <table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="erp_profit_months">
+                    <section class="pg-card pg-report-frame h-100 mb-0">
+                        <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . lang('By month') . '</h3></div>
+                        ' . ($many_months ? '<div class="px-7 pt-5 pb-3"><div class="pg-report-plot"><canvas id="erp_profit_chart" aria-hidden="true"></canvas></div></div>' : '') . '
+                            <div class="pg-report-frame-body">
+                                <table class="pg-report-table" data-pg-sort id="erp_profit_months">
                                     <thead>
                                         <tr>
                                             <th>' . lang('Month') . '</th>
@@ -342,17 +324,16 @@ pg_page_shell([
                                     <tbody>' . $output_months . '</tbody>
                                 </table>
                             </div>
-                        </div>
-                    </div>
+                    </section>
                 </div>
             </div>
 
-            <div class="row g-5 my-1">
+            <div class="row g-5">
                 <div class="col-12 2xl:col-7">
-                    <div class="card h-100">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By product') . '</div>
-                        <div class="card-body p-0 table-responsive" style="max-height:36rem">
-                            <table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="erp_profit_products">
+                    <section class="pg-card pg-report-frame h-100 mb-0">
+                        <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . lang('By product') . '</h3></div>
+                        <div class="pg-report-frame-body table-responsive" style="max-height:36rem">
+                            <table class="pg-report-table" data-pg-sort id="erp_profit_products">
                                 <thead class="sticky-top">
                                     <tr>
                                         <th>' . lang('Product') . '</th>
@@ -366,13 +347,13 @@ pg_page_shell([
                                 <tbody>' . $output_products . '</tbody>
                             </table>
                         </div>
-                    </div>
+                    </section>
                 </div>
                 <div class="col-12 2xl:col-5">
-                    <div class="card h-100">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By account') . '</div>
-                        <div class="card-body p-0 table-responsive" style="max-height:36rem;scroll-padding-top:2.5rem">
-                            <table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="erp_profit_accounts">
+                    <section class="pg-card pg-report-frame h-100 mb-0">
+                        <div class="pg-report-frame-head"><h3 class="pg-report-frame-title">' . lang('By account') . '</h3></div>
+                        <div class="pg-report-frame-body table-responsive" style="max-height:36rem;scroll-padding-top:2.5rem">
+                            <table class="pg-report-table" data-pg-sort id="erp_profit_accounts">
                                 <thead class="sticky-top">
                                     <tr>
                                         <th>' . lang('Account') . '</th>
@@ -386,11 +367,11 @@ pg_page_shell([
                                 <tbody>' . $output_accounts . '</tbody>
                             </table>
                         </div>
-                    </div>
+                    </section>
                 </div>
             </div>
 
-            <p class="small fg-secondary my-5">' . lang('A management view, not the books: sales and returns by the date they were issued, the cost of the goods as the stock moves recorded it, costs and expenses by their date. Cancelled documents and expenses count for nothing.') . '</p>
+            <p class="pg-text-meta fg-secondary my-5">' . lang('A management view, not the books: sales and returns by the date they were issued, the cost of the goods as the stock moves recorded it, costs and expenses by their date. Cancelled documents and expenses count for nothing.') . '</p>
         </div>
     </div>
 </main>

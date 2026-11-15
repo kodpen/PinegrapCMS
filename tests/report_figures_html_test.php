@@ -60,3 +60,19 @@ function test_report_figures_html_link_tone_and_class()
 	pg_assert_contains('<dd class="pg-report-fig-value fg-danger">', $html, 'the figure keeps its colour');
 	pg_assert_contains('<dd class="pg-report-fig-note is-bad">', $html, 'a bad note is marked');
 }
+
+function test_report_figures_html_erp_report_screens()
+{
+	foreach (array('erp_dashboard.php', 'erp_cashflow.php', 'erp_profit.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_report_figures_html(', $source, $file . ': figures as report cards');
+		pg_assert_false(strpos($source, 'small text-uppercase fg-secondary') !== false, $file . ': no old figure label');
+		pg_assert_false(strpos($source, 'text-uppercase h5 fg-primary fw-bold') !== false, $file . ': no old card title');
+	}
+
+	foreach (array('erp_dashboard.php', 'erp_cashflow.php', 'erp_profit.php', 'erp_vat_report.php', 'erp_aging.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_false(strpos($source, 'class="table ') !== false, $file . ': tables are report tables');
+		pg_assert_contains('pg-report-frame', $source, $file . ': tables in report frames');
+	}
+}

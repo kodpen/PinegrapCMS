@@ -14,6 +14,8 @@ module: report_view
 - Tools row `.pg-report-tools`: per unit a `.pg-seg` of previous, unit, next (`.pg-report-step`) and the period as text, `.pg-report-range`.
 - Shipping: slot 2 "Ship Date Adjustments" (quiet); the search slot holds the status as `.pg-seg` links (`?status=`, kept in the session) and the period stepper. ERP tax: the period form is the tools row, "Excel" quiet at the right.
 - Tables: `section.pg-card.pg-report-frame` (head: title, period and count; body scrolls across) around `table.pg-report-table`. Rows `pg-report-l1/l2/l3/detail/total` replace the inline colours; `pg-report-share` makes the last column the 72 px share. The ERP tax tables are frames too.
+- Figures drawn by PHP (no chart): `pg_report_figures_html()` in `includes/fn/report_view.php`, the same cards and row rule as the script; a figure may add `url` (the name is a stretched link) and `class` (fg-danger below zero). Used by ERP Dashboard, Cash Flow (both views), Profit (#9696).
+- ERP reports (#9696): every table is a frame; Profit's period form is the tools row as on the tax report, its Chart.js canvas sits in `.pg-report-plot`; a dashboard frame's head carries its "→" link at the right.
 - Drawer `#report_settings`, 430 px: `section.pg-report-section` (report, "Summarize by · up to three levels", "Filters", "How It Works"), numbered `.pg-report-level`s. Filter rows are laid out by CSS only (`backend.src.js` untouched, column headings hidden, controls keep their labels). Foot: "Save & Run" filled, "Close" quiet, "Delete" danger at the right.
 
 ## Which choices were made, and why?

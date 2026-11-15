@@ -94,13 +94,13 @@ $statement_line = function ($label, $kurus, $class = '') use ($money) {
 $output_statement = '
     <table class="pg-report-table">
         <tbody>
-            ' . $statement_line(h($labels['sales']) . ' <span class="small fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $kinds['sales']['count']))) . '</span>', $kinds['sales']['vat']) . '
-            ' . $statement_line(h($labels['sales_return']) . ' <span class="small fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $kinds['sales_return']['count']))) . '</span>', -$kinds['sales_return']['vat']) . '
+            ' . $statement_line(h($labels['sales']) . ' <span class="pg-text-meta fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $kinds['sales']['count']))) . '</span>', $kinds['sales']['vat']) . '
+            ' . $statement_line(h($labels['sales_return']) . ' <span class="pg-text-meta fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $kinds['sales_return']['count']))) . '</span>', -$kinds['sales_return']['vat']) . '
             ' . $statement_line(h(erp_tax_label('calculated')), $totals['calculated'], 'fw-semibold border-top') . '
             ' . ($net_withholding ? $statement_line(h(lang('VAT withheld on sales, declared by the buyer')), -$totals['withheld_sales']) : '') . '
-            ' . $statement_line(h($labels['purchase']) . ' <span class="small fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $kinds['purchase']['count']))) . '</span>', $kinds['purchase']['vat']) . '
-            ' . $statement_line(h($labels['purchase_return']) . ' <span class="small fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $kinds['purchase_return']['count']))) . '</span>', -$kinds['purchase_return']['vat']) . '
-            ' . $statement_line(h($labels['expense']) . ' <span class="small fg-secondary">' . h(lang('only the tax that is taken back')) . '</span>', $totals['deductible_expenses']) . '
+            ' . $statement_line(h($labels['purchase']) . ' <span class="pg-text-meta fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $kinds['purchase']['count']))) . '</span>', $kinds['purchase']['vat']) . '
+            ' . $statement_line(h($labels['purchase_return']) . ' <span class="pg-text-meta fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $kinds['purchase_return']['count']))) . '</span>', -$kinds['purchase_return']['vat']) . '
+            ' . $statement_line(h($labels['expense']) . ' <span class="pg-text-meta fg-secondary">' . h(lang('only the tax that is taken back')) . '</span>', $totals['deductible_expenses']) . '
             ' . $statement_line(h(erp_tax_label('deductible')), $totals['deductible'], 'fw-semibold border-top') . '
             ' . $statement_line(h(erp_vat_difference_label($report['net_withholding'])), $totals['difference'], 'fw-bold border-top border-2') . '
         </tbody>
@@ -110,9 +110,9 @@ $output_statement = '
 $aside = array();
 if ($has_withholding) {
     if (!$net_withholding) {
-        $aside[] = $statement_line(h(lang('VAT withheld on sales')) . '<div class="small fg-secondary">' . h(lang('Left for the buyer to declare and pay.')) . '</div>', $totals['withheld_sales']);
+        $aside[] = $statement_line(h(lang('VAT withheld on sales')) . '<div class="pg-text-meta fg-secondary">' . h(lang('Left for the buyer to declare and pay.')) . '</div>', $totals['withheld_sales']);
     }
-    $aside[] = $statement_line(h(lang('VAT withheld on purchases')) . '<div class="small fg-secondary">' . h(lang('Declared and paid by the store on the seller\'s behalf.')) . '</div>', $totals['withheld_purchases']);
+    $aside[] = $statement_line(h(lang('VAT withheld on purchases')) . '<div class="pg-text-meta fg-secondary">' . h(lang('Declared and paid by the store on the seller\'s behalf.')) . '</div>', $totals['withheld_purchases']);
 }
 if ($report['has_tax2']) {
     $aside[] = $statement_line(h(lang(array('string' => '{var:1} on sales (less returns)', 'vars' => $tax2_label))), $totals['tax2_calculated']);
@@ -122,7 +122,7 @@ if ($totals['expense_not_deductible'] !== 0) {
     $aside[] = $statement_line(h(lang('Tax on expenses that is not deductible (a cost)')), $totals['expense_not_deductible']);
 }
 $output_aside = empty($aside) ? '' : '
-    <table class="pg-report-table small mt-5">
+    <table class="pg-report-table mt-5">
         <tbody>' . implode('', $aside) . '</tbody>
     </table>';
 
@@ -261,7 +261,7 @@ foreach (array_slice($report['documents'], 0, $shown_limit) as $item) {
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', $item['date'])) . '">' . h(prepare_form_data_for_output($item['date'], 'date', false)) . '</td>
             <td class="text-nowrap"><a class="pg-link-body-emphasis" href="' . h($url) . '">' . h($number) . '</a>' . $marks . '</td>
             <td>' . h($labels[$item['kind']]) . '</td>
-            <td class="text-wrap text-break" style="min-width:10rem;max-width:280px">' . h($item['account']) . (($item['tax_number'] !== '') ? '<div class="small fg-secondary font-monospace">' . h($item['tax_number']) . '</div>' : '') . '</td>
+            <td class="text-wrap text-break" style="min-width:10rem;max-width:280px">' . h($item['account']) . (($item['tax_number'] !== '') ? '<div class="pg-text-meta fg-secondary font-monospace">' . h($item['tax_number']) . '</div>' : '') . '</td>
             <td class="text-end text-nowrap">' . h(implode(', ', $rates)) . '</td>
             <td class="text-end" data-sort="' . (int) $item['net'] . '">' . $money($item['net']) . '</td>
             <td class="text-end fw-semibold" data-sort="' . (int) $item['vat'] . '">' . $money($item['vat']) . '</td>
@@ -283,7 +283,7 @@ foreach ($labels as $key => $label) {
 }
 
 $more_documents = (count($report['documents']) > $shown_limit)
-    ? '<p class="small fg-secondary m-5">' . h(lang(array('string' => 'The first {var:1} of {var:2} are shown; the workbook has them all.', 'vars' => array($shown_limit, count($report['documents']))))) . '</p>'
+    ? '<p class="pg-text-meta fg-secondary m-5">' . h(lang(array('string' => 'The first {var:1} of {var:2} are shown; the workbook has them all.', 'vars' => array($shown_limit, count($report['documents']))))) . '</p>'
     : '';
 
 // What the reader should know about the figures.
@@ -447,7 +447,7 @@ pg_page_shell([
                 ' . $more_documents . '
             </section>
 
-            <p class="small fg-secondary my-5">' . lang('A summary of the invoices, returns and expenses the ERP keeps, not a tax return: check it with your accountant before you file. Documents count by the date they were issued, expenses by their date; cancelled documents and drafts count for nothing, and the tax on an expense that is not taken back is a cost, left out of the deductible tax.') . '</p>
+            <p class="pg-text-meta fg-secondary my-5">' . lang('A summary of the invoices, returns and expenses the ERP keeps, not a tax return: check it with your accountant before you file. Documents count by the date they were issued, expenses by their date; cancelled documents and drafts count for nothing, and the tax on an expense that is not taken back is a cost, left out of the deductible tax.') . '</p>
         </div>
     </div>
 </main>
