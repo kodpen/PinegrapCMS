@@ -17767,9 +17767,9 @@
             }
         },
 
-        // A press began inside the list: the box's blur, should a browser
-        // still move the focus (a scrollbar in some engines), does not close
-        // it until the press ends; then the focus goes back to the box.
+        // A press began inside the list: should a browser still move the
+        // focus (a scrollbar in some engines), the box's blur does not close
+        // the list while the press lasts; then the focus goes back to the box.
         pickerPressStart: function () {
             var self = this;
 
@@ -17780,12 +17780,10 @@
                 window.removeEventListener('pointercancel', end, true);
                 self.pickerPress = false;
 
+                // The press could move the focus only to the list or to a
+                // box around it (a drawer), never to another field.
                 if (self.picker && self.pickerBox && pickerFocusPlace(self.pickerBox, self.picker) !== 'box') {
-                    if (pickerFocusPlace(self.pickerBox, self.picker) === 'outside') {
-                        self.closePicker();
-                    } else {
-                        self.pickerBox.focus({ preventScroll: true });
-                    }
+                    self.pickerBox.focus({ preventScroll: true });
                 }
             }
 
