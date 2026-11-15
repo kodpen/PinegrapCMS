@@ -19,7 +19,7 @@ description: Team-device API work for the closed-source Pinegrap Mobile app (res
 
 ## What would M7 and M8 add?
 - M7 native push, the shape of #9607: the device gives its token to the site, the site trades it at the Kodpen broker (`push.pinegrap.com`) for an https endpoint kept as a `push_subscriptions` row. Sites hold no device token; the sender, clean-up and revoke are reused.
-- M7a (M, schema) `push_subscriptions.provider` (VARCHAR(8), empty a browser, `fcm`, `apns`); `POST /push/devices` and `/push/devices/delete` (`account:write`, team devices, `X-Dry-Run`); the broker call in one function, signed with the site's VAPID key, with the licence key when a valid one is set; the `GET /meta` feature key. The broker's address is a constant, empty until the broker is live: 503.
+- M7a (M, schema; #9703, done) `push_subscriptions.provider` (VARCHAR(8), empty a browser, `fcm`, `apns`); `POST /push/devices` and `/push/devices/delete` (`account:write`, team devices, `X-Dry-Run`); the broker call in one function, signed with the site's VAPID key, with the licence key when a valid one is set; the `GET /meta` feature key. The broker's address is a constant, empty until the broker is live: 503. As built: `api/api-native-push.md`.
 - M7b (S, after M7a) A broker row gets the body `{"v":1,"badge":n}`, no text; 404/410 delete the row, 429 honours `Retry-After`; a revoke tells the broker to forget.
 - M8 when a real client needs it: batch requests, tombstone list, `sort=`, CORS allow-list for a web shell.
 
