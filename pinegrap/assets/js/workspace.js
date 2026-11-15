@@ -3845,6 +3845,36 @@
     // rail would cover it), narrowed to it, else to the window; 8px from
     // the edges of the view (pickerView()). Rects are in the window's
     // coordinates; the answer is in whole pixels.
+    // Whether a writing box's @ / # list stays open when the box's blur
+    // timer runs out: while a press that began inside the list is under
+    // way (a scrollbar dragged, the strip of kinds moved), and while the
+    // focus is back in the box or sits in the list itself (Chrome gives a
+    // scrolling list the focus when its scrollbar is pressed). The focus
+    // anywhere else, or nowhere, closes it. focus: 'box', 'picker',
+    // 'outside' or 'none'.
+    function pickerStaysOpen(pressInside, focus) {
+        if (pressInside) {
+            return true;
+        }
+
+        return (focus === 'box') || (focus === 'picker');
+    }
+
+    // Where the focus is, for pickerStaysOpen().
+    function pickerFocusPlace(box, picker) {
+        var active = document.activeElement;
+
+        if (!active || active === document.body) {
+            return 'none';
+        }
+
+        if (box && (active === box || box.contains(active))) {
+            return 'box';
+        }
+
+        return (picker && picker.contains(active)) ? 'picker' : 'outside';
+    }
+
     function pickerPlace(caret, field, view, size) {
         var edge = 8;
         var gap = 6;
@@ -3910,7 +3940,7 @@
             }
         };
 
-        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'fitPicker', 'pickerKey', 'pick', 'closePicker', 'tokens', 'insertTrigger', 'beforeCaret'].forEach(function (name) {
+        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'fitPicker', 'pickerKey', 'pick', 'closePicker', 'blurPicker', 'pickerPressStart', 'tokens', 'insertTrigger', 'beforeCaret'].forEach(function (name) {
             field[name] = app[name];
         });
 
@@ -3925,9 +3955,7 @@
                 event.stopPropagation();
             }
         });
-        textarea.addEventListener('blur', function () {
-            setTimeout(function () { field.closePicker(); }, 150);
-        });
+        textarea.addEventListener('blur', function () { field.blurPicker(textarea); });
 
         return field;
     }
@@ -4078,15 +4106,13 @@
             }
         };
 
-        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'placePicker', 'fitPicker', 'pickerKey', 'pick', 'closePicker', 'tokens', 'insertTrigger', 'beforeCaret', 'insertPulled'].forEach(function (name) {
+        ['pickerCheck', 'recordQuery', 'openPicker', 'drawPicker', 'placePicker', 'fitPicker', 'pickerKey', 'pick', 'closePicker', 'blurPicker', 'pickerPressStart', 'tokens', 'insertTrigger', 'beforeCaret', 'insertPulled'].forEach(function (name) {
             field[name] = app[name];
         });
 
         editor.node.classList.add('ws-rich-field');
         editor.node.addEventListener('click', function () { field.pickerCheck(); });
-        editor.node.addEventListener('blur', function () {
-            setTimeout(function () { field.closePicker(); }, 150);
-        });
+        editor.node.addEventListener('blur', function () { field.blurPicker(editor.node); });
 
         return field;
     }
@@ -17165,6 +17191,16 @@
             if (!self.picker) {
                 self.picker = el('div', 'ws-picker');
                 self.picker.setAttribute('role', 'listbox');
+                // A press anywhere in the list (a scrollbar, the gap
+                // between two kinds, the padding, the hint line) leaves the
+                // focus and the caret in the box; chips and rows do the same
+                // for their own pick.
+                self.picker.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+                self.picker.addEventListener('pointerdown', function () {
+                    self.pickerPressStart();
+                });
                 self.composerWrap.appendChild(self.picker);
                 self.pickerType = 'all';
             }
@@ -17729,6 +17765,45 @@
             if (!this.noCommands) {
                 this.pickerCheck();
             }
+        },
+
+        // A press began inside the list: the box's blur, should a browser
+        // still move the focus (a scrollbar in some engines), does not close
+        // it until the press ends; then the focus goes back to the box.
+        pickerPressStart: function () {
+            var self = this;
+
+            self.pickerPress = true;
+
+            function end() {
+                window.removeEventListener('pointerup', end, true);
+                window.removeEventListener('pointercancel', end, true);
+                self.pickerPress = false;
+
+                if (self.picker && self.pickerBox && pickerFocusPlace(self.pickerBox, self.picker) !== 'box') {
+                    if (pickerFocusPlace(self.pickerBox, self.picker) === 'outside') {
+                        self.closePicker();
+                    } else {
+                        self.pickerBox.focus({ preventScroll: true });
+                    }
+                }
+            }
+
+            window.addEventListener('pointerup', end, true);
+            window.addEventListener('pointercancel', end, true);
+        },
+
+        // The box lost its focus: the list closes a moment later (a row's
+        // press is taken first) unless pickerStaysOpen() keeps it.
+        blurPicker: function (box) {
+            var self = this;
+
+            self.pickerBox = box;
+            setTimeout(function () {
+                if (!pickerStaysOpen(self.pickerPress, pickerFocusPlace(box, self.picker))) {
+                    self.closePicker();
+                }
+            }, 150);
         },
 
         closePicker: function () {
@@ -19037,6 +19112,11 @@
         list.hidden = true;
         box.appendChild(input);
         box.appendChild(list);
+        // A press anywhere in the list (its scrollbar, its padding) keeps the
+        // focus in the input, or the input's blur hides the list.
+        list.addEventListener('mousedown', function (event) {
+            event.preventDefault();
+        });
 
         var search = debounce(function () {
             var query = input.value.trim();
