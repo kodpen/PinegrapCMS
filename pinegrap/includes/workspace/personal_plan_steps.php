@@ -235,6 +235,11 @@ function ws_personal_plan_steps_save($viewer, $plan_id, $steps)
         return $clean;
     }
 
+    // A roadmap does not repeat (personal_plan_repeat.php).
+    if (!empty($clean['steps']) && function_exists('ws_personal_plan_repeats') && ws_personal_plan_repeats($plan)) {
+        return array('error' => lang('A repeating plan has no roadmap.'));
+    }
+
     $plan_id = (int) $plan['id'];
     $now = time();
     $existing = array();

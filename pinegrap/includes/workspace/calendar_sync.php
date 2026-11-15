@@ -903,6 +903,19 @@ function ws_calsync_bodies($viewer, $provider, $since, $until, $timezone)
  */
 function ws_calsync_plan_times($plan, $since_ts, $until_ts)
 {
+    // A repeating plan (personal_plan_repeat.php): its times in the window,
+    // the days taken out of the series left out.
+    if (function_exists('ws_personal_plan_repeats') && ws_personal_plan_repeats($plan)) {
+        $times = array();
+        $skips = ws_personal_plan_skips(array((int) $plan['id']));
+
+        foreach (ws_personal_plan_times($plan, (int) $since_ts, (int) $until_ts, $skips[(int) $plan['id']] ?? array()) as $time) {
+            $times[] = array('key' => '-' . str_replace('-', '', $time['day']), 'starts_at' => $time['starts_at'], 'ends_at' => $time['ends_at']);
+        }
+
+        return $times;
+    }
+
     $starts = (int) ($plan['starts_at'] ?? 0);
     $ends = max($starts, (int) ($plan['ends_at'] ?? 0));
 
@@ -985,7 +998,9 @@ function ws_calsync_plan_bodies($state, $viewer, $since, $until, $timezone)
     $since_ts = strtotime($since . ' 00:00:00');
     $until_ts = strtotime($until . ' 00:00:00 +1 day');
     $items = ws_calsync_plan_items(
-        ws_personal_plans_between((int) $viewer['id'], $since_ts, $until_ts),
+        // The plan rows, not their times: ws_calsync_plan_times() lays a
+        // repeating plan out itself.
+        ws_personal_plans_between((int) $viewer['id'], $since_ts, $until_ts, false),
         (int) $viewer['id'],
         ws_team_ids(),
         ws_calendar_feed_panel_url(''),

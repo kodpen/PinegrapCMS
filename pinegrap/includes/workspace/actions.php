@@ -4803,6 +4803,8 @@ function ws_handle_action($action, $request)
         // other id than the plan's is taken from the request.
         case 'ws_personal_plan_get':
             $plan = ws_personal_plan((int) $viewer['id'], (int) ($request['plan_id'] ?? 0));
+            // A repeating plan opened on one of its times.
+            $plan = ($plan && is_scalar($request['day'] ?? null) && ws_personal_plan_repeat_ready()) ? (ws_personal_plan_at_time($plan, (string) $request['day']) ?: $plan) : $plan;
 
             return $plan ? ws_action_ok(array('plan' => ws_personal_plan_for_reader((int) $viewer['id'], $plan, $viewer))) : ws_action_error(lang('This plan cannot be found.'));
 
@@ -4818,7 +4820,7 @@ function ws_handle_action($action, $request)
             return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok($result);
 
         case 'ws_personal_plan_delete':
-            $result = ws_personal_plan_delete($viewer, (int) ($request['plan_id'] ?? 0));
+            $result = ws_personal_plan_delete($viewer, (int) ($request['plan_id'] ?? 0), is_scalar($request['mode'] ?? '') ? (string) ($request['mode'] ?? '') : '', is_scalar($request['day'] ?? '') ? (string) ($request['day'] ?? '') : '');
 
             return isset($result['error']) ? ws_action_error($result['error']) : ws_action_ok();
 

@@ -1223,6 +1223,7 @@
     "Repeat Y": "Y Tekrarı",
     "Repeat a task on a schedule and get a reminder at the right time.": "Bir görevi bir takvime göre tekrarlayın ve doğru zamanda hatırlatma alın.",
     "Repeat ends": "Tekrarın sonu",
+    "Repeat every": "Tekrar aralığı",
     "Repeat month type is required.": "Tekrar ay türü gerekli.",
     "Repeat number is required when you enable Repeat.": "Tekrar'ı etkinleştirdiğinizde tekrar sayısı gereklidir.",
     "Repeat offenders are banned for a while instead of being blocked one request at a time. Bans always expire, and are never placed in Monitor mode.": "Tekrar eden saldırganlar her isteği tek tek engellenmek yerine bir süreliğine yasaklanır. Yasaklar her zaman süresi dolunca kalkar ve İzle modunda hiç konmaz.",

@@ -24,6 +24,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// Repeating plans: every reader of this file (the job, account deletion)
+// needs the times too.
+require_once(__DIR__ . '/personal_plan_repeat.php');
+
 /** The longest note a plan keeps. */
 const WS_PERSONAL_PLAN_NOTE_MAX = 2000;
 
@@ -147,10 +151,12 @@ function ws_personal_plan($user_id, $plan_id)
  *
  * @param int $user_id
  * @param int $from_ts
- * @param int $to_ts
+ * @param int  $to_ts
+ * @param bool $times each time of a repeating plan as its own row (with
+ *                    time_day), or the plan rows alone
  * @return array[]
  */
-function ws_personal_plans_between($user_id, $from_ts, $to_ts)
+function ws_personal_plans_between($user_id, $from_ts, $to_ts, $times = true)
 {
     if (!ws_personal_plans_ready() || ((int) $user_id <= 0)) {
         return array();
@@ -158,13 +164,17 @@ function ws_personal_plans_between($user_id, $from_ts, $to_ts)
 
     $plans = array();
     $team = ws_team_ids();
+    // A repeating plan whose series still runs in the span: its times are
+    // worked out below (personal_plan_repeat.php).
+    $repeating = ws_personal_plan_repeat_ready()
+        ? " OR (repeat_frequency <> '' AND (repeat_until = 0 OR repeat_until > '" . (int) $from_ts . "'))" : '';
 
     // Their own, those opened to the team, and those naming them; the gate
     // then decides each one.
     foreach ((array) db_items("SELECT * FROM ws_personal_plans
         WHERE (user_id = '" . (int) $user_id . "' OR visibility = 'team'
             OR (visibility = 'people' AND id IN (SELECT plan_id FROM ws_personal_plan_people WHERE user_id = '" . (int) $user_id . "')))
-        AND starts_at < '" . (int) $to_ts . "' AND ends_at > '" . (int) $from_ts . "'
+        AND starts_at < '" . (int) $to_ts . "' AND (ends_at > '" . (int) $from_ts . "'" . $repeating . ")
         ORDER BY starts_at, id
         LIMIT 1000") as $plan) {
         if (ws_personal_plan_can_see($user_id, $plan, $team)) {
@@ -172,7 +182,7 @@ function ws_personal_plans_between($user_id, $from_ts, $to_ts)
         }
     }
 
-    return $plans;
+    return $times ? ws_personal_plans_as_times($plans, (int) $from_ts, (int) $to_ts) : $plans;
 }
 
 /**
@@ -351,6 +361,49 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
 
     $now = time();
     $plan_id = (int) $plan_id;
+    $plan = ($plan_id > 0) ? ws_personal_plan($user_id, $plan_id) : null;
+
+    if (($plan_id > 0) && (!$plan || !ws_personal_plan_can_edit($user_id, $plan))) {
+        return array('error' => lang('This plan cannot be found.'));
+    }
+
+    // One time of a series changed alone, or it and the ones after it.
+    if ($plan && ws_personal_plan_repeat_ready() && ws_personal_plan_repeats($plan)
+        && in_array((string) ($data['mode'] ?? ''), array('one', 'following'), true)) {
+        $split = ws_personal_plan_save_time($viewer, $plan, $data);
+
+        if ($split !== null) {
+            return $split;
+        }
+    }
+
+    // The rule: a write that does not send it keeps the plan's own.
+    $rule = array();
+
+    if (ws_personal_plan_repeat_ready()) {
+        $sent = array_key_exists('repeat', $data) ? $data : ($plan ? ws_personal_plan_repeat_present($plan) : array());
+        $rule = ws_personal_plan_repeat_clean($clean, $sent);
+
+        if (isset($rule['error'])) {
+            return $rule;
+        }
+
+        // A roadmap does not repeat.
+        if (($rule['repeat_frequency'] !== '') && $plan && function_exists('ws_personal_plan_step_rows')
+            && !empty(ws_personal_plan_step_rows(array($plan_id))[$plan_id])) {
+            return array('error' => lang('A roadmap does not repeat. Remove its steps first.'));
+        }
+
+        $rule['remind_minutes'] = ($clean['remind'] === '') ? 0 : (int) $clean['remind'];
+
+        // A series reminds at its next time; with none left, it stays told.
+        if (($rule['repeat_frequency'] !== '') && ($clean['remind_at'] > 0)) {
+            $row = array_merge($clean, $rule, array('id' => $plan_id));
+            $next = ws_personal_plan_next_remind($row, $now, $plan_id ? (ws_personal_plan_skips(array($plan_id))[$plan_id] ?? array()) : array());
+            $clean['remind_at'] = ($next > 0) ? $next : $clean['remind_at'];
+            $rule['reminded_at'] = ($next > 0) ? 0 : $now;
+        }
+    }
 
     // Only team members other than the owner can be chosen: a guest never.
     $people = array_values(array_diff(array_intersect($clean['people'], ws_team_ids()), array($user_id)));
@@ -364,14 +417,16 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
         starts_at = '" . $clean['starts_at'] . "', ends_at = '" . $clean['ends_at'] . "', all_day = '" . $clean['all_day'] . "',
         remind_at = '" . $clean['remind_at'] . "', visibility = '" . e($clean['visibility']) . "', updated_at = '" . $now . "'";
 
+    foreach (array('repeat_frequency', 'repeat_interval', 'repeat_until', 'repeat_count', 'remind_minutes') as $column) {
+        $values .= isset($rule[$column]) ? ", " . $column . " = '" . e((string) $rule[$column]) . "'" : '';
+    }
+
+    // The time a "This one" change was made from (ws_personal_plan_save_time()).
+    $values .= ((int) ($data['repeat_of'] ?? 0) > 0) && ws_personal_plan_repeat_ready() ? ", repeat_of = '" . (int) $data['repeat_of'] . "'" : '';
+
     if ($plan_id > 0) {
-        $plan = ws_personal_plan($user_id, $plan_id);
-
-        if (!$plan || !ws_personal_plan_can_edit($user_id, $plan)) {
-            return array('error' => lang('This plan cannot be found.'));
-        }
-
-        $rearm = ((int) $plan['remind_at'] !== $clean['remind_at']) ? ", reminded_at = 0" : '';
+        $rearm = isset($rule['reminded_at']) ? ", reminded_at = '" . (int) $rule['reminded_at'] . "'"
+            : (((int) $plan['remind_at'] !== $clean['remind_at']) ? ", reminded_at = 0" : '');
         db("UPDATE ws_personal_plans SET " . $values . $rearm . " WHERE id = '" . $plan_id . "' AND user_id = '" . $user_id . "'");
     } else {
         if ((int) db_value("SELECT COUNT(*) FROM ws_personal_plans WHERE user_id = '" . $user_id . "'") >= WS_PERSONAL_PLAN_MAX) {
@@ -392,6 +447,7 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
         }
 
         $values .= $mail ? ", mail_conversation_id = '" . (int) $mail['item']['conversation_id'] . "'" : '';
+        $values .= isset($rule['reminded_at']) ? ", reminded_at = '" . (int) $rule['reminded_at'] . "'" : '';
         db("INSERT INTO ws_personal_plans SET user_id = '" . $user_id . "', created_at = '" . $now . "', " . $values);
         $plan_id = (int) mysqli_insert_id(db::$con);
         ws_personal_plan_mail_plans($user_id, true);
@@ -416,7 +472,7 @@ function ws_personal_plan_save($viewer, $data, $plan_id = 0)
  * @param int   $plan_id
  * @return array ok or error
  */
-function ws_personal_plan_delete($viewer, $plan_id)
+function ws_personal_plan_delete($viewer, $plan_id, $mode = '', $day = '')
 {
     $plan = ws_personal_plan((int) $viewer['id'], $plan_id);
 
@@ -424,7 +480,23 @@ function ws_personal_plan_delete($viewer, $plan_id)
         return array('error' => lang('This plan cannot be found.'));
     }
 
-    ws_personal_plans_remove(array((int) $plan['id']));
+    if (ws_personal_plan_repeat_ready() && ws_personal_plan_repeats($plan) && in_array($mode, array('one', 'following'), true)) {
+        $done = ws_personal_plan_delete_time($plan, $mode, (string) $day);
+
+        if ($done !== null) {
+            return $done;
+        }
+    }
+
+    // A series goes with the times changed out of it.
+    $ids = array((int) $plan['id']);
+
+    if (ws_personal_plan_repeat_ready() && ws_personal_plan_repeats($plan)) {
+        $ids = array_merge($ids, array_map('intval', (array) db_values("SELECT id FROM ws_personal_plans
+            WHERE repeat_of = '" . (int) $plan['id'] . "' AND user_id = '" . (int) $plan['user_id'] . "'")));
+    }
+
+    ws_personal_plans_remove($ids);
 
     return array('ok' => true);
 }
@@ -453,6 +525,10 @@ function ws_personal_plans_remove($plan_ids)
 
     db("DELETE FROM ws_personal_plan_steps WHERE plan_id IN (" . $in . ")");
     db("DELETE FROM ws_personal_plan_people WHERE plan_id IN (" . $in . ")");
+
+    if (ws_personal_plan_repeat_ready()) {
+        db("DELETE FROM ws_personal_plan_skips WHERE plan_id IN (" . $in . ")");
+    }
     db("DELETE FROM ws_personal_plans WHERE id IN (" . $in . ")");
 }
 
@@ -491,7 +567,14 @@ function ws_personal_plan_present($plan)
     $last = $all_day ? $ends - 1 : $ends;
     $at = $all_day ? strtotime(date('Y-m-d', $starts) . ' 09:00:00') : $starts;
 
-    return array(
+    $remind = ((int) $plan['remind_at'] > 0) ? (string) max(0, (int) round(($at - (int) $plan['remind_at']) / 60)) : '';
+
+    // A series keeps its lead: its reminder moment moves on with each time.
+    if (((int) $plan['remind_at'] > 0) && function_exists('ws_personal_plan_repeats') && ws_personal_plan_repeats($plan)) {
+        $remind = (string) (int) ($plan['remind_minutes'] ?? 0);
+    }
+
+    return array_merge(array(
         'id'         => (int) $plan['id'],
         'title'      => (string) $plan['title'],
         'note'       => (string) $plan['note'],
@@ -500,10 +583,12 @@ function ws_personal_plan_present($plan)
         'start_time' => $all_day ? '' : date('H:i', $starts),
         'end_time'   => $all_day ? '' : date('H:i', $ends),
         'all_day'    => $all_day,
-        'remind'     => ((int) $plan['remind_at'] > 0) ? (string) max(0, (int) round(($at - (int) $plan['remind_at']) / 60)) : '',
+        'remind'     => $remind,
         'visibility' => (string) ($plan['visibility'] ?? 'me'),
         'owner_id'   => (int) ($plan['user_id'] ?? 0),
-    );
+        // The time the drawer was opened on, for a repeating plan.
+        'time_day'   => (string) ($plan['time_day'] ?? ''),
+    ), function_exists('ws_personal_plan_repeat_present') ? ws_personal_plan_repeat_present($plan) : array());
 }
 
 /**
@@ -562,6 +647,9 @@ function ws_personal_plans_place($days, $plans, $reader = 0, $names = array())
             $days[$date]['events'][] = array(
                 'id'          => 0,
                 'plan_id'     => (int) $plan['id'],
+                'plan_day'    => (string) ($plan['time_day'] ?? ''),
+                // A time of a repeating plan: its rule, marked before it is opened.
+                'repeat'      => (string) ($plan['repeat_frequency'] ?? ''),
                 'kind'        => 'personal',
                 'title'       => (string) $plan['title'],
                 'time'        => ((int) $plan['all_day'] === 1) ? '' : date('H:i', max((int) $plan['starts_at'], $day_start)),
@@ -617,9 +705,22 @@ function ws_personal_plan_reminders_run($limit = 50)
         }
 
         $plan = db_item("SELECT * FROM ws_personal_plans WHERE id = '" . (int) $plan_id . "'");
+        $ends_at = is_array($plan) ? (int) $plan['ends_at'] : 0;
+
+        // A series: the time this reminder is for, then the next one armed.
+        if (ws_personal_plan_repeat_ready() && ws_personal_plan_repeats($plan)) {
+            $skips = ws_personal_plan_skips(array((int) $plan_id))[(int) $plan_id] ?? array();
+            $time = ws_personal_plan_time_on($plan, ws_personal_plan_remind_day($plan, (int) $plan['remind_at']), $skips);
+            $ends_at = $time ? (int) $time['ends_at'] : 0;
+            $next = ws_personal_plan_next_remind($plan, max($now, (int) $plan['remind_at']), $skips);
+
+            if ($next > 0) {
+                db("UPDATE ws_personal_plans SET remind_at = '" . $next . "', reminded_at = 0 WHERE id = '" . (int) $plan_id . "' AND reminded_at = '" . $now . "'");
+            }
+        }
 
         // Over already, or its owner gone: nobody to tell.
-        if (!ws_personal_plan_can_see(is_array($plan) ? (int) $plan['user_id'] : 0, $plan, $team) || ((int) $plan['ends_at'] <= $now)) {
+        if (!ws_personal_plan_can_see(is_array($plan) ? (int) $plan['user_id'] : 0, $plan, $team) || ($ends_at <= $now)) {
             continue;
         }
 
@@ -651,6 +752,19 @@ function ws_personal_plan_inbox_describe($viewer, $row, $base)
         return array('title' => lang('Reminder'), 'body' => '', 'url' => $base . 'workspace_my_calendar.php', 'icon' => 'bi-alarm');
     }
 
+    // A series: the first time after the line was written is the one it
+    // reminded of.
+    $day = '';
+
+    if (ws_personal_plan_repeat_ready() && ws_personal_plan_repeats($plan)) {
+        $times = ws_personal_plan_times($plan, (int) ($row['created_at'] ?? 0), PHP_INT_MAX, ws_personal_plan_skips(array((int) $plan['id']))[(int) $plan['id']] ?? array(), 1);
+
+        if (!empty($times)) {
+            $plan = array_merge($plan, array('starts_at' => $times[0]['starts_at'], 'ends_at' => $times[0]['ends_at']));
+            $day = '&day=' . $times[0]['day'];
+        }
+    }
+
     $when = ((int) $plan['all_day'] === 1)
         ? ws_day_label(date('Y-m-d', (int) $plan['starts_at']))
         : ws_day_label(date('Y-m-d', (int) $plan['starts_at'])) . ' ' . date('H:i', (int) $plan['starts_at']);
@@ -658,7 +772,7 @@ function ws_personal_plan_inbox_describe($viewer, $row, $base)
     return array(
         'title' => lang(array('string' => 'Reminder: {var:1}', 'vars' => mb_substr((string) $plan['title'], 0, 150))),
         'body'  => $when,
-        'url'   => $base . 'workspace_my_calendar.php?view=list&date=' . date('Y-m-d', (int) $plan['starts_at']) . '&plan=' . (int) $plan['id'],
+        'url'   => $base . 'workspace_my_calendar.php?view=list&date=' . date('Y-m-d', (int) $plan['starts_at']) . '&plan=' . (int) $plan['id'] . $day,
         'icon'  => 'bi-alarm',
     );
 }
@@ -699,6 +813,30 @@ function ws_personal_plan_js_strings()
         'plan_people_error' => lang('Choose who may see the plan.'),
         'plan_team'      => lang('The whole team'),
         'plan_mail'      => lang('Open the e-mail'),
+        // Repeating plans (personal_plan_repeat.php).
+        'repeat'           => lang('Repeat'),
+        'repeat_none'      => lang('Does not repeat'),
+        'repeat_options'   => array(
+            'daily'   => lang('Every day'),
+            'weekly'  => lang('Every week'),
+            'monthly' => lang('Every month'),
+            'yearly'  => lang('Every year'),
+        ),
+        'repeat_every'     => lang('Repeat every'),
+        'repeat_unit_daily'   => lang('days'),
+        'repeat_unit_weekly'  => lang('weeks'),
+        'repeat_unit_monthly' => lang('months'),
+        'repeat_unit_yearly'  => lang('years'),
+        'repeat_ends'      => lang('Repeat ends'),
+        'repeat_end_never' => lang('Never'),
+        'repeat_end_until' => lang('On a day'),
+        'repeat_end_count' => lang('After a number of times'),
+        'repeat_until'     => lang('Last day of the repeat'),
+        'repeat_count'     => lang('Number of times'),
+        'repeat_this_one'  => lang('This one'),
+        'repeat_following' => lang('This and the following'),
+        'repeat_change_q'  => lang('Which times of the repeating plan does the change apply to?'),
+        'repeat_delete_q'  => lang('Which times of the repeating plan do you want to delete? They cannot be brought back.'),
         'remind_options' => array(
             '0'    => lang('At the start'),
             '15'   => lang('15 minutes before'),

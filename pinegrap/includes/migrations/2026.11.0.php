@@ -200,6 +200,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_mail_send_later();      // 11.0.207
 	upgrade_2026_11_0_ws_roadmap_templates();    // 11.0.208
 	upgrade_2026_11_0_ws_approval_agents();      // 11.0.210
+	upgrade_2026_11_0_ws_personal_plan_repeat(); // 11.0.209
 
 }
 
@@ -6720,5 +6721,36 @@ function upgrade_2026_11_0_ws_approval_agents() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: an approval request asked by hand can ask the channel\'s agents beside its people.');
+
+}
+
+// Repeating personal plans (11.0.209): the rule on the plan's own row and the
+// days a single time was deleted or changed ("This one"). The times are
+// worked out on every read, never stored (includes/workspace/personal_plan_repeat.php).
+function upgrade_2026_11_0_ws_personal_plan_repeat() {
+
+	if (!install_table_exists('ws_personal_plans')) {
+
+		install_skipped('ws_personal_plans does not exist, skipped');
+
+		return;
+
+	}
+
+	install_add_column('ws_personal_plans', 'repeat_frequency', "VARCHAR(8) NOT NULL DEFAULT ''");
+	install_add_column('ws_personal_plans', 'repeat_interval', "SMALLINT UNSIGNED NOT NULL DEFAULT 1");
+	install_add_column('ws_personal_plans', 'repeat_until', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_personal_plans', 'repeat_count', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_personal_plans', 'remind_minutes', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('ws_personal_plans', 'repeat_of', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_personal_plans', 'idx_repeat_of', "INDEX idx_repeat_of (repeat_of)");
+
+	install_create_table('ws_personal_plan_skips', "CREATE TABLE ws_personal_plan_skips (
+		plan_id              INT UNSIGNED NOT NULL DEFAULT 0,
+		day                  DATE NOT NULL DEFAULT '0000-00-00',
+		PRIMARY KEY (plan_id, day)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a personal plan on My calendar can repeat every day, week, month or year.');
 
 }

@@ -164,6 +164,12 @@ function ws_api_personal_plan_schema()
         'mine'       => 'boolean',
         'people'     => 'array',
         'owner_name' => 'string',
+        'time_day'     => 'string',
+        'repeat'       => 'string',
+        'repeat_every' => 'integer',
+        'repeat_end'   => 'string',
+        'repeat_until' => 'string',
+        'repeat_count' => 'string',
     );
 }
 
@@ -334,7 +340,8 @@ function ws_api_personal_plans_list($params)
 
     $out = array();
 
-    foreach (ws_personal_plans_between((int) $viewer['id'], $span[0], $span[1]) as $plan) {
+    // A repeating plan once, with its rule (not one row a time).
+    foreach (ws_personal_plans_between((int) $viewer['id'], $span[0], $span[1], false) as $plan) {
         if (ws_personal_plan_can_edit((int) $viewer['id'], $plan)) {
             $out[] = ws_personal_plan_for_reader((int) $viewer['id'], $plan);
         }

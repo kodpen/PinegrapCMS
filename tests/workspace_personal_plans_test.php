@@ -144,6 +144,7 @@ function test_workspace_personal_plan_tables_are_read_through_the_module_alone()
 		'includes/workspace/personal_plans.php',
 		'includes/workspace/personal_plan_steps.php',
 		'includes/workspace/personal_plan_contact.php',
+		'includes/workspace/personal_plan_repeat.php',
 		// A plan naming a customer: the merge moves contact_id, the erasure
 		// sets it to 0; neither reads the plan.
 		'includes/fn/contacts.php',
@@ -161,7 +162,7 @@ function test_workspace_personal_plan_tables_are_read_through_the_module_alone()
 			continue;
 		}
 
-		if (preg_match('/ws_personal_plan(s|_steps|_people)\b[^(]/', (string) file_get_contents((string) $file)) && !in_array($path, $allowed, true)) {
+		if (preg_match('/ws_personal_plan(s|_steps|_people|_skips)\b[^(]/', (string) file_get_contents((string) $file)) && !in_array($path, $allowed, true)) {
 			$found[] = $path;
 		}
 	}

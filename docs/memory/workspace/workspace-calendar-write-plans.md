@@ -30,6 +30,6 @@ description: A person's own plans written one way to their Google or Outlook cal
 - `ws_calsync_sync()`: the tasks part as before (read back, moves, writes), then `ws_calsync_sync_plans()` with the calls the tasks left of `WS_CALSYNC_WRITES_MAX`; `left` adds both. A 404 on a plans create says the plans calendar was deleted: switch off and on to make a new one.
 
 ## Where do repeating plans fit?
-- `ws_calsync_plan_times()` gives one time per plan today; a repeating plan gives one per time in the writer's window, uid `ws-plan-<id>-<Ymd>` (its `key`).
+- `ws_calsync_plan_times()` writes a repeating plan (PC11a, #9565) one event per time in the writer's window, skipped days left out, uid `ws-plan-<id>-<Ymd>` (its `key`); the writer reads plan rows (`ws_personal_plans_between(..., false)`).
 
 Related: `workspace-calendar-write.md`, `workspace-personal-plans.md`. Test: `tests/workspace_calendar_sync_plans_test.php`.

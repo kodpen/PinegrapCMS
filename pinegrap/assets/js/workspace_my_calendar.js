@@ -49,6 +49,8 @@
             date: /^\d{4}-\d{2}-\d{2}$/.test(query.get('date') || '') ? query.get('date') : '',
             // A reminder line opens its plan (?plan=N) once the days are drawn.
             plan: parseInt(query.get('plan') || 0, 10) || 0,
+            // ... on one of its times, for a repeating plan (day=Y-m-d).
+            planDay: /^\d{4}-\d{2}-\d{2}$/.test(query.get('day') || '') ? query.get('day') : '',
             // "New roadmap" on a customer's card: a new plan naming them.
             contact: query.get('new_plan') ? (parseInt(query.get('contact') || 0, 10) || 0) : 0,
             // ... filled from one of the person's own plans (from=N).
@@ -156,7 +158,7 @@
                 newPlan.classList.toggle('d-none', !result.plans);
 
                 if (state.plan) {
-                    plans.open(state.plan);
+                    plans.open(state.plan, state.planDay);
                     state.plan = 0;
                 } else if (state.contact && result.plans) {
                     var contact = state.contact;
@@ -208,7 +210,7 @@
 
         function openEvent(event) {
             if (event.plan_id) {
-                plans.open(event.plan_id);
+                plans.open(event.plan_id, event.plan_day);
             } else if (event.url) {
                 window.location.href = event.url;
             } else if (!event.readonly) {
@@ -238,6 +240,14 @@
 
             if (event.meeting_url) {
                 item.appendChild(h.icon('bi-camera-video', 'me-1'));
+            }
+
+            // A time of a repeating plan, marked before it is opened.
+            if (event.repeat) {
+                var repeatIcon = h.icon('bi-arrow-repeat', 'me-1');
+                repeatIcon.setAttribute('aria-label', (S.repeat_options || {})[event.repeat] || '');
+                repeatIcon.setAttribute('role', 'img');
+                item.appendChild(repeatIcon);
             }
 
             item.appendChild(document.createTextNode((event.time ? event.time + ' ' : '') + event.title));
@@ -432,7 +442,7 @@
 
                 day.events.forEach(function (event) {
                     section.appendChild(listRow(el('span', 'ws-cal-event-dot ws-kind-' + event.kind), event.title,
-                        event.plan_id ? (event.owner ? s('plan_of').replace('{1}', event.owner) : s('my_plan')) + (event.steps_total && window.PGWsRoadmap ? ' · ' + window.PGWsRoadmap.label(event, s) : '') : (event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || '')),
+                        event.plan_id ? (event.owner ? s('plan_of').replace('{1}', event.owner) : s('my_plan')) + (event.repeat && S.repeat_options ? ' · ' + S.repeat_options[event.repeat] : '') + (event.steps_total && window.PGWsRoadmap ? ' · ' + window.PGWsRoadmap.label(event, s) : '') : (event.layer || (event.readonly ? s('own_calendar') : (h.cfg.event_kinds && h.cfg.event_kinds[event.kind]) || '')),
                         event.time || h.t('all_day'),
                         (event.url || event.plan_id || !event.readonly) ? function () { openEvent(event); } : null));
                 });
@@ -489,8 +499,8 @@
         }
 
 
-        function openPlan(planId) {
-            h.api('ws_personal_plan_get', { plan_id: planId }).then(function (result) {
+        function openPlan(planId, day) {
+            h.api('ws_personal_plan_get', { plan_id: planId, day: day || '' }).then(function (result) {
                 planDrawer(result.plan, {});
             }).catch(h.fail);
         }
@@ -612,6 +622,85 @@
                 body.appendChild(field(s('plan_remind'), remind));
             }
 
+            // Repeat: every day, week, month or year; until a day or N times.
+            // A roadmap does not repeat, so its section hides while one is set.
+            var repeat = el('select', 'form-control');
+            [['', s('repeat_none')]].concat(Object.keys(S.repeat_options || {}).map(function (key) {
+                return [key, S.repeat_options[key]];
+            })).forEach(function (option) {
+                var item = el('option', '', option[1]);
+                item.value = option[0];
+                repeat.appendChild(item);
+            });
+            repeat.value = plan ? (plan.repeat || '') : '';
+
+            var every = input('number', String(plan && plan.repeat_every ? plan.repeat_every : 1));
+            every.classList.remove('pg-input');
+            every.classList.add('form-control');
+            every.min = '1';
+            every.max = '99';
+            every.inputMode = 'numeric';
+
+            var ends = el('select', 'form-control');
+            [['never', s('repeat_end_never')], ['until', s('repeat_end_until')], ['count', s('repeat_end_count')]].forEach(function (option) {
+                var item = el('option', '', option[1]);
+                item.value = option[0];
+                ends.appendChild(item);
+            });
+            ends.value = plan ? (plan.repeat_end || 'never') : 'never';
+
+            var endDay = input('date', plan && plan.repeat_until ? plan.repeat_until : '');
+            var endCount = input('number', plan && plan.repeat_count ? plan.repeat_count : '10');
+            endCount.min = '1';
+            endCount.max = '999';
+            endCount.inputMode = 'numeric';
+
+            // Two rows of two, as the days and the hours: Repeat with Repeat
+            // every (the unit beside the number), then Repeat ends with the
+            // number of times or the last day.
+            var everyRow = field(s('repeat_every'), every);
+            var everyGroup = el('div', 'input-group');
+            // The unit beside "Repeat every": days, weeks, months or years.
+            var unitNote = el('span', 'input-group-text');
+            everyGroup.appendChild(every);
+            everyGroup.appendChild(unitNote);
+            everyRow.appendChild(everyGroup);
+
+            var repeatRow = el('div', 'ws-plan-pair');
+            var repeatMore = el('div', 'ws-plan-repeat');
+            var endDayRow = field(s('repeat_until'), endDay);
+            var endCountRow = field(s('repeat_count'), endCount);
+            var endsRow = el('div', 'ws-plan-pair');
+            endsRow.appendChild(field(s('repeat_ends'), ends));
+            endsRow.appendChild(endDayRow);
+            endsRow.appendChild(endCountRow);
+            repeatMore.appendChild(endsRow);
+
+            var roadmap = null;
+
+            function repeatView() {
+                repeatMore.classList.toggle('d-none', !repeat.value);
+                everyRow.classList.toggle('d-none', !repeat.value);
+                // "Never" leaves the second place of the row empty.
+                endDayRow.classList.toggle('d-none', ends.value !== 'until');
+                endCountRow.classList.toggle('d-none', ends.value !== 'count');
+                unitNote.textContent = repeat.value ? s('repeat_unit_' + repeat.value) : '';
+
+                if (roadmap) {
+                    roadmap.node.classList.toggle('d-none', !!repeat.value);
+                }
+            }
+
+            repeat.addEventListener('change', repeatView);
+            ends.addEventListener('change', repeatView);
+
+            if (mine) {
+                repeatRow.appendChild(field(s('repeat'), repeat));
+                repeatRow.appendChild(everyRow);
+                body.appendChild(repeatRow);
+                body.appendChild(repeatMore);
+            }
+
             // Who can see: Only me, chosen team members, the whole team.
             var who = el('div', 'pg-seg ws-plan-who');
             var whoValue = plan && plan.visibility ? plan.visibility : 'me';
@@ -710,7 +799,7 @@
             }
 
             // The roadmap: dated steps and the plan's progress.
-            var roadmap = window.PGWsRoadmap ? window.PGWsRoadmap.section(h, s, plan, {
+            roadmap = window.PGWsRoadmap ? window.PGWsRoadmap.section(h, s, plan, {
                 // A copy's steps, for a new plan filled from another.
                 steps: plan ? null : (defaults.steps || null),
                 range: function () { return { start: first.value, end: last.value || first.value }; },
@@ -733,6 +822,42 @@
                 [first, last].forEach(function (control) { control.addEventListener('change', roadmap.redraw); });
             }
 
+            repeatView();
+
+            // A repeating plan asks which times a change or a delete is for:
+            // this one, or this one and the ones after it. '' when called off.
+            var series = !!(plan && plan.repeat);
+
+            function askTimes(question, okLabel, danger) {
+                if (!series) {
+                    return Promise.resolve('all');
+                }
+
+                var box = el('div', 'ws-ask-choice');
+                var inputs = {};
+
+                [['one', s('repeat_this_one')], ['following', s('repeat_following')]].forEach(function (item, index) {
+                    var line = el('div', 'form-field');
+                    var radio = el('input', 'radio');
+                    radio.type = 'radio';
+                    radio.name = 'ws-plan-times';
+                    radio.value = item[0];
+                    radio.id = h.nextId('ws-plan-times-');
+                    radio.checked = (index === 0);
+
+                    var label = el('label', '', item[1]);
+                    label.htmlFor = radio.id;
+                    line.appendChild(radio);
+                    line.appendChild(label);
+                    box.appendChild(line);
+                    inputs[item[0]] = radio;
+                });
+
+                return h.ask(question, okLabel, danger, box).then(function (yes) {
+                    return yes ? (inputs.following.checked ? 'following' : 'one') : '';
+                });
+            }
+
             // Somebody else's plan opened to the reader: read, not changed.
             if (!mine) {
                 // The panel's read-only state: every field dimmed, nothing to type in.
@@ -749,12 +874,12 @@
                 var remove = el('button', 'pg-button pg-button-danger pg-button-sm me-auto', s('delete'));
                 remove.type = 'button';
                 remove.addEventListener('click', function () {
-                    h.ask(s('plan_delete_q'), s('delete'), true).then(function (yes) {
+                    (series ? askTimes(s('repeat_delete_q'), s('delete'), true) : h.ask(s('plan_delete_q'), s('delete'), true)).then(function (yes) {
                         if (!yes) {
                             return;
                         }
 
-                        h.api('ws_personal_plan_delete', { plan_id: plan.id }).then(function () {
+                        h.api('ws_personal_plan_delete', { plan_id: plan.id, mode: series ? yes : '', day: plan.time_day || plan.start }).then(function () {
                             h.hideOffcanvas(node);
                             h.toast(s('plan_deleted'), 'success');
                             done();
@@ -768,8 +893,16 @@
             save.type = 'button';
 
             // Saves the plan, then its steps; resolves with the roadmap.
-            function submit() {
+            // mode: one or following for a time of a repeating plan.
+            function submit(mode) {
                 return h.api('ws_personal_plan_save', {
+                    mode: mode || '',
+                    time_day: plan ? (plan.time_day || plan.start) : '',
+                    repeat: repeat.value,
+                    repeat_every: every.value,
+                    repeat_end: ends.value,
+                    repeat_until: endDay.value,
+                    repeat_count: endCount.value,
                     plan_id: plan ? plan.id : 0,
                     title: name.value,
                     start: first.value,
@@ -796,7 +929,7 @@
                         return result;
                     });
                 }).then(function (result) {
-                    return roadmap ? roadmap.save(result.plan.id) : null;
+                    return (roadmap && !repeat.value) ? roadmap.save(result.plan.id) : null;
                 });
             }
 
@@ -811,17 +944,26 @@
                     return;
                 }
 
-                save.disabled = true;
-                submit().then(function () {
-                    save.disabled = false;
-                    h.hideOffcanvas(node);
-                    h.toast(s('plan_saved'), 'success');
-                    done();
-                }).catch(function (error) {
-                    save.disabled = false;
-                    h.fail(error);
+                askTimes(s('repeat_change_q'), s('save'), false).then(function (mode) {
+                    if (!mode) {
+                        return;
+                    }
+
+                    save.disabled = true;
+                    submit(mode === 'all' ? '' : mode).then(doneSaving).catch(function (error) {
+                        save.disabled = false;
+                        h.fail(error);
+                    });
                 });
             });
+
+            function doneSaving() {
+                save.disabled = false;
+                h.hideOffcanvas(node);
+                h.toast(s('plan_saved'), 'success');
+                done();
+            }
+
             footer.appendChild(save);
 
             // The panel's one required marker on Title's label.

@@ -348,7 +348,7 @@ function ws_home_calendar($viewer, $today)
                 'starts_at' => (int) $plan['starts_at'],
                 'ends_at'   => (int) $plan['ends_at'],
                 'layer'     => ((int) $plan['user_id'] === (int) $me) ? lang('My plan') : lang(array('string' => 'Plan of {var:1}', 'vars' => (string) (ws_people(array((int) $plan['user_id']))[(int) $plan['user_id']]['name'] ?? ''))),
-                'url'       => $base . 'workspace_my_calendar.php?view=list&plan=' . (int) $plan['id'],
+                'url'       => $base . 'workspace_my_calendar.php?view=list&plan=' . (int) $plan['id'] . (empty($plan['time_day']) ? '' : '&day=' . $plan['time_day']),
             );
         }
     }
