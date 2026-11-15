@@ -148,11 +148,11 @@ $statuses = pg_sms_campaign_statuses();
 // The text card.
 if ($readonly) {
     $output_message =
-        '<div class="col-12 md:col-8 my-3"><div class="form-label">' . lang('Name') . '</div><p>' . h($campaign['name']) . '</p></div>
+        '<div class="col-12 my-3"><div class="form-label">' . lang('Name') . '</div><p>' . h($campaign['name']) . '</p></div>
         <div class="col-12 my-3"><div class="form-label">' . lang('Text') . '</div><p style="white-space: pre-wrap">' . h($campaign['body']) . '</p></div>';
 } else {
     $output_message =
-        '<div class="col-12 md:col-8 my-3">
+        '<div class="col-12 my-3">
             <label class="form-label" for="name">' . lang('Name') . '</label>
             <input type="text" class="form-control" id="name" name="name" maxlength="100" value="' . h($campaign['name']) . '">
             <div class="form-text">' . lang('Only shown in the panel.') . '</div>
@@ -299,7 +299,7 @@ echo
 pg_page_shell(
     array(
         'title'               => $heading,
-        'extra classes'       => 'campaign',
+        'extra classes'       => 'campaign pg-measure-edit',
         'icon'                => 'campaign',
         'heading'             => $heading,
         'heading_description' => lang('A text message to the contacts of selected contact groups. Numbers without SMS consent, refused by İYS or without a sender identity are refused by the SMS checks.'),

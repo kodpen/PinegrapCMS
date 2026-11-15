@@ -22,8 +22,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * One card of the campaign form, in a full-width column of the row it sits
- * in (the form column's or the status column's).
+ * One card of the campaign form, straight in its column (the form column's
+ * or the status column's), so it takes the look's card.
  *
  * @param string $title  Translated, escaped card title
  * @param string $body   Markup inside the card body's row
@@ -32,15 +32,13 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_email_campaign_card($title, $body)
 {
     return
-        '<div class="col-12">
-            <div class="card mb-7">
-                <h2 class="card-header bg-reset border-0 pg-title-section">
-                    ' . $title . '
-                </h2>
-                <div class="card-body pt-0">
-                    <div class="row">
-                        ' . $body . '
-                    </div>
+        '<div class="card mb-7">
+            <h2 class="card-header bg-reset border-0 pg-title-section">
+                ' . $title . '
+            </h2>
+            <div class="card-body pt-0">
+                <div class="row">
+                    ' . $body . '
                 </div>
             </div>
         </div>';
@@ -62,18 +60,14 @@ function pg_email_campaign_layout($form, $side, $buttons)
     $html =
         '<div class="row">
             <div class="col-12 ' . (($side !== '') ? 'lg:col-8 2xl:col-9 ' : '') . 'order-1">
-                <div class="row">
-                    ' . $form . '
-                </div>
+                ' . $form . '
             </div>';
 
     if ($side !== '') {
         $html .= '
             <div class="col-12 lg:col-4 2xl:col-3 order-2">
                 <div class="position-sticky" style="top:3.3rem;">
-                    <div class="row">
-                        ' . $side . '
-                    </div>
+                    ' . $side . '
                 </div>
             </div>';
     }
@@ -200,15 +194,15 @@ function pg_email_campaign_from_card($values, $readonly = false)
 
     return pg_email_campaign_card(
         lang('E-Mail Message From'),
-        '<div class="col-12 md:col-4 my-3">
+        '<div class="col-12 my-3">
             ' . $label('from_name', lang('From Name')) . '
             ' . $fields['from_name'] . '
         </div>
-        <div class="col-12 md:col-4 my-3">
+        <div class="col-12 md:col-6 my-3">
             ' . $label('from_email_address', lang('From E-mail Address')) . '
             ' . $fields['from_email_address'] . '
         </div>
-        <div class="col-12 md:col-4 my-3">
+        <div class="col-12 md:col-6 my-3">
             ' . $label('reply_email_address', lang('Reply to E-mail Address')) . '
             ' . $fields['reply_email_address'] . '
         </div>');

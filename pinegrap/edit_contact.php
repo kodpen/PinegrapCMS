@@ -171,7 +171,7 @@ if (!$_POST) {
         <div class="item col">
             <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
                 <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '" onclick=" $(this).closest(\'.item\').remove();"></button></div>
-                <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($picture_name) . '">
+                <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4; background: var(--pg-surface-inset);" title="' . h($picture_name) . '">
                     <input type="hidden" name="file_id" id="file_id" value="' . (int) $row['file_id'] . '"/>
                     <img class="lazy object-fit-contain w-100 h-100" alt="' . h(lang('Picture')) . '" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(pg_contact_picture_address($row['file_id'])) . '" />
                 </div>
@@ -182,7 +182,7 @@ if (!$_POST) {
         <div class="item col">
             <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
                 <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '" onclick=" $(this).closest(\'.item\').remove();"></button></div>
-                <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">
+                <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4; background: var(--pg-surface-inset);" title="' . h($row['image']) . '">
                     <input type="hidden" name="image_url" id="image_url" value="' . e($row['image']) . '">
                     <img class="lazy object-fit-contain w-100 h-100" alt="' . h(lang('Picture')) . '" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($row['image']) . '" />
                 </div>
@@ -197,7 +197,7 @@ if (!$_POST) {
         <div class="item col">
             <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
                 <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0 opacity-0" tabindex="-1" aria-hidden="true"></button></div>
-                <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">' . $kept_file_id . '
+                <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4; background: var(--pg-surface-inset);" title="' . h($row['image']) . '">' . $kept_file_id . '
                     <div class="d-flex align-items-center justify-content-center w-100 h-100">' . pg_avatar_markup_for($row['first_name'] ?? '', $row['last_name'] ?? '', $row['company'] ?? '', $id, 'avatar-xl') . '</div>
                 </div>
             </div>
@@ -257,7 +257,7 @@ if (!$_POST) {
     // The Parasut contact id: shown read-only-ish once the first invoice set
     // it, else a note; posted back unchanged either way.
     $output_parasut = (ENABLE_PARASUT ? ($parasut_contact_id ? '
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 pg-field-span-4 my-3">
                                             <label for="parasut_contact_id" class="form-label fg-secondary small">' . lang('Parasut Contact ID') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $parasut_contact_id . '" type="text" name="parasut_contact_id" id="parasut_contact_id" aria-describedby="parasut_contact_id_hint" class="form-control form-control-sm font-monospace fg-secondary" />
@@ -299,7 +299,7 @@ if (!$_POST) {
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 pg-field-span-6 my-3">
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $email_address . '" type="text" name="email_address" id="email_address" autocomplete="off" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />

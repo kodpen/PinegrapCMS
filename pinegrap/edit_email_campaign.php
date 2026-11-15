@@ -410,7 +410,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> $output_heading,
-            'extra classes'=>'campaign',
+            'extra classes'=>'campaign pg-measure-edit',
             'icon'=>'campaign', 
             'heading'=> $output_heading,
             'heading_description' => $output_subheading,

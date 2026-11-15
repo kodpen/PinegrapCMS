@@ -134,7 +134,7 @@ if (!$_POST) {
         $output_contact_groups_card = '
                     <div class="card mb-5">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <h2 class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Select Contact Groups to Import into') . '</h2>
+                            <h2 class="pg-title-section mb-0">' . lang('Select Contact Groups to Import into') . '</h2>
                         </div>
                         <div class="card-body">
                             <div class="row">
@@ -197,7 +197,7 @@ if (!$_POST) {
                     ' . pg_user_form_layout('
                     <div class="card mb-5">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <h2 class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Import CSV') . '</h2>
+                            <h2 class="pg-title-section mb-0">' . lang('Import CSV') . '</h2>
                         </div>
                         <div class="card-body">
                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
@@ -208,9 +208,9 @@ if (!$_POST) {
                     </div>
 
                     <div class="card mb-5">
-                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <h2 class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Role') . '</h2>
-                            <span class="small fg-secondary">' . lang('Every imported user gets this role and these rights.') . '</span>
+                        <div class="card-header bg-reset border-0 pg-title-section d-flex flex-wrap justify-content-between align-items-center gap-3 row-gap-1">
+                            <h2 class="pg-title-section mb-0">' . lang('Role') . '</h2>
+                            <span class="small fw-normal fg-secondary">' . lang('Every imported user gets this role and these rights.') . '</span>
                         </div>
                         <div class="card-body">
                             ' . pg_user_role_cards(3, $user['role'], $role_cards_disabled) . '
@@ -219,16 +219,16 @@ if (!$_POST) {
 
                     <div class="card mb-5">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <h2 class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Account') . '</h2>
+                            <h2 class="pg-title-section mb-0">' . lang('Account') . '</h2>
                         </div>
                         <div class="card-body">
                             <div class="row g-5">
-                                <div class="col-12 xl:col-7">
+                                <div class="col-12 md:col-6">
                                     <label for="home_page" class="form-label">' . lang('User Start Page') . '</label>
                                     ' . pg_picker_field('page', 'home_page', '') . pg_picker_script() . '
                                     <div class="form-text">' . lang('Opened after signing in.') . '</div>
                                 </div>
-                                <div class="col-12 sm:col-6 xl:col-5">
+                                <div class="col-12 md:col-3">
                                     <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
                                     <input type="number" min="0" max="4294967295" step="1" class="form-control" id="reward_points" name="reward_points"/>
                                 </div>
@@ -250,7 +250,7 @@ if (!$_POST) {
                     ' . $output_contact_groups_card, '
                     <div class="card mb-5">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <h2 class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Password') . '</h2>
+                            <h2 class="pg-title-section mb-0">' . lang('Password') . '</h2>
                         </div>
                         <div class="card-body">
                             <div class="form-field">

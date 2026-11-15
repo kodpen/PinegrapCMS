@@ -134,7 +134,7 @@ if (!$_POST) {
     pg_page_shell(
         array(
             'title'=> lang('Create Campaign'),
-            'extra classes'=>'campaign',
+            'extra classes'=>'campaign pg-measure-edit',
             'icon'=>'campaign',
             'heading'=> lang('Create Campaign'),
             'heading_description' => lang('Create a new e-mail campaign to send to all subscribers in selected contact groups.'),
@@ -169,7 +169,7 @@ if (!$_POST) {
                                         <div class="col-12 md:col-auto">
                                             <label class="form-label md:mb-0" for="entered_email_address">' . lang('Also send message to the following e-mail address') . ':</label>
                                         </div>
-                                        <div class="col-12 md:col-6 xl:col-5">
+                                        <div class="col-12 md:col-6">
                                             <input type="text" class="form-control text-end" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
                                         </div>
                                     </div>
