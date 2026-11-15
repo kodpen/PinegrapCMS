@@ -466,7 +466,7 @@ function ws_agents_settings_script()
                 }
             });
         })();
-        </script>';
+        </script>' . ws_claude_copy_script();
 }
 
 /**
@@ -583,8 +583,8 @@ function ws_agents_settings_card($self_url, $viewer, $form = null)
 
 /**
  * A Site Settings drawer of the agents card: an agent's (its door error,
- * its activity with the request rows' buttons, its form) or, with $agent
- * null, Add an agent's.
+ * an application agent's start text, its activity with the request rows'
+ * buttons, its form) or, with $agent null, Add an agent's.
  *
  * @param array|null $agent     ws_agent_shape()
  * @param array      $viewer
@@ -605,5 +605,5 @@ function ws_settings_agent_drawer($agent, $viewer, $apps, $counts, $form, $in_di
     $error = ($agent['door_error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($agent['door_error']) . '</div>' : '';
 
     return pg_settings_drawer('pgset-ws-agent-' . (int) $agent['id'], '@' . h($agent['handle']) . ' · ' . h($agent['name']),
-        $error . (function_exists('ws_agent_activity_block') ? '<div class="mb-5">' . ws_agent_activity_block('', $viewer, $agent, $counts, $form) . '</div>' : '') . ws_agents_settings_form('', $agent, $apps, $admin, $form), $in_dialog);
+        $error . ws_agent_start_box($agent) . (function_exists('ws_agent_activity_block') ? '<div class="mb-5">' . ws_agent_activity_block('', $viewer, $agent, $counts, $form) . '</div>' : '') . ws_agents_settings_form('', $agent, $apps, $admin, $form), $in_dialog);
 }
