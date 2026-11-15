@@ -7,6 +7,7 @@ description: The agent card's look in a channel (PF3, owner 2026-11-15): the bar
 - Owner (2026-11-15, channel decision 3796), asked between this and a slimmer card with the percent only: "Çubuklu düzen".
 - Top: picture, name, `@handle`, role pill. A box: state, waiting requests, model, last seen, today's answered and failed. One bar a usage window with its percent and reset time, amber with a mark at 90% or more. Under it: what wakes it, its last answer here (jumps to the message), the channels it is in that the reader may read, the note that the figures are the agent's own report, and Mention.
 - A fact the agent never sent is left out, not shown empty; a report older than a day is muted (`agent-report.md`).
+- A row whose value is a list (Channels, Departments): the label at the top, the list takes the rest of the line and may shrink; a long channel name ends with an ellipsis and its button's title holds it whole; a department's "Leads it" pill goes under the name when both do not fit (#9789).
 - Built from `.pg-card`, `--pg-surface-float`, `--pg-shadow-float`, `.pg-pill` tones and `.pg-tabular`; style `.ws-agent-card*` beside `.ws-agent-face`. The look: `Approval: channel 4096`.
 
 ## Which picture does an agent have?
