@@ -14,7 +14,7 @@ module: save_bar
 - A bar left as a bare `nav … position-sticky` with `bottom:.5rem` was the old centred pill with no frame; `tests/save_bar_helper_test.php` refuses one in any root screen or `includes/*/` file.
 
 ## Which screens take it?
-- SH6a (#PR): Add Submitted Form, Edit Purchase Order, Edit Quote, account sync item, ERP accounts import (three steps), expense categories, e-invoice inbox document, stock counts, import, Import My Site, Import Short Links, import ZIP, migration, Send E-mail Campaign (both windows and the refusal), Menu Items' reorder bar, WhatsApp template.
+- SH6a (#9746): Add Submitted Form, Edit Purchase Order, Edit Quote, account sync item, ERP accounts import (three steps), expense categories, e-invoice inbox document, stock counts, import, Import My Site, Import Short Links, import ZIP, migration, Send E-mail Campaign (both windows and the refusal), Menu Items' reorder bar, WhatsApp template.
 - The account sync item and inbox document bars moved from inside the form column to the row's `order-3` column.
 - The bars in `includes/forms/*.php` already draw the same framed column by hand; they are not moved yet.
 
