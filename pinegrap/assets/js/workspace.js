@@ -12038,6 +12038,11 @@
 
             main.appendChild(body);
 
+            // A translation this reader made shows again on a redraw.
+            if (window.PGWsTranslate && !message.deleted) {
+                window.PGWsTranslate.apply(message, body, featureHelpers());
+            }
+
             if (message.forwards && message.forwards.length) {
                 main.appendChild(self.forwardsNode(message));
             }
@@ -12287,6 +12292,17 @@
                         textSheet(readableText(message.html), false);
                     } });
                 }
+            }
+
+            // The browser's own translator, into the reader's panel
+            // language (workspace_translate.js); nothing leaves the device.
+            if (message.html && !message.deleted && window.PGWsTranslate && window.PGWsTranslate.supported()) {
+                items.push({ icon: 'bi-translate', label: t('tr_translate'), action: function () {
+                    var box = self.center || self.pane;
+                    var drawn = box ? box.querySelector('[data-ws-message="' + message.id + '"] .ws-msg-main > .ws-msg-body') : null;
+
+                    window.PGWsTranslate.translate(message, drawn, featureHelpers());
+                } });
             }
 
             // A room of its own beside the channel to talk this message over.
