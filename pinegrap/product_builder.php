@@ -2743,10 +2743,7 @@ function pg_pb_render_preview($show_summary = TRUE)
         '<div class="card mb-5" id="pg_pb_preview">
             <div class="card-body p-3">
 
-                <div class="d-flex align-items-center gap-3 mb-1">
-                    <i class="bi bi-eye fg-primary"></i>
-                    <span class="small fw-semibold">' . lang('Preview') . '</span>
-                </div>
+                <h2 class="pg-title-status mb-1">' . lang('Preview') . '</h2>
 
                 <!--
                     What the save button is about to do. Only while creating: on
@@ -2762,7 +2759,7 @@ function pg_pb_render_preview($show_summary = TRUE)
                     actually describes.
                 -->
 ' . ($show_summary
-                    ? '<div id="pg_pb_summary" class="d-flex align-items-start gap-3 small fg-secondary border-bottom pb-3 mb-5">
+                    ? '<div id="pg_pb_summary" class="d-flex align-items-start gap-3 pg-text-2 fg-secondary border-bottom pb-3 mb-5">
                         <i id="pg_pb_summary_icon" class="bi bi-box mt-1"></i>
                         <span id="pg_pb_summary_text">' . lang('A single product will be created. No catalog group is added.') . '</span>
                     </div>'
@@ -3635,7 +3632,7 @@ function pg_pb_render_styles()
                 text-align: start;
             }
             .pg-pb-wf-caption {
-                font-size: .7rem;
+                font-size: var(--pg-text-count);
                 text-transform: uppercase;
                 letter-spacing: .04em;
                 color: var(--pg-fg-2);
@@ -3677,7 +3674,7 @@ function pg_pb_render_styles()
             /* An image was chosen, so the placeholder glyph goes away. */
             .pg-pb-wf-image.has-image i { display: none; }
             .pg-pb-wf-line {
-                font-size: .78rem;
+                font-size: var(--pg-text-2);
                 line-height: 1.3;
                 margin-bottom: .25rem;
                 word-break: break-word;
@@ -3704,7 +3701,7 @@ function pg_pb_render_styles()
                 gap: .25rem;
                 min-width: 0;
                 max-width: 7rem;
-                font-size: .62rem;
+                font-size: var(--pg-text-count);
                 padding: .1rem .35rem;
                 border: 1px solid var(--pg-border-color);
                 border-radius: calc(var(--pg-radius) - .15rem);
@@ -3719,17 +3716,18 @@ function pg_pb_render_styles()
                the theme so it reads in dark mode, and the point is the shape —
                URL line, one blue title, two lines of description. */
             .pg-pb-serp-url {
-                font-size: .68rem;
-                color: var(--pg-fg-2);
+                font-size: var(--pg-text-meta);
+                color: var(--pg-fg-3);
                 margin-bottom: .15rem;
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
             }
             .pg-pb-serp-title {
-                font-size: .82rem;
+                font-size: var(--pg-text-2);
+                font-weight: var(--pg-weight-strong);
                 line-height: 1.25;
-                color: var(--pg-link-color);
+                color: var(--pg-accent);
                 margin-bottom: .2rem;
                 display: -webkit-box;
                 -webkit-line-clamp: 2;
@@ -3738,7 +3736,7 @@ function pg_pb_render_styles()
                 word-break: break-word;
             }
             .pg-pb-serp-desc {
-                font-size: .72rem;
+                font-size: var(--pg-text-2);
                 line-height: 1.35;
                 color: var(--pg-fg-2);
                 display: -webkit-box;
@@ -3754,7 +3752,7 @@ function pg_pb_render_styles()
                labelled even while empty, so the operator can see what that part
                of the page is before deciding whether to fill it in. */
             .pg-pb-wf-blocklabel {
-                font-size: .65rem;
+                font-size: var(--pg-text-count);
                 text-transform: uppercase;
                 letter-spacing: .04em;
                 color: var(--pg-fg-2);
@@ -3763,7 +3761,7 @@ function pg_pb_render_styles()
                 margin-bottom: .3rem;
             }
             #pg_pb_wf_details {
-                font-size: .7rem;
+                font-size: var(--pg-text-meta);
                 line-height: 1.35;
                 color: var(--pg-fg-2);
                 display: -webkit-box;
@@ -4332,11 +4330,10 @@ function pg_pb_render_bundle_card($mode, $product_id, $values)
 
     return '
                     <div class="col-12" id="pg_pb_sec_bundle">
-                        <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
-                                <i class="bi bi-boxes fg-primary"></i>
-                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('Bundle') . '</span>
-                            </div>
+                        <div class="card pg-card mb-7">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
+                                ' . lang('Bundle') . '
+                            </h2>
                             <div class="card-body">
                                 <input type="hidden" name="bundle_card" value="1" />
                                 <div class="row">
@@ -4706,7 +4703,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                 '<i class="bi bi-magic me-1"></i>' . lang('Generate') . '</button>' .
                             '<button type="button" id="pg-btn-barcode-list" class="btn btn-outline theme-secondary btn-sm position-relative" title="' . lang('Barcodes') . '">' .
                                 '<i class="bi bi-list-ul"></i>' .
-                                '<span id="pg-barcode-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-primary" style="font-size:9px;display:none;"></span>' .
+                                '<span id="pg-barcode-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-primary" style="font-size:var(--pg-text-count);display:none;"></span>' .
                             '</button>' .
                             '<button type="button" id="pg-btn-print-barcode" class="btn btn-outline theme-success btn-sm" title="' . lang('Print') . '">' .
                                 '<i class="bi bi-printer"></i></button>' .
@@ -5514,11 +5511,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                     <!-- ---------------------------------------------- product -->
                     <div class="col-12" id="pg_pb_sec_basic">
-                        <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
-                                <i class="bi bi-info-circle fg-primary"></i>
-                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('Main Informations') . '</span>
-                            </div>
+                        <div class="card pg-card mb-7">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
+                                ' . lang('Main Informations') . '
+                            </h2>
                             <div class="card-body">
                                 <div class="row">
 
@@ -5660,11 +5656,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                     ' . pg_pb_render_bundle_card($pg_mode, $pg_product_id, $values) . '
                     <!-- --------------------------------------------- variants -->
                     <div class="col-12" id="pg_pb_sec_variants">
-                        <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
-                                <i class="bi bi-diagram-3 fg-primary"></i>
-                                <span class="h5 mb-0 fg-primary fw-bold">' . (($pg_mode === 'edit') ? lang('Product Attributes') : lang('Variants')) . '</span>
-                            </div>
+                        <div class="card pg-card mb-7">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
+                                ' . (($pg_mode === 'edit') ? lang('Product Attributes') : lang('Variants')) . '
+                            </h2>
                             <div class="card-body">
                                 <div class="row">
                                     ' . pg_pb_render_switch_row(
@@ -5721,8 +5716,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     <div class="col-12 mt-7 pg-pb-group-only d-none" id="pg_pb_price_rules">
                                                         <hr class="mt-0" />
                                                         <div class="d-flex align-items-center flex-wrap gap-3 mb-1">
-                                                            <i class="bi bi-calculator fg-primary" aria-hidden="true"></i>
-                                                            <span class="h6 mb-0 fw-bold">' . lang('Price Rules') . '</span>
+                                                            <span class="pg-title-status">' . lang('Price Rules') . '</span>
                                                         </div>
                                                         <div class="form-text mt-0 mb-3">' . lang('Give options an effect on the price and every variant below is priced from the Unit Price. Order: the base, times the multipliers, plus the amounts, then the percentages one after another. Only one attribute can set the price. A price typed into a row is kept.') . '</div>
                                                         <div id="pg_pb_price_rules_body"></div>
@@ -5734,8 +5728,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     <div class="col-12 mt-7 d-none" id="pg_pb_matrix_wrapper">
                                                         <hr class="mt-0" />
                                                         <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
-                                                            <i class="bi bi-grid-3x3-gap fg-primary"></i>
-                                                            <span class="h6 mb-0 fw-bold">' . lang('Variants to Create') . '</span>
+                                                            <span class="pg-title-status">' . lang('Variants to Create') . '</span>
                                                             <span id="pg_pb_variant_count" class="badge theme-primary">0</span>
                                                             <div class="d-flex flex-wrap gap-1 ms-auto">
                                                                 <button type="button" id="pg_pb_apply_price" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-currency-exchange me-1"></i>' . lang('Apply Price to All') . '</button>
@@ -5784,11 +5777,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                          joins several groups; a set of products gets one group of
                          its own placed under a parent. -->
                     <div class="col-12" id="pg_pb_sec_groups">
-                        <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
-                                <i class="bi bi-folder fg-primary"></i>
-                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('Parent Product Groups') . '</span>
-                            </div>
+                        <div class="card pg-card mb-7">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
+                                ' . lang('Parent Product Groups') . '
+                            </h2>
                             <div class="card-body">
                                 <div class="row">
                                     ' . $output_parent_group_field . '
@@ -5800,11 +5792,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                     <!-- ------------------------------------- checkout options -->
                     <div class="col-12" id="pg_pb_sec_checkout">
-                        <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
-                                <i class="bi bi-credit-card fg-primary"></i>
-                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('Checkout Options') . '</span>
-                            </div>
+                        <div class="card pg-card mb-7">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
+                                ' . lang('Checkout Options') . '
+                            </h2>
                             <div class="card-body">
                                 <div class="row">
 
@@ -5827,12 +5818,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                     <!-- -------------------------------------------------- seo -->
                     <div class="col-12" id="pg_pb_sec_seo">
-                        <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
-                                <i class="bi bi-search fg-primary"></i>
-                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('Site Search & SEO') . '</span>
+                        <div class="card pg-card mb-7">
+                            <h2 class="card-header bg-reset border-0 pg-title-section d-flex align-items-center gap-3">
+                                ' . lang('Site Search & SEO') . '
                                 ' . $output_seo_badge . '
-                            </div>
+                            </h2>
                             <div class="card-body">
                                 <div class="row">
 
@@ -5869,11 +5859,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                     <!-- ------------------------------------------ identifiers -->
                     <div class="col-12" id="pg_pb_sec_identifiers">
-                        <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
-                                <i class="bi bi-upc-scan fg-primary"></i>
-                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('RSS Feed') . '</span>
-                            </div>
+                        <div class="card pg-card mb-7">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
+                                ' . lang('RSS Feed') . '
+                            </h2>
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-12 lg:col-3 my-3">
@@ -5927,11 +5916,10 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                          whole block sits inside a PHP single-quoted string, and one
                          stray quote ends it. -->
                     <div class="col-12" id="pg_pb_sec_advanced">
-                        <div class="card mb-7">
-                            <div class="card-header bg-reset border-0 d-flex align-items-center gap-3">
-                                <i class="bi bi-sliders fg-primary"></i>
-                                <span class="h5 mb-0 fg-primary fw-bold">' . lang('Advanced Settings') . '</span>
-                            </div>
+                        <div class="card pg-card mb-7">
+                            <h2 class="card-header bg-reset border-0 pg-title-section">
+                                ' . lang('Advanced Settings') . '
+                            </h2>
                             <div class="card-body">
                                 <div class="accordion" id="pg_pb_advanced">
 
