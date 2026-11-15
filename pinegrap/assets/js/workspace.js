@@ -3386,7 +3386,7 @@
     // Opened on an agent's name or picture by hover, keyboard focus or a
     // tap; one at a time; Escape, a click outside or leaving it closes it.
     // The figures are the agent's own report, as the card says.
-    var agentCardOpen = { node: null, anchor: null, timer: 0, key: '' };
+    var agentCardOpen = { node: null, anchor: null, timer: 0, key: '', place: null };
     var agentCardCache = {};
 
     // The registry agent a channel has for an application, or null.
@@ -3416,6 +3416,51 @@
         agentCardOpen.node = null;
         agentCardOpen.anchor = null;
         agentCardOpen.key = '';
+        agentCardOpen.place = null;
+    }
+
+    // Draws a card's body in a guard of its own: an exception goes to the
+    // console and the card stays open. Returns false when draw() threw.
+    function agentCardGuard(draw) {
+        try {
+            draw();
+        } catch (error) {
+            if (window.console && console.error) {
+                console.error(error);
+            }
+
+            return false;
+        }
+
+        return true;
+    }
+
+    // A card whose facts could not be read keeps what it shows and writes
+    // the refusal's words in place of "Loading…", in the same quiet text.
+    function agentCardRefused(node, words) {
+        var line = node.querySelector('.ws-agent-card-loading');
+
+        if (!line) {
+            line = el('div', 'pg-text-meta ws-agent-card-loading');
+            node.appendChild(line);
+        }
+
+        line.textContent = words || t('error_generic');
+        line.setAttribute('role', 'status');
+    }
+
+    // Does a scroll close the open card? Only the reader's own scroll (a
+    // wheel, a touch, a scroll key or a held pointer on the scrollbar,
+    // inputAt its time) of the list holding the anchor; a scroll the
+    // screen makes for a new message only moves the card along. Pure
+    // (tests/workspace_agent_card_js_test.php).
+    function agentCardScrollCloses(holdsAnchor, inputAt, pointerHeld, now) {
+        return !!holdsAnchor && (!!pointerHeld || ((now - inputAt) >= 0 && (now - inputAt) < 800));
+    }
+
+    // Keys that scroll the list when no field has the focus. Pure.
+    function agentCardScrollKey(key, editable) {
+        return !editable && ['PageUp', 'PageDown', 'ArrowUp', 'ArrowDown', 'Home', 'End', ' ', 'Spacebar'].indexOf(key) !== -1;
     }
 
     // Where the card stands: under the anchor, or over it when the room
@@ -3657,22 +3702,36 @@
             node.style.top = spot.top + 'px';
         };
         var cached = agentCardCache[key];
+        // A card that cannot be drawn falls back to the member row and says
+        // so; the drawing's own error is on the console.
+        var draw = function (card) {
+            if (!agentCardGuard(function () { agentCardBody(node, agent, card, channel); }) && card) {
+                agentCardGuard(function () { agentCardBody(node, agent, null, channel); });
+                agentCardRefused(node, t('error_generic'));
+            }
+        };
 
-        agentCardBody(node, agent, (cached && (Date.now() - cached.at < 30000)) ? cached.card : null, channel);
+        agentCardOpen.place = place;
+        draw((cached && (Date.now() - cached.at < 30000)) ? cached.card : null);
         document.body.appendChild(node);
         place();
 
         if (!cached || (Date.now() - cached.at >= 30000)) {
             api('ws_agent_card', { channel_id: channel.id, agent_id: agent.id }).then(function (data) {
+                if (!data.card) {
+                    throw new Error(t('error_generic'));
+                }
+
                 agentCardCache[key] = { at: Date.now(), card: data.card };
 
                 if (agentCardOpen.node === node) {
-                    agentCardBody(node, agent, data.card, channel);
+                    draw(data.card);
                     place();
                 }
-            }).catch(function () {
+            }).catch(function (error) {
                 if (agentCardOpen.node === node) {
-                    agentCardClose();
+                    agentCardRefused(node, error && error.message);
+                    place();
                 }
             });
         }
@@ -3736,9 +3795,41 @@
             agentCardClose();
         }
     });
-    window.addEventListener('scroll', function () {
-        if (agentCardOpen.node) {
+    // The reader's own scrolling, told from the screen's: the last wheel,
+    // touch or scroll key, and a pointer held down (a scrollbar dragged).
+    var agentCardInput = { at: -Infinity, held: false };
+    var agentCardTouched = function () {
+        agentCardInput.at = Date.now();
+    };
+
+    window.addEventListener('wheel', agentCardTouched, { capture: true, passive: true });
+    window.addEventListener('touchmove', agentCardTouched, { capture: true, passive: true });
+    window.addEventListener('keydown', function (event) {
+        var field = event.target;
+        var editable = !!(field && field.closest && field.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])'));
+
+        if (agentCardScrollKey(event.key, editable)) {
+            agentCardTouched();
+        }
+    }, true);
+    window.addEventListener('pointerdown', function () { agentCardInput.held = true; }, true);
+    window.addEventListener('pointerup', function () { agentCardInput.held = false; }, true);
+    window.addEventListener('pointercancel', function () { agentCardInput.held = false; }, true);
+    window.addEventListener('blur', function () { agentCardInput.held = false; });
+    window.addEventListener('scroll', function (event) {
+        if (!agentCardOpen.node || agentCardOpen.node.contains(event.target)) {
+            return;
+        }
+
+        var list = (event.target === document) ? document.documentElement : event.target;
+        var holds = !!(list && list.contains && agentCardOpen.anchor && list.contains(agentCardOpen.anchor));
+
+        // Moved along with its anchor, but never from under the pointer
+        // reading it: leaving the card would close it.
+        if (agentCardScrollCloses(holds, agentCardInput.at, agentCardInput.held, Date.now())) {
             agentCardClose();
+        } else if (holds && agentCardOpen.place && !agentCardOpen.node.matches(':hover')) {
+            agentCardOpen.place();
         }
     }, true);
 
