@@ -122,6 +122,11 @@ function test_workspace_mail_invitation_read()
 	pg_assert_same(strtotime('2026-11-25 00:00:00'), $day['end'], 'one day when it names no end');
 	pg_assert_same(255, mb_strlen($day['summary']), 'text cut to 255');
 
+	$outlook = ws_mail_invitation_read(array(array('content_type' => 'text/calendar', 'filename' => '',
+		'content' => "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:o\r\nSUMMARY:Berlin\r\nDTSTART;TZID=\"W. Europe Standard Time\":20261201T100000\r\nDTEND;TZID=\"W. Europe Standard Time\":20261201T110000\r\nEND:VEVENT\r\nEND:VCALENDAR")));
+	pg_assert_same(strtotime('2026-12-01 09:00:00 UTC'), $outlook['start'], 'Outlook\'s Windows zone name is the sender\'s zone, whatever the site\'s');
+	pg_assert_same(strtotime('2026-12-01 10:00:00 UTC'), $outlook['end']);
+
 	pg_assert_same(null, ws_mail_invitation_read(array(array('content_type' => 'text/calendar', 'filename' => '', 'content' => 'BEGIN:VCALENDAR\nnot an event'))), 'a part that does not read');
 	pg_assert_same(null, ws_mail_invitation_read(array()), 'no calendar part');
 }

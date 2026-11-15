@@ -324,6 +324,11 @@ if (!$_POST) {
         <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1 border border-2" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
             <img class="lazy object-fit-contain w-100 h-100" alt="" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($contact_image) . '" />
         </div>';
+    } elseif ((trim((string) $contact_first_name) === '') && (trim((string) $contact_last_name) === '')) {
+        // No name to draw letters from: the look's icon, named for a screen
+        // reader. It opens nothing, so it is not a button.
+        $output_contact_image = '
+        <span class="pg-icon-button pg-print-none" role="img" aria-label="' . h(lang('No contact')) . '"><span class="bi bi-question-circle" aria-hidden="true"></span></span>';
     } else {
         $output_contact_image = '
         <div class="col-auto pg-print-none">' . pg_avatar_markup_for($contact_first_name, $contact_last_name, '', isset($contact_id) ? $contact_id : '', 'pg-avatar-50') . '</div>';
@@ -333,10 +338,10 @@ if (!$_POST) {
     
     if ($tracking_code or $http_referer or $referral_source_code or $utm_source) {
         $source .=
-            '<div class="card mt-5">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            '<div class="card pg-card mt-5">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Source') . '
-                </div>
+                </h2>
                 <div class="card-body">';
 
         if ($tracking_code) {
@@ -375,7 +380,7 @@ if (!$_POST) {
             $source .=
                 '<hr/>
                 <div class="row" >
-                    <span class="col-12"><h6 class="fg-secondary">' . lang('UTM') . '</h6></span>
+                    <span class="col-12"><h3 class="pg-group-label">' . lang('UTM') . '</h3></span>
                 </div>
                 <div class="d-flex justify-content-between gap-3">
                     <span class="translateable fg-secondary">' . lang('Source') . '</span>
@@ -636,10 +641,10 @@ if (!$_POST) {
         }
         $output_payment_information =
             '
-                <div class="card mt-5">
-                   <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card pg-card mt-5">
+                   <h2 class="card-header bg-reset border-0 pg-title-section">
                            ' . lang('Payment Information') . '
-                       </div>
+                       </h2>
                        <div class="card-body">
                            <div class="d-flex justify-content-between gap-3">
                                <span class="translateable fg-secondary">' . lang('Payment Method') . '</span>
@@ -745,10 +750,10 @@ if (!$_POST) {
         }
         
         $output_affiliate =
-            '<div class="card mt-5">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            '<div class="card pg-card mt-5">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Affiliate Information') . '
-                </div>
+                </h2>
                 <div class="card-body">
                     ' . pg_order_view_row(lang('Affiliate Name'), $output_affiliate_name) . '
                     <div class="d-flex justify-content-between gap-3">
@@ -769,10 +774,10 @@ if (!$_POST) {
 
     if ($output_custom_billing_form != '') {
         $output_custom_billing_information =
-            '<div class="card mt-5">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            '<div class="card pg-card mt-5">
+                <h2 class="card-header bg-reset border-0 pg-title-section">
                     ' . lang('Custom Billing Information') . '
-                </div>
+                </h2>
                 <div class="card-body">
                     <table>' . $output_custom_billing_form . '</table>
                 </div>
@@ -836,7 +841,7 @@ if (!$_POST) {
     // to show the restore button, otherwise the variable is undefined at render.
     $output_restore_button = '';
 
-    $output_order_details = '<div class="list-group-item  mb-0 text-uppercase h5 fg-primary fw-bold">' . lang('Order Details') . '</div>';
+    $output_order_details = '<h2 class="list-group-item mb-0 pg-title-section">' . lang('Order Details') . '</h2>';
 
     if ($ship_to_exists == true) {
         // get all custom shipping form data for this order
@@ -877,13 +882,6 @@ if (!$_POST) {
             } else {
                 $ship_tos_for_custom_fields[$field['ship_to_id']][$field['name']]['data'] .= ', ' . $field['data'];
             }
-        }
-        
-        $output_custom_field_headings = '';
-        
-        // loop through the custom field names in order to output headings for them
-        foreach ($custom_field_names as $custom_field_name) {
-            $output_custom_field_headings .= '<span class="col fg-secondary">' . h($custom_field_name) . ':</span>';
         }
         
         $output_colspan = 13 + count($custom_field_names);
@@ -1265,7 +1263,13 @@ if (!$_POST) {
                         $prepare_for_html = FALSE;
                     }
                     
-                    $output_custom_field_cells .= '<span class="col text-end order_custom_field">' . prepare_form_data_for_output($data, $type, $prepare_for_html) . '</span>';
+                    // A row like the card's others, labelled by the field's
+                    // name in words ("delivery_note" reads "Delivery note"),
+                    // and left out when the address has no answer for it.
+                    $output_custom_field_cells .= pg_order_view_row(
+                        h(lang(ucfirst(str_replace('_', ' ', (string) $custom_field_name)))),
+                        prepare_form_data_for_output($data, $type, $prepare_for_html)
+                    );
                 }
                 
                 $output_ship_dates_row = '';
@@ -1302,10 +1306,10 @@ if (!$_POST) {
                 // addresses shows both, and saving it keeps the first one's
                 // tracking numbers.
                 $output_shipping_details .=
-                    '<div class="card mt-5">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                ' . lang('Shipping Information') . '
-                                <div class="print_packing_slip float-end pg-print-none">
+                    '<div class="card pg-card mt-5">
+                            <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                                <h2 class="pg-title-section mb-0">' . lang('Shipping Information') . '</h2>
+                                <div class="print_packing_slip pg-print-none">
                                     <button type="button" class="btn btn-sm btn-text theme-secondary position-relative" title="' . lang('Print Packing Slip') . '" aria-label="' . h(lang('Print Packing Slip')) . '" onclick="window.open(\'print_packing_slip.php?ship_to_id=' . $ship_tos[$key]['ship_to_id'] . '\', \'\', \'width=750, height=600, resizable=1, scrollbars=1\'); return false;"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print') . '</button>
                                 </div>
                             </div>
@@ -1321,9 +1325,9 @@ if (!$_POST) {
                                             <span class="text-end text-break">' . h($name) . '</span>
                                         </div>
                                         ' . pg_order_view_row(lang('Company'), h($ship_tos[$key]['company'])) . '
-                                        <div class="row">
-                                            <span class="translateable col-auto fg-secondary">' . lang('Address') . '</span>
-                                            <span class="col offset-1 " style="font-size:110%;font-weight:500">' . h($address) . '</span>
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Address') . '</span>
+                                            <span class="text-end text-break fw-medium">' . h($address) . '</span>
                                             ' . $output_postcode_province . '
                                         </div>
                                         ' . pg_order_view_row(lang('Address Type'), pg_order_view_address_type($ship_tos[$key]['address_type'])) . '
@@ -1359,10 +1363,7 @@ if (!$_POST) {
                                             <span class="text-end text-break">' . pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
                                         </div>
                                         ' . $packages . '
-                                        <div class="row">
-                                            ' . $output_custom_field_headings . '
-                                            ' . $output_custom_field_cells . '
-                                        </div>
+                                        ' . $output_custom_field_cells . '
                                     </div> 
                                 </div>
                             </div>
@@ -2023,10 +2024,10 @@ if (!$_POST) {
         }
         
         $output_applied_gift_cards =
-            '<div class="card mt-5">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            '<div class="card pg-card mt-5">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . lang('Applied Gift Cards') . '
-                    </div>
+                    </h2>
                     <div class="card-body">
                         ' . $output_applied_gift_card_rows . '
                     </div>
@@ -2623,7 +2624,7 @@ if (!$_POST) {
         array(
             // An incomplete order has no number yet: its tab names the order id.
             'title'=> (((string) $order_number !== '') ? '#' . $order_number : lang('Incomplete') . ' #' . (int) $id) . ' - ' . lang('Order'),
-            'extra classes'=>'store view_order',
+            'extra classes'=>'store view_order pg-measure-edit',
             'icon'=>'store',
             'heading'=>lang('View Order'),
             'heading_description' => lang('View the details of this order and update shipping information.'),
@@ -2664,10 +2665,10 @@ if (!$_POST) {
                                  followed the order on the right. -->
                             <div class="row g-7">
                                 <div class="col-12 md:col-6 lg:col-12 xl:col-6">
-                                    <div class="card">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <div class="card pg-card">
+                                        <h2 class="card-header bg-reset border-0 pg-title-section">
                                             ' . lang('Billing Information') . '
-                                        </div>
+                                        </h2>
                                         <div class="card-body">
                                             ' . pg_order_view_row(lang('Custom Field') . ' #1', h($custom_field_1)) . '
                                             ' . pg_order_view_row(lang('Custom Field') . ' #2', h($custom_field_2)) . '
@@ -2681,9 +2682,9 @@ if (!$_POST) {
                                                 <span class="text-end text-break">' . h($billing_last_name) . '</span>
                                             </div>
                                             ' . pg_order_view_row(lang('Company'), h($billing_company)) . '
-                                            <div class="row" >
-                                                <span class="translateable col-auto fg-secondary">' . lang('Address') . ' 1</span>
-                                                <span class="col offset-1" style="font-size:110%;font-weight:500">' . h($billing_address_1) . '</span>
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . lang('Address') . ' 1</span>
+                                                <span class="text-end text-break fw-medium">' . h($billing_address_1) . '</span>
                                             </div>
                                             ' . pg_order_view_row(lang('Address') . ' 2', h($billing_address_2), true) . '
                                             <div class="d-flex justify-content-between gap-3">
@@ -2744,9 +2745,9 @@ if (!$_POST) {
                                         </div>
                                     </div>
                                     ' . $output_custom_billing_information . '
-                                    <div class="card mt-5">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex">
-                                            ' . lang('Customer Information') . ' <span class="ms-auto">' . $output_contact_image . '</span>
+                                    <div class="card pg-card mt-5">
+                                        <div class="card-header bg-reset border-0 d-flex align-items-center">
+                                            <h2 class="pg-title-section mb-0">' . lang('Customer Information') . '</h2> <span class="ms-auto">' . $output_contact_image . '</span>
                                         </div>
                                         <div class="card-body">
                                             ' . $output_user_row . '
@@ -2768,7 +2769,7 @@ if (!$_POST) {
                                     )) . '
                                 </div>
                             </div>
-                            <div class="list-group order-list-group mt-7">
+                            <div class="list-group list-group-flush order-list-group pg-card mt-7">
                                 ' . $output_order_details . '
                             </div>
                         </div>
@@ -2779,9 +2780,9 @@ if (!$_POST) {
                         <div class="col-12 lg:col-4 2xl:col-3 order-2">
                             <div class="position-sticky" style="top:3.3rem;">
                                 <div class="card">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 pg-title-section">
                                         ' . lang('Order Information') . '
-                                    </div>
+                                    </h2>
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between gap-3">
                                             <span class="translateable fg-secondary">' . lang('Type') . '</span>
@@ -2794,7 +2795,7 @@ if (!$_POST) {
                                         ' . $output_cancellation_rows . '
                                         <div class="d-flex justify-content-between gap-3">
                                             <span class="translateable fg-secondary">' . lang('Order Number') . '</span>
-                                            <span class="text-end text-break" style="font-size: 120%;font-weight:500">' . $order_number . '</span>
+                                            <span class="text-end text-break fw-medium pg-tabular">' . $order_number . '</span>
                                         </div>
                                         <div class="d-flex justify-content-between gap-3">
                                             <span class="translateable fg-secondary">' . lang('Order Date') . '</span>
@@ -2803,7 +2804,7 @@ if (!$_POST) {
                                         <hr/>
                                         <div class="d-flex justify-content-between gap-3">
                                             <span class="translateable fg-secondary">' . lang('Subtotal') . '</span>
-                                            <span class="text-end text-break" style="font-size: 110%">' . prepare_amount($subtotal) . '</span>
+                                            <span class="text-end text-break pg-tabular">' . prepare_amount($subtotal) . '</span>
                                         </div>
                                         ' . ($discount > 0 ? '<div class="d-flex justify-content-between gap-3">
                                             <span class="translateable fg-secondary">' . lang('Discount') . '</span>
@@ -2822,7 +2823,7 @@ if (!$_POST) {
                                         ' . $output_number_of_installment_row . '
                                         <div class="d-flex justify-content-between gap-3">
                                             <span class="translateable fg-secondary">' . lang('Total') . '</span>
-                                            <span class="text-end text-break"><strong style="font-size: 120%">' . prepare_amount($total) . '</strong></span>
+                                            <span class="text-end text-break"><strong class="pg-tabular">' . prepare_amount($total) . '</strong></span>
                                         </div>
                                         ' . ($refunded_amount_cents > 0 ?
                                             '<div class="d-flex justify-content-between gap-3 fg-danger">
@@ -2831,7 +2832,7 @@ if (!$_POST) {
                                             </div>
                                             <div class="d-flex justify-content-between gap-3">
                                                 <span class="translateable fg-secondary fw-semibold">' . lang('Net Total') . '</span>
-                                                <span class="text-end text-break"><strong style="font-size: 120%">' . prepare_amount(($total_cents - $refunded_amount_cents) / 100) . '</strong></span>
+                                                <span class="text-end text-break"><strong class="pg-tabular">' . prepare_amount(($total_cents - $refunded_amount_cents) / 100) . '</strong></span>
                                             </div>'
                                         : '') . '
                                         <hr/>

@@ -81,7 +81,7 @@ print
             <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 ' . (($output_result !== '') ? '<div class="card mb-7"><div class="card-body">' . $output_result . '</div></div>' : '') . '
                 <div class="card mb-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <h2 class="card-header bg-reset border-0 pg-title-section">
                         ' . h(lang('Import CSV')) . '
                     </h2>
                     <div class="card-body pt-0">
@@ -101,12 +101,12 @@ print
                 <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
                 <div class="position-sticky" style="top:3.3rem;">
                     <div class="card mb-7">
-                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        <h2 class="card-header bg-reset border-0 pg-title-section">
                             ' . h(lang('File Format')) . '
                         </h2>
                         <div class="card-body pt-0">
-                            <p class="fg-secondary small">' . h(lang('One row per parcel with the columns order_number, number and carrier. The carrier may be left empty; the header row is optional. Numbers are added to the ones the order already has. Orders that ship to more than one address are skipped.')) . '</p>
-                            <pre class="bg-1 p-3 rounded-4 small mb-0">order_number,number,carrier
+                            <p class="pg-text-2">' . h(lang('One row per parcel with the columns order_number, number and carrier. The carrier may be left empty; the header row is optional. Numbers are added to the ones the order already has. Orders that ship to more than one address are skipped.')) . '</p>
+                            <pre class="bg-1 p-3 rounded-4 pg-text-meta mb-0">order_number,number,carrier
 10045,1234567890,Yurtiçi Kargo
 10046,1Z999AA10123456784,</pre>
                         </div>

@@ -55,7 +55,7 @@ function pg_currency_form_cards($liveform, $locked_base = false)
         'vars' => array(h($base_code !== '' ? $base_code : lang('Base')), h($example_code), h(pg_format_number(0.02, 2))),
     ));
 
-    $rate_attributes = array('type'=>'text', 'name'=>'exchange_rate', 'id'=>'exchange_rate', 'class'=>'form-control', 'maxlength'=>'12','inputmode'=>'decimal','style'=>'text-align: right;', 'aria-describedby'=>'exchange_rate_help') + pg_money_mask_attributes(null, 5);
+    $rate_attributes = array('type'=>'text', 'name'=>'exchange_rate', 'id'=>'exchange_rate', 'class'=>'form-control text-end', 'maxlength'=>'12','inputmode'=>'decimal', 'aria-describedby'=>'exchange_rate_help') + pg_money_mask_attributes(null, 5);
 
     // A non-base currency needs a rate; the script below follows the switch.
     if (!$is_base) {
@@ -82,16 +82,16 @@ function pg_currency_form_cards($liveform, $locked_base = false)
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Currency'))) . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                         </div>
-                                        <div class="col-12 sm:col-6 md:col-3 my-3">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="code" class="form-label">' . lang('Code') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'code', 'id'=>'code', 'class'=>'form-control', 'maxlength'=>'3', 'required'=>'required', 'pattern'=>'[A-Za-z]{3}', 'style'=>'text-transform: uppercase;', 'aria-describedby'=>'code_help')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'code', 'id'=>'code', 'class'=>'form-control text-uppercase', 'maxlength'=>'3', 'required'=>'required', 'pattern'=>'[A-Za-z]{3}', 'aria-describedby'=>'code_help')) . '
                                             <div id="code_help" class="form-text">' . lang('Three-letter ISO 4217 code, e.g. USD or EUR.') . '</div>
                                         </div>
-                                        <div class="col-12 sm:col-6 md:col-3 my-3">
+                                        <div class="col-12 md:col-4 my-3">
                                             <label for="symbol" class="form-label">' . lang('Symbol') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'symbol', 'id'=>'symbol', 'class'=>'form-control', 'maxlength'=>'10')) . '
                                         </div>
@@ -104,7 +104,7 @@ function pg_currency_form_cards($liveform, $locked_base = false)
                                 </h2>
                                 <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
+                                        <div class="col-12 md:col-3 my-3">
                                             <label for="exchange_rate" class="form-label">' . lang('Exchange Rate') . '<span id="exchange_rate_marker" class="pg-required-marker fg-danger ms-1' . ($is_base ? ' d-none' : '') . '" aria-hidden="true">*</span></label>
                                             ' . $liveform->output_field($rate_attributes) . '
                                             <div id="exchange_rate_help" class="form-text">' . $rate_help . '</div>

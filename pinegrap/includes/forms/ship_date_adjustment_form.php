@@ -126,10 +126,10 @@ function pg_ship_date_adjustment_form_card($liveform, $status_rows = '')
                                 <div class="card-body pt-0">
                                     <div class="row">
                                         <div class="col-12 md:col-4 my-3">
-                                            <label for="zip_code_prefix" class="form-label">' . lang('Zip Code Prefix') . ' <span class="fg-secondary small">' . lang('(first 3 numbers)') . '</span></label>
+                                            <label for="zip_code_prefix" class="form-label">' . lang('Zip Code Prefix') . ' <span class="pg-field-label-note">' . lang('(first 3 numbers)') . '</span></label>
                                             <input type="text" name="zip_code_prefix" id="zip_code_prefix" maxlength="3" required value="' . h($liveform->get_field_value('zip_code_prefix')) . '" class="form-control' . ($liveform->check_field_error('zip_code_prefix') ? ' is-invalid' : '') . '" />
                                         </div>
-                                        <div class="col-12 md:col-8 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="shipping_method_id" class="form-label">' . lang('Shipping Method') . '</label>
                                             <select name="shipping_method_id" id="shipping_method_id" required class="form-control' . ($liveform->check_field_error('shipping_method_id') ? ' is-invalid' : '') . '">' . $output_shipping_method_options . '</select>
                                         </div>

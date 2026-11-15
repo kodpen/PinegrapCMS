@@ -298,8 +298,8 @@ if (in_array('approved', $actions, true)) {
 
     $output_forms .= '
             <div class="card mb-7">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Answer the Request')) . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                    <span>' . h(lang('Answer the Request')) . '</span>
                 </div>
                 <div class="card-body">
                     <form method="post" action="view_return.php">
@@ -314,7 +314,7 @@ if (in_array('approved', $actions, true)) {
                                 <label for="carrier" class="form-label">' . h(lang('Return carrier')) . '</label>
                                 <select class="form-control" id="carrier" name="carrier" data-pg-return-codes="' . h(json_encode((object) $approval_codes)) . '">' . $carrier_options($field_value('carrier', $suggested['carrier']), lang('Not named')) . '</select>
                             </div>
-                            <div class="col-12 md:col-6">
+                            <div class="col-12 md:col-4">
                                 <label for="carrier_code" class="form-label">' . h(lang('Return code')) . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'name' => 'carrier_code', 'id' => 'carrier_code', 'value' => $suggested['carrier_code'], 'maxlength' => '64', 'class' => 'form-control', 'autocomplete' => 'off', 'aria-describedby' => 'carrier_code_help')) . '
                                 <div id="carrier_code_help" class="form-text">' . h(lang('The code the customer gives the carrier so that the shop pays for the parcel.')) . '</div>
@@ -377,11 +377,11 @@ if (in_array('shipped', $actions, true) || in_array('received', $actions, true))
                     <form method="post" action="view_return.php" class="mb-5">
                         ' . $form_keys . '
                         <div class="row g-5 align-items-end">
-                            <div class="col-12 md:col">
+                            <div class="col-12 md:col-4">
                                 <label for="tracking_number" class="form-label">' . h(lang('Tracking number of the parcel')) . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'name' => 'tracking_number', 'id' => 'tracking_number', 'maxlength' => '100', 'class' => 'form-control', 'autocomplete' => 'off')) . '
                             </div>
-                            <div class="col-12 md:col-4">
+                            <div class="col-12 md:col-6">
                                 <label for="shipped_carrier" class="form-label">' . h(lang('Return carrier')) . '</label>
                                 <select class="form-control" id="shipped_carrier" name="carrier">' . $carrier_options('', lang('As approved')) . '</select>
                             </div>
@@ -401,8 +401,8 @@ if (in_array('shipped', $actions, true) || in_array('received', $actions, true))
 
     $output_forms .= '
             <div class="card mb-7">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('The Goods')) . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                    <span>' . h(lang('The Goods')) . '</span>
                 </div>
                 <div class="card-body">
                     ' . $output_shipped . '
@@ -452,8 +452,8 @@ if ($return_labels || $label_drivers) {
 
     $output_forms .= '
             <div class="card mb-7">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Return Label')) . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                    <span>' . h(lang('Return Label')) . '</span>
                 </div>
                 <div class="card-body">
                     ' . (($output_labels !== '') ? '<ul class="list-unstyled mb-5">' . $output_labels . '
@@ -475,8 +475,8 @@ if (($refund_plan !== null) && !pg_return_refund_order_open($refund_plan['order'
     $refund_plan = null;
     $output_forms .= '
             <div class="card mb-7">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Payment Refund')) . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                    <span>' . h(lang('Payment Refund')) . '</span>
                 </div>
                 <div class="card-body">
                     <p class="small fg-secondary mb-0">' . h(lang('The order was cancelled: its money goes back with the cancellation, not with the return.')) . '</p>
@@ -536,8 +536,8 @@ if ($refund_plan !== null) {
 
     $output_forms .= '
             <div class="card mb-7">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Payment Refund')) . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                    <span>' . h(lang('Payment Refund')) . '</span>
                 </div>
                 <div class="card-body">
                     <div class="row small mb-5">
@@ -549,11 +549,11 @@ if ($refund_plan !== null) {
                         ' . $form_keys . '
                         ' . $output_methods . '
                         <div class="row g-5">
-                            <div class="col-12 md:col-4">
+                            <div class="col-12 md:col-3">
                                 <label for="refund_amount" class="form-label">' . h(lang('Amount to refund')) . '</label>
                                 ' . $liveform->output_field(array('type' => 'number', 'name' => 'refund_amount', 'id' => 'refund_amount', 'value' => number_format($refund_plan['suggested'] / 100, 2, '.', ''), 'min' => '0', 'max' => number_format($refund_plan['remaining'] / 100, 2, '.', ''), 'step' => '0.01', 'inputmode' => 'decimal', 'class' => 'form-control', 'required' => 'required')) . '
                             </div>
-                            <div class="col-12 md:col-8">
+                            <div class="col-12 md:col-4">
                                 <label for="refund_reference" class="form-label">' . h(lang('Refund reference')) . ' <span class="fg-secondary fw-normal">(' . h(lang('optional')) . ')</span></label>
                                 ' . $liveform->output_field(array('type' => 'text', 'name' => 'refund_reference', 'id' => 'refund_reference', 'maxlength' => '255', 'class' => 'form-control', 'autocomplete' => 'off')) . '
                             </div>
@@ -725,7 +725,7 @@ if ((int) $return['decided_at'] > 0) {
 echo
     pg_page_shell(array(
         'title'               => lang(array('string' => 'Return request #{var:1}', 'vars' => array($return_id))),
-        'extra classes'       => 'store',
+        'extra classes'       => 'store pg-measure-edit',
         'icon'                => 'store',
         'heading'             => lang(array('string' => 'Return request #{var:1}', 'vars' => array($return_id))),
         'heading_description' => lang(array('string' => 'Order {var:1}', 'vars' => array($order_number))),
@@ -745,8 +745,8 @@ echo
     <div class="row g-7">
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <div class="card mb-7">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Items to Return')) . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                    <span>' . h(lang('Items to Return')) . '</span>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -786,7 +786,7 @@ echo
                     </div>
                 </div>
                 <div class="card mb-7">
-                    <div class="card-header text-uppercase h6 fg-primary fw-bold mb-0">' . h(lang('Order')) . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Order')) . '</h2>
                     <div class="card-body small">
                         <div class="row">
                             <span class="col fg-secondary">' . h(lang('Order Number')) . ':</span>
@@ -807,7 +807,7 @@ echo
                     </div>
                 </div>
                 <div class="card mb-7">
-                    <div class="card-header text-uppercase h6 fg-primary fw-bold mb-0">' . h(lang('Delivery')) . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang('Delivery')) . '</h2>
                     <div class="card-body small">
                         ' . (($state && ($state['ship_to']['name'] !== '')) ? '<div class="fw-semibold mb-3">' . h(lang(array('string' => 'Sent to {var:1}', 'vars' => array($state['ship_to']['name'])))) . '</div>' : '') . '
                         ' . (($output_parcels !== '') ? '<ul class="ps-5 mb-3">' . $output_parcels . '</ul>' : '') . '
