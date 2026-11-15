@@ -736,6 +736,33 @@ function ws_personal_plan_reminders_run($limit = 50)
 }
 
 /**
+ * The time of a series a reminder written at a moment is for: the one with
+ * the latest reminder moment not after it. The first time still running is
+ * not it when the lead reaches the next time. Null before the first
+ * reminder. Pure.
+ *
+ * @param array    $plan       with remind_minutes
+ * @param int      $written_at
+ * @param string[] $skips
+ * @return array|null ws_personal_plan_time()
+ */
+function ws_personal_plan_reminded_time($plan, $written_at, $skips = array())
+{
+    $lead = max(0, (int) ($plan['remind_minutes'] ?? 0)) * 60;
+    $found = null;
+
+    // A time reminding by the moment starts no later than the lead (and a
+    // day for the 09:00 of an all-day time) after it.
+    foreach (ws_personal_plan_times($plan, $written_at - $lead - 86400, $written_at + $lead + 86400, $skips) as $time) {
+        if (ws_personal_plan_time_remind_at($plan, $time) <= $written_at) {
+            $found = $time;
+        }
+    }
+
+    return $found;
+}
+
+/**
  * What a reminder line says (ws_inbox_describe()): read through the gate, so
  * a line nobody may read any more says nothing of the plan.
  *
@@ -752,16 +779,15 @@ function ws_personal_plan_inbox_describe($viewer, $row, $base)
         return array('title' => lang('Reminder'), 'body' => '', 'url' => $base . 'workspace_my_calendar.php', 'icon' => 'bi-alarm');
     }
 
-    // A series: the first time after the line was written is the one it
-    // reminded of.
+    // A series: the time whose reminder moment the line was written for.
     $day = '';
 
     if (ws_personal_plan_repeat_ready() && ws_personal_plan_repeats($plan)) {
-        $times = ws_personal_plan_times($plan, (int) ($row['created_at'] ?? 0), PHP_INT_MAX, ws_personal_plan_skips(array((int) $plan['id']))[(int) $plan['id']] ?? array(), 1);
+        $time = ws_personal_plan_reminded_time($plan, (int) ($row['created_at'] ?? 0), ws_personal_plan_skips(array((int) $plan['id']))[(int) $plan['id']] ?? array());
 
-        if (!empty($times)) {
-            $plan = array_merge($plan, array('starts_at' => $times[0]['starts_at'], 'ends_at' => $times[0]['ends_at']));
-            $day = '&day=' . $times[0]['day'];
+        if ($time) {
+            $plan = array_merge($plan, array('starts_at' => $time['starts_at'], 'ends_at' => $time['ends_at']));
+            $day = '&day=' . $time['day'];
         }
     }
 
