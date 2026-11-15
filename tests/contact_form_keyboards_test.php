@@ -50,7 +50,7 @@ function test_contact_form_keyboards_calls()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/contact_form.php');
 
 	foreach (array('business_phone', 'business_fax', 'home_phone', 'home_fax', 'mobile_phone') as $name) {
-		pg_assert_true((bool) preg_match("/pg_contact_form_text_field\\(\\\$values, '" . $name . "', [^\\n]*, 'tel'\\)/", $source), $name . ' tel');
+		pg_assert_true((bool) preg_match("/pg_contact_form_text_field\\(\\\$values, '" . $name . "', [^\\n]*, 'tel'(, '[^']*')?\\)/", $source), $name . ' tel');
 	}
 
 	pg_assert_true((bool) preg_match("/pg_contact_form_text_field\\(\\\$values, 'website', [^\\n]*, 'url'\\)/", $source), 'website url');
