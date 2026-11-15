@@ -24,3 +24,4 @@ description: Plan (owner 2026-11-15): the panel screens still drawn the old way 
 - The counts of `tools/check_look.php` only fall.
 - The Workspace is left out while `channel-profile-cards` and `poll-agent-questions` are in it (DL5f of `panel-design-language-steps.md`).
 - Claim a census as `[iş] Old panel screens: census of <part>`, a step as `[plan:panel-old-screens] <step> — <topic>`.
+- What the looks decided beyond the sheet, and the owner's kept screens: `panel-old-screens-rules.md`. The shared steps after the groups: `panel-old-screens-shared-steps.md`.
