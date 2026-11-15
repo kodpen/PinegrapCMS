@@ -1191,7 +1191,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
     // for search results properties.
     if (SEARCH_TYPE == 'advanced') {
         $output_search_results_page_type_properties .=
-            '<div class="col-12 md:col-6 my-3' . $search_results_search_folder_id_row_style . '" id="search_results_search_folder_id_row">
+            '<div class="col-12 md:col-12 lg:col-6 my-3' . $search_results_search_folder_id_row_style . '" id="search_results_search_folder_id_row">
                 <label for="search_results_search_folder_id" class="form-label">' . lang('Search Folder') . '</label>
                 <select name="search_results_search_folder_id" id="search_results_search_folder_id" class="form-control"  >' . select_folder(($search_results_properties['search_folder_id'] ?? '')) . '</select>
             </div>';
@@ -1212,12 +1212,12 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                         <div class="popover-body">
                             <div class="row">
-                                <div class="col-12 md:col-6 my-1">
+                                <div class="col-12 md:col-12 lg:col-6 my-1">
                                     <label for="search_results_product_group_id" class="form-label">' . lang('In Product Group') . '</label>
                                     <select name="search_results_product_group_id" id="search_results_product_group_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Product Group')) )) . '-</option>' . get_product_group_options(($search_results_properties['product_group_id'] ?? ''),  $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE, 'text', false, true, false) . '</select>
                                     <div class="form-text">' . lang('leave unselected for all product groups') . '</div>
                                 </div>
-                                <div class="col-12 md:col-6 my-1">
+                                <div class="col-12 lg:col-6 my-1">
                                     <label for="search_results_catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
                                     ' . pg_page_form_page_field('search_results_catalog_detail_page_id', ($search_results_properties['catalog_detail_page_id'] ?? ''), 'catalog detail', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                                 </div>
@@ -1235,7 +1235,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         // if allow offline orders is on, then output offline payment label
         if (ECOMMERCE_OFFLINE_PAYMENT == TRUE) {
             $output_express_order_offline_payment_rows = 
-            '<div class="col-12 my-3' . $express_order_offline_payment_label_row_style . '" id="express_order_offline_payment_label_row">
+            '<div class="col-12 sm:col-6 lg:col-4 my-3' . $express_order_offline_payment_label_row_style . '" id="express_order_offline_payment_label_row">
                 <label class="form-label" for="express_order_offline_payment_label">'. lang('Offline Payment Label') . '</label>
                 <input value="' . h(($express_order_properties['offline_payment_label'] ?? '')) . '" type="text" id="express_order_offline_payment_label" name="express_order_offline_payment_label" class="form-control" maxlength="255" >
             </div>';
@@ -1248,7 +1248,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>';
             
             $output_order_preview_offline_payment_rows = 
-            '<div class="col-12 my-3' . $order_preview_offline_payment_label_row_style . '" id="order_preview_offline_payment_label_row">
+            '<div class="col-12 sm:col-6 lg:col-4 my-3' . $order_preview_offline_payment_label_row_style . '" id="order_preview_offline_payment_label_row">
                 <label class="form-label" for="order_preview_offline_payment_label">'. lang('Offline Payment Label') . '</label>
                 <input value="' . h(($order_preview_properties['offline_payment_label'] ?? '')) . '" type="text" id="order_preview_offline_payment_label" name="order_preview_offline_payment_label" class="form-control" maxlength="255" >
             </div>';
@@ -1262,7 +1262,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         }
         
         $output_ecommerce_page_type_properties =
-            '<div class="col-12 pg-field-span-6 my-3' . $catalog_product_group_id_row_style . '" id="catalog_product_group_id_row">
+            '<div class="col-12 md:col-6 my-3' . $catalog_product_group_id_row_style . '" id="catalog_product_group_id_row">
                 <label for="catalog_product_group_id" class="form-label">' . lang('Product Group') . '</label>
                 <select name="catalog_product_group_id" id="catalog_product_group_id" class="form-control"  ><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Product Group')) )) . '-</option>' . get_product_group_options(($catalog_properties['product_group_id'] ?? ''), $parent_product_group_id = 0, $excluded_product_group_id = 0, $level = 0, $product_groups = array(), $include_select_product_groups = FALSE, 'text', false, true, false) . '</select>
                 <div class="form-text text-end">' . lang('leave unselected for all product groups') . '</div>
@@ -1279,28 +1279,28 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <label class="" for="catalog_search">' . lang('Enable Search') . '</label>
                 </div>
             </div>
-            <div class="col-12 md:col-3 my-3' . $catalog_number_of_featured_items_row_style . '" id="catalog_number_of_featured_items_row">
+            <div class="col-12 sm:col-6 lg:col-4 my-3' . $catalog_number_of_featured_items_row_style . '" id="catalog_number_of_featured_items_row">
                 <label for="catalog_number_of_featured_items" class="form-label">' . lang('Number of Featured Items') . '</label>
                 <input value="' . h($catalog_properties['number_of_featured_items'] ?? '') . '" type="text" name="catalog_number_of_featured_items" id="catalog_number_of_featured_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  data-inputmask-placeholder="0" />
             </div>
-            <div class="col-12 md:col-3 my-3' . $catalog_number_of_new_items_row_style . '" id="catalog_number_of_new_items_row">
+            <div class="col-12 sm:col-6 lg:col-4 my-3' . $catalog_number_of_new_items_row_style . '" id="catalog_number_of_new_items_row">
                 <label for="catalog_number_of_new_items" class="form-label">' . lang('Number of New Items') . '</label>
                 <input value="' . h($catalog_properties['number_of_new_items'] ?? '') . '" type="text" name="catalog_number_of_new_items" id="catalog_number_of_new_items" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  data-inputmask-placeholder="0" />
             </div>
-            <div class="col-12 md:col-3 my-3' . $catalog_number_of_columns_row_style . '" id="catalog_number_of_columns_row">
+            <div class="col-12 sm:col-6 lg:col-4 my-3' . $catalog_number_of_columns_row_style . '" id="catalog_number_of_columns_row">
                 <label for="catalog_number_of_columns" class="form-label">' . lang('Number of Columns') . '</label>
                 <input value="' . h($catalog_number_of_columns) . '" type="text" name="catalog_number_of_columns" id="catalog_number_of_columns" maxlength="2" class="form-control text-start" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  data-inputmask-placeholder="0" />
             </div>
             <div class="col-12">
                 <div class="row">
-                    <div class="col-12 md:col-3 my-3' . $catalog_image_width_row_style . '" id="catalog_image_width_row">
+                    <div class="col-12 sm:col-6 lg:col-4 my-3' . $catalog_image_width_row_style . '" id="catalog_image_width_row">
                         <label for="catalog_image_width" class="form-label">' . lang('Image Width') . '</label>
                         <label class="form-control form-adorn form-adorn-end my-3">
                             <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
                             <input value="' . h($catalog_image_width) . '" type="text" name="catalog_image_width" id="catalog_image_width" maxlength="4" class="form-ghost text-end" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  data-inputmask-placeholder="0" />
                         </label>
                     </div>
-                    <div class="col-12 md:col-3 my-3' . $catalog_image_height_row_style . '" id="catalog_image_height_row">
+                    <div class="col-12 sm:col-6 lg:col-4 my-3' . $catalog_image_height_row_style . '" id="catalog_image_height_row">
                         <label for="catalog_image_height" class="form-label">' . lang('Image Height') . '</label>
                         <label class="form-control form-adorn form-adorn-end my-3">
                             <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
@@ -1309,11 +1309,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-3' . $catalog_back_button_label_row_style . '" id="catalog_back_button_label_row">
+            <div class="col-12 sm:col-6 lg:col-4 my-3' . $catalog_back_button_label_row_style . '" id="catalog_back_button_label_row">
                 <label for="catalog_back_button_label" class="form-label">' . lang('Back Button Label') . '</label>
                 <input value="' . h($catalog_properties['back_button_label'] ?? '') . '" type="text" name="catalog_back_button_label" id="catalog_back_button_label" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 pg-field-span-6 my-3' . $catalog_catalog_detail_page_id_row_style . '" id="catalog_catalog_detail_page_id_row">
+            <div class="col-12 lg:col-6 my-3' . $catalog_catalog_detail_page_id_row_style . '" id="catalog_catalog_detail_page_id_row">
                 <label for="catalog_catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
                 ' . pg_page_form_page_field('catalog_catalog_detail_page_id', ($catalog_properties['catalog_detail_page_id'] ?? ''), 'catalog detail', lang(array('string'=>'Select {var:1}','vars'=>lang('Page') ))) . '
             </div>
@@ -1330,7 +1330,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 <label for="catalog_detail_add_button_label" class="form-label">' . lang('Add Button Label') . '</label>
                                 <input value="' . h($catalog_detail_properties['add_button_label'] ?? '') . '" type="text" name="catalog_detail_add_button_label" id="catalog_detail_add_button_label" maxlength="50" class="form-control" />
                             </div>
-                            <div class="col-12 pg-field-span-6 my-1">
+                            <div class="col-12 md:col-12 my-1">
                                 <label for="catalog_detail_next_page_id" class="form-label">' . lang('Next Page') . '</label>
                                 ' . pg_page_form_page_field('catalog_detail_next_page_id', ($catalog_detail_properties['next_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>lang('Page') ))) . '
                             </div>
@@ -1338,19 +1338,19 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-3' . $catalog_detail_back_button_label_row_style . '" id="catalog_detail_back_button_label_row">
+            <div class="col-12 sm:col-6 lg:col-4 my-3' . $catalog_detail_back_button_label_row_style . '" id="catalog_detail_back_button_label_row">
                 <label for="catalog_detail_back_button_label" class="form-label">' . lang('Back Button Label') . '</label>
                 <input value="' . h($catalog_detail_properties['back_button_label'] ?? '') . '" type="text" name="catalog_detail_back_button_label" id="catalog_detail_back_button_label" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 my-3' . $express_order_shopping_cart_label_row_style . '" id="express_order_shopping_cart_label_row">
+            <div class="col-12 sm:col-6 lg:col-4 my-3' . $express_order_shopping_cart_label_row_style . '" id="express_order_shopping_cart_label_row">
                 <label for="express_order_shopping_cart_label" class="form-label">' . lang('Shopping Cart Label') . '</label>
                 <input value="' . h($express_order_properties['shopping_cart_label'] ?? '') . '" type="text" name="express_order_shopping_cart_label" id="express_order_shopping_cart_label" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 my-3' . $express_order_quick_add_label_row_style . '" id="express_order_quick_add_label_row">
+            <div class="col-12 sm:col-6 lg:col-4 my-3' . $express_order_quick_add_label_row_style . '" id="express_order_quick_add_label_row">
                 <label for="express_order_quick_add_label" class="form-label">' . lang('Quick Add Label') . '</label>
                 <input value="' . h($express_order_properties['quick_add_label'] ?? '') . '" type="text" name="express_order_quick_add_label" id="express_order_quick_add_label" maxlength="255" class="form-control" />
             </div>
-            <div class="col-12 pg-field-span-6 my-3' . $express_order_quick_add_product_group_id_row_style . '" id="express_order_quick_add_product_group_id_row">
+            <div class="col-12 sm:col-6 lg:col-4 my-3' . $express_order_quick_add_product_group_id_row_style . '" id="express_order_quick_add_product_group_id_row">
                 <label for="express_order_quick_add_product_group_id" class="form-label">' . lang('Quick Add Product Group') . '</label>
                 <select class="form-control" name="express_order_quick_add_product_group_id" id="express_order_quick_add_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Product Group')) )) . '-</option>' . get_product_group_options(($express_order_properties['quick_add_product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
             </div>
@@ -1382,15 +1382,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-3' . $express_order_special_offer_code_label_row_style . '" id="express_order_special_offer_code_label_row">
+            <div class="col-12 sm:col-6 lg:col-4 my-3' . $express_order_special_offer_code_label_row_style . '" id="express_order_special_offer_code_label_row">
                 <label for="express_order_special_offer_code_label" class="form-label">' . lang('Special Offer Code Label') . '</label>
                 <input value="' . h($express_order_properties['special_offer_code_label'] ?? '') . '" type="text" name="express_order_special_offer_code_label" id="express_order_special_offer_code_label" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 my-3' . $express_order_special_offer_code_message_row_style . '" id="express_order_special_offer_code_message_row">
+            <div class="col-12 sm:col-6 lg:col-8 my-3' . $express_order_special_offer_code_message_row_style . '" id="express_order_special_offer_code_message_row">
                 <label for="express_order_special_offer_code_message" class="form-label">' . lang('Special Offer Code Message') . '</label>
                 <input value="' . h($express_order_properties['special_offer_code_message'] ?? '') . '" type="text" name="express_order_special_offer_code_message" id="express_order_special_offer_code_message" maxlength="255" class="form-control" />
             </div>
-            <div class="col-12 my-3' . $express_order_custom_field_1_label_row_style . '" id="express_order_custom_field_1_label_row">
+            <div class="col-12 sm:col-6 my-3' . $express_order_custom_field_1_label_row_style . '" id="express_order_custom_field_1_label_row">
                 <div class="border-1 border p-3 my-3 rounded-4">
                     <label for="express_order_custom_field_1_label" class="form-label">' . lang('Custom Field #1 Label') . '</label>
                     <input value="' . h($express_order_properties['custom_field_1_label'] ?? '') . '" type="text" name="express_order_custom_field_1_label" id="express_order_custom_field_1_label" maxlength="255" class="form-control" />
@@ -1400,7 +1400,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-3' . $express_order_custom_field_2_label_row_style . '" id="express_order_custom_field_2_label_row">
+            <div class="col-12 sm:col-6 my-3' . $express_order_custom_field_2_label_row_style . '" id="express_order_custom_field_2_label_row">
                 <div class="border-1 border p-3 my-3 rounded-4">
                     <label for="express_order_custom_field_2_label" class="form-label">' . lang('Custom Field #2 Label') . '</label>
                     <input value="' . h($express_order_properties['custom_field_2_label'] ?? '') . '" type="text" name="express_order_custom_field_2_label" id="express_order_custom_field_2_label" maxlength="255" class="form-control" />
@@ -1431,11 +1431,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                    <p class="mb-0">' . lang('When ready, click \'Save & Continue\' at the bottom of this screen to create the Custom Billing Form.') . '</p>
                                 </div>
                             </div>
-                            <div class="col-12 my-1' . $express_order_form_name_row_style . '" id="express_order_form_name_row">
+                            <div class="col-12 md:col-6 lg:col-8 my-1' . $express_order_form_name_row_style . '" id="express_order_form_name_row">
                                 <label for="express_order_form_name" class="form-label">' . lang('Form Title for Display') . '</label>
                                 <input value="' . h(($express_order_properties['form_name'] ?? '')) . '" type="text" name="express_order_form_name" id="express_order_form_name" maxlength="100" class="form-control" />
                             </div>
-                            <div class="col-12 pg-field-span-3 my-1' . $express_order_form_label_column_width_row_style . '" id="express_order_form_label_column_width_row">
+                            <div class="col-12 md:col-6 lg:col-4 my-1' . $express_order_form_label_column_width_row_style . '" id="express_order_form_label_column_width_row">
                                 <label for="express_order_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">%</span>
@@ -1454,20 +1454,20 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 </div>
             </div>
             ' . $output_express_order_offline_payment_checkbox_rows . '
-            <div class="col-12 pg-field-span-6 my-3' . $express_order_card_verification_number_page_id_row_style . '" id="express_order_card_verification_number_page_id_row">
+            <div class="col-12 lg:col-6 my-3' . $express_order_card_verification_number_page_id_row_style . '" id="express_order_card_verification_number_page_id_row">
                 <label for="express_order_card_verification_number_page_id" class="form-label">' . lang('Card Verification Number Page') . '</label>
                 ' . pg_page_form_page_field('express_order_card_verification_number_page_id', ($express_order_properties['card_verification_number_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
             </div>
             ' . $output_express_order_offline_payment_rows . '
-            <div class="col-12 pg-field-span-6 my-3' . $express_order_terms_page_id_row_style . '" id="express_order_terms_page_id_row">
+            <div class="col-12 lg:col-6 my-3' . $express_order_terms_page_id_row_style . '" id="express_order_terms_page_id_row">
                 <label for="express_order_terms_page_id" class="form-label">' . lang('Terms Page') . '</label>
                 ' . pg_page_form_page_field('express_order_terms_page_id', ($express_order_properties['terms_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
             </div>
-            <div class="col-12 my-3' . $express_order_update_button_label_row_style . '" id="express_order_update_button_label_row">
+            <div class="col-12 sm:col-6 lg:col-4 my-3' . $express_order_update_button_label_row_style . '" id="express_order_update_button_label_row">
                 <label class="form-label" for="express_order_update_button_label">'. lang('Update Button Label') . '</label>
                 <input value="' . h($express_order_properties['update_button_label'] ?? '') . '" type="text" id="express_order_update_button_label" name="express_order_update_button_label" class="form-control" maxlength="50" >
             </div>
-            <div class="col-12 my-3' . $express_order_purchase_now_button_label_row_style . '" id="express_order_purchase_now_button_label_row">
+            <div class="col-12 sm:col-6 lg:col-4 my-3' . $express_order_purchase_now_button_label_row_style . '" id="express_order_purchase_now_button_label_row">
                 <label class="form-label" for="express_order_purchase_now_button_label">'. lang('Purchase Now Button Label') . '</label>
                 <input value="' . h($express_order_properties['purchase_now_button_label'] ?? '') . '" type="text" id="express_order_purchase_now_button_label" name="express_order_purchase_now_button_label" class="form-control" maxlength="50" >
             </div>';
@@ -1477,11 +1477,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             $output_ecommerce_page_type_properties .=
                 '<div class="col-12">
                     <div class="row">
-                        <div class="col-12 my-3' . $express_order_pre_save_hook_code_row_style . '" id="express_order_pre_save_hook_code_row">
+                        <div class="col-12 lg:col-6 my-3' . $express_order_pre_save_hook_code_row_style . '" id="express_order_pre_save_hook_code_row">
                             <label class="form-label" for="express_order_pre_save_hook_code">' . lang('Pre-Save Hook Code') . '</label>
                             <textarea id="express_order_pre_save_hook_code" name="express_order_pre_save_hook_code" class="form-control">' . h(($express_order_properties['pre_save_hook_code'] ?? '')) . '</textarea>
                         </div>
-                        <div class="col-12 my-3' . $express_order_post_save_hook_code_row_style . '" id="express_order_post_save_hook_code_row">
+                        <div class="col-12 lg:col-6 my-3' . $express_order_post_save_hook_code_row_style . '" id="express_order_post_save_hook_code_row">
                             <label class="form-label" for="express_order_post_save_hook_code">' . lang('Post-Save Hook Code') . '</label>
                             <textarea id="express_order_post_save_hook_code" name="express_order_post_save_hook_code" class="form-control">' . h(($express_order_properties['post_save_hook_code'] ?? '')) . '</textarea>
                         </div>
@@ -1490,7 +1490,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         }
 
         $output_ecommerce_page_type_properties .=
-            '<div class="col-12 pg-field-span-6 my-3' . $express_order_next_page_id_row_style . '" id="express_order_next_page_id_row">
+            '<div class="col-12 lg:col-6 my-3' . $express_order_next_page_id_row_style . '" id="express_order_next_page_id_row">
                 <label class="form-label" for="express_order_next_page_id">' . lang('Next Page') . '</label>
                 ' . pg_page_form_page_field('express_order_next_page_id', ($express_order_properties['next_page_id'] ?? ''), 'order receipt', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Order Receipt Page')) ))) . '
             </div>
@@ -1503,7 +1503,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 my-1">
+                            <div class="col-12 sm:col-6 md:col-8 my-1">
                                 <label class="form-label" for="express_order_order_receipt_email_subject">' . lang('Subject') . '</label>
                                 <input value="' . h(($express_order_properties['order_receipt_email_subject'] ?? '')) . '" type="text" id="express_order_order_receipt_email_subject" name="express_order_order_receipt_email_subject" class="form-control" maxlength="255">
                             </div> 
@@ -1538,7 +1538,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
-                                            <div class="col-12 pg-field-span-6 my-1">
+                                            <div class="col-12 my-1">
                                                 <label class="form-label" for="express_order_order_receipt_email_page_id">' . lang('Page') . '</label>
                                                 ' . pg_page_form_page_field('express_order_order_receipt_email_page_id', ($express_order_properties['order_receipt_email_page_id'] ?? ''), 'order receipt', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Order Receipt Page')) ))) . '
                                             </div>
@@ -1550,7 +1550,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 pg-field-span-6 my-3' . $order_form_product_group_id_row_style . '" id="order_form_product_group_id_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $order_form_product_group_id_row_style . '" id="order_form_product_group_id_row">
                 <label class="form-label" for="order_form_product_group_id">' . lang('Product Group') . '</label>
                 <select class="form-control" id="order_form_product_group_id" name="order_form_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Product Group')) )) . '-</option>' . get_product_group_options(($order_form_properties['product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
             </div>
@@ -1569,11 +1569,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
             <div class="col-12 my-3' . $order_form_add_button_row_style . '" id="order_form_add_button_row">
                 <div class="row p-1 border border-1 rounded-4 bg-1">
-                    <div class="col-12 my-3">
+                    <div class="col-12 md:col-6 lg:col-4 my-3">
                         <label class="form-label" for="order_form_add_button_label">' . lang('Add Button Label') . '</label>
                         <input value="' . h($order_form_properties['add_button_label'] ?? '') . '" type="text" class="form-control" id="order_form_add_button_label" name="order_form_add_button_label" maxlength="50"/>
                     </div>
-                    <div class="col-12 pg-field-span-6 my-3">
+                    <div class="col-12 lg:col-6 my-3">
                         <label class="form-label" for="order_form_add_button_next_page_id">' . lang('Next Page') . '</label>
                         ' . pg_page_form_page_field('order_form_add_button_next_page_id', ($order_form_properties['add_button_next_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                     </div> 
@@ -1581,25 +1581,25 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
             <div class="col-12 my-3' . $order_form_skip_button_row_style . '" id="order_form_skip_button_row">
                 <div class="row p-1 border border-1 rounded-4 bg-1">
-                    <div class="col-12 my-3">
+                    <div class="col-12 md:col-6 lg:col-4 my-3">
                         <label class="form-label" for="order_form_skip_button_label">' . lang('Skip Button Label') . '</label>
                         <input value="' . h($order_form_properties['skip_button_label'] ?? '') . '" type="text" class="form-control" id="order_form_skip_button_label" name="order_form_skip_button_label" maxlength="50"/>
                     </div>
-                    <div class="col-12 pg-field-span-6 my-3">
+                    <div class="col-12 lg:col-6 my-3">
                         <label class="form-label" for="order_form_skip_button_next_page_id">' . lang('Next Page') . '</label>
                         ' . pg_page_form_page_field('order_form_skip_button_next_page_id', ($order_form_properties['skip_button_next_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                     </div> 
                 </div>
             </div>
-            <div class="col-12 my-3' . $shopping_cart_shopping_cart_label_row_style . '" id="shopping_cart_shopping_cart_label_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $shopping_cart_shopping_cart_label_row_style . '" id="shopping_cart_shopping_cart_label_row">
                 <label class="form-label" for="shopping_cart_shopping_cart_label">' . lang('Shopping Cart Label') . '</label>
                 <input value="' . h($shopping_cart_properties['shopping_cart_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_shopping_cart_label" name="shopping_cart_shopping_cart_label" maxlength="50"/>
             </div>
-            <div class="col-12 my-3' . $shopping_cart_quick_add_label_row_style . '" id="shopping_cart_quick_add_label_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $shopping_cart_quick_add_label_row_style . '" id="shopping_cart_quick_add_label_row">
                 <label class="form-label" for="shopping_cart_quick_add_label">' . lang('Quick Add Label') . '</label>
                 <input value="' . h($shopping_cart_properties['quick_add_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_quick_add_label" name="shopping_cart_quick_add_label" maxlength="255"/>
             </div>
-            <div class="col-12 pg-field-span-6 my-3' . $shopping_cart_quick_add_product_group_id_row_style . '" id="shopping_cart_quick_add_product_group_id_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $shopping_cart_quick_add_product_group_id_row_style . '" id="shopping_cart_quick_add_product_group_id_row">
                 <label class="form-label" for="shopping_cart_quick_add_product_group_id">' . lang('Quick Add Product Group') . '</label>
                 <select class="form-control" id="shopping_cart_quick_add_product_group_id" name="shopping_cart_quick_add_product_group_id"><option value="">-' . lang('None') . '-</option>' . get_product_group_options(($shopping_cart_properties['quick_add_product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
             </div> 
@@ -1616,19 +1616,19 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </fieldset>
             </div>
-            <div class="col-12 my-3' . $shopping_cart_special_offer_code_label_row_style . '" id="shopping_cart_special_offer_code_label_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $shopping_cart_special_offer_code_label_row_style . '" id="shopping_cart_special_offer_code_label_row">
                 <label class="form-label" for="shopping_cart_special_offer_code_label">' . lang('Special Offer Code Label') . '</label>
                 <input value="' . h($shopping_cart_properties['special_offer_code_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_special_offer_code_label" name="shopping_cart_special_offer_code_label" maxlength="50"/>
             </div>
-            <div class="col-12 my-3' . $shopping_cart_special_offer_code_message_row_style . '" id="shopping_cart_special_offer_code_message_row">
+            <div class="col-12 md:col-6 lg:col-8 my-3' . $shopping_cart_special_offer_code_message_row_style . '" id="shopping_cart_special_offer_code_message_row">
                 <label class="form-label" for="shopping_cart_special_offer_code_message">' . lang('Special Offer Code Message') . '</label>
                 <input value="' . h($shopping_cart_properties['special_offer_code_message'] ?? '') . '" type="text" class="form-control" id="shopping_cart_special_offer_code_message" name="shopping_cart_special_offer_code_message" maxlength="255"/>
             </div>
-            <div class="col-12 my-3' . $shopping_cart_update_button_label_row_style . '" id="shopping_cart_update_button_label_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $shopping_cart_update_button_label_row_style . '" id="shopping_cart_update_button_label_row">
                 <label class="form-label" for="shopping_cart_update_button_label">' . lang('Update Button Label') . '</label>
                 <input value="' . h($shopping_cart_properties['update_button_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_update_button_label" name="shopping_cart_update_button_label" maxlength="50"/>
             </div>
-            <div class="col-12 my-3' . $shopping_cart_checkout_button_label_row_style . '" id="shopping_cart_checkout_button_label_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $shopping_cart_checkout_button_label_row_style . '" id="shopping_cart_checkout_button_label_row">
                 <label class="form-label" for="shopping_cart_checkout_button_label">' . lang('Checkout Button Label') . '</label>
                 <input value="' . h($shopping_cart_properties['checkout_button_label'] ?? '') . '" type="text" class="form-control" id="shopping_cart_checkout_button_label" name="shopping_cart_checkout_button_label" maxlength="50"/>
             </div>';
@@ -1643,11 +1643,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         }
 
         $output_ecommerce_page_type_properties .=
-            '<div class="col-12 md:col-6 my-3' . $shopping_cart_next_page_id_with_shipping_row_style . '" id="shopping_cart_next_page_id_with_shipping_row">
+            '<div class="col-12 lg:col-6 my-3' . $shopping_cart_next_page_id_with_shipping_row_style . '" id="shopping_cart_next_page_id_with_shipping_row">
                 <label class="form-label" for="shopping_cart_next_page_id_with_shipping">' . lang('Next Page') . ' (' . lang('with shipping') . ')</label>
                 ' . pg_page_form_page_field('shopping_cart_next_page_id_with_shipping', ($shopping_cart_properties['next_page_id_with_shipping'] ?? ''), array('shipping address and arrival', 'express order'), lang(array('string'=>'Select {var:1}','vars'=>array(lang('Shipping Address & Arrival or Express Order Page')) ))) . '
             </div>
-            <div class="col-12 md:col-6 my-3' . $shopping_cart_next_page_id_without_shipping_row_style . '" id="shopping_cart_next_page_id_without_shipping_row">
+            <div class="col-12 lg:col-6 my-3' . $shopping_cart_next_page_id_without_shipping_row_style . '" id="shopping_cart_next_page_id_without_shipping_row">
                 <label class="form-label" for="shopping_cart_next_page_id_without_shipping">' . lang('Next Page') . ' (' . lang('without shipping') . ')</label>
                 ' . pg_page_form_page_field('shopping_cart_next_page_id_without_shipping', ($shopping_cart_properties['next_page_id_without_shipping'] ?? ''), array('billing information', 'express order'), lang(array('string'=>'Select {var:1}','vars'=>array(lang('Billing Information or Express Order Page')) ))) . '
             </div> 
@@ -1660,7 +1660,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 pg-field-span-6 my-1">
+                            <div class="col-12 my-1">
                                 <label class="form-label" for="shipping_address_and_arrival_address_type_page_id">' . lang('Address Type Page') . '</label>
                                 ' . pg_page_form_page_field('shipping_address_and_arrival_address_type_page_id', ($shipping_address_and_arrival_properties['address_type_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                             </div> 
@@ -1683,11 +1683,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                    <p class="mb-0">' . lang('When ready, click \'Save & Continue\' at the bottom of this screen to create the Custom Shipping Form.') . '</p>
                                 </div>
                             </div>
-                            <div class="col-12 my-1' . $shipping_address_and_arrival_form_name_row_style . '" id="shipping_address_and_arrival_form_name_row">
+                            <div class="col-12 md:col-6 lg:col-8 my-1' . $shipping_address_and_arrival_form_name_row_style . '" id="shipping_address_and_arrival_form_name_row">
                                 <label for="shipping_address_and_arrival_form_name" class="form-label">' . lang('Form Title for Display') . '</label>
                                 <input value="' . h(($shipping_address_and_arrival_properties['form_name'] ?? '')) . '" type="text" name="shipping_address_and_arrival_form_name" id="shipping_address_and_arrival_form_name" maxlength="100" class="form-control" />
                             </div>
-                            <div class="col-12 pg-field-span-3 my-1' . $shipping_address_and_arrival_form_label_column_width_row_style . '" id="shipping_address_and_arrival_form_label_column_width_row">
+                            <div class="col-12 md:col-6 lg:col-4 my-1' . $shipping_address_and_arrival_form_label_column_width_row_style . '" id="shipping_address_and_arrival_form_label_column_width_row">
                                 <label for="shipping_address_and_arrival_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">%</span>
@@ -1701,11 +1701,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
             <div class="col-12 my-3' . $shipping_address_and_arrival_submit_button_row_style . '" id="shipping_address_and_arrival_submit_button_row">
                 <div class="row p-1 border border-1 rounded-4 bg-1">
-                    <div class="col-12 my-3">
+                    <div class="col-12 md:col-6 lg:col-4 my-3">
                         <label class="form-label" for="shipping_address_and_arrival_submit_button_label">' . lang('Submit Button Label') . '</label>
                         <input value="' . h($shipping_address_and_arrival_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="shipping_address_and_arrival_submit_button_label" name="shipping_address_and_arrival_submit_button_label" maxlength="50"/>
                     </div>
-                    <div class="col-12 pg-field-span-6 my-3">
+                    <div class="col-12 lg:col-6 my-3">
                         <label class="form-label" for="shipping_address_and_arrival_next_page_id">' . lang('Next Page') . '</label>
                         ' . pg_page_form_page_field('shipping_address_and_arrival_next_page_id', ($shipping_address_and_arrival_properties['next_page_id'] ?? ''), 'shipping method', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Shipping Method Page')) ))) . '
                     </div> 
@@ -1726,17 +1726,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
             <div class="col-12 my-3' . $shipping_method_submit_button_row_style . '" id="shipping_method_submit_button_row">
                 <div class="row p-1 border border-1 rounded-4 bg-1">
-                    <div class="col-12 my-3">
+                    <div class="col-12 md:col-6 lg:col-4 my-3">
                         <label class="form-label" for="shipping_method_submit_button_label">' . lang('Submit Button Label') . '</label>
                         <input value="' . h($shipping_method_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="shipping_method_submit_button_label" name="shipping_method_submit_button_label" maxlength="50"/>
                     </div>
-                    <div class="col-12 pg-field-span-6 my-3">
+                    <div class="col-12 lg:col-6 my-3">
                         <label class="form-label" for="shipping_method_next_page_id">' . lang('Next Page') . '</label>
                         ' . pg_page_form_page_field('shipping_method_next_page_id', ($shipping_method_properties['next_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                     </div> 
                 </div>
             </div>
-            <div class="col-12 my-3' . $billing_information_custom_field_1_label_row_style . '" id="billing_information_custom_field_1_label_row">
+            <div class="col-12 sm:col-6 my-3' . $billing_information_custom_field_1_label_row_style . '" id="billing_information_custom_field_1_label_row">
                 <div class="border-1 border p-3 my-3 rounded-4">
                     <label for="billing_information_custom_field_1_label" class="form-label">' . lang('Custom Field #1 Label') . '</label>
                     <input value="' . h($billing_information_properties['custom_field_1_label'] ?? '') . '" type="text" name="billing_information_custom_field_1_label" id="billing_information_custom_field_1_label" maxlength="255" class="form-control" />
@@ -1746,7 +1746,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-3' . $billing_information_custom_field_2_label_row_style . '" id="billing_information_custom_field_2_label_row">
+            <div class="col-12 sm:col-6 my-3' . $billing_information_custom_field_2_label_row_style . '" id="billing_information_custom_field_2_label_row">
                 <div class="border-1 border p-3 my-3 rounded-4">
                     <label for="billing_information_custom_field_2_label" class="form-label">' . lang('Custom Field #2 Label') . '</label>
                     <input value="' . h($billing_information_properties['custom_field_2_label'] ?? '') . '" type="text" name="billing_information_custom_field_2_label" id="billing_information_custom_field_2_label" maxlength="255" class="form-control" />
@@ -1777,11 +1777,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                    <p class="mb-0">' . lang('When ready, click \'Save & Continue\' at the bottom of this screen to create the Custom Billing Form.') . '</p>
                                 </div>
                             </div>
-                            <div class="col-12 my-1' . $billing_information_form_name_row_style . '" id="billing_information_form_name_row">
+                            <div class="col-12 md:col-6 lg:col-8 my-1' . $billing_information_form_name_row_style . '" id="billing_information_form_name_row">
                                 <label for="billing_information_form_name" class="form-label">' . lang('Form Title for Display') . '</label>
                                 <input value="' . h(($billing_information_properties['form_name'] ?? '')) . '" type="text" name="billing_information_form_name" id="billing_information_form_name" maxlength="100" class="form-control" />
                             </div>
-                            <div class="col-12 pg-field-span-3 my-1' . $billing_information_form_label_column_width_row_style . '" id="billing_information_form_label_column_width_row">
+                            <div class="col-12 md:col-6 lg:col-4 my-1' . $billing_information_form_label_column_width_row_style . '" id="billing_information_form_label_column_width_row">
                                 <label for="billing_information_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">%</span>
@@ -1793,11 +1793,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-3' . $billing_information_submit_button_label_row_style . '" id="billing_information_submit_button_label_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $billing_information_submit_button_label_row_style . '" id="billing_information_submit_button_label_row">
                 <label class="form-label" for="billing_information_submit_button_label">' . lang('Submit Button Label') . '</label>
                 <input value="' . h($billing_information_properties['submit_button_label'] ?? '') . '" type="text" class="form-control" id="billing_information_submit_button_label" name="billing_information_submit_button_label" maxlength="50"/>
             </div>
-            <div class="col-12 pg-field-span-6 my-3' . $billing_information_next_page_id_row_style . '" id="billing_information_next_page_id_row">
+            <div class="col-12 lg:col-6 my-3' . $billing_information_next_page_id_row_style . '" id="billing_information_next_page_id_row">
                 <label class="form-label" for="billing_information_next_page_id">' . lang('Next Page') . ' (' . lang('without shipping') . ')</label>
                 ' . pg_page_form_page_field('billing_information_next_page_id', ($billing_information_properties['next_page_id'] ?? ''), array('order preview', 'express order'), lang(array('string'=>'Select {var:1}','vars'=>array(lang('Order Preview or Express Order Page')) ))) . '
             </div> 
@@ -1821,16 +1821,16 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 </div>
             </div>
             ' . $output_order_preview_offline_payment_checkbox_rows . '
-            <div class="col-12 pg-field-span-6 my-3' . $order_preview_card_verification_number_page_id_row_style . '" id="order_preview_card_verification_number_page_id_row">
+            <div class="col-12 lg:col-6 my-3' . $order_preview_card_verification_number_page_id_row_style . '" id="order_preview_card_verification_number_page_id_row">
                 <label for="order_preview_card_verification_number_page_id" class="form-label">' . lang('Card Verification Number Page') . '</label>
                 ' . pg_page_form_page_field('order_preview_card_verification_number_page_id', ($order_preview_properties['card_verification_number_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
             </div>
             ' . $output_order_preview_offline_payment_rows . '
-            <div class="col-12 pg-field-span-6 my-3' . $order_preview_terms_page_id_row_style . '" id="order_preview_terms_page_id_row">
+            <div class="col-12 lg:col-6 my-3' . $order_preview_terms_page_id_row_style . '" id="order_preview_terms_page_id_row">
                 <label for="order_preview_terms_page_id" class="form-label">' . lang('Terms Page') . '</label>
                 ' . pg_page_form_page_field('order_preview_terms_page_id', ($order_preview_properties['terms_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
             </div>
-            <div class="col-12 my-3' . $order_preview_submit_button_label_row_style . '" id="order_preview_submit_button_label_row">
+            <div class="col-12 sm:col-6 lg:col-4 my-3' . $order_preview_submit_button_label_row_style . '" id="order_preview_submit_button_label_row">
                 <label class="form-label" for="order_preview_submit_button_label">'. lang('Purchase Now Button Label') . '</label>
                 <input value="' . h($order_preview_properties['submit_button_label'] ?? '') . '" type="text" id="order_preview_submit_button_label" name="order_preview_submit_button_label" class="form-control" maxlength="50" >
             </div>';
@@ -1840,11 +1840,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             $output_ecommerce_page_type_properties .=
                 '<div class="col-12">
                     <div class="row">
-                        <div class="col-12 my-3' . $order_preview_pre_save_hook_code_row_style . '" id="order_preview_pre_save_hook_code_row">
+                        <div class="col-12 lg:col-6 my-3' . $order_preview_pre_save_hook_code_row_style . '" id="order_preview_pre_save_hook_code_row">
                             <label class="form-label" for="order_preview_pre_save_hook_code">' . lang('Pre-Save Hook Code') . '</label>
                             <textarea id="order_preview_pre_save_hook_code" name="order_preview_pre_save_hook_code" class="form-control">' . h(($order_preview_properties['pre_save_hook_code'] ?? '')) . '</textarea>
                         </div>
-                        <div class="col-12 my-3' . $order_preview_post_save_hook_code_row_style . '" id="order_preview_post_save_hook_code_row">
+                        <div class="col-12 lg:col-6 my-3' . $order_preview_post_save_hook_code_row_style . '" id="order_preview_post_save_hook_code_row">
                             <label class="form-label" for="order_preview_post_save_hook_code">' . lang('Post-Save Hook Code') . '</label>
                             <textarea id="order_preview_post_save_hook_code" name="order_preview_post_save_hook_code" class="form-control">' . h(($order_preview_properties['post_save_hook_code'] ?? '')) . '</textarea>
                         </div> 
@@ -1853,7 +1853,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         }
 
         $output_ecommerce_page_type_properties .=
-            '<div class="col-12 pg-field-span-6 my-3' . $order_preview_next_page_id_row_style . '" id="order_preview_next_page_id_row">
+            '<div class="col-12 lg:col-6 my-3' . $order_preview_next_page_id_row_style . '" id="order_preview_next_page_id_row">
                 <label class="form-label" for="order_preview_next_page_id">' . lang('Next Page') . '</label>
                 ' . pg_page_form_page_field('order_preview_next_page_id', ($order_preview_properties['next_page_id'] ?? ''), 'order receipt', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Order Receipt Page')) ))) . '
             </div>
@@ -1866,7 +1866,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 my-1">
+                            <div class="col-12 sm:col-6 md:col-8 my-1">
                                 <label class="form-label" for="order_preview_order_receipt_email_subject">' . lang('Subject') . '</label>
                                 <input value="' . h(($order_preview_properties['order_receipt_email_subject'] ?? '')) . '" type="text" id="order_preview_order_receipt_email_subject" name="order_preview_order_receipt_email_subject" class="form-control" maxlength="255">
                             </div> 
@@ -1901,7 +1901,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
-                                            <div class="col-12 pg-field-span-6 my-1">
+                                            <div class="col-12 my-1">
                                                 <label class="form-label" for="order_preview_order_receipt_email_page_id">' . lang('Page') . '</label>
                                                 ' . pg_page_form_page_field('order_preview_order_receipt_email_page_id', ($order_preview_properties['order_receipt_email_page_id'] ?? ''), 'order receipt', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Order Receipt Page')) ))) . '
                                             </div>
@@ -1998,11 +1998,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 my-1" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name_container" >
+                            <div class="col-12 lg:col-6 my-1" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name_container" >
                                 <label for="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name" class="form-label">' . lang('Name') . '</label>
                                 <input value="' . $output_form_list_view_name . '" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_name" type="text" class="form-control" maxlength="100" />
                             </div>
-                            <div class="col-12 pg-field-span-6 my-1" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id_container">
+                            <div class="col-12 lg:col-6 my-1" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id_container">
                                 <label for="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id" class="form-label">' . lang('Subject Field') . '</label>
                                 <select class="form-control" name="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id" id="form_view_directory_form_list_view_' . $form_list_view['page_id'] . '_subject_form_field_id"><option value=""></option>' . $output_form_view_directory_subject_field_options . '</select>
                             </div>
@@ -2012,7 +2012,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         }
         
         $output_forms_page_type_properties =
-            '<div class="col-12 my-3' . $custom_form_form_name_row_style . '" id="custom_form_form_name_row">
+            '<div class="col-12 md:col-6 lg:col-4 my-3' . $custom_form_form_name_row_style . '" id="custom_form_form_name_row">
                 <label for="custom_form_form_name" class="form-label">' . lang('Form Name') . '</label>
                 <input value="' . h(($custom_form_properties['form_name'] ?? '')) . '" type="text" name="custom_form_form_name" id="custom_form_form_name" maxlength="100" class="form-control" />
             </div>
@@ -2031,7 +2031,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 pg-field-span-3 my-1">
+                            <div class="col-12 md:col-12 my-1">
                                 <label for="custom_form_quiz_pass_percentage" class="form-label">' . lang('Quiz Pass Percentage') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">%</span>
@@ -2054,7 +2054,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <label for="custom_form_auto_registration">' . lang('Enable Auto-Registration') . '</label> 
                 </div>
             </div>
-            <div class="col-12 pg-field-span-3 my-3' . $custom_form_label_column_width_row_style . '" id="custom_form_label_column_width_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $custom_form_label_column_width_row_style . '" id="custom_form_label_column_width_row">
                 <label for="custom_form_label_column_width" class="form-label">' . lang('Label Column Width') . '</label>
                 <label class="form-control form-adorn form-adorn-end">
                     <span class="form-adorn-text" aria-hidden="true">%</span>
@@ -2062,11 +2062,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 </label>
                 <div class="form-text text-end">' . lang('leave blank for auto') . '</div>
             </div>
-            <div class="col-12 my-3' . $custom_form_submit_button_label_row_style . '" id="custom_form_submit_button_label_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $custom_form_submit_button_label_row_style . '" id="custom_form_submit_button_label_row">
                 <label for="custom_form_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
                 <input value="' . h($custom_form_properties['submit_button_label'] ?? '') . '" type="text" name="custom_form_submit_button_label" id="custom_form_submit_button_label" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 pg-field-span-6 my-3' . $custom_form_watcher_page_id_row_style . '" id="custom_form_watcher_page_id_row">
+            <div class="col-12 lg:col-6 my-3' . $custom_form_watcher_page_id_row_style . '" id="custom_form_watcher_page_id_row">
                 <label for="custom_form_watcher_page_id" class="form-label">' . lang('Enable Watcher Option') . '</label>
                 ' . pg_page_form_page_field('custom_form_watcher_page_id', ($custom_form_properties['watcher_page_id'] ?? ''), 'form item view', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Form Item View Page')) ))) . '
             </div>';
@@ -2126,7 +2126,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             . pg_form_item_view_form_insert_script('pg_page_form_mail_variables', array('custom_form_submitter_email_body', 'custom_form_submitter_email_subject', 'custom_form_administrator_email_body', 'custom_form_administrator_email_subject'), array('transient' => true));
 
         $output_forms_page_type_properties .=
-            '<div class="col-12 pg-field-span-6 my-3' . $custom_form_contact_group_id_row_style . '" id="custom_form_contact_group_id_row">
+            '<div class="col-12 md:col-6 lg:col-4 my-3' . $custom_form_contact_group_id_row_style . '" id="custom_form_contact_group_id_row">
                 <label class="form-label" for="custom_form_contact_group_id">' . lang('Add to Contact Group') . '</label>
                 <select class="form-control" id="custom_form_contact_group_id" name="custom_form_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group(($custom_form_properties['contact_group_id'] ?? ''), $user) . '</select>
                 ' . $custom_form_double_opt_in_switch . '
@@ -2140,11 +2140,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 pg-field-span-6 my-1">
+                            <div class="col-12 sm:col-6 xl:col-4 my-1">
                                 <label class="form-label" for="custom_form_submitter_email_from_email_address">' . lang('From E-mail Address') . '</label>
                                 <input value="' . h($custom_form_properties['submitter_email_from_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_submitter_email_from_email_address" name="custom_form_submitter_email_from_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                             </div>
-                            <div class="col-12 my-1">
+                            <div class="col-12 sm:col-6 xl:col-8 my-1">
                                 <label class="form-label" for="custom_form_submitter_email_subject">' . lang('Subject') . '</label>
                                 <input value="' . h(($custom_form_properties['submitter_email_subject'] ?? '')) . '" type="text" id="custom_form_submitter_email_subject" name="custom_form_submitter_email_subject" class="form-control" maxlength="255">
                             </div>
@@ -2175,7 +2175,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
-                                            <div class="col-12 pg-field-span-6 my-1">
+                                            <div class="col-12 my-1">
                                                 <label class="form-label" for="custom_form_submitter_email_page_id">' . lang('Page') . '</label>
                                                 ' . pg_page_form_page_field('custom_form_submitter_email_page_id', ($custom_form_properties['submitter_email_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                                             </div>
@@ -2197,15 +2197,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 md:col-6 my-1">
+                            <div class="col-12 sm:col-6 xl:col-4 my-1">
                                 <label class="form-label" for="custom_form_administrator_email_to_email_address">' . lang('To E-mail Address') . '</label>
                                 <input value="' . h($custom_form_properties['administrator_email_to_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_administrator_email_to_email_address" name="custom_form_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                             </div>
-                            <div class="col-12 md:col-6 my-1">
+                            <div class="col-12 sm:col-6 xl:col-4 my-1">
                                 <label class="form-label" for="custom_form_administrator_email_bcc_email_address">' . lang('BCC E-mail Address') . '</label>
                                 <input value="' . h($custom_form_properties['administrator_email_bcc_email_address'] ?? '') . '" type="text" class="form-control text-end" id="custom_form_administrator_email_bcc_email_address" name="custom_form_administrator_email_bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                             </div>
-                            <div class="col-12 my-1">
+                            <div class="col-12 sm:col-12 xl:col-4 my-1">
                                 <label class="form-label" for="custom_form_administrator_email_subject">' . lang('Subject') . '</label>
                                 <input value="' . h(($custom_form_properties['administrator_email_subject'] ?? '')) . '" type="text" id="custom_form_administrator_email_subject" name="custom_form_administrator_email_subject" class="form-control" maxlength="255">
                             </div>
@@ -2236,7 +2236,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row">
-                                            <div class="col-12 pg-field-span-6 my-1">
+                                            <div class="col-12 my-1">
                                                 <label class="form-label" for="custom_form_administrator_email_page_id">' . lang('Page') . '</label>
                                                 ' . pg_page_form_page_field('custom_form_administrator_email_page_id', ($custom_form_properties['administrator_email_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                                             </div>
@@ -2258,14 +2258,14 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 md:col-3 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="custom_form_membership_days" class="form-label">' . lang('Trial Length') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
                                     <input value="' . h(($custom_form_properties['membership_days'] ?? '')) . '" type="text" name="custom_form_membership_days" id="custom_form_membership_days" class="form-ghost" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                                 </label>
                             </div>
-                            <div class="col-12 md:col-6 my-1">
+                            <div class="col-12 lg:col-6 my-1">
                                 <label class="form-label" for="custom_form_membership_start_page_id">' . lang('Set Member\'s Start Page to') . '</label>
                                 ' . pg_page_form_page_field('custom_form_membership_start_page_id', ($custom_form_properties['membership_start_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                             </div>
@@ -2282,11 +2282,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 md:col-6 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label class="form-label" for="custom_form_private_folder_id">' . lang('Set "View" Access to Folder') . '</label>
                                 <select class="form-control" id="custom_form_private_folder_id" name="custom_form_private_folder_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Private Folder')) )) . '-</option>' . select_folder(($custom_form_properties['private_folder_id'] ?? ''), 0, 0, 0, array(), array(), 'private') . '</select>
                             </div>
-                            <div class="col-12 md:col-3 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="custom_form_private_days" class="form-label">' . lang('Length') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
@@ -2294,7 +2294,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 </label>
                                 <div class="text-end form-text">' . lang('leave blank for no expiration') . '</div>
                             </div>
-                            <div class="col-12 pg-field-span-6 my-1">
+                            <div class="col-12 lg:col-6 my-1">
                                 <label class="form-label" for="custom_form_private_start_page_id">' . lang('Set User\'s Start Page to') . '</label>
                                 ' . pg_page_form_page_field('custom_form_private_start_page_id', ($custom_form_properties['private_start_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                             </div>
@@ -2315,11 +2315,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                         <div class="popover-body">
                             <div class="row">
-                                <div class="col-12 md:col-6 my-1">
+                                <div class="col-12 md:col-6 lg:col-4 my-1">
                                     <label class="form-label" for="custom_form_offer_id">' . lang('Offer') . '</label>
                                     <select class="form-control" id="custom_form_offer_id" name="custom_form_offer_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Offer')) )) . '-</option>' . select_offer(($custom_form_properties['offer_id'] ?? '')) . '</select>
                                 </div>
-                                <div class="col-12 md:col-3 my-1">
+                                <div class="col-12 md:col-6 lg:col-4 my-1">
                                     <label for="custom_form_offer_days" class="form-label">' . lang('Validity Length') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
@@ -2327,7 +2327,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                     </label>
                                     <div class="text-end form-text">' . lang('leave blank for no expiration') . '</div>
                                 </div>
-                                <div class="col-12 pg-field-span-6 my-1">
+                                <div class="col-12 md:col-6 lg:col-4 my-1">
                                     <label class="form-label" for="custom_form_offer_eligibility">' . lang('Eligibility') . '</label>
                                     <select class="form-control" id="custom_form_offer_eligibility" name="custom_form_offer_eligibility"><option value="everyone"' . $custom_form_offer_eligibility_everyone . '>' . lang('Everyone') . '</option><option value="new_contacts"' . $custom_form_offer_eligibility_new_contacts . '>' . lang('New Contacts') . '</option><option value="existing_contacts"' . $custom_form_offer_eligibility_existing_contacts . '>' . lang('Existing Contacts') . '</option></select>
                                 </div>
@@ -2365,7 +2365,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 pg-field-span-6 my-1">
+                            <div class="col-12 lg:col-6 my-1">
                                 <label class="form-label" for="custom_form_confirmation_page_id">' . lang('Next Page') . '</label>
                                 ' . pg_page_form_page_field('custom_form_confirmation_page_id', ($custom_form_properties['confirmation_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                             </div>
@@ -2378,11 +2378,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row p-1 border border-1 rounded-4 bg-1">
-                                            <div class="col-12 md:col-6 my-1">
+                                            <div class="col-12 lg:col-6 my-1">
                                                 <label class="form-label" for="custom_form_confirmation_alternative_page_contact_group_id">' . lang('If Contact Group') . '</label>
                                                 <select class="form-control" id="custom_form_confirmation_alternative_page_contact_group_id" name="custom_form_confirmation_alternative_page_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group(($custom_form_properties['confirmation_alternative_page_contact_group_id'] ?? ''), $user) . '</select>
                                             </div>
-                                            <div class="col-12 md:col-6 my-1">
+                                            <div class="col-12 lg:col-6 my-1">
                                                 <label class="form-label" for="custom_form_confirmation_alternative_page_id">' . lang('Then Go to Page') . '</label>
                                                 ' . pg_page_form_page_field('custom_form_confirmation_alternative_page_id', ($custom_form_properties['confirmation_alternative_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                                             </div>
@@ -2425,7 +2425,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(230px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 pg-field-span-6 my-1">
+                            <div class="col-12 lg:col-6 my-1">
                                 <label class="form-label" for="custom_form_return_page_id">' . lang('Page') . '</label>
                                 ' . pg_page_form_page_field('custom_form_return_page_id', ($custom_form_properties['return_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                             </div>
@@ -2438,11 +2438,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                     <div class="popover-body">
                                         <div class="row p-1 border border-1 rounded-4 bg-1">
-                                            <div class="col-12 md:col-6 my-1">
+                                            <div class="col-12 lg:col-6 my-1">
                                                 <label class="form-label" for="custom_form_return_alternative_page_contact_group_id">' . lang('If Contact Group') . '</label>
                                                 <select class="form-control" id="custom_form_return_alternative_page_contact_group_id" name="custom_form_return_alternative_page_contact_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Contact Group')) )) . '-</option>' . select_contact_group(($custom_form_properties['return_alternative_page_contact_group_id'] ?? ''), $user) . '</select>
                                             </div>
-                                            <div class="col-12 md:col-6 my-1">
+                                            <div class="col-12 lg:col-6 my-1">
                                                 <label class="form-label" for="custom_form_return_alternative_page_id">' . lang('Then Go to Page') . '</label>
                                                 ' . pg_page_form_page_field('custom_form_return_alternative_page_id', ($custom_form_properties['return_alternative_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                                             </div>
@@ -2461,19 +2461,19 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 </div>
                 ' . $custom_form_schema_author_rows . '
             </div>
-            <div class="col-12 my-3' . $custom_form_confirmation_continue_button_label_row_style . '" id="custom_form_confirmation_continue_button_label_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $custom_form_confirmation_continue_button_label_row_style . '" id="custom_form_confirmation_continue_button_label_row">
                 <label for="custom_form_confirmation_continue_button_label" class="form-label">' . lang('Continue Button Label') . '</label>
                 <input value="' . h($custom_form_confirmation_properties['continue_button_label'] ?? '') . '" type="text" name="custom_form_confirmation_continue_button_label" id="custom_form_confirmation_continue_button_label" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 md:col-6 my-3' . $custom_form_confirmation_next_page_id_row_style . '" id="custom_form_confirmation_next_page_id_row">
+            <div class="col-12 lg:col-6 my-3' . $custom_form_confirmation_next_page_id_row_style . '" id="custom_form_confirmation_next_page_id_row">
                 <label class="form-label" for="custom_form_confirmation_next_page_id">' . lang('Next Page') . '</label>
                 ' . pg_page_form_page_field('custom_form_confirmation_next_page_id', ($custom_form_confirmation_properties['next_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
             </div>
-            <div class="col-12 md:col-6 my-3' . $form_list_view_custom_form_page_id_row_style . '" id="form_list_view_custom_form_page_id_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $form_list_view_custom_form_page_id_row_style . '" id="form_list_view_custom_form_page_id_row">
                 <label class="form-label" for="form_list_view_custom_form_page_id">' . lang('Custom Form') . '</label>
                 <select class="form-control" id="form_list_view_custom_form_page_id" name="form_list_view_custom_form_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Custom Form')) )) . '-</option>' . select_custom_form(($form_list_view_properties['custom_form_page_id'] ?? ''), $user) . '</select>
             </div>
-            <div class="col-12 pg-field-span-6 my-3' . $form_list_view_form_item_view_page_id_row_style . '" id="form_list_view_form_item_view_page_id_row">
+            <div class="col-12 lg:col-6 my-3' . $form_list_view_form_item_view_page_id_row_style . '" id="form_list_view_form_item_view_page_id_row">
                 <label class="form-label" for="form_list_view_form_item_view_page_id">' . lang('Form Item View') . '</label>
                 ' . pg_page_form_page_field('form_list_view_form_item_view_page_id', ($form_list_view_properties['form_item_view_page_id'] ?? ''), 'form item view', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Form Item View Page')) ))) . '
             </div>
@@ -2509,7 +2509,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 pg-field-span-6 my-3' . $form_item_view_custom_form_page_id_row_style . '" id="form_item_view_custom_form_page_id_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $form_item_view_custom_form_page_id_row_style . '" id="form_item_view_custom_form_page_id_row">
                 <label class="form-label" for="form_item_view_custom_form_page_id">' . lang('Custom Form') . '</label>
                 <select class="form-control" id="form_item_view_custom_form_page_id" name="form_item_view_custom_form_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Custom Form')) )) . '-</option>' . select_custom_form(($form_item_view_properties['custom_form_page_id'] ?? ''), $user) . '</select>
             </div>
@@ -2561,14 +2561,14 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
-                            <div class="col-12 md:col-3 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="form_view_directory_summary_days" class="form-label">' . lang('Date Range') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
                                     <input value="' . $form_view_directory_summary_days . '" type="text" name="form_view_directory_summary_days" id="form_view_directory_summary_days" class="form-ghost" size="7" maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  style="text-align: right;" />
                                 </label>
                             </div>
-                            <div class="col-12 md:col-3 my-1">
+                            <div class="col-12 md:col-6 lg:col-4 my-1">
                                 <label for="form_view_directory_summary_maximum_number_of_results" class="form-label">' . lang('Maximum Number of Results') . '</label>
                                 <input value="' . $form_view_directory_summary_maximum_number_of_results . '" type="text" name="form_view_directory_summary_maximum_number_of_results" id="form_view_directory_summary_maximum_number_of_results" class="form-control" size="2" maxlength="3" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"  style="text-align: right;" />
                             </div>
@@ -2576,15 +2576,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-3' . $form_view_directory_form_list_view_heading_row_style . '" id="form_view_directory_form_list_view_heading_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $form_view_directory_form_list_view_heading_row_style . '" id="form_view_directory_form_list_view_heading_row">
                 <label for="form_view_directory_form_list_view_heading" class="form-label">' . lang('Form List View Heading') . '</label>
                 <input value="' . h($form_view_directory_form_list_view_heading) . '" type="text" name="form_view_directory_form_list_view_heading" id="form_view_directory_form_list_view_heading" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 my-3' . $form_view_directory_subject_heading_row_style . '" id="form_view_directory_subject_heading_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $form_view_directory_subject_heading_row_style . '" id="form_view_directory_subject_heading_row">
                 <label for="form_view_directory_subject_heading" class="form-label">' . lang('Subject Heading') . '</label>
                 <input value="' . h($form_view_directory_subject_heading) . '" type="text" name="form_view_directory_subject_heading" id="form_view_directory_subject_heading" maxlength="50" class="form-control" />
             </div>
-            <div class="col-12 my-3' . $form_view_directory_number_of_submitted_forms_heading_row_style . '" id="form_view_directory_number_of_submitted_forms_heading_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $form_view_directory_number_of_submitted_forms_heading_row_style . '" id="form_view_directory_number_of_submitted_forms_heading_row">
                 <label for="form_view_directory_number_of_submitted_forms_heading" class="form-label">' . lang('Number of Submitted Forms Heading') . '</label>
                 <input value="' . h($form_view_directory_number_of_submitted_forms_heading) . '" type="text" name="form_view_directory_number_of_submitted_forms_heading" id="form_view_directory_number_of_submitted_forms_heading" maxlength="50" class="form-control" />
             </div>';
@@ -2673,15 +2673,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 md:col-6 my-3' . $calendar_view_default_view_row_style . '" id="calendar_view_default_view_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $calendar_view_default_view_row_style . '" id="calendar_view_default_view_row">
                 <label for="calendar_view_default_view" class="form-label">' . lang('View Type') . '</label>
                 <select class="form-control" name="calendar_view_default_view" id="calendar_view_default_view" onchange="show_or_hide_calendar_view_number_of_upcoming_events()"><option value="monthly"' . $calendar_view_default_view_monthly . '>' . lang('Monthly') . '</option><option value="weekly"' . $calendar_view_default_view_weekly . '>' . lang('Weekly') . '</option><option value="upcoming"' . $calendar_view_default_view_upcoming . '>' . lang('Upcoming') . '</option></select>
             </div>
-            <div class="col-12 md:col-3 my-3' . $calendar_view_number_of_upcoming_events_row_style . '" id="calendar_view_number_of_upcoming_events_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $calendar_view_number_of_upcoming_events_row_style . '" id="calendar_view_number_of_upcoming_events_row">
                 <label for="calendar_view_number_of_upcoming_events" class="form-label">' . lang('Number of Events') . '</label>
                 <input value="' . h($calendar_view_number_of_upcoming_events_value) . '" name="calendar_view_number_of_upcoming_events" id="calendar_view_number_of_upcoming_events" type="text" maxlength="2" class="form-control" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false" />
             </div>
-            <div class="col-12 pg-field-span-6 my-3' . $calendar_view_calendar_event_view_page_id_row_style . '" id="calendar_view_calendar_event_view_page_id_row">
+            <div class="col-12 lg:col-6 my-3' . $calendar_view_calendar_event_view_page_id_row_style . '" id="calendar_view_calendar_event_view_page_id_row">
                 <label for="calendar_view_calendar_event_view_page_id" class="form-label">' . lang('Calendar Event View') . '</label>
                 ' . pg_page_form_page_field('calendar_view_calendar_event_view_page_id', ($calendar_view_properties['calendar_event_view_page_id'] ?? ''), 'calendar event view', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Calendar Event View Page')) ))) . '
             </div>
@@ -2699,7 +2699,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     </div>
                 </div>
             </div>
-            <div class="col-12 my-3' . $calendar_event_view_back_button_label_row_style . '" id="calendar_event_view_back_button_label_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $calendar_event_view_back_button_label_row_style . '" id="calendar_event_view_back_button_label_row">
                 <label for="calendar_event_view_back_button_label" class="form-label">' . lang('Back Button Label') . '</label>
                 <input value="' . h($calendar_event_view_properties['back_button_label'] ?? '') . '" name="calendar_event_view_back_button_label" id="calendar_event_view_back_button_label" type="text" maxlength="50" class="form-control" />
             </div>
@@ -2713,15 +2713,15 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
     
     if (AFFILIATE_PROGRAM == true) {
         $output_affiliate_page_type_properties =
-            '<div class="col-12 pg-field-span-6 my-3' . $affiliate_sign_up_form_terms_page_id_row_style . '" id="affiliate_sign_up_form_terms_page_id_row">
+            '<div class="col-12 lg:col-6 my-3' . $affiliate_sign_up_form_terms_page_id_row_style . '" id="affiliate_sign_up_form_terms_page_id_row">
                 <label for="affiliate_sign_up_form_terms_page_id" class="form-label">' . lang('Terms Page') . '</label>
                 ' . pg_page_form_page_field('affiliate_sign_up_form_terms_page_id', ($affiliate_sign_up_form_properties['terms_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
             </div>
-            <div class="col-12 my-3' . $affiliate_sign_up_form_submit_button_label_row_style . '" id="affiliate_sign_up_form_submit_button_label_row">
+            <div class="col-12 md:col-6 lg:col-4 my-3' . $affiliate_sign_up_form_submit_button_label_row_style . '" id="affiliate_sign_up_form_submit_button_label_row">
                 <label for="affiliate_sign_up_form_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
                 <input value="' . h($affiliate_sign_up_form_properties['submit_button_label'] ?? '') . '" type="text" name="affiliate_sign_up_form_submit_button_label" id="affiliate_sign_up_form_submit_button_label" placeholder="' . lang('Sign Up') . '"  class="form-control" maxlength="50"/>
             </div>
-            <div class="col-12 pg-field-span-6 my-3' . $affiliate_sign_up_form_next_page_id_row_style . '" id="affiliate_sign_up_form_next_page_id_row">
+            <div class="col-12 lg:col-6 my-3' . $affiliate_sign_up_form_next_page_id_row_style . '" id="affiliate_sign_up_form_next_page_id_row">
                 <label class="form-label" for="affiliate_sign_up_form_next_page_id">' . lang('Next Page') . '</label>
                 ' . pg_page_form_page_field('affiliate_sign_up_form_next_page_id', ($affiliate_sign_up_form_properties['next_page_id'] ?? ''), 'affiliate sign up confirmation', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Affiliate Sign Up Confirmation Page')) ))) . '
             </div>';
@@ -2765,11 +2765,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                             <div class="form-text" id="layout_type_custom_hint">' . $layout_type_custom_label_title . '</div>' : '') . '
                         </fieldset>
                     </div>
-                    <div class="col-12 my-3' . $email_a_friend_submit_button_label_row_style . '" id="email_a_friend_submit_button_label_row">
+                    <div class="col-12 md:col-6 lg:col-4 my-3' . $email_a_friend_submit_button_label_row_style . '" id="email_a_friend_submit_button_label_row">
                         <label for="email_a_friend_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
                         <input value="' . h($email_a_friend_properties['submit_button_label'] ?? '') . '" type="text" name="email_a_friend_submit_button_label" id="email_a_friend_submit_button_label" placeholder="' . lang('Submit') . '"  class="form-control" maxlength="50"/>
                     </div>
-                    <div class="col-12 pg-field-span-6 my-3' . $email_a_friend_next_page_id_row_style . '" id="email_a_friend_next_page_id_row">
+                    <div class="col-12 lg:col-6 my-3' . $email_a_friend_next_page_id_row_style . '" id="email_a_friend_next_page_id_row">
                         <label for="email_a_friend_next_page_id" class="form-label">' . lang('Next Page') . '</label>
                         ' . pg_page_form_page_field('email_a_friend_next_page_id', ($email_a_friend_properties['next_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                     </div>
@@ -2785,11 +2785,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                             <label class="" for="folder_view_files">' . lang('Include Files') . '</label>
                         </div>
                     </div>
-                    <div class="col-12 md:col-3 my-3' . $photo_gallery_number_of_columns_row_style . '" id="photo_gallery_number_of_columns_row">
+                    <div class="col-12 md:col-4 lg:col-3 my-3' . $photo_gallery_number_of_columns_row_style . '" id="photo_gallery_number_of_columns_row">
                         <label for="photo_gallery_number_of_columns" class="form-label">' . lang('Number of Columns') . '</label>
                         <input value="' . $photo_gallery_number_of_columns . '" type="text" name="photo_gallery_number_of_columns" id="photo_gallery_number_of_columns" class="form-control" maxlength="2" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowminus="false"/>
                     </div>
-                    <div class="col-12 md:col-3 my-3' . $photo_gallery_thumbnail_max_size_row_style . '" id="photo_gallery_thumbnail_max_size_row">
+                    <div class="col-12 md:col-8 lg:col-6 xl:col-4 my-3' . $photo_gallery_thumbnail_max_size_row_style . '" id="photo_gallery_thumbnail_max_size_row">
                         <label for="photo_gallery_thumbnail_max_size" class="form-label">' . lang('Thumbnail Max Size') . '</label>
                         <label class="form-control form-adorn form-adorn-end">
                             <span class="form-adorn-text" aria-hidden="true">' . lang('pixels') . '</span>
@@ -2804,7 +2804,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                         </div>
                         <div class="collapse border rounded p-5 mt-3 mb-3" id="update_address_book_address_type_page_id_row">
                             <div class="row">
-                                <div class="col-12 pg-field-span-6 my-1">
+                                <div class="col-12 md:col-12 my-1">
                                     <label for="update_address_book_address_type_page_id" class="form-label">' . lang('Address Type Page') . '</label>
                                     ' . pg_page_form_page_field('update_address_book_address_type_page_id', ($update_address_book_properties['address_type_page_id'] ?? ''), '', lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) ))) . '
                                 </div>
@@ -2955,7 +2955,7 @@ function pg_page_form_schema_type_row($stored)
 
     return '
                 <div class="row mt-3">
-                    <div class="col-12 pg-field-span-6 my-1">
+                    <div class="col-12 md:col-6 my-1">
                         <label class="form-label" for="custom_form_schema_type">' . lang('Schema Type') . '</label>
                         <select class="form-control" id="custom_form_schema_type" name="custom_form_schema_type">' . $options . '</select>
                         <div class="form-text">' . lang('How the structured data of the record pages describes them. None leaves the page\'s own structured data as their only description.') . '</div>
@@ -3011,7 +3011,7 @@ function pg_page_form_share_image_row($stored, $page_id)
 
     return '
                 <div class="row mt-3">
-                    <div class="col-12 pg-field-span-6 my-1">
+                    <div class="col-12 md:col-6 my-1">
                         <label class="form-label" for="custom_form_share_image_field_id">' . lang('Share Image Field') . '</label>
                         <select class="form-control" id="custom_form_share_image_field_id" name="custom_form_share_image_field_id">' . $options . '</select>
                         <div class="form-text">' . lang('The picture a record page shows when it is shared. It is used only when it is an image every visitor may open.') . '</div>' . $notice . '

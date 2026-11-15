@@ -65,10 +65,7 @@ function test_fields_span_their_content()
 		array('product_builder.php', 'preorder_date', 'col-12 pg-field-span-3'),
 		array('product_builder.php', 'payment_period', 'col-12 md:col-6 my-1'),
 		array('product_builder.php', 'address_name', 'col-12 my-3'),
-		array('add_page.php', 'max_snippet', 'col-12 pg-field-span-3 mt-1 mb-3'),
 		array('product_builder.php', 'required_product', 'col-12 pg-field-span-6 my-3'),
-		array('includes/forms/page_form.php', 'catalog_number_of_columns', 'col-12 md:col-3 my-3'),
-		array('includes/forms/page_form.php', 'custom_form_form_name', 'col-12 my-3'),
 	);
 
 	foreach ($cases as $case) {

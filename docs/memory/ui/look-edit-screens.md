@@ -27,7 +27,7 @@ description: Add and edit screens in look A (DL5c, #8934): the edit width on eve
 - The shared `nav.buttons.navigation` straight in the `order-3` column is the floating bar; a bar left in the form column or in `order-4` stays the old centred pill. Under a full-width table the bar's column is a second `order-3` after the table's (product group) (selector beside `.pg-floatbar`): from 576 px 56 px high, buttons at the right, 34 px high with 10 px corners (the shared bar's pill `!important` is overridden). A phone keeps the shared two-per-row bar.
 
 ## What is not done yet?
-- The card's line under the title. Field widths on screens other than the product and page screens: with their group of the panel-old-screens plan.
+- The card's line under the title. Field widths on screens other than the product screen: with their group of the panel-old-screens plan.
 - The bar's buttons keep their Bootstrap colours, not fill, quiet and ghost; no unsaved note at its left.
 - `product_builder.php`'s own section titles stay its own.
 
