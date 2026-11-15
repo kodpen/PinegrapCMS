@@ -63,9 +63,12 @@ function ws_mail_unread_sql($user_id, $floor)
     // Back from Remind me later and not read since (mail_remind.php).
     $woken = function_exists('ws_mail_remind_woken_sql') ? ws_mail_remind_woken_sql($user_id, ws_mail_remind_ready()) : '';
 
+    // The floor stays an unquoted integer: MySQL 8 compares GREATEST() over
+    // a string and an integer as strings, so '950' would beat 1200.
+
     return (($woken !== '') ? '(' . $woken . ' OR ' : '')
         . "(SELECT MAX(i.id) FROM ws_mail_items i WHERE i.conversation_id = ws_mail_conversations.id AND i.direction = 'in')"
-        . " > GREATEST('" . (int) $floor . "', COALESCE((SELECT r.item_id FROM ws_mail_reads r"
+        . " > GREATEST(" . (int) $floor . ", COALESCE((SELECT r.item_id FROM ws_mail_reads r"
         . " WHERE r.conversation_id = ws_mail_conversations.id AND r.user_id = '" . (int) $user_id . "'), 0))"
         . (($woken !== '') ? ')' : '');
 }

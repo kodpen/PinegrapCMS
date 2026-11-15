@@ -819,6 +819,23 @@ function api_device_forget_push($selector) {
 
 	}
 
+	// A native push row is an endpoint at the push broker: the broker is told
+	// to forget it before the row goes.
+	if (pg_push_has_provider()) {
+
+		$endpoints = db_values("SELECT endpoint FROM push_subscriptions
+			WHERE auth_selector = '" . escape($selector) . "' AND provider <> ''");
+
+		if ($endpoints) {
+
+			require_once(PG_FUNCTIONS_DIR . '/includes/fn/push_broker.php');
+
+			pg_push_broker_forget_endpoints($endpoints);
+
+		}
+
+	}
+
 	db("DELETE FROM push_subscriptions WHERE auth_selector = '" . escape($selector) . "'");
 
 }

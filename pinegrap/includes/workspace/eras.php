@@ -123,16 +123,17 @@ function ws_agent_request_cleared_reason()
 }
 
 /**
- * Cancels one open agent request whose message went into an earlier version
- * of the conversation. The message is kept as it was: no mark is taken off
- * and it is not touched. A flow's agent box waiting on it goes on.
+ * Cancels one open agent request with the reason it is told, and lets a
+ * flow's agent box waiting on it go on. Nothing else is touched: a caller
+ * takes an agent's mark off where the message may be marked.
  *
- * @param int $request_id
+ * @param int    $request_id
+ * @param string $reason a sentence through lang()
  * @return bool whether it was open and is now cancelled
  */
-function ws_agent_request_freeze($request_id)
+function ws_agent_request_cancel($request_id, $reason)
 {
-    db("UPDATE ws_ai_requests SET status = 'cancelled', error = '" . e(mb_substr(ws_agent_request_cleared_reason(), 0, 250)) . "', ai_state = NULL, answered_at = '" . time() . "'
+    db("UPDATE ws_ai_requests SET status = 'cancelled', error = '" . e(mb_substr((string) $reason, 0, 250)) . "', ai_state = NULL, answered_at = '" . time() . "'
         WHERE id = '" . (int) $request_id . "' AND status IN ('queued', 'sent', 'running')");
 
     if ((int) mysqli_affected_rows(db::$con) <= 0) {
@@ -144,6 +145,19 @@ function ws_agent_request_freeze($request_id)
     }
 
     return true;
+}
+
+/**
+ * Cancels one open agent request whose message went into an earlier version
+ * of the conversation. The message is kept as it was: no mark is taken off
+ * and it is not touched. A flow's agent box waiting on it goes on.
+ *
+ * @param int $request_id
+ * @return bool whether it was open and is now cancelled
+ */
+function ws_agent_request_freeze($request_id)
+{
+    return ws_agent_request_cancel($request_id, ws_agent_request_cleared_reason());
 }
 
 /**

@@ -5812,29 +5812,59 @@ const StyleDesigner = (function () {
         },
         messages: {
             // PHP session messages — errors + notices from the liveform system.
-            // Replaces the legacy <?=$messages?> layout variable. On the canvas a styled
-            // placeholder is shown; at PHP render time the real session messages appear.
+            // Replaces the legacy <?=$messages?> layout variable. The messages
+            // depend on the request, so the saved body keeps a placeholder
+            // and the canvas draws a sample error in the node's look.
             // (No `formName` input: inside a system widget the server stamps
             // the node with the widget's liveform name (_pg_inject_messages_node());
             // at page level get_page_content.php fills the placeholder with
             // what the widgets left.)
+            // Settings: alertLook ('' standard, 'accent', 'solid', 'compact')
+            // and dismissButton. PHP twin: includes/fn/designer_messages.php
+            // (pg_messages_alert_html()); with neither set the site output
+            // is the one it always was.
             label: _sdT('Messages (PHP)'), icon: 'bi-chat-square-text',
-            defaultProps: { cssClass: '' },
+            defaultProps: { cssClass: '', alertLook: '', dismissButton: false },
+            looks: ['', 'accent', 'solid', 'compact'],
+            look: function (p) {
+                var l = p && typeof p.alertLook === 'string' ? p.alertLook : '';
+                return CONTENT.messages.looks.indexOf(l) !== -1 ? l : '';
+            },
+            // The alert's classes for a kind ('error', 'notice', 'warning'),
+            // as pg_messages_alert_html() writes them.
+            alertClass: function (kind, p) {
+                var colour = { error: 'danger', notice: 'success', warning: 'warning' }[kind] || 'success';
+                var look = CONTENT.messages.look(p);
+                var cls = 'software_' + kind + ' alert alert-' + colour + ' alert-dismissible show';
+                if (look === 'accent') cls += ' border-0 border-start border-4 border-' + colour;
+                else if (look === 'solid') cls += ' text-bg-' + colour;
+                else if (look === 'compact') cls += ' py-2 small';
+                return cls;
+            },
             render: function (doc, p) {
                 var d = doc.createElement('div');
                 // sd-editor-ph: editor chrome, left out of the canvas audit
-                // (_SD_CANVAS_AUDIT_SKIP); the site prints only the messages.
-                d.className = 'alert alert-info py-2 mb-0 sd-editor-ph';
-                d.style.borderStyle = 'dashed';
-                d.style.opacity = '0.7';
-                d.innerHTML = '<span class="bi bi-chat-square-text me-1"></span><strong>' + esc(_sdT('PHP Messages')) + '</strong>' +
-                    '<span class="ms-2 text-muted small">' + esc(_sdT('Errors and notices appear here')) + '</span>';
+                // (_SD_CANVAS_AUDIT_SKIP); the site prints the visitor's messages.
+                d.className = CONTENT.messages.alertClass('error', p) + ' sd-editor-ph' + (p.cssClass ? ' ' + p.cssClass : '');
+                d.setAttribute('role', 'alert');
+                d.title = _sdT('Sample error: the site shows the messages of the form the visitor sent here.');
+                var close = '';
+                if (p.dismissButton) {
+                    // No data-bs-dismiss on the canvas: a click must not remove the node.
+                    close = '<button type="button" tabindex="-1" class="btn-close no-popover' +
+                        (CONTENT.messages.look(p) === 'solid' ? ' btn-close-white' : '') +
+                        '" aria-label="' + esc(_sdT('Close')) + '"></button>';
+                }
+                d.innerHTML = close + '<h5 class="alert-heading description">' + esc(_sdT('An error occurred')) + ':</h5>' +
+                    '<p class="error">' + esc(_sdT('Sample error: please fill in the required fields.')) + '</p>';
                 return d;
             },
             toHTML: function (p, pad) {
-                // PHP renderer (_render_content_html) reads session messages at request time.
-                // No marker needed — contentType is kept in tree_json and resolved by PHP.
-                return pad + '<!--pg-messages-placeholder-->\n';
+                // get_page_content.php fills the placeholder per request; a
+                // look or the dismiss button rides on it (pg_messages_marker_settings()).
+                var look = CONTENT.messages.look(p);
+                if (look === '' && !p.dismissButton) return pad + '<!--pg-messages-placeholder-->\n';
+                return pad + '<!--pg-messages-placeholder:' + look + ':' + (p.dismissButton ? '1' : '0') + '-->\n';
             }
         },
         breadcrumb: {
@@ -10382,8 +10412,12 @@ const StyleDesigner = (function () {
     // .row. On the canvas it is laid out the way that parent lays out its
     // children, so the card being designed and the real records after it sit
     // in the same columns the page gives them.
+    // A row that wraps gives the area a line of its own; one that does not
+    // (a pagination: Previous, the page links list, Next) keeps its other
+    // items on the same line, so the area is only as wide as its records:
+    // at a full line it pushed Previous and Next out of the widget's frame.
     var _SD_FX_LOOP_PROPS = ['display', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'align-content',
-        'row-gap', 'column-gap', 'flex', 'min-width', 'grid-column', 'grid-template-columns', 'justify-items'];
+        'row-gap', 'column-gap', 'flex', 'width', 'min-width', 'grid-column', 'grid-template-columns', 'justify-items'];
     function _sdFxLoopArea(la, win) {
         var want = {};
         var lw = la.parentElement;
@@ -10391,12 +10425,15 @@ const StyleDesigner = (function () {
         var p = (lw && lw.classList.contains('sd-loop-single')) ? null : _sdLayoutParent(la);
         var cs = p ? win.getComputedStyle(p) : null;
         if (cs && (cs.display === 'flex' || cs.display === 'inline-flex')) {
+            var row = cs.flexDirection.indexOf('row') === 0;
+            var shared = row && cs.flexWrap === 'nowrap' && _sdFxLoopHasSiblings(lw, p);
             want = {
                 'display': 'flex', 'flex-direction': cs.flexDirection, 'flex-wrap': cs.flexWrap,
                 'justify-content': cs.justifyContent, 'align-items': cs.alignItems, 'align-content': cs.alignContent,
                 'row-gap': cs.rowGap, 'column-gap': cs.columnGap,
-                'flex': (cs.flexDirection.indexOf('row') === 0) ? '0 0 100%' : '0 0 auto', 'min-width': '0px'
+                'flex': shared ? '0 1 auto' : (row ? '0 0 100%' : '0 0 auto'), 'min-width': '0px'
             };
+            if (shared) want.width = 'auto';
         } else if (cs && (cs.display === 'grid' || cs.display === 'inline-grid')) {
             want = {
                 'display': 'grid', 'grid-column': '1 / -1', 'grid-template-columns': 'subgrid',
@@ -10411,6 +10448,19 @@ const StyleDesigner = (function () {
             if (la.style.getPropertyValue(k) === v) return;
             if (v) la.style.setProperty(k, v); else la.style.removeProperty(k);
         });
+    }
+
+    // Whether the loop area's wrapper `lw` shares its layout parent `p` with
+    // another element (a pagination's Previous and Next items). Wrappers
+    // between them are display:contents, so only the wrapper's own siblings
+    // and the parent's children are looked at.
+    function _sdFxLoopHasSiblings(lw, p) {
+        if (!lw || !p) return false;
+        var box = lw.parentElement === p ? p : lw.parentElement;
+        for (var c = box.firstElementChild; c; c = c.nextElementSibling) {
+            if (c !== lw && c.classList.contains('sd-wrap')) return true;
+        }
+        return false;
     }
 
     // A bound picture in the card being designed has no record behind it,
@@ -12202,7 +12252,7 @@ const StyleDesigner = (function () {
         var root = _sysWidgetRenderTreeRoot;
         var p = root ? findParent(node, root) : null;
         while (p) {
-            if (p.type === 'loop_area') place.inComment = true;
+            if (p.type === 'loop_area' && !_sdListIsSourced(p)) place.inComment = true;
             var pb = (p.props && p.props._bindings) || {};
             if (p.type === 'semantic' && p.props && String(p.props.tag || '').toLowerCase() === 'form') {
                 place.inForm = true;
@@ -12843,7 +12893,7 @@ const StyleDesigner = (function () {
         var flags = _sdCommentsCanvasFlags(cfg);
         if (flags.is_email && node.type === 'root' && node === _sysWidgetRenderTreeRoot && !_sdCommentsEmailDrawsComment(node, flags)) return true;
         if (flags.is_email && _sdCommentsEmailDrops(node)) return true;
-        if (node.type === 'loop_area') return !flags.has_comments;
+        if (node.type === 'loop_area' && !_sdListIsSourced(node)) return !flags.has_comments;
         var f = (node.props && node.props._bindings) ? node.props._bindings.eo_visible_if : '';
         if (!f || typeof f !== 'string') return false;
         if (Object.prototype.hasOwnProperty.call(flags, f)) return !flags[f];
@@ -12870,7 +12920,7 @@ const StyleDesigner = (function () {
         if (!path) return current;
         var need = [];
         path.forEach(function (n) {
-            if (n.type === 'loop_area') { need.push('has_comments'); return; }
+            if (n.type === 'loop_area' && !_sdListIsSourced(n)) { need.push('has_comments'); return; }
             var f = (n.props && n.props._bindings) ? n.props._bindings.eo_visible_if : '';
             if (f && typeof f === 'string') need.push(f);
         });
@@ -14295,6 +14345,12 @@ const StyleDesigner = (function () {
                         _hint.innerHTML += '<br><span style="font-size:.7rem;font-style:normal">'
                             + esc(_on.length ? _sdT('Turned on now: {var}', _on.join(', ')) : _sdT('No provider is turned on now.')) + '</span>';
                     }
+                }
+                // A server-built part of the comment form drawn as the
+                // visitor sees it (_sdCommentsSectionSample()).
+                if (!_hasChildren && _getSystemWidgetRegionType(node) === 'comments') {
+                    var _sample = _sdCommentsSectionSample(_sec, doc);
+                    if (_sample) _hint = _sample;
                 }
                 if (_hint) innerEl.appendChild(_hint);
             }
@@ -40769,6 +40825,12 @@ const StyleDesigner = (function () {
             ['__comments_show_featured_url', _sdT('Show the featured comments (featured filter only; the link drops otherwise)')],
             ['__login_url',                  _sdT('Sign-in page address (brings the visitor back to the form)')]
         ]},
+        // The page links built as a list (pg_comments_widget_paging()).
+        { label: _sdT('Page links'), tokens: [
+            ['__page_number',               _sdT('Page shown')],
+            ['__prev_page_url',             _sdT('Previous page link (ends at the comments)')],
+            ['__next_page_url',             _sdT('Next page link (ends at the comments)')]
+        ]},
         { label: _sdT('Comment (loop_area)'), tokens: [
             ['__comment_id',                _sdT('Comment number')],
             ['__comment_anchor',            _sdT('Comment anchor (c-123)')],
@@ -41935,6 +41997,94 @@ const StyleDesigner = (function () {
         var opts = _sdSectionOptions(type);
         for (var i = 0; i < opts.length; i++) if (opts[i][0] === sec) return opts[i][1];
         return '';
+    }
+
+    // ── Closed sections opened (Comments widget, Search results) ──────────
+    // A pagination section the server fills is drawn as page links a
+    // designer builds instead: the paging.pages list (_sdPagingListStarter(),
+    // pg_sw_list_paging_rows()). The site then leaves its own pagination out
+    // (pg_comments_widget_draw(), _render_system_widget_search_results()).
+    // A page saved with the section keeps printing it until its user turns
+    // it into the list.
+    function _sdSectionOpensAsList(kind, section) {
+        return (kind === 'comments' && section === 'comment_pagination') || (kind === 'search_results' && section === 'pagination');
+    }
+
+    // The panel's button under the Section binding list, '' for a section
+    // that does not open.
+    function _sdSectionOpenRow(kind, section) {
+        if (!_sdSectionOpensAsList(kind, section)) return '';
+        return '<button type="button" class="btn btn-sm btn-outline theme-primary w-100 mt-2 text-wrap" data-sd-section-open>' +
+                '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Convert to design elements')) + '</button>' +
+            '<div style="font-size:.66rem;color:#888;margin-top:3px">' +
+                esc(_sdT('Puts page links you design here: previous, one link per page, next. The site then draws them instead of its own pagination.')) +
+            '</div>';
+    }
+
+    // Replaces the pagination section `node` with the page links list in its
+    // parent; the section's own classes and show condition stay on the new
+    // nav. Returns the nav, or null when the node is not such a section.
+    /* @pg-site-output */
+    function _sdSectionToList(node, bs) {
+        var b = (node && node.props && node.props._bindings) || {};
+        if (!_sdSectionOpensAsList(_getSystemWidgetRegionType(node), b.section)) return null;
+        var hit = _sdAnyParent(node);
+        var parent = hit ? hit.parent : null;
+        var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(node) : -1;
+        if (idx === -1) return null;
+        var nav = _sdPagingListStarter(bs);
+        if (node.props.cssClass) nav.props.cssClass = node.props.cssClass;
+        if (b.eo_visible_if) nav.props._bindings = { eo_visible_if: b.eo_visible_if };
+        parent.children.splice(idx, 1, nav);
+        if (hit.sid) _sharedDirty[hit.sid] = true;
+        return nav;
+    }
+
+    // What the site prints in a comment form section the server builds
+    // (pg_comments_rating_input_html(), pg_comments_publish_html(),
+    // get_captcha_fields()), drawn as a sample: inert, never saved, its
+    // setting named under it. null for any other section.
+    /* @pg-site-output */
+    function _sdCommentsSectionSample(section, doc) {
+        var html = '';
+        var setting = '';
+        if (section === 'comment_rating_input') {
+            // Five stars filled, as the site draws its default (5).
+            html = '<div class="d-inline-flex gap-1" role="radiogroup">';
+            for (var i = 1; i <= 5; i++) {
+                html += '<input type="radio" class="btn-check" tabindex="-1"' + (i === 5 ? ' checked' : '') + '>' +
+                    '<label class="btn btn-link p-0 border-0 lh-1"><span class="text-warning">' +
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="1.5em" height="1.5em" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">' +
+                    '<path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>' +
+                    '</svg></span></label>';
+            }
+            html += '</div>';
+            setting = _sdT('Shown when stars are on in this page\'s comment settings.');
+        } else if (section === 'comment_publish') {
+            html = '<div class="pg-comment-publish">' +
+                '<label class="form-label me-2">' + esc(_sdT('Publish')) + '</label>' +
+                '<select class="form-select form-select-sm d-inline-block w-auto" tabindex="-1">' +
+                    '<option>' + esc(_sdT('Now')) + '</option>' +
+                    '<option>' + esc(_sdT('At a Scheduled Time')) + '</option>' +
+                    '<option>' + esc(_sdT('Maybe Later')) + '</option>' +
+                '</select></div>';
+            setting = _sdT('Shown to staff only: when their comment is published.');
+        } else if (section === 'comment_captcha') {
+            html = '<div class="captcha">' +
+                '<div class="software_captcha_label" style="font-weight:bold;margin-bottom:.5em">' + esc(_sdT('To prevent spam, please tell us')) + ':</div>' +
+                '<label class="software_captcha_question"> ' + esc(_sdT('What is {var:1} + {var:2} ?', ['3', '4'])) + '</label> ' +
+                '<input type="number" class="software_input_text software_captcha_answer" size="2" tabindex="-1">' +
+                '</div>';
+            setting = _sdT('Shown when CAPTCHA is on in the site settings; staff never get it.');
+        } else {
+            return null;
+        }
+        var box = doc.createElement('div');
+        box.className = 'sd-section-binding-hint sd-section-sample';
+        box.setAttribute('inert', '');
+        box.style.cssText = 'pointer-events:none';
+        box.innerHTML = html + '<div class="small text-body-secondary fst-italic mt-1">' + esc(setting) + '</div>';
+        return box;
     }
 
     // Resolve the regionType of the system widget that contains `node`.
@@ -43525,6 +43675,8 @@ const StyleDesigner = (function () {
             ['files_on',                 _sdT('Attachments are on for the page')],
             ['watching_on',              _sdT('Notices of new comments are on for the page')],
             ['has_more_pages',           _sdT('The comments run over more than one page')],
+            ['has_prev_page',            _sdT('A previous page of comments exists')],
+            ['has_next_page',            _sdT('A next page of comments exists')],
             ['is_replying',              _sdT('The form answers a comment ("Replying to")')],
             ['is_watching',              _sdT('The visitor is told of new comments')],
             ['not_watching',             _sdT('The visitor may ask to be told of new comments')],
@@ -46158,7 +46310,8 @@ const StyleDesigner = (function () {
                     _sectionOpts.map(function(o) {
                         return '<option value="' + o[0] + '"' + (o[0] === _curSection ? ' selected' : '') + '>' + o[1] + '</option>';
                     }).join('') + '</select>' +
-                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The backend fills this container with the ready-made HTML of the chosen system section. The element\'s own style and class settings are kept.') + '</div>'
+                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The backend fills this container with the ready-made HTML of the chosen system section. The element\'s own style and class settings are kept.') + '</div>' +
+                    _sdSectionOpenRow(_semSwRegion, _curSection)
                 );
             }
         }
@@ -48699,6 +48852,28 @@ const StyleDesigner = (function () {
                 + '</div></div>';
         }
 
+        // Messages: alert look and dismiss button; the canvas draws a
+        // sample error in that look (CONTENT.messages.render()).
+        if (ct === 'messages') {
+            var _msgLook = cnt.look(n.props);
+            var _msgOpts = [
+                ['',        _sdT('Standard')],
+                ['accent',  _sdT('Line on the left')],
+                ['solid',   _sdT('Filled')],
+                ['compact', _sdT('Compact')]
+            ];
+            h += row(_sdT('Alert look'),
+                '<select class="form-control form-control-sm" data-prop="alertLook" aria-label="' + esc(_sdT('Alert look')) + '">' +
+                _msgOpts.map(function (o) {
+                    return '<option value="' + o[0] + '"' + (o[0] === _msgLook ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
+                }).join('') + '</select>');
+            h += row(_sdT('Dismiss button'), sw('dismissButton', !!n.props.dismissButton));
+            h += '<div class="sd-prop-row" style="padding:6px 8px;background:rgba(99,102,241,.06);border-radius:3px"><div style="font-size:.7rem;color:#6366f1;line-height:1.4">' +
+                '<i class="bi bi-info-circle me-1"></i>' +
+                esc(_sdT('The canvas shows a sample error. On the site the errors and notices of the form the visitor sent appear here in this look.')) +
+                '</div></div>';
+        }
+
         // Carousel: dedicated UI (not the generic dp-iterator) so:
         //   • thumbsPosition is a select (not free-text)
         //   • indicator/controls toggles use real switches
@@ -48828,6 +49003,8 @@ const StyleDesigner = (function () {
             // Variant attribute template: same — every prop has a dedicated
             // input above, skip the generic loop.
             if (ct === 'variant_attr') continue;
+            // Messages: its rows are drawn above.
+            if (ct === 'messages') continue;
             var val = n.props[key] !== undefined ? n.props[key] : dp[key];
             // 'lead' for paragraph: may come from p.lead boolean (legacy) OR cssClass string —
             // normalize to cssClass-based toggle so carousel-created paragraphs work correctly.
@@ -52172,6 +52349,21 @@ const StyleDesigner = (function () {
             });
         });
 
+        // A pagination section turned into page links (_sdSectionToList()).
+        document.querySelectorAll('#sd-properties [data-sd-section-open]').forEach(function (el) {
+            el.addEventListener('click', function () {
+                if (!selectedNode) return;
+                saveState();
+                var list = _sdSectionToList(selectedNode, _sdUsesBootstrap());
+                if (!list) return;
+                selectedNode = list;
+                selectedNodes = [];
+                if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(list);
+                render();
+                renderProperties();
+            });
+        });
+
         // A value put inside the words (_sdSentenceRow()).
         document.querySelectorAll('#sd-properties select[data-sentence-add]').forEach(function (el) {
             el.addEventListener('change', function () {
@@ -55382,9 +55574,6 @@ const StyleDesigner = (function () {
     function _sdDockSetOpen(side, on) {
         var body = _sdDockBody();
         if (!body) return;
-        // Whatever asks for the left drawer while the menu button has the
-        // panel hidden gets the panel back first.
-        if (on && side === 'left' && body.classList.contains('sd-hide-left')) { _sdLeftSetHidden(false, true); return; }
         var cls = side === 'left' ? 'sd-open-left' : 'sd-open-right';
         // A panel sitting in the layout has nothing to slide open.
         if (on && !body.classList.contains(side === 'left' ? 'sd-dock-left' : 'sd-dock-right')) return;
@@ -55562,56 +55751,11 @@ const StyleDesigner = (function () {
         }, 120);
     }
 
-    // ── The toolbar's menu button: the left panel out of the way ──────
-    // Hiding takes the panel and its rail off the screen together
-    // (sd-hide-left on .sd-body), so the canvas gets the whole width. The
-    // docking state underneath is kept: showing puts the panel back as
-    // docking has it, in the flow, or on its rail with the drawer open, so
-    // one press leaves the palette on screen at every width.
-    var _SD_HIDE_LEFT_KEY = 'pinegrap_designer_hide_left';
-
-    function _sdLeftHidden() {
-        var body = _sdDockBody();
-        return !!(body && body.classList.contains('sd-hide-left'));
-    }
-
-    function _sdLeftHideSync() {
-        var btn = document.getElementById('sd-left-toggle');
-        if (!btn) return;
-        var hidden = _sdLeftHidden();
-        var label = hidden ? _sdT('Show the left panel') : _sdT('Hide the left panel');
-        btn.setAttribute('aria-expanded', hidden ? 'false' : 'true');
-        btn.title = label;
-        btn.setAttribute('aria-label', label);
-    }
-
-    function _sdLeftSetHidden(on, remember) {
-        var body = _sdDockBody();
-        if (!body) return;
-        if (on) _sdDockSetOpen('left', false);
-        body.classList.toggle('sd-hide-left', !!on);
-        // A docked panel comes back with its drawer open (which also closes
-        // the other drawer and the bottom sheet: one layer at a time).
-        if (!on && body.classList.contains('sd-dock-left')) _sdDockSetOpen('left', true);
-        if (remember) {
-            try { localStorage.setItem(_SD_HIDE_LEFT_KEY, on ? '1' : '0'); } catch (e) {}
-        }
-        _sdLeftHideSync();
-        // The canvas frame's width label follows by its own ResizeObserver;
-        // the selection's size badge is placed by hand.
-        if (selectedNode) setTimeout(_positionSizeBadge, 0);
-    }
-
-    function _sdLeftHideInit() {
-        var btn = document.getElementById('sd-left-toggle');
-        if (btn && !btn._sdWired) {
-            btn._sdWired = true;
-            btn.addEventListener('click', function () { _sdLeftSetHidden(!_sdLeftHidden(), true); });
-        }
-        var stored = false;
-        try { stored = localStorage.getItem(_SD_HIDE_LEFT_KEY) === '1'; } catch (e) {}
-        if (stored) _sdLeftSetHidden(true, false);
-        else _sdLeftHideSync();
+    // The toolbar's first button (#sd-left-toggle) once hid this panel and
+    // kept the choice in pinegrap_designer_hide_left; it opens the main menu
+    // now (backend.src.js), so a panel hidden by the old key comes back.
+    function _sdLeftHideForget() {
+        try { localStorage.removeItem('pinegrap_designer_hide_left'); } catch (e) {}
     }
 
     function initPanelDocking() {
@@ -55673,7 +55817,7 @@ const StyleDesigner = (function () {
         window.addEventListener('resize', _sdDockOnResize);
         _sdDockApply();
         _sdRailSyncTabs();
-        _sdLeftHideInit();
+        _sdLeftHideForget();
     }
 
     function initPanelResizes() {
@@ -58726,7 +58870,7 @@ const StyleDesigner = (function () {
         'paging.pages': {
             label: _sdT('Page links'),
             arg: '', argRequired: false,
-            kinds: ['form_list_view', 'catalog_listing', 'search_results'],
+            kinds: ['form_list_view', 'catalog_listing', 'search_results', 'comments'],
             rows: [
                 ['__pager_number',     _sdT('Page number (empty for a gap)')],
                 ['__pager_url',        _sdT('Page address (empty for a gap and the page shown)')],
@@ -75007,7 +75151,6 @@ const StyleDesigner = (function () {
                 if (b) b.click();
             }},
             { id: 'act_grid', label: _sdT('Toggle Grid'), icon: 'bi-grid', action: function() { var b = document.getElementById('sd-vb-grid'); if (b) b.click(); } },
-            { id: 'act_left_panel', label: _sdLeftHidden() ? _sdT('Show the left panel') : _sdT('Hide the left panel'), icon: 'bi-layout-sidebar', action: function() { _sdLeftSetHidden(!_sdLeftHidden(), true); } },
             { id: 'act_outline', label: _sdT('Toggle Outline'), icon: 'bi-grid-3x3', action: function() { var b = document.getElementById('sd-vb-outline'); if (b) b.click(); } },
             { id: 'act_shortcuts', label: _sdT('Keyboard Shortcuts'), icon: 'bi-question-circle', hint: '?', action: function() { openShortcutsModal(); } }
         ];

@@ -1625,6 +1625,13 @@ function ws_api_messages_create($params)
  */
 function ws_api_messages_forward($params)
 {
+    // note_id sends the messages into a note instead of a channel.
+    if (array_key_exists('note_id', $params) && ($params['note_id'] !== null)) {
+        ws_api_messages_forward_into_note($params);
+
+        return;
+    }
+
     $viewer = ws_api_viewer();
     $target = ws_api_channel_or_404($viewer, $params['id']);
     $text = (string) ($params['text'] ?? '');
@@ -1664,6 +1671,65 @@ function ws_api_messages_forward($params)
     $row = ws_message($result['message_id']);
 
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
+}
+
+/**
+ * Forwards messages into a note of the owner's, as Forward to a note does in
+ * the panel: a new one (note_id 0) or, at its end, one they may change. id
+ * is the channel the messages come from.
+ */
+function ws_api_messages_forward_into_note($params)
+{
+    $viewer = ws_api_viewer();
+    $source = ws_api_channel_or_404($viewer, $params['id']);
+    $note_id = (int) $params['note_id'];
+    $text = (string) ($params['text'] ?? '');
+
+    if (!ws_notes_ready()) {
+        api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+    }
+
+    // A note is found, opened and changed as POST /workspace/notes/{id} finds it.
+    if ($note_id > 0) {
+        $note = ws_api_note_or_404($viewer, $note_id);
+        ws_api_note_locked_stop($viewer, $note);
+
+        if (!in_array($note['access'], array('owner', 'edit'), true)) {
+            api_fail(403, 'forbidden', lang('This note was shared with you to read only.'));
+        }
+    }
+
+    $checked = ws_forward_to_note_check($viewer, (array) $params['message_ids'], $note_id, $text);
+
+    if (!$checked['ok']) {
+        if ($checked['field'] === '') {
+            api_fail(503, 'service_unavailable', $checked['error']);
+        }
+
+        if ($checked['conflict']) {
+            api_fail(409, 'changed_meanwhile', $checked['error'], 'note_id');
+        }
+
+        api_fail_validation($checked['error'], $checked['field']);
+    }
+
+    if ((int) $checked['channel']['id'] !== (int) $source['id']) {
+        api_fail_validation(lang('That message could not be found.'), 'message_ids');
+    }
+
+    api_dry_run_stop(($note_id > 0) ? 'updated' : 'created', 'workspace_note', array(
+        'note_id'           => $note_id,
+        'source_channel_id' => (int) $source['id'],
+        'forwards'          => count($checked['rows']),
+    ));
+
+    $result = ws_forward_to_note($viewer, (array) $params['message_ids'], $note_id, $text);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'note_id');
+    }
+
+    api_ok(ws_api_note_present($viewer, ws_note_present($viewer, ws_note_for($viewer, $result['note_id'], 'view'))), 201);
 }
 
 /**
@@ -3459,6 +3525,202 @@ function ws_api_messages_ack($params)
     $row = ws_message($message['id']);
 
     api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))));
+}
+
+// What ws_api_messages_readers() answers.
+function ws_api_message_readers_schema()
+{
+    return array(
+        'message_id' => 'integer',
+        'channel_id' => 'integer',
+        'seen'       => 'WorkspacePerson[]',
+        'unseen'     => 'WorkspacePerson[]',
+        'agents'     => 'WorkspaceMessageReaderAgent[]',
+        'ack'        => 'WorkspaceMessageReadReceipts?',
+    );
+}
+
+// An agent of the channel beside the message (ws_message_seen_agents()).
+function ws_api_message_reader_agent_schema()
+{
+    return array(
+        'key'    => 'string',
+        'app_id' => 'integer?',
+        'name'   => 'string',
+        'handle' => 'string',
+        'state'  => 'string',
+        'at'     => 'string?',
+    );
+}
+
+// The read receipts of a message (ws_ack_people()).
+function ws_api_message_read_receipts_schema()
+{
+    return array(
+        'listed' => 'boolean',
+        'read'   => 'WorkspaceMessageReadReceipt[]',
+        'unread' => 'WorkspacePerson[]',
+    );
+}
+
+// One read receipt given.
+function ws_api_message_read_receipt_schema()
+{
+    return array('user_id' => 'integer', 'name' => 'string', 'read_at' => 'string?');
+}
+
+// What ws_api_messages_mention_invite() answers.
+function ws_api_message_mention_invite_schema()
+{
+    return array(
+        'message_id' => 'integer',
+        'channel_id' => 'integer',
+        'added'      => 'integer[]',
+        'message'    => 'WorkspaceMessage',
+    );
+}
+
+/**
+ * An agent of ws_message_seen_by() as the readers route gives it. Pure.
+ *
+ * @param array $agent key, app_id, name, handle, state, at
+ * @return array
+ */
+function ws_api_message_reader_agent($agent)
+{
+    return array(
+        'key'    => (string) ($agent['key'] ?? ''),
+        'app_id' => ((int) ($agent['app_id'] ?? 0) > 0) ? (int) $agent['app_id'] : null,
+        'name'   => (string) ($agent['name'] ?? ''),
+        'handle' => (string) ($agent['handle'] ?? ''),
+        'state'  => (string) ($agent['state'] ?? ''),
+        'at'     => api_time($agent['at'] ?? 0),
+    );
+}
+
+/**
+ * The read receipts of ws_ack_people() as the readers route gives them,
+ * or the empty lists of somebody who may not see them. Pure.
+ *
+ * @param array|null $people ws_ack_people() when it answered, null when the
+ *                           owner may not list them
+ * @return array listed, read, unread
+ */
+function ws_api_message_read_receipts($people)
+{
+    if (!is_array($people)) {
+        return array('listed' => false, 'read' => array(), 'unread' => array());
+    }
+
+    $brief = function ($entry) {
+        return array('user_id' => (int) $entry['id'], 'name' => (string) $entry['name']);
+    };
+
+    return array(
+        'listed' => true,
+        'read'   => array_map(function ($entry) use ($brief) {
+            return $brief($entry) + array('read_at' => api_time($entry['at'] ?? 0));
+        }, (array) ($people['read'] ?? array())),
+        'unread' => array_map($brief, (array) ($people['unread'] ?? array())),
+    );
+}
+
+/**
+ * GET /workspace/messages/{id}/readers: who of the channel's members has
+ * seen as far as the message and who not, its agents beside them
+ * (ws_message_seen_by()), and when read receipts were asked, who gave one
+ * (ws_ack_people(), for the writer, whoever asked and staff).
+ */
+function ws_api_messages_readers($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_message((int) $params['id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $message['channel_id']);
+
+    $seen = ws_message_seen_by($viewer, $message);
+
+    if (!$seen['ok']) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    $ack = null;
+
+    if (function_exists('ws_acks_map') && ws_acks_ready()) {
+        $map = ws_acks_map(array($message), $viewer);
+
+        if (isset($map[(int) $message['id']])) {
+            $people = ws_ack_people($viewer, $message);
+            $ack = ws_api_message_read_receipts($people['ok'] ? $people : null);
+        }
+    }
+
+    api_ok(array(
+        'message_id' => (int) $message['id'],
+        'channel_id' => (int) $message['channel_id'],
+        'seen'       => array_values(array_map('ws_api_person_brief_ref', $seen['seen'])),
+        'unseen'     => array_values(array_map('ws_api_person_brief_ref', $seen['unseen'])),
+        'agents'     => array_map('ws_api_message_reader_agent', array_merge($seen['agents_seen'], $seen['agents_waiting'], $seen['agents_quiet'])),
+        'ack'        => $ack,
+    ));
+}
+
+/**
+ * POST /workspace/messages/{id}/mention-invite: brings the people a message
+ * mentions who are outside its channel in, as the line under the message in
+ * the panel does; each is handed the mention.
+ */
+function ws_api_messages_mention_invite($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_message((int) $params['id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, ws_channel($message['channel_id']))) {
+        api_fail_not_found(lang('Message'));
+    }
+
+    // The limits of the application Claude works through.
+    ws_api_channel_or_404($viewer, $message['channel_id']);
+
+    $user_ids = (array_key_exists('user_ids', $params) && ($params['user_ids'] !== null)) ? ws_api_user_ids($params['user_ids'], 'user_ids') : null;
+
+    // The checks ws_message_mention_invite() makes, made first so that a dry
+    // run meets the same refusals.
+    $checked = ws_message_mention_invite_check($viewer, $message, $user_ids);
+
+    if (!$checked['ok']) {
+        if ($checked['forbidden']) {
+            api_fail(403, 'forbidden', $checked['error']);
+        }
+
+        api_fail_not_found(lang('Message'));
+    }
+
+    api_dry_run_stop('added', 'workspace_channel_member', array(
+        'message_id' => (int) $message['id'],
+        'channel_id' => (int) $message['channel_id'],
+        'user_ids'   => $checked['user_ids'],
+    ));
+
+    $result = ws_message_mention_invite($viewer, $message, $user_ids);
+
+    if (!$result['ok']) {
+        api_fail(403, 'forbidden', $result['error']);
+    }
+
+    $row = ws_message($message['id']);
+
+    api_ok(array(
+        'message_id' => (int) $message['id'],
+        'channel_id' => (int) $message['channel_id'],
+        'added'      => array_values(array_map('intval', $result['added'])),
+        'message'    => ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))),
+    ));
 }
 
 /**
@@ -6447,9 +6709,30 @@ function ws_api_assistant_request_present($viewer, $row, $people)
     // read where they were asked.
     $task_id = ((int) $row['channel_id'] === 0) ? (int) ($row['task_id'] ?? 0) : 0;
 
+    // A registry agent's or a model assistant's request is named as the
+    // queue writes it (agent:<id>, the older app:<id> too, or model:<id>) and
+    // says where it stands in the words under its message.
+    $agent = (string) ($row['agent'] ?? '');
+    $registry = function_exists('ws_agent_request_parse') ? ws_agent_request_line_value($agent) : '';
+    $registry = ($registry !== '' && ws_agent_request_parse($registry) !== null) ? $registry : '';
+
+    if ($registry !== '') {
+        $agent = $registry;
+    } elseif (!in_array($agent, array('ai', 'mcp'), true)) {
+        $agent = 'claude';
+    }
+
+    $label = null;
+
+    if ($registry !== '') {
+        $state = ws_agent_request_state(array_merge($row, array('agent' => $registry)));
+        $label = (string) $state['label'];
+    }
+
     return array(
         'id'               => (int) $row['id'],
-        'agent'            => in_array((string) ($row['agent'] ?? ''), array('ai', 'mcp'), true) ? (string) $row['agent'] : 'claude',
+        'agent'            => $agent,
+        'label'            => $label,
         'status'           => (string) $row['status'],
         'origin'           => ws_api_assistant_request_origin($row),
         'channel_id'       => ((int) $row['channel_id'] > 0) ? (int) $row['channel_id'] : null,
@@ -6477,6 +6760,7 @@ function ws_api_assistant_request_schema()
     return array(
         'id'               => 'integer',
         'agent'            => 'string',
+        'label'            => 'string?',
         'status'           => 'string',
         'origin'           => 'string',
         'channel_id'       => 'integer?',
@@ -6523,6 +6807,58 @@ function ws_api_assistant_requests_rows($where, $limit)
         LIMIT " . max(1, (int) $limit));
 }
 
+/**
+ * The requests a reader of GET /workspace/assistant-requests reaches, as SQL
+ * over ws_ai_requests: those asked in a channel they read, the runs on a
+ * task they see, and their own asked where neither is (in a note or in the
+ * page editor). Every agent filter is added to this, never in its place.
+ * Pure.
+ *
+ * @param int    $viewer_id
+ * @param int[]  $channel_ids ws_api_readable_channel_ids()
+ * @param string $task_seen_sql ws_api_task_seen_sql() over ws_tasks t; '' when tasks have no runs
+ * @return string
+ */
+function ws_api_assistant_requests_reach($viewer_id, $channel_ids, $task_seen_sql)
+{
+    $tasks = ((string) $task_seen_sql !== '');
+    $reach = array("(channel_id = 0 AND requested_by = '" . (int) $viewer_id . "'" . ($tasks ? " AND task_id = 0" : '') . ")");
+    $channel_ids = array_values(array_filter(array_map('intval', (array) $channel_ids)));
+
+    if (!empty($channel_ids)) {
+        $reach[] = "channel_id IN (" . implode(',', $channel_ids) . ")";
+    }
+
+    if ($tasks) {
+        $reach[] = "(channel_id = 0 AND task_id IN (SELECT t.id FROM ws_tasks t WHERE " . $task_seen_sql . "))";
+    }
+
+    return "(" . implode(' OR ', $reach) . ")";
+}
+
+/**
+ * The agent filter agent:<id> (a registry agent's requests) or model:<id>
+ * (a model assistant's) as SQL over ws_ai_requests, every value the agent's
+ * rows may carry (ws_agent_activity_keys()). A row of the older app:<id>
+ * shape counts only on a message: a proposal carries app:<api app id> as
+ * well, and never on a message. Pure.
+ *
+ * @param string $value
+ * @return string ' AND (…)', or '' when the value names no registry agent
+ */
+function ws_api_assistant_requests_registry_where($value)
+{
+    $parsed = ws_agent_request_parse((string) $value);
+    $match = array();
+
+    // The keys are built from the parsed integer id, so they need no escaping.
+    foreach (($parsed !== null) ? ws_agent_activity_keys($parsed) : array() as $key) {
+        $match[] = (strpos($key, 'app:') === 0) ? "(agent = '" . $key . "' AND message_id > 0)" : "agent = '" . $key . "'";
+    }
+
+    return empty($match) ? '' : ' AND (' . implode(' OR ', $match) . ')';
+}
+
 function ws_api_assistant_requests_list($params)
 {
     $viewer = ws_api_viewer();
@@ -6536,18 +6872,7 @@ function ws_api_assistant_requests_list($params)
     // Asked in a channel the owner reads; on a task the owner sees; or by
     // the owner where neither is: in a note or in the page editor.
     $tasks = ws_delegation_ready();
-    $reach = array("(channel_id = 0 AND requested_by = '" . (int) $viewer['id'] . "'" . ($tasks ? " AND task_id = 0" : '') . ")");
-    $channel_ids = ws_api_readable_channel_ids($viewer);
-
-    if (!empty($channel_ids)) {
-        $reach[] = "channel_id IN (" . implode(',', $channel_ids) . ")";
-    }
-
-    if ($tasks) {
-        $reach[] = "(channel_id = 0 AND task_id IN (SELECT t.id FROM ws_tasks t WHERE " . ws_api_task_seen_sql($viewer, 't') . "))";
-    }
-
-    $where = "(" . implode(' OR ', $reach) . ")";
+    $where = ws_api_assistant_requests_reach($viewer['id'], ws_api_readable_channel_ids($viewer), $tasks ? ws_api_task_seen_sql($viewer, 't') : '');
 
     if (!empty($params['task_id'])) {
         $task = ws_api_task_or_404($viewer, $params['task_id']);
@@ -6563,13 +6888,32 @@ function ws_api_assistant_requests_list($params)
         $where .= " AND status = '" . e($params['status']) . "'";
     }
 
-    if (!empty($params['agent']) && function_exists('ws_ai_agent_where')) {
-        $where .= ws_ai_agent_where((string) $params['agent']);
+    $agent = (string) ($params['agent'] ?? '');
+    $registry = '';
+
+    if (in_array($agent, array('claude', 'ai', 'mcp'), true)) {
+        if (function_exists('ws_ai_agent_where')) {
+            $where .= ws_ai_agent_where($agent);
+        }
+    } elseif ($agent !== '') {
+        $registry = function_exists('ws_agent_request_parse') ? ws_api_assistant_requests_registry_where($agent) : '';
+
+        if ($registry === '') {
+            api_fail_validation(lang('agent is claude, ai, mcp, agent:<id> or model:<id>.'), 'agent');
+        }
+
+        // Without the column no request was ever a registry agent's.
+        if (!function_exists('waf_table_has_column') || !waf_table_has_column('ws_ai_requests', 'agent')) {
+            api_ok_list(array(), $limit);
+        }
+
+        $where .= $registry;
     }
 
     // An application's proposal (proposals.php) asked no assistant: its
-    // changes are listed by GET /workspace/changes.
-    if (function_exists('ws_proposals_ready') && ws_proposals_ready()) {
+    // changes are listed by GET /workspace/changes. A registry agent's filter
+    // keeps proposals out itself, and lets that agent's older app:<id> rows in.
+    if (($registry === '') && function_exists('ws_proposals_ready') && ws_proposals_ready()) {
         $where .= " AND " . ws_proposal_where('', false);
     }
 

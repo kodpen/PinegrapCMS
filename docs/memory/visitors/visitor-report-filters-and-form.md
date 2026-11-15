@@ -14,7 +14,7 @@ module: visitor_report
 By `pg_visitor_paid_organic_sql()` (the old two-way split; the full channel is `visitor-channel-rule.md`), through `pg_visitor_report_channel_sql($filter)`: with an empty flag nothing is paid. The screen's own `LIKE "%flag%"` matched every visit when the setting was empty (#5783). Filter values stay `pay_per_click` / `organic` / `neither`; the grouping returns the English names `update_summarize_by_name()` translates.
 
 ## How does the form come back after a save error?
-"Submitted" is `field_in_session('last_filter_number')` (the hidden field posted with every save). It used to be `submit_button`, the Delete button's name, so defaults (Year/Month/Day) and the stored filters overwrote what was entered (#5781).
+"Submitted" is `field_in_session('last_filter_number')` (the hidden field posted with every save). It was `submit_button`, the Delete button's name, so defaults and stored filters overwrote what was entered (#5781).
 - The form sits in the Report settings drawer (#8764, `ui/report-settings-drawer.md`); it opens by itself on a new report and, for a saved one too, when `check_form_errors()` is true.
 
 ## Where is the report name shown?
@@ -24,7 +24,7 @@ On the tab (`Visitor Report: <name>`) and as the breadcrumb's last item (Overvie
 Detail rows are read 500 a time; a group with no row on that page had no `visitors` key and printed warnings. Groups start with `'visitors' => array()` (#5780).
 
 ## Which texts does the screen use for flags?
-Its own keys: "Form submitted / not submitted", "Order created / not created" etc. for filter values and group names, "Neither (no paid or search visit)" = "Hiçbiri", "Average Order Amount". The shared "Created", "Submitted", "Neither" keys are column headings elsewhere and stay (#5786).
+Its own keys: "Form submitted / not submitted", "Order created / not created" etc. for filter values and group names, "Neither (no paid or search visit)" = "Hiçbiri", "Order amount per visitor" (was "Average Order Amount", #9718). The shared "Created", "Submitted", "Neither" keys are column headings elsewhere and stay (#5786).
 
 ## What changed on Visit Details?
 An empty landing page shows `-` instead of an empty link to `/`; the IP address is written once, in the General Visit Information card (#5785).

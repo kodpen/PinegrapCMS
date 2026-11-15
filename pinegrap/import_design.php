@@ -323,8 +323,9 @@ if ($action != 'import') {
             echo '<div class="card-footer"><div class="alert theme-success mb-0"><strong>' . lang('Scan completed successfully.') . '</strong> ' . lang('Click Import to transfer items to your site, or Restart to adjust settings and scan again.') . $output_max_imported_items_warning . '</div></div>';
 
             $output_buttons = '
-            <button type="submit" name="submit_button" value="Import" class="btn btn-solid theme-primary"><span class="material-icons me-3">download</span><span class="pg-btn-label">' . lang(array('string'=>'Import') ) . '</span></button>
-            <button type="button" class="btn btn-solid theme-warning" onclick="window.location.href=\'import_design.php\'"><span class="material-icons me-3">refresh</span><span class="pg-btn-label">' . lang(array('string'=>'Restart') ) . '</span></button>';
+            ' . pg_save_bar_return_button() . '
+            <button type="button" class="btn btn-solid theme-warning" onclick="window.location.href=\'import_design.php\'"><span class="material-icons me-3">refresh</span><span class="pg-btn-label">' . lang(array('string'=>'Restart') ) . '</span></button>
+            <button type="submit" name="submit_button" value="Import" class="btn btn-solid theme-primary"><span class="material-icons me-3">download</span><span class="pg-btn-label">' . lang(array('string'=>'Import') ) . '</span></button>';
         }        
 
 
@@ -336,16 +337,10 @@ if ($action != 'import') {
     // settings markup leaves open. The scan step streams its result in one
     // full-width card, so its bar stays outside a row.
     echo
-        ($action == '' ? '<div class="col-12 order-3">' : '') . '
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            ' . $output_buttons . '
-                        </div>
-                        ' . ($action == 'scan' ? '<p class="small fg-secondary mt-2 mb-0" id="import_design_status" role="status" aria-live="polite"></p>' : '') . '
-                    </div>
-                </nav>
-                ' . ($action == '' ? '</div></div>' : '') . '
+        pg_save_bar('
+                            ' . $output_buttons, array('after' => ($action == 'scan' ? '
+                        <p class="small fg-secondary mt-2 mb-0" id="import_design_status" role="status" aria-live="polite"></p>' : ''))) . '
+                ' . ($action == '' ? '</div>' : '') . '
             </form>
                 </div>
             </div>

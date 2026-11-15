@@ -133,8 +133,8 @@ if (is_array($privacy_erase_result) && in_array($privacy_erase_result['status'],
 
         $privacy_erase_body .= '
             <div class="card mb-12">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h($privacy_erase_title) . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                    <span>' . h($privacy_erase_title) . '</span>
                 </div>
                 <div class="card-body p-0">
                     <table class="table table-hover mb-0">
@@ -200,8 +200,8 @@ if (is_array($privacy_erase_result) && in_array($privacy_erase_result['status'],
     $privacy_erase_side = $privacy_erase_done ? '' : '
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card mb-12">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Who this is about')) . '</span>
+                    <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                        <span>' . h(lang('Who this is about')) . '</span>
                     </div>
                     <div class="card-body">
                         <div class="small fg-secondary">' . h(lang('E-mail Address')) . '</div>
@@ -216,17 +216,17 @@ if (is_array($privacy_erase_result) && in_array($privacy_erase_result['status'],
 
 $privacy_erase_search = '
             <div class="card mb-12">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Find a person')) . '</span>
+                <div class="card-header bg-reset border-0 pg-title-section d-flex justify-content-between align-items-center">
+                    <span>' . h(lang('Find a person')) . '</span>
                 </div>
                 <div class="card-body">
                     <form action="privacy_erase.php" method="post" class="disable_shortcut row g-3 align-items-end">
                         ' . get_token_field() . '
-                        <div class="col-12 md:col-8 xl:col-6">
+                        <div class="col-12 md:col-6">
                             <label for="email" class="form-label">' . h(lang('E-mail Address')) . '</label>
                             ' . $liveform->output_field(array('type' => 'email', 'id' => 'email', 'name' => 'email', 'class' => 'form-control', 'maxlength' => '254', 'autocomplete' => 'off')) . '
                         </div>
-                        <div class="col-12 md:col-8 xl:col-6">
+                        <div class="col-12">
                             <label for="fediverse" class="form-label">' . h(lang('Fediverse account')) . '</label>
                             ' . $liveform->output_field(array('type' => 'url', 'id' => 'fediverse', 'name' => 'fediverse', 'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off', 'spellcheck' => 'false', 'placeholder' => 'https://mastodon.example/users/name')) . '
                         </div>

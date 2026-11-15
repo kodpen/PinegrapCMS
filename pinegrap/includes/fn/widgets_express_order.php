@@ -195,6 +195,11 @@ function _eo_restore_cart_from_reference_code()
     $new_oid  = (int)$row['id'];
     $_SESSION['ecommerce']['order_id'] = $new_oid;
 
+    // The link of a message sent to the left cart was followed.
+    if ($prev_oid !== $new_oid) {
+        pg_cart_recovery_restored($new_oid);
+    }
+
     // Ownership transfer: initialize_order() ALREADY updates orders.user_id
     // and contact_id to the current visitor when they\'re logged in (see
     // functions.php:6335-6351). So once we swap order_id here, the next

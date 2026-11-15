@@ -181,10 +181,11 @@ if (!$_POST) {
             <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                 <div class="container">
                     <div class="btn-group flex-wrap justify-content-center">
-                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
+                        ' . pg_save_bar_return_button() . '
                         ' . (empty($movements)
                             ? '<button type="submit" id="delete_button" name="submit_delete" value="Delete" class="btn my-1 btn-outline theme-danger" data-confirm-content="' . h(lang(array('string' => 'Delete the till {var:1}? This cannot be undone.', 'vars' => $till['name']))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Delete')) . '</span></button>'
                             : '') . '
+                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                     </div>
                 </div>
             </nav>

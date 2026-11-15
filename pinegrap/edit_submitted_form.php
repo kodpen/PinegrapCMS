@@ -349,14 +349,14 @@ if (!$_POST) {
     // If the form is incomplete then show certain buttons.
     if (!$complete) {
         $output_buttons =
-            '<button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save_as</span><span class="pg-btn-label" >' . lang(array('string'=>'Save for Later') ) . '</span></button>
-            <button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-solid theme-secondary"><span class="material-icons me-3">radio_button_unchecked</span><span class="pg-btn-label">' . lang(array('string'=>'Convert Complete') ) . '</span></button>';
+            '<button type="submit" name="complete_button" value="Complete" class="btn my-1  btn-solid theme-secondary"><span class="material-icons me-3">radio_button_unchecked</span><span class="pg-btn-label">' . lang(array('string'=>'Convert Complete') ) . '</span></button>
+            <button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save_as</span><span class="pg-btn-label" >' . lang(array('string'=>'Save for Later') ) . '</span></button>';
 
     // Otherwise the form is complete, so show different buttons.
     } else {
         $output_buttons =
-            '<button type="submit" name="save_button" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-            <button type="submit" name="incomplete_button" value="Incomplete" class="btn my-1  btn-solid theme-warning "><span class="material-icons me-3">radio_button_checked</span><span class="pg-btn-label">' . lang(array('string'=>'Convert Incomplete') ) . '</span></button>';
+            '<button type="submit" name="incomplete_button" value="Incomplete" class="btn my-1  btn-solid theme-warning "><span class="material-icons me-3">radio_button_checked</span><span class="pg-btn-label">' . lang(array('string'=>'Convert Incomplete') ) . '</span></button>
+            <button type="submit" name="save_button" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>';
     }
     
     // Where it was talked about in the workspace, and the tasks about it.
@@ -483,8 +483,8 @@ if (!$_POST) {
                                 . pg_submitted_form_status_row(MEMBER_ID_LABEL, h($member_id ? $member_id : '-'), false)
                                 . pg_submitted_form_status_row(lang('IP Address'), h($output_ip_address)) . '
                                         </dl>'),
-                            $output_buttons . '
-                                        <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>'
+                            pg_save_bar_return_button() . '
+                                        <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>' . $output_buttons
                         ) . '
                     </form>' . $output_payment_form . '
                     ' . ($history_enabled ? pg_record_revision_history_markup($id, $page_id, (is_scalar($_GET['compare'] ?? null) ? (int) $_GET['compare'] : 0), $send_to) : '') . '

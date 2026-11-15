@@ -53,8 +53,8 @@ function test_explorer_picker_state_menus_and_toggles()
 	pg_assert_true(strpos($source, "data-menu-action=\"' + action + '\" aria-pressed=\"' + (checked ? 'true' : 'false') + '\">'") !== false, 'menuCheckItem prints aria-pressed');
 	pg_assert_true(strpos($source, "id=\"preview_toggle_button\" aria-pressed=\"false\"") !== false, 'Preview panel item starts with aria-pressed');
 	pg_assert_true(strpos($source, "document.getElementById('preview_toggle_button').setAttribute('aria-pressed', previewOpen ? 'true' : 'false');") !== false, 'Preview panel item keeps aria-pressed in step');
-	pg_assert_true(strpos($source, "id=\"view_grid_button\" class=\"btn btn-text theme-secondary no-popover\" aria-pressed=\"false\"") !== false, 'Grid button prints aria-pressed');
-	pg_assert_true(strpos($source, "id=\"view_list_button\" class=\"btn btn-text theme-secondary no-popover\" aria-pressed=\"false\"") !== false, 'List button prints aria-pressed');
+	pg_assert_true(strpos($source, "id=\"view_grid_button\" class=\"pg-icon-button no-popover\" aria-pressed=\"false\"") !== false, 'Grid button prints aria-pressed');
+	pg_assert_true(strpos($source, "id=\"view_list_button\" class=\"pg-icon-button no-popover\" aria-pressed=\"false\"") !== false, 'List button prints aria-pressed');
 	pg_assert_true(strpos($source, "document.getElementById('view_grid_button').setAttribute('aria-pressed', (state.viewType === 'grid') ? 'true' : 'false');") !== false, 'Grid button keeps aria-pressed in step');
 	pg_assert_true(strpos($source, "document.getElementById('view_list_button').setAttribute('aria-pressed', (state.viewType === 'list') ? 'true' : 'false');") !== false, 'List button keeps aria-pressed in step');
 	pg_assert_true(strpos($source, "if (current) { button.setAttribute('aria-current', 'true'); } else { button.removeAttribute('aria-current'); }") !== false, 'current file scope carries aria-current');

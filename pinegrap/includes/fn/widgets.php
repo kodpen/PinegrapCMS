@@ -5773,13 +5773,15 @@ function pg_sw_list_current_page($requested, $pages)
 // shown), ^^__page_count^^, ^^__prev_page_url^^ and ^^__next_page_url^^
 // ('' on the first and the last page; the links keep every other query
 // parameter, as the pagination's do). Flags: has_prev_page,
-// has_next_page, has_more_pages (more than one page).
-function pg_sw_list_paging($page_param, $current, $pages)
+// has_next_page, has_more_pages (more than one page). $fragment: the
+// anchor the links land on (the comments widget's #software_comments), as
+// pg_sw_pagination_html() takes it.
+function pg_sw_list_paging($page_param, $current, $pages, $fragment = '')
 {
     $current = (int)$current;
     $pages   = (int)$pages;
-    $url = function ($n) use ($page_param) {
-        return h('?' . _pg_sw_build_query($page_param, $n));
+    $url = function ($n) use ($page_param, $fragment) {
+        return h('?' . _pg_sw_build_query($page_param, $n)) . (($fragment !== '') ? '#' . h($fragment) : '');
     };
     $prev = ($current > 1);
     $next = ($current < $pages);

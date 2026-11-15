@@ -2013,6 +2013,9 @@ function ws_handle_action($action, $request)
             return ws_action_ok(array(
                 'briefing'   => $briefing,
                 'channel'    => ws_channel_detail($viewer, $channel),
+                // Polls, agent questions, the check-in and approval requests
+                // still open, over the conversation (open_items.php).
+                'open_items' => ws_channel_open_items($viewer, $channel),
                 // Add › Start a flow is offered only where it lists a flow.
                 'flows_here' => empty($request['as_thread']) && ws_flows_startable_in($viewer, $channel),
                 'messages'   => ws_message_payloads($viewer, $rows),
@@ -2095,6 +2098,12 @@ function ws_handle_action($action, $request)
                     }
                     $out['messages'] = ws_message_payloads($viewer, $rows);
                     $out['changed'] = ws_message_payloads($viewer, $news['changed'], array('hidden_as_deleted' => true));
+
+                    // The open items line follows what redraws their cards: a
+                    // new or changed message, and the look every so often.
+                    if (!empty($rows) || !empty($news['changed']) || !empty($request['counts'])) {
+                        $out['open_items'] = ws_channel_open_items($viewer, $channel);
+                    }
 
                     if (!empty($rows) && !empty($request['read']) && ws_channel_membership($channel_id, $viewer['id'])) {
                         ws_channel_mark_read($channel_id, $viewer['id'], (int) $rows[count($rows) - 1]['id']);

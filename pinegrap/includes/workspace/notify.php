@@ -48,6 +48,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | mail_assigned | mail_customer (an e-mail conversation given to one, its
  *                           customer writing again on one held: mail_status.php, mail.php)
  *                         | mail_unsent (an e-mail one wrote could not be sent: mail_send.php)
+ *                         | mail_held (an e-mail waiting for its time was not sent because its
+ *                           writer may no longer answer there; back in Drafts: mail_later.php)
  *                         | mail_remind (a conversation set aside with Remind me later came
  *                           back: mail_remind.php)
  *                         | mail_no_answer (no answer came in time to a mail one wrote with
@@ -676,6 +678,14 @@ function ws_inbox_describe($viewer, $row)
             }
             break;
 
+        // A mail waiting for its time was held: its writer may no longer
+        // answer there, and it is back among the drafts (mail_later.php).
+        case 'mail_held':
+            if (function_exists('ws_mail_held_describe')) {
+                return ws_mail_held_describe($row, $base);
+            }
+            break;
+
         // An MCP agent answered what the person asked it (mcp_agent.php).
         case 'agent_answer':
             if (function_exists('ws_mcp_agent_inbox_describe')) {
@@ -930,7 +940,9 @@ function ws_inbox_row_visible($viewer, $row)
     if (((int) $row['message_id'] > 0)) {
         $message = ws_message($row['message_id']);
 
-        if (!$message || ((int) $message['deleted_at'] > 0)) {
+        // A held mail's card left the channel when it turned back into
+        // its draft; its line stays while the channel is read.
+        if (!$message || (((int) $message['deleted_at'] > 0) && ((string) $row['kind'] !== 'mail_held'))) {
             return false;
         }
     }

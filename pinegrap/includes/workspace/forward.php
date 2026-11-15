@@ -286,25 +286,33 @@ function ws_forward_to_channel($viewer, $message_ids, $target, $comment = '', $o
 }
 
 /**
- * Forwards messages into a note: a new one, or one the person may change,
- * at its end. Each message goes with who wrote it, when and where.
+ * Everything a forward into a note is checked against before anything is
+ * written, shared by the panel and the external API (its dry run included):
+ * the messages, then the note as ws_note_save_check() sees it - one the
+ * person may change and has open, or room for a new one - with the text it
+ * would hold.
  *
  * @param array  $viewer
  * @param int[]  $message_ids
  * @param int    $note_id 0 for a new note
  * @param string $comment
- * @return array ok, error, note_id
+ * @return array ok, error, field (message_ids | note_id | ''), rows, channel
+ *               (the one they come from), data (for ws_note_save()), conflict
  */
-function ws_forward_to_note($viewer, $message_ids, $note_id = 0, $comment = '')
+function ws_forward_to_note_check($viewer, $message_ids, $note_id = 0, $comment = '')
 {
+    $fail = function ($error, $field, $conflict = false) {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'rows' => array(), 'channel' => null, 'data' => array(), 'conflict' => $conflict);
+    };
+
     if (!function_exists('ws_note_save') || !ws_notes_ready()) {
-        return array('ok' => false, 'error' => lang('The workspace is not installed yet: the database has to be updated first.'), 'note_id' => 0);
+        return $fail(lang('The workspace is not installed yet: the database has to be updated first.'), '');
     }
 
     $picked = ws_forward_pick($viewer, $message_ids);
 
     if (!$picked['ok']) {
-        return array('ok' => false, 'error' => $picked['error'], 'note_id' => 0);
+        return $fail($picked['error'], 'message_ids');
     }
 
     $people = ws_people(array_map(function ($row) { return ($row['sender_kind'] === 'user') ? (int) $row['sender_id'] : 0; }, $picked['rows']));
@@ -333,17 +341,46 @@ function ws_forward_to_note($viewer, $message_ids, $note_id = 0, $comment = '')
         $note = ws_note_for($viewer, $note_id, 'edit');
 
         if (!$note) {
-            return array('ok' => false, 'error' => lang('That note could not be found.'), 'note_id' => 0);
+            return $fail(lang('That note could not be found.'), 'note_id');
         }
 
         $body = rtrim((string) $note['body']);
-        $saved = ws_note_save($viewer, array('note_id' => $note_id, 'body' => (($body !== '') ? $body . "\n\n---\n\n" : '') . $block));
+        $data = array('note_id' => $note_id, 'body' => (($body !== '') ? $body . "\n\n---\n\n" : '') . $block);
     } else {
-        $saved = ws_note_save($viewer, array(
+        $data = array(
             'title' => lang(array('string' => 'From #{var:1}', 'vars' => $picked['channel']['name'])),
             'body'  => $block,
-        ));
+        );
     }
+
+    $checked = ws_note_save_check($viewer, $data);
+
+    if (!$checked['ok']) {
+        return $fail($checked['error'], 'note_id', !empty($checked['conflict']));
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'rows' => $picked['rows'], 'channel' => $picked['channel'], 'data' => $data, 'conflict' => false);
+}
+
+/**
+ * Forwards messages into a note: a new one, or one the person may change,
+ * at its end. Each message goes with who wrote it, when and where.
+ *
+ * @param array  $viewer
+ * @param int[]  $message_ids
+ * @param int    $note_id 0 for a new note
+ * @param string $comment
+ * @return array ok, error, note_id
+ */
+function ws_forward_to_note($viewer, $message_ids, $note_id = 0, $comment = '')
+{
+    $checked = ws_forward_to_note_check($viewer, $message_ids, $note_id, $comment);
+
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'note_id' => 0);
+    }
+
+    $saved = ws_note_save($viewer, $checked['data']);
 
     return $saved['ok']
         ? array('ok' => true, 'error' => '', 'note_id' => (int) $saved['note_id'])

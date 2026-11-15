@@ -56,7 +56,7 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-field">
+                                            <div class="form-field">' . pg_settings_tile('chat-dots', 'team') . '
                                                 <div class="switch"><input value="1"' . $chat_enabled_checked . ' class="collapse-switcher" type="checkbox" id="chat_enabled" name="chat_enabled" data-bs-target="#live_chat_row"/></div>
                                                 <label class="" for="chat_enabled">' . lang('Enable Live Chat') . '</label>
                                             </div>
@@ -163,7 +163,7 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="col-12">
-                                            <div class="form-field">
+                                            <div class="form-field">' . pg_settings_tile('envelope-paper', 'team') . '
                                                 <div class="switch"><input type="checkbox" name="mailchimp" id="mailchimp" value="1"' . $mailchimp_checked . ' class="collapse-switcher" data-bs-target="#mailchimp_row"/></div>
                                                 <label class="" for="mailchimp">' . lang('MailChimp Sync') . '</label><div class="form-text">' . lang('Auto-export customers, orders, & products to MailChimp regularly. Requires cron job (job.php).') . '</div>
                                             </div>

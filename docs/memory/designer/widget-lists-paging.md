@@ -5,7 +5,7 @@ module: widgets_lists_paging
 ---
 
 ## What does a designer build the page links from?
-- A list (`loop_area`, `props.source = 'paging.pages'`, family `paging`, `includes/fn/widgets_lists_paging.php`, engine [[widget-lists]]), offered in the form list, the catalog listing and the search results (`pg_sw_kind_lists()`; JS `kinds` of `SW_LIST_SOURCES['paging.pages']`).
+- A list (`loop_area`, `props.source = 'paging.pages'`, family `paging`, `includes/fn/widgets_lists_paging.php`, engine [[widget-lists]]), offered in the form list, the catalog listing, the search results and the Comments widget (`pg_sw_kind_lists()`; JS `kinds` of `SW_LIST_SOURCES['paging.pages']`). The Comments widget's links end at `#software_comments` (optional `$fragment`, [[comments-widget-open-slots]]).
 - One row per link, as `pg_sw_pagination_html()` draws them: the first page, a gap, two pages either side of the page shown, a gap, the last page. Previous and next are not rows: the widget's `__prev_page_url` / `__next_page_url` with `has_prev_page` / `has_next_page` ([[widget-list-paging]]).
 - No rows for a single page (the built-in pagination prints nothing then); an empty list is a cut point.
 
@@ -22,6 +22,7 @@ module: widgets_lists_paging
 ## What does the editor offer?
 - Palette "Lists in a record": Page links. Starter (`_sdPagingListStarter()`): a Bootstrap `nav` / `ul.pagination`, a previous item on `has_prev_page`, the list with three `li` (a link on `__pager_url` not empty, an active span on `__pager_is_current`, a disabled gap on `__pager_is_gap`), a next item on `has_next_page`.
 - It lands anywhere in a form list (`_sdListNeedsMainLoop(kind, source)` is false for it). Sample rows on the canvas: current, link, gap, link.
+- On the canvas the list is one item of the pagination's line: [[paging-list-canvas-line]].
 
 ## How is it tested?
 - `tests/widget_lists_paging_test.php`: source and kinds, rows against the built-in pagination's numbers, a list in a surround drawn by the finish pass (escaped once, no marker left), the same in a catalog surround with its paging flags, the three renderers' wiring, the editor. No database or browser run.

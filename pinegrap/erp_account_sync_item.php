@@ -261,7 +261,7 @@ $pick_list = function ($items, $kind) use ($form, $provider_label) {
         if ($kind === 'account') {
             $taken = ((int) ($item['card_id'] ?? 0) > 0);
             $button = $taken
-                ? '<span class="small fg-secondary">' . h(lang(array('string' => 'already linked to a card of {var:1}', 'vars' => $provider_label))) . '</span>'
+                ? '<span class="pg-text-2">' . h(lang(array('string' => 'already linked to a card of {var:1}', 'vars' => $provider_label))) . '</span>'
                 : $form('link', '<button type="submit" class="btn btn-sm btn-outline theme-primary"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('Link to this account') . '</button>',
                     '<input type="hidden" name="link_account_id" value="' . (int) $item['id'] . '" />');
             $name = '<a href="edit_erp_account.php?id=' . (int) $item['id'] . '">' . h($item['title']) . '</a>'
@@ -269,10 +269,10 @@ $pick_list = function ($items, $kind) use ($form, $provider_label) {
         } else {
             $taken = ((string) $item['status'] === 'linked');
             $button = $taken
-                ? '<span class="small fg-secondary">' . lang('linked to another account') . '</span>'
+                ? '<span class="pg-text-2">' . lang('linked to another account') . '</span>'
                 : $form('link_card', '<button type="submit" class="btn btn-sm btn-outline theme-primary"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('Link to this card') . '</button>',
                     '<input type="hidden" name="link_card_id" value="' . (int) $item['id'] . '" />');
-            $name = h($item['title']) . (((string) $item['code'] !== '') ? ' <span class="small fg-secondary">' . h(lang(array('string' => 'code {var:1}', 'vars' => (string) $item['code']))) . '</span>' : '');
+            $name = h($item['title']) . (((string) $item['code'] !== '') ? ' <span class="pg-text-2">' . h(lang(array('string' => 'code {var:1}', 'vars' => (string) $item['code']))) . '</span>' : '');
         }
 
         $rows .= '<tr>
@@ -346,39 +346,37 @@ if ($mode === 'linked') {
     }
 
     $output_main = '
-            <form action="erp_account_sync_item.php" method="post" id="erp_account_align">
+            <form action="erp_account_sync_item.php" method="post" id="erp_account_align" class="card my-7">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . (int) $row['id'] . '" />
                 <input type="hidden" name="erp_action" value="align" />
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Comparison') . '</div>
-                    <div class="card-body">
-                        <p class="fg-secondary small">' . (empty($diff)
-                            ? lang('The account and the card agree on every field that is compared.')
-                            : h(lang(array('string' => 'Choose which side is right for each difference. The empty side is filled from the other; where both hold something, the ERP value is offered. {var:1} is written first and read back.', 'vars' => $provider_label)))) . '</p>
-                        <div class="table-responsive">
-                            <table class="table align-middle mb-0">
-                                <thead>
-                                    <tr>
-                                        <th style="width:18%">' . lang('Field') . '</th>
-                                        <th>' . lang('ERP account') . '</th>
-                                        <th>' . h($provider_label) . '</th>
-                                        <th style="width:26%">' . lang('Which is right') . '</th>
-                                    </tr>
-                                </thead>
-                                <tbody>' . $table_rows . '</tbody>
-                            </table>
-                        </div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Comparison') . '</h2>
+                <div class="card-body">
+                    <p class="pg-text-2">' . (empty($diff)
+                        ? lang('The account and the card agree on every field that is compared.')
+                        : h(lang(array('string' => 'Choose which side is right for each difference. The empty side is filled from the other; where both hold something, the ERP value is offered. {var:1} is written first and read back.', 'vars' => $provider_label)))) . '</p>
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width:18%">' . lang('Field') . '</th>
+                                    <th>' . lang('ERP account') . '</th>
+                                    <th>' . h($provider_label) . '</th>
+                                    <th style="width:26%">' . lang('Which is right') . '</th>
+                                </tr>
+                            </thead>
+                            <tbody>' . $table_rows . '</tbody>
+                        </table>
                     </div>
                 </div>
             </form>';
 
+    $output_actions .= $form('unlink', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-x-circle me-3" aria-hidden="true"></i>' . lang('Undo the link') . '</button>', '',
+        lang('Undo the link between this card and the account? Neither record changes.'));
+
     if (!empty($diff) && !$readonly) {
         $output_actions .= '<button type="submit" form="erp_account_align" class="btn my-1 btn-solid theme-primary" data-confirm-content="' . h(lang(array('string' => 'Write the chosen values to the ERP account and to {var:1}?', 'vars' => $provider_label))) . '"><i class="bi bi-arrow-left-right me-3" aria-hidden="true"></i>' . lang('Align the chosen fields') . '</button>';
     }
-
-    $output_actions .= $form('unlink', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-x-circle me-3" aria-hidden="true"></i>' . lang('Undo the link') . '</button>', '',
-        lang('Undo the link between this card and the account? Neither record changes.'));
 
 } elseif ($mode === 'account') {
 
@@ -390,28 +388,21 @@ if ($mode === 'linked') {
 
     $output_main = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('ERP account') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('ERP account') . '</h2>
                 <div class="card-body p-0">' . $details(erp_edoc_account_erp_card($account)) . '</div>
             </div>
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang(array('string' => 'Link to a card at {var:1}', 'vars' => $provider_label))) . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang(array('string' => 'Link to a card at {var:1}', 'vars' => $provider_label))) . '</h2>
                 <div class="card-body">
                     ' . (!empty($same_number)
-                        ? '<p class="small fg-secondary">' . lang('Cards with the same tax number:') . '</p>' . $pick_list($same_number, 'card')
-                        : '<p class="small fg-secondary mb-0">' . h(lang(array('string' => 'No card at {var:1} carries this number (as of the last read).', 'vars' => $provider_label))) . '</p>') . '
+                        ? '<p class="pg-text-2">' . lang('Cards with the same tax number:') . '</p>' . $pick_list($same_number, 'card')
+                        : '<p class="pg-text-2 mb-0">' . h(lang(array('string' => 'No card at {var:1} carries this number (as of the last read).', 'vars' => $provider_label))) . '</p>') . '
                     ' . $search_box(lang('Name, tax number or code')) . '
-                    ' . (isset($_GET['q']) ? (!empty($found) ? $pick_list($found, 'card') : '<p class="small fg-secondary mb-0">' . lang('Nothing found.') . '</p>') : '') . '
+                    ' . (isset($_GET['q']) ? (!empty($found) ? $pick_list($found, 'card') : '<p class="pg-text-2 mb-0">' . lang('Nothing found.') . '</p>') : '') . '
                 </div>
             </div>';
 
     $eligible = erp_edoc_account_tax_number_usable($number, (string) $account['country_code']) && ((int) $account['id'] !== erp_edoc_accounts_walkin_id()) && empty($same_number);
-
-    if (($provider !== '') && $eligible) {
-        $output_actions .= $form('push', '<button type="submit" class="btn my-1 btn-solid theme-primary"><i class="bi bi-cloud-upload me-3" aria-hidden="true"></i>' . h(lang(array('string' => 'Send to {var:1} as a new card', 'vars' => $provider_label))) . '</button>', '',
-            lang(array('string' => 'Open a card for this account at {var:1}?', 'vars' => $provider_label)));
-    } elseif (!$eligible && empty($same_number)) {
-        $output_main = '<div class="alert theme-info my-7">' . lang('Only an account with a valid tax number is sent; the walk-in account never is.') . '</div>' . $output_main;
-    }
 
     $aside = in_array((int) $account['id'], ($provider_code !== '') ? erp_edoc_accounts_ignored_ids($provider_code) : array(), true);
 
@@ -424,6 +415,13 @@ if ($mode === 'linked') {
         $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-archive me-3" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
     }
 
+    if (($provider !== '') && $eligible) {
+        $output_actions .= $form('push', '<button type="submit" class="btn my-1 btn-solid theme-primary"><i class="bi bi-cloud-upload me-3" aria-hidden="true"></i>' . h(lang(array('string' => 'Send to {var:1} as a new card', 'vars' => $provider_label))) . '</button>', '',
+            lang(array('string' => 'Open a card for this account at {var:1}?', 'vars' => $provider_label)));
+    } elseif (!$eligible && empty($same_number)) {
+        $output_main = '<div class="alert theme-info my-7">' . lang('Only an account with a valid tax number is sent; the walk-in account never is.') . '</div>' . $output_main;
+    }
+
 } else {
 
     // A card with no account: waiting, set aside, or linked to an account
@@ -434,7 +432,7 @@ if ($mode === 'linked') {
 
     $output_main = '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang(array('string' => 'Card at {var:1}', 'vars' => $provider_label))) . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . h(lang(array('string' => 'Card at {var:1}', 'vars' => $provider_label))) . '</h2>
                 <div class="card-body p-0">' . $details($card) . '</div>
             </div>';
 
@@ -444,19 +442,19 @@ if ($mode === 'linked') {
     } elseif ($mode === 'new') {
         $output_main .= '
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Link to an ERP account') . '</div>
+                <h2 class="card-header bg-reset border-0 pg-title-section">' . lang('Link to an ERP account') . '</h2>
                 <div class="card-body">
                     ' . (!empty($candidates)
-                        ? '<p class="small fg-secondary">' . lang('Accounts with the same tax number:') . '</p>' . $pick_list($candidates, 'account')
-                        : '<p class="small fg-secondary mb-0">' . lang('No ERP account carries this number.') . '</p>') . '
+                        ? '<p class="pg-text-2">' . lang('Accounts with the same tax number:') . '</p>' . $pick_list($candidates, 'account')
+                        : '<p class="pg-text-2 mb-0">' . lang('No ERP account carries this number.') . '</p>') . '
                     ' . $search_box(lang('Name, tax number or e-mail address')) . '
-                    ' . (isset($_GET['q']) ? (!empty($found) ? $pick_list($found, 'account') : '<p class="small fg-secondary mb-0">' . lang('Nothing found.') . '</p>') : '') . '
+                    ' . (isset($_GET['q']) ? (!empty($found) ? $pick_list($found, 'account') : '<p class="pg-text-2 mb-0">' . lang('Nothing found.') . '</p>') : '') . '
                 </div>
             </div>';
 
+        $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-archive me-3" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
         $output_actions .= $form('import', '<button type="submit" class="btn my-1 btn-solid theme-primary"><i class="bi bi-box-arrow-in-down me-3" aria-hidden="true"></i>' . lang('Take into the ERP as a new account') . '</button>', '',
             lang('Open a new ERP account from this card? When an account already carries its number, the card is linked to it instead.'));
-        $output_actions .= $form('aside', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-archive me-3" aria-hidden="true"></i>' . lang('Set aside') . '</button>');
     } else {
         $output_actions .= $form('restore', '<button type="submit" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . lang('Bring back') . '</button>');
     }
@@ -536,27 +534,20 @@ pg_page_shell([
 
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
             ' . $output_main . '
-
-            ' . (($output_actions !== '')
-                ? '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                <div class="container">
-                    <div class="d-flex flex-wrap justify-content-center gap-3">' . $output_actions . '</div>
-                </div>
-            </nav>'
-                : '') . '
         </div>
 
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
             <div class="position-sticky" style="top:3.3rem;">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($provider_label) . '</div>
+                    <h2 class="card-header bg-reset border-0 pg-title-section">' . h($provider_label) . '</h2>
                     <div class="card-body">
                         <div class="row">' . $output_status . '</div>
-                        <div class="small fg-secondary border-top mt-3 pt-3">' . lang('Balances are never exchanged.') . '</div>
+                        <div class="pg-text-2 border-top mt-3 pt-3">' . lang('Balances are never exchanged.') . '</div>
                     </div>
                 </div>
             </div>
         </div>
+        ' . (($output_actions !== '') ? pg_save_bar($output_actions, array('group' => 'd-flex flex-wrap justify-content-center gap-3')) : '') . '
     </div>
 </main>
 ' .

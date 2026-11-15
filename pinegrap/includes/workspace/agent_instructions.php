@@ -214,6 +214,7 @@ function ws_agent_instructions_request_lines()
         'For each request in the list, oldest first:',
         '1. POST /workspace/agent-requests/{id}/claim. A 409 answer means you may not take it now: already_claimed (another run has it) and closed (it is closed): skip it; editing (the writer is changing the message): try again in a minute.',
         '2. GET /workspace/agent-requests/{id}/brief. Its "text" tells you who asked, where, the request itself, the channel\'s memory and the routes that close the request. Follow it; read more only when the request needs it.',
+        '   While you work on a request that takes minutes, you may say where you are in one short line (at most ' . WS_AGENT_PROGRESS_MAX . ' characters, one in ' . WS_AGENT_PROGRESS_GAP . ' seconds): POST /workspace/agent-requests/{id}/progress with {"text": "reading the plans"}. It shows under the message that asked; it writes no message and wakes nobody. A 429 answer means wait the Retry-After seconds.',
         '3. Close the request with exactly one of:',
         '   - POST /workspace/agent-requests/{id}/answer with {"text": "..."}: your answer, written under the message that asked, with the asker mentioned. Write in the language the brief names, short and concrete.',
         '   - POST /workspace/agent-requests/{id}/answer with {"no_answer": true}: the message needs nothing from you (an acknowledgement, a thank-you, an answer to an answer). You may add "emoji" with one fitting emoji, left on the message that asked, with either form.',

@@ -31,7 +31,7 @@ function test_email_campaign_form_editable_fields()
 	));
 	pg_assert_contains(lang('E-Mail Message From'), $html, 'from card title');
 	pg_assert_contains('value="Shop &lt;A&gt;" type="text" class="form-control" id="from_name" name="from_name"', $html, 'from name input');
-	pg_assert_contains('value="a@example.com" type="text" class="form-control text-end" id="from_email_address" name="from_email_address"', $html, 'from address input');
+	pg_assert_contains('value="a@example.com" type="text" class="form-control" id="from_email_address" name="from_email_address"', $html, 'from address input');
 	pg_assert_contains('id="reply_email_address" name="reply_email_address"', $html, 'reply-to input');
 
 	$html = pg_email_campaign_purpose_card('commercial');

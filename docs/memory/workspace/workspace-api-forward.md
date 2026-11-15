@@ -5,7 +5,7 @@ description: Forwarding messages over the Workspace API and MCP (POST /workspace
 
 ## What does the route do?
 - `POST /workspace/channels/{id}/forwards` (`ws_api_messages_forward()`, api_resources.php): `id` is the channel the messages go to, `message_ids` (1-20, one source channel) what is forwarded, `text` the words above them. It writes what the panel's Forward writes (`ws_forward_to_channel()`, forward.php): a new message with a frozen copy of each in `ws_message_forwards`. Answers the new message (201).
-- Forwarding into a note stays in the panel only; an application writes notes with the notes routes.
+- With `note_id` the same route forwards into a note instead (#9767): `api/workspace-api-message-people.md`.
 
 ## Which checks does it meet?
 - `ws_forward_to_channel_check()`, called by the panel's `ws_forward_to_channel()` and by the route before `api_dry_run_stop()`: the pick (`ws_forward_pick()`: one channel the person reads with `ws_can_read_channel()`, not deleted, people's or applications' messages), the target (`ws_can_post_channel()`, not archived, no guest room), then `ws_message_send_check()` on the words (length, the person's rate limit).

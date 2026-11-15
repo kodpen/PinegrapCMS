@@ -87,7 +87,7 @@ function ws_agent_request_api_routes()
             'dry_run'     => true,
             'returns'     => ws_api_agent_answer_schema(),
             'summary'     => 'Answer a request',
-            'description' => 'Writes text under the message that asked, as the application, with the person who asked mentioned, and swaps the eye for a tick. no_answer true closes the request without writing anything (it takes no text). emoji leaves one emoji on the message that asked, with text or with no_answer. conclude true, for a request asked in a discussion by a person in it who asks for it, concludes the discussion after the answer is written (closed_by is that person); any other request is not concluded, conclude.error says why and the answer is still written. offer_conclude true, with text, unasked, puts a Conclude the discussion button under the answer for the people in the discussion; one of them presses it to conclude in their own name (the same asker rule; offer.error says why it was not made). Other things the agent does (a task, a poll, a proposal) go through their own routes. 403 when the channel no longer lets the agent answer or the person who asked can no longer write there; 409 closed when the request is closed; 409 editing while the writer is editing the message that asked; 409 edited when it was edited after the claim: the request waits again, claim it and read the new words.' . $only,
+            'description' => 'Writes text under the message that asked, as the application, with the person who asked mentioned, and swaps the eye for a tick. no_answer true closes the request without writing anything (it takes no text). emoji leaves one emoji on the message that asked, with text or with no_answer. conclude true, for a request asked in a discussion by a person in it who asks for it, concludes the discussion after the answer is written (closed_by is that person); any other request is not concluded, conclude.error says why and the answer is still written. offer_conclude true, with text, unasked, puts a Conclude the discussion button under the answer for the people in the discussion; one of them presses it to conclude in their own name (the same asker rule; offer.error says why it was not made). Other things the agent does go through their own routes: a task POST /workspace/tasks, a poll POST /workspace/channels/{id}/polls, an approval request POST /workspace/channels/{id}/approvals (and POST /workspace/approvals/{id}/decide when asked to approve), a proposed change /workspace/changes. 403 when the channel no longer lets the agent answer or the person who asked can no longer write there: close the request with POST /workspace/agent-requests/{id}/fail; 422 on text for a wake made in no channel: write with POST /workspace/channels/{id}/messages, then close it with no_answer; 409 closed when the request is closed; 409 editing while the writer is editing the message that asked; 409 edited when it was edited after the claim: the request waits again, claim it and read the new words.' . $only,
             'params'      => array(
                 $id,
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'description' => 'The answer; required unless no_answer is true.'),
@@ -111,6 +111,22 @@ function ws_agent_request_api_routes()
             'params'      => array(
                 $id,
                 array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => 250, 'required' => true),
+            ),
+        ),
+        array(
+            'id'          => 'workspace.agent_requests.progress',
+            'method'      => 'POST',
+            'path'        => '/workspace/agent-requests/{id}/progress',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_agent_request_progress',
+            'mcp'         => false,
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceClaudeRequest',
+            'summary'     => 'Say where the work on a request is',
+            'description' => 'While the agent holds a request (after its claim, before its answer or fail), one short line on where it is ("reading the plans", "waiting for CI, back by 22:30"). The line under the message that asked shows it after "is working on it", with the time of the claim; the answer takes its place, and closing the request clears it. A new note replaces the last. Writes no message, wakes nobody, adds no inbox line. 409 not_claimed before the claim, 409 closed once the request is closed, 429 rate_limited for a second note inside ' . WS_AGENT_PROGRESS_GAP . ' seconds (Retry-After says when), 422 for an empty note or one over ' . WS_AGENT_PROGRESS_MAX . ' characters.' . $only,
+            'params'      => array(
+                $id,
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_PROGRESS_MAX, 'required' => true, 'description' => 'Where the work is, in one short line.'),
             ),
         ),
         array(
@@ -328,12 +344,63 @@ function ws_api_agent_caller()
     $row = ws_api_agent_caller_row();
 
     if ($row === null) {
-        api_fail(403, 'forbidden', lang('Only an active application agent, with its own key, may use this endpoint.'));
+        api_fail(403, 'forbidden', ws_agent_caller_refusal_text(ws_api_agent_caller_paused_handle()));
     }
 
     ws_agent_seen_mark((array) $row);
 
     return $row;
+}
+
+/**
+ * The handle of the paused app agent the calling key belongs to, '' when
+ * the key is no paused agent's own: the 403 then says where it is paused.
+ *
+ * @return string
+ */
+function ws_api_agent_caller_paused_handle()
+{
+    $app_id = ws_api_app_id();
+
+    if (!function_exists('ws_agents_ready') || !ws_agents_ready() || ($app_id <= 0) || (function_exists('api_current_device') && (api_current_device() !== null))) {
+        return '';
+    }
+
+    return (string) db_value("SELECT handle FROM ws_agents WHERE kind = 'app' AND status = 'paused' AND app_id = '" . $app_id . "' ORDER BY id LIMIT 1");
+}
+
+/**
+ * The 403 an agent route gives a caller that is no active app agent: a
+ * paused agent is told where it is paused and who turns it back on. Pure.
+ *
+ * @param string $paused_handle the paused agent's handle, '' for any other caller
+ * @return string
+ */
+function ws_agent_caller_refusal_text($paused_handle)
+{
+    if ((string) $paused_handle !== '') {
+        return lang(array('string' => '@{var:1} is paused on the Agents card (Site Settings): its own routes answer again once a person sets it back to Active there.', 'vars' => (string) $paused_handle));
+    }
+
+    return lang('Only an active application agent, with its own key, may use this endpoint.');
+}
+
+/**
+ * The answer route's refusals that name the next step. Pure.
+ *
+ * @param string $kind       forbidden: the answer can no longer be posted
+ *                           where it was asked; no_channel: a wake made in
+ *                           no channel takes no text
+ * @param int    $request_id
+ * @return string
+ */
+function ws_agent_answer_refusal_text($kind, $request_id)
+{
+    if ($kind === 'no_channel') {
+        return lang('This wake was made in no channel: write with POST /workspace/channels/{id}/messages, then close it with no_answer.');
+    }
+
+    return lang(array('string' => 'The answer cannot be posted there any more: the agent is no longer allowed in that channel, or the person who asked can no longer write there. Close the request with POST /workspace/agent-requests/{var:1}/fail (reason).', 'vars' => (string) (int) $request_id));
 }
 
 /**
@@ -538,13 +605,13 @@ function ws_api_agent_request_answer($params)
         // A wake made in no channel: the agent writes where it needs with
         // workspace.messages.create and closes the request with no_answer.
         if (((int) $row['channel_id'] === 0) && ws_agent_wake_of($row)) {
-            api_fail_validation(lang('This wake was made in no channel: write with workspace.messages.create, then close it with no_answer.'), 'text');
+            api_fail_validation(ws_agent_answer_refusal_text('no_channel', (int) $row['id']), 'text');
         }
 
         $place = ws_api_agent_request_place($viewer, $agent, $row);
 
         if (!$place) {
-            api_fail(403, 'forbidden', lang('The answer cannot be posted there any more: the agent is no longer allowed in that channel, or the person who asked can no longer write there.'));
+            api_fail(403, 'forbidden', ws_agent_answer_refusal_text('forbidden', (int) $row['id']));
         }
 
         $text = ws_agent_answer_text(trim((string) $params['text']), (int) $row['requested_by'], ws_agent_wake_of($row) || ws_agent_request_asker_app($row));
@@ -584,6 +651,9 @@ function ws_api_agent_request_answer($params)
     db("UPDATE ws_ai_requests SET status = 'answered', reply_message_id = '" . $reply_id . "',
             answered_at = '" . $now . "', claimed_at = IF(claimed_at = 0, '" . $now . "', claimed_at), error = ''
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
+
+    // The answer takes the progress note's place.
+    ws_agent_progress_clear((int) $row['id']);
 
     // The eye becomes a tick only with a reply; closed without text, the
     // eye stays: the agent saw it.
@@ -647,6 +717,8 @@ function ws_api_agent_request_fail($params)
     db("UPDATE ws_ai_requests SET status = 'failed', error = '" . e($reason) . "', reply_message_id = '" . $reply_id . "', answered_at = '" . time() . "'
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
 
+    ws_agent_progress_clear((int) $row['id']);
+
     if (!$kept) {
         ws_agent_react((int) $agent['app_id'], (int) $row['message_id'], '👀', false);
     }
@@ -656,4 +728,45 @@ function ws_api_agent_request_fail($params)
     }
 
     api_ok(ws_api_claude_request_present($viewer, ws_api_agent_request_or_404($agent, $row['id'])));
+}
+
+/**
+ * The holding agent's progress note: kept in the request's ai_state, shown
+ * on the line under the asking message. No message, wake or inbox line.
+ */
+function ws_api_agent_request_progress($params)
+{
+    $agent = ws_api_agent_caller();
+    $viewer = ws_api_viewer();
+    $row = ws_api_agent_request_or_404($agent, $params['id']);
+    $now = time();
+
+    // Written only over the state it was checked against, so two notes sent
+    // at once cannot both pass the brake; the loser is checked again.
+    for ($try = 0; $try < 2; $try++) {
+        $check = ws_agent_progress_check($row, $params['text'] ?? '', $now);
+
+        if (!$check['ok']) {
+            if ($check['status'] === 429) {
+                api_extra_headers('Retry-After', (string) max(1, (int) $check['retry_after']));
+            }
+
+            api_fail($check['status'], $check['code'], $check['error'], $check['field']);
+        }
+
+        api_dry_run_stop('noted', 'workspace_agent_request', array('id' => (int) $row['id'], 'text' => $check['text']));
+
+        $before = ($row['ai_state'] === null) ? 'ai_state IS NULL' : "ai_state = '" . e((string) $row['ai_state']) . "'";
+
+        db("UPDATE ws_ai_requests SET ai_state = '" . e(ws_agent_progress_state($row['ai_state'], $check['text'], $now)) . "'
+            WHERE id = '" . (int) $row['id'] . "' AND status = 'running' AND " . $before);
+
+        if (mysqli_affected_rows(db::$con) > 0) {
+            api_ok(ws_api_claude_request_present($viewer, ws_api_agent_request_or_404($agent, $row['id'])));
+        }
+
+        $row = ws_api_agent_request_or_404($agent, $row['id']);
+    }
+
+    api_fail(409, 'already_claimed', lang('Another run is working on this request.'));
 }

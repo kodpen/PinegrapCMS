@@ -148,11 +148,11 @@ $statuses = pg_sms_campaign_statuses();
 // The text card.
 if ($readonly) {
     $output_message =
-        '<div class="col-12 md:col-8 my-3"><div class="form-label">' . lang('Name') . '</div><p>' . h($campaign['name']) . '</p></div>
+        '<div class="col-12 my-3"><div class="form-label">' . lang('Name') . '</div><p>' . h($campaign['name']) . '</p></div>
         <div class="col-12 my-3"><div class="form-label">' . lang('Text') . '</div><p style="white-space: pre-wrap">' . h($campaign['body']) . '</p></div>';
 } else {
     $output_message =
-        '<div class="col-12 md:col-8 my-3">
+        '<div class="col-12 my-3">
             <label class="form-label" for="name">' . lang('Name') . '</label>
             <input type="text" class="form-control" id="name" name="name" maxlength="100" value="' . h($campaign['name']) . '">
             <div class="form-text">' . lang('Only shown in the panel.') . '</div>
@@ -289,8 +289,9 @@ $output_buttons = '';
 
 if (!$readonly) {
     $output_buttons =
-                    '<button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="bi bi-check-circle me-3" aria-hidden="true"></span>' . lang('Save') . '</button>
-                    ' . (($campaign['status'] === 'ready') ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang('This campaign will be cancelled. A cancelled campaign cannot be scheduled again.')) . '"><span class="bi bi-x-circle me-3" aria-hidden="true"></span>' . lang('Cancel Campaign') . '</button>' : '');
+                    pg_save_bar_return_button()
+                    . (($campaign['status'] === 'ready') ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang('This campaign will be cancelled. A cancelled campaign cannot be scheduled again.')) . '"><span class="bi bi-x-circle me-3" aria-hidden="true"></span>' . lang('Cancel Campaign') . '</button>' : '') . '
+                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="bi bi-check-circle me-3" aria-hidden="true"></span>' . lang('Save') . '</button>';
 }
 
 $heading = $id ? lang('Edit SMS Campaign') : lang('Create SMS Campaign');
@@ -299,7 +300,7 @@ echo
 pg_page_shell(
     array(
         'title'               => $heading,
-        'extra classes'       => 'campaign',
+        'extra classes'       => 'campaign pg-measure-edit',
         'icon'                => 'campaign',
         'heading'             => $heading,
         'heading_description' => lang('A text message to the contacts of selected contact groups. Numbers without SMS consent, refused by İYS or without a sender identity are refused by the SMS checks.'),

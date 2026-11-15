@@ -108,14 +108,15 @@ if (!$_POST) {
     if ((isset($_GET['id']) == false) && !$form_submitted) {
         if ($ready_report !== null) {
             // The ready report's levels (a level it does not name is none),
-            // its name for a save, its filters and period.
+            // its name for a save and its filters; its period is the date
+            // changer's range, set below.
             for ($level = 1; $level <= 3; $level++) {
                 $liveform->assign_field_value('summarize_by_' . $level, $ready_report['levels'][$level - 1]['by'] ?? '');
                 $liveform->assign_field_value('order_by_' . $level, $ready_report['levels'][$level - 1]['order'] ?? '');
             }
 
             $liveform->assign_field_value('name', lang($ready_report['title']));
-            $default_filters = pg_ready_report_filters($ready_report, $ready_days);
+            $default_filters = pg_ready_report_filters($ready_report);
         } else {
             // set default values for summarize by fields
             $liveform->assign_field_value('summarize_by_1', 'year');
@@ -511,6 +512,16 @@ if (!$_POST) {
 
     // if there are no order date filters, then prepare to output date changer
     if ($order_date_filter_exists == false) {
+        // A ready report opens on its own days through today; a step of the
+        // arrows (start_month in the address) then moves that range.
+        if (($ready_report !== null) && !isset($_GET['start_month'])) {
+            $ready_range = pg_ready_report_range($ready_report, $ready_days);
+
+            if ($ready_range) {
+                $_SESSION['software']['ecommerce']['view_order_report'][$session_index] = $ready_range;
+            }
+        }
+
         // if the date has not been set in the session yet (or an older session
         // still holds a non-numeric value), populate start and stop days with default, which is the past week
         if ((isset($_SESSION['software']['ecommerce']['view_order_report'][$session_index]['start_month']) == false)
@@ -629,17 +640,17 @@ if (!$_POST) {
         // if an id is set, then prepare query string with id
         if (isset($id) == true) {
             $output_date_changer_query_string_id = '&id=' . $id;
+
+        // A ready report keeps its key, so a step stays on it.
+        } elseif ($ready_report !== null) {
+            $output_date_changer_query_string_id = '&ready=' . rawurlencode($ready_report['key']);
         }
         
         $start_date = get_absolute_time(array('timestamp' => $start_timestamp, 'type' => 'date'));
         $stop_date = get_absolute_time(array('timestamp' => $stop_timestamp, 'type' => 'date'));
         
-        $output_date_range = $start_date;
-        
-        // if the stop date is different from the start date, then add stop date to date range
-        if ($stop_date != $start_date) {
-            $output_date_range .= ' - ' . $stop_date;
-        }
+        // The panel's date text, the same shape on every report screen.
+        $output_date_range = pg_report_view_range($start_date, $stop_date);
 
 
 
@@ -1083,7 +1094,7 @@ if (!$_POST) {
         }
 
         foreach ($results as $report_view_key => $report_view_group) {
-            $report_view_names[$report_view_key] = update_summarize_by_name($report_view_group['name'], $report_view_level);
+            $report_view_names[$report_view_key] = pg_report_view_country_name($report_view_level, update_summarize_by_name($report_view_group['name'], $report_view_level), pg_report_view_country_names());
 
             if ($report_view_kind === 'map') {
                 $report_view_codes[$report_view_key] = pg_sales_map_country_code((string) $report_view_group['name']);
@@ -1350,7 +1361,7 @@ if (!$_POST) {
         }
         
         foreach ($results as $summarize_by_1_result) {
-            $summarize_by_1_name = update_summarize_by_name($summarize_by_1_result['name'], $liveform->get_field_value('summarize_by_1'));
+            $summarize_by_1_name = pg_report_view_country_name($liveform->get_field_value('summarize_by_1'), update_summarize_by_name($summarize_by_1_result['name'], $liveform->get_field_value('summarize_by_1')), pg_report_view_country_names());
             
             // prevent division by zero
             if ($grand_total > 0) {
@@ -1389,7 +1400,7 @@ if (!$_POST) {
                 }
                 
                 foreach ($summarize_by_1_result['results'] as $summarize_by_2_result) {
-                    $summarize_by_2_name = update_summarize_by_name($summarize_by_2_result['name'], $liveform->get_field_value('summarize_by_2'));
+                    $summarize_by_2_name = pg_report_view_country_name($liveform->get_field_value('summarize_by_2'), update_summarize_by_name($summarize_by_2_result['name'], $liveform->get_field_value('summarize_by_2')), pg_report_view_country_names());
                     
                     $colspan = $number_of_summarize_bys - 1;
                     
@@ -1431,7 +1442,7 @@ if (!$_POST) {
                         }
                         
                         foreach ($summarize_by_2_result['results'] as $summarize_by_3_result) {
-                            $summarize_by_3_name = update_summarize_by_name($summarize_by_3_result['name'], $liveform->get_field_value('summarize_by_3'));
+                            $summarize_by_3_name = pg_report_view_country_name($liveform->get_field_value('summarize_by_3'), update_summarize_by_name($summarize_by_3_result['name'], $liveform->get_field_value('summarize_by_3')), pg_report_view_country_names());
 
                             // prevent division by zero
                             if ($summarize_by_2_result['total'] > 0) {

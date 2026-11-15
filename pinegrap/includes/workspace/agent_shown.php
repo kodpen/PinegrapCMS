@@ -215,6 +215,144 @@ function ws_agent_request_no_answer($row)
     return ((string) ($row['status'] ?? '') === 'answered') && !ws_agent_request_replied($row);
 }
 
+// An agent's progress note on a request it holds: at most this many
+// characters, and one note in this many seconds.
+if (!defined('WS_AGENT_PROGRESS_MAX')) {
+    define('WS_AGENT_PROGRESS_MAX', 200);
+}
+
+if (!defined('WS_AGENT_PROGRESS_GAP')) {
+    define('WS_AGENT_PROGRESS_GAP', 30);
+}
+
+/**
+ * The progress note a request carries in ai_state, beside whatever else it
+ * keeps there (a wake, a question, an approval). Pure.
+ *
+ * @param array $row ws_ai_requests: ai_state
+ * @return array|null text, at
+ */
+function ws_agent_progress_of($row)
+{
+    $state = json_decode((string) ($row['ai_state'] ?? ''), true);
+
+    if (!is_array($state) || !isset($state['progress']) || !is_string($state['progress']) || ($state['progress'] === '')) {
+        return null;
+    }
+
+    return array('text' => $state['progress'], 'at' => (int) ($state['progress_at'] ?? 0));
+}
+
+/**
+ * The ai_state with the note set, or taken out when $text is ''; the rest
+ * of the state is kept. Null when nothing is left. Pure.
+ *
+ * @param string|null $ai_state
+ * @param string      $text
+ * @param int         $at
+ * @return string|null
+ */
+function ws_agent_progress_state($ai_state, $text, $at)
+{
+    $state = json_decode((string) $ai_state, true);
+    $state = is_array($state) ? $state : array();
+
+    unset($state['progress'], $state['progress_at']);
+
+    if ((string) $text !== '') {
+        $state['progress'] = (string) $text;
+        $state['progress_at'] = (int) $at;
+    }
+
+    return $state ? json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null;
+}
+
+/**
+ * Whether the holding agent may write a progress note now. The route has
+ * already found the request among the calling agent's own. Pure.
+ *
+ * @param array  $row  ws_ai_requests: status, ai_state
+ * @param mixed  $text
+ * @param int    $now
+ * @return array ok, text; or status, code, error, field, retry_after
+ */
+function ws_agent_progress_check($row, $text, $now)
+{
+    $refuse = function ($status, $code, $error, $field = null, $retry = 0) {
+        return array('ok' => false, 'status' => $status, 'code' => $code, 'error' => $error, 'field' => $field, 'retry_after' => $retry);
+    };
+
+    $status = (string) ($row['status'] ?? '');
+
+    if (in_array($status, array('queued', 'sent'), true)) {
+        return $refuse(409, 'not_claimed', lang('Claim the request before writing where you are.'));
+    }
+
+    if ($status !== 'running') {
+        return $refuse(409, 'closed', lang('This request is already closed.'));
+    }
+
+    $text = trim(preg_replace('/\s+/u', ' ', is_string($text) ? $text : ''));
+
+    if ($text === '') {
+        return $refuse(422, 'validation_failed', lang('Write where you are in a short line.'), 'text');
+    }
+
+    if (mb_strlen($text) > WS_AGENT_PROGRESS_MAX) {
+        return $refuse(422, 'validation_failed', lang(array('string' => 'A progress note is at most {var:1} characters.', 'vars' => WS_AGENT_PROGRESS_MAX)), 'text');
+    }
+
+    $last = ws_agent_progress_of($row);
+    $wait = $last ? ($last['at'] + WS_AGENT_PROGRESS_GAP - (int) $now) : 0;
+
+    if ($wait > 0) {
+        return $refuse(429, 'rate_limited', lang(array('string' => 'One progress note in {var:1} seconds at most. Try again in {var:2} seconds.', 'vars' => array(WS_AGENT_PROGRESS_GAP, $wait))), null, $wait);
+    }
+
+    return array('ok' => true, 'text' => $text);
+}
+
+/**
+ * Takes the note out of a request that closed. The site's own closes
+ * empty the whole ai_state; this is for the agent's answer and fail.
+ *
+ * @param int $id ws_ai_requests.id
+ */
+function ws_agent_progress_clear($id)
+{
+    $row = db_item("SELECT ai_state FROM ws_ai_requests WHERE id = '" . (int) $id . "'");
+
+    if (!is_array($row) || !ws_agent_progress_of($row)) {
+        return;
+    }
+
+    $state = ws_agent_progress_state($row['ai_state'], '', 0);
+
+    db("UPDATE ws_ai_requests SET ai_state = " . (($state === null) ? 'NULL' : "'" . e($state) . "'") . " WHERE id = '" . (int) $id . "'");
+}
+
+/**
+ * What the line under the asking message adds while the agent holds the
+ * request: its last note and since when it holds it (the claim). Empty for
+ * a request nobody holds. Pure but for date().
+ *
+ * @param array $row ws_ai_requests: status, claimed_at, ai_state
+ * @return array note, since
+ */
+function ws_agent_request_progress_line($row)
+{
+    if (((string) ($row['status'] ?? '') !== 'running') || ((int) ($row['claimed_at'] ?? 0) <= 0)) {
+        return array('note' => '', 'since' => '');
+    }
+
+    $note = ws_agent_progress_of($row);
+
+    return array(
+        'note'  => $note ? $note['text'] : '',
+        'since' => lang(array('string' => 'since {var:1}', 'vars' => date('H:i', (int) $row['claimed_at']))),
+    );
+}
+
 /**
  * Where an agent's request stands, as the line under its message says it
  * (ws_claude_request_state()'s shape). A push door or a model that failed
@@ -247,7 +385,7 @@ function ws_agent_request_state($row)
         'icon'        => $said['icon'],
         'session_url' => '',
         'agent'       => $parsed ? $parsed['kind'] : 'app',
-    );
+    ) + ws_agent_request_progress_line($row);
 }
 
 /**

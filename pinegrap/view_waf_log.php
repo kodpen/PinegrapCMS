@@ -473,7 +473,7 @@ foreach ($category_options as $value => $label) {
 // menu, each row its own token form. The policy reports live in a file the
 // log clear does not reach, so they keep their own row.
 $clear_menu = '<div class="pg-menu-wrap">
-    <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+    <button type="button" class="pg-icon-button" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
     <ul class="menu pg-menu-end">
         <li><form method="post" action="' . h($list_url) . '" class="disable_shortcut" onsubmit="return confirm(\'' . escape_javascript(lang('Clear all firewall log data?')) . '\');">' . get_token_field() . '<button type="submit" name="submit_clear" value="1" class="menu-item pg-link-body-emphasis"><i class="bi bi-trash me-3" aria-hidden="true"></i>' . lang('Clear Log') . '</button></form></li>'
     . ($csp_entries ? '

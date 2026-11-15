@@ -352,6 +352,96 @@ function ws_approval_agent_request_of($row)
 }
 
 /**
+ * Why an agent's request closes unanswered when its approval request
+ * settles first.
+ *
+ * @return string
+ */
+function ws_approval_agent_settled_reason()
+{
+    return lang('The approval request was settled before this agent answered.');
+}
+
+/**
+ * The requests of the agents still to answer, for the settle to close. Pure.
+ *
+ * @param array[] $rows ws_approval_agents_of(): agent, request_id, decision
+ * @return array request id => agent value
+ */
+function ws_approval_agent_open_requests($rows)
+{
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        if (((int) ($row['request_id'] ?? 0) > 0) && ((string) ($row['decision'] ?? '') === 'pending')) {
+            $out[(int) $row['request_id']] = (string) $row['agent'];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Takes the eye of an agent whose request closed off the approval message:
+ * an application agent's own, Pinegrap AI's (which model assistants share)
+ * or Claude's.
+ *
+ * @param string $value      agent:<id> | model:<id> | ai | claude
+ * @param int    $message_id
+ */
+function ws_approval_agent_eye_off($value, $message_id)
+{
+    if ((int) $message_id <= 0) {
+        return;
+    }
+
+    if ((($value === 'ai') || (strpos((string) $value, 'model:') === 0)) && function_exists('ws_ai_react')) {
+        ws_ai_react((int) $message_id, '👀', false);
+        return;
+    }
+
+    if (($value === 'claude') && function_exists('ws_claude_react')) {
+        ws_claude_react((int) $message_id, '👀', false);
+        return;
+    }
+
+    $row = ws_approval_agent_row($value);
+
+    if ($row && ((string) $row['kind'] === 'app') && ((int) $row['app_id'] > 0) && function_exists('ws_agent_react')) {
+        ws_agent_react((int) $row['app_id'], (int) $message_id, '👀', false);
+        return;
+    }
+
+    ws_message_touch((int) $message_id);
+}
+
+/**
+ * Closes the open requests of the agents an approval request asked, once it
+ * settled whatever the outcome: no agent is left to answer, or a model to
+ * spend tokens on, a request that is closed.
+ *
+ * @param array $approval the ws_approvals row
+ * @return int how many were cancelled
+ */
+function ws_approval_agent_requests_close($approval)
+{
+    if (!ws_approval_agents_ready() || !function_exists('ws_agent_request_cancel')) {
+        return 0;
+    }
+
+    $count = 0;
+
+    foreach (ws_approval_agent_open_requests(ws_approval_agents_of((int) $approval['id'])) as $request_id => $value) {
+        if (ws_agent_request_cancel($request_id, ws_approval_agent_settled_reason())) {
+            ws_approval_agent_eye_off($value, (int) $approval['message_id']);
+            $count++;
+        }
+    }
+
+    return $count;
+}
+
+/**
  * Asks the agents of a new request: one row each, and a request in its
  * queue made at once under the brakes, hung on the request's message.
  *
@@ -359,11 +449,15 @@ function ws_approval_agent_request_of($row)
  * @param array    $channel
  * @param array    $approval the ws_approvals row
  * @param string[] $agents   ws_approval_agents_clean() values, checked already
+ * @return string[] the values asked: the message's own tags skip them,
+ *                  a brake that held a request back included
  */
 function ws_approval_agents_ask($viewer, $channel, $approval, $agents)
 {
+    $asked = array();
+
     if (empty($agents) || !ws_approval_agents_ready()) {
-        return;
+        return $asked;
     }
 
     $state = ws_approval_agent_request_state($approval);
@@ -371,6 +465,8 @@ function ws_approval_agents_ask($viewer, $channel, $approval, $agents)
     $body = $message ? ws_tokens_normalise((string) $message['body']) : '';
 
     foreach ($agents as $value) {
+        $asked[] = (string) $value;
+
         db("INSERT IGNORE INTO ws_approval_agents (approval_id, agent) VALUES ('" . (int) $approval['id'] . "', '" . e($value) . "')");
 
         // Followed mode: the agent is asked by name, whatever its wake rule.
@@ -385,6 +481,10 @@ function ws_approval_agents_ask($viewer, $channel, $approval, $agents)
             if ($queued) {
                 db("UPDATE ws_ai_requests SET ai_state = '" . e($state) . "'
                     WHERE agent = '" . e($value) . "' AND message_id = '" . (int) $approval['message_id'] . "' AND status = 'queued' ORDER BY id DESC LIMIT 1");
+            } else {
+                // Followed mode asks silently: the channel is told the
+                // assistant was not asked, so nobody waits for its answer.
+                ws_approval_agent_not_asked($channel, $value);
             }
         } else {
             $made = ws_agent_after_send($viewer, $channel, (int) $approval['message_id'], $body, $value, false, array('state' => $state));
@@ -398,6 +498,73 @@ function ws_approval_agents_ask($viewer, $channel, $approval, $agents)
                 WHERE approval_id = '" . (int) $approval['id'] . "' AND agent = '" . e($value) . "'");
         }
     }
+
+    return $asked;
+}
+
+/**
+ * The asker's limit for Pinegrap AI or Claude, reached: the limit's own
+ * sentence, or '' while a request can still be made (and for any other
+ * agent, which the registry's brakes hold). Pure.
+ *
+ * @param string $value   ws_approval_agents_clean() value
+ * @param int    $waiting the asker's requests to it queued, sent or running
+ * @param int    $limit   WS_AI_PER_PERSON or WS_CLAUDE_PER_PERSON
+ * @return string
+ */
+function ws_approval_agent_limit_error($value, $waiting, $limit)
+{
+    if ((int) $waiting < (int) $limit) {
+        return '';
+    }
+
+    if ($value === 'ai') {
+        return lang(array('string' => 'Pinegrap AI already has {var:1} requests of yours waiting. Please wait for those to be answered.', 'vars' => (int) $limit));
+    }
+
+    if ($value === 'claude') {
+        return lang(array('string' => 'Claude already has {var:1} requests of yours waiting. Please wait for those to be answered.', 'vars' => (int) $limit));
+    }
+
+    return '';
+}
+
+/**
+ * Whether the asker's limit keeps Pinegrap AI or Claude from being asked
+ * to approve: the counts ws_ai_after_send() and ws_claude_after_send() read.
+ *
+ * @param array  $viewer the asker
+ * @param string $value  ws_approval_agents_clean() value
+ * @return string the refusal, '' when it can be asked
+ */
+function ws_approval_agent_limit_problem($viewer, $value)
+{
+    if ((($value !== 'ai') && ($value !== 'claude')) || !function_exists('ws_ai_agent_where')) {
+        return '';
+    }
+
+    $limit = ($value === 'ai')
+        ? (defined('WS_AI_PER_PERSON') ? WS_AI_PER_PERSON : 5)
+        : (defined('WS_CLAUDE_PER_PERSON') ? WS_CLAUDE_PER_PERSON : 5);
+    $waiting = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
+        WHERE requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')" . ws_ai_agent_where($value));
+
+    return ws_approval_agent_limit_error($value, $waiting, $limit);
+}
+
+/**
+ * Pinegrap AI or Claude asked to approve but no request made (its limit
+ * filled, or it went out of reach, after the check): a line in the channel
+ * says so.
+ *
+ * @param array  $channel
+ * @param string $value ai | claude
+ */
+function ws_approval_agent_not_asked($channel, $value)
+{
+    $name = ($value === 'claude') ? 'Claude' : 'Pinegrap AI';
+
+    ws_message_system((int) $channel['id'], lang(array('string' => '{var:1} could not be asked to approve this request and will not answer it.', 'vars' => $name)));
 }
 
 /**
@@ -606,11 +773,13 @@ function ws_approval_agent_decide_tool()
 /**
  * The decide tool of the site's run (ws_ai_step()): records the answer of
  * the agent the request was made for through ws_approval_agent_decide(),
- * which also closes the request.
+ * which also closes the request. An approval request closed before the
+ * answer ends the run at once: its request is cancelled, nothing is written
+ * under the approval and no more steps are spent.
  *
  * @param array $row  ws_ai_requests
  * @param array $args decision, note
- * @return string '' once recorded, else why not
+ * @return string '' once recorded or ended, else why not
  */
 function ws_approval_agent_run_decide($row, $args)
 {
@@ -624,5 +793,20 @@ function ws_approval_agent_run_decide($row, $args)
 
     $result = ws_approval_agent_decide($agent, $approval, strtolower(trim((string) ($args['decision'] ?? ''))), (string) ($args['note'] ?? ''));
 
-    return $result['ok'] ? '' : (string) $result['error'];
+    if ($result['ok']) {
+        return '';
+    }
+
+    // Settled meanwhile (an expired one is settled by the refusal itself).
+    $approval = ws_approval((int) $approval['id']);
+
+    if ($approval && ((int) $approval['closed_at'] > 0)) {
+        if (function_exists('ws_agent_request_cancel') && ws_agent_request_cancel((int) $row['id'], ws_approval_agent_settled_reason())) {
+            ws_approval_agent_eye_off((string) $row['agent'], (int) $approval['message_id']);
+        }
+
+        return '';
+    }
+
+    return (string) $result['error'];
 }

@@ -279,14 +279,9 @@ pg_page_shell( array(
                     </div>
                 </div>
             </div>
-            <nav class="buttons navigation text-center position-sticky mb-7" id="reorder_actions" style="bottom:.5rem;display:none" aria-label="' . h(lang('Reorder Buttons')) . '">
-                <div class="container">
-                    <div class="btn-group flex-wrap justify-content-center">
-                        <button type="button" id="save_sort_order" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-lg me-3"></i><span class="pg-btn-label">' . lang('Save Order') . '</span></button>
+            ' . pg_save_bar('
                         <button type="button" id="cancel_reorder" class="btn my-1 btn-outline theme-secondary">' . lang('Cancel') . '</button>
-                    </div>
-                </div>
-            </nav>
+                        <button type="button" id="save_sort_order" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-lg me-3"></i><span class="pg-btn-label">' . lang('Save Order') . '</span></button>', array('id' => 'reorder_actions', 'hidden' => true, 'label' => lang('Reorder Buttons'))) . '
             <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/sortablejs/Sortable.min.js"></script>
             <script>
             (function() {

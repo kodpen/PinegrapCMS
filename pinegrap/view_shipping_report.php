@@ -65,9 +65,12 @@ list($start_date, $end_date) = pg_shipping_report_period(
 $_SESSION['software']['ecommerce']['view_shipping_report']['start_date'] = $start_date;
 $_SESSION['software']['ecommerce']['view_shipping_report']['end_date'] = $end_date;
 
-// The period in the panel language and the site's date order ('31 Ekim
-// 2026 – 13 Kasım 2026'), like the list screens' headings.
-$output_date_range = h(pg_list_period_heading(pg_list_period_range_from_dates($start_date, $end_date)));
+// The period in the panel's date text, the same shape on every report
+// screen ('Cmt 31 Eki 2026 – Cum 13 Kas 2026').
+$output_date_range = pg_report_view_range(
+    get_absolute_time(array('timestamp' => strtotime($start_date), 'type' => 'date')),
+    get_absolute_time(array('timestamp' => strtotime($end_date), 'type' => 'date'))
+);
 
 $number_of_days_in_date_range = round((strtotime($end_date) - strtotime($start_date)) / 86400);
 
@@ -250,7 +253,7 @@ if (count($products) > 0) {
 
     // Loop through the dates in order to get the date headings.
     foreach ($dates as $date) {
-        $output_date_heading_cells .= '<th class="text-end">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=' . date('m', strtotime($date)) . '&amp;start_day=' . date('d', strtotime($date)) . '&amp;start_year=' . date('Y', strtotime($date)) . '&amp;stop_month=' . date('m', strtotime($date)) . '&amp;stop_day=' . date('d', strtotime($date)) . '&amp;stop_year=' . date('Y', strtotime($date)) . '', lang(date('D', strtotime($date))) . '<br />' . date('j', strtotime($date)) . ' ' . lang(date('M', strtotime($date)))) . '</th>';
+        $output_date_heading_cells .= '<th class="text-end pg-report-day">' . $output_orders_heading('view_orders.php?reset=true&amp;status=complete_or_exported&amp;advanced_filters=true' . $output_view_orders_shipping_status . '&amp;date_type=ship_date&amp;start_month=' . date('m', strtotime($date)) . '&amp;start_day=' . date('d', strtotime($date)) . '&amp;start_year=' . date('Y', strtotime($date)) . '&amp;stop_month=' . date('m', strtotime($date)) . '&amp;stop_day=' . date('d', strtotime($date)) . '&amp;stop_year=' . date('Y', strtotime($date)) . '', lang(date('D', strtotime($date))) . '<br />' . date('j', strtotime($date)) . ' ' . lang(date('M', strtotime($date)))) . '</th>';
     }
 
     rsort($products);
@@ -294,7 +297,7 @@ if (count($products) > 0) {
                 $output_date_value = pg_format_number($product[$date], 0);
             }
 
-            $output_date_cells .= '<td class="text-end">' . $output_date_value . '</td>';
+            $output_date_cells .= '<td class="text-end pg-report-day">' . $output_date_value . '</td>';
         }
 
         $output_after = '';
@@ -339,7 +342,7 @@ if (count($products) > 0) {
             $output_total_date_value = pg_format_number($totals[$date], 0);
         }
 
-        $output_total_date_cells .= '<td class="text-end">' . $output_total_date_value . '</td>';
+        $output_total_date_cells .= '<td class="text-end pg-report-day">' . $output_total_date_value . '</td>';
     }
 
     $output_total_after = '';

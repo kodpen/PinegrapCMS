@@ -95,12 +95,12 @@ foreach (erp_cheque_rows(array('direction' => $direction, 'status' => $status, '
     $output_rows .= '
         <tr>
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['due_date'])) . '"><a class="pg-link-body-emphasis fw-semibold" href="erp_cheque.php?id=' . (int) $row['id'] . h('&send_to=' . urlencode(REQUEST_URL)) . '">' . h(prepare_form_data_for_output((string) $row['due_date'], 'date')) . '</a>'
-                . ($late ? ' <span class="badge theme-danger">' . lang('Overdue') . '</span>' : '') . '</td>
+                . ($late ? ' ' . pg_pill(lang('Overdue'), 'danger') : '') . '</td>
             <td>' . h($kinds[(string) $row['kind']] ?? '') . '<div class="small fg-secondary">' . ((string) $row['direction'] === 'received' ? lang('Received') : lang('Given out')) . '</div></td>
             <td class="text-break pg-cell-wrap erp-cheque-cell-account">' . h((string) $row['account_title']) . (((string) $row['drawer'] !== '') ? '<div class="small fg-secondary text-break">' . h((string) $row['drawer']) . '</div>' : '') . '</td>
             <td class="small text-break pg-cell-wrap">' . h(trim((string) $row['bank_name'] . ' ' . (string) $row['serial_no'])) . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['amount_base'] . '">' . h(erp_money_out_currency((int) $row['amount'], (string) $row['currency'])) . '</td>
-            <td><span class="badge theme-' . h($state[1]) . '">' . h($state[0]) . '</span></td>
+            <td>' . pg_pill($state[0], $state[1]) . '</td>
         </tr>';
 }
 
@@ -233,7 +233,7 @@ pg_page_shell([
         <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <div class="card pg-card erp-list-card my-7" id="erp_cheques">
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover align-middle mb-0" data-pg-sort>
+                    <table class="table erp-list-table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
                             <tr>
                                 <th>' . lang('Due Date') . '</th>

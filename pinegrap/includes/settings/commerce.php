@@ -143,7 +143,7 @@ $pg_settings_cards[] = '
             <div class="card-body">
                 <div class="row gy-5">
                     <div class="col-12">
-                                                            <div class="form-field">
+                                                            <div class="form-field">' . pg_settings_tile('truck', 'shop') . '
                                                                 <div class="switch"><input value="1"' . $ecommerce_shipping_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_shipping" name="ecommerce_shipping" data-bs-target="#ecommerce_shipping_row"/></div>
                                                                 <label class="" for="ecommerce_shipping">' . lang('Shipping') . '</label>
                                                             </div>
@@ -905,7 +905,7 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <div class="form-field">
+                                            <div class="form-field">' . pg_settings_tile('people', 'shop') . '
                                                 <div class="switch"><input value="1"' . $affiliate_program_checked . ' class="collapse-switcher" type="checkbox" id="affiliate_program" name="affiliate_program" data-bs-target="#affiliate_program_row"/></div>
                                                 <label class="" for="affiliate_program">' . lang('Enable Affiliate Program') . '</label>
                                             </div>

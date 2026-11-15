@@ -8,9 +8,8 @@ description: CB0 list, content nodes the server draws (Messages, Breadcrumb, Var
 
 ## Messages (PHP)?
 - Site: the liveform's errors and notices of the widget it sits in (`_pg_inject_messages_node()`), or what the widgets left at page level.
-- Canvas: a dashed "PHP Messages" box. Change today: CSS class only.
+- Opened by settings (CB5, #9723): Alert look, Dismiss button and a true sample error on the canvas (`messages-node-settings.md`); the messages depend on the request.
 - Use: the server names one in each form widget (`_pg_inject_messages_node()`); 57 templates place it on their pages.
-- Opening: settings only (alert look, dismiss button), and a sample error on the canvas; the messages depend on the request.
 
 ## Breadcrumb?
 - Site: catalog, group, subgroup, product inside a catalog or catalog detail widget. Canvas: a dashed box. Change today: CSS class.

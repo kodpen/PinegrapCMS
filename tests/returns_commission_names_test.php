@@ -67,5 +67,5 @@ function test_marketplace_products_filter_rows_are_navigation()
 {
 	$source = returns_commission_names_source('marketplace_products.php');
 	pg_assert_false(strpos($source, 'role="tablist"') !== false, 'tab list without tabs');
-	pg_assert_same(3, substr_count($source, "<nav class=\"mpp-tabs\" aria-label=\"' . h(lang('Filters')) . '\">"), 'three filter rows');
+	pg_assert_same(3, substr_count($source, "<nav class=\"pg-seg pg-list-seg\" aria-label=\"' . h(lang('Filters')) . '\">"), 'three filter rows');
 }

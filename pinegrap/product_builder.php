@@ -3446,7 +3446,7 @@ function pg_pb_render_stock_quantity($mode, $product_id, $total)
     $is_bundle = $product_id && pg_bundle_ids_among(array((int) $product_id));
 
     if (!$locations || ($mode !== 'edit') || $is_bundle) {
-        return '<div class="col-12 sm:col-6 lg:col-4">
+        return '<div class="col-12 pg-field-span-3">
                 <label for="inventory_quantity" class="form-label">' . lang('Inventory Quantity') . '</label>
                 <input type="number" min="0" name="inventory_quantity" id="inventory_quantity" class="form-control" value="' . h($total) . '" />
                 ' . (($mode === 'edit') ? '<input type="hidden" name="inventory_quantity_was" value="' . h($total) . '" />' : '') . '
@@ -3462,7 +3462,7 @@ function pg_pb_render_stock_quantity($mode, $product_id, $total)
         $id = (int) $location['id'];
         $quantity = isset($quantities[$id]) ? $quantities[$id] : 0;
 
-        $output .= '<div class="col-12 sm:col-6 lg:col-4">
+        $output .= '<div class="col-12 md:col-3">
                 <label for="stock_location_' . $id . '" class="form-label">' . h($location['name']) . '</label>
                 <input type="number" min="0" step="1" name="stock_location[' . $id . ']" id="stock_location_' . $id . '" class="form-control" value="' . $quantity . '" />
                 <input type="hidden" name="stock_location_was[' . $id . ']" value="' . $quantity . '" />
@@ -3471,7 +3471,7 @@ function pg_pb_render_stock_quantity($mode, $product_id, $total)
 
     return '<div class="col-12"><div class="form-label mb-0">' . lang('Stock by location') . '</div></div>'
         . $output . '
-        <div class="col-12 sm:col-6 lg:col-4">
+        <div class="col-12 md:col-3">
             <label for="inventory_quantity_total" class="form-label">' . lang('Total') . '</label>
             <input type="number" id="inventory_quantity_total" class="form-control" value="' . h((int) $total) . '" readonly />
         </div>';
@@ -3505,7 +3505,7 @@ function pg_pb_render_preorder_row($v)
             'checked' => $running,
             'help'    => lang('Sell this before its stock arrives; the back order is turned on with it and the pre-order ends on the date or when stock is in.'),
             'panel'   =>
-                '<div class="col-12 sm:col-6 lg:col-4">
+                '<div class="col-12 pg-field-span-3">
                     <label for="preorder_date" class="form-label">' . lang('Ships From') . '</label>
                     <input type="date" data-pg-date name="preorder_date" id="preorder_date" class="form-control" min="' . h(date('Y-m-d', strtotime($today . ' +1 day'))) . '" value="' . h($running ? $date : '') . '" />' . get_date_picker_format() . pg_fields_script() . '
                 </div>',
@@ -4347,14 +4347,14 @@ function pg_pb_render_bundle_card($mode, $product_id, $values)
                                                 'label' => lang('This product is a bundle'),
                                                 'help'  => lang('Sold as one item made of other products. Its stock follows the products in it.'),
                                                 'panel' =>
-                                                    '<div class="col-12 sm:col-6 lg:col-4 my-1">
+                                                    '<div class="col-12 md:col-6 my-1">
                                                         <label for="bundle_pricing" class="form-label">' . lang('Bundle Price') . '</label>
                                                         <select name="bundle_pricing" id="bundle_pricing" class="form-control">
                                                             <option value="fixed"' . (($pricing === 'fixed') ? ' selected="selected"' : '') . '>' . lang('The price of this product') . '</option>
                                                             <option value="sum"' . (($pricing === 'sum') ? ' selected="selected"' : '') . '>' . lang('The sum of the products in it') . '</option>
                                                         </select>
                                                     </div>
-                                                    <div class="col-12 sm:col-6 lg:col-4 my-1">
+                                                    <div class="col-12 md:col-3 my-1">
                                                         <label for="bundle_discount" class="form-label">' . lang('Discount on the Sum (%)') . '</label>
                                                         <input type="text" inputmode="decimal" name="bundle_discount" id="bundle_discount" class="form-control" value="' . h($discount) . '" />
                                                     </div>
@@ -4806,7 +4806,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 : '');
 
         $output_barcode_fields =
-            '<div class="col-12 lg:col-3 my-3" id="pg_pb_barcode_field">
+            '<div class="col-12 md:col-4 my-3" id="pg_pb_barcode_field">
                 <label for="pg_pb_barcode" class="form-label">' . $barcode_label . '</label>
                 <input type="text" name="pg_pb_barcode" id="pg_pb_barcode" class="form-control font-monospace"' . $barcode_attributes . ' placeholder="' . lang('Leave blank to generate') . '" value="' . h($v('pg_pb_barcode')) . '" />
             </div>
@@ -4839,7 +4839,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     if ($has_groups) {
 
         $output_parent_group_field =
-            '<div class="col-12 lg:col-8 my-3 pg-pb-group-only d-none">
+            '<div class="col-12 md:col-6 my-3 pg-pb-group-only d-none">
                 <label for="parent_group_id" class="form-label">' . lang('Parent Product Group') . '</label>
                 <select style="width:100%" data-pg-combobox class="form-control" id="parent_group_id" name="parent_group_id" data-placeholder="' . lang('Select Parent Group') . '">
                     ' . get_product_group_options(pg_catalog_group_top_id(), 0, 0, 0, array(), FALSE, 'text', false, true, false) . '
@@ -4848,7 +4848,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             </div>';
 
         $output_catalog_group_field =
-            '<div class="col-12 lg:col-8 my-3 pg-pb-single-only">
+            '<div class="col-12 md:col-6 my-3 pg-pb-single-only">
                 <label for="catalog_group_ids" class="form-label">' . lang('Include product in to selected groups') . '</label>
                 <select style="width:100%" data-pg-combobox class="form-control" id="catalog_group_ids" name="catalog_group_ids[]" multiple="multiple" data-placeholder="' . lang('Include product in to selected groups') . '">
                     ' . pg_pb_mark_selected(get_product_group_options(0, 0, 0, 0, array(), TRUE, 'text', false, true, false, $v('catalog_group_ids', array())), $v('catalog_group_ids', array())) . '
@@ -4875,7 +4875,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
     if ($output_zone_options !== '') {
         $output_zones_field =
-            '<div class="col-12 my-3">
+            '<div class="col-12 pg-field-span-6 my-3">
                 <label for="allowed_zones" class="form-label">' . lang('Allowed Zones') . '</label>
                 <select style="width:100%" data-pg-combobox class="form-control" data-placeholder="' . lang('Click to select shipping zone(s)') . '" id="allowed_zones" name="allowed_zones[]" multiple="multiple">' . $output_zone_options . '</select>
             </div>';
@@ -4899,7 +4899,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                 'name'  => 'commissionable',
                 'label' => lang('Commissionable'),
                 'panel' =>
-                    '<div class="col-12 sm:col-6 lg:col-4">
+                    '<div class="col-12 pg-field-span-3">
                         <label for="commission_rate_limit" class="form-label">' . lang('Commission Rate Limit') . '</label>
                         <label class="form-control form-adorn form-adorn-end">
                             <span class="form-adorn-text" aria-hidden="true">%</span>
@@ -4946,7 +4946,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                     'label' => lang('Compare-at Price'),
                     'help'  => lang('An earlier or list price of this article, higher than the price it sells at.'),
                     'panel' =>
-                        '<div class="col-12 sm:col-6 lg:col-4">
+                        '<div class="col-12 pg-field-span-3">
                             <label for="compare_at_price" class="form-label">' . lang('Amount') . '</label>
                             <label class="form-control form-adorn form-adorn-end">
                                 <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
@@ -5073,7 +5073,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     if (defined('ECOMMERCE_CREDIT_DEBIT_CARD') && ECOMMERCE_CREDIT_DEBIT_CARD == TRUE
         && defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY == 'Sage') {
         $output_sage_group_id =
-            '<div class="col-12 sm:col-6 lg:col-4 my-3">
+            '<div class="col-12 md:col-4 my-3">
                 <label class="form-label" for="sage_group_id">' . lang('Sage Group ID') . '</label>
                 <input type="text" name="sage_group_id" id="sage_group_id" class="form-control" maxlength="50" value="' . h($v('sage_group_id')) . '" />
             </div>';
@@ -5085,7 +5085,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
     if (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce') {
         $output_recurring_start =
-            '<div class="col-12 sm:col-6 lg:col-4 my-1">
+            '<div class="col-12 md:col-3 my-1">
                 <label for="start" class="form-label">' . lang('Start (days)') . '</label>
                 <div class="input-group">
                     <input type="text" name="start" id="start" class="form-control" value="' . h($v('start', '0')) . '" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" />
@@ -5125,11 +5125,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             'name'  => 'recurring_profile_disabled_email',
                             'label' => lang('Send E-mail to Customer'),
                             'panel' =>
-                                '<div class="col-12 lg:col-6">
+                                '<div class="col-12">
                                     <label class="form-label" for="recurring_profile_disabled_email_subject">' . lang('Subject') . '</label>
                                     <input type="text" id="recurring_profile_disabled_email_subject" name="recurring_profile_disabled_email_subject" class="form-control" maxlength="255" value="' . h($v('recurring_profile_disabled_email_subject')) . '" />
                                 </div>
-                                <div class="col-12 lg:col-6">
+                                <div class="col-12 md:col-6">
                                     <label class="form-label" for="recurring_profile_disabled_email_page_id">' . lang('Page') . '</label>
                                     ' . pg_picker_field('page', 'recurring_profile_disabled_email_page_id', $v('recurring_profile_disabled_email_page_id')) . '
                                 </div>',
@@ -5231,7 +5231,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         }
 
         $output_custom_product_fields .=
-            '<div class="col-12 lg:col-6 my-3">
+            '<div class="col-12 my-3">
                 <label for="custom_field_' . $custom_field_number . '" class="form-label">' . h($custom_field_label) . '</label>
                 <input class="form-control" type="text" id="custom_field_' . $custom_field_number . '" name="custom_field_' . $custom_field_number . '" value="' . h($v('custom_field_' . $custom_field_number)) . '" maxlength="255" />
             </div>';
@@ -5522,20 +5522,20 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             <div class="card-body">
                                 <div class="row">
 
-                                    <div class="col-12 lg:col-4 my-3">
+                                    <div class="col-12 pg-field-span-4 my-3">
                                         <label for="name" class="form-label">' . lang('Product ID / SKU') . '</label>
                                         <input type="text" name="name" id="name" class="form-control" maxlength="100" required value="' . h($v('name')) . '" data-pg-name-except="' . (($pg_mode === 'edit') ? $pg_product_id : 0) . '" />
                                         <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Used as the prefix of every variant SKU.') . '</div>
                                     </div>
 
-                                    <div class="col-12 lg:col-5 my-3">
+                                    <div class="col-12 my-3">
                                         ' . pg_ai_write_label_row('<label for="short_description" class="form-label">' . lang('Short Description') . '</label>', $ai_button('product_short', 'short_description'), $ai_marker('short_description', 'short_description')) . '
                                         <input type="text" name="short_description" id="short_description" class="form-control" maxlength="100" value="' . h($v('short_description')) . '" />
                                         <div class="form-text pg-pb-group-only d-none">' . lang('Becomes the product group name shown in the catalog.') . '</div>
                                     </div>
 
-                                    <div class="col-12 lg:col-3 my-3">
+                                    <div class="col-12 md:col-3 my-3">
                                         <label for="price" class="form-label">' . lang('Unit Price') . '</label>
                                         <label class="form-control form-adorn form-adorn-end">
                                             <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
@@ -5583,7 +5583,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'name'    => 'taxable',
                                                 'label'   => lang('Taxable'),
                                                 'panel'   =>
-                                                    '<div class="col-12 sm:col-6 lg:col-4">
+                                                    '<div class="col-12 pg-field-span-3">
                                                         <label for="tax_rate" class="form-label">' . lang('Tax Rate (%)') . '</label>
                                                         <input type="number" min="0" max="100" step="0.001" name="tax_rate" id="tax_rate" class="form-control" placeholder="' . h($output_tax_rate_placeholder) . '" value="' . h($output_tax_rate_value) . '" />
                                                         <div class="form-text">' . $output_tax_rate_help . '</div>
@@ -5610,12 +5610,12 @@ function pg_pb_render_product_screen($values = array(), $context = array())
     
                                                         $output_recurring_start .
     
-                                                        '<div class="col-12 sm:col-6 lg:col-4 my-1">
+                                                        '<div class="col-12 md:col-3 my-1">
                                                             <label for="number_of_payments" class="form-label">' . lang('Number of Payments') . '</label>
                                                             <input type="text" name="number_of_payments" id="number_of_payments" class="form-control" size="7" maxlength="7" inputmode="numeric" value="' . h($v('number_of_payments')) . '" />
                                                             <div class="form-text">' . get_number_of_payments_message() . '</div>
                                                         </div>
-                                                        <div class="col-12 sm:col-6 lg:col-4 my-1">
+                                                        <div class="col-12 md:col-6 my-1">
                                                             <label for="payment_period" class="form-label">' . lang('Payment Period') . '</label>
                                                             <select name="payment_period" id="payment_period" class="form-control">' . select_payment_period($v('payment_period', 'Monthly')) . '</select>
                                                         </div>' .
@@ -5698,13 +5698,13 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     </div>
                                                     <div class="col-12 mt-5 d-none" id="pg_pb_combo_preview"></div>
 
-                                                    <div class="col-12 lg:col-6 mt-5 pg-pb-group-only d-none">
+                                                    <div class="col-12 pg-field-span-4 mt-5 pg-pb-group-only d-none">
                                                         <label for="sku_template" class="form-label">' . lang('SKU Template') . '</label>
                                                         <input type="text" id="sku_template" name="sku_template" class="form-control" placeholder="' . lang('e.g. {Color}-{Size}') . '" value="' . h($v('sku_template')) . '" />
                                                         <div class="pg-pb-tokens d-flex flex-wrap gap-1 mt-1" data-pg-pb-target="sku_template"></div>
                                                         <div class="form-text">' . lang('Added after the SKU above. Use attribute names in curly braces.') . '</div>
                                                     </div>
-                                                    <div class="col-12 lg:col-6 mt-5 pg-pb-group-only d-none">
+                                                    <div class="col-12 mt-5 pg-pb-group-only d-none">
                                                         <label for="short_description_template" class="form-label">' . lang('Short Description Template') . '</label>
                                                         <input type="text" id="short_description_template" name="short_description_template" class="form-control" placeholder="' . lang('e.g. T-Shirt {Color}-{Size}') . '" value="' . h($v('short_description_template')) . '" />
                                                         <div class="pg-pb-tokens d-flex flex-wrap gap-1 mt-1" data-pg-pb-target="short_description_template"></div>
@@ -5808,7 +5808,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             <div class="card-body">
                                 <div class="row">
 
-                                    <div class="col-12 lg:col-8 my-3">
+                                    <div class="col-12 pg-field-span-6 my-3">
                                         <label class="form-label" for="required_product">' . lang('Requires Product') . '</label>
                                         <select class="form-control" id="required_product" name="required_product">
                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Product')))) . '-</option>' . select_product($v('required_product')) . '
@@ -5845,12 +5845,12 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                         <div class="form-text">' . lang('Used by the search on your own site, not by search engines.') . '</div>
                                     </div>
 
-                                    <div class="col-12 lg:col-6 my-3">
+                                    <div class="col-12 my-3">
                                         <label for="address_name" class="form-label">' . lang('Catalog Name') . '</label>
                                         <input type="text" name="address_name" id="address_name" class="form-control" maxlength="255" value="' . h($v('address_name')) . '" />
                                         <div class="form-text">' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '</div>
                                     </div>
-                                    <div class="col-12 lg:col-6 my-3">
+                                    <div class="col-12 my-3">
                                         ' . pg_ai_write_label_row('<label for="title" class="form-label">' . lang('Web Browser Title') . '</label>', $ai_button('seo_title', 'title'), $ai_marker('title', 'title')) . '
                                         <input type="text" name="title" id="title" class="form-control" maxlength="255" value="' . h($v('title')) . '" />
                                         <div id="seo_c_title"></div>
@@ -5876,7 +5876,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-12 lg:col-3 my-3">
+                                    <div class="col-12 my-3">
                                         <label for="brand" class="form-label">' . lang('Brand') . '</label>
                                         <input type="text" name="brand" id="brand" class="form-control" maxlength="100" value="' . h($v('brand')) . '" />
                                     </div>
@@ -5886,21 +5886,21 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                         that repeats one code across nine variants is rejected. In
                                         that case the field lives per variant, under the row.
                                     -->
-                                    <div class="col-12 lg:col-3 my-3" id="pg_pb_gtin_field">
+                                    <div class="col-12 md:col-4 my-3" id="pg_pb_gtin_field">
                                         <label for="gtin" class="form-label">' . lang('GTIN') . '</label>
                                         <input type="text" name="gtin" id="gtin" class="form-control" maxlength="50" placeholder="' . lang('e.g. UPC') . '" value="' . h($v('gtin')) . '" />
                                     </div>
-                                    <div class="col-12 lg:col-3 my-3 d-none" id="pg_pb_gtin_moved">
+                                    <div class="col-12 md:col-4 my-3 d-none" id="pg_pb_gtin_moved">
                                         <label class="form-label">' . lang('GTIN') . '</label>
                                         <div class="form-control-plaintext small fg-secondary">
                                             <i class="bi bi-arrow-down-circle me-1"></i>' . lang('Set per variant, under each row.') . '
                                         </div>
                                     </div>
-                                    <div class="col-12 lg:col-3 my-3">
+                                    <div class="col-12 md:col-4 my-3">
                                         <label for="mpn" class="form-label">' . lang('MPN') . '</label>
                                         <input type="text" name="mpn" id="mpn" class="form-control" maxlength="50" placeholder="' . lang('i.e. manufacturer product number') . '" value="' . h($v('mpn')) . '" />
                                     </div>
-                                    <div class="col-12 lg:col-3 my-3">
+                                    <div class="col-12 pg-field-span-6 my-3">
                                         <label for="google_product_category" class="form-label">' . lang('Google Product Category') . '</label>
                                         <select name="google_product_category" id="google_product_category" class="form-control" data-pg-combobox data-pg-source="google_taxonomy_action.php?action=search" data-pg-min-length="2" data-pg-free-text data-placeholder="' . h(lang('Google Product Category')) . '"><option value=""></option>' . $output_google_product_category_option . '</select>' . pg_fields_script() . '
                                         <div class="form-text" id="pg_pb_taxonomy_status">' . $output_taxonomy_status . '</div>
@@ -5940,7 +5940,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                             <div class="accordion-body">
                                                 <div class="row">
 
-                                    <div class="col-12 lg:col-4 my-3">
+                                    <div class="col-12 md:col-3 my-3">
                                         <label for="membership_renewal" class="form-label">' . lang('Add Days to Customer\'s Membership') . '</label>
                                         <label class="form-control form-adorn form-adorn-end">
                                             <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
@@ -5967,13 +5967,13 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'name'  => 'grant_private_access',
                                                 'label' => lang('Grant Private Access to Customer'),
                                                 'panel' =>
-                                                    '<div class="col-12 md:col-6 lg:col-4">
+                                                    '<div class="col-12 md:col-6">
                                                         <label class="form-label" for="private_folder">' . lang('Set "View" Access to Folder') . '</label>
                                                         <select class="form-control" id="private_folder" name="private_folder">
                                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Folder')))) . '-</option>' . $private_folder_options . '
                                                         </select>
                                                     </div>
-                                                    <div class="col-12 md:col-6 lg:col-4">
+                                                    <div class="col-12 md:col-3">
                                                         <label for="private_days" class="form-label">' . lang('Access duration') . '</label>
                                                         <label class="form-control form-adorn form-adorn-end">
                                                             <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
@@ -5981,7 +5981,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         </label>
                                                         <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
                                                     </div>
-                                                    <div class="col-12 md:col-6 lg:col-4">
+                                                    <div class="col-12 pg-field-span-6">
                                                         <label class="form-label" for="send_to_page">' . lang('Set Customer\'s Start Page to') . '</label>
                                                         ' . pg_picker_field('page', 'send_to_page', $v('send_to_page')) . '
                                                     </div>',
@@ -6009,7 +6009,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     'name'  => 'gift_card',
                                                     'label' => lang('Email Gift Card'),
                                                     'panel' =>
-                                                        '<div class="col-12 lg:col-8">
+                                                        '<div class="col-12">
                                                             <label class="form-label" for="gift_card_email_subject">' . lang('Subject') . '</label>
                                                             <input type="text" id="gift_card_email_subject" name="gift_card_email_subject" class="form-control" maxlength="255" value="' . h($v('gift_card_email_subject')) . '" />
                                                             <div class="d-flex flex-wrap gap-1 mt-1" data-pg-pb-giftvar-target="gift_card_email_subject">' . $output_gift_card_variables . '</div>
@@ -6041,7 +6041,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                                             <div class="popover-body">
                                                                 <div class="row">
-                                                                    <div class="col-12 lg:col-8">
+                                                                    <div class="col-12 pg-field-span-6">
                                                                         <label class="form-label" for="gift_card_email_page_id">' . lang('Page') . '</label>
                                                                         ' . pg_picker_field('page', 'gift_card_email_page_id', $v('gift_card_email_page_id')) . '
                                                                     </div>
@@ -6063,26 +6063,26 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                         <textarea id="order_receipt_message" name="order_receipt_message">' . h($v('order_receipt_message')) . '</textarea>
                                     </div>
 
-                                    <div class="col-12 lg:col-4 my-3">
+                                    <div class="col-12 md:col-6 my-3">
                                         <label class="form-label" for="order_receipt_bcc_email_address">' . lang('Order Receipt BCC E-mail Address') . '</label>
                                         <input type="text" class="form-control" id="order_receipt_bcc_email_address" name="order_receipt_bcc_email_address" maxlength="100" inputmode="email" value="' . h($v('order_receipt_bcc_email_address')) . '" />
                                     </div>
-                                    <div class="col-12 lg:col-4 my-3">
+                                    <div class="col-12 md:col-6 my-3">
                                         <label class="form-label" for="email_page">' . lang('E-mail Additional Page to Customer') . '</label>
                                         ' . pg_picker_field('page', 'email_page', $v('email_page')) . '
                                     </div>
-                                    <div class="col-12 lg:col-4 my-3">
+                                    <div class="col-12 md:col-6 my-3">
                                         <label class="form-label" for="email_bcc">' . lang('BCC E-mail Address') . '</label>
                                         <input type="text" class="form-control" id="email_bcc" name="email_bcc" maxlength="100" inputmode="email" value="' . h($v('email_bcc')) . '" />
                                     </div>
 
-                                    <div class="col-12 lg:col-4 my-3">
+                                    <div class="col-12 md:col-6 my-3">
                                         <label class="form-label" for="contact_group_id">' . lang('Add to Contact Group') . '</label>
                                         <select class="form-control" id="contact_group_id" name="contact_group_id">
                                             <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Contact Group')))) . '-</option>' . select_contact_group($v('contact_group_id'), $user) . '
                                         </select>
                                     </div>
-                                    <div class="col-12 lg:col-4 my-3">
+                                    <div class="col-12 pg-field-span-3 my-3">
                                         <label for="reward_points" class="form-label">' . lang('Reward Points') . '</label>
                                         <input type="text" name="reward_points" id="reward_points" class="form-control" size="5" maxlength="9" inputmode="numeric" style="text-align:right;" value="' . h($v('reward_points')) . '" />
                                     </div>
@@ -6106,11 +6106,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                             <i class="bi bi-info-circle me-3"></i>' . lang('One form is drawn for the whole set and written to every variant.') . '
                                                         </div>
                                                     </div>
-                                                    <div class="col-12 lg:col-5">
+                                                    <div class="col-12">
                                                         <label class="form-label" for="form_name">' . lang('Form Title for Display') . '</label>
                                                         <input type="text" id="form_name" name="form_name" class="form-control" maxlength="100" value="' . h($v('form_name')) . '" />
                                                     </div>
-                                                    <div class="col-12 lg:col-3">
+                                                    <div class="col-12 md:col-3">
                                                         <label class="form-label" for="form_label_column_width">' . lang('Label Column Width') . '</label>
                                                         <label class="form-control form-adorn form-adorn-end">
                                                             <span class="form-adorn-text" aria-hidden="true">%</span>
@@ -6161,11 +6161,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                 'label' => lang('Add Comment'),
                                                 'help'  => lang('Buying this posts a comment on a page, as the customer.'),
                                                 'panel' =>
-                                                    '<div class="col-12 lg:col-4">
+                                                    '<div class="col-12 pg-field-span-6">
                                                         <label class="form-label" for="add_comment_page_id">' . lang('Page') . '</label>
                                                         ' . pg_picker_field('page', 'add_comment_page_id', $v('add_comment_page_id')) . '
                                                     </div>
-                                                    <div class="col-12 lg:col-4">
+                                                    <div class="col-12">
                                                         <label class="form-label" for="add_comment_name">' . lang('Name') . '</label>
                                                         <input type="text" class="form-control" id="add_comment_name" name="add_comment_name" maxlength="100" value="' . h($v('add_comment_name')) . '" />
                                                         <div class="form-text">' . lang('Leave blank to post as Anonymous. ^^billing_first_name^^ ^^billing_last_name^^ puts the name on the order here.') . '</div>

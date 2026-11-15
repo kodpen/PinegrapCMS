@@ -270,9 +270,11 @@ function ws_approval_create($viewer, $channel, $data, $app_id = 0, $strict = tru
     }
 
     // The agents asked are woken at once, the request in their brief
-    // (approval_agents.php).
+    // (approval_agents.php); the tags below never ask them a second time.
+    $asked = array();
+
     if (!empty($checked['agents'])) {
-        ws_approval_agents_ask($viewer, $channel, ws_approval($approval_id), $checked['agents']);
+        $asked = ws_approval_agents_ask($viewer, $channel, ws_approval($approval_id), $checked['agents']);
     }
 
     // People outside the team get their links by e-mail (approval_guests.php).
@@ -315,8 +317,8 @@ function ws_approval_create($viewer, $channel, $data, $app_id = 0, $strict = tru
     }
 
     // A tag in its title or text asks as in a message, once the approval
-    // it shows is written.
-    ws_message_ask_noted($viewer, $channel, $sent['message_id'], $body, ws_message_by_app($app_id));
+    // it shows is written; an agent asked to approve is not asked again.
+    ws_message_ask_noted($viewer, $channel, $sent['message_id'], $body, ws_message_by_app($app_id), $asked);
 
     return array('ok' => true, 'error' => '', 'field' => '', 'message_id' => (int) $sent['message_id'], 'approval_id' => $approval_id);
 }
@@ -402,6 +404,17 @@ function ws_approval_input($viewer, $channel, $data, $strict = true, $app_id = 0
 
         if (count($agents) > WS_APPROVAL_MAX_PEOPLE) {
             return $fail(lang(array('string' => 'At most {var:1} agents can be asked to approve.', 'vars' => WS_APPROVAL_MAX_PEOPLE)), 'agents');
+        }
+
+        // Pinegrap AI and Claude are asked under the asker's own limit: a
+        // full one is said here, before an approval waits for an assistant
+        // that was never asked.
+        foreach ($agents as $value) {
+            $limit = ws_approval_agent_limit_problem($viewer, $value);
+
+            if ($limit !== '') {
+                return $fail($limit, 'agents');
+            }
         }
     }
 
@@ -996,6 +1009,11 @@ function ws_approval_settle($approval, $outcome, $actor_id = 0)
 
     if (mysqli_affected_rows(db::$con) < 1) {
         return 0;
+    }
+
+    // The agents still to answer are asked no more, whatever the outcome.
+    if (function_exists('ws_approval_agent_requests_close')) {
+        ws_approval_agent_requests_close($approval);
     }
 
     $channel = ws_channel($approval['channel_id']);

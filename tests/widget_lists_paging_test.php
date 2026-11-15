@@ -130,9 +130,22 @@ function test_widget_lists_paging_editor()
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("extra: { listSource: 'paging.pages' }", $js);
 	pg_assert_contains("'paging.pages': {", $js);
-	pg_assert_contains("kinds: ['form_list_view', 'catalog_listing', 'search_results'],", $js);
+	pg_assert_contains("kinds: ['form_list_view', 'catalog_listing', 'search_results', 'comments'],", $js);
 	pg_assert_contains("function _sdListNeedsMainLoop(kind, source) {", $js);
 	pg_assert_true((bool) preg_match("/'paging.pages':\s+_sdT\('One row for every page link/", $js), 'the panel explains the list');
+}
+
+// On the canvas the list shares the pagination's line with Previous and
+// Next: a loop area in a flex row that does not wrap, beside other items,
+// takes its records' width, not a full line (_sdFxLoopArea()).
+function test_widget_lists_paging_canvas_line()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains("var shared = row && cs.flexWrap === 'nowrap' && _sdFxLoopHasSiblings(lw, p);", $js);
+	pg_assert_contains("'flex': shared ? '0 1 auto' : (row ? '0 0 100%' : '0 0 auto'), 'min-width': '0px'", $js);
+	pg_assert_contains("if (shared) want.width = 'auto';", $js);
+	pg_assert_true((bool) preg_match("/var _SD_FX_LOOP_PROPS = \[[^\]]*'width'/", $js), 'the width is written and cleared with the rest');
+	pg_assert_contains('function _sdFxLoopHasSiblings(lw, p) {', $js);
 }
 
 // In the catalog listing's surround: its paging flags are marked before the

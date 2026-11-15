@@ -1046,29 +1046,33 @@ function ws_message_send($viewer, $channel, $body, $options = array())
  * @param array  $channel
  * @param int    $message_id
  * @param string $body as written
+ * @param array  $skip request values asked already by the same save (an
+ *                     approval's agents, ws_approval_agents_ask()): agent:<id>,
+ *                     model:<id>, claude, ai; none of them is asked again
  * @return array claude, agent, ai: whether a request was queued for each;
  *               agents: the registry agents woken (agent:<id>, model:<id>),
  *               the followed one included; models: a model agent among
  *               them, carried on as ai is
  */
-function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
+function ws_message_ask_assistants($viewer, $channel, $message_id, $body, $skip = array())
 {
     $body = ws_tokens_normalise(trim((string) $body));
+    $skip = ws_message_ask_skip($skip);
     $follows = ws_channel_is_thread($channel) && function_exists('ws_thread_follow_ready') && ws_thread_follow_ready();
 
     // The agents it asks by name, or by answering one of their answers:
     // the last of them is followed from now on.
     $named = $follows ? ws_thread_agents_asked($body, $message_id, $channel) : array();
 
-    $claude = function_exists('ws_claude_after_send') && ws_claude_after_send($viewer, $channel, $message_id, $body);
+    $claude = !$skip['claude'] && function_exists('ws_claude_after_send') && ws_claude_after_send($viewer, $channel, $message_id, $body);
     $agent = function_exists('ws_mcp_agent_after_send') ? ws_mcp_agent_after_send($viewer, $channel, $message_id, $body) : null;
 
     // A message written to an agent's alias is the agent's alone.
-    $ai = ($agent === null) && function_exists('ws_ai_after_send') && ws_ai_after_send($viewer, $channel, $message_id, $body);
+    $ai = ($agent === null) && !$skip['ai'] && function_exists('ws_ai_after_send') && ws_ai_after_send($viewer, $channel, $message_id, $body);
 
     // The registry's agents the channel lets this message wake
     // (agent_queue.php): a model agent is answered by the site's own loop.
-    $woken = function_exists('ws_agent_after_send') ? ws_agent_after_send($viewer, $channel, $message_id, $body) : array();
+    $woken = function_exists('ws_agent_after_send') ? ws_agent_after_send($viewer, $channel, $message_id, $body, '', false, array('skip' => $skip['agents'])) : array();
 
     if ($follows) {
         $followed = ws_thread_follow_agent($channel['id']);
@@ -1079,8 +1083,10 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
             ws_thread_follow_set($channel['id'], $decision['follow']);
         }
 
-        // A registry agent this message woke already is not asked twice.
-        $ask = in_array($decision['ask'], $woken, true) ? '' : $decision['ask'];
+        // An agent this message woke or the same save asked already is not
+        // asked twice.
+        $asked = array_merge($woken, $skip['agents'], array_keys(array_filter(array('claude' => $skip['claude'], 'ai' => $skip['ai']))));
+        $ask = in_array($decision['ask'], $asked, true) ? '' : $decision['ask'];
         $kind = ($ask !== '') ? ws_thread_follow_ask($viewer, $channel, $message_id, $body, $ask) : '';
         $claude = $claude || ($kind === 'claude');
         $ai = $ai || ($kind === 'ai');
@@ -1101,6 +1107,33 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
     }
 
     return array('claude' => $claude, 'agent' => ($agent === true), 'ai' => $ai, 'agents' => $woken, 'models' => $models);
+}
+
+/**
+ * The request values a save asked already, split the way
+ * ws_message_ask_assistants() asks: Claude, Pinegrap AI and the registry's
+ * agents (agent:<id>, model:<id>), each once. Pure.
+ *
+ * @param mixed $skip string[]
+ * @return array claude, ai: bool; agents: string[]
+ */
+function ws_message_ask_skip($skip)
+{
+    $out = array('claude' => false, 'ai' => false, 'agents' => array());
+
+    foreach ((array) $skip as $value) {
+        if (!is_string($value) || ($value === '')) {
+            continue;
+        }
+
+        if (($value === 'claude') || ($value === 'ai')) {
+            $out[$value] = true;
+        } elseif (!in_array($value, $out['agents'], true)) {
+            $out['agents'][] = $value;
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -1170,15 +1203,19 @@ function ws_message_by_app($app_id, $via_client_id = 0)
  * @param int    $message_id
  * @param string $body   as written
  * @param bool   $by_app ws_message_by_app()
+ * @param array  $skip   values asked already by the same save
+ *                       (ws_message_ask_assistants())
  * @return array ws_message_ask_assistants()'s shape
  */
-function ws_message_ask_written($viewer, $channel, $message_id, $body, $by_app = false)
+function ws_message_ask_written($viewer, $channel, $message_id, $body, $by_app = false, $skip = array())
 {
+    // An application asks no agent to approve (ws_approval_agents_allowed()),
+    // so its path has nothing to skip.
     if ($by_app) {
         return function_exists('ws_agent_after_app_send') ? ws_agent_after_app_send($viewer, $channel, $message_id, $body) : ws_message_asked_none();
     }
 
-    return ws_message_ask_assistants($viewer, $channel, $message_id, $body);
+    return ws_message_ask_assistants($viewer, $channel, $message_id, $body, $skip);
 }
 
 /**
@@ -1194,13 +1231,16 @@ function ws_message_ask_written($viewer, $channel, $message_id, $body, $by_app =
  * @param int    $message_id
  * @param string $body   as written
  * @param bool   $by_app ws_message_by_app()
+ * @param array  $skip   values asked already by the same save (an
+ *                       approval's agents): not asked again
  * @return array ws_message_ask_assistants()'s shape
  */
-function ws_message_ask_noted($viewer, $channel, $message_id, $body, $by_app = false)
+function ws_message_ask_noted($viewer, $channel, $message_id, $body, $by_app = false, $skip = array())
 {
-    $asked = ws_message_ask_written($viewer, $channel, $message_id, $body, $by_app);
+    $asked = ws_message_ask_written($viewer, $channel, $message_id, $body, $by_app, $skip);
 
-    if (!empty($asked['claude']) && function_exists('ws_claude_dispatch')) {
+    // Claude asked by the same save still needs its run started here.
+    if ((!empty($asked['claude']) || ws_message_ask_skip($skip)['claude']) && function_exists('ws_claude_dispatch')) {
         ws_claude_dispatch();
     }
 
@@ -1552,6 +1592,38 @@ function ws_message_mentions_outside($viewer, $message)
 }
 
 /**
+ * Everything bringing a message's mentioned people in is checked against
+ * before anything is written, shared by the panel and the external API (its
+ * dry run included): a message not deleted in a channel the person reads and
+ * may invite into, and who of the people it mentions are outside it.
+ *
+ * @param array      $viewer
+ * @param array      $message
+ * @param int[]|null $user_ids some of them only; null for all
+ * @return array ok, error, forbidden, channel, user_ids (the ones to bring in)
+ */
+function ws_message_mention_invite_check($viewer, $message, $user_ids = null)
+{
+    $channel = ws_channel($message['channel_id']);
+
+    if (!$channel || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('That message could not be found.'), 'forbidden' => false, 'channel' => null, 'user_ids' => array());
+    }
+
+    if (!ws_channel_can_invite($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('Access denied.'), 'forbidden' => true, 'channel' => $channel, 'user_ids' => array());
+    }
+
+    $outside = ws_message_mentions_outside($viewer, $message);
+
+    if ($user_ids !== null) {
+        $outside = array_values(array_intersect($outside, array_map('intval', (array) $user_ids)));
+    }
+
+    return array('ok' => true, 'error' => '', 'forbidden' => false, 'channel' => $channel, 'user_ids' => $outside);
+}
+
+/**
  * Brings the people a message mentions into its channel, and hands them the
  * mention they could not have had while they were outside it.
  *
@@ -1562,21 +1634,14 @@ function ws_message_mentions_outside($viewer, $message)
  */
 function ws_message_mention_invite($viewer, $message, $user_ids = null)
 {
-    $channel = ws_channel($message['channel_id']);
+    $checked = ws_message_mention_invite_check($viewer, $message, $user_ids);
 
-    if (!$channel || ((int) $message['deleted_at'] > 0) || !ws_can_read_channel($viewer, $channel)) {
-        return array('ok' => false, 'error' => lang('That message could not be found.'), 'added' => array());
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error'], 'added' => array());
     }
 
-    if (!ws_channel_can_invite($viewer, $channel)) {
-        return array('ok' => false, 'error' => lang('Access denied.'), 'added' => array());
-    }
-
-    $outside = ws_message_mentions_outside($viewer, $message);
-
-    if ($user_ids !== null) {
-        $outside = array_values(array_intersect($outside, array_map('intval', (array) $user_ids)));
-    }
+    $channel = $checked['channel'];
+    $outside = $checked['user_ids'];
 
     if (empty($outside)) {
         return array('ok' => true, 'error' => '', 'added' => array());
@@ -2610,7 +2675,8 @@ function ws_message_mark($viewer, $message, $kind, $app_id = 0)
 }
 
 /**
- * The decisions and notes of a channel, newest first.
+ * The decisions and notes of a channel, newest first, with its answered
+ * agent questions among them by the time they were answered.
  *
  * @param array $viewer
  * @param int   $channel_id
@@ -2622,6 +2688,10 @@ function ws_channel_decisions($viewer, $channel_id)
         WHERE channel_id = '" . (int) $channel_id . "' AND kind IN ('decision', 'note') AND deleted_at = 0
         ORDER BY marked_at DESC, id DESC
         LIMIT 300");
+
+    if (function_exists('ws_agent_question_decision_messages')) {
+        $rows = ws_agent_question_decisions_merge($rows, ws_agent_question_decision_messages($channel_id, 300), 300);
+    }
 
     return ws_message_payloads($viewer, $rows);
 }

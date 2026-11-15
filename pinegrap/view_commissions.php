@@ -178,38 +178,22 @@ pg_page_shell([
                 ),
             )) . '
             ' . $output_advanced_filters . '
-            <div class="row g-5 my-3">
-                <div class="col-6 md:col-3">
-                    <div class="card pg-card h-100">
-                        <div class="card-body">
-                            <div class="pg-text-2">' . lang('Pending Total') . '</div>
-                            <div class="fs-2xl fw-bold fg-body">' . pg_format_money($pending_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
-                        </div>
-                    </div>
+            <div class="pg-figures">
+                <div class="pg-card pg-figure">
+                    <div class="pg-figure-label">' . lang('Pending Total') . '</div>
+                    <div class="pg-figure-value">' . pg_format_money($pending_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
                 </div>
-                <div class="col-6 md:col-3">
-                    <div class="card pg-card h-100">
-                        <div class="card-body">
-                            <div class="pg-text-2">' . lang('Payable Total') . '</div>
-                            <div class="fs-2xl fw-bold fg-primary">' . pg_format_money($payable_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
-                        </div>
-                    </div>
+                <div class="pg-card pg-figure">
+                    <div class="pg-figure-label">' . lang('Payable Total') . '</div>
+                    <div class="pg-figure-value fg-primary">' . pg_format_money($payable_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
                 </div>
-                <div class="col-6 md:col-3">
-                    <div class="card pg-card h-100">
-                        <div class="card-body">
-                            <div class="pg-text-2">' . lang('Ineligible Total') . '</div>
-                            <div class="fs-2xl fw-bold fg-danger">' . pg_format_money($ineligible_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
-                        </div>
-                    </div>
+                <div class="pg-card pg-figure">
+                    <div class="pg-figure-label">' . lang('Ineligible Total') . '</div>
+                    <div class="pg-figure-value fg-danger">' . pg_format_money($ineligible_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
                 </div>
-                <div class="col-6 md:col-3">
-                    <div class="card pg-card h-100">
-                        <div class="card-body">
-                            <div class="pg-text-2">' . lang('Paid Total') . '</div>
-                            <div class="fs-2xl fw-bold fg-success">' . pg_format_money($paid_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
-                        </div>
-                    </div>
+                <div class="pg-card pg-figure">
+                    <div class="pg-figure-label">' . lang('Paid Total') . '</div>
+                    <div class="pg-figure-value fg-success">' . pg_format_money($paid_total / 100, BASE_CURRENCY_SYMBOL) . '</div>
                 </div>
             </div>
             ' . pg_list_table_html($list_source, $list_page, lang('All Commissions')) . '

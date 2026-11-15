@@ -79,9 +79,10 @@ function test_product_group_rows_name_a_disabled_product()
 	pg_assert_same(1, substr_count($rows, pg_list_status_word(lang('Disabled'))), 'only the disabled product says Disabled');
 	pg_assert_contains('Off' . pg_list_status_word(lang('Disabled')), $rows, 'the word sits under the name');
 
-	foreach (array('edit_product_group.php', 'includes/panel/commerce.php') as $file) {
-		pg_assert_contains("pg_list_status_word(lang('Disabled'))", list_status_words_source($file), $file . ' names a disabled product');
-	}
+	// The products in the group and the rows Load More brings print the same row.
+	pg_assert_contains('pg_product_group_form_row($item, true,', list_status_words_source('edit_product_group.php'), 'the group\'s products share the row');
+	pg_assert_contains('pg_product_group_form_unselected_rows($products, $show_image)', list_status_words_source('includes/panel/commerce.php'), 'Load More shares the row');
+	pg_assert_contains("pg_list_status_word(lang('Disabled'))", list_status_words_source('includes/forms/product_group_form.php'), 'the row names a disabled product');
 }
 
 function test_arrival_dates_and_gift_cards_name_their_state()
@@ -96,9 +97,8 @@ function test_arrival_dates_and_gift_cards_name_their_state()
 
 function test_overdue_expense_has_a_badge()
 {
-	foreach (array('erp_expenses.php', 'edit_erp_expense.php') as $file) {
-		pg_assert_contains("(\$overdue ? ' <span class=\"badge theme-danger\">' . lang('Overdue') . '</span>' : '')", list_status_words_source($file), $file . ' says Overdue');
-	}
+	pg_assert_contains("(\$overdue ? ' ' . pg_pill(lang('Overdue'), 'danger') : '')", list_status_words_source('erp_expenses.php'), 'erp_expenses.php says Overdue');
+	pg_assert_contains("(\$overdue ? ' <span class=\"badge theme-danger\">' . lang('Overdue') . '</span>' : '')", list_status_words_source('edit_erp_expense.php'), 'edit_erp_expense.php says Overdue');
 }
 
 function test_list_status_word_shipping_methods()

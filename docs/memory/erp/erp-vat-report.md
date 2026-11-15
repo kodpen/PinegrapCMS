@@ -17,7 +17,10 @@ description: ERP VAT report: the one place tax totals are added up (vat_report.p
 
 ## What does the screen draw over its tables?
 - The report screens' shared view (`ui/report-view.md`, #8827) where the four figure cards stood: `pg_report_view_vat_figures()` gives Calculated, Deductible, Difference and, with withholding, Withholding, each with the card's note; a negative difference's note is marked `bad`. Money is `erp_money_out()` text, from the same `erp_vat_report()` totals.
-- The chart, `pg_report_view_vat_chart()`: over two months or more a line of the calculated tax by month with the deductible tax (purchases + expenses) dashed beside it, read from the By month figures; a month below zero is drawn at zero (the line starts at zero), its tip says the real figures. Over one month "Tax by document type": the tax of sales, sales returns, purchases, returns to suppliers and the expenses' deductible tax, those above zero.
+- The chart, `pg_report_view_vat_chart()`: over two months or more a line of the calculated tax by month with the deductible tax (purchases + expenses) dashed beside it, read from the By month figures; a month below zero is drawn at zero (the line starts at zero), its tip says the real figures.
+- The line's title names both lines: "VAT by month" (`'{var:1} by month'` with `$names['tax']`, the site's tax name).
+- Over one month "Tax by document type": the tax of sales, sales returns, purchases, returns to suppliers and the expenses' deductible tax, those above zero, drawn only with two kinds or more (one bar compares nothing; RS8c).
+- The note about orders without an invoice is `div.alert.theme-warning.pg-report-note`, body text size. The documents card's head counts its rows (`#erp_vat_count`, "25 of 59 documents shown"), lists the first 25 of the chosen kind and "Show all" lists the rest (no inner scroll box); a sort counts again. On a phone the Document type label stays with its select (`span.pg-report-field`).
 - The period form, the statement, By rate, withholding, By month, the documents and the Excel export work as before; the report has no saved settings, so no settings drawer and no ready report. Their look (frames, report tables): `ui/look-report-screens.md` (#8981).
 
 ## What is the report called?

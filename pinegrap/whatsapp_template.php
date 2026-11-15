@@ -579,7 +579,7 @@ pg_page_shell(
         <div class="row">
             <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $output_basics . $output_header_card . $output_message . $output_buttons_card . $output_offer_card . '</div>
             <div class="col-12 lg:col-4 2xl:col-3 order-2">' . $output_side . '</div>
-            ' . ($output_actions !== '' ? '<div class="col-12 order-3 position-sticky"><nav class="buttons navigation" aria-label="' . h(lang('Actions')) . '">' . $output_actions . '</nav></div>' : '') . '
+            ' . ($output_actions !== '' ? pg_save_bar($output_actions, array('group' => '', 'label' => lang('Actions'))) : '') . '
         </div>
     </form>
 </main>

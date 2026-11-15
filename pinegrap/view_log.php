@@ -454,53 +454,32 @@ if (!$_POST) {
         // A range is active when both ends match what is currently being displayed.
         $range_is_active = ((date('Y-m-d', $start_timestamp) == date('Y-m-d', $range_start))
             && (date('Y-m-d', $stop_timestamp) == date('Y-m-d')));
-        $output_quick_ranges .= '<a class="btn ' . ($range_is_active ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') . '" href="' . $range_url . '">' . $quick_range['label'] . '</a>';
+        $output_quick_ranges .= '<a class="pg-seg-item' . ($range_is_active ? ' is-active" aria-current="true' : '') . '" href="' . $range_url . '">' . $quick_range['label'] . '</a>';
     }
     // "View All" reaches back to the oldest entry.  The deletion warning already tells the
     // user about this button, so it has to be reachable from the screen.
     $view_all_is_active = ((date('Y-m-d', $start_timestamp) == date('Y-m-d', $oldest_timestamp))
         && (date('Y-m-d', $stop_timestamp) == date('Y-m-d')));
-    $output_quick_ranges .= '<a class="btn ' . ($view_all_is_active ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') . '" href="view_log.php?view=all">' . lang('View All') . '</a>';
+    $output_quick_ranges .= '<a class="pg-seg-item' . ($view_all_is_active ? ' is-active" aria-current="true' : '') . '" href="view_log.php?view=all">' . lang('View All') . '</a>';
 
     // Type filter buttons.  They only make sense when error_log entries are mixed in,
     // otherwise every row is a site log.  The list is printed whole then, so the
     // driver filters its rows by the type cell without a reload.
     $output_type_filters = '';
     if ($include_error_logs) {
-        $output_type_filters = '
-                        <div class="btn-group btn-group-sm my-1 sm:ms-3" role="group" aria-label="' . h(lang('Type')) . '">';
-        foreach (array('' => lang('All'), 'site' => lang('Site Log'), 'error' => lang('Error Log'), 'warn' => lang('Warning')) as $type_value => $type_label) {
-            $output_type_filters .= '
-                            <button type="button" class="btn btn-outline theme-secondary' . (($type_value === '') ? ' active' : '') . '" aria-pressed="' . (($type_value === '') ? 'true' : 'false') . '" data-pg-list-filter="view_log" data-pg-filter-column="type" data-pg-filter-value="' . $type_value . '">' . $type_label . '</button>';
-        }
-        $output_type_filters .= '
-                        </div>';
+        $output_type_filters = pg_list_seg_filters('view_log', 'type', array('' => lang('All'), 'site' => lang('Site Log'), 'error' => lang('Error Log'), 'warn' => lang('Warning')), lang('Type'));
     }
 
-    // Summary of what is currently on screen: how many entries and for which range.
+    // The range on screen; the count of its entries stands beside the
+    // screen's title (the list table driver writes it there).
     $output_range_label = get_absolute_time(array('timestamp' => $start_timestamp, 'type' => 'date', 'format' => 'plain_text'))
         . ' &ndash; '
         . get_absolute_time(array('timestamp' => $stop_timestamp, 'type' => 'date', 'format' => 'plain_text'));
-    $output_result_summary = '
-                        <span class="badge bg-subtle-secondary fg-emphasis-secondary border fw-normal">
-                            <i class="bi bi-list-ul me-1"></i>' . lang(array(
-                                'string' => '{var:1} record{suffix:1}',
-                                'vars'   => array(pg_format_number($number_of_results, 0)),
-                                'suffix' => array(($number_of_results == 1) ? '' : 's')
-                            )) . '
-                        </span>
-                        <span class="fg-secondary small ms-3"><i class="bi bi-calendar3 me-1"></i>' . $output_range_label . '</span>';
 
     $output_toolbar = '
-                <div class="row align-items-center mb-3 g-3">
-                    <div class="col-12 lg:col-8 text-center lg:text-start">
-                        <div class="btn-group btn-group-sm my-1" role="group" aria-label="' . h(lang('Date Range')) . '">
-                            ' . $output_quick_ranges . '
-                        </div>' . $output_type_filters . '
-                    </div>
-                    <div class="col-12 lg:col-4 text-center lg:text-end">
-                        ' . $output_result_summary . '
-                    </div>
+                <div class="pg-log-tools">
+                    <div class="pg-seg pg-list-seg" role="group" aria-label="' . h(lang('Date Range')) . '">' . $output_quick_ranges . '</div>' . $output_type_filters . '
+                    <span class="pg-text-meta pg-log-range"><i class="bi bi-calendar3" aria-hidden="true"></i> ' . $output_range_label . '</span>
                 </div>';
 
 

@@ -257,3 +257,37 @@ function test_workspace_mail_later_row_alone_is_teal()
 	pg_assert_contains('<span class="badge theme-info">Sends later</span>', $html, 'a conversation whose only unsent mail waits carries the teal pill');
 	pg_assert_true(strpos($html, 'theme-danger') === false, 'never the red one');
 }
+
+// At its time a waiting mail leaves only while its writer may still answer
+// where it is kept; otherwise it is held and turns back into its draft.
+function test_workspace_mail_later_fate_reads_the_writer_as_now()
+{
+	pg_assert_same('leave', ws_mail_later_fate(7, true), 'the writer may still answer there');
+	pg_assert_same('hold', ws_mail_later_fate(7, false), 'taken out of the channel or the room, or off the team');
+	pg_assert_same('hold', ws_mail_later_fate(0, true), 'no writer: an account that is gone');
+}
+
+function test_workspace_mail_later_held_people()
+{
+	pg_assert_same(array(7, 9), ws_mail_later_held_people(7, 9, array(3, 4), false, array()), 'the writer and the conversation\'s holder');
+	pg_assert_same(array(7, 3, 4), ws_mail_later_held_people(7, 0, array(3, 4), false, array(5)), 'nobody holds it: the channel\'s owners');
+	pg_assert_same(array(7, 3), ws_mail_later_held_people(7, 7, array(7, 3), false, array()), 'the writer holds it: the owners, the writer once');
+	pg_assert_same(array(7, 5), ws_mail_later_held_people(7, 0, array(3), true, array(5)), 'a mailbox\'s own room: its members with the Workspace settings right');
+	pg_assert_same(array(4), ws_mail_later_held_people(0, 0, array(4), false, array()), 'a writer that is gone is not told');
+}
+
+function test_workspace_mail_later_hold_wiring()
+{
+	$later = workspace_mail_later_test_source('includes/workspace/mail_later.php');
+	$run = pg_test_function_source('ws_mail_later_run');
+	pg_assert_true(strpos($run, 'ws_mail_later_fate(') !== false && strpos($run, 'ws_mail_later_fate(') < strpos($run, 'ws_mail_later_release('), 'the job asks before it hands a mail on');
+	pg_assert_contains('ws_rights_for_id((int) $item[\'user_id\'])', $run, 'the writer\'s rights as they are now');
+	pg_assert_contains('ws_mail_later_to_draft($item, false)', pg_test_function_source('ws_mail_undo_send'), 'Undo turns it into its draft');
+	pg_assert_contains('ws_mail_later_to_draft($item, true)', pg_test_function_source('ws_mail_later_hold'), 'the job too, its files kept');
+	pg_assert_contains("ws_notify(\$user_id, 'mail_held'", $later, 'the inbox line');
+
+	pg_assert_true(in_array('mail_held', pg_notification_mail_kinds(), true), 'the bell shows it with the Workspace off');
+	pg_assert_contains("case 'mail_held':", workspace_mail_later_test_source('includes/workspace/notify.php'), 'described');
+	pg_assert_contains('mail_held (an e-mail', workspace_mail_later_test_source('includes/workspace/api.php'), 'named for applications');
+	pg_assert_contains("AND i.send_state = '\" . WS_MAIL_DRAFT_STATE . \"'", pg_test_function_source('ws_mail_send_file_reach'), 'a held draft\'s files can be sent again');
+}

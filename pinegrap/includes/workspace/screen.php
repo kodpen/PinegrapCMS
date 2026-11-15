@@ -311,6 +311,16 @@ function ws_js_strings()
         'poll_result_help'       => lang('When it closes, a clear winner is written into the channel as a decision and lands on the Decisions tab. A tie is left to the team.'),
         'poll_share'             => ws_js_template('{var:1} · {var:2}%', 2),
         'poll_title'             => lang('Poll'),
+        // The agent question's box (agent_question.php).
+        'aq_answered'            => lang('Answered'),
+        'aq_answered_by'         => ws_js_template('{var:1} answered · {var:2}', 2),
+        'aq_asks'                => ws_js_template('asks {var:1}', 1),
+        'aq_choose_first'        => lang('Tick an answer or write your own first.'),
+        'aq_click_answers'       => lang('The option you choose is the answer.'),
+        'aq_only'                => ws_js_template('Only {var:1} can answer.', 1),
+        'aq_taken_back_note'     => lang('The question was taken back.'),
+        'aq_title'               => lang('Agent question'),
+        'aq_waiting'             => lang('Not answered yet'),
         'poll_voters'            => ws_js_template('{var:1} people voted', 1),
         'poll_withdraw'          => lang('Take back my vote'),
         // The poll box's option parts, take back and ask again (AQ2).
@@ -873,7 +883,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
-    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_agent_card_js_strings());
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings(), ws_agent_card_js_strings(), ws_person_card_js_strings());
     // The time spent on tasks and the tasks they wait for
     // (assets/js/workspace_task_time.js, workspace_task_links.js).
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());
@@ -892,6 +902,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_voice_js_strings());
     // Status updates and check-ins (status.php, assets/js/workspace_status.js).
     $strings = array_merge($strings, ws_status_js_strings());
+    // The open items line over the conversation (open_items.php,
+    // assets/js/workspace.js, drawOpenItems()).
+    $strings = array_merge($strings, ws_open_items_js_strings());
     // A task handed to an assistant (delegation.php,
     // assets/js/workspace_task_delegate.js).
     $strings = array_merge($strings, ws_delegation_js_strings());

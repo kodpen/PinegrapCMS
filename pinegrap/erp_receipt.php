@@ -187,34 +187,24 @@ $output_header = '
                         ? '<span class="badge theme-secondary"><i class="bi bi-x-circle me-1"></i>' . lang('Cancelled') . '</span>'
                         : '<span class="badge ' . ($is_collection ? 'theme-success' : 'theme-danger') . '">' . ($is_collection ? lang('Money in') : lang('Money out')) . '</span>') . '
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-12 sm:col-6 lg:col-12 my-3">
-                            <div class="form-label fg-secondary">' . lang('Date') . '</div>
-                            <div>' . h(prepare_form_data_for_output($receipt['doc_date'], 'date')) . '</div>
-                        </div>
-                        <div class="col-12 sm:col-6 lg:col-12 my-3">
-                            <div class="form-label fg-secondary">' . lang('Amount') . '</div>
-                            <div class="h5 mb-0 ' . ($is_cancelled ? 'text-decoration-line-through fg-secondary' : '') . '">' . $money((int) $receipt['amount']) . '</div>
-                            ' . ($is_foreign ? '<div class="fg-secondary small">' . h(erp_money_out((int) $receipt['amount_base'])) . ' &middot; ' . h(erp_fx_rate_text($receipt['exchange_rate'])) . '</div>' : '') . '
-                        </div>
-                        <div class="col-12 sm:col-6 lg:col-12 my-3">
-                            <div class="form-label fg-secondary">' . lang('Account') . '</div>
-                            <div><a href="edit_erp_account.php?id=' . (int) $receipt['account_id'] . '" class="pg-link-body-emphasis">' . h($receipt['account_title']) . '</a></div>
-                        </div>
-                        <div class="col-12 sm:col-6 lg:col-12 my-3">
-                            <div class="form-label fg-secondary">' . lang('Till or Bank Account') . '</div>
-                            <div><a href="edit_erp_till.php?id=' . (int) $receipt['cash_account_id'] . '" class="pg-link-body-emphasis">' . h($receipt['cash_account_name']) . '</a></div>
-                        </div>
-                        <div class="col-12 sm:col-6 lg:col-12 my-3">
-                            <div class="form-label fg-secondary">' . lang('Payment Method') . '</div>
-                            <div>' . h(isset($method_labels[$receipt['payment_method']]) ? $method_labels[$receipt['payment_method']] : (string) $receipt['payment_method']) . '</div>
-                        </div>
-                        <div class="col-12 my-3">
-                            <div class="form-label fg-secondary">' . lang('Description') . '</div>
-                            <div>' . h($receipt['description']) . '</div>
-                        </div>
+                <div class="card-body pt-0">
+                    <div class="mb-5">
+                        <div class="pg-figure-label">' . lang('Amount') . '</div>
+                        <div class="pg-figure-value ' . ($is_cancelled ? 'text-decoration-line-through fg-secondary' : '') . '">' . $money((int) $receipt['amount']) . '</div>
+                        ' . ($is_foreign ? '<div class="pg-figure-note">' . h(erp_money_out((int) $receipt['amount_base'])) . ' &middot; ' . h(erp_fx_rate_text($receipt['exchange_rate'])) . '</div>' : '') . '
                     </div>
+                    <dl class="pg-kv">
+                        <dt>' . lang('Date') . '</dt>
+                        <dd>' . h(prepare_form_data_for_output($receipt['doc_date'], 'date')) . '</dd>
+                        <dt>' . lang('Account') . '</dt>
+                        <dd><a href="edit_erp_account.php?id=' . (int) $receipt['account_id'] . '" class="pg-link-body-emphasis">' . h($receipt['account_title']) . '</a></dd>
+                        <dt>' . lang('Till or Bank Account') . '</dt>
+                        <dd><a href="edit_erp_till.php?id=' . (int) $receipt['cash_account_id'] . '" class="pg-link-body-emphasis">' . h($receipt['cash_account_name']) . '</a></dd>
+                        <dt>' . lang('Payment Method') . '</dt>
+                        <dd>' . h(isset($method_labels[$receipt['payment_method']]) ? $method_labels[$receipt['payment_method']] : (string) $receipt['payment_method']) . '</dd>
+                        <dt>' . lang('Description') . '</dt>
+                        <dd>' . h($receipt['description']) . '</dd>
+                    </dl>
                     ' . (is_array($reversal) ? '
                     <div class="alert theme-secondary mt-5 mb-0"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . h(lang(array('string' => 'Cancelled on {var:1}', 'vars' => prepare_form_data_for_output($reversal['doc_date'], 'date', false)))) . ' &middot; ' . h($reversal['description']) . '</div>' : '') . '
                 </div>

@@ -28,7 +28,7 @@ function test_import_design_screen_has_form_and_status_columns()
 
 	$form = strpos($source, '<div class="col-12 lg:col-8 2xl:col-9 order-1">');
 	$status = strpos($source, '<div class="col-12 lg:col-4 2xl:col-3 order-2">');
-	$bar = strpos($source, "(\$action == '' ? '<div class=\"col-12 order-3\">' : '')");
+	$bar = strpos($source, 'pg_save_bar(');
 
 	pg_assert_true($form !== false, 'the form column is there');
 	pg_assert_true($status !== false, 'the status column is there');
@@ -56,8 +56,8 @@ function test_import_design_screen_status_column_says_what_is_imported()
 function test_import_design_screen_row_closes_after_the_save_bar()
 {
 	$source = import_design_screen_layout_source();
-	$bar = substr($source, (int) strpos($source, "(\$action == '' ? '<div class=\"col-12 order-3\">' : '')"));
+	$bar = substr($source, (int) strpos($source, 'pg_save_bar('));
 
-	pg_assert_contains('<nav class="buttons navigation text-center position-sticky mb-7"', $bar, 'the save bar follows the column opening');
-	pg_assert_contains("(\$action == '' ? '</div></div>' : '')", $bar, 'the bar column and the settings row close after the bar');
+	pg_assert_contains('$output_buttons', $bar, 'the save bar holds the step\'s buttons');
+	pg_assert_contains("(\$action == '' ? '</div>' : '')", $bar, 'the settings row closes after the bar');
 }

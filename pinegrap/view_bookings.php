@@ -63,9 +63,9 @@ $bookings_step_labels = array(
 
 $bookings_navigator = '
                     <div class="d-inline-flex align-items-center flex-wrap" role="group" aria-label="' . h(lang('Period')) . '">
-                        <a class="btn btn-sm btn-text theme-secondary" href="' . h(pg_booking_agenda_link($bookings_state, array('date' => $bookings_period['previous']))) . '" title="' . h($bookings_step_labels[$bookings_view][0]) . '" aria-label="' . h($bookings_step_labels[$bookings_view][0]) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+                        <a class="pg-icon-button" href="' . h(pg_booking_agenda_link($bookings_state, array('date' => $bookings_period['previous']))) . '" title="' . h($bookings_step_labels[$bookings_view][0]) . '" aria-label="' . h($bookings_step_labels[$bookings_view][0]) . '"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
                         <a class="btn btn-sm btn-text theme-secondary" href="' . h(pg_booking_agenda_link($bookings_state, array('date' => ''))) . '">' . h(lang('Today')) . '</a>
-                        <a class="btn btn-sm btn-text theme-secondary" href="' . h(pg_booking_agenda_link($bookings_state, array('date' => $bookings_period['next']))) . '" title="' . h($bookings_step_labels[$bookings_view][1]) . '" aria-label="' . h($bookings_step_labels[$bookings_view][1]) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+                        <a class="pg-icon-button" href="' . h(pg_booking_agenda_link($bookings_state, array('date' => $bookings_period['next']))) . '" title="' . h($bookings_step_labels[$bookings_view][1]) . '" aria-label="' . h($bookings_step_labels[$bookings_view][1]) . '"><i class="bi bi-chevron-right" aria-hidden="true"></i></a>
                         <span class="small fg-secondary ms-2">' . h($bookings_heading) . '</span>
                     </div>';
 

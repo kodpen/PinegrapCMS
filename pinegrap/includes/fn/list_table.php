@@ -924,6 +924,8 @@ function pg_list_table_texts()
         'failed' => lang('The list could not be loaded.'),
         'retry' => lang('Try again'),
         'loaded' => lang(array('string' => '{var:1} rows loaded', 'vars' => array('%n'))),
+        'countOne' => lang(array('string' => '{var:1} record', 'vars' => array('%n'))),
+        'countMany' => lang(array('string' => '{var:1} records', 'vars' => array('%n'))),
         'selected' => lang(array('string' => '{var:1} selected', 'vars' => array('%n'))),
         'all' => lang(array('string' => 'All {var:1} rows selected', 'vars' => array('%n'))),
         'clear' => lang('Clear selection'),
@@ -964,6 +966,18 @@ function pg_list_table_texts()
 }
 
 /**
+ * The lists whose screen keeps its title without the count beside it
+ * (assets/js/pg_list_table.js, headCount()). All Offers is a screen the owner
+ * keeps as it is; the count reaches it only once he has seen it there.
+ *
+ * @return array list names (data-pg-list-table)
+ */
+function pg_list_table_no_head_count()
+{
+    return array('view_offers');
+}
+
+/**
  * A list printed with its first batch: the headings, the rows, the empty
  * line and the live region; the column model, the list's parameters, the
  * cursor of the next batch and the count ride on data attributes for the
@@ -990,6 +1004,7 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
         . ' data-pg-list-sort="' . h(pg_list_sort_value($source['levels'])) . '"'
         . ' data-pg-list-next="' . h((string) $page['next']) . '"'
         . ' data-pg-list-total="' . (int) $page['total'] . '"'
+        . (in_array((string) $source['list'], pg_list_table_no_head_count(), true) ? ' data-pg-list-head-count="0"' : '')
         . ' data-pg-list-user="' . (defined('USER_ID') ? (int) USER_ID : 0) . '"'
         . ' data-pg-list-texts="' . h((string) json_encode(pg_list_table_texts(), $json)) . '"'
         . ($source['edit'] ? pg_list_edit_table($source['edit']['url'], $source['edit']['columns']) : '') . '>';

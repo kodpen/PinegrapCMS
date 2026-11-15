@@ -14,7 +14,7 @@ module: widgets_comments
 - Dropped with its `<label for>` and an emptied wrapper (`_pg_member_drop_controls()`): a control outside the form, of the wrong tag or switched off; `comment_submit` outside the form. Inside: type=submit, `data-pg-comment-submit`. Only a semantic button or btn component sends; anything else bound to it is dropped; the panel offers it to buttons only.
 
 ## Which sections are server-built?
-- `comment_captcha`: `get_captcha_fields()` (site setting; staff get none). `comment_rating_input`: btn-check radios 1-5 (5 checked), no inline style. `comment_publish`: staff and the form editor; now / schedule / later, the date, cancel; its own ids. Empty, or outside the wired form: dropped.
+- `comment_captcha`: `get_captcha_fields()` (site setting; staff get none). `comment_rating_input`: five stars ([[comments-widget-open-slots]]). `comment_publish`: staff and the form editor; now / schedule / later, the date, cancel; its own ids. Empty, or outside the wired form: dropped.
 - Fallbacks for add_comment.php: no `comment_publish` the visitor gets (left out, below a false flag) -> hidden `publish` now / manual by auto-publish (staff posts were held); CAPTCHA on, no `comment_captcha` -> one before the send button's box (anonymous posts failed).
 
 ## What switches a binding off?

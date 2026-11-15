@@ -495,7 +495,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         $output_advanced_filters_value = 'false';
         $output_advanced_filters_label = lang('Remove Advanced Filters');
         $advanced_filters_icon = 'bi-funnel-fill';
-        $output_advanced_filters_class = ' active';
+        $output_advanced_filters_class = ' is-active';
         
 
 
@@ -774,7 +774,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 </div>
                             </form>
                             ' . $output_unpaid_filter . '
-                            <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                            <a class="pg-icon-button' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                             ' . pg_period_nav('view_submitted_forms.php', ($_SESSION['software']['forms']['view_submitted_forms'] ?? array()), array(
                                 'day'   => array($decrease_day, $current_day, $increase_day),
                                 'week'  => array($decrease_week, $current_week, $increase_week),

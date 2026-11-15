@@ -980,7 +980,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
             </div>';
 
         $output_product_id_row =
-            '<div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['product_id'] . '" id="product_id_row">
+            '<div class="col-12 md:col-6 my-3 collapse ' . $rows['product_id'] . '" id="product_id_row">
                 <label for="product_id" class="form-label">' . lang('Product') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                 ' . $gone_notices['product_id'] . '
                 ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'required'=>($rows['product_id'] == 'show' ? 'required' : ''), 'options'=>get_product_options(true, $product_id) )) . '
@@ -1000,7 +1000,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                         </h2>
                         <div class="card-body pt-0">
                             <div class="row">
-                                <div class="col-12 md:col-6 my-3">
+                                <div class="col-12 my-3">
                                     <label for="name" class="form-label">' . lang('Name') . '</label>
                                     ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'size'=>'60', 'maxlength'=>'100', 'placeholder'=>lang('Campaign Profile Name'), 'class'=>'form-control', 'required'=>'required')) . '
                                 </div>
@@ -1068,7 +1068,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                         <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                         <div class="popover-body">
                                             <div class="row">
-                                                <div class="col-12 sm:col-8 my-1">
+                                                <div class="col-12 pg-field-span-6 my-1">
                                                     <label class="form-label" for="page_id">' . lang('Page') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                     ' . $page_gone_notice . '
                                                     ' . pg_picker_field('page_view', 'page_id', $liveform->get_field_value('page_id'), array('invalid' => $liveform->check_field_error('page_id'), 'value_attributes' => array('class' => 'collapse-if-selected', 'data-bs-target' => '#body_preview_row', 'onchange' => $page_preview_change))) . pg_picker_script() . '
@@ -1097,7 +1097,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                         </h2>
                         <div class="card-body pt-0">
                             <div class="row">
-                                <div class="col-12 md:col-6 my-3">
+                                <div class="col-12 my-3">
                                     <label class="form-label" for="from_name">' . lang('From Name') . '</label>
                                     ' . $liveform->output_field(array('type'=>'text','value'=>ORGANIZATION_NAME, 'name'=>'from_name', 'id'=>'from_name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                 </div>
@@ -1139,7 +1139,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-12 md:col-6 my-3">
+                                <div class="col-12 pg-field-span-3 my-3">
                                     <label class="form-label" for="schedule_time">' . lang('Send at a specific time') . '</label>
                                     ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8', 'data-pg-time' => '')) . '
                                     <div class="form-text">' . ((pg_time_format_code() === 'H:i') ? lang('HH:mm, leave blank to send at any time.') : lang('h:mm AM/PM, leave blank to send at any time.')) . '</div>

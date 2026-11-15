@@ -120,13 +120,8 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_migrate" name="submit_migrate" value="Migrate" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">drive_file_move</span><span class="pg-btn-label">' . lang(array('string'=>'Migrate') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                    ' . pg_save_bar('
+                                <button type="submit" id="submit_migrate" name="submit_migrate" value="Migrate" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">drive_file_move</span><span class="pg-btn-label">' . lang(array('string'=>'Migrate') ) . '</span></button>') . '
                 </form>
             </div>
         </div>

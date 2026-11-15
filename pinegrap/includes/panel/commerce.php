@@ -1055,33 +1055,8 @@ function pg_panel_get_unselected_products($request, $action)
         "SELECT COUNT(*) FROM products WHERE 1 $exclude_sql"
     );
 
-    // The pictures behind each product's cover, for the image viewer, which
-    // the screen that asked for these rows has already loaded.
-    $more_images = $show_image ? pg_product_more_images(array_column($products, 'id')) : array();
-
-    $rows_html = '';
-    foreach ($products as $product) {
-        $product['price'] = $product['price'] / 100;
-        $status_class = $product['enabled'] == 1 ? 'fg-success' : 'fg-danger';
-
-        $output_image_column = '';
-        if ($show_image) {
-            $output_image_column = pg_product_image_cell('product-' . (int) $product['id'], $product['image_name'], $product['name'], $product['short_description'],
-                isset($more_images[(int) $product['id']]) ? $more_images[(int) $product['id']] : array());
-        }
-
-        $rows_html .=
-            '<tr id="' . $product['id'] . '">' .
-            '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $product['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($product['name'])))) . '"/></td>' .
-            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $product['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
-            $output_image_column .
-            '<td class="chart_label align-middle ' . $status_class . '">' . h($product['name']) . (($product['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>' .
-            '<td class="align-middle ' . $status_class . '">' . h($product['short_description']) . '</td>' .
-            '<td class="align-middle text-end">' . prepare_amount($product['price']) . '</td>' .
-            '<td class="align-middle"><input class="form-control text-end" type="text" name="sort_order_product_' . $product['id'] . '" size="5" value="" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $product['name']) . '" style="text-align: right;width:60px;" /></td>' .
-            '<td></td>' .
-            '</tr>';
-    }
+    // The same rows as the first batch (pg_product_group_form_row()).
+    $rows_html = pg_product_group_form_unselected_rows($products, $show_image);
 
     $has_more = ($offset + count($products)) < $total_unselected;
 

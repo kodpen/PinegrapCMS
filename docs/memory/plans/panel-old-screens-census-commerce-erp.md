@@ -24,5 +24,6 @@ description: LM1a census, ERP groups E1–E5: invoice and quote documents, lists
 - Account: `edit_erp_account`, `add_erp_account`, `includes/erp/account_form.php` (32 flagged, 11 old classes); Till: `edit_erp_till`, `add_erp_till`, `includes/erp/till_form.php`.
 
 ## E5 ERP imports, matching and settings (~850 lines)?
+- Done in #9704.
 - Account Sync item `erp_account_sync_item` (37 old classes, 3 tables), Bank Statement `erp_bank_statement`, Reconciliation `erp_reconciliation`, Incoming e-Invoice `erp_inbox_document`, Stock Count `erp_stock_count`.
 - ERP Settings `erp_settings` (7 old titles, 18 cards, not the settings cards `pg-set-card`), Import Accounts `erp_accounts_import` (48 old classes), Export `erp_export`, Accountant `erp_accountant`.

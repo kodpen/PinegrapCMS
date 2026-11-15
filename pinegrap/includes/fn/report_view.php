@@ -144,6 +144,72 @@ function pg_report_view_figure($label, $text, $icon, $tint, $note = '', $tone = 
 }
 
 /**
+ * A figure's text as its card prints it: the unit (a currency symbol or a
+ * percent sign) at the start or the end is drawn smaller than the number,
+ * as assets/js/pg_report_view.js figureValue() does. Pure.
+ *
+ * @param string $text "₺12.632,91", "-1.250,00 TL", "45.23%", "7"
+ * @return string HTML, escaped
+ */
+function pg_report_figure_value_html($text)
+{
+    $text = (string) $text;
+    $space = '[\s\x{00A0}\x{202F}]';
+
+    if (preg_match('/^(-?)([^\d\s\x{00A0}\x{202F}.,-]+)' . $space . '?(\d[\d.,\s\x{00A0}\x{202F}]*)$/u', $text, $match)) {
+        return h($match[1]) . '<small>' . h($match[2]) . '</small>' . h($match[3]);
+    }
+
+    if (preg_match('/^(-?\d[\d.,\s\x{00A0}\x{202F}]*?)' . $space . '?([^\d\s\x{00A0}\x{202F}.,-]+)$/u', $text, $match)) {
+        return h($match[1]) . '<small>' . h($match[2]) . '</small>';
+    }
+
+    return h($text);
+}
+
+/**
+ * The summary figures drawn on the server, the same cards the report view
+ * draws in the browser: up to five share one row, more go in two even rows
+ * of at most four. Pure.
+ *
+ * Each figure is pg_report_view_figure()'s array and may add 'url' (the
+ * card then leads there) and 'class' (classes of the figure itself, such
+ * as fg-danger for a figure below zero).
+ *
+ * @param array $figures
+ * @return string '' when there is none
+ */
+function pg_report_figures_html(array $figures)
+{
+    $tints = array('blue', 'violet', 'amber', 'teal', 'rose', 'gray');
+    $html = '';
+
+    foreach ($figures as $figure) {
+        $tint = in_array((string) ($figure['tint'] ?? ''), $tints, true) ? (string) $figure['tint'] : 'gray';
+        $url = (string) ($figure['url'] ?? '');
+        $label = h((string) ($figure['label'] ?? ''));
+        $class = trim((string) ($figure['class'] ?? ''));
+        $note = (string) ($figure['note'] ?? '');
+
+        $html .= '<div class="pg-card pg-report-fig' . (($url !== '') ? ' position-relative' : '') . '">'
+            . '<dt class="pg-report-fig-name"><span class="pg-icon-tile pg-tone-' . $tint . '" aria-hidden="true"><span class="bi ' . h((string) ($figure['icon'] ?? '')) . '"></span></span>'
+            . (($url !== '') ? '<a class="stretched-link pg-link-body-emphasis text-decoration-none" href="' . h($url) . '">' . $label . '</a>' : $label) . '</dt>'
+            . '<dd class="pg-report-fig-value' . (($class !== '') ? ' ' . h($class) : '') . '">' . pg_report_figure_value_html((string) ($figure['text'] ?? '')) . '</dd>'
+            . (($note !== '') ? '<dd class="pg-report-fig-note' . ((($figure['tone'] ?? '') === 'bad') ? ' is-bad' : '') . '">' . h($note) . '</dd>' : '')
+            . '</div>';
+    }
+
+    if ($html === '') {
+        return '';
+    }
+
+    $count = count($figures);
+    $columns = ($count <= 5) ? $count : min(4, (int) ceil($count / 2));
+
+    return '<dl class="pg-report-figs" style="--pg-report-figs: ' . $columns . '">' . $html . '</dl>';
+}
+
+/**
  * The texts the view's script writes itself: the figures' name, the map's
  * legend ends and the line a level without a chart gets.
  *
@@ -156,6 +222,21 @@ function pg_report_view_strings()
         'legend' => array(lang('Few'), lang('Many')),
         'no_chart' => lang('No chart fits this level; the summary figures and the table are shown.'),
     );
+}
+
+/**
+ * The period beside the calendar icon, one shape on every report screen:
+ * the panel's date text (get_absolute_time(), type date) of the first and
+ * the last day joined by an en dash; a period of one day names it once.
+ * Pure.
+ *
+ * @param string $start the first day's date text (HTML)
+ * @param string $stop  the last day's date text (HTML)
+ * @return string HTML
+ */
+function pg_report_view_range($start, $stop)
+{
+    return ($stop === $start) ? (string) $start : $start . ' – ' . $stop;
 }
 
 /**
@@ -223,7 +304,7 @@ function pg_report_view_visitor_figures($grand, $ecommerce, $symbol)
 
         $figures[] = pg_report_view_figure(lang('Order Completed') . ' %', $percent((int) ($grand['order_completed'] ?? 0)), 'bi-bag-check', 'teal');
         $figures[] = pg_report_view_figure(lang('Order Total'), pg_report_view_money($total, $symbol), 'bi-cash-stack', 'blue');
-        $figures[] = pg_report_view_figure(lang('Average Order Amount'), pg_money_text((($count > 0) ? $total / $count : 0) / 100, $symbol), 'bi-basket2', 'violet');
+        $figures[] = pg_report_view_figure(lang('Order amount per visitor'), pg_money_text((($count > 0) ? $total / $count : 0) / 100, $symbol), 'bi-basket2', 'violet');
     }
 
     return $figures;
@@ -344,12 +425,13 @@ function pg_report_view_vat_figures($totals, $withholding, $names, $money)
  * calculated tax by month with the deductible tax dashed beside it, the
  * gap between them the month's difference (both from the By month table).
  * Over one month: the tax of each kind of document as rows (sales, sales
- * returns, purchases, returns to suppliers, the expenses' deductible tax).
- * The line draws from zero up, so a month below zero (more returns than
+ * returns, purchases, returns to suppliers, the expenses' deductible tax),
+ * only with two kinds or more. The line draws from zero up, so a month below zero (more returns than
  * sales) is drawn at zero; its tip says the real figure. Pure.
  *
  * @param array    $report erp_vat_report(): 'months', 'kinds', 'totals'
- * @param array    $names  'calculated', 'deductible' captions, 'kinds'
+ * @param array    $names  'tax' (the tax's name, the line's title),
+ *                         'calculated', 'deductible' captions, 'kinds'
  *                         (erp_vat_kind_labels()), 'months' (month =>
  *                         its name)
  * @param callable $money  minor units => text
@@ -360,7 +442,8 @@ function pg_report_view_vat_chart($report, $names, $money)
     $months = (array) ($report['months'] ?? array());
 
     if (count($months) > 1) {
-        $chart = array('kind' => 'line', 'label' => lang(array('string' => '{var:1} by month', 'vars' => $names['calculated'])), 'series' => (string) $names['calculated'], 'compare_label' => (string) $names['deductible'], 'values' => array(), 'compare' => array(), 'names' => array(), 'notes' => array(), 'compare_notes' => array(), 'extras' => array(), 'tips' => array());
+        // The title names both lines (calculated and deductible): the tax.
+        $chart = array('kind' => 'line', 'label' => lang(array('string' => '{var:1} by month', 'vars' => (string) ($names['tax'] ?? $names['calculated']))), 'series' => (string) $names['calculated'], 'compare_label' => (string) $names['deductible'], 'values' => array(), 'compare' => array(), 'names' => array(), 'notes' => array(), 'compare_notes' => array(), 'extras' => array(), 'tips' => array());
         $any = false;
 
         foreach ($months as $month => $figures) {
@@ -400,7 +483,8 @@ function pg_report_view_vat_chart($report, $names, $money)
         }
     }
 
-    return $rows ? array('kind' => 'bars', 'label' => lang('Tax by document type'), 'rows' => $rows) : null;
+    // One kind of document is one bar: it compares nothing.
+    return (count($rows) > 1) ? array('kind' => 'bars', 'label' => lang('Tax by document type'), 'rows' => $rows) : null;
 }
 
 /**
@@ -608,4 +692,94 @@ function pg_report_view_chart_by($kind, $groups, $names, $title, $measure, $code
     }
 
     return $chart;
+}
+
+/**
+ * A country level's group as the screen names it: the site's own name for a
+ * stored country code, else the stored text (a name, an unknown code). The
+ * export and the map keep the stored value. Pure.
+ *
+ * @param string $level a summarize-by value
+ * @param string $value the group's stored text
+ * @param array  $names upper-case code => name (pg_report_view_country_names())
+ * @return string
+ */
+function pg_report_view_country_name($level, $value, $names)
+{
+    if (!in_array($level, array('billing_country', 'shipping_country', 'country'), true)) {
+        return (string) $value;
+    }
+
+    $code = strtoupper(trim((string) $value));
+
+    return (($code !== '') && isset($names[$code])) ? (string) $names[$code] : (string) $value;
+}
+
+/**
+ * The site's country names by code (the countries table), read once a
+ * request.
+ *
+ * @return array upper-case code => name
+ */
+function pg_report_view_country_names()
+{
+    static $names = null;
+
+    if ($names === null) {
+        $names = array();
+
+        foreach ((array) db_items("SELECT code, name FROM countries WHERE code <> '' AND name <> ''") as $row) {
+            $names[strtoupper(trim((string) $row['code']))] = (string) $row['name'];
+        }
+    }
+
+    return $names;
+}
+
+/**
+ * The ERP profit report's chart over more than one month: a line of the net
+ * sales by month with the costs and expenses (cost of goods, costs from
+ * purchase invoices, expenses) dashed beside it, the net profit of the month
+ * in its tip (all from the By month table). The line draws from zero up, so
+ * a month below zero is drawn at zero; its tip says the real figure. Null
+ * for one month or when every month is empty. Pure.
+ *
+ * @param array    $months erp_profit_report()['months']: month => figures
+ *                         'revenue', 'cogs', 'purchase_costs', 'expenses',
+ *                         'net'
+ * @param array    $names  month => its name
+ * @param callable $money  minor units => text
+ * @return array|null
+ */
+function pg_report_view_profit_chart($months, $names, $money)
+{
+    $months = (array) $months;
+
+    if (count($months) < 2) {
+        return null;
+    }
+
+    $sales = lang('Net sales');
+    $costs_label = lang('Costs and expenses');
+    $profit = lang('Net profit');
+    $chart = array('kind' => 'line', 'label' => lang('Net sales and costs by month'), 'series' => $sales, 'compare_label' => $costs_label, 'values' => array(), 'compare' => array(), 'names' => array(), 'notes' => array(), 'compare_notes' => array(), 'extras' => array(), 'tips' => array());
+    $any = false;
+
+    foreach ($months as $month => $figures) {
+        $revenue = (int) ($figures['revenue'] ?? 0);
+        $costs = (int) ($figures['cogs'] ?? 0) + (int) ($figures['purchase_costs'] ?? 0) + (int) ($figures['expenses'] ?? 0);
+        $net = (int) ($figures['net'] ?? 0);
+        $name = (string) ($names[$month] ?? $month);
+        $any = $any || ($revenue !== 0) || ($costs !== 0);
+
+        $chart['values'][] = round(max(0, $revenue) / 100, 2);
+        $chart['compare'][] = round(max(0, $costs) / 100, 2);
+        $chart['names'][] = $name;
+        $chart['notes'][] = $money($revenue);
+        $chart['compare_notes'][] = $money($costs);
+        $chart['extras'][] = array('label' => $profit, 'text' => $money($net));
+        $chart['tips'][] = $name . ': ' . $sales . ' ' . $money($revenue) . ' · ' . $costs_label . ' ' . $money($costs) . ' · ' . $profit . ' ' . $money($net);
+    }
+
+    return $any ? $chart : null;
 }

@@ -46,6 +46,12 @@ if (isset($_GET['file'])) {
     ws_guest_file_send(ws_guest_context(), (int) $_GET['file']);
 }
 
+// An agent's live page in the guarded frame, for the guest of that room:
+// only a frame's request for a page the guest page lists.
+if (isset($_GET['page'])) {
+    ws_guest_page_send(ws_guest_context(), pg_guarded_frame_page_id($_GET['page']), $_SERVER);
+}
+
 $software = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
 $version = function ($path) {
     return (string) @filemtime(PG_FUNCTIONS_DIR . $path);
