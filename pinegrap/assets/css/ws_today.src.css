@@ -133,6 +133,16 @@
     overflow-wrap: anywhere;
   }
 
+  /* The channel and the time stay whole: the line breaks before the "#". */
+  .ws-today .ws-today-row-place {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+  }
+
   .ws-today .ws-today-row-meta b {
     font-weight: 600;
     color: var(--pgd-strong);

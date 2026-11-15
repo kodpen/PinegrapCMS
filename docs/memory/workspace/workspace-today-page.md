@@ -14,7 +14,7 @@ description: The Workspace's first page, Today (?view=home, was Overview): the g
 - Then the `.pg-dash-grid`, fixed (no edit mode): Waiting for you, Today and overdue, Calendar · today (S), What happened in the channels (M), Latest decisions (S), Channels you could join (S, when any), What is the Workspace? (L, a `details`, open for a newcomer). One method each (`homeWaiting` … `homeAbout`), framed by `todayCard()`: icon, title, count badge, link.
 
 ## What does the count line say?
-- `ws_home_lead()`: unread messages and mentions of the joined channels (the sidebar's counts), approvals and read receipts waiting, tasks due today or before, each a part ("7 new messages"), or "Everything is read and nothing is due today."; parts joined with dots, each wrapping whole. `ws_home_lead_capitalised()` upper-cases the line's first letter (the Turkish due part starts with a word, #5191).
+- `ws_home_lead()`: unread messages and mentions of the joined channels, approvals and read receipts waiting, tasks due today or before, each a part ("7 new messages"), or "Everything is read and nothing is due today."; each part wraps whole with its leading dot (#9650). `ws_home_lead_capitalised()` upper-cases the line's first letter (the Turkish due part starts with a word, #5191).
 
 ## What is in each card?
 - Waiting for you: approvals (`ws_approvals_waiting()`) and read receipts (`ws_acks_waiting()`) drawn by `homeRows()` of workspace_approvals.js and workspace_acks.js, then agent questions (`poll-agent-question-reach.md`), replies and mentions (`ws_home_talk()`), the unread marked; read ones only while the card has fewer than five rows. Its count is what is unread or asked; signs sit in face-sized boxes.

@@ -563,8 +563,11 @@
             row.appendChild(face);
             meta.appendChild(el('b', '', item.asker ? item.asker.name : ''));
             meta.appendChild(document.createTextNode(' ' + t('home_question') + ' · '));
-            meta.appendChild(h.icon(item.channel['private'] ? 'bi-lock' : 'bi-hash'));
-            meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time));
+            // The channel's name never breaks at its hyphen.
+            var place = el('span', 'ws-today-row-place');
+            place.appendChild(h.icon(item.channel['private'] ? 'bi-lock' : 'bi-hash'));
+            place.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time));
+            meta.appendChild(place);
             text.appendChild(meta);
             text.appendChild(el('span', 'ws-today-row-quote', item.question));
             row.appendChild(text);

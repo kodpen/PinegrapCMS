@@ -8122,7 +8122,7 @@
             clear(body);
 
             var waitingCount = (data.talk || []).filter(function (item) { return item.unread; }).length
-                + (data.approvals || []).length + (data.acks || []).length;
+                + (data.approvals || []).length + (data.acks || []).length + (data.questions || []).length;
 
             // The new dashboard's container: its columns follow this width,
             // its palette and the person's card face apply inside it.
@@ -8152,18 +8152,17 @@
 
             hello.appendChild(greeting);
 
-            // The counts as parts that wrap whole, each dot at a line's end.
+            // The counts as parts that wrap whole; each dot goes with the
+            // part after it, so no line ends with one.
             var lead = el('p', 'ws-today-lead');
             var parts = data.lead || [];
 
             parts.forEach(function (part, index) {
-                var last = (index === parts.length - 1);
-
-                lead.appendChild(el('span', 'ws-today-lead-part', last ? part : part + ' ·'));
-
-                if (!last) {
+                if (index > 0) {
                     lead.appendChild(document.createTextNode(' '));
                 }
+
+                lead.appendChild(el('span', 'ws-today-lead-part', (index > 0) ? '· ' + part : part));
             });
 
             hello.appendChild(lead);
