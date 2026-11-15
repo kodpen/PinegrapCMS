@@ -26,7 +26,7 @@ description: Plan (owner 2026-11-15, channel decision 3775): who an agent or a p
 
 - PF3 (M) The agent card in channels. A new design: its pictures go to the owner (`Approval: channel`).
 
-- PF4 (S) The role badge and the state dot in a message.
+- PF4 (S) Role badge and state dot in a message. Done: #9629.
 
 - PF5 (S) The @ menu's role and state, and the usage mark.
 
